@@ -711,6 +711,19 @@ app.post('/live/:id/end', async (c) => {
       WHERE id = ?
     `).bind(streamId).run()
 
+    // 🛡️ 2026-05-11: OME 의 push 도 정리 — 다음 broadcast 의 Duplicate ID 방지.
+    //   셀러가 우리 페이지에서 [방송 종료] 누르면 OME 의 active push 도 함께 stop.
+    if (c.env.OME_HOST && c.env.OME_API_TOKEN) {
+      const stopUrl = `http://${c.env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`
+      const auth = btoa(c.env.OME_API_TOKEN)
+      // best-effort: push 가 이미 없거나 OME 응답 안 해도 무시
+      await fetch(stopUrl, {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: `youtube-${streamId}` }),
+      }).catch(() => { /* ignore */ })
+    }
+
     return c.json({
       success: true,
       message: 'Stream ended successfully',
@@ -1389,6 +1402,17 @@ export async function omeAdmissionHandler(
             UPDATE live_streams SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND status = 'live'
           `).bind(sid).run()
+          // 🛡️ 2026-05-11: closing event 시 OME push 도 정리 — 다음 broadcast 의 Duplicate ID 방지
+          if (env.OME_HOST && env.OME_API_TOKEN) {
+            const stopUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`
+            const auth = btoa(env.OME_API_TOKEN)
+            const cleanup = fetch(stopUrl, {
+              method: 'POST',
+              headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: `youtube-${sid}` }),
+            }).catch(() => { /* push 가 이미 없으면 OK */ })
+            if (waitUntil) waitUntil(cleanup)
+          }
         }
       }
     } catch (e) {
@@ -1432,23 +1456,49 @@ export async function omeAdmissionHandler(
       const fullRtmp = stream.rtmp_url.endsWith('/') ? `${stream.rtmp_url}` : `${stream.rtmp_url}/`
       // OME API: POST /v1/vhosts/default/apps/app:startPush  (앱 단위, body 에 stream 지정)
       const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:startPush`
+      const stopUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`
       const auth = btoa(env.OME_API_TOKEN)
+      const pushId = `youtube-${streamId}`
+      const pushBody = JSON.stringify({
+        id: pushId,
+        stream: { name: streamName },
+        protocol: 'rtmp',
+        url: fullRtmp,
+        streamKey: stream.rtmp_key,
+      })
       // 짧은 지연 후 호출 — OME 가 admission 응답 처리하고 stream 인입 받기 시작한 후 push 시작.
       // ⚠️ Cloudflare Workers 는 응답 후 async 작업을 즉시 취소. waitUntil 로 살려야 함.
       const pushPromise = (async () => {
         try {
           await new Promise(r => setTimeout(r, 1500))
-          const res = await fetch(apiUrl, {
+          let res = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: `youtube-${streamId}`,
-              stream: { name: streamName },
-              protocol: 'rtmp',
-              url: fullRtmp,
-              streamKey: stream.rtmp_key,
-            }),
+            body: pushBody,
           })
+
+          // 🛡️ 2026-05-11: Duplicate ID (400) 자동 복구 — OME 에 동일 push id 가 이미 등록된 경우.
+          //   원인: 이전 broadcast 의 push 가 OME 에서 정리되지 않고 남아있음 (셀러가 송출 중간 끊김 등).
+          //   해결: stopPush 로 기존 push 정리 → startPush 재시도 (1회).
+          //   효과: 모든 broadcast 가 항상 라이브 진입 가능 (이전: 첫 broadcast 만 성공, 이후 영원히 Duplicate ID).
+          if (!res.ok && res.status === 400) {
+            const errBody = await res.clone().text()
+            if (/duplicate.*id/i.test(errBody)) {
+              console.warn('[OME push start] Duplicate ID — cleanup + retry', pushId)
+              await fetch(stopUrl, {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: pushId }),
+              }).catch((e) => console.error('[OME push stop] retry cleanup failed', e))
+              await new Promise(r => setTimeout(r, 500))
+              res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+                body: pushBody,
+              })
+            }
+          }
+
           if (!res.ok) {
             const errText = await res.text()
             console.error('[OME push start] non-OK', res.status, errText)
