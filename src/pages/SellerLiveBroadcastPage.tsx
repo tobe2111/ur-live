@@ -192,15 +192,36 @@ export default function SellerLiveBroadcastPage() {
 
   // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
   // 적응형: 초반 2분은 5s, 이후 15s (YouTube API quota 절감)
+  // 🛡️ 2026-05-11: youtube-webcam 모드는 broadcast_id 가 null 이라 /status 호출 시 에러 → /detect-webcam 만 폴링
   useEffect(() => {
     if (step !== 'setup' || !currentStream || transitionCountdown !== null) return
-    const startedAt = Date.now()
+    const isWebcam = method === 'youtube-webcam'
+    const endpoint = isWebcam
+      ? `/api/seller/youtube/live/${currentStream.id}/detect-webcam`
+      : `/api/seller/youtube/live/${currentStream.id}/status`
     const poll = async () => {
       try {
-        const res = await api.get(`/api/seller/youtube/live/${currentStream.id}/status`)
+        const res = await api.get(endpoint)
         setPollFailures(0)
-        if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
-          setTransitionCountdown(3)
+        if (isWebcam) {
+          // /detect-webcam 응답: { success, data: { youtube_video_id, title, status } | null }
+          // candidate 발견 시 → PATCH /link-broadcast 자동 호출 → status='live' 로 transition
+          const candidate = res.data?.data
+          if (candidate?.youtube_video_id) {
+            try {
+              const linkRes = await api.patch(`/api/seller/youtube/live/${currentStream.id}/link-broadcast`, {
+                youtube_video_id: candidate.youtube_video_id,
+              })
+              if (linkRes.data?.success) {
+                setCurrentStream(prev => prev ? { ...prev, youtube_video_id: candidate.youtube_video_id, youtube_broadcast_id: candidate.youtube_video_id, status: 'live' } : prev)
+                setTransitionCountdown(3)
+              }
+            } catch { /* link 실패 시 다음 폴링에 재시도 */ }
+          }
+        } else {
+          if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
+            setTransitionCountdown(3)
+          }
         }
       } catch { setPollFailures(c => c + 1) }
     }
@@ -355,7 +376,12 @@ export default function SellerLiveBroadcastPage() {
         scheduledStartTime = d.toISOString()
       }
 
-      const res = await api.post('/api/seller/youtube/live/create', {
+      // 🛡️ 2026-05-11: youtube-webcam 모드는 /create-webcam 으로 — YouTube API 호출 안 함, DB stream record 만 생성.
+      //   셀러는 YouTube Studio 웹캠 송출 popup 에서 직접 broadcast 만들고, /detect-webcam 폴링이 우리 stream 과 link.
+      const endpoint = method === 'youtube-webcam'
+        ? '/api/seller/youtube/live/create-webcam'
+        : '/api/seller/youtube/live/create'
+      const res = await api.post(endpoint, {
         title: effectiveTitle.trim(), description: description.trim(),
         thumbnail_url: thumbnailUrl.trim() || undefined,
         product_ids: effectiveProducts,
@@ -379,6 +405,21 @@ export default function SellerLiveBroadcastPage() {
         rememberRecentProducts([...effectiveProducts, ...getRecentProducts().filter(id => !effectiveProducts.includes(id))])
         rememberLastBroadcast({ description: description.trim(), thumbnailUrl: thumbnailUrl.trim(), privacy })
         navigate(`/seller/live-broadcast/${d.stream_id}`, { replace: true })
+
+        // 🛡️ 2026-05-11: 웹캠 모드면 YouTube Studio 웹캠 송출 popup 자동 열기.
+        //   셀러가 popup 에서 [스트리밍 시작] 클릭 → /detect-webcam 폴링이 우리 stream 과 link.
+        if (method === 'youtube-webcam') {
+          const activeChannel = channels.find(ch => ch.id === activeChannelId) || channels[0]
+          if (activeChannel?.channel_id) {
+            const studioUrl = `https://studio.youtube.com/channel/${activeChannel.channel_id}/livestreaming/stream/webcam`
+            try {
+              const popup = window.open(studioUrl, 'youtube_studio_webcam', 'width=1200,height=800,noopener=false')
+              if (!popup) {
+                toast.error(t('seller.liveBroadcast.popupBlocked', { defaultValue: '팝업이 차단되었습니다. 주소창의 팝업 차단 해제 후 다시 시도해주세요.' }))
+              }
+            } catch { /* popup 차단 — 셀러에게 안내 */ }
+          }
+        }
       } else {
         if (res.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
           setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))

@@ -274,27 +274,50 @@ export default function StepInfo({ title, setTitle, description, setDescription,
         )}
       </div>
 
-      {/* 🛡️ 2026-05-07: 모드 선택 제거 → 송출 키 상태 표시만.
-          셀러는 /seller/streaming-setup 에서 본인 환경에 맞는 도구 (Prism/OBS/Larix/Studio)
-          한 번만 설정. 방송 만들기는 그 도구 무관하게 동일 흐름. */}
+      {/* 🛡️ 2026-05-11: 송출 방법 선택 — OBS/Prism 키 설정된 셀러는 자동 / 미설정 셀러는 웹캠 즉시 시작 옵션. */}
       {hasPersistentKey ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-            <p className="text-sm font-semibold text-green-800">송출 도구 준비됨</p>
-            <span className="text-xs text-green-600">· OBS/Prism/Larix 어디서든 시작 가능</span>
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <p className="text-sm font-semibold text-green-800">송출 도구 준비됨</p>
+              <span className="text-xs text-green-600">· OBS/Prism 으로 시작</span>
+            </div>
+            <a href="/seller/streaming-setup" className="text-[11px] text-green-700 hover:text-green-900 underline underline-offset-2">키 다시 보기</a>
           </div>
-          <a href="/seller/streaming-setup" className="text-[11px] text-green-700 hover:text-green-900 underline underline-offset-2">키 다시 보기</a>
+          <button
+            type="button"
+            onClick={() => setMethod(method === 'youtube-webcam' ? 'obs' : 'youtube-webcam')}
+            className={`w-full text-left text-xs px-3 py-2 rounded-lg border transition-colors ${
+              method === 'youtube-webcam'
+                ? 'border-red-300 bg-red-50 text-red-800'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <span className="font-semibold">{method === 'youtube-webcam' ? '✓ ' : ''}🎥 또는 YouTube Studio 웹캠으로 즉시 시작 (OBS 불필요, PC 권장)</span>
+          </button>
         </div>
       ) : (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-base">⚙️</span>
-            <p className="text-sm font-bold text-amber-900">송출 도구 설정이 먼저 필요해요</p>
+            <span className="text-base">📹</span>
+            <p className="text-sm font-bold text-amber-900">송출 방법을 선택하세요</p>
           </div>
-          <p className="text-xs text-amber-700">한 번만 설정하면 다음 방송부터는 [방송 시작] 만 누르면 됩니다.</p>
-          <a href="/seller/streaming-setup" className="inline-block text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg">
-            송출 키 설정하러 가기 →
+          {/* 가장 쉬운 옵션: YouTube 웹캠 — OBS 설치 없이 즉시 시작 (PC 권장) */}
+          <button
+            type="button"
+            onClick={() => setMethod('youtube-webcam')}
+            className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
+              method === 'youtube-webcam' ? 'border-red-400 bg-red-50' : 'border-amber-300 bg-white hover:border-red-300'
+            }`}
+          >
+            <p className="text-sm font-bold text-gray-900">🎥 YouTube 웹캠으로 시작 <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full ml-1">가장 쉬움</span></p>
+            <p className="text-[11px] text-gray-600 mt-0.5">OBS 설치 불필요 · YouTube Studio 팝업에서 [스트리밍 시작] 한 번 클릭 · PC 권장</p>
+          </button>
+          {/* 영구 옵션: OBS/Prism 키 설정 */}
+          <a href="/seller/streaming-setup" className="block w-full text-left p-3 rounded-lg border-2 border-amber-300 bg-white hover:border-amber-400 transition-colors">
+            <p className="text-sm font-bold text-gray-900">⚙️ OBS/Prism 키 설정 (영구)</p>
+            <p className="text-[11px] text-gray-600 mt-0.5">한 번만 설정하면 매 방송 자동 연결 · 모바일 라이브 가능</p>
           </a>
         </div>
       )}

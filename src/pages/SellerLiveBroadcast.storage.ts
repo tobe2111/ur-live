@@ -5,7 +5,7 @@
  * SSR / storage 차단 환경 (incognito strict mode) 안전 처리 (try-catch).
  */
 
-export type StreamMethod = 'youtube' | 'obs' | 'prism' | 'quick'
+export type StreamMethod = 'youtube' | 'youtube-webcam' | 'obs' | 'prism' | 'quick'
 
 export interface BroadcastTemplate {
   name: string
@@ -25,9 +25,8 @@ export function getLastUsedMethod(): StreamMethod {
     const v = localStorage.getItem(METHOD_STORAGE_KEY)
     // 🛡️ 2026-05-07: 'quick' 옵션 메뉴에서 제거 → legacy 값은 'obs' 로 매핑 (OBS 자동 연결 = Quick 동작)
     if (v === 'quick') return 'obs'
-    // 🛡️ 2026-05-07: youtube-webcam 옵션 제거 → 모바일 셀러용 'prism' 으로 매핑.
-    if (v === 'youtube-webcam') return 'prism'
-    if (v === 'youtube' || v === 'obs' || v === 'prism') return v
+    // 🛡️ 2026-05-11: youtube-webcam 옵션 복원 (OME 미운영 + OBS 미설치 셀러용).
+    if (v === 'youtube' || v === 'youtube-webcam' || v === 'obs' || v === 'prism') return v
   } catch { /* SSR or blocked */ }
   if (typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) return 'prism'
   return 'obs'
