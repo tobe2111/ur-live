@@ -19,9 +19,11 @@ import { Loader2, Camera, Mic, MicOff, Video, VideoOff, AlertCircle, RefreshCw }
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
+type WhipMode = 'youtube_whip' | 'ome_whip'
+
 interface Props {
   streamId: number
-  onStreaming?: () => void  // WebRTC 연결 성립 시
+  onStreaming?: (mode: WhipMode) => void  // WebRTC 연결 성립 시, mode 전달
   onError?: (msg: string) => void
   onUnsupported?: (reason: string) => void
 }
@@ -42,6 +44,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   const userStoppedRef = useRef(false)
   const reconnectAttemptsRef = useRef(0)
   const wasConnectedRef = useRef(false)
+  const modeRef = useRef<WhipMode>('youtube_whip')
   const [reconnectingIn, setReconnectingIn] = useState<number | null>(null)
 
   // 브라우저 호환성 사전 체크
@@ -119,13 +122,14 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     } catch { /* noop */ }
     }  // end "새 stream 획득" block
 
-    // 2. WHIP 토큰 발급
+    // 2. WHIP endpoint 발급 (YouTube WHIP direct 또는 OME WHIP fallback)
     setStatus('fetching_token')
     let whipUrl: string
     try {
       const res = await api.post('/api/seller/youtube/streaming/whip-token', { stream_id: streamId })
       if (!res.data?.success) throw new Error(res.data?.error || '토큰 발급 실패')
       whipUrl = res.data.data.whip_url
+      modeRef.current = (res.data.data.mode as WhipMode) || 'youtube_whip'
     } catch (e) {
       const errCode = (e as { response?: { data?: { error_code?: string } } })?.response?.data?.error_code
       if (errCode === 'OME_NOT_CONFIGURED') {
@@ -150,7 +154,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         setStatus('live')
         reconnectAttemptsRef.current = 0
         wasConnectedRef.current = true
-        onStreaming?.()
+        onStreaming?.(modeRef.current)
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
         if (userStoppedRef.current) return
         // 한 번도 connected 한 적 없으면 자동 재연결 안 함 (초기 연결 실패는 사용자가 재시도)
@@ -228,11 +232,13 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       const answerSdp = await res.text()
       // 🛡️ 2026-05-10: OME 0.16.7 SDP answer 가 ssrc-audio-level 와 transport-wide-cc 를
       //   같은 RTP extension ID (1) 로 보내서 Chrome 이 거부.
-      //   → answer SDP 에서 transport-wide-cc extmap 줄을 제거 (없어도 송출은 동작).
-      const sanitized = answerSdp
-        .split('\n')
-        .filter(l => !/^a=extmap:\d+\s+http:\/\/www\.ietf\.org\/id\/draft-holmer-rmcat-transport-wide-cc-extensions/.test(l))
-        .join('\n')
+      //   → OME WHIP 전용 워크어라운드 (YouTube WHIP 에는 불필요 — SDP 가 올바름).
+      const sanitized = modeRef.current === 'ome_whip'
+        ? answerSdp
+            .split('\n')
+            .filter(l => !/^a=extmap:\d+\s+http:\/\/www\.ietf\.org\/id\/draft-holmer-rmcat-transport-wide-cc-extensions/.test(l))
+            .join('\n')
+        : answerSdp
       await pc.setRemoteDescription({ type: 'answer', sdp: sanitized })
     } catch (e) {
       const msg = '연결 실패: ' + (e as Error).message

@@ -458,10 +458,10 @@ export default function SellerLiveBroadcastPage() {
     } finally { setCreating(false) }
   }
 
-  async function goLive() {
+  async function goLive(mode?: string) {
     if (!currentStream) return
     try {
-      await api.post(`/api/seller/youtube/live/${currentStream.id}/start`)
+      await api.post(`/api/seller/youtube/live/${currentStream.id}/start`, mode ? { mode } : undefined)
       // DB에서 최신 스트림 정보 새로고침 (webcam 모드에서 link-broadcast 후 youtube_video_id 반영)
       try {
         const refreshRes = await api.get(`/api/seller/streams/${currentStream.id}`)

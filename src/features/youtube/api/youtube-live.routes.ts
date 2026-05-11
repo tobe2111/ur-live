@@ -455,7 +455,7 @@ app.get('/live/:id/detect-webcam', async (c) => {
  */
 app.post('/live/:id/start', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-  
+
   if (!sellerId) {
     return c.json({
       success: false,
@@ -464,6 +464,9 @@ app.post('/live/:id/start', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 모드 감지 (body 에서 읽음)
+  const requestBody = await c.req.json<{ mode?: string }>().catch(() => ({} as { mode?: string }))
+  const isYouTubeWhip = requestBody.mode === 'youtube_whip'
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
@@ -530,12 +533,27 @@ app.post('/live/:id/start', async (c) => {
       return c.json({ success: true, message: 'Stream is already live (auto-started)' })
     }
 
-    // Not yet live — manually transition
-    try {
-      await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
-    } catch (transitionError: unknown) {
-      // If transition fails (e.g., no RTMP data yet), still update DB
-      console.warn('[YouTube Live Start] Transition warning:', transitionError)
+    // Not yet live — manually transition.
+    // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 모드는 WebRTC 연결 직후 호출될 수 있음.
+    // YouTube 가 스트림을 active 로 인식하기까지 수 초 걸리므로 최대 3회 재시도 (5s 간격).
+    const maxAttempts = isYouTubeWhip ? 3 : 1
+    let transitionOk = false
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 5000))
+      try {
+        await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+        transitionOk = true
+        break
+      } catch (e) {
+        const msg = (e as Error).message || ''
+        if (/redundantTransition|already/i.test(msg)) { transitionOk = true; break }
+        if (attempt === maxAttempts - 1) {
+          console.warn('[YouTube Live Start] Transition failed after retries:', msg)
+        }
+      }
+    }
+    if (!transitionOk) {
+      console.warn('[YouTube Live Start] All transition attempts failed — DB still updated to live')
     }
 
     // Update database
@@ -1616,30 +1634,35 @@ app.get('/streaming/health', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
+  // youtube_whip_available: 항상 true — rtmp_key 있는 stream 이면 YouTube WHIP 직접 사용 가능.
+  // 실제 rtmp_key 보유 여부는 /streaming/whip-token 에서 stream_id 기준으로 체크.
   return c.json({
     success: true,
-    data: { ome_available: omeConfigured },
+    data: { ome_available: omeConfigured, youtube_whip_available: true },
   })
 })
 
 /**
  * POST /api/seller/youtube/streaming/whip-token
- * 브라우저가 publish 시작 전 호출. 60초 유효한 1회용 토큰 + WHIP endpoint URL 반환.
+ * 브라우저 publish 시작 전 호출. WHIP endpoint URL 반환.
+ *
+ * 🛡️ 2026-05-11 Option D: YouTube WHIP direct 우선.
+ *   - stream.rtmp_key 있으면 → YouTube WHIP URL 직접 반환 (OME 불필요, 무제한 동시 송출)
+ *   - rtmp_key 없고 OME 설정됨 → OME WHIP URL 반환 (토큰 필요)
+ *   - 둘 다 없으면 → 503
+ *
+ * YouTube WHIP endpoint: https://a.upload.youtube.com/upload/streamer?streamKey={streamKey}
  */
 app.post('/streaming/whip-token', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-
-  if (!c.env.OME_HOST || !c.env.OME_WEBHOOK_SECRET) {
-    return c.json({ success: false, error: '미디어 서버 미구성', error_code: 'OME_NOT_CONFIGURED' }, 503)
-  }
 
   const { stream_id } = await c.req.json<{ stream_id: number }>()
   if (!stream_id || !Number.isFinite(stream_id)) {
     return c.json({ success: false, error: 'stream_id 가 필요합니다' }, 400)
   }
 
-  // 본인 stream + RTMP key 보유 검증
+  // 본인 stream 검증
   const stream = await c.env.DB.prepare(`
     SELECT id, rtmp_url, rtmp_key, youtube_broadcast_id, status
     FROM live_streams WHERE id = ? AND seller_id = ?
@@ -1649,8 +1672,24 @@ app.post('/streaming/whip-token', async (c) => {
   }>()
 
   if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
-  if (!stream.rtmp_url || !stream.rtmp_key) {
-    return c.json({ success: false, error: 'RTMP 키 미발급 — /seller/streaming-setup 에서 먼저 설정' }, 400)
+
+  // Option D: YouTube WHIP direct — stream key 있으면 YouTube 로 바로 송출
+  if (stream.rtmp_key) {
+    const whipUrl = `https://a.upload.youtube.com/upload/streamer?streamKey=${encodeURIComponent(stream.rtmp_key)}`
+    return c.json({
+      success: true,
+      data: {
+        whip_url: whipUrl,
+        mode: 'youtube_whip',
+        stream_name: `s${stream_id}`,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      },
+    })
+  }
+
+  // Fallback: OME WHIP (webcam 모드 또는 rtmp_key 없는 경우)
+  if (!c.env.OME_HOST || !c.env.OME_WEBHOOK_SECRET) {
+    return c.json({ success: false, error: '미디어 서버 미구성', error_code: 'OME_NOT_CONFIGURED' }, 503)
   }
 
   // 1회용 토큰: HMAC-SHA256(secret, sellerId|streamId|exp).
@@ -1670,6 +1709,7 @@ app.post('/streaming/whip-token', async (c) => {
     success: true,
     data: {
       whip_url: whipUrl,
+      mode: 'ome_whip',
       stream_name: streamName,
       expires_at: exp,
     },

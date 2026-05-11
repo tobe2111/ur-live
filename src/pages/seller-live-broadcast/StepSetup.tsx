@@ -23,7 +23,7 @@ import api from '@/lib/api'
 interface StepSetupProps {
   stream: LiveStream; method: StreamMethod; channels: YouTubeChannel[]
   copiedField: string | null; onCopy: (v: string, k: string) => void
-  onGoLive: () => void; onBack: () => void
+  onGoLive: (mode?: string) => void; onBack: () => void
 }
 
 export default function StepSetup({ stream, method, channels, copiedField, onCopy, onGoLive, onBack }: StepSetupProps) {
@@ -31,9 +31,10 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const hasPersistentKey = channels.some((ch: YouTubeChannel) => ch.has_persistent_key)
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [waitSeconds, setWaitSeconds] = useState(0)
-  // 🛡️ 2026-05-08: 자체 미디어 서버 (OME) 가용성 — Worker 가 healthcheck 결과 반환.
+  // 🛡️ 2026-05-08: OME 가용성 또는 YouTube WHIP direct (stream.rtmp_key 있으면 항상 가능).
   //   가용 → BrowserBroadcaster 노출 (기본 송출 방법).
   //   불가용 → 기존 Larix/OBS 가이드만 표시.
+  // 🛡️ 2026-05-11 Option D: rtmp_key 있으면 YouTube WHIP direct 사용 — OME 필요 없음.
   const [omeAvailable, setOmeAvailable] = useState<boolean | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
@@ -61,14 +62,20 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
     }
   }, [])
 
-  // OME 가용성 조회 (서버가 살아있고 OME_HOST env 가 설정되어 있으면 true)
+  // 브라우저 송출 가용성:
+  //   1. stream.rtmp_key 있으면 YouTube WHIP direct → 항상 가능 (OME 불필요)
+  //   2. rtmp_key 없으면 OME health check
   useEffect(() => {
+    if (stream.rtmp_key) {
+      setOmeAvailable(true)  // YouTube WHIP direct 사용 가능
+      return
+    }
     let cancelled = false
     api.get('/api/seller/youtube/streaming/health')
-      .then(r => { if (!cancelled) setOmeAvailable(!!r.data?.data?.ome_available) })
+      .then(r => { if (!cancelled) setOmeAvailable(!!(r.data?.data?.ome_available || r.data?.data?.youtube_whip_available)) })
       .catch(() => { if (!cancelled) setOmeAvailable(false) })
     return () => { cancelled = true }
-  }, [])
+  }, [stream.rtmp_key])
 
   // 대기 경과 시간 카운터 (탈출 안내 표시용)
   useEffect(() => {
@@ -97,7 +104,12 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         <Suspense fallback={<div className="flex items-center justify-center py-12 bg-gray-50 rounded-2xl"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>}>
           <BrowserBroadcaster
             streamId={stream.id}
-            onStreaming={() => { /* polling 이 알아서 라이브 감지 */ }}
+            onStreaming={(mode) => {
+              // YouTube WHIP direct: 브라우저 → YouTube 직접 연결됨.
+              // OME admission handler 없으므로 수동으로 broadcast 전환 트리거.
+              // OME mode: admission handler 가 12s 후 자동 전환 — 여기서는 no-op.
+              if (mode === 'youtube_whip') onGoLive('youtube_whip')
+            }}
             onUnsupported={() => setOmeAvailable(false)}
           />
         </Suspense>
@@ -188,7 +200,7 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
             🔍 감지 안 되나요?
           </button>
           {/* 60초 이상 대기 시 수동 시작 버튼 강조 */}
-          <button onClick={onGoLive}
+          <button onClick={() => onGoLive()}
             className={`text-[11px] underline underline-offset-2 transition-colors ${
               waitSeconds >= 60
                 ? 'text-orange-500 hover:text-orange-700 font-semibold'
@@ -204,7 +216,7 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
             <div>
               <p className="text-xs font-bold text-orange-800">송출 감지가 오래 걸리고 있어요</p>
               <p className="text-[11px] text-orange-700 mt-0.5">
-                이미 OBS/Prism에서 송출 중이라면 <button onClick={onGoLive} className="underline font-semibold">수동으로 시작</button>을 눌러 진행할 수 있어요.
+                이미 OBS/Prism에서 송출 중이라면 <button onClick={() => onGoLive()} className="underline font-semibold">수동으로 시작</button>을 눌러 진행할 수 있어요.
               </p>
             </div>
           </div>
