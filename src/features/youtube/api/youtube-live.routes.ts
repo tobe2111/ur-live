@@ -1525,15 +1525,15 @@ export async function omeAdmissionHandler(
               streamId
             ).run()
 
-            // 🛡️ 2026-05-10: YouTube broadcast snippet 동기화 — 제목 + description + 카테고리.
+            // 🛡️ 2026-05-10: YouTube broadcast snippet 동기화 — 제목 + description + 예정시각 + 카테고리.
             try {
               const dbStream = await env.DB.prepare(`
-                SELECT s.title, s.id, s.seller_id,
+                SELECT s.title, s.id, s.seller_id, s.scheduled_at, s.custom_thumbnail_url,
                        sl.name AS seller_name, sl.username AS seller_username
                 FROM live_streams s
                 LEFT JOIN sellers sl ON sl.id = s.seller_id
                 WHERE s.id = ?
-              `).bind(streamId).first<{ title: string; id: number; seller_id: number; seller_name?: string; seller_username?: string }>()
+              `).bind(streamId).first<{ title: string; id: number; seller_id: number; scheduled_at?: string; custom_thumbnail_url?: string; seller_name?: string; seller_username?: string }>()
               if (dbStream?.title) {
                 const broadcastSnippet = data.items?.[0] as { snippet?: { title?: string; scheduledStartTime?: string; description?: string; categoryId?: string } }
                 const sellerSlug = dbStream.seller_username || dbStream.seller_id
@@ -1548,6 +1548,10 @@ export async function omeAdmissionHandler(
                   '',
                   '#유어딜 #유어딜라이브 #라이브커머스',
                 ].join('\n')
+                // scheduled_at 있으면 ISO8601 로 변환, 없으면 현재 (YouTube 가 보존한 기존 값 우선)
+                const scheduledStartTime = dbStream.scheduled_at
+                  ? new Date(dbStream.scheduled_at).toISOString()
+                  : (broadcastSnippet.snippet?.scheduledStartTime || new Date().toISOString())
                 await fetch(
                   'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet',
                   {
@@ -1560,14 +1564,40 @@ export async function omeAdmissionHandler(
                       id: videoId,
                       snippet: {
                         title: dbStream.title,
-                        scheduledStartTime: broadcastSnippet.snippet?.scheduledStartTime || new Date().toISOString(),
+                        scheduledStartTime,
                         description,
-                        // YouTube category 22 = People & Blogs (라이브 쇼핑 적합)
                         categoryId: '22',
                       },
                     }),
                   }
                 )
+
+                // 🛡️ 2026-05-10: 셀러 커스텀 썸네일 업로드 (있을 때만)
+                if (dbStream.custom_thumbnail_url) {
+                  try {
+                    const imgRes = await fetch(dbStream.custom_thumbnail_url)
+                    if (imgRes.ok) {
+                      const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+                      const imgBlob = await imgRes.blob()
+                      // YouTube 썸네일 제한: 2MB, jpeg/png
+                      if (imgBlob.size <= 2_000_000) {
+                        await fetch(
+                          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${videoId}&uploadType=media`,
+                          {
+                            method: 'POST',
+                            headers: {
+                              Authorization: `Bearer ${accessToken}`,
+                              'Content-Type': contentType,
+                            },
+                            body: imgBlob,
+                          }
+                        )
+                      }
+                    }
+                  } catch (thumbErr) {
+                    console.error('[OME admission] custom thumbnail upload failed', thumbErr)
+                  }
+                }
               }
             } catch (titleErr) {
               console.error('[OME admission] snippet sync failed', titleErr)
