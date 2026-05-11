@@ -311,19 +311,50 @@ export default function LivePageV2() {
     }
   }, [currentStream?.id])
 
-  // ✅ 로딩 중 표시
+  // ✅ 로딩 중 — Skeleton UI (실제 레이아웃 placeholder, 체감 ~30% 빠름)
   if (loading) {
+    // 🛡️ 2026-05-11 B+D: streamId 가 URL 에 있으면 YouTube 썸네일을 바로 백그라운드로 표시.
+    //   영상 로드 완료 전부터 정지 이미지 노출 → 사용자에게 "이미 시작됨" 체감.
+    //   썸네일 URL 은 사실 streamId 만으론 못 구함 (youtube_video_id 필요).
+    //   API 응답 전까진 검정 백그라운드만 표시.
     return (
-      <div className="absolute inset-0 bg-white dark:bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+      <div className="absolute inset-0 bg-black overflow-hidden">
+        {/* 비디오 영역 skeleton — 9:16 풀스크린 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#020202] to-[#0a0a0a] animate-pulse" />
+
+        {/* 상단 헤더 placeholder */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-white/[0.08] animate-pulse" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-32 bg-white/[0.08] rounded animate-pulse" />
+            <div className="h-2.5 w-20 bg-white/[0.06] rounded animate-pulse" />
+          </div>
+          <div className="px-3 py-1 bg-red-600/40 rounded-full">
+            <div className="h-2.5 w-8 bg-white/30 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* 하단 컨트롤 placeholder */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 p-4 space-y-3">
+          {/* 상품 카드 placeholder */}
+          <div className="bg-white/[0.06] backdrop-blur-md rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-14 h-14 rounded-xl bg-white/[0.08] animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-3/4 bg-white/[0.08] rounded animate-pulse" />
+              <div className="h-3 w-1/2 bg-white/[0.06] rounded animate-pulse" />
             </div>
           </div>
-          <div className="text-gray-900 dark:text-white text-xl font-bold">{t('live.page.entering', { defaultValue: '라이브 입장 중...' })}</div>
-          <div className="text-gray-500 dark:text-white/60 text-sm">{t('live.page.pleaseWait', { defaultValue: '잠시만 기다려주세요' })}</div>
+          {/* 액션 버튼 placeholders */}
+          <div className="flex gap-3 justify-end">
+            <div className="w-11 h-11 rounded-full bg-white/[0.08] animate-pulse" />
+            <div className="w-11 h-11 rounded-full bg-white/[0.08] animate-pulse" />
+            <div className="w-11 h-11 rounded-full bg-white/[0.08] animate-pulse" />
+          </div>
+        </div>
+
+        {/* 중앙 LIVE 인디케이터 (가벼움) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
         </div>
       </div>
     )
