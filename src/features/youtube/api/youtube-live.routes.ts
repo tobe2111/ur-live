@@ -842,6 +842,47 @@ app.get('/live/:id/diagnose', async (c) => {
 })
 
 /**
+ * POST /api/youtube/live/:id/_force-live
+ *
+ * 🛡️ 2026-05-11: ready 또는 testing 상태에 멈춘 broadcast 를 강제로 live 로 전환.
+ *   admin_token 매칭 시 인증 우회. 정상 admission 의 transition 이 실패한 stream 응급 복구용.
+ */
+app.post('/live/:id/_force-live', async (c) => {
+  const adminToken = c.req.query('admin_token')
+  const expectedAdminToken = (c.env as { DIAGNOSE_TOKEN?: string }).DIAGNOSE_TOKEN
+  if (!adminToken || !expectedAdminToken || adminToken !== expectedAdminToken) {
+    return c.json({ success: false, error: 'admin_token required' }, 401)
+  }
+  const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  const stream = await c.env.DB.prepare(
+    'SELECT seller_id, youtube_broadcast_id FROM live_streams WHERE id = ?'
+  ).bind(streamId).first<{ seller_id: number; youtube_broadcast_id: string | null }>()
+  if (!stream?.youtube_broadcast_id) return c.json({ success: false, error: 'no broadcast id' }, 404)
+
+  if (!c.env.YOUTUBE_CLIENT_ID || !c.env.YOUTUBE_CLIENT_SECRET) {
+    return c.json({ success: false, error: 'YouTube not configured' }, 500)
+  }
+
+  const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
+  const accessToken = await getValidAccessToken(c.env.DB, stream.seller_id, youtubeService)
+  if (!accessToken) return c.json({ success: false, error: 'OAuth token unavailable' }, 401)
+
+  const broadcastId = stream.youtube_broadcast_id
+  const results: Record<string, { status: number; body?: string }> = {}
+  for (const status of ['testing', 'live'] as const) {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(broadcastId)}&part=status`,
+      { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    results[status] = { status: res.status, body: res.ok ? undefined : await res.text().catch(() => '') }
+    if (status === 'testing' && res.ok) await new Promise(r => setTimeout(r, 3000))
+  }
+  return c.json({ success: true, results })
+})
+
+/**
  * POST /api/youtube/live/_cleanup-pushes
  *
  * 🛡️ 2026-05-11: OME 에 누적된 모든 zombie push 정리 — admin 전용.
@@ -1779,18 +1820,27 @@ export async function omeAdmissionHandler(
           return
         }
         const broadcastId = stream.youtube_broadcast_id!
-        const transRes = await fetch(
-          `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${encodeURIComponent(broadcastId)}&part=status`,
-          { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
-        )
-        // 200 = 전환 성공, 403 redundantTransition = 이미 live (정상), 그 외 = 진단 정보 기록
-        if (!transRes.ok) {
-          const errText = await transRes.text().catch(() => '')
-          if (!/redundantTransition|already.*live/i.test(errText)) {
-            console.warn('[OME admission] transition testing→live non-OK', transRes.status, errText)
-            // enableAutoStart 가 처리 가능하므로 fatal 아님 — 로그만
+        // 🛡️ 2026-05-11: YouTube broadcast lifecycle 는 ready → testing → live 순서.
+        //   enableAutoStart=true 가 ready→testing 은 자동 처리 안 함 (testing→live 만 자동).
+        //   따라서 수동으로 둘 다 호출. 각 transition 은 idempotent (이미 그 상태면 403 redundantTransition).
+        const doTransition = async (status: 'testing' | 'live') => {
+          const res = await fetch(
+            `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(broadcastId)}&part=status`,
+            { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
+          )
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '')
+            if (!/redundantTransition|already/i.test(errText)) {
+              console.warn(`[OME admission] transition →${status} non-OK`, res.status, errText)
+            }
           }
+          return res.ok
         }
+        // 1) ready → testing
+        await doTransition('testing')
+        // 2) testing → live (3s 대기 - testing 안정화)
+        await new Promise(r => setTimeout(r, 3000))
+        await doTransition('live')
       } catch (e) {
         console.error('[OME admission] transition error', e)
       }
