@@ -57,18 +57,43 @@ export async function registerOmePush(
       body: b,
     })
 
-  let res = await post('startPush', body)
-  if (res.status === 400) {
-    const errText = await res.clone().text().catch(() => '')
-    if (/duplicate.*id/i.test(errText)) {
-      // 기존 push 정리 후 재시도
-      await post('stopPush', JSON.stringify({ id })).catch(() => undefined)
-      await new Promise((r) => setTimeout(r, 500))
-      res = await post('startPush', body)
-    }
-  }
+  // 🛡️ 2026-05-11: stopPush 를 항상 먼저 실행. Duplicate ID 자체를 방지.
+  //   기존: startPush 시도 → 400 Duplicate 감지 → stopPush → retry (race + cleanup 타이밍 이슈)
+  //   현재: stopPush → 1.5s wait → startPush (clean state 보장)
+  //   stopPush 가 실패해도 (해당 id 없음) 무시 — startPush 가 이미 clean state.
+  await post('stopPush', JSON.stringify({ id })).catch(() => undefined)
+  await new Promise((r) => setTimeout(r, 1500))
+
+  const res = await post('startPush', body)
   const responseText = res.ok ? '' : await res.text().catch(() => '')
   return { ok: res.ok, status: res.status, body: responseText }
+}
+
+/**
+ * OME 의 모든 zombie push 를 정리한다 — admin 용.
+ *
+ * @returns 삭제된 push id 목록
+ */
+export async function cleanupAllOmePushes(env: Env): Promise<string[]> {
+  if (!env.OME_HOST || !env.OME_API_TOKEN) return []
+  const auth = btoa(env.OME_API_TOKEN)
+  const apiBase = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app`
+  const listRes = await fetch(`${apiBase}:pushes`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  }).catch(() => null)
+  if (!listRes?.ok) return []
+  const data = await listRes.json().catch(() => null) as { response?: Array<{ id: string }> } | null
+  const ids = (data?.response || []).map((p) => p.id)
+  for (const id of ids) {
+    await fetch(`${apiBase}:stopPush`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(() => undefined)
+  }
+  return ids
 }
 
 /**

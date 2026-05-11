@@ -19,7 +19,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
-import { registerOmePush, stopOmePush } from './ome-push'
+import { registerOmePush, stopOmePush, cleanupAllOmePushes } from './ome-push'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
@@ -220,15 +220,9 @@ app.post('/live/create', async (c) => {
     const rtmpKeyForPush = liveSetup.rtmpKey
     const broadcastIdForSync = liveSetup.broadcast.id
     const bgWork = async () => {
-      // 1) OME push 사전 등록 시도 (best-effort) — OME 는 stream 인입 후 등록 가능하므로
-      //   /create 시점엔 보통 실패 (stream 미존재). admission 에서 1500ms 후 정식 등록.
-      //   여기서 성공하면 admission 단계 절약 (Duplicate ID helper 가 알아서 처리).
-      try {
-        await registerOmePush(c.env, streamId, rtmpUrlForPush, rtmpKeyForPush)
-        // 결과 무관 — last_error 기록 X (admission 단계가 권위)
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn('[create] OME push pre-register skipped', e)
-      }
+      // 🛡️ 2026-05-11: /create 시점 OME push 등록 제거 — admission 만 권위 있는 등록 시점.
+      //   이유: /create 와 admission 이 race 하면서 둘 다 Duplicate ID 충돌 → 영구 실패.
+      //   admission 의 stopPush-first 가 clean state 를 보장.
       // 2) snippet 동기화 — description (셀러 페이지/다시보기 링크) + categoryId(22) + 커스텀 썸네일
       try {
         const sellerRow = await c.env.DB.prepare(
@@ -845,6 +839,22 @@ app.get('/live/:id/diagnose', async (c) => {
   }
 
   return c.json({ success: true, data: diagnostics })
+})
+
+/**
+ * POST /api/youtube/live/_cleanup-pushes
+ *
+ * 🛡️ 2026-05-11: OME 에 누적된 모든 zombie push 정리 — admin 전용.
+ *   admin_token 매칭 시 모든 push 삭제. 새 방송이 정상 등록되도록 clean state 보장.
+ */
+app.post('/live/_cleanup-pushes', async (c) => {
+  const adminToken = c.req.query('admin_token')
+  const expectedAdminToken = (c.env as { DIAGNOSE_TOKEN?: string }).DIAGNOSE_TOKEN
+  if (!adminToken || !expectedAdminToken || adminToken !== expectedAdminToken) {
+    return c.json({ success: false, error: 'admin_token required' }, 401)
+  }
+  const removed = await cleanupAllOmePushes(c.env)
+  return c.json({ success: true, removed })
 })
 
 /**
