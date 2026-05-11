@@ -157,18 +157,20 @@ app.post('/live/create', async (c) => {
     }
 
     // Save to database
+    // 🛡️ 2026-05-10: 셀러 업로드 썸네일은 custom_thumbnail_url 에 별도 저장 (YouTube 자동 썸네일이 thumbnail_url 덮어쓰기 후에도 보존)
     const streamResult = await c.env.DB.prepare(`
       INSERT INTO live_streams (
-        seller_id, title, description, status, thumbnail_url,
+        seller_id, title, description, status, thumbnail_url, custom_thumbnail_url,
         youtube_video_id, youtube_broadcast_id, youtube_stream_key, youtube_live_chat_id,
         rtmp_url, rtmp_key, youtube_embed_url,
         scheduled_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).bind(
       sellerId,
       title,
       description || '',
       'scheduled',
+      thumbnail_url || null,
       thumbnail_url || null,
       liveSetup.broadcast.id,
       liveSetup.broadcast.id,
@@ -243,10 +245,10 @@ app.post('/live/create-webcam', async (c) => {
   try {
     const streamResult = await c.env.DB.prepare(`
       INSERT INTO live_streams (
-        seller_id, title, description, status,
+        seller_id, title, description, status, custom_thumbnail_url,
         youtube_video_id, scheduled_at, created_at, updated_at
-      ) VALUES (?, ?, ?, 'scheduled', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `).bind(sellerId, title, description || '', scheduledTime).run()
+      ) VALUES (?, ?, ?, 'scheduled', ?, '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(sellerId, title, description || '', thumbnail_url || null, scheduledTime).run()
 
     const streamId = streamResult.meta.last_row_id
 

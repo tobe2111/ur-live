@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Globe, EyeOff, Lock, Youtube, Loader2, Radio, AlertTriangle, Zap, Play, VideoIcon, Smartphone, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import ImageUpload from '@/components/ImageUpload'
 import { toast } from '@/hooks/useToast'
 import { PromptModal } from '../SellerLiveBroadcast.modals'
 import {
@@ -353,17 +354,11 @@ export default function StepInfo({ title, setTitle, description, setDescription,
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
             </div>
 
-            {/* 썸네일 */}
+            {/* 썸네일 — 파일 업로드 (R2) or URL 직접 입력 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.thumbnail')} <span className="text-xs text-gray-400 font-normal">({t('common.optional')})</span></label>
-              <input value={thumbnailUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setThumbnailUrl(e.target.value)}
-                placeholder={t('seller.liveBroadcast.thumbnailPlaceholder')}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-              {thumbnailUrl && (
-                <img src={thumbnailUrl} alt={t('seller.preview')} className="mt-2 w-full max-w-[200px] rounded-lg object-cover"
-                  loading="lazy"
-                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none' }} />
-              )}
+              <p className="text-[11px] text-gray-500 mb-2">방송 시작 시 YouTube 라이브 썸네일로 자동 업로드됩니다 (2MB 이내 권장).</p>
+              <ImageUpload value={thumbnailUrl} onChange={setThumbnailUrl} maxSizeKB={2000} label="썸네일 이미지" />
             </div>
 
             {/* 공개 설정 */}
