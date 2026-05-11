@@ -73,6 +73,9 @@ export default function YouTubeCallbackPage() {
       if (response.data.success) {
         setStatus('success')
         setMessage(`${response.data.data.channel.title}`)
+        // 🛡️ 2026-05-11: 재연동 직후 stale 캐시 (token_expired=true) 가 화면에 잠시 깜빡이는
+        //   현상 제거 — OAuth 성공 시 캐시 무효화 후 페이지로 이동.
+        try { localStorage.removeItem('yt_channels_cache_v1') } catch { /* ignore */ }
         setTimeout(() => navigate('/seller/live-broadcast'), 2000)
       } else {
         throw new Error(response.data.error || 'Unknown error')

@@ -41,6 +41,7 @@ interface StepInfoProps {
   tokenExpired: boolean
   onReauthenticate: () => void
   connectingYouTube: boolean
+  channelsLoading?: boolean
   // 🛡️ 2026-05-07: 신규 옵션 — 알림톡 / 연습 모드
   notifyFollowers?: boolean
   setNotifyFollowers?: (v: boolean) => void
@@ -53,7 +54,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   sellableProducts, selectedProducts, setSelectedProducts, toggleProduct, method, setMethod,
   destination, setDestination, destinations,
   creating, onCreate, navigate, channels, recentProductIds,
-  tokenExpired, onReauthenticate, connectingYouTube,
+  tokenExpired, onReauthenticate, connectingYouTube, channelsLoading,
   notifyFollowers = true, setNotifyFollowers,
   practiceMode = false, setPracticeMode,
 }: StepInfoProps) {
@@ -171,6 +172,16 @@ export default function StepInfo({ title, setTitle, description, setDescription,
     setSelectedProducts([sellableProducts[0].id])
     onCreate({ title: testTitle, productIds: [sellableProducts[0].id] })
     toast.info(t('seller.liveBroadcast.testCreated', { defaultValue: '테스트 방송을 생성했습니다. 송출 도구에서 시작 후 파이프라인 확인해보세요.' }))
+  }
+  // 🛡️ 2026-05-11: 재연동 직후 stale localStorage 캐시로 expired UI 가 잠시 깜빡이는 현상 방지 —
+  //   channels 가 fresh fetch 중이면 만료 판단을 보류하고 로딩 표시.
+  if (tokenExpired && channelsLoading) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center space-y-3">
+        <Loader2 className="w-8 h-8 mx-auto animate-spin text-gray-400" />
+        <p className="text-sm text-gray-600">YouTube 연동 상태 확인 중...</p>
+      </div>
+    )
   }
   // 토큰 만료 시 폼 전체 차단 + 재연동 CTA
   if (tokenExpired) {

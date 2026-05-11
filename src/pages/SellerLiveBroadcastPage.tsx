@@ -286,7 +286,10 @@ export default function SellerLiveBroadcastPage() {
         if (Array.isArray(chs) && chs.length > 0) {
           setChannels(chs)
           if (!activeChannelId) setActiveChannelId(chs[0].id)
-          setChannelsLoading(false)
+          // 🛡️ 2026-05-11: 캐시가 token_expired=true 라면 (재연동 직후 stale 가능성) 로딩 유지 →
+          //   서버 응답 도착 후 정확한 상태로 갱신. token_expired=false 면 즉시 폼 노출 (UX).
+          const anyExpired = chs.some((ch: { token_expired?: boolean }) => ch.token_expired)
+          if (!anyExpired) setChannelsLoading(false)
         }
       }
     } catch { /* ignore */ }
@@ -636,6 +639,7 @@ export default function SellerLiveBroadcastPage() {
             tokenExpired={!!channels.find(c => c.id === activeChannelId)?.token_expired}
             onReauthenticate={connectYouTube}
             connectingYouTube={connectingYouTube}
+            channelsLoading={channelsLoading}
             notifyFollowers={notifyFollowers}
             setNotifyFollowers={setNotifyFollowers}
             practiceMode={practiceMode}
