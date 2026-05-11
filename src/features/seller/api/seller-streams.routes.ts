@@ -333,6 +333,13 @@ sellerStreamsRoutes.put('/:id', async (c) => {
         updates.push("ended_at = datetime('now')");
       }
     }
+    // 🛡️ 2026-05-11 P1-#6: 라이브 자동 캡처 thumbnail 갱신 지원
+    if (body.thumbnail !== undefined) {
+      updates.push('thumbnail_url = ?');
+      values.push(body.thumbnail);
+      updates.push('custom_thumbnail_url = ?');
+      values.push(body.thumbnail);
+    }
 
     if (updates.length === 0) {
       return c.json({

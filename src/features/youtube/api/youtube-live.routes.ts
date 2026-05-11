@@ -20,6 +20,7 @@ import { YouTubeAPIService } from '../services/youtube-api.service'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
 import { registerOmePush, stopOmePush, cleanupAllOmePushes } from './ome-push'
+import { trackQuota, getQuotaUsage, QUOTA_COST } from './youtube-quota'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
@@ -140,6 +141,8 @@ app.post('/live/create', async (c) => {
         scheduledTime,
         privacyStatus
       )
+      // 🛡️ 2026-05-11 P3-#10: setupLiveStream = liveBroadcasts.insert(50) + liveStreams.insert(50) + bind(50) = 150
+      await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream')
 
       // Save as persistent stream for the specific channel (or active default)
       if (channel_id) {
@@ -268,7 +271,8 @@ app.post('/live/create', async (c) => {
                   headers: { Authorization: `Bearer ${accessTokenForBg}`, 'Content-Type': contentType },
                   body: imgBlob,
                 },
-              ).catch((e) => console.error('[create] thumbnail upload failed', e))
+              ).then(() => trackQuota(c.env, QUOTA_COST.thumbnailSet, 'thumbnail_set'))
+                .catch((e) => console.error('[create] thumbnail upload failed', e))
             }
           }
         }
@@ -537,6 +541,7 @@ app.post('/live/:id/start', async (c) => {
     //   (autoStart 가 아직 트리거 안 됐을 가능성 대비 — 보통 즉시 성공)
     try {
       await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+      await trackQuota(c.env, QUOTA_COST.transition, 'transition_live')
     } catch (e) {
       // redundantTransition (이미 live) 또는 invalidTransition (아직 active 안 됨) — autoStart 가 처리
       const msg = (e as Error).message || ''
@@ -932,6 +937,21 @@ app.post('/live/_cleanup-pushes', async (c) => {
 })
 
 /**
+ * GET /api/youtube/live/_quota
+ * 🛡️ 2026-05-11 P3-#10: YouTube API quota 일일 사용량 조회 (admin 전용).
+ *   80% / 95% 도달 시 응답에 warning 표시. 알림 채널 추가는 cron 에서 처리.
+ */
+app.get('/live/_quota', async (c) => {
+  const adminToken = c.req.query('admin_token')
+  const expectedAdminToken = (c.env as { DIAGNOSE_TOKEN?: string }).DIAGNOSE_TOKEN
+  if (!adminToken || !expectedAdminToken || adminToken !== expectedAdminToken) {
+    return c.json({ success: false, error: 'admin_token required' }, 401)
+  }
+  const usage = await getQuotaUsage(c.env)
+  return c.json({ success: true, data: usage })
+})
+
+/**
  * GET /api/youtube/live/:id/youtube-stats
  * YouTube Live API 로부터 실시간 시청자/좋아요 등 조회.
  * Step 3 대시보드에서 OBS 미연결 사용자도 metrics 확인 가능.
@@ -1031,6 +1051,7 @@ app.post('/live/:id/end', async (c) => {
         const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
         if (accessToken) {
           await youtubeService.endBroadcast(accessToken, broadcastId)
+          await trackQuota(c.env, QUOTA_COST.transition, 'transition_end')
         } else {
           youtubeEndError = 'no_access_token'
         }

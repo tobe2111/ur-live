@@ -51,12 +51,12 @@ enableMonitorStream: false // testing 단계 스킵
 
 | # | 항목 | 상태 | 위치 |
 |---|---|---|---|
-| #1 | 탭/브라우저 닫힘 자동 정리 (sendBeacon) | ✅ 코드 완료, 커밋 대기 | `BrowserBroadcaster.tsx`, `youtube-live.routes.ts` |
-| #6 | 라이브 시작 5초 후 thumbnail 자동 캡처 | 🔄 진행 예정 | `BrowserBroadcaster.tsx` + 새 endpoint |
-| #7 | 라이브 종료 후 VOD 자동 임베드 | 🔄 진행 예정 | `/live/:id.tsx` 시청자 페이지 |
-| #8 | YouTube 도메인 preconnect | 🔄 진행 예정 | `index.html` |
-| #10 | YouTube API quota 추적 (80% 어드민 알림) | 🔄 진행 예정 | 새 모듈 `youtube-quota.ts` |
-| #11 | 채팅 spam filter (서버측) | 🔄 진행 예정 | `chat.routes.ts` |
+| #1 | 탭/브라우저 닫힘 자동 정리 (sendBeacon) | ✅ 완료 (`c06b9572`) | `BrowserBroadcaster.tsx`, `youtube-live.routes.ts` |
+| #6 | 라이브 시작 5s 후 thumbnail 자동 캡처 | ✅ 완료 | `BrowserBroadcaster.tsx`, `seller-streams.routes.ts` |
+| #7 | 라이브 종료 후 VOD 자동 임베드 | ✅ 이미 작동 | `recordFromStart: true` + 동일 video_id |
+| #8 | YouTube 도메인 preconnect 확장 | ✅ 완료 | `index.html` (i.ytimg/s.ytimg/yt3.ggpht 추가) |
+| #10 | YouTube API quota 추적 | ✅ 완료 | `youtube-quota.ts` + admin endpoint `/live/_quota?admin_token=...` |
+| #11 | 채팅 spam filter (서버측) | ✅ 완료 | `durable-object.ts` moderateChat 통합 |
 
 ### 사용자가 제외 (UI 복잡화)
 - #3 송출 품질 인디케이터 (제거됨)
@@ -68,6 +68,17 @@ enableMonitorStream: false // testing 단계 스킵
 ### 이미 처리됨
 - #2 OAuth 토큰 refresh: `getValidAccessToken()` 이 5분 버퍼로 자동 갱신
 - #9 어드민 모니터링 대시보드: 별도 결정 보류 (UI 추가됨 — 사용자 의도 확인 필요)
+
+---
+
+## 🎯 다음 우선순위 후보 (사용자 결정 필요)
+
+기능 개선 추가 후보 (UI 안 건드림):
+- **자동 quota 알림** — quota 80%/95% 도달 시 어드민에게 알림 (현재는 GET 으로 수동 조회만)
+- **wakeLock 강화** — 모바일 백그라운드 진입 감지 + 셀러 알림
+- **stream stuck 자동 감지** — 라이브 60분 + viewer 0 = 의심 → 어드민 대시보드 표시
+- **재방송 자동 카탈로그** — ended 라이브의 VOD 를 별도 페이지 (`/live/recap/:id`) 로 노출
+- **셀러 retry 자동화** — 라이브 시작 실패 (예: YouTube 403) 시 자동 1회 재시도
 
 ---
 

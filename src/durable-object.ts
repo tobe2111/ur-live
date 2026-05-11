@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { WSMessage, ProductChangeMessage, ViewerCountMessage, StreamStatusMessage, Product, ProductOption } from './types';
+import { moderateChat } from './shared/utils/chat-moderation';
 
 
 // 🛡️ 2026-04-22: DO 당 최대 동시 WebSocket 수
@@ -158,6 +159,17 @@ export class LiveStreamDurableObject extends DurableObject {
         return;
       }
       sess.recentTimes.push(now);
+
+      // 🛡️ 2026-05-11 P4-#11: 욕설/스팸/광고 자동 필터 — block 카테고리는 broadcast 안 함.
+      const modResult = moderateChat(clean);
+      if (modResult.action === 'block') {
+        webSocket.send(JSON.stringify({
+          type: 'chat_error',
+          data: { code: 'BLOCKED', category: modResult.category },
+          timestamp: now,
+        }));
+        return;
+      }
 
       this.broadcast({
         type: 'chat_message',

@@ -76,6 +76,36 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     }
   }, [])
 
+  // 🛡️ 2026-05-11 P1-#6: 라이브 시작 5초 후 video 프레임 캡처 → thumbnail 자동 설정
+  //   셀러가 thumbnail 미설정 시 빈 이미지로 표시되는 문제 해결. 백그라운드 자동 — UI 변경 없음.
+  const thumbnailCapturedRef = useRef(false)
+  useEffect(() => {
+    if (status !== 'live' || thumbnailCapturedRef.current) return
+    thumbnailCapturedRef.current = true
+    const timer = setTimeout(async () => {
+      const video = videoRef.current
+      if (!video || video.videoWidth === 0) return
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const blob: Blob | null = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85))
+        if (!blob) return
+        const form = new FormData()
+        form.append('image', new File([blob], `stream_${streamId}_auto.jpg`, { type: 'image/jpeg' }))
+        const upload = await api.post('/api/seller/upload-image', form)
+        const url = upload.data?.data?.url
+        if (url) {
+          await api.put(`/api/seller/streams/${streamId}`, { thumbnail: url })
+        }
+      } catch { /* best-effort, 실패해도 라이브엔 영향 없음 */ }
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [status, streamId])
+
   // 🛡️ 2026-05-11 P0-#1: 탭/브라우저 닫힘 시 좀비 스트림 방지.
   //   beforeunload → sendBeacon 으로 /live/:id/end 호출 (비동기 fetch 는 unload 시 차단됨).
   //   sendBeacon 은 페이지 unload 후에도 백그라운드로 전송 보장.
