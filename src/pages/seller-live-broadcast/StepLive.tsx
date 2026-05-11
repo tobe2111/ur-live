@@ -91,8 +91,9 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
       try {
         const res = await api.get(`/api/seller/youtube/live/${stream.id}/status`)
         const data = res.data?.data
-        if (data?.youtube_status === 'complete' || data?.youtube_status === 'revoked') {
-          toast.error('⚠️ YouTube 방송이 종료되었습니다. 재송출이 필요합니다.')
+        // 🛡️ 2026-05-11: revoked 만 진짜 비정상 (정책 위반/strike). complete 은 우리 /end 호출 결과이므로 무시.
+        if (data?.youtube_status === 'revoked') {
+          toast.error('⚠️ YouTube 방송이 정책 위반으로 중단됐습니다. studio.youtube.com 확인 필요.')
         }
       } catch { /* silent — 네트워크 일시 오류는 무시 */ }
     }

@@ -225,13 +225,12 @@ export class YouTubeAPIService {
             selfDeclaredMadeForKids: false
           },
           contentDetails: {
-            // 🛡️ 2026-05-11: enableAutoStart=false + enableMonitorStream=false 모델로 단순화.
-            //   기존: autoStart=true + monitorStream=true(default) → ready→testing→live 자동 전환 기대.
-            //     실제: YouTube 가 ready 에 stuck, 수동 transition 도 invalidTransition 403 거부.
-            //   현재: monitor 단계 제거 (testing 거치지 않음) + autoStart 끔 → 우리가 ready→live 명시 호출.
-            //     transitionBroadcastToLive 한 번으로 즉시 live 진입.
+            // 🛡️ 2026-05-11: enableAutoStart=false + enableAutoStop=false + enableMonitorStream=false.
+            //   autoStop=true 였을 때: 브라우저 일시 disconnect (백그라운드/네트워크 blip) → YouTube 가
+            //   "송출 끊김" 으로 판단, broadcast 자동 종료 → 셀러 의도와 무관하게 방송 끝남.
+            //   현재: 셀러가 명시적으로 [방송 종료] 누를 때만 /live/:id/end → transitionToComplete.
             enableAutoStart: false,
-            enableAutoStop: true,
+            enableAutoStop: false,
             monitorStream: { enableMonitorStream: false },
             recordFromStart: true,
             enableDvr: true,

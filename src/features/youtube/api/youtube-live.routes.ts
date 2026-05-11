@@ -884,7 +884,7 @@ app.post('/live/:id/_force-live', async (c) => {
         id: broadcastId,
         contentDetails: {
           enableAutoStart: false,
-          enableAutoStop: true,
+          enableAutoStop: false,
           monitorStream: { enableMonitorStream: false },
           recordFromStart: true,
           enableDvr: true,
