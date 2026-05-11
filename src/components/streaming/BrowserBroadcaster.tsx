@@ -86,9 +86,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30, max: 30 },
+          // 🛡️ 2026-05-11: 1080p 우선 — 5Mbps 업로드면 가능. 카메라 미지원 시 자동 720p fallback.
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, min: 24, max: 30 },
         },
         audio: {
           deviceId: selected.micId ? { exact: selected.micId } : undefined,
@@ -190,7 +191,17 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       const sender = pc.addTrack(track, stream)
       if (track.kind === 'video') {
         const params = sender.getParameters()
-        params.encodings = [{ maxBitrate: 2_500_000, maxFramerate: 30 }]
+        // 🛡️ 2026-05-11: 1080p30 권장 4-6 Mbps. degradationPreference 로 해상도 우선 유지.
+        params.encodings = [{
+          maxBitrate: 4_500_000,
+          maxFramerate: 30,
+        }]
+        params.degradationPreference = 'maintain-resolution'
+        sender.setParameters(params).catch(() => {})
+      } else if (track.kind === 'audio') {
+        const params = sender.getParameters()
+        // 🛡️ 2026-05-11: Opus 128 kbps - 음악/방송용 권장. WebRTC default 32 kbps 는 음성 전용 수준.
+        params.encodings = [{ maxBitrate: 128_000 }]
         sender.setParameters(params).catch(() => {})
       }
     })
