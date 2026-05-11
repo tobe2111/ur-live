@@ -225,11 +225,13 @@ export class YouTubeAPIService {
             selfDeclaredMadeForKids: false
           },
           contentDetails: {
-            // 🛡️ 2026-05-11: enableAutoStart=false + enableAutoStop=false + enableMonitorStream=false.
-            //   autoStop=true 였을 때: 브라우저 일시 disconnect (백그라운드/네트워크 blip) → YouTube 가
+            // 🛡️ 2026-05-11 Option D 최적화: enableAutoStart=true (수동 transition 15s 대기 제거).
+            //   YouTube 가 stream active 감지 즉시 ready→live 자동 전환 → 라이브까지 25s → 3s.
+            //   enableMonitorStream=false 라 testing 단계 없음, autoStart 가 ready→live 직행.
+            //   autoStop=false: 브라우저 일시 disconnect (백그라운드/네트워크 blip) → YouTube 가
             //   "송출 끊김" 으로 판단, broadcast 자동 종료 → 셀러 의도와 무관하게 방송 끝남.
             //   현재: 셀러가 명시적으로 [방송 종료] 누를 때만 /live/:id/end → transitionToComplete.
-            enableAutoStart: false,
+            enableAutoStart: true,
             enableAutoStop: false,
             monitorStream: { enableMonitorStream: false },
             recordFromStart: true,

@@ -197,17 +197,22 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       const sender = pc.addTrack(track, stream)
       if (track.kind === 'video') {
         const params = sender.getParameters()
-        // 🛡️ 2026-05-11: 1080p30 권장 4-6 Mbps. degradationPreference 로 해상도 우선 유지.
+        // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 는 셀러가 보내는 게 그대로 시청자에게 전달됨
+        //   → 화질이 더 중요. 1080p30 YouTube 권장 상한 6 Mbps 로 상향. 모바일 LTE 도 보통 6Mbps 업로드 OK.
+        //   maintain-resolution: 대역폭 부족 시 프레임 떨어뜨려도 해상도 유지 (상품 디테일 살림).
         params.encodings = [{
-          maxBitrate: 4_500_000,
+          maxBitrate: 6_000_000,
           maxFramerate: 30,
+          networkPriority: 'high',
+          priority: 'high',
         }]
         params.degradationPreference = 'maintain-resolution'
         sender.setParameters(params).catch(() => {})
       } else if (track.kind === 'audio') {
         const params = sender.getParameters()
-        // 🛡️ 2026-05-11: Opus 128 kbps - 음악/방송용 권장. WebRTC default 32 kbps 는 음성 전용 수준.
-        params.encodings = [{ maxBitrate: 128_000 }]
+        // 🛡️ 2026-05-11: Opus 192 kbps stereo - 라이브 음악/상품 사운드까지 깔끔 재생.
+        //   대역폭 negligible (192 kbps), 음질 체감 차이 큼. YouTube Live 권장 상한.
+        params.encodings = [{ maxBitrate: 192_000, networkPriority: 'high', priority: 'high' }]
         sender.setParameters(params).catch(() => {})
       }
     })
@@ -216,8 +221,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
 
-      // ICE gathering 완료 대기 (간단 trickle 미사용 — WHIP 표준은 단일 SDP 교환)
-      await waitIceGathering(pc, 5000)
+      // ICE gathering 완료 대기 (간단 trickle 미사용 — WHIP 표준은 단일 SDP 교환).
+      // 🛡️ 2026-05-11 Option D: YouTube WHIP/OME WHIP 모두 well-known 엔드포인트 → 1~2s 면 충분.
+      //   5s → 2s 단축 (라이브 시작 시간 평균 3s 단축).
+      await waitIceGathering(pc, 2000)
 
       // 4. WHIP POST
       const res = await fetch(whipUrl, {

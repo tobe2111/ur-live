@@ -464,9 +464,8 @@ app.post('/live/:id/start', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
-  // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 모드 감지 (body 에서 읽음)
-  const requestBody = await c.req.json<{ mode?: string }>().catch(() => ({} as { mode?: string }))
-  const isYouTubeWhip = requestBody.mode === 'youtube_whip'
+  // 🛡️ 2026-05-11 Option D: body 는 호환성 유지용으로 읽되 mode 분기 불필요 (autoStart=true 가 처리)
+  await c.req.json().catch(() => ({}))
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
@@ -533,27 +532,17 @@ app.post('/live/:id/start', async (c) => {
       return c.json({ success: true, message: 'Stream is already live (auto-started)' })
     }
 
-    // Not yet live — manually transition.
-    // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 모드는 WebRTC 연결 직후 호출될 수 있음.
-    // YouTube 가 스트림을 active 로 인식하기까지 수 초 걸리므로 최대 3회 재시도 (5s 간격).
-    const maxAttempts = isYouTubeWhip ? 3 : 1
-    let transitionOk = false
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 5000))
-      try {
-        await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
-        transitionOk = true
-        break
-      } catch (e) {
-        const msg = (e as Error).message || ''
-        if (/redundantTransition|already/i.test(msg)) { transitionOk = true; break }
-        if (attempt === maxAttempts - 1) {
-          console.warn('[YouTube Live Start] Transition failed after retries:', msg)
-        }
+    // 🛡️ 2026-05-11 Option D 최적화: enableAutoStart=true 라 YouTube 가 데이터 도착 즉시
+    //   ready→live 자동 전환. 수동 transition 호출 불필요 — best-effort 로 한 번만 시도.
+    //   (autoStart 가 아직 트리거 안 됐을 가능성 대비 — 보통 즉시 성공)
+    try {
+      await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+    } catch (e) {
+      // redundantTransition (이미 live) 또는 invalidTransition (아직 active 안 됨) — autoStart 가 처리
+      const msg = (e as Error).message || ''
+      if (!/redundantTransition|already|invalidTransition/i.test(msg)) {
+        console.warn('[YouTube Live Start] Transition non-critical error:', msg)
       }
-    }
-    if (!transitionOk) {
-      console.warn('[YouTube Live Start] All transition attempts failed — DB still updated to live')
     }
 
     // Update database
@@ -1864,48 +1853,9 @@ export async function omeAdmissionHandler(
     })())
   }
 
-  // 🛡️ 2026-05-11 refactor: 60s 폴링 제거 — broadcast.id 는 /create 시점에 이미 DB 의
-  //   youtube_video_id 로 저장됨 (liveBroadcasts.insert 응답). 폴링이 원래 필요했던 이유가 없음.
-  //
-  //   대신 enableAutoStart=true 가 RTMP 인입 즉시 testing → live 전환을 처리하지만,
-  //   타이밍 신뢰성을 위해 단 1회 명시적 transitionBroadcastToLive 를 호출 (8초 지연 후).
-  //
-  //   이 호출은 idempotent — 이미 live 면 ok 반환, testing 이면 즉시 live 로 전환.
-  //   실패해도 enableAutoStart 가 결국 처리하므로 best-effort.
-  if (waitUntil && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && stream.youtube_broadcast_id) {
-    waitUntil((async () => {
-      try {
-        // push 등록 1.5s + RTMP 전송 시작 + YouTube testing 상태 도달까지 평균 ~10s 대기
-        await new Promise(r => setTimeout(r, 12000))
-        const youtubeService = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID!, env.YOUTUBE_CLIENT_SECRET!)
-        const accessToken = await getValidAccessToken(env.DB, sellerId, youtubeService)
-        if (!accessToken) {
-          await env.DB.prepare(`UPDATE live_streams SET last_error = ? WHERE id = ?`)
-            .bind('YouTube OAuth 토큰 없음 — testing→live 전환 불가. /seller/youtube/connect 에서 재인증', streamId)
-            .run().catch(() => {})
-          return
-        }
-        const broadcastId = stream.youtube_broadcast_id!
-        // 🛡️ 2026-05-11: enableMonitorStream=false 로 생성됐으므로 ready→live 직접 transition.
-        //   testing 단계 거치지 않음. autoStart 도 false 라 수동 호출 필수.
-        const transRes = await fetch(
-          `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${encodeURIComponent(broadcastId)}&part=status`,
-          { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
-        )
-        if (!transRes.ok) {
-          const errText = await transRes.text().catch(() => '')
-          if (!/redundantTransition|already/i.test(errText)) {
-            console.warn('[OME admission] transition ready→live non-OK', transRes.status, errText)
-            await env.DB.prepare(`UPDATE live_streams SET last_error = ? WHERE id = ?`)
-              .bind(`YouTube transition 실패 (${transRes.status}): ${errText.substring(0, 200)}`, streamId)
-              .run().catch(() => {})
-          }
-        }
-      } catch (e) {
-        console.error('[OME admission] transition error', e)
-      }
-    })())
-  }
+  // 🛡️ 2026-05-11 Option D 최적화: enableAutoStart=true 라 OME push 시작 즉시 YouTube 가
+  //   자동으로 ready→live 전환. 수동 transition 불필요 → 12s 대기 제거.
+  //   /live/:id/status polling 이 라이브 상태 감지하면 DB sync.
 
   return { allowed: true }
 }
