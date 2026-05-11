@@ -1442,9 +1442,11 @@ export async function omeAdmissionHandler(
   if (sig !== expectedTokenSig) return { allowed: false, reason: 'token signature mismatch' }
 
   // stream + RTMP key 로드
+  // 🛡️ 2026-05-11: youtube_broadcast_id 도 함께 로드 — video_id 폴링 시 mine=true 가 아닌
+  //   정확한 broadcast id 로 조회 가능 (다중 active broadcast 있어도 정확히 매칭).
   const stream = await env.DB.prepare(`
-    SELECT id, rtmp_url, rtmp_key FROM live_streams WHERE id = ? AND seller_id = ?
-  `).bind(streamId, sellerId).first<{ id: number; rtmp_url: string; rtmp_key: string }>()
+    SELECT id, rtmp_url, rtmp_key, youtube_broadcast_id FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{ id: number; rtmp_url: string; rtmp_key: string; youtube_broadcast_id: string | null }>()
   if (!stream || !stream.rtmp_url || !stream.rtmp_key) {
     return { allowed: false, reason: 'stream/rtmp_key not found' }
   }
@@ -1583,32 +1585,40 @@ export async function omeAdmissionHandler(
         // 폴링 간격: 2,3,4,5,6,7,8,9,10,10s (총 64s, 10회). 첫 hit 가 빨라 평균 5-10s 안에 끝남.
         const intervals = [2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 10000]
         let videoId: string | undefined
+        // 🛡️ 2026-05-11: 가능하면 known broadcast id 로 직접 조회 — mine=true 보다 훨씬 정확.
+        //   셀러가 멀티 방송 (동시 송출 / 이전 잔존) 갖고 있어도 정확히 우리 broadcast 매칭.
+        const knownBroadcastId = stream.youtube_broadcast_id || ''
+        const pollUrl = knownBroadcastId
+          ? `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&id=${encodeURIComponent(knownBroadcastId)}`
+          : 'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&broadcastStatus=active&mine=true&maxResults=5'
         for (let i = 0; i < intervals.length; i++) {
           await new Promise(r => setTimeout(r, intervals[i]))
-          const res = await fetch(
-            'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&broadcastStatus=active&mine=true&maxResults=5',
-            { headers: { Authorization: `Bearer ${accessToken}` } }
-          )
+          const res = await fetch(pollUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
           if (!res.ok) continue
           const data = await res.json() as { items?: Array<{ id: string; status?: { lifeCycleStatus?: string } }> }
           const broadcast = data.items?.[0]
           if (!broadcast) continue
           const lifeCycle = broadcast.status?.lifeCycleStatus
-          // 🛡️ 2026-05-11: testing 상태는 인증된 방송자만 볼 수 있음 — 일반 시청자는 검은 화면.
-          //   enableAutoStart=true 가 설정돼 있어도 RTMP 도착 타이밍에 따라 live 전환이 늦을 수 있음.
-          //   testing 상태일 때 명시적으로 live 로 전환해서 시청자가 즉시 볼 수 있게 함.
+          // 🛡️ 2026-05-11: lifeCycleStatus 단계별 처리
+          //   - created: 아직 RTMP 신호 도달 안 함 → 다음 폴링 대기
+          //   - ready: RTMP 신호 도달, 아직 testing 으로 못 옴 → 다음 폴링 대기
+          //   - testing: 인증된 방송자만 시청 가능 (시청자는 검은 화면) → 명시적으로 live 전환
+          //   - live: 일반 시청자도 시청 가능 → video_id 저장
           if (lifeCycle === 'testing') {
             const transRes = await fetch(
-              `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${broadcast.id}&part=status`,
+              `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${encodeURIComponent(broadcast.id)}&part=status`,
               { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
             )
             if (transRes.ok) {
               videoId = broadcast.id
+            } else {
+              console.warn('[OME admission] transition testing→live failed', transRes.status, await transRes.text().catch(() => ''))
             }
-            // transition 실패 시 다음 폴링에서 재시도 (live 상태가 되면 아래 분기에서 처리)
+            // transition 실패 시 다음 폴링에서 재시도
           } else if (lifeCycle === 'live') {
             videoId = broadcast.id
           }
+          // created / ready / complete / revoked 등은 다음 폴링 대기 (또는 종료)
           if (videoId) {
             await env.DB.prepare(`
               UPDATE live_streams
