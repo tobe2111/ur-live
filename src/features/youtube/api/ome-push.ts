@@ -72,6 +72,21 @@ export async function registerOmePush(
 }
 
 /**
+ * OME 에 active push 목록 조회 — 진단용. push 가 정말 등록됐는지 확인.
+ */
+export async function getOmePushes(env: Env): Promise<Array<{ id: string; state?: string; url?: string }>> {
+  if (!env.OME_HOST || !env.OME_API_TOKEN) return []
+  const auth = btoa(env.OME_API_TOKEN)
+  const res = await fetch(
+    `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:pushes`,
+    { headers: { Authorization: `Basic ${auth}` } },
+  ).catch(() => null)
+  if (!res?.ok) return []
+  const data = await res.json().catch(() => null) as { response?: Array<{ id: string; state?: string; url?: string }> } | null
+  return data?.response || []
+}
+
+/**
  * OME push 를 중지한다 (best-effort). 이미 없으면 무시.
  */
 export async function stopOmePush(env: Env, streamId: number): Promise<void> {

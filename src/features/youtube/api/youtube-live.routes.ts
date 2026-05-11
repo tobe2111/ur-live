@@ -220,16 +220,14 @@ app.post('/live/create', async (c) => {
     const rtmpKeyForPush = liveSetup.rtmpKey
     const broadcastIdForSync = liveSetup.broadcast.id
     const bgWork = async () => {
-      // 1) OME push 등록 — RTMP 인입 시점에 즉시 fan-out 시작
+      // 1) OME push 사전 등록 시도 (best-effort) — OME 는 stream 인입 후 등록 가능하므로
+      //   /create 시점엔 보통 실패 (stream 미존재). admission 에서 1500ms 후 정식 등록.
+      //   여기서 성공하면 admission 단계 절약 (Duplicate ID helper 가 알아서 처리).
       try {
-        const r = await registerOmePush(c.env, streamId, rtmpUrlForPush, rtmpKeyForPush)
-        if (!r.ok) {
-          await c.env.DB.prepare(`UPDATE live_streams SET last_error = ? WHERE id = ?`)
-            .bind(`OME push 등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`, streamId)
-            .run().catch(() => {})
-        }
+        await registerOmePush(c.env, streamId, rtmpUrlForPush, rtmpKeyForPush)
+        // 결과 무관 — last_error 기록 X (admission 단계가 권위)
       } catch (e) {
-        console.error('[create] OME push register failed', e)
+        if (import.meta.env.DEV) console.warn('[create] OME push pre-register skipped', e)
       }
       // 2) snippet 동기화 — description (셀러 페이지/다시보기 링크) + categoryId(22) + 커스텀 썸네일
       try {
@@ -1513,22 +1511,24 @@ export async function omeAdmissionHandler(
     return { allowed: false, reason: 'stream/rtmp_key not found' }
   }
 
-  // 🛡️ 2026-05-11 refactor: push 는 /create 시점에 미리 등록됨. admission 은 idempotent 재확인만.
-  //   OME 가 재시작되거나 cleanup 됐을 경우 fallback 으로 한 번 더 등록 (Duplicate ID 면 helper 가 무시).
+  // 🛡️ 2026-05-11: admission(opening) 직후엔 OME stream 이 아직 OME 내부에 등록 안 됨.
+  //   startPush 는 stream 존재가 전제 — 1500ms 지연으로 stream 인입 완료 시점을 기다림.
+  //   /create 시점에도 push 등록을 시도하지만 stream 미존재로 실패할 가능성이 높음 → 여기가 실질적 등록 경로.
   if (env.OME_HOST && env.OME_API_TOKEN) {
     const reRegister = async () => {
       try {
+        await new Promise((r) => setTimeout(r, 1500))
         const r = await registerOmePush(env, streamId, stream.rtmp_url, stream.rtmp_key)
         if (r.ok) {
           await env.DB.prepare(`UPDATE live_streams SET last_error = NULL WHERE id = ? AND last_error IS NOT NULL`)
             .bind(streamId).run().catch(() => {})
         } else {
           await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-            .bind(`OME push 재등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`, streamId)
+            .bind(`OME push 등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`, streamId)
             .run().catch(() => {})
         }
       } catch (e) {
-        console.error('[OME admission] re-register failed', e)
+        console.error('[OME admission] push register failed', e)
       }
     }
     if (waitUntil) waitUntil(reRegister())
@@ -1583,7 +1583,8 @@ export async function omeAdmissionHandler(
   if (waitUntil && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && stream.youtube_broadcast_id) {
     waitUntil((async () => {
       try {
-        await new Promise(r => setTimeout(r, 8000))  // RTMP 인입 → testing 도달까지 대기
+        // push 등록 1.5s + RTMP 전송 시작 + YouTube testing 상태 도달까지 평균 ~10s 대기
+        await new Promise(r => setTimeout(r, 12000))
         const youtubeService = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID!, env.YOUTUBE_CLIENT_SECRET!)
         const accessToken = await getValidAccessToken(env.DB, sellerId, youtubeService)
         if (!accessToken) {
