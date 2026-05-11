@@ -148,7 +148,6 @@ function ReelCardImpl({
   const isSeller = userType === 'seller' && userId && stream.seller_id === parseInt(userId)
   
   // Toast notification state
-  const [productChangeToast, setProductChangeToast] = useState<string | null>(null)
 
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
@@ -576,11 +575,6 @@ function ReelCardImpl({
             const newProduct = response.data.data
             if (!newProduct) return
             setCurrentProduct(newProduct)
-
-            if (!isSeller && newProduct?.name) {
-              setProductChangeToast(t('live.newProduct', { name: newProduct.name, defaultValue: `🎁 새로운 상품: ${newProduct.name}` }))
-            }
-
           }
         } catch (error) {
           if (import.meta.env.DEV) console.error('[WS] Error loading new product:', error)
@@ -600,13 +594,6 @@ function ReelCardImpl({
         if (!prev) return prev
         return { ...prev, stock: polledProduct.stock }
       })
-
-
-      if (polledProduct.stock === 0) {
-        setProductChangeToast(t('live.soldOut', { name: polledProduct.name, defaultValue: `🔴 ${polledProduct.name}이(가) 품절되었습니다!` }))
-      } else if (polledProduct.stock <= 5 && polledProduct.stock > 0) {
-        setProductChangeToast(t('live.lowStock', { name: polledProduct.name, count: polledProduct.stock, defaultValue: `⚠️ ${polledProduct.name} 재고가 ${polledProduct.stock}개 남았습니다!` }))
-      }
     }
   }, [polledProduct?.stock, currentProduct?.id])
 
@@ -914,16 +901,6 @@ function ReelCardImpl({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
-      {/* 🎉 상품 변경 강조 배너 */}
-      {productChangeToast && (
-        <div className="absolute inset-x-0 top-1/3 z-[100] flex justify-center pointer-events-none animate-bounce-in">
-          <div className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl shadow-pink-500/30 max-w-[85%]">
-            <p className="text-center text-sm font-bold">{t('live.productHotNow', { defaultValue: '🔥 지금 이 상품!' })}</p>
-            <p className="text-center text-xs opacity-90 mt-0.5">{productChangeToast}</p>
-          </div>
-        </div>
-      )}
-      
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
         <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
