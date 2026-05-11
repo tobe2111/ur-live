@@ -40,6 +40,8 @@ export default function LivePageV2() {
   const pendingNodesRef = useRef<HTMLDivElement[]>([])
 
   const [currentStream, setCurrentStream] = useState<Stream | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   // 페이지네이션 상태 (lazy loading)
   const STREAM_PAGE_SIZE = 5
@@ -114,9 +116,10 @@ export default function LivePageV2() {
 
   // Load reels data - MODIFIED: Check if direct link or from homepage
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     const loadReels = async () => {
       try {
-        setLoading(true)
 
         // Check if user came directly to this URL (not from homepage)
         const referrer = document.referrer
@@ -196,18 +199,13 @@ export default function LivePageV2() {
         setLoading(false)
       } catch (error) {
         if (import.meta.env.DEV) console.error('[LivePageV2] Fatal error loading reels:', error)
-        
-        // Show error state instead of demo data
-        setReels([])
+        setLoadError(true)
         setLoading(false)
-        
-        // Could show an error message to user here
-        // For now, just log and show empty state
       }
     }
 
     loadReels()
-  }, [streamId])
+  }, [streamId, retryCount])
 
   // 스트림 추가 로드 (lazy loading)
   const loadMoreReels = useCallback(async () => {
@@ -327,6 +325,29 @@ export default function LivePageV2() {
           </div>
           <div className="text-gray-900 dark:text-white text-xl font-bold">{t('live.page.entering', { defaultValue: '라이브 입장 중...' })}</div>
           <div className="text-gray-500 dark:text-white/60 text-sm">{t('live.page.pleaseWait', { defaultValue: '잠시만 기다려주세요' })}</div>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ API 오류 표시
+  if (loadError) {
+    return (
+      <div className="absolute inset-0 bg-[#020202] flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-white/[0.06] flex items-center justify-center mb-5">
+          <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+        </div>
+        <p className="text-white font-bold text-[17px] mb-1">{t('live.page.loadError', { defaultValue: '방송을 불러올 수 없어요' })}</p>
+        <p className="text-white/50 text-[13px] mb-6">{t('live.page.loadErrorSub', { defaultValue: '잠시 후 다시 시도해주세요' })}</p>
+        <div className="flex gap-2">
+          <button onClick={() => { setLoadError(false); setRetryCount(c => c + 1) }} className="px-5 py-2.5 bg-[#EF4444] text-white text-[13px] font-semibold rounded-full">
+            {t('common.retry', { defaultValue: '다시 시도' })}
+          </button>
+          <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-white/[0.08] text-white text-[13px] font-semibold rounded-full">
+            {t('live.scheduled.goHome', { defaultValue: '홈으로' })}
+          </button>
         </div>
       </div>
     )

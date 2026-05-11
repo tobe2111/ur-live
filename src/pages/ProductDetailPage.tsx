@@ -75,11 +75,12 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0)
-    if (id) {
-      api.get(`/api/reviews/product/${id}/summary`).then(r => {
-        if (r.data.success) setReviewSummary(r.data.data)
-      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-    }
+    if (!id) return
+    let cancelled = false
+    api.get(`/api/reviews/product/${id}/summary`).then(r => {
+      if (!cancelled && r.data.success) setReviewSummary(r.data.data)
+    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+    return () => { cancelled = true }
   }, [id])
 
   // 최근 본 상품 저장
@@ -114,12 +115,15 @@ export default function ProductDetailPage() {
   // Check wishlist status when product loads
   useEffect(() => {
     if (!id || !isLoggedIn) return
+    let cancelled = false
     api.get('/api/wishlists').then(r => {
+      if (cancelled) return
       if (r.data.success && r.data.data?.items) {
         const found = r.data.data.items.some((item: { product_id: string | number }) => String(item.product_id) === String(id))
         setIsWishlisted(found)
       }
     }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+    return () => { cancelled = true }
   }, [id, isLoggedIn])
 
   async function handleToggleWishlist() {
@@ -174,9 +178,7 @@ export default function ProductDetailPage() {
       // ✅ UX H14 FIX: localStorage hasCartItems 더티 스토어 제거 (React Query 캐시에 의존).
     } catch (err: unknown) {
       const err_ = err as { message?: string };
-      if (import.meta.env.DEV) {
-        if (import.meta.env.DEV) console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
-      }
+      if (import.meta.env.DEV) console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       const errorMessage = err instanceof Error ? err.message : t('productDetailPage.addCartFailed')
       showToast(errorMessage, 'error')
     }

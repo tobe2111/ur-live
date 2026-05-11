@@ -188,10 +188,15 @@ export default function ShortsPage() {
             : s
         ))
       }
-    } catch {
-      toast.error(t('common.loginRequired'))
-      localStorage.setItem('loginReturnUrl', window.location.pathname)
-      navigate('/login')
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 401) {
+        toast.error(t('common.loginRequired'))
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        navigate('/login')
+      } else {
+        toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
+      }
     }
   }
 
@@ -482,7 +487,14 @@ export default function ShortsPage() {
                           if (!item.product_id) return
                           api.post('/api/wishlists', { product_id: item.product_id })
                             .then(() => toast.success(t('common.wishlistAdded')))
-                            .catch(() => toast.error(t('shortsPage.loginRequired')))
+                            .catch((err: unknown) => {
+                              const status = (err as { response?: { status?: number } })?.response?.status
+                              if (status === 401) {
+                                localStorage.setItem('loginReturnUrl', window.location.pathname)
+                                navigate('/login')
+                              }
+                              toast.error(status === 401 ? t('common.loginRequired') : t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
+                            })
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"
                         style={{ borderRight: '1px solid #F3F4F6' }}
@@ -496,10 +508,15 @@ export default function ShortsPage() {
                           e.stopPropagation()
                           api.post('/api/cart', { product_id: item.product_id, quantity: 1 })
                             .then(() => toast.success(t('cart.itemAdded')))
-                            .catch(() => {
-                              toast.error(t('common.loginRequired'))
-                              localStorage.setItem('loginReturnUrl', window.location.pathname)
-                              navigate('/login')
+                            .catch((err: unknown) => {
+                              const status = (err as { response?: { status?: number } })?.response?.status
+                              if (status === 401) {
+                                toast.error(t('common.loginRequired'))
+                                localStorage.setItem('loginReturnUrl', window.location.pathname)
+                                navigate('/login')
+                              } else {
+                                toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
+                              }
                             })
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"
