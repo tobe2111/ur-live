@@ -181,7 +181,9 @@ export default function SellerLiveBroadcastPage() {
           current_product_id: s.current_product_id,
           scheduled_at: s.scheduled_at,
         })
-        setStep(s.status === 'live' ? 'live' : 'setup')
+        // 🛡️ 2026-05-11: 셀러 중도 새로고침 후 복귀 시 — 라이브 중이라도 setup 으로 (preview + 컨트롤 유지).
+        //   StepLive 는 미리보기 없어서 송출 모니터링 불가. setup 만 사용.
+        setStep('setup')
         if (s.status === 'live') liveStartTimeRef.current = Date.now()
       } catch {
         navigate('/seller/live-broadcast', { replace: true })
@@ -253,8 +255,10 @@ export default function SellerLiveBroadcastPage() {
     if (transitionCountdown === null) return
     if (transitionCountdown === 0) {
       toast.success(t('seller.liveBroadcast.broadcastStartedAuto'))
+      // 🛡️ 2026-05-11: setStep('live') 제거 — StepSetup → StepLive 전환 시 BrowserBroadcaster 가
+      //   unmount 되면서 WebRTC 끊김 → YouTube 송출 중단. setup 페이지에 미리보기 유지.
+      //   DB status 만 'live' 로 업데이트 (UI 는 setup 에 머무름).
       setCurrentStream(s => s ? { ...s, status: 'live' } : s)
-      setStep('live')
       liveStartTimeRef.current = Date.now()
       setTransitionCountdown(null)
       return
