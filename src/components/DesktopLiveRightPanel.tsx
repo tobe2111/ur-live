@@ -96,11 +96,11 @@ export default function DesktopLiveRightPanel() {
               messages.map(m => (
                 <div key={m.id} className="text-[13px] leading-snug">
                   <span className={`font-bold mr-1.5 ${
-                    m.userType === 'streamer' ? 'text-[#EF4444]' :
-                    m.userType === 'system'   ? 'text-[#FCD34D]' :
+                    m.userType === 'streamer' || m.isSeller ? 'text-yellow-400' :
+                    m.userType === 'system'   ? 'text-white/60' :
                     'text-gray-400'
                   }`}>
-                    {m.userType === 'streamer' && '👑 '}
+                    {(m.userType === 'streamer' || m.isSeller) && '👑 '}
                     {m.userType === 'system'   && '🔰 '}
                     {m.userName}
                   </span>

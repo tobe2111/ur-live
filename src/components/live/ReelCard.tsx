@@ -527,7 +527,8 @@ function ReelCardImpl({
   
   // Handle video click to unmute and play
   const handleVideoClick = () => {
-    if (playerRef.current && playerReady) {
+    // playerRef.current 은 ref — playerReady state(stale 가능)보다 신뢰도 높음
+    if (playerRef.current) {
       try {
         playerRef.current.unMute()
         playerRef.current.setVolume(100)
@@ -537,19 +538,20 @@ function ReelCardImpl({
         return
       } catch (error) {
         if (import.meta.env.DEV) console.error('[ReelCard] Failed to start video:', error)
+        // API 호출 실패 시 플레이어 파괴 후 fallback 진행 (두 플레이어 충돌 방지)
+        try { playerRef.current.destroy() } catch {}
+        playerRef.current = null
+        setPlayerReady(false)
       }
     }
-    // 🛡️ 2026-05-07: player 가 ready 되지 않은 경우 IFrame 강제 재생성 — 사용자 click 응답성 보장
+    // 플레이어 미초기화 / 파괴 후 — 직접 iframe으로 재생 (사용자 gesture로 unmuted 재생 가능)
     const playerEl = document.getElementById(`youtube-player-${stream.id}`)
     if (playerEl && stream.youtube_video_id) {
       while (playerEl.firstChild) playerEl.removeChild(playerEl.firstChild)
-      // @ts-ignore — useEffect dependency 변경으로 재 init 트리거 안 됨, fallback iframe 직접 삽입
       const iframe = document.createElement('iframe')
-      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1`
+      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=0&origin=${encodeURIComponent(window.location.origin)}`
       iframe.allow = 'autoplay; encrypted-media; fullscreen'
-      iframe.style.width = '100%'
-      iframe.style.height = '100%'
-      iframe.style.border = '0'
+      iframe.style.cssText = 'width:100%;height:100%;border:0'
       playerEl.appendChild(iframe)
       setShowPlayButton(false)
     }
