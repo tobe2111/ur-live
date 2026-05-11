@@ -22,14 +22,15 @@ export async function handleScheduled(env: Env) {
 
   // ── 1b. dead 웹캠 방송 정리 (2026-05-07) ──
   //   셀러가 웹캠 모드로 시작했지만 YouTube Studio 에서 방송 연결을 완료하지 않은 케이스.
-  //   status='live' 인데 youtube_video_id 가 비어있고 10분 이상 경과 → cancelled 처리.
+  //   status='live' 인데 youtube_video_id 가 비어있고 30분 이상 경과 → cancelled 처리.
+  //   🛡️ 2026-05-11: 10분 → 30분 — 셀러가 YouTube Studio 웹캠 송출 popup 띄우고 천천히 시작하는 케이스 보호.
   try {
     const { meta } = await DB.prepare(`
       UPDATE live_streams
       SET status = 'cancelled', updated_at = datetime('now')
       WHERE status IN ('live', 'scheduled')
         AND (youtube_video_id IS NULL OR youtube_video_id = '')
-        AND created_at < datetime('now', '-10 minutes')
+        AND created_at < datetime('now', '-30 minutes')
     `).run();
     results.dead_webcam_streams_cancelled = meta.changes ?? 0;
   } catch (e) { console.error('[Cron] dead_webcam_streams error:', e) }

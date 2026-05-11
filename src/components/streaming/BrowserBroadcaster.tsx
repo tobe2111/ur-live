@@ -26,7 +26,7 @@ interface Props {
   onUnsupported?: (reason: string) => void
 }
 
-type Status = 'idle' | 'requesting_camera' | 'fetching_token' | 'connecting' | 'live' | 'failed'
+type Status = 'idle' | 'requesting_camera' | 'fetching_token' | 'connecting' | 'live' | 'failed' | 'permission_denied'
 
 export default function BrowserBroadcaster({ streamId, onStreaming, onError, onUnsupported }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -99,10 +99,12 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         },
       })
     } catch (e) {
-      const msg = (e as Error).name === 'NotAllowedError'
+      const isPermDenied = (e as Error).name === 'NotAllowedError'
+      const msg = isPermDenied
         ? '카메라/마이크 권한이 거부됐어요. 주소창의 자물쇠 아이콘에서 허용으로 변경해주세요.'
         : '카메라 접근 실패: ' + (e as Error).message
-      setErrorMsg(msg); setStatus('failed'); onError?.(msg); return
+      // 🛡️ 2026-05-11: 권한 거부는 별도 status — 재시도해도 같은 에러 반복되므로 사용자 행동 필요.
+      setErrorMsg(msg); setStatus(isPermDenied ? 'permission_denied' : 'failed'); onError?.(msg); return
     }
     streamRef.current = stream
     if (videoRef.current) videoRef.current.srcObject = stream
@@ -345,11 +347,21 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       {errorMsg && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <div className="flex-1 text-xs text-red-800">{errorMsg}</div>
-          <button onClick={() => { setErrorMsg(null); setStatus('idle') }}
-            className="text-[11px] text-red-600 underline flex items-center gap-1">
-            <RefreshCw className="w-3 h-3" /> 다시
-          </button>
+          <div className="flex-1 text-xs text-red-800">
+            {errorMsg}
+            {status === 'permission_denied' && (
+              <p className="mt-1 text-[10px] text-red-700">
+                Chrome: 주소창 왼쪽 자물쇠 → 카메라/마이크 → 허용 → 페이지 새로고침
+              </p>
+            )}
+          </div>
+          {/* 권한 거부 시 재시도 버튼 숨김 — 사용자가 브라우저 설정 변경해야 함 */}
+          {status !== 'permission_denied' && (
+            <button onClick={() => { setErrorMsg(null); setStatus('idle') }}
+              className="text-[11px] text-red-600 underline flex items-center gap-1">
+              <RefreshCw className="w-3 h-3" /> 다시
+            </button>
+          )}
         </div>
       )}
     </div>

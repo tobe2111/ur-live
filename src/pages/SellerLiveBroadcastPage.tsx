@@ -651,7 +651,7 @@ export default function SellerLiveBroadcastPage() {
           />
         )}
 
-        {/* STEP 2: 연결 설정 */}
+        {/* STEP 2: 연결 설정 (송출 도구) — 라이브 중에도 BrowserBroadcaster 가 unmount 되지 않도록 유지 */}
         {step === 'setup' && currentStream && (
           <StepSetup
             stream={currentStream}
@@ -664,8 +664,9 @@ export default function SellerLiveBroadcastPage() {
           />
         )}
 
-        {/* STEP 3: 라이브 중 */}
-        {step === 'live' && currentStream && (
+        {/* 라이브 중: setup 화면 아래에 채팅 / 이벤트 / 공유링크 컨트롤도 함께 노출.
+            setStep('live') 사용 안 함 — broadcaster preview 와 라이브 컨트롤을 한 화면에 통합. */}
+        {step === 'setup' && currentStream && currentStream.status === 'live' && (
           <StepLive
             stream={currentStream}
             products={sellableProducts}
