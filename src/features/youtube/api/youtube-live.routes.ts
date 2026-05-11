@@ -681,19 +681,37 @@ app.get('/live/:id/status', async (c) => {
  *   어디서 막혔는지 한 응답으로 즉시 확인 가능.
  */
 app.get('/live/:id/diagnose', async (c) => {
-  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 🛡️ 2026-05-11: admin_token 또는 셀러 JWT 둘 중 하나로 인증. admin_token 은
+  //   DIAGNOSE_TOKEN env 와 일치해야 함 (정확 비교) — 셀러 외 (운영자) 가 진단하기 위함.
+  const adminToken = c.req.query('admin_token')
+  const expectedAdminToken = (c.env as { DIAGNOSE_TOKEN?: string }).DIAGNOSE_TOKEN
+  let sellerId: number | null = null
+  let bypassAuth = false
+  if (adminToken && expectedAdminToken && adminToken === expectedAdminToken) {
+    bypassAuth = true
+  } else {
+    sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: '로그인 또는 admin_token 필요' }, 401)
+  }
 
   const streamId = parseInt(c.req.param('id'))
   if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
 
   // 1. DB 레코드
-  const dbStream = await c.env.DB.prepare(`
-    SELECT id, seller_id, status, started_at, ended_at, last_error,
-           youtube_video_id, youtube_broadcast_id, youtube_stream_key,
-           rtmp_url, rtmp_key, youtube_embed_url, title, created_at
-    FROM live_streams WHERE id = ? AND seller_id = ?
-  `).bind(streamId, sellerId).first<{
+  const dbStream = await (bypassAuth
+    ? c.env.DB.prepare(`
+        SELECT id, seller_id, status, started_at, ended_at, last_error,
+               youtube_video_id, youtube_broadcast_id, youtube_stream_key,
+               rtmp_url, rtmp_key, youtube_embed_url, title, created_at
+        FROM live_streams WHERE id = ?
+      `).bind(streamId)
+    : c.env.DB.prepare(`
+        SELECT id, seller_id, status, started_at, ended_at, last_error,
+               youtube_video_id, youtube_broadcast_id, youtube_stream_key,
+               rtmp_url, rtmp_key, youtube_embed_url, title, created_at
+        FROM live_streams WHERE id = ? AND seller_id = ?
+      `).bind(streamId, sellerId)
+  ).first<{
     id: number; seller_id: number; status: string; started_at: string | null; ended_at: string | null;
     last_error: string | null; youtube_video_id: string | null; youtube_broadcast_id: string | null;
     youtube_stream_key: string | null; rtmp_url: string | null; rtmp_key: string | null;
@@ -767,7 +785,7 @@ app.get('/live/:id/diagnose', async (c) => {
   if (dbStream.youtube_broadcast_id && c.env.YOUTUBE_CLIENT_ID && c.env.YOUTUBE_CLIENT_SECRET) {
     try {
       const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
-      const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+      const accessToken = await getValidAccessToken(c.env.DB, dbStream.seller_id, youtubeService)
       if (accessToken) {
         const ytRes = await fetch(
           `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status,contentDetails&id=${encodeURIComponent(dbStream.youtube_broadcast_id)}`,
