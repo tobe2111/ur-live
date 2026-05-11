@@ -114,7 +114,8 @@ function ReelCardImpl({
   const [productListSheetOpen, setProductListSheetOpen] = useState(false)
   const [streamProducts, setStreamProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
-  const [chatModalOpen, setChatModalOpen] = useState(false)
+  const [chatModalOpen, setChatModalOpen] = useState(true)
+  const [chatInputOpen, setChatInputOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<YTPlayer | null>(null)
   const [playerReady, setPlayerReady] = useState(false)
@@ -1081,7 +1082,7 @@ function ReelCardImpl({
               {chatModalOpen && (
                 <LiveChat
                   messages={mergedChatMessages}
-                  onChatClick={() => setChatModalOpen(true)}
+                  onChatClick={() => setChatInputOpen(true)}
                 />
               )}
             </div>
@@ -1093,7 +1094,7 @@ function ReelCardImpl({
               isSeller={!!isSeller}
               streamProductCount={streamProducts?.length ?? 0}
               onOpenProducts={openProductListSheet}
-              onOpenChat={() => setChatModalOpen(true)}
+              onOpenChat={() => setChatInputOpen(true)}
             />
           </div>
 
@@ -1181,14 +1182,14 @@ function ReelCardImpl({
         </div>
       )}
 
-      {/* Chat Modal — 🛡️ TD-006: ReelChatSheet 컴포넌트로 추출 (2026-05-06) */}
-      {chatModalOpen && (
+      {/* Chat Input Sheet — 채팅 버튼 클릭 시만 열림 */}
+      {chatInputOpen && (
         <ReelChatSheet
           chatMessage={chatMessage}
           sendingMessage={sendingMessage}
           isSeller={!!isSeller}
           onChatMessageChange={setChatMessage}
-          onClose={() => setChatModalOpen(false)}
+          onClose={() => setChatInputOpen(false)}
           onSubmit={handleSendMessage}
         />
       )}

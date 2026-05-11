@@ -60,13 +60,13 @@ export const RATE_LIMIT_TIERS = {
   // Tier 1: 일반 사용자 (비인증)
   PUBLIC: {
     windowMs: 60 * 1000,      // 1분
-    maxRequests: 60,           // 분당 60 requests
+    maxRequests: 200,          // 분당 200 requests (라이브 페이지 폴링 고려)
   },
-  
+
   // Tier 2: 인증된 사용자
   AUTHENTICATED: {
     windowMs: 60 * 1000,      // 1분
-    maxRequests: 120,          // 분당 120 requests
+    maxRequests: 400,          // 분당 400 requests
   },
   
   // Tier 3: Admin/Seller
