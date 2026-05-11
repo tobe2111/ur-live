@@ -49,6 +49,45 @@ export async function handleScheduled(env: Env) {
     results.zombie_scheduled_ended = meta.changes ?? 0;
   } catch (e) { console.error('[Cron] zombie_scheduled error:', e) }
 
+  // ── 1d. zombie OME push 정리 (2026-05-11) ──
+  //   셀러가 브라우저를 갑자기 닫는 등 closing event 가 안 오면 OME push 가 영원히 남음.
+  //   다음 broadcast 와 충돌하지 않도록 cron 으로 청소.
+  //   기준: OME 의 active streams 목록에 없는 push 는 모두 stopPush.
+  if (env.OME_HOST && env.OME_API_TOKEN) {
+    try {
+      const auth = btoa(env.OME_API_TOKEN)
+      const omeBase = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app`
+      // 1) 활성 streams 조회
+      const streamsRes = await fetch(`${omeBase}/streams`, { headers: { Authorization: `Basic ${auth}` } })
+      const streamsData = streamsRes.ok ? await streamsRes.json().catch(() => null) as { response?: string[] } | null : null
+      const activeStreams = new Set(streamsData?.response || [])
+      // 2) pushes 조회
+      const pushesRes = await fetch(`${omeBase}:pushes`, {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const pushesData = pushesRes.ok ? await pushesRes.json().catch(() => null) as { response?: Array<{ id: string }> } | null : null
+      const pushes = pushesData?.response || []
+      let removed = 0
+      for (const push of pushes) {
+        // push.id 형식: "youtube-<streamId>". 대응되는 stream "s<streamId>" 가 active 가 아니면 zombie.
+        const m = push.id.match(/^youtube-(\d+)$/)
+        if (!m) continue
+        const streamName = `s${m[1]}`
+        if (activeStreams.has(streamName)) continue  // 정상 활성 push
+        // zombie - stopPush
+        await fetch(`${omeBase}:stopPush`, {
+          method: 'POST',
+          headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: push.id }),
+        }).catch(() => undefined)
+        removed++
+      }
+      results.zombie_ome_pushes_cleaned = removed
+    } catch (e) { console.error('[Cron] zombie_ome_pushes error:', e) }
+  }
+
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
   // ✅ CONCURRENCY FIX (Cron C2): UPDATE RETURNING은 원자적으로 PENDING → CANCELLED
   // 전환된 행만 반환하므로 웹훅과의 경쟁에서도 재고 복구는 한 번만 실행됨.
