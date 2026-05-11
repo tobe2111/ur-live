@@ -1,19 +1,13 @@
 import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '@/types/live-stream'
 
-/**
- * 🛡️ 2026-04-29: ReelCard 에서 추출한 LiveChat sub-component (TD-006).
- *
- * 라이브 영상 위 floating chat stream — 최근 6개 메시지 + 시스템 메시지 강조.
- * onChatClick 으로 채팅 input 모달 토글 (chatModalOpen).
- */
-
 interface LiveChatStreamProps {
   messages: ChatMessage[]
   onChatClick: () => void
+  pinnedMessage?: string | null
 }
 
-export default function LiveChatStream({ messages, onChatClick }: LiveChatStreamProps) {
+export default function LiveChatStream({ messages, onChatClick, pinnedMessage }: LiveChatStreamProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -25,6 +19,25 @@ export default function LiveChatStream({ messages, onChatClick }: LiveChatStream
   const recentMessages = messages.slice(-6)
 
   return (
+    <div className="flex flex-col gap-1">
+      {/* 고정 공지 티커 */}
+      {pinnedMessage && (
+        <div className="overflow-hidden rounded-lg bg-black/50 backdrop-blur-sm px-2 py-1 mb-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-yellow-400 font-bold shrink-0">📌</span>
+            <div className="overflow-hidden flex-1">
+              <p
+                className="text-[10px] text-yellow-200/90 whitespace-nowrap"
+                style={{
+                  animation: `ticker ${Math.max(8, pinnedMessage.length * 0.18)}s linear infinite`,
+                }}
+              >
+                {pinnedMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     <div
       ref={scrollRef}
       className="flex flex-col gap-1 overflow-y-auto max-h-36 cursor-pointer no-scrollbar"
@@ -60,6 +73,7 @@ export default function LiveChatStream({ messages, onChatClick }: LiveChatStream
           </div>
         )
       })}
+    </div>
     </div>
   )
 }

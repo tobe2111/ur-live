@@ -1729,18 +1729,26 @@ app.post('/streaming/whip-token', async (c) => {
 
   if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
 
-  // Option D: YouTube WHIP direct — stream key 있으면 YouTube 로 바로 송출
+  // Option D: YouTube WHIP direct — stream key 있고, quota 여유 있을 때만
   if (stream.rtmp_key) {
-    const whipUrl = `https://a.upload.youtube.com/upload/streamer?streamKey=${encodeURIComponent(stream.rtmp_key)}`
-    return c.json({
-      success: true,
-      data: {
-        whip_url: whipUrl,
-        mode: 'youtube_whip',
-        stream_name: `s${stream_id}`,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-      },
-    })
+    // quota 90% 초과 시 OME 폴백 (YouTube API 호출 절약)
+    const quotaUsage = await getQuotaUsage(c.env).catch(() => null)
+    const quotaExceeded = quotaUsage ? quotaUsage.ratio >= 0.9 : false
+
+    if (!quotaExceeded) {
+      const whipUrl = `https://a.upload.youtube.com/upload/streamer?streamKey=${encodeURIComponent(stream.rtmp_key)}`
+      return c.json({
+        success: true,
+        data: {
+          whip_url: whipUrl,
+          mode: 'youtube_whip',
+          stream_name: `s${stream_id}`,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+        },
+      })
+    }
+    // quota 90%+ → OME 폴백으로 낙하 (아래 OME 로직 실행)
+    if (import.meta.env?.DEV) console.warn('[WHIP] YouTube quota >= 90%, falling back to OME')
   }
 
   // Fallback: OME WHIP (webcam 모드 또는 rtmp_key 없는 경우)

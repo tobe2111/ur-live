@@ -148,13 +148,24 @@ function ReelCardImpl({
   const userType = localStorage.getItem('user_type')
   const isSeller = userType === 'seller' && userId && stream.seller_id === parseInt(userId)
   
-  // Toast notification state
-
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
 
+  // Flash sale countdown
+  const [flashSaleSecondsLeft, setFlashSaleSecondsLeft] = useState<number | null>(null)
+
+  // Product change animation
+  const [productSlideKey, setProductSlideKey] = useState(0)
+
+  // Next live preview (shown when stream ends)
+  const [nextLive, setNextLive] = useState<{ id: number; title: string; scheduled_at: string | null } | null>(null)
+
+  // VOD delay: hide iframe for 5 min after ending so YouTube processes the recording
+  const [vodReady, setVodReady] = useState(stream.status !== 'ended')
+
   // View tracking cleanup (component-local, avoid global collision)
   const viewTrackCleanupRef = useRef<(() => void) | null>(null)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 
   // ── 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) ──
   
@@ -221,6 +232,8 @@ function ReelCardImpl({
     addLocalMessage,
     streamData: wsStreamData,
     lastDonation,
+    activeFlashSale,
+    pinnedMessage,
   } = useLiveStreamWebSocket(stream.id, isActive, stream.status === 'ended')
 
   // ── PC 패널 공유 스토어 사이드이펙트 ──────────────────────────────────────
@@ -587,6 +600,61 @@ function ReelCardImpl({
       loadNewProduct()
     }
   }, [wsStreamData?.current_product_id, stream.id, isSeller])
+
+  // 상품 전환 슬라이드 애니메이션 트리거
+  useEffect(() => {
+    if (currentProduct?.id) setProductSlideKey(k => k + 1)
+  }, [currentProduct?.id])
+
+  // 플래시세일 카운트다운
+  useEffect(() => {
+    if (!activeFlashSale?.ends_at) { setFlashSaleSecondsLeft(null); return }
+    const tick = () => {
+      const left = Math.max(0, Math.floor((new Date(activeFlashSale.ends_at).getTime() - Date.now()) / 1000))
+      setFlashSaleSecondsLeft(left)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [activeFlashSale?.ends_at])
+
+  // Wake Lock — 활성 라이브 시청 중 화면 꺼짐 방지
+  useEffect(() => {
+    if (!isActive || stream.status === 'ended') return
+    const acquire = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockRef.current = await (navigator as Navigator & { wakeLock: { request(t: string): Promise<WakeLockSentinel> } }).wakeLock.request('screen')
+        }
+      } catch { /* 거부 또는 미지원 — 무시 */ }
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible' && !wakeLockRef.current) acquire() }
+    acquire()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      try { wakeLockRef.current?.release() } catch { /* */ }
+      wakeLockRef.current = null
+    }
+  }, [isActive, stream.status])
+
+  // VOD 준비 대기: ended 전환 후 5분 뒤 YouTube 처리 완료 가정
+  useEffect(() => {
+    if (stream.status !== 'ended') { setVodReady(true); return }
+    setVodReady(false)
+    const id = setTimeout(() => setVodReady(true), 5 * 60 * 1000)
+    return () => clearTimeout(id)
+  }, [stream.status])
+
+  // 다음 라이브 예고: 스트림 종료 시 셀러의 다음 scheduled 라이브 조회
+  useEffect(() => {
+    if (stream.status !== 'ended' || !stream.seller_id) return
+    let active = true
+    api.get(`/api/seller/${stream.seller_id}/public-streams?status=scheduled&limit=1`)
+      .then(r => { if (active && r.data?.data?.[0]) setNextLive(r.data.data[0]) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [stream.status, stream.seller_id])
 
   // D1 폴링에서 재고 변경 감지 시 UI 업데이트
   useEffect(() => {
@@ -978,6 +1046,41 @@ function ReelCardImpl({
         </div>
       )}
 
+      {/* 라이브 종료 후 VOD 준비 대기 오버레이 (5분) */}
+      {stream.status === 'ended' && !vodReady && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 px-6 text-center">
+          <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center mb-4 animate-pulse">
+            <svg className="w-8 h-8 text-white/60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.132a1 1 0 01-1.447.899L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+            </svg>
+          </div>
+          <p className="text-white text-base font-bold mb-1">{t('live.vodPreparing', { defaultValue: '다시보기 준비 중' })}</p>
+          <p className="text-white/50 text-sm">{t('live.vodPreparingDesc', { defaultValue: '방송이 종료되었습니다. 잠시 후 다시보기가 제공됩니다.' })}</p>
+          {nextLive && (
+            <div className="mt-4 rounded-xl bg-white/10 px-4 py-3 text-left w-full max-w-xs">
+              <p className="text-white/60 text-xs mb-1">{t('live.nextLive', { defaultValue: '다음 라이브' })}</p>
+              <p className="text-white text-sm font-bold truncate">{nextLive.title}</p>
+              {nextLive.scheduled_at && (
+                <p className="text-white/50 text-xs mt-0.5">{new Date(nextLive.scheduled_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 다음 라이브 예고 (VOD 준비 완료 후에도 표시) */}
+      {stream.status === 'ended' && vodReady && nextLive && (
+        <div className="absolute bottom-32 left-4 right-4 z-20 pointer-events-none">
+          <div className="rounded-xl bg-black/70 backdrop-blur-sm px-4 py-3">
+            <p className="text-white/60 text-xs mb-1">{t('live.nextLive', { defaultValue: '다음 라이브' })}</p>
+            <p className="text-white text-sm font-bold truncate">{nextLive.title}</p>
+            {nextLive.scheduled_at && (
+              <p className="text-white/50 text-xs mt-0.5">{new Date(nextLive.scheduled_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 🛡️ 2026-05-07: youtube_video_id 없을 때 명확한 안내 (무한 로딩 방지).
           셀러가 방송 생성만 하고 YouTube 송출 시작 안 한 케이스. */}
       {stream.status !== 'scheduled' && !stream.youtube_video_id && (
@@ -1046,7 +1149,7 @@ function ReelCardImpl({
         {/* 🛡️ 2026-04-30: 좌측 넘침 수정 left-3→left-4 (max-w 추가) */}
         {!isSeller && (
           <div className="pointer-events-auto absolute top-14 left-4 right-4 z-20" style={{ maxWidth: 'calc(100% - 32px)' }}>
-            <TeamPointsBadge streamId={stream.id} />
+            <TeamPointsBadge streamId={stream.id} donationGoal={stream.donation_goal} />
           </div>
         )}
 
@@ -1060,6 +1163,23 @@ function ReelCardImpl({
         {!isSeller && (
           <div className="pointer-events-auto absolute top-24 left-3 right-14 z-20">
             <AuctionPanel streamId={stream.id} />
+          </div>
+        )}
+
+        {/* 플래시세일 배너 — WebSocket activeFlashSale 이벤트 시 표시 */}
+        {activeFlashSale && flashSaleSecondsLeft !== null && flashSaleSecondsLeft > 0 && (
+          <div className="pointer-events-auto absolute top-[4.5rem] left-4 right-4 z-20">
+            <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 shadow-lg shadow-orange-500/30 animate-fade-in">
+              <span className="text-lg">⚡</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-xs font-bold truncate">
+                  {t('live.flashSale', { defaultValue: '{{rate}}% 추가 할인', rate: activeFlashSale.discount_rate })}
+                </p>
+              </div>
+              <div className="shrink-0 bg-white/20 rounded-lg px-2 py-0.5 text-white text-xs font-mono font-bold">
+                {String(Math.floor(flashSaleSecondsLeft / 60)).padStart(2,'0')}:{String(flashSaleSecondsLeft % 60).padStart(2,'0')}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1085,6 +1205,7 @@ function ReelCardImpl({
                 <LiveChat
                   messages={mergedChatMessages}
                   onChatClick={() => setChatInputOpen(true)}
+                  pinnedMessage={pinnedMessage}
                 />
               )}
             </div>
@@ -1141,6 +1262,7 @@ function ReelCardImpl({
 
           {/* 🛡️ TD-006: ReelProductCard 컴포넌트로 추출 (2026-05-06) */}
           <ReelProductCard
+            key={productSlideKey}
             safeProduct={safeProduct}
             currentProduct={currentProduct}
             isSeller={!!isSeller}
