@@ -1590,8 +1590,25 @@ export async function omeAdmissionHandler(
             { headers: { Authorization: `Bearer ${accessToken}` } }
           )
           if (!res.ok) continue
-          const data = await res.json() as { items?: Array<{ id: string }> }
-          videoId = data.items?.[0]?.id
+          const data = await res.json() as { items?: Array<{ id: string; status?: { lifeCycleStatus?: string } }> }
+          const broadcast = data.items?.[0]
+          if (!broadcast) continue
+          const lifeCycle = broadcast.status?.lifeCycleStatus
+          // 🛡️ 2026-05-11: testing 상태는 인증된 방송자만 볼 수 있음 — 일반 시청자는 검은 화면.
+          //   enableAutoStart=true 가 설정돼 있어도 RTMP 도착 타이밍에 따라 live 전환이 늦을 수 있음.
+          //   testing 상태일 때 명시적으로 live 로 전환해서 시청자가 즉시 볼 수 있게 함.
+          if (lifeCycle === 'testing') {
+            const transRes = await fetch(
+              `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${broadcast.id}&part=status`,
+              { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
+            )
+            if (transRes.ok) {
+              videoId = broadcast.id
+            }
+            // transition 실패 시 다음 폴링에서 재시도 (live 상태가 되면 아래 분기에서 처리)
+          } else if (lifeCycle === 'live') {
+            videoId = broadcast.id
+          }
           if (videoId) {
             await env.DB.prepare(`
               UPDATE live_streams
@@ -1614,7 +1631,7 @@ export async function omeAdmissionHandler(
                 WHERE s.id = ?
               `).bind(streamId).first<{ title: string; id: number; seller_id: number; scheduled_at?: string; custom_thumbnail_url?: string; seller_name?: string; seller_username?: string }>()
               if (dbStream?.title) {
-                const broadcastSnippet = data.items?.[0] as { snippet?: { title?: string; scheduledStartTime?: string; description?: string; categoryId?: string } }
+                const broadcastSnippet = broadcast as { snippet?: { title?: string; scheduledStartTime?: string; description?: string; categoryId?: string } }
                 const sellerSlug = dbStream.seller_username || dbStream.seller_id
                 const description = [
                   dbStream.title,
