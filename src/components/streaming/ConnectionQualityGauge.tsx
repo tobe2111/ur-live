@@ -12,7 +12,7 @@ import { toast } from '@/hooks/useToast'
 interface Props {
   streamId: number
   // youtube/quick: YouTube API로 시청자수+RTT / 나머지: RTT 전용 (API quota 0)
-  mode?: 'youtube' | 'quick' | 'obs' | 'prism'
+  mode?: 'youtube' | 'youtube-webcam' | 'quick' | 'obs' | 'prism'
 }
 
 interface QualityData {

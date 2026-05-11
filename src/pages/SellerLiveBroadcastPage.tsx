@@ -61,6 +61,9 @@ import {
   rememberRecentProducts,
   getLastBroadcast,
   rememberLastBroadcast,
+  getDraft,
+  saveDraft,
+  clearDraft,
   getTemplates,
   saveTemplates,
 } from './SellerLiveBroadcast.storage'
@@ -101,16 +104,17 @@ export default function SellerLiveBroadcastPage() {
     localStorage.setItem('ur_notify_followers_v1', notifyFollowers ? '1' : '0')
   }, [notifyFollowers])
 
-  // Step 1 폼 (마지막 방송 값으로 prefill)
+  // Step 1 폼 — draft 우선, 없으면 마지막 방송 값으로 prefill
   const lastBroadcast = useRef(getLastBroadcast()).current
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState(lastBroadcast.description || '')
-  const [thumbnailUrl, setThumbnailUrl] = useState(lastBroadcast.thumbnailUrl || '')
-  const [selectedProducts, setSelectedProducts] = useState<number[]>([])
-  const [isScheduled, setIsScheduled] = useState(false)
-  const [scheduledDate, setScheduledDate] = useState('')
-  const [scheduledTime, setScheduledTime] = useState('')
-  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>(lastBroadcast.privacy || 'public')
+  const draft = useRef(getDraft()).current
+  const [title, setTitle] = useState(draft?.title ?? '')
+  const [description, setDescription] = useState(draft?.description ?? lastBroadcast.description ?? '')
+  const [thumbnailUrl, setThumbnailUrl] = useState(draft?.thumbnailUrl ?? lastBroadcast.thumbnailUrl ?? '')
+  const [selectedProducts, setSelectedProducts] = useState<number[]>(draft?.selectedProducts ?? [])
+  const [isScheduled, setIsScheduled] = useState(draft?.isScheduled ?? false)
+  const [scheduledDate, setScheduledDate] = useState(draft?.scheduledDate ?? '')
+  const [scheduledTime, setScheduledTime] = useState(draft?.scheduledTime ?? '')
+  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>(draft?.privacy ?? lastBroadcast.privacy ?? 'public')
 
   // UI
   const [creating, setCreating] = useState(false)
@@ -128,6 +132,15 @@ export default function SellerLiveBroadcastPage() {
     if (!isSellerAuthenticated()) { navigate('/seller/login'); return }
     loadData()
   }, [navigate])
+
+  // 방송 정보 임시저장 — step=info 일 때만, 1초 debounce (과도한 write 방지)
+  useEffect(() => {
+    if (step !== 'info') return
+    const id = setTimeout(() => {
+      saveDraft({ title, description, thumbnailUrl, privacy, selectedProducts, isScheduled, scheduledDate, scheduledTime })
+    }, 1000)
+    return () => clearTimeout(id)
+  }, [step, title, description, thumbnailUrl, privacy, selectedProducts, isScheduled, scheduledDate, scheduledTime])
 
   // 첫 방문 셀러에게 튜토리얼 1회 노출 (채널 있고 방송 기록 없을 때)
   useEffect(() => {
@@ -403,7 +416,8 @@ export default function SellerLiveBroadcastPage() {
         setStep('setup')
         rememberMethod(method)
         rememberRecentProducts([...effectiveProducts, ...getRecentProducts().filter(id => !effectiveProducts.includes(id))])
-        rememberLastBroadcast({ description: description.trim(), thumbnailUrl: thumbnailUrl.trim(), privacy })
+        rememberLastBroadcast({ title: effectiveTitle.trim(), description: description.trim(), thumbnailUrl: thumbnailUrl.trim(), privacy, productIds: effectiveProducts })
+        clearDraft()
         navigate(`/seller/live-broadcast/${d.stream_id}`, { replace: true })
 
         // 🛡️ 2026-05-11: 웹캠 모드면 YouTube Studio 웹캠 송출 popup 자동 열기.

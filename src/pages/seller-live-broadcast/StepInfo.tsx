@@ -4,7 +4,7 @@
  * 방송 메타정보 입력 폼 — title / description / thumbnail / privacy / 예약일정 /
  * 상품 선택 / 송출방식 (RTMP / 스마트폰) / 목적지 플랫폼.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Globe, EyeOff, Lock, Youtube, Loader2, Radio, AlertTriangle, Zap, Play, VideoIcon, Smartphone, CheckCircle2 } from 'lucide-react'
@@ -58,6 +58,13 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   practiceMode = false, setPracticeMode,
 }: StepInfoProps) {
   const { t } = useTranslation()
+
+  // 카메라/마이크 권한 사전 요청 — 브라우저 송출 시 도중 팝업 차단 예방
+  useEffect(() => {
+    navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
+      .then(s => s.getTracks().forEach(t => t.stop()))
+      .catch(() => { /* 거부 시 무시 — BrowserBroadcaster 에서 재요청 */ })
+  }, [])
   const [advancedOpen, setAdvancedOpen] = useState(false)
   // 고급 설정이 마지막 방송과 동일한지 (description/thumbnail/privacy)
   const lastBc = getLastBroadcast()
@@ -141,6 +148,20 @@ export default function StepInfo({ title, setTitle, description, setDescription,
     onCreate({ title: autoTitle, productIds })
   }
 
+  // 지난 방송 그대로 복제 — lastBroadcast.title + productIds 가 있을 때만 노출
+  const canCloneLast = !creating && !!lastBc.title && sellableProducts.length > 0
+  const handleCloneLast = () => {
+    if (!canCloneLast) return
+    const validProductIds = (lastBc.productIds || []).filter(id => sellableProducts.some(p => p.id === id))
+    const productIds = validProductIds.length > 0 ? validProductIds : sellableProducts.slice(0, 3).map(p => p.id)
+    setTitle(lastBc.title!)
+    setDescription(lastBc.description || '')
+    setThumbnailUrl(lastBc.thumbnailUrl || '')
+    setPrivacy(lastBc.privacy || 'public')
+    setSelectedProducts(productIds)
+    onCreate({ title: lastBc.title!, productIds })
+  }
+
   // 테스트 방송: unlisted + [TEST] 제목. 셀러가 파이프라인 검증 후 삭제.
   const handleTestBroadcast = () => {
     if (sellableProducts.length === 0 || creating) return
@@ -179,13 +200,20 @@ export default function StepInfo({ title, setTitle, description, setDescription,
           <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
           <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
         </div>
-        {/* Quick Start + Test broadcast */}
-        <div className="flex gap-1.5 shrink-0">
+        {/* Quick Start + Clone Last + Test broadcast */}
+        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
           {sellableProducts.length > 0 && (
             <button onClick={handleTestBroadcast} disabled={creating}
               className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               title="비공개 테스트 방송으로 파이프라인 검증">
               🧪 테스트
+            </button>
+          )}
+          {canCloneLast && (
+            <button onClick={handleCloneLast}
+              className="text-xs bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-full font-semibold flex items-center gap-1"
+              title={`지난 방송 "${lastBc.title}" 그대로 시작`}>
+              ♻️ 지난 방송 그대로
             </button>
           )}
           {canQuickStart && (

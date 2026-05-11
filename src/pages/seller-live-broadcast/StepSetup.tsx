@@ -3,7 +3,7 @@
  *
  * 라이브 시작 전 RTMP 설정 / OBS 가이드 / 카메라 미리보기 / 송출 진단.
  */
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { ScheduledBroadcastWaiting } from '../SellerLiveBroadcast.WaitingScreens
 import { InlineCameraPreview } from '@/components/streaming/InlineCameraPreview'
 import { BroadcastDiagnostic } from '@/components/streaming/BroadcastDiagnostic'
 import BroadcastPreflightCheck from '@/components/streaming/BroadcastPreflightCheck'
+import { toast } from '@/hooks/useToast'
 // 🛡️ 2026-05-10: BrowserBroadcaster 는 OME 가용 시에만 로드 (~50KB getUserMedia + WebRTC peer 코드)
 const BrowserBroadcaster = lazy(() => import('@/components/streaming/BrowserBroadcaster'))
 import type { StreamMethod } from '../SellerLiveBroadcast.storage'
@@ -37,6 +38,28 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   const [showAdvanced, setShowAdvanced] = useState(false)
   // 대기 중 화면 잠금 방지 (Prism QR 스캔 중, YouTube Studio 확인 중 화면 꺼짐 방지)
   useScreenWakeLock(true)
+  const orientationAlertedRef = useRef(false)
+
+  // 모바일 가로 전환 알림 — 방송 중 가로 모드는 카메라 각도 변경 주의
+  useEffect(() => {
+    const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent)
+    if (!isMobile) return
+    const handleOrientation = () => {
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches
+      if (isLandscape && !orientationAlertedRef.current) {
+        orientationAlertedRef.current = true
+        toast.info('📱 가로 모드 감지 — 카메라 각도가 변경됩니다. 시청자 화면을 확인하세요.')
+      } else if (!isLandscape) {
+        orientationAlertedRef.current = false
+      }
+    }
+    window.addEventListener('orientationchange', handleOrientation)
+    window.screen?.orientation?.addEventListener('change', handleOrientation)
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientation)
+      window.screen?.orientation?.removeEventListener('change', handleOrientation)
+    }
+  }, [])
 
   // OME 가용성 조회 (서버가 살아있고 OME_HOST env 가 설정되어 있으면 true)
   useEffect(() => {

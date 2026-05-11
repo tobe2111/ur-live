@@ -5,8 +5,9 @@
  * 30초 후 "데이터 없음" 으로 멈추는 사고를 사전 방지.
  */
 import { useEffect, useState } from 'react'
-import { CheckCircle2, AlertTriangle, Loader2, Info } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Loader2, Info, RefreshCw } from 'lucide-react'
 import { hasOBSExtension, loadOBSConfig } from '@/lib/obs-websocket'
+import { getPreflightCache, savePreflightCache, type PreflightCacheEntry } from '@/pages/SellerLiveBroadcast.storage'
 
 type CheckStatus = 'pending' | 'pass' | 'warn' | 'fail'
 
@@ -18,15 +19,27 @@ interface CheckResult {
 }
 
 interface Props {
-  method: 'quick' | 'youtube' | 'obs' | 'prism'
+  method: 'quick' | 'youtube' | 'youtube-webcam' | 'obs' | 'prism'
   onAllChecked?: (allPass: boolean) => void
 }
 
 export default function BroadcastPreflightCheck({ method, onAllChecked }: Props) {
   const [results, setResults] = useState<CheckResult[]>([])
   const [running, setRunning] = useState(false)
+  const [fromCache, setFromCache] = useState(false)
 
-  async function runChecks() {
+  async function runChecks(forceRefresh = false) {
+    if (!forceRefresh) {
+      const cached = getPreflightCache()
+      if (cached) {
+        setResults(cached.results as CheckResult[])
+        setFromCache(true)
+        const allPass = cached.results.every(i => i.status === 'pass')
+        onAllChecked?.(allPass)
+        return
+      }
+    }
+    setFromCache(false)
     setRunning(true)
     const items: CheckResult[] = []
 
@@ -161,6 +174,7 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
 
     setResults(items)
     setRunning(false)
+    savePreflightCache(items as PreflightCacheEntry['results'])
     const allPass = items.every(i => i.status === 'pass')
     onAllChecked?.(allPass)
   }
@@ -179,11 +193,20 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
         <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
           <Info className="w-4 h-4 text-blue-500" /> 사전 점검
         </p>
-        {!running && (
-          <span className={`text-[11px] font-bold ${failed > 0 ? 'text-red-600' : warned > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-            {failed > 0 ? `❌ ${failed}건 실패` : warned > 0 ? `⚠️ ${warned}건 주의` : '✅ 모두 정상'}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {fromCache && !running && (
+            <button onClick={() => runChecks(true)}
+              className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-0.5"
+              title="다시 측정">
+              <RefreshCw className="w-3 h-3" /> 재측정
+            </button>
+          )}
+          {!running && results.length > 0 && (
+            <span className={`text-[11px] font-bold ${failed > 0 ? 'text-red-600' : warned > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+              {failed > 0 ? `❌ ${failed}건 실패` : warned > 0 ? `⚠️ ${warned}건 주의` : '✅ 모두 정상'}
+            </span>
+          )}
+        </div>
       </div>
       <div className="space-y-1.5">
         {running ? (
