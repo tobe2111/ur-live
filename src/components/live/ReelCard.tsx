@@ -932,26 +932,43 @@ function ReelCardImpl({
         </div>
       )}
       
-      {/* 배경 레이어: YouTube 썸네일 → 그라데이션 폴백 (순서대로) */}
-      {stream.youtube_video_id ? (
-        <img
-          src={`https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover -z-10"
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          onError={(e) => {
-            // hqdefault 도 실패 시 (매우 드뭄) 숨김
-            const img = e.currentTarget
-            if (!img.src.includes('hqdefault')) {
-              img.src = `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
-            } else {
-              img.style.display = 'none'
-            }
-          }}
-        />
-      ) : null}
+      {/* 배경 레이어: custom 썸네일 → DB thumbnail_url → YouTube hqdefault → 숨김 (404 시).
+          🛡️ 2026-05-11: youtube_video_id 가 있어도 YouTube 비디오가 삭제되면 404 (콘솔 스팸). 셀러 업로드 / DB 저장 썸네일 우선. */}
+      {(() => {
+        const candidates: string[] = []
+        const customThumb = (stream as { custom_thumbnail_url?: string }).custom_thumbnail_url
+        if (customThumb) candidates.push(customThumb)
+        if (stream.thumbnail_url && !candidates.includes(stream.thumbnail_url)) candidates.push(stream.thumbnail_url)
+        if (stream.youtube_video_id) candidates.push(`https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`)
+        if (candidates.length === 0) return null
+        return (
+          <img
+            src={candidates[0]}
+            data-fallback-index="0"
+            data-fallbacks={JSON.stringify(candidates)}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover -z-10"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            onError={(e) => {
+              const img = e.currentTarget
+              try {
+                const list: string[] = JSON.parse(img.dataset.fallbacks || '[]')
+                const idx = parseInt(img.dataset.fallbackIndex || '0') + 1
+                if (idx < list.length) {
+                  img.dataset.fallbackIndex = String(idx)
+                  img.src = list[idx]
+                } else {
+                  img.style.display = 'none'
+                }
+              } catch {
+                img.style.display = 'none'
+              }
+            }}
+          />
+        )
+      })()}
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
       {/* YouTube Player Container */}

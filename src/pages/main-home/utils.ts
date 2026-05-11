@@ -18,7 +18,9 @@ export function detectRegionFromCoords(lat: number, lng: number): string | null 
 }
 
 export function getThumb(s: LiveStream) {
-  return s.thumbnail_url || s.image_url || (s.youtube_video_id ? `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg` : null)
+  // 🛡️ 2026-05-11: custom_thumbnail_url (셀러 업로드, 영구) → thumbnail_url (방송용) → image_url → YouTube hqdefault (404 가능, 마지막 fallback)
+  const custom = (s as { custom_thumbnail_url?: string }).custom_thumbnail_url
+  return custom || s.thumbnail_url || s.image_url || (s.youtube_video_id ? `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg` : null)
 }
 
 export function disc(p: number, op?: number) {

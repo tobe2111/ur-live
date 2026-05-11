@@ -160,8 +160,23 @@ export interface LiveStreamsTable {
   title: string
   description: string | null
   youtube_video_id: string
+  youtube_broadcast_id: string | null
+  youtube_stream_key: string | null
+  youtube_live_chat_id: string | null
+  rtmp_url: string | null
+  rtmp_key: string | null
+  youtube_embed_url: string | null
+  thumbnail_url: string | null
+  custom_thumbnail_url: string | null   // 2026-05-10: 셀러 업로드 (YouTube auto thumb 와 별도)
   status: string                // 'scheduled' | 'live' | 'ended'
   current_product_id: number | null
+  current_viewers: number | null
+  total_viewers: number | null
+  peak_viewers: number | null
+  like_count: number | null
+  last_error: string | null     // 2026-05-10: OME push / YouTube broadcast 자동감지 실패 시 셀러 진단용
+  started_at: string | null     // 2026-05-11: admission webhook 이 status='live' 와 동시에 박음
+  ended_at: string | null
   created_at: string
   updated_at: string
   seller_id: number | null

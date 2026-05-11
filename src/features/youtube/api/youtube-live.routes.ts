@@ -682,32 +682,50 @@ app.post('/live/:id/end', async (c) => {
       }, 404)
     }
 
-    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
-    
-    if (!accessToken) {
-      return c.json({
-        success: false,
-        error: 'YouTube authentication required'
-      }, 401)
+    // 🛡️ 2026-05-11: YouTube broadcast 정리는 best-effort.
+    // - broadcast_id 가 없거나 (웹캠/OME 모드에서 admission 폴링 실패), YouTube API 가 404 (broadcast 자동 정리됨),
+    //   토큰 만료, 등의 경우에 DB status='ended' 까지 막히면 셀러가 영영 정리 못 함.
+    // - 따라서 YouTube 호출은 try/catch 후 무시, DB ended 처리는 무조건 진행.
+    let youtubeEndError: string | null = null
+    const broadcastId = stream.youtube_broadcast_id as string | null
+    if (broadcastId) {
+      try {
+        const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+        const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+        if (accessToken) {
+          await youtubeService.endBroadcast(accessToken, broadcastId)
+        } else {
+          youtubeEndError = 'no_access_token'
+        }
+      } catch (ytErr) {
+        // 404 (broadcast 없음) / 403 (권한) 등은 모두 silent skip — DB 정리는 계속
+        youtubeEndError = ytErr instanceof Error ? ytErr.message : String(ytErr)
+        console.warn('[YouTube Live End] broadcast 정리 실패 (DB 만 ended 처리):', youtubeEndError)
+      }
     }
 
-    // End broadcast
-    await youtubeService.endBroadcast(accessToken, stream.youtube_broadcast_id as string)
-
-    // Update database
+    // DB 는 무조건 ended 처리 (셀러가 다음 방송 만들 수 있게)
     await c.env.DB.prepare(`
-      UPDATE live_streams 
+      UPDATE live_streams
       SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(streamId).run()
 
     return c.json({
       success: true,
-      message: 'Stream ended successfully'
+      message: 'Stream ended successfully',
+      ...(youtubeEndError ? { warning: `YouTube 정리 skip: ${youtubeEndError}` } : {}),
     })
   } catch (error: unknown) {
     console.error('[YouTube Live End] Error:', error)
+    // DB 정리만이라도 시도
+    try {
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+    } catch { /* ignore */ }
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to end stream'
@@ -1498,23 +1516,32 @@ export async function omeAdmissionHandler(
 
   // 🛡️ 2026-05-10: 영구 stream key 사용 시 YouTube 가 자동 broadcast 생성 → video_id 조회 필요.
   // 시청자 페이지에서 embed 표시하려면 youtube_video_id 가 DB 에 있어야 함.
-  // YouTube 가 broadcast 만드는 데 5-15초 정도 걸리므로 background 에서 폴링.
+  // 🛡️ 2026-05-11: 30s timeout → 약 60s 로 확장 + 초기 폴링 간격 단축 (2s 부터 시작).
+  //   대부분 broadcast 가 5-15s 안에 만들어지므로 빠른 첫 hit + 늦은 케이스도 안전 cover.
+  //   못 찾으면 last_error 에 기록 → 셀러 진단 페이지에서 노출.
   if (waitUntil && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET) {
     waitUntil((async () => {
       try {
         const youtubeService = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID!, env.YOUTUBE_CLIENT_SECRET!)
         const accessToken = await getValidAccessToken(env.DB, sellerId, youtubeService)
-        if (!accessToken) return
-        // 최대 6번 (5초 간격, 30초) 폴링
-        for (let i = 0; i < 6; i++) {
-          await new Promise(r => setTimeout(r, 5000))
+        if (!accessToken) {
+          await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+            .bind('YouTube OAuth 토큰 없음 — video_id 조회 불가. /seller/youtube/connect 에서 재인증', streamId)
+            .run().catch(() => {})
+          return
+        }
+        // 폴링 간격: 2,3,4,5,6,7,8,9,10,10s (총 64s, 10회). 첫 hit 가 빨라 평균 5-10s 안에 끝남.
+        const intervals = [2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 10000]
+        let videoId: string | undefined
+        for (let i = 0; i < intervals.length; i++) {
+          await new Promise(r => setTimeout(r, intervals[i]))
           const res = await fetch(
             'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&broadcastStatus=active&mine=true&maxResults=5',
             { headers: { Authorization: `Bearer ${accessToken}` } }
           )
           if (!res.ok) continue
           const data = await res.json() as { items?: Array<{ id: string }> }
-          const videoId = data.items?.[0]?.id
+          videoId = data.items?.[0]?.id
           if (videoId) {
             await env.DB.prepare(`
               UPDATE live_streams
@@ -1607,8 +1634,17 @@ export async function omeAdmissionHandler(
             return
           }
         }
+        // 🛡️ 2026-05-11: 모든 폴링 끝났는데 못 찾음 → 셀러 진단에 노출.
+        if (!videoId) {
+          await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+            .bind('YouTube broadcast 자동 감지 실패 (60s timeout). YouTube Studio 에서 라이브가 활성인지 확인하거나, OAuth 재인증을 시도해주세요.', streamId)
+            .run().catch(() => {})
+        }
       } catch (e) {
         console.error('[OME admission] video_id fetch failed', e)
+        await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+          .bind(`video_id 폴링 예외: ${String((e as Error)?.message || e).substring(0, 200)}`, streamId)
+          .run().catch(() => {})
       }
     })())
   }
