@@ -76,6 +76,31 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     }
   }, [])
 
+  // 🛡️ 2026-05-11 P0-#1: 탭/브라우저 닫힘 시 좀비 스트림 방지.
+  //   beforeunload → sendBeacon 으로 /live/:id/end 호출 (비동기 fetch 는 unload 시 차단됨).
+  //   sendBeacon 은 페이지 unload 후에도 백그라운드로 전송 보장.
+  useEffect(() => {
+    function handleUnload() {
+      // pc 가 살아있는 동안만 (방송 중) cleanup 요청
+      if (!pcRef.current || pcRef.current.connectionState !== 'connected') return
+      try {
+        // Authorization 헤더는 sendBeacon 에 못 실음 → 토큰을 body 에 함께 전송.
+        const token = localStorage.getItem('seller_token') || localStorage.getItem('admin_token') || ''
+        const blob = new Blob(
+          [JSON.stringify({ stream_id: streamId, token, reason: 'tab_close' })],
+          { type: 'application/json' }
+        )
+        navigator.sendBeacon(`/api/seller/youtube/live/${streamId}/end-beacon`, blob)
+      } catch { /* best-effort */ }
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    window.addEventListener('pagehide', handleUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+      window.removeEventListener('pagehide', handleUnload)
+    }
+  }, [streamId])
+
   async function startBroadcast() {
     setErrorMsg(null)
 

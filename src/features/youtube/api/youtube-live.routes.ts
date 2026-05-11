@@ -1074,6 +1074,52 @@ app.post('/live/:id/end', async (c) => {
 })
 
 /**
+ * POST /api/youtube/live/:id/end-beacon
+ * 🛡️ 2026-05-11 P0-#1: sendBeacon 전용 종료 endpoint.
+ *   탭/브라우저 닫힘 시 Authorization 헤더 못 보냄 → 토큰을 body 로 받아 검증.
+ *   좀비 스트림 방지용 best-effort cleanup. 204 No Content 만 응답 (beacon 응답 무시됨).
+ */
+app.post('/live/:id/end-beacon', async (c) => {
+  const streamId = parseInt(c.req.param('id'))
+  if (!streamId) return c.body(null, 204)
+
+  let body: { token?: string; reason?: string } = {}
+  try { body = await c.req.json() } catch { /* ignore */ }
+
+  // body 의 token 으로 인증 (sendBeacon 은 Authorization 헤더 불가)
+  const sellerId = body.token ? await getSellerIdFromToken(`Bearer ${body.token}`, c.env.JWT_SECRET) : null
+  if (!sellerId) return c.body(null, 204)
+
+  try {
+    const stream = await c.env.DB.prepare(`
+      SELECT youtube_broadcast_id, status FROM live_streams WHERE id = ? AND seller_id = ?
+    `).bind(streamId, sellerId).first<{ youtube_broadcast_id: string | null; status: string }>()
+
+    if (!stream || stream.status === 'ended') return c.body(null, 204)
+
+    // YouTube broadcast 종료 (best-effort)
+    if (stream.youtube_broadcast_id && c.env.YOUTUBE_CLIENT_ID && c.env.YOUTUBE_CLIENT_SECRET) {
+      try {
+        const yt = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
+        const token = await getValidAccessToken(c.env.DB, sellerId, yt)
+        if (token) await yt.endBroadcast(token, stream.youtube_broadcast_id)
+      } catch (e) { console.warn('[end-beacon] YouTube end skip:', e) }
+    }
+
+    await c.env.DB.prepare(`
+      UPDATE live_streams
+      SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP, last_error = ?
+      WHERE id = ?
+    `).bind(`auto-ended: ${body.reason || 'tab_close'}`, streamId).run()
+
+    await stopOmePush(c.env, streamId)
+  } catch (e) {
+    console.error('[end-beacon] error', e)
+  }
+  return c.body(null, 204)
+})
+
+/**
  * POST /api/youtube/live/:id/notify-followers
  *
  * 🛡️ 2026-05-07: 라이브 시작 시 셀러 팔로워에게 알림톡 자동 발송 (1회).
