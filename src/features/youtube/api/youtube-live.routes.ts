@@ -673,6 +673,163 @@ app.get('/live/:id/status', async (c) => {
 })
 
 /**
+ * GET /api/youtube/live/:id/diagnose
+ *
+ * 🛡️ 2026-05-11: 라이브 파이프라인 전수 진단.
+ *   한 stream 의 모든 단계 상태를 한 번에 노출:
+ *     DB → OME publish → OME push → YouTube broadcast → 시청자 embed
+ *   어디서 막혔는지 한 응답으로 즉시 확인 가능.
+ */
+app.get('/live/:id/diagnose', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  // 1. DB 레코드
+  const dbStream = await c.env.DB.prepare(`
+    SELECT id, seller_id, status, started_at, ended_at, last_error,
+           youtube_video_id, youtube_broadcast_id, youtube_stream_key,
+           rtmp_url, rtmp_key, youtube_embed_url, title, created_at
+    FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{
+    id: number; seller_id: number; status: string; started_at: string | null; ended_at: string | null;
+    last_error: string | null; youtube_video_id: string | null; youtube_broadcast_id: string | null;
+    youtube_stream_key: string | null; rtmp_url: string | null; rtmp_key: string | null;
+    youtube_embed_url: string | null; title: string; created_at: string;
+  }>()
+
+  if (!dbStream) return c.json({ success: false, error: 'Stream not found' }, 404)
+
+  const diagnostics: Record<string, unknown> = {
+    db: {
+      id: dbStream.id,
+      title: dbStream.title,
+      status: dbStream.status,
+      started_at: dbStream.started_at,
+      ended_at: dbStream.ended_at,
+      last_error: dbStream.last_error,
+      youtube_video_id: dbStream.youtube_video_id,
+      youtube_broadcast_id: dbStream.youtube_broadcast_id,
+      has_rtmp_key: !!dbStream.rtmp_key,
+      rtmp_url: dbStream.rtmp_url,
+      youtube_embed_url: dbStream.youtube_embed_url,
+      created_at: dbStream.created_at,
+    },
+  }
+
+  // 2. OME stream 인입 여부 + push 등록 여부
+  if (c.env.OME_HOST && c.env.OME_API_TOKEN) {
+    const auth = btoa(c.env.OME_API_TOKEN)
+    const omeBase = `http://${c.env.OME_HOST}:8081/v1/vhosts/default/apps/app`
+    // 2a. streams 조회
+    try {
+      const sRes = await fetch(`${omeBase}/streams`, { headers: { Authorization: `Basic ${auth}` } })
+      const sData = sRes.ok ? await sRes.json().catch(() => null) as { response?: string[] } | null : null
+      const streamName = `s${streamId}`
+      diagnostics.ome_stream = {
+        ome_reachable: sRes.ok,
+        all_streams: sData?.response || [],
+        this_stream_present: (sData?.response || []).includes(streamName),
+        expected_name: streamName,
+      }
+    } catch (e) {
+      diagnostics.ome_stream = { error: String((e as Error)?.message || e) }
+    }
+    // 2b. pushes 조회
+    try {
+      const pRes = await fetch(`${omeBase}:pushes`, {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const pData = pRes.ok ? await pRes.json().catch(() => null) as { response?: Array<{ id: string; state?: string; url?: string; sentBytes?: number; sentTime?: number }> } | null : null
+      const pushId = `youtube-${streamId}`
+      const ourPush = (pData?.response || []).find((p) => p.id === pushId)
+      diagnostics.ome_push = {
+        pushes_api_ok: pRes.ok,
+        all_push_ids: (pData?.response || []).map((p) => p.id),
+        our_push_present: !!ourPush,
+        our_push_state: ourPush?.state,
+        our_push_url: ourPush?.url,
+        our_push_sent_bytes: ourPush?.sentBytes,
+        expected_id: pushId,
+      }
+    } catch (e) {
+      diagnostics.ome_push = { error: String((e as Error)?.message || e) }
+    }
+  } else {
+    diagnostics.ome_stream = { error: 'OME_HOST or OME_API_TOKEN not configured' }
+  }
+
+  // 3. YouTube broadcast 상태
+  if (dbStream.youtube_broadcast_id && c.env.YOUTUBE_CLIENT_ID && c.env.YOUTUBE_CLIENT_SECRET) {
+    try {
+      const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
+      const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+      if (accessToken) {
+        const ytRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status,contentDetails&id=${encodeURIComponent(dbStream.youtube_broadcast_id)}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        )
+        const ytData = ytRes.ok ? await ytRes.json().catch(() => null) as { items?: Array<{ id: string; status?: { lifeCycleStatus?: string; privacyStatus?: string }; contentDetails?: { enableAutoStart?: boolean; boundStreamId?: string } }> } | null : null
+        const broadcast = ytData?.items?.[0]
+        diagnostics.youtube_broadcast = {
+          api_ok: ytRes.ok,
+          api_status: ytRes.status,
+          found: !!broadcast,
+          life_cycle_status: broadcast?.status?.lifeCycleStatus,
+          privacy_status: broadcast?.status?.privacyStatus,
+          enable_auto_start: broadcast?.contentDetails?.enableAutoStart,
+          bound_stream_id: broadcast?.contentDetails?.boundStreamId,
+        }
+        // 3b. liveStream status (RTMP 인입 받고 있는지)
+        if (broadcast?.contentDetails?.boundStreamId) {
+          const lsRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/liveStreams?part=id,status&id=${encodeURIComponent(broadcast.contentDetails.boundStreamId)}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } },
+          )
+          const lsData = lsRes.ok ? await lsRes.json().catch(() => null) as { items?: Array<{ status?: { streamStatus?: string; healthStatus?: { status?: string } } }> } | null : null
+          diagnostics.youtube_stream = {
+            stream_status: lsData?.items?.[0]?.status?.streamStatus,
+            health_status: lsData?.items?.[0]?.status?.healthStatus?.status,
+          }
+        }
+      } else {
+        diagnostics.youtube_broadcast = { error: 'no access token (OAuth expired?)' }
+      }
+    } catch (e) {
+      diagnostics.youtube_broadcast = { error: String((e as Error)?.message || e) }
+    }
+  } else {
+    diagnostics.youtube_broadcast = { error: 'no youtube_broadcast_id' }
+  }
+
+  // 4. 종합 진단
+  const issues: string[] = []
+  const ome_stream = diagnostics.ome_stream as { this_stream_present?: boolean }
+  const ome_push = diagnostics.ome_push as { our_push_present?: boolean; our_push_state?: string; our_push_sent_bytes?: number }
+  const yt = diagnostics.youtube_broadcast as { life_cycle_status?: string; enable_auto_start?: boolean }
+  const ys = diagnostics.youtube_stream as { stream_status?: string; health_status?: string } | undefined
+
+  if (!ome_stream?.this_stream_present) issues.push(`OME 에 stream "s${streamId}" 미존재 — 셀러가 송출 시작 안 했거나 OME admission 실패`)
+  if (!ome_push?.our_push_present) issues.push(`OME 에 push "youtube-${streamId}" 미등록 — admission 의 startPush 실패. last_error 확인`)
+  else if (ome_push.our_push_state !== 'pulling' && ome_push.our_push_state !== 'connected') issues.push(`OME push state=${ome_push.our_push_state} (정상: pulling/connected)`)
+  else if ((ome_push.our_push_sent_bytes ?? 0) === 0) issues.push(`OME push 등록은 됐지만 sentBytes=0 — RTMP 연결 실패 가능 (YouTube stream key 불일치?)`)
+  if (yt?.life_cycle_status && !['live', 'testing'].includes(yt.life_cycle_status)) issues.push(`YouTube broadcast lifeCycleStatus=${yt.life_cycle_status} — RTMP 신호 미수신`)
+  if (ys?.stream_status && ys.stream_status !== 'active') issues.push(`YouTube liveStream status=${ys.stream_status} (정상: active)`)
+  if (yt?.life_cycle_status === 'testing') issues.push(`YouTube broadcast 가 testing 상태 — 시청자에게 검은 화면. transition 필요.`)
+
+  diagnostics.summary = {
+    healthy: issues.length === 0,
+    issues,
+  }
+
+  return c.json({ success: true, data: diagnostics })
+})
+
+/**
  * GET /api/youtube/live/:id/youtube-stats
  * YouTube Live API 로부터 실시간 시청자/좋아요 등 조회.
  * Step 3 대시보드에서 OBS 미연결 사용자도 metrics 확인 가능.
