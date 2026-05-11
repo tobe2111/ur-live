@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import ReelCard from '@/components/live/ReelCard'
+import ReelErrorBoundary from '@/components/live/ReelErrorBoundary'
 import '@/utils/console-suppressor'
 import TopNav from './live-page/TopNav'
 import type { Stream, ReelData } from './live-page/types'
@@ -37,12 +38,17 @@ export default function LivePageV2() {
   // 🛡️ 2026-05-07: reelRefs 는 useEffect 보다 먼저 실행되므로 노드를 별도 저장.
   //   observer 생성 후 pendingNodes 를 일괄 observe 해 race condition 방어.
   const pendingNodesRef = useRef<HTMLDivElement[]>([])
-  
+
   const [currentStream, setCurrentStream] = useState<Stream | null>(null)
-  
-  // 실시간 시청자 수
-  const [viewerCount, setViewerCount] = useState<number>(0)
-  const storeSetViewerCount = useStreamStore(s => s.setViewerCount)
+
+  // 페이지네이션 상태 (lazy loading)
+  const STREAM_PAGE_SIZE = 5
+  const streamOffsetRef = useRef(0)
+  const hasMoreStreamsRef = useRef(true)
+  const loadingMoreRef = useRef(false)
+
+  // 시청자 수: DO WebSocket (ReelCard 내부) → store 로 전달, 여기선 store 읽기만
+  const viewerCount = useStreamStore(s => s.viewerCount)
 
   // ✅ UX C12 FIX: Session fixation 취약점 제거 (URL-param → localStorage 블록 삭제).
   // 인증 세션은 /auth/kakao/*/callback 라우트에서 중앙 처리됨. 임의의 URL에서
@@ -138,12 +144,14 @@ export default function LivePageV2() {
             if (import.meta.env.DEV) console.error('[LivePageV2] Single stream API failed:', error)
           }
         } else {
-          // HOMEPAGE LINK: Load ALL active streams
+          // HOMEPAGE LINK: Load first page of live streams
           try {
-            const streamsResponse = await api.get('/api/streams')
-            
+            const streamsResponse = await api.get(`/api/streams?status=live&limit=${STREAM_PAGE_SIZE}&offset=0`)
+
             if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
               streams = streamsResponse.data.data
+              streamOffsetRef.current = streams.length
+              hasMoreStreamsRef.current = streamsResponse.data.pagination?.has_more ?? false
             }
           } catch (error) {
             if (import.meta.env.DEV) console.error('[LivePageV2] Streams API failed:', error)
@@ -201,6 +209,38 @@ export default function LivePageV2() {
     loadReels()
   }, [streamId])
 
+  // 스트림 추가 로드 (lazy loading)
+  const loadMoreReels = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMoreStreamsRef.current || isDirectLink) return
+    loadingMoreRef.current = true
+    try {
+      const res = await api.get(`/api/streams?status=live&limit=${STREAM_PAGE_SIZE}&offset=${streamOffsetRef.current}`)
+      if (res.data.success && res.data.data?.length > 0) {
+        const newStreams: Stream[] = res.data.data
+        streamOffsetRef.current += newStreams.length
+        hasMoreStreamsRef.current = res.data.pagination?.has_more ?? false
+        setReels(prev => [
+          ...prev,
+          ...newStreams.map(s => ({ stream: s, product: s.current_product || null })),
+        ])
+      } else {
+        hasMoreStreamsRef.current = false
+      }
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LivePageV2] loadMoreReels failed:', e)
+    } finally {
+      loadingMoreRef.current = false
+    }
+  }, [isDirectLink])
+
+  // 마지막 2개 카드 이내로 접근하면 다음 페이지 프리페치
+  useEffect(() => {
+    if (reels.length === 0 || isDirectLink) return
+    if (activeIndex >= reels.length - 2 && hasMoreStreamsRef.current) {
+      loadMoreReels()
+    }
+  }, [activeIndex, reels.length, isDirectLink, loadMoreReels])
+
   // Update URL and currentStream when activeIndex changes (user scrolls)
   useEffect(() => {
     if (reels.length === 0 || activeIndex < 0 || activeIndex >= reels.length) return
@@ -231,18 +271,16 @@ export default function LivePageV2() {
     }
   }, [reels])
 
-  // 🔥 KV 기반 실시간 시청자 수 추적 (Session-based)
+  // 🔥 KV 기반 시청자 세션 추적 (Heartbeat) — 시청자 수는 DO WebSocket 이 담당
   useEffect(() => {
     if (!currentStream?.id) return
 
-    // 세션 ID 생성 또는 가져오기
     let sessionId = sessionStorage.getItem('viewer_session_id')
     if (!sessionId) {
       sessionId = crypto.randomUUID()
       sessionStorage.setItem('viewer_session_id', sessionId)
     }
 
-    // 시청자 등록 (Heartbeat)
     const joinViewer = async () => {
       try {
         await api.post(`/api/streams/${currentStream.id}/viewer/join`, {}, {
@@ -253,60 +291,25 @@ export default function LivePageV2() {
       }
     }
 
-    // 🛡️ 2026-04-22 배치 163: exponential backoff 재연결 (P0 fix)
-    //   이전: 실패해도 10s 고정 interval 유지 → 네트워크 장애 시 복구 불가.
-    //   개선: 연속 실패 시 backoff 10s → 20s → 40s → 80s (최대 2분),
-    //   성공 시 즉시 복귀.
-    let consecutiveFailures = 0
-    let viewerCountTimer: ReturnType<typeof setTimeout> | null = null
-    let cancelled = false
-
-    const fetchViewerCount = async () => {
-      try {
-        const response = await api.get(`/api/streams/${currentStream.id}/viewer-count`)
-        if (response.data.success) {
-          setViewerCount(response.data.data.viewer_count)
-          storeSetViewerCount(response.data.data.viewer_count)
-          consecutiveFailures = 0  // 성공 시 리셋
-        }
-      } catch (error) {
-        consecutiveFailures++
-        if (import.meta.env.DEV) console.warn(`[LivePageV2] viewer count fetch failed (streak ${consecutiveFailures}):`, error)
-      } finally {
-        if (cancelled) return
-        // backoff: 10s base × 2^min(failures, 3) = 10/20/40/80s
-        const delay = 10_000 * Math.pow(2, Math.min(consecutiveFailures, 3))
-        viewerCountTimer = setTimeout(fetchViewerCount, delay)
-      }
-    }
-
-    // 초기 등록
     joinViewer()
-    fetchViewerCount()
 
-    // 30초마다 Heartbeat 전송 (heartbeat TTL 120초) — 백그라운드 탭 skip
+    // 30초마다 Heartbeat (TTL 120s) — 백그라운드 탭 skip
     const heartbeatInterval = setInterval(() => { if (!document.hidden) joinViewer() }, 30000)
 
-    // 🛡️ 2026-04-23 배치 164: 페이지 이탈 시 leave beacon (P1 분석 정확도)
-    //   sendBeacon 은 페이지 언로드에도 안정적으로 전송. watch_duration 계산용.
     const leaveBeacon = () => {
       try {
         const url = `/api/streams/${currentStream.id}/viewer/leave`
         const blob = new Blob([JSON.stringify({ session_id: sessionId })], { type: 'application/json' })
-        // sendBeacon 은 커스텀 헤더 불가 → body 에 세션 포함 + 쿼리스트링 보조
         navigator.sendBeacon?.(`${url}?s=${encodeURIComponent(sessionId)}`, blob)
       } catch { /* best-effort */ }
     }
-    const onPageHide = () => leaveBeacon()
-    window.addEventListener('pagehide', onPageHide)
-    window.addEventListener('beforeunload', onPageHide)
+    window.addEventListener('pagehide', leaveBeacon)
+    window.addEventListener('beforeunload', leaveBeacon)
 
     return () => {
-      cancelled = true
       clearInterval(heartbeatInterval)
-      if (viewerCountTimer) clearTimeout(viewerCountTimer)
-      window.removeEventListener('pagehide', onPageHide)
-      window.removeEventListener('beforeunload', onPageHide)
+      window.removeEventListener('pagehide', leaveBeacon)
+      window.removeEventListener('beforeunload', leaveBeacon)
       leaveBeacon()
     }
   }, [currentStream?.id])
@@ -403,11 +406,13 @@ export default function LivePageV2() {
             data-index={index}
             className="h-dvh w-full snap-start snap-always"
           >
-            <ReelCard 
-              reel={reel} 
-              isActive={activeIndex === index}
-              isCurrentProduct={currentStream?.current_product_id === reel.product?.id}
-            />
+            <ReelErrorBoundary>
+              <ReelCard
+                reel={reel}
+                isActive={activeIndex === index}
+                isCurrentProduct={currentStream?.current_product_id === reel.product?.id}
+              />
+            </ReelErrorBoundary>
           </div>
         ))}
       </div>

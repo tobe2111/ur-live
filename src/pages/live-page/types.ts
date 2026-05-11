@@ -22,6 +22,7 @@ export interface Stream {
   scheduled_at?: string
   seller_name?: string
   seller_tiktok?: string
+  seller_shipping_fee?: number
   created_at?: string
   product_display_mode?: 'current_only' | 'all'
 }

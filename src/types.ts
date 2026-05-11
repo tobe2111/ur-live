@@ -114,7 +114,11 @@ export type WSMessageType =
   | 'viewer_count'
   | 'chat_message'
   | 'stream_status'
-  | 'donation';
+  | 'donation'
+  | 'pinned_message'
+  | 'set_pinned_message'
+  | 'set_blocked_keywords'
+  | 'flash_sale';
 
 export interface WSMessage {
   type: WSMessageType;

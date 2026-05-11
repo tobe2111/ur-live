@@ -142,6 +142,7 @@ streamsRouter.get('/', async (c) => {
           s.name             AS seller_name,
           ${withTier ? 's.tier             AS seller_tier,' : "NULL              AS seller_tier,"}
           ${withTier ? 'COALESCE(s.exposure_weight, 1.0) AS exposure_weight,' : '1.0               AS exposure_weight,'}
+          ${withTier ? 'COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS seller_shipping_fee,' : '3000              AS seller_shipping_fee,'}
           cp.id              AS current_product_id,
           cp.name            AS current_product_name,
           cp.price           AS current_product_price,
@@ -206,6 +207,7 @@ streamsRouter.get('/', async (c) => {
         seller_id: r.seller_id,
         seller_name: r.seller_name,
         seller_image: r.seller_image,
+        seller_shipping_fee: (r as any).seller_shipping_fee ?? 3000,
         created_at: r.created_at,
         updated_at: r.updated_at,
         current_product: r.current_product_id

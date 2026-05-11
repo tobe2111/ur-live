@@ -31,6 +31,7 @@ interface YTPlayer {
   playVideo(): void
   pauseVideo(): void
   unMute(): void
+  isMuted(): boolean
   setVolume(volume: number): void
   destroy(): void
   getCurrentTime(): number
@@ -62,6 +63,8 @@ interface Stream {
   scheduled_at?: string
   seller_name?: string
   seller_tiktok?: string
+  seller_shipping_fee?: number
+  donation_goal?: number | null
   created_at?: string
   product_display_mode?: 'current_only' | 'all'
 }
@@ -546,8 +549,24 @@ function ReelCardImpl({
         playerRef.current.unMute()
         playerRef.current.setVolume(100)
         playerRef.current.playVideo()
-        setIsMuted(false)
         setShowPlayButton(false)
+        // iOS Safari unmute 비동기 확인 (최대 3회, 500ms 간격)
+        let retries = 0
+        const verifyUnmute = setInterval(() => {
+          retries++
+          if (!playerRef.current) { clearInterval(verifyUnmute); return }
+          try {
+            if (!playerRef.current.isMuted()) {
+              setIsMuted(false)
+              clearInterval(verifyUnmute)
+            } else if (retries < 3) {
+              playerRef.current.unMute()
+            } else {
+              setIsMuted(false) // 3회 시도 후 UI 업데이트만
+              clearInterval(verifyUnmute)
+            }
+          } catch { clearInterval(verifyUnmute) }
+        }, 500)
         return
       } catch (error) {
         if (import.meta.env.DEV) console.error('[ReelCard] Failed to start video:', error)
@@ -819,8 +838,11 @@ function ReelCardImpl({
     setCheckingOut(true)
     try {
       // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
+      localStorage.setItem('lastViewedLiveId', String(stream.id))
+      localStorage.setItem('lastViewedLiveAt', String(Date.now()))
       navigate('/checkout', {
         state: {
+          returnUrl: `/live/${stream.id}`,
           directPurchase: [{
             id: `live_${currentProduct.id}_${Date.now()}`,
             product_id: currentProduct.id,
@@ -835,7 +857,7 @@ function ReelCardImpl({
             item_total: currentProduct.price,
             seller_id: currentProduct.seller_id ?? null,
             seller_name: (currentProduct as any).seller_name ?? null,
-            shipping_fee: 3000,
+            shipping_fee: stream.seller_shipping_fee ?? 3000,
             free_shipping_threshold: 0,
             option_id: null,
             option_value: null,

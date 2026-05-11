@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send } from 'lucide-react'
+import { Send, Pin, Shield } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import ViewerLoyaltyBadge from './ViewerLoyaltyBadge'
@@ -29,6 +29,10 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
   const [ytMessages, setYtMessages] = useState<UnifiedMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [pinnedInput, setPinnedInput] = useState('')
+  const [blockedInput, setBlockedInput] = useState('')
+  const [showPinPanel, setShowPinPanel] = useState(false)
+  const [showBlockPanel, setShowBlockPanel] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seenYtIds = useRef<Set<string>>(new Set())
 
@@ -119,6 +123,33 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     setSending(false)
   }
 
+  async function setPinnedMessage() {
+    try {
+      await api.post(`/api/live/${streamId}/broadcast`,
+        { type: 'set_pinned_message', data: { message: pinnedInput.trim() || null } },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+      setPinnedInput('')
+      setShowPinPanel(false)
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] set_pinned_message failed:', e)
+    }
+  }
+
+  async function setBlockedKeywords() {
+    const keywords = blockedInput.split(',').map(k => k.trim()).filter(Boolean)
+    try {
+      await api.post(`/api/live/${streamId}/broadcast`,
+        { type: 'set_blocked_keywords', data: { keywords } },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+      setBlockedInput('')
+      setShowBlockPanel(false)
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] set_blocked_keywords failed:', e)
+    }
+  }
+
   return (
     <div className="flex flex-col h-[300px] lg:h-auto">
       {/* 채팅 헤더 */}
@@ -127,8 +158,62 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
           <span className="text-xs font-bold text-gray-900">{t('seller.liveChat.title')}</span>
           <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
         </div>
-        <span className="text-[10px] text-gray-500">{t('seller.liveChat.messageCount', { count: allMessages.length })}</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setShowPinPanel(p => !p); setShowBlockPanel(false) }}
+            title={t('seller.liveChat.setPinnedMessage', { defaultValue: '고정 공지 설정' })}
+            className={`p-1 rounded ${showPinPanel ? 'bg-yellow-100 text-yellow-600' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <Pin className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => { setShowBlockPanel(p => !p); setShowPinPanel(false) }}
+            title={t('seller.liveChat.setBlockedKeywords', { defaultValue: '금지어 설정' })}
+            className={`p-1 rounded ${showBlockPanel ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-[10px] text-gray-500 ml-1">{t('seller.liveChat.messageCount', { count: allMessages.length })}</span>
+        </div>
       </div>
+
+      {/* 고정 공지 입력 패널 */}
+      {showPinPanel && (
+        <div className="px-3 py-2 bg-yellow-50 border-b border-yellow-100">
+          <p className="text-[10px] text-yellow-700 font-bold mb-1">📌 {t('seller.liveChat.pinnedMessage', { defaultValue: '고정 공지 (빈칸이면 해제)' })}</p>
+          <div className="flex gap-1">
+            <input
+              value={pinnedInput}
+              onChange={e => setPinnedInput(e.target.value)}
+              placeholder={t('seller.liveChat.pinnedPlaceholder', { defaultValue: '공지 메시지를 입력하세요' })}
+              className="flex-1 px-2 py-1 bg-white border border-yellow-200 rounded text-xs text-gray-900 focus:outline-none"
+              onKeyDown={e => e.key === 'Enter' && setPinnedMessage()}
+            />
+            <button onClick={setPinnedMessage} className="px-2 py-1 bg-yellow-500 text-white text-xs rounded font-bold">
+              {t('common.set', { defaultValue: '설정' })}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 금지어 설정 패널 */}
+      {showBlockPanel && (
+        <div className="px-3 py-2 bg-red-50 border-b border-red-100">
+          <p className="text-[10px] text-red-700 font-bold mb-1">🛡️ {t('seller.liveChat.blockedKeywords', { defaultValue: '금지어 (쉼표로 구분)' })}</p>
+          <div className="flex gap-1">
+            <input
+              value={blockedInput}
+              onChange={e => setBlockedInput(e.target.value)}
+              placeholder={t('seller.liveChat.blockedPlaceholder', { defaultValue: '욕설, 스팸, ...' })}
+              className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-900 focus:outline-none"
+              onKeyDown={e => e.key === 'Enter' && setBlockedKeywords()}
+            />
+            <button onClick={setBlockedKeywords} className="px-2 py-1 bg-red-500 text-white text-xs rounded font-bold">
+              {t('common.set', { defaultValue: '설정' })}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 메시지 목록 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">
