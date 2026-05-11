@@ -34,6 +34,21 @@ export async function handleScheduled(env: Env) {
     results.dead_webcam_streams_cancelled = meta.changes ?? 0;
   } catch (e) { console.error('[Cron] dead_webcam_streams error:', e) }
 
+  // ── 1c. zombie scheduled 정리 (2026-05-11) ──
+  //   broadcast/video_id 는 만들어졌는데 셀러가 송출 시작 안 했거나 OME 미연결로 admission webhook 이
+  //   안 와서 영원히 'scheduled' 로 남는 케이스. 2시간 이상 묵으면 ended 처리.
+  //   (셀러 dashboard 정합성 + 메인 페이지 zombie 카드 노출 방지)
+  try {
+    const { meta } = await DB.prepare(`
+      UPDATE live_streams
+      SET status = 'ended', ended_at = datetime('now'), updated_at = datetime('now'),
+          last_error = COALESCE(last_error, '송출이 시작되지 않은 채 2시간 경과 — 자동 종료')
+      WHERE status = 'scheduled'
+        AND created_at < datetime('now', '-2 hours')
+    `).run();
+    results.zombie_scheduled_ended = meta.changes ?? 0;
+  } catch (e) { console.error('[Cron] zombie_scheduled error:', e) }
+
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
   // ✅ CONCURRENCY FIX (Cron C2): UPDATE RETURNING은 원자적으로 PENDING → CANCELLED
   // 전환된 행만 반환하므로 웹훅과의 경쟁에서도 재고 복구는 한 번만 실행됨.
