@@ -871,13 +871,39 @@ app.post('/live/:id/_force-live', async (c) => {
 
   const broadcastId = stream.youtube_broadcast_id
   const results: Record<string, { status: number; body?: string }> = {}
-  for (const status of ['testing', 'live'] as const) {
+
+  // 🛡️ 2026-05-11: 1) broadcast contentDetails 를 monitorStream=false + autoStart=false 로 PATCH.
+  //   기존 broadcast 가 monitorStream=true 로 만들어졌으면 testing 거쳐야 해서 transition 불가.
+  //   PATCH 후 ready→live 직접 transition 가능.
+  const patchRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=contentDetails`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: broadcastId,
+        contentDetails: {
+          enableAutoStart: false,
+          enableAutoStop: true,
+          monitorStream: { enableMonitorStream: false },
+          recordFromStart: true,
+          enableDvr: true,
+          enableEmbed: true,
+          latencyPreference: 'low',
+        },
+      }),
+    }
+  )
+  results.patch = { status: patchRes.status, body: patchRes.ok ? undefined : await patchRes.text().catch(() => '') }
+
+  // 2) 짧은 대기 후 ready→live transition
+  await new Promise(r => setTimeout(r, 2000))
+  for (const status of ['live'] as const) {
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(broadcastId)}&part=status`,
       { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
     )
     results[status] = { status: res.status, body: res.ok ? undefined : await res.text().catch(() => '') }
-    if (status === 'testing' && res.ok) await new Promise(r => setTimeout(r, 3000))
   }
   return c.json({ success: true, results })
 })
@@ -1820,27 +1846,21 @@ export async function omeAdmissionHandler(
           return
         }
         const broadcastId = stream.youtube_broadcast_id!
-        // 🛡️ 2026-05-11: YouTube broadcast lifecycle 는 ready → testing → live 순서.
-        //   enableAutoStart=true 가 ready→testing 은 자동 처리 안 함 (testing→live 만 자동).
-        //   따라서 수동으로 둘 다 호출. 각 transition 은 idempotent (이미 그 상태면 403 redundantTransition).
-        const doTransition = async (status: 'testing' | 'live') => {
-          const res = await fetch(
-            `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(broadcastId)}&part=status`,
-            { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
-          )
-          if (!res.ok) {
-            const errText = await res.text().catch(() => '')
-            if (!/redundantTransition|already/i.test(errText)) {
-              console.warn(`[OME admission] transition →${status} non-OK`, res.status, errText)
-            }
+        // 🛡️ 2026-05-11: enableMonitorStream=false 로 생성됐으므로 ready→live 직접 transition.
+        //   testing 단계 거치지 않음. autoStart 도 false 라 수동 호출 필수.
+        const transRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${encodeURIComponent(broadcastId)}&part=status`,
+          { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
+        )
+        if (!transRes.ok) {
+          const errText = await transRes.text().catch(() => '')
+          if (!/redundantTransition|already/i.test(errText)) {
+            console.warn('[OME admission] transition ready→live non-OK', transRes.status, errText)
+            await env.DB.prepare(`UPDATE live_streams SET last_error = ? WHERE id = ?`)
+              .bind(`YouTube transition 실패 (${transRes.status}): ${errText.substring(0, 200)}`, streamId)
+              .run().catch(() => {})
           }
-          return res.ok
         }
-        // 1) ready → testing
-        await doTransition('testing')
-        // 2) testing → live (3s 대기 - testing 안정화)
-        await new Promise(r => setTimeout(r, 3000))
-        await doTransition('live')
       } catch (e) {
         console.error('[OME admission] transition error', e)
       }
