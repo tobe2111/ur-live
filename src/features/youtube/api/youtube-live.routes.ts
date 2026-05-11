@@ -827,7 +827,7 @@ app.get('/live/:id/diagnose', async (c) => {
 
   if (!ome_stream?.this_stream_present) issues.push(`OME 에 stream "s${streamId}" 미존재 — 셀러가 송출 시작 안 했거나 OME admission 실패`)
   if (!ome_push?.our_push_present) issues.push(`OME 에 push "youtube-${streamId}" 미등록 — admission 의 startPush 실패. last_error 확인`)
-  else if (ome_push.our_push_state !== 'pulling' && ome_push.our_push_state !== 'connected') issues.push(`OME push state=${ome_push.our_push_state} (정상: pulling/connected)`)
+  else if (!['pushing', 'pulling', 'connected'].includes(ome_push.our_push_state || '')) issues.push(`OME push state=${ome_push.our_push_state} (정상: pushing/pulling/connected)`)
   else if ((ome_push.our_push_sent_bytes ?? 0) === 0) issues.push(`OME push 등록은 됐지만 sentBytes=0 — RTMP 연결 실패 가능 (YouTube stream key 불일치?)`)
   if (yt?.life_cycle_status && !['live', 'testing'].includes(yt.life_cycle_status)) issues.push(`YouTube broadcast lifeCycleStatus=${yt.life_cycle_status} — RTMP 신호 미수신`)
   if (ys?.stream_status && ys.stream_status !== 'active') issues.push(`YouTube liveStream status=${ys.stream_status} (정상: active)`)
