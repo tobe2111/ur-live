@@ -12,7 +12,7 @@
     "build:worker": "node scripts/build-worker.js",
     "build:prepare": "node scripts/build-prepare.mjs",
     "deploy": "npm run build:client && wrangler deploy",
-    "deploy:pages": "npm run build && npx wrangler@4 pages deploy dist/client --project-name=ur-live --branch=main --commit-dirty=true",
+    "deploy:pages": "npm run build && npx wrangler@4 pages deploy dist/client --project-name=ur-live --branch=main --commit-dirty=true --commit-message=deploy",
     "app:sync": "npm run build && npx cap sync",
     "app:android": "npm run app:sync && npx cap open android",
     "app:ios": "npm run app:sync && npx cap open ios",
