@@ -19,6 +19,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
+import { registerOmePush, stopOmePush } from './ome-push'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
@@ -206,6 +207,85 @@ app.post('/live/create', async (c) => {
         }
       } catch { /* thumbnail 컬럼 없을 수 있음 */ }
     }
+
+    // 🛡️ 2026-05-11 refactor: 사전 push 등록 + snippet 동기화 (한 번만, /create 시점).
+    //   기존: admission webhook 마다 lazy startPush + 60s polling.
+    //   현재: create 시점 eager 등록 → RTMP 인입 즉시 fan-out + 폴링 제거.
+    //
+    //   broadcast.id 가 곧 video_id 이므로 위 INSERT 에서 이미 youtube_video_id 가 저장됨.
+    //   admission 은 그저 token 검증 + status='live' 업데이트만 담당.
+    const ctx = c.executionCtx
+    const accessTokenForBg = accessToken
+    const rtmpUrlForPush = liveSetup.rtmpUrl
+    const rtmpKeyForPush = liveSetup.rtmpKey
+    const broadcastIdForSync = liveSetup.broadcast.id
+    const bgWork = async () => {
+      // 1) OME push 등록 — RTMP 인입 시점에 즉시 fan-out 시작
+      try {
+        const r = await registerOmePush(c.env, streamId, rtmpUrlForPush, rtmpKeyForPush)
+        if (!r.ok) {
+          await c.env.DB.prepare(`UPDATE live_streams SET last_error = ? WHERE id = ?`)
+            .bind(`OME push 등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`, streamId)
+            .run().catch(() => {})
+        }
+      } catch (e) {
+        console.error('[create] OME push register failed', e)
+      }
+      // 2) snippet 동기화 — description (셀러 페이지/다시보기 링크) + categoryId(22) + 커스텀 썸네일
+      try {
+        const sellerRow = await c.env.DB.prepare(
+          `SELECT name, username FROM sellers WHERE id = ?`
+        ).bind(sellerId).first<{ name?: string; username?: string }>()
+        const sellerSlug = sellerRow?.username || String(sellerId)
+        const fullDescription = [
+          title,
+          '',
+          `📺 ${sellerRow?.name || '셀러'}의 라이브 쇼핑`,
+          `🛍️ 셀러 페이지: https://live.ur-team.com/profile/${sellerSlug}`,
+          `🎬 다시보기: https://live.ur-team.com/live/${streamId}`,
+          '',
+          '함께 라이브 쇼핑을 즐겨보세요!',
+          '',
+          '#유어딜 #유어딜라이브 #라이브커머스',
+        ].join('\n')
+        await fetch('https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${accessTokenForBg}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: broadcastIdForSync,
+            snippet: {
+              title,
+              scheduledStartTime: scheduledTime,
+              description: fullDescription,
+              categoryId: '22',
+            },
+          }),
+        }).catch((e) => console.error('[create] snippet sync failed', e))
+
+        // 3) 커스텀 썸네일 업로드 (있을 때만, 2MB 제한)
+        if (thumbnail_url) {
+          const imgRes = await fetch(thumbnail_url).catch(() => null)
+          if (imgRes?.ok) {
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+            const imgBlob = await imgRes.blob()
+            if (imgBlob.size <= 2_000_000) {
+              await fetch(
+                `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${broadcastIdForSync}&uploadType=media`,
+                {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${accessTokenForBg}`, 'Content-Type': contentType },
+                  body: imgBlob,
+                },
+              ).catch((e) => console.error('[create] thumbnail upload failed', e))
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[create] snippet/thumbnail sync failed', e)
+      }
+    }
+    if (ctx?.waitUntil) ctx.waitUntil(bgWork())
+    else await bgWork()
 
     return c.json({
       success: true,
@@ -712,17 +792,7 @@ app.post('/live/:id/end', async (c) => {
     `).bind(streamId).run()
 
     // 🛡️ 2026-05-11: OME 의 push 도 정리 — 다음 broadcast 의 Duplicate ID 방지.
-    //   셀러가 우리 페이지에서 [방송 종료] 누르면 OME 의 active push 도 함께 stop.
-    if (c.env.OME_HOST && c.env.OME_API_TOKEN) {
-      const stopUrl = `http://${c.env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`
-      const auth = btoa(c.env.OME_API_TOKEN)
-      // best-effort: push 가 이미 없거나 OME 응답 안 해도 무시
-      await fetch(stopUrl, {
-        method: 'POST',
-        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: `youtube-${streamId}` }),
-      }).catch(() => { /* ignore */ })
-    }
+    await stopOmePush(c.env, Number(streamId))
 
     return c.json({
       success: true,
@@ -1403,16 +1473,8 @@ export async function omeAdmissionHandler(
             WHERE id = ? AND status = 'live'
           `).bind(sid).run()
           // 🛡️ 2026-05-11: closing event 시 OME push 도 정리 — 다음 broadcast 의 Duplicate ID 방지
-          if (env.OME_HOST && env.OME_API_TOKEN) {
-            const stopUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`
-            const auth = btoa(env.OME_API_TOKEN)
-            const cleanup = fetch(stopUrl, {
-              method: 'POST',
-              headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: `youtube-${sid}` }),
-            }).catch(() => { /* push 가 이미 없으면 OK */ })
-            if (waitUntil) waitUntil(cleanup)
-          }
+          if (waitUntil) waitUntil(stopOmePush(env, sid))
+          else await stopOmePush(env, sid)
         }
       }
     } catch (e) {
@@ -1451,82 +1513,26 @@ export async function omeAdmissionHandler(
     return { allowed: false, reason: 'stream/rtmp_key not found' }
   }
 
-  // OME REST API 로 RTMPPush 동적 등록 (publish 가 시작되면 자동으로 YouTube 로 fan-out)
+  // 🛡️ 2026-05-11 refactor: push 는 /create 시점에 미리 등록됨. admission 은 idempotent 재확인만.
+  //   OME 가 재시작되거나 cleanup 됐을 경우 fallback 으로 한 번 더 등록 (Duplicate ID 면 helper 가 무시).
   if (env.OME_HOST && env.OME_API_TOKEN) {
-    try {
-      const streamName = `s${streamId}`
-      const fullRtmp = stream.rtmp_url.endsWith('/') ? `${stream.rtmp_url}` : `${stream.rtmp_url}/`
-      // OME API: POST /v1/vhosts/default/apps/app:startPush  (앱 단위, body 에 stream 지정)
-      const apiUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:startPush`
-      const stopUrl = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`
-      const auth = btoa(env.OME_API_TOKEN)
-      const pushId = `youtube-${streamId}`
-      const pushBody = JSON.stringify({
-        id: pushId,
-        stream: { name: streamName },
-        protocol: 'rtmp',
-        url: fullRtmp,
-        streamKey: stream.rtmp_key,
-      })
-      // 짧은 지연 후 호출 — OME 가 admission 응답 처리하고 stream 인입 받기 시작한 후 push 시작.
-      // ⚠️ Cloudflare Workers 는 응답 후 async 작업을 즉시 취소. waitUntil 로 살려야 함.
-      const pushPromise = (async () => {
-        try {
-          await new Promise(r => setTimeout(r, 1500))
-          let res = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-            body: pushBody,
-          })
-
-          // 🛡️ 2026-05-11: Duplicate ID (400) 자동 복구 — OME 에 동일 push id 가 이미 등록된 경우.
-          //   원인: 이전 broadcast 의 push 가 OME 에서 정리되지 않고 남아있음 (셀러가 송출 중간 끊김 등).
-          //   해결: stopPush 로 기존 push 정리 → startPush 재시도 (1회).
-          //   효과: 모든 broadcast 가 항상 라이브 진입 가능 (이전: 첫 broadcast 만 성공, 이후 영원히 Duplicate ID).
-          if (!res.ok && res.status === 400) {
-            const errBody = await res.clone().text()
-            if (/duplicate.*id/i.test(errBody)) {
-              console.warn('[OME push start] Duplicate ID — cleanup + retry', pushId)
-              await fetch(stopUrl, {
-                method: 'POST',
-                headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: pushId }),
-              }).catch((e) => console.error('[OME push stop] retry cleanup failed', e))
-              await new Promise(r => setTimeout(r, 500))
-              res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-                body: pushBody,
-              })
-            }
-          }
-
-          if (!res.ok) {
-            const errText = await res.text()
-            console.error('[OME push start] non-OK', res.status, errText)
-            // 셀러가 진단 페이지에서 볼 수 있도록 DB 기록
-            await env.DB.prepare(`
-              UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-            `).bind(`YouTube push 등록 실패 (${res.status}): ${errText.substring(0, 200)}`, streamId).run().catch(() => {})
-          } else {
-            // 성공 시 이전 에러 클리어
-            await env.DB.prepare(`
-              UPDATE live_streams SET last_error = NULL WHERE id = ? AND last_error IS NOT NULL
-            `).bind(streamId).run().catch(() => {})
-          }
-        } catch (e) {
-          console.error('[OME push start] error', e)
-          await env.DB.prepare(`
-            UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-          `).bind(`Push 호출 예외: ${String((e as Error)?.message || e).substring(0, 200)}`, streamId).run().catch(() => {})
+    const reRegister = async () => {
+      try {
+        const r = await registerOmePush(env, streamId, stream.rtmp_url, stream.rtmp_key)
+        if (r.ok) {
+          await env.DB.prepare(`UPDATE live_streams SET last_error = NULL WHERE id = ? AND last_error IS NOT NULL`)
+            .bind(streamId).run().catch(() => {})
+        } else {
+          await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+            .bind(`OME push 재등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`, streamId)
+            .run().catch(() => {})
         }
-      })()
-      // CF Workers 가 응답 후에도 push 등록 fetch 가 살아있도록 waitUntil 로 등록
-      if (waitUntil) waitUntil(pushPromise)
-      else await pushPromise // fallback: 동기 await (admission webhook timeout 3초 안에 끝나야)
-    } catch (e) {
-      console.error('[OME admission] push register error', e)
+      } catch (e) {
+        console.error('[OME admission] re-register failed', e)
+      }
     }
+    if (waitUntil) waitUntil(reRegister())
+    else await reRegister()
   }
 
   // 🛡️ 2026-05-10: OME 가 stream 받기 시작했으니 우리 DB status 도 즉시 'live' 로.
@@ -1566,162 +1572,41 @@ export async function omeAdmissionHandler(
     })())
   }
 
-  // 🛡️ 2026-05-10: 영구 stream key 사용 시 YouTube 가 자동 broadcast 생성 → video_id 조회 필요.
-  // 시청자 페이지에서 embed 표시하려면 youtube_video_id 가 DB 에 있어야 함.
-  // 🛡️ 2026-05-11: 30s timeout → 약 60s 로 확장 + 초기 폴링 간격 단축 (2s 부터 시작).
-  //   대부분 broadcast 가 5-15s 안에 만들어지므로 빠른 첫 hit + 늦은 케이스도 안전 cover.
-  //   못 찾으면 last_error 에 기록 → 셀러 진단 페이지에서 노출.
-  if (waitUntil && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET) {
+  // 🛡️ 2026-05-11 refactor: 60s 폴링 제거 — broadcast.id 는 /create 시점에 이미 DB 의
+  //   youtube_video_id 로 저장됨 (liveBroadcasts.insert 응답). 폴링이 원래 필요했던 이유가 없음.
+  //
+  //   대신 enableAutoStart=true 가 RTMP 인입 즉시 testing → live 전환을 처리하지만,
+  //   타이밍 신뢰성을 위해 단 1회 명시적 transitionBroadcastToLive 를 호출 (8초 지연 후).
+  //
+  //   이 호출은 idempotent — 이미 live 면 ok 반환, testing 이면 즉시 live 로 전환.
+  //   실패해도 enableAutoStart 가 결국 처리하므로 best-effort.
+  if (waitUntil && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && stream.youtube_broadcast_id) {
     waitUntil((async () => {
       try {
+        await new Promise(r => setTimeout(r, 8000))  // RTMP 인입 → testing 도달까지 대기
         const youtubeService = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID!, env.YOUTUBE_CLIENT_SECRET!)
         const accessToken = await getValidAccessToken(env.DB, sellerId, youtubeService)
         if (!accessToken) {
-          await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-            .bind('YouTube OAuth 토큰 없음 — video_id 조회 불가. /seller/youtube/connect 에서 재인증', streamId)
+          await env.DB.prepare(`UPDATE live_streams SET last_error = ? WHERE id = ?`)
+            .bind('YouTube OAuth 토큰 없음 — testing→live 전환 불가. /seller/youtube/connect 에서 재인증', streamId)
             .run().catch(() => {})
           return
         }
-        // 폴링 간격: 2,3,4,5,6,7,8,9,10,10s (총 64s, 10회). 첫 hit 가 빨라 평균 5-10s 안에 끝남.
-        const intervals = [2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 10000]
-        let videoId: string | undefined
-        // 🛡️ 2026-05-11: 가능하면 known broadcast id 로 직접 조회 — mine=true 보다 훨씬 정확.
-        //   셀러가 멀티 방송 (동시 송출 / 이전 잔존) 갖고 있어도 정확히 우리 broadcast 매칭.
-        const knownBroadcastId = stream.youtube_broadcast_id || ''
-        const pollUrl = knownBroadcastId
-          ? `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&id=${encodeURIComponent(knownBroadcastId)}`
-          : 'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status&broadcastStatus=active&mine=true&maxResults=5'
-        for (let i = 0; i < intervals.length; i++) {
-          await new Promise(r => setTimeout(r, intervals[i]))
-          const res = await fetch(pollUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
-          if (!res.ok) continue
-          const data = await res.json() as { items?: Array<{ id: string; status?: { lifeCycleStatus?: string } }> }
-          const broadcast = data.items?.[0]
-          if (!broadcast) continue
-          const lifeCycle = broadcast.status?.lifeCycleStatus
-          // 🛡️ 2026-05-11: lifeCycleStatus 단계별 처리
-          //   - created: 아직 RTMP 신호 도달 안 함 → 다음 폴링 대기
-          //   - ready: RTMP 신호 도달, 아직 testing 으로 못 옴 → 다음 폴링 대기
-          //   - testing: 인증된 방송자만 시청 가능 (시청자는 검은 화면) → 명시적으로 live 전환
-          //   - live: 일반 시청자도 시청 가능 → video_id 저장
-          if (lifeCycle === 'testing') {
-            const transRes = await fetch(
-              `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${encodeURIComponent(broadcast.id)}&part=status`,
-              { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
-            )
-            if (transRes.ok) {
-              videoId = broadcast.id
-            } else {
-              console.warn('[OME admission] transition testing→live failed', transRes.status, await transRes.text().catch(() => ''))
-            }
-            // transition 실패 시 다음 폴링에서 재시도
-          } else if (lifeCycle === 'live') {
-            videoId = broadcast.id
+        const broadcastId = stream.youtube_broadcast_id!
+        const transRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=live&id=${encodeURIComponent(broadcastId)}&part=status`,
+          { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
+        )
+        // 200 = 전환 성공, 403 redundantTransition = 이미 live (정상), 그 외 = 진단 정보 기록
+        if (!transRes.ok) {
+          const errText = await transRes.text().catch(() => '')
+          if (!/redundantTransition|already.*live/i.test(errText)) {
+            console.warn('[OME admission] transition testing→live non-OK', transRes.status, errText)
+            // enableAutoStart 가 처리 가능하므로 fatal 아님 — 로그만
           }
-          // created / ready / complete / revoked 등은 다음 폴링 대기 (또는 종료)
-          if (videoId) {
-            await env.DB.prepare(`
-              UPDATE live_streams
-              SET youtube_video_id = ?, embed_url = ?, thumbnail_url = ?, updated_at = CURRENT_TIMESTAMP
-              WHERE id = ?
-            `).bind(
-              videoId,
-              `https://www.youtube.com/embed/${videoId}`,
-              `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-              streamId
-            ).run()
-
-            // 🛡️ 2026-05-10: YouTube broadcast snippet 동기화 — 제목 + description + 예정시각 + 카테고리.
-            try {
-              const dbStream = await env.DB.prepare(`
-                SELECT s.title, s.id, s.seller_id, s.scheduled_at, s.custom_thumbnail_url,
-                       sl.name AS seller_name, sl.username AS seller_username
-                FROM live_streams s
-                LEFT JOIN sellers sl ON sl.id = s.seller_id
-                WHERE s.id = ?
-              `).bind(streamId).first<{ title: string; id: number; seller_id: number; scheduled_at?: string; custom_thumbnail_url?: string; seller_name?: string; seller_username?: string }>()
-              if (dbStream?.title) {
-                const broadcastSnippet = broadcast as { snippet?: { title?: string; scheduledStartTime?: string; description?: string; categoryId?: string } }
-                const sellerSlug = dbStream.seller_username || dbStream.seller_id
-                const description = [
-                  dbStream.title,
-                  '',
-                  `📺 ${dbStream.seller_name || '셀러'}의 라이브 쇼핑`,
-                  `🛍️ 셀러 페이지: https://live.ur-team.com/profile/${sellerSlug}`,
-                  `🎬 다시보기: https://live.ur-team.com/live/${dbStream.id}`,
-                  '',
-                  '함께 라이브 쇼핑을 즐겨보세요!',
-                  '',
-                  '#유어딜 #유어딜라이브 #라이브커머스',
-                ].join('\n')
-                // scheduled_at 있으면 ISO8601 로 변환, 없으면 현재 (YouTube 가 보존한 기존 값 우선)
-                const scheduledStartTime = dbStream.scheduled_at
-                  ? new Date(dbStream.scheduled_at).toISOString()
-                  : (broadcastSnippet.snippet?.scheduledStartTime || new Date().toISOString())
-                await fetch(
-                  'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet',
-                  {
-                    method: 'PUT',
-                    headers: {
-                      Authorization: `Bearer ${accessToken}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      id: videoId,
-                      snippet: {
-                        title: dbStream.title,
-                        scheduledStartTime,
-                        description,
-                        categoryId: '22',
-                      },
-                    }),
-                  }
-                )
-
-                // 🛡️ 2026-05-10: 셀러 커스텀 썸네일 업로드 (있을 때만)
-                if (dbStream.custom_thumbnail_url) {
-                  try {
-                    const imgRes = await fetch(dbStream.custom_thumbnail_url)
-                    if (imgRes.ok) {
-                      const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
-                      const imgBlob = await imgRes.blob()
-                      // YouTube 썸네일 제한: 2MB, jpeg/png
-                      if (imgBlob.size <= 2_000_000) {
-                        await fetch(
-                          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${videoId}&uploadType=media`,
-                          {
-                            method: 'POST',
-                            headers: {
-                              Authorization: `Bearer ${accessToken}`,
-                              'Content-Type': contentType,
-                            },
-                            body: imgBlob,
-                          }
-                        )
-                      }
-                    }
-                  } catch (thumbErr) {
-                    console.error('[OME admission] custom thumbnail upload failed', thumbErr)
-                  }
-                }
-              }
-            } catch (titleErr) {
-              console.error('[OME admission] snippet sync failed', titleErr)
-            }
-            return
-          }
-        }
-        // 🛡️ 2026-05-11: 모든 폴링 끝났는데 못 찾음 → 셀러 진단에 노출.
-        if (!videoId) {
-          await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-            .bind('YouTube broadcast 자동 감지 실패 (60s timeout). YouTube Studio 에서 라이브가 활성인지 확인하거나, OAuth 재인증을 시도해주세요.', streamId)
-            .run().catch(() => {})
         }
       } catch (e) {
-        console.error('[OME admission] video_id fetch failed', e)
-        await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-          .bind(`video_id 폴링 예외: ${String((e as Error)?.message || e).substring(0, 200)}`, streamId)
-          .run().catch(() => {})
+        console.error('[OME admission] transition error', e)
       }
     })())
   }
