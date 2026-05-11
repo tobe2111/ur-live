@@ -121,6 +121,9 @@ function ReelCardImpl({
   const [showPlayButton, setShowPlayButton] = useState(true)
   const showPlayButtonRef = useRef(true)
   const [autoplayFailed, setAutoplayFailed] = useState(false)
+  // 🛡️ 2026-05-11: 영상이 한 번이라도 재생됐는지 추적. 재생 후 일시정지 시 "입장 중..." 스피너 대신
+  //   간단한 ▶ 재생 버튼만 표시 (사용자가 명시적으로 멈춘 상태이므로 로딩 UI 부적절).
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false)
   // v15-4: YouTube iframe API error code별 사용자 안내 메시지
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
@@ -389,9 +392,15 @@ function ReelCardImpl({
                   setShowPlayButton(false)
                   showPlayButtonRef.current = false
                   setAutoplayFailed(false)
+                  setHasPlayedOnce(true)
                 } else if (event.data === window.YT.PlayerState.PAUSED) {
-                  setShowPlayButton(true)
-                  showPlayButtonRef.current = true
+                  // 🛡️ 2026-05-11: 한 번 재생된 후 일시정지 = 사용자가 직접 멈춘 것.
+                  //   "라이브 입장 중..." 스피너 오버레이 표시하지 않음 — YouTube 네이티브 ▶ 버튼만 노출.
+                  //   초기 로딩 중 paused 상태였다면 (autoplay 실패) 기존 처리 유지.
+                  if (!hasPlayedOnce) {
+                    setShowPlayButton(true)
+                    showPlayButtonRef.current = true
+                  }
                 }
               } catch (e) {
                 // Suppress postMessage errors
@@ -609,6 +618,13 @@ function ReelCardImpl({
       }
     }
   }, [polledProduct?.stock, currentProduct?.id])
+
+  // 🛡️ 2026-05-11: productChangeToast 5초 후 자동 닫힘 (이전: 무한 표시 버그).
+  useEffect(() => {
+    if (!productChangeToast) return
+    const tid = setTimeout(() => setProductChangeToast(null), 5000)
+    return () => clearTimeout(tid)
+  }, [productChangeToast])
 
   // 초기 상품 로드: 전체 상품 데이터(stock, originalPrice 등)를 DB에서 가져옴
   // ✅ currentProduct 조건 제거 - stream 목록 API의 current_product는 일부 필드만 포함하므로 항상 전체 로드
