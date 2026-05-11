@@ -341,6 +341,39 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { console.error('[Cron] pre_notifications error:', e) }
 
+  // ── 11b. 예정 방송 5분 전 긴급 알림 ──
+  try {
+    try { await DB.prepare("ALTER TABLE live_streams ADD COLUMN pre_notified_5min INTEGER DEFAULT 0").run() } catch {}
+    const { results: imminent } = await DB.prepare(`
+      SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name
+      FROM live_streams ls
+      LEFT JOIN sellers s ON s.id = ls.seller_id
+      WHERE ls.status = 'scheduled'
+        AND ls.scheduled_at IS NOT NULL
+        AND ls.scheduled_at > datetime('now')
+        AND ls.scheduled_at <= datetime('now', '+8 minutes')
+        AND COALESCE(ls.pre_notified_5min, 0) = 0
+      ORDER BY ls.scheduled_at ASC
+      LIMIT 50
+    `).all<{ id: number; title: string; seller_id: number; seller_name: string }>()
+
+    for (const stream of (imminent ?? []).slice(0, 20)) {
+      try {
+        const { results: subs } = await DB.prepare(
+          "SELECT user_id FROM broadcast_subscriptions WHERE stream_id = ? AND notify_inapp = 1"
+        ).bind(stream.id).all<{ user_id: string }>()
+        if (subs?.length) {
+          const stmts = subs.map(sub =>
+            DB.prepare("INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'broadcast_reminder', ?, ?, ?)")
+              .bind(sub.user_id, `🔴 5분 후 라이브 시작! ${stream.seller_name || '셀러'}`, stream.title, `/live/${stream.id}`)
+          )
+          for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50))
+        }
+      } catch {}
+      await DB.prepare("UPDATE live_streams SET pre_notified_5min = 1 WHERE id = ?").bind(stream.id).run()
+    }
+  } catch (e) { console.error('[Cron] 5min_notifications error:', e) }
+
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
   // 24시간 시간 윈도우 기반 dedup: 제품명이 title에 포함되는지로 확인.
   // (dashboard_notifications에 metadata 컬럼 없음 — title LIKE 매칭으로 충분)

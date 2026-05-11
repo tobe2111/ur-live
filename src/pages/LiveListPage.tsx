@@ -335,7 +335,7 @@ export default function LiveListPage() {
                 {filteredEnded.map(s => (
                   <button
                     key={s.id}
-                    onClick={() => navigate(`/live/${s.id}`)}
+                    onClick={() => navigate(`/live/recap/${s.id}`)}
                     className="text-left active:scale-[0.99] transition-transform"
                     aria-label={t('liveList.ariaReplay', { title: s.title })}
                   >

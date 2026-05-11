@@ -44,6 +44,7 @@ const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallback
 const KakaoLinkCallbackPage = lazy(() => import('./pages/KakaoLinkCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const LiveListPage = lazy(() => import('./pages/LiveListPage'))
+const LiveRecapPage = lazy(() => import('./pages/LiveRecapPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
 const SellerOverlayPage = lazy(() => import('./pages/SellerOverlayPage'))
@@ -327,6 +328,7 @@ function AppContent() {
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/live" element={<LiveListPage />} />
+            <Route path="/live/recap/:id" element={<LiveRecapPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}

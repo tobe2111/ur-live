@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send, Pin, Shield } from 'lucide-react'
+import { Send, Pin, Shield, Ban } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import ViewerLoyaltyBadge from './ViewerLoyaltyBadge'
@@ -123,6 +123,18 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     setSending(false)
   }
 
+  async function banUser(userId: string) {
+    if (!confirm(t('seller.liveChat.banConfirm', { defaultValue: '이 사용자를 차단하시겠습니까?' }))) return
+    try {
+      await api.post(`/api/live/${streamId}/broadcast`,
+        { type: 'ban_user', data: { userId } },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] ban_user failed:', e)
+    }
+  }
+
   async function setPinnedMessage() {
     try {
       await api.post(`/api/live/${streamId}/broadcast`,
@@ -221,7 +233,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
           <p className="text-center text-xs text-gray-400 py-8">{t('seller.liveChat.empty')}</p>
         ) : (
           allMessages.map(msg => (
-            <div key={msg.id} className="flex items-start gap-1.5">
+            <div key={msg.id} className="flex items-start gap-1.5 group">
               {/* 소스 아이콘 */}
               {msg.source === 'youtube' ? (
                 <svg viewBox="0 0 24 24" fill="#FF0000" className="w-3.5 h-3.5 shrink-0 mt-0.5">
@@ -240,18 +252,29 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
                   <span className="text-[7px] text-white font-bold">V</span>
                 </span>
               )}
-              <p className="text-[11px] leading-snug">
-                {/* 🛡️ 2026-04-27: viewer 시청자 등급 배지 (Phase 2-3) */}
-                {msg.source === 'viewer' && msg.userId && (
-                  <ViewerLoyaltyBadge userId={msg.userId} compact />
-                )}
-                <span className={`font-bold ${
-                  msg.source === 'seller' ? 'text-blue-600' :
-                  msg.source === 'system' ? 'text-gray-700' :
-                  'text-gray-900'
-                }`}> {msg.author}</span>
-                <span className="text-gray-600"> {msg.message}</span>
-              </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] leading-snug">
+                  {msg.source === 'viewer' && msg.userId && (
+                    <ViewerLoyaltyBadge userId={msg.userId} compact />
+                  )}
+                  <span className={`font-bold ${
+                    msg.source === 'seller' ? 'text-blue-600' :
+                    msg.source === 'system' ? 'text-gray-700' :
+                    'text-gray-900'
+                  }`}> {msg.author}</span>
+                  <span className="text-gray-600"> {msg.message}</span>
+                </p>
+              </div>
+              {/* viewer 채팅만 차단 버튼 표시 */}
+              {msg.source === 'viewer' && msg.userId && (
+                <button
+                  onClick={() => banUser(String(msg.userId))}
+                  title={t('seller.liveChat.banUser', { defaultValue: '차단' })}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-red-500 transition-opacity shrink-0 mt-0.5"
+                >
+                  <Ban className="w-3 h-3" />
+                </button>
+              )}
             </div>
           ))
         )}

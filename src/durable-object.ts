@@ -24,6 +24,7 @@ export class LiveStreamDurableObject extends DurableObject {
   private currentProduct: { product: Product; options: ProductOption[] } | null;
   private pinnedMessage: string | null;
   private blockedKeywords: string[];
+  private bannedUserIds: Set<string>;
   private state: DurableObjectState;
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
@@ -35,6 +36,7 @@ export class LiveStreamDurableObject extends DurableObject {
     this.currentProduct = null;
     this.pinnedMessage = null;
     this.blockedKeywords = [];
+    this.bannedUserIds = new Set();
 
     state.blockConcurrencyWhile(async () => {
       try {
@@ -44,6 +46,8 @@ export class LiveStreamDurableObject extends DurableObject {
         if (pinned) this.pinnedMessage = pinned;
         const blocked = await state.storage.get<string[]>('blockedKeywords');
         if (blocked) this.blockedKeywords = blocked;
+        const banned = await state.storage.get<string[]>('bannedUserIds');
+        if (banned) this.bannedUserIds = new Set(banned);
       } catch {}
     });
   }
@@ -155,6 +159,10 @@ export class LiveStreamDurableObject extends DurableObject {
         webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'AUTH_REQUIRED' }, timestamp: Date.now() }));
         return;
       }
+      if (this.bannedUserIds.has(sess.userId)) {
+        webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'BANNED' }, timestamp: Date.now() }));
+        return;
+      }
 
       const msgData = message.data as Record<string, unknown> | null | undefined;
       const text = typeof msgData?.text === 'string' ? msgData.text : '';
@@ -236,6 +244,32 @@ export class LiveStreamDurableObject extends DurableObject {
         try { await this.state.storage.put('pinnedMessage', this.pinnedMessage ?? ''); } catch {}
         // 모든 접속자에게 즉시 전달
         this.broadcast({ type: 'pinned_message', data: { message: this.pinnedMessage }, timestamp: Date.now() } as WSMessage)
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // 특정 유저 채팅 차단
+      if (message.type === 'ban_user') {
+        const targetId = String((message.data as any)?.userId ?? '')
+        if (targetId) {
+          this.bannedUserIds.add(targetId)
+          try { await this.state.storage.put('bannedUserIds', [...this.bannedUserIds]); } catch {}
+          // 해당 유저의 모든 세션 즉시 종료
+          for (const [ws, sess] of this.chatSessions) {
+            if (sess.userId === targetId) {
+              try { ws.close(1008, 'banned') } catch {}
+            }
+          }
+        }
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // 특정 유저 차단 해제
+      if (message.type === 'unban_user') {
+        const targetId = String((message.data as any)?.userId ?? '')
+        if (targetId) {
+          this.bannedUserIds.delete(targetId)
+          try { await this.state.storage.put('bannedUserIds', [...this.bannedUserIds]); } catch {}
+        }
         return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
       }
 

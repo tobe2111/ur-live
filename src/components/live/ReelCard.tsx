@@ -1207,7 +1207,7 @@ function ReelCardImpl({
 
         {/* 🛡️ 2026-04-29 v4 Boutique 톤: TimeDealPopup default off (Q6=C 보존하되 미표시).
             타임딜 정보는 chat feed 의 inline 시스템 이벤트로 노출. */}
-        {false && <TimeDealPopup streamId={stream.id} />}
+        {activeFlashSale && <TimeDealPopup streamId={stream.id} />}
 
         {/* Spacer pushes content to bottom */}
         <div className="flex-1" />
@@ -1293,6 +1293,7 @@ function ReelCardImpl({
             addingToCart={addingToCart}
             checkingOut={checkingOut}
             changingProduct={changingProduct}
+            streamId={stream.id}
             onAddToCart={handleAddToCart}
             onCheckout={handleCheckout}
             onChangeProduct={handleChangeProduct}

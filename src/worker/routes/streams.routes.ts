@@ -749,6 +749,47 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
   }
 });
 
+// ── POST /api/streams/:id/restock-notify ──────────────────────────────────────
+// 품절 상품 재입고 알림 신청 (로그인 사용자)
+streamsRouter.post('/:id/restock-notify', async (c) => {
+  try {
+    const streamId = parseInt(c.req.param('id'))
+    const authHeader = c.req.header('Authorization') ?? ''
+    const token = authHeader.replace('Bearer ', '').trim()
+    let userId: number | null = null
+    if (token && c.env.JWT_SECRET) {
+      try {
+        const { verify, decode } = await import('hono/jwt')
+        const isValid = await verify(token, c.env.JWT_SECRET, 'HS256').catch(() => null)
+        if (isValid) {
+          const decoded = decode(token)
+          userId = (decoded.payload as Record<string, unknown>)?.userId as number ?? null
+        }
+      } catch { /* invalid token */ }
+    }
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+    const { product_id } = await c.req.json<{ product_id: number }>()
+    if (!product_id) return c.json({ success: false, error: 'product_id 필요' }, 400)
+
+    // user_notifications 테이블에 재입고 알림 신청 기록 (type = restock_requested)
+    // 중복 방지: 동일 user+product 조합이 이미 있으면 skip
+    try { await c.env.DB.prepare("ALTER TABLE user_notifications ADD COLUMN metadata TEXT").run() } catch {}
+    const existing = await c.env.DB.prepare(
+      "SELECT id FROM user_notifications WHERE user_id = ? AND type = 'restock_requested' AND link = ?"
+    ).bind(String(userId), `/products/${product_id}`).first()
+    if (existing) return c.json({ success: true, already: true })
+
+    await c.env.DB.prepare(
+      "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'restock_requested', ?, ?, ?)"
+    ).bind(String(userId), '재입고 알림 신청', `상품 ${product_id} 재입고 시 알림을 드립니다.`, `/products/${product_id}`).run()
+
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ success: false, error: 'Failed' }, 500)
+  }
+})
+
 // ── POST /api/streams/:id/fake-cart-notification ──────────────────────────────
 // 라이브 방송 중 가짜 장바구니 추가 알림 (LivePage에서 데모 목적 사용)
 streamsRouter.post('/:id/fake-cart-notification', async (c) => {

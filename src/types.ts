@@ -118,7 +118,9 @@ export type WSMessageType =
   | 'pinned_message'
   | 'set_pinned_message'
   | 'set_blocked_keywords'
-  | 'flash_sale';
+  | 'flash_sale'
+  | 'ban_user'
+  | 'unban_user';
 
 export interface WSMessage {
   type: WSMessageType;
