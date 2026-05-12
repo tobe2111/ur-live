@@ -1136,12 +1136,23 @@ app.route('/api/youtube', youtubeLiveRoutes);
 // 🛡️ 2026-05-08: OvenMediaEngine admission webhook (자체 미디어 서버).
 //   OME 가 publish 시도 시 호출 → token 검증 + 셀러의 YouTube RTMP key 동적 push 등록.
 app.post('/api/internal/ome/admission', async (c) => {
+  // signature 검증을 위해 raw body 그대로 보존 (re-stringify 시 OME 의 원본 바이트와 달라질 수 있음).
+  const rawBody = await c.req.text().catch(() => '')
+  if (!rawBody) {
+    return c.json({ allowed: false, reason: 'empty body' }, 400)
+  }
+  // 🛡️ 2026-05-12 (C4): JSON 파싱 실패와 핸들러 실패 분리. 잘못된 JSON 은 400 (재시도 무의미),
+  //   핸들러 내부 실패만 500 (재시도 가능). OME 에게 정확한 신호 전달.
+  let body: unknown
   try {
-    // signature 검증을 위해 raw body 그대로 보존 (re-stringify 시 OME 의 원본 바이트와 달라질 수 있음).
-    const rawBody = await c.req.text()
-    const body = JSON.parse(rawBody)
+    body = JSON.parse(rawBody)
+  } catch (parseErr) {
+    console.warn('[OME admission] invalid JSON body', { length: rawBody.length, err: String(parseErr).slice(0, 100) })
+    return c.json({ allowed: false, reason: 'invalid JSON' }, 400)
+  }
+  try {
     const sig = c.req.header('X-OME-Signature') || null
-    const result = await omeAdmissionHandler(body, sig, c.env, rawBody, (p) => c.executionCtx.waitUntil(p))
+    const result = await omeAdmissionHandler(body as Parameters<typeof omeAdmissionHandler>[0], sig, c.env, rawBody, (p) => c.executionCtx.waitUntil(p))
     return c.json(result)
   } catch (e) {
     console.error('[OME admission] handler error', e)
