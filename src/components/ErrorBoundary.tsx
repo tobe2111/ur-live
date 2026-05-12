@@ -28,8 +28,10 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ componentStack: errorInfo.componentStack || '' });
-    console.error('[ErrorBoundary] caught:', error?.message || '(no message)', error);
-    console.error('[ErrorBoundary] component stack:', errorInfo.componentStack);
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary] caught:', error?.message || '(no message)', error);
+      console.error('[ErrorBoundary] component stack:', errorInfo.componentStack);
+    }
 
     // 🛡️ 2026-04-29: 프로덕션 Sentry 전송 (window.Sentry 동적 사용 — 번들 영향 최소)
     try {
@@ -78,10 +80,10 @@ class ErrorBoundary extends Component<Props, State> {
               일시적인 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
 
-            {this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="text-left mb-6">
                 <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">
-                  오류 상세 보기
+                  오류 상세 보기 (개발 환경)
                 </summary>
                 <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A1A1A] p-3 rounded overflow-auto max-h-60">
                   {this.state.error.toString()}
