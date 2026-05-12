@@ -464,6 +464,11 @@ function ReelCardImpl({
         tag.id = SCRIPT_ID
         tag.src = 'https://www.youtube.com/iframe_api'
         tag.async = true
+        // CSP strict-dynamic: Worker가 <meta name="csp-nonce">에 nonce 값을 주입.
+        // 동적 createElement script 는 propagation 이 브라우저별로 다를 수 있으므로
+        // meta 태그에서 직접 읽어 명시적으로 부여.
+        const cspNonce = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content
+        if (cspNonce) tag.setAttribute('nonce', cspNonce)
         document.head.appendChild(tag)
       }
     }
@@ -543,50 +548,31 @@ function ReelCardImpl({
   }, [isActive, playerReady, stream.id])
   
   // Handle video click to unmute and play
+  // 🛡️ 2026-05-12: iOS/Android에서 cross-origin iframe의 unMute()는 postMessage 기반이라
+  //   외부 user gesture가 전달되지 않아 무시됨. 버튼 클릭(user gesture) 컨텍스트에서
+  //   직접 mute=0 iframe을 생성하는 방식이 유일하게 신뢰할 수 있는 언뮤트 방법.
   const handleVideoClick = () => {
-    // playerRef.current 은 ref — playerReady state(stale 가능)보다 신뢰도 높음
+    if (!stream.youtube_video_id) return
+
+    // 기존 YT API 플레이어 정리 (iframe 충돌 방지)
     if (playerRef.current) {
-      try {
-        playerRef.current.unMute()
-        playerRef.current.setVolume(100)
-        playerRef.current.playVideo()
-        setShowPlayButton(false)
-        // iOS Safari unmute 비동기 확인 (최대 3회, 500ms 간격)
-        let retries = 0
-        const verifyUnmute = setInterval(() => {
-          retries++
-          if (!playerRef.current) { clearInterval(verifyUnmute); return }
-          try {
-            if (!playerRef.current.isMuted()) {
-              setIsMuted(false)
-              clearInterval(verifyUnmute)
-            } else if (retries < 3) {
-              playerRef.current.unMute()
-            } else {
-              setIsMuted(false) // 3회 시도 후 UI 업데이트만
-              clearInterval(verifyUnmute)
-            }
-          } catch { clearInterval(verifyUnmute) }
-        }, 500)
-        return
-      } catch (error) {
-        if (import.meta.env.DEV) console.error('[ReelCard] Failed to start video:', error)
-        // API 호출 실패 시 플레이어 파괴 후 fallback 진행 (두 플레이어 충돌 방지)
-        try { playerRef.current.destroy() } catch {}
-        playerRef.current = null
-        setPlayerReady(false)
-      }
+      try { playerRef.current.destroy() } catch {}
+      playerRef.current = null
+      setPlayerReady(false)
     }
-    // 플레이어 미초기화 / 파괴 후 — 직접 iframe으로 재생 (사용자 gesture로 unmuted 재생 가능)
+
+    // 사용자 gesture 컨텍스트에서 직접 iframe 생성 → 브라우저가 unmuted autoplay 허용
     const playerEl = document.getElementById(`youtube-player-${stream.id}`)
-    if (playerEl && stream.youtube_video_id) {
+    if (playerEl) {
       while (playerEl.firstChild) playerEl.removeChild(playerEl.firstChild)
       const iframe = document.createElement('iframe')
-      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=0&origin=${encodeURIComponent(window.location.origin)}`
-      iframe.allow = 'autoplay; encrypted-media; fullscreen'
-      iframe.style.cssText = 'width:100%;height:100%;border:0'
+      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
+      iframe.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture'
+      iframe.allowFullscreen = true
+      iframe.style.cssText = 'width:100%;height:100%;border:0;position:absolute;top:0;left:0'
       playerEl.appendChild(iframe)
       setShowPlayButton(false)
+      setIsMuted(false)
     }
   }
 
@@ -1122,6 +1108,7 @@ function ReelCardImpl({
         <button
           onClick={handleVideoClick}
           className="absolute inset-0 z-10 flex flex-col items-center justify-center transition-all bg-black/60 cursor-pointer"
+          style={{ touchAction: 'manipulation' }}
           aria-label={t('live.enterAria', { defaultValue: '방송 입장하기' })}
         >
           <div className="flex flex-col items-center gap-4">
@@ -1347,4 +1334,3 @@ function ReelCardImpl({
 
 // React.memo: reel 객체 동일 참조 + isActive/isCurrentProduct 동일 시 재렌더링 skip.
 // 무한 스크롤 카드 다수 마운트 시 비활성 카드의 불필요한 re-render 차단 (LivePageV2 activeIndex 변경 → 모든 카드 재렌더링 방지).
-export default memo(ReelCardImpl)
