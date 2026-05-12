@@ -692,6 +692,22 @@ internalAdminToolsRoutes.get('/api/_internal/repair-new-tables', requireAdmin(),
         changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )` },
     { desc: '0245: idx_agency_status_history', sql: `CREATE INDEX IF NOT EXISTS idx_agency_status_history ON agency_status_history(agency_id, changed_at DESC)` },
+    // ── 0246: 어드민 감사 로그 ──────────────────────────────────────────
+    { desc: '0246: admin_audit_log', sql: `
+      CREATE TABLE IF NOT EXISTS admin_audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor_id TEXT NOT NULL,
+        actor_email TEXT,
+        action TEXT NOT NULL,
+        resource_type TEXT NOT NULL,
+        resource_id TEXT NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        ip TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )` },
+    { desc: '0246: idx_audit_log_actor', sql: `CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON admin_audit_log(actor_id, created_at DESC)` },
+    { desc: '0246: idx_audit_log_resource', sql: `CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON admin_audit_log(resource_type, resource_id, created_at DESC)` },
   ];
 
   const results: Array<{ desc: string; status: string; error?: string }> = [];
