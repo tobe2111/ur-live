@@ -17,6 +17,14 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { swallow } from '@/worker/utils/swallow';
 const auctionRoutes = new Hono<{ Bindings: Env }>();
 
+// 🛡️ Numeric id validation — params used in SQL must be pure digits
+function parseNumericId(raw: string | undefined): number | null {
+  if (!raw || !/^\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0 || n > Number.MAX_SAFE_INTEGER) return null;
+  return n;
+}
+
 auctionRoutes.use('*', cors({
   origin: [...ALLOWED_ORIGINS],
   credentials: true,
@@ -157,6 +165,21 @@ auctionRoutes.post('/create', requireAuth(), async (c) => {
   }>();
 
   if (!stream_id || !title) return c.json({ success: false, error: '필수 항목 누락' }, 400);
+  if (!Number.isFinite(Number(stream_id)) || Number(stream_id) <= 0) {
+    return c.json({ success: false, error: 'invalid stream_id' }, 400);
+  }
+  if (typeof title !== 'string' || title.trim().length === 0 || title.length > 200) {
+    return c.json({ success: false, error: 'invalid title' }, 400);
+  }
+  if (!Number.isFinite(Number(start_price)) || Number(start_price) < 0 || Number(start_price) > 1_000_000_000) {
+    return c.json({ success: false, error: 'invalid start_price' }, 400);
+  }
+  if (min_increment !== undefined && (!Number.isFinite(Number(min_increment)) || Number(min_increment) <= 0)) {
+    return c.json({ success: false, error: 'invalid min_increment' }, 400);
+  }
+  if (duration_seconds !== undefined && (!Number.isFinite(Number(duration_seconds)) || Number(duration_seconds) <= 0 || Number(duration_seconds) > 86400)) {
+    return c.json({ success: false, error: 'invalid duration_seconds' }, 400);
+  }
 
   // 셀러 확인
   const stream = await DB.prepare('SELECT seller_id FROM live_streams WHERE id = ?').bind(stream_id).first<{ seller_id: number }>();
@@ -192,7 +215,8 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const auctionId = Number(c.req.param('id'));
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
   const { amount } = await c.req.json<{ amount: number }>();
 
   // 금액 유효성 검증 (NaN, 음수, 비정상 상한)
@@ -313,7 +337,8 @@ auctionRoutes.get('/stream/:streamId', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const streamId = c.req.param('streamId');
+  const streamId = parseNumericId(c.req.param('streamId'));
+  if (streamId === null) return c.json({ success: false, error: 'invalid streamId' }, 400);
   const auction = await DB.prepare(
     "SELECT * FROM live_auctions WHERE stream_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1"
   ).bind(streamId).first<any>();
@@ -341,7 +366,8 @@ auctionRoutes.post('/:id/end', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
   const { DB } = c.env;
-  const auctionId = Number(c.req.param('id'));
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
 
   // ✅ OWNERSHIP FIX: only the auction's seller (or admin) can end it
   const existing = await DB.prepare('SELECT seller_id, winner_user_id FROM live_auctions WHERE id = ?').bind(auctionId).first<{ seller_id: number; winner_user_id: string | null }>();
@@ -390,7 +416,8 @@ auctionRoutes.post('/:id/cancel', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
   const { DB } = c.env;
-  const auctionId = Number(c.req.param('id'));
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
 
   const existing = await DB.prepare('SELECT seller_id FROM live_auctions WHERE id = ?').bind(auctionId).first<{ seller_id: number }>();
   if (!existing) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
@@ -436,8 +463,8 @@ auctionRoutes.post('/:id/winner-paid', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
   const { DB } = c.env;
-  const auctionId = Number(c.req.param('id'));
-  if (!Number.isFinite(auctionId) || auctionId <= 0) return c.json({ success: false, error: 'invalid id' }, 400);
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
 
   const auction = await DB.prepare(
     'SELECT seller_id, winner_user_id, status FROM live_auctions WHERE id = ?'
@@ -467,15 +494,15 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
   const { DB } = c.env;
-  const auctionId = Number(c.req.param('id'));
-  if (!Number.isFinite(auctionId) || auctionId <= 0) return c.json({ success: false, error: 'invalid id' }, 400);
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
 
   const reason = (await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))).reason?.trim().slice(0, 500) || '결제 불이행';
 
   const auction = await DB.prepare(
-    'SELECT id, seller_id, current_price, start_price, winner_user_id, winner_name FROM live_auctions WHERE id = ?'
+    'SELECT id, seller_id, status, current_price, start_price, winner_user_id, winner_name FROM live_auctions WHERE id = ?'
   ).bind(auctionId).first<{
-    id: number; seller_id: number; current_price: number; start_price: number;
+    id: number; seller_id: number; status: string; current_price: number; start_price: number;
     winner_user_id: string | null; winner_name: string | null;
   }>();
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
@@ -484,12 +511,26 @@ auctionRoutes.post('/:id/forfeit-winner', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'forbidden — not your auction' }, 403);
     }
   }
+  // 🛡️ Status guard: forfeit only on 'ended' auctions (active auctions are still bidding;
+  //   cancelled auctions have no winner to forfeit).
+  if (auction.status !== 'ended') {
+    return c.json({ success: false, error: '종료된 경매에서만 낙찰 포기 처리 가능' }, 409);
+  }
   if (!auction.winner_user_id) {
     return c.json({ success: false, error: '낙찰자가 없습니다' }, 400);
   }
 
   const forfeitedUserId = auction.winner_user_id;
   const forfeitedName = auction.winner_name;
+
+  // 🛡️ Prevent forfeit-after-payment: if the winner's hold is already 'consumed'
+  //   (paid), forfeiting and promoting a runner-up would double-charge.
+  const consumedHold = await DB.prepare(
+    "SELECT id FROM auction_holds WHERE auction_id = ? AND user_id = ? AND status = 'consumed' LIMIT 1"
+  ).bind(auctionId, forfeitedUserId).first<{ id: number }>();
+  if (consumedHold) {
+    return c.json({ success: false, error: '이미 결제 완료된 낙찰자는 포기 처리할 수 없습니다' }, 409);
+  }
 
   // 1) 현재 winner 의 active hold 를 forfeited 처리
   await DB.prepare(
@@ -601,8 +642,10 @@ auctionRoutes.get('/:id', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
   const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?')
-    .bind(c.req.param('id')).first<any>();
+    .bind(auctionId).first<any>();
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
 
   const { results: bids } = await DB.prepare(
@@ -623,7 +666,8 @@ auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const auctionId = Number(c.req.param('id'));
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
   const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
 
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
@@ -665,7 +709,8 @@ auctionRoutes.post('/:id/release-hold', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
   const { DB } = c.env;
-  const auctionId = Number(c.req.param('id'));
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
 
   const result = await DB.prepare(
     "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id = ? AND status = 'active'"
@@ -689,7 +734,8 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const auctionId = Number(c.req.param('id'));
+  const auctionId = parseNumericId(c.req.param('id'));
+  if (auctionId === null) return c.json({ success: false, error: 'invalid id' }, 400);
   const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
   if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
   if (auction.status !== 'ended') return c.json({ success: false, error: '종료된 경매에서만 승격 가능' }, 400);
@@ -704,6 +750,15 @@ auctionRoutes.post('/:id/promote-runner-up', requireAuth(), async (c) => {
   const currentWinnerId = auction.winner_user_id;
   if (!currentWinnerId) {
     return c.json({ success: false, error: '현재 낙찰자가 없습니다' }, 400);
+  }
+
+  // 🛡️ Prevent promote-after-payment: if the current winner already paid (consumed hold),
+  //   promoting runner-up would double-charge.
+  const consumedHoldPromote = await DB.prepare(
+    "SELECT id FROM auction_holds WHERE auction_id = ? AND user_id = ? AND status = 'consumed' LIMIT 1"
+  ).bind(auctionId, currentWinnerId).first<{ id: number }>();
+  if (consumedHoldPromote) {
+    return c.json({ success: false, error: '이미 결제 완료된 낙찰자는 승격 대상이 아닙니다' }, 409);
   }
 
   // 1) 현 winner hold 해제
