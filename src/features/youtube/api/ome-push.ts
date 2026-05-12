@@ -124,3 +124,26 @@ export async function stopOmePush(env: Env, streamId: number): Promise<void> {
     body: JSON.stringify({ id: omePushId(streamId) }),
   }).catch(() => undefined)
 }
+
+/**
+ * 🛡️ 2026-05-12 (LIVE-FIX-2): OME 에서 active publisher stream 강제 종료 (best-effort).
+ *
+ * 시나리오: 셀러가 라이브 시작 → 네트워크 끊김/탭 닫힘 → OME 가 즉시 정리 못 함
+ *   → 다음 publish 시도 시 같은 stream name 에 409 Conflict.
+ * 해결: whip-token 발급 직전 호출해 zombie publisher 강제 종료.
+ *
+ * @param env Worker env
+ * @param streamName OME stream name (보통 `s${stream_id}`)
+ * @returns true = 종료 시도함 (이미 없어도), false = OME 미구성
+ */
+export async function terminateOmeStream(env: Env, streamName: string): Promise<boolean> {
+  if (!env.OME_HOST || !env.OME_API_TOKEN) return false
+  const auth = btoa(env.OME_API_TOKEN)
+  const url = `http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app/streams/${encodeURIComponent(streamName)}`
+  await fetch(url, {
+    method: 'DELETE',
+    headers: { Authorization: `Basic ${auth}` },
+    signal: AbortSignal.timeout(3000),
+  }).catch(() => undefined)
+  return true
+}

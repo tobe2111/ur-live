@@ -19,7 +19,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
-import { registerOmePush, stopOmePush, cleanupAllOmePushes } from './ome-push'
+import { registerOmePush, stopOmePush, cleanupAllOmePushes, terminateOmeStream } from './ome-push'
 import { trackQuota, getQuotaUsage, QUOTA_COST } from './youtube-quota'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 
@@ -1704,12 +1704,15 @@ app.get('/streaming/health', async (c) => {
  * POST /api/seller/youtube/streaming/whip-token
  * 브라우저 publish 시작 전 호출. WHIP endpoint URL 반환.
  *
- * 🛡️ 2026-05-11 Option D: YouTube WHIP direct 우선.
- *   - stream.rtmp_key 있으면 → YouTube WHIP URL 직접 반환 (OME 불필요, 무제한 동시 송출)
- *   - rtmp_key 없고 OME 설정됨 → OME WHIP URL 반환 (토큰 필요)
- *   - 둘 다 없으면 → 503
+ * 🚨 2026-05-12 (LIVE-START-FIX): Option D (YouTube WHIP direct) 제거.
+ *   YouTube `a.upload.youtube.com/upload/streamer` 엔드포인트는 CORS 헤더가 없어 브라우저에서
+ *   직접 POST 시 preflight 차단. WebRTC/WHIP 브라우저 publish 는 OME 경유만 가능.
+ *   OME 서버가 RTMP 로 YouTube 에 재push. (이전: 모든 라이브 시작이 CORS 에러로 영구 실패)
  *
- * YouTube WHIP endpoint: https://a.upload.youtube.com/upload/streamer?streamKey={streamKey}
+ * 시나리오:
+ *   - OME 설정됨 → OME WHIP URL 반환 (정상 경로)
+ *   - OME 미구성 + rtmp_key 있음 → OBS 등 외부 도구 안내 (OBS_REQUIRED)
+ *   - 둘 다 없음 → 503
  */
 app.post('/streaming/whip-token', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -1731,32 +1734,21 @@ app.post('/streaming/whip-token', async (c) => {
 
   if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
 
-  // Option D: YouTube WHIP direct — stream key 있고, quota 여유 있을 때만
-  if (stream.rtmp_key) {
-    // quota 90% 초과 시 OME 폴백 (YouTube API 호출 절약)
-    const quotaUsage = await getQuotaUsage(c.env).catch(() => null)
-    const quotaExceeded = quotaUsage ? quotaUsage.ratio >= 0.9 : false
-
-    if (!quotaExceeded) {
-      const whipUrl = `https://a.upload.youtube.com/upload/streamer?streamKey=${encodeURIComponent(stream.rtmp_key)}`
-      return c.json({
-        success: true,
-        data: {
-          whip_url: whipUrl,
-          mode: 'youtube_whip',
-          stream_name: `s${stream_id}`,
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
-        },
-      })
-    }
-    // quota 90%+ → OME 폴백으로 낙하 (아래 OME 로직 실행)
-    if (import.meta.env?.DEV) console.warn('[WHIP] YouTube quota >= 90%, falling back to OME')
-  }
-
-  // Fallback: OME WHIP (webcam 모드 또는 rtmp_key 없는 경우)
+  // OME 가 없으면 브라우저 라이브 불가 (YouTube 직접 WHIP 은 CORS 차단)
   if (!c.env.OME_HOST || !c.env.OME_WEBHOOK_SECRET) {
+    // rtmp_key 있으면 OBS 외부 도구로 송출 가능 — 명확히 안내
+    if (stream.rtmp_key) {
+      return c.json({
+        success: false,
+        error: '브라우저 라이브 미지원 환경입니다. OBS 등 외부 도구로 송출해주세요.',
+        error_code: 'OBS_REQUIRED',
+        rtmp_url: stream.rtmp_url,
+      }, 503)
+    }
     return c.json({ success: false, error: '미디어 서버 미구성', error_code: 'OME_NOT_CONFIGURED' }, 503)
   }
+  // (참고: getQuotaUsage 는 YouTube WHIP direct 경로에서만 사용했음 — 제거됨)
+  void getQuotaUsage;
 
   // 1회용 토큰: HMAC-SHA256(secret, sellerId|streamId|exp).
   // OME admission webhook 에서 같은 secret 으로 검증.
@@ -1769,6 +1761,12 @@ app.post('/streaming/whip-token', async (c) => {
 
   // stream_name = 우리 stream id (OME application 안에서의 식별자)
   const streamName = `s${stream_id}`
+
+  // 🛡️ 2026-05-12 (LIVE-FIX-2): 같은 stream name 의 zombie publisher 강제 종료.
+  //   이전 publish 가 비정상 종료 (탭 닫힘 / 네트워크 끊김) 시 OME 가 즉시 정리 못 함 →
+  //   다음 publish 가 409 Conflict 로 영구 실패. 새 토큰 발급 직전에 항상 정리.
+  await terminateOmeStream(c.env, streamName)
+
   const whipUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?direction=whip&token=${encodeURIComponent(token)}`
 
   return c.json({
