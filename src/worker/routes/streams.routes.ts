@@ -269,6 +269,9 @@ streamsRouter.get('/:id', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
 
     const stream = await cacheGet(
       c.env.SESSION_KV,
@@ -325,6 +328,9 @@ streamsRouter.get('/:id/products', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
 
     // ✅ products 테이블에서 live_stream_id로 조회
     const rows = await db
@@ -383,6 +389,9 @@ streamsRouter.get('/:id/current-product', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
 
     const stream = await db
       .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
@@ -415,6 +424,9 @@ streamsRouter.get('/:id/current-product', async (c) => {
 streamsRouter.get('/:id/product-timestamps', async (c) => {
   try {
     const streamId = c.req.param('id')
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400)
+    }
     const rows = await c.env.DB.prepare(`
       SELECT spt.product_id, spt.offset_sec, spt.created_at, p.name, p.image_url, p.price
       FROM stream_product_timestamps spt
@@ -452,6 +464,9 @@ streamsRouter.post('/:id/current-product', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     const body = await c.req.json<{ productId?: unknown }>();
     const productId = body.productId;
     if (productId !== null && productId !== undefined && (!Number.isInteger(productId) || (productId as number) <= 0)) {
@@ -494,6 +509,9 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     const KV = c.env.SESSION_KV;
     const kvKey = `vc:${streamId}`;
 
@@ -573,6 +591,9 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
 
   try {
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     const { manual_count } = await c.req.json<{ manual_count: number | null }>();
 
     if (manual_count !== null) {
@@ -615,6 +636,9 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     const sessionId = c.req.header('X-Session-ID') || c.req.header('x-session-id');
     if (!sessionId || sessionId.length < 8 || sessionId.length > 128) {
       return c.json({ success: false, error: 'X-Session-ID header required' }, 400);
@@ -720,6 +744,9 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     // sendBeacon 은 커스텀 헤더 불가 → query string fallback 지원
     const sessionId =
       c.req.header('X-Session-ID') ||
@@ -769,6 +796,10 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
 // 품절 상품 재입고 알림 신청 (로그인 사용자)
 streamsRouter.post('/:id/restock-notify', requireAuth(), async (c) => {
   try {
+    const streamId = c.req.param('id')
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400)
+    }
     const authUser = getCurrentUser(c)
     const userId = authUser ? Number(authUser.id) : null
     if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -796,9 +827,40 @@ streamsRouter.post('/:id/restock-notify', requireAuth(), async (c) => {
 
 // ── POST /api/streams/:id/fake-cart-notification ──────────────────────────────
 // 라이브 방송 중 가짜 장바구니 추가 알림 (LivePage에서 데모 목적 사용)
+// 🛡️ 셀러 인증 + 라이브 소유 검증 필수 (미인증 시 임의 라이브에 스팸 가능)
 streamsRouter.post('/:id/fake-cart-notification', async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
+  let sellerId: number | null = null;
+  let userType: string | null = null;
+  try {
+    const { verify } = await import('hono/jwt');
+    const payload = await verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256') as any;
+    if (!['seller', 'admin'].includes(payload.type)) {
+      return c.json({ success: false, error: 'Seller or admin only' }, 403);
+    }
+    sellerId = Number(payload.sub);
+    userType = String(payload.type);
+  } catch {
+    return c.json({ success: false, error: 'Invalid token' }, 401);
+  }
+
   try {
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
+
+    // 라이브 소유 검증 (admin 은 모든 라이브 가능)
+    if (userType === 'seller') {
+      const owner = await c.env.DB.prepare(
+        'SELECT seller_id FROM live_streams WHERE id = ?'
+      ).bind(streamId).first<{ seller_id: number }>();
+      if (!owner) return c.json({ success: false, error: 'Stream not found' }, 404);
+      if (Number(owner.seller_id) !== Number(sellerId)) {
+        return c.json({ success: false, error: 'Forbidden — not your stream' }, 403);
+      }
+    }
     const body = await c.req.json<{ productId?: number; buyerName?: string }>().catch(() => ({ productId: undefined as number | undefined, buyerName: undefined as string | undefined }));
     // 실제 Durable Object 또는 WebSocket으로 broadcast 가능
     // 현재는 단순 200 응답으로 프론트 오류 방지
