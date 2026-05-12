@@ -10,12 +10,31 @@
  */
 
 import { sendAlimtalk } from './aligo'
+import { sendSystemAlimtalk } from './system-alimtalk'
+
 interface Env {
   DB: D1Database
   ALIGO_API_KEY: string
   ALIGO_USER_ID: string
   ALIMTALK_SENDER_KEY?: string
+  ALIGO_SENDER_KEY?: string
+  ALIMTALK_DAILY_CAP?: string
 }
+
+/**
+ * 🛡️ 2026-05-12: 로그/에러 메시지에 전화번호 노출 금지.
+ *   "010-1234-5678" → "010-****-5678"
+ */
+function maskPhone(phone: string | undefined | null): string {
+  if (!phone) return '****'
+  const digits = phone.replace(/[^0-9]/g, '')
+  if (digits.length < 4) return '****'
+  return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`
+}
+
+// ESLint: keep sendAlimtalk in scope for future direct fallbacks (currently
+// preferred path is sendSystemAlimtalk which handles dedup/retry/budget).
+void sendAlimtalk;
 
 interface Order {
   id: number
@@ -183,13 +202,17 @@ ${productList}
 
 주문해 주셔서 감사합니다!`
 
-    // 알리고 API로 발송
-    const result = await sendAlimtalk(env, {
-      senderKey,
-      templateCode: 'order_confirm',
-      to: order.buyer_phone,
-      message: message
-    })
+    // 🛡️ 2026-05-12: system-alimtalk 경유 — dedup(1h), 일일 budget cap, 실패 시 retry queue 자동.
+    const result = await sendSystemAlimtalk(
+      { ...env, ALIGO_SENDER_KEY: senderKey } as unknown,
+      order.buyer_phone,
+      'order_confirm',
+      message,
+    )
+    if ((result as { skipped?: boolean }).skipped) {
+      // dedup / rate-limit / budget cap 으로 스킵 — 비용 0, 정상 흐름.
+      return { success: true, skipped: true, reason: (result as { reason?: string }).reason }
+    }
 
     if (result.success) {
       // 잔액 차감 (계정이 있는 경우만)
@@ -218,11 +241,11 @@ ${productList}
         order_id: orderId
       })
 
-      console.error(`Failed to send order confirmation for order ${orderId}:`, result.error)
+      console.error(`Failed to send order confirmation for order ${orderId} (to ${maskPhone(order.buyer_phone)}):`, result.error)
       return { success: false, error: result.error }
     }
   } catch (error) {
-    console.error(`Error sending order confirmation for order ${orderId}:`, error)
+    console.error(`Error sending order confirmation for order ${orderId}:`, (error as Error).message)
     return { success: false, error: (error as Error).message }
   }
 }
@@ -276,12 +299,15 @@ export async function sendShippingNotification(
 
 빠른 배송을 위해 최선을 다하겠습니다.`
 
-    const result = await sendAlimtalk(env, {
-      senderKey,
-      templateCode: 'shipping_start',
-      to: order.buyer_phone,
-      message: message
-    })
+    const result = await sendSystemAlimtalk(
+      { ...env, ALIGO_SENDER_KEY: senderKey } as unknown,
+      order.buyer_phone,
+      'shipping_start',
+      message,
+    )
+    if ((result as { skipped?: boolean }).skipped) {
+      return { success: true, skipped: true, reason: (result as { reason?: string }).reason }
+    }
 
     if (result.success) {
       if (account) await deductBalance(env.DB, order.seller_id, cost)
@@ -309,7 +335,7 @@ export async function sendShippingNotification(
       return { success: false, error: result.error }
     }
   } catch (error) {
-    console.error(`Error sending shipping notification for order ${orderId}:`, error)
+    console.error(`Error sending shipping notification for order ${orderId}:`, (error as Error).message)
     return { success: false, error: (error as Error).message }
   }
 }
@@ -346,12 +372,15 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
 
 리뷰를 남겨주시면 다음 쇼핑 시 혜택을 드립니다!`
 
-    const result = await sendAlimtalk(env, {
-      senderKey,
-      templateCode: 'delivery_completed',
-      to: order.buyer_phone,
-      message: message
-    })
+    const result = await sendSystemAlimtalk(
+      { ...env, ALIGO_SENDER_KEY: senderKey } as unknown,
+      order.buyer_phone,
+      'delivery_completed',
+      message,
+    )
+    if ((result as { skipped?: boolean }).skipped) {
+      return { success: true, skipped: true, reason: (result as { reason?: string }).reason }
+    }
 
     if (result.success) {
       if (account) await deductBalance(env.DB, order.seller_id, cost)
@@ -379,7 +408,7 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
       return { success: false, error: result.error }
     }
   } catch (error) {
-    console.error(`Error sending delivery completion for order ${orderId}:`, error)
+    console.error(`Error sending delivery completion for order ${orderId}:`, (error as Error).message)
     return { success: false, error: (error as Error).message }
   }
 }
@@ -423,12 +452,15 @@ export async function sendLowStockAlert(
 재고가 부족합니다.
 빠른 시일 내에 재고를 보충해주세요.`
 
-    const result = await sendAlimtalk(env, {
-      senderKey,
-      templateCode: 'low_stock_alert',
-      to: seller.phone,
-      message: message
-    })
+    const result = await sendSystemAlimtalk(
+      { ...env, ALIGO_SENDER_KEY: senderKey } as unknown,
+      seller.phone,
+      'low_stock_alert',
+      message,
+    )
+    if ((result as { skipped?: boolean }).skipped) {
+      return { success: true, skipped: true, reason: (result as { reason?: string }).reason }
+    }
 
     if (result.success) {
       if (account) await deductBalance(env.DB, sellerId, cost)
@@ -445,7 +477,7 @@ export async function sendLowStockAlert(
       return { success: false, error: result.error }
     }
   } catch (error) {
-    console.error(`Error sending low stock alert:`, error)
+    console.error(`Error sending low stock alert:`, (error as Error).message)
     return { success: false, error: (error as Error).message }
   }
 }

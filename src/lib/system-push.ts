@@ -64,6 +64,7 @@ export async function sendSystemPush(
 
     let delivered = 0;
     let expired = 0;
+    let transientFailed = 0;
 
     for (const sub of subs) {
       const result = await sendPushNotification(
@@ -81,7 +82,32 @@ export async function sendSystemPush(
       else if (result === 'gone') {
         expired++;
         await deletePushSubscription(db, sub.endpoint);
+      } else {
+        transientFailed++;
       }
+    }
+
+    // 🛡️ 2026-05-12: 모든 구독이 transient 실패 시 dead-letter 기록 → ops 가 재시도 가능.
+    //   핵심 알림 (정산/주문/선물) 이 단일 push 사이클에서 영원히 사라지는 것 방지.
+    if (delivered === 0 && transientFailed > 0 && subs.length > 0) {
+      try {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS push_failures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_type TEXT NOT NULL, user_id INTEGER NOT NULL,
+            title TEXT NOT NULL, body TEXT NOT NULL, url TEXT,
+            subscription_count INTEGER NOT NULL,
+            retry_count INTEGER DEFAULT 0, max_retries INTEGER DEFAULT 3,
+            next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
+            resolved INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+        await db.prepare(`
+          INSERT INTO push_failures (user_type, user_id, title, body, url, subscription_count)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(userType, numId, payload.title.slice(0, 200), payload.body.slice(0, 1000), payload.url || null, subs.length).run();
+      } catch { /* queue 실패해도 원본 결과 반환 */ }
     }
 
     return {
