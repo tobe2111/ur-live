@@ -49,11 +49,15 @@ function setCachedStatus(key: string, data: unknown) {
   }
 }
 
-// YouTube live 생성은 quota 비용 100 → 셀러당 시간당 5회로 제한
-app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, windowSec: 3600 }), async (c) => {
+// 🛡️ 2026-05-12: handler 를 named export 로 추출 — worker/index.ts 가 top-level 에
+//   직접 등록할 수 있도록. Hono v4 에서 같은 prefix 의 다중 sub-router 마운트 시
+//   POST /live/create 가 405 반환되는 문제 우회 (top-level 등록은 sub-router 분쟁 없음).
+import type { Context } from 'hono'
+type LiveCreateCtx = Context<{ Bindings: Env }>
+export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
   await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-  
+
   if (!sellerId) {
     return c.json({
       success: false,
@@ -311,7 +315,10 @@ app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, wind
       error: error instanceof Error ? error.message : 'Failed to create live stream'
     }, 500)
   }
-})
+}
+
+// sub-router 내부에도 동일하게 등록 (정상 라우팅 시 동작) — 미들웨어 + handler 결합.
+app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, windowSec: 3600 }), createLiveBroadcastHandler)
 
 /**
  * POST /api/youtube/live/create-webcam

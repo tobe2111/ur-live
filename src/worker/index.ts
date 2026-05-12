@@ -108,7 +108,8 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
-import { youtubeLiveRoutes, omeAdmissionHandler } from '../features/youtube/api/youtube-live.routes';
+import { youtubeLiveRoutes, omeAdmissionHandler, createLiveBroadcastHandler } from '../features/youtube/api/youtube-live.routes';
+import { rateLimit as rateLimitMw } from './middleware/rate-limit';
 import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
@@ -1129,7 +1130,15 @@ app.route('/api/seller/bundles', bundleSellerRoutes);
 app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming
-// Register at both paths for backward-compatibility with older frontend deployments
+// 🛡️ 2026-05-12 (재발 fix): POST /api/seller/youtube/live/create 를 top-level 직접 등록.
+//   sub-router 마운트 순서 swap 으로도 405 가 계속 발생 → Hono v4 에서 같은 prefix 의
+//   여러 sub-app 마운트 시 라우팅 분쟁이 있음. top-level 직접 등록은 분쟁 없음.
+//   sub-router 내부 등록도 유지하여 정상 작동 시 동일하게 동작.
+const _liveCreateRateLimit = rateLimitMw({ action: 'youtube_live_create', max: 5, windowSec: 3600 });
+app.post('/api/seller/youtube/live/create', _liveCreateRateLimit, createLiveBroadcastHandler);
+app.post('/api/youtube/live/create', _liveCreateRateLimit, createLiveBroadcastHandler);
+
+// 그 외 /live/* 경로 (status, start, end, chat 등) 는 기존대로 sub-router 사용.
 // 🛡️ 2026-05-12: youtubeLiveRoutes 를 먼저 마운트 — Hono v4 에서 같은 prefix 에
 //   두 라우터 마운트 시 첫 번째 라우터가 경로를 "소비"하여 두 번째 라우터의
 //   POST /live/create 가 405 반환되는 문제 해결. /live/* 가 더 구체적이므로 우선.
