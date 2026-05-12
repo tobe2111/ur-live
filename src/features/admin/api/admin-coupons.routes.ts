@@ -30,7 +30,10 @@ adminCouponsRoutes.get('/coupons', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
-    const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
+    const page = Math.max(1, Number(c.req.query('page') || 1));
+    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)));
+    const offset = (page - 1) * limit;
+    const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(limit, offset).all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
@@ -69,7 +72,12 @@ adminCouponsRoutes.post('/coupons', cors(), async (c) => {
 // DELETE /coupons/:id — 쿠폰 삭제
 adminCouponsRoutes.delete('/coupons/:id', cors(), async (c) => {
   try {
-    await c.env.DB.prepare('DELETE FROM coupons WHERE id = ?').bind(c.req.param('id')).run();
+    // 🛡️ 입력 검증: 양수 정수만
+    const idNum = Number(c.req.param('id'));
+    if (!Number.isInteger(idNum) || idNum < 1) {
+      return c.json({ success: false, error: '유효하지 않은 id' }, 400);
+    }
+    await c.env.DB.prepare('DELETE FROM coupons WHERE id = ?').bind(idNum).run();
     return c.json({ success: true });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
@@ -78,7 +86,11 @@ adminCouponsRoutes.delete('/coupons/:id', cors(), async (c) => {
 adminCouponsRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const couponId = c.req.param('id');
+    // 🛡️ 입력 검증: 양수 정수만
+    const couponId = Number(c.req.param('id'));
+    if (!Number.isInteger(couponId) || couponId < 1) {
+      return c.json({ success: false, error: '유효하지 않은 쿠폰 id' }, 400);
+    }
     const { segment } = await c.req.json<{ segment: 'all' | 'vip' | 'new' | 'dormant' | 'active' }>();
 
     if (!segment || !['all', 'vip', 'new', 'dormant', 'active'].includes(segment)) {

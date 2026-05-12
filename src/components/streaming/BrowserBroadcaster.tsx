@@ -186,9 +186,15 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       whipUrl = res.data.data.whip_url
       modeRef.current = (res.data.data.mode as WhipMode) || 'youtube_whip'
     } catch (e) {
-      const errCode = (e as { response?: { data?: { error_code?: string } } })?.response?.data?.error_code
-      if (errCode === 'OME_NOT_CONFIGURED') {
-        onUnsupported?.('자체 미디어 서버 미구성 — 외부 도구로 송출')
+      const errResp = (e as { response?: { data?: { error_code?: string; error?: string; rtmp_url?: string } } })?.response?.data
+      const errCode = errResp?.error_code
+      if (errCode === 'OME_NOT_CONFIGURED' || errCode === 'OBS_REQUIRED') {
+        // 🛡️ 2026-05-12 (LIVE-FIX-3): OBS_REQUIRED 도 브라우저 라이브 불가 → OBS 안내 흐름.
+        //   이전: 알 수 없는 코드 → 일반 에러로 표시. 명확한 가이드로 UX 개선.
+        const guidance = errCode === 'OBS_REQUIRED'
+          ? '브라우저에서는 직접 송출이 불가능합니다. OBS 등 외부 도구를 사용해주세요.'
+          : (errResp?.error || '자체 미디어 서버 미구성 — 외부 도구로 송출')
+        onUnsupported?.(guidance)
         cleanup()
         return
       }

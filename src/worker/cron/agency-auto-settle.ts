@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * Agency Auto-Settlement Cron (Agency P0 #3)
  *
@@ -113,9 +114,9 @@ export async function handleAgencyAutoSettle(env: Env): Promise<{ processed: num
       settled++;
       totalCommission += commissionAmount;
 
-      console.log(`[cron:agency-auto-settle] agency=${agency.id}(${agency.name}) orders=${eligible.length} commission=${commissionAmount} tax=${taxAmount} net=${netAmount}`);
+      logInfo(`[cron:agency-auto-settle] agency=${agency.id}(${agency.name}) orders=${eligible.length} commission=${commissionAmount} tax=${taxAmount} net=${netAmount}`);
     } catch (err) {
-      console.error(`[cron:agency-auto-settle] agency=${agency.id} FAILED:`, err);
+      logError(`[cron:agency-auto-settle] agency=${agency.id} FAILED:`, { error: String(err) });
     }
   }
 

@@ -620,7 +620,8 @@
     "regionPickerTitle": "지역 선택",
     "bannerAria": "배너: {{title}}",
     "priceWon": "{{price}}원",
-    "ratingSold": "★ {{rating}} · {{n}} 구매"
+    "ratingSold": "★ {{rating}} · {{n}} 구매",
+    "soldCount": "{{n}} 구매"
   },
   "browse": {
     "title": "쇼핑",

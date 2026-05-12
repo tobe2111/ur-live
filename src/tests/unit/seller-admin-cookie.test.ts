@@ -22,11 +22,11 @@ describe('createSessionCookie — header format per type', () => {
     expect(c).toContain('Max-Age=2592000'); // 30d
   });
 
-  it('seller cookie uses ur_seller_session, 24h Max-Age', async () => {
+  it('seller cookie uses ur_seller_session, 24h Max-Age, SameSite=Strict', async () => {
     const c = await createSessionCookie(1, 'Seller', 's@x.com', null, SECRET, 'seller');
     expect(c).toMatch(/^ur_seller_session=/);
     expect(c).toContain('Max-Age=86400'); // 24h
-    expect(c).toContain('SameSite=Lax');
+    expect(c).toContain('SameSite=Strict'); // 10차 배치: CSRF 강화
   });
 
   it('admin cookie uses ur_admin_session, 8h Max-Age, SameSite=Strict (CSRF 강화)', async () => {
@@ -36,11 +36,11 @@ describe('createSessionCookie — header format per type', () => {
     expect(c).toContain('SameSite=Strict');
   });
 
-  it('agency cookie uses ur_agency_session, 24h, SameSite=Lax', async () => {
+  it('agency cookie uses ur_agency_session, 24h, SameSite=Strict', async () => {
     const c = await createSessionCookie(1, 'Agency', 'agency@x.com', null, SECRET, 'agency');
     expect(c).toMatch(/^ur_agency_session=/);
     expect(c).toContain('Max-Age=86400');
-    expect(c).toContain('SameSite=Lax');
+    expect(c).toContain('SameSite=Strict'); // 10차 배치: CSRF 강화
   });
 });
 

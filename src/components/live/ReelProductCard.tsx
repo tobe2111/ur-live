@@ -4,11 +4,13 @@
  *
  * 책임: 상품 정보 표시 + 찜 / 장바구니 / 바로구매(또는 셀러 변경) 액션 버튼
  */
-import { ShoppingBag } from 'lucide-react'
+import { ShoppingBag, Bell } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { boutiqueCTA } from '@/components/glass/glassTokens'
 import WishlistButton from '@/components/WishlistButton'
 import { formatNumber } from '@/utils/format'
+import api from '@/lib/api'
 
 interface Product {
   id: number
@@ -28,17 +30,15 @@ interface Product {
 }
 
 interface ReelProductCardProps {
-  /** 안전하게 보장된 상품 (null fallback 이미 처리된 것) */
   safeProduct: Product
-  /** 현재 선택된 상품 (null이면 카드 미표시) */
   currentProduct: Product | null
   isSeller: boolean
-  /** 셀러 모드에서 "변경" 버튼에 사용할 원본 스트림 상품 */
   streamProduct: Product | null
   isCurrentProduct: boolean
   addingToCart: boolean
   checkingOut: boolean
   changingProduct: boolean
+  streamId?: number
   onAddToCart: () => void
   onCheckout: () => void
   onChangeProduct: () => void
@@ -53,11 +53,25 @@ export default function ReelProductCard({
   addingToCart,
   checkingOut,
   changingProduct,
+  streamId,
   onAddToCart,
   onCheckout,
   onChangeProduct,
 }: ReelProductCardProps) {
   const { t } = useTranslation()
+  const [restockRequested, setRestockRequested] = useState(false)
+
+  async function requestRestock() {
+    if (restockRequested || !streamId) return
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token') || ''
+      await api.post(`/api/streams/${streamId}/restock-notify`,
+        { product_id: safeProduct.id },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      )
+      setRestockRequested(true)
+    } catch { setRestockRequested(true) }
+  }
 
   if (!currentProduct) return null
 
@@ -147,8 +161,28 @@ export default function ReelProductCard({
         </div>
       </div>
 
+      {/* 품절 배너 */}
+      {typeof stock === 'number' && stock === 0 && (
+        <div className="px-3 py-1.5 bg-gray-50 flex items-center justify-between" style={{ borderTop: '1px solid #F3F4F6' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#EF4444' }}>
+            {t('live.soldOut', { defaultValue: '품절' })}
+          </span>
+          <button
+            onClick={requestRestock}
+            disabled={restockRequested}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-95 disabled:opacity-60"
+            style={{ background: restockRequested ? '#E5E7EB' : '#111827', color: restockRequested ? '#6B7280' : '#fff' }}
+          >
+            <Bell style={{ width: 9, height: 9 }} />
+            {restockRequested
+              ? t('live.restockRequested', { defaultValue: '알림 신청됨' })
+              : t('live.restockNotify', { defaultValue: '재입고 알림' })}
+          </button>
+        </div>
+      )}
+
       {/* Action row — 3분할 (찜 / 장바구니 / 바로구매 or 셀러 변경) */}
-      <div className="grid grid-cols-3" style={{ borderTop: '1px solid #F3F4F6' }}>
+      <div className={`grid grid-cols-3 ${typeof stock === 'number' && stock === 0 ? 'opacity-40 pointer-events-none' : ''}`} style={{ borderTop: '1px solid #F3F4F6' }}>
         {/* 찜하기 */}
         <div className="py-2.5 flex items-center justify-center" style={{ borderRight: '1px solid #F3F4F6' }}>
           <WishlistButton productId={safeProduct.id} size="sm" />

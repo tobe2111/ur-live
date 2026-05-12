@@ -535,6 +535,12 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
       `SELECT * FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
     ).bind(productId).all();
 
+    // 옵션 수정 시 KV 캐시 무효화 (GET /api/products/:id/options 10분 캐시)
+    try {
+      const KV = (c.env as any).SESSION_KV;
+      if (KV) await KV.delete(`product_options:${productId}`);
+    } catch { /* non-fatal */ }
+
     return c.json({ success: true, data: updated.results || [] }, 201);
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);

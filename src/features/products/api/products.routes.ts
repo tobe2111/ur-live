@@ -24,6 +24,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { invalidateProductCache } from '@/lib/cache-invalidation';
 import { validateImageUrl } from '@/worker/utils/validation';
 import type { KVNamespace } from '@cloudflare/workers-types';
+import { cacheGet } from '@/worker/utils/cache';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 
@@ -42,19 +43,25 @@ export const productsRoutes = new Hono<{ Bindings: Bindings }>();
  * 인기 검색어 목록 (/api/search/popular 는 worker/index.ts에서 이 경로로 alias 등록됨)
  */
 productsRoutes.get('/search/popular', cors(), async (c) => {
-  const { DB } = c.env;
+  const { DB, SESSION_KV } = c.env;
   try {
-    const result = await DB.prepare(`
-      SELECT keyword, search_count
-      FROM popular_searches
-      ORDER BY search_count DESC
-      LIMIT 10
-    `).all().catch(() => ({ results: [] }));
+    // ✅ PERF: KV cache 10분 — 검색창 keystroke 마다 D1 hit 방지
+    const data = await cacheGet(
+      SESSION_KV,
+      'popular-searches',
+      async () => {
+        const result = await DB.prepare(`
+          SELECT keyword, search_count
+          FROM popular_searches
+          ORDER BY search_count DESC
+          LIMIT 10
+        `).all().catch(() => ({ results: [] }));
+        return result.results || [];
+      },
+      { ttl: 600 }
+    );
 
-    return c.json({
-      success: true,
-      data: result.results || [],
-    });
+    return c.json({ success: true, data });
   } catch (error) {
     return c.json({ success: true, data: [] });
   }
@@ -124,10 +131,16 @@ productsRoutes.get('/', cors(), async (c) => {
       page: c.req.query('page') ? Number(c.req.query('page')) : 1,
       limit: Math.min(c.req.query('limit') ? Number(c.req.query('limit')) : 20, 100),
     };
-    
-    const service = new ProductService(DB);
-    const result = await service.getProducts(filter, pagination);
-    
+
+    // 🚀 KV cache (60s) — list 변동은 셀러 신규 등록/삭제 시 invalidate (invalidateProductCache)
+    //    short TTL 로 무효화 누락 시에도 1분 내 자연 갱신.
+    const KV = (c.env as any).SESSION_KV;
+    const cacheKey = `products_list:${JSON.stringify({ filter, pagination })}`;
+    const result = await cacheGet(KV, cacheKey, async () => {
+      const service = new ProductService(DB);
+      return await service.getProducts(filter, pagination);
+    }, { ttl: 60, staleWhileRevalidate: 30 });
+
     return c.json({
       success: true,
       data: result.data,
@@ -153,14 +166,18 @@ productsRoutes.get('/:id/options', cors(), async (c) => {
   if (isNaN(id)) return c.json({ success: false, error: 'Invalid product ID' }, 400);
 
   try {
-    const result = await DB.prepare(
-      `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
-       FROM product_options
-       WHERE product_id = ?
-       ORDER BY option_type, option_value`
-    ).bind(id).all().catch(() => ({ results: [] }));
+    const KV = (c.env as any).SESSION_KV;
+    const data = await cacheGet(KV, `product_options:${id}`, async () => {
+      const result = await DB.prepare(
+        `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
+         FROM product_options
+         WHERE product_id = ?
+         ORDER BY option_type, option_value`
+      ).bind(id).all().catch(() => ({ results: [] as unknown[] }));
+      return result.results || [];
+    }, { ttl: 600 }); // 10분 캐시 — 옵션은 자주 안 바뀜
 
-    return c.json({ success: true, data: result.results || [] });
+    return c.json({ success: true, data });
   } catch (err: any) {
     console.error('[Products API] Get options error:', err);
     return c.json({ success: false, error: 'Failed to fetch product options' }, 500);
@@ -184,9 +201,14 @@ productsRoutes.get('/:id', cors(), async (c) => {
       }, 400);
     }
     
-    const service = new ProductService(DB);
-    const product = await service.getProduct(id);
-    
+    // 🚀 KV cache (60s) — stock/price 변동은 PUT /:id 에서 invalidateProductCache 호출.
+    //    short TTL 로 무효화 누락 시에도 1분 내 자연 갱신.
+    const KV = (c.env as any).SESSION_KV;
+    const product = await cacheGet(KV, `product_detail:${id}`, async () => {
+      const service = new ProductService(DB);
+      return await service.getProduct(id);
+    }, { ttl: 60, staleWhileRevalidate: 30 });
+
     return c.json({
       success: true,
       data: product

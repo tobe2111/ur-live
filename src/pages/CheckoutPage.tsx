@@ -167,7 +167,7 @@ export default function CheckoutPage() {
     if (cartItems.length === 0) return
     const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
     if (uniqueProductIds.length === 0) return
-    Promise.all(
+    Promise.allSettled(
       uniqueProductIds.map(pid =>
         api.get(`/api/referral/discount/${pid}`)
           .then(r => {
@@ -176,11 +176,12 @@ export default function CheckoutPage() {
             }
             return null
           })
-          .catch(() => null)
       )
     ).then(results => {
       const map: Record<number, { percent: number; tier: GroupBuyTier | null }> = {}
-      results.forEach(r => { if (r) map[r.pid] = { percent: r.percent, tier: r.tier } })
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) map[r.value.pid] = { percent: r.value.percent, tier: r.value.tier }
+      })
       setGroupBuyDiscounts(map)
     })
   }, [cartItems])

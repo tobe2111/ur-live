@@ -56,6 +56,14 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
+# 🛡️ npm audit — high/critical 취약점 차단 ([SKIP_AUDIT] 커밋 메시지로 우회 가능)
+echo "==> Pre-commit: npm audit (high/critical)..."
+bash scripts/check-npm-audit.sh || {
+  echo "❌ Commit blocked. npm audit high/critical 취약점 발견."
+  echo "   긴급 우회: 커밋 메시지에 [SKIP_AUDIT] 포함"
+  exit 1
+}
+
 # 자동 참조 섹션 (페이지/엔드포인트 목록) 재생성 + staged 면 추가
 auto_ref_relevant=$(echo "$staged_ts" | grep -E '^(src/App\.tsx|src/(features|worker)/(.*?\.routes)?|src/worker/index\.ts)' || true)
 if [ -n "$auto_ref_relevant" ]; then
@@ -163,7 +171,10 @@ echo "✅ Git pre-commit hook installed at $HOOK_FILE"
 echo ""
 echo "검증 단계:"
 echo "  1. 스키마 참조 (금지 컬럼)"
-echo "  2. 운영 가이드 동기화 (warn-only, STRICT_GUIDE_SYNC=1로 차단)"
-echo "  3. TypeScript (npx tsc)"
-echo "  4. 파일 중간 import 검출"
-echo "  5. Worker 번들 빌드 (런타임 crash catch)"
+echo "  2. 대시보드 테마 정책 (dark: variant 금지)"
+echo "  3. Service Worker 등록 코드 차단"
+echo "  4. 운영 가이드 동기화 (warn-only, STRICT_GUIDE_SYNC=1로 차단)"
+echo "  5. npm audit high/critical 취약점 ([SKIP_AUDIT]으로 우회)"
+echo "  6. TypeScript (npx tsc)"
+echo "  7. 파일 중간 import 검출"
+echo "  8. Worker 번들 빌드 (런타임 crash catch)"

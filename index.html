@@ -35,6 +35,10 @@
     <!-- 🛡️ 2026-05-07: 카카오맵 SDK preconnect — RestaurantMapPage 진입 시 핸드셰이크 절감 -->
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />
+    <!-- 🛡️ 2026-05-12: ImgBB CDN preconnect — 상품/프로필 이미지 로드 100~200ms 단축
+         (DNS + TCP + TLS 핸드셰이크를 첫 paint 전 미리 처리) -->
+    <link rel="preconnect" href="https://i.ibb.co" crossorigin />
+    <link rel="dns-prefetch" href="https://i.ibb.co" />
 
     <!-- 🛡️ 2026-04-30: Pretendard Variable stylesheet 직접 로드.
          이전 preload + onload="..." swap 패턴은 CSP 'strict-dynamic' 환경에서
@@ -94,18 +98,20 @@
          다크 페이지 (홈/마이/라이브) 는 bg-[#020202] 명시 강제라 토글 무영향. -->
     <script>
       (function () {
+        var v = null;
+        try { v = localStorage.getItem('ur_theme_mode_v1'); } catch (e) { /* private mode */ }
+        if (!v) { try { v = sessionStorage.getItem('ur_theme_mode_v1'); } catch (e) { /* sandbox */ } }
+        var sysDark = false;
+        try { sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+        var dark = v === 'dark' || ((v === null || v === 'system') && sysDark);
         try {
-          var v = localStorage.getItem('ur_theme_mode_v1');
-          var dark = v === 'dark' ||
-            ((v === null || v === 'system') &&
-             window.matchMedia &&
-             window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (dark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
-          // 🛡️ 2026-05-04: body / pre-react 배경도 테마에 맞춰 즉시 설정 (FOUC 방지).
-          window.__urInitialBg = dark ? '#020202' : '#ffffff';
-          window.__urInitialFg = dark ? '#ffffff' : '#1d1d1f';
-        } catch (e) { /* private mode / SSR */ }
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) {}
+        // 🛡️ 2026-05-04: body / pre-react 배경도 테마에 맞춰 즉시 설정 (FOUC 방지).
+        window.__urInitialBg = dark ? '#020202' : '#ffffff';
+        window.__urInitialFg = dark ? '#ffffff' : '#1d1d1f';
       })();
     </script>
 

@@ -4,7 +4,6 @@
  */
 
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { verify as honoVerify } from 'hono/jwt'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import type { 
@@ -127,17 +126,10 @@ export async function ensureYouTubeTables(DB: D1Database) {
   }
 }
 
-// CORS configuration
-app.use('/*', cors({
-  origin: [
-    'https://live.ur-team.com',
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true
-}))
+// 🛡️ 2026-05-12: 서브라우터 cors() 제거 — index.ts 전역 cors() 가 이미 처리.
+// 두 라우터(youtubeRoutes + youtubeLiveRoutes)가 같은 /api/seller/youtube prefix 에
+// 마운트될 때 Hono v4 에서 첫 번째 라우터의 app.use('/*', cors()) 가 경로를 "소비"해
+// 두 번째 라우터의 POST /live/create 에 도달하지 못하는 문제 영구 수정.
 
 /**
  * Helper: Extract seller ID from JWT

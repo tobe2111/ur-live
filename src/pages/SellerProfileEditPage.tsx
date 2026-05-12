@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { compressForThumbnail } from '@/lib/image-compress'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -33,6 +34,7 @@ export default function SellerProfileEditPage() {
   const [profile, setProfile] = useState<SellerProfile | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   // Form states - separated into sections
   const [profileData, setProfileData] = useState({
@@ -79,6 +81,11 @@ export default function SellerProfileEditPage() {
     website_url: '',
     kakao_chat_link: '',
   })
+
+  // 언마운트 시 setTimeout 정리 (setState on unmounted component 방지)
+  useEffect(() => {
+    return () => { if (successTimerRef.current) clearTimeout(successTimerRef.current) }
+  }, [])
 
   useEffect(() => {
     // Check authentication
@@ -174,7 +181,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage(t('seller.profileUpdateSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update profile:', error)
@@ -196,7 +203,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage(t('seller.businessUpdateSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update business info:', error)
@@ -218,7 +225,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage(t('seller.personalUpdateSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update personal info:', error)
@@ -262,7 +269,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setSuccessMessage(t('seller.passwordChangeSuccess'))
         setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to change password:', error)
@@ -293,9 +300,13 @@ export default function SellerProfileEditPage() {
     setErrorMessage('')
     
     try {
+      // 클라이언트 사이드 강한 압축 (CF Images 유료 회피).
+      // 프로필 이미지 → 300KB / 1024px / WebP.
+      const compressedFile = await compressForThumbnail(file)
+
       const formData = new FormData()
-      formData.append('image', file)
-      
+      formData.append('image', compressedFile)
+
       const response = await api.post('/api/seller/upload-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -305,7 +316,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfileData({ ...profileData, profile_image: response.data.url })
         setSuccessMessage(t('seller.imageUploadSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to upload image:', error)

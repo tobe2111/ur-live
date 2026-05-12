@@ -217,15 +217,14 @@ export class DatabaseHelper {
       sql += ` ORDER BY ${safeOrderBy} ${dir}`;
     }
 
-    if (options?.limit) {
-      // limit/offset 도 정수 강제 (문자열 주입 차단)
-      const safeLimit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 0)));
-      sql += ` LIMIT ${safeLimit}`;
+    // 기본 1000개 상한 — 의도치 않은 full-table return 방지
+    const rawLimit = options?.limit ?? 1000;
+    const safeLimit = Math.max(1, Math.min(10000, Math.floor(Number(rawLimit) || 1000)));
+    sql += ` LIMIT ${safeLimit}`;
 
-      if (options?.offset) {
-        const safeOffset = Math.max(0, Math.floor(Number(options.offset) || 0));
-        sql += ` OFFSET ${safeOffset}`;
-      }
+    if (options?.offset) {
+      const safeOffset = Math.max(0, Math.floor(Number(options.offset) || 0));
+      sql += ` OFFSET ${safeOffset}`;
     }
 
     return this.query<T>(sql, ...values);

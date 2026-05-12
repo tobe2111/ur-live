@@ -378,7 +378,7 @@ export default function MainHomePage() {
               <button key={m.id} onClick={() => navigate(`/products/${m.id}`)} className="w-full flex items-center gap-3 rounded-xl p-2.5 text-left bg-white dark:bg-[#0B0B0B] border border-gray-100 dark:border-[#151515]">
                 <span className="text-[20px] font-black w-[22px] shrink-0" style={{ color: i < 3 ? '#FBBF24' : '#6B7280', letterSpacing: '-0.03em' }}>{i + 1}</span>
                 <div className="rounded-lg overflow-hidden shrink-0 relative w-[68px] h-[68px] bg-gray-100 dark:bg-[#1A1A1A]">
-                  {m.image_url && <img src={m.image_url} alt={m.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
+                  {m.image_url && <img src={m.image_url} alt={m.name || t('mainHome.altProduct')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 mb-1 flex-wrap">
@@ -425,7 +425,7 @@ export default function MainHomePage() {
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] md:w-auto text-left active:scale-[0.98] transition-transform">
                   <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
-                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" className="w-full h-full object-cover" />}
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
                       <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
@@ -472,7 +472,7 @@ export default function MainHomePage() {
               return (
                 <div key={s.id} className="shrink-0 w-[170px] lg:w-auto text-left">
                   <button type="button" onClick={() => navigate(`/live/${s.id}`)} className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] cursor-pointer text-left">
-                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altScheduled')} loading="lazy" className="w-full h-full object-cover" />}
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altScheduled')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.9) 100%)' }} />
                     <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-500 px-2 py-0.5 rounded-md">
                       <Clock className="h-2.5 w-2.5 text-white" />
@@ -510,7 +510,7 @@ export default function MainHomePage() {
               return (
                 <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] lg:w-auto text-left">
                   <div className="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
-                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altReplay')} loading="lazy" className="w-full h-full object-cover brightness-[0.85]" />}
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altReplay')} loading="lazy" decoding="async" className="w-full h-full object-cover brightness-[0.85]" />}
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
                       <Play className="h-2.5 w-2.5 text-white" />
                       <span className="text-[9px] font-bold text-white">{t('mainHome.replayBadge')}</span>
@@ -554,7 +554,7 @@ export default function MainHomePage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative w-full block">
                     <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                       <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
                     </div>
                     <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
@@ -578,7 +578,7 @@ export default function MainHomePage() {
                 return (
                   <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left w-full block">
                     <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" className="w-full h-full object-cover" />}
+                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                       {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
                     </div>
                     <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
@@ -589,8 +589,12 @@ export default function MainHomePage() {
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
                       <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.price) })}</span>
                     </div>
-                    {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.ratingSold', { rating: (p.avg_rating || 4.5).toFixed(1), n: formatNumber(p.sold_count || 0), defaultValue: '★ {{rating}} · {{n}} 구매' as string })}</p>
+                    {(p.avg_rating != null || p.sold_count) && (
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        {p.avg_rating != null && `★ ${p.avg_rating.toFixed(1)}`}
+                        {p.avg_rating != null && p.sold_count ? ' · ' : ''}
+                        {p.sold_count ? t('mainHome.soldCount', { n: formatNumber(p.sold_count), defaultValue: '{{n}} 구매' as string }) : ''}
+                      </p>
                     )}
                   </button>
                 )

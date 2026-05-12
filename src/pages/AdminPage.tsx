@@ -181,7 +181,7 @@ export default function AdminPage() {
       if (response.data?.success && response.data?.data) {
         setDashboardStats(response.data.data)
       }
-    } catch { /* silent */ }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[AdminPage] stats load failed:', e) }
 
     // 이상 거래 감지: 유저별 그룹핑 (도배 방지)
     try {
@@ -245,7 +245,7 @@ export default function AdminPage() {
         }
       }
       recentOrdersRef.current = recentOrdersRef.current.filter(r => now - r.time < 300000)
-    } catch { /* silent */ }
+    } catch (e) { if (import.meta.env.DEV) console.warn('[AdminPage] orders load failed:', e) }
   }
 
   async function approveSeller(sellerId: number) {

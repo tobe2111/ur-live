@@ -1,10 +1,6 @@
 // ============================================================
 // KV-backed cache utility (cache-aside pattern)
-// Used to shield D1 from traffic spikes (viral moments, TV features, etc.)
-//
-// - Graceful fallback when KV is not configured (returns fetcher() directly)
-// - Stale-while-revalidate: returns stale data instead of blocking if slightly expired
-// - Key namespacing to avoid collisions across features
+// L1: isolate 인메모리 (KV read/write 0), L2: KV
 // ============================================================
 
 import type { KVNamespace } from '@cloudflare/workers-types';
@@ -25,81 +21,82 @@ interface CacheEntry<T> {
   staleUntil: number;
 }
 
+// L1: isolate 인메모리 캐시 — KV 요청 자체를 차단
+const l1 = new Map<string, CacheEntry<unknown>>();
+
+// L1 정리 (메모리 누수 방지, 1분 주기)
+let l1LastCleanup = Date.now();
+function maybeCleanL1() {
+  const now = Date.now();
+  if (now - l1LastCleanup < 60_000) return;
+  l1LastCleanup = now;
+  for (const [k, v] of l1) {
+    if (now > v.staleUntil) l1.delete(k);
+  }
+}
+
 /**
  * In-isolate in-flight promise map for cache stampede protection.
- *
- * When many concurrent requests miss the same key inside a single Worker
- * isolate, we fetch once and share the promise with the rest. This prevents
- * the "thundering herd" from overwhelming D1 during a viral moment.
- *
- * ⚠️  Scope: only deduplicates within a single isolate. Multiple isolates
- *    (or colos) can still stampede simultaneously. For a true global lock
- *    you'd need a Durable Object — outside the scope of this utility.
  */
 const inFlight = new Map<string, Promise<unknown>>();
 
-/**
- * Cache-aside read helper with stale-while-revalidate semantics.
- *
- * @param KV        KV namespace (optional — falls back to direct fetcher when undefined)
- * @param key       Cache key (will be prefixed with namespace)
- * @param fetcher   Function to compute the fresh value on a miss
- * @param options   TTL / SWR / namespace overrides
- */
 export async function cacheGet<T>(
   KV: KVNamespace | undefined,
   key: string,
   fetcher: () => Promise<T>,
   options: CacheOptions = {}
 ): Promise<T> {
-  // Graceful fallback if KV is not bound (e.g. local dev or pre-provisioned env)
-  if (!KV) return fetcher();
-
   const { ttl = 300, staleWhileRevalidate = 60, namespace = 'cache' } = options;
   const fullKey = `${namespace}:${key}`;
+  const now = Date.now();
 
+  maybeCleanL1();
+
+  // L1 hit (인메모리) — KV 접근 없음
+  const l1hit = l1.get(fullKey) as CacheEntry<T> | undefined;
+  if (l1hit) {
+    if (now < l1hit.expiresAt) return l1hit.data;
+    if (now < l1hit.staleUntil) return l1hit.data;
+    l1.delete(fullKey);
+  }
+
+  // KV 없으면 바로 fetcher
+  if (!KV) return fetcher();
+
+  // L2: KV hit
   try {
     const cached = await KV.get(fullKey, { type: 'json' });
     if (cached && typeof cached === 'object') {
       const entry = cached as CacheEntry<T>;
-      const now = Date.now();
-      if (now < entry.expiresAt) {
-        // Fresh hit
-        return entry.data;
-      }
       if (now < entry.staleUntil) {
-        // Stale but still serviceable — return and let TTL expire naturally.
-        // (We intentionally don't fire-and-forget revalidate here because doing
-        //  so reliably in Workers requires waitUntil plumbing. Next cold request
-        //  after staleUntil will refresh.)
+        l1.set(fullKey, entry); // L1에 올려놔서 다음 요청은 KV read도 없음
         return entry.data;
       }
     }
   } catch {
-    // KV read failed — fall through to origin fetch
+    // KV read 실패 — origin fetch
   }
 
-  // Origin fetch — dedupe concurrent misses within this isolate.
+  // Stampede 방지: 같은 키 동시 miss는 하나만 fetch
   const existing = inFlight.get(fullKey) as Promise<T> | undefined;
-  if (existing) {
-    return existing;
-  }
+  if (existing) return existing;
 
   const promise: Promise<T> = (async () => {
     const fresh = await fetcher();
-    try {
-      const now = Date.now();
-      const entry: CacheEntry<T> = {
-        data: fresh,
-        expiresAt: now + ttl * 1000,
-        staleUntil: now + (ttl + staleWhileRevalidate) * 1000,
-      };
-      await KV.put(fullKey, JSON.stringify(entry), {
-        // KV auto-cleanup after stale window
-        expirationTtl: ttl + staleWhileRevalidate,
-      });
-    } catch {
-      // Cache write failures are non-fatal
+    const entry: CacheEntry<T> = {
+      data: fresh,
+      expiresAt: now + ttl * 1000,
+      staleUntil: now + (ttl + staleWhileRevalidate) * 1000,
+    };
+    l1.set(fullKey, entry);
+    if (KV) {
+      try {
+        await KV.put(fullKey, JSON.stringify(entry), {
+          expirationTtl: ttl + staleWhileRevalidate,
+        });
+      } catch {
+        // Cache write 실패는 치명적이지 않음
+      }
     }
     return fresh;
   })();
@@ -112,29 +109,20 @@ export async function cacheGet<T>(
   }
 }
 
-/**
- * Invalidate one or more cache keys.
- *
- * Note: KV has no pattern/prefix delete. For "wildcard" invalidation
- * (e.g. all product listings), either enumerate known keys here or rely
- * on the short TTL — for hot public GETs a 30–60s TTL is usually fine.
- */
 export async function cacheInvalidate(
   KV: KVNamespace | undefined,
   keys: string | string[],
   namespace = 'cache'
 ): Promise<void> {
-  if (!KV) return;
   const arr = Array.isArray(keys) ? keys : [keys];
+  // L1에서도 즉시 제거
+  arr.forEach(k => l1.delete(`${namespace}:${k}`));
+  if (!KV) return;
   await Promise.all(
     arr.map((k) => KV.delete(`${namespace}:${k}`).catch(swallow('worker:utils:cache')))
   );
 }
 
-/**
- * Helper to build a stable cache key from query parameters.
- * Undefined / empty values are omitted so keys stay compact.
- */
 export function buildCacheKey(
   prefix: string,
   parts: Record<string, string | number | undefined | null>

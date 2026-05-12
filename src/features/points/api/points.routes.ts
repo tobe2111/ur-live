@@ -16,7 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
-
+import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -100,6 +100,10 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
 
   const { amount } = await c.req.json<{ amount: number }>();
 
+  // 🛡️ 입력 검증: 숫자형 + 화이트리스트
+  if (!Number.isFinite(amount)) {
+    return c.json({ success: false, error: '유효하지 않은 금액입니다' }, 400);
+  }
   const pkg = CHARGE_AMOUNTS.find(p => p.amount === amount);
   if (!pkg) {
     return c.json({ success: false, error: `유효하지 않은 충전 금액입니다. 가능: ${CHARGE_AMOUNTS.map(p => p.amount).join(', ')}` }, 400);
@@ -160,6 +164,17 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
     return c.json({ success: false, error: '필수 항목 누락' }, 400);
   }
 
+  // 🛡️ 입력 검증: 타입 + 길이 + 범위
+  if (typeof paymentKey !== 'string' || paymentKey.length > 200) {
+    return c.json({ success: false, error: '유효하지 않은 paymentKey' }, 400);
+  }
+  if (typeof orderId !== 'string' || orderId.length > 100) {
+    return c.json({ success: false, error: '유효하지 않은 orderId' }, 400);
+  }
+  if (!Number.isFinite(amount) || amount < 1 || amount > 100_000_000) {
+    return c.json({ success: false, error: '유효하지 않은 금액' }, 400);
+  }
+
   const { DB } = c.env;
 
   // pending 트랜잭션 조회 (금액 검증)
@@ -189,15 +204,25 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   }
 
   // 토스 결제 승인
-  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': paymentKey,
-    },
-    body: JSON.stringify({ paymentKey, orderId, amount }),
-  });
+  let tossRes: Response;
+  try {
+    tossRes = await withCircuitBreaker(
+      { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
+      () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': paymentKey,
+        },
+        // 🛡️ Defense-in-depth: send DB-verified pending.amount (equal to client amount above)
+        body: JSON.stringify({ paymentKey, orderId, amount: pending.amount }),
+        signal: AbortSignal.timeout(15_000),
+      }),
+    );
+  } catch {
+    return c.json({ success: false, error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', code: 'CIRCUIT_OPEN' }, 503);
+  }
 
   if (!tossRes.ok) {
     const err = await tossRes.json<{ message?: string; code?: string }>();
@@ -563,6 +588,14 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 
   if (!order_number || !items?.length || !shipping?.name) {
     return c.json({ success: false, error: '필수 항목이 누락되었습니다' }, 400);
+  }
+
+  // 🛡️ 입력 검증
+  if (typeof order_number !== 'string' || order_number.length === 0 || order_number.length > 100) {
+    return c.json({ success: false, error: '유효하지 않은 order_number' }, 400);
+  }
+  if (!Array.isArray(items) || items.length > 100) {
+    return c.json({ success: false, error: '주문 항목 수가 유효하지 않습니다' }, 400);
   }
 
   // ✅ IDEMPOTENCY: client-supplied `order_number` doubles as the idempotency

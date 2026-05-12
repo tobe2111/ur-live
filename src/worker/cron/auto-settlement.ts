@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * Auto-Settlement Cron Handler
  *
@@ -105,9 +106,9 @@ export async function handleAutoSettlement(env: Env) {
       console.warn(`[Cron] Settlement: ${processedSellers} OK, ${failedSellers} failed (sellers: ${failedSellerIds.join(',')})`);
     }
 
-    console.log(`[Cron] Auto-settlement: ${Object.keys(sellerGroups).length} sellers processed`);
+    logInfo(`[Cron] Auto-settlement: ${Object.keys(sellerGroups).length} sellers processed`);
   } catch (err) {
-    console.error('[Cron] Auto-settlement failed:', err);
+    logError('[Cron] Auto-settlement failed:', { error: String(err) });
     if (env.DISCORD_WEBHOOK_URL) {
       await sendDiscordAlert(
         env.DISCORD_WEBHOOK_URL,
@@ -203,9 +204,9 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       }
     }
 
-    console.log(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded`);
+    logInfo(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded`);
   } catch (err) {
-    console.error('[Cron] Expired voucher refund failed:', err);
+    logError('[Cron] Expired voucher refund failed:', { error: String(err) });
     if (env.DISCORD_WEBHOOK_URL) {
       await sendDiscordAlert(
         env.DISCORD_WEBHOOK_URL,

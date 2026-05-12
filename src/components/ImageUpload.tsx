@@ -11,7 +11,7 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react'
-import imageCompression from 'browser-image-compression'
+import { compressForUpload } from '@/lib/image-compress'
 import api from '@/lib/api'
 
 interface ImageUploadProps {
@@ -50,49 +50,41 @@ export default function ImageUpload({
         throw new Error('이미지 크기는 10MB 이하여야 합니다.')
       }
 
-      // 이미지 압축
-      const options = {
-        maxSizeMB: maxSizeKB / 1024, // KB를 MB로 변환
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-        fileType: 'image/jpeg'
-      }
+      // 클라이언트 사이드 강한 압축 (CF Images 유료 회피).
+      // WebP 변환 + 1280px 제한 + 0.82 품질.
+      const compressedFile = await compressForUpload(file, {
+        maxSizeMB: maxSizeKB / 1024,
+        maxWidthOrHeight: 1280,
+        toWebP: true,
+      })
 
-      const compressedFile = await imageCompression(file, options)
-      
-      // Base64로 변환
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const base64 = e.target?.result as string
+      // 🛡️ 서버 엔드포인트는 multipart/form-data 만 허용 (JSON+base64 는 무효).
+      //   기존 base64 코드는 항상 400 으로 실패하고 있었음.
+      try {
+        const formData = new FormData()
+        // 압축 결과 파일명/타입을 원본에 맞춰 서버 확장자 검증 통과 보장.
+        // compressForUpload 가 이미 File 객체로 webp 확장자/타입을 정규화함.
+        formData.append('image', compressedFile)
 
-        try {
-          // API 호출하여 업로드
-          const response = await api.post('/api/seller/upload-image', {
-            image: base64,
-            filename: file.name,
-          })
+        const response = await api.post('/api/seller/upload-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
 
-          if (response.data.success) {
-            onChange(response.data.url)
-            setStorageType(response.data.storage)
-            
-            if (response.data.warning) {
-              if (import.meta.env.DEV) console.warn('[Image Upload]', response.data.warning)
-            }
-          } else {
-            throw new Error(response.data.error || '업로드 실패')
+        if (response.data.success) {
+          onChange(response.data.url)
+          setStorageType(response.data.storage ?? 'r2')
+          if (response.data.warning) {
+            if (import.meta.env.DEV) console.warn('[Image Upload]', response.data.warning)
           }
-        } catch (apiError: any) {
-          if (import.meta.env.DEV) console.error('API upload error:', apiError)
-          throw new Error(apiError.response?.data?.error || apiError.message || '업로드 실패')
-        } finally {
-          setUploading(false)
+        } else {
+          throw new Error(response.data.error || '업로드 실패')
         }
+      } catch (apiError: any) {
+        if (import.meta.env.DEV) console.error('API upload error:', apiError)
+        throw new Error(apiError.response?.data?.error || apiError.message || '업로드 실패')
+      } finally {
+        setUploading(false)
       }
-      reader.onerror = () => {
-        throw new Error('파일 읽기에 실패했습니다.')
-      }
-      reader.readAsDataURL(compressedFile)
 
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('Image upload error:', err)

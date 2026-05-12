@@ -122,19 +122,21 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
     whereClause += ' AND is_read = 0';
   }
 
+  // 명시적 컬럼 + 미읽음 수를 window function으로 한 번에 조회 (D1 read 50% 절감)
   const { results } = await DB.prepare(
-    `SELECT * FROM dashboard_notifications WHERE ${whereClause} ORDER BY created_at DESC LIMIT ?`
-  ).bind(...params, limit).all();
+    `SELECT id, recipient_type, recipient_id, type, title, message, link, is_read, created_at,
+            SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) OVER () AS _unread_total
+     FROM dashboard_notifications WHERE ${whereClause} ORDER BY created_at DESC LIMIT ?`
+  ).bind(...params, limit).all<{ _unread_total?: number; [k: string]: unknown }>();
 
-  // Unread count
-  const countRow = await DB.prepare(
-    `SELECT COUNT(*) as cnt FROM dashboard_notifications WHERE ${whereClause} AND is_read = 0`
-  ).bind(...params).first<{ cnt: number }>();
+  const unreadCount = (results && results.length > 0) ? (results[0]._unread_total ?? 0) : 0;
+  // _unread_total 제거 후 반환 (내부 계산 컬럼)
+  const notifications = (results ?? []).map(({ _unread_total: _, ...n }) => n);
 
   return c.json({
     success: true,
-    notifications: results ?? [],
-    unread_count: countRow?.cnt ?? 0,
+    notifications,
+    unread_count: unreadCount,
   });
 });
 
@@ -146,12 +148,16 @@ dashboardNotificationsRoutes.put('/read-all', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
-  const recipientType = user.type === 'admin' ? 'admin' : 'seller';
+  const recipientType = user.type === 'admin' ? 'admin' : user.type === 'agency' ? 'agency' : 'seller';
   const recipientId = String(user.id);
 
   if (recipientType === 'admin') {
     await DB.prepare(
       `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?) AND is_read = 0`
+    ).bind(recipientId).run();
+  } else if (recipientType === 'agency') {
+    await DB.prepare(
+      `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'agency' AND recipient_id = ? AND is_read = 0`
     ).bind(recipientId).run();
   } else {
     await DB.prepare(
@@ -181,6 +187,9 @@ dashboardNotificationsRoutes.put('/:id/read', requireAuth(), async (c) => {
   } else if (user.type === 'seller') {
     whereClause = 'id = ? AND recipient_type = ? AND recipient_id = ?';
     params = [id, 'seller', String(user.id)];
+  } else if (user.type === 'agency') {
+    whereClause = 'id = ? AND recipient_type = ? AND recipient_id = ?';
+    params = [id, 'agency', String(user.id)];
   } else {
     return c.json({ success: false, error: '접근 권한 없음' }, 403);
   }

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ChevronLeft, Bell } from 'lucide-react'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 interface Notification {
   id: number; type: string; title: string; message?: string; link?: string
@@ -27,7 +29,9 @@ export default function NotificationsPage() {
     try {
       await api.put('/api/social/notifications/read-all')
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
-    } catch { /* silent */ }
+    } catch {
+      toast.error(t('notifications.markAllReadFailed', { defaultValue: '읽음 처리에 실패했습니다' }))
+    }
   }
 
   return (
@@ -71,7 +75,7 @@ export default function NotificationsPage() {
                     await api.put(`/api/social/notifications/${n.id}/read`)
                     setNotifications(prev => prev.map(nn => nn.id === n.id ? { ...nn, is_read: 1 } : nn))
                   }
-                  if (n.link) navigate(n.link)
+                  if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
                 className={`w-full flex items-start gap-3 p-4 text-left border-b border-gray-100 dark:border-[#1A1A1A] ${n.is_read ? 'opacity-50' : ''}`}
               >

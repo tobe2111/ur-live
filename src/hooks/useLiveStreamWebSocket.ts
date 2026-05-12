@@ -21,6 +21,7 @@ import { isFeatureBlockedSync, isPWAStandalone } from '@/lib/in-app-warning'
 import { toast } from '@/hooks/useToast'
 import type { ChatMessage, StreamData } from '@/types/live-stream'
 import { safeTime } from '@/utils/safe-date'
+import { useStreamStore } from '@/shared/stores/useStreamStore'
 
 export interface DonationEvent {
   donorName: string
@@ -59,6 +60,9 @@ export interface UseLiveStreamWebSocketReturn {
 
   // Flash Sales
   activeFlashSale: FlashSaleEvent | null
+
+  // Pinned message (셀러 고정 공지)
+  pinnedMessage: string | null
 }
 
 export function useLiveStreamWebSocket(
@@ -66,17 +70,23 @@ export function useLiveStreamWebSocket(
   enabled: boolean = true,
   replay: boolean = false,
 ): UseLiveStreamWebSocketReturn {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const getCachedMessages = useStreamStore(s => s.getCachedMessages)
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    streamId ? getCachedMessages(streamId) : []
+  )
   const [streamData, setStreamData] = useState<StreamData | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastDonation, setLastDonation] = useState<DonationEvent | null>(null)
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleEvent | null>(null)
+  const [pinnedMessage, setPinnedMessage] = useState<string | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const bcRef = useRef<BroadcastChannel | null>(null)
+  const tabIdRef = useRef(`tab-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const MAX_RECONNECT = 3
 
   const clearMessages = useCallback(() => setMessages([]), [])
@@ -158,6 +168,33 @@ export function useLiveStreamWebSocket(
   const connect = useCallback(() => {
     if (!enabled || !streamId) return
 
+    // BroadcastChannel 탭 간 메시지 중계 — 같은 스트림 여러 탭 열면
+    // 마스터 탭(WS 연결 보유) 이 다른 탭에 chat 이벤트를 전달하고,
+    // 슬레이브 탭은 WS 연결 없이 메시지를 수신.
+    if (!bcRef.current && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel(`ur-live-${streamId}`)
+      bcRef.current = bc
+      bc.onmessage = (e) => {
+        if (e.data?.type === 'chat' && e.data?.fromTab !== tabIdRef.current) {
+          const d = e.data.payload
+          setMessages(prev => {
+            if (prev.some(m => m.id === String(d.id))) return prev
+            const newMsg: ChatMessage = {
+              id: String(d.id),
+              userId: d.user_id,
+              userName: d.user_name,
+              userType: d.is_seller ? 'streamer' : (d.is_admin ? 'system' : 'viewer'),
+              message: d.message,
+              timestamp: d.timestamp ?? Date.now(),
+              isSeller: Boolean(d.is_seller),
+              isAdmin: Boolean(d.is_admin),
+            }
+            return [...prev, newMsg].slice(-200)
+          })
+        }
+      }
+    }
+
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null
@@ -191,6 +228,10 @@ export function useLiveStreamWebSocket(
 
           if (msg.type === 'chat') {
             const d = msg.data
+            // 다른 탭에 relay (같은 streamId BroadcastChannel)
+            try {
+              bcRef.current?.postMessage({ type: 'chat', fromTab: tabIdRef.current, payload: d })
+            } catch { /* ignore */ }
             setMessages((prev) => {
               const newMsg: ChatMessage = {
                 id: String(d.id),
@@ -234,6 +275,8 @@ export function useLiveStreamWebSocket(
             setLastDonation(msg.data as DonationEvent)
           } else if (msg.type === 'flash_sale') {
             setActiveFlashSale(msg.data)
+          } else if (msg.type === 'pinned_message') {
+            setPinnedMessage((msg.data as { message: string | null })?.message ?? null)
           }
         } catch (e) {
           if (import.meta.env.DEV) console.error('[WS] Message parse error:', e)
@@ -329,6 +372,10 @@ export function useLiveStreamWebSocket(
         clearInterval(pollingIntervalRef.current)
         pollingIntervalRef.current = null
       }
+      if (bcRef.current) {
+        bcRef.current.close()
+        bcRef.current = null
+      }
     }
   }, [connect, enabled, streamId])
 
@@ -342,5 +389,6 @@ export function useLiveStreamWebSocket(
     streamData,
     lastDonation,
     activeFlashSale,
+    pinnedMessage,
   }
 }

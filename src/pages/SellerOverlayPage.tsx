@@ -18,7 +18,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
 import { formatNumber } from '@/utils/format'
-import { ShoppingBag } from 'lucide-react'
+import { ShoppingBag, Users, ShoppingCart, Gift } from 'lucide-react'
 
 interface PinProduct {
   id: number
@@ -45,8 +45,39 @@ export default function SellerOverlayPage() {
   const [pinProduct, setPinProduct] = useState<PinProduct | null>(null)
   const [ytMessages, setYtMessages] = useState<OverlayMsg[]>([])
   const seenYtIds = useRef<Set<string>>(new Set())
+  const showStats = searchParams.get('stats') !== '0'
 
-  const { messages: wsMessages } = useLiveStreamWebSocket(streamId, !!streamId, false)
+  // 실시간 통계
+  const [stats, setStats] = useState({ viewers: 0, orders: 0, donations: 0 })
+
+  const { messages: wsMessages, streamData } = useLiveStreamWebSocket(streamId, !!streamId, false)
+
+  // 시청자 수 실시간 반영
+  useEffect(() => {
+    if (streamData?.viewer_count !== undefined) {
+      setStats(s => ({ ...s, viewers: streamData.viewer_count }))
+    }
+  }, [streamData?.viewer_count])
+
+  // 주문/후원 통계 polling (30s)
+  useEffect(() => {
+    if (!streamId || !showStats) return
+    let active = true
+    const fetchStats = async () => {
+      try {
+        const [ordersRes, donationsRes] = await Promise.all([
+          api.get(`/api/streams/${streamId}/orders/count`).catch(() => null),
+          api.get(`/api/donations/stream/${streamId}`).catch(() => null),
+        ])
+        if (!active) return
+        if (ordersRes?.data?.success) setStats(s => ({ ...s, orders: ordersRes.data.data?.count ?? s.orders }))
+        if (donationsRes?.data?.success) setStats(s => ({ ...s, donations: donationsRes.data.data?.total_amount ?? s.donations }))
+      } catch { /* silent */ }
+    }
+    fetchStats()
+    const t = setInterval(fetchStats, 30000)
+    return () => { active = false; clearInterval(t) }
+  }, [streamId, showStats])
 
   // 핀 상품 polling (5s)
   useEffect(() => {
@@ -127,6 +158,24 @@ export default function SellerOverlayPage() {
             <p className="text-xs font-medium text-pink-600 mb-0.5">▶ 지금 소개 중</p>
             <p className="text-sm font-bold text-gray-900 truncate">{pinProduct.name}</p>
             <p className="text-base font-extrabold text-gray-900">{formatNumber(pinProduct.price)}원</p>
+          </div>
+        </div>
+      )}
+
+      {/* 실시간 통계 — 우하단 */}
+      {showStats && (
+        <div className="absolute bottom-4 right-4 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5">
+            <Users className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-white text-sm font-bold">{formatNumber(stats.viewers)}</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5">
+            <ShoppingCart className="w-3.5 h-3.5 text-green-400" />
+            <span className="text-white text-sm font-bold">{formatNumber(stats.orders)}</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5">
+            <Gift className="w-3.5 h-3.5 text-pink-400" />
+            <span className="text-white text-sm font-bold">{formatNumber(stats.donations)}</span>
           </div>
         </div>
       )}

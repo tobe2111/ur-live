@@ -34,6 +34,7 @@ export default function InterestListPage() {
   }, [t])
 
   const handleRemove = (item: InterestItem) => {
+    if (!confirm(t('interestList.removeConfirm', { defaultValue: '관심 목록에서 삭제하시겠습니까?' }))) return
     setItems(prev => prev.filter(i => i.id !== item.id))
     api.post('/api/interest/remove', { product_id: item.product_id, type: item.type })
       .then(() => toast.success(t('interestList.removed')))

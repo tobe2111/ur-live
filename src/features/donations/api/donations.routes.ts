@@ -13,7 +13,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL } from '@/shared/constants';
-
+import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -204,11 +204,10 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const userId = user.id;
 
-  const body = await c.req.json<{
-    paymentKey: string;
-    orderId: string;
-    amount: number;
-  }>();
+  let body: { paymentKey?: string; orderId?: string; amount?: number } = {};
+  try { body = await c.req.json(); } catch {
+    return c.json({ success: false, error: '잘못된 요청 형식입니다' }, 400);
+  }
 
   if (!body.paymentKey || !body.orderId || !body.amount) {
     return c.json({ success: false, error: '필수 항목 누락' }, 400);
@@ -264,15 +263,29 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
 
   // 토스 결제 승인 (DB에서 검증된 금액 사용)
   // Idempotency-Key: paymentKey 기반 — 동일 결제의 중복 승인 요청 방지
-  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': body.paymentKey,
-    },
-    body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: pending.amount }),
-  });
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const paymentKey = body.paymentKey!;
+  const orderId = body.orderId!;
+  let tossRes: Response;
+  try {
+    tossRes = await withCircuitBreaker(
+      { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
+      () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': paymentKey,
+        },
+        body: JSON.stringify({ paymentKey, orderId, amount: pending.amount }),
+        signal: AbortSignal.timeout(15_000),
+      }),
+    );
+  } catch {
+    await DB.prepare('UPDATE donations SET payment_status = ? WHERE order_id = ?')
+      .bind('failed', body.orderId).run().catch(swallow('donations:confirm:circuit'));
+    return c.json({ success: false, error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', code: 'CIRCUIT_OPEN' }, 503);
+  }
 
   if (!tossRes.ok) {
     const err = await tossRes.json<{ message?: string; code?: string }>();
@@ -304,6 +317,11 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
 donationsRoutes.get('/stream/:streamId', async (c) => {
   const { DB } = c.env;
   const streamId = c.req.param('streamId');
+
+  // 🛡️ Numeric param validation — prevent injection / NaN bind
+  if (!/^\d+$/.test(streamId)) {
+    return c.json({ success: false, error: 'streamId 형식이 올바르지 않습니다' }, 400);
+  }
 
   try {
     const [donations, totalRow] = await Promise.all([

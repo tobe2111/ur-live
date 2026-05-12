@@ -19,6 +19,7 @@ import { executeQuery, executeRun } from '@/worker/utils/database';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { requireAdminRole } from '@/worker/middleware/auth';
+import { logAudit } from '../../../lib/audit-log';
 
 export const adminSettlementsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -196,10 +197,22 @@ adminSettlementsRoutes.patch('/settlement/:id/status', cors(), requireAdminRole(
     const { status } = await c.req.json<{ status: string }>();
     if (!['pending', 'completed'].includes(status))
       return c.json({ success: false, error: '유효하지 않은 상태입니다' }, 400);
+    const prev = await DB.prepare(`SELECT settlement_status FROM orders WHERE id = ?`).bind(orderId).first<{ settlement_status: string | null }>();
     const settled_at = status === 'completed' ? new Date().toISOString() : null;
     await executeRun(DB,
       `UPDATE orders SET settlement_status = ?, settled_at = ? WHERE id = ?`,
       [status, settled_at, orderId]);
+    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
+    void logAudit(DB, {
+      actor_id: String(actor?.id ?? 'unknown'),
+      actor_email: actor?.email,
+      action: 'settlement_status',
+      resource_type: 'order',
+      resource_id: String(orderId),
+      old_value: JSON.stringify({ settlement_status: prev?.settlement_status }),
+      new_value: JSON.stringify({ settlement_status: status }),
+      ip: c.req.header('CF-Connecting-IP') ?? undefined,
+    });
     return c.json({ success: true, data: { id: orderId, settlement_status: status } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -233,6 +246,16 @@ adminSettlementsRoutes.post('/settlement/batch-complete', cors(), requireAdminRo
     await executeRun(DB,
       `UPDATE orders SET settlement_status = 'completed', settled_at = ? WHERE id IN (${placeholders})`,
       [settled_at, ...order_ids]);
+    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
+    void logAudit(DB, {
+      actor_id: String(actor?.id ?? 'unknown'),
+      actor_email: actor?.email,
+      action: 'settlement_batch',
+      resource_type: 'order',
+      resource_id: order_ids.join(','),
+      new_value: JSON.stringify({ count: order_ids.length, order_ids }),
+      ip: c.req.header('CF-Connecting-IP') ?? undefined,
+    });
     return c.json({ success: true, data: { updated: order_ids.length } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

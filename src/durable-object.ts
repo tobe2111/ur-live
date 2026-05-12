@@ -22,6 +22,9 @@ export class LiveStreamDurableObject extends DurableObject {
   private chatSessions: Map<WebSocket, ChatSession>;
   private viewerCount: number;
   private currentProduct: { product: Product; options: ProductOption[] } | null;
+  private pinnedMessage: string | null;
+  private blockedKeywords: string[];
+  private bannedUserIds: Set<string>;
   private state: DurableObjectState;
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
@@ -31,14 +34,20 @@ export class LiveStreamDurableObject extends DurableObject {
     this.chatSessions = new Map();
     this.viewerCount = 0;
     this.currentProduct = null;
+    this.pinnedMessage = null;
+    this.blockedKeywords = [];
+    this.bannedUserIds = new Set();
 
-    // 🛡️ 2026-04-22: DO 재시작 시 currentProduct 복원 (DO storage persistence)
-    // 이전: DO 가 재시작/migrate 되면 현재 상품 정보 손실 → 늦게 join 한 viewer 가 빈 화면.
-    // 수정: state.storage 에 저장 → 재시작해도 마지막 상품 유지.
     state.blockConcurrencyWhile(async () => {
       try {
         const stored = await state.storage.get<any>('currentProduct');
         if (stored) this.currentProduct = stored;
+        const pinned = await state.storage.get<string>('pinnedMessage');
+        if (pinned) this.pinnedMessage = pinned;
+        const blocked = await state.storage.get<string[]>('blockedKeywords');
+        if (blocked) this.blockedKeywords = blocked;
+        const banned = await state.storage.get<string[]>('bannedUserIds');
+        if (banned) this.bannedUserIds = new Set(banned);
       } catch {}
     });
   }
@@ -101,6 +110,15 @@ export class LiveStreamDurableObject extends DurableObject {
       }));
     }
 
+    // 고정 공지 전송 (있는 경우)
+    if (this.pinnedMessage) {
+      webSocket.send(JSON.stringify({
+        type: 'pinned_message',
+        data: { message: this.pinnedMessage },
+        timestamp: Date.now(),
+      }));
+    }
+
     webSocket.addEventListener('message', (msg) => {
       try {
         const message = JSON.parse(msg.data as string);
@@ -141,6 +159,10 @@ export class LiveStreamDurableObject extends DurableObject {
         webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'AUTH_REQUIRED' }, timestamp: Date.now() }));
         return;
       }
+      if (this.bannedUserIds.has(sess.userId)) {
+        webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'BANNED' }, timestamp: Date.now() }));
+        return;
+      }
 
       const msgData = message.data as Record<string, unknown> | null | undefined;
       const text = typeof msgData?.text === 'string' ? msgData.text : '';
@@ -159,6 +181,16 @@ export class LiveStreamDurableObject extends DurableObject {
         return;
       }
       sess.recentTimes.push(now);
+
+      // 셀러 커스텀 금지어 체크
+      if (this.blockedKeywords.length > 0) {
+        const cleanLower = clean.toLowerCase()
+        const blocked = this.blockedKeywords.some(kw => cleanLower.includes(kw))
+        if (blocked) {
+          webSocket.send(JSON.stringify({ type: 'chat_error', data: { code: 'BLOCKED', category: 'custom' }, timestamp: now }))
+          return
+        }
+      }
 
       // 🛡️ 2026-05-11 P4-#11: 욕설/스팸/광고 자동 필터 — block 카테고리는 broadcast 안 함.
       const modResult = moderateChat(clean);
@@ -202,8 +234,53 @@ export class LiveStreamDurableObject extends DurableObject {
       // 상품 변경 메시지인 경우 현재 상품 저장 + DO storage persist
       if (message.type === 'product_change') {
         this.currentProduct = message.data as { product: Product; options: ProductOption[] };
-        // 🛡️ 2026-04-22: storage 영속화 (DO 재시작 후 복원용)
         try { await this.state.storage.put('currentProduct', message.data); } catch {}
+      }
+
+      // 고정 공지 설정 (브로드캐스트 포함)
+      if (message.type === 'set_pinned_message') {
+        const msg = (message.data as { message: string | null })?.message ?? null
+        this.pinnedMessage = msg ? String(msg).slice(0, 200) : null
+        try { await this.state.storage.put('pinnedMessage', this.pinnedMessage ?? ''); } catch {}
+        // 모든 접속자에게 즉시 전달
+        this.broadcast({ type: 'pinned_message', data: { message: this.pinnedMessage }, timestamp: Date.now() } as WSMessage)
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // 특정 유저 채팅 차단
+      if (message.type === 'ban_user') {
+        const targetId = String((message.data as any)?.userId ?? '')
+        if (targetId) {
+          this.bannedUserIds.add(targetId)
+          try { await this.state.storage.put('bannedUserIds', [...this.bannedUserIds]); } catch {}
+          // 해당 유저의 모든 세션 즉시 종료
+          for (const [ws, sess] of this.chatSessions) {
+            if (sess.userId === targetId) {
+              try { ws.close(1008, 'banned') } catch {}
+            }
+          }
+        }
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // 특정 유저 차단 해제
+      if (message.type === 'unban_user') {
+        const targetId = String((message.data as any)?.userId ?? '')
+        if (targetId) {
+          this.bannedUserIds.delete(targetId)
+          try { await this.state.storage.put('bannedUserIds', [...this.bannedUserIds]); } catch {}
+        }
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // 셀러 금지어 설정
+      if (message.type === 'set_blocked_keywords') {
+        const keywords = (message.data as { keywords: string[] })?.keywords
+        this.blockedKeywords = Array.isArray(keywords)
+          ? keywords.map(k => String(k).toLowerCase().trim()).filter(Boolean).slice(0, 50)
+          : []
+        try { await this.state.storage.put('blockedKeywords', this.blockedKeywords); } catch {}
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } })
       }
 
       // 모든 연결된 클라이언트에게 브로드캐스트

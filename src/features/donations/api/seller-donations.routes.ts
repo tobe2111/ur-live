@@ -48,19 +48,20 @@ sellerDonationsRoutes.get('/donations/summary', async (c) => {
          WHERE seller_id = ? AND status = 'DONE'`
       ).bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 })),
       // 정산 가능 금액 (10일 경과 + 아직 정산 신청 안 한 것)
+      // CTE로 json_each를 settlement 수만큼만 실행 (기존: donation 행마다 GROUP_CONCAT+json_each)
       DB.prepare(`
+        WITH settled AS (
+          SELECT DISTINCT CAST(j.value AS INTEGER) AS don_id
+          FROM donation_settlements ds, json_each(ds.donation_ids) j
+          WHERE ds.seller_id = ? AND ds.status IN ('REQUESTED', 'DONE')
+        )
         SELECT COALESCE(SUM(COALESCE(d.credit_amount, 0)), 0) AS total
         FROM donations d
+        LEFT JOIN settled s ON s.don_id = d.id
         WHERE d.seller_id = ?
           AND d.payment_status = 'completed'
           AND DATE(d.created_at) <= DATE('now', '-10 days')
-          AND d.id NOT IN (
-            SELECT value FROM json_each(
-              (SELECT COALESCE(GROUP_CONCAT(donation_ids), '[]')
-               FROM donation_settlements
-               WHERE seller_id = ? AND status IN ('REQUESTED', 'DONE'))
-            )
-          )
+          AND s.don_id IS NULL
       `).bind(sellerId, sellerId).first<{ total: number }>().catch(() => ({ total: 0 })),
     ]);
 

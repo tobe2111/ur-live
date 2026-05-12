@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send } from 'lucide-react'
+import { Send, Pin, Shield, Ban } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import ViewerLoyaltyBadge from './ViewerLoyaltyBadge'
@@ -29,6 +29,10 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
   const [ytMessages, setYtMessages] = useState<UnifiedMsg[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [pinnedInput, setPinnedInput] = useState('')
+  const [blockedInput, setBlockedInput] = useState('')
+  const [showPinPanel, setShowPinPanel] = useState(false)
+  const [showBlockPanel, setShowBlockPanel] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seenYtIds = useRef<Set<string>>(new Set())
 
@@ -119,6 +123,45 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
     setSending(false)
   }
 
+  async function banUser(userId: string) {
+    if (!confirm(t('seller.liveChat.banConfirm', { defaultValue: '이 사용자를 차단하시겠습니까?' }))) return
+    try {
+      await api.post(`/api/live/${streamId}/broadcast`,
+        { type: 'ban_user', data: { userId } },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] ban_user failed:', e)
+    }
+  }
+
+  async function setPinnedMessage() {
+    try {
+      await api.post(`/api/live/${streamId}/broadcast`,
+        { type: 'set_pinned_message', data: { message: pinnedInput.trim() || null } },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+      setPinnedInput('')
+      setShowPinPanel(false)
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] set_pinned_message failed:', e)
+    }
+  }
+
+  async function setBlockedKeywords() {
+    const keywords = blockedInput.split(',').map(k => k.trim()).filter(Boolean)
+    try {
+      await api.post(`/api/live/${streamId}/broadcast`,
+        { type: 'set_blocked_keywords', data: { keywords } },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+      setBlockedInput('')
+      setShowBlockPanel(false)
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[LiveChatPanel] set_blocked_keywords failed:', e)
+    }
+  }
+
   return (
     <div className="flex flex-col h-[300px] lg:h-auto">
       {/* 채팅 헤더 */}
@@ -127,8 +170,62 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
           <span className="text-xs font-bold text-gray-900">{t('seller.liveChat.title')}</span>
           <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
         </div>
-        <span className="text-[10px] text-gray-500">{t('seller.liveChat.messageCount', { count: allMessages.length })}</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setShowPinPanel(p => !p); setShowBlockPanel(false) }}
+            title={t('seller.liveChat.setPinnedMessage', { defaultValue: '고정 공지 설정' })}
+            className={`p-1 rounded ${showPinPanel ? 'bg-yellow-100 text-yellow-600' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <Pin className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => { setShowBlockPanel(p => !p); setShowPinPanel(false) }}
+            title={t('seller.liveChat.setBlockedKeywords', { defaultValue: '금지어 설정' })}
+            className={`p-1 rounded ${showBlockPanel ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-[10px] text-gray-500 ml-1">{t('seller.liveChat.messageCount', { count: allMessages.length })}</span>
+        </div>
       </div>
+
+      {/* 고정 공지 입력 패널 */}
+      {showPinPanel && (
+        <div className="px-3 py-2 bg-yellow-50 border-b border-yellow-100">
+          <p className="text-[10px] text-yellow-700 font-bold mb-1">📌 {t('seller.liveChat.pinnedMessage', { defaultValue: '고정 공지 (빈칸이면 해제)' })}</p>
+          <div className="flex gap-1">
+            <input
+              value={pinnedInput}
+              onChange={e => setPinnedInput(e.target.value)}
+              placeholder={t('seller.liveChat.pinnedPlaceholder', { defaultValue: '공지 메시지를 입력하세요' })}
+              className="flex-1 px-2 py-1 bg-white border border-yellow-200 rounded text-xs text-gray-900 focus:outline-none"
+              onKeyDown={e => e.key === 'Enter' && setPinnedMessage()}
+            />
+            <button onClick={setPinnedMessage} className="px-2 py-1 bg-yellow-500 text-white text-xs rounded font-bold">
+              {t('common.set', { defaultValue: '설정' })}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 금지어 설정 패널 */}
+      {showBlockPanel && (
+        <div className="px-3 py-2 bg-red-50 border-b border-red-100">
+          <p className="text-[10px] text-red-700 font-bold mb-1">🛡️ {t('seller.liveChat.blockedKeywords', { defaultValue: '금지어 (쉼표로 구분)' })}</p>
+          <div className="flex gap-1">
+            <input
+              value={blockedInput}
+              onChange={e => setBlockedInput(e.target.value)}
+              placeholder={t('seller.liveChat.blockedPlaceholder', { defaultValue: '욕설, 스팸, ...' })}
+              className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-900 focus:outline-none"
+              onKeyDown={e => e.key === 'Enter' && setBlockedKeywords()}
+            />
+            <button onClick={setBlockedKeywords} className="px-2 py-1 bg-red-500 text-white text-xs rounded font-bold">
+              {t('common.set', { defaultValue: '설정' })}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 메시지 목록 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">
@@ -136,7 +233,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
           <p className="text-center text-xs text-gray-400 py-8">{t('seller.liveChat.empty')}</p>
         ) : (
           allMessages.map(msg => (
-            <div key={msg.id} className="flex items-start gap-1.5">
+            <div key={msg.id} className="flex items-start gap-1.5 group">
               {/* 소스 아이콘 */}
               {msg.source === 'youtube' ? (
                 <svg viewBox="0 0 24 24" fill="#FF0000" className="w-3.5 h-3.5 shrink-0 mt-0.5">
@@ -155,18 +252,29 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
                   <span className="text-[7px] text-white font-bold">V</span>
                 </span>
               )}
-              <p className="text-[11px] leading-snug">
-                {/* 🛡️ 2026-04-27: viewer 시청자 등급 배지 (Phase 2-3) */}
-                {msg.source === 'viewer' && msg.userId && (
-                  <ViewerLoyaltyBadge userId={msg.userId} compact />
-                )}
-                <span className={`font-bold ${
-                  msg.source === 'seller' ? 'text-blue-600' :
-                  msg.source === 'system' ? 'text-gray-700' :
-                  'text-gray-900'
-                }`}> {msg.author}</span>
-                <span className="text-gray-600"> {msg.message}</span>
-              </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] leading-snug">
+                  {msg.source === 'viewer' && msg.userId && (
+                    <ViewerLoyaltyBadge userId={msg.userId} compact />
+                  )}
+                  <span className={`font-bold ${
+                    msg.source === 'seller' ? 'text-blue-600' :
+                    msg.source === 'system' ? 'text-gray-700' :
+                    'text-gray-900'
+                  }`}> {msg.author}</span>
+                  <span className="text-gray-600"> {msg.message}</span>
+                </p>
+              </div>
+              {/* viewer 채팅만 차단 버튼 표시 */}
+              {msg.source === 'viewer' && msg.userId && (
+                <button
+                  onClick={() => banUser(String(msg.userId))}
+                  title={t('seller.liveChat.banUser', { defaultValue: '차단' })}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-red-500 transition-opacity shrink-0 mt-0.5"
+                >
+                  <Ban className="w-3 h-3" />
+                </button>
+              )}
             </div>
           ))
         )}

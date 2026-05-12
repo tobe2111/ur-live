@@ -226,6 +226,9 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
   await ensureTables(DB);
 
   const code = c.req.param('code');
+  if (!code || typeof code !== 'string' || code.length < 4 || code.length > 32 || !/^[A-Za-z0-9]+$/.test(code)) {
+    return c.json({ success: false, error: '잘못된 초대 코드입니다' }, 400);
+  }
   const userId = String(user.id);
 
   // 공동구매 조회
@@ -255,6 +258,11 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
     [group.id, userId],
   );
   if (existing) return c.json({ success: false, error: '이미 참여 중입니다' }, 409);
+
+  // 🛡️ target 초과 참여 차단 (negotiating/achieved 진입 후 race-window 방어)
+  if (group.target_count && group.current_count >= group.target_count) {
+    return c.json({ success: false, error: '모집이 마감되었습니다' }, 409);
+  }
 
   const depositAmount = group.deposit_per_person;
 
@@ -290,23 +298,32 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
     [group.id, userId, user.name || '익명', depositAmount],
   );
 
-  // current_count, total_deposited 증가
-  const newCount = group.current_count + 1;
-  const newTotalDeposited = group.total_deposited + depositAmount;
-
-  // 목표 인원 달성 + proposed 상태면 자동으로 negotiating으로 전환
-  let newStatus = group.status;
-  if (newCount >= group.target_count && group.status === 'proposed') {
-    newStatus = 'negotiating';
-  }
-
+  // ✅ CONCURRENCY: 단일 UPDATE 로 원자 증가 + 목표 달성 시 status 전이.
+  //    이전엔 read-modify-write 라 두 참여자가 동시에 가입하면 같은 current_count
+  //    를 읽어 negotiating 전이가 누락될 수 있었음.
   await executeRun(
     DB,
     `UPDATE community_group_buys
-     SET current_count = ?, total_deposited = ?, status = ?, updated_at = datetime('now')
+       SET current_count = current_count + 1,
+           total_deposited = total_deposited + ?,
+           status = CASE
+             WHEN status = 'proposed' AND (current_count + 1) >= target_count THEN 'negotiating'
+             ELSE status
+           END,
+           updated_at = datetime('now')
      WHERE id = ?`,
-    [newCount, newTotalDeposited, newStatus, group.id],
+    [depositAmount, group.id],
   );
+
+  // UPDATE 후의 최신 값으로 응답 (race-condition-free)
+  const refreshed = await queryFirst<{ current_count: number; total_deposited: number; status: string }>(
+    DB,
+    'SELECT current_count, total_deposited, status FROM community_group_buys WHERE id = ?',
+    [group.id],
+  );
+  const newCount = refreshed?.current_count ?? (group.current_count + 1);
+  const newTotalDeposited = refreshed?.total_deposited ?? (group.total_deposited + depositAmount);
+  const newStatus = refreshed?.status ?? group.status;
 
   // 50명 도달 시 모든 에이전시에 알림 전송
   if (newCount === 50) {
@@ -376,6 +393,9 @@ communityGroupBuyRoutes.get('/detail/:code', async (c) => {
   await ensureTables(DB);
 
   const code = c.req.param('code');
+  if (!code || typeof code !== 'string' || code.length < 4 || code.length > 32 || !/^[A-Za-z0-9]+$/.test(code)) {
+    return c.json({ success: false, error: '잘못된 초대 코드입니다' }, 400);
+  }
 
   const group = await queryFirst<any>(
     DB,
@@ -498,12 +518,16 @@ communityGroupBuyRoutes.patch('/:id/confirm', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const groupId = c.req.param('id');
+  const groupIdRaw = c.req.param('id');
+  const groupIdNum = Number(groupIdRaw);
+  if (!Number.isFinite(groupIdNum) || groupIdNum <= 0 || !Number.isInteger(groupIdNum)) {
+    return c.json({ success: false, error: '잘못된 공동구매 ID 입니다' }, 400);
+  }
 
   const group = await queryFirst<any>(
     DB,
     'SELECT * FROM community_group_buys WHERE id = ?',
-    [groupId],
+    [groupIdNum],
   );
 
   if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404);
@@ -519,19 +543,27 @@ communityGroupBuyRoutes.patch('/:id/confirm', requireAuth(), async (c) => {
   const { confirmed_price, confirmed_discount_percent } = await c.req.json<{
     confirmed_price: number;
     confirmed_discount_percent: number;
-  }>();
+  }>().catch(() => ({ confirmed_price: 0, confirmed_discount_percent: 0 }));
 
-  if (!confirmed_price || confirmed_discount_percent == null) {
-    return c.json({ success: false, error: '확정 가격과 할인율은 필수입니다' }, 400);
+  // 🛡️ 입력 검증: 확정 가격 1원~10억, 할인율 0~100
+  if (!Number.isFinite(confirmed_price) || confirmed_price <= 0 || confirmed_price >= 1_000_000_000) {
+    return c.json({ success: false, error: '확정 가격은 1원 이상 10억원 미만이어야 합니다' }, 400);
+  }
+  if (!Number.isFinite(confirmed_discount_percent) || confirmed_discount_percent < 0 || confirmed_discount_percent > 100) {
+    return c.json({ success: false, error: '할인율은 0~100 사이여야 합니다' }, 400);
   }
 
-  await executeRun(
+  // 🛡️ CAS: 이미 confirmed/achieved/refunded/failed 상태면 재확정 차단
+  const confirmRes = await executeRun(
     DB,
     `UPDATE community_group_buys
      SET status = 'confirmed', confirmed_price = ?, confirmed_discount_percent = ?, updated_at = datetime('now')
-     WHERE id = ?`,
+     WHERE id = ? AND status IN ('proposed','negotiating')`,
     [confirmed_price, confirmed_discount_percent, group.id],
   );
+  if (!confirmRes.meta?.changes) {
+    return c.json({ success: false, error: '확정할 수 없는 상태입니다' }, 409);
+  }
 
   return c.json({
     success: true,
@@ -552,12 +584,16 @@ communityGroupBuyRoutes.post('/:id/refund', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const groupId = c.req.param('id');
+  const groupIdRaw = c.req.param('id');
+  const groupIdNum = Number(groupIdRaw);
+  if (!Number.isFinite(groupIdNum) || groupIdNum <= 0 || !Number.isInteger(groupIdNum)) {
+    return c.json({ success: false, error: '잘못된 공동구매 ID 입니다' }, 400);
+  }
 
   const group = await queryFirst<any>(
     DB,
     'SELECT * FROM community_group_buys WHERE id = ?',
-    [groupId],
+    [groupIdNum],
   );
 
   if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404);
@@ -692,8 +728,12 @@ communityGroupBuyRoutes.patch('/:id/status', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const groupId = c.req.param('id');
-  const { status } = await c.req.json<{ status: string }>();
+  const groupIdRaw = c.req.param('id');
+  const groupIdNum = Number(groupIdRaw);
+  if (!Number.isFinite(groupIdNum) || groupIdNum <= 0 || !Number.isInteger(groupIdNum)) {
+    return c.json({ success: false, error: '잘못된 공동구매 ID 입니다' }, 400);
+  }
+  const { status } = await c.req.json<{ status: string }>().catch(() => ({ status: '' }));
 
   const validStatuses = ['proposed', 'negotiating', 'confirmed', 'achieved', 'failed', 'refunded'];
   if (!status || !validStatuses.includes(status)) {
@@ -703,7 +743,7 @@ communityGroupBuyRoutes.patch('/:id/status', requireAuth(), async (c) => {
   const group = await queryFirst<any>(
     DB,
     'SELECT * FROM community_group_buys WHERE id = ?',
-    [groupId],
+    [groupIdNum],
   );
 
   if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404);

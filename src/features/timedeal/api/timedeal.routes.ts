@@ -96,18 +96,60 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
     bonus_discount_percent?: number;
   }>();
 
-  if (!stream_id || !product_id || !discount_percent) return c.json({ success: false, error: '필수 항목 누락' }, 400);
+  // 🛡️ 입력 검증: 양수 정수 + 합리적 범위
+  const streamIdNum = Number(stream_id);
+  const productIdNum = Number(product_id);
+  const discountNum = Number(discount_percent);
+  if (!Number.isInteger(streamIdNum) || streamIdNum < 1) {
+    return c.json({ success: false, error: '유효하지 않은 stream_id' }, 400);
+  }
+  if (!Number.isInteger(productIdNum) || productIdNum < 1) {
+    return c.json({ success: false, error: '유효하지 않은 product_id' }, 400);
+  }
+  if (!Number.isFinite(discountNum) || discountNum < 1 || discountNum > 99) {
+    return c.json({ success: false, error: '할인율은 1~99 사이여야 합니다' }, 400);
+  }
+  const maxClaimsNum = max_claims == null ? 10 : Number(max_claims);
+  if (!Number.isInteger(maxClaimsNum) || maxClaimsNum < 1 || maxClaimsNum > 100000) {
+    return c.json({ success: false, error: 'max_claims 1~100000' }, 400);
+  }
+  const durNum = duration_seconds == null ? 30 : Number(duration_seconds);
+  if (!Number.isInteger(durNum) || durNum < 5 || durNum > 86400) {
+    return c.json({ success: false, error: 'duration_seconds 5~86400' }, 400);
+  }
+  const bonusNum = bonus_discount_percent == null ? 0 : Number(bonus_discount_percent);
+  if (!Number.isFinite(bonusNum) || bonusNum < 0 || bonusNum > 99) {
+    return c.json({ success: false, error: 'bonus_discount_percent 0~99' }, 400);
+  }
 
   const product = await queryFirst<{ name: string; price: number; seller_id: number }>(
     DB,
     'SELECT name, price, seller_id FROM products WHERE id = ?',
-    [product_id],
+    [productIdNum],
   );
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
 
-  const dur = duration_seconds || 30;
+  // 🛡️ 권한 검증 (IDOR): 호출자가 product.seller_id 의 셀러 본인이어야 함.
+  // user.id 는 auth context 의 셀러 id (셀러 로그인 시) 또는 일반 user id. 둘 다 비교.
+  const callerId = String(user.id);
+  if (String(product.seller_id) !== callerId) {
+    return c.json({ success: false, error: '본인 상품만 타임딜 생성 가능' }, 403);
+  }
+
+  // 스트림 소유권 확인 (다른 셀러 방송에 타임딜 끼워넣기 방지)
+  const stream = await queryFirst<{ seller_id: number }>(
+    DB,
+    'SELECT seller_id FROM live_streams WHERE id = ?',
+    [streamIdNum],
+  );
+  if (!stream) return c.json({ success: false, error: '방송을 찾을 수 없습니다' }, 404);
+  if (String(stream.seller_id) !== callerId) {
+    return c.json({ success: false, error: '본인 방송에만 타임딜 생성 가능' }, 403);
+  }
+
+  const dur = durNum;
   const expiresAt = new Date(Date.now() + dur * 1000).toISOString();
-  const dealPrice = Math.round(product.price * (100 - discount_percent) / 100);
+  const dealPrice = Math.round(product.price * (100 - discountNum) / 100);
 
   // 공동구매 모드인 경우 target_participants 필수
   const groupBuyFlag = is_group_buy ? 1 : 0;
@@ -123,18 +165,18 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
         is_group_buy, target_participants, bonus_discount_percent, expires_at
      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      stream_id,
+      streamIdNum,
       product.seller_id,
-      product_id,
+      productIdNum,
       product.name,
       product.price,
       dealPrice,
-      discount_percent,
-      max_claims || 10,
+      discountNum,
+      maxClaimsNum,
       dur,
       groupBuyFlag,
       groupBuyFlag ? target_participants : null,
-      bonus_discount_percent || 0,
+      bonusNum,
       expiresAt,
     ],
   );
@@ -148,19 +190,19 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
         type: 'flash_sale',
         data: {
           deal_id: dealId,
-          product_id: product_id,
+          product_id: productIdNum,
           product_name: product.name,
           original_price: product.price,
           deal_price: dealPrice,
-          discount_percent: discount_percent,
-          max_claims: max_claims || 10,
+          discount_percent: discountNum,
+          max_claims: maxClaimsNum,
           claimed_count: 0,
           duration_seconds: dur,
           expires_at: expiresAt,
         },
         timestamp: Date.now(),
       };
-      const doId = c.env.LIVE_STREAM.idFromName(String(stream_id));
+      const doId = c.env.LIVE_STREAM.idFromName(String(streamIdNum));
       const stub = c.env.LIVE_STREAM.get(doId);
       await stub.fetch(new Request('https://internal/broadcast', {
         method: 'POST',
@@ -181,7 +223,7 @@ timedealRoutes.post('/create', requireAuth(), async (c) => {
         expires_at: expiresAt,
         is_group_buy: !!groupBuyFlag,
         target_participants: groupBuyFlag ? target_participants : null,
-        bonus_discount_percent: bonus_discount_percent || 0,
+        bonus_discount_percent: bonusNum,
       },
     },
     201,
@@ -193,7 +235,11 @@ timedealRoutes.get('/stream/:streamId', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const streamId = c.req.param('streamId');
+  // 🛡️ 입력 검증: 양수 정수만 허용
+  const streamId = Number(c.req.param('streamId'));
+  if (!Number.isInteger(streamId) || streamId < 1) {
+    return c.json({ success: false, error: '유효하지 않은 streamId' }, 400);
+  }
   const deal = await queryFirst<any>(
     DB,
     "SELECT * FROM time_deals WHERE stream_id = ? AND status IN ('active', 'achieved') ORDER BY id DESC LIMIT 1",
@@ -243,7 +289,11 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
+  // 🛡️ 입력 검증: 양수 정수만 허용
   const dealId = Number(c.req.param('id'));
+  if (!Number.isInteger(dealId) || dealId < 1) {
+    return c.json({ success: false, error: '유효하지 않은 deal id' }, 400);
+  }
   const deal = await queryFirst<any>(
     DB,
     "SELECT * FROM time_deals WHERE id = ? AND status IN ('active', 'achieved')",
@@ -263,16 +313,38 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
     return c.json({ success: false, error: '수량이 소진되었습니다' }, 400);
   }
 
-  // 중복 체크
-  const existing = await queryFirst(
-    DB,
-    'SELECT id FROM time_deal_claims WHERE deal_id = ? AND user_id = ?',
-    [dealId, user.id],
-  );
-  if (existing) return c.json({ success: false, error: '이미 참여하셨습니다' }, 409);
+  // ✅ CONCURRENCY: UNIQUE(deal_id, user_id) prevents double-claim. Use try/catch
+  //   on INSERT instead of SELECT-then-INSERT (race condition).
+  try {
+    const insertRes = await executeRun(
+      DB,
+      'INSERT INTO time_deal_claims (deal_id, user_id) VALUES (?, ?)',
+      [dealId, user.id],
+    );
+    if ((insertRes.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '이미 참여하셨습니다' }, 409);
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/UNIQUE|constraint/i.test(msg)) {
+      return c.json({ success: false, error: '이미 참여하셨습니다' }, 409);
+    }
+    throw e;
+  }
 
-  await executeRun(DB, 'INSERT INTO time_deal_claims (deal_id, user_id) VALUES (?, ?)', [dealId, user.id]);
-  await executeRun(DB, 'UPDATE time_deals SET claimed_count = claimed_count + 1 WHERE id = ?', [dealId]);
+  // ✅ CONCURRENCY: cap claimed_count at max_claims atomically. If the cap is
+  //   already reached due to a race, the UPDATE affects 0 rows — roll back the
+  //   claim insert and report sold_out.
+  const incRes = await executeRun(
+    DB,
+    'UPDATE time_deals SET claimed_count = claimed_count + 1 WHERE id = ? AND claimed_count < max_claims',
+    [dealId],
+  );
+  if ((incRes.meta?.changes ?? 0) === 0) {
+    await executeRun(DB, 'DELETE FROM time_deal_claims WHERE deal_id = ? AND user_id = ?', [dealId, user.id]).catch(swallow('timedeal:claim-rollback'));
+    await executeRun(DB, "UPDATE time_deals SET status = 'sold_out' WHERE id = ?", [dealId]).catch(swallow('timedeal:soldout'));
+    return c.json({ success: false, error: '수량이 소진되었습니다' }, 400);
+  }
 
   // 공동구매: 목표 달성 여부 평가 → status='achieved' 및 효과 할인율 계산
   const newCount = (deal.claimed_count || 0) + 1;
@@ -331,7 +403,12 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
 timedealRoutes.get('/:id', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
-  const deal = await DB.prepare('SELECT * FROM time_deals WHERE id = ?').bind(c.req.param('id')).first<any>();
+  // 🛡️ 입력 검증: 양수 정수만 허용
+  const idNum = Number(c.req.param('id'));
+  if (!Number.isInteger(idNum) || idNum < 1) {
+    return c.json({ success: false, error: '유효하지 않은 id' }, 400);
+  }
+  const deal = await DB.prepare('SELECT * FROM time_deals WHERE id = ?').bind(idNum).first<any>();
   if (!deal) return c.json({ success: false, error: '타임딜을 찾을 수 없습니다' }, 404);
   return c.json({ success: true, data: deal });
 });

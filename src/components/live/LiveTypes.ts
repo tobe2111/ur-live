@@ -66,6 +66,7 @@ export interface Stream {
   seller_name?: string
   created_at?: string
   product_display_mode?: 'current_only' | 'all'
+  donation_goal?: number | null
 }
 
 export interface Product {

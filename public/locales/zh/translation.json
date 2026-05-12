@@ -620,7 +620,8 @@
     "regionPickerTitle": "选择地区",
     "bannerAria": "横幅: {{title}}",
     "priceWon": "{{price}} 韩元",
-    "ratingSold": "★ {{rating}} · {{n}} 已售"
+    "ratingSold": "★ {{rating}} · {{n}} 已售",
+    "soldCount": "{{n}} 购买"
   },
   "browse": {
     "title": "购物",

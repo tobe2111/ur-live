@@ -880,6 +880,7 @@ app.get('/report/csv', async (c: AgencyCtx) => {
     WHERE ag.agency_id = ?
     GROUP BY s.id, s.name, s.email
     ORDER BY revenue DESC
+    LIMIT 500
   `).bind(days, agencyId).all()
 
   const rows = results || []

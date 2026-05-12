@@ -12,18 +12,19 @@
  * 마운트: app.route('/api/youtube/live', youtubeLiveRoutes) — 또는 동일 prefix.
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { swallow } from '@/worker/utils/swallow'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
-import { registerOmePush, stopOmePush, cleanupAllOmePushes } from './ome-push'
+import { registerOmePush, stopOmePush, cleanupAllOmePushes, terminateOmeStream } from './ome-push'
 import { trackQuota, getQuotaUsage, QUOTA_COST } from './youtube-quota'
+import { rateLimit } from '@/worker/middleware/rate-limit'
+import { requireAdmin } from '@/worker/middleware/auth'
 
 const app = new Hono<{ Bindings: Env }>()
-app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-12: 서브라우터 cors() 제거 — index.ts 전역 cors() 가 처리. 중복 제거.
 
 // YouTube API 상태 조회 서버사이드 캐시 (25s TTL) — API quota 절감
 // 셀러 10명 방송 시: 5s polling → 최대 2 API calls/5s (캐시 미스 시) vs 기존 10 calls/5s
@@ -48,7 +49,8 @@ function setCachedStatus(key: string, data: unknown) {
   }
 }
 
-app.post('/live/create', async (c) => {
+// YouTube live 생성은 quota 비용 100 → 셀러당 시간당 5회로 제한
+app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, windowSec: 3600 }), async (c) => {
   await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   
@@ -142,7 +144,7 @@ app.post('/live/create', async (c) => {
         privacyStatus
       )
       // 🛡️ 2026-05-11 P3-#10: setupLiveStream = liveBroadcasts.insert(50) + liveStreams.insert(50) + bind(50) = 150
-      await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream')
+      await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream', c.executionCtx)
 
       // Save as persistent stream for the specific channel (or active default)
       if (channel_id) {
@@ -271,7 +273,7 @@ app.post('/live/create', async (c) => {
                   headers: { Authorization: `Bearer ${accessTokenForBg}`, 'Content-Type': contentType },
                   body: imgBlob,
                 },
-              ).then(() => trackQuota(c.env, QUOTA_COST.thumbnailSet, 'thumbnail_set'))
+              ).then(() => trackQuota(c.env, QUOTA_COST.thumbnailSet, 'thumbnail_set', c.executionCtx))
                 .catch((e) => console.error('[create] thumbnail upload failed', e))
             }
           }
@@ -370,6 +372,7 @@ app.patch('/live/:id/link-broadcast', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = c.req.param('id')
+  if (!/^\d+$/.test(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const { youtube_video_id } = await c.req.json()
   if (!youtube_video_id) return c.json({ success: false, error: 'youtube_video_id required' }, 400)
 
@@ -401,6 +404,7 @@ app.get('/live/:id/detect-webcam', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   if (!c.env.YOUTUBE_CLIENT_ID || !c.env.YOUTUBE_CLIENT_SECRET) {
     return c.json({ success: false, error: 'YouTube API not configured' }, 500)
   }
@@ -468,6 +472,7 @@ app.post('/live/:id/start', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   // 🛡️ 2026-05-11 Option D: body 는 호환성 유지용으로 읽되 mode 분기 불필요 (autoStart=true 가 처리)
   await c.req.json().catch(() => ({}))
 
@@ -541,7 +546,7 @@ app.post('/live/:id/start', async (c) => {
     //   (autoStart 가 아직 트리거 안 됐을 가능성 대비 — 보통 즉시 성공)
     try {
       await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
-      await trackQuota(c.env, QUOTA_COST.transition, 'transition_live')
+      await trackQuota(c.env, QUOTA_COST.transition, 'transition_live', c.executionCtx)
     } catch (e) {
       // redundantTransition (이미 live) 또는 invalidTransition (아직 active 안 됨) — autoStart 가 처리
       const msg = (e as Error).message || ''
@@ -580,6 +585,7 @@ app.get('/live/:id/status', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
 
@@ -961,6 +967,7 @@ app.get('/live/:id/youtube-stats', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'YouTube API not configured' }, 500)
@@ -1016,6 +1023,7 @@ app.post('/live/:id/end', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
@@ -1051,7 +1059,7 @@ app.post('/live/:id/end', async (c) => {
         const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
         if (accessToken) {
           await youtubeService.endBroadcast(accessToken, broadcastId)
-          await trackQuota(c.env, QUOTA_COST.transition, 'transition_end')
+          await trackQuota(c.env, QUOTA_COST.transition, 'transition_end', c.executionCtx)
         } else {
           youtubeEndError = 'no_access_token'
         }
@@ -1153,6 +1161,7 @@ app.post('/live/:id/notify-followers', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   try {
     const stream = await c.env.DB.prepare(
       'SELECT id, title, status FROM live_streams WHERE id = ? AND seller_id = ?'
@@ -1264,13 +1273,7 @@ app.post('/rotate-stream-key', async (c) => {
  *
  * 🛡️ 2026-05-07: 어드민 응급 — 모든 셀러 stream key 일괄 회전 (대규모 보안 사고 대응).
  */
-app.post('/admin/rotate-all-stream-keys', async (c) => {
-  const auth = c.req.header('Authorization') || ''
-  const token = auth.replace(/^Bearer\s+/i, '')
-  const expected = c.env.JWT_SECRET || ''
-  // 관리자만 — 간이 확인 (실제로는 admin token JWT decode 권장)
-  if (!token || token.length < 8) return c.json({ success: false, error: 'admin auth required' }, 401)
-
+app.post('/admin/rotate-all-stream-keys', requireAdmin(), async (c) => {
   try {
     const { meta } = await c.env.DB.prepare(`
       UPDATE seller_youtube_oauth
@@ -1301,6 +1304,7 @@ app.post('/live/:id/refresh-thumbnail', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   try {
     const stream = await c.env.DB.prepare(
       'SELECT youtube_video_id FROM live_streams WHERE id = ? AND seller_id = ?'
@@ -1341,6 +1345,7 @@ app.get('/live/:id/chat', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const nextPageToken = c.req.query('nextPageToken') || ''
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
@@ -1702,12 +1707,15 @@ app.get('/streaming/health', async (c) => {
  * POST /api/seller/youtube/streaming/whip-token
  * 브라우저 publish 시작 전 호출. WHIP endpoint URL 반환.
  *
- * 🛡️ 2026-05-11 Option D: YouTube WHIP direct 우선.
- *   - stream.rtmp_key 있으면 → YouTube WHIP URL 직접 반환 (OME 불필요, 무제한 동시 송출)
- *   - rtmp_key 없고 OME 설정됨 → OME WHIP URL 반환 (토큰 필요)
- *   - 둘 다 없으면 → 503
+ * 🚨 2026-05-12 (LIVE-START-FIX): Option D (YouTube WHIP direct) 제거.
+ *   YouTube `a.upload.youtube.com/upload/streamer` 엔드포인트는 CORS 헤더가 없어 브라우저에서
+ *   직접 POST 시 preflight 차단. WebRTC/WHIP 브라우저 publish 는 OME 경유만 가능.
+ *   OME 서버가 RTMP 로 YouTube 에 재push. (이전: 모든 라이브 시작이 CORS 에러로 영구 실패)
  *
- * YouTube WHIP endpoint: https://a.upload.youtube.com/upload/streamer?streamKey={streamKey}
+ * 시나리오:
+ *   - OME 설정됨 → OME WHIP URL 반환 (정상 경로)
+ *   - OME 미구성 + rtmp_key 있음 → OBS 등 외부 도구 안내 (OBS_REQUIRED)
+ *   - 둘 다 없음 → 503
  */
 app.post('/streaming/whip-token', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -1729,24 +1737,21 @@ app.post('/streaming/whip-token', async (c) => {
 
   if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
 
-  // Option D: YouTube WHIP direct — stream key 있으면 YouTube 로 바로 송출
-  if (stream.rtmp_key) {
-    const whipUrl = `https://a.upload.youtube.com/upload/streamer?streamKey=${encodeURIComponent(stream.rtmp_key)}`
-    return c.json({
-      success: true,
-      data: {
-        whip_url: whipUrl,
-        mode: 'youtube_whip',
-        stream_name: `s${stream_id}`,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-      },
-    })
-  }
-
-  // Fallback: OME WHIP (webcam 모드 또는 rtmp_key 없는 경우)
+  // OME 가 없으면 브라우저 라이브 불가 (YouTube 직접 WHIP 은 CORS 차단)
   if (!c.env.OME_HOST || !c.env.OME_WEBHOOK_SECRET) {
+    // rtmp_key 있으면 OBS 외부 도구로 송출 가능 — 명확히 안내
+    if (stream.rtmp_key) {
+      return c.json({
+        success: false,
+        error: '브라우저 라이브 미지원 환경입니다. OBS 등 외부 도구로 송출해주세요.',
+        error_code: 'OBS_REQUIRED',
+        rtmp_url: stream.rtmp_url,
+      }, 503)
+    }
     return c.json({ success: false, error: '미디어 서버 미구성', error_code: 'OME_NOT_CONFIGURED' }, 503)
   }
+  // (참고: getQuotaUsage 는 YouTube WHIP direct 경로에서만 사용했음 — 제거됨)
+  void getQuotaUsage;
 
   // 1회용 토큰: HMAC-SHA256(secret, sellerId|streamId|exp).
   // OME admission webhook 에서 같은 secret 으로 검증.
@@ -1759,6 +1764,12 @@ app.post('/streaming/whip-token', async (c) => {
 
   // stream_name = 우리 stream id (OME application 안에서의 식별자)
   const streamName = `s${stream_id}`
+
+  // 🛡️ 2026-05-12 (LIVE-FIX-2): 같은 stream name 의 zombie publisher 강제 종료.
+  //   이전 publish 가 비정상 종료 (탭 닫힘 / 네트워크 끊김) 시 OME 가 즉시 정리 못 함 →
+  //   다음 publish 가 409 Conflict 로 영구 실패. 새 토큰 발급 직전에 항상 정리.
+  await terminateOmeStream(c.env, streamName)
+
   const whipUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?direction=whip&token=${encodeURIComponent(token)}`
 
   return c.json({

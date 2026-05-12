@@ -20,6 +20,14 @@ couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowS
   await ensureTables(DB)
   const { code, order_amount } = await c.req.json<{ code: string; order_amount: number }>()
 
+  // 🛡️ 입력 검증: code 는 문자열 + 길이 제한, order_amount 는 유한 숫자
+  if (typeof code !== 'string' || code.length === 0 || code.length > 50) {
+    return c.json({ success: false, error: '유효하지 않은 쿠폰 코드입니다' }, 400)
+  }
+  if (!Number.isFinite(order_amount) || order_amount < 0 || order_amount > 1_000_000_000) {
+    return c.json({ success: false, error: '유효하지 않은 주문 금액입니다' }, 400)
+  }
+
   const coupon = await DB.prepare("SELECT * FROM coupons WHERE code = ? AND is_active = 1").bind(code).first<any>()
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
   if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400)
@@ -46,14 +54,20 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
   const { DB } = c.env
   const { coupon_id, order_id } = await c.req.json<{ coupon_id: number; order_id: number; order_amount?: number }>()
 
-  if (!coupon_id || !order_id) {
-    return c.json({ success: false, error: 'coupon_id / order_id 필수' }, 400)
+  // 🛡️ 입력 검증: 양수 정수만 허용
+  const couponIdNum = Number(coupon_id)
+  const orderIdNum = Number(order_id)
+  if (!Number.isFinite(couponIdNum) || couponIdNum < 1 || !Number.isInteger(couponIdNum)) {
+    return c.json({ success: false, error: '유효하지 않은 coupon_id' }, 400)
+  }
+  if (!Number.isFinite(orderIdNum) || orderIdNum < 1 || !Number.isInteger(orderIdNum)) {
+    return c.json({ success: false, error: '유효하지 않은 order_id' }, 400)
   }
 
   // ✅ Fetch order server-side and verify ownership
   const order = await DB.prepare(
     'SELECT user_id, total_amount FROM orders WHERE id = ?'
-  ).bind(order_id).first<{ user_id: string | number; total_amount: number }>()
+  ).bind(orderIdNum).first<{ user_id: string | number; total_amount: number }>()
   if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
   if (String(order.user_id) !== String(user.id)) {
     return c.json({ success: false, error: 'Forbidden' }, 403)
@@ -61,7 +75,7 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
 
   const coupon = await DB.prepare(
     'SELECT type, value, max_discount FROM coupons WHERE id = ? AND is_active = 1'
-  ).bind(coupon_id).first<{ type: string; value: number; max_discount: number | null }>()
+  ).bind(couponIdNum).first<{ type: string; value: number; max_discount: number | null }>()
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
 
   // ✅ Use authoritative order.total_amount (ignore any client-supplied order_amount)
@@ -88,7 +102,7 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
   try {
     const insertRes = await DB.prepare(
       'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, ?, ?)'
-    ).bind(coupon_id, String(user.id), order_id, computed).run()
+    ).bind(couponIdNum, String(user.id), orderIdNum, computed).run()
     if ((insertRes.meta?.changes ?? 0) === 0) {
       return c.json({ success: false, error: '이미 사용한 쿠폰입니다' }, 409)
     }
@@ -103,7 +117,7 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
   //    push used_count past total_count (race with coupon_apply).
   await DB.prepare(
     'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
-  ).bind(coupon_id).run()
+  ).bind(couponIdNum).run()
   return c.json({ success: true, data: { discount_amount: computed } })
 })
 
@@ -187,18 +201,25 @@ couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
   await ensureTables(DB)
   const code = c.req.param('code')
 
+  // 🛡️ 입력 검증: code 길이 제한
+  if (typeof code !== 'string' || code.length === 0 || code.length > 50) {
+    return c.json({ success: false, error: '유효하지 않은 쿠폰 코드입니다' }, 400)
+  }
+
   const coupon = await DB.prepare("SELECT * FROM coupons WHERE code = ? AND is_active = 1").bind(code).first<Record<string, unknown>>()
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
   if (coupon.expires_at && new Date(coupon.expires_at as string) < new Date()) return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400)
   if ((coupon.total_count as number) > 0 && (coupon.used_count as number) >= (coupon.total_count as number)) return c.json({ success: false, error: '쿠폰이 모두 소진되었습니다' }, 400)
 
-  const used = await DB.prepare("SELECT id FROM coupon_uses WHERE coupon_id = ? AND user_id = ?").bind(coupon.id, String(user.id)).first()
-  if (used) return c.json({ success: false, error: '이미 받은 쿠폰입니다', already_claimed: true })
-
-  // 쿠폰 발급 (사용은 결제 시 별도)
+  // 🛡️ FIX: claim 중복 체크는 user_coupons (claim 테이블) 기준이어야 함.
+  //   기존엔 coupon_uses (사용 기록) 기준이라, 발급만 받고 안 쓴 사용자가 무한 발급 가능.
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS user_coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, coupon_id INTEGER NOT NULL, claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, coupon_id))`).run()
   } catch {}
+  const alreadyClaimed = await DB.prepare("SELECT id FROM user_coupons WHERE coupon_id = ? AND user_id = ?").bind(coupon.id, String(user.id)).first()
+  if (alreadyClaimed) return c.json({ success: false, error: '이미 받은 쿠폰입니다', already_claimed: true })
+
+  // 쿠폰 발급 (사용은 결제 시 별도). UNIQUE(user_id, coupon_id) 가 동시 요청 차단.
   await DB.prepare("INSERT OR IGNORE INTO user_coupons (user_id, coupon_id) VALUES (?, ?)").bind(String(user.id), coupon.id).run()
 
   return c.json({ success: true, data: { coupon_id: coupon.id, name: coupon.name, type: coupon.type, value: coupon.value } })

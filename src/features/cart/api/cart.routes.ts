@@ -371,7 +371,9 @@ cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
 
-    const cartItemId = Number(c.req.param('id'));
+    const rawId = c.req.param('id') ?? '';
+    if (!/^\d+$/.test(rawId)) return c.json(badRequestResponse('Invalid cart item id'), 400);
+    const cartItemId = Number(rawId);
     if (!cartItemId || cartItemId < 1)
       return c.json(badRequestResponse('Invalid cart item id'), 400);
 
@@ -423,7 +425,9 @@ cartRoutes.delete('/:id', cartRateLimit, requireAuth(), async (c) => {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
 
-    const cartItemId = Number(c.req.param('id'));
+    const rawId = c.req.param('id') ?? '';
+    if (!/^\d+$/.test(rawId)) return c.json(badRequestResponse('Invalid cart item id'), 400);
+    const cartItemId = Number(rawId);
     if (!cartItemId || cartItemId < 1)
       return c.json(badRequestResponse('Invalid cart item id'), 400);
 

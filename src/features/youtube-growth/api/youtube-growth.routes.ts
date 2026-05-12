@@ -15,7 +15,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-
+import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const youtubeGrowthRoutes = new Hono<{ Bindings: Env }>();
 youtubeGrowthRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
@@ -148,15 +148,25 @@ youtubeGrowthRoutes.post('/confirm', requireAuth(), async (c) => {
   if (pending.price !== amount) return c.json({ success: false, error: '금액이 일치하지 않습니다' }, 400);
 
   // 토스 결제 승인
-  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': paymentKey,
-    },
-    body: JSON.stringify({ paymentKey, orderId, amount }),
-  });
+  let tossRes: Response;
+  try {
+    tossRes = await withCircuitBreaker(
+      { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
+      () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': paymentKey,
+        },
+        // 🛡️ Defense-in-depth: send DB-verified pending.price (equal to client amount above)
+        body: JSON.stringify({ paymentKey, orderId, amount: pending.price }),
+        signal: AbortSignal.timeout(15_000),
+      }),
+    );
+  } catch {
+    return c.json({ success: false, error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', code: 'CIRCUIT_OPEN' }, 503);
+  }
 
   if (!tossRes.ok) {
     const err = await tossRes.json<{ message?: string; code?: string }>();

@@ -126,6 +126,11 @@ const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'im
 const ALLOWED_IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
 
+// 🛡️ 하루 셀러당 업로드 한도 (스토리지 비용 폭주 방지)
+//   - 분당 10회 (rate-limit) + 일 200회 (this) = 합리적 상한
+//   - 일반 셀러 사용 패턴: 상품 1개 등록 시 5-10장 → 200장 = 20-40 상품/일 충분
+const MAX_UPLOADS_PER_DAY = 200;
+
 sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
   // ── Auth required ──────────────────────────────────────────────────────────
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
@@ -134,6 +139,36 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
   }
 
   try {
+    // ── Content-Length precheck (avoid buffering huge bodies just to reject) ──
+    // 🛡️ multipart body 는 magic-byte / MIME 검사 전에 메모리에 로드되므로
+    //   Content-Length 가 명백히 한도 초과면 즉시 reject 해 워커 메모리 보호.
+    //   (multipart overhead 감안 +20% 여유)
+    const contentLength = Number.parseInt(c.req.header('Content-Length') ?? '', 10);
+    if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_BYTES * 1.2) {
+      return c.json({ success: false, error: `파일 크기는 5MB 이하여야 합니다` }, 413);
+    }
+
+    // ── Daily upload quota per seller (storage cost guard) ────────────────────
+    //   RATE_LIMIT_KV 미바인딩 시 fail-open (가용성 우선, 분당 rate-limit 가 1차 방어)
+    const kv = (c.env as unknown as { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    const quotaKey = `upload-quota:seller:${sellerId}:${today}`;
+    let currentCount = 0;
+    if (kv) {
+      try {
+        const v = await kv.get(quotaKey);
+        currentCount = v ? Number.parseInt(v, 10) || 0 : 0;
+        if (currentCount >= MAX_UPLOADS_PER_DAY) {
+          return c.json(
+            { success: false, error: `일일 업로드 한도 (${MAX_UPLOADS_PER_DAY}장) 를 초과했습니다. 내일 다시 시도해주세요.` },
+            429,
+          );
+        }
+      } catch {
+        // KV 조회 실패 시 fail-open
+      }
+    }
+
     const formData = await c.req.formData();
     const file = formData.get('image') as File | null;
     if (!file) {
@@ -151,8 +186,14 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     }
 
     // ── Extension whitelist (double-check, MIME can be spoofed) ──────────────
-    const ext = ('.' + file.name.split('.').pop()?.toLowerCase()) as string;
-    if (!ALLOWED_IMAGE_EXT.has(ext)) {
+    // 🛡️ 파일명에 확장자가 없으면 split('.').pop() 이 전체 파일명을 반환해
+    //   '.somefile' 같은 가짜 확장자가 만들어질 수 있다. 명시적으로 dot 검사.
+    const fileName = (file.name || '').toString();
+    const dotIdx = fileName.lastIndexOf('.');
+    const ext = dotIdx > 0 && dotIdx < fileName.length - 1
+      ? fileName.slice(dotIdx).toLowerCase()
+      : '';
+    if (!ext || !ALLOWED_IMAGE_EXT.has(ext)) {
       return c.json({ success: false, error: '허용되지 않는 파일 확장자입니다.' }, 400);
     }
 
@@ -181,6 +222,16 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     });
     const json = await resp.json() as ImgbbResponse;
     if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
+
+    // ── Bump daily quota counter (TTL = 26h to safely cross day boundary) ────
+    if (kv) {
+      try {
+        await kv.put(quotaKey, String(currentCount + 1), { expirationTtl: 26 * 60 * 60 });
+      } catch {
+        // best-effort
+      }
+    }
+
     // 🛡️ 2026-04-22: delete_url 은 응답에 포함하지 않음.
     // 클라이언트가 받으면 악의적으로 이미지 삭제 가능. 서버 내부에만 저장.
     return c.json({ success: true, url: json.data!.url });

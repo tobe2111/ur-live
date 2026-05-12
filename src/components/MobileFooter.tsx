@@ -11,6 +11,8 @@ export default function MobileFooter() {
 
       {/* Links */}
       <div className="flex justify-center gap-1.5 mb-3 flex-wrap">
+        <a href="/about" style={{ fontSize: '8px', lineHeight: '1.2' }} className="text-gray-500 dark:text-gray-400 hover:text-gray-700">서비스 소개</a>
+        <span style={{ fontSize: '8px' }} className="text-gray-500 dark:text-gray-400">|</span>
         <a href="/terms" style={{ fontSize: '8px', lineHeight: '1.2' }} className="text-gray-500 dark:text-gray-400 hover:text-gray-700">서비스 이용약관</a>
         <span style={{ fontSize: '8px' }} className="text-gray-500 dark:text-gray-400">|</span>
         <a href="/privacy" style={{ fontSize: '8px', lineHeight: '1.2' }} className="text-gray-500 dark:text-gray-400 hover:text-gray-700">개인정보처리방침</a>

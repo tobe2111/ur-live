@@ -36,6 +36,7 @@ const MainHomePage = lazy(() => import('./pages/MainHomePage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
@@ -44,6 +45,7 @@ const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallback
 const KakaoLinkCallbackPage = lazy(() => import('./pages/KakaoLinkCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const LiveListPage = lazy(() => import('./pages/LiveListPage'))
+const LiveRecapPage = lazy(() => import('./pages/LiveRecapPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
 const SellerOverlayPage = lazy(() => import('./pages/SellerOverlayPage'))
@@ -317,6 +319,7 @@ function AppContent() {
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/" element={<MainHomePage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
@@ -327,6 +330,7 @@ function AppContent() {
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/live" element={<LiveListPage />} />
+            <Route path="/live/recap/:id" element={<LiveRecapPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}

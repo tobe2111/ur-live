@@ -161,7 +161,7 @@ authTokenRoutes.post('/id-token', rateLimit({ action: 'auth_id_token', max: 20, 
     // Token expires in 55 minutes (5-minute buffer like client cache)
     const expiresAt = Date.now() + (55 * 60 * 1000);
 
-    if (import.meta.env.DEV) {
+    if (process.env.NODE_ENV !== 'production') {
       console.log(`[AuthToken] Generated token for user ${userQuery.id}`);
     }
 

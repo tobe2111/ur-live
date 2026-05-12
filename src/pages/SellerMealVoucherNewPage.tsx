@@ -9,6 +9,7 @@ import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/se
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
+import { compressForUpload } from '@/lib/image-compress'
 
 export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
@@ -335,13 +336,19 @@ export default function SellerMealVoucherNewPage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const f = e.target.files?.[0]
                         if (!f) return
                         if (f.size > 5 * 1024 * 1024) { toast.error(t('seller.mealVoucher.imageSizeLimit', { defaultValue: '5MB 이하 이미지만 업로드 가능합니다' })); return }
-                        const r = new FileReader()
-                        r.onload = () => { update('image_url', r.result as string); toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' })) }
-                        r.readAsDataURL(f)
+                        try {
+                          // 클라이언트 압축 (CF Images 유료 회피, WebP 1280px ≤300KB)
+                          const compressed = await compressForUpload(f, { maxSizeMB: 0.3, maxWidthOrHeight: 1280, toWebP: true })
+                          const r = new FileReader()
+                          r.onload = () => { update('image_url', r.result as string); toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' })) }
+                          r.readAsDataURL(compressed)
+                        } catch {
+                          toast.error(t('common.uploadFailed', { defaultValue: '업로드 실패' }))
+                        }
                       }}
                     />
                   </label>

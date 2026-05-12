@@ -179,10 +179,16 @@ authedApp.patch('/me/public', async (c) => {
     binds.push(body.bio.slice(0, 500));
   }
   if (body.logo_url !== undefined) {
+    if (body.logo_url && !/^https?:\/\//i.test(body.logo_url)) {
+      return c.json({ success: false, error: 'logo_url must start with http:// or https://' }, 400);
+    }
     sets.push('logo_url = ?');
     binds.push(body.logo_url || null);
   }
   if (body.cover_url !== undefined) {
+    if (body.cover_url && !/^https?:\/\//i.test(body.cover_url)) {
+      return c.json({ success: false, error: 'cover_url must start with http:// or https://' }, 400);
+    }
     sets.push('cover_url = ?');
     binds.push(body.cover_url || null);
   }

@@ -15,6 +15,30 @@ import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { cacheGet, cacheInvalidate, buildCacheKey } from '../utils/cache';
 import { swallow } from '../utils/swallow';
+import { requireAuth, getCurrentUser } from '../middleware/auth';
+import { createRateLimiter } from '../../lib/rate-limit';
+
+// Rate limiters for viewer count manipulation endpoints (anti-abuse)
+const viewerJoinRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  keyPrefix: 'streams:viewer-join',
+});
+const viewerLeaveRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  keyPrefix: 'streams:viewer-leave',
+});
+const viewerCountUpdateRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 5,
+  keyPrefix: 'streams:viewer-count-update',
+});
+const fakeCartNotificationRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 20,
+  keyPrefix: 'streams:fake-cart-notification',
+});
 
 interface StreamListRow {
   id: number;
@@ -142,6 +166,7 @@ streamsRouter.get('/', async (c) => {
           s.name             AS seller_name,
           ${withTier ? 's.tier             AS seller_tier,' : "NULL              AS seller_tier,"}
           ${withTier ? 'COALESCE(s.exposure_weight, 1.0) AS exposure_weight,' : '1.0               AS exposure_weight,'}
+          ${withTier ? 'COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS seller_shipping_fee,' : '3000              AS seller_shipping_fee,'}
           cp.id              AS current_product_id,
           cp.name            AS current_product_name,
           cp.price           AS current_product_price,
@@ -206,6 +231,7 @@ streamsRouter.get('/', async (c) => {
         seller_id: r.seller_id,
         seller_name: r.seller_name,
         seller_image: r.seller_image,
+        seller_shipping_fee: (r as any).seller_shipping_fee ?? 3000,
         created_at: r.created_at,
         updated_at: r.updated_at,
         current_product: r.current_product_id
@@ -266,6 +292,9 @@ streamsRouter.get('/:id', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
 
     const stream = await cacheGet(
       c.env.SESSION_KV,
@@ -322,47 +351,60 @@ streamsRouter.get('/:id/products', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
 
-    // ✅ products 테이블에서 live_stream_id로 조회
-    const rows = await db
-      .prepare(`
-        SELECT
-          id, name, description, price, original_price, discount_rate,
-          image_url, stock,
-          category, seller_id, is_active, created_at, updated_at
-        FROM products
-        WHERE live_stream_id = ? AND is_active = 1
-        ORDER BY created_at DESC
-      `)
-      .bind(streamId)
-      .all();
-
-    let products = rows.results || [];
-
-    // ✅ live_stream_id로 연결된 상품이 없으면 current_product_id 상품을 fallback으로 반환
-    if (products.length === 0) {
-      const stream = await db
-        .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
-        .bind(streamId)
-        .first<{ current_product_id: number | null }>();
-
-      if (stream?.current_product_id) {
-        const fallbackProduct = await db
+    // 🚀 KV cache (30s) — 라이브 중 상품 목록은 변경 빈도 낮음, 짧은 TTL 로 안전.
+    const products = await cacheGet(
+      c.env.SESSION_KV,
+      `streams:products:${streamId}`,
+      async () => {
+        // ✅ products 테이블에서 live_stream_id로 조회
+        const rows = await db
           .prepare(`
             SELECT
               id, name, description, price, original_price, discount_rate,
               image_url, stock,
               category, seller_id, is_active, created_at, updated_at
-            FROM products WHERE id = ?
+            FROM products
+            WHERE live_stream_id = ? AND is_active = 1
+            ORDER BY created_at DESC
+            LIMIT 200
           `)
-          .bind(stream.current_product_id)
-          .first<ProductRow>();
+          .bind(streamId)
+          .all();
 
-        if (fallbackProduct) {
-          products = [fallbackProduct as unknown as Record<string, unknown>];
+        let list = rows.results || [];
+
+        // ✅ live_stream_id로 연결된 상품이 없으면 current_product_id 상품을 fallback으로 반환
+        if (list.length === 0) {
+          const stream = await db
+            .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
+            .bind(streamId)
+            .first<{ current_product_id: number | null }>();
+
+          if (stream?.current_product_id) {
+            const fallbackProduct = await db
+              .prepare(`
+                SELECT
+                  id, name, description, price, original_price, discount_rate,
+                  image_url, stock,
+                  category, seller_id, is_active, created_at, updated_at
+                FROM products WHERE id = ?
+              `)
+              .bind(stream.current_product_id)
+              .first<ProductRow>();
+
+            if (fallbackProduct) {
+              list = [fallbackProduct as unknown as Record<string, unknown>];
+            }
+          }
         }
-      }
-    }
+        return list;
+      },
+      { ttl: 30, staleWhileRevalidate: 30 }
+    );
 
     return c.json({
       success: true,
@@ -379,26 +421,37 @@ streamsRouter.get('/:id/current-product', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
 
-    const stream = await db
-      .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
-      .bind(streamId)
-      .first<{ current_product_id: number | null }>();
+    // 🚀 KV cache (10s + SWR 30s) — 방송 중 변경. POST /current-product 가 invalidate.
+    const result = await cacheGet(
+      c.env.SESSION_KV,
+      `streams:current-product:${streamId}`,
+      async () => {
+        const stream = await db
+          .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
+          .bind(streamId)
+          .first<{ current_product_id: number | null }>();
 
-    if (!stream) {
+        if (!stream) return { notFound: true } as const;
+        if (!stream.current_product_id) return { product: null } as const;
+
+        const product = await db
+          .prepare(`SELECT id, name, description, price, original_price, discount_rate,
+            image_url, stock, category, seller_id, is_active FROM products WHERE id = ?`)
+          .bind(stream.current_product_id)
+          .first();
+        return { product } as const;
+      },
+      { ttl: 10, staleWhileRevalidate: 30 }
+    );
+
+    if ('notFound' in result) {
       return c.json({ success: false, error: 'Stream not found' }, 404);
     }
-
-    if (!stream.current_product_id) {
-      return c.json({ success: true, data: null });
-    }
-
-    const product = await db
-      .prepare('SELECT * FROM products WHERE id = ?')
-      .bind(stream.current_product_id)
-      .first();
-
-    return c.json({ success: true, data: product });
+    return c.json({ success: true, data: result.product });
   } catch (err: unknown) {
     console.error('[Streams] Current product error:', err);
     return c.json({ success: false, error: 'Failed to fetch current product' }, 500);
@@ -410,14 +463,26 @@ streamsRouter.get('/:id/current-product', async (c) => {
 streamsRouter.get('/:id/product-timestamps', async (c) => {
   try {
     const streamId = c.req.param('id')
-    const rows = await c.env.DB.prepare(`
-      SELECT spt.product_id, spt.offset_sec, spt.created_at, p.name, p.image_url, p.price
-      FROM stream_product_timestamps spt
-      LEFT JOIN products p ON spt.product_id = p.id
-      WHERE spt.stream_id = ?
-      ORDER BY spt.offset_sec ASC
-    `).bind(streamId).all<{ product_id: number; offset_sec: number; created_at: string; name: string; image_url: string | null; price: number }>()
-    return c.json({ success: true, data: rows.results || [] })
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400)
+    }
+    // 🚀 KV cache (60s) — 챕터 마커는 라이브 중에만 추가, 자주 안 바뀜.
+    const data = await cacheGet(
+      c.env.SESSION_KV,
+      `streams:product-timestamps:${streamId}`,
+      async () => {
+        const rows = await c.env.DB.prepare(`
+          SELECT spt.product_id, spt.offset_sec, spt.created_at, p.name, p.image_url, p.price
+          FROM stream_product_timestamps spt
+          LEFT JOIN products p ON spt.product_id = p.id
+          WHERE spt.stream_id = ?
+          ORDER BY spt.offset_sec ASC
+        `).bind(streamId).all<{ product_id: number; offset_sec: number; created_at: string; name: string; image_url: string | null; price: number }>()
+        return rows.results || []
+      },
+      { ttl: 60, staleWhileRevalidate: 60 }
+    )
+    return c.json({ success: true, data })
   } catch {
     return c.json({ success: true, data: [] })
   }
@@ -447,7 +512,14 @@ streamsRouter.post('/:id/current-product', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
-    const { productId } = await c.req.json<{ productId: number }>();
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
+    const body = await c.req.json<{ productId?: unknown }>();
+    const productId = body.productId;
+    if (productId !== null && productId !== undefined && (!Number.isInteger(productId) || (productId as number) <= 0)) {
+      return c.json({ success: false, error: 'Invalid productId' }, 400);
+    }
 
     // 라이브 소유 검증 (admin 은 모든 라이브 가능)
     if (userType === 'seller') {
@@ -465,8 +537,12 @@ streamsRouter.post('/:id/current-product', async (c) => {
       .bind(productId ?? null, streamId)
       .run();
 
-    // Invalidate cached stream detail (list entries will expire naturally within TTL)
-    await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
+    // Invalidate cached stream detail + current-product + products list (list entries expire naturally)
+    await cacheInvalidate(c.env.SESSION_KV, [
+      `stream:${streamId}`,
+      `streams:current-product:${streamId}`,
+      `streams:products:${streamId}`,
+    ]);
 
     return c.json({ success: true, message: 'Current product updated' });
   } catch (err: unknown) {
@@ -485,6 +561,19 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
+    const KV = c.env.SESSION_KV;
+    const kvKey = `vc:${streamId}`;
+
+    // KV 30초 캐시 — COUNT(*) 풀스캔 횟수 대폭 감소
+    if (KV) {
+      const cached = await KV.get(kvKey, 'json').catch(() => null) as Record<string, unknown> | null;
+      if (cached) {
+        return c.json({ success: true, data: cached, cached: true });
+      }
+    }
 
     let live = 0;
     let peak = 0;
@@ -508,7 +597,6 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
       peak = Number(row?.peak_viewers ?? 0);
       manual = row?.manual_viewer_count ?? null;
     } catch {
-      // Fallback: 컬럼 누락 환경 대응
       try {
         const r = await db
           .prepare('SELECT current_viewers FROM live_streams WHERE id = ?')
@@ -519,15 +607,19 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
     }
 
     const display = manual !== null ? manual : live;
-    return c.json({
-      success: true,
-      data: {
-        viewer_count: display,
-        live_viewers: live,
-        peak_viewers: peak,
-        manual_viewer_count: manual,
-      },
-    });
+    const result = {
+      viewer_count: display,
+      live_viewers: live,
+      peak_viewers: peak,
+      manual_viewer_count: manual,
+    };
+
+    // 30초 KV 캐시 저장 (waitUntil: 응답 후 비동기 write, Worker 종료 후에도 완료 보장)
+    if (KV) {
+      c.executionCtx?.waitUntil?.(KV.put(kvKey, JSON.stringify(result), { expirationTtl: 30 }).catch(() => {}));
+    }
+
+    return c.json({ success: true, data: result });
   } catch (err: unknown) {
     console.error('[Streams] Viewer count error:', err);
     return c.json({ success: false, error: 'Failed to fetch viewer count' }, 500);
@@ -535,7 +627,7 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
 });
 
 // ── PUT /api/streams/:id/viewer-count (셀러 수동 설정 — 인증 필수) ────────────
-streamsRouter.put('/:id/viewer-count', async (c) => {
+streamsRouter.put('/:id/viewer-count', viewerCountUpdateRateLimiter, async (c) => {
   // 🛡️ 인증 체크 — 미인증 시 시청자 수 조작 가능
   const auth = c.req.header('Authorization');
   if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -551,6 +643,9 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
 
   try {
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     const { manual_count } = await c.req.json<{ manual_count: number | null }>();
 
     if (manual_count !== null) {
@@ -589,10 +684,13 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
 //   이전: 매 heartbeat 마다 current_viewers +1 → 1명이 30초마다 계속 증가하는 허수.
 //   개선: X-Session-ID 헤더로 unique 식별. 신규 세션만 카운트 증가 + peak 갱신.
 //         기존 세션의 heartbeat 는 last_heartbeat 만 갱신.
-streamsRouter.post('/:id/viewer/join', async (c) => {
+streamsRouter.post('/:id/viewer/join', viewerJoinRateLimiter, async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     const sessionId = c.req.header('X-Session-ID') || c.req.header('x-session-id');
     if (!sessionId || sessionId.length < 8 || sessionId.length > 128) {
       return c.json({ success: false, error: 'X-Session-ID header required' }, 400);
@@ -640,52 +738,48 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
         .run();
     } catch { /* ignore */ }
 
-    // 활성 세션 수 재계산 → current_viewers + peak_viewers 업데이트 (신규 세션일 때만)
+    // 활성 세션 수 재계산 → current_viewers + peak_viewers 업데이트
+    // SELECT COUNT(*) + UPDATE 2-trip → UPDATE with subquery 1-trip (D1 read 1회 절감)
     if (isNewSession) {
-      try {
-        const row = await db
-          .prepare(
-            `SELECT COUNT(*) as live FROM live_stream_views
-             WHERE live_stream_id = ?
-               AND last_heartbeat > datetime('now', '-120 seconds')
-               AND left_at IS NULL`
-          )
-          .bind(streamId)
-          .first<{ live: number }>();
-        const liveNow = Number(row?.live ?? 0);
-        await db
-          .prepare(
-            `UPDATE live_streams
-             SET current_viewers = ?,
-                 peak_viewers = MAX(COALESCE(peak_viewers, 0), ?),
-                 total_viewers = COALESCE(total_viewers, 0) + 1,
-                 updated_at = datetime('now')
-             WHERE id = ?`
-          )
-          .bind(liveNow, liveNow, streamId)
-          .run()
-          .catch(swallow('streams:viewer-bump'));
-      } catch { /* non-fatal */ }
+      await db
+        .prepare(
+          `UPDATE live_streams
+           SET current_viewers = (
+                 SELECT COUNT(*) FROM live_stream_views
+                 WHERE live_stream_id = ?
+                   AND last_heartbeat > datetime('now', '-120 seconds')
+                   AND left_at IS NULL
+               ),
+               peak_viewers = MAX(COALESCE(peak_viewers, 0), (
+                 SELECT COUNT(*) FROM live_stream_views
+                 WHERE live_stream_id = ?
+                   AND last_heartbeat > datetime('now', '-120 seconds')
+                   AND left_at IS NULL
+               )),
+               total_viewers = COALESCE(total_viewers, 0) + 1,
+               updated_at = datetime('now')
+           WHERE id = ?`
+        )
+        .bind(streamId, streamId, streamId)
+        .run()
+        .catch(swallow('streams:viewer-bump'));
     } else {
       // heartbeat: current_viewers 만 주기적으로 재동기화 (TTL 만료된 세션 반영)
-      try {
-        const row = await db
-          .prepare(
-            `SELECT COUNT(*) as live FROM live_stream_views
-             WHERE live_stream_id = ?
-               AND last_heartbeat > datetime('now', '-120 seconds')
-               AND left_at IS NULL`
-          )
-          .bind(streamId)
-          .first<{ live: number }>();
-        await db
-          .prepare(
-            `UPDATE live_streams SET current_viewers = ?, updated_at = datetime('now') WHERE id = ?`
-          )
-          .bind(Number(row?.live ?? 0), streamId)
-          .run()
-          .catch(swallow('streams:current-viewers-resync-join'));
-      } catch { /* ignore */ }
+      await db
+        .prepare(
+          `UPDATE live_streams
+           SET current_viewers = (
+                 SELECT COUNT(*) FROM live_stream_views
+                 WHERE live_stream_id = ?
+                   AND last_heartbeat > datetime('now', '-120 seconds')
+                   AND left_at IS NULL
+               ),
+               updated_at = datetime('now')
+           WHERE id = ?`
+        )
+        .bind(streamId, streamId)
+        .run()
+        .catch(swallow('streams:current-viewers-resync-join'));
     }
 
     return c.json({ success: true, data: { new_session: isNewSession } });
@@ -698,10 +792,13 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
 // ── POST /api/streams/:id/viewer/leave ────────────────────────────────────────
 // 2026-04-23 배치 164: 페이지 언로드 시 sendBeacon 으로 호출 (P1 분석 정확도)
 //   watch_duration 계산 + current_viewers 즉시 반영.
-streamsRouter.post('/:id/viewer/leave', async (c) => {
+streamsRouter.post('/:id/viewer/leave', viewerLeaveRateLimiter, async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
     // sendBeacon 은 커스텀 헤더 불가 → query string fallback 지원
     const sessionId =
       c.req.header('X-Session-ID') ||
@@ -747,11 +844,75 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
   }
 });
 
+// ── POST /api/streams/:id/restock-notify ──────────────────────────────────────
+// 품절 상품 재입고 알림 신청 (로그인 사용자)
+streamsRouter.post('/:id/restock-notify', requireAuth(), async (c) => {
+  try {
+    const streamId = c.req.param('id')
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400)
+    }
+    const authUser = getCurrentUser(c)
+    const userId = authUser ? Number(authUser.id) : null
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+    const { product_id } = await c.req.json<{ product_id: number }>()
+    if (!product_id) return c.json({ success: false, error: 'product_id 필요' }, 400)
+
+    // user_notifications 테이블에 재입고 알림 신청 기록 (type = restock_requested)
+    // 중복 방지: 동일 user+product 조합이 이미 있으면 skip
+    try { await c.env.DB.prepare("ALTER TABLE user_notifications ADD COLUMN metadata TEXT").run() } catch {}
+    const existing = await c.env.DB.prepare(
+      "SELECT id FROM user_notifications WHERE user_id = ? AND type = 'restock_requested' AND link = ?"
+    ).bind(String(userId), `/products/${product_id}`).first()
+    if (existing) return c.json({ success: true, already: true })
+
+    await c.env.DB.prepare(
+      "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'restock_requested', ?, ?, ?)"
+    ).bind(String(userId), '재입고 알림 신청', `상품 ${product_id} 재입고 시 알림을 드립니다.`, `/products/${product_id}`).run()
+
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ success: false, error: 'Failed' }, 500)
+  }
+})
+
 // ── POST /api/streams/:id/fake-cart-notification ──────────────────────────────
 // 라이브 방송 중 가짜 장바구니 추가 알림 (LivePage에서 데모 목적 사용)
-streamsRouter.post('/:id/fake-cart-notification', async (c) => {
+// 🛡️ 셀러 인증 + 라이브 소유 검증 필수 (미인증 시 임의 라이브에 스팸 가능)
+streamsRouter.post('/:id/fake-cart-notification', fakeCartNotificationRateLimiter, async (c) => {
+  const auth = c.req.header('Authorization');
+  if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
+  let sellerId: number | null = null;
+  let userType: string | null = null;
+  try {
+    const { verify } = await import('hono/jwt');
+    const payload = await verify(auth.replace('Bearer ', ''), c.env.JWT_SECRET, 'HS256') as any;
+    if (!['seller', 'admin'].includes(payload.type)) {
+      return c.json({ success: false, error: 'Seller or admin only' }, 403);
+    }
+    sellerId = Number(payload.sub);
+    userType = String(payload.type);
+  } catch {
+    return c.json({ success: false, error: 'Invalid token' }, 401);
+  }
+
   try {
     const streamId = c.req.param('id');
+    if (!streamId || !/^\d+$/.test(streamId)) {
+      return c.json({ success: false, error: 'Invalid stream ID' }, 400);
+    }
+
+    // 라이브 소유 검증 (admin 은 모든 라이브 가능)
+    if (userType === 'seller') {
+      const owner = await c.env.DB.prepare(
+        'SELECT seller_id FROM live_streams WHERE id = ?'
+      ).bind(streamId).first<{ seller_id: number }>();
+      if (!owner) return c.json({ success: false, error: 'Stream not found' }, 404);
+      if (Number(owner.seller_id) !== Number(sellerId)) {
+        return c.json({ success: false, error: 'Forbidden — not your stream' }, 403);
+      }
+    }
     const body = await c.req.json<{ productId?: number; buyerName?: string }>().catch(() => ({ productId: undefined as number | undefined, buyerName: undefined as string | undefined }));
     // 실제 Durable Object 또는 WebSocket으로 broadcast 가능
     // 현재는 단순 200 응답으로 프론트 오류 방지

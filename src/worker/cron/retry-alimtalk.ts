@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 cron.
  *
@@ -21,6 +22,17 @@ interface FailureRow {
 export async function handleRetryAlimtalk(env: Env) {
   if (!env.DB) return
   try {
+    // ✅ PERF: 빈 테이블 fast-path — COUNT 한 번만 (대부분 0)
+    try {
+      const cnt = await env.DB.prepare(`
+        SELECT COUNT(*) as c FROM alimtalk_failures
+        WHERE resolved = 0 AND retry_count < max_retries AND next_retry_at <= datetime('now')
+      `).first<{ c: number }>()
+      if (!cnt || (cnt.c ?? 0) === 0) return
+    } catch {
+      // 테이블 없거나 COUNT 실패 — 기존 SELECT 로 진행
+    }
+
     // 재시도 가능한 실패만 (next_retry_at 이미 지났고 max 미달)
     const { results } = await env.DB.prepare(`
       SELECT id, phone, template_code, message, retry_count, max_retries
@@ -80,7 +92,7 @@ export async function handleRetryAlimtalk(env: Env) {
     }
 
     if (env.ENVIRONMENT !== 'production' || retried > 0) {
-      console.log(`[cron:retry-alimtalk] retried=${retried} succeeded=${succeeded}`)
+      logInfo(`[cron:retry-alimtalk] retried=${retried} succeeded=${succeeded}`)
     }
   } catch (err) {
     await reportCronFailure(env, 'retry-alimtalk', err, undefined, 'warning')

@@ -125,7 +125,12 @@ groupBuyRoutes.get('/products', async (c) => {
 // ── GET /api/group-buy/products/:id ─────────────────────────────────
 groupBuyRoutes.get('/products/:id', async (c) => {
   const { DB } = c.env
-  const id = c.req.param('id')
+  const idRaw = c.req.param('id')
+  const idNum = Number(idRaw)
+  if (!Number.isFinite(idNum) || idNum <= 0 || !Number.isInteger(idNum)) {
+    return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+  }
+  const id = idNum
 
   const product = await DB.prepare(`
     SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar,
@@ -147,10 +152,21 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
 
   const { DB } = c.env
   await ensureTables(DB)
-  const productId = c.req.param('id')
+  const productIdRaw = c.req.param('id')
+  const productIdNum = Number(productIdRaw)
+  if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
+    return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+  }
+  const productId = productIdNum
   const userId = String(user.id)
-  const { quantity, payment_method } = await c.req.json<{ quantity?: number; payment_method?: 'deal' | 'toss' }>()
-  const qty = quantity || 1
+  const { quantity, payment_method } = await c.req.json<{ quantity?: number; payment_method?: 'deal' | 'toss' }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const }))
+  const qty = Number(quantity ?? 1)
+  if (!Number.isFinite(qty) || !Number.isInteger(qty) || qty < 1 || qty > 100) {
+    return c.json({ success: false, error: '수량은 1~100 사이의 정수여야 합니다' }, 400)
+  }
+  if (payment_method !== undefined && payment_method !== 'deal' && payment_method !== 'toss') {
+    return c.json({ success: false, error: '잘못된 결제 수단입니다' }, 400)
+  }
 
   try {
     // 상품 확인
@@ -256,18 +272,52 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
 
     // ✅ BUG #26 FIX: Stock was already decremented atomically above — only
     // bump the group-buy counter here to avoid double-subtracting.
+    // ✅ CONCURRENCY: atomic increment + target/achievement transition done in
+    //    a single UPDATE so two concurrent joiners cannot both read the same
+    //    group_buy_current and skip the achieved transition.
     await DB.prepare(`
-      UPDATE products SET group_buy_current = group_buy_current + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-    `).bind(qty, productId).run()
+      UPDATE products
+         SET group_buy_current = group_buy_current + ?,
+             group_buy_status = CASE
+               WHEN group_buy_target > 0 AND (group_buy_current + ?) >= group_buy_target THEN 'achieved'
+               ELSE group_buy_status
+             END,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?
+    `).bind(qty, qty, productId).run()
 
-    // 목표 달성 확인
-    const updated = await DB.prepare('SELECT group_buy_current, group_buy_target FROM products WHERE id = ?')
+    const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status FROM products WHERE id = ?')
       .bind(productId).first<any>()
 
-    if (updated && updated.group_buy_target > 0 && updated.group_buy_current >= updated.group_buy_target) {
-      await DB.prepare("UPDATE products SET group_buy_status = 'achieved', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-        .bind(productId).run()
-    }
+    // 🛡️ 공구 성공 시 모든 참여자에게 푸시 + dashboard notification (best-effort)
+    //   updated.group_buy_status === 'achieved' 이며, 직전 UPDATE 가 처음으로 트랜지션 시켰을 때만 발송하도록
+    //   product.group_buy_status (사전 상태) 와 비교하여 중복 발송 방지.
+    try {
+      if (updated?.group_buy_status === 'achieved' && product.group_buy_status !== 'achieved') {
+        const { results: participants } = await DB.prepare(
+          `SELECT DISTINCT o.user_id FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           WHERE oi.product_id = ? AND o.user_id IS NOT NULL`
+        ).bind(productId).all<{ user_id: string }>()
+        const { sendSystemPush } = await import('../../../lib/system-push')
+        for (const p of participants ?? []) {
+          try {
+            await DB.prepare(
+              `INSERT INTO user_notifications (user_id, type, title, message, link)
+               VALUES (?, 'group_buy_achieved', ?, ?, ?)`
+            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 식사권이 발급됩니다`, `/group-buy/${productId}`).run()
+          } catch { /* ignore */ }
+          try {
+            await sendSystemPush(c.env, 'user', p.user_id, {
+              title: '🎉 공구 성공!',
+              body: `${product.name} 곧 식사권이 발급됩니다`,
+              url: `/group-buy/${productId}`,
+              tag: `gb-achieved-${productId}`,
+            })
+          } catch { /* ignore */ }
+        }
+      }
+    } catch (e) { console.error('[group-buy achieved notify]', e) }
 
     // 바우처 코드 조회
     const vouchers = await DB.prepare(
@@ -317,6 +367,9 @@ groupBuyRoutes.get('/my', requireAuth(), async (c) => {
 groupBuyRoutes.get('/verify/:code', async (c) => {
   const { DB } = c.env
   const code = c.req.param('code')
+  if (!code || typeof code !== 'string' || code.length < 4 || code.length > 64 || !/^[A-Za-z0-9-]+$/.test(code)) {
+    return c.json({ success: false, error: '잘못된 바우처 코드입니다' }, 400)
+  }
 
   const voucher = await DB.prepare(`
     SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image
@@ -342,7 +395,12 @@ groupBuyRoutes.get('/verify/:code', async (c) => {
 // ── POST /api/group-buy/refund/:productId — 미달성 공동구매 환불 ────
 groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
   const { DB } = c.env
-  const productId = c.req.param('productId')
+  const productIdRaw = c.req.param('productId')
+  const productIdNum = Number(productIdRaw)
+  if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
+    return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+  }
+  const productId = productIdNum
 
   try {
     const product = await DB.prepare(
@@ -413,9 +471,12 @@ groupBuyRoutes.post(
   async (c) => {
     const { DB } = c.env
     const code = c.req.param('code')
+    if (!code || typeof code !== 'string' || code.length < 4 || code.length > 64 || !/^[A-Za-z0-9-]+$/.test(code)) {
+      return c.json({ success: false, error: '잘못된 바우처 코드입니다' }, 400)
+    }
     const { pin } = await c.req.json<{ pin?: string }>().catch(() => ({ pin: undefined }))
 
-    if (!pin || typeof pin !== 'string') {
+    if (!pin || typeof pin !== 'string' || pin.length > 64) {
       return c.json({ success: false, error: '비밀번호를 입력해주세요' }, 400)
     }
 
@@ -434,6 +495,7 @@ groupBuyRoutes.post(
          SET status = 'used', used_at = datetime('now')
        WHERE code = ?
          AND status = 'unused'
+         AND (expires_at IS NULL OR expires_at > datetime('now'))
          AND product_id IN (
            SELECT id FROM products
            WHERE id = vouchers.product_id
@@ -464,7 +526,12 @@ groupBuyRoutes.post(
 groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_pin', max: 5, windowSec: 300 }), async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
-  const productId = c.req.param('productId')
+  const productIdRaw = c.req.param('productId')
+  const productIdNum = Number(productIdRaw)
+  if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
+    return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+  }
+  const productId = productIdNum
   const tokenFromQuery = c.req.query('t')?.trim() || ''
   let pin = ''
   try {

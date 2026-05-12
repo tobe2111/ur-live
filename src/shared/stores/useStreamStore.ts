@@ -22,6 +22,9 @@ interface StreamStoreState {
   isConnected: boolean
   sendMessage: ((msg: string, userId: number, userName: string, userType: 'viewer' | 'streamer' | 'system') => Promise<void>) | null
 
+  // 스트림별 메시지 캐시 — 재입장(unmount→mount) 시 채팅 내역 복원
+  messageCache: Map<number, ChatMessage[]>
+
   setStream: (data: { id: number; title: string; sellerName: string }) => void
   setViewerCount: (n: number) => void
   setCurrentProductId: (id: number | null) => void
@@ -29,6 +32,7 @@ interface StreamStoreState {
   setMessages: (messages: ChatMessage[]) => void
   setConnected: (b: boolean) => void
   setSendMessage: (fn: StreamStoreState['sendMessage']) => void
+  getCachedMessages: (streamId: number) => ChatMessage[]
   reset: () => void
 }
 
@@ -42,9 +46,10 @@ const initial = {
   messages: [],
   isConnected: false,
   sendMessage: null,
+  messageCache: new Map<number, ChatMessage[]>(),
 }
 
-export const useStreamStore = create<StreamStoreState>(set => ({
+export const useStreamStore = create<StreamStoreState>((set, get) => ({
   ...initial,
 
   setStream: ({ id, title, sellerName }) =>
@@ -56,11 +61,22 @@ export const useStreamStore = create<StreamStoreState>(set => ({
 
   setProducts: (products) => set({ products }),
 
-  setMessages: (messages) => set({ messages }),
+  setMessages: (messages) => {
+    const streamId = get().streamId
+    if (streamId && messages.length > 0) {
+      const cache = get().messageCache
+      cache.set(streamId, messages.slice(-200))
+    }
+    set({ messages })
+  },
 
   setConnected: (isConnected) => set({ isConnected }),
 
   setSendMessage: (sendMessage) => set({ sendMessage }),
 
-  reset: () => set(initial),
+  getCachedMessages: (streamId: number) => {
+    return get().messageCache.get(streamId) ?? []
+  },
+
+  reset: () => set({ ...initial, messageCache: get().messageCache }),
 }))

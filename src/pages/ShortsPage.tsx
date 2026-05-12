@@ -50,10 +50,17 @@ export default function ShortsPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRefs = useRef<Map<string, ShortsYTPlayer>>(new Map())
   const seenIds = useRef<Set<string>>(new Set())
+  // YouTube init observer map — 언마운트 시 전체 disconnect (메모리 누수 방지)
+  const initObservers = useRef<Map<string, IntersectionObserver>>(new Map())
 
   // 초기 로드
   useEffect(() => {
     loadFeed()
+    return () => {
+      // 언마운트 시 모든 YouTube init observer 정리
+      initObservers.current.forEach(obs => obs.disconnect())
+      initObservers.current.clear()
+    }
   }, [])
 
   async function loadFeed() {
@@ -188,10 +195,15 @@ export default function ShortsPage() {
             : s
         ))
       }
-    } catch {
-      toast.error(t('common.loginRequired'))
-      localStorage.setItem('loginReturnUrl', window.location.pathname)
-      navigate('/login')
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 401) {
+        toast.error(t('common.loginRequired'))
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        navigate('/login')
+      } else {
+        toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
+      }
     }
   }
 
@@ -254,16 +266,30 @@ export default function ShortsPage() {
                   <div
                     id={`shorts-player-${index}`}
                     className="w-full h-full [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!min-w-full [&_iframe]:!aspect-video"
-                    ref={() => {
-                      // @ts-ignore
-                      if (window.YT?.Player) {
-                        setTimeout(() => initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index), 100)
-                      } else {
-                        // @ts-ignore
-                        if (!window.youtubeCallbacks) window.youtubeCallbacks = []
-                        // @ts-ignore
-                        window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index))
-                      }
+                    ref={(el) => {
+                      if (!el) return
+                      const obsKey = `shorts-player-${index}`
+                      // 이미 observer 등록된 요소는 중복 생성 방지
+                      if (initObservers.current.has(obsKey)) return
+                      const observer = new IntersectionObserver(
+                        ([entry]) => {
+                          if (!entry.isIntersecting) return
+                          observer.disconnect()
+                          initObservers.current.delete(obsKey)
+                          // @ts-ignore
+                          if (window.YT?.Player) {
+                            initPlayer(item.youtube_video_id!, obsKey, index)
+                          } else {
+                            // @ts-ignore
+                            if (!window.youtubeCallbacks) window.youtubeCallbacks = []
+                            // @ts-ignore
+                            window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, obsKey, index))
+                          }
+                        },
+                        { threshold: 0.5 }
+                      )
+                      observer.observe(el)
+                      initObservers.current.set(obsKey, observer)
                     }}
                   />
                   {/* 썸네일 배경 (플레이어 로드 전) */}
@@ -482,7 +508,14 @@ export default function ShortsPage() {
                           if (!item.product_id) return
                           api.post('/api/wishlists', { product_id: item.product_id })
                             .then(() => toast.success(t('common.wishlistAdded')))
-                            .catch(() => toast.error(t('shortsPage.loginRequired')))
+                            .catch((err: unknown) => {
+                              const status = (err as { response?: { status?: number } })?.response?.status
+                              if (status === 401) {
+                                localStorage.setItem('loginReturnUrl', window.location.pathname)
+                                navigate('/login')
+                              }
+                              toast.error(status === 401 ? t('common.loginRequired') : t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
+                            })
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"
                         style={{ borderRight: '1px solid #F3F4F6' }}
@@ -496,10 +529,15 @@ export default function ShortsPage() {
                           e.stopPropagation()
                           api.post('/api/cart', { product_id: item.product_id, quantity: 1 })
                             .then(() => toast.success(t('cart.itemAdded')))
-                            .catch(() => {
-                              toast.error(t('common.loginRequired'))
-                              localStorage.setItem('loginReturnUrl', window.location.pathname)
-                              navigate('/login')
+                            .catch((err: unknown) => {
+                              const status = (err as { response?: { status?: number } })?.response?.status
+                              if (status === 401) {
+                                toast.error(t('common.loginRequired'))
+                                localStorage.setItem('loginReturnUrl', window.location.pathname)
+                                navigate('/login')
+                              } else {
+                                toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
+                              }
                             })
                         }}
                         className="py-3 flex flex-col items-center gap-0.5"

@@ -32,6 +32,29 @@ export async function sendSystemEmail(
       e?.RESEND_FROM,
       e?.DB
     );
+
+    // 🛡️ 2026-05-12: 실패 시 retry/dead-letter queue.
+    //   alimtalk_failures 와 동일 패턴 (5분 후 재시도, 최대 3회).
+    if (!result.success && e?.DB) {
+      try {
+        await e.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS email_failures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient TEXT NOT NULL, subject TEXT NOT NULL, html TEXT NOT NULL,
+            error TEXT, retry_count INTEGER DEFAULT 0, max_retries INTEGER DEFAULT 3,
+            next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
+            resolved INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+        await e.DB.prepare(`
+          INSERT INTO email_failures (recipient, subject, html, error)
+          VALUES (?, ?, ?, ?)
+        `).bind(to, content.subject.slice(0, 500), content.html.slice(0, 50000), (result.error || 'unknown').slice(0, 500)).run();
+      } catch { /* queue 실패해도 원본 결과 반환 */ }
+    }
+
     return result;
   } catch (err) {
     return { success: false, error: (err as Error).message };

@@ -83,9 +83,11 @@ app.get('/kakao/place/address', async (c) => {
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
     const data = await res.json();
 
-    // 결과 있을 때만 30일 캐시 (빈 결과는 다음에 다시 시도)
+    // 결과 있을 때만 30일 캐시 — waitUntil로 백그라운드 write (응답 지연 방지)
     if (KV && (data as { documents?: unknown[] })?.documents?.length) {
-      await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => { /* noop */ });
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => {})
+      );
     }
     return c.json({ success: true, data });
   } catch (e) {
@@ -101,12 +103,25 @@ app.get('/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windo
   const clientId = (c.env as Env).NAVER_CLIENT_ID;
   const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET;
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500);
+
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const cacheKey = `naver:place:${query.slice(0, 200)}:${display}`;
+  if (KV) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
+
   try {
     const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=${display}&sort=comment`;
     const res = await fetch(url, {
       headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
     });
     const data = await res.json();
+    if (KV && (data as { items?: unknown[] })?.items?.length) {
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 24 * 60 * 60 }).catch(() => {})
+      );
+    }
     return c.json({ success: true, data });
   } catch (e) {
     return c.json({ success: false, error: (e as Error).message }, 500);
@@ -123,12 +138,25 @@ app.get('/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windo
   const clientId = (c.env as Env).NAVER_CLIENT_ID;
   const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET;
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500);
+
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const cacheKey = `naver:img:${query.slice(0, 200)}`;
+  if (KV) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
+
   try {
     const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query)}&display=${display}&sort=sim&filter=large`;
     const res = await fetch(url, {
       headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
     });
     const data = await res.json();
+    if (KV && (data as { items?: unknown[] })?.items?.length) {
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 7 * 24 * 60 * 60 }).catch(() => {})
+      );
+    }
     return c.json({ success: true, data });
   } catch (e) {
     return c.json({ success: false, error: (e as Error).message }, 500);
@@ -142,6 +170,13 @@ app.get('/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, wi
   const clientId = (c.env as Env).NAVER_CLIENT_ID;
   const clientSecret = (c.env as Env).NAVER_CLIENT_SECRET;
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500);
+
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const cacheKey = `naver:restaurant:${query.slice(0, 200)}`;
+  if (KV) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
 
   const headers = { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret };
 
@@ -158,20 +193,28 @@ app.get('/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, wi
     const place = localData.items?.[0] || null;
     const images = (imageData.items || []).map((img: any) => img.link);
 
+    const result = {
+      place: place ? {
+        title: place.title?.replace(/<[^>]*>/g, ''),
+        address: place.roadAddress || place.address,
+        phone: place.telephone,
+        category: place.category,
+        link: place.link,
+        mapx: place.mapx,
+        mapy: place.mapy,
+      } : null,
+      images,
+    };
+
+    if (KV && (result.place || result.images.length)) {
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 24 * 60 * 60 }).catch(() => {})
+      );
+    }
+
     return c.json({
       success: true,
-      data: {
-        place: place ? {
-          title: place.title?.replace(/<[^>]*>/g, ''),
-          address: place.roadAddress || place.address,
-          phone: place.telephone,
-          category: place.category,
-          link: place.link,
-          mapx: place.mapx,
-          mapy: place.mapy,
-        } : null,
-        images,
-      },
+      data: result,
     });
   } catch (e) {
     return c.json({ success: false, error: (e as Error).message }, 500);

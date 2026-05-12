@@ -34,7 +34,10 @@
     "check:bundle:budget": "node scripts/check-bundle-size.mjs --budget",
     "check:i18n": "node scripts/check-i18n-sync.mjs",
     "check:i18n:fix": "node scripts/check-i18n-sync.mjs --fix",
-    "precommit": "npm run validate:routes && npm run type-check:worker"
+    "precommit": "npm run validate:routes && npm run type-check:worker",
+    "deploy:staging": "bash scripts/deploy-staging.sh",
+    "deploy:production": "bash scripts/deploy-production.sh",
+    "audit:check": "bash scripts/check-npm-audit.sh"
   },
   "dependencies": {
     "@capacitor-community/admob": "6.2.0",

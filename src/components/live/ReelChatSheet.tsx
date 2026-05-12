@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, Send } from 'lucide-react'
 
@@ -19,13 +20,39 @@ export default function ReelChatSheet({
   onSubmit,
 }: ReelChatSheetProps) {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [bottomOffset, setBottomOffset] = useState(0)
+
+  // iOS Safari 키보드가 올라올 때 시트를 키보드 바로 위로 올림
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      const offset = window.innerHeight - vv.height - vv.offsetTop
+      setBottomOffset(Math.max(0, offset))
+    }
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    update()
+    // 마운트 직후 input focus → 키보드 즉시 올라옴
+    const t = setTimeout(() => inputRef.current?.focus(), 100)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+      clearTimeout(t)
+    }
+  }, [])
+
   return (
     <>
       <div
         className="absolute inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
       />
-      <div className="absolute inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
+      <div
+        className="absolute inset-x-0 z-[90] bg-white rounded-t-3xl animate-sheet-up"
+        style={{ bottom: bottomOffset }}
+      >
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -44,6 +71,7 @@ export default function ReelChatSheet({
 
           <form onSubmit={onSubmit} className="flex gap-2">
             <input
+              ref={inputRef}
               type="text"
               value={chatMessage}
               onChange={(e) => onChatMessageChange(e.target.value)}

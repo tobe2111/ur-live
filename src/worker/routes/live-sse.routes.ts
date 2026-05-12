@@ -47,11 +47,13 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
   const isReplay = c.req.query('replay') === 'true'
 
   try {
+    // replay=true: 다시보기 전체 채팅 (최대 500개 — 무제한 조회 방지)
+    const fromId = c.req.query('from_id') ? Number(c.req.query('from_id')) : 0
     const query = isReplay
       ? `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
-         WHERE live_stream_id = ? AND is_deleted = 0
-         ORDER BY id ASC`
+         WHERE live_stream_id = ? AND is_deleted = 0 ${fromId > 0 ? 'AND id > ' + fromId : ''}
+         ORDER BY id ASC LIMIT 500`
       : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
          WHERE live_stream_id = ? AND is_deleted = 0
@@ -199,22 +201,18 @@ liveSseRoutes.post('/:liveId/view', optionalAuth(), async (c) => {
   const action = body.action || 'join' // 'join' | 'leave' | 'heartbeat'
 
   try {
-    if (action === 'join') {
-      const result = await c.env.DB.prepare(`
-        INSERT INTO live_stream_views (live_stream_id, user_id, session_id, device_type)
-        VALUES (?, ?, ?, ?)
-      `).bind(liveId, userId, sessionId, body.deviceType || 'web').run()
-      return c.json({ success: true, viewId: result.meta.last_row_id, sessionId })
-    } else if (action === 'leave' || action === 'heartbeat') {
-      const watchDuration = body.watchDuration || 0
-      await c.env.DB.prepare(`
-        UPDATE live_stream_views
-        SET watch_duration = ?, left_at = CASE WHEN ? = 'leave' THEN datetime('now') ELSE left_at END
-        WHERE session_id = ? AND live_stream_id = ?
-      `).bind(watchDuration, action, sessionId, liveId).run()
-      return c.json({ success: true })
-    }
-    return c.json({ success: true })
+    const watchDuration = body.watchDuration || 0
+    const leftAt = action === 'leave' ? "datetime('now')" : 'NULL'
+    // Single UPSERT — ON CONFLICT requires idx_lsv_stream_session unique index (repair-schema)
+    const result = await c.env.DB.prepare(`
+      INSERT INTO live_stream_views (live_stream_id, user_id, session_id, device_type, last_heartbeat, watch_duration, left_at)
+      VALUES (?, ?, ?, ?, datetime('now'), ?, ${leftAt})
+      ON CONFLICT(live_stream_id, session_id) DO UPDATE SET
+        last_heartbeat = datetime('now'),
+        watch_duration = CASE WHEN excluded.watch_duration > 0 THEN excluded.watch_duration ELSE watch_duration END,
+        left_at = excluded.left_at
+    `).bind(liveId, userId, sessionId, body.deviceType || 'web', watchDuration).run()
+    return c.json({ success: true, viewId: result.meta.last_row_id, sessionId })
   } catch (err) {
     console.error('[View] Tracking failed:', err)
     return c.json({ success: true }) // Non-fatal
@@ -281,10 +279,20 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
     return c.json({ success: false, error: '동일한 메시지를 반복할 수 없습니다.' }, 429)
   }
   RECENT_CHAT_CACHE.set(dupKey, { message: cleanMessage, at: nowMs })
-  // Bound memory in long-lived isolates
-  if (RECENT_CHAT_CACHE.size > 500) {
+  // 메모리 바운드: 30초 만료 우선 정리, 그래도 100개 초과 시 FIFO 강제 제거
+  if (RECENT_CHAT_CACHE.size > 100) {
     for (const [k, v] of RECENT_CHAT_CACHE) {
-      if (nowMs - v.at > 60_000) RECENT_CHAT_CACHE.delete(k)
+      if (nowMs - v.at > 30_000) RECENT_CHAT_CACHE.delete(k)
+    }
+    if (RECENT_CHAT_CACHE.size > 100) {
+      // FIFO: 가장 오래된 항목부터 제거
+      const toRemove = RECENT_CHAT_CACHE.size - 80
+      let removed = 0
+      for (const k of RECENT_CHAT_CACHE.keys()) {
+        if (removed >= toRemove) break
+        RECENT_CHAT_CACHE.delete(k)
+        removed++
+      }
     }
   }
 

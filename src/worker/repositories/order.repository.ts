@@ -147,7 +147,7 @@ export class OrderRepository {
     if (!row) return null;
 
     const items = await this.qb.queryMany<Record<string, unknown>>(
-      'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
+      'SELECT id, order_id, product_id, product_name, quantity, unit_price, total_price, options FROM order_items WHERE order_id = ? ORDER BY id',
       [orderId]
     );
 
@@ -170,7 +170,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
+          'SELECT id, order_id, product_id, product_name, quantity, unit_price, total_price, options FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -209,7 +209,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
+          'SELECT id, order_id, product_id, product_name, quantity, unit_price, total_price, options FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -506,7 +506,7 @@ export class OrderRepository {
    */
   async findByIdempotencyKey(key: string, userId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      'SELECT * FROM orders WHERE idempotency_key = ? AND user_id = ?',
+      'SELECT id, order_number, user_id, seller_id, status, payment_status, total_amount, shipping_fee, address, address_detail, recipient_name, recipient_phone, notes, toss_payment_key, payment_key, idempotency_key, cancel_reason, created_at, updated_at FROM orders WHERE idempotency_key = ? AND user_id = ?',
       [key, userId]
     );
     if (!row) return null;

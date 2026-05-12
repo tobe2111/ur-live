@@ -82,15 +82,42 @@ export function generateSecureFilename(originalFilename: string): string {
  * 파일명 sanitize (위험한 문자 제거)
  */
 function sanitizeFilename(filename: string): string {
-  // 경로 순회 공격 방지: ../ 제거
-  let sanitized = filename.replace(/\.\.\//g, '');
-  
-  // 특수문자 제거 (알파벳, 숫자, -, _, . 만 허용)
+  // 🛡️ 경로 순회 공격 방지 (강화):
+  //   - 모든 경로 구분자 (/, \) 의 basename 만 사용
+  //   - null byte (poison-null) 제거
+  //   - URL-encoded traversal (..%2f, ..%5c) 무력화
+  //   - 선행 점(.) 제거 (숨김파일 / 확장자만 있는 파일 방지)
+  let sanitized = filename;
+
+  // 1) URL decode 시도 (예: ..%2f → ../). 디코드 실패 시 원본 유지.
+  try {
+    sanitized = decodeURIComponent(sanitized);
+  } catch {
+    // malformed URI — 원본 그대로 진행
+  }
+
+  // 2) null byte 및 제어문자 제거
+  sanitized = sanitized.replace(/[\x00-\x1f]/g, '');
+
+  // 3) 경로 구분자 기준 basename 만 추출 (../, ..\, /etc/passwd 등 차단)
+  sanitized = sanitized.replace(/\\/g, '/');
+  const lastSlash = sanitized.lastIndexOf('/');
+  if (lastSlash >= 0) sanitized = sanitized.slice(lastSlash + 1);
+
+  // 4) 선행 점(.) 제거 — ".env", "..", "..." 등 차단
+  sanitized = sanitized.replace(/^\.+/, '');
+
+  // 5) 특수문자 제거 (알파벳, 숫자, -, _, . 만 허용)
   sanitized = sanitized.replace(/[^a-zA-Z0-9\-_.]/g, '_');
-  
-  // 연속된 언더스코어 제거
+
+  // 6) 연속된 언더스코어 제거
   sanitized = sanitized.replace(/_+/g, '_');
-  
+
+  // 7) 빈 문자열 fallback
+  if (!sanitized || sanitized === '.') {
+    sanitized = `file_${Date.now()}`;
+  }
+
   return sanitized;
 }
 

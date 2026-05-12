@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import { CheckCircle2, Copy, Eye, MessageSquare, ShoppingBag, DollarSign } from 'lucide-react'
+import { CheckCircle2, Copy, Eye, MessageSquare, ShoppingBag, DollarSign, TrendingUp } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
@@ -150,19 +150,26 @@ export function LiveStatsBar({ streamId }: { streamId: number }) {
   }, [streamId])
 
   const ordersUnit = t('seller.liveBroadcast.ordersUnit')
+  const convRate = stats.viewer_count > 0
+    ? `${((stats.order_count / stats.viewer_count) * 100).toFixed(1)}%`
+    : '—'
   const items = [
-    { icon: Eye, value: formatNumber(stats.viewer_count) },
-    { icon: MessageSquare, value: formatNumber(stats.chat_count) },
-    { icon: ShoppingBag, value: `${stats.order_count}${ordersUnit}` },
-    { icon: DollarSign, value: `₩${formatNumber(stats.revenue)}` },
+    { icon: Eye, value: formatNumber(stats.viewer_count), label: t('seller.liveBroadcast.viewers', { defaultValue: '시청자' }) },
+    { icon: MessageSquare, value: formatNumber(stats.chat_count), label: t('seller.liveBroadcast.chats', { defaultValue: '채팅' }) },
+    { icon: ShoppingBag, value: `${stats.order_count}${ordersUnit}`, label: t('seller.liveBroadcast.orders', { defaultValue: '주문' }) },
+    { icon: DollarSign, value: `₩${formatNumber(stats.revenue)}`, label: t('seller.liveBroadcast.revenue', { defaultValue: '매출' }) },
+    { icon: TrendingUp, value: convRate, label: t('seller.liveBroadcast.convRate', { defaultValue: '전환율' }) },
   ]
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-4 py-2.5 flex items-center justify-between gap-2 text-sm">
-      {items.map(({ icon: Icon, value }, i) => (
-        <div key={i} className="flex items-center gap-1.5 min-w-0">
-          <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-          <span className="font-bold text-gray-900 truncate">{value}</span>
+    <div className="bg-white rounded-xl border border-gray-200 px-3 py-2 flex items-center justify-between gap-1 text-sm">
+      {items.map(({ icon: Icon, value, label }, i) => (
+        <div key={i} className="flex flex-col items-center gap-0.5 min-w-0">
+          <div className="flex items-center gap-1">
+            <Icon className="w-3 h-3 text-gray-400 shrink-0" />
+            <span className="font-bold text-gray-900 text-xs truncate">{value}</span>
+          </div>
+          <span className="text-[9px] text-gray-400">{label}</span>
         </div>
       ))}
     </div>

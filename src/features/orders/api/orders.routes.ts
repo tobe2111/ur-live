@@ -113,7 +113,9 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
   const authUser = getCurrentUser(c);
   if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-  const id = Number(c.req.param('id'));
+  const rawId = c.req.param('id') ?? '';
+  if (!/^\d+$/.test(rawId)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
+  const id = Number(rawId);
   if (isNaN(id)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
 
   const repository = new OrderRepository(DB);
@@ -191,7 +193,9 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
   const authUser = getCurrentUser(c);
   if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-  const id = Number(c.req.param('id'));
+  const rawId = c.req.param('id') ?? '';
+  if (!/^\d+$/.test(rawId)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
+  const id = Number(rawId);
   if (isNaN(id)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
 
   const repository = new OrderRepository(DB);

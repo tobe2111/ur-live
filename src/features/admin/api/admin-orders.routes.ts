@@ -16,6 +16,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { logAudit } from '../../../lib/audit-log';
 
 export const adminOrdersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -63,6 +64,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     const { DB } = c.env;
     const status = c.req.query('status');
     const sellerId = c.req.query('seller_id');
+    if (sellerId && !/^\d+$/.test(sellerId)) return c.json({ success: false, error: 'Invalid seller_id' }, 400);
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
 
@@ -136,6 +138,7 @@ adminOrdersRoutes.get('/orders/export', cors(), async (c) => {
     const { DB } = c.env;
     const status = c.req.query('status');
     const sellerId = c.req.query('seller_id');
+    if (sellerId && !/^\d+$/.test(sellerId)) return c.json({ success: false, error: 'Invalid seller_id' }, 400);
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
 
@@ -310,6 +313,17 @@ adminOrdersRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => {
       }
     }
 
+    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
+    void logAudit(c.env.DB, {
+      actor_id: String(actor?.id ?? 'unknown'),
+      actor_email: actor?.email,
+      action: status === 'CANCELLED' ? 'order_cancel' : status === 'REFUNDED' ? 'order_refund' : 'order_status',
+      resource_type: 'order',
+      resource_id: orderNumber,
+      old_value: JSON.stringify({ status: orders[0].status }),
+      new_value: JSON.stringify({ status, cancel_reason: cancel_reason ?? undefined }),
+      ip: c.req.header('CF-Connecting-IP') ?? undefined,
+    });
     return c.json({ success: true, data: { orderNumber, status } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

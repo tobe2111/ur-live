@@ -66,12 +66,21 @@ export class ProductRepository {
     );
     const total = countRow?.count ?? 0;
 
+    // avg_rating / review_count: correlated subquery (N+1) → derived table JOIN (O(1) scan)
+    // product_reviews 한 번 GROUP BY → products 에 LEFT JOIN. NULL = 리뷰 없음.
     const rows = await this.qb.queryMany<Record<string, unknown>>(
       `SELECT p.*, s.name as seller_name, s.username as seller_slug,
-              (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id) as avg_rating,
-              (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id) as review_count
+              rv.avg_rating, rv.review_count
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
+       LEFT JOIN (
+         SELECT product_id,
+                ROUND(AVG(rating), 1) AS avg_rating,
+                COUNT(*) AS review_count
+         FROM product_reviews
+         WHERE is_visible = 1
+         GROUP BY product_id
+       ) rv ON rv.product_id = p.id
        ${where}
        ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,

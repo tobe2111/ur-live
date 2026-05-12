@@ -84,7 +84,7 @@ export default function GroupBuyListPage() {
       .then((r) => {
         if (r.data?.success) setCommunityItems(r.data.data || [])
       })
-      .catch(() => { /* silent fail for community list */ })
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[GroupBuy] community list failed:', e) })
       .finally(() => setCommunityLoading(false))
   }, [])
 

@@ -15,6 +15,11 @@
 
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
+import { logInfo, logError } from '../utils/logger';
+
+// Cap how many sellers we process per cron tick so a busy hour can't blow
+// the subrequest budget or time out the worker.
+const MAX_SELLERS_PER_TICK = 200;
 
 const SINCE_30D = () => new Date(Date.now() - 30 * 86400_000).toISOString();
 const SINCE_1H = () => new Date(Date.now() - 3600_000).toISOString();
@@ -116,6 +121,22 @@ async function detectRepeatDonors(DB: D1Database, sellerId: number): Promise<voi
   `).bind(sellerId, SINCE_24H()).all<{ donor_user_id: string; cnt: number; total: number }>().catch(() => null);
 
   for (const r of repeats?.results || []) {
+    // Idempotency: skip if we already flagged this (seller, donor) combo in the
+    // last 24h. Otherwise the hourly cron would emit 24 duplicate detections
+    // for the exact same donor pattern.
+    try {
+      const dup = await DB.prepare(`
+        SELECT 1 AS x FROM abuse_detections
+        WHERE pattern = 'repeat_donor_24h'
+          AND user_id = ?
+          AND ref_type = 'seller'
+          AND ref_id = ?
+          AND created_at >= datetime('now', '-24 hours')
+        LIMIT 1
+      `).bind(r.donor_user_id, String(sellerId)).first<{ x: number }>();
+      if (dup) continue;
+    } catch { /* table missing — fall through and flag */ }
+
     const severity = r.cnt >= 10 ? 'high' : r.cnt >= 5 ? 'medium' : 'low';
     await flagAbuse(DB, 'repeat_donor_24h', {
       sellerId, donorId: r.donor_user_id, count: r.cnt, total: r.total
@@ -157,9 +178,22 @@ async function detectRapidSignupsSameIp(DB: D1Database): Promise<void> {
       AND created_at >= ?
     GROUP BY registration_ip
     HAVING cnt >= 5
+    LIMIT 100
   `).bind(SINCE_24H()).all<{ ip: string; cnt: number }>().catch(() => null);
 
   for (const r of rows?.results || []) {
+    // Idempotency: avoid duplicate IP flags within the same 24h window.
+    try {
+      const dup = await DB.prepare(`
+        SELECT 1 AS x FROM abuse_detections
+        WHERE pattern = 'rapid_signups_same_ip'
+          AND json_extract(evidence, '$.ip') = ?
+          AND created_at >= datetime('now', '-24 hours')
+        LIMIT 1
+      `).bind(r.ip).first<{ x: number }>();
+      if (dup) continue;
+    } catch { /* json_extract / table missing — fall through */ }
+
     const severity = r.cnt >= 20 ? 'high' : r.cnt >= 10 ? 'medium' : 'low';
     await flagAbuse(DB, 'rapid_signups_same_ip', {
       ip: r.ip, count: r.cnt, windowHours: 24
@@ -171,16 +205,24 @@ export async function handleAnomalyDetection(env: Env): Promise<void> {
   const DB = env.DB;
   if (!DB) return;
 
+  const startedAt = Date.now();
+  logInfo('[cron:anomaly-detect] start', {});
+
   // 활성 셀러 (최근 30일 후원/주문 1건 이상)
+  // LIMIT 가드: 활성 셀러가 폭증해도 한 틱에 처리량 상한.
   const activeSellers = await DB.prepare(`
-    SELECT DISTINCT seller_id FROM donations
-    WHERE payment_status = 'approved' AND created_at >= ?
-    UNION
-    SELECT DISTINCT seller_id FROM orders
-    WHERE payment_status = 'approved' AND created_at >= ?
-  `).bind(SINCE_30D(), SINCE_30D()).all<{ seller_id: number }>().catch(() => null);
+    SELECT seller_id FROM (
+      SELECT DISTINCT seller_id FROM donations
+      WHERE payment_status = 'approved' AND created_at >= ?
+      UNION
+      SELECT DISTINCT seller_id FROM orders
+      WHERE payment_status = 'approved' AND created_at >= ?
+    )
+    LIMIT ?
+  `).bind(SINCE_30D(), SINCE_30D(), MAX_SELLERS_PER_TICK).all<{ seller_id: number }>().catch(() => null);
 
   let processed = 0;
+  let failed = 0;
   for (const { seller_id } of activeSellers?.results || []) {
     if (!seller_id) continue;
     try {
@@ -190,12 +232,19 @@ export async function handleAnomalyDetection(env: Env): Promise<void> {
       await detectNewAccountDonations(DB, seller_id);
       processed++;
     } catch (err) {
-      console.error(`[cron:anomaly-detect] seller ${seller_id}:`, err);
+      failed++;
+      logError('[cron:anomaly-detect] seller failed', { sellerId: seller_id, error: String(err) });
     }
   }
 
   // 전역 IP 패턴
-  await detectRapidSignupsSameIp(DB).catch(() => {});
+  await detectRapidSignupsSameIp(DB).catch((err) => {
+    logError('[cron:anomaly-detect] rapid_signups failed', { error: String(err) });
+  });
 
-  console.info(`[cron:anomaly-detect] processed=${processed}`);
+  logInfo('[cron:anomaly-detect] done', {
+    processed,
+    failed,
+    elapsedMs: Date.now() - startedAt,
+  });
 }

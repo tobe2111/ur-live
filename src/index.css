@@ -656,3 +656,9 @@ html.dark .mobile-app-container {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
   50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
 }
+
+/* 채팅 고정 공지 뉴스 티커 */
+@keyframes ticker {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}

@@ -55,7 +55,7 @@ const LEGACY_KEYS = {
  */
 export function clearAuthData(type: 'seller' | 'admin' | 'user') {
   const keysToRemove: string[] = []
-  
+
   if (type === 'seller') {
     // Seller 전용 키만 삭제 (user_type 제거하지 않음 — 다른 세션 보호)
     keysToRemove.push(
@@ -67,6 +67,18 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'access_token',  // 레거시 호환
       'refresh_token'  // 레거시 호환
     )
+    // 🛡️ 2026-05-12 (C3 fix): seller 로그아웃 시 user_type='seller' 잔존 시 다른 세션에 맞춰 정정.
+    //   기존 버그: user → seller 후 seller 로그아웃 시 user_type='seller' + user_id=원래유저ID 로
+    //   getUserId() 가 user_id 를 seller_id 로 오인. 다음 user 의 API 가 다른 유저 데이터 접근 가능.
+    if (localStorage.getItem('user_type') === 'seller') {
+      if (localStorage.getItem('admin_token')) {
+        try { localStorage.setItem('user_type', 'admin') } catch { /* quota */ }
+      } else if (localStorage.getItem('user_id') || localStorage.getItem('firebase_token')) {
+        try { localStorage.setItem('user_type', 'user') } catch { /* quota */ }
+      } else {
+        keysToRemove.push('user_type')
+      }
+    }
   } else if (type === 'admin') {
     // Admin 전용 키만 삭제 (user_type 제거하지 않음 — 다른 세션 보호)
     keysToRemove.push(
@@ -78,6 +90,16 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'access_token',  // 레거시 호환
       'refresh_token'  // 레거시 호환
     )
+    // 🛡️ 2026-05-12 (C3 fix): admin 로그아웃 시도 동일 정정.
+    if (localStorage.getItem('user_type') === 'admin') {
+      if (localStorage.getItem('seller_token')) {
+        try { localStorage.setItem('user_type', 'seller') } catch { /* quota */ }
+      } else if (localStorage.getItem('user_id') || localStorage.getItem('firebase_token')) {
+        try { localStorage.setItem('user_type', 'user') } catch { /* quota */ }
+      } else {
+        keysToRemove.push('user_type')
+      }
+    }
   } else {
     // User 전용 키 (user_type은 seller/admin 세션이 없을 때만 삭제)
     keysToRemove.push(

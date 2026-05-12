@@ -55,3 +55,7 @@ keystore.properties
 google-services.json
 GoogleService-Info.plist
 
+
+# Test/worktree artifacts
+dist-test/
+.claude/worktrees/

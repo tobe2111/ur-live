@@ -49,7 +49,7 @@ async function sendOrderNotification(
   const contactPhone = firstOrder?.shipping_phone ?? 'N/A';
   const userId = firstOrder?.user_id ?? 'N/A';
 
-  if (import.meta.env.DEV) console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
+  if (process.env.NODE_ENV !== 'production') console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
     orderNumber,
     userId,
     contactPhone: contactPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'), // mask middle digits
@@ -79,7 +79,7 @@ async function sendOrderNotification(
       body: JSON.stringify({ embeds: [embed] }),
     });
 
-    if (import.meta.env.DEV) console.log(`[WEBHOOK] Discord notification sent for ${event} order ${orderNumber}`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[WEBHOOK] Discord notification sent for ${event} order ${orderNumber}`);
   }
 }
 
@@ -235,7 +235,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     const tossOrderId = data.orderId;   // This is our order_number
     const paymentKey = data.paymentKey;
 
-    if (import.meta.env.DEV) {
+    if (process.env.NODE_ENV !== 'production') {
       console.log('[WEBHOOK] RECEIVED', {
         eventType,
         tossOrderId,
@@ -248,7 +248,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     // 4. Idempotency check - prevent duplicate processing
     const alreadyProcessed = await webhookRepo.isAlreadyProcessed(eventType, tossOrderId);
     if (alreadyProcessed) {
-      if (import.meta.env.DEV) console.log('[WEBHOOK] DUPLICATE_SKIPPED', { eventType, tossOrderId });
+      if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] DUPLICATE_SKIPPED', { eventType, tossOrderId });
       return c.json({ received: true, status: 'duplicate_skipped' }, 200);
     }
 
@@ -279,7 +279,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         break;
 
       case 'payment.virtual_account_deposited':
-        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey);
+        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
         break;
 
       case 'payment.partial_canceled':
@@ -290,7 +290,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
 
       case 'refund_completed':
         // Main refund is already handled via the /cancel route. Just audit.
-        if (import.meta.env.DEV) console.log('[Webhook] refund_completed:', tossOrderId);
+        if (process.env.NODE_ENV !== 'production') console.log('[Webhook] refund_completed:', tossOrderId);
         await webhookRepo.markSkipped(webhookEventId, 'refund_completed_already_handled');
         return c.json({ received: true, status: 'audited' }, 200);
 
@@ -307,7 +307,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
 
       default:
         // Unknown event — alert for investigation.
-        if (import.meta.env.DEV) console.log('[WEBHOOK] UNHANDLED_EVENT_TYPE', { eventType });
+        if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] UNHANDLED_EVENT_TYPE', { eventType });
         await sendAlert(c.env, {
           severity: 'warn',
           title: `알 수 없는 Toss 이벤트: ${eventType}`,
@@ -322,7 +322,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     await webhookRepo.markProcessed(webhookEventId);
 
     const elapsed = Date.now() - startTime;
-    if (import.meta.env.DEV) console.log('[WEBHOOK] PROCESSED_SUCCESS', {
+    if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PROCESSED_SUCCESS', {
       eventType,
       tossOrderId,
       elapsed_ms: elapsed,
@@ -368,7 +368,7 @@ async function handlePaymentConfirmed(
   paymentKey: string,
   DB?: D1Database
 ): Promise<void> {
-  console.log('[WEBHOOK] PAYMENT_CONFIRMED', {
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CONFIRMED', {
     orderNumber,
     amount: data.totalAmount,
     method: data.method,
@@ -378,8 +378,40 @@ async function handlePaymentConfirmed(
   const alreadyDone = await orderRepo.isAlreadyProcessed(orderNumber, 'DONE');
   const alreadyPaid = await orderRepo.isAlreadyProcessed(orderNumber, 'PAID');
   if (alreadyDone || alreadyPaid) {
-    console.log('[WEBHOOK] ORDER_ALREADY_CONFIRMED', { orderNumber });
+    if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] ORDER_ALREADY_CONFIRMED', { orderNumber });
     return;
+  }
+
+  // 🛡️ SECURITY: Verify webhook amount matches the original order amount.
+  // Multi-seller checkouts split into multiple `orders` rows under one order_number,
+  // so we sum total_amount across all rows and compare to the webhook payload.
+  // If a forged/replayed webhook arrives with a tampered totalAmount it is rejected
+  // before status flips to PAID/DONE.
+  if (DB) {
+    try {
+      const expectedRow = await DB.prepare(
+        'SELECT COALESCE(SUM(total_amount), 0) AS expected FROM orders WHERE order_number = ?'
+      ).bind(orderNumber).first<{ expected: number }>();
+      const expectedAmount = Number(expectedRow?.expected ?? 0);
+      const webhookAmount = Number(data.totalAmount ?? 0);
+      // Allow exact match only — Toss returns integer KRW amounts.
+      if (expectedAmount > 0 && webhookAmount !== expectedAmount) {
+        console.error('[WEBHOOK] ❌ AMOUNT_MISMATCH — refusing to confirm', {
+          orderNumber,
+          expectedAmount,
+          webhookAmount,
+        });
+        captureException(new Error('WEBHOOK_AMOUNT_MISMATCH'), {
+          tags: { area: 'webhook', kind: 'amount_mismatch', severity: 'critical' },
+          extra: { orderNumber, expectedAmount, webhookAmount },
+        }).catch(swallow('webhook:sentry-amount'));
+        return; // do NOT confirm — leave order in current state for manual review
+      }
+    } catch (err) {
+      console.error('[WEBHOOK] amount verification query failed:', err);
+      // Fail-closed: do not confirm if we cannot verify the amount
+      return;
+    }
   }
 
   // v24 FIX: UPDATE orders + UPDATE order_items를 D1 batch로 묶어 atomic 처리.
@@ -392,7 +424,7 @@ async function handlePaymentConfirmed(
     paid_at: data.approvedAt ?? new Date().toISOString(),
   });
 
-  console.log('[WEBHOOK] PAYMENT_CONFIRMED_COMPLETE', {
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CONFIRMED_COMPLETE', {
     orderNumber,
     ordersUpdated: result.confirmed,
   });
@@ -460,7 +492,7 @@ async function handlePaymentConfirmed(
             )
         `).bind(order.user_id, String(order.user_id), data.totalAmount).run();
         const changes = (consumeResult.meta as { changes?: number })?.changes ?? 0;
-        if (changes > 0) {
+        if (changes > 0 && process.env.NODE_ENV !== 'production') {
           console.log('[WEBHOOK] AUCTION_HOLD_CONSUMED', { orderNumber, user_id: order.user_id, changes });
         }
       }
@@ -481,7 +513,7 @@ async function handlePaymentCancelled(
   env: Env,
   DB: D1Database
 ): Promise<void> {
-  console.log('[WEBHOOK] PAYMENT_CANCELLED', {
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CANCELLED', {
     orderNumber,
     cancelReason: data.failureMessage,
   });
@@ -523,7 +555,7 @@ async function handlePaymentCancelled(
 
     if ((casResult.meta?.changes ?? 0) === 0) {
       // Already cancelled/refunded/failed by another path — skip stock restore
-      console.log('[WEBHOOK] STOCK_RESTORE_SKIPPED_ALREADY_TRANSITIONED', {
+      if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] STOCK_RESTORE_SKIPPED_ALREADY_TRANSITIONED', {
         orderId: order.id,
       });
       continue;
@@ -531,7 +563,7 @@ async function handlePaymentCancelled(
 
     // Only restore stock when we actually transitioned the status
     await orderRepo.restoreStock(order.id);
-    console.log('[WEBHOOK] STOCK_RESTORED', { orderId: order.id, sellerId: order.seller_id });
+    if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] STOCK_RESTORED', { orderId: order.id, sellerId: order.seller_id });
   }
 
   // ✅ SECURITY FIX (Payment C7): Reverse any referral commissions granted for
@@ -568,7 +600,7 @@ async function handlePaymentCancelled(
   try {
     const { restoreCouponsForOrders } = await import('../../features/coupons/api/coupons.routes');
     const restored = await restoreCouponsForOrders(DB, orders.map(o => o.id));
-    if (restored > 0) {
+    if (restored > 0 && process.env.NODE_ENV !== 'production') {
       console.log('[WEBHOOK] COUPON_RESTORED', { orderNumber, restored });
     }
   } catch (e) {
@@ -578,7 +610,7 @@ async function handlePaymentCancelled(
   // Send order cancellation notification
   await sendOrderNotification(orderRepo, orderNumber, 'cancelled', env)
     .catch(err => console.error('[WEBHOOK] Notification failed:', err));
-  console.log('[WEBHOOK] PAYMENT_CANCELLED_COMPLETE', {
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CANCELLED_COMPLETE', {
     orderNumber,
     ordersUpdated: orders.length,
   });
@@ -594,7 +626,7 @@ async function handlePaymentFailed(
   orderNumber: string,
   env: Env
 ): Promise<void> {
-  console.log('[WEBHOOK] PAYMENT_FAILED', {
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_FAILED', {
     orderNumber,
     failureCode: data.failureCode,
     failureMessage: data.failureMessage,
@@ -609,7 +641,7 @@ async function handlePaymentFailed(
   const failedOrders = await orderRepo.findByOrderNumber(orderNumber);
   for (const order of failedOrders) {
     await orderRepo.restoreStock(order.id);
-    console.log('[WEBHOOK] STOCK_RESTORED_ON_FAILURE', { orderId: order.id });
+    if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] STOCK_RESTORED_ON_FAILURE', { orderId: order.id });
   }
 
   await sendOrderNotification(orderRepo, orderNumber, 'failed', env)
@@ -626,7 +658,7 @@ async function handlePaymentFailed(
     '/admin/orders'
   ).catch(swallow('webhook:notify-payment-failed'));
 
-  console.log('[WEBHOOK] PAYMENT_FAILED_COMPLETE', { orderNumber });
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_FAILED_COMPLETE', { orderNumber });
 }
 
 /**
@@ -637,7 +669,7 @@ async function handleVirtualAccountIssued(
   data: TossWebhookPayload['data'],
   orderNumber: string
 ): Promise<void> {
-  console.log('[WEBHOOK] VIRTUAL_ACCOUNT_ISSUED', { orderNumber });
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] VIRTUAL_ACCOUNT_ISSUED', { orderNumber });
 
   // ✅ SCHEMA FIX: Removed webhook_processed_at / webhook_event_id (not in schema)
   await orderRepo.updateStatus(orderNumber, 'AWAITING_PAYMENT', {
@@ -652,12 +684,14 @@ async function handleVirtualAccountDeposited(
   orderRepo: OrderRepository,
   data: TossWebhookPayload['data'],
   orderNumber: string,
-  paymentKey: string
+  paymentKey: string,
+  DB?: D1Database
 ): Promise<void> {
-  console.log('[WEBHOOK] VIRTUAL_ACCOUNT_DEPOSITED', { orderNumber });
+  if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] VIRTUAL_ACCOUNT_DEPOSITED', { orderNumber });
 
-  // Same as payment.confirmed
-  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey);
+  // Same as payment.confirmed — pass DB through so amount verification + digital
+  // access grant + auction-hold consume run.
+  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey, DB);
 }
 
 export { webhookRouter };

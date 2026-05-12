@@ -170,13 +170,28 @@ app.get('/chat/:streamId', async (c) => {
       avatarUrl: item.authorDetails.profileImageUrl
     }))
 
-    // Cache messages in database for faster retrieval
-    for (const msg of messages) {
-      await c.env.DB.prepare(`
-        INSERT OR IGNORE INTO live_chat_cache (
-          stream_id, chat_id, author, message, timestamp, created_at
-        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).bind(streamId, msg.id, msg.author, msg.message, msg.timestamp).run()
+    // ✅ PERF: Cache messages in DB via batch INSERT (was N round-trips → 1 batch).
+    // 10 streams × 4h × 12 polls/min × ~50 msgs ≈ 28M D1 writes/day → ~1 batch/poll.
+    if (messages.length > 0) {
+      try {
+        const CHUNK = 50
+        for (let i = 0; i < messages.length; i += CHUNK) {
+          const chunk = messages.slice(i, i + CHUNK)
+          const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').join(', ')
+          const values: (string | number)[] = []
+          for (const msg of chunk) {
+            values.push(streamId, msg.id, msg.author, msg.message, msg.timestamp)
+          }
+          await c.env.DB.prepare(`
+            INSERT OR IGNORE INTO live_chat_cache (
+              stream_id, chat_id, author, message, timestamp, created_at
+            ) VALUES ${placeholders}
+          `).bind(...values).run()
+        }
+      } catch (cacheErr) {
+        // 채팅 캐싱 실패는 치명적이지 않음 — 로그만 남기고 응답 계속
+        console.error('[YouTube Chat] Cache batch insert failed:', cacheErr)
+      }
     }
 
     return c.json({
