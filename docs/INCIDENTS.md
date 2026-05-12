@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-05-12 — youtube-live.routes.ts 통째 삭제 (PowerShell 덮어쓰기 사고)
+
+- **증상**:
+  - 셀러가 라이브 방송 생성 시도 → `POST /api/seller/youtube/live/create` 404
+  - 셀러가 "방송 시작" 클릭 → `POST /api/seller/youtube/live/:id/start` 404 → DB status 가 `scheduled` 에서 안 바뀜
+  - 메인 페이지에 라이브 노출 안 됨 (DB 에 `status='live'` 가 없으니)
+  - YouTube Studio 에서 broadcast 가 아예 생성 안 됨
+
+- **원인**:
+  - 이전 에이전트 세션이 `+5min schedule` 패치를 PowerShell 로 적용하다가 1978줄짜리 `youtube-live.routes.ts` 를 **`// PLACEHOLDER` 2줄짜리 placeholder 로 덮어씀**
+  - commit `b09d9b4` (diff: `-1953/+1`) 로 push 됨
+  - 다음 커밋 `bd9b806` 에서 "또 안됐네" 하고 `PLACEHOLDER_CONTENT` → `PLACEHOLDER` 단어만 바꾸고 또 push (실제 코드는 여전히 없음)
+  - 빌드 검증 / `git diff --stat` 검토 / 한글 깨짐 검증 모두 누락
+
+- **복구**:
+  - `git show 85139f5:src/features/youtube/api/youtube-live.routes.ts` 로 마지막 정상 버전 (1978줄) 복원
+  - `scheduledStartTime` 을 "+5분 강제 override" 로 보강 (클라이언트가 현재 시각 보내도 미래 시각으로 사용)
+  - `ReelCard.tsx` 의 `export default memo(ReelCardImpl)` 중복 발생 → PowerShell `Get-Content -Raw` 인코딩 깨짐 → `git checkout` 후 `[System.IO.File]::WriteAllText` UTF-8 NoBOM 방식으로 재수정
+
+- **교훈 → `CLAUDE.md` "큰 파일 / PowerShell 수정 규칙" 신설**:
+  - 500줄 이상 파일에 Write (전체 덮어쓰기) 금지 — Edit 만 사용
+  - PowerShell `Set-Content` / `Get-Content -Raw` 로 한글 파일 수정 금지 (인코딩 깨짐)
+  - 안전한 PowerShell I/O: `[System.IO.File]::ReadAllText` / `WriteAllText` + `UTF8Encoding($false)` (NoBOM)
+  - commit 전 `git diff --stat` 으로 큰 `-N줄` 감소 의심
+  - push 전 `npx vite build` 통과 필수
+
 ## 2026-04-22 — Pages vs Workers 이중 배포로 로그인 500
 
 - **증상**: admin/seller/agency 로그인 500 + 유저 로그인 후 API 401 (이틀간)
