@@ -66,12 +66,17 @@ export default function RestoreAccountModal() {
         setShow(false)
         cleanUrl()
         // 복원 후엔 새 user_id 로 인증해야 하므로 로그아웃 후 재로그인 권유.
+        // localStorage.clear() 대신 인증 관련 키만 선택 삭제 (테마/언어 등 사용자 설정 유지)
         try {
-          localStorage.clear()
+          const PRESERVE_PREFIXES = ['ur_theme_mode', 'ur_pwa_', 'i18n', 'feature_flags', 'affiliate_ref']
+          const keys: string[] = []
+          for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k) keys.push(k) }
+          for (const k of keys) {
+            if (PRESERVE_PREFIXES.some(p => k.startsWith(p))) continue
+            try { localStorage.removeItem(k) } catch { /* ignore */ }
+          }
         } catch (clearErr) {
-          if (import.meta.env.DEV) console.warn('[RestoreAccount] localStorage.clear failed:', clearErr)
-          // partial clear 가능성 — 명시 에러 표시. 사용자가 인지하고 새로고침 가능.
-          toast.error(t('user.restoreClearFailed', { defaultValue: '일부 데이터 청소 실패 — 브라우저를 새로고침 해주세요.' }))
+          if (import.meta.env.DEV) console.warn('[RestoreAccount] localStorage clear failed:', clearErr)
         }
         setTimeout(() => { window.location.href = '/login' }, 800)
       } else {

@@ -92,7 +92,7 @@ export default function LoginPage() {
     if (wantsSwitch) {
       // 명시 전환: localStorage 청소만 (cookie 는 백엔드 logout 호출 권유)
       try {
-        const KEEP = ['ur_pwa_', 'ur_kakao_external_', 'i18n', 'feature_flags', 'theme', 'dark', 'light', 'affiliate_ref']
+        const KEEP = ['ur_pwa_', 'ur_kakao_external_', 'ur_theme_mode', 'i18n', 'feature_flags', 'theme', 'dark', 'light', 'affiliate_ref']
         const keys: string[] = []
         for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k) keys.push(k) }
         for (const k of keys) {

@@ -148,12 +148,16 @@ dashboardNotificationsRoutes.put('/read-all', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
-  const recipientType = user.type === 'admin' ? 'admin' : 'seller';
+  const recipientType = user.type === 'admin' ? 'admin' : user.type === 'agency' ? 'agency' : 'seller';
   const recipientId = String(user.id);
 
   if (recipientType === 'admin') {
     await DB.prepare(
       `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?) AND is_read = 0`
+    ).bind(recipientId).run();
+  } else if (recipientType === 'agency') {
+    await DB.prepare(
+      `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'agency' AND recipient_id = ? AND is_read = 0`
     ).bind(recipientId).run();
   } else {
     await DB.prepare(
@@ -183,6 +187,9 @@ dashboardNotificationsRoutes.put('/:id/read', requireAuth(), async (c) => {
   } else if (user.type === 'seller') {
     whereClause = 'id = ? AND recipient_type = ? AND recipient_id = ?';
     params = [id, 'seller', String(user.id)];
+  } else if (user.type === 'agency') {
+    whereClause = 'id = ? AND recipient_type = ? AND recipient_id = ?';
+    params = [id, 'agency', String(user.id)];
   } else {
     return c.json({ success: false, error: '접근 권한 없음' }, 403);
   }

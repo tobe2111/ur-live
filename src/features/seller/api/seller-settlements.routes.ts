@@ -50,7 +50,9 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
     const limit = Math.max(1, Math.min(200, parseInt(c.req.query('limit') || '20') || 20));
     const offset = Math.max(0, parseInt(c.req.query('offset') || '0') || 0);
     const rows = await db.prepare(
-      'SELECT * FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+      `SELECT id, seller_id, amount, bank_name, account_number, account_holder,
+              status, admin_memo, created_at, updated_at
+       FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
     ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
     const count = await db.prepare('SELECT COUNT(*) as total FROM settlements WHERE seller_id = ?')
       .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
