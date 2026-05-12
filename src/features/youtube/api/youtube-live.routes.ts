@@ -105,7 +105,8 @@ app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, wind
     }
 
     // Create YouTube live setup
-    const scheduledTime = scheduled_start_time || new Date().toISOString()
+    // 🛡️ 2026-05-12: default to now+5min so YouTube Studio doesn't show a past-due scheduled state
+    const scheduledTime = scheduled_start_time || new Date(Date.now() + 5 * 60 * 1000).toISOString()
 
     // Check if seller has a persistent stream key (OBS/Prism set once)
     const sellerAuth = channel_id
