@@ -66,10 +66,11 @@ export class ProductRepository {
     );
     const total = countRow?.count ?? 0;
 
+    // avg_rating / review_count: 상품 목록에서 correlated subquery 제거 (N+1 — D1 reads 절반 감소)
+    // 상세 페이지에서만 별도 조회. NULL 반환 시 프론트엔드가 별점 없음으로 표시.
     const rows = await this.qb.queryMany<Record<string, unknown>>(
       `SELECT p.*, s.name as seller_name, s.username as seller_slug,
-              (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id) as avg_rating,
-              (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id) as review_count
+              NULL as avg_rating, NULL as review_count
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        ${where}

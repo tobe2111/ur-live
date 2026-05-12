@@ -47,6 +47,17 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const [showFilter, setShowFilter] = useState(false)
   const [mapView, setMapView] = useState(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  // IntersectionObserver — sentinel에 닿으면 자동으로 더 로드 (클릭 없이 무한 스크롤)
+  useEffect(() => {
+    if (!loadMoreRef.current) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setShowCount(c => c + ITEMS_PER_PAGE)
+    }, { threshold: 0.1 })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [products])
   // Kakao Maps SDK refs — no TS definitions available for this external SDK
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null)
@@ -503,9 +514,9 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
               })}
             </div>
 
-            {/* 더보기 */}
+            {/* 더보기 — sentinel div: observer가 보이면 자동 로드 + 버튼 fallback */}
             {hasMore && (
-              <div className="flex justify-center mt-6 pb-20">
+              <div ref={loadMoreRef} className="flex justify-center mt-6 pb-20">
                 <button onClick={() => setShowCount(c => c + ITEMS_PER_PAGE)}
                   className="px-8 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212]">
                   더보기 ({sorted.length - showCount}개 남음)

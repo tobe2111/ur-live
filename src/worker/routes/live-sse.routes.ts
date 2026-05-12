@@ -47,11 +47,13 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
   const isReplay = c.req.query('replay') === 'true'
 
   try {
+    // replay=true: 다시보기 전체 채팅 (최대 500개 — 무제한 조회 방지)
+    const fromId = c.req.query('from_id') ? Number(c.req.query('from_id')) : 0
     const query = isReplay
       ? `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
-         WHERE live_stream_id = ? AND is_deleted = 0
-         ORDER BY id ASC`
+         WHERE live_stream_id = ? AND is_deleted = 0 ${fromId > 0 ? 'AND id > ' + fromId : ''}
+         ORDER BY id ASC LIMIT 500`
       : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
          WHERE live_stream_id = ? AND is_deleted = 0
