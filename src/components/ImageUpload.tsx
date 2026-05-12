@@ -59,40 +59,38 @@ export default function ImageUpload({
       }
 
       const compressedFile = await imageCompression(file, options)
-      
-      // Base64로 변환
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const base64 = e.target?.result as string
 
-        try {
-          // API 호출하여 업로드
-          const response = await api.post('/api/seller/upload-image', {
-            image: base64,
-            filename: file.name,
-          })
+      // 🛡️ 서버 엔드포인트는 multipart/form-data 만 허용 (JSON+base64 는 무효).
+      //   기존 base64 코드는 항상 400 으로 실패하고 있었음.
+      try {
+        const formData = new FormData()
+        // 압축 결과 파일명/타입을 원본에 맞춰 서버 확장자 검증 통과 보장.
+        const uploadFile = new File(
+          [compressedFile],
+          file.name,
+          { type: compressedFile.type || file.type || 'image/jpeg' },
+        )
+        formData.append('image', uploadFile)
 
-          if (response.data.success) {
-            onChange(response.data.url)
-            setStorageType(response.data.storage)
-            
-            if (response.data.warning) {
-              if (import.meta.env.DEV) console.warn('[Image Upload]', response.data.warning)
-            }
-          } else {
-            throw new Error(response.data.error || '업로드 실패')
+        const response = await api.post('/api/seller/upload-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+
+        if (response.data.success) {
+          onChange(response.data.url)
+          setStorageType(response.data.storage ?? 'r2')
+          if (response.data.warning) {
+            if (import.meta.env.DEV) console.warn('[Image Upload]', response.data.warning)
           }
-        } catch (apiError: any) {
-          if (import.meta.env.DEV) console.error('API upload error:', apiError)
-          throw new Error(apiError.response?.data?.error || apiError.message || '업로드 실패')
-        } finally {
-          setUploading(false)
+        } else {
+          throw new Error(response.data.error || '업로드 실패')
         }
+      } catch (apiError: any) {
+        if (import.meta.env.DEV) console.error('API upload error:', apiError)
+        throw new Error(apiError.response?.data?.error || apiError.message || '업로드 실패')
+      } finally {
+        setUploading(false)
       }
-      reader.onerror = () => {
-        throw new Error('파일 읽기에 실패했습니다.')
-      }
-      reader.readAsDataURL(compressedFile)
 
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('Image upload error:', err)
