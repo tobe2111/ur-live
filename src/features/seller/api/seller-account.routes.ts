@@ -206,7 +206,11 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
 
     const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
     if (!imgbbKey) {
-      return c.json({ success: false, error: '이미지 업로드 서비스가 구성되지 않았습니다' }, 500);
+      return c.json({
+        success: false,
+        error: '이미지 업로드 서비스가 구성되지 않았습니다. Cloudflare Pages 대시보드에서 IMGBB_API_KEY 시크릿을 추가해주세요.',
+        error_code: 'IMGBB_NOT_CONFIGURED'
+      }, 503);
     }
 
     // ── Safe filename (no path traversal) ─────────────────────────────────────
