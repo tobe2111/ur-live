@@ -53,6 +53,8 @@ export default function AdminSettlementPage() {
   const [records, setRecords] = useState<SettlementRecord[]>([])
   const [selectedSeller, setSelectedSeller] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [revertModal, setRevertModal] = useState<{ orderId: number } | null>(null)
+  const [revertReason, setRevertReason] = useState('')
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
@@ -85,21 +87,25 @@ export default function AdminSettlementPage() {
   }
 
   async function updateSettlementStatus(orderId: number, status: string, currentStatus?: string) {
-    // Prevent silent reversal: if downgrading from completed → pending, require confirm + reason
-    let reason: string | undefined
     if (currentStatus === 'completed' && status === 'pending') {
-      const confirmed = window.confirm('⚠️ 이미 지급 완료된 정산을 되돌리시겠습니까? 이 작업은 감사 로그에 기록됩니다.')
-      if (!confirmed) return
-      const input = window.prompt('되돌리기 사유를 입력하세요 (최소 5자):') || ''
-      if (input.trim().length < 5) {
-        toast.error('사유를 5자 이상 입력해주세요.')
-        return
-      }
-      reason = input.trim()
+      setRevertReason('')
+      setRevertModal({ orderId })
+      return
     }
     try {
-      await api.patch(`/api/admin/settlement/${orderId}/status`, { status, reason })
+      await api.patch(`/api/admin/settlement/${orderId}/status`, { status })
       toast.success('정산 상태가 변경되었습니다')
+      loadData()
+    } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`상태 변경 실패: ${e.response?.data?.error || e.message}`) }
+  }
+
+  async function confirmRevert() {
+    if (!revertModal) return
+    if (revertReason.trim().length < 5) { toast.error('사유를 5자 이상 입력해주세요.'); return }
+    try {
+      await api.patch(`/api/admin/settlement/${revertModal.orderId}/status`, { status: 'pending', reason: revertReason.trim() })
+      toast.success('정산 상태가 변경되었습니다')
+      setRevertModal(null)
       loadData()
     } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } }; message?: string }; toast.error(`상태 변경 실패: ${e.response?.data?.error || e.message}`) }
   }
@@ -164,6 +170,26 @@ export default function AdminSettlementPage() {
 
   return (
     <AdminLayout title={t('admin.pages.settlement')}>
+      {/* 정산 되돌리기 사유 입력 모달 */}
+      {revertModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+            <p className="text-sm font-bold text-gray-900 mb-1">⚠️ 정산 되돌리기</p>
+            <p className="text-xs text-gray-500 mb-4">이 작업은 감사 로그에 기록됩니다.</p>
+            <textarea
+              value={revertReason}
+              onChange={e => setRevertReason(e.target.value)}
+              placeholder="되돌리기 사유를 입력하세요 (최소 5자)"
+              rows={3}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setRevertModal(null)} className="flex-1 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">취소</button>
+              <button onClick={confirmRevert} className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600">확인</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.settlement')}

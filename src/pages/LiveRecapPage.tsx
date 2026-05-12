@@ -36,7 +36,7 @@ export default function LiveRecapPage() {
       .then(res => {
         if (res.data.success) setStream(res.data.data)
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[LiveRecap] stream load failed:', e) })
       .finally(() => setLoading(false))
 
     api.get('/api/streams?status=ended&limit=6')
@@ -45,7 +45,7 @@ export default function LiveRecapPage() {
           setRelatedStreams((res.data.data || []).filter((s: RecapStream) => String(s.id) !== id))
         }
       })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[LiveRecap] related streams failed:', e) })
   }, [id])
 
   if (loading) {

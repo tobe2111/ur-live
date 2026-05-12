@@ -82,6 +82,7 @@ interface Product {
   sold: number
   stock?: number
   seller_id?: number
+  seller_name?: string
   colors?: { name: string; hex: string }[]
   sizes?: string[]
 }
@@ -772,9 +773,8 @@ function ReelCardImpl({
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
       try {
-        const g = (window as any).gtag
-        if (typeof g === 'function') {
-          g('event', 'add_to_cart', {
+        if (typeof gtag === 'function') {
+          gtag('event', 'add_to_cart', {
             currency: 'KRW',
             value: currentProduct.price || 0,
             items: [{ item_id: currentProduct.id, item_name: currentProduct.name }],
@@ -856,7 +856,7 @@ function ReelCardImpl({
             price: currentProduct.price,
             item_total: currentProduct.price,
             seller_id: currentProduct.seller_id ?? null,
-            seller_name: (currentProduct as any).seller_name ?? null,
+            seller_name: currentProduct.seller_name ?? null,
             shipping_fee: stream.seller_shipping_fee ?? 3000,
             free_shipping_threshold: 0,
             option_id: null,

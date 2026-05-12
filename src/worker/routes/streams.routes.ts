@@ -335,6 +335,7 @@ streamsRouter.get('/:id/products', async (c) => {
         FROM products
         WHERE live_stream_id = ? AND is_active = 1
         ORDER BY created_at DESC
+        LIMIT 200
       `)
       .bind(streamId)
       .all();
@@ -396,7 +397,8 @@ streamsRouter.get('/:id/current-product', async (c) => {
     }
 
     const product = await db
-      .prepare('SELECT * FROM products WHERE id = ?')
+      .prepare(`SELECT id, name, description, price, original_price, discount_rate,
+        image_url, stock, category, seller_id, is_active FROM products WHERE id = ?`)
       .bind(stream.current_product_id)
       .first();
 
