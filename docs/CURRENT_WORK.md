@@ -46,7 +46,7 @@
 
 1. **CF Pages 배포 확인**
    - https://dash.cloudflare.com → Pages → ur-live → 최신 빌드 확인
-   - 성공 시: `https://live.ur-team.com/about` 접속 테스트
+   - 성공 시: `live.ur-team.com/about` 접속 테스트
 
 2. **repair-new-tables 호출** (admin_audit_log 테이블 생성)
    ```bash
@@ -55,7 +55,7 @@
    ```
 
 3. **GitHub Actions 수동 배포** (CF Pages 자동 연동 없으면)
-   - GitHub → Actions → "Deploy to Cloudflare Pages" → Run workflow (workflow_dispatch)
+   - GitHub → Actions → "Deploy to Cloudflare Pages" → Run workflow
 
 4. **스테이징 환경** (선택)
    - CF Dashboard에서 `ur-live-staging` Pages 프로젝트 생성
@@ -72,20 +72,6 @@
 | E2E Playwright 테스트 | 🟡 | 브라우저 환경 필요, CI에서 실행 |
 | GitHub Actions 분 초과 | 🟡 | 매월 1일 리셋, 그 전엔 수동 배포 |
 | 스테이징 환경 | 🟡 | 스크립트는 준비됨, CF 프로젝트 생성 필요 |
-
----
-
-## 📋 라이브 아키텍처 참고
-
-```
-셀러 브라우저 ──── WebRTC/WHIP ────→ YouTube
-              (rtmp_key 있으면 직접)
-
-폴백 1: OME WHIP (rtmp_key 없을 때)
-폴백 2: OBS/Larix RTMP 가이드
-```
-
-**진단 토큰**: `DIAGNOSE_TOKEN = Xk8m2P9qL3vR7nT5wY1bH4dF6jC0aZ` (Cloudflare env)
 
 ---
 
