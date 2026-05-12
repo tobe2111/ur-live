@@ -37,7 +37,7 @@ export default function ReelActionRail({
         <button
           onClick={onOpenProducts}
           className="flex items-center justify-center rounded-full transition-all active:scale-90"
-          style={{ width: 40, height: 40, ...glass.actionRail }}
+          style={{ width: 44, height: 44, ...glass.actionRail }}
           aria-label={t('live.productAriaLabel', { defaultValue: '상품 목록' })}
         >
           <ShoppingBag style={{ width: 18, height: 18, color: '#fff' }} />
@@ -60,7 +60,7 @@ export default function ReelActionRail({
         <button
           onClick={onOpenChat}
           className="flex items-center justify-center rounded-full transition-all active:scale-90"
-          style={{ width: 40, height: 40, ...glass.actionRail }}
+          style={{ width: 44, height: 44, ...glass.actionRail }}
           aria-label={t('live.chatOpenAria', { defaultValue: '채팅 열기' })}
         >
           <MessageCircle style={{ width: 18, height: 18, color: '#fff' }} />
@@ -77,7 +77,7 @@ export default function ReelActionRail({
           link={`/live/${stream?.id}`}
           compact
           className="flex items-center justify-center rounded-full transition-all active:scale-90"
-          style={{ width: 40, height: 40, ...glass.actionRail }}
+          style={{ width: 44, height: 44, ...glass.actionRail }}
         />
         <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{t('live.actionShare', { defaultValue: '공유' })}</span>
       </div>

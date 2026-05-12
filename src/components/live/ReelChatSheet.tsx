@@ -35,11 +35,11 @@ export default function ReelChatSheet({
     vv.addEventListener('scroll', update)
     update()
     // 마운트 직후 input focus → 키보드 즉시 올라옴
-    const t = setTimeout(() => inputRef.current?.focus(), 100)
+    const focusTimer = setTimeout(() => inputRef.current?.focus(), 100)
     return () => {
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
-      clearTimeout(t)
+      clearTimeout(focusTimer)
     }
   }, [])
 
@@ -47,7 +47,11 @@ export default function ReelChatSheet({
     <>
       <div
         className="absolute inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
+        role="button"
+        tabIndex={0}
+        aria-label={t('live.closeChatAria', { defaultValue: '채팅 닫기' })}
         onClick={onClose}
+        onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onClose() }}
       />
       <div
         className="absolute inset-x-0 z-[90] bg-white rounded-t-3xl animate-sheet-up"

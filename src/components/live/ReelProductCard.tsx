@@ -59,18 +59,22 @@ export default function ReelProductCard({
   onChangeProduct,
 }: ReelProductCardProps) {
   const { t } = useTranslation()
-  const [restockRequested, setRestockRequested] = useState(false)
+  const [restockStatus, setRestockStatus] = useState<'idle' | 'requesting' | 'requested' | 'error'>('idle')
 
   async function requestRestock() {
-    if (restockRequested || !streamId) return
+    if (restockStatus === 'requested' || restockStatus === 'requesting' || !streamId) return
+    setRestockStatus('requesting')
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token') || ''
       await api.post(`/api/streams/${streamId}/restock-notify`,
         { product_id: safeProduct.id },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       )
-      setRestockRequested(true)
-    } catch { setRestockRequested(true) }
+      setRestockStatus('requested')
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[Restock] notify failed:', e)
+      setRestockStatus('error')
+    }
   }
 
   if (!currentProduct) return null
@@ -169,14 +173,18 @@ export default function ReelProductCard({
           </span>
           <button
             onClick={requestRestock}
-            disabled={restockRequested}
+            disabled={restockStatus === 'requested' || restockStatus === 'requesting'}
             className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-95 disabled:opacity-60"
-            style={{ background: restockRequested ? '#E5E7EB' : '#111827', color: restockRequested ? '#6B7280' : '#fff' }}
+            style={{
+              background: restockStatus === 'requested' ? '#E5E7EB' : restockStatus === 'error' ? '#DC2626' : '#111827',
+              color: restockStatus === 'requested' ? '#6B7280' : '#fff',
+            }}
           >
             <Bell style={{ width: 9, height: 9 }} />
-            {restockRequested
-              ? t('live.restockRequested', { defaultValue: '알림 신청됨' })
-              : t('live.restockNotify', { defaultValue: '재입고 알림' })}
+            {restockStatus === 'requested' && t('live.restockRequested', { defaultValue: '알림 신청됨' })}
+            {restockStatus === 'requesting' && t('live.restockRequesting', { defaultValue: '신청 중...' })}
+            {restockStatus === 'error' && t('live.restockRetry', { defaultValue: '재시도' })}
+            {restockStatus === 'idle' && t('live.restockNotify', { defaultValue: '재입고 알림' })}
           </button>
         </div>
       )}

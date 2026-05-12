@@ -507,20 +507,21 @@ function ReelCardImpl({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
-        }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
+        }).catch((e) => { if (import.meta.env.DEV) console.warn('[ViewTrack] heartbeat failed:', e?.message || e) })
       }, 30000)
       fetch(`/api/live/${stream.id}/view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
-      }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
+      }).catch((e) => { if (import.meta.env.DEV) console.warn('[ViewTrack] join failed:', e?.message || e) })
       viewTrackCleanupRef.current = () => {
         clearInterval(heartbeatInterval)
         fetch(`/api/live/${stream.id}/view`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
-        }).catch((e) => { if (import.meta.env.DEV) console.warn("[Poll]", e?.message || e) })
+          keepalive: true,
+        }).catch((e) => { if (import.meta.env.DEV) console.warn('[ViewTrack] leave failed:', e?.message || e) })
       }
     }, 2000)
     return () => {
@@ -553,10 +554,11 @@ function ReelCardImpl({
         playerRef.current.setVolume(100)
         playerRef.current.playVideo()
         setShowPlayButton(false)
-        // iOS Safari unmute 비동기 확인 (최대 3회, 500ms 간격)
+        // iOS Safari unmute 비동기 확인 (최대 3회, 500ms 간격) — playerRef null 이면 자동 정리
         let retries = 0
         const verifyUnmute = setInterval(() => {
           retries++
+          // 🛡️ playerRef.current 가 null 이면 컴포넌트 unmount 또는 destroy 된 상태
           if (!playerRef.current) { clearInterval(verifyUnmute); return }
           try {
             if (!playerRef.current.isMuted()) {
@@ -674,7 +676,7 @@ function ReelCardImpl({
     let active = true
     api.get(`/api/seller/${stream.seller_id}/public-streams?status=scheduled&limit=1`)
       .then(r => { if (active && r.data?.data?.[0]) setNextLive(r.data.data[0]) })
-      .catch(() => {})
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[NextLive] fetch failed:', e?.message || e) })
     return () => { active = false }
   }, [stream.status, stream.seller_id])
 
