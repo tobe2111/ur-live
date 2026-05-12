@@ -16,6 +16,29 @@ import type { Env } from '../types/env';
 import { cacheGet, cacheInvalidate, buildCacheKey } from '../utils/cache';
 import { swallow } from '../utils/swallow';
 import { requireAuth, getCurrentUser } from '../middleware/auth';
+import { createRateLimiter } from '../../lib/rate-limit';
+
+// Rate limiters for viewer count manipulation endpoints (anti-abuse)
+const viewerJoinRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  keyPrefix: 'streams:viewer-join',
+});
+const viewerLeaveRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  keyPrefix: 'streams:viewer-leave',
+});
+const viewerCountUpdateRateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 5,
+  keyPrefix: 'streams:viewer-count-update',
+});
+const fakeCartNotificationRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 20,
+  keyPrefix: 'streams:fake-cart-notification',
+});
 
 interface StreamListRow {
   id: number;
@@ -575,7 +598,7 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
 });
 
 // ── PUT /api/streams/:id/viewer-count (셀러 수동 설정 — 인증 필수) ────────────
-streamsRouter.put('/:id/viewer-count', async (c) => {
+streamsRouter.put('/:id/viewer-count', viewerCountUpdateRateLimiter, async (c) => {
   // 🛡️ 인증 체크 — 미인증 시 시청자 수 조작 가능
   const auth = c.req.header('Authorization');
   if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -632,7 +655,7 @@ streamsRouter.put('/:id/viewer-count', async (c) => {
 //   이전: 매 heartbeat 마다 current_viewers +1 → 1명이 30초마다 계속 증가하는 허수.
 //   개선: X-Session-ID 헤더로 unique 식별. 신규 세션만 카운트 증가 + peak 갱신.
 //         기존 세션의 heartbeat 는 last_heartbeat 만 갱신.
-streamsRouter.post('/:id/viewer/join', async (c) => {
+streamsRouter.post('/:id/viewer/join', viewerJoinRateLimiter, async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
@@ -740,7 +763,7 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
 // ── POST /api/streams/:id/viewer/leave ────────────────────────────────────────
 // 2026-04-23 배치 164: 페이지 언로드 시 sendBeacon 으로 호출 (P1 분석 정확도)
 //   watch_duration 계산 + current_viewers 즉시 반영.
-streamsRouter.post('/:id/viewer/leave', async (c) => {
+streamsRouter.post('/:id/viewer/leave', viewerLeaveRateLimiter, async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
@@ -828,7 +851,7 @@ streamsRouter.post('/:id/restock-notify', requireAuth(), async (c) => {
 // ── POST /api/streams/:id/fake-cart-notification ──────────────────────────────
 // 라이브 방송 중 가짜 장바구니 추가 알림 (LivePage에서 데모 목적 사용)
 // 🛡️ 셀러 인증 + 라이브 소유 검증 필수 (미인증 시 임의 라이브에 스팸 가능)
-streamsRouter.post('/:id/fake-cart-notification', async (c) => {
+streamsRouter.post('/:id/fake-cart-notification', fakeCartNotificationRateLimiter, async (c) => {
   const auth = c.req.header('Authorization');
   if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
   let sellerId: number | null = null;
