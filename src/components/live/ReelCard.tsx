@@ -1348,6 +1348,8 @@ function ReelCardImpl({
   )
 }
 
+export default memo(ReelCardImpl)
+
 // React.memo: reel 객체 동일 참조 + isActive/isCurrentProduct 동일 시 재렌더링 skip.
 // 무한 스크롤 카드 다수 마운트 시 비활성 카드의 불필요한 re-render 차단 (LivePageV2 activeIndex 변경 → 모든 카드 재렌더링 방지).
 export default memo(ReelCardImpl)

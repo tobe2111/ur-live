@@ -105,7 +105,13 @@ app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, wind
     }
 
     // Create YouTube live setup
-    const scheduledTime = scheduled_start_time || new Date(Date.now() + 5 * 60 * 1000).toISOString()
+    // 🛡️ 2026-05-12: Ensure scheduledStartTime is at least 5 min in the future so YouTube Studio
+    //   doesn't show "past-due scheduled". Client sends new Date().toISOString() for "start now".
+    const fiveMinFromNow = Date.now() + 5 * 60 * 1000
+    const providedMs = scheduled_start_time ? new Date(scheduled_start_time).getTime() : 0
+    const scheduledTime = providedMs > fiveMinFromNow
+      ? scheduled_start_time!
+      : new Date(fiveMinFromNow).toISOString()
 
     // Check if seller has a persistent stream key (OBS/Prism set once)
     const sellerAuth = channel_id
@@ -318,7 +324,12 @@ app.post('/live/create-webcam', async (c) => {
   const { title, description, product_ids, scheduled_start_time, privacy_status, thumbnail_url } = await c.req.json()
   if (!title) return c.json({ success: false, error: 'Title is required' }, 400)
 
-  const scheduledTime = scheduled_start_time || new Date(Date.now() + 5 * 60 * 1000).toISOString()
+  // 🛡️ 2026-05-12: webcam mode — ensure scheduled time is at least 5 min from now
+  const fiveMinFromNowWc = Date.now() + 5 * 60 * 1000
+  const providedMsWc = scheduled_start_time ? new Date(scheduled_start_time).getTime() : 0
+  const scheduledTime = providedMsWc > fiveMinFromNowWc
+    ? scheduled_start_time
+    : new Date(fiveMinFromNowWc).toISOString()
 
   try {
     const streamResult = await c.env.DB.prepare(`
