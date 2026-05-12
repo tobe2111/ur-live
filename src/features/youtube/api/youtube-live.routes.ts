@@ -12,7 +12,6 @@
  * 마운트: app.route('/api/youtube/live', youtubeLiveRoutes) — 또는 동일 prefix.
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { swallow } from '@/worker/utils/swallow'
@@ -25,7 +24,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
 
 const app = new Hono<{ Bindings: Env }>()
-app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-12: 서브라우터 cors() 제거 — index.ts 전역 cors() 가 처리. 중복 제거.
 
 // YouTube API 상태 조회 서버사이드 캐시 (25s TTL) — API quota 절감
 // 셀러 10명 방송 시: 5s polling → 최대 2 API calls/5s (캐시 미스 시) vs 기존 10 calls/5s

@@ -174,7 +174,7 @@ adminToolsRoutes.post('/notices', async (c) => {
     }
   }
   if (target === 'users' || target === 'all') {
-    const { results: users } = await c.env.DB.prepare("SELECT id FROM users LIMIT 1000").all<{ id: string }>()
+    const { results: users } = await c.env.DB.prepare("SELECT id FROM users ORDER BY created_at DESC LIMIT 1000").all<{ id: string }>()
     if (users?.length) {
       const stmts = users.map(u =>
         c.env.DB.prepare("INSERT INTO user_notifications (user_id, type, title, message, created_at) VALUES (?, 'admin_notice', ?, ?, datetime('now'))")

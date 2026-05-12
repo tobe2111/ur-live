@@ -86,6 +86,7 @@ app.get('/', async (c) => {
         AND NOT EXISTS (
           SELECT 1 FROM orders WHERE seller_id = s.id AND payment_status = 'approved' AND created_at >= datetime('now', '-30 days')
         )
+      ORDER BY s.created_at DESC
       LIMIT 100
     `).all().catch(() => ({ results: [] as any[] }));
     insights.dormant_sellers = r.results || [];
