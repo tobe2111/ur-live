@@ -439,7 +439,7 @@ export default function ProductDetailPage() {
                   <span className="text-[12px] text-gray-900 dark:text-white">{opt.option_value}</span>
                   {opt.price_adjustment !== 0 && (
                     <span className="text-[11px] text-red-500 font-bold">
-                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(opt.price_adjustment || 0)}원
+                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
                     </span>
                   )}
                 </button>
@@ -453,7 +453,7 @@ export default function ProductDetailPage() {
           )}
           <div className="flex items-center gap-2 mt-3">
             <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
-            <span className="text-[11px] font-bold text-pink-500">최대 {formatNumber(Math.round(displayPrice * 0.03))}딜</span>
+            <span className="text-[11px] font-bold text-pink-500">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
           <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
@@ -472,7 +472,7 @@ export default function ProductDetailPage() {
               }}
               className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98]"
             >
-              🔗 추천 링크 복사 (판매 당 2% 무한 적립)
+              {t('productDetail.referralCopy', { defaultValue: '🔗 추천 링크 복사 (판매 당 2% 무한 적립)' })}
             </button>
           )}
           <KakaoShareButton
@@ -508,10 +508,10 @@ export default function ProductDetailPage() {
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">
-              리뷰 <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
+              {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
             <button className="flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-              전체보기 <ChevronRight className="w-2.5 h-2.5" />
+              {t('productDetail.viewAll', { defaultValue: '전체보기' })} <ChevronRight className="w-2.5 h-2.5" />
             </button>
           </div>
           <ProductReviews productId={product.id} />

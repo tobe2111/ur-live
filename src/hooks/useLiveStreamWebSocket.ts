@@ -16,6 +16,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getAccessToken } from '@/utils/auth'
 import { isFeatureBlockedSync, isPWAStandalone } from '@/lib/in-app-warning'
 import { toast } from '@/hooks/useToast'
@@ -70,6 +71,7 @@ export function useLiveStreamWebSocket(
   enabled: boolean = true,
   replay: boolean = false,
 ): UseLiveStreamWebSocketReturn {
+  const { t } = useTranslation()
   const getCachedMessages = useStreamStore(s => s.getCachedMessages)
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     streamId ? getCachedMessages(streamId) : []
@@ -120,7 +122,7 @@ export function useLiveStreamWebSocket(
         }),
       })
 
-      if (!response.ok) throw new Error('메시지 전송 실패')
+      if (!response.ok) throw new Error(t('liveWs.sendFailed', { defaultValue: '메시지 전송 실패' }))
     },
     [streamId]
   )
@@ -295,7 +297,7 @@ export function useLiveStreamWebSocket(
           const jitter = baseDelay * (0.5 - Math.random()) * 0.5  // ±25%
           const delay = Math.max(500, Math.round(baseDelay + jitter))
           reconnectAttemptsRef.current++
-          setError(`연결 끊김. ${Math.round(delay / 1000)}초 후 재연결...`)
+          setError(t('liveWs.reconnecting', { defaultValue: '연결 끊김. {{seconds}}초 후 재연결...', seconds: Math.round(delay / 1000) }))
           reconnectTimeoutRef.current = setTimeout(connect, delay)
         } else {
           // WebSocket failed after max retries — fall back to polling
@@ -305,7 +307,7 @@ export function useLiveStreamWebSocket(
           if (!isPWAStandalone() && isFeatureBlockedSync('websocket') && !sessionStorage.getItem('ur_ws_fallback_notice_v1')) {
             try {
               sessionStorage.setItem('ur_ws_fallback_notice_v1', '1')
-              toast.info('실시간 채팅이 불안정해요. 외부 브라우저에서 더 안정적으로 시청 가능합니다.')
+              toast.info(t('liveWs.fallbackInApp', { defaultValue: '실시간 채팅이 불안정해요. 외부 브라우저에서 더 안정적으로 시청 가능합니다.' }))
             } catch { /* ignore */ }
           }
           startPolling()
@@ -317,7 +319,7 @@ export function useLiveStreamWebSocket(
       }
     } catch (e) {
       if (import.meta.env.DEV) console.error('[WS] Failed to create WebSocket:', e)
-      setError('WebSocket 연결 실패')
+      setError(t('liveWs.connectFailed', { defaultValue: 'WebSocket 연결 실패' }))
     }
   }, [streamId, enabled, fetchInitialMessages])
 
