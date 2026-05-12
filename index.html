@@ -35,6 +35,10 @@
     <!-- 🛡️ 2026-05-07: 카카오맵 SDK preconnect — RestaurantMapPage 진입 시 핸드셰이크 절감 -->
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />
+    <!-- 🛡️ 2026-05-12: ImgBB CDN preconnect — 상품/프로필 이미지 로드 100~200ms 단축
+         (DNS + TCP + TLS 핸드셰이크를 첫 paint 전 미리 처리) -->
+    <link rel="preconnect" href="https://i.ibb.co" crossorigin />
+    <link rel="dns-prefetch" href="https://i.ibb.co" />
 
     <!-- 🛡️ 2026-04-30: Pretendard Variable stylesheet 직접 로드.
          이전 preload + onload="..." swap 패턴은 CSP 'strict-dynamic' 환경에서

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { compressForThumbnail } from '@/lib/image-compress'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -299,9 +300,13 @@ export default function SellerProfileEditPage() {
     setErrorMessage('')
     
     try {
+      // 클라이언트 사이드 강한 압축 (CF Images 유료 회피).
+      // 프로필 이미지 → 300KB / 1024px / WebP.
+      const compressedFile = await compressForThumbnail(file)
+
       const formData = new FormData()
-      formData.append('image', file)
-      
+      formData.append('image', compressedFile)
+
       const response = await api.post('/api/seller/upload-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

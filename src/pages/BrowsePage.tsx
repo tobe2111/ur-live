@@ -469,7 +469,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       ) : (
                         <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}

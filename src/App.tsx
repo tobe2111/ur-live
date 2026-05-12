@@ -36,6 +36,7 @@ const MainHomePage = lazy(() => import('./pages/MainHomePage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
@@ -318,6 +319,7 @@ function AppContent() {
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/" element={<MainHomePage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />

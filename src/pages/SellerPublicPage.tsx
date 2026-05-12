@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { compressForThumbnail } from '@/lib/image-compress'
 import { useTheme } from '@/shared/stores/useTheme'
 import { Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -110,9 +111,10 @@ export default function SellerPublicPage() {
 
     setSaving(true)
     try {
-      // 1. 이미지 업로드 → URL 획득
+      // 1. 클라이언트 압축 → URL 획득 (CF Images 유료 회피, WebP 1024px)
+      const compressed = await compressForThumbnail(file)
       const formData = new FormData()
-      formData.append('image', file)
+      formData.append('image', compressed)
       const uploadRes = await api.post('/api/seller/upload-image', formData, {
         headers: { Authorization: `Bearer ${token}` },
       })

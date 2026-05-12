@@ -373,6 +373,12 @@ export default function LoginPage() {
                 {t('common.signup')}
               </Link>
             </div>
+            {/* Service intro link */}
+            <div className="text-center text-[12px] text-[#888] mt-3 font-light">
+              <Link to="/about" className="hover:underline underline-offset-4 decoration-1">
+                유어딜이 처음이세요? 서비스 알아보기 →
+              </Link>
+            </div>
           </div>
         )}
 
