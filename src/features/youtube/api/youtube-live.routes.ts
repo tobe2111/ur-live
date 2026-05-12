@@ -144,7 +144,7 @@ app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, wind
         privacyStatus
       )
       // 🛡️ 2026-05-11 P3-#10: setupLiveStream = liveBroadcasts.insert(50) + liveStreams.insert(50) + bind(50) = 150
-      await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream')
+      await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream', c.executionCtx)
 
       // Save as persistent stream for the specific channel (or active default)
       if (channel_id) {
@@ -273,7 +273,7 @@ app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, wind
                   headers: { Authorization: `Bearer ${accessTokenForBg}`, 'Content-Type': contentType },
                   body: imgBlob,
                 },
-              ).then(() => trackQuota(c.env, QUOTA_COST.thumbnailSet, 'thumbnail_set'))
+              ).then(() => trackQuota(c.env, QUOTA_COST.thumbnailSet, 'thumbnail_set', c.executionCtx))
                 .catch((e) => console.error('[create] thumbnail upload failed', e))
             }
           }
@@ -546,7 +546,7 @@ app.post('/live/:id/start', async (c) => {
     //   (autoStart 가 아직 트리거 안 됐을 가능성 대비 — 보통 즉시 성공)
     try {
       await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
-      await trackQuota(c.env, QUOTA_COST.transition, 'transition_live')
+      await trackQuota(c.env, QUOTA_COST.transition, 'transition_live', c.executionCtx)
     } catch (e) {
       // redundantTransition (이미 live) 또는 invalidTransition (아직 active 안 됨) — autoStart 가 처리
       const msg = (e as Error).message || ''
@@ -1059,7 +1059,7 @@ app.post('/live/:id/end', async (c) => {
         const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
         if (accessToken) {
           await youtubeService.endBroadcast(accessToken, broadcastId)
-          await trackQuota(c.env, QUOTA_COST.transition, 'transition_end')
+          await trackQuota(c.env, QUOTA_COST.transition, 'transition_end', c.executionCtx)
         } else {
           youtubeEndError = 'no_access_token'
         }
