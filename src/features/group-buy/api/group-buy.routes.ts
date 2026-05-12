@@ -286,8 +286,38 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
        WHERE id = ?
     `).bind(qty, qty, productId).run()
 
-    const updated = await DB.prepare('SELECT group_buy_current, group_buy_target FROM products WHERE id = ?')
+    const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status FROM products WHERE id = ?')
       .bind(productId).first<any>()
+
+    // 🛡️ 공구 성공 시 모든 참여자에게 푸시 + dashboard notification (best-effort)
+    //   updated.group_buy_status === 'achieved' 이며, 직전 UPDATE 가 처음으로 트랜지션 시켰을 때만 발송하도록
+    //   product.group_buy_status (사전 상태) 와 비교하여 중복 발송 방지.
+    try {
+      if (updated?.group_buy_status === 'achieved' && product.group_buy_status !== 'achieved') {
+        const { results: participants } = await DB.prepare(
+          `SELECT DISTINCT o.user_id FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           WHERE oi.product_id = ? AND o.user_id IS NOT NULL`
+        ).bind(productId).all<{ user_id: string }>()
+        const { sendSystemPush } = await import('../../../lib/system-push')
+        for (const p of participants ?? []) {
+          try {
+            await DB.prepare(
+              `INSERT INTO user_notifications (user_id, type, title, message, link)
+               VALUES (?, 'group_buy_achieved', ?, ?, ?)`
+            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 식사권이 발급됩니다`, `/group-buy/${productId}`).run()
+          } catch { /* ignore */ }
+          try {
+            await sendSystemPush(c.env, 'user', p.user_id, {
+              title: '🎉 공구 성공!',
+              body: `${product.name} 곧 식사권이 발급됩니다`,
+              url: `/group-buy/${productId}`,
+              tag: `gb-achieved-${productId}`,
+            })
+          } catch { /* ignore */ }
+        }
+      }
+    } catch (e) { console.error('[group-buy achieved notify]', e) }
 
     // 바우처 코드 조회
     const vouchers = await DB.prepare(

@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Users, Clock, ShoppingBag, Gift } from 'lucide-react';
+import { ChevronLeft, Users, Clock, ShoppingBag, Gift, Ticket, Store } from 'lucide-react';
 import api from '@/lib/api';
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
 
+// ─────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────
+
 interface Tier { count: number; discount: number }
+
 interface ReferralGroup {
   id: number | string;
   invite_code: string;
@@ -23,6 +28,37 @@ interface ReferralGroup {
   is_creator: boolean;
 }
 
+interface VoucherEntry {
+  id: number;
+  code: string;
+  product_id: number;
+  status: 'unused' | 'used' | 'expired' | 'refunded';
+  used_at?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+  product_name?: string;
+  restaurant_name?: string;
+  product_image?: string;
+}
+
+interface CommunityGroupBuy {
+  id: number;
+  invite_code?: string;
+  creator_user_id: string | number;
+  creator_name: string;
+  restaurant_name: string;
+  proposed_price: number;
+  deposit_per_person: number;
+  target_count: number;
+  current_count: number;
+  status: 'proposed' | 'negotiating' | 'confirmed' | 'achieved' | 'failed' | 'refunded';
+  confirmed_price?: number;
+  confirmed_discount_percent?: number;
+  expires_at?: string;
+  created_at: string;
+  my_status?: string;
+}
+
 interface ProductInfo {
   id: number;
   name: string;
@@ -30,7 +66,37 @@ interface ProductInfo {
   thumbnail_url?: string;
 }
 
-type TabKey = 'ongoing' | 'done';
+type Source = 'referral' | 'voucher' | 'community';
+type TabKey = 'all' | Source;
+
+interface UnifiedItem {
+  source: Source;
+  key: string;
+  // generic display
+  title: string;
+  image?: string;
+  status: string;
+  isActive: boolean; // ongoing
+  isAchieved: boolean;
+  isExpiredOrRefunded: boolean;
+  // optional progress
+  current?: number;
+  target?: number;
+  expires_at?: string;
+  // CTA
+  onClick: () => void;
+  ctaLabel?: string;
+  // raw for badges
+  raw: ReferralGroup | VoucherEntry | CommunityGroupBuy;
+  // extra label (e.g. "내가 만든 그룹")
+  subBadge?: string;
+  subBadgeAccent?: 'pink' | 'gray';
+  discountText?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────
 
 function formatTimeLeft(expiresAt: string, t: (key: string, opts?: any) => string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -43,11 +109,18 @@ function formatTimeLeft(expiresAt: string, t: (key: string, opts?: any) => strin
   return t('myGroupBuys.minutesLeft', { minutes });
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────
+
 export default function MyGroupBuysPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<TabKey>('ongoing');
-  const [groups, setGroups] = useState<ReferralGroup[]>([]);
+  const [tab, setTab] = useState<TabKey>('all');
+
+  const [referralGroups, setReferralGroups] = useState<ReferralGroup[]>([]);
+  const [vouchers, setVouchers] = useState<VoucherEntry[]>([]);
+  const [community, setCommunity] = useState<CommunityGroupBuy[]>([]);
   const [products, setProducts] = useState<Record<number, ProductInfo>>({});
   const [loading, setLoading] = useState(true);
 
@@ -60,38 +133,157 @@ export default function MyGroupBuysPage() {
       return;
     }
     (async () => {
-      try {
-        const res = await api.get('/api/referral/my');
-        if (res.data?.success) {
-          const list: ReferralGroup[] = res.data.data || [];
-          setGroups(list);
-          // 상품 정보 병렬 조회 (중복 제거)
-          const uniqueIds = Array.from(new Set(list.map(g => g.product_id).filter(Boolean)));
-          const results = await Promise.all(
-            uniqueIds.map(async (pid) => {
-              try {
-                const p = await api.get(`/api/group-buy/products/${pid}`);
-                if (p.data?.success) return [pid, p.data.data as ProductInfo] as const;
-              } catch {}
-              return null;
-            })
-          );
-          const map: Record<number, ProductInfo> = {};
-          results.forEach(r => { if (r) map[r[0]] = r[1]; });
-          setProducts(map);
-        }
-      } catch {
-        toast.error(t('myGroupBuys.loadError'));
-      } finally {
-        setLoading(false);
+      // 3 endpoints in parallel — each with its own try/catch so one failure doesn't blank the page
+      const [refRes, vouRes, comRes] = await Promise.allSettled([
+        api.get('/api/referral/my'),
+        api.get('/api/group-buy/my'),
+        api.get('/api/community-group-buy/my'),
+      ]);
+
+      let refList: ReferralGroup[] = [];
+      let vouList: VoucherEntry[] = [];
+      let comList: CommunityGroupBuy[] = [];
+
+      if (refRes.status === 'fulfilled' && refRes.value.data?.success) {
+        refList = refRes.value.data.data || [];
       }
+      if (vouRes.status === 'fulfilled' && vouRes.value.data?.success) {
+        vouList = vouRes.value.data.data || [];
+      }
+      if (comRes.status === 'fulfilled' && comRes.value.data?.success) {
+        const d = comRes.value.data.data || {};
+        const created = (d.created || []) as CommunityGroupBuy[];
+        const joined = (d.joined || []) as CommunityGroupBuy[];
+        comList = [...created, ...joined];
+      }
+
+      setReferralGroups(refList);
+      setVouchers(vouList);
+      setCommunity(comList);
+
+      // Hydrate product info for referral entries (vouchers already include product fields)
+      const productIds = Array.from(new Set(refList.map(g => g.product_id).filter(Boolean)));
+      if (productIds.length > 0) {
+        const results = await Promise.all(
+          productIds.map(async (pid) => {
+            try {
+              const p = await api.get(`/api/group-buy/products/${pid}`);
+              if (p.data?.success) return [pid, p.data.data as ProductInfo] as const;
+            } catch { /* ignore */ }
+            return null;
+          })
+        );
+        const map: Record<number, ProductInfo> = {};
+        results.forEach(r => { if (r) map[r[0]] = r[1]; });
+        setProducts(map);
+      }
+
+      setLoading(false);
     })();
-  }, [navigate]);
+  }, [navigate, t]);
+
+  // Build unified item list
+  const unified = useMemo<UnifiedItem[]>(() => {
+    const items: UnifiedItem[] = [];
+
+    // Referral groups
+    for (const g of referralGroups) {
+      const product = products[g.product_id];
+      const img = product?.image_url || product?.thumbnail_url;
+      items.push({
+        source: 'referral',
+        key: `referral-${g.id}`,
+        title: product?.name || `상품 #${g.product_id}`,
+        image: img,
+        status: g.status,
+        isActive: g.status === 'open',
+        isAchieved: g.status === 'achieved',
+        isExpiredOrRefunded: g.status === 'expired' || g.status === 'cancelled',
+        current: g.current_count,
+        target: g.target_count,
+        expires_at: g.expires_at,
+        onClick: () => navigate(`/referral/${g.invite_code}`),
+        raw: g,
+        subBadge: g.is_creator ? t('myGroupBuys.iStarted') : t('myGroupBuys.creatorGroup', { name: g.creator_name }),
+        subBadgeAccent: g.is_creator ? 'pink' : 'gray',
+        discountText: g.discount_percent ? `${g.discount_percent}% 할인` : undefined,
+        ctaLabel: g.status === 'achieved'
+          ? t('myGroupBuys.useCta', { defaultValue: '사용하기' })
+          : undefined,
+      });
+    }
+
+    // Vouchers (seller group-buys I bought)
+    for (const v of vouchers) {
+      const isUnused = v.status === 'unused';
+      const isUsed = v.status === 'used';
+      const isExpired = v.status === 'expired';
+      const isRefunded = v.status === 'refunded';
+      items.push({
+        source: 'voucher',
+        key: `voucher-${v.id}`,
+        title: v.product_name || v.restaurant_name || `바우처 ${v.code}`,
+        image: v.product_image,
+        status: v.status,
+        isActive: isUnused,
+        isAchieved: isUsed,
+        isExpiredOrRefunded: isExpired || isRefunded,
+        expires_at: v.expires_at || undefined,
+        onClick: () => navigate(`/vouchers/${v.code}`),
+        raw: v,
+        ctaLabel: isUnused
+          ? t('myGroupBuys.useCta', { defaultValue: '사용하기' })
+          : undefined,
+      });
+    }
+
+    // Community group-buys
+    for (const c of community) {
+      const isActive = c.status === 'proposed' || c.status === 'negotiating';
+      const isAchieved = c.status === 'confirmed' || c.status === 'achieved';
+      const isExpired = c.status === 'failed' || c.status === 'refunded';
+      const codeOrId = c.invite_code || c.id;
+      items.push({
+        source: 'community',
+        key: `community-${c.id}`,
+        title: c.restaurant_name,
+        status: c.status,
+        isActive,
+        isAchieved,
+        isExpiredOrRefunded: isExpired,
+        current: c.current_count,
+        target: c.target_count,
+        expires_at: c.expires_at,
+        onClick: () => navigate(`/community-group-buy/${codeOrId}`),
+        raw: c,
+        discountText: c.confirmed_discount_percent
+          ? `${c.confirmed_discount_percent}% 확정`
+          : undefined,
+      });
+    }
+
+    // Sort: active first, then most recent
+    items.sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      const aTime = (a.raw as any).created_at || (a.raw as any).expires_at || '';
+      const bTime = (b.raw as any).created_at || (b.raw as any).expires_at || '';
+      return String(bTime).localeCompare(String(aTime));
+    });
+
+    return items;
+  }, [referralGroups, vouchers, community, products, t, navigate]);
 
   const filtered = useMemo(() => {
-    if (tab === 'ongoing') return groups.filter(g => g.status === 'open');
-    return groups.filter(g => g.status === 'achieved' || g.status === 'expired' || g.status === 'cancelled');
-  }, [groups, tab]);
+    if (tab === 'all') return unified;
+    return unified.filter(i => i.source === tab);
+  }, [unified, tab]);
+
+  const tabs: { key: TabKey; label: string; count?: number }[] = [
+    { key: 'all', label: t('myGroupBuys.tabAll', { defaultValue: '전체' }), count: unified.length },
+    { key: 'voucher', label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }), count: vouchers.length },
+    { key: 'community', label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }), count: community.length },
+    { key: 'referral', label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), count: referralGroups.length },
+  ];
 
   return (
     <div className="min-h-dvh bg-white dark:bg-[#0A0A0A]">
@@ -112,21 +304,21 @@ export default function MyGroupBuysPage() {
       </header>
 
       {/* 탭 */}
-      <div className="flex border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] sticky top-14 z-30">
-        {([
-          { key: 'ongoing' as TabKey, label: t('myGroupBuys.tabOngoing') },
-          { key: 'done' as TabKey, label: t('myGroupBuys.tabDone') },
-        ]).map(item => (
+      <div className="flex border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] sticky top-14 z-30 overflow-x-auto">
+        {tabs.map(item => (
           <button
             key={item.key}
             onClick={() => setTab(item.key)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 min-w-[80px] py-3 text-sm font-medium transition-colors whitespace-nowrap ${
               tab === item.key
                 ? 'text-gray-900 dark:text-white border-b-2 border-gray-900'
                 : 'text-gray-500 dark:text-gray-400 border-b-2 border-transparent'
             }`}
           >
             {item.label}
+            {typeof item.count === 'number' && item.count > 0 && (
+              <span className="ml-1 text-xs text-gray-400">({item.count})</span>
+            )}
           </button>
         ))}
       </div>
@@ -140,73 +332,11 @@ export default function MyGroupBuysPage() {
           <EmptyState onBrowse={() => navigate('/browse')} />
         ) : (
           <ul className="space-y-3">
-            {filtered.map(g => {
-              const product = products[g.product_id];
-              const img = product?.image_url || product?.thumbnail_url;
-              const progressPct = Math.min(100, Math.round((g.current_count / Math.max(1, g.target_count)) * 100));
-              return (
-                <li key={g.id}>
-                  <button
-                    onClick={() => navigate(`/referral/${g.invite_code}`)}
-                    className="w-full text-left bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* 썸네일 */}
-                      <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden shrink-0 flex items-center justify-center">
-                        {img ? (
-                          <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
-                        ) : (
-                          <ShoppingBag className="w-6 h-6 text-gray-400 dark:text-gray-500" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {product?.name || `상품 #${g.product_id}`}
-                          </h3>
-                          <StatusBadge status={g.status} />
-                        </div>
-
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                            g.is_creator ? 'bg-pink-50 text-pink-600' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'
-                          }`}>
-                            {g.is_creator ? t('myGroupBuys.iStarted') : t('myGroupBuys.creatorGroup', { name: g.creator_name })}
-                          </span>
-                        </div>
-
-                        {/* 진행 바 */}
-                        <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden mb-2">
-                          <div
-                            className="h-full bg-pink-500 transition-all"
-                            style={{ width: `${progressPct}%` }}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                            <span className="inline-flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5" />
-                              {g.current_count}/{g.target_count}명
-                            </span>
-                            <span className="font-semibold text-pink-600">
-                              {g.discount_percent}% 할인
-                            </span>
-                          </div>
-                          {g.status === 'open' && (
-                            <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                              <Clock className="w-3.5 h-3.5" />
-                              {formatTimeLeft(g.expires_at, t)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
+            {filtered.map(item => (
+              <li key={item.key}>
+                <UnifiedCard item={item} />
+              </li>
+            ))}
           </ul>
         )}
       </main>
@@ -214,16 +344,141 @@ export default function MyGroupBuysPage() {
   );
 }
 
-function StatusBadge({ status }: { status: ReferralGroup['status'] }) {
+// ─────────────────────────────────────────────────────────────────────
+// Card
+// ─────────────────────────────────────────────────────────────────────
+
+function UnifiedCard({ item }: { item: UnifiedItem }) {
   const { t } = useTranslation();
-  if (status === 'open') {
+  const progressPct = item.target && item.target > 0
+    ? Math.min(100, Math.round(((item.current || 0) / item.target) * 100))
+    : 0;
+
+  return (
+    <button
+      onClick={item.onClick}
+      className="w-full text-left bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+    >
+      <div className="flex items-start gap-3">
+        {/* 썸네일 */}
+        <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden shrink-0 flex items-center justify-center">
+          {item.image ? (
+            <img src={item.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            <SourceIcon source={item.source} />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              {item.title}
+            </h3>
+            <UnifiedStatusBadge item={item} />
+          </div>
+
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            <SourceBadge source={item.source} />
+            {item.subBadge && (
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                item.subBadgeAccent === 'pink'
+                  ? 'bg-pink-50 text-pink-600'
+                  : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'
+              }`}>
+                {item.subBadge}
+              </span>
+            )}
+          </div>
+
+          {/* 진행 바 (active + has target) */}
+          {item.isActive && item.target && item.target > 0 && (
+            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden mb-2">
+              <div className="h-full bg-pink-500 transition-all" style={{ width: `${progressPct}%` }} />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+              {item.target && item.target > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" />
+                  {item.current || 0}/{item.target}명
+                </span>
+              )}
+              {item.discountText && (
+                <span className="font-semibold text-pink-600">{item.discountText}</span>
+              )}
+            </div>
+            {item.isActive && item.expires_at && (
+              <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                <Clock className="w-3.5 h-3.5" />
+                {formatTimeLeft(item.expires_at, t)}
+              </span>
+            )}
+            {item.isExpiredOrRefunded && (
+              <span className="text-gray-400 dark:text-gray-500">
+                {item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded'
+                  ? t('myGroupBuys.refunded', { defaultValue: '환불 처리됨' })
+                  : t('myGroupBuys.refundInProgress', { defaultValue: '환불 진행중' })}
+              </span>
+            )}
+          </div>
+
+          {/* CTA for achieved */}
+          {item.ctaLabel && (
+            <div className="mt-2">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-900 text-white text-xs font-semibold">
+                {item.ctaLabel}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function SourceIcon({ source }: { source: Source }) {
+  if (source === 'voucher') return <Ticket className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  if (source === 'community') return <Store className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  return <ShoppingBag className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+}
+
+function SourceBadge({ source }: { source: Source }) {
+  const { t } = useTranslation();
+  const map: Record<Source, { label: string; cls: string }> = {
+    voucher: {
+      label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }),
+      cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
+    },
+    community: {
+      label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }),
+      cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300',
+    },
+    referral: {
+      label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }),
+      cls: 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300',
+    },
+  };
+  const info = map[source];
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${info.cls}`}>
+      {info.label}
+    </span>
+  );
+}
+
+function UnifiedStatusBadge({ item }: { item: UnifiedItem }) {
+  const { t } = useTranslation();
+  if (item.isActive) {
     return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
   }
-  if (status === 'achieved') {
+  if (item.isAchieved) {
     return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{t('myGroupBuys.statusAchieved')}</span>;
   }
-  if (status === 'cancelled') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusCanceled')}</span>;
+  // expired/refunded/cancelled
+  if (item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded') {
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
   }
   return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
 }

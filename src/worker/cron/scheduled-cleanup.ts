@@ -727,6 +727,145 @@ export async function handleScheduled(env: Env) {
     results.consignment_pending_expired = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
+  // ── 22b. 🛡️ 2026-05-12: 미달성 공동구매 자동 환불 ──
+  //   group_buy_status='expired' 이며 group_buy_current < group_buy_target 인 상품의
+  //   미사용 바우처를 일괄 환불 + 딜 복구 + 참여자에게 푸시. 멱등 (CAS for vouchers, status='cancelled' 마킹).
+  try {
+    const { results: failedGroupBuys } = await DB.prepare(`
+      SELECT id, name, price FROM products
+      WHERE group_buy_status = 'expired'
+        AND group_buy_target > 0
+        AND group_buy_current < group_buy_target
+      LIMIT 20
+    `).all<{ id: number; name: string; price: number }>();
+
+    let totalRefunded = 0;
+    for (const product of failedGroupBuys ?? []) {
+      try {
+        const { results: vouchers } = await DB.prepare(
+          `SELECT v.id, v.user_id, o.payment_method
+           FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id
+           WHERE v.product_id = ? AND v.status = 'unused'`
+        ).bind(product.id).all<{ id: number; user_id: string; payment_method: string | null }>();
+
+        const refundedUsers = new Set<string>();
+        for (const v of vouchers ?? []) {
+          // CAS: unused → refunded (멱등)
+          const cas = await DB.prepare(
+            "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
+          ).bind(v.id).run();
+          if ((cas.meta?.changes ?? 0) === 0) continue;
+
+          if (v.payment_method === 'deal_points' && v.user_id) {
+            const amount = product.price;
+            try {
+              await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
+                .bind(amount, v.user_id).run();
+              await DB.prepare(
+                "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+              ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 자동 환불: ${product.name}`).run();
+            } catch (e) { logError('[Cron] gb refund credit error', { error: String(e) }); }
+          }
+          if (v.user_id) refundedUsers.add(v.user_id);
+          totalRefunded++;
+        }
+
+        // 상품 상태를 'cancelled' 로 마킹 (멱등 가드 — 다음 cron tick 에서 재선택 안 됨)
+        await DB.prepare("UPDATE products SET group_buy_status = 'cancelled', updated_at = datetime('now') WHERE id = ?")
+          .bind(product.id).run();
+
+        // 환불받은 유저에게 알림 + 푸시
+        const { sendSystemPush } = await import('../../lib/system-push');
+        for (const uid of refundedUsers) {
+          try {
+            await DB.prepare(
+              `INSERT INTO user_notifications (user_id, type, title, message, link)
+               VALUES (?, 'group_buy_refunded', ?, ?, ?)`
+            ).bind(uid, '공구 미달성 — 환불 완료', `${product.name} 보증금이 환불됐어요`, `/user/profile`).run();
+          } catch { /* ignore */ }
+          try {
+            await sendSystemPush(env as unknown, 'user', uid, {
+              title: '공구 미달성 — 보증금 환불 완료',
+              body: `${product.name} 환불됐어요`,
+              url: '/user/profile',
+              tag: `gb-refunded-${product.id}`,
+            });
+          } catch { /* ignore */ }
+        }
+      } catch (e) { logError('[Cron] gb auto-refund per-product', { product_id: product.id, error: String(e) }); }
+    }
+    if (totalRefunded > 0) results.group_buys_auto_refunded = totalRefunded;
+  } catch (e) { logError('[Cron] group_buy_auto_refund error:', { error: String(e) }) }
+
+  // ── 22c. 🛡️ 2026-05-12: 바우처 만료 임박 리마인더 (D-7, D-1) ──
+  //   reminder_sent_at 컬럼으로 dedup. 컬럼 없으면 ALTER 로 보장.
+  try {
+    try { await DB.prepare("ALTER TABLE vouchers ADD COLUMN reminder_d7_sent_at DATETIME").run() } catch {}
+    try { await DB.prepare("ALTER TABLE vouchers ADD COLUMN reminder_d1_sent_at DATETIME").run() } catch {}
+
+    const { sendSystemPush } = await import('../../lib/system-push');
+
+    // D-7
+    const { results: d7 } = await DB.prepare(`
+      SELECT v.id, v.user_id, v.code, v.expires_at, p.name AS product_name
+      FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
+      WHERE v.status = 'unused'
+        AND v.expires_at IS NOT NULL
+        AND v.expires_at > datetime('now', '+6 days')
+        AND v.expires_at <= datetime('now', '+7 days')
+        AND v.reminder_d7_sent_at IS NULL
+      LIMIT 100
+    `).all<{ id: number; user_id: string; code: string; expires_at: string; product_name: string | null }>();
+    for (const v of d7 ?? []) {
+      try {
+        await DB.prepare(
+          `INSERT INTO user_notifications (user_id, type, title, message, link)
+           VALUES (?, 'voucher_expiring', ?, ?, ?)`
+        ).bind(v.user_id, '식사권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/user/profile').run();
+      } catch {}
+      try {
+        await sendSystemPush(env as unknown, 'user', v.user_id, {
+          title: '식사권 만료 7일 전',
+          body: `${v.product_name ?? '바우처'} 사용을 잊지 마세요`,
+          url: '/user/profile',
+          tag: `voucher-d7-${v.id}`,
+        });
+      } catch {}
+      try { await DB.prepare("UPDATE vouchers SET reminder_d7_sent_at = datetime('now') WHERE id = ?").bind(v.id).run() } catch {}
+    }
+    if ((d7?.length ?? 0) > 0) results.voucher_d7_reminders = d7!.length;
+
+    // D-1
+    const { results: d1 } = await DB.prepare(`
+      SELECT v.id, v.user_id, v.code, v.expires_at, p.name AS product_name
+      FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
+      WHERE v.status = 'unused'
+        AND v.expires_at IS NOT NULL
+        AND v.expires_at > datetime('now')
+        AND v.expires_at <= datetime('now', '+1 day')
+        AND v.reminder_d1_sent_at IS NULL
+      LIMIT 100
+    `).all<{ id: number; user_id: string; code: string; expires_at: string; product_name: string | null }>();
+    for (const v of d1 ?? []) {
+      try {
+        await DB.prepare(
+          `INSERT INTO user_notifications (user_id, type, title, message, link)
+           VALUES (?, 'voucher_expiring', ?, ?, ?)`
+        ).bind(v.user_id, '식사권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/user/profile').run();
+      } catch {}
+      try {
+        await sendSystemPush(env as unknown, 'user', v.user_id, {
+          title: '식사권 만료 1일 전',
+          body: `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`,
+          url: '/user/profile',
+          tag: `voucher-d1-${v.id}`,
+        });
+      } catch {}
+      try { await DB.prepare("UPDATE vouchers SET reminder_d1_sent_at = datetime('now') WHERE id = ?").bind(v.id).run() } catch {}
+    }
+    if ((d1?.length ?? 0) > 0) results.voucher_d1_reminders = d1!.length;
+  } catch (e) { logError('[Cron] voucher_expiry_reminder error:', { error: String(e) }) }
+
   // ── 23. 🛡️ 2026-04-28: consignment_settlements 자동 기록 (월간 윈도우) ──
   //   당월 1일 ~ 어제까지의 consignment 주문건을 분배 기록 (멱등).
   try {
