@@ -3790,7 +3790,8 @@
     "regionPickerTitle": "Choisir une région",
     "bannerAria": "Bannière : {{title}}",
     "priceWon": "{{price}} KRW",
-    "ratingSold": "★ {{rating}} · {{n}} vendus"
+    "ratingSold": "★ {{rating}} · {{n}} vendus",
+    "soldCount": "{{n}} acheté"
   },
   "browse": {
     "title": "Boutique",

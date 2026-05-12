@@ -620,7 +620,8 @@
     "regionPickerTitle": "地域選択",
     "bannerAria": "バナー: {{title}}",
     "priceWon": "{{price}}ウォン",
-    "ratingSold": "★ {{rating}} · {{n}}件購入"
+    "ratingSold": "★ {{rating}} · {{n}}件購入",
+    "soldCount": "{{n}} 購入"
   },
   "browse": {
     "title": "ショッピング",

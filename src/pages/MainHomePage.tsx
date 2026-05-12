@@ -589,8 +589,12 @@ export default function MainHomePage() {
                       {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
                       <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.price) })}</span>
                     </div>
-                    {(p.avg_rating || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.ratingSold', { rating: (p.avg_rating || 4.5).toFixed(1), n: formatNumber(p.sold_count || 0), defaultValue: '★ {{rating}} · {{n}} 구매' as string })}</p>
+                    {(p.avg_rating != null || p.sold_count) && (
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        {p.avg_rating != null && `★ ${p.avg_rating.toFixed(1)}`}
+                        {p.avg_rating != null && p.sold_count ? ' · ' : ''}
+                        {p.sold_count ? t('mainHome.soldCount', { n: formatNumber(p.sold_count), defaultValue: '{{n}} 구매' as string }) : ''}
+                      </p>
                     )}
                   </button>
                 )

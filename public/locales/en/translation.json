@@ -620,7 +620,8 @@
     "regionPickerTitle": "Choose region",
     "bannerAria": "Banner: {{title}}",
     "priceWon": "{{price}} KRW",
-    "ratingSold": "★ {{rating}} · {{n}} sold"
+    "ratingSold": "★ {{rating}} · {{n}} sold",
+    "soldCount": "{{n}} sold"
   },
   "browse": {
     "title": "Shop",
