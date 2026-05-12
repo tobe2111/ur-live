@@ -22,6 +22,7 @@ import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
 import { registerOmePush, stopOmePush, cleanupAllOmePushes, terminateOmeStream } from './ome-push'
 import { trackQuota, getQuotaUsage, QUOTA_COST } from './youtube-quota'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { requireAdmin } from '@/worker/middleware/auth'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
@@ -372,6 +373,7 @@ app.patch('/live/:id/link-broadcast', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = c.req.param('id')
+  if (!/^\d+$/.test(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const { youtube_video_id } = await c.req.json()
   if (!youtube_video_id) return c.json({ success: false, error: 'youtube_video_id required' }, 400)
 
@@ -403,6 +405,7 @@ app.get('/live/:id/detect-webcam', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   if (!c.env.YOUTUBE_CLIENT_ID || !c.env.YOUTUBE_CLIENT_SECRET) {
     return c.json({ success: false, error: 'YouTube API not configured' }, 500)
   }
@@ -470,6 +473,7 @@ app.post('/live/:id/start', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   // 🛡️ 2026-05-11 Option D: body 는 호환성 유지용으로 읽되 mode 분기 불필요 (autoStart=true 가 처리)
   await c.req.json().catch(() => ({}))
 
@@ -582,6 +586,7 @@ app.get('/live/:id/status', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
 
@@ -963,6 +968,7 @@ app.get('/live/:id/youtube-stats', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'YouTube API not configured' }, 500)
@@ -1018,6 +1024,7 @@ app.post('/live/:id/end', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
@@ -1155,6 +1162,7 @@ app.post('/live/:id/notify-followers', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   try {
     const stream = await c.env.DB.prepare(
       'SELECT id, title, status FROM live_streams WHERE id = ? AND seller_id = ?'
@@ -1266,13 +1274,7 @@ app.post('/rotate-stream-key', async (c) => {
  *
  * 🛡️ 2026-05-07: 어드민 응급 — 모든 셀러 stream key 일괄 회전 (대규모 보안 사고 대응).
  */
-app.post('/admin/rotate-all-stream-keys', async (c) => {
-  const auth = c.req.header('Authorization') || ''
-  const token = auth.replace(/^Bearer\s+/i, '')
-  const expected = c.env.JWT_SECRET || ''
-  // 관리자만 — 간이 확인 (실제로는 admin token JWT decode 권장)
-  if (!token || token.length < 8) return c.json({ success: false, error: 'admin auth required' }, 401)
-
+app.post('/admin/rotate-all-stream-keys', requireAdmin(), async (c) => {
   try {
     const { meta } = await c.env.DB.prepare(`
       UPDATE seller_youtube_oauth
@@ -1303,6 +1305,7 @@ app.post('/live/:id/refresh-thumbnail', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   try {
     const stream = await c.env.DB.prepare(
       'SELECT youtube_video_id FROM live_streams WHERE id = ? AND seller_id = ?'
@@ -1343,6 +1346,7 @@ app.get('/live/:id/chat', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const nextPageToken = c.req.query('nextPageToken') || ''
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
