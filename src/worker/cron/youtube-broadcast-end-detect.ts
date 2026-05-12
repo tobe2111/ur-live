@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * 라이브 방송 상태 동기화 — 5분 cron (시작 + 종료 자동 감지)
  *
@@ -74,7 +75,7 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
     const data = await res.json() as { items?: VideoItem[] };
     videos = data.items || [];
   } catch (err) {
-    console.error('[cron:yt-broadcast-sync] fetch failed:', (err as Error).message);
+    logError('[cron:yt-broadcast-sync] fetch failed', { error: (err as Error).message });
     return;
   }
 
@@ -149,9 +150,9 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
         `).bind(stream.seller_id, `/live/${stream.id}`).run().catch(() => { /* noop */ });
       }
     } catch (err) {
-      console.error(`[cron:yt-broadcast-sync] stream=${stream.id} update failed:`, (err as Error).message);
+      logError(`[cron:yt-broadcast-sync] stream=${stream.id} update failed:`, { error: (err as Error).message });
     }
   }
 
-  console.log(`[cron:yt-broadcast-sync] checked=${streams.length} started=${started} ended=${ended}`);
+  logInfo(`[cron:yt-broadcast-sync] checked=${streams.length} started=${started} ended=${ended}`);
 }

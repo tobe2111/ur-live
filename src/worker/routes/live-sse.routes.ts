@@ -281,10 +281,20 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
     return c.json({ success: false, error: '동일한 메시지를 반복할 수 없습니다.' }, 429)
   }
   RECENT_CHAT_CACHE.set(dupKey, { message: cleanMessage, at: nowMs })
-  // Bound memory in long-lived isolates
-  if (RECENT_CHAT_CACHE.size > 500) {
+  // 메모리 바운드: 30초 만료 우선 정리, 그래도 100개 초과 시 FIFO 강제 제거
+  if (RECENT_CHAT_CACHE.size > 100) {
     for (const [k, v] of RECENT_CHAT_CACHE) {
-      if (nowMs - v.at > 60_000) RECENT_CHAT_CACHE.delete(k)
+      if (nowMs - v.at > 30_000) RECENT_CHAT_CACHE.delete(k)
+    }
+    if (RECENT_CHAT_CACHE.size > 100) {
+      // FIFO: 가장 오래된 항목부터 제거
+      const toRemove = RECENT_CHAT_CACHE.size - 80
+      let removed = 0
+      for (const k of RECENT_CHAT_CACHE.keys()) {
+        if (removed >= toRemove) break
+        RECENT_CHAT_CACHE.delete(k)
+        removed++
+      }
     }
   }
 

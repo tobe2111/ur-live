@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * Reconciliation Cron — Daily data integrity checks & cleanup
  * Runs at 0 19 * * * (UTC 19:00 = KST 04:00)
@@ -49,7 +50,7 @@ export async function runReconciliation(env: Env): Promise<void> {
       );
       if (stockStmts.length > 0) {
         try { await DB.batch(stockStmts); } catch (e) {
-          console.error('[Reconciliation] Stock restore batch failed:', e);
+          logError('[Reconciliation] Stock restore batch failed:', { error: String(e) });
         }
       }
 
@@ -231,9 +232,9 @@ export async function runReconciliation(env: Env): Promise<void> {
   } catch { /* table may not exist */ }
 
   // Log summary (visible in Cloudflare Worker logs)
-  console.log('[Reconciliation] Completed:', JSON.stringify(results));
+  logInfo('[Reconciliation] Completed:', { details: results });
   if (details.length > 0) {
-    console.log('[Reconciliation] Details:', JSON.stringify(details));
+    logInfo('[Reconciliation] Details:', { details: details });
   }
 
   // 🛡️ 2026-04-27: 매출 mismatch 임계값 초과 시 Discord 알림.

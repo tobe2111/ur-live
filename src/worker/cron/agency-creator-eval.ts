@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * Agency Creator Auto-Evaluation Cron (Q3)
  *
@@ -170,7 +171,7 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
         `(live=${snapshot.live_hours}h, streams=${snapshot.stream_count}, revenue=${totalRevenue})`
       )
     } catch (e) {
-      console.error(`[cron:agency-creator-eval] approval=${approval.id} failed:`, e)
+      logError(`[cron:agency-creator-eval] approval=${approval.id} failed`, { error: String(e) })
     }
   }
 

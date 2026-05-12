@@ -82,7 +82,7 @@ export async function handleLiveStreamSSE(
   env: Env
 ): Promise<Response> {
   const encoder = new TextEncoder()
-  let intervalId: ReturnType<typeof setInterval> | undefined
+  let intervalId: ReturnType<typeof setTimeout> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -116,45 +116,57 @@ export async function handleLiveStreamSSE(
         console.error('[SSE] Failed to fetch initial data:', error)
       }
 
-      // 주기적 업데이트 (30초마다)
-      intervalId = setInterval(async () => {
+      // 최대 연결 시간 30분 — isolate 메모리 점유 방지
+      // 클라이언트는 'reconnect' 이벤트 수신 후 재연결
+      const MAX_CONN_MS = 30 * 60 * 1000
+      const maxConnTimer = setTimeout(() => {
         try {
-          // 시청자 수 업데이트
-          const stats = await env.DB.prepare(`
-            SELECT 
-              viewer_count,
-              like_count,
-              comment_count
-            FROM live_streams
-            WHERE id = ?
-          `).bind(streamId).first<{
-            viewer_count: number
-            like_count: number
-            comment_count: number
-          }>()
+          controller.enqueue(encoder.encode('event: reconnect\ndata: {}\n\n'))
+          controller.close()
+        } catch { /* already closed */ }
+      }, MAX_CONN_MS)
 
-          if (stats) {
-            const message: SSEMessage = {
-              type: 'viewer_count',
-              data: stats,
-              timestamp: new Date().toISOString()
+      // 주기적 업데이트 — jitter ±5초로 동시 DB hit 분산
+      const BASE_INTERVAL = 30_000
+      const jitter = () => BASE_INTERVAL + (Math.random() * 10_000 - 5_000)
+
+      const scheduleNext = () => {
+        intervalId = setTimeout(async () => {
+          try {
+            const stats = await env.DB.prepare(`
+              SELECT viewer_count, like_count, comment_count
+              FROM live_streams WHERE id = ?
+            `).bind(streamId).first<{
+              viewer_count: number
+              like_count: number
+              comment_count: number
+            }>()
+
+            if (stats) {
+              const message: SSEMessage = {
+                type: 'viewer_count',
+                data: stats,
+                timestamp: new Date().toISOString()
+              }
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
             }
-            const data = JSON.stringify(message)
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+            controller.enqueue(encoder.encode(': ping\n\n'))
+          } catch {
+            // 조용히 무시 — 연결이 이미 닫혔을 수 있음
           }
-
-          // Keep-alive ping
-          controller.enqueue(encoder.encode(': ping\n\n'))
-        } catch (error) {
-          console.error('[SSE] Update failed:', error)
-        }
-      }, 30000) // 30초
-    },
-    
-    cancel() {
-      if (intervalId) {
-        clearInterval(intervalId)
+          scheduleNext()
+        }, jitter()) as unknown as ReturnType<typeof setInterval>
       }
+      scheduleNext()
+
+      // cancel()에서 접근할 수 있도록 maxConnTimer 저장
+      ;(controller as any)._maxConnTimer = maxConnTimer
+    },
+
+    cancel() {
+      if (intervalId) clearInterval(intervalId)
+      const t = (arguments[0] as any)?._maxConnTimer
+      if (t) clearTimeout(t)
     }
   })
 
@@ -179,7 +191,7 @@ export async function handleChatSSE(
 ): Promise<Response> {
   const encoder = new TextEncoder()
   let lastMessageId = 0
-  let intervalId: ReturnType<typeof setInterval> | undefined
+  let intervalId: ReturnType<typeof setTimeout> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -220,48 +232,49 @@ export async function handleChatSSE(
         console.error('[SSE Chat] Failed to fetch initial messages:', error)
       }
 
-      // 새 메시지 폴링 (5초마다)
-      intervalId = setInterval(async () => {
+      // 최대 연결 시간 30분
+      const maxConnTimer = setTimeout(() => {
         try {
-          const newMessages = await env.DB.prepare(`
-            SELECT 
-              id,
-              user_id,
-              user_name,
-              user_avatar,
-              message,
-              is_seller,
-              is_admin,
-              created_at
-            FROM chat_messages
-            WHERE live_stream_id = ? AND id > ?
-            ORDER BY id ASC
-          `).bind(streamId, lastMessageId).all()
+          controller.enqueue(encoder.encode('event: reconnect\ndata: {}\n\n'))
+          controller.close()
+        } catch { /* already closed */ }
+      }, 30 * 60 * 1000)
 
-          if (newMessages.results.length > 0) {
-            lastMessageId = (newMessages.results[newMessages.results.length - 1] as any).id
+      // 새 메시지 폴링 — jitter ±1초로 동시 DB hit 분산
+      const BASE_POLL = 5_000
+      const scheduleNext = () => {
+        intervalId = setTimeout(async () => {
+          try {
+            const newMessages = await env.DB.prepare(`
+              SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
+              FROM chat_messages
+              WHERE live_stream_id = ? AND id > ?
+              ORDER BY id ASC
+            `).bind(streamId, lastMessageId).all()
 
-            const message: SSEMessage = {
-              type: 'chat',
-              data: newMessages.results,
-              timestamp: new Date().toISOString()
+            if (newMessages.results.length > 0) {
+              lastMessageId = (newMessages.results[newMessages.results.length - 1] as any).id
+              const message: SSEMessage = {
+                type: 'chat',
+                data: newMessages.results,
+                timestamp: new Date().toISOString()
+              }
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
+            } else {
+              controller.enqueue(encoder.encode(': ping\n\n'))
             }
-            const data = JSON.stringify(message)
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-          } else {
-            // Keep-alive
-            controller.enqueue(encoder.encode(': ping\n\n'))
-          }
-        } catch (error) {
-          console.error('[SSE Chat] Polling failed:', error)
-        }
-      }, 5000) // 5초
-    },
-    
-    cancel() {
-      if (intervalId) {
-        clearInterval(intervalId)
+          } catch { /* 연결 종료 시 무시 */ }
+          scheduleNext()
+        }, BASE_POLL + (Math.random() * 2_000 - 1_000)) as unknown as ReturnType<typeof setInterval>
       }
+      scheduleNext()
+      ;(controller as any)._maxConnTimer = maxConnTimer
+    },
+
+    cancel() {
+      if (intervalId) clearTimeout(intervalId)
+      const t = (arguments[0] as any)?._maxConnTimer
+      if (t) clearTimeout(t)
     }
   })
 

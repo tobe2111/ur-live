@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * D1 → R2 자동 백업
  *
@@ -59,35 +60,35 @@ async function dumpDatabase(DB: D1Database): Promise<string> {
         lines.push('');
       }
 
-      // 데이터 dump (큰 테이블은 batch)
-      // 🛡️ 2026-04-30: ORDER BY rowid 추가 — 안정 페이징 (CLAUDE.md 규칙)
-      //   SQLite 의 rowid 는 모든 테이블 자동 보유, INSERT 순서 ≈ 보장
+      // cursor-based pagination — OFFSET 풀스캔 대신 rowid > lastRowId
       const BATCH_SIZE = 500;
-      let offset = 0;
+      let lastRowId = 0;
       while (true) {
-        const rows = await DB.prepare(`SELECT * FROM ${table} ORDER BY rowid LIMIT ${BATCH_SIZE} OFFSET ${offset}`).all();
+        const rows = await DB.prepare(
+          `SELECT rowid, * FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ${BATCH_SIZE}`
+        ).bind(lastRowId).all();
         const results = rows.results || [];
         if (results.length === 0) break;
 
         for (const row of results) {
-          const cols = Object.keys(row);
-          const vals = Object.values(row).map((v) => {
+          const { rowid: _rowid, ...data } = row as Record<string, unknown>;
+          const cols = Object.keys(data);
+          const vals = Object.values(data).map((v) => {
             if (v === null || v === undefined) return 'NULL';
             if (typeof v === 'number') return String(v);
             if (typeof v === 'boolean') return v ? '1' : '0';
-            // SQLite escape: ' → ''
             const escaped = String(v).replace(/'/g, "''");
             return `'${escaped}'`;
           });
           lines.push(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${vals.join(', ')});`);
+          lastRowId = Number(_rowid);
         }
 
         if (results.length < BATCH_SIZE) break;
-        offset += BATCH_SIZE;
       }
       lines.push('');
     } catch (err) {
-      console.error(`[Backup] Table ${table} dump failed:`, err);
+      logError(`[Backup] Table ${table} dump failed`, { error: String(err) });
       lines.push(`-- ERROR dumping table ${table}: ${(err as Error).message}`);
     }
   }
@@ -111,7 +112,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
   }
 
   try {
-    console.log('[D1 Backup] Starting dump...');
+    logInfo('[D1 Backup] Starting dump...');
     const dump = await dumpDatabase(DB);
     const size = new TextEncoder().encode(dump).length;
 
@@ -122,7 +123,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
       httpMetadata: { contentType: 'application/sql' },
     });
 
-    console.log(`[D1 Backup] ✅ Saved ${key} (${(size / 1024).toFixed(1)} KB)`);
+    logInfo(`[D1 Backup] ✅ Saved ${key} (${(size / 1024).toFixed(1)} KB)`);
 
     // Discord 알림 (있으면)
     const webhook = env.DISCORD_WEBHOOK_URL;
@@ -141,7 +142,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
     return { success: true, key, size };
   } catch (err) {
     const msg = (err as Error)?.message || String(err);
-    console.error('[D1 Backup] Failed:', msg);
+    logError('[D1 Backup] Failed:', { error: String(msg) });
 
     // Discord 실패 알림
     const webhook = env.DISCORD_WEBHOOK_URL;

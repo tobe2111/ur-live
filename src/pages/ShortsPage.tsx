@@ -259,16 +259,26 @@ export default function ShortsPage() {
                   <div
                     id={`shorts-player-${index}`}
                     className="w-full h-full [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!min-w-full [&_iframe]:!aspect-video"
-                    ref={() => {
-                      // @ts-ignore
-                      if (window.YT?.Player) {
-                        setTimeout(() => initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index), 100)
-                      } else {
-                        // @ts-ignore
-                        if (!window.youtubeCallbacks) window.youtubeCallbacks = []
-                        // @ts-ignore
-                        window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index))
-                      }
+                    ref={(el) => {
+                      if (!el) return
+                      // IntersectionObserver: 화면에 실제로 보일 때만 플레이어 초기화
+                      const observer = new IntersectionObserver(
+                        ([entry]) => {
+                          if (!entry.isIntersecting) return
+                          observer.disconnect()
+                          // @ts-ignore
+                          if (window.YT?.Player) {
+                            initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index)
+                          } else {
+                            // @ts-ignore
+                            if (!window.youtubeCallbacks) window.youtubeCallbacks = []
+                            // @ts-ignore
+                            window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index))
+                          }
+                        },
+                        { threshold: 0.5 }
+                      )
+                      observer.observe(el)
                     }}
                   />
                   {/* 썸네일 배경 (플레이어 로드 전) */}

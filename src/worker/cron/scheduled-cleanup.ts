@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * 스케줄 작업 (Cloudflare Cron Triggers)
  * 5분마다 실행 — 만료/정리/자동 상태 전환
@@ -18,7 +19,7 @@ export async function handleScheduled(env: Env) {
         AND updated_at < datetime('now', '-30 minutes')
     `).run();
     results.stale_streams_ended = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] stale_streams error:', e) }
+  } catch (e) { logError('[Cron] stale_streams error:', { error: String(e) }) }
 
   // ── 1b. dead 웹캠 방송 정리 (2026-05-07) ──
   //   셀러가 웹캠 모드로 시작했지만 YouTube Studio 에서 방송 연결을 완료하지 않은 케이스.
@@ -33,7 +34,7 @@ export async function handleScheduled(env: Env) {
         AND created_at < datetime('now', '-30 minutes')
     `).run();
     results.dead_webcam_streams_cancelled = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] dead_webcam_streams error:', e) }
+  } catch (e) { logError('[Cron] dead_webcam_streams error:', { error: String(e) }) }
 
   // ── 1c. zombie scheduled 정리 (2026-05-11) ──
   //   broadcast/video_id 는 만들어졌는데 셀러가 송출 시작 안 했거나 OME 미연결로 admission webhook 이
@@ -48,7 +49,7 @@ export async function handleScheduled(env: Env) {
         AND created_at < datetime('now', '-2 hours')
     `).run();
     results.zombie_scheduled_ended = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] zombie_scheduled error:', e) }
+  } catch (e) { logError('[Cron] zombie_scheduled error:', { error: String(e) }) }
 
   // ── 1d. zombie OME push 정리 (2026-05-11) ──
   //   셀러가 브라우저를 갑자기 닫는 등 closing event 가 안 오면 OME push 가 영원히 남음.
@@ -86,7 +87,7 @@ export async function handleScheduled(env: Env) {
         removed++
       }
       results.zombie_ome_pushes_cleaned = removed
-    } catch (e) { console.error('[Cron] zombie_ome_pushes error:', e) }
+    } catch (e) { logError('[Cron] zombie_ome_pushes error:', { error: String(e) }) }
   }
 
   // ── 2. 미결제 주문: 24시간 후 자동 취소 + 재고 복구 ──
@@ -122,11 +123,11 @@ export async function handleScheduled(env: Env) {
             `UPDATE order_items SET status = 'CANCELLED' WHERE order_id IN (${ph})`
           ).bind(...orderIds)
         );
-        try { await DB.batch(stmts); } catch (e) { console.error('[Cron] stock restore batch', e); }
+        try { await DB.batch(stmts); } catch (e) { logError('[Cron] stock restore batch', { error: String(e) }); }
       }
       results.pending_orders_cancelled = cancelledOrders.length;
     }
-  } catch (e) { console.error('[Cron] pending_orders error:', e) }
+  } catch (e) { logError('[Cron] pending_orders error:', { error: String(e) }) }
 
   // ── 3. 공동구매: 마감 지난 상품 자동 만료 (6종 카테고리 전체) ──
   // 🛡️ 2026-05-04: 이전엔 meal_voucher 만 → API request 시점에서도 UPDATE 했지만
@@ -141,7 +142,7 @@ export async function handleScheduled(env: Env) {
         AND group_buy_deadline < datetime('now')
     `).run();
     results.group_buys_expired = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] group_buys error:', e) }
+  } catch (e) { logError('[Cron] group_buys error:', { error: String(e) }) }
 
   // ── 4. 바우처: 만료일 지난 바우처 자동 만료 ──
   try {
@@ -153,7 +154,7 @@ export async function handleScheduled(env: Env) {
         AND expires_at < datetime('now')
     `).run();
     results.vouchers_expired = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] vouchers error:', e) }
+  } catch (e) { logError('[Cron] vouchers error:', { error: String(e) }) }
 
   // ── 5. 경매: 시간 초과 자동 종료 + hold 해제 + winner 알림 ──
   // 🛡️ 2026-04-28: 단순 status 변경에서 → hold 정리 + 낙찰자 결제 안내까지 통합
@@ -184,7 +185,7 @@ export async function handleScheduled(env: Env) {
             "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
           ).bind(a.id).run();
         }
-      } catch (e) { console.error('[Cron] auction hold release error:', a.id, e) }
+      } catch (e) { logError('[Cron] auction hold release error', { auctionId: a.id, error: String(e) }) }
 
       // winner 결제 안내 알림 (push + alimtalk best-effort)
       if (a.winner_user_id) {
@@ -210,7 +211,7 @@ export async function handleScheduled(env: Env) {
         } catch { /* ignore */ }
       }
     }
-  } catch (e) { console.error('[Cron] auctions error:', e) }
+  } catch (e) { logError('[Cron] auctions error:', { error: String(e) }) }
 
   // ── 6. 타임딜: 만료 자동 종료 ──
   try {
@@ -227,7 +228,7 @@ export async function handleScheduled(env: Env) {
         AND claimed_count >= max_claims
     `).run();
     results.timedeals_ended = (ended.changes ?? 0) + (soldout.changes ?? 0);
-  } catch (e) { console.error('[Cron] timedeals error:', e) }
+  } catch (e) { logError('[Cron] timedeals error:', { error: String(e) }) }
 
   // ── 7. 친구 초대 공동구매: 48시간 만료 ──
   try {
@@ -238,7 +239,7 @@ export async function handleScheduled(env: Env) {
         AND expires_at < datetime('now')
     `).run();
     results.referrals_expired = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] referrals error:', e) }
+  } catch (e) { logError('[Cron] referrals error:', { error: String(e) }) }
 
   // ── 8. 알림 정리: 90일 이상 된 알림 삭제 ──
   try {
@@ -250,7 +251,7 @@ export async function handleScheduled(env: Env) {
       DELETE FROM dashboard_notifications
       WHERE created_at < datetime('now', '-90 days')
     `).run();
-  } catch (e) { console.error('[Cron] notifications_cleanup error:', e) }
+  } catch (e) { logError('[Cron] notifications_cleanup error:', { error: String(e) }) }
 
   // ── 9. 만료된 리프레시 토큰 정리 ──
   try {
@@ -258,7 +259,7 @@ export async function handleScheduled(env: Env) {
       DELETE FROM refresh_tokens
       WHERE expires_at < datetime('now')
     `).run();
-  } catch (e) { console.error('[Cron] token_cleanup error:', e) }
+  } catch (e) { logError('[Cron] token_cleanup error:', { error: String(e) }) }
 
   // ── 9b. 만료된 idempotency 키 정리 (테이블이 존재할 때만) ──
   // idempotentWrite() 유틸리티가 저장하는 결과 캐시를 주기적으로 청소한다.
@@ -284,7 +285,7 @@ export async function handleScheduled(env: Env) {
         AND (settlement_status IS NULL OR settlement_status = 'pending')
     `).run();
     results.auto_confirmed = meta.changes ?? 0;
-  } catch (e) { console.error('[Cron] auto_confirm error:', e) }
+  } catch (e) { logError('[Cron] auto_confirm error:', { error: String(e) }) }
 
   // ── 11. 예정 방송 30분 전 알림 발송 ──
   // 🛡️ 2026-04-22: LIMIT 100 추가 — 1000+ scheduled streams 시 OOM 방어
@@ -339,7 +340,7 @@ export async function handleScheduled(env: Env) {
       }
       results.pre_notifications_sent = upcomingStreams.length;
     }
-  } catch (e) { console.error('[Cron] pre_notifications error:', e) }
+  } catch (e) { logError('[Cron] pre_notifications error:', { error: String(e) }) }
 
   // ── 11b. 예정 방송 5분 전 긴급 알림 ──
   try {
@@ -372,7 +373,7 @@ export async function handleScheduled(env: Env) {
       } catch {}
       await DB.prepare("UPDATE live_streams SET pre_notified_5min = 1 WHERE id = ?").bind(stream.id).run()
     }
-  } catch (e) { console.error('[Cron] 5min_notifications error:', e) }
+  } catch (e) { logError('[Cron] 5min_notifications error:', { error: String(e) }) }
 
   // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
   // 24시간 시간 윈도우 기반 dedup: 제품명이 title에 포함되는지로 확인.
@@ -413,7 +414,7 @@ export async function handleScheduled(env: Env) {
       }
       results.low_stock_alerts = alertsSent;
     }
-  } catch (e) { console.error('[Cron] low_stock error:', e) }
+  } catch (e) { logError('[Cron] low_stock error:', { error: String(e) }) }
 
   // ── 13. 쿠폰 만료 임박 알림 (D-1, 소비자) ──
   try {
@@ -449,7 +450,7 @@ export async function handleScheduled(env: Env) {
         }
       }
     }
-  } catch (e) { console.error('[Cron] coupon_expiry error:', e) }
+  } catch (e) { logError('[Cron] coupon_expiry error:', { error: String(e) }) }
 
   // ── 14. 공동구매 달성 알림 (셀러 + 참여자) ──
   try {
@@ -472,13 +473,13 @@ export async function handleScheduled(env: Env) {
             .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name).run();
           notified++;
         } catch (notifyErr) {
-          console.error(`[Cron] group_buy_achieved notify failed for seller ${g.seller_id}:`, notifyErr);
+          logError(`[Cron] group_buy_achieved notify failed for seller ${g.seller_id}`, { error: String(notifyErr) });
         }
       }
       results.group_buy_achieved = achievedGroups.length;
       results.group_buy_notified = notified;
     }
-  } catch (e) { console.error('[Cron] group_buy_achieved error:', e) }
+  } catch (e) { logError('[Cron] group_buy_achieved error:', { error: String(e) }) }
 
   // ── 15. csp_violations 정리: 30일 경과 (DoS 방어 + DB 부피 관리) ──
   // 🛡️ 2026-04-22: CSP 보고가 너무 많이 쌓이면 DB 비용 + 분석 노이즈
@@ -592,7 +593,7 @@ export async function handleScheduled(env: Env) {
       results.gifts_refunded = refunded;
       if (failed > 0) results.gifts_refund_failed = failed;
     }
-  } catch (e) { console.error('[Cron] gift refund error:', e); }
+  } catch (e) { logError('[Cron] gift refund error:', { error: String(e) }); }
 
   // ── 21. 🛡️ 2026-04-28: pending 상태 gift 자동 정리 (24시간 결제 미완료) ──
   //   토스 결제 confirm 호출 안 된 채 24시간 경과 → refunded (실 결제 안 된 상태)
@@ -630,8 +631,8 @@ export async function handleScheduled(env: Env) {
       results.consignment_settlements_recorded = r.recorded;
       if (r.failed > 0) results.consignment_settlements_failed = r.failed;
     }
-  } catch (e) { console.error('[Cron] consignment_settlements record error:', e); }
+  } catch (e) { logError('[Cron] consignment_settlements record error:', { error: String(e) }); }
 
-  console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
+  logInfo('[Cron] Scheduled cleanup:', { details: results });
   return results;
 }

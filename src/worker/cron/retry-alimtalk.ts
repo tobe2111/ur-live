@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 cron.
  *
@@ -80,7 +81,7 @@ export async function handleRetryAlimtalk(env: Env) {
     }
 
     if (env.ENVIRONMENT !== 'production' || retried > 0) {
-      console.log(`[cron:retry-alimtalk] retried=${retried} succeeded=${succeeded}`)
+      logInfo(`[cron:retry-alimtalk] retried=${retried} succeeded=${succeeded}`)
     }
   } catch (err) {
     await reportCronFailure(env, 'retry-alimtalk', err, undefined, 'warning')

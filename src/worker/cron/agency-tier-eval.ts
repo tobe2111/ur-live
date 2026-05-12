@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../utils/logger'
 /**
  * Agency Tier Evaluation Cron (Q1)
  *
@@ -84,7 +85,7 @@ export async function handleAgencyTierEval(env: Env): Promise<{
       ).first<{ revenue: number; donations: number }>()
       lastMonthRevenue = (row?.revenue ?? 0) + (row?.donations ?? 0)
     } catch (e) {
-      console.error(`[cron:agency-tier-eval] revenue query failed for agency=${agency.id}:`, e)
+      logError(`[cron:agency-tier-eval] revenue query failed for agency=${agency.id}`, { error: String(e) })
       continue
     }
 
@@ -120,7 +121,7 @@ export async function handleAgencyTierEval(env: Env): Promise<{
       ).run().catch(swallow('worker:cron:agency-tier-eval'))
 
       changed++
-      console.log(`[cron:agency-tier-eval] agency=${agency.id} ${agency.tier} → ${newTier} (revenue=${lastMonthRevenue}, age=${ageDays}d)`)
+      logInfo(`[cron:agency-tier-eval] agency=${agency.id} ${agency.tier} → ${newTier} (revenue=${lastMonthRevenue}, age=${ageDays}d)`)
     } else {
       // 등급 동일해도 평가 시각만 업데이트
       await DB.prepare(

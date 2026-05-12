@@ -136,7 +136,7 @@ app.get('/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windo
   if (!clientId || !clientSecret) return c.json({ success: false, error: 'NAVER API keys not configured' }, 500);
 
   const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
-  const cacheKey = `naver:img:${query.slice(0, 200)}:${display}`;
+  const cacheKey = `naver:img:${query.slice(0, 200)}`;
   if (KV) {
     const cached = await KV.get(cacheKey, 'json').catch(() => null);
     if (cached) return c.json({ success: true, data: cached, cached: true });

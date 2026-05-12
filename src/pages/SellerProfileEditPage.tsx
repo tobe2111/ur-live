@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
@@ -33,6 +33,7 @@ export default function SellerProfileEditPage() {
   const [profile, setProfile] = useState<SellerProfile | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   // Form states - separated into sections
   const [profileData, setProfileData] = useState({
@@ -79,6 +80,11 @@ export default function SellerProfileEditPage() {
     website_url: '',
     kakao_chat_link: '',
   })
+
+  // 언마운트 시 setTimeout 정리 (setState on unmounted component 방지)
+  useEffect(() => {
+    return () => { if (successTimerRef.current) clearTimeout(successTimerRef.current) }
+  }, [])
 
   useEffect(() => {
     // Check authentication
@@ -174,7 +180,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage(t('seller.profileUpdateSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update profile:', error)
@@ -196,7 +202,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage(t('seller.businessUpdateSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update business info:', error)
@@ -218,7 +224,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage(t('seller.personalUpdateSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to update personal info:', error)
@@ -262,7 +268,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setSuccessMessage(t('seller.passwordChangeSuccess'))
         setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to change password:', error)
@@ -305,7 +311,7 @@ export default function SellerProfileEditPage() {
       if (response.data.success) {
         setProfileData({ ...profileData, profile_image: response.data.url })
         setSuccessMessage(t('seller.imageUploadSuccess'))
-        setTimeout(() => setSuccessMessage(''), 3000)
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to upload image:', error)

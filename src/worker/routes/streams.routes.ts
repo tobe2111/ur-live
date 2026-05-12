@@ -451,7 +451,11 @@ streamsRouter.post('/:id/current-product', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
-    const { productId } = await c.req.json<{ productId: number }>();
+    const body = await c.req.json<{ productId?: unknown }>();
+    const productId = body.productId;
+    if (productId !== null && productId !== undefined && (!Number.isInteger(productId) || (productId as number) <= 0)) {
+      return c.json({ success: false, error: 'Invalid productId' }, 400);
+    }
 
     // 라이브 소유 검증 (admin 은 모든 라이브 가능)
     if (userType === 'seller') {
@@ -489,6 +493,16 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
   try {
     const db = c.env.DB;
     const streamId = c.req.param('id');
+    const KV = c.env.SESSION_KV;
+    const kvKey = `vc:${streamId}`;
+
+    // KV 30초 캐시 — COUNT(*) 풀스캔 횟수 대폭 감소
+    if (KV) {
+      const cached = await KV.get(kvKey, 'json').catch(() => null) as Record<string, unknown> | null;
+      if (cached) {
+        return c.json({ success: true, data: cached, cached: true });
+      }
+    }
 
     let live = 0;
     let peak = 0;
@@ -512,7 +526,6 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
       peak = Number(row?.peak_viewers ?? 0);
       manual = row?.manual_viewer_count ?? null;
     } catch {
-      // Fallback: 컬럼 누락 환경 대응
       try {
         const r = await db
           .prepare('SELECT current_viewers FROM live_streams WHERE id = ?')
@@ -523,15 +536,19 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
     }
 
     const display = manual !== null ? manual : live;
-    return c.json({
-      success: true,
-      data: {
-        viewer_count: display,
-        live_viewers: live,
-        peak_viewers: peak,
-        manual_viewer_count: manual,
-      },
-    });
+    const result = {
+      viewer_count: display,
+      live_viewers: live,
+      peak_viewers: peak,
+      manual_viewer_count: manual,
+    };
+
+    // 30초 KV 캐시 저장 (write 실패는 치명적이지 않음)
+    if (KV) {
+      KV.put(kvKey, JSON.stringify(result), { expirationTtl: 30 }).catch(() => {});
+    }
+
+    return c.json({ success: true, data: result });
   } catch (err: unknown) {
     console.error('[Streams] Viewer count error:', err);
     return c.json({ success: false, error: 'Failed to fetch viewer count' }, 500);
