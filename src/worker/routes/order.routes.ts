@@ -28,6 +28,14 @@ const ordersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 ordersRouter.use('*', requireAuth());
 
 /**
+ * 🛡️ Order ID 포맷 검증 (스키마 이중화: INTEGER or TEXT/nanoid).
+ * 영숫자 + 하이픈 + 언더스코어, 1~64자만 허용 — 제어문자/SQL 메타문자 차단.
+ */
+function isValidOrderId(id: unknown): id is string {
+  return typeof id === 'string' && id.length > 0 && id.length <= 64 && /^[A-Za-z0-9_-]+$/.test(id);
+}
+
+/**
  * Firebase UID → DB user_id 변환 헬퍼
  * users 테이블에서 firebase_uid로 정수 id를 조회
  * 없으면 Firebase UID 자체를 fallback으로 사용 (새 스키마 호환)
@@ -73,6 +81,13 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
     const body = await c.req.json();
+
+    // 🛡️ Idempotency-Key 헤더가 있으면 body 의 idempotency_key 보다 우선 적용 (HTTP 표준 호환)
+    const headerIdempotencyKey = c.req.header('Idempotency-Key') || c.req.header('idempotency-key');
+    if (headerIdempotencyKey && typeof headerIdempotencyKey === 'string' && headerIdempotencyKey.length > 0 && headerIdempotencyKey.length <= 128) {
+      body.idempotency_key = headerIdempotencyKey;
+    }
+
     const parsed = createOrderSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({
@@ -387,6 +402,9 @@ ordersRouter.get('/:id', async (c) => {
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
     const orderId = c.req.param('id')!;
+    if (!isValidOrderId(orderId)) {
+      return c.json({ success: false, error: 'Invalid order ID' }, 400);
+    }
     const orderRepo = new OrderRepository(c.env.DB);
 
     const order = await orderRepo.findById(orderId);
@@ -421,6 +439,12 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
 
     if (!body.order_id || !body.reason) {
       return c.json({ success: false, error: 'order_id, reason 필드가 필요합니다' }, 400);
+    }
+    if (!isValidOrderId(body.order_id)) {
+      return c.json({ success: false, error: 'Invalid order ID' }, 400);
+    }
+    if (typeof body.reason !== 'string' || body.reason.length > 500) {
+      return c.json({ success: false, error: 'reason은 500자 이하 문자열이어야 합니다' }, 400);
     }
 
     const orderRepo = new OrderRepository(c.env.DB);
@@ -588,8 +612,14 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
     const orderId = c.req.param('id')!;
+    if (!isValidOrderId(orderId)) {
+      return c.json({ success: false, error: 'Invalid order ID' }, 400);
+    }
     const body = await c.req.json<{ reason?: string; cancel_amount?: number }>();
     const reason = body.reason ?? '고객 요청';
+    if (typeof reason !== 'string' || reason.length > 500) {
+      return c.json({ success: false, error: 'reason은 500자 이하 문자열이어야 합니다' }, 400);
+    }
     const cancelAmount = body.cancel_amount;
 
     const orderRepo = new OrderRepository(c.env.DB);
