@@ -172,43 +172,62 @@ export async function handleScheduled(env: Env) {
 
     results.auctions_ended = endedAuctions?.length ?? 0;
 
-    // 2) 각 경매별 hold 정리 + winner 알림 (best-effort, 실패해도 다른 경매 영향 0)
-    for (const a of endedAuctions || []) {
-      // hold 해제: winner 외 모든 active hold (winner 는 결제 완료 시 consumed 처리)
-      try {
-        if (a.winner_user_id) {
-          await DB.prepare(
-            "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
-          ).bind(a.id, a.winner_user_id).run();
-        } else {
-          await DB.prepare(
-            "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
-          ).bind(a.id).run();
-        }
-      } catch (e) { logError('[Cron] auction hold release error', { auctionId: a.id, error: String(e) }) }
-
-      // winner 결제 안내 알림 (push + alimtalk best-effort)
-      if (a.winner_user_id) {
+    if ((endedAuctions?.length ?? 0) > 0) {
+      // 낙찰자 ID 목록을 한 번에 조회 (N+1 phone SELECT 제거)
+      const winnerIds = (endedAuctions || [])
+        .map(a => a.winner_user_id)
+        .filter((id): id is string => !!id);
+      const phoneMap = new Map<string, string>();
+      if (winnerIds.length > 0) {
         try {
-          const { sendSystemPush } = await import('../../lib/system-push');
-          sendSystemPush(env, 'user', a.winner_user_id, {
-            title: '경매 낙찰 🎉',
-            body: `${a.title} ${Number(a.current_price ?? 0).toLocaleString('ko-KR')}원에 낙찰됐어요. 결제를 진행해주세요.`,
-            url: `/live/${a.stream_id}`,
-          }).catch(swallow('scheduled-cleanup:auction-winner-push'));
-        } catch { /* ignore */ }
-
-        try {
-          const phoneRow = await DB.prepare(
-            'SELECT phone FROM users WHERE CAST(id AS TEXT) = ? OR firebase_uid = ? LIMIT 1'
-          ).bind(a.winner_user_id, a.winner_user_id).first<{ phone: string | null }>();
-          if (phoneRow?.phone) {
-            const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
-            sendSystemAlimtalk(env, phoneRow.phone, 'auction_won',
-              `[유어딜] 경매 낙찰 안내\n${a.title}\n낙찰가: ${Number(a.current_price ?? 0).toLocaleString('ko-KR')}원\n결제를 진행해주세요.`
-            ).catch(swallow('scheduled-cleanup:auction-won-alimtalk'));
+          const placeholders = winnerIds.map(() => '?').join(', ');
+          const { results: phoneRows } = await DB.prepare(
+            `SELECT CAST(id AS TEXT) AS uid, firebase_uid, phone FROM users
+             WHERE CAST(id AS TEXT) IN (${placeholders}) OR firebase_uid IN (${placeholders})`
+          ).bind(...winnerIds, ...winnerIds).all<{ uid: string; firebase_uid: string | null; phone: string | null }>();
+          for (const row of phoneRows ?? []) {
+            const key = winnerIds.find(id => id === row.uid || id === row.firebase_uid);
+            if (key && row.phone) phoneMap.set(key, row.phone);
           }
-        } catch { /* ignore */ }
+        } catch { /* best-effort */ }
+      }
+
+      // 2) 각 경매별 hold 정리 + winner 알림 (best-effort, 실패해도 다른 경매 영향 0)
+      for (const a of endedAuctions || []) {
+        // hold 해제: winner 외 모든 active hold (winner 는 결제 완료 시 consumed 처리)
+        try {
+          if (a.winner_user_id) {
+            await DB.prepare(
+              "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
+            ).bind(a.id, a.winner_user_id).run();
+          } else {
+            await DB.prepare(
+              "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
+            ).bind(a.id).run();
+          }
+        } catch (e) { logError('[Cron] auction hold release error', { auctionId: a.id, error: String(e) }) }
+
+        // winner 결제 안내 알림 (push + alimtalk best-effort)
+        if (a.winner_user_id) {
+          try {
+            const { sendSystemPush } = await import('../../lib/system-push');
+            sendSystemPush(env, 'user', a.winner_user_id, {
+              title: '경매 낙찰 🎉',
+              body: `${a.title} ${Number(a.current_price ?? 0).toLocaleString('ko-KR')}원에 낙찰됐어요. 결제를 진행해주세요.`,
+              url: `/live/${a.stream_id}`,
+            }).catch(swallow('scheduled-cleanup:auction-winner-push'));
+          } catch { /* ignore */ }
+
+          try {
+            const phone = phoneMap.get(a.winner_user_id);
+            if (phone) {
+              const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
+              sendSystemAlimtalk(env, phone, 'auction_won',
+                `[유어딜] 경매 낙찰 안내\n${a.title}\n낙찰가: ${Number(a.current_price ?? 0).toLocaleString('ko-KR')}원\n결제를 진행해주세요.`
+              ).catch(swallow('scheduled-cleanup:auction-won-alimtalk'));
+            }
+          } catch { /* ignore */ }
+        }
       }
     }
   } catch (e) { logError('[Cron] auctions error:', { error: String(e) }) }

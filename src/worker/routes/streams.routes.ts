@@ -544,9 +544,9 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
       manual_viewer_count: manual,
     };
 
-    // 30초 KV 캐시 저장 (write 실패는 치명적이지 않음)
+    // 30초 KV 캐시 저장 (waitUntil: 응답 후 비동기 write, Worker 종료 후에도 완료 보장)
     if (KV) {
-      KV.put(kvKey, JSON.stringify(result), { expirationTtl: 30 }).catch(() => {});
+      c.executionCtx?.waitUntil?.(KV.put(kvKey, JSON.stringify(result), { expirationTtl: 30 }).catch(() => {}));
     }
 
     return c.json({ success: true, data: result });
@@ -662,52 +662,48 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
         .run();
     } catch { /* ignore */ }
 
-    // 활성 세션 수 재계산 → current_viewers + peak_viewers 업데이트 (신규 세션일 때만)
+    // 활성 세션 수 재계산 → current_viewers + peak_viewers 업데이트
+    // SELECT COUNT(*) + UPDATE 2-trip → UPDATE with subquery 1-trip (D1 read 1회 절감)
     if (isNewSession) {
-      try {
-        const row = await db
-          .prepare(
-            `SELECT COUNT(*) as live FROM live_stream_views
-             WHERE live_stream_id = ?
-               AND last_heartbeat > datetime('now', '-120 seconds')
-               AND left_at IS NULL`
-          )
-          .bind(streamId)
-          .first<{ live: number }>();
-        const liveNow = Number(row?.live ?? 0);
-        await db
-          .prepare(
-            `UPDATE live_streams
-             SET current_viewers = ?,
-                 peak_viewers = MAX(COALESCE(peak_viewers, 0), ?),
-                 total_viewers = COALESCE(total_viewers, 0) + 1,
-                 updated_at = datetime('now')
-             WHERE id = ?`
-          )
-          .bind(liveNow, liveNow, streamId)
-          .run()
-          .catch(swallow('streams:viewer-bump'));
-      } catch { /* non-fatal */ }
+      await db
+        .prepare(
+          `UPDATE live_streams
+           SET current_viewers = (
+                 SELECT COUNT(*) FROM live_stream_views
+                 WHERE live_stream_id = ?
+                   AND last_heartbeat > datetime('now', '-120 seconds')
+                   AND left_at IS NULL
+               ),
+               peak_viewers = MAX(COALESCE(peak_viewers, 0), (
+                 SELECT COUNT(*) FROM live_stream_views
+                 WHERE live_stream_id = ?
+                   AND last_heartbeat > datetime('now', '-120 seconds')
+                   AND left_at IS NULL
+               )),
+               total_viewers = COALESCE(total_viewers, 0) + 1,
+               updated_at = datetime('now')
+           WHERE id = ?`
+        )
+        .bind(streamId, streamId, streamId)
+        .run()
+        .catch(swallow('streams:viewer-bump'));
     } else {
       // heartbeat: current_viewers 만 주기적으로 재동기화 (TTL 만료된 세션 반영)
-      try {
-        const row = await db
-          .prepare(
-            `SELECT COUNT(*) as live FROM live_stream_views
-             WHERE live_stream_id = ?
-               AND last_heartbeat > datetime('now', '-120 seconds')
-               AND left_at IS NULL`
-          )
-          .bind(streamId)
-          .first<{ live: number }>();
-        await db
-          .prepare(
-            `UPDATE live_streams SET current_viewers = ?, updated_at = datetime('now') WHERE id = ?`
-          )
-          .bind(Number(row?.live ?? 0), streamId)
-          .run()
-          .catch(swallow('streams:current-viewers-resync-join'));
-      } catch { /* ignore */ }
+      await db
+        .prepare(
+          `UPDATE live_streams
+           SET current_viewers = (
+                 SELECT COUNT(*) FROM live_stream_views
+                 WHERE live_stream_id = ?
+                   AND last_heartbeat > datetime('now', '-120 seconds')
+                   AND left_at IS NULL
+               ),
+               updated_at = datetime('now')
+           WHERE id = ?`
+        )
+        .bind(streamId, streamId)
+        .run()
+        .catch(swallow('streams:current-viewers-resync-join'));
     }
 
     return c.json({ success: true, data: { new_session: isNewSession } });

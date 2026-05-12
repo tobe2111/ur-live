@@ -21,6 +21,7 @@ import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
 import { registerOmePush, stopOmePush, cleanupAllOmePushes } from './ome-push'
 import { trackQuota, getQuotaUsage, QUOTA_COST } from './youtube-quota'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
@@ -48,7 +49,8 @@ function setCachedStatus(key: string, data: unknown) {
   }
 }
 
-app.post('/live/create', async (c) => {
+// YouTube live 생성은 quota 비용 100 → 셀러당 시간당 5회로 제한
+app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, windowSec: 3600 }), async (c) => {
   await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   
