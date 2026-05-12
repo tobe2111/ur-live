@@ -19,16 +19,17 @@ interface RateLimitEntry {
 
 // 전역 메모리 캐시 (Cloudflare Workers isolate 내에서 공유)
 const rateLimitCache = new Map<string, RateLimitEntry>();
+let lastCleanup = 0;
 
-// 주기적 정리 (1분마다)
-setInterval(() => {
+// Lazy cleanup: 1분에 한 번, 다음 요청 처리 중에만 실행 (global scope 금지)
+function maybeCleanup(): void {
   const now = Date.now();
+  if (now - lastCleanup < 60_000) return;
+  lastCleanup = now;
   for (const [key, entry] of rateLimitCache.entries()) {
-    if (entry.resetTime < now) {
-      rateLimitCache.delete(key);
-    }
+    if (entry.resetTime < now) rateLimitCache.delete(key);
   }
-}, 60 * 1000);
+}
 
 /**
  * Rate Limit 미들웨어 생성
@@ -42,6 +43,7 @@ export function createRateLimiter(config: RateLimitConfig) {
   } = config;
 
   return async (c: any, next: any) => {
+    maybeCleanup();
     // 키 생성: IP 주소 우선, 없으면 사용자 ID
     const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
     const userId = c.get('userId'); // requireAuth 미들웨어에서 설정된 userId
