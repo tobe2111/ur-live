@@ -277,6 +277,8 @@ paymentsRouter.post('/confirm', async (c) => {
 
     // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
     // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
+    // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
+    //   누락 발견을 위해 관측성 필수 (이전: console 도 없어 운영자가 알 길 없음).
     try {
       const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
       for (const order of updatedOrders) {
@@ -285,7 +287,18 @@ paymentsRouter.post('/confirm', async (c) => {
           await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
         }
       }
-    } catch { /* referral commission is non-critical — silent fail */ }
+    } catch (err) {
+      logError('payment.referral_commission_failed', {
+        orderNumber,
+        orderIds: updatedOrders.map(o => o.id),
+        userId: String(userId),
+        error: String(err).slice(0, 300),
+      });
+      captureException(err as Error, {
+        tags: { area: 'payment', kind: 'referral_commission', severity: 'warning' },
+        extra: { orderNumber },
+      }).catch(swallow('payment:sentry-referral'));
+    }
 
     // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────
     // 실패해도 결제 응답에 영향 없도록 fire-and-forget
@@ -300,6 +313,7 @@ paymentsRouter.post('/confirm', async (c) => {
           totalAmount: order.total_amount,
           sellerName: order.seller_name ?? '',
         });
+        // 🛡️ 2026-05-12: console.warn → logError + Sentry. silent failure 가 셀러 미통보로 이어지면 배송 지연.
         sendSellerAlimtalk({
           DB: c.env.DB,
           aligoApiKey: c.env.ALIGO_API_KEY,
@@ -313,7 +327,18 @@ paymentsRouter.post('/confirm', async (c) => {
           subject,
           message,
           orderId: orderNumber,
-        }).catch(e => console.warn('[Alimtalk] 주문완료 발송 실패:', e));
+        }).catch(e => {
+          logError('payment.alimtalk_send_failed', {
+            orderNumber,
+            sellerId: order.seller_id,
+            receiver: order.shipping_phone?.slice(-4),
+            error: String(e).slice(0, 300),
+          });
+          captureException(e as Error, {
+            tags: { area: 'payment', kind: 'alimtalk_dispatch', severity: 'warning' },
+            extra: { orderNumber, sellerId: order.seller_id },
+          }).catch(swallow('payment:sentry-alimtalk'));
+        });
       }
     }
 
