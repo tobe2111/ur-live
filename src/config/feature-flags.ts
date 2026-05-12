@@ -132,6 +132,8 @@ if (typeof window !== 'undefined') {
     reset: resetFeatureFlags,
     log: logFeatureFlags,
   };
-  
-  console.log('[FeatureFlags] Available in DevTools as window.__featureFlags');
+
+  if (import.meta.env.DEV) {
+    console.log('[FeatureFlags] Available in DevTools as window.__featureFlags');
+  }
 }
