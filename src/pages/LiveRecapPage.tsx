@@ -18,7 +18,7 @@ interface RecapStream {
   viewer_count: number
   ended_at: string | null
   created_at: string
-  current_product: { name: string; price: number; image_url: string | null } | null
+  current_product: { id: number; name: string; price: number; image_url: string | null } | null
 }
 
 export default function LiveRecapPage() {
@@ -126,7 +126,7 @@ export default function LiveRecapPage() {
         {stream.current_product && (
           <div
             className="mt-3 flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] cursor-pointer active:scale-[0.98] transition-transform"
-            onClick={() => navigate(`/products/${stream.current_product}`)}
+            onClick={() => navigate(`/products/${stream.current_product!.id}`)}
           >
             {stream.current_product.image_url && (
               <img src={stream.current_product.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />

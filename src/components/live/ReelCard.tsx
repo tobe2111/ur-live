@@ -1125,13 +1125,20 @@ function ReelCardImpl({
           onClick={handleVideoClick}
           className="absolute inset-0 z-10 flex flex-col items-center justify-center transition-all bg-black/60 cursor-pointer"
           style={{ touchAction: 'manipulation' }}
-          aria-label={t('live.enterAria', { defaultValue: '방송 입장하기' })}
+          aria-label={stream.status === 'ended' ? t('live.replayAria', { defaultValue: '다시보기' }) : t('live.enterAria', { defaultValue: '방송 입장하기' })}
         >
           <div className="flex flex-col items-center gap-4">
-            <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              <span className="text-white text-sm font-bold">LIVE</span>
-            </div>
+            {stream.status === 'ended' ? (
+              <div className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                <span className="text-white text-sm font-bold">{t('live.replayLabel', { defaultValue: '다시보기' })}</span>
+              </div>
+            ) : (
+              <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                <span className="text-white text-sm font-bold">LIVE</span>
+              </div>
+            )}
 
             {autoplayFailed ? (
               <>
@@ -1156,7 +1163,7 @@ function ReelCardImpl({
                   </div>
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-white text-xl font-bold mb-1.5">{t('live.entering')}</p>
+                  <p className="text-white text-xl font-bold mb-1.5">{stream.status === 'ended' ? t('live.replayEntering', { defaultValue: '다시보기 로딩 중' }) : t('live.entering')}</p>
                   <p className="text-white/60 text-sm">{t('live.enteringSub')}</p>
                 </div>
               </>

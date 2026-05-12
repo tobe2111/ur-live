@@ -43,9 +43,10 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
           <ChevronLeft className="h-5 w-5 text-white/80" />
         </a>
 
-        {/* 중앙: 셀러 pill (Boutique 톤 — gradient avatar + 셀러명) */}
+        {/* 중앙: 셀러 pill (Boutique 톤 — gradient avatar + 셀러명) — 클릭 시 셀러 프로필 이동 */}
         {sellerName && (
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 rounded-full pl-1 pr-2 py-1"
+          <a href={sellerId ? `/profile/${sellerId}` : '/'}
+            className="flex items-center gap-1.5 min-w-0 flex-1 rounded-full pl-1 pr-2 py-1"
             style={glass.navPill}>
             {sellerAvatar ? (
               <img src={sellerAvatar} alt={t('live.topNav.sellerAvatarAlt', { defaultValue: '{{name}} 프로필 이미지', name: sellerName })}
@@ -58,7 +59,7 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
               </div>
             )}
             <span className="truncate text-white" style={{ fontSize: 11, fontWeight: 700, lineHeight: 1 }}>{sellerName}</span>
-          </div>
+          </a>
         )}
 
         {/* 우측: 팔로우 흰 pill + LIVE 둥근 칩 + 시청자 glass chip + SNS */}
@@ -87,10 +88,13 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
             <span className="text-white" style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatViewers(viewers)}</span>
           </div>
           {sellerLinks?.youtube && (
-            <a href={sellerLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label={t('live.topNav.visitYoutube', { defaultValue: '유튜브 채널 방문' })}
-              className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={glass.actionRail}>
-              <YouTubeIcon className="h-3.5 w-3.5 text-white/85" />
+            <a href={`${sellerLinks.youtube}?sub_confirmation=1`} target="_blank" rel="noopener noreferrer" aria-label={t('live.topNav.subscribeYoutube', { defaultValue: '유튜브 구독하기' })}
+              className="flex flex-col items-center gap-0.5"
+              style={{ textDecoration: 'none' }}>
+              <div className="flex h-7 w-7 items-center justify-center rounded-full" style={glass.actionRail}>
+                <YouTubeIcon className="h-3.5 w-3.5 text-white/85" />
+              </div>
+              <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.75)', lineHeight: 1 }}>{t('live.topNav.subscribeLabel', { defaultValue: '구독' })}</span>
             </a>
           )}
           {sellerLinks?.instagram && (
