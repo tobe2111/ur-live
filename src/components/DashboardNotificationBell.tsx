@@ -37,23 +37,56 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const fetchNotifications = useCallback(async () => {
-    if (!localStorage.getItem(tokenKey)) return
+  // 지수 백오프 — 연속 실패 시 폴링 간격을 30s → 60s → 120s → 240s 최대로 증가
+  // 성공하면 즉시 30s 로 복귀. 백엔드 장애 시 클라이언트 대량 호출로 인한 D1 quota 소진 방지.
+  const fetchNotifications = useCallback(async (): Promise<boolean> => {
+    if (!localStorage.getItem(tokenKey)) return true
     try {
       const res = await api.get('/api/dashboard-notifications?unread_only=false&limit=10')
       if (res.data?.notifications) {
         setNotifications(res.data.notifications)
         setUnreadCount(res.data.unread_count || 0)
       }
-    } catch (e) { if (import.meta.env.DEV) console.warn('[DashboardBell] fetch failed:', e) }
+      return true
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[DashboardBell] fetch failed:', e)
+      return false
+    }
   }, [tokenKey])
 
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(() => { if (!document.hidden) fetchNotifications() }, 30000)
-    const onVisible = () => { if (!document.hidden) fetchNotifications() }
+    let cancelled = false
+    let currentInterval = 30_000
+    const BASE = 30_000
+    const MAX = 240_000
+    let timerId: ReturnType<typeof setTimeout> | null = null
+
+    const scheduleNext = () => {
+      if (cancelled) return
+      timerId = setTimeout(async () => {
+        if (cancelled) return
+        if (!document.hidden) {
+          const ok = await fetchNotifications()
+          currentInterval = ok ? BASE : Math.min(currentInterval * 2, MAX)
+        }
+        scheduleNext()
+      }, currentInterval)
+    }
+
+    fetchNotifications().then(ok => { if (!ok) currentInterval = 60_000 })
+    scheduleNext()
+
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchNotifications().then(ok => { if (ok) currentInterval = BASE })
+      }
+    }
     document.addEventListener('visibilitychange', onVisible)
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
+    return () => {
+      cancelled = true
+      if (timerId) clearTimeout(timerId)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [fetchNotifications])
 
   // Close dropdown on outside click

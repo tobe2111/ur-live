@@ -47,6 +47,10 @@ interface IdRow { id: number; status?: string }
 adminProductsRoutes.get('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
+    // 페이지네이션 — 기본 100/페이지, 최대 500 (기존 1000 풀로딩 → 80% D1 reads 절감)
+    const page = Math.max(1, Number(c.req.query('page') || 1));
+    const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') || 100)));
+    const offset = (page - 1) * limit;
     const products = await executeQuery<ProductRow>(DB, `
       SELECT p.id, p.name, p.description, p.price, p.stock,
              p.image_url, p.is_active, p.product_type, p.category,
@@ -54,9 +58,9 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
              COALESCE(p.is_supply_product, 0) AS is_supply_product,
              p.seller_id, p.created_at, s.business_name as seller_name
       FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
-      ORDER BY p.created_at DESC LIMIT 1000
-    `);
-    return c.json({ success: true, data: products });
+      ORDER BY p.created_at DESC LIMIT ? OFFSET ?
+    `, [limit, offset]);
+    return c.json({ success: true, data: products, page, limit });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
