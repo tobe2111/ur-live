@@ -29,6 +29,27 @@
 - SearchPage: 관련 키워드 헤딩 + 기본 6개 키워드 i18n
 - EmbedLivePage: 폴백 메시지 i18n
 
+### Batch 5 (`ae21e1b`) ⏳ PC 머지 대기
+- ProductDetailPage: 옵션 가격, 최대 적립딜, 추천 링크, 리뷰/전체보기 → t()
+- useLiveStreamWebSocket: 재연결 에러, 인앱 fallback toast, 메시지 전송 실패 → t()
+  → 훅에 useTranslation 도입
+
+### TD-014 i18n 점검 결과
+- ✅ MainHomePage: 잔여 한글 모두 주석 — 클린
+- ✅ ShortsPage: JSX 텍스트 모두 t() 처리됨
+- ✅ LivePageV2: JSX 텍스트 모두 t() 처리됨
+- ⏭️ PaymentFailPage: Toss 한국 전용 의도 (line 25) — skip
+- ⏭️ KakaoLinkCallbackPage: 팝업 300ms 자동 닫힘 — 무영향
+- ⏭️ Seller/Admin/Agency: 별도 TD-014 PR
+
+### TD-024 점검 결과
+- ✅ WebSocket 503 fallback: polling + 인앱 toast 안내
+- ✅ postMessage origin: `window.location.origin` 명시
+- ✅ IntersectionObserver: best entry by intersectionRatio (line 91-103)
+- ✅ YouTube fallback iframe: handleVideoClick 에서 player destroy 후 native iframe
+- ⚠️ 영상 재생 실패 잔여 — **실 프로덕션 브라우저 콘솔 로그 필요**
+  - 검증: `/live/<id>` 진입 → DevTools Console → 셀러 라이브 시작 후 시청자 입장 시 에러 메시지 캡처
+
 ## 🔥 2026-05-12 배포 사고 + 해결
 
 **증상**: `wrangler pages deploy` 시 "Disallowed operation called within global scope. ... generating random values are not allowed within global scope" 오류로 모든 신규 배포 실패. 프로덕션은 이전 배포본으로 정상 작동 중이었음.
