@@ -155,7 +155,8 @@ youtubeGrowthRoutes.post('/confirm', requireAuth(), async (c) => {
       'Content-Type': 'application/json',
       'Idempotency-Key': paymentKey,
     },
-    body: JSON.stringify({ paymentKey, orderId, amount }),
+    // 🛡️ Defense-in-depth: send DB-verified pending.price (equal to client amount above)
+    body: JSON.stringify({ paymentKey, orderId, amount: pending.price }),
   });
 
   if (!tossRes.ok) {

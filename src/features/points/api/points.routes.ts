@@ -196,7 +196,8 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
       'Content-Type': 'application/json',
       'Idempotency-Key': paymentKey,
     },
-    body: JSON.stringify({ paymentKey, orderId, amount }),
+    // 🛡️ Defense-in-depth: send DB-verified pending.amount (equal to client amount above)
+    body: JSON.stringify({ paymentKey, orderId, amount: pending.amount }),
   });
 
   if (!tossRes.ok) {

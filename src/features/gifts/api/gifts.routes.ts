@@ -168,7 +168,9 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
       body: JSON.stringify({
         paymentKey: body.paymentKey,
         orderId: body.orderId,
-        amount: body.amount,
+        // 🛡️ Defense-in-depth: send DB-verified gift.amount, not client body.amount
+        // (these are equal due to the check above, but use the trusted source)
+        amount: gift.amount,
       }),
     })
 

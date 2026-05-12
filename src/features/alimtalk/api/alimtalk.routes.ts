@@ -196,7 +196,8 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
       'Content-Type': 'application/json',
       'Idempotency-Key': `alimtalk_${body.orderId}_${body.paymentKey}`,
     },
-    body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: body.amount }),
+    // 🛡️ Defense-in-depth: send DB-verified resolvedPkg.price (equal to client amount above)
+    body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: resolvedPkg.price }),
   });
 
   if (!tossRes.ok) {
