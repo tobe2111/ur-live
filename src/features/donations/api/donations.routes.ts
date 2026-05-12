@@ -304,6 +304,11 @@ donationsRoutes.get('/stream/:streamId', async (c) => {
   const { DB } = c.env;
   const streamId = c.req.param('streamId');
 
+  // 🛡️ Numeric param validation — prevent injection / NaN bind
+  if (!/^\d+$/.test(streamId)) {
+    return c.json({ success: false, error: 'streamId 형식이 올바르지 않습니다' }, 400);
+  }
+
   try {
     const [donations, totalRow] = await Promise.all([
       DB.prepare(`
