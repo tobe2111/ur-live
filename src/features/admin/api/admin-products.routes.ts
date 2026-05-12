@@ -70,6 +70,7 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const productId = c.req.param('id');
+    if (!productId || !/^\d+$/.test(String(productId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
 
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
@@ -145,6 +146,7 @@ adminProductsRoutes.put('/products/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const productId = c.req.param('id');
+    if (!productId || !/^\d+$/.test(String(productId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json();
     const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
 
@@ -199,6 +201,7 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const productId = c.req.param('id');
+    if (!productId || !/^\d+$/.test(String(productId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json();
     const { is_active, sold_count } = body;
 
@@ -280,6 +283,7 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const reqId = c.req.param('id');
+    if (!reqId || !/^\d+$/.test(String(reqId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string }>();
 
     if (!body.action || !['approve', 'reject'].includes(body.action)) {

@@ -114,6 +114,7 @@ adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
 
     const seller = await DB.prepare(`
       SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
@@ -161,6 +162,7 @@ adminSellersRoutes.patch('/sellers/:id/business-info/approve', cors(), async (c)
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const existing = await DB.prepare(
       `SELECT id, is_verified FROM seller_business_info WHERE seller_id = ?`
     ).bind(sellerId).first<{ id: number; is_verified: number }>();
@@ -182,6 +184,7 @@ adminSellersRoutes.patch('/sellers/:id/business-info/reject', cors(), async (c) 
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const { reason } = await c.req.json<{ reason?: string }>();
     const existing = await DB.prepare(
       `SELECT id FROM seller_business_info WHERE seller_id = ?`
@@ -203,6 +206,7 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
@@ -239,6 +243,7 @@ adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const { reason: rawReason } = await c.req.json<{ reason?: string }>();
     const reason = typeof rawReason === 'string' ? rawReason.slice(0, 500) : null;
     const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
@@ -263,6 +268,7 @@ adminSellersRoutes.delete('/sellers/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     if (rows[0].status === 'suspended') return c.json({ success: false, error: '이미 정지된 판매자입니다' }, 400);
@@ -293,6 +299,7 @@ adminSellersRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const { commission_rate } = await c.req.json();
     if (commission_rate === undefined || commission_rate < 0 || commission_rate > 100)
       return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
@@ -310,6 +317,7 @@ adminSellersRoutes.patch('/sellers/:id/donation-commission', cors(), async (c) =
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const { donation_commission_rate } = await c.req.json();
     if (donation_commission_rate === undefined || donation_commission_rate < 0 || donation_commission_rate > 100) {
       return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
@@ -330,6 +338,7 @@ adminSellersRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const { can_manipulate_stats } = await c.req.json();
     if (![0, 1, true, false].includes(can_manipulate_stats))
       return c.json({ success: false, error: 'can_manipulate_stats는 0 또는 1이어야 합니다' }, 400);
