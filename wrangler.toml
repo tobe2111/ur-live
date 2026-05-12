@@ -16,6 +16,7 @@ name = "ur-live"
 main = "src/worker/index.ts"
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist/client"
 
 # Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록
 [build]
