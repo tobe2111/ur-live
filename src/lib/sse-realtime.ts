@@ -240,8 +240,11 @@ export async function handleChatSSE(
         } catch { /* already closed */ }
       }, 30 * 60 * 1000)
 
-      // 새 메시지 폴링 — jitter ±1초로 동시 DB hit 분산
+      // 새 메시지 폴링 — 메시지 없으면 backoff (5s→10s→20s→30s max), 도착 시 5s reset
+      // jitter ±1초로 동시 DB hit 분산
       const BASE_POLL = 5_000
+      const MAX_POLL = 30_000
+      let currentPoll = BASE_POLL
       const scheduleNext = () => {
         intervalId = setTimeout(async () => {
           try {
@@ -254,6 +257,7 @@ export async function handleChatSSE(
 
             if (newMessages.results.length > 0) {
               lastMessageId = (newMessages.results[newMessages.results.length - 1] as any).id
+              currentPoll = BASE_POLL // 메시지 도착 시 reset
               const message: SSEMessage = {
                 type: 'chat',
                 data: newMessages.results,
@@ -261,11 +265,13 @@ export async function handleChatSSE(
               }
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
             } else {
+              // 메시지 없음 — exponential backoff (최대 30s)
+              currentPoll = Math.min(currentPoll * 2, MAX_POLL)
               controller.enqueue(encoder.encode(': ping\n\n'))
             }
           } catch { /* 연결 종료 시 무시 */ }
           scheduleNext()
-        }, BASE_POLL + (Math.random() * 2_000 - 1_000)) as unknown as ReturnType<typeof setInterval>
+        }, currentPoll + (Math.random() * 2_000 - 1_000)) as unknown as ReturnType<typeof setInterval>
       }
       scheduleNext()
       ;(controller as any)._maxConnTimer = maxConnTimer

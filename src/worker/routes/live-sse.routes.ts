@@ -199,22 +199,18 @@ liveSseRoutes.post('/:liveId/view', optionalAuth(), async (c) => {
   const action = body.action || 'join' // 'join' | 'leave' | 'heartbeat'
 
   try {
-    if (action === 'join') {
-      const result = await c.env.DB.prepare(`
-        INSERT INTO live_stream_views (live_stream_id, user_id, session_id, device_type)
-        VALUES (?, ?, ?, ?)
-      `).bind(liveId, userId, sessionId, body.deviceType || 'web').run()
-      return c.json({ success: true, viewId: result.meta.last_row_id, sessionId })
-    } else if (action === 'leave' || action === 'heartbeat') {
-      const watchDuration = body.watchDuration || 0
-      await c.env.DB.prepare(`
-        UPDATE live_stream_views
-        SET watch_duration = ?, left_at = CASE WHEN ? = 'leave' THEN datetime('now') ELSE left_at END
-        WHERE session_id = ? AND live_stream_id = ?
-      `).bind(watchDuration, action, sessionId, liveId).run()
-      return c.json({ success: true })
-    }
-    return c.json({ success: true })
+    const watchDuration = body.watchDuration || 0
+    const leftAt = action === 'leave' ? "datetime('now')" : 'NULL'
+    // Single UPSERT — ON CONFLICT requires idx_lsv_stream_session unique index (repair-schema)
+    const result = await c.env.DB.prepare(`
+      INSERT INTO live_stream_views (live_stream_id, user_id, session_id, device_type, last_heartbeat, watch_duration, left_at)
+      VALUES (?, ?, ?, ?, datetime('now'), ?, ${leftAt})
+      ON CONFLICT(live_stream_id, session_id) DO UPDATE SET
+        last_heartbeat = datetime('now'),
+        watch_duration = CASE WHEN excluded.watch_duration > 0 THEN excluded.watch_duration ELSE watch_duration END,
+        left_at = excluded.left_at
+    `).bind(liveId, userId, sessionId, body.deviceType || 'web', watchDuration).run()
+    return c.json({ success: true, viewId: result.meta.last_row_id, sessionId })
   } catch (err) {
     console.error('[View] Tracking failed:', err)
     return c.json({ success: true }) // Non-fatal

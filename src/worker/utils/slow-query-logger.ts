@@ -8,10 +8,61 @@ import { swallow } from './swallow';
  * 사용:
  *   const row = await loggedQuery(DB, 'slow-query-label', 'SELECT ... WHERE id = ?', [id]);
  *
- * THRESHOLD 초과 시 slow_queries 테이블에 기록.
+ * THRESHOLD 초과 시 isolate 메모리 버퍼에 쌓고, FLUSH_INTERVAL마다 batch INSERT.
+ * 직전: 슬로우 쿼리마다 D1 write 2회 (CREATE TABLE + INSERT) → KV 쓰기 낭비.
  */
 
 const SLOW_THRESHOLD_MS = 200;
+const FLUSH_INTERVAL_MS = 60_000; // 1분마다 flush
+const MAX_BUFFER = 50; // 최대 50개 버퍼 (넘으면 즉시 flush)
+
+interface SlowQueryEntry {
+  label: string;
+  sql_snippet: string;
+  duration_ms: number;
+}
+
+// isolate-level 버퍼 (module 상태, 요청 간 공유)
+const buffer: SlowQueryEntry[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let tableEnsured = false;
+
+async function ensureTable(DB: D1Database): Promise<void> {
+  if (tableEnsured) return;
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS slow_queries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT,
+      sql_snippet TEXT,
+      duration_ms INTEGER,
+      logged_at TEXT DEFAULT (datetime('now'))
+    )
+  `).run().catch(swallow('worker:utils:slow-query-logger'));
+  tableEnsured = true;
+}
+
+async function flushBuffer(DB: D1Database): Promise<void> {
+  if (buffer.length === 0) return;
+  const toFlush = buffer.splice(0, buffer.length);
+  try {
+    await ensureTable(DB);
+    const stmts = toFlush.map(entry =>
+      DB.prepare(`INSERT INTO slow_queries (label, sql_snippet, duration_ms) VALUES (?, ?, ?)`)
+        .bind(entry.label, entry.sql_snippet, entry.duration_ms)
+    );
+    if (stmts.length > 0) {
+      await DB.batch(stmts).catch(swallow('worker:utils:slow-query-logger:flush'));
+    }
+  } catch { /* noop */ }
+}
+
+function scheduleFlush(DB: D1Database): void {
+  if (flushTimer) return;
+  flushTimer = setTimeout(async () => {
+    flushTimer = null;
+    await flushBuffer(DB);
+  }, FLUSH_INTERVAL_MS);
+}
 
 export async function loggedQuery<T = unknown>(
   DB: D1Database,
@@ -28,20 +79,13 @@ export async function loggedQuery<T = unknown>(
     const duration = Date.now() - start;
 
     if (duration >= SLOW_THRESHOLD_MS) {
-      // 백그라운드 기록 (fire-and-forget)
-      DB.prepare(`
-        CREATE TABLE IF NOT EXISTS slow_queries (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          label TEXT,
-          sql_snippet TEXT,
-          duration_ms INTEGER,
-          logged_at TEXT DEFAULT (datetime('now'))
-        )
-      `).run().catch(swallow('worker:utils:slow-query-logger'));
-
-      DB.prepare(
-        `INSERT INTO slow_queries (label, sql_snippet, duration_ms) VALUES (?, ?, ?)`
-      ).bind(label, sql.slice(0, 200), duration).run().catch(swallow('worker:utils:slow-query-logger'));
+      buffer.push({ label, sql_snippet: sql.slice(0, 200), duration_ms: duration });
+      if (buffer.length >= MAX_BUFFER) {
+        // 즉시 flush (fire-and-forget)
+        flushBuffer(DB).catch(swallow('worker:utils:slow-query-logger:immediate-flush'));
+      } else {
+        scheduleFlush(DB);
+      }
     }
 
     return result.results || [];

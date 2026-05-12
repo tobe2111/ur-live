@@ -506,7 +506,7 @@ export class OrderRepository {
    */
   async findByIdempotencyKey(key: string, userId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      'SELECT * FROM orders WHERE idempotency_key = ? AND user_id = ?',
+      'SELECT id, order_number, user_id, seller_id, status, payment_status, total_amount, shipping_fee, address, address_detail, recipient_name, recipient_phone, notes, toss_payment_key, payment_key, idempotency_key, cancel_reason, created_at, updated_at FROM orders WHERE idempotency_key = ? AND user_id = ?',
       [key, userId]
     );
     if (!row) return null;

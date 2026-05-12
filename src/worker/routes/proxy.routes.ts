@@ -83,9 +83,11 @@ app.get('/kakao/place/address', async (c) => {
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
     const data = await res.json();
 
-    // 결과 있을 때만 30일 캐시 (빈 결과는 다음에 다시 시도)
+    // 결과 있을 때만 30일 캐시 — waitUntil로 백그라운드 write (응답 지연 방지)
     if (KV && (data as { documents?: unknown[] })?.documents?.length) {
-      await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => { /* noop */ });
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => {})
+      );
     }
     return c.json({ success: true, data });
   } catch (e) {
@@ -116,7 +118,9 @@ app.get('/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windo
     });
     const data = await res.json();
     if (KV && (data as { items?: unknown[] })?.items?.length) {
-      await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 24 * 60 * 60 }).catch(() => {});
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 24 * 60 * 60 }).catch(() => {})
+      );
     }
     return c.json({ success: true, data });
   } catch (e) {
@@ -149,8 +153,9 @@ app.get('/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windo
     });
     const data = await res.json();
     if (KV && (data as { items?: unknown[] })?.items?.length) {
-      // 이미지 결과는 자주 안 바뀌므로 7일 캐시
-      await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 7 * 24 * 60 * 60 }).catch(() => {});
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 7 * 24 * 60 * 60 }).catch(() => {})
+      );
     }
     return c.json({ success: true, data });
   } catch (e) {
@@ -202,7 +207,9 @@ app.get('/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, wi
     };
 
     if (KV && (result.place || result.images.length)) {
-      await KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 24 * 60 * 60 }).catch(() => {});
+      c.executionCtx?.waitUntil?.(
+        KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 24 * 60 * 60 }).catch(() => {})
+      );
     }
 
     return c.json({

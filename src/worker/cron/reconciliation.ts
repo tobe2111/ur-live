@@ -135,7 +135,11 @@ export async function runReconciliation(env: Env): Promise<void> {
   try {
     const { meta } = await DB.prepare(`
       DELETE FROM order_items
-      WHERE order_id NOT IN (SELECT id FROM orders)
+      WHERE rowid IN (
+        SELECT rowid FROM order_items
+        WHERE order_id NOT IN (SELECT id FROM orders)
+        LIMIT 500
+      )
     `).run();
     results.orphan_items_cleaned = meta.changes ?? 0;
   } catch (e) {

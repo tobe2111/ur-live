@@ -120,6 +120,21 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       }
     }
 
+    // URL 필드: https:// 또는 http:// 로 시작해야 함
+    const urlFields = ['profile_image', 'website_url', 'kakao_chat_link'];
+    for (const key of urlFields) {
+      const val = body[key as keyof typeof body];
+      if (val !== undefined && val !== null && val !== '') {
+        const str = String(val);
+        if (!/^https?:\/\//i.test(str)) {
+          return c.json({ success: false, error: `${key} must start with http:// or https://` }, 400);
+        }
+        if (str.length > 2048) {
+          return c.json({ success: false, error: `${key} is too long` }, 400);
+        }
+      }
+    }
+
     for (const [bodyKey, dbCol] of Object.entries(fieldMap)) {
       if (body[bodyKey] !== undefined) {
         updates.push(`${dbCol} = ?`);
