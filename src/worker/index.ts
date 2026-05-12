@@ -1130,11 +1130,13 @@ app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
-app.route('/api/seller/youtube', youtubeRoutes);
-app.route('/api/youtube', youtubeRoutes); // legacy path alias
-// 🛡️ 2026-04-28 TD-006 (split): /live/* 5개 endpoint
+// 🛡️ 2026-05-12: youtubeLiveRoutes 를 먼저 마운트 — Hono v4 에서 같은 prefix 에
+//   두 라우터 마운트 시 첫 번째 라우터가 경로를 "소비"하여 두 번째 라우터의
+//   POST /live/create 가 405 반환되는 문제 해결. /live/* 가 더 구체적이므로 우선.
 app.route('/api/seller/youtube', youtubeLiveRoutes);
 app.route('/api/youtube', youtubeLiveRoutes);
+app.route('/api/seller/youtube', youtubeRoutes);
+app.route('/api/youtube', youtubeRoutes); // legacy path alias
 
 // 🛡️ 2026-05-08: OvenMediaEngine admission webhook (자체 미디어 서버).
 //   OME 가 publish 시도 시 호출 → token 검증 + 셀러의 YouTube RTMP key 동적 push 등록.
