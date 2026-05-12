@@ -21,8 +21,14 @@ import type { AuthUser } from '@/worker/middleware/auth';
 import { swallow } from '@/worker/utils/swallow';
 
 const app = new Hono<{ Bindings: Env }>();
-app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
-app.use('*', requireSeller());
+// 🛡️ 2026-05-12: app.use('*', …) 를 /ad-slots 경로로 scope 한정.
+//   이전: 이 sub-router 가 /api/seller 에 마운트되어 있어 '*' 가
+//   /api/seller/youtube/live/create 등 무관한 경로까지 가로채 405 발생.
+//   변경 후: ad-slots 관련 경로(루트 + 하위)에만 cors + requireSeller 적용.
+app.use('/ad-slots', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+app.use('/ad-slots/*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+app.use('/ad-slots', requireSeller());
+app.use('/ad-slots/*', requireSeller());
 
 function getSellerIdFromCtx(c: { get: (k: string) => unknown }): number {
   const user = c.get('user') as AuthUser;
