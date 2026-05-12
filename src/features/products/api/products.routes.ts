@@ -43,19 +43,25 @@ export const productsRoutes = new Hono<{ Bindings: Bindings }>();
  * 인기 검색어 목록 (/api/search/popular 는 worker/index.ts에서 이 경로로 alias 등록됨)
  */
 productsRoutes.get('/search/popular', cors(), async (c) => {
-  const { DB } = c.env;
+  const { DB, SESSION_KV } = c.env;
   try {
-    const result = await DB.prepare(`
-      SELECT keyword, search_count
-      FROM popular_searches
-      ORDER BY search_count DESC
-      LIMIT 10
-    `).all().catch(() => ({ results: [] }));
+    // ✅ PERF: KV cache 10분 — 검색창 keystroke 마다 D1 hit 방지
+    const data = await cacheGet(
+      SESSION_KV,
+      'popular-searches',
+      async () => {
+        const result = await DB.prepare(`
+          SELECT keyword, search_count
+          FROM popular_searches
+          ORDER BY search_count DESC
+          LIMIT 10
+        `).all().catch(() => ({ results: [] }));
+        return result.results || [];
+      },
+      { ttl: 600 }
+    );
 
-    return c.json({
-      success: true,
-      data: result.results || [],
-    });
+    return c.json({ success: true, data });
   } catch (error) {
     return c.json({ success: true, data: [] });
   }

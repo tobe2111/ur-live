@@ -17,7 +17,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { cacheGet } from '@/worker/utils/cache';
 import type { Env } from '@/worker/types/env';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
@@ -54,45 +56,57 @@ async function ensureTables(DB: D1Database) {
 }
 
 // GET /api/sections — 메인페이지용 (활성 섹션 + 상품)
+// ✅ PERF: KV cross-colo cache (120s) on top of edge cache. 어드민 mutation 시 invalidate 권장.
 sectionsRoutes.get('/', async (c) => {
-  const { DB } = c.env;
-  await ensureTables(DB);
+  const { DB, SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  try {
+    const result = await cacheGet(
+      SESSION_KV,
+      'sections:public',
+      async () => {
+        await ensureTables(DB);
 
-  const { results: sections } = await DB.prepare(
-    'SELECT id, title, subtitle, layout FROM homepage_sections WHERE is_active = 1 ORDER BY sort_order ASC'
-  ).all();
+        const { results: sections } = await DB.prepare(
+          'SELECT id, title, subtitle, layout FROM homepage_sections WHERE is_active = 1 ORDER BY sort_order ASC'
+        ).all();
 
-  // ✅ PERF: per-section product SELECT 제거 — 단일 IN-query 후 메모리에서 12개 cap
-  const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
-  const sectionIds = sectionList.map(s => s.id as number);
-  const productsBySection = new Map<number, unknown[]>();
-  if (sectionIds.length > 0) {
-    const ph = sectionIds.map(() => '?').join(',');
-    const { results: rows } = await DB.prepare(`
-      SELECT sp.section_id, p.id, p.name, p.price, p.original_price, p.image_url, p.discount_rate, p.stock, sp.sort_order
-      FROM section_products sp
-      JOIN products p ON sp.product_id = p.id AND p.is_active = 1
-      WHERE sp.section_id IN (${ph})
-      ORDER BY sp.section_id ASC, sp.sort_order ASC
-    `).bind(...sectionIds).all<{ section_id: number; sort_order: number } & Record<string, unknown>>();
+        const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
+        const sectionIds = sectionList.map(s => s.id as number);
+        const productsBySection = new Map<number, unknown[]>();
+        if (sectionIds.length > 0) {
+          const ph = sectionIds.map(() => '?').join(',');
+          const { results: rows } = await DB.prepare(`
+            SELECT sp.section_id, p.id, p.name, p.price, p.original_price, p.image_url, p.discount_rate, p.stock, sp.sort_order
+            FROM section_products sp
+            JOIN products p ON sp.product_id = p.id AND p.is_active = 1
+            WHERE sp.section_id IN (${ph})
+            ORDER BY sp.section_id ASC, sp.sort_order ASC
+          `).bind(...sectionIds).all<{ section_id: number; sort_order: number } & Record<string, unknown>>();
 
-    for (const row of rows ?? []) {
-      const sid = row.section_id;
-      const arr = productsBySection.get(sid) ?? [];
-      if (arr.length < 12) {
-        const { section_id: _sid, sort_order: _so, ...product } = row;
-        arr.push(product);
-        productsBySection.set(sid, arr);
-      }
-    }
+          for (const row of rows ?? []) {
+            const sid = row.section_id;
+            const arr = productsBySection.get(sid) ?? [];
+            if (arr.length < 12) {
+              const { section_id: _sid, sort_order: _so, ...product } = row;
+              arr.push(product);
+              productsBySection.set(sid, arr);
+            }
+          }
+        }
+
+        return sectionList.map(s => ({
+          ...s,
+          products: productsBySection.get(s.id as number) ?? [],
+        }));
+      },
+      { ttl: 120 }
+    );
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    console.error('[sections] GET / failed:', err);
+    return c.json({ success: true, data: [] });
   }
-
-  const result = sectionList.map(s => ({
-    ...s,
-    products: productsBySection.get(s.id as number) ?? [],
-  }));
-
-  return c.json({ success: true, data: result });
 });
 
 // GET /api/sections/admin — 어드민용 전체 목록

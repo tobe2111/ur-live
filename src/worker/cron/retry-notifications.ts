@@ -39,6 +39,17 @@ interface PushFailureRow {
 export async function retryEmailFailures(env: Env) {
   if (!env.DB) return
   try {
+    // ✅ PERF: 빈 테이블 fast-path
+    try {
+      const cnt = await env.DB.prepare(`
+        SELECT COUNT(*) as c FROM email_failures
+        WHERE resolved = 0 AND retry_count < max_retries AND next_retry_at <= datetime('now')
+      `).first<{ c: number }>()
+      if (!cnt || (cnt.c ?? 0) === 0) return
+    } catch {
+      // 테이블 없거나 COUNT 실패 — 기존 흐름 진행
+    }
+
     const { results } = await env.DB.prepare(`
       SELECT id, recipient, subject, html, retry_count, max_retries
       FROM email_failures
@@ -116,6 +127,17 @@ export async function retryEmailFailures(env: Env) {
 export async function retryPushFailures(env: Env) {
   if (!env.DB) return
   try {
+    // ✅ PERF: 빈 테이블 fast-path
+    try {
+      const cnt = await env.DB.prepare(`
+        SELECT COUNT(*) as c FROM push_failures
+        WHERE resolved = 0 AND retry_count < max_retries AND next_retry_at <= datetime('now')
+      `).first<{ c: number }>()
+      if (!cnt || (cnt.c ?? 0) === 0) return
+    } catch {
+      // 테이블 없거나 COUNT 실패 — 기존 흐름 진행
+    }
+
     const { results } = await env.DB.prepare(`
       SELECT id, user_type, user_id, title, body, url, retry_count, max_retries
       FROM push_failures
