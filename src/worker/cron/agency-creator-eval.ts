@@ -70,6 +70,20 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
     return { evaluated: 0, recommend_approve: 0, recommend_reject: 0, inconclusive: 0 }
   }
 
+  // ✅ PERF: tiktok 인증 셀러를 단일 IN query 로 사전 조회 (per-approval N+1 제거)
+  const tiktokVerified = new Set<number>()
+  if (pendings.length > 0) {
+    try {
+      const sellerIds = Array.from(new Set(pendings.map(p => p.seller_id)))
+      const ph = sellerIds.map(() => '?').join(',')
+      const { results } = await DB.prepare(
+        `SELECT seller_id FROM seller_platform_links
+         WHERE seller_id IN (${ph}) AND platform = 'tiktok' AND status = 'active'`
+      ).bind(...sellerIds).all<{ seller_id: number }>()
+      for (const r of results || []) tiktokVerified.add(r.seller_id)
+    } catch { /* migration 미적용 → 빈 set */ }
+  }
+
   for (const approval of pendings) {
     try {
       const since = approval.created_at  // 신청일 = 평가 시작점
@@ -115,14 +129,8 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
 
       // 🛡️ 2026-04-26 T3: TikTok 인증 셀러 가산 (+20)
       // TikTok Display API 로 검증된 셀러는 외부 신뢰도 보유 → 어드민 승인 추천에 가산.
-      // seller_platform_links 미적용 (마이그레이션 0220) 시 0 — graceful.
-      let tiktokBonus = 0
-      try {
-        const tiktok = await DB.prepare(
-          "SELECT id FROM seller_platform_links WHERE seller_id = ? AND platform = 'tiktok' AND status = 'active' LIMIT 1"
-        ).bind(approval.seller_id).first()
-        if (tiktok) tiktokBonus = 20
-      } catch { /* migration 미적용 → 0 */ }
+      // ✅ PERF: tiktokVerified set 사전 조회 (per-approval SELECT N+1 제거 — line 73-85)
+      const tiktokBonus = tiktokVerified.has(approval.seller_id) ? 20 : 0
 
       const totalScore = liveHoursScore + revenueScore + streamCountScore + activityScore + tiktokBonus
 

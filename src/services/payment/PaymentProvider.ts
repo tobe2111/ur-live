@@ -164,13 +164,18 @@ export class TossPaymentsProvider implements PaymentProvider {
   
   async cancelPayment(paymentKey: string, reason: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // 🛡️ Deterministic Idempotency-Key: must NOT include Date.now() — otherwise
+      // network-retry / double-click would generate distinct keys and Toss would
+      // process the cancellation twice. Hash the (paymentKey, reason) tuple so
+      // identical cancel requests collapse into one Toss-side operation.
+      const reasonSlug = reason.slice(0, 32).replace(/\s+/g, '_');
       const response = await fetch(`${TOSS_PAYMENT_URL}/payments/${paymentKey}/cancel`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
           'Content-Type': 'application/json',
           // Toss 권장: 동일 환불 요청 재시도 시 중복 환불 방지
-          'Idempotency-Key': `cancel-${paymentKey}-${Date.now()}`,
+          'Idempotency-Key': `cancel-${paymentKey}-${reasonSlug}`,
         },
         body: JSON.stringify({ cancelReason: reason })
       });

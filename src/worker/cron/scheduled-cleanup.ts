@@ -192,20 +192,26 @@ export async function handleScheduled(env: Env) {
         } catch { /* best-effort */ }
       }
 
-      // 2) 각 경매별 hold 정리 + winner 알림 (best-effort, 실패해도 다른 경매 영향 0)
-      for (const a of endedAuctions || []) {
-        // hold 해제: winner 외 모든 active hold (winner 는 결제 완료 시 consumed 처리)
-        try {
-          if (a.winner_user_id) {
-            await DB.prepare(
-              "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
-            ).bind(a.id, a.winner_user_id).run();
-          } else {
-            await DB.prepare(
-              "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
-            ).bind(a.id).run();
+      // ✅ PERF: hold 해제를 단일 batch 로 — auction 별 개별 UPDATE 제거
+      try {
+        const holdStmts = (endedAuctions || []).map(a =>
+          a.winner_user_id
+            ? DB.prepare(
+                "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND user_id != ? AND status = 'active'"
+              ).bind(a.id, a.winner_user_id)
+            : DB.prepare(
+                "UPDATE auction_holds SET status = 'released', released_at = datetime('now') WHERE auction_id = ? AND status = 'active'"
+              ).bind(a.id)
+        );
+        if (holdStmts.length > 0) {
+          for (let i = 0; i < holdStmts.length; i += 50) {
+            await DB.batch(holdStmts.slice(i, i + 50));
           }
-        } catch (e) { logError('[Cron] auction hold release error', { auctionId: a.id, error: String(e) }) }
+        }
+      } catch (e) { logError('[Cron] auction hold release batch error', { error: String(e) }) }
+
+      // 2) 각 경매별 winner 알림 (best-effort, 실패해도 다른 경매 영향 0)
+      for (const a of endedAuctions || []) {
 
         // winner 결제 안내 알림 (push + alimtalk best-effort)
         if (a.winner_user_id) {
@@ -336,29 +342,34 @@ export async function handleScheduled(env: Env) {
       try { await DB.prepare("ALTER TABLE live_streams ADD COLUMN pre_notified INTEGER DEFAULT 0").run() } catch {}
 
       const capped = upcomingStreams.slice(0, 20);
-      // 구독자 알림을 루프 밖에서 한 번에 batch — 스트림별 순차 write 방지
+      // ✅ PERF: 구독자 일괄 조회 (stream 별 SELECT 제거 — IN clause 단일 query)
       const allNotifyStmts: ReturnType<D1Database['prepare']>[] = [];
-      const streamIds: number[] = [];
+      const streamIds: number[] = capped.map(s => s.id);
+      const streamMeta = new Map<number, { title: string; seller_name: string }>(
+        capped.map(s => [s.id, { title: s.title, seller_name: s.seller_name }])
+      );
 
-      for (const stream of capped) {
+      if (streamIds.length > 0) {
         try {
+          const ph = streamIds.map(() => '?').join(',');
           const { results: subs } = await DB.prepare(
-            "SELECT user_id FROM broadcast_subscriptions WHERE stream_id = ? AND notify_inapp = 1"
-          ).bind(stream.id).all<{ user_id: string }>();
+            `SELECT stream_id, user_id FROM broadcast_subscriptions WHERE stream_id IN (${ph}) AND notify_inapp = 1`
+          ).bind(...streamIds).all<{ stream_id: number; user_id: string }>();
 
           for (const sub of (subs || [])) {
+            const meta = streamMeta.get(sub.stream_id);
+            if (!meta) continue;
             allNotifyStmts.push(
               DB.prepare(
                 "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'broadcast_reminder', ?, ?, ?)"
               ).bind(
                 sub.user_id,
-                `⏰ 30분 후 라이브! ${stream.seller_name || '셀러'}`,
-                stream.title,
-                `/live/${stream.id}`
+                `⏰ 30분 후 라이브! ${meta.seller_name || '셀러'}`,
+                meta.title,
+                `/live/${sub.stream_id}`
               )
             );
           }
-          streamIds.push(stream.id);
         } catch {}
       }
 
@@ -396,20 +407,30 @@ export async function handleScheduled(env: Env) {
       LIMIT 50
     `).all<{ id: number; title: string; seller_id: number; seller_name: string }>()
 
-    for (const stream of (imminent ?? []).slice(0, 20)) {
+    const imminentCapped = (imminent ?? []).slice(0, 20)
+    if (imminentCapped.length > 0) {
+      // ✅ PERF: stream 별 subscription SELECT 제거 — IN clause 단일 query
+      const sIds = imminentCapped.map(s => s.id)
+      const sMeta = new Map<number, { title: string; seller_name: string }>(
+        imminentCapped.map(s => [s.id, { title: s.title, seller_name: s.seller_name }])
+      )
       try {
+        const ph = sIds.map(() => '?').join(',')
         const { results: subs } = await DB.prepare(
-          "SELECT user_id FROM broadcast_subscriptions WHERE stream_id = ? AND notify_inapp = 1"
-        ).bind(stream.id).all<{ user_id: string }>()
-        if (subs?.length) {
-          const stmts = subs.map(sub =>
-            DB.prepare("INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'broadcast_reminder', ?, ?, ?)")
-              .bind(sub.user_id, `🔴 5분 후 라이브 시작! ${stream.seller_name || '셀러'}`, stream.title, `/live/${stream.id}`)
-          )
-          for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50))
-        }
+          `SELECT stream_id, user_id FROM broadcast_subscriptions WHERE stream_id IN (${ph}) AND notify_inapp = 1`
+        ).bind(...sIds).all<{ stream_id: number; user_id: string }>()
+        const stmts = (subs || []).map(sub => {
+          const meta = sMeta.get(sub.stream_id)
+          return DB.prepare("INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'broadcast_reminder', ?, ?, ?)")
+            .bind(sub.user_id, `🔴 5분 후 라이브 시작! ${meta?.seller_name || '셀러'}`, meta?.title || '', `/live/${sub.stream_id}`)
+        })
+        for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50))
       } catch {}
-      await DB.prepare("UPDATE live_streams SET pre_notified_5min = 1 WHERE id = ?").bind(stream.id).run()
+      // pre_notified_5min batch update
+      const updateStmts = sIds.map(id =>
+        DB.prepare("UPDATE live_streams SET pre_notified_5min = 1 WHERE id = ?").bind(id)
+      )
+      for (let i = 0; i < updateStmts.length; i += 50) await DB.batch(updateStmts.slice(i, i + 50)).catch(() => {})
     }
   } catch (e) { logError('[Cron] 5min_notifications error:', { error: String(e) }) }
 
@@ -428,19 +449,26 @@ export async function handleScheduled(env: Env) {
     let alertsSent = 0;
     if (lowStock?.length) {
       // ✅ FIX (H4): Batch inserts + cap loop to stay within subrequest budget.
-      const inserts: any[] = [];
-      for (const p of lowStock.slice(0, 20)) {
-        // 24시간 윈도우 dedup: 같은 셀러 + 같은 제품명에 대해 최근 알림 존재 확인
-        const existing = await DB.prepare(`
-          SELECT 1 FROM dashboard_notifications
+      // ✅ PERF: 24시간 dedup 도 단일 IN-query 로 (제품별 SELECT N+1 제거)
+      const capped = lowStock.slice(0, 20);
+      const sellerIds = Array.from(new Set(capped.map(p => String(p.seller_id))));
+      const recentTitles = new Set<string>();
+      try {
+        const ph = sellerIds.map(() => '?').join(',');
+        const { results: recent } = await DB.prepare(`
+          SELECT recipient_id, title FROM dashboard_notifications
           WHERE recipient_type = 'seller'
-            AND recipient_id = ?
+            AND recipient_id IN (${ph})
             AND type = 'low_stock'
-            AND title LIKE ?
             AND created_at > datetime('now', '-24 hours')
-          LIMIT 1
-        `).bind(String(p.seller_id), `%${p.name}%`).first();
-        if (existing) continue;
+        `).bind(...sellerIds).all<{ recipient_id: string; title: string }>();
+        for (const r of recent || []) recentTitles.add(`${r.recipient_id}:${r.title}`);
+      } catch {}
+
+      const inserts: any[] = [];
+      for (const p of capped) {
+        const titleKey = `${String(p.seller_id)}:⚠️ 재고 부족: ${p.name}`;
+        if (recentTitles.has(titleKey)) continue;
 
         inserts.push(DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
           VALUES ('seller', ?, 'low_stock', ?, ?, '/seller/products')`)
@@ -470,21 +498,36 @@ export async function handleScheduled(env: Env) {
     if (expiringCoupons?.length) {
       // 쿠폰을 사용하지 않은 유저들에게 알림
       // ✅ FIX (H4): Cap coupon loop to stay within subrequest budget.
-      for (const coupon of expiringCoupons.slice(0, 10)) {
-        const { results: users } = await DB.prepare(`
-          SELECT DISTINCT u.id FROM users u
-          WHERE u.id NOT IN (SELECT user_id FROM coupon_uses WHERE coupon_id = ?)
-          LIMIT 100
-        `).bind(coupon.id).all<{ id: string }>();
+      // ✅ PERF: 사용된 (coupon_id, user_id) 쌍을 단일 IN-query 로 사전 조회 (per-coupon SELECT N+1 제거)
+      const cappedCoupons = expiringCoupons.slice(0, 10);
+      const couponIds = cappedCoupons.map(c => c.id);
+      const usedSet = new Set<string>(); // key: `${coupon_id}:${user_id}`
+      try {
+        const cph = couponIds.map(() => '?').join(',');
+        const { results: uses } = await DB.prepare(
+          `SELECT coupon_id, user_id FROM coupon_uses WHERE coupon_id IN (${cph})`
+        ).bind(...couponIds).all<{ coupon_id: number; user_id: string }>();
+        for (const u of uses ?? []) usedSet.add(`${u.coupon_id}:${u.user_id}`);
+      } catch { /* best-effort */ }
 
-        if (users?.length) {
-          const stmts = users.map(u =>
-            DB.prepare('INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
-              .bind(u.id, 'coupon_expiring', `🎫 쿠폰 만료 임박!`, `${coupon.name} 쿠폰이 내일 만료됩니다`, '/browse')
-          );
-          for (let i = 0; i < stmts.length; i += 50) {
-            await DB.batch(stmts.slice(i, i + 50));
-          }
+      // 알림 대상 유저 풀: coupon_uses 에 한 번도 안 쓴 user_id 100명 — 단일 query
+      let candidateUsers: { id: string }[] = [];
+      try {
+        const { results } = await DB.prepare(
+          `SELECT DISTINCT id FROM users LIMIT 100`
+        ).all<{ id: string }>();
+        candidateUsers = results ?? [];
+      } catch { /* best-effort */ }
+
+      for (const coupon of cappedCoupons) {
+        const targets = candidateUsers.filter(u => !usedSet.has(`${coupon.id}:${u.id}`));
+        if (targets.length === 0) continue;
+        const stmts = targets.map(u =>
+          DB.prepare('INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
+            .bind(u.id, 'coupon_expiring', `🎫 쿠폰 만료 임박!`, `${coupon.name} 쿠폰이 내일 만료됩니다`, '/browse')
+        );
+        for (let i = 0; i < stmts.length; i += 50) {
+          await DB.batch(stmts.slice(i, i + 50));
         }
       }
     }
@@ -591,6 +634,24 @@ export async function handleScheduled(env: Env) {
         LIMIT 50
       `).all<{ id: number; toss_payment_key: string; amount: number }>();
 
+      // ✅ PERF: pre-fetch sender phone/name for all expired gifts in one query
+      // (제거: 환불 성공 시 매번 gift+user JOIN SELECT 했던 N+1)
+      const giftDetailMap = new Map<number, { amount: number; phone: string | null; name: string | null }>();
+      if ((expiredGifts ?? []).length > 0) {
+        try {
+          const giftIds = (expiredGifts ?? []).map(g => g.id);
+          const ph = giftIds.map(() => '?').join(',');
+          const { results: details } = await DB.prepare(`
+            SELECT g.id AS gid, g.amount, u.phone, u.name FROM gifts g
+            LEFT JOIN users u ON u.id = g.sender_user_id
+            WHERE g.id IN (${ph})
+          `).bind(...giftIds).all<{ gid: number; amount: number; phone: string | null; name: string | null }>();
+          for (const d of details ?? []) {
+            giftDetailMap.set(d.gid, { amount: d.amount, phone: d.phone, name: d.name });
+          }
+        } catch { /* best-effort */ }
+      }
+
       let refunded = 0, failed = 0;
       for (const g of expiredGifts ?? []) {
         try {
@@ -608,10 +669,7 @@ export async function handleScheduled(env: Env) {
               const aligoKey = (env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY;
               const aligoUser = (env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID;
               if (aligoKey && aligoUser) {
-                const giftDetail = await DB.prepare(`
-                  SELECT g.amount, u.phone, u.name FROM gifts g
-                  LEFT JOIN users u ON u.id = g.sender_user_id WHERE g.id = ?
-                `).bind(g.id).first<{ amount: number; phone: string | null; name: string | null }>();
+                const giftDetail = giftDetailMap.get(g.id);
                 // 🛡️ 2026-04-28: 플랫폼 senderKey 필요. 미설정이면 발송 skip.
                 const aligoSender = (env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY;
                 if (giftDetail?.phone && aligoSender) {

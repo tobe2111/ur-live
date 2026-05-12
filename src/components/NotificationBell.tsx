@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 interface Notification {
   id: number
@@ -92,9 +93,9 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
       markAsRead(notification.id)
     }
 
-    // 링크 이동
+    // 링크 이동 — 🛡️ open-redirect 방어: 내부 path 만 허용
     if (notification.link) {
-      navigate(notification.link)
+      navigate(safeInternalPath(notification.link, '/'))
     }
 
     // 드롭다운 닫기

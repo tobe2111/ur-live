@@ -279,7 +279,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         break;
 
       case 'payment.virtual_account_deposited':
-        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey);
+        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
         break;
 
       case 'payment.partial_canceled':
@@ -380,6 +380,38 @@ async function handlePaymentConfirmed(
   if (alreadyDone || alreadyPaid) {
     if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] ORDER_ALREADY_CONFIRMED', { orderNumber });
     return;
+  }
+
+  // 🛡️ SECURITY: Verify webhook amount matches the original order amount.
+  // Multi-seller checkouts split into multiple `orders` rows under one order_number,
+  // so we sum total_amount across all rows and compare to the webhook payload.
+  // If a forged/replayed webhook arrives with a tampered totalAmount it is rejected
+  // before status flips to PAID/DONE.
+  if (DB) {
+    try {
+      const expectedRow = await DB.prepare(
+        'SELECT COALESCE(SUM(total_amount), 0) AS expected FROM orders WHERE order_number = ?'
+      ).bind(orderNumber).first<{ expected: number }>();
+      const expectedAmount = Number(expectedRow?.expected ?? 0);
+      const webhookAmount = Number(data.totalAmount ?? 0);
+      // Allow exact match only — Toss returns integer KRW amounts.
+      if (expectedAmount > 0 && webhookAmount !== expectedAmount) {
+        console.error('[WEBHOOK] ❌ AMOUNT_MISMATCH — refusing to confirm', {
+          orderNumber,
+          expectedAmount,
+          webhookAmount,
+        });
+        captureException(new Error('WEBHOOK_AMOUNT_MISMATCH'), {
+          tags: { area: 'webhook', kind: 'amount_mismatch', severity: 'critical' },
+          extra: { orderNumber, expectedAmount, webhookAmount },
+        }).catch(swallow('webhook:sentry-amount'));
+        return; // do NOT confirm — leave order in current state for manual review
+      }
+    } catch (err) {
+      console.error('[WEBHOOK] amount verification query failed:', err);
+      // Fail-closed: do not confirm if we cannot verify the amount
+      return;
+    }
   }
 
   // v24 FIX: UPDATE orders + UPDATE order_items를 D1 batch로 묶어 atomic 처리.
@@ -652,12 +684,14 @@ async function handleVirtualAccountDeposited(
   orderRepo: OrderRepository,
   data: TossWebhookPayload['data'],
   orderNumber: string,
-  paymentKey: string
+  paymentKey: string,
+  DB?: D1Database
 ): Promise<void> {
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] VIRTUAL_ACCOUNT_DEPOSITED', { orderNumber });
 
-  // Same as payment.confirmed
-  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey);
+  // Same as payment.confirmed — pass DB through so amount verification + digital
+  // access grant + auction-hold consume run.
+  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey, DB);
 }
 
 export { webhookRouter };

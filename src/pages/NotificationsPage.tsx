@@ -5,6 +5,7 @@ import SEO from '@/components/SEO'
 import { ChevronLeft, Bell } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 interface Notification {
   id: number; type: string; title: string; message?: string; link?: string
@@ -74,7 +75,7 @@ export default function NotificationsPage() {
                     await api.put(`/api/social/notifications/${n.id}/read`)
                     setNotifications(prev => prev.map(nn => nn.id === n.id ? { ...nn, is_read: 1 } : nn))
                   }
-                  if (n.link) navigate(n.link)
+                  if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
                 className={`w-full flex items-start gap-3 p-4 text-left border-b border-gray-100 dark:border-[#1A1A1A] ${n.is_read ? 'opacity-50' : ''}`}
               >
