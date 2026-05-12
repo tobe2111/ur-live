@@ -114,30 +114,59 @@ export async function handleSellerDailyReport(env: Env): Promise<void> {
   let sent = 0;
   let failed = 0;
 
+  const start = yesterdayKstStart.toISOString();
+  const end = yesterdayKstEnd.toISOString();
+
+  // ✅ PERF: 셀러별 3개 쿼리 (revenue/lives/reviews) → IN clause + GROUP BY 단일 query 3개 (총 3 쿼리만 실행).
+  // 100명 셀러 × 3 = 300 쿼리 → 3 쿼리. (chunk size 100 으로 IN 절 보호)
+  type RevAgg = { seller_id: number; cnt: number; rev: number };
+  type LiveAgg = { seller_id: number; cnt: number; viewers: number };
+  type ReviewAgg = { seller_id: number; cnt: number; avg_r: number };
+  const revMap = new Map<number, { cnt: number; rev: number }>();
+  const liveMap = new Map<number, { cnt: number; viewers: number }>();
+  const reviewMap = new Map<number, { cnt: number; avg_r: number }>();
+
+  const sellerIds = sellers.results.map(s => s.id);
+  const CHUNK = 100;
+  for (let i = 0; i < sellerIds.length; i += CHUNK) {
+    const chunk = sellerIds.slice(i, i + CHUNK);
+    const ph = chunk.map(() => '?').join(',');
+    try {
+      const { results } = await DB.prepare(`
+        SELECT seller_id, COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS rev
+        FROM orders WHERE seller_id IN (${ph}) AND payment_status = 'approved'
+          AND created_at >= ? AND created_at <= ?
+        GROUP BY seller_id
+      `).bind(...chunk, start, end).all<RevAgg>();
+      for (const r of results ?? []) revMap.set(r.seller_id, { cnt: r.cnt, rev: r.rev });
+    } catch { /* best-effort */ }
+    try {
+      const { results } = await DB.prepare(`
+        SELECT seller_id, COUNT(*) AS cnt, COALESCE(SUM(peak_viewers), 0) AS viewers
+        FROM live_streams WHERE seller_id IN (${ph})
+          AND created_at >= ? AND created_at <= ?
+        GROUP BY seller_id
+      `).bind(...chunk, start, end).all<LiveAgg>();
+      for (const r of results ?? []) liveMap.set(r.seller_id, { cnt: r.cnt, viewers: r.viewers });
+    } catch { /* best-effort */ }
+    try {
+      const { results } = await DB.prepare(`
+        SELECT p.seller_id AS seller_id, COUNT(*) AS cnt, COALESCE(AVG(pr.rating), 0) AS avg_r
+        FROM product_reviews pr
+        JOIN products p ON p.id = pr.product_id
+        WHERE p.seller_id IN (${ph})
+          AND pr.created_at >= ? AND pr.created_at <= ?
+        GROUP BY p.seller_id
+      `).bind(...chunk, start, end).all<ReviewAgg>();
+      for (const r of results ?? []) reviewMap.set(r.seller_id, { cnt: r.cnt, avg_r: r.avg_r });
+    } catch { /* best-effort */ }
+  }
+
   for (const s of sellers.results) {
     try {
-      const start = yesterdayKstStart.toISOString();
-      const end = yesterdayKstEnd.toISOString();
-
-      const [rev, lives, reviews] = await Promise.all([
-        DB.prepare(`
-          SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS rev
-          FROM orders WHERE seller_id = ? AND payment_status = 'approved'
-            AND created_at >= ? AND created_at <= ?
-        `).bind(s.id, start, end).first<{ cnt: number; rev: number }>().catch(() => null),
-        DB.prepare(`
-          SELECT COUNT(*) AS cnt, COALESCE(SUM(peak_viewers), 0) AS viewers
-          FROM live_streams WHERE seller_id = ?
-            AND created_at >= ? AND created_at <= ?
-        `).bind(s.id, start, end).first<{ cnt: number; viewers: number }>().catch(() => null),
-        DB.prepare(`
-          SELECT COUNT(*) AS cnt, COALESCE(AVG(rating), 0) AS avg_r
-          FROM product_reviews pr
-          JOIN products p ON p.id = pr.product_id
-          WHERE p.seller_id = ?
-            AND pr.created_at >= ? AND pr.created_at <= ?
-        `).bind(s.id, start, end).first<{ cnt: number; avg_r: number }>().catch(() => null),
-      ]);
+      const rev = revMap.get(s.id) ?? null;
+      const lives = liveMap.get(s.id) ?? null;
+      const reviews = reviewMap.get(s.id) ?? null;
 
       // 활동 0 인 셀러는 메일 skip (스팸 방지)
       const totalActivity = (rev?.cnt ?? 0) + (lives?.cnt ?? 0) + (reviews?.cnt ?? 0);
