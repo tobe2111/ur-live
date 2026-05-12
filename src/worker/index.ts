@@ -378,6 +378,9 @@ app.use('*', async (c, next) => {
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })
+            .on('meta[name="csp-nonce"]', {
+        element(el) { el.setAttribute('content', nonce); },
+      })
       .transform(c.res);
     c.res = new Response(rewritten.body, rewritten);
   }

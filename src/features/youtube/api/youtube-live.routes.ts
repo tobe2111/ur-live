@@ -105,7 +105,7 @@ app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, wind
     }
 
     // Create YouTube live setup
-    const scheduledTime = scheduled_start_time || new Date().toISOString()
+    const scheduledTime = scheduled_start_time || new Date(Date.now() + 5 * 60 * 1000).toISOString()
 
     // Check if seller has a persistent stream key (OBS/Prism set once)
     const sellerAuth = channel_id
@@ -318,7 +318,7 @@ app.post('/live/create-webcam', async (c) => {
   const { title, description, product_ids, scheduled_start_time, privacy_status, thumbnail_url } = await c.req.json()
   if (!title) return c.json({ success: false, error: 'Title is required' }, 400)
 
-  const scheduledTime = scheduled_start_time || new Date().toISOString()
+  const scheduledTime = scheduled_start_time || new Date(Date.now() + 5 * 60 * 1000).toISOString()
 
   try {
     const streamResult = await c.env.DB.prepare(`

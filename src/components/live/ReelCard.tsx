@@ -464,6 +464,8 @@ function ReelCardImpl({
         tag.id = SCRIPT_ID
         tag.src = 'https://www.youtube.com/iframe_api'
         tag.async = true
+        const cspNonce = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content
+        if (cspNonce) tag.setAttribute('nonce', cspNonce)
         document.head.appendChild(tag)
       }
     }
@@ -1122,6 +1124,7 @@ function ReelCardImpl({
         <button
           onClick={handleVideoClick}
           className="absolute inset-0 z-10 flex flex-col items-center justify-center transition-all bg-black/60 cursor-pointer"
+          style={{ touchAction: 'manipulation' }}
           aria-label={t('live.enterAria', { defaultValue: '방송 입장하기' })}
         >
           <div className="flex flex-col items-center gap-4">
