@@ -165,7 +165,7 @@ export async function handleAgencyCreatorEval(env: Env): Promise<{
       }
 
       evaluated++
-      console.log(
+      if (process.env.NODE_ENV !== 'production') console.log(
         `[cron:agency-creator-eval] approval=${approval.id} seller=${approval.seller_id} ` +
         `score=${totalScore} decision=${decision} ` +
         `(live=${snapshot.live_hours}h, streams=${snapshot.stream_count}, revenue=${totalRevenue})`
