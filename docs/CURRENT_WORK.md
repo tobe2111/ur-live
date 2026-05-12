@@ -1,8 +1,33 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-12
-**브랜치**: `claude/review-local-deployment-L2BXS` → **PR #310/315 main 머지 + 프로덕션 배포 완료**
-**최근 커밋 (main)**: `41e3587` (top-level setInterval 제거 — global scope 오류 해결)
+**최종 업데이트**: 2026-05-12 (라이브 페이지 UX 개선 + i18n 4차 배포)
+**브랜치**: `claude/review-local-deployment-L2BXS` → main 머지 + 프로덕션 배포 완료
+**최근 main 머지 커밋**: `cb48a60` (cross-page UX/안정성 개선)
+**미배포 (PC 머지 대기)**: `bf3b75e` (GroupBuyList/Search/Embed i18n)
+
+## 📦 2026-05-12 후반 세션 — 4차 배포 (배포 대기)
+
+### Batch 1 (`59a8cf2`) ✅ 배포 완료
+- LiveRecapPage: 상품 클릭 `[object Object]` 버그 수정
+- ReelCard: 종료 라이브 "LIVE" 배지 → "다시보기" 배지
+- TopNav: YouTube 아이콘 `?sub_confirmation=1` + "구독" 레이블
+- TopNav: 셀러 pill → 셀러 프로필 클릭 링크
+
+### Batch 2 (`9ac922d`) ✅ 배포 완료
+- ReelActionRail: tap target 40 → 44px (WCAG 2.5.5)
+- ReelChatSheet: 백드롭 키보드 접근성 + 변수 `t` shadowing 수정
+- ReelProductCard: 재입고 알림 상태 분리 (idle/requesting/requested/error)
+- ReelCard: 시청 트래킹 leave fetch `keepalive: true`
+
+### Batch 3 (`cb48a60`) ✅ 배포 완료
+- ShortsPage: 음소거/닫기 버튼 32 → 44px + silent error → DEV 로깅
+- AccountSettings: handleCheck setTimeout 누수 + cleanup + isMounted guard
+- BlogDetail: 하드코딩 한글 → t()
+
+### Batch 4 (`bf3b75e`) ⏳ PC 머지 대기
+- GroupBuyListPage: 헤더/배너/탭/empty state/CTA/뱃지 ~14건 i18n
+- SearchPage: 관련 키워드 헤딩 + 기본 6개 키워드 i18n
+- EmbedLivePage: 폴백 메시지 i18n
 
 ## 🔥 2026-05-12 배포 사고 + 해결
 
