@@ -1,8 +1,23 @@
 # 🚧 진행 중 작업
 
 **최종 업데이트**: 2026-05-12
-**브랜치**: `claude/review-local-deployment-L2BXS` → **PR #310 main 머지 완료**
-**최근 커밋 (main)**: `77e8826` (squash merge of 59 commits)
+**브랜치**: `claude/review-local-deployment-L2BXS` → **PR #310/315 main 머지 + 프로덕션 배포 완료**
+**최근 커밋 (main)**: `41e3587` (top-level setInterval 제거 — global scope 오류 해결)
+
+## 🔥 2026-05-12 배포 사고 + 해결
+
+**증상**: `wrangler pages deploy` 시 "Disallowed operation called within global scope. ... generating random values are not allowed within global scope" 오류로 모든 신규 배포 실패. 프로덕션은 이전 배포본으로 정상 작동 중이었음.
+
+**원인**: `src/lib/rate-limit.ts` 21~31줄이 모듈 최상위에서 `setInterval(...)` 호출 → CF Pages 런타임이 module init time async I/O 거부.
+
+**해결** (PR #315 / `41e3587`): `setInterval` → lazy `maybeCleanup()` 패턴. 매 요청 처음에 호출, 1분 경과한 경우에만 실제 정리. global scope I/O 없음.
+
+**재발 방지 룰**: Worker 코드 (`src/worker/`, `src/lib/`, `src/features/*/api/`) 에서 모듈 최상위 (function/class 밖) 에 다음 호출 절대 금지:
+- `setInterval` / `setTimeout`
+- `fetch` / `connect`
+- `Math.random` / `crypto.getRandomValues` / `crypto.randomUUID`
+
+검증: `grep -n "^setInterval\|^setTimeout\|^fetch(\|^Math\.random" dist/_worker.js` 결과 empty 여야 함.
 
 새 세션 진입 시 이 문서를 먼저 읽고 이어서 작업할 것.
 
