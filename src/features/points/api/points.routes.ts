@@ -100,6 +100,10 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
 
   const { amount } = await c.req.json<{ amount: number }>();
 
+  // 🛡️ 입력 검증: 숫자형 + 화이트리스트
+  if (!Number.isFinite(amount)) {
+    return c.json({ success: false, error: '유효하지 않은 금액입니다' }, 400);
+  }
   const pkg = CHARGE_AMOUNTS.find(p => p.amount === amount);
   if (!pkg) {
     return c.json({ success: false, error: `유효하지 않은 충전 금액입니다. 가능: ${CHARGE_AMOUNTS.map(p => p.amount).join(', ')}` }, 400);
@@ -158,6 +162,17 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
 
   if (!paymentKey || !orderId || !amount) {
     return c.json({ success: false, error: '필수 항목 누락' }, 400);
+  }
+
+  // 🛡️ 입력 검증: 타입 + 길이 + 범위
+  if (typeof paymentKey !== 'string' || paymentKey.length > 200) {
+    return c.json({ success: false, error: '유효하지 않은 paymentKey' }, 400);
+  }
+  if (typeof orderId !== 'string' || orderId.length > 100) {
+    return c.json({ success: false, error: '유효하지 않은 orderId' }, 400);
+  }
+  if (!Number.isFinite(amount) || amount < 1 || amount > 100_000_000) {
+    return c.json({ success: false, error: '유효하지 않은 금액' }, 400);
   }
 
   const { DB } = c.env;
@@ -564,6 +579,14 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 
   if (!order_number || !items?.length || !shipping?.name) {
     return c.json({ success: false, error: '필수 항목이 누락되었습니다' }, 400);
+  }
+
+  // 🛡️ 입력 검증
+  if (typeof order_number !== 'string' || order_number.length === 0 || order_number.length > 100) {
+    return c.json({ success: false, error: '유효하지 않은 order_number' }, 400);
+  }
+  if (!Array.isArray(items) || items.length > 100) {
+    return c.json({ success: false, error: '주문 항목 수가 유효하지 않습니다' }, 400);
   }
 
   // ✅ IDEMPOTENCY: client-supplied `order_number` doubles as the idempotency

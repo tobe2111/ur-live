@@ -72,7 +72,12 @@ adminCouponsRoutes.post('/coupons', cors(), async (c) => {
 // DELETE /coupons/:id — 쿠폰 삭제
 adminCouponsRoutes.delete('/coupons/:id', cors(), async (c) => {
   try {
-    await c.env.DB.prepare('DELETE FROM coupons WHERE id = ?').bind(c.req.param('id')).run();
+    // 🛡️ 입력 검증: 양수 정수만
+    const idNum = Number(c.req.param('id'));
+    if (!Number.isInteger(idNum) || idNum < 1) {
+      return c.json({ success: false, error: '유효하지 않은 id' }, 400);
+    }
+    await c.env.DB.prepare('DELETE FROM coupons WHERE id = ?').bind(idNum).run();
     return c.json({ success: true });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
@@ -81,7 +86,11 @@ adminCouponsRoutes.delete('/coupons/:id', cors(), async (c) => {
 adminCouponsRoutes.post('/coupons/:id/send-segment', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const couponId = c.req.param('id');
+    // 🛡️ 입력 검증: 양수 정수만
+    const couponId = Number(c.req.param('id'));
+    if (!Number.isInteger(couponId) || couponId < 1) {
+      return c.json({ success: false, error: '유효하지 않은 쿠폰 id' }, 400);
+    }
     const { segment } = await c.req.json<{ segment: 'all' | 'vip' | 'new' | 'dormant' | 'active' }>();
 
     if (!segment || !['all', 'vip', 'new', 'dormant', 'active'].includes(segment)) {
