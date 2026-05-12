@@ -16,7 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
-
+import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -204,16 +204,25 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   }
 
   // 토스 결제 승인
-  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': paymentKey,
-    },
-    // 🛡️ Defense-in-depth: send DB-verified pending.amount (equal to client amount above)
-    body: JSON.stringify({ paymentKey, orderId, amount: pending.amount }),
-  });
+  let tossRes: Response;
+  try {
+    tossRes = await withCircuitBreaker(
+      { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
+      () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': paymentKey,
+        },
+        // 🛡️ Defense-in-depth: send DB-verified pending.amount (equal to client amount above)
+        body: JSON.stringify({ paymentKey, orderId, amount: pending.amount }),
+        signal: AbortSignal.timeout(15_000),
+      }),
+    );
+  } catch {
+    return c.json({ success: false, error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', code: 'CIRCUIT_OPEN' }, 503);
+  }
 
   if (!tossRes.ok) {
     const err = await tossRes.json<{ message?: string; code?: string }>();
