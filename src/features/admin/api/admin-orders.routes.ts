@@ -64,6 +64,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     const { DB } = c.env;
     const status = c.req.query('status');
     const sellerId = c.req.query('seller_id');
+    if (sellerId && !/^\d+$/.test(sellerId)) return c.json({ success: false, error: 'Invalid seller_id' }, 400);
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
 
@@ -137,6 +138,7 @@ adminOrdersRoutes.get('/orders/export', cors(), async (c) => {
     const { DB } = c.env;
     const status = c.req.query('status');
     const sellerId = c.req.query('seller_id');
+    if (sellerId && !/^\d+$/.test(sellerId)) return c.json({ success: false, error: 'Invalid seller_id' }, 400);
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
 
