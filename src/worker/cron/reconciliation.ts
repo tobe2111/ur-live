@@ -18,6 +18,8 @@ export async function runReconciliation(env: Env): Promise<void> {
   const DB = env.DB;
   const results: Record<string, number | string> = {};
   const details: Array<{ check: string; found: number; action: string }> = [];
+  const startedAt = Date.now();
+  logInfo('[Reconciliation] start', {});
 
   // ── 1. Fix stuck PENDING orders > 24h → CANCELLED ──
   // ⚠️  SAFETY: Only auto-cancel orders that have NO payment evidence at Toss.
@@ -147,11 +149,16 @@ export async function runReconciliation(env: Env): Promise<void> {
   }
 
   // ── 3. Detect negative stock → set to 0 ──
+  // 🛡️ chunked via rowid IN (... LIMIT 1000) — guards against
+  //    pathological full-table scans if a regression introduces mass
+  //    negative stock (each tick fixes up to 1000; next tick continues).
   try {
     const { meta } = await DB.prepare(`
       UPDATE products
       SET stock = 0, updated_at = datetime('now')
-      WHERE stock < 0
+      WHERE rowid IN (
+        SELECT rowid FROM products WHERE stock < 0 LIMIT 1000
+      )
     `).run();
     results.negative_stock_fixed = meta.changes ?? 0;
   } catch (e) {
@@ -219,24 +226,38 @@ export async function runReconciliation(env: Env): Promise<void> {
     results.expired_lockouts = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
-  // 🛡️ 오래된 채팅 메시지 정리 (90일 이상) — DB 부담 감소
+  // 🛡️ 오래된 채팅 메시지 정리 (90일 이상) — DB 부담 감소.
+  //    chunked LIMIT 5000 — 첫 cleanup 시 수십만 row 한꺼번에 지우면 D1 timeout.
   try {
-    const { meta } = await DB.prepare(
-      "DELETE FROM chat_messages WHERE created_at < datetime('now', '-90 days')"
-    ).run();
+    const { meta } = await DB.prepare(`
+      DELETE FROM chat_messages
+      WHERE rowid IN (
+        SELECT rowid FROM chat_messages
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 5000
+      )
+    `).run();
     results.expired_chats = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
   // 🛡️ 방치된 장바구니 (60일 이상) 정리 — 삭제된 상품 포함
   try {
-    const { meta } = await DB.prepare(
-      "DELETE FROM cart_items WHERE added_at < datetime('now', '-60 days')"
-    ).run();
+    const { meta } = await DB.prepare(`
+      DELETE FROM cart_items
+      WHERE rowid IN (
+        SELECT rowid FROM cart_items
+        WHERE added_at < datetime('now', '-60 days')
+        LIMIT 5000
+      )
+    `).run();
     results.expired_carts = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
   // Log summary (visible in Cloudflare Worker logs)
-  logInfo('[Reconciliation] Completed:', { details: results });
+  logInfo('[Reconciliation] Completed:', {
+    elapsedMs: Date.now() - startedAt,
+    details: results,
+  });
   if (details.length > 0) {
     logInfo('[Reconciliation] Details:', { details: details });
   }

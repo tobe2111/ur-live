@@ -9,6 +9,8 @@ import { swallow } from '../utils/swallow';
 export async function handleScheduled(env: Env) {
   const DB = env.DB;
   const results: Record<string, number> = {};
+  const startedAt = Date.now();
+  logInfo('[Cron] Scheduled cleanup start', {});
 
   // ── 1. 라이브 방송: 30분 미활동 자동 종료 ──
   try {
@@ -584,13 +586,18 @@ export async function handleScheduled(env: Env) {
 
   // ── 17. chat_messages 정리: 90일 경과 (live stream 종료 후 보관) ──
   // 라이브 종료 후 대량 채팅 누적 → 검색 부하. 라이브 다시보기에 필요한 90일만 보관.
+  // chunked LIMIT 5000 — 한 틱에 과부하 방지.
   try {
     await DB.prepare(`
       DELETE FROM chat_messages
-      WHERE created_at < datetime('now', '-90 days')
-        AND live_stream_id IN (
-          SELECT id FROM live_streams WHERE status = 'ended' AND ended_at < datetime('now', '-90 days')
-        )
+      WHERE rowid IN (
+        SELECT rowid FROM chat_messages
+        WHERE created_at < datetime('now', '-90 days')
+          AND live_stream_id IN (
+            SELECT id FROM live_streams WHERE status = 'ended' AND ended_at < datetime('now', '-90 days')
+          )
+        LIMIT 5000
+      )
     `).run();
   } catch { /* table may not exist */ }
 
@@ -734,6 +741,9 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] consignment_settlements record error:', { error: String(e) }); }
 
-  logInfo('[Cron] Scheduled cleanup:', { details: results });
+  logInfo('[Cron] Scheduled cleanup done', {
+    elapsedMs: Date.now() - startedAt,
+    details: results,
+  });
   return results;
 }
