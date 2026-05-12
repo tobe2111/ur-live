@@ -30,7 +30,10 @@ adminCouponsRoutes.get('/coupons', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
-    const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
+    const page = Math.max(1, Number(c.req.query('page') || 1));
+    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)));
+    const offset = (page - 1) * limit;
+    const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(limit, offset).all();
     return c.json({ success: true, data: results ?? [] });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });

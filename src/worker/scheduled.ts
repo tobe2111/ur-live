@@ -44,6 +44,7 @@ import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-de
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
+import { logError } from './utils/logger';
 
 export async function handleCronScheduled(
   event: ScheduledEvent,
@@ -57,7 +58,7 @@ export async function handleCronScheduled(
       await task();
     } catch (err) {
       const msg = (err as Error)?.message || String(err);
-      console.error(`[cron:${name}] FAILED:`, msg);
+      logError(`[cron:${name}] FAILED`, { error: msg });
       const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
       if (webhook) {
         try {
@@ -90,29 +91,29 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('agency-cron-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       if (flags.enable_agency_campaigns_aggregate) {
-        await recomputeAllActiveCampaigns(env.DB).catch(e => console.error('[cron] campaigns:', e));
+        await recomputeAllActiveCampaigns(env.DB).catch(e => logError('[cron] campaigns', { error: String(e) }));
       }
       if (flags.enable_agency_creator_eval) {
-        await handleAgencyCreatorEval(env).catch(e => console.error('[cron] creator-eval:', e));
+        await handleAgencyCreatorEval(env).catch(e => logError('[cron] creator-eval', { error: String(e) }));
       }
       if (flags.enable_agency_monthly_tasks) {
-        await handleAgencyMonthlyTasks(env).catch(e => console.error('[cron] monthly-tasks:', e));
+        await handleAgencyMonthlyTasks(env).catch(e => logError('[cron] monthly-tasks', { error: String(e) }));
       }
       if (flags.enable_tiktok_videos_sync) {
-        await handleTikTokVideosSync(env).catch(e => console.error('[cron] tiktok:', e));
+        await handleTikTokVideosSync(env).catch(e => logError('[cron] tiktok', { error: String(e) }));
       }
       // Phase 1-2: 부진 셀러 알림 (매일)
-      await handleAgencyInactiveSellers(env).catch(e => console.error('[cron] inactive-sellers:', e));
+      await handleAgencyInactiveSellers(env).catch(e => logError('[cron] inactive-sellers', { error: String(e) }));
       // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일)
-      await handleLiveStreamMetrics(env).catch(e => console.error('[cron] live-metrics:', e));
+      await handleLiveStreamMetrics(env).catch(e => logError('[cron] live-metrics', { error: String(e) }));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
-      await handleAgencySelfEventsTick(env).catch(e => console.error('[cron] self-events:', e));
+      await handleAgencySelfEventsTick(env).catch(e => logError('[cron] self-events', { error: String(e) }));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
-      await handleSellerDailyReport(env).catch(e => console.error('[cron] seller-daily-report:', e));
+      await handleSellerDailyReport(env).catch(e => logError('[cron] seller-daily-report', { error: String(e) }));
       // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
-      await handleAgencySellerMatch(env).catch(e => console.error('[cron] agency-seller-match:', e));
+      await handleAgencySellerMatch(env).catch(e => logError('[cron] agency-seller-match', { error: String(e) }));
       // 2026-05-05: 광고 슬롯 낙찰 처리
-      await handleAdSlotsAward(env).catch(e => console.error('[cron] ad-slots-award:', e));
+      await handleAdSlotsAward(env).catch(e => logError('[cron] ad-slots-award', { error: String(e) }));
     }));
   }
 
@@ -133,22 +134,22 @@ export async function handleCronScheduled(
       const dayOfMonth = now.getUTCDate();
 
       if (flags.enable_agency_auto_settle) {
-        await handleAgencyAutoSettle(env).catch(e => console.error('[cron] auto-settle:', e));
+        await handleAgencyAutoSettle(env).catch(e => logError('[cron] auto-settle', { error: String(e) }));
       }
-      await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => console.error('[cron] incentives:', e));
+      await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => logError('[cron] incentives', { error: String(e) }));
       if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
-        await handleAgencyTierEval(env).catch(e => console.error('[cron] tier-eval:', e));
+        await handleAgencyTierEval(env).catch(e => logError('[cron] tier-eval', { error: String(e) }));
       }
       // 2026-04-27: 셀러 등급 자동 평가 (월 1주차)
       if (dayOfMonth <= 7) {
-        await handleSellerTierEval(env).catch(e => console.error('[cron] seller-tier-eval:', e));
+        await handleSellerTierEval(env).catch(e => logError('[cron] seller-tier-eval', { error: String(e) }));
       }
       if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
-        await handleAgencyMonthlyInvoices(env as any).catch(e => console.error('[cron] invoices:', e));
+        await handleAgencyMonthlyInvoices(env as any).catch(e => logError('[cron] invoices', { error: String(e) }));
       }
       // Phase 2-6: 월간 리포트 (1주차에만 실행, 내부 멱등)
       if (dayOfMonth <= 7) {
-        await handleAgencyMonthlyReport(env).catch(e => console.error('[cron] monthly-report:', e));
+        await handleAgencyMonthlyReport(env).catch(e => logError('[cron] monthly-report', { error: String(e) }));
       }
     }));
   }

@@ -134,6 +134,20 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     // ── donations ──────────────────────────────────
     { desc: 'donations.payment_status', sql: "ALTER TABLE donations ADD COLUMN payment_status TEXT DEFAULT 'pending'" },
     { desc: 'donations.amount', sql: "ALTER TABLE donations ADD COLUMN amount INTEGER DEFAULT 0" },
+
+    // ── 성능 인덱스 (자주 쿼리되는 컬럼) ──────────────
+    // donations: live_stream_id + payment_status 복합 조회 최적화
+    { desc: 'idx_donations_stream_status', sql: "CREATE INDEX IF NOT EXISTS idx_donations_stream_status ON donations(live_stream_id, payment_status)" },
+    // orders: user_id 기준 주문 내역 조회 최적화 (마이페이지)
+    { desc: 'idx_orders_user_id', sql: "CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id, created_at DESC)" },
+    // orders: seller_id 기준 정산/관리 조회 최적화
+    { desc: 'idx_orders_seller_id', sql: "CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id, created_at DESC)" },
+    // live_streams: status + updated_at (자동 종료 쿼리 최적화)
+    { desc: 'idx_live_streams_status_updated', sql: "CREATE INDEX IF NOT EXISTS idx_live_streams_status_updated ON live_streams(status, updated_at)" },
+    // products: seller_id + is_active (셀러 상품 목록 최적화)
+    { desc: 'idx_products_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_seller_active ON products(seller_id, is_active)" },
+    // user_notifications: user_id + created_at (알림 목록 최적화)
+    { desc: 'idx_user_notifications_user', sql: "CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications(user_id, created_at DESC)" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];

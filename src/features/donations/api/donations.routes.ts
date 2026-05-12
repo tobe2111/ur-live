@@ -204,11 +204,10 @@ donationsRoutes.post('/confirm', rateLimit({ action: 'donations_confirm', max: 1
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const userId = user.id;
 
-  const body = await c.req.json<{
-    paymentKey: string;
-    orderId: string;
-    amount: number;
-  }>();
+  let body: { paymentKey?: string; orderId?: string; amount?: number } = {};
+  try { body = await c.req.json(); } catch {
+    return c.json({ success: false, error: '잘못된 요청 형식입니다' }, 400);
+  }
 
   if (!body.paymentKey || !body.orderId || !body.amount) {
     return c.json({ success: false, error: '필수 항목 누락' }, 400);

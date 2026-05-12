@@ -24,6 +24,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { invalidateProductCache } from '@/lib/cache-invalidation';
 import { validateImageUrl } from '@/worker/utils/validation';
 import type { KVNamespace } from '@cloudflare/workers-types';
+import { cacheGet } from '@/worker/utils/cache';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 
@@ -153,14 +154,18 @@ productsRoutes.get('/:id/options', cors(), async (c) => {
   if (isNaN(id)) return c.json({ success: false, error: 'Invalid product ID' }, 400);
 
   try {
-    const result = await DB.prepare(
-      `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
-       FROM product_options
-       WHERE product_id = ?
-       ORDER BY option_type, option_value`
-    ).bind(id).all().catch(() => ({ results: [] }));
+    const KV = (c.env as any).SESSION_KV;
+    const data = await cacheGet(KV, `product_options:${id}`, async () => {
+      const result = await DB.prepare(
+        `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
+         FROM product_options
+         WHERE product_id = ?
+         ORDER BY option_type, option_value`
+      ).bind(id).all().catch(() => ({ results: [] as unknown[] }));
+      return result.results || [];
+    }, { ttl: 600 }); // 10분 캐시 — 옵션은 자주 안 바뀜
 
-    return c.json({ success: true, data: result.results || [] });
+    return c.json({ success: true, data });
   } catch (err: any) {
     console.error('[Products API] Get options error:', err);
     return c.json({ success: false, error: 'Failed to fetch product options' }, 500);
