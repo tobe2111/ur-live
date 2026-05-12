@@ -26,8 +26,12 @@ function readMode(): ThemeMode {
     const v = localStorage.getItem(STORAGE_KEY)
     if (v === 'light' || v === 'dark' || v === 'system') return v
   } catch { /* SSR / private mode */ }
+  // localStorage 차단 환경 (private mode / iframe sandbox) — sessionStorage 폴백
+  try {
+    const v = sessionStorage.getItem(STORAGE_KEY)
+    if (v === 'light' || v === 'dark' || v === 'system') return v
+  } catch { /* full sandbox */ }
   // 신규 사용자는 OS prefers-color-scheme 자동 추적 ('system').
-  // /account/settings 에서 명시 라이트/다크 선택 가능.
   return 'system'
 }
 
@@ -54,6 +58,8 @@ function applyToDocument(applied: AppliedTheme) {
     const root = document.documentElement
     if (applied === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
+    // data-theme 속성도 함께 설정 (CSS selector 다양화 — class 보다 우선 안전)
+    root.setAttribute('data-theme', applied)
   } catch { /* SSR */ }
 }
 
@@ -73,7 +79,12 @@ export const useTheme = create<ThemeStore>((set, get) => ({
   mode: initialMode,
   applied: initialApplied,
   setMode: (mode) => {
-    try { localStorage.setItem(STORAGE_KEY, mode) } catch { /* quota */ }
+    let persisted = false
+    try { localStorage.setItem(STORAGE_KEY, mode); persisted = true } catch { /* quota / private mode */ }
+    // localStorage 실패 시 sessionStorage 폴백 (탭 닫으면 사라지지만 같은 세션 내 유지)
+    if (!persisted) {
+      try { sessionStorage.setItem(STORAGE_KEY, mode) } catch { /* sandbox */ }
+    }
     const applied = resolveApplied(mode)
     applyToDocument(applied)
     set({ mode, applied })
@@ -85,3 +96,35 @@ export const useTheme = create<ThemeStore>((set, get) => ({
     set({ applied })
   },
 }))
+
+/**
+ * 다른 탭에서 테마 변경 시 / 백그라운드 → 포그라운드 복귀 시 호출.
+ * localStorage 를 다시 읽어 현재 store 상태와 다르면 동기화.
+ */
+export function syncFromStorage() {
+  const mode = readMode()
+  const current = useTheme.getState()
+  if (current.mode === mode) {
+    // mode 는 같아도 system 인 경우 OS 가 바뀌었을 수 있음
+    if (mode === 'system') {
+      const applied = detectSystemTheme()
+      if (applied !== current.applied) {
+        applyToDocument(applied)
+        useTheme.setState({ applied })
+      }
+    }
+    return
+  }
+  const applied = resolveApplied(mode)
+  applyToDocument(applied)
+  useTheme.setState({ mode, applied })
+}
+
+/**
+ * 외부 코드가 <html class="dark"> 를 강제로 변경할 때 현재 store 상태로 복구.
+ * MutationObserver 에서 호출 (ThemeProvider).
+ */
+export function reapplyCurrentTheme() {
+  const { applied } = useTheme.getState()
+  applyToDocument(applied)
+}
