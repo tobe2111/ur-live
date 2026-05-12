@@ -125,10 +125,16 @@ productsRoutes.get('/', cors(), async (c) => {
       page: c.req.query('page') ? Number(c.req.query('page')) : 1,
       limit: Math.min(c.req.query('limit') ? Number(c.req.query('limit')) : 20, 100),
     };
-    
-    const service = new ProductService(DB);
-    const result = await service.getProducts(filter, pagination);
-    
+
+    // 🚀 KV cache (60s) — list 변동은 셀러 신규 등록/삭제 시 invalidate (invalidateProductCache)
+    //    short TTL 로 무효화 누락 시에도 1분 내 자연 갱신.
+    const KV = (c.env as any).SESSION_KV;
+    const cacheKey = `products_list:${JSON.stringify({ filter, pagination })}`;
+    const result = await cacheGet(KV, cacheKey, async () => {
+      const service = new ProductService(DB);
+      return await service.getProducts(filter, pagination);
+    }, { ttl: 60, staleWhileRevalidate: 30 });
+
     return c.json({
       success: true,
       data: result.data,
@@ -189,9 +195,14 @@ productsRoutes.get('/:id', cors(), async (c) => {
       }, 400);
     }
     
-    const service = new ProductService(DB);
-    const product = await service.getProduct(id);
-    
+    // 🚀 KV cache (60s) — stock/price 변동은 PUT /:id 에서 invalidateProductCache 호출.
+    //    short TTL 로 무효화 누락 시에도 1분 내 자연 갱신.
+    const KV = (c.env as any).SESSION_KV;
+    const product = await cacheGet(KV, `product_detail:${id}`, async () => {
+      const service = new ProductService(DB);
+      return await service.getProduct(id);
+    }, { ttl: 60, staleWhileRevalidate: 30 });
+
     return c.json({
       success: true,
       data: product

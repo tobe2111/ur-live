@@ -355,47 +355,56 @@ streamsRouter.get('/:id/products', async (c) => {
       return c.json({ success: false, error: 'Invalid stream ID' }, 400);
     }
 
-    // ✅ products 테이블에서 live_stream_id로 조회
-    const rows = await db
-      .prepare(`
-        SELECT
-          id, name, description, price, original_price, discount_rate,
-          image_url, stock,
-          category, seller_id, is_active, created_at, updated_at
-        FROM products
-        WHERE live_stream_id = ? AND is_active = 1
-        ORDER BY created_at DESC
-        LIMIT 200
-      `)
-      .bind(streamId)
-      .all();
-
-    let products = rows.results || [];
-
-    // ✅ live_stream_id로 연결된 상품이 없으면 current_product_id 상품을 fallback으로 반환
-    if (products.length === 0) {
-      const stream = await db
-        .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
-        .bind(streamId)
-        .first<{ current_product_id: number | null }>();
-
-      if (stream?.current_product_id) {
-        const fallbackProduct = await db
+    // 🚀 KV cache (30s) — 라이브 중 상품 목록은 변경 빈도 낮음, 짧은 TTL 로 안전.
+    const products = await cacheGet(
+      c.env.SESSION_KV,
+      `streams:products:${streamId}`,
+      async () => {
+        // ✅ products 테이블에서 live_stream_id로 조회
+        const rows = await db
           .prepare(`
             SELECT
               id, name, description, price, original_price, discount_rate,
               image_url, stock,
               category, seller_id, is_active, created_at, updated_at
-            FROM products WHERE id = ?
+            FROM products
+            WHERE live_stream_id = ? AND is_active = 1
+            ORDER BY created_at DESC
+            LIMIT 200
           `)
-          .bind(stream.current_product_id)
-          .first<ProductRow>();
+          .bind(streamId)
+          .all();
 
-        if (fallbackProduct) {
-          products = [fallbackProduct as unknown as Record<string, unknown>];
+        let list = rows.results || [];
+
+        // ✅ live_stream_id로 연결된 상품이 없으면 current_product_id 상품을 fallback으로 반환
+        if (list.length === 0) {
+          const stream = await db
+            .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
+            .bind(streamId)
+            .first<{ current_product_id: number | null }>();
+
+          if (stream?.current_product_id) {
+            const fallbackProduct = await db
+              .prepare(`
+                SELECT
+                  id, name, description, price, original_price, discount_rate,
+                  image_url, stock,
+                  category, seller_id, is_active, created_at, updated_at
+                FROM products WHERE id = ?
+              `)
+              .bind(stream.current_product_id)
+              .first<ProductRow>();
+
+            if (fallbackProduct) {
+              list = [fallbackProduct as unknown as Record<string, unknown>];
+            }
+          }
         }
-      }
-    }
+        return list;
+      },
+      { ttl: 30, staleWhileRevalidate: 30 }
+    );
 
     return c.json({
       success: true,
@@ -416,26 +425,33 @@ streamsRouter.get('/:id/current-product', async (c) => {
       return c.json({ success: false, error: 'Invalid stream ID' }, 400);
     }
 
-    const stream = await db
-      .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
-      .bind(streamId)
-      .first<{ current_product_id: number | null }>();
+    // 🚀 KV cache (10s + SWR 30s) — 방송 중 변경. POST /current-product 가 invalidate.
+    const result = await cacheGet(
+      c.env.SESSION_KV,
+      `streams:current-product:${streamId}`,
+      async () => {
+        const stream = await db
+          .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
+          .bind(streamId)
+          .first<{ current_product_id: number | null }>();
 
-    if (!stream) {
+        if (!stream) return { notFound: true } as const;
+        if (!stream.current_product_id) return { product: null } as const;
+
+        const product = await db
+          .prepare(`SELECT id, name, description, price, original_price, discount_rate,
+            image_url, stock, category, seller_id, is_active FROM products WHERE id = ?`)
+          .bind(stream.current_product_id)
+          .first();
+        return { product } as const;
+      },
+      { ttl: 10, staleWhileRevalidate: 30 }
+    );
+
+    if ('notFound' in result) {
       return c.json({ success: false, error: 'Stream not found' }, 404);
     }
-
-    if (!stream.current_product_id) {
-      return c.json({ success: true, data: null });
-    }
-
-    const product = await db
-      .prepare(`SELECT id, name, description, price, original_price, discount_rate,
-        image_url, stock, category, seller_id, is_active FROM products WHERE id = ?`)
-      .bind(stream.current_product_id)
-      .first();
-
-    return c.json({ success: true, data: product });
+    return c.json({ success: true, data: result.product });
   } catch (err: unknown) {
     console.error('[Streams] Current product error:', err);
     return c.json({ success: false, error: 'Failed to fetch current product' }, 500);
@@ -450,14 +466,23 @@ streamsRouter.get('/:id/product-timestamps', async (c) => {
     if (!streamId || !/^\d+$/.test(streamId)) {
       return c.json({ success: false, error: 'Invalid stream ID' }, 400)
     }
-    const rows = await c.env.DB.prepare(`
-      SELECT spt.product_id, spt.offset_sec, spt.created_at, p.name, p.image_url, p.price
-      FROM stream_product_timestamps spt
-      LEFT JOIN products p ON spt.product_id = p.id
-      WHERE spt.stream_id = ?
-      ORDER BY spt.offset_sec ASC
-    `).bind(streamId).all<{ product_id: number; offset_sec: number; created_at: string; name: string; image_url: string | null; price: number }>()
-    return c.json({ success: true, data: rows.results || [] })
+    // 🚀 KV cache (60s) — 챕터 마커는 라이브 중에만 추가, 자주 안 바뀜.
+    const data = await cacheGet(
+      c.env.SESSION_KV,
+      `streams:product-timestamps:${streamId}`,
+      async () => {
+        const rows = await c.env.DB.prepare(`
+          SELECT spt.product_id, spt.offset_sec, spt.created_at, p.name, p.image_url, p.price
+          FROM stream_product_timestamps spt
+          LEFT JOIN products p ON spt.product_id = p.id
+          WHERE spt.stream_id = ?
+          ORDER BY spt.offset_sec ASC
+        `).bind(streamId).all<{ product_id: number; offset_sec: number; created_at: string; name: string; image_url: string | null; price: number }>()
+        return rows.results || []
+      },
+      { ttl: 60, staleWhileRevalidate: 60 }
+    )
+    return c.json({ success: true, data })
   } catch {
     return c.json({ success: true, data: [] })
   }
@@ -512,8 +537,12 @@ streamsRouter.post('/:id/current-product', async (c) => {
       .bind(productId ?? null, streamId)
       .run();
 
-    // Invalidate cached stream detail (list entries will expire naturally within TTL)
-    await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
+    // Invalidate cached stream detail + current-product + products list (list entries expire naturally)
+    await cacheInvalidate(c.env.SESSION_KV, [
+      `stream:${streamId}`,
+      `streams:current-product:${streamId}`,
+      `streams:products:${streamId}`,
+    ]);
 
     return c.json({ success: true, message: 'Current product updated' });
   } catch (err: unknown) {
