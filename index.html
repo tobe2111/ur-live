@@ -73,6 +73,8 @@
       #ud-inapp-block kbd { background: #f2f2f7; border: 1px solid #d2d2d7; border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 11px; font-weight: 600; }
     </style>
 
+    <!-- CSP nonce placeholder — Worker HTMLRewriter가 content 값을 요청별 nonce로 교체 -->
+    <meta name="csp-nonce" content="" />
     <meta name="description" content="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑" />
     <meta name="keywords" content="라이브커머스,라이브쇼핑,공동구매,맛집,식사권,인플루언서,유어딜" />
     <meta name="author" content="리스터코퍼레이션" />
@@ -121,6 +123,19 @@
          - GTM: main.tsx 에서 React mount 후 deferred load
          - YouTube IFrame: 라이브/쇼츠 페이지 (영상 로드 시점) 에서 lazy load -->
     <script>
+      // YouTube IFrame API 등 서드파티 라이브러리의 innerHTML 사용을 허용하는
+      // Trusted Types 기본 정책. Chrome의 TrustedHTML 블록 오류 방지.
+      if (window.trustedTypes && window.trustedTypes.createPolicy) {
+        try {
+          window.trustedTypes.createPolicy('default', {
+            createHTML: function(s) { return s; },
+            createScript: function(s) { return s; },
+            createScriptURL: function(s) { return s; },
+          });
+        } catch (e) { /* policy already exists — OK */ }
+      }
+    </script>
+    <script>
       // GTM dataLayer pre-init (실제 스크립트는 main.tsx 가 lazy 로드)
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
@@ -141,7 +156,7 @@
     <script>
       (function(){
         try {
-          if (/^\/(live|shorts)/.test(window.location.pathname)) {
+          if (/^\/(\ live|shorts)/.test(window.location.pathname)) {
             var link = document.createElement('link');
             link.rel = 'preload';
             link.as = 'script';
