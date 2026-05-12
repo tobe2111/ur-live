@@ -104,47 +104,80 @@ app.post('/', async (c) => {
 
   let sent = 0;
 
-  for (const v of visitorRows.results || []) {
-    if (sent >= MAX_RECIPIENTS) break;
-    if (!v.user_id) continue;
+  // 후보 user_id 수집 (중복 제거 + null 제외)
+  const candidateIds = Array.from(new Set(
+    (visitorRows.results || [])
+      .map((v) => Number(v.user_id))
+      .filter((id) => Number.isFinite(id) && id > 0)
+  ));
 
+  if (candidateIds.length > 0) {
     try {
-      // 시청자 통계 조회 → 충성도 계산
-      const stats = await c.env.DB.prepare(`
-        SELECT
-          (SELECT COUNT(DISTINCT ls.id) FROM live_chat lc
-            JOIN live_streams ls ON ls.id = lc.live_stream_id
-            WHERE lc.user_id = ? AND ls.seller_id = ?) AS visits,
-          (SELECT COUNT(*) FROM orders
-            WHERE user_id = ? AND seller_id = ? AND payment_status = 'approved') AS payments,
-          (SELECT COALESCE(SUM(total_amount), 0) FROM orders
-            WHERE user_id = ? AND seller_id = ? AND payment_status = 'approved') AS spent
-      `).bind(v.user_id, seller.id, v.user_id, seller.id, v.user_id, seller.id)
-        .first<{ visits: number; payments: number; spent: number }>().catch(() => null);
+      // 단일 GROUP BY 쿼리로 모든 후보의 visits/payments/spent 집계
+      // (기존 N+1 → 1 read; 5000 명 기준 15000 → 1 reduction)
+      const placeholders = candidateIds.map(() => '?').join(',');
+      const aggregated = await c.env.DB.prepare(`
+        SELECT user_id,
+          SUM(visits) AS visits,
+          SUM(payments) AS payments,
+          SUM(spent) AS spent
+        FROM (
+          SELECT lc.user_id AS user_id,
+            COUNT(DISTINCT ls.id) AS visits,
+            0 AS payments,
+            0 AS spent
+          FROM live_chat lc
+          JOIN live_streams ls ON ls.id = lc.live_stream_id
+          WHERE ls.seller_id = ? AND lc.user_id IN (${placeholders})
+          GROUP BY lc.user_id
+          UNION ALL
+          SELECT user_id AS user_id,
+            0 AS visits,
+            COUNT(*) AS payments,
+            COALESCE(SUM(total_amount), 0) AS spent
+          FROM orders
+          WHERE seller_id = ? AND payment_status = 'approved' AND user_id IN (${placeholders})
+          GROUP BY user_id
+        )
+        GROUP BY user_id
+      `).bind(seller.id, ...candidateIds, seller.id, ...candidateIds)
+        .all<{ user_id: number; visits: number; payments: number; spent: number }>()
+        .catch(() => ({ results: [] as any[] }));
 
-      if (!stats) continue;
+      // 자격 통과 user 만 INSERT 큐에 적재
+      const inserts: D1PreparedStatement[] = [];
+      for (const row of (aggregated.results || [])) {
+        if (inserts.length >= MAX_RECIPIENTS) break;
 
-      const loyalty = computeViewerLoyalty({
-        visits: stats.visits,
-        payments: stats.payments,
-        totalSpent: stats.spent,
-      });
+        const loyalty = computeViewerLoyalty({
+          visits: Number(row.visits) || 0,
+          payments: Number(row.payments) || 0,
+          totalSpent: Number(row.spent) || 0,
+        });
 
-      if (tierRank[loyalty] < minRank) continue;
+        if (tierRank[loyalty] < minRank) continue;
 
-      // dashboard_notifications 발송 (인앱 알림)
-      await c.env.DB.prepare(`
-        INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
-        VALUES ('user', ?, 'live_started', ?, ?, ?, datetime('now'))
-      `).bind(
-        String(v.user_id),
-        `🔴 ${ls.title}`,
-        `좋아하시는 셀러가 지금 라이브 중! 응원하러 가볼까요?`,
-        `/live/${body.live_id}`,
-      ).run();
+        inserts.push(
+          c.env.DB.prepare(`
+            INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+            VALUES ('user', ?, 'live_started', ?, ?, ?, datetime('now'))
+          `).bind(
+            String(row.user_id),
+            `🔴 ${ls.title}`,
+            `좋아하시는 셀러가 지금 라이브 중! 응원하러 가볼까요?`,
+            `/live/${body.live_id}`,
+          )
+        );
+      }
 
-      sent++;
-    } catch { /* skip individual failures */ }
+      // 50개씩 배치 INSERT
+      for (let i = 0; i < inserts.length; i += 50) {
+        try {
+          await c.env.DB.batch(inserts.slice(i, i + 50));
+          sent += Math.min(50, inserts.length - i);
+        } catch { /* batch 실패 시 다음 chunk 시도 */ }
+      }
+    } catch { /* aggregate / insert 실패 시 sent=0 으로 진행 */ }
   }
 
   // 발송 로그
