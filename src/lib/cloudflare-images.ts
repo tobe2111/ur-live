@@ -35,10 +35,29 @@ export type ImageVariant = 'thumbnail' | 'medium' | 'large' | 'public';
  */
 export function getImageUrl(imageId: string, variant: ImageVariant = 'public'): string {
   // ACCOUNT_HASH는 Cloudflare Dashboard > Images > Overview에서 확인
-  // 환경 변수로 설정 권장: CLOUDFLARE_IMAGES_ACCOUNT_HASH
-  const ACCOUNT_HASH = process.env.CLOUDFLARE_IMAGES_ACCOUNT_HASH || 'YOUR_ACCOUNT_HASH_HERE';
-  
-  return `https://imagedelivery.net/${ACCOUNT_HASH}/${imageId}/${variant}`;
+  // Vite (browser): import.meta.env.VITE_CLOUDFLARE_IMAGES_ACCOUNT_HASH
+  // Worker: globalThis.CLOUDFLARE_IMAGES_ACCOUNT_HASH (env binding)
+  // 🛡️ process.env 는 Cloudflare Workers/브라우저 런타임에 존재하지 않아
+  //   기존 코드는 항상 'YOUR_ACCOUNT_HASH_HERE' 플레이스홀더로 폴백되어
+  //   깨진 URL 을 사용자에게 송출하고 있었다.
+  let accountHash: string | undefined;
+  try {
+    // Vite-injected env (browser bundle)
+    accountHash = (import.meta as { env?: Record<string, string | undefined> })
+      .env?.VITE_CLOUDFLARE_IMAGES_ACCOUNT_HASH;
+  } catch {
+    // import.meta 미지원 환경 무시
+  }
+  if (!accountHash && typeof globalThis !== 'undefined') {
+    accountHash = (globalThis as unknown as Record<string, string | undefined>)
+      .CLOUDFLARE_IMAGES_ACCOUNT_HASH;
+  }
+  if (!accountHash) {
+    // Cloudflare Images 가 구성되지 않은 경우 깨진 URL 대신 빈 문자열을 반환하여
+    // <img src=""> 가 onerror 폴백을 트리거하도록 한다.
+    return '';
+  }
+  return `https://imagedelivery.net/${accountHash}/${imageId}/${variant}`;
 }
 
 /**
