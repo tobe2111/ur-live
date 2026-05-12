@@ -26,4 +26,4 @@ import { requireAdmin } from '@/worker/middleware/auth'
 const app = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-12: 서브라우터 cors() 제거 — index.ts 전역 cors() 가 처리. 중복 제거.
 
-// PLACEHOLDER_CONTENT
+// PLACEHOLDER
