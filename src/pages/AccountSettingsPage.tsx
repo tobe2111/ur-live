@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -26,22 +26,35 @@ function AppVersionSection() {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
 
+  const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+
   const fetchVersion = async () => {
     try {
       const res = await fetch('/api/version', { cache: 'no-store' });
       const data = await res.json() as { success?: boolean; version?: string };
-      if (data?.version) setServerVersion(String(data.version));
-    } catch {}
+      if (data?.version && isMountedRef.current) setServerVersion(String(data.version));
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[Version] fetch failed:', e);
+    }
   };
 
   useEffect(() => {
-    fetchVersion().finally(() => setLoading(false));
+    isMountedRef.current = true;
+    fetchVersion().finally(() => { if (isMountedRef.current) setLoading(false); });
+    return () => {
+      isMountedRef.current = false;
+      if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
+    };
   }, []);
 
   const handleCheck = async () => {
     setChecking(true);
     await fetchVersion();
-    setTimeout(() => setChecking(false), 500);
+    if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
+    checkTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) setChecking(false);
+    }, 500);
   };
 
   const handleUpdate = async () => {
@@ -54,7 +67,9 @@ function AppVersionSection() {
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map((r) => r.update()));
       }
-    } catch {}
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[AppUpdate] cache/SW clear failed:', e);
+    }
     window.location.reload();
   };
 

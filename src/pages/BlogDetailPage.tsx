@@ -40,8 +40,8 @@ export default function BlogDetailPage() {
   if (!post) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center">
-        <p className="text-gray-500 dark:text-gray-400 mb-4">글을 찾을 수 없습니다</p>
-        <Link to="/blog" className="text-blue-600 text-sm font-medium">블로그로 돌아가기</Link>
+        <p className="text-gray-500 dark:text-gray-400 mb-4">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
+        <Link to="/blog" className="text-blue-600 text-sm font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
       </div>
     )
   }

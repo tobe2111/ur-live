@@ -72,8 +72,9 @@ export default function ShortsPage() {
         newItems.forEach(item => seenIds.current.add(String(item.id)))
         setShorts(prev => [...prev, ...newItems])
       }
-    } catch {
-      // 쇼츠 API 실패 시 라이브 다시보기로 폴백
+    } catch (e) {
+      // 쇼츠 API 실패 시 빈 상태 — DEV 로깅으로 silent failure 추적 가능
+      if (import.meta.env.DEV) console.warn('[Shorts] feed load failed:', e)
     } finally {
       setLoading(false)
     }
@@ -141,7 +142,9 @@ export default function ShortsPage() {
           },
         },
       })
-    } catch { /* ignore */ }
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[Shorts] YT.Player init failed:', e)
+    }
   }, [])
 
   // 활성 영상 재생, 나머지 정지
@@ -335,10 +338,10 @@ export default function ShortsPage() {
                   >
                     {t('shortsPage.follow', { defaultValue: '팔로우' })}
                   </button>
-                  <button onClick={() => setMuted(!muted)} aria-label={muted ? t('shortsPage.ariaUnmute') : t('shortsPage.ariaMute')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                  <button onClick={() => setMuted(!muted)} aria-label={muted ? t('shortsPage.ariaUnmute') : t('shortsPage.ariaMute')} className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
                   </button>
-                  <button onClick={() => navigate(-1)} aria-label={t('shortsPage.ariaClose')} className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                  <button onClick={() => navigate(-1)} aria-label={t('shortsPage.ariaClose')} className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
                     <X className="w-4 h-4 text-white" />
                   </button>
                 </div>
