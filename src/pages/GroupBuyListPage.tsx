@@ -183,7 +183,7 @@ export default function GroupBuyListPage() {
             <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
-            공동구매
+            {t('groupBuy.title', { defaultValue: '공동구매' })}
           </h1>
         </div>
       </header>
@@ -194,10 +194,10 @@ export default function GroupBuyListPage() {
           <div className="flex-1 min-w-0">
             <p className="text-white text-[15px] font-extrabold">
               <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
-              함께 모일수록 더 싸져요!
+              {t('groupBuy.bannerHeadline', { defaultValue: '함께 모일수록 더 싸져요!' })}
             </p>
             <p className="text-white/90 text-[11px] mt-1">
-              최대 50% 할인 — 목표 달성 시 특가로 구매 가능
+              {t('groupBuy.bannerSubline', { defaultValue: '최대 50% 할인 — 목표 달성 시 특가로 구매 가능' })}
             </p>
           </div>
           <button
@@ -205,7 +205,7 @@ export default function GroupBuyListPage() {
             className="shrink-0 flex items-center gap-1 bg-white text-rose-600 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="w-3.5 h-3.5" />
-            시작
+            {t('groupBuy.startCta', { defaultValue: '시작' })}
           </button>
         </div>
       </div>
@@ -221,7 +221,7 @@ export default function GroupBuyListPage() {
                 : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
-            셀러 공구
+            {t('groupBuy.tabSeller', { defaultValue: '셀러 공구' })}
           </button>
           <button
             onClick={() => setMainTab('community')}
@@ -231,7 +231,7 @@ export default function GroupBuyListPage() {
                 : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
-            유저 공구
+            {t('groupBuy.tabCommunity', { defaultValue: '유저 공구' })}
           </button>
         </div>
       </div>
@@ -264,8 +264,7 @@ export default function GroupBuyListPage() {
       {/* 정렬 pills */}
       <div className={`ur-content-wide px-4 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
         <span className="text-[12px] text-gray-500 dark:text-gray-400">
-          총 <span className="font-semibold text-gray-900 dark:text-white">{currentCount}</span>
-          개
+          {t('groupBuy.totalCount', { defaultValue: '총 {{count}}개', count: currentCount })}
         </span>
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <button
@@ -325,23 +324,23 @@ export default function GroupBuyListPage() {
               <div className="text-center py-20">
                 <p className="text-[36px] mb-3">🛒</p>
                 <p className="text-gray-900 dark:text-white font-semibold text-[14px]">
-                  진행 중인 공동구매가 없습니다
+                  {t('groupBuy.emptySeller', { defaultValue: '진행 중인 공동구매가 없습니다' })}
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                  곧 새로운 상품이 올라와요!
+                  {t('groupBuy.emptySellerSub', { defaultValue: '곧 새로운 상품이 올라와요!' })}
                 </p>
                 <div className="mt-5 flex gap-2 justify-center">
                   <button
                     onClick={() => navigate('/browse')}
                     className="px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                   >
-                    쇼핑하러 가기
+                    {t('groupBuy.ctaShop', { defaultValue: '쇼핑하러 가기' })}
                   </button>
                   <button
                     onClick={() => navigate('/community-group-buy/new')}
                     className="flex items-center gap-1 px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 text-[13px] font-semibold rounded-full"
                   >
-                    <Plus className="w-3.5 h-3.5" /> 맛집 공구 시작
+                    <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '맛집 공구 시작' })}
                   </button>
                 </div>
               </div>
@@ -378,7 +377,7 @@ export default function GroupBuyListPage() {
                         {/* 할인 뱃지 */}
                         {discount > 0 && (
                           <span className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
-                            최대 -{discount}%
+                            {t('groupBuy.maxDiscount', { defaultValue: '최대 -{{rate}}%', rate: discount })}
                           </span>
                         )}
 
@@ -386,7 +385,7 @@ export default function GroupBuyListPage() {
                         {achieved && (
                           <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
                             <CheckCircle2 className="w-3 h-3" />
-                            달성
+                            {t('groupBuy.achieved', { defaultValue: '달성' })}
                           </span>
                         )}
 
@@ -448,13 +447,10 @@ export default function GroupBuyListPage() {
                               <Users className="w-3 h-3 text-gray-400" />
                               {achieved ? (
                                 <span className="text-emerald-600 font-semibold">
-                                  목표 달성!
+                                  {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
                                 </span>
                               ) : (
-                                <>
-                                  현재 <span className="font-semibold">{current}</span>
-                                  명 참여중
-                                </>
+                                <>{t('groupBuy.currentParticipants', { defaultValue: '현재 {{count}}명 참여중', count: current })}</>
                               )}
                             </p>
                           </div>
@@ -491,16 +487,16 @@ export default function GroupBuyListPage() {
               <div className="text-center py-20">
                 <p className="text-[36px] mb-3">🙋</p>
                 <p className="text-gray-900 dark:text-white font-semibold text-[14px]">
-                  진행 중인 유저 공구가 없습니다
+                  {t('groupBuy.emptyCommunity', { defaultValue: '진행 중인 유저 공구가 없습니다' })}
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                  원하는 맛집 공구를 직접 시작해보세요!
+                  {t('groupBuy.emptyCommunitySub', { defaultValue: '원하는 맛집 공구를 직접 시작해보세요!' })}
                 </p>
                 <button
                   onClick={() => navigate('/community-group-buy/new')}
                   className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                 >
-                  공구 시작하기
+                  {t('groupBuy.ctaStart', { defaultValue: '공구 시작하기' })}
                 </button>
               </div>
             ) : (
@@ -560,14 +556,14 @@ export default function GroupBuyListPage() {
                       <div className="flex items-center gap-3 mt-3">
                         <div className="flex items-center gap-1">
                           <HandCoins className="w-3.5 h-3.5 text-pink-500" />
-                          <span className="text-[12px] text-gray-600 dark:text-gray-400">제안가</span>
+                          <span className="text-[12px] text-gray-600 dark:text-gray-400">{t('groupBuy.proposedPrice', { defaultValue: '제안가' })}</span>
                           <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                             {formatPrice(g.proposed_price)}
                           </span>
                         </div>
                         <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
                         <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                          보증금 <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
+                          {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
                         </div>
                       </div>
 
@@ -586,7 +582,7 @@ export default function GroupBuyListPage() {
                             <Users className="w-3 h-3 text-gray-400" />
                             {achieved ? (
                               <span className="text-emerald-600 font-semibold">
-                                목표 달성!
+                                {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
                               </span>
                             ) : (
                               <>
@@ -594,7 +590,7 @@ export default function GroupBuyListPage() {
                                   {g.current_count}
                                 </span>
                                 <span className="text-gray-400">/</span>
-                                <span>{g.target_count}명</span>
+                                <span>{t('groupBuy.peopleSuffix', { defaultValue: '{{count}}명', count: g.target_count })}</span>
                               </>
                             )}
                           </p>

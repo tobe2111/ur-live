@@ -51,7 +51,7 @@ export default function EmbedLivePage() {
   if (!stream) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white text-sm">
-        라이브를 찾을 수 없습니다
+        {t('embed.liveNotFound', { defaultValue: '라이브를 찾을 수 없습니다' })}
       </div>
     )
   }

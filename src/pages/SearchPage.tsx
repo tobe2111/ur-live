@@ -27,9 +27,14 @@ interface SearchSuggestion {
   text: string
 }
 
-const relatedKeywordsMap: Record<string, string[]> = {
-  default: ['인기상품', '신상품', '할인특가', '무료배송', '베스트셀러', '한정판'],
-}
+const DEFAULT_RELATED_KEYWORD_KEYS = [
+  { key: 'popular', defaultValue: '인기상품' },
+  { key: 'new', defaultValue: '신상품' },
+  { key: 'sale', defaultValue: '할인특가' },
+  { key: 'freeShipping', defaultValue: '무료배송' },
+  { key: 'bestSeller', defaultValue: '베스트셀러' },
+  { key: 'limited', defaultValue: '한정판' },
+]
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
@@ -106,7 +111,7 @@ export default function SearchPage() {
   const hasResults = !!(searchResult && searchResult.total > 0)
   const showResults = !loading && !error && query && hasResults
 
-  const relatedKeywords = relatedKeywordsMap[query] || relatedKeywordsMap.default
+  const relatedKeywords = DEFAULT_RELATED_KEYWORD_KEYS.map(k => t(`search.related.${k.key}`, { defaultValue: k.defaultValue }))
 
   return (
     <div className="bg-white dark:bg-[#0A0A0A] pb-20 min-h-screen">
@@ -153,7 +158,7 @@ export default function SearchPage() {
 
             {/* Related Keywords Section */}
             <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#1A1A1A]">
-              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">함께 검색된 키워드</h3>
+              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('search.relatedKeywords', { defaultValue: '함께 검색된 키워드' })}</h3>
               <div className="flex flex-wrap gap-2">
                 {relatedKeywords.map((keyword) => (
                   <button
