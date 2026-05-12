@@ -10,11 +10,14 @@ export interface ApiError {
   message?: string
 }
 
-// YouTube IFrame API types
+// YouTube IFrame API types — SSOT, ReelCard / ShortsPage 등에서 import 해서 사용.
 export interface YTPlayer {
   playVideo(): void
   pauseVideo(): void
+  stopVideo?(): void
   unMute(): void
+  mute(): void
+  isMuted(): boolean
   setVolume(volume: number): void
   destroy(): void
   getCurrentTime(): number
@@ -26,21 +29,54 @@ export interface YTPlayerEvent {
   data: number
 }
 
+export interface YTPlayerVars {
+  autoplay?: 0 | 1
+  mute?: 0 | 1
+  controls?: 0 | 1 | 2
+  modestbranding?: 0 | 1
+  rel?: 0 | 1
+  showinfo?: 0 | 1
+  iv_load_policy?: 1 | 3
+  playsinline?: 0 | 1
+  enablejsapi?: 0 | 1
+  loop?: 0 | 1
+  playlist?: string
+  fs?: 0 | 1
+  cc_load_policy?: 0 | 1
+  origin?: string
+}
+
+export interface YTPlayerOptions {
+  height?: string | number
+  width?: string | number
+  videoId?: string
+  playerVars?: YTPlayerVars
+  events?: {
+    onReady?: (event: YTPlayerEvent) => void
+    onStateChange?: (event: YTPlayerEvent) => void
+    onError?: (event: YTPlayerEvent) => void
+  }
+}
+
 export interface YTNamespace {
-  Player: new (elementId: string, options: object) => YTPlayer
+  Player: new (elementId: string | HTMLElement, options: YTPlayerOptions) => YTPlayer
   PlayerState: {
+    UNSTARTED: number
+    ENDED: number
     PLAYING: number
     PAUSED: number
-    ENDED: number
+    BUFFERING: number
+    CUED: number
   }
+  ready?: (cb: () => void) => void
 }
 
 // Extend window for YouTube IFrame API
 declare global {
   interface Window {
-    YT: YTNamespace
-    youtubeCallbacks: (() => void)[]
-    onYouTubeIframeAPIReady: () => void
+    YT?: YTNamespace
+    youtubeCallbacks?: (() => void)[]
+    onYouTubeIframeAPIReady?: () => void
   }
 }
 

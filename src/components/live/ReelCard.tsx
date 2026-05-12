@@ -27,21 +27,8 @@ function isApiError(error: unknown): error is ApiError {
   return typeof error === 'object' && error !== null && ('response' in error || 'message' in error)
 }
 
-interface YTPlayer {
-  playVideo(): void
-  pauseVideo(): void
-  unMute(): void
-  isMuted(): boolean
-  setVolume(volume: number): void
-  destroy(): void
-  getCurrentTime(): number
-  getDuration(): number
-}
-
-interface YTPlayerEvent {
-  target: YTPlayer
-  data: number
-}
+// 🛡️ YouTube iframe API 타입은 LiveTypes.ts (SSOT) 에서 import 합니다.
+import type { YTPlayer, YTPlayerEvent } from '@/components/live/LiveTypes'
 
 interface Stream {
   id: number
@@ -344,7 +331,6 @@ function ReelCardImpl({
 
     const initializePlayer = () => {
       try {
-        // @ts-ignore
         if (!window.YT || !window.YT.Player) {
           return
         }
@@ -359,7 +345,6 @@ function ReelCardImpl({
 
         while (playerElement.firstChild) playerElement.removeChild(playerElement.firstChild)
 
-        // @ts-ignore
         player = new window.YT.Player(`youtube-player-${stream.id}`, {
           height: '100%',
           width: '100%',
@@ -401,12 +386,11 @@ function ReelCardImpl({
             onStateChange: (event: YTPlayerEvent) => {
               if (!isMounted) return
               try {
-                // @ts-ignore
-                if (event.data === window.YT.PlayerState.PLAYING) {
+                if (event.data === window.YT?.PlayerState.PLAYING) {
                   setShowPlayButton(false)
                   showPlayButtonRef.current = false
                   setAutoplayFailed(false)
-                } else if (event.data === window.YT.PlayerState.PAUSED) {
+                } else if (event.data === window.YT?.PlayerState.PAUSED) {
                   setShowPlayButton(true)
                   showPlayButtonRef.current = true
                 }
@@ -447,12 +431,11 @@ function ReelCardImpl({
       }
     }
 
-    // @ts-ignore
     if (window.YT && window.YT.Player) {
       initializePlayer()
     } else {
       // API 로드 완료 시 콜백 등록 (index.html에서 초기화된 배열 사용)
-      // @ts-ignore
+      window.youtubeCallbacks = window.youtubeCallbacks || []
       window.youtubeCallbacks.push(() => {
         if (isMounted) initializePlayer()
       })

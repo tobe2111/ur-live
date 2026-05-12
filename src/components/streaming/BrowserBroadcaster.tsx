@@ -268,13 +268,13 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
           priority: 'high',
         }]
         params.degradationPreference = 'maintain-resolution'
-        sender.setParameters(params).catch(() => {})
+        sender.setParameters(params).catch((e) => { if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] video setParameters failed:', e) })
       } else if (track.kind === 'audio') {
         const params = sender.getParameters()
         // 🛡️ 2026-05-11: Opus 192 kbps stereo - 라이브 음악/상품 사운드까지 깔끔 재생.
         //   대역폭 negligible (192 kbps), 음질 체감 차이 큼. YouTube Live 권장 상한.
         params.encodings = [{ maxBitrate: 192_000, networkPriority: 'high', priority: 'high' }]
-        sender.setParameters(params).catch(() => {})
+        sender.setParameters(params).catch((e) => { if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] audio setParameters failed:', e) })
       }
     })
 

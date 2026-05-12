@@ -116,11 +116,9 @@ export default function ShortsPage() {
   // YouTube 플레이어 초기화
   const initPlayer = useCallback((videoId: string, elementId: string, index: number) => {
     if (playerRefs.current.has(elementId)) return
-    // @ts-ignore
     if (!window.YT?.Player) return
 
     try {
-      // @ts-ignore
       const player = new window.YT.Player(elementId, {
         videoId,
         playerVars: {
@@ -279,13 +277,10 @@ export default function ShortsPage() {
                           if (!entry.isIntersecting) return
                           observer.disconnect()
                           initObservers.current.delete(obsKey)
-                          // @ts-ignore
                           if (window.YT?.Player) {
                             initPlayer(item.youtube_video_id!, obsKey, index)
                           } else {
-                            // @ts-ignore
                             if (!window.youtubeCallbacks) window.youtubeCallbacks = []
-                            // @ts-ignore
                             window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, obsKey, index))
                           }
                         },
