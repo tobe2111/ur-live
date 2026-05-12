@@ -40,6 +40,7 @@ import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
+import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -75,6 +76,9 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
+    // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
+    ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
+    ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
     // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리
     ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
   }

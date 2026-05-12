@@ -708,6 +708,40 @@ internalAdminToolsRoutes.get('/api/_internal/repair-new-tables', requireAdmin(),
       )` },
     { desc: '0246: idx_audit_log_actor', sql: `CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON admin_audit_log(actor_id, created_at DESC)` },
     { desc: '0246: idx_audit_log_resource', sql: `CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON admin_audit_log(resource_type, resource_id, created_at DESC)` },
+
+    // 🛡️ 2026-05-12: 알림 dead-letter (transient 실패 자동 재시도용).
+    //   sendSystemEmail / sendSystemPush 가 실패 시 INSERT, retry-notifications cron 이 5분 주기 drain.
+    { desc: '0247: email_failures', sql: `
+      CREATE TABLE IF NOT EXISTS email_failures (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        html TEXT NOT NULL,
+        error TEXT,
+        retry_count INTEGER DEFAULT 0,
+        max_retries INTEGER DEFAULT 3,
+        next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
+        resolved INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { desc: '0247: idx_email_failures_pending', sql: `CREATE INDEX IF NOT EXISTS idx_email_failures_pending ON email_failures(resolved, next_retry_at)` },
+    { desc: '0247: push_failures', sql: `
+      CREATE TABLE IF NOT EXISTS push_failures (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_type TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        url TEXT,
+        subscription_count INTEGER NOT NULL DEFAULT 0,
+        retry_count INTEGER DEFAULT 0,
+        max_retries INTEGER DEFAULT 3,
+        next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
+        resolved INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { desc: '0247: idx_push_failures_pending', sql: `CREATE INDEX IF NOT EXISTS idx_push_failures_pending ON push_failures(resolved, next_retry_at)` },
   ];
 
   const results: Array<{ desc: string; status: string; error?: string }> = [];
