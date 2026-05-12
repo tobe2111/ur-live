@@ -101,6 +101,16 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
     return () => clearInterval(id)
   }, [stream.id, stream.youtube_video_id])
 
+  // 🛡️ 2026-05-12: 송출 중 활성 신호 (60초마다) — 30분 자동종료 cron 방지
+  useEffect(() => {
+    const ping = () => {
+      api.post(`/api/seller/streams/${stream.id}/heartbeat`, {}).catch(() => { /* silent */ })
+    }
+    ping() // 즉시 1회
+    const id = setInterval(ping, 60000)
+    return () => clearInterval(id)
+  }, [stream.id])
+
   // Document Picture-in-Picture API (Chrome 116+)
   async function togglePiP() {
     // @ts-expect-error: documentPictureInPicture is not in standard DOM types yet

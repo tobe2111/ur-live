@@ -686,6 +686,28 @@ sellerStreamsRoutes.put('/:id/product-display', async (c) => {
   }
 });
 
+// ── POST /api/seller/streams/:id/heartbeat — 송출 중 활성 신호 (30분 자동종료 방지) ──
+sellerStreamsRoutes.post('/:id/heartbeat', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401);
+
+    const streamId = c.req.param('id');
+
+    const result = await c.env.DB.prepare(
+      "UPDATE live_streams SET updated_at = datetime('now') WHERE id = ? AND seller_id = ? AND status = 'live'"
+    ).bind(streamId, sellerId).run();
+
+    if (!result.meta.changes) {
+      return c.json({ success: false, error: '활성 라이브 아님 또는 권한 없음' }, 404);
+    }
+
+    return c.json({ success: true });
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
 // ── POST /api/seller/streams/:id/change-product — 실시간 상품 변경 ──
 sellerStreamsRoutes.post('/:id/change-product', async (c) => {
   try {
