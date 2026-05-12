@@ -494,11 +494,10 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     );
 
     if (!tossResult.success) {
-      // 🛡️ Toss 실패 시 예약한 refunded_amount 롤백
-      // CRITICAL: 이 롤백이 실패하면 환불 금액 이중 반영 위험 → 반드시 로그 남김.
+      // 🛡️ Toss 실패 시 예약한 refunded_amount 롤백 (CAS — 동시 2건 실패 시 이중 차감 방지)
       await c.env.DB.prepare(
-        "UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?"
-      ).bind(refundAmount, body.order_id).run().catch(swallow('order:refund-rollback-CRITICAL'));
+        "UPDATE orders SET refunded_amount = MAX(0, refunded_amount - ?) WHERE id = ? AND refunded_amount >= ?"
+      ).bind(refundAmount, body.order_id, refundAmount).run().catch(swallow('order:refund-rollback-CRITICAL'));
 
       const tossErrorMessages: Record<string, string> = {
         ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',

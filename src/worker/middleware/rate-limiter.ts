@@ -27,7 +27,8 @@ interface Counter {
 // isolate 전역 카운터 맵 — KV write 없음
 const memStore = new Map<string, Counter>();
 
-// 5분마다 만료된 항목 정리 (메모리 누수 방지)
+// 5분마다 만료된 항목 정리 + 50k 상한 FIFO 강제 축소 (트래픽 폭증 대비)
+const MAX_STORE_SIZE = 50_000;
 let lastCleanup = Date.now();
 function maybeCleanup() {
   const now = Date.now();
@@ -35,6 +36,16 @@ function maybeCleanup() {
   lastCleanup = now;
   for (const [k, v] of memStore) {
     if (now > v.resetTime) memStore.delete(k);
+  }
+  // 정리 후에도 한도 초과 시 가장 오래된 항목부터 제거
+  if (memStore.size > MAX_STORE_SIZE) {
+    const toRemove = memStore.size - MAX_STORE_SIZE;
+    let removed = 0;
+    for (const k of memStore.keys()) {
+      if (removed >= toRemove) break;
+      memStore.delete(k);
+      removed++;
+    }
   }
 }
 

@@ -241,15 +241,23 @@ export async function handleScheduled(env: Env) {
     results.referrals_expired = meta.changes ?? 0;
   } catch (e) { logError('[Cron] referrals error:', { error: String(e) }) }
 
-  // ── 8. 알림 정리: 90일 이상 된 알림 삭제 ──
+  // ── 8. 알림 정리: 90일 이상 된 알림 삭제 — LIMIT 10000으로 한 틱에 과부하 방지 ──
   try {
     await DB.prepare(`
       DELETE FROM user_notifications
-      WHERE created_at < datetime('now', '-90 days')
+      WHERE rowid IN (
+        SELECT rowid FROM user_notifications
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 10000
+      )
     `).run();
     await DB.prepare(`
       DELETE FROM dashboard_notifications
-      WHERE created_at < datetime('now', '-90 days')
+      WHERE rowid IN (
+        SELECT rowid FROM dashboard_notifications
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 10000
+      )
     `).run();
   } catch (e) { logError('[Cron] notifications_cleanup error:', { error: String(e) }) }
 
@@ -308,37 +316,48 @@ export async function handleScheduled(env: Env) {
       // pre_notified 컬럼 보장
       try { await DB.prepare("ALTER TABLE live_streams ADD COLUMN pre_notified INTEGER DEFAULT 0").run() } catch {}
 
-      // ✅ FIX (H4): Cap loop size to avoid Worker subrequest limits (50 per invocation)
-      for (const stream of upcomingStreams.slice(0, 20)) {
-        // 구독자에게 인앱 알림 발송
+      const capped = upcomingStreams.slice(0, 20);
+      // 구독자 알림을 루프 밖에서 한 번에 batch — 스트림별 순차 write 방지
+      const allNotifyStmts: ReturnType<D1Database['prepare']>[] = [];
+      const streamIds: number[] = [];
+
+      for (const stream of capped) {
         try {
           const { results: subs } = await DB.prepare(
-            "SELECT user_id, user_name FROM broadcast_subscriptions WHERE stream_id = ? AND notify_inapp = 1"
-          ).bind(stream.id).all<{ user_id: string; user_name: string }>();
+            "SELECT user_id FROM broadcast_subscriptions WHERE stream_id = ? AND notify_inapp = 1"
+          ).bind(stream.id).all<{ user_id: string }>();
 
-          if (subs && subs.length > 0) {
-            const stmts = subs.map(sub =>
-              DB.prepare(`
-                INSERT INTO user_notifications (user_id, type, title, message, link)
-                VALUES (?, 'broadcast_reminder', ?, ?, ?)
-              `).bind(
+          for (const sub of (subs || [])) {
+            allNotifyStmts.push(
+              DB.prepare(
+                "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'broadcast_reminder', ?, ?, ?)"
+              ).bind(
                 sub.user_id,
                 `⏰ 30분 후 라이브! ${stream.seller_name || '셀러'}`,
                 stream.title,
                 `/live/${stream.id}`
               )
             );
-            // 50개씩 배치
-            for (let i = 0; i < stmts.length; i += 50) {
-              await DB.batch(stmts.slice(i, i + 50));
-            }
           }
+          streamIds.push(stream.id);
         } catch {}
-
-        // 발송 완료 표시
-        await DB.prepare("UPDATE live_streams SET pre_notified = 1 WHERE id = ?").bind(stream.id).run();
       }
-      results.pre_notifications_sent = upcomingStreams.length;
+
+      // 알림 일괄 insert (50개씩 batch)
+      for (let i = 0; i < allNotifyStmts.length; i += 50) {
+        await DB.batch(allNotifyStmts.slice(i, i + 50)).catch(() => {});
+      }
+
+      // 발송 완료 표시 (batch)
+      if (streamIds.length > 0) {
+        const doneStmts = streamIds.map(id =>
+          DB.prepare("UPDATE live_streams SET pre_notified = 1 WHERE id = ?").bind(id)
+        );
+        for (let i = 0; i < doneStmts.length; i += 50) {
+          await DB.batch(doneStmts.slice(i, i + 50)).catch(() => {});
+        }
+      }
+      results.pre_notifications_sent = capped.length;
     }
   } catch (e) { logError('[Cron] pre_notifications error:', { error: String(e) }) }
 
@@ -452,32 +471,37 @@ export async function handleScheduled(env: Env) {
     }
   } catch (e) { logError('[Cron] coupon_expiry error:', { error: String(e) }) }
 
-  // ── 14. 공동구매 달성 알림 (셀러 + 참여자) ──
+  // ── 14. 공동구매 달성 알림 (셀러 + 참여자) — LIMIT 50으로 한 틱 과부하 방지 ──
   try {
     const { results: achievedGroups } = await DB.prepare(`
       UPDATE products SET group_buy_status = 'achieved', updated_at = datetime('now')
-      WHERE category = 'meal_voucher'
-        AND group_buy_status = 'active'
-        AND group_buy_target > 0
-        AND group_buy_current >= group_buy_target
+      WHERE id IN (
+        SELECT id FROM products
+        WHERE category = 'meal_voucher'
+          AND group_buy_status = 'active'
+          AND group_buy_target > 0
+          AND group_buy_current >= group_buy_target
+        LIMIT 50
+      )
       RETURNING id, name, seller_id
     `).all<{ id: number; name: string; seller_id: number }>();
 
     if (achievedGroups?.length) {
-      // 🛡️ 2026-04-22: per-group try-catch — 한 알림 실패해도 나머지 진행
-      let notified = 0;
-      for (const g of achievedGroups) {
-        try {
-          await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+      // 알림을 batch로 한 번에 INSERT (per-group 개별 write → 1 batch)
+      const notifyStmts = achievedGroups
+        .filter(g => g.seller_id != null)
+        .map(g =>
+          DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
             VALUES ('seller', ?, 'group_buy_achieved', ?, ?, '/seller/group-buy')`)
-            .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name).run();
-          notified++;
-        } catch (notifyErr) {
-          logError(`[Cron] group_buy_achieved notify failed for seller ${g.seller_id}`, { error: String(notifyErr) });
+            .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name)
+        );
+      if (notifyStmts.length > 0) {
+        try { await DB.batch(notifyStmts); } catch (e) {
+          logError('[Cron] group_buy_achieved batch notify failed', { error: String(e) });
         }
       }
       results.group_buy_achieved = achievedGroups.length;
-      results.group_buy_notified = notified;
+      results.group_buy_notified = notifyStmts.length;
     }
   } catch (e) { logError('[Cron] group_buy_achieved error:', { error: String(e) }) }
 

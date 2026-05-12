@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { cacheGet, cacheInvalidate, buildCacheKey } from '../utils/cache';
 import { swallow } from '../utils/swallow';
+import { requireAuth, getCurrentUser } from '../middleware/auth';
 
 interface StreamListRow {
   id: number;
@@ -770,22 +771,10 @@ streamsRouter.post('/:id/viewer/leave', async (c) => {
 
 // ── POST /api/streams/:id/restock-notify ──────────────────────────────────────
 // 품절 상품 재입고 알림 신청 (로그인 사용자)
-streamsRouter.post('/:id/restock-notify', async (c) => {
+streamsRouter.post('/:id/restock-notify', requireAuth(), async (c) => {
   try {
-    const streamId = parseInt(c.req.param('id'))
-    const authHeader = c.req.header('Authorization') ?? ''
-    const token = authHeader.replace('Bearer ', '').trim()
-    let userId: number | null = null
-    if (token && c.env.JWT_SECRET) {
-      try {
-        const { verify, decode } = await import('hono/jwt')
-        const isValid = await verify(token, c.env.JWT_SECRET, 'HS256').catch(() => null)
-        if (isValid) {
-          const decoded = decode(token)
-          userId = (decoded.payload as Record<string, unknown>)?.userId as number ?? null
-        }
-      } catch { /* invalid token */ }
-    }
+    const authUser = getCurrentUser(c)
+    const userId = authUser ? Number(authUser.id) : null
     if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     const { product_id } = await c.req.json<{ product_id: number }>()

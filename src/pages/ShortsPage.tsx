@@ -50,10 +50,17 @@ export default function ShortsPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRefs = useRef<Map<string, ShortsYTPlayer>>(new Map())
   const seenIds = useRef<Set<string>>(new Set())
+  // YouTube init observer map — 언마운트 시 전체 disconnect (메모리 누수 방지)
+  const initObservers = useRef<Map<string, IntersectionObserver>>(new Map())
 
   // 초기 로드
   useEffect(() => {
     loadFeed()
+    return () => {
+      // 언마운트 시 모든 YouTube init observer 정리
+      initObservers.current.forEach(obs => obs.disconnect())
+      initObservers.current.clear()
+    }
   }, [])
 
   async function loadFeed() {
@@ -261,24 +268,28 @@ export default function ShortsPage() {
                     className="w-full h-full [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!min-w-full [&_iframe]:!aspect-video"
                     ref={(el) => {
                       if (!el) return
-                      // IntersectionObserver: 화면에 실제로 보일 때만 플레이어 초기화
+                      const obsKey = `shorts-player-${index}`
+                      // 이미 observer 등록된 요소는 중복 생성 방지
+                      if (initObservers.current.has(obsKey)) return
                       const observer = new IntersectionObserver(
                         ([entry]) => {
                           if (!entry.isIntersecting) return
                           observer.disconnect()
+                          initObservers.current.delete(obsKey)
                           // @ts-ignore
                           if (window.YT?.Player) {
-                            initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index)
+                            initPlayer(item.youtube_video_id!, obsKey, index)
                           } else {
                             // @ts-ignore
                             if (!window.youtubeCallbacks) window.youtubeCallbacks = []
                             // @ts-ignore
-                            window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, `shorts-player-${index}`, index))
+                            window.youtubeCallbacks.push(() => initPlayer(item.youtube_video_id!, obsKey, index))
                           }
                         },
                         { threshold: 0.5 }
                       )
                       observer.observe(el)
+                      initObservers.current.set(obsKey, observer)
                     }}
                   />
                   {/* 썸네일 배경 (플레이어 로드 전) */}
