@@ -64,6 +64,9 @@ sellersRouter.get('/:id', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
     const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(sellerId)) {
+      return c.json({ success: false, error: 'Invalid seller ID' }, 400)
+    }
 
     const seller = await qb.queryOne<Seller>(
       `SELECT id, username, name,
@@ -137,6 +140,9 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
     const sellerId = c.req.param('sellerId');
+    if (!sellerId || !/^\d+$/.test(sellerId)) {
+      return c.json({ success: false, error: 'Invalid seller ID' }, 400)
+    }
     const { page = '1', limit = '20' } = c.req.query();
     const pageNum = parseInt(page, 10);
     const limitNum = Math.min(parseInt(limit, 10), 100);
@@ -175,6 +181,9 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
   try {
     const db = c.env.DB;
     const sellerId = c.req.param('sellerId');
+    if (!sellerId || !/^\d+$/.test(sellerId)) {
+      return c.json({ success: false, error: 'Invalid seller ID' }, 400)
+    }
     const { status, limit = '10' } = c.req.query();
     const limitNum = Math.min(parseInt(limit, 10), 50);
 
