@@ -856,8 +856,8 @@ function ReelCardImpl({
             ref={iframeRef}
             key={`yt-${stream.youtube_video_id}`}
             src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1`}
+            // 🛡️ 2026-05-13: allow 에 fullscreen 포함 → allowFullScreen 속성과 중복 → React 경고. 통합.
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            allowFullScreen
             title={stream.title || 'Live broadcast'}
             // playsinline (iOS Safari) — DOM attr 둘 다 명시
             // eslint-disable-next-line react/no-unknown-property

@@ -121,44 +121,53 @@ export default function LivePageV2() {
     const loadReels = async () => {
       try {
 
-        // Check if user came directly to this URL (not from homepage)
-        const referrer = document.referrer
-        const isFromHomepage = referrer.includes(window.location.origin) && 
-                               (referrer.includes('/') || referrer.includes('/home'))
         const hasStreamId = !!streamId
-        
-        // Direct link: Show ONLY the requested stream (no scroll)
-        // Homepage link: Show ALL streams (with scroll)
-        const shouldShowSingleStream = hasStreamId && !isFromHomepage
-        setIsDirectLink(shouldShowSingleStream)
 
-        // Load streams (single or all based on context)
+        // 🛡️ 2026-05-13: 메인페이지에서 예정/종료 방송 클릭 시 "진행 중인 라이브가 없어요" 출력 사고 수정.
+        //   기존: isFromHomepage=true 면 status='live' 만 fetch → 예정/종료는 미포함 → 빈 화면.
+        //   해결: streamId 있으면 ALWAYS 그 stream 먼저 fetch. status='live' 면 추가로 다른 live 도 로드 (reels scroll).
+        //   예정/종료면 단일 스트림 모드 (ScheduledOverlay / VOD UI 가 알아서 표시).
         let streams: Stream[] = []
-        
-        if (shouldShowSingleStream && streamId) {
-          // DIRECT LINK: Load only the requested stream
+        let singleStreamData: Stream | null = null
+
+        if (hasStreamId && streamId) {
           try {
             const singleStreamResponse = await api.get(`/api/streams/${streamId}`)
-            
             if (singleStreamResponse.data.success && singleStreamResponse.data.data) {
-              streams = [singleStreamResponse.data.data]
+              singleStreamData = singleStreamResponse.data.data as Stream
+              streams = [singleStreamData]
             }
           } catch (error) {
             if (import.meta.env.DEV) console.error('[LivePageV2] Single stream API failed:', error)
           }
-        } else {
-          // HOMEPAGE LINK: Load first page of live streams
+        }
+
+        // 단일 스트림 모드 판정: streamId 있고 그 stream 이 live 가 아니면 reels scroll 불필요.
+        // live 면 추가로 다른 live streams 도 로드해 scroll 가능하게.
+        const isLiveStream = singleStreamData?.status === 'live'
+        const shouldShowSingleStream = hasStreamId && !isLiveStream
+        setIsDirectLink(shouldShowSingleStream)
+
+        if (!shouldShowSingleStream) {
+          // 라이브 (또는 streamId 없는 진입) → 추가 라이브 목록 fetch 해서 reels scroll 활성
           try {
             const streamsResponse = await api.get(`/api/streams?status=live&limit=${STREAM_PAGE_SIZE}&offset=0`)
-
             if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
-              streams = streamsResponse.data.data
-              streamOffsetRef.current = streams.length
+              const liveStreams = streamsResponse.data.data as Stream[]
+              // 단일 stream 이 이미 로드돼 있으면 중복 제거
+              const existingIds = new Set(streams.map(s => s.id))
+              const merged = [
+                ...streams,
+                ...liveStreams.filter((s) => !existingIds.has(s.id)),
+              ]
+              streams = merged
+              streamOffsetRef.current = liveStreams.length
               hasMoreStreamsRef.current = streamsResponse.data.pagination?.has_more ?? false
             }
           } catch (error) {
-            if (import.meta.env.DEV) console.error('[LivePageV2] Streams API failed:', error)
-            throw error
+            if (import.meta.env.DEV) console.error('[LivePageV2] Streams list API failed:', error)
+            // streams (단일) 가 있으면 그걸로 진행, 없으면 throw
+            if (streams.length === 0) throw error
           }
         }
             
