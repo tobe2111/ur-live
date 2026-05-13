@@ -529,51 +529,38 @@ function ReelCardImpl({
   }, [isActive, playerReady, stream.id])
   
   // Handle video click to unmute and play
+  // 🛡️ 2026-05-13: 사용자 클릭 = 명시적 user gesture. YT.Player API 의 postMessage 한계로
+  //   클릭이 무반응인 사고 발생 (특히 Permissions-Policy: autoplay 누락 환경).
+  //   가장 신뢰도 높은 경로 = native iframe with allow="autoplay" 를 user gesture 안에서 생성.
+  //   YT API 시도 → 실패 시 fallback 이 아니라, native iframe 을 1차 시도로 승격.
   const handleVideoClick = () => {
-    // playerRef.current 은 ref — playerReady state(stale 가능)보다 신뢰도 높음
+    if (!stream.youtube_video_id) return
+    setShowPlayButton(false)
+    showPlayButtonRef.current = false
+    setAutoplayFailed(false)
+    setIsMuted(false)
+    setPlayerError(null)
+
+    // 기존 YT.Player 가 있으면 destroy (이중 player 충돌 방지)
     if (playerRef.current) {
-      try {
-        playerRef.current.unMute()
-        playerRef.current.setVolume(100)
-        playerRef.current.playVideo()
-        setShowPlayButton(false)
-        // iOS Safari unmute 비동기 확인 (최대 3회, 500ms 간격) — playerRef null 이면 자동 정리
-        let retries = 0
-        const verifyUnmute = setInterval(() => {
-          retries++
-          // 🛡️ playerRef.current 가 null 이면 컴포넌트 unmount 또는 destroy 된 상태
-          if (!playerRef.current) { clearInterval(verifyUnmute); return }
-          try {
-            if (!playerRef.current.isMuted()) {
-              setIsMuted(false)
-              clearInterval(verifyUnmute)
-            } else if (retries < 3) {
-              playerRef.current.unMute()
-            } else {
-              setIsMuted(false) // 3회 시도 후 UI 업데이트만
-              clearInterval(verifyUnmute)
-            }
-          } catch { clearInterval(verifyUnmute) }
-        }, 500)
-        return
-      } catch (error) {
-        if (import.meta.env.DEV) console.error('[ReelCard] Failed to start video:', error)
-        // API 호출 실패 시 플레이어 파괴 후 fallback 진행 (두 플레이어 충돌 방지)
-        try { playerRef.current.destroy() } catch {}
-        playerRef.current = null
-        setPlayerReady(false)
-      }
+      try { playerRef.current.destroy() } catch { /* noop */ }
+      playerRef.current = null
+      setPlayerReady(false)
     }
-    // 플레이어 미초기화 / 파괴 후 — 직접 iframe으로 재생 (사용자 gesture로 unmuted 재생 가능)
+
+    // user gesture 안에서 native iframe 직접 생성 — 가장 신뢰도 높은 unmuted autoplay 경로.
     const playerEl = document.getElementById(`youtube-player-${stream.id}`)
-    if (playerEl && stream.youtube_video_id) {
+    if (playerEl) {
       while (playerEl.firstChild) playerEl.removeChild(playerEl.firstChild)
       const iframe = document.createElement('iframe')
-      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=0&origin=${encodeURIComponent(window.location.origin)}`
-      iframe.allow = 'autoplay; encrypted-media; fullscreen'
-      iframe.style.cssText = 'width:100%;height:100%;border:0'
+      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(window.location.origin)}&enablejsapi=1`
+      iframe.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture'
+      iframe.allowFullscreen = true
+      iframe.style.cssText = 'width:100%;height:100%;border:0;position:absolute;inset:0'
       playerEl.appendChild(iframe)
-      setShowPlayButton(false)
+      if (import.meta.env.DEV) console.log('[ReelCard] Native iframe attached for video', stream.youtube_video_id)
+    } else if (import.meta.env.DEV) {
+      console.warn('[ReelCard] Player container not found for stream', stream.id)
     }
   }
 
