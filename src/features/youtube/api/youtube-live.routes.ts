@@ -2004,11 +2004,15 @@ export async function omeAdmissionHandler(
   // 🛡️ 2026-05-13 (안정성 #1): 1회 실패 시 끝이었던 로직 → 최대 3회 exponential backoff 재시도.
   //   네트워크 일시 장애 / OME 부팅 중 / OME API rate limit 등 일시적 실패 자동 복구.
   //   비용 0 (waitUntil 안에서 비동기, blocking X).
+  // 🛡️ 2026-05-13 (Critical): push 등록 성공 후 +3s 대기 → YouTube transitionBroadcastToLive 호출.
+  //   BrowserBroadcaster (WebRTC) 경로에서 YouTube broadcast lifeCycleStatus 가 'ready' 에 정체되어
+  //   iframe embed 가 검은 화면이던 사고 직접 해결. transition 은 push 가 YouTube 에 도착해야만 성공.
   if (env.OME_HOST && env.OME_API_TOKEN) {
-    const reRegister = async () => {
+    const reRegisterAndTransition = async () => {
       const MAX_RETRIES = 3
       const INITIAL_DELAY_MS = 1500
       let lastError = ''
+      let pushOk = false
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
           // exponential backoff: 1.5s → 3s → 6s (총 ~10.5s, 일시 장애 충분 cover)
@@ -2021,7 +2025,8 @@ export async function omeAdmissionHandler(
             if (attempt > 0) {
               console.log(`[OME admission] push register succeeded on retry ${attempt + 1}/${MAX_RETRIES}`)
             }
-            return  // success
+            pushOk = true
+            break
           }
           lastError = `OME push 등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`
           console.warn(`[OME admission] push register attempt ${attempt + 1}/${MAX_RETRIES} failed:`, lastError)
@@ -2030,14 +2035,49 @@ export async function omeAdmissionHandler(
           console.warn(`[OME admission] push register attempt ${attempt + 1}/${MAX_RETRIES} threw:`, lastError)
         }
       }
-      // 모든 재시도 실패 → DB 에 마지막 에러 기록 + 셀러 알림 (Phase #2 에서 추가)
-      await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-        .bind(`[3회 재시도 실패] ${lastError}`, streamId)
-        .run().catch(() => {})
-      console.error('[OME admission] push register exhausted retries, sellerId=' + sellerId + ' streamId=' + streamId)
+
+      if (!pushOk) {
+        // 모든 재시도 실패 → DB 에 마지막 에러 기록 (셀러 대시보드에서 표시)
+        await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+          .bind(`[3회 재시도 실패] ${lastError}`, streamId)
+          .run().catch(() => {})
+        console.error('[OME admission] push register exhausted retries, sellerId=' + sellerId + ' streamId=' + streamId)
+        return
+      }
+
+      // push 등록 성공 → YouTube 가 stream 받기 시작할 시간 확보 후 transition.
+      if (stream.youtube_broadcast_id && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET) {
+        await new Promise((r) => setTimeout(r, 3000))
+        // invalidTransition 시 재시도 (YouTube 가 아직 stream 못 감지한 경우 흔함)
+        const MAX_TX_RETRIES = 4
+        for (let attempt = 0; attempt < MAX_TX_RETRIES; attempt++) {
+          try {
+            const yt = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID, env.YOUTUBE_CLIENT_SECRET)
+            const accessToken = await getValidAccessToken(env.DB, sellerId, yt)
+            if (!accessToken) return
+            await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id!)
+            console.log(`[OME admission] YouTube broadcast ${stream.youtube_broadcast_id} → live (attempt ${attempt + 1})`)
+            return
+          } catch (e) {
+            const msg = (e as Error).message || ''
+            // redundantTransition (이미 live) → 성공 취급
+            if (/redundant|already/i.test(msg)) {
+              console.log(`[OME admission] YouTube broadcast ${stream.youtube_broadcast_id} already live`)
+              return
+            }
+            // invalidTransition → YouTube 가 아직 stream 미감지. 재시도.
+            if (/invalid/i.test(msg) && attempt < MAX_TX_RETRIES - 1) {
+              await new Promise((r) => setTimeout(r, 4000))
+              continue
+            }
+            console.warn(`[OME admission] transitionToLive failed (attempt ${attempt + 1}/${MAX_TX_RETRIES}):`, msg)
+            return
+          }
+        }
+      }
     }
-    if (waitUntil) waitUntil(reRegister())
-    else await reRegister()
+    if (waitUntil) waitUntil(reRegisterAndTransition())
+    else await reRegisterAndTransition()
   }
 
   // 🛡️ 2026-05-10: OME 가 stream 받기 시작했으니 우리 DB status 도 즉시 'live' 로.
