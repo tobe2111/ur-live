@@ -1010,6 +1010,7 @@ app.get('/live/:id/diagnose', async (c) => {
   const ome_push = diagnostics.ome_push as { our_push_present?: boolean; our_push_state?: string; our_push_sent_bytes?: number }
   const yt = diagnostics.youtube_broadcast as { life_cycle_status?: string; enable_auto_start?: boolean }
   const ys = diagnostics.youtube_stream as { stream_status?: string; health_status?: string } | undefined
+  const dbS = diagnostics.db as { status?: string; youtube_video_id?: string | null; ended_at?: string | null }
 
   if (!ome_stream?.this_stream_present) issues.push(`OME 에 stream "s${streamId}" 미존재 — 셀러가 송출 시작 안 했거나 OME admission 실패`)
   if (!ome_push?.our_push_present) issues.push(`OME 에 push "youtube-${streamId}" 미등록 — admission 의 startPush 실패. last_error 확인`)
@@ -1019,9 +1020,53 @@ app.get('/live/:id/diagnose', async (c) => {
   if (ys?.stream_status && ys.stream_status !== 'active') issues.push(`YouTube liveStream status=${ys.stream_status} (정상: active)`)
   if (yt?.life_cycle_status === 'testing') issues.push(`YouTube broadcast 가 testing 상태 — 시청자에게 검은 화면. transition 필요.`)
 
+  // 🛡️ 2026-05-13: "왜 시청자 화면에 영상이 안 나오는지" 의 verdict (인간이 읽을 수 있는 분석).
+  //   diagnose 의 raw data 를 해석해서 정확한 원인 + 다음 액션 지시.
+  let verdict: string
+  let next_action: string
+  let video_visible_to_viewers = false
+
+  if (dbS?.status === 'ended' || dbS?.ended_at) {
+    verdict = '🔚 방송이 이미 종료됨 — 시청자에겐 "방송 종료" 표시'
+    next_action = '새 방송 만들기 (/seller/live-broadcast)'
+  } else if (dbS?.status !== 'live') {
+    verdict = `📅 DB status=${dbS?.status || 'unknown'} — 시청자에겐 "방송 예정" 표시`
+    next_action = '셀러가 송출 도구 (BrowserBroadcaster / OBS) 로 송출 시작'
+  } else if (!ome_stream?.this_stream_present) {
+    verdict = '⚠️ DB.status=live 인데 OME 에 stream 인입 없음 (좀비) — 시청자에겐 "방송 데이터 수신 중" 무한 반복'
+    next_action = '셀러 페이지에서 다시 송출 시작 OR POST /api/seller/youtube/live/' + streamId + '/reset-zombie'
+  } else if (!ome_push?.our_push_present || (ome_push.our_push_sent_bytes ?? 0) === 0) {
+    verdict = '⚠️ OME 가 stream 받았지만 YouTube 로 RTMP push 실패 — 시청자 영상 안 옴'
+    next_action = 'last_error 확인 + 셀러가 방송 재시작'
+  } else if (ys?.stream_status !== 'active') {
+    verdict = `⚠️ OME 가 YouTube 에 push 중 (${ome_push.our_push_sent_bytes} bytes) 인데 YouTube 가 stream 미인식 (streamStatus=${ys?.stream_status}) — 5-30초 더 대기 필요`
+    next_action = '30초 대기 후 다시 진단. 1분 후에도 같으면 stream key 검증 (셀러가 YouTube Studio 에서 확인)'
+  } else if (yt?.life_cycle_status === 'ready') {
+    verdict = `🟡 YouTube 가 stream 받음 (active) 인데 broadcast 가 'ready' 정체 — 시청자에겐 "방송 예정" 페이지. ${yt?.enable_auto_start ? '(enableAutoStart=true 시절 broadcast, race condition)' : '(transition 호출 대기 중)'}`
+    next_action = yt?.enable_auto_start
+      ? '이 broadcast 는 기존 코드 (autoStart=true) 로 생성됨 — 종료하고 새 broadcast 만들면 즉시 정상 (자동 transition 작동).'
+      : 'POST /api/seller/youtube/live/' + streamId + '/force-transition'
+  } else if (yt?.life_cycle_status === 'testing') {
+    verdict = '🟡 broadcast 가 testing 상태 (monitorStream) — 시청자에겐 검은 화면'
+    next_action = 'POST /api/seller/youtube/live/' + streamId + '/force-transition'
+  } else if (yt?.life_cycle_status === 'live' || yt?.life_cycle_status === 'liveStarting') {
+    verdict = `✅ 모든 상태 정상 (broadcast=${yt.life_cycle_status}) — 시청자에게 영상 정상 노출되어야 함`
+    next_action = '시청자 측이 안 보이면: 시청자 페이지 새로고침 / iframe 캐시 / 인터넷 확인'
+    video_visible_to_viewers = true
+  } else if (yt?.life_cycle_status === 'complete' || yt?.life_cycle_status === 'revoked') {
+    verdict = `🔚 broadcast 가 ${yt.life_cycle_status} — 시청자에게 "방송 종료" 표시`
+    next_action = '새 방송 만들기'
+  } else {
+    verdict = `❓ 미분류 상태 (lifecycle=${yt?.life_cycle_status}, streamStatus=${ys?.stream_status})`
+    next_action = '운영자에게 위 diagnostics 전체 결과 공유'
+  }
+
   diagnostics.summary = {
     healthy: issues.length === 0,
     issues,
+    verdict,
+    next_action,
+    video_visible_to_viewers,
   }
 
   return c.json({ success: true, data: diagnostics })

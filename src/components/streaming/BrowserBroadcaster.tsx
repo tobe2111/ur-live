@@ -35,6 +35,7 @@ type Status = 'idle' | 'requesting_camera' | 'fetching_token' | 'connecting' | '
 export default function BrowserBroadcaster({ streamId, onStreaming, onError, onUnsupported, autoStart }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
+  const videoSenderRef = useRef<RTCRtpSender | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -90,6 +91,94 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart])
 
+  // 🛡️ 2026-05-13: Network-aware 적응형 비트레이트 — 패킷 손실/RTT 모니터링 → 자동 하향/복구.
+  //   "끊기느니 저화질" 원칙. 라이브 커머스 안정성 매출 직결.
+  //
+  //   알고리즘:
+  //   - 1.5s 주기 getStats() 호출
+  //   - packetLoss > 5% 또는 RTT > 300ms 면 비트레이트 한 단계 하향 (6M → 4M → 2M → 1M)
+  //   - 양호 (loss < 1% AND RTT < 150ms) 가 5회 연속 (~7.5s) 면 한 단계 복구
+  //   - 최저 800kbps 까지만 (그 이하면 화질 안 보여서 의미 X)
+  useEffect(() => {
+    if (status !== 'live') return
+    const pc = pcRef.current
+    if (!pc) return
+
+    const BITRATE_LADDER = [6_000_000, 4_000_000, 2_500_000, 1_500_000, 800_000]
+    let currentLevel = 0
+    let consecutiveGood = 0
+    let lastPacketsLost = 0
+    let lastPacketsSent = 0
+
+    const setBitrate = async (bps: number) => {
+      const sender = videoSenderRef.current
+      if (!sender) return
+      try {
+        const params = sender.getParameters()
+        if (!params.encodings?.[0]) return
+        params.encodings[0].maxBitrate = bps
+        await sender.setParameters(params)
+        if (import.meta.env.DEV) console.log(`[Adaptive] bitrate → ${Math.round(bps / 1000)}kbps`)
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('[Adaptive] setBitrate failed:', e)
+      }
+    }
+
+    const tick = async () => {
+      try {
+        const stats = await pc.getStats()
+        let packetsLost = 0
+        let packetsSent = 0
+        let roundTripTime = 0
+        let nackCount = 0
+
+        stats.forEach((report) => {
+          if (report.type === 'outbound-rtp' && report.kind === 'video') {
+            packetsSent = (report as { packetsSent?: number }).packetsSent ?? 0
+            nackCount = (report as { nackCount?: number }).nackCount ?? 0
+          } else if (report.type === 'remote-inbound-rtp' && report.kind === 'video') {
+            packetsLost = (report as { packetsLost?: number }).packetsLost ?? 0
+            roundTripTime = (report as { roundTripTime?: number }).roundTripTime ?? 0
+          }
+        })
+
+        // delta 계산 (전체 누적값이 아니라 이번 인터벌 동안 차이)
+        const deltaSent = packetsSent - lastPacketsSent
+        const deltaLost = packetsLost - lastPacketsLost
+        lastPacketsSent = packetsSent
+        lastPacketsLost = packetsLost
+
+        const lossRate = deltaSent > 0 ? deltaLost / deltaSent : 0
+        const rttMs = roundTripTime * 1000
+
+        const isBad = lossRate > 0.05 || rttMs > 300 || nackCount > 50
+        const isGood = lossRate < 0.01 && rttMs < 150 && rttMs > 0
+
+        if (isBad && currentLevel < BITRATE_LADDER.length - 1) {
+          currentLevel++
+          consecutiveGood = 0
+          await setBitrate(BITRATE_LADDER[currentLevel])
+          if (import.meta.env.DEV) console.log(`[Adaptive] downgrade — loss=${(lossRate * 100).toFixed(1)}% RTT=${rttMs.toFixed(0)}ms`)
+        } else if (isGood && currentLevel > 0) {
+          consecutiveGood++
+          if (consecutiveGood >= 5) {
+            currentLevel--
+            consecutiveGood = 0
+            await setBitrate(BITRATE_LADDER[currentLevel])
+            if (import.meta.env.DEV) console.log(`[Adaptive] recover — loss=${(lossRate * 100).toFixed(1)}% RTT=${rttMs.toFixed(0)}ms`)
+          }
+        } else if (!isGood) {
+          consecutiveGood = 0
+        }
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('[Adaptive] tick failed:', e)
+      }
+    }
+
+    const interval = setInterval(() => { void tick() }, 1500)
+    return () => clearInterval(interval)
+  }, [status])
+
   // 🛡️ 2026-05-13 v2: beforeunload confirm 제거 (사용자 요청 — 시도때도 없이 떠서 불편).
   //   대신 안전망:
   //   1. 60s grace period (admission closing) — 새로고침해도 60s 안에 재연결 OK
@@ -98,9 +187,18 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
 
   // 🛡️ 2026-05-11 P1-#6: 라이브 시작 5초 후 video 프레임 캡처 → thumbnail 자동 설정
   //   셀러가 thumbnail 미설정 시 빈 이미지로 표시되는 문제 해결. 백그라운드 자동 — UI 변경 없음.
+  //   🛡️ 2026-05-13: 한 stream 당 1번만 시도 (autoStart / 재연결로 인한 재시도 방지).
+  //     localStorage 에 마커 → 같은 streamId 면 skip → upload-image 500 스팸 차단.
   const thumbnailCapturedRef = useRef(false)
   useEffect(() => {
     if (status !== 'live' || thumbnailCapturedRef.current) return
+    const markerKey = `thumb_captured_v1:${streamId}`
+    try {
+      if (localStorage.getItem(markerKey)) {
+        thumbnailCapturedRef.current = true
+        return
+      }
+    } catch { /* ignore */ }
     thumbnailCapturedRef.current = true
     const timer = setTimeout(async () => {
       const video = videoRef.current
@@ -117,9 +215,12 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         const form = new FormData()
         form.append('image', new File([blob], `stream_${streamId}_auto.jpg`, { type: 'image/jpeg' }))
         const upload = await api.post('/api/seller/upload-image', form)
-        const url = upload.data?.data?.url
+        // 🛡️ 2026-05-13: response 는 { success, url } — 기존 .data.data.url 은 잘못된 path
+        const url = upload.data?.url
         if (url) {
           await api.put(`/api/seller/streams/${streamId}`, { thumbnail: url })
+          // 성공 마커 — 다음 mount 시 skip
+          try { localStorage.setItem(markerKey, String(Date.now())) } catch { /* ignore */ }
         }
       } catch { /* best-effort, 실패해도 라이브엔 영향 없음 */ }
     }, 5000)
@@ -263,6 +364,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     stream.getTracks().forEach(track => {
       const sender = pc.addTrack(track, stream)
       if (track.kind === 'video') {
+        videoSenderRef.current = sender
         const params = sender.getParameters()
         // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 는 셀러가 보내는 게 그대로 시청자에게 전달됨
         //   → 화질이 더 중요. 1080p30 YouTube 권장 상한 6 Mbps 로 상향. 모바일 LTE 도 보통 6Mbps 업로드 OK.

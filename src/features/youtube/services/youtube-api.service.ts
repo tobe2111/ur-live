@@ -241,10 +241,11 @@ export class YouTubeAPIService {
             enableDvr: true,
             enableContentEncryption: false,
             enableEmbed: true,
-            // 🛡️ 2026-05-13: latency 'low' (5-10s) → 'ultraLow' (2-5s).
-            //   LL-HLS 기반, 비용 0, 셀러 송출 ↔ 시청자 시간차 단축.
-            //   TikTok / Twitch 모바일 라이브 수준 latency.
-            latencyPreference: 'ultraLow'
+            // 🛡️ 2026-05-13 v3: latency 'ultraLow' → 'low' 로 변경 (사용자 화질 불만 신고).
+            //   ultraLow: 지연 2-5s 인데 YouTube 가 quality optimization 끔 → 화질 ⭐⭐⭐
+            //   low: 지연 5-10s, 화질 ⭐⭐⭐⭐ — 라이브 커머스 sweet spot.
+            //   상품 디테일 + 셀러 얼굴이 또렷하게 보여야 매출 영향. 5-10s 지연은 충분히 real-time.
+            latencyPreference: 'low'
           }
         }),
         signal: AbortSignal.timeout(20000)
