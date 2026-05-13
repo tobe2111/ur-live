@@ -614,7 +614,9 @@ sellerStreamsRoutes.get('/analytics/summary', async (c) => {
         (SELECT COUNT(*) FROM orders o WHERE o.live_stream_id = ls.id AND o.status IN ('PAID','DONE')) as order_count,
         (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.live_stream_id = ls.id AND o.status IN ('PAID','DONE')) as revenue
       FROM live_streams ls
-      WHERE ls.seller_id = ? AND ls.created_at >= datetime('now', '-' || ? || ' days')
+      WHERE ls.seller_id = ?
+        AND ls.created_at >= datetime('now', '-' || ? || ' days')
+        AND (ls.status IS NULL OR ls.status != 'deleted')
       ORDER BY ls.created_at DESC
     `).bind(sellerId, days).all();
 

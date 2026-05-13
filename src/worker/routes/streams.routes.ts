@@ -136,6 +136,10 @@ streamsRouter.get('/', async (c) => {
         conditions.push("(ls.title NOT LIKE '[연습]%' OR ls.title IS NULL)");
       }
 
+      // 🛡️ 2026-05-13: 소프트 삭제된 스트림 제외 — 어드민/셀러가 삭제한 방송이
+      //   메인/홈/다시보기 피드에 다시 노출되지 않도록.
+      conditions.push("ls.status != 'deleted'");
+
       if (status) {
         conditions.push('ls.status = ?');
         params.push(status);
