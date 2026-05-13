@@ -46,16 +46,22 @@ jobs:
 
       - name: "'vite build' 단독 사용 차단"
         run: |
-          violations=$(grep -rnE "(^|[^a-zA-Z_:-])(npx +)?vite +build([^a-zA-Z_]|$)" \
-            scripts/ docs/ CLAUDE.md README.md \
-            2>/dev/null \
+          # 검사 대상: scripts/ 내 실제 실행 가능한 sh / ps1 / mjs / cjs / js / ts
+          # 제외: 문서 (md), 검사 스크립트 자체, install-hooks 의 에러메시지, workflow yml
+          EXCLUDE='check-build-command\.sh|install-git-hooks\.sh|\.github/workflows/'
+          violations=$(find scripts -type f \( -name '*.sh' -o -name '*.ps1' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.js' -o -name '*.ts' \) 2>/dev/null \
+            | grep -vE "$EXCLUDE" \
+            | xargs grep -nE "(^|[^a-zA-Z_:-])(npx +)?vite +build([^a-zA-Z_]|$)" 2>/dev/null \
             | grep -v "npm run build" \
             | grep -v "build:client" \
             | grep -vE "^[^:]*:[0-9]*:[[:space:]]*[#/]" \
+            | grep -vE 'echo .*vite build|console\.|# ' \
             || true)
           if [ -n "$violations" ]; then
             echo "❌ 'vite build' 단독 사용 — _worker.js 미갱신 사고 패턴:"
             echo "$violations"
+            echo ""
+            echo "  🔧 해결: 'npm run build' 사용 (client + worker + prepare 전체)"
             exit 1
           fi
           echo "✅ 빌드 명령 안전"
@@ -127,9 +133,10 @@ jobs:
       - name: Bundle size budget
         run: npm run check:bundle:budget
 
-      # ── 6. 결과 요약 (artifact) ──
+      # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report
-        if: always()
+        if: success()
+        continue-on-error: true
         run: |
           npm run check:bundle 2>&1 | tee bundle-report.txt
           node scripts/check-bundle-size.mjs --json > bundle-report.json

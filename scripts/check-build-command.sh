@@ -14,7 +14,7 @@
 set -e
 
 staged=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null \
-  | grep -E '\.(sh|ps1|md|mjs|cjs|js|ts|yml|yaml)$' \
+  | grep -E '\.(sh|ps1|mjs|cjs|js|ts|yml|yaml)$' \
   | grep -v 'node_modules/\|dist/' \
   || true)
 
@@ -24,19 +24,30 @@ fi
 
 violations=""
 
+# 자기 자신 / 문서 / 에러 메시지 / install-hooks 등 legitimate 참조는 제외
+EXCLUDE_FILES="scripts/check-build-command.sh|scripts/install-git-hooks.sh|docs/INCIDENTS\.md|docs/CURRENT_WORK\.md|CLAUDE\.md|\.github/workflows/verify\.yml|\.github/workflows/main\.yml"
+
 for f in $staged; do
   [ -f "$f" ] || continue
-  # package.json 의 build:client 정의는 제외
+  # 제외 파일
+  if echo "$f" | grep -qE "$EXCLUDE_FILES"; then
+    continue
+  fi
+  # package.json (build:client 정의 자체) 제외
   if [ "$f" = "package.json" ]; then
     continue
   fi
+  # 마크다운은 모두 제외 (문서)
+  if echo "$f" | grep -qE "\.md$"; then
+    continue
+  fi
 
-  # 'vite build' 단독 사용 검출 (npm run build 안에 포함된 건 OK)
-  # 패턴: 'vite build' 또는 'npx vite build' 가 줄에 단독으로 있음
+  # 'vite build' 단독 사용 검출
   matches=$(grep -nE "(^|[^a-zA-Z_:-])(npx +)?vite +build([^a-zA-Z_]|$)" "$f" 2>/dev/null \
     | grep -v "npm run build" \
     | grep -v "build:client" \
-    | grep -v "^[^:]*:[0-9]*:[[:space:]]*[#/]" \
+    | grep -vE "^[^:]*:[0-9]*:[[:space:]]*[#/]" \
+    | grep -vE 'echo .*vite build|console\.|# |\*' \
     || true)
   if [ -n "$matches" ]; then
     violations="$violations\n[$f]\n$matches"
