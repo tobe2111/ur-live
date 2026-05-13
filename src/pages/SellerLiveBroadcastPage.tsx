@@ -449,11 +449,31 @@ export default function SellerLiveBroadcastPage() {
         }
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error_code?: string; error?: string } } }
-      if (axiosErr.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
+      const axiosErr = err as { response?: { data?: { error_code?: string; error?: string; existing_stream_id?: number }; status?: number } }
+      const data = axiosErr.response?.data
+      if (data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
         setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))
+      } else if (data?.error_code === 'EXISTING_LIVE_BROADCAST' && data?.existing_stream_id) {
+        // 🛡️ 2026-05-13: 진행 중 방송이 있을 때 — UX. 셀러에게 "종료 후 새로 시작" 선택지 제공.
+        const ok = window.confirm(
+          `${data.error || '진행 중인 방송이 있습니다.'}\n\n[확인] = 기존 방송을 종료하고 새 방송을 시작합니다.\n[취소] = 기존 방송 페이지로 이동합니다.`
+        )
+        if (ok) {
+          try {
+            await api.post(`/api/seller/youtube/live/${data.existing_stream_id}/end`)
+            toast.success(t('seller.liveBroadcast.previousEnded', { defaultValue: '기존 방송을 종료했습니다. 새 방송을 다시 시도해주세요.' }))
+            // 1초 후 재시도 (백엔드 cron 캐시 + transition latency 고려)
+            setTimeout(() => createBroadcast(overrides), 1000)
+            return  // setCreating(false) 는 재시도에서 처리됨
+          } catch (endErr) {
+            const endErrMsg = (endErr as { response?: { data?: { error?: string } } }).response?.data?.error
+            toast.error(endErrMsg || t('seller.liveBroadcast.endFailed', { defaultValue: '기존 방송 종료에 실패했습니다. 셀러 대시보드에서 직접 종료해주세요.' }))
+          }
+        } else {
+          navigate(`/seller/live-broadcast/${data.existing_stream_id}`)
+        }
       } else {
-        toast.error(axiosErr.response?.data?.error || t('seller.liveBroadcast.createFailed'))
+        toast.error(data?.error || t('seller.liveBroadcast.createFailed'))
       }
     } finally { setCreating(false) }
   }

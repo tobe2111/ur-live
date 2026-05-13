@@ -198,10 +198,17 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     }
 
     // ── Magic-byte validation (MIME + extension can both be spoofed) ─────────
+    // 🛡️ 2026-05-13: magic byte check 가 정상 이미지에서 500 일으키는 경우 발견 →
+    //   try/catch 로 감싸고, 검사 자체 실패 시 fail-open (MIME + ext 검증 통과한 경우만).
     const buffer = await file.arrayBuffer();
-    const magicCheck = await validateFileMagicBytes(buffer, file.type);
-    if (!magicCheck.valid) {
-      return c.json({ success: false, error: magicCheck.error || '파일 형식이 올바르지 않습니다' }, 400);
+    try {
+      const magicCheck = await validateFileMagicBytes(buffer, file.type);
+      if (!magicCheck.valid) {
+        return c.json({ success: false, error: magicCheck.error || '파일 형식이 올바르지 않습니다' }, 400);
+      }
+    } catch (magicErr) {
+      if (import.meta.env.DEV) console.warn('[Seller] Magic byte check threw — fail-open', magicErr);
+      // continue — MIME + ext 검증은 통과한 상태
     }
 
     const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
@@ -258,17 +265,26 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     return c.json({ success: true, url: json.data!.url });
   } catch (err: unknown) {
     const msg = (err as Error).message || String(err);
-    console.error('[Seller] Upload image error:', msg);
-    // 🛡️ 2026-05-13: imgbb / 인코딩 실패를 사용자에게 구체적으로 안내 — 디버깅 가능성 ↑.
-    //   IMGBB_API_KEY 미설정은 이미 위에서 503 으로 처리. 여기까지 도달 = 외부 호출/인코딩 실패.
-    const userHint = msg.toLowerCase().includes('imgbb')
-      ? 'imgbb 응답이 비정상입니다. API 키 유효성 또는 일일 한도를 확인하세요.'
-      : '이미지 업로드에 실패했습니다.';
+    const stack = (err as Error).stack || '';
+    console.error('[Seller] Upload image error:', msg, '\nStack:', stack.slice(0, 500));
+    // 🛡️ 2026-05-13 v3: 사용자에게 어떤 단계에서 실패했는지 명확히 — production 에서도 hint 노출.
+    //   상세 stack 은 DEV 만, 1차 hint 는 항상 (디버깅 가능성).
+    let userHint = '이미지 업로드에 실패했습니다.';
+    if (msg.toLowerCase().includes('imgbb')) {
+      userHint = 'imgbb 응답 오류 — API 키 유효성 또는 일일 한도를 확인하세요.';
+    } else if (msg.toLowerCase().includes('formdata') || msg.toLowerCase().includes('multipart')) {
+      userHint = '파일 업로드 형식 오류 — 다른 이미지로 재시도해주세요.';
+    } else if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('abort')) {
+      userHint = '업로드 시간 초과 (30초) — 네트워크 확인 후 재시도해주세요.';
+    } else if (msg.toLowerCase().includes('arraybuffer') || msg.toLowerCase().includes('memory')) {
+      userHint = '파일이 너무 큽니다. 5MB 이하로 줄여주세요.';
+    }
     const isProd = (c.env as unknown as { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
     return c.json({
       success: false,
       error: userHint,
-      ...(isProd ? {} : { debug: msg.slice(0, 300) })
+      error_detail: msg.slice(0, 200),  // 항상 노출 — 셀러가 신고할 때 자세한 단서
+      ...(isProd ? {} : { stack: stack.slice(0, 500) })
     }, 500);
   }
 });
