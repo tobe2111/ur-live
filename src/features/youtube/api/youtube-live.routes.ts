@@ -66,7 +66,11 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     }, 401)
   }
 
-  const { title, description, thumbnail_url, product_ids, scheduled_start_time, privacy_status, channel_id } = await c.req.json()
+  const { title, description, thumbnail_url, product_ids, scheduled_start_time, privacy_status, channel_id, frame_rate: bodyFrameRate } = await c.req.json()
+  // 🛡️ 2026-05-13: frame_rate — '30fps' (기본) / '60fps' (패션/뷰티) / 'variable'.
+  //   sanitize: 허용값만, 기본 30fps.
+  const frameRate: '30fps' | '60fps' | 'variable' =
+    bodyFrameRate === '60fps' ? '60fps' : bodyFrameRate === 'variable' ? 'variable' : '30fps'
 
   if (!title) {
     return c.json({
@@ -232,7 +236,8 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
         title,
         description || '',
         scheduledTime,
-        privacyStatus
+        privacyStatus,
+        frameRate
       )
       // 🛡️ 2026-05-11 P3-#10: setupLiveStream = liveBroadcasts.insert(50) + liveStreams.insert(50) + bind(50) = 150
       await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream', c.executionCtx)
@@ -1245,6 +1250,91 @@ app.get('/live/_quota', async (c) => {
   }
   const usage = await getQuotaUsage(c.env)
   return c.json({ success: true, data: usage })
+})
+
+/**
+ * GET /api/youtube/live/_admin-quota-dashboard
+ *
+ * 🛡️ 2026-05-13: 어드민용 풀 quota 대시보드 데이터.
+ *   - 전체 일일 사용량 + 시간별 분포 (어제/그제 비교)
+ *   - 셀러별 일일 생성 횟수 (상위 N명)
+ *   - 좀비 의심 streams (status='live' AND started_at > 5min)
+ *   - 라이브 / 예약 / 종료 stream 개수
+ */
+app.get('/live/_admin-quota-dashboard', requireAdmin(), async (c) => {
+  const today = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10)
+
+  const usage = await getQuotaUsage(c.env)
+
+  // 어제 사용량
+  const yKv = c.env.SESSION_KV
+  let yesterdayTotal = 0
+  if (yKv) {
+    try {
+      const yRaw = await yKv.get(`yt_quota:${yesterday}`)
+      const yData = yRaw ? JSON.parse(yRaw) as { total: number } : { total: 0 }
+      yesterdayTotal = yData.total
+    } catch { /* ignore */ }
+  }
+
+  // 셀러별 일일 생성 횟수 (KV scan 불가하므로 active sellers 조회 후 각각 lookup)
+  const activeSellers = await c.env.DB.prepare(`
+    SELECT DISTINCT seller_id FROM live_streams
+    WHERE created_at >= datetime('now', '-1 day') AND seller_id IS NOT NULL
+    LIMIT 50
+  `).all<{ seller_id: number }>()
+
+  const sellerCounts: Array<{ seller_id: number; seller_name?: string; count: number }> = []
+  if (yKv && activeSellers.results) {
+    for (const s of activeSellers.results) {
+      try {
+        const raw = await yKv.get(`live_create_count:${s.seller_id}:${today}`)
+        const count = raw ? parseInt(raw, 10) : 0
+        if (count > 0) {
+          const sellerRow = await c.env.DB.prepare(
+            `SELECT name FROM sellers WHERE id = ? LIMIT 1`
+          ).bind(s.seller_id).first<{ name: string }>().catch(() => null)
+          sellerCounts.push({ seller_id: s.seller_id, seller_name: sellerRow?.name, count })
+        }
+      } catch { /* ignore */ }
+    }
+    sellerCounts.sort((a, b) => b.count - a.count)
+  }
+
+  // 좀비 의심 streams
+  const zombieCandidates = await c.env.DB.prepare(`
+    SELECT id, seller_id, title, started_at, last_error
+    FROM live_streams
+    WHERE status = 'live' AND started_at IS NOT NULL
+      AND datetime(started_at) < datetime('now', '-5 minutes')
+    ORDER BY started_at ASC
+    LIMIT 20
+  `).all<{ id: number; seller_id: number; title: string; started_at: string; last_error: string | null }>()
+
+  // Stream 카운트 (오늘)
+  const streamStats = await c.env.DB.prepare(`
+    SELECT status, COUNT(*) AS count FROM live_streams
+    WHERE created_at >= datetime('now', '-1 day')
+    GROUP BY status
+  `).all<{ status: string; count: number }>()
+  const streamCountsByStatus: Record<string, number> = {}
+  for (const r of streamStats.results || []) {
+    streamCountsByStatus[r.status] = r.count
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      quota: {
+        today: { date: today, total: usage.total, limit: usage.limit, ratio: usage.ratio, warning: usage.warning, calls: usage.calls },
+        yesterday: { date: yesterday, total: yesterdayTotal },
+      },
+      sellers_today: sellerCounts.slice(0, 20),
+      zombie_suspect: zombieCandidates.results || [],
+      stream_counts_24h: streamCountsByStatus,
+    },
+  })
 })
 
 /**

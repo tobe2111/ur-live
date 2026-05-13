@@ -152,11 +152,81 @@ export function BroadcastDiagnostic({ streamId, method, onClose }: Props) {
             </li>
           ))}
         </ul>
+        {/* 🛡️ 2026-05-13: 자동 복구 액션 버튼 — 진단 후 셀러가 직접 복구 가능 */}
+        {!running && <RecoveryActions streamId={streamId} />}
+
         <button onClick={onClose} disabled={running}
           className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold disabled:opacity-50">
           {running ? t('broadcastDiag.diagnosing', { defaultValue: '진단 중...' }) : t('broadcastDiag.close', { defaultValue: '닫기' })}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * 🛡️ 2026-05-13: 셀러 본인이 누를 수 있는 복구 액션 모음.
+ *
+ * 콘솔 fetch 안 켜고 버튼 한 번으로:
+ *   - force-transition: YouTube broadcast 가 'ready' 정체일 때 강제 live 전환
+ *   - reset-zombie: DB.status='live' 인데 OME 에 stream 없을 때 scheduled 로 복귀
+ */
+function RecoveryActions({ streamId }: { streamId: number }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [lastResult, setLastResult] = useState<{ kind: string; ok: boolean; message: string } | null>(null)
+
+  const call = async (action: 'force-transition' | 'reset-zombie') => {
+    setBusy(action)
+    setLastResult(null)
+    try {
+      const res = await api.post(`/api/seller/youtube/live/${streamId}/${action}`)
+      const data = res.data
+      setLastResult({
+        kind: action,
+        ok: !!data?.success,
+        message: data?.message || data?.error || (data?.success ? '완료' : '실패'),
+      })
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string }
+      setLastResult({
+        kind: action,
+        ok: false,
+        message: err?.response?.data?.error || err?.message || '실패',
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="space-y-2 border-t border-gray-100 pt-3">
+      <div className="text-xs font-semibold text-gray-700 flex items-center gap-1">🛠️ 자동 복구</div>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => call('force-transition')}
+          disabled={!!busy}
+          className="px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold disabled:opacity-50"
+          title="YouTube 가 영상을 'ready' 에서 'live' 로 전환 못 하고 있을 때"
+        >
+          {busy === 'force-transition' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : '⚡ 강제 라이브 전환'}
+        </button>
+        <button
+          onClick={() => call('reset-zombie')}
+          disabled={!!busy}
+          className="px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-xs font-semibold disabled:opacity-50"
+          title="DB 에는 라이브인데 실제 송출 신호가 없을 때 (좀비)"
+        >
+          {busy === 'reset-zombie' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : '🔄 좀비 복구'}
+        </button>
+      </div>
+      {lastResult && (
+        <div className={`text-[11px] px-2 py-1.5 rounded-lg ${lastResult.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+          {lastResult.ok ? '✅' : '❌'} {lastResult.message}
+        </div>
+      )}
+      <p className="text-[10px] text-gray-500 leading-relaxed">
+        ⚡ 강제 전환: YouTube 가 영상 받았는데 'ready' 정체 시. 🔄 좀비 복구: DB만 live, 실제 송출 X 시 → 다시 시작 가능.
+      </p>
     </div>
   )
 }

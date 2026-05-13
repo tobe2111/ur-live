@@ -47,6 +47,9 @@ interface StepInfoProps {
   setNotifyFollowers?: (v: boolean) => void
   practiceMode?: boolean
   setPracticeMode?: (v: boolean) => void
+  // 🛡️ 2026-05-13: frameRate (30fps / 60fps / variable)
+  frameRate?: '30fps' | '60fps' | 'variable'
+  setFrameRate?: (v: '30fps' | '60fps' | 'variable') => void
 }
 
 export default function StepInfo({ title, setTitle, description, setDescription, thumbnailUrl, setThumbnailUrl, privacy, setPrivacy,
@@ -57,6 +60,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   tokenExpired, onReauthenticate, connectingYouTube, channelsLoading,
   notifyFollowers = true, setNotifyFollowers,
   practiceMode = false, setPracticeMode,
+  frameRate = '30fps', setFrameRate,
 }: StepInfoProps) {
   const { t } = useTranslation()
 
@@ -491,6 +495,27 @@ export default function StepInfo({ title, setTitle, description, setDescription,
           </a>
         </div>
       )}
+
+      {/* 🛡️ 2026-05-13: 프레임 레이트 선택 — 패션/뷰티는 60fps 권장 (자연스러운 움직임) */}
+      <div className="border-t border-gray-100 pt-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">영상 프레임</label>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { key: '30fps', label: '30fps', desc: '기본 (음식/잡담)' },
+            { key: '60fps', label: '60fps', desc: '부드러움 (패션/뷰티)' },
+            { key: 'variable', label: '가변', desc: 'OME 자동' },
+          ] as Array<{ key: '30fps' | '60fps' | 'variable'; label: string; desc: string }>).map(opt => (
+            <button key={opt.key} type="button" onClick={() => setFrameRate?.(opt.key)}
+              className={`flex flex-col items-center gap-0.5 p-2.5 rounded-xl border-2 text-xs transition-all ${
+                frameRate === opt.key ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+              }`}>
+              <span className={`font-bold ${frameRate === opt.key ? 'text-blue-700' : 'text-gray-700'}`}>{opt.label}</span>
+              <span className="text-[10px] text-gray-400">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-1.5">60fps 는 송출 인터넷 속도 5Mbps+ 권장. 송출 도구 (OBS) 설정도 같이 맞춰야 효과.</p>
+      </div>
 
       {/* 🛡️ 2026-05-07: 알림톡 + 연습 모드 토글 */}
       <div className="border-t border-gray-100 pt-4 space-y-2.5">
