@@ -355,6 +355,11 @@ export class YouTubeAPIService {
 
   /**
    * Setup live stream reusing a persistent stream (no new RTMP key needed)
+   *
+   * 🛡️ 2026-05-13 v3 (perf): cached RTMP info 받으면 getStream() 호출 생략.
+   *   YouTube stream 의 RTMP URL/key 는 영구적 (한번 생성 후 안 바뀜) — 매번 재조회는 낭비.
+   *   bind 실패 시에만 stream 정보 재확인 fallback.
+   *   → 1.5s → ~0.8s (네트워크 왕복 한 번 제거)
    */
   async setupLiveStreamWithPersistentStream(
     accessToken: string,
@@ -362,30 +367,68 @@ export class YouTubeAPIService {
     description: string,
     persistentStreamId: string,
     scheduledStartTime: string = new Date().toISOString(),
-    privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
+    privacyStatus: 'public' | 'unlisted' | 'private' = 'public',
+    cachedRtmp?: { rtmpUrl: string; rtmpKey: string; backupRtmpUrl?: string }
   ): Promise<YouTubeLiveSetup> {
-    // 🛡️ 2026-05-07: persistent stream 에 묶여있는 이전 broadcast 가 'ready'/'live' 상태로
-    //   남아있으면 YouTube 가 "스트림 키가 이미 할당됨" 에러를 노출. 새 broadcast 바인딩
-    //   전에 stale broadcast 들을 모두 complete 로 전환.
-    // 🛡️ 2026-05-13 (perf): endActiveBroadcastsForStream / createBroadcast / getStream 을
-    //   가능한 한 병렬화 — 셀러 체감 속도 1.5-3s → 0.5-1.5s 단축.
-    //   endActive 는 createBroadcast 와 동시에 시작 (어차피 새 broadcast 는 다른 ID).
-    //   bindBroadcastToStream 만 두 결과 모두 필요 → 순차.
-    const [, broadcast, stream] = await Promise.all([
+    // endActive + createBroadcast 만 병렬 — getStream 은 캐시 hit 시 skip
+    const [, broadcast, fetchedStream] = await Promise.all([
       this.endActiveBroadcastsForStream(accessToken, persistentStreamId),
       this.createBroadcast(accessToken, title, description, scheduledStartTime, privacyStatus),
-      this.getStream(accessToken, persistentStreamId),
+      cachedRtmp
+        ? Promise.resolve(null as unknown as YouTubeStream | null)
+        : this.getStream(accessToken, persistentStreamId),
     ])
 
+    // RTMP info 결정 — 캐시 hit 면 그대로, miss 면 fetched stream 사용
+    let rtmpUrl: string
+    let rtmpKey: string
+    let backupRtmpUrl: string | undefined
+    let streamForReturn: YouTubeStream
+
+    if (cachedRtmp && !fetchedStream) {
+      rtmpUrl = cachedRtmp.rtmpUrl
+      rtmpKey = cachedRtmp.rtmpKey
+      backupRtmpUrl = cachedRtmp.backupRtmpUrl
+      // 최소한의 stream 객체 — 외부에서 ingestionInfo 만 참조
+      streamForReturn = {
+        id: persistentStreamId,
+        ingestionInfo: {
+          ingestionAddress: cachedRtmp.rtmpUrl,
+          backupIngestionAddress: cachedRtmp.backupRtmpUrl || cachedRtmp.rtmpUrl,
+          streamName: cachedRtmp.rtmpKey,
+        },
+      } as YouTubeStream
+    } else {
+      const stream = fetchedStream!
+      rtmpUrl = stream.ingestionInfo.ingestionAddress
+      rtmpKey = stream.ingestionInfo.streamName
+      backupRtmpUrl = stream.ingestionInfo.backupIngestionAddress
+      streamForReturn = stream
+    }
+
     // Bind broadcast to existing stream (must run after both)
-    await this.bindBroadcastToStream(accessToken, broadcast.id, stream.id)
+    try {
+      await this.bindBroadcastToStream(accessToken, broadcast.id, persistentStreamId)
+    } catch (bindErr) {
+      // 🛡️ 캐시 hit 인데 bind 실패 → stream 이 revoke 됐을 가능성. fresh fetch 후 1회 재시도.
+      if (cachedRtmp) {
+        const freshStream = await this.getStream(accessToken, persistentStreamId)
+        await this.bindBroadcastToStream(accessToken, broadcast.id, freshStream.id)
+        rtmpUrl = freshStream.ingestionInfo.ingestionAddress
+        rtmpKey = freshStream.ingestionInfo.streamName
+        backupRtmpUrl = freshStream.ingestionInfo.backupIngestionAddress
+        streamForReturn = freshStream
+      } else {
+        throw bindErr
+      }
+    }
 
     return {
       broadcast,
-      stream,
-      rtmpUrl: stream.ingestionInfo.ingestionAddress,
-      backupRtmpUrl: stream.ingestionInfo.backupIngestionAddress,
-      rtmpKey: stream.ingestionInfo.streamName,
+      stream: streamForReturn,
+      rtmpUrl,
+      backupRtmpUrl,
+      rtmpKey,
       youtubeUrl: `https://www.youtube.com/watch?v=${broadcast.id}`,
       embedUrl: `https://www.youtube.com/embed/${broadcast.id}?autoplay=1`
     }

@@ -112,8 +112,16 @@ function ReelCardImpl({
   //   상세: PR #329. 이전 8개 player state (showPlayButton, autoplayFailed, playerError,
   //   playerReady, retryCountRef 등) 모두 제거. iframe direct render + postMessage 로 충분.
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
   const [isMuted, setIsMuted] = useState(true)
   const [showUnmuteHint, setShowUnmuteHint] = useState(true)
+  // 🛡️ 2026-05-13: iframe stuck 시 시청자에게 "재연결 중" hint 표시 — 검은 화면 안심 신호.
+  const [reloadingHint, setReloadingHint] = useState<{ count: number; max: number } | null>(null)
+  // 🛡️ 2026-05-13 (cost): IntersectionObserver 로 카드 가시성 추적 → WS connect 결정.
+  //   기존: PR #331 에서 항상 연결 (모든 카드 N개 WS connection) → DO/서버비 N배.
+  //   개선: 화면에 30% 이상 보이는 카드만 WS connect → 서버 부하 1/N.
+  //   초기값은 isActive prop — IntersectionObserver 가 fire 하기 전까지 정확도 유지.
+  const [isInViewport, setIsInViewport] = useState(isActive)
 
   // Cart & Purchase state
   const [addingToCart, setAddingToCart] = useState(false)
@@ -223,7 +231,19 @@ function ReelCardImpl({
     lastDonation,
     activeFlashSale,
     pinnedMessage,
-  } = useLiveStreamWebSocket(stream.id, true /* always enabled — isActive 무관, 채팅 항상 수신 */, stream.status === 'ended')
+  } = useLiveStreamWebSocket(stream.id, isInViewport, stream.status === 'ended')
+
+  // 🛡️ 2026-05-13 (cost): IntersectionObserver — viewport 진입 시 WS connect, 떠나면 disconnect.
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const obs = new IntersectionObserver(
+      ([entry]) => setIsInViewport(entry.intersectionRatio > 0.3),
+      { threshold: [0, 0.3, 0.7, 1] }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   // 🛡️ 2026-05-13: 시청자가 status='scheduled' 일 때 진입 → 셀러가 라이브 시작 후
   //   WebSocket 의 stream_status 이벤트가 wsStreamData 를 갱신하지만, props.stream 은 그대로 →
@@ -335,20 +355,32 @@ function ReelCardImpl({
     return () => clearTimeout(t)
   }, [isMuted, effectiveStatus, stream.youtube_video_id])
 
-  // 🛡️ 2026-05-13: iframe 영상 미재생 자동 감지 + reload (영상 대신 썸네일만 표시 사고).
+  // 🛡️ 2026-05-13 v2: iframe state 감지 시간 10s → 3s, reload 중 hint 표시.
   //   원인: 셀러 OBS RTMP 시작 전이면 YouTube broadcast.lifeCycleStatus='ready' →
-  //         embed 가 thumbnail + "재생할 수 없음" 표시. iframe onError 는 안 옴.
-  //   해결: YouTube IFrame API 의 postMessage protocol 로 player state 감지.
-  //         -1 (unstarted) 또는 5 (cued) 상태가 10초 이상 → iframe.src reload (최대 3회).
-  //         playing/buffering 으로 전환되면 reload 중단.
+  //         embed 가 thumbnail + "재생할 수 없음" 표시. iframe onError 안 옴.
+  //   해결: YouTube IFrame API postMessage protocol 로 state 감지 (YT.Player wrapper 안 씀).
+  //         3초 안에 PLAYING/BUFFERING 으로 전환 안 되면 reload (최대 3회). 사용자에게 hint 노출.
   useEffect(() => {
     if (effectiveStatus !== 'live' || !stream.youtube_video_id) return
     let reloadCount = 0
     const MAX_RELOADS = 3
+    const STUCK_TIMEOUT_MS = 3000   // 3초 — YouTube embed P95 load time 안 margin
+    const SAFETY_TIMEOUT_MS = 8000  // 8초 — state event 자체가 안 와도 강제 reload 1회
     let stuckTimer: ReturnType<typeof setTimeout> | null = null
     let isPlaying = false
 
-    // iframe 에 listening 메시지 전송 — YT IFrame API 가 받으면 state 이벤트 시작
+    const performReload = (reason: string) => {
+      if (isPlaying || reloadCount >= MAX_RELOADS) return
+      reloadCount++
+      if (import.meta.env.DEV) console.log(`[ReelCard] iframe reload ${reloadCount}/${MAX_RELOADS} — ${reason}`)
+      setReloadingHint({ count: reloadCount, max: MAX_RELOADS })
+      if (iframeRef.current) {
+        const cur = iframeRef.current.src
+        iframeRef.current.src = ''
+        setTimeout(() => { if (iframeRef.current) iframeRef.current.src = cur }, 100)
+      }
+    }
+
     const setupListener = () => {
       const win = iframeRef.current?.contentWindow
       if (!win) return
@@ -369,47 +401,26 @@ function ReelCardImpl({
           if (state === 1 || state === 3) {
             isPlaying = true
             if (stuckTimer) { clearTimeout(stuckTimer); stuckTimer = null }
+            setReloadingHint(null)
           } else if (state === -1 || state === 5) {
-            // unstarted / cued — 10초 후에도 안 바뀌면 reload
             if (stuckTimer) clearTimeout(stuckTimer)
-            stuckTimer = setTimeout(() => {
-              if (isPlaying || reloadCount >= MAX_RELOADS) return
-              reloadCount++
-              if (import.meta.env.DEV) console.log(`[ReelCard] iframe stuck — reload ${reloadCount}/${MAX_RELOADS}`)
-              if (iframeRef.current) {
-                const cur = iframeRef.current.src
-                iframeRef.current.src = ''
-                setTimeout(() => { if (iframeRef.current) iframeRef.current.src = cur }, 100)
-              }
-            }, 10_000)
+            stuckTimer = setTimeout(() => performReload('unstarted/cued 3s'), STUCK_TIMEOUT_MS)
           }
         }
       } catch { /* noop */ }
     }
 
     window.addEventListener('message', handleMessage)
-
-    // 초기 listener 설정 — iframe load 직후 약간 지연
-    const initTimer = setTimeout(setupListener, 1500)
-
-    // 안전망: 20초 동안 단 한 번도 playing 못 들어가면 무조건 1회 reload
-    const safetyTimer = setTimeout(() => {
-      if (!isPlaying && reloadCount === 0) {
-        reloadCount = 1
-        if (import.meta.env.DEV) console.log('[ReelCard] safety reload — no playing state in 20s')
-        if (iframeRef.current) {
-          const cur = iframeRef.current.src
-          iframeRef.current.src = ''
-          setTimeout(() => { if (iframeRef.current) iframeRef.current.src = cur }, 100)
-        }
-      }
-    }, 20_000)
+    const initTimer = setTimeout(setupListener, 1000)  // 1초 — iframe load 후 빠르게 listener 등록
+    // 안전망: state event 자체가 안 오는 케이스 (CSP 등) — 8초 후 강제 1회 reload
+    const safetyTimer = setTimeout(() => performReload('safety — no state event'), SAFETY_TIMEOUT_MS)
 
     return () => {
       window.removeEventListener('message', handleMessage)
       clearTimeout(initTimer)
       clearTimeout(safetyTimer)
       if (stuckTimer) clearTimeout(stuckTimer)
+      setReloadingHint(null)
     }
   }, [stream.youtube_video_id, effectiveStatus])
 
@@ -878,7 +889,7 @@ function ReelCardImpl({
   }
 
   return (
-    <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
+    <div ref={cardRef} className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
         <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
@@ -997,6 +1008,15 @@ function ReelCardImpl({
           </div>
           <p className="text-white text-lg font-bold mb-1">{t('live.notReady', { defaultValue: '방송 준비 중' })}</p>
           <p className="text-white/70 text-sm">{t('live.notReadyDesc', { defaultValue: '셀러가 곧 방송을 시작해요' })}</p>
+        </div>
+      )}
+
+      {/* 🔄 재연결 중 hint — iframe stuck 감지 시 노출 (검은 화면 안심 신호) */}
+      {reloadingHint && (
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-black/85 backdrop-blur-md text-white text-sm font-semibold px-4 py-2.5 rounded-full flex items-center gap-2 shadow-2xl">
+          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span>{t('live.reconnecting', { defaultValue: '방송 데이터 수신 중...' })}</span>
+          <span className="text-white/50 text-xs">{reloadingHint.count}/{reloadingHint.max}</span>
         </div>
       )}
 
