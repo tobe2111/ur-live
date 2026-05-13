@@ -1158,22 +1158,37 @@ app.post('/live/:id/end', async (c) => {
     // - broadcast_id 가 없거나 (웹캠/OME 모드에서 admission 폴링 실패), YouTube API 가 404 (broadcast 자동 정리됨),
     //   토큰 만료, 등의 경우에 DB status='ended' 까지 막히면 셀러가 영영 정리 못 함.
     // - 따라서 YouTube 호출은 try/catch 후 무시, DB ended 처리는 무조건 진행.
+    // 🛡️ 2026-05-13: endBroadcast 재시도 — 일시적 5xx / 네트워크 에러 자동 복구.
+    //   non-retryable: 404 (broadcast 없음), 403 (권한), redundant (이미 complete) → 즉시 중단.
     let youtubeEndError: string | null = null
     const broadcastId = stream.youtube_broadcast_id as string | null
     if (broadcastId) {
-      try {
-        const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-        const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
-        if (accessToken) {
-          await youtubeService.endBroadcast(accessToken, broadcastId)
-          await trackQuota(c.env, QUOTA_COST.transition, 'transition_end', c.executionCtx)
-        } else {
-          youtubeEndError = 'no_access_token'
+      const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+      const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+      if (!accessToken) {
+        youtubeEndError = 'no_access_token'
+      } else {
+        const MAX_END_RETRIES = 3
+        let lastEndErr = ''
+        for (let attempt = 0; attempt < MAX_END_RETRIES; attempt++) {
+          try {
+            await youtubeService.endBroadcast(accessToken, broadcastId)
+            await trackQuota(c.env, QUOTA_COST.transition, 'transition_end', c.executionCtx)
+            lastEndErr = ''
+            break
+          } catch (ytErr) {
+            const msg = ytErr instanceof Error ? ytErr.message : String(ytErr)
+            lastEndErr = msg
+            // 404 / 403 / redundant — 재시도 의미 없음
+            if (/404|403|redundant|already|not found|complete/i.test(msg)) {
+              console.warn('[YouTube Live End] non-retryable, skip:', msg)
+              break
+            }
+            console.warn(`[YouTube Live End] attempt ${attempt + 1}/${MAX_END_RETRIES} failed:`, msg)
+            if (attempt < MAX_END_RETRIES - 1) await new Promise((r) => setTimeout(r, 2000))
+          }
         }
-      } catch (ytErr) {
-        // 404 (broadcast 없음) / 403 (권한) 등은 모두 silent skip — DB 정리는 계속
-        youtubeEndError = ytErr instanceof Error ? ytErr.message : String(ytErr)
-        console.warn('[YouTube Live End] broadcast 정리 실패 (DB 만 ended 처리):', youtubeEndError)
+        if (lastEndErr) youtubeEndError = lastEndErr
       }
     }
 
@@ -1184,8 +1199,61 @@ app.post('/live/:id/end', async (c) => {
       WHERE id = ?
     `).bind(streamId).run()
 
-    // 🛡️ 2026-05-11: OME 의 push 도 정리 — 다음 broadcast 의 Duplicate ID 방지.
+    // 🛡️ 2026-05-13: stopOmePush + terminateOmeStream 2단 정리 — push 만 끊고 stream 남으면
+    //   OME 가 다음 broadcast 시 Duplicate ID 충돌 가능. 양쪽 다 호출 (best-effort, idempotent).
     await stopOmePush(c.env, Number(streamId))
+    try { await terminateOmeStream(c.env, `s${streamId}`) } catch { /* best-effort */ }
+
+    // 🛡️ 2026-05-13: 시청자 즉시 반영 — main page / live page 의 stale 'live' 표시 차단.
+    //   1) SESSION_KV 의 stream:${id} 캐시 무효화
+    //   2) 라이브 목록 캐시 무효화 (자주 쓰이는 status=live 쿼리 변형 enumeration)
+    //   3) DO 가 viewers 에게 'ended' 이벤트 broadcast
+    //   list 캐시 키 형식: buildCacheKey('streams', {status,limit,offset}) → 'streams:status:live:limit:N:offset:M'
+    const env = c.env as Env & { SESSION_KV?: KVNamespace; LIVE_STREAM?: DurableObjectNamespace }
+    const kv = env.SESSION_KV
+    if (kv) {
+      const commonLimits = [10, 20, 50]
+      const listKeys = commonLimits.flatMap(lim => [
+        `streams:status:live:limit:${lim}:offset:0`,
+        `streams:status:live:limit:${lim}`,
+      ])
+      const invalidations = [
+        cacheInvalidate(kv, `stream:${streamId}`),
+        cacheInvalidate(kv, listKeys),
+      ]
+      const ctx = c.executionCtx
+      if (ctx && typeof ctx.waitUntil === 'function') {
+        invalidations.forEach((p) => ctx.waitUntil(p))
+      } else {
+        await Promise.all(invalidations).catch(() => {})
+      }
+    }
+    // DO broadcast — 라이브 페이지 시청자 즉시 'ended' WebSocket 신호.
+    //   handleBroadcast 형식: { type: 'stream_status', data: { status, live_stream_id }, timestamp }
+    if (env.LIVE_STREAM) {
+      try {
+        const doId = env.LIVE_STREAM.idFromName(String(streamId))
+        const stub = env.LIVE_STREAM.get(doId)
+        const broadcastEnd = stub.fetch('https://internal/broadcast', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Auth': '1',
+            'X-Auth-User-Type': 'seller',
+            'X-Auth-User-Id': String(sellerId),
+          },
+          body: JSON.stringify({
+            type: 'stream_status',
+            data: { status: 'ended', live_stream_id: streamId },
+            timestamp: Date.now(),
+          }),
+        })
+        if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(broadcastEnd.then(() => {}).catch(() => {}))
+        else await broadcastEnd.catch(() => {})
+      } catch (e) {
+        console.warn('[YouTube Live End] DO broadcast failed:', (e as Error).message)
+      }
+    }
 
     return c.json({
       success: true,
@@ -2027,13 +2095,14 @@ export async function omeAdmissionHandler(
   //   iframe embed 가 검은 화면이던 사고 직접 해결. transition 은 push 가 YouTube 에 도착해야만 성공.
   if (env.OME_HOST && env.OME_API_TOKEN) {
     const reRegisterAndTransition = async () => {
-      const MAX_RETRIES = 3
+      // 🛡️ 2026-05-13 (안정성 강화): push 재시도 3 → 5회 증가, 네트워크/OME 부팅 지연 더 폭넓게 cover.
+      //   exponential backoff: 1.5s → 3s → 6s → 12s → 24s (총 ~46.5s)
+      const MAX_RETRIES = 5
       const INITIAL_DELAY_MS = 1500
       let lastError = ''
       let pushOk = false
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-          // exponential backoff: 1.5s → 3s → 6s (총 ~10.5s, 일시 장애 충분 cover)
           const delay = INITIAL_DELAY_MS * Math.pow(2, attempt)
           await new Promise((r) => setTimeout(r, delay))
           const r = await registerOmePush(env, streamId, stream.rtmp_url, stream.rtmp_key)
@@ -2055,43 +2124,97 @@ export async function omeAdmissionHandler(
       }
 
       if (!pushOk) {
-        // 모든 재시도 실패 → DB 에 마지막 에러 기록 (셀러 대시보드에서 표시)
+        // 모든 재시도 실패 → DB 에 마지막 에러 기록 + 셀러 알림 (대시보드에서 표시)
         await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-          .bind(`[3회 재시도 실패] ${lastError}`, streamId)
+          .bind(`[${MAX_RETRIES}회 재시도 실패] ${lastError}`, streamId)
           .run().catch(() => {})
+        await env.DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+          VALUES (
+            (SELECT user_id FROM sellers WHERE id = ?),
+            'seller', 'broadcast_push_failed',
+            '송출 연결이 불안정해요',
+            '서버와의 영상 송출 연결이 ${MAX_RETRIES}회 재시도에도 실패했어요. 인터넷 / 송출 도구를 점검하고 새로 시작해주세요.',
+            '/seller/live-broadcast',
+            CURRENT_TIMESTAMP
+          )
+        `).bind(sellerId).run().catch(() => { /* notifications 없으면 skip */ })
         console.error('[OME admission] push register exhausted retries, sellerId=' + sellerId + ' streamId=' + streamId)
         return
       }
 
-      // push 등록 성공 → YouTube 가 stream 받기 시작할 시간 확보 후 transition.
+      // 🛡️ 2026-05-13 (Critical refinement): push 성공 후 broadcast lifeCycleStatus 폴링.
+      //   기존: 3s sleep 후 무조건 transition → invalidTransition 시 retry → 비효율 (불필요 API call 多)
+      //   개선: lifeCycleStatus 폴링하여 'ready' 면 transition, 'live'/'liveStarting' 이면 enableAutoStart
+      //         자동 완료된 것으로 보고 skip, 'testing' 이면 활성화 대기. 최대 7회 × 3s = 21s.
+      //   YouTube quota 절감 + race condition 감소.
       if (stream.youtube_broadcast_id && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET) {
-        await new Promise((r) => setTimeout(r, 3000))
-        // invalidTransition 시 재시도 (YouTube 가 아직 stream 못 감지한 경우 흔함)
-        const MAX_TX_RETRIES = 4
+        await new Promise((r) => setTimeout(r, 2000))  // 첫 폴링 전 짧은 대기
+        const MAX_TX_RETRIES = 7
+        const yt = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID, env.YOUTUBE_CLIENT_SECRET)
+        const accessToken = await getValidAccessToken(env.DB, sellerId, yt)
+        if (!accessToken) {
+          console.warn('[OME admission] no valid access token, skipping transition')
+          return
+        }
         for (let attempt = 0; attempt < MAX_TX_RETRIES; attempt++) {
           try {
-            const yt = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID, env.YOUTUBE_CLIENT_SECRET)
-            const accessToken = await getValidAccessToken(env.DB, sellerId, yt)
-            if (!accessToken) return
-            await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id!)
-            console.log(`[OME admission] YouTube broadcast ${stream.youtube_broadcast_id} → live (attempt ${attempt + 1})`)
-            return
-          } catch (e) {
-            const msg = (e as Error).message || ''
-            // redundantTransition (이미 live) → 성공 취급
-            if (/redundant|already/i.test(msg)) {
-              console.log(`[OME admission] YouTube broadcast ${stream.youtube_broadcast_id} already live`)
-              return
-            }
-            // invalidTransition → YouTube 가 아직 stream 미감지. 재시도.
-            if (/invalid/i.test(msg) && attempt < MAX_TX_RETRIES - 1) {
-              await new Promise((r) => setTimeout(r, 4000))
+            // broadcast lifeCycleStatus 직접 조회 (raw fetch — mapBroadcastStatus 가 enum 으로 축소시켜 정보 손실 방지)
+            const res = await fetch(
+              `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status&id=${stream.youtube_broadcast_id}`,
+              { headers: { 'Authorization': `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15000) }
+            )
+            if (!res.ok) {
+              console.warn(`[OME admission] getBroadcast status failed (${res.status}), retry`)
+              await new Promise((r) => setTimeout(r, 3000))
               continue
             }
-            console.warn(`[OME admission] transitionToLive failed (attempt ${attempt + 1}/${MAX_TX_RETRIES}):`, msg)
-            return
+            const data = await res.json() as { items?: Array<{ status?: { lifeCycleStatus?: string; recordingStatus?: string } }> }
+            const lifeCycleStatus = data.items?.[0]?.status?.lifeCycleStatus
+            if (!lifeCycleStatus) {
+              await new Promise((r) => setTimeout(r, 3000))
+              continue
+            }
+            // 이미 live/완료 → 종료
+            if (lifeCycleStatus === 'live' || lifeCycleStatus === 'liveStarting') {
+              console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} lifeCycleStatus=${lifeCycleStatus} (auto-transitioned by enableAutoStart)`)
+              return
+            }
+            if (lifeCycleStatus === 'complete') {
+              console.warn(`[OME admission] broadcast ${stream.youtube_broadcast_id} already complete`)
+              return
+            }
+            // testing / ready → transition 호출 가능
+            if (lifeCycleStatus === 'testing' || lifeCycleStatus === 'ready') {
+              try {
+                await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id!)
+                console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} transitioned to live (was ${lifeCycleStatus})`)
+                return
+              } catch (e) {
+                const msg = (e as Error).message || ''
+                if (/redundant|already/i.test(msg)) {
+                  console.log(`[OME admission] transition redundant (already live)`)
+                  return
+                }
+                if (/invalid/i.test(msg)) {
+                  // YouTube 측 streamStatus 가 아직 active 아님. 폴링 계속.
+                  console.log(`[OME admission] transition invalidTransition (streamStatus inactive yet), attempt ${attempt + 1}/${MAX_TX_RETRIES}`)
+                  await new Promise((r) => setTimeout(r, 3000))
+                  continue
+                }
+                console.warn(`[OME admission] transition unknown error:`, msg)
+                return
+              }
+            }
+            // created / testStarting / liveStarting / revoked 등 → 대기
+            console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} lifeCycleStatus=${lifeCycleStatus}, waiting...`)
+            await new Promise((r) => setTimeout(r, 3000))
+          } catch (e) {
+            console.warn(`[OME admission] poll attempt ${attempt + 1}/${MAX_TX_RETRIES} threw:`, (e as Error).message)
+            await new Promise((r) => setTimeout(r, 3000))
           }
         }
+        console.warn(`[OME admission] broadcast ${stream.youtube_broadcast_id} did not reach live state within ${MAX_TX_RETRIES * 3}s — visa cron 가 후속 처리`)
       }
     }
     if (waitUntil) waitUntil(reRegisterAndTransition())
