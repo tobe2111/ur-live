@@ -171,18 +171,22 @@ export default function MainHomePage() {
     }
 
     fetchBundle(true)
-    // 60초 자동 새로고침 (visibility 활성 시만 — 백그라운드 탭은 fetch 안 함)
+    // 🛡️ 2026-05-13: 60s → 20s — 셀러 시작/종료 즉시성 강화. 비용 최소 (단일 endpoint, 가벼움).
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') fetchBundle(false)
-    }, 60_000)
+    }, 20_000)
     const onVisible = () => { if (document.visibilityState === 'visible') fetchBundle(false) }
     document.addEventListener('visibilitychange', onVisible)
+    // 윈도우 focus 시에도 즉시 refresh — 셀러가 다른 탭에서 시작/종료한 뒤 메인으로 돌아왔을 때
+    const onFocus = () => fetchBundle(false)
+    window.addEventListener('focus', onFocus)
 
     return () => {
       cancelled = true
       clearTimeout(safetyTimer)
       clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
     }
   }, [t])
 

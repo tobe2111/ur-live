@@ -2242,8 +2242,45 @@ export async function omeAdmissionHandler(
   if (justWentLive) {
     const kv = (env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
     if (kv) {
-      if (waitUntil) waitUntil(cacheInvalidate(kv, `stream:${streamId}`))
-      else await cacheInvalidate(kv, `stream:${streamId}`)
+      // 🛡️ 2026-05-13: 메인 페이지 sync — stream 디테일 + 라이브 목록 양쪽 캐시 무효화.
+      //   이전엔 stream:${id} 만 → 메인 페이지 목록은 5-30s stale → 사용자가 "방금 라이브 시작했는데
+      //   메인에 안 떠" 사고. 종료 핸들러와 대칭으로 list cache 도 함께 invalidate.
+      const commonLimits = [10, 20, 50]
+      const listKeys = commonLimits.flatMap(lim => [
+        `streams:status:live:limit:${lim}:offset:0`,
+        `streams:status:live:limit:${lim}`,
+      ])
+      const all = [cacheInvalidate(kv, `stream:${streamId}`), cacheInvalidate(kv, listKeys)]
+      if (waitUntil) all.forEach(p => waitUntil(p))
+      else await Promise.all(all).catch(() => {})
+    }
+    // 🛡️ 2026-05-13: WebSocket broadcast — 시청 중인 viewer 즉시 'live' 신호 (ScheduledOverlay → iframe 전환)
+    const liveDO = (env as Env & { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM
+    if (liveDO) {
+      const broadcastLive = async () => {
+        try {
+          const doId = liveDO.idFromName(String(streamId))
+          const stub = liveDO.get(doId)
+          await stub.fetch('https://internal/broadcast', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Internal-Auth': '1',
+              'X-Auth-User-Type': 'seller',
+              'X-Auth-User-Id': String(sellerId),
+            },
+            body: JSON.stringify({
+              type: 'stream_status',
+              data: { status: 'live', live_stream_id: streamId },
+              timestamp: Date.now(),
+            }),
+          })
+        } catch (e) {
+          console.warn('[OME admission] live broadcast failed:', (e as Error).message)
+        }
+      }
+      if (waitUntil) waitUntil(broadcastLive())
+      else await broadcastLive()
     }
   }
 
