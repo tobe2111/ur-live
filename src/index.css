@@ -490,6 +490,17 @@ html {
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* 🛡️ 2026-05-13 (#6): 라이브 페이지 상단 요소들 — iPhone 노치 / Dynamic Island 회피.
+   기존 top-14 (56px) / top-24 (96px) 고정값은 iPhone 14 Pro+ Dynamic Island (~59px) 와 겹침.
+   --safe-top 변수로 일괄 처리. 변수 사용처: ReelCard 의 absolute top 요소들. */
+:root {
+  --live-safe-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+.live-top-1 { top: calc(var(--live-safe-top) + 3rem); }   /* TeamPointsBadge — 48px below safe */
+.live-top-2 { top: calc(var(--live-safe-top) + 4.5rem); } /* 추가 컨트롤 */
+.live-top-3 { top: calc(var(--live-safe-top) + 5.5rem); } /* 셀러 pill */
+.live-top-toast { top: calc(var(--live-safe-top) + 3.5rem); } /* toast/alert */
 .safe-area-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
