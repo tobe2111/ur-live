@@ -347,9 +347,30 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     })
   } catch (error: unknown) {
     console.error('[YouTube Live Create] Error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    // 🛡️ 2026-05-13 (#5): YouTube quota 초과 명확한 안내.
+    //   YouTube API 에러 메시지 패턴: "quotaExceeded" / "The request cannot be completed because you have exceeded your quota"
+    //   에러 코드로 분류하여 프론트엔드에서 전용 모달 표시.
+    if (/quotaExceeded|exceeded.*quota|quota.*exceed/i.test(msg)) {
+      // PST 자정 = KST 17:00 다음날 (정확히는 PST UTC-8, daylight UTC-7 무시하고 보수적으로 UTC-8 가정)
+      // PST midnight = UTC 08:00 = KST 17:00
+      const now = new Date()
+      const nowUtcHour = now.getUTCHours()
+      const hoursUntilReset = nowUtcHour < 8
+        ? 8 - nowUtcHour
+        : 32 - nowUtcHour  // 24 + 8
+      const resetAt = new Date(now.getTime() + hoursUntilReset * 3600 * 1000)
+      return c.json({
+        success: false,
+        error: `YouTube API 일일 사용량을 초과했어요. 약 ${hoursUntilReset}시간 후 자동 리셋됩니다.`,
+        error_code: 'YOUTUBE_QUOTA_EXCEEDED',
+        reset_at: resetAt.toISOString(),
+        hours_until_reset: hoursUntilReset,
+      }, 503)
+    }
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create live stream'
+      error: msg || 'Failed to create live stream'
     }, 500)
   }
 }

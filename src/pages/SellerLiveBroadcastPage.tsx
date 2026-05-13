@@ -453,10 +453,20 @@ export default function SellerLiveBroadcastPage() {
         }
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error_code?: string; error?: string; existing_stream_id?: number }; status?: number } }
+      const axiosErr = err as { response?: { data?: { error_code?: string; error?: string; existing_stream_id?: number; hours_until_reset?: number; reset_at?: string }; status?: number } }
       const data = axiosErr.response?.data
       if (data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
         setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))
+      } else if (data?.error_code === 'YOUTUBE_QUOTA_EXCEEDED') {
+        // 🛡️ 2026-05-13 (#5): YouTube quota 초과 — 명확한 안내 + 자동 리셋 시간 표시
+        const hours = data.hours_until_reset ?? 8
+        const resetTime = data.reset_at
+          ? new Date(data.reset_at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : '자정'
+        toast.error(
+          `YouTube API 일일 사용량을 초과했어요.\n약 ${hours}시간 후 (${resetTime}) 자동 리셋됩니다.\n그때 다시 시도해주세요.`,
+          { duration: 10_000 }
+        )
       } else if (data?.error_code === 'EXISTING_LIVE_BROADCAST' && data?.existing_stream_id) {
         // 🛡️ 2026-05-13: 진행 중 방송이 있을 때 — UX. 셀러에게 "종료 후 새로 시작" 선택지 제공.
         const ok = window.confirm(

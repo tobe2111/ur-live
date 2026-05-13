@@ -891,8 +891,9 @@ function ReelCardImpl({
   return (
     <div ref={cardRef} className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
+      {/* 🛡️ 2026-05-13 (#6): live-top-3 — iPhone 노치/Dynamic Island 자동 회피 */}
       {isCurrentProduct && isSeller && (
-        <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
+        <div className="absolute live-top-3 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
           <span className="text-white font-bold text-[11px] tracking-wide">{t('live.intro')}</span>
         </div>
@@ -1050,7 +1051,7 @@ function ReelCardImpl({
         {/* Top bar: 딜 잔액 게이지 (TopNav 아래에 위치) */}
         {/* 🛡️ 2026-04-30: 좌측 넘침 수정 left-3→left-4 (max-w 추가) */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-14 left-4 right-4 z-20" style={{ maxWidth: 'calc(100% - 32px)' }}>
+          <div className="pointer-events-auto absolute live-top-1 left-4 right-4 z-20" style={{ maxWidth: 'calc(100% - 32px)' }}>
             <TeamPointsBadge streamId={stream.id} donationGoal={stream.donation_goal} />
           </div>
         )}
@@ -1063,14 +1064,14 @@ function ReelCardImpl({
 
         {/* 라이브 경매 패널 */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-24 left-3 right-14 z-20">
+          <div className="pointer-events-auto absolute live-top-3 left-3 right-14 z-20">
             <AuctionPanel streamId={stream.id} />
           </div>
         )}
 
         {/* 플래시세일 배너 — WebSocket activeFlashSale 이벤트 시 표시 */}
         {activeFlashSale && flashSaleSecondsLeft !== null && flashSaleSecondsLeft > 0 && (
-          <div className="pointer-events-auto absolute top-[4.5rem] left-4 right-4 z-20">
+          <div className="pointer-events-auto absolute live-top-2 left-4 right-4 z-20">
             <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 shadow-lg shadow-orange-500/30 animate-fade-in">
               <span className="text-lg">⚡</span>
               <div className="flex-1 min-w-0">
@@ -1202,7 +1203,7 @@ function ReelCardImpl({
 
       {/* Toast Notification */}
       {showNotification && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
+        <div className="absolute live-top-toast left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
           <div className="rounded-xl bg-black/90 backdrop-blur-md px-5 py-3 text-sm font-bold text-white shadow-2xl border border-white/10">
             {notificationText}
           </div>
