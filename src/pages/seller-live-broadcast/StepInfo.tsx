@@ -4,7 +4,7 @@
  * 방송 메타정보 입력 폼 — title / description / thumbnail / privacy / 예약일정 /
  * 상품 선택 / 송출방식 (RTMP / 스마트폰) / 목적지 플랫폼.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Globe, EyeOff, Lock, Youtube, Loader2, Radio, AlertTriangle, Zap, Play, VideoIcon, Smartphone, CheckCircle2 } from 'lucide-react'
@@ -66,34 +66,8 @@ export default function StepInfo({ title, setTitle, description, setDescription,
       .then(s => s.getTracks().forEach(t => t.stop()))
       .catch(() => { /* 거부 시 무시 — BrowserBroadcaster 에서 재요청 */ })
   }, [])
-  // 🛡️ 2026-05-13: 고급 설정 wrapper 폐기 — 셀러 요청. 핵심 메타는 모두 상품 선택 아래로 분리,
-  //   남은 부수 항목은 inline 조건부 렌더 (목적지 / 템플릿).
-  const lastBc = getLastBroadcast()
-
-  // 🛡️ 2026-05-13 (Phase B): 셀러 진입 시 last broadcast 정보 자동 prefill — 빈 폼 마찰 제거.
-  //   동작: title 비어 있고 lastBc 가 있으면 자동 채움. 사용자가 한 번이라도 입력하면 미동작.
-  //   prefill 대상: title (오늘 날짜 prefix), description, privacy, thumbnail, products.
-  //   1번만 실행 (useRef 가드).
-  const prefilledRef = useRef(false)
-  useEffect(() => {
-    if (prefilledRef.current) return
-    if (title || selectedProducts.length > 0) return  // 사용자가 이미 뭔가 입력했으면 skip
-    if (!lastBc.title) return  // 첫 방송이면 prefill 할 게 없음
-
-    prefilledRef.current = true
-    const todayPrefix = new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
-    // 제목: 오늘 날짜 prefix + 지난 제목 (e.g. "5월 13일 신상 라이브")
-    setTitle(lastBc.title.startsWith(todayPrefix) ? lastBc.title : `${todayPrefix} ${lastBc.title}`)
-    if (lastBc.description) setDescription(lastBc.description)
-    if (lastBc.thumbnailUrl) setThumbnailUrl(lastBc.thumbnailUrl)
-    if (lastBc.privacy) setPrivacy(lastBc.privacy)
-    // 상품: 유효한 것만
-    if (lastBc.productIds?.length) {
-      const validIds = lastBc.productIds.filter(id => sellableProducts.some(p => p.id === id))
-      if (validIds.length > 0) setSelectedProducts(validIds)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sellableProducts.length])  // sellableProducts 로드된 후 한 번만
+  // 🛡️ 2026-05-13: lastBroadcast 자동 prefill 완전 제거 (사용자 요청). 매번 빈 폼.
+  const lastBc = getLastBroadcast()  // "지난 방송 그대로" 버튼에서만 사용 (자동 적용 X)
   const [productSearch, setProductSearch] = useState('')
   const [templates, setTemplates] = useState<BroadcastTemplate[]>(() => getTemplates())
   const [showTemplates, setShowTemplates] = useState(false)
