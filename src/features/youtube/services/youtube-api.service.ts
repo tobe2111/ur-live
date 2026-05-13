@@ -238,7 +238,10 @@ export class YouTubeAPIService {
             enableDvr: true,
             enableContentEncryption: false,
             enableEmbed: true,
-            latencyPreference: 'low'
+            // 🛡️ 2026-05-13: latency 'low' (5-10s) → 'ultraLow' (2-5s).
+            //   LL-HLS 기반, 비용 0, 셀러 송출 ↔ 시청자 시간차 단축.
+            //   TikTok / Twitch 모바일 라이브 수준 latency.
+            latencyPreference: 'ultraLow'
           }
         }),
         signal: AbortSignal.timeout(20000)

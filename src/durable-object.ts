@@ -15,7 +15,14 @@ interface ChatSession {
   ws: WebSocket;
   userId: string | null;
   recentTimes: number[]; // rate limit sliding window
+  // 🛡️ 2026-05-13 (#4): 시청자 수 정확도 — heartbeat 받을 때마다 갱신.
+  //   TCP close 가 30-60s 지연되는 케이스에서도 lastSeen 기반 정리.
+  lastSeen: number;
 }
+
+// 시청자 정리 기준: 마지막 heartbeat / 메시지가 이 시간보다 오래되면 stale 로 간주.
+//   클라이언트 heartbeat 주기 15s + 네트워크 jitter 여유 = 45s.
+const STALE_SESSION_MS = 45_000;
 
 export class LiveStreamDurableObject extends DurableObject {
   private sessions: Set<WebSocket>;
@@ -95,7 +102,7 @@ export class LiveStreamDurableObject extends DurableObject {
   handleSession(webSocket: WebSocket, userId: string | null = null) {
     webSocket.accept();
     this.sessions.add(webSocket);
-    this.chatSessions.set(webSocket, { ws: webSocket, userId, recentTimes: [] });
+    this.chatSessions.set(webSocket, { ws: webSocket, userId, recentTimes: [], lastSeen: Date.now() });
     this.viewerCount++;
 
     // 시청자 수 브로드캐스트
@@ -145,12 +152,26 @@ export class LiveStreamDurableObject extends DurableObject {
   }
 
   handleMessage(webSocket: WebSocket, message: Record<string, unknown>) {
-    // 🛡️ 2026-04-23 배치 164: 채팅 메시지 처리 (WebSocket 전환 기초)
-    //   클라이언트가 { type: 'chat_message', data: { text } } 전송 시 검증 후 브로드캐스트.
-    //   - 익명 차단 (user_id 없으면 거부)
-    //   - 길이/rate limit
-    //   - XSS 방지를 위해 서버단에서 stripTags 후 브로드캐스트
     if (!message || typeof message !== 'object') return;
+
+    // 🛡️ 2026-05-13 (#4): 모든 incoming 메시지에 lastSeen 갱신 + stale 정리.
+    //   클라이언트가 15초마다 heartbeat 보내고 채팅 메시지도 갱신 → 정확도 15-30s.
+    //   알람 사용 X → DO 비용 추가 0.
+    const sess = this.chatSessions.get(webSocket);
+    if (sess) sess.lastSeen = Date.now();
+    this.evictStaleSessions();
+
+    // heartbeat 만으로 끝 — 별도 응답 없음
+    if (message.type === 'heartbeat') return;
+    // 명시적 leave (beforeunload) — 즉시 정리
+    if (message.type === 'leave') {
+      this.sessions.delete(webSocket);
+      this.chatSessions.delete(webSocket);
+      this.viewerCount = Math.max(0, this.viewerCount - 1);
+      this.broadcastViewerCount();
+      try { webSocket.close(1000, 'leave') } catch { /* noop */ }
+      return;
+    }
 
     if (message.type === 'chat_message') {
       const sess = this.chatSessions.get(webSocket);
@@ -319,5 +340,26 @@ export class LiveStreamDurableObject extends DurableObject {
       timestamp: Date.now(),
     };
     this.broadcast(message);
+  }
+
+  /**
+   * 🛡️ 2026-05-13 (#4): stale 세션 정리 — 마지막 heartbeat/message 가 45s 이상 오래된 세션 강제 close.
+   *   TCP keepalive 만으로는 ungraceful disconnect (네트워크 끊김, 백그라운드, 브라우저 crash) 가
+   *   30-60s 지연되어 viewerCount 가 잘못 부풀려짐. heartbeat 기반 정리로 정확도 15-30s.
+   *   알람 사용 X → 모든 incoming 메시지에서 호출 → DO 비용 0 추가.
+   */
+  private evictStaleSessions() {
+    const now = Date.now();
+    let evicted = 0;
+    for (const [ws, sess] of this.chatSessions) {
+      if (now - sess.lastSeen > STALE_SESSION_MS) {
+        this.sessions.delete(ws);
+        this.chatSessions.delete(ws);
+        this.viewerCount = Math.max(0, this.viewerCount - 1);
+        try { ws.close(1001, 'stale') } catch { /* noop */ }
+        evicted++;
+      }
+    }
+    if (evicted > 0) this.broadcastViewerCount();
   }
 }
