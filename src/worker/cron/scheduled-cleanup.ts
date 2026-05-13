@@ -12,13 +12,24 @@ export async function handleScheduled(env: Env) {
   const startedAt = Date.now();
   logInfo('[Cron] Scheduled cleanup start', {});
 
-  // ── 1. 라이브 방송: 30분 미활동 자동 종료 ──
+  // ── 1. 라이브 방송: 안전망 자동 종료 ──
+  // 🛡️ 2026-05-13: 기존 30분 → 12시간 으로 완화 + youtube_video_id 가 있고 YouTube 측에서도
+  //   confirmed=ended 인 경우만 대상으로 변경.
+  //
+  //   사고: 셀러가 OBS/Prism 모바일에서 RTMP 송출 중 PC 셀러 대시보드를 닫음 →
+  //         heartbeat (1분 주기) 끊김 → 30분 후 cron 이 강제 종료 → 메인에서 라이브 사라짐 →
+  //         시청자 못 봄. 셀러 의도와 무관한 자동 종료의 핵심 원인.
+  //
+  //   해결: 진짜 source of truth = YouTube 의 actualEndTime (별도 cron youtube-broadcast-end-detect 가 감지).
+  //         이 룰은 마지막 안전망 — 12시간 이상 heartbeat 없고 YouTube 도 응답 없을 때만 종료.
+  //         (YouTube 자체 max-duration 도 12시간 이므로 그 이상은 zombie 로 봐도 됨)
   try {
     const { meta } = await DB.prepare(`
       UPDATE live_streams
-      SET status = 'ended', ended_at = datetime('now'), updated_at = datetime('now')
+      SET status = 'ended', ended_at = datetime('now'), updated_at = datetime('now'),
+          last_error = COALESCE(last_error, '12시간 이상 heartbeat 없음 — 안전망 자동 종료')
       WHERE status = 'live'
-        AND updated_at < datetime('now', '-30 minutes')
+        AND updated_at < datetime('now', '-12 hours')
     `).run();
     results.stale_streams_ended = meta.changes ?? 0;
   } catch (e) { logError('[Cron] stale_streams error:', { error: String(e) }) }
