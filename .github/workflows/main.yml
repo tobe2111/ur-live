@@ -1,10 +1,11 @@
 name: Deploy to Cloudflare Pages
 
-# 🛡️ 2026-05-07: GitHub Actions 무료 한도 (2,000분/월) 100% 소진으로 인한 임시 비활성화.
-#   자동 트리거 (push) 제거 → workflow_dispatch (수동) 전용.
-#   배포 경로: 로컬 npm run deploy:pages  또는 Cloudflare Pages Git 직접 연동.
-#   Actions 한도 리셋 (매월 1일) 후 재개하려면 push 트리거 복원.
+# 🛡️ 2026-05-13: push 트리거 복원 — main 으로 push 시 자동 배포.
+#   2026-05-07 ~ 5-13 동안 Actions 한도 소진으로 workflow_dispatch 로 비활성화했음.
+#   Workers 프로젝트의 cron 갱신은 별도 (수동 `wrangler deploy`).
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
