@@ -72,19 +72,28 @@ export default function ScheduledOverlay({ stream, onGoHome }: { stream: Stream;
           )}
         </div>
 
-        {stream.scheduled_at && (
-          <div className="text-center w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl py-6 px-4">
-            <p className={`font-bold font-mono tracking-tight transition-all ${
-              imminent ? 'text-pink-400 text-6xl animate-pulse' : 'text-white text-4xl'
-            }`}>
-              {countdown}
-            </p>
-            <p className="text-white/40 text-[11px] mt-3 tracking-wide">{formattedDate}</p>
-            {imminent && (
-              <p className="text-amber-300/90 text-[11px] mt-2 font-medium">⏰ 알림 켜놓고 기다려주세요</p>
-            )}
-          </div>
-        )}
+        {stream.scheduled_at && (() => {
+          // 🛡️ 2026-05-13: "곧 시작됩니다" 같은 텍스트 메시지는 작게, 숫자 카운트만 크게.
+          //   기존 text-6xl + animate-pulse 가 메시지에도 적용돼 화면을 점령하는 사고.
+          const isNumericCount = /\d/.test(countdown)
+          return (
+            <div className="text-center w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl py-5 px-4">
+              <p className={`font-mono tracking-tight transition-all ${
+                isNumericCount && imminent
+                  ? 'text-pink-400 text-4xl font-bold'
+                  : isNumericCount
+                    ? 'text-white text-3xl font-bold'
+                    : 'text-white/90 text-base font-semibold'
+              }`}>
+                {countdown}
+              </p>
+              <p className="text-white/40 text-[11px] mt-2 tracking-wide">{formattedDate}</p>
+              {imminent && isNumericCount && (
+                <p className="text-amber-300/90 text-[11px] mt-2 font-medium">⏰ 알림 켜놓고 기다려주세요</p>
+              )}
+            </div>
+          )
+        })()}
 
         {/* status='live' 이지만 video_id 미수신 — 방송 준비 중 표시 */}
         {!stream.scheduled_at && stream.status === 'live' && (
