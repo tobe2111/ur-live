@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock } from 'lucide-react'
+import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 
@@ -26,6 +27,44 @@ export default function StoreStatsPage() {
   const [stats, setStats] = useState<StoreStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // 🛡️ 2026-05-13 (공구 UX): 가게 현장 바우처 사용 처리 UI
+  const [voucherCode, setVoucherCode] = useState('')
+  const [usingVoucher, setUsingVoucher] = useState(false)
+  const [recentUses, setRecentUses] = useState<Array<{ code: string; success: boolean; reason?: string; at: number }>>([])
+
+  const handleUseVoucher = async () => {
+    const code = voucherCode.trim().toUpperCase()
+    if (!code) return
+    if (!pin || pin.length < 4) {
+      toast.error('가게 PIN 이 필요합니다')
+      return
+    }
+    setUsingVoucher(true)
+    try {
+      const res = await api.post(`/api/group-buy/${encodeURIComponent(code)}/use`, { pin })
+      const success = res.data?.success === true
+      setRecentUses(prev => [{ code, success, reason: success ? undefined : (res.data?.error as string), at: Date.now() }, ...prev].slice(0, 10))
+      if (success) {
+        toast.success(res.data?.message || '바우처 사용 완료!')
+        setVoucherCode('')
+        // stats refresh
+        try {
+          const tokenParam = magicToken || ''
+          const r = await api.get(`/api/group-buy/store-stats/${productId}${tokenParam ? `?t=${tokenParam}` : ''}`, tokenParam ? {} : { headers: { 'X-Store-Pin': pin } })
+          if (r.data?.success) setStats(r.data.data)
+        } catch { /* ignore */ }
+      } else {
+        toast.error(res.data?.error || '바우처 사용 실패')
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      const reason = e?.response?.data?.error || '사용 실패'
+      setRecentUses(prev => [{ code, success: false, reason, at: Date.now() }, ...prev].slice(0, 10))
+      toast.error(reason)
+    } finally {
+      setUsingVoucher(false)
+    }
+  }
 
   async function authenticate(opts?: { token?: string }) {
     const useToken = opts?.token || magicToken
@@ -150,6 +189,50 @@ export default function StoreStatsPage() {
             <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${usedPercent}%` }} />
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
+        </div>
+
+        {/* 🛡️ 2026-05-13 (공구 UX): 가게 현장에서 바우처 사용 처리 — 손님 코드 입력 + 사용 처리 */}
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border-2 border-pink-200 dark:border-pink-900 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <ScanLine className="w-5 h-5 text-pink-600" />
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용 처리</h3>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">손님이 보여주는 바우처 코드를 입력하고 사용 처리하세요.</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              inputMode="text"
+              value={voucherCode}
+              onChange={e => setVoucherCode(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleUseVoucher() }}
+              placeholder="예: UR-AB12-XY34"
+              className="flex-1 border border-gray-300 dark:border-[#2A2A2A] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+              autoCapitalize="characters"
+              autoCorrect="off"
+            />
+            <button
+              onClick={handleUseVoucher}
+              disabled={usingVoucher || !voucherCode.trim()}
+              className="px-5 py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold rounded-xl disabled:opacity-40 whitespace-nowrap"
+            >
+              {usingVoucher ? <Loader2 className="w-4 h-4 animate-spin" /> : '사용 처리'}
+            </button>
+          </div>
+          {recentUses.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#2A2A2A]">
+              <p className="text-[11px] text-gray-500 mb-2">최근 시도</p>
+              <div className="space-y-1.5">
+                {recentUses.slice(0, 5).map((u, i) => (
+                  <div key={i} className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg ${
+                    u.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    <span className="font-mono">{u.success ? '✓' : '✗'} {u.code}</span>
+                    <span className="text-[10px] opacity-80">{u.success ? '완료' : (u.reason || '실패')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 공동구매 현황 */}
