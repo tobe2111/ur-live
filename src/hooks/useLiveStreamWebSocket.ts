@@ -279,17 +279,27 @@ export function useLiveStreamWebSocket(
               }
             )
           } else if (msg.type === 'product_change') {
-            setStreamData((prev) =>
-              prev
-                ? { ...prev, current_product_id: msg.data?.id ?? null }
-                : {
-                    id: streamId,
-                    status: 'live',
-                    current_product_id: msg.data?.id ?? null,
-                    viewer_count: 0,
-                    updated_at: Date.now(),
-                  }
-            )
+            // 🛡️ 2026-05-13: server-time sync — iframe (YouTube ultraLow) latency 가 ~3s.
+            //   WS (즉시) > iframe 영상 → 셀러가 상품 바꾼 순간 시청자 UI 만 먼저 갱신되는 사고.
+            //   timestamp + viewer 현지 시각 차이로 보정 (서버시각=클라시각 가정, 최대 3s delay).
+            const EMBED_DELAY_MS = 3000
+            const elapsed = Date.now() - (msg.timestamp || Date.now())
+            const delay = Math.max(0, EMBED_DELAY_MS - elapsed)
+            const applyChange = () => {
+              setStreamData((prev) =>
+                prev
+                  ? { ...prev, current_product_id: msg.data?.id ?? null }
+                  : {
+                      id: streamId,
+                      status: 'live',
+                      current_product_id: msg.data?.id ?? null,
+                      viewer_count: 0,
+                      updated_at: Date.now(),
+                    }
+              )
+            }
+            if (delay === 0) applyChange()
+            else setTimeout(applyChange, delay)
           } else if (msg.type === 'donation') {
             setLastDonation(msg.data as DonationEvent)
           } else if (msg.type === 'order_proof') {

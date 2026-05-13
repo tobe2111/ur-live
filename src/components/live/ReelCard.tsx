@@ -599,6 +599,19 @@ function ReelCardImpl({
     }
   }, [polledProduct?.stock, currentProduct?.id])
 
+  // 🛡️ 2026-05-13: WS stock_update push 가 도착하면 polling 결과보다 우선 적용 (즉시성 ↑).
+  //   결제 직후 다른 시청자가 재고 변화를 0-200ms 안에 인지 → "곧 매진" FOMO 강화.
+  useEffect(() => {
+    if (!currentProduct?.id || !stockUpdates) return
+    const wsStock = stockUpdates[currentProduct.id]
+    if (typeof wsStock !== 'number') return
+    if (wsStock === currentProduct.stock) return
+    setCurrentProduct(prev => {
+      if (!prev) return prev
+      return { ...prev, stock: wsStock }
+    })
+  }, [stockUpdates, currentProduct?.id])
+
   // 초기 상품 로드: 전체 상품 데이터(stock, originalPrice 등)를 DB에서 가져옴
   // ✅ currentProduct 조건 제거 - stream 목록 API의 current_product는 일부 필드만 포함하므로 항상 전체 로드
   useEffect(() => {
