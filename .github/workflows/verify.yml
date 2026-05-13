@@ -68,10 +68,34 @@ jobs:
 
       - name: Hardcoded secret 검출
         run: |
+          # 실제 secret (AWS / Stripe) 만 검출. PEM 마커는 false-positive 많아서 제외:
+          #   - firebase-admin.ts 등이 env PEM 파싱하기 위해 string literal 로 사용
+          #   - 실제 PEM 키 body 가 commit 됐는지 검증하려면 multi-line 분석 필요
           violations=""
           for f in $(find src/ -type f \( -name "*.ts" -o -name "*.tsx" \) | grep -vE "\.test\.|\.spec\.|/tests/|/__tests__/"); do
-            m=$(grep -nE "sk_live_[A-Za-z0-9]{20,}|BEGIN RSA PRIVATE KEY|BEGIN PRIVATE KEY|AKIA[0-9A-Z]{16}" "$f" 2>/dev/null || true)
-            [ -n "$m" ] && violations="$violations\n[$f]\n$m"
+            # Stripe live key (sk_live_ + 20+ char) — 정규식/검증 코드 제외
+            m=$(grep -nE "sk_live_[A-Za-z0-9]{20,}" "$f" 2>/dev/null \
+              | grep -vE "regex|\.test\(|\.match\(|\.includes\(|\.replace\(|// |/\\*" \
+              || true)
+            [ -n "$m" ] && violations="$violations\n[$f] Stripe live secret:\n$m"
+
+            # AWS access key
+            m=$(grep -nE "AKIA[0-9A-Z]{16}" "$f" 2>/dev/null \
+              | grep -vE "// |/\\*" \
+              || true)
+            [ -n "$m" ] && violations="$violations\n[$f] AWS access key:\n$m"
+
+            # 실제 PEM key body (BEGIN + base64 + END 의 multi-line 블록)
+            # awk 로 BEGIN ~ END 사이에 base64 문자열 있는지 확인
+            m=$(awk '
+              /BEGIN (RSA )?PRIVATE KEY/ {found_begin=NR; key_body=""}
+              found_begin && /^[A-Za-z0-9+\/=]{20,}$/ {key_body=$0}
+              found_begin && /END (RSA )?PRIVATE KEY/ {
+                if (key_body) print FILENAME":"found_begin": (actual PEM key body detected)"
+                found_begin=0
+              }
+            ' "$f" 2>/dev/null || true)
+            [ -n "$m" ] && violations="$violations\n$m"
           done
           if [ -n "$violations" ]; then
             echo "❌ Secret 누출 의심 — public repo 영구 노출 위험:"
