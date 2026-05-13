@@ -364,7 +364,15 @@ app.use('*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   // ✅ X-XSS-Protection 제거: deprecated — 일부 브라우저에서 오히려 XSS를 유발 (HSTS/CSP로 대체)
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  c.header('Permissions-Policy', 'geolocation=(self), microphone=(self), camera=(self), payment=(self), usb=()');
+  // 🛡️ 2026-05-13: autoplay + fullscreen + picture-in-picture 명시 허용 — YouTube iframe 라이브 재생 차단 사고.
+  //   기존 헤더에 autoplay 누락 → 브라우저 기본값 'self' 적용 → cross-origin YouTube iframe 의 autoplay 차단.
+  //   결과: 셀러는 송출 됨, 시청자 페이지는 "터치하여 시청 시작" 영구 오버레이 후 클릭해도 무반응.
+  //   iframe 의 allow="autoplay" 만으로는 부족 — 부모 페이지 Permissions-Policy 가 우선.
+  c.header(
+    'Permissions-Policy',
+    'geolocation=(self), microphone=(self), camera=(self), payment=(self), usb=(), ' +
+    'autoplay=*, fullscreen=*, picture-in-picture=*, encrypted-media=*'
+  );
   // 2026-04-22 추가: Spectre-class 공격 차단 + cross-origin 이슈 방지
   c.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); // 카카오/구글 OAuth 팝업 허용
   c.header('Cross-Origin-Resource-Policy', 'same-site');

@@ -20,7 +20,10 @@
 
   # Permissions Policy
   # 🛡️ 2026-04-27: geolocation=(self) — MainHomePage 의 GPS 자동 지역 감지 허용
-  Permissions-Policy: geolocation=(self), microphone=(self), camera=(self), payment=(self), usb=(), interest-cohort=()
+  # 🛡️ 2026-05-13: autoplay=* / fullscreen=* / picture-in-picture=* / encrypted-media=*
+  #   추가 — YouTube iframe 라이브 재생 사고. 기존엔 autoplay 미선언 → 브라우저 기본 'self'
+  #   적용 → cross-origin YouTube iframe 의 autoplay 차단 → 시청자 페이지에서 클릭해도 무반응.
+  Permissions-Policy: geolocation=(self), microphone=(self), camera=(self), payment=(self), usb=(), interest-cohort=(), autoplay=*, fullscreen=*, picture-in-picture=*, encrypted-media=*
 
   # Strict Transport Security (HSTS)
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
