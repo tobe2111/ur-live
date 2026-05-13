@@ -764,6 +764,39 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
 
     await cacheInvalidate(c.env.SESSION_KV, `stream:${streamId}`);
 
+    // 🛡️ 2026-05-13 (#2): WS 단일화 — DO 에 full product data 포함한 product_change 메시지 broadcast.
+    //   이전: 클라이언트가 5초 D1 폴링으로 감지 → latency 0-5s + 서버 부하 (시청자 N명 × 12 req/min)
+    //   현재: WS 즉시 push → latency <200ms + 폴링 제거
+    if (productId && (c.env as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM) {
+      try {
+        const product = await c.env.DB.prepare(`
+          SELECT id, name, price, original_price, discount_rate, image_url, stock, description
+          FROM products WHERE id = ?
+        `).bind(productId).first()
+        if (product) {
+          const doId = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(streamId))
+          const stub = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
+          c.executionCtx.waitUntil(
+            stub.fetch(new Request('https://internal/broadcast', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Internal-Auth': c.env.JWT_SECRET || '',
+                'X-Auth-User-Type': 'seller',
+              },
+              body: JSON.stringify({
+                type: 'product_change',
+                data: { id: product.id, product, options: [] },
+                timestamp: Date.now(),
+              }),
+            })).catch(() => { /* DO 미가용 — cache invalidate 가 fallback */ })
+          )
+        }
+      } catch (err) {
+        if (import.meta.env?.DEV) console.warn('[ChangeProduct] DO broadcast failed:', err)
+      }
+    }
+
     return c.json({ success: true, message: '상품이 변경되었습니다' });
   } catch (error: unknown) {
     return c.json({ success: false, error: (error as Error).message }, 500);

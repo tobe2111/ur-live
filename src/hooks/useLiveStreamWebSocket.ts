@@ -87,6 +87,8 @@ export function useLiveStreamWebSocket(
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 🛡️ 2026-05-13 (#4): heartbeat 15s — viewer count 정확도 위한 keepalive
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bcRef = useRef<BroadcastChannel | null>(null)
   const tabIdRef = useRef(`tab-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const MAX_RECONNECT = 3
@@ -222,6 +224,13 @@ export function useLiveStreamWebSocket(
           pollingIntervalRef.current = null
         }
         fetchInitialMessages()
+        // 🛡️ 2026-05-13 (#4): heartbeat 15s — DO 가 stale session 정리 기준
+        if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current)
+        heartbeatIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try { ws.send(JSON.stringify({ type: 'heartbeat' })) } catch { /* noop */ }
+          }
+        }, 15_000)
       }
 
       ws.onmessage = (event) => {
@@ -288,6 +297,10 @@ export function useLiveStreamWebSocket(
       ws.onclose = () => {
         setIsConnected(false)
         wsRef.current = null
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current)
+          heartbeatIntervalRef.current = null
+        }
 
         if (reconnectAttemptsRef.current < MAX_RECONNECT) {
           // 🛡️ 2026-05-06: Exponential backoff + ±25% jitter — 동시 reconnect thundering herd 방지.
@@ -330,10 +343,21 @@ export function useLiveStreamWebSocket(
 
     // 🛡️ iOS Safari bfcache: pagehide 시 WebSocket 강제 종료 (좀비 연결 방지),
     //   pageshow persisted=true 면 back/forward 복원 — 재연결 + reconnect 카운터 리셋.
+    // 🛡️ 2026-05-13 (#4): graceful leave — 명시적 leave 메시지로 DO 즉시 viewerCount 감소.
+    const sendLeave = () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        try { wsRef.current.send(JSON.stringify({ type: 'leave' })) } catch { /* noop */ }
+      }
+    }
     const onPageHide = () => {
+      sendLeave()
       if (wsRef.current) {
         try { wsRef.current.close() } catch { /* */ }
         wsRef.current = null
+      }
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current)
+        heartbeatIntervalRef.current = null
       }
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
@@ -352,6 +376,12 @@ export function useLiveStreamWebSocket(
     return () => {
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('pageshow', onPageShow)
+      // 🛡️ 2026-05-13 (#4): card 전환 / unmount 시 graceful leave 시도
+      sendLeave()
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current)
+        heartbeatIntervalRef.current = null
+      }
       if (wsRef.current) {
         const ws = wsRef.current
         wsRef.current = null
