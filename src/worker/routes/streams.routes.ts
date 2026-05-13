@@ -267,10 +267,13 @@ streamsRouter.get('/', async (c) => {
       };
     };
 
+    // 🛡️ 2026-05-13: status=live 는 짧은 TTL (5s) — 셀러가 방송 종료 즉시 메인페이지에서 사라지도록.
+    //   scheduled/ended/all 은 변경 빈도 낮음 → 30s 유지. 비용/즉시성 균형.
+    const isLiveList = status === 'live';
     const payload = cacheable
       ? await cacheGet(c.env.SESSION_KV, cacheKey, computeListPayload, {
-          ttl: 30,
-          staleWhileRevalidate: 30,
+          ttl: isLiveList ? 5 : 30,
+          staleWhileRevalidate: isLiveList ? 5 : 30,
         })
       : await computeListPayload();
 

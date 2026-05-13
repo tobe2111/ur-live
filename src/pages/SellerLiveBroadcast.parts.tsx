@@ -233,28 +233,81 @@ export function ShareLiveLink({ streamId }: { streamId: number }) {
 interface StreamListProps {
   streams: LiveStreamLite[]; onManage: (stream: LiveStreamLite) => void
 }
+
+function formatCountdown(targetIso: string | undefined): string {
+  if (!targetIso) return ''
+  const ms = safeTime(targetIso) - Date.now()
+  if (ms <= 0) return '시작 시간 지남'
+  const totalMin = Math.floor(ms / 60000)
+  const days = Math.floor(totalMin / 1440)
+  const hours = Math.floor((totalMin % 1440) / 60)
+  const mins = totalMin % 60
+  if (days > 0) return `${days}일 ${hours}시간 뒤`
+  if (hours > 0) return `${hours}시간 ${mins}분 뒤`
+  return `${mins}분 뒤`
+}
+
 export function StreamList({ streams, onManage }: StreamListProps) {
   const { t } = useTranslation()
-  // 자동 redirect가 1시간 이내 예약/라이브 처리 → 여기서는 1시간 이후 예약만 표시
-  const upcoming = streams.filter((s: LiveStreamLite) => {
-    if (s.status !== 'scheduled') return false
-    if (!s.scheduled_at) return true
-    return safeTime(s.scheduled_at) - Date.now() > 60 * 60 * 1000
-  })
+  // 🛡️ 2026-05-13: 셀러가 "예약했는데 어떻게 방송 다시 시작하지?" 헷갈리는 사고 해결 —
+  //   1시간 이내 임박은 자동 redirect, 1시간 이후 예약은 큰 카드 + 카운트다운 + CTA 로 강조.
+  //   이전엔 작은 1줄 카드여서 인지 어려움.
+  const now = Date.now()
+  const upcoming = streams
+    .filter((s: LiveStreamLite) => {
+      if (s.status !== 'scheduled') return false
+      if (!s.scheduled_at) return true
+      return safeTime(s.scheduled_at) - now > 60 * 60 * 1000
+    })
+    .sort((a, b) => (safeTime(a.scheduled_at || '') || 0) - (safeTime(b.scheduled_at || '') || 0))
   const ended = streams.filter((s: LiveStreamLite) => s.status === 'ended')
   if (upcoming.length === 0 && ended.length === 0) return null
+
   return (
     <div className="mt-6 space-y-4">
       {upcoming.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold text-gray-700">{t('seller.liveBroadcast.upcomingBroadcasts')}</h3>
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-sm font-bold text-gray-900">
+              📅 {t('seller.liveBroadcast.upcomingBroadcasts')}
+              <span className="ml-2 text-xs font-normal text-gray-500">({upcoming.length}개)</span>
+            </h3>
+            <span className="text-[11px] text-gray-500">시작 1시간 전 자동 안내</span>
+          </div>
+          <div className="rounded-xl bg-orange-50 border border-orange-200 p-3 text-[11px] text-orange-800 leading-relaxed">
+            예약된 방송은 시작 1시간 전부터 이 페이지 진입 시 자동으로 송출 준비 화면으로 이동합니다.
+            지금 미리 송출 도구를 설정하거나 RTMP 키를 확인하려면 아래 "송출 준비하기" 를 누르세요.
+          </div>
           {upcoming.map((s: LiveStreamLite) => (
-            <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-orange-100 text-orange-600">
-                📅 {safeDate(s.scheduled_at)?.toLocaleString() ?? t('common.scheduled')}
-              </span>
-              <p className="text-sm font-medium text-gray-900 truncate flex-1">{s.title}</p>
-              <button onClick={() => onManage(s)} className="text-xs text-blue-600 font-medium shrink-0">{t('common.manage')} →</button>
+            <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center shrink-0">
+                  <span className="text-2xl">📅</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">{s.title}</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {safeDate(s.scheduled_at)?.toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) ?? t('common.scheduled')}
+                  </p>
+                  <p className="text-xs font-semibold text-orange-600 mt-1">
+                    ⏰ {formatCountdown(s.scheduled_at)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onManage(s)}
+                  className="flex-1 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold transition-colors"
+                >
+                  🎬 송출 준비하기
+                </button>
+                <a
+                  href={`/seller/live-analytics/${s.id}`}
+                  className="px-3 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium flex items-center"
+                >
+                  상세
+                </a>
+              </div>
             </div>
           ))}
         </div>

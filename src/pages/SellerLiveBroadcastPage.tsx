@@ -107,6 +107,7 @@ export default function SellerLiveBroadcastPage() {
   // Step 1 폼 — draft 우선, 없으면 마지막 방송 값으로 prefill
   const lastBroadcast = useRef(getLastBroadcast()).current
   const draft = useRef(getDraft()).current
+  const draftRestored = useRef(!!(draft && (draft.title || (draft.selectedProducts?.length ?? 0) > 0))).current
   const [title, setTitle] = useState(draft?.title ?? '')
   const [description, setDescription] = useState(draft?.description ?? lastBroadcast.description ?? '')
   const [thumbnailUrl, setThumbnailUrl] = useState(draft?.thumbnailUrl ?? lastBroadcast.thumbnailUrl ?? '')
@@ -115,6 +116,16 @@ export default function SellerLiveBroadcastPage() {
   const [scheduledDate, setScheduledDate] = useState(draft?.scheduledDate ?? '')
   const [scheduledTime, setScheduledTime] = useState(draft?.scheduledTime ?? '')
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>(draft?.privacy ?? lastBroadcast.privacy ?? 'public')
+  // 🛡️ 2026-05-13: draft 복원 인지 토글 — 셀러가 "왜 미리 채워져 있지?" 헷갈리던 사고 해결.
+  const [showDraftBanner, setShowDraftBanner] = useState(draftRestored)
+  function resetForm() {
+    clearDraft()
+    setTitle(''); setDescription(''); setThumbnailUrl(''); setSelectedProducts([])
+    setIsScheduled(false); setScheduledDate(''); setScheduledTime('')
+    setPrivacy('public')
+    setShowDraftBanner(false)
+    toast.success('폼이 초기화되었어요')
+  }
 
   // UI
   const [creating, setCreating] = useState(false)
@@ -458,14 +469,15 @@ export default function SellerLiveBroadcastPage() {
       if (data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
         setChannels(prev => prev.map(ch => ({ ...ch, token_expired: true })))
       } else if (data?.error_code === 'YOUTUBE_QUOTA_EXCEEDED') {
-        // 🛡️ 2026-05-13 (#5): YouTube quota 초과 — 명확한 안내 + 자동 리셋 시간 표시
+        // 🛡️ 2026-05-13: YouTube quota 초과 — 안내 + 대안 제시 (OBS 로 YouTube Studio 직접 송출)
         const hours = data.hours_until_reset ?? 8
         const resetTime = data.reset_at
           ? new Date(data.reset_at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
           : '자정'
         toast.error(
-          `YouTube API 일일 사용량을 초과했어요.\n약 ${hours}시간 후 (${resetTime}) 자동 리셋됩니다.\n그때 다시 시도해주세요.`,
-          { duration: 10_000 }
+          `YouTube API 일일 사용량 초과 (약 ${hours}시간 후 / ${resetTime} 자동 리셋)\n\n` +
+          `🆘 급하면: YouTube Studio 에서 직접 라이브 만들고 → 셀러 페이지에서 "기존 방송 연결" 사용`,
+          { duration: 15_000 }
         )
       } else if (data?.error_code === 'EXISTING_LIVE_BROADCAST' && data?.existing_stream_id) {
         // 🛡️ 2026-05-13: 진행 중 방송이 있을 때 — UX. 셀러에게 "종료 후 새로 시작" 선택지 제공.
@@ -667,6 +679,66 @@ export default function SellerLiveBroadcastPage() {
           onReauthenticate={connectYouTube}
           connectingYouTube={connectingYouTube}
         />
+
+        {/* 🛡️ 2026-05-13: 예약된 방송 prominent 안내 — info 화면이 새 방송 폼 처럼 보여서
+            셀러가 "내가 예약한 방송 어디 갔지?" 헷갈리던 사고 해결. 가장 임박한 1개를 강조. */}
+        {step === 'info' && (() => {
+          const nextScheduled = streams
+            .filter(s => s.status === 'scheduled' && s.scheduled_at)
+            .sort((a, b) => safeTime(a.scheduled_at!) - safeTime(b.scheduled_at!))[0]
+          if (!nextScheduled) return null
+          const ms = safeTime(nextScheduled.scheduled_at!) - Date.now()
+          const totalMin = Math.floor(ms / 60000)
+          const hours = Math.floor(totalMin / 60)
+          const mins = totalMin % 60
+          const countdownText = ms <= 0 ? '시작 시간이 지났어요' :
+            hours > 0 ? `${hours}시간 ${mins}분 뒤 시작` : `${mins}분 뒤 시작`
+          return (
+            <div className="rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 p-4 text-white shadow-lg">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold opacity-90 mb-1">📅 예약된 방송이 있어요</p>
+                  <p className="text-sm font-bold truncate">{nextScheduled.title}</p>
+                  <p className="text-xs opacity-90 mt-0.5">⏰ {countdownText}</p>
+                </div>
+                <button
+                  onClick={() => navigate(`/seller/live-broadcast/${nextScheduled.id}`)}
+                  className="shrink-0 px-4 py-2 bg-white text-pink-600 rounded-lg text-sm font-bold hover:bg-pink-50 transition-colors"
+                >
+                  송출 준비 →
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* 🛡️ 2026-05-13: draft 복원 안내 banner — "왜 미리 채워져 있지?" 사고 해결.
+            24h 이내 작성하다 떠난 임시저장 자동 복원 + 초기화 옵션 제공. */}
+        {step === 'info' && showDraftBanner && (
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0 flex-1">
+              <span className="text-base shrink-0">💾</span>
+              <div className="text-xs text-blue-900 leading-relaxed">
+                <p className="font-semibold">이전에 작성하던 내용을 복원했어요</p>
+                <p className="text-blue-700 mt-0.5">24시간 이내 임시저장된 폼이에요. 새로 작성하려면 초기화하세요.</p>
+              </div>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={() => setShowDraftBanner(false)}
+                className="px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                계속
+              </button>
+              <button
+                onClick={resetForm}
+                className="px-2.5 py-1.5 text-[11px] font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* STEP 1: 방송 정보 */}
         {step === 'info' && (

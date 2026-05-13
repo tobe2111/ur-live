@@ -13,9 +13,10 @@ import { glass } from '@/components/glass/glassTokens'
 import { formatViewers } from '@/components/live/LiveUtils'
 import { YouTubeIcon, InstagramIcon } from './icons'
 
-export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId }: {
+export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar, sellerId, status }: {
   viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
   sellerName?: string; sellerAvatar?: string; sellerId?: number
+  status?: 'scheduled' | 'live' | 'ended' | string  // 🛡️ 2026-05-13: status 무시하고 항상 LIVE 표시되던 사고 수정
 }) {
   const { t } = useTranslation()
   const [following, setFollowing] = useState(false)
@@ -77,11 +78,33 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
               {following ? t('live.topNav.followingLabel', { defaultValue: 'Following' }) : t('live.topNav.followLabel', { defaultValue: '팔로우' })}
             </button>
           )}
-          <div className="inline-flex items-center gap-1 rounded-full"
-            style={{ padding: '5px 8px 5px 7px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
-            <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>LIVE</span>
-          </div>
+          {/* 🛡️ 2026-05-13: status 별 배지 — 'live' 만 빨강 LIVE, scheduled/ended 는 회색 라벨. */}
+          {(() => {
+            if (status === 'scheduled') {
+              return (
+                <div className="inline-flex items-center gap-1 rounded-full"
+                  style={{ padding: '5px 8px', background: 'rgba(251,146,60,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em' }}>예정</span>
+                </div>
+              )
+            }
+            if (status === 'ended') {
+              return (
+                <div className="inline-flex items-center gap-1 rounded-full"
+                  style={{ padding: '5px 8px', background: 'rgba(107,114,128,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em' }}>종료</span>
+                </div>
+              )
+            }
+            // 'live' 또는 알 수 없음 → LIVE (기존 디자인 유지)
+            return (
+              <div className="inline-flex items-center gap-1 rounded-full"
+                style={{ padding: '5px 8px 5px 7px', background: 'rgba(239,68,68,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <span className="rounded-full" style={{ width: 5, height: 5, background: '#fff', boxShadow: '0 0 6px #fff' }} />
+                <span className="text-white" style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>LIVE</span>
+              </div>
+            )
+          })()}
           <div className="inline-flex items-center gap-1 rounded-full px-2 py-1"
             style={glass.statsChip}>
             <Eye className="h-3 w-3 text-white/85" />
