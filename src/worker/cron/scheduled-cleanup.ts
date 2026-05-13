@@ -20,48 +20,75 @@ export async function handleScheduled(env: Env) {
   //         heartbeat (1분 주기) 끊김 → 30분 후 cron 이 강제 종료 → 메인에서 라이브 사라짐 →
   //         시청자 못 봄. 셀러 의도와 무관한 자동 종료의 핵심 원인.
   //
-  //   해결: 진짜 source of truth = YouTube 의 actualEndTime (별도 cron youtube-broadcast-end-detect 가 감지).
-  //         이 룰은 마지막 안전망 — 12시간 이상 heartbeat 없고 YouTube 도 응답 없을 때만 종료.
-  //         (YouTube 자체 max-duration 도 12시간 이므로 그 이상은 zombie 로 봐도 됨)
+  //   🛡️ 2026-05-13 v3 (사용자 정책): 자동 종료 룰 완전 제거.
+  //     셀러 명시 종료 / 어드민 강제 종료 만 허용.
+  //     12시간 / 30분 / 2시간 자동 종료 모두 admin_alerts 로 대체.
+  //     YouTube actualEndTime sync (별도 cron) 는 유지 — YouTube 측 종료 reality 반영 필요.
   try {
-    const { meta } = await DB.prepare(`
-      UPDATE live_streams
-      SET status = 'ended', ended_at = datetime('now'), updated_at = datetime('now'),
-          last_error = COALESCE(last_error, '12시간 이상 heartbeat 없음 — 안전망 자동 종료')
-      WHERE status = 'live'
-        AND updated_at < datetime('now', '-12 hours')
-    `).run();
-    results.stale_streams_ended = meta.changes ?? 0;
-  } catch (e) { logError('[Cron] stale_streams error:', { error: String(e) }) }
+    const stale = await DB.prepare(`
+      SELECT id, title FROM live_streams
+      WHERE status = 'live' AND updated_at < datetime('now', '-12 hours')
+      LIMIT 20
+    `).all<{ id: number; title: string }>();
+    for (const s of stale.results || []) {
+      await DB.prepare(`
+        INSERT INTO admin_alerts (kind, title, body, created_at)
+        SELECT ?, ?, ?, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (SELECT 1 FROM admin_alerts WHERE kind = ? AND resolved = 0 AND created_at > datetime('now', '-6 hours'))
+      `).bind(
+        `stale_live:${s.id}`,
+        '12시간+ 라이브 stream (admin 검토 필요)',
+        `Stream #${s.id} "${s.title}" — status='live' 인데 12시간 이상 heartbeat 없음. 어드민이 강제 종료 또는 무시 결정.`,
+        `stale_live:${s.id}`,
+      ).run().catch(() => {})
+    }
+    results.stale_streams_alerted = stale.results?.length ?? 0;
+  } catch (e) { logError('[Cron] stale_streams alert error:', { error: String(e) }) }
 
-  // ── 1b. dead 웹캠 방송 정리 (2026-05-07) ──
-  //   셀러가 웹캠 모드로 시작했지만 YouTube Studio 에서 방송 연결을 완료하지 않은 케이스.
-  //   status='live' 인데 youtube_video_id 가 비어있고 30분 이상 경과 → cancelled 처리.
-  //   🛡️ 2026-05-11: 10분 → 30분 — 셀러가 YouTube Studio 웹캠 송출 popup 띄우고 천천히 시작하는 케이스 보호.
+  // ── 1b. dead 웹캠 방송 — admin alert 만 (자동 cancelled X)
   try {
-    const { meta } = await DB.prepare(`
-      UPDATE live_streams
-      SET status = 'cancelled', updated_at = datetime('now')
+    const dead = await DB.prepare(`
+      SELECT id, title FROM live_streams
       WHERE status IN ('live', 'scheduled')
         AND (youtube_video_id IS NULL OR youtube_video_id = '')
         AND created_at < datetime('now', '-30 minutes')
-    `).run();
-    results.dead_webcam_streams_cancelled = meta.changes ?? 0;
-  } catch (e) { logError('[Cron] dead_webcam_streams error:', { error: String(e) }) }
+      LIMIT 20
+    `).all<{ id: number; title: string }>();
+    for (const s of dead.results || []) {
+      await DB.prepare(`
+        INSERT INTO admin_alerts (kind, title, body, created_at)
+        SELECT ?, ?, ?, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (SELECT 1 FROM admin_alerts WHERE kind = ? AND resolved = 0 AND created_at > datetime('now', '-6 hours'))
+      `).bind(
+        `dead_webcam:${s.id}`,
+        '웹캠 방송 시작 안 됨 (admin 검토)',
+        `Stream #${s.id} "${s.title}" — youtube_video_id 없이 30분+ 경과. 셀러가 YouTube Studio 송출 완료 안 했을 가능성.`,
+        `dead_webcam:${s.id}`,
+      ).run().catch(() => {})
+    }
+    results.dead_webcam_streams_alerted = dead.results?.length ?? 0;
+  } catch (e) { logError('[Cron] dead_webcam_streams alert error:', { error: String(e) }) }
 
-  // ── 1c. zombie scheduled 정리 (2026-05-11) ──
-  //   broadcast/video_id 는 만들어졌는데 셀러가 송출 시작 안 했거나 OME 미연결로 admission webhook 이
-  //   안 와서 영원히 'scheduled' 로 남는 케이스. 2시간 이상 묵으면 ended 처리.
-  //   (셀러 dashboard 정합성 + 메인 페이지 zombie 카드 노출 방지)
+  // ── 1c. zombie scheduled — admin alert 만
   try {
-    const { meta } = await DB.prepare(`
-      UPDATE live_streams
-      SET status = 'ended', ended_at = datetime('now'), updated_at = datetime('now'),
-          last_error = COALESCE(last_error, '송출이 시작되지 않은 채 2시간 경과 — 자동 종료')
-      WHERE status = 'scheduled'
-        AND created_at < datetime('now', '-2 hours')
-    `).run();
-    results.zombie_scheduled_ended = meta.changes ?? 0;
+    const zomb = await DB.prepare(`
+      SELECT id, title FROM live_streams
+      WHERE status = 'scheduled' AND created_at < datetime('now', '-2 hours')
+      LIMIT 20
+    `).all<{ id: number; title: string }>();
+    for (const s of zomb.results || []) {
+      await DB.prepare(`
+        INSERT INTO admin_alerts (kind, title, body, created_at)
+        SELECT ?, ?, ?, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (SELECT 1 FROM admin_alerts WHERE kind = ? AND resolved = 0 AND created_at > datetime('now', '-6 hours'))
+      `).bind(
+        `zombie_scheduled:${s.id}`,
+        '2시간+ scheduled 좀비 (admin 검토)',
+        `Stream #${s.id} "${s.title}" — status='scheduled' 인데 2시간 이상 송출 시작 안 됨.`,
+        `zombie_scheduled:${s.id}`,
+      ).run().catch(() => {})
+    }
+    results.zombie_scheduled_alerted = zomb.results?.length ?? 0;
   } catch (e) { logError('[Cron] zombie_scheduled error:', { error: String(e) }) }
 
   // ── 1d. zombie OME push 정리 (2026-05-11) ──

@@ -1415,6 +1415,77 @@ app.get('/live/_health-check', requireAdmin(), async (c) => {
 })
 
 /**
+ * POST /api/youtube/live/:id/admin-force-end
+ *
+ * 🛡️ 2026-05-13 (사용자 정책): 어드민이 좀비 의심 stream 강제 종료.
+ *   자동 종료 cron 다 제거된 환경의 어드민 백업 종료 경로.
+ *   - status='live' / 'scheduled' 모두 즉시 'ended' 로
+ *   - OME push + stream 정리
+ *   - YouTube broadcast complete 시도 (best-effort)
+ *   - 셀러 알림 발송
+ */
+app.post('/live/:id/admin-force-end', requireAdmin(), async (c) => {
+  const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
+  const reason = c.req.query('reason') || '어드민 수동 종료'
+
+  const stream = await c.env.DB.prepare(`
+    SELECT id, seller_id, title, status, youtube_broadcast_id FROM live_streams WHERE id = ?
+  `).bind(streamId).first<{ id: number; seller_id: number; title: string; status: string; youtube_broadcast_id: string | null }>()
+  if (!stream) return c.json({ success: false, error: 'stream not found' }, 404)
+  if (stream.status === 'ended') return c.json({ success: true, message: '이미 ended 상태' })
+
+  // DB 종료
+  await c.env.DB.prepare(`
+    UPDATE live_streams
+    SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
+        last_error = ?
+    WHERE id = ?
+  `).bind(`[ADMIN 강제 종료] ${reason}`, streamId).run()
+
+  // OME 정리
+  await stopOmePush(c.env, streamId).catch(() => {})
+  await terminateOmeStream(c.env, `s${streamId}`).catch(() => {})
+
+  // YouTube broadcast complete (best-effort)
+  if (stream.youtube_broadcast_id && c.env.YOUTUBE_CLIENT_ID && c.env.YOUTUBE_CLIENT_SECRET) {
+    try {
+      const yt = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
+      const token = await getValidAccessToken(c.env.DB, stream.seller_id, yt)
+      if (token) await yt.endBroadcast(token, stream.youtube_broadcast_id).catch(() => {})
+    } catch { /* ignore */ }
+  }
+
+  // 캐시 + WS broadcast
+  const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+  if (kv) {
+    await cacheInvalidate(kv, [`stream:${streamId}`, 'streams:status:live:limit:20:offset:0']).catch(() => {})
+  }
+
+  // 셀러 알림
+  await c.env.DB.prepare(`
+    INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+    VALUES (
+      (SELECT user_id FROM sellers WHERE id = ?),
+      'seller', 'broadcast_admin_ended',
+      '운영자가 방송을 종료했어요',
+      ?, ?, CURRENT_TIMESTAMP
+    )
+  `).bind(
+    stream.seller_id,
+    `"${stream.title}" 방송이 운영자에 의해 종료됐어요. 사유: ${reason}`,
+    `/seller/live-broadcast`,
+  ).run().catch(() => { /* skip */ })
+
+  // 관련 admin_alerts resolved 처리
+  await c.env.DB.prepare(`
+    UPDATE admin_alerts SET resolved = 1 WHERE kind = ? AND resolved = 0
+  `).bind(`zombie_stream:${streamId}`).run().catch(() => {})
+
+  return c.json({ success: true, message: `Stream ${streamId} 강제 종료 완료` })
+})
+
+/**
  * GET /api/youtube/live/_admin-quota-dashboard
  *
  * 🛡️ 2026-05-13: 어드민용 풀 quota 대시보드 데이터.
@@ -2412,10 +2483,13 @@ export async function omeAdmissionHandler(
     return { allowed: false, reason: 'invalid signature' }
   }
 
-  // closing event — 60s grace period 진입. 재연결 안 오면 종료.
-  // 🛡️ 2026-05-13: 이전엔 closing 즉시 status='ended' → 네트워크 일시 끊김 (WiFi 전환 / 모바일 핸드오버 /
-  //   페이지 새로고침 ~5-10s) 만으로 방송 종료되던 사고. 60s grace period 두고 그 사이 새 admission(opening)
-  //   오면 reconnect 로 간주, disconnected_at 클리어. 안 오면 그때 종료 + 알림 + OME push 해제.
+  // closing event — disconnect marker 만 박음. 자동 종료 완전 제거.
+  // 🛡️ 2026-05-13 v3 (사용자 정책): 셀러 명시 종료 OR 어드민 강제 종료 만 라이브 종료.
+  //   네트워크 끊김 / 페이지 새로고침 / 일시 비활성 등으로 자동 종료 X.
+  //   - status='live' 유지 (셀러 의도)
+  //   - disconnected_at 마커만 박음 (어드민 대시보드에서 식별용)
+  //   - OME push 도 그대로 (다음 송출 즉시 가능)
+  //   안전망: scheduled-cleanup cron 12시간 + YouTube actualEndTime 감지만 자동 종료 가능.
   if (body.request.status === 'closing') {
     try {
       const url = new URL(body.request.url)
@@ -2426,56 +2500,13 @@ export async function omeAdmissionHandler(
         const [, sidStr] = closingPayload.split('|')
         const sid = parseInt(sidStr)
         if (sid) {
-          // 1) disconnect marker 박기 (status 는 'live' 유지)
+          // disconnect marker 만 박음 (상태는 그대로 'live')
           await env.DB.prepare(`
             UPDATE live_streams SET disconnected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND status = 'live'
           `).bind(sid).run().catch((e) => {
-            // disconnected_at 컬럼 없으면 (repair-schema 미실행) → 기존 동작 fallback: 즉시 종료
-            console.warn('[OME admission] disconnect marker failed (column missing?), falling back to immediate end:', e)
+            console.warn('[OME admission] disconnect marker failed:', e)
           })
-
-          // 2) 60s 후 재확인 → 여전히 disconnected_at 살아있고 status='live' 면 종료 확정
-          const GRACE_PERIOD_MS = 60_000
-          const finalize = async () => {
-            await new Promise((r) => setTimeout(r, GRACE_PERIOD_MS))
-            const s = await env.DB.prepare(`
-              SELECT status, disconnected_at, seller_id, title FROM live_streams WHERE id = ?
-            `).bind(sid).first<{ status: string; disconnected_at: string | null; seller_id: number; title: string }>()
-            if (!s) return
-            // reconnect 가 admission(opening) 으로 disconnected_at 클리어했으면 → 종료 X
-            if (s.status !== 'live' || !s.disconnected_at) return
-
-            // grace 만료 → 종료 확정
-            const updateRes = await env.DB.prepare(`
-              UPDATE live_streams
-              SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
-                  last_error = COALESCE(last_error, '60초 grace period 동안 재연결 없음 — 자동 종료')
-              WHERE id = ? AND status = 'live' AND disconnected_at IS NOT NULL
-            `).bind(sid).run()
-
-            if ((updateRes.meta?.changes ?? 0) > 0) {
-              // 셀러 알림
-              await env.DB.prepare(`
-                INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-                VALUES (
-                  (SELECT user_id FROM sellers WHERE id = ?),
-                  'seller', 'broadcast_disconnect',
-                  '방송 송출이 끊겼어요',
-                  ?, ?, CURRENT_TIMESTAMP
-                )
-              `).bind(
-                s.seller_id,
-                `"${s.title}" 방송의 송출 신호가 60초 이상 끊겨 자동 종료됐어요. 네트워크/송출 도구 확인 후 새 방송을 시작해주세요.`,
-                `/seller/live-broadcast`
-              ).run().catch(() => { /* notifications 없거나 user_id 없으면 skip */ })
-
-              // OME push 해제 (다음 broadcast Duplicate ID 방지)
-              await stopOmePush(env, sid)
-            }
-          }
-          if (waitUntil) waitUntil(finalize())
-          // foreground 동기 종료는 OME 응답 지연 → grace 도 못 살림. 백그라운드 only.
         }
       }
     } catch (e) {
