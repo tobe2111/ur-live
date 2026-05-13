@@ -135,7 +135,7 @@ export async function handleOmeHealthCheck(env: Env): Promise<void> {
       SELECT id, seller_id, title, started_at FROM live_streams
       WHERE status = 'live'
         AND started_at IS NOT NULL
-        AND datetime(started_at) < datetime('now', '-5 minutes')
+        AND datetime(started_at) < datetime('now', '-15 minutes')
       LIMIT 20
     `).all<{ id: number; seller_id: number; title: string; started_at: string }>()
 
@@ -153,15 +153,36 @@ export async function handleOmeHealthCheck(env: Env): Promise<void> {
       const expectedName = `s${z.id}`
       if (liveOmeStreams.has(expectedName)) continue  // 실제 송출 중 — skip
 
-      logInfo(`[cron:ome-health] zombie detected: stream ${z.id} (${z.title}) — DB live but no OME stream`)
+      // 🛡️ 2026-05-13 v2: 2-strike 검증 — KV 에 첫 detect 표시, 다음 cron run (~5분 후) 에서도
+      //   여전히 missing 이면 그때 reset. 단발 blip (OME 재시작 등) 거짓 양성 방지.
+      const strikeKey = `ome_zombie_strike:${z.id}`
+      const kv = env.SESSION_KV
+      let firstStrike = false
+      if (kv) {
+        try {
+          const prev = await kv.get(strikeKey)
+          if (!prev) {
+            await kv.put(strikeKey, '1', { expirationTtl: 900 })  // 15분 후 만료
+            firstStrike = true
+            logInfo(`[cron:ome-health] zombie 1st strike — stream ${z.id} (${z.title}). 다음 cron run 에서 확정.`)
+            continue  // 첫 번째 detect 는 reset 하지 않음
+          }
+        } catch { /* KV 실패 시 그냥 진행 */ }
+      }
+      if (firstStrike) continue
+
+      logInfo(`[cron:ome-health] zombie CONFIRMED (2 strikes) — stream ${z.id} (${z.title}) — DB live but no OME stream`)
 
       // status reset + 셀러 알림 + push 정리
       await env.DB.prepare(`
         UPDATE live_streams
         SET status = 'scheduled', started_at = NULL, last_error = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND status = 'live'
-      `).bind('자동 복구: OME 에 실제 송출 신호가 없어 좀비 처리 해제. 다시 송출하세요.', z.id).run()
+      `).bind('자동 복구: OME 에 송출 신호 15분+ 미감지 (2회 확인). 다시 송출하세요.', z.id).run()
         .catch((e) => logError(`[cron:ome-health] zombie reset failed stream=${z.id}`, { error: (e as Error).message }))
+
+      // KV strike 키 제거 — 다음 라이브용
+      if (kv) try { await kv.delete(strikeKey) } catch { /* ignore */ }
 
       await env.DB.prepare(`
         INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
@@ -173,7 +194,7 @@ export async function handleOmeHealthCheck(env: Env): Promise<void> {
         )
       `).bind(
         z.seller_id,
-        `"${z.title}" 방송 송출 신호가 5분 이상 OME 에 도달하지 않아 자동으로 대기 상태로 되돌렸어요. 송출 도구 / 인터넷 확인 후 다시 시작하세요.`,
+        `"${z.title}" 방송 송출 신호가 15분 이상 OME 에 도달하지 않아 자동으로 대기 상태로 되돌렸어요. 송출 도구 / 인터넷 확인 후 다시 시작하세요.`,
         `/seller/live-broadcast/${z.id}`,
       ).run().catch(() => { /* notifications 없으면 skip */ })
 

@@ -2436,7 +2436,8 @@ export async function omeAdmissionHandler(
           })
 
           // 2) 60s 후 재확인 → 여전히 disconnected_at 살아있고 status='live' 면 종료 확정
-          const GRACE_PERIOD_MS = 60_000
+          // 🛡️ 2026-05-13 v2: 60s → 90s 로 확장 — 모바일 LTE 환경 약할 때 60s 부족.
+          const GRACE_PERIOD_MS = 90_000
           const finalize = async () => {
             await new Promise((r) => setTimeout(r, GRACE_PERIOD_MS))
             const s = await env.DB.prepare(`
