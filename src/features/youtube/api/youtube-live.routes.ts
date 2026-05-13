@@ -109,13 +109,25 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     }
 
     // Create YouTube live setup
-    // 🛡️ 2026-05-12: Ensure scheduledStartTime is at least 5 min in the future so YouTube Studio
-    //   doesn't show "past-due scheduled". Client sends new Date().toISOString() for "start now".
-    const fiveMinFromNow = Date.now() + 5 * 60 * 1000
+    // 🛡️ 2026-05-13: "바로 시작" 의 scheduledStartTime 처리 영구 수정.
+    //   기존 코드는 항상 +5분 future 로 강제 → YouTube Studio 가 "예약된 라이브" 로 표시 →
+    //   셀러가 "바로 시작" 눌렀는데 YouTube 측 예약으로 잡힘 사고 반복.
+    //
+    //   YouTube API 동작: enableAutoStart=true 면 RTMP 데이터 인입 즉시 ready→live 전환.
+    //     - scheduledStartTime 이 미래 → autoStart 가 그 시각까지 대기 (예약 동작)
+    //     - scheduledStartTime 이 현재/과거 → autoStart 가 RTMP 인입 즉시 전환 (즉시 시작 동작)
+    //   따라서 "바로 시작" 은 scheduledStartTime = NOW (또는 30초 future) 로 보내야 함.
+    //
+    //   판정: 클라이언트가 보낸 시각이 (NOW + 2분) 보다 미래면 "예약 방송", 아니면 "바로 시작".
+    //   - 바로 시작: NOW + 30s (YouTube 가 안전하게 받아들이는 최소 future margin)
+    //   - 예약 방송: 클라이언트 시각 그대로
+    const TWO_MIN = 2 * 60 * 1000
+    const SHORT_BUFFER_MS = 30 * 1000
     const providedMs = scheduled_start_time ? new Date(scheduled_start_time).getTime() : 0
-    const scheduledTime = providedMs > fiveMinFromNow
+    const isExplicitlyScheduled = providedMs > Date.now() + TWO_MIN
+    const scheduledTime = isExplicitlyScheduled
       ? scheduled_start_time!
-      : new Date(fiveMinFromNow).toISOString()
+      : new Date(Date.now() + SHORT_BUFFER_MS).toISOString()
 
     // Check if seller has a persistent stream key (OBS/Prism set once)
     const sellerAuth = channel_id
@@ -331,12 +343,15 @@ app.post('/live/create-webcam', async (c) => {
   const { title, description, product_ids, scheduled_start_time, privacy_status, thumbnail_url } = await c.req.json()
   if (!title) return c.json({ success: false, error: 'Title is required' }, 400)
 
-  // 🛡️ 2026-05-12: webcam mode — ensure scheduled time is at least 5 min from now
-  const fiveMinFromNowWc = Date.now() + 5 * 60 * 1000
+  // 🛡️ 2026-05-13: webcam mode — "바로 시작" vs "예약" 판정 (창고 /create 와 동일 로직).
+  //   기존 +5분 강제 buffer 가 "바로 시작" 의도를 예약으로 만드는 사고 → 30초 minimal buffer.
+  const TWO_MIN_WC = 2 * 60 * 1000
+  const SHORT_BUFFER_MS_WC = 30 * 1000
   const providedMsWc = scheduled_start_time ? new Date(scheduled_start_time).getTime() : 0
-  const scheduledTime = providedMsWc > fiveMinFromNowWc
+  const isExplicitlyScheduledWc = providedMsWc > Date.now() + TWO_MIN_WC
+  const scheduledTime = isExplicitlyScheduledWc
     ? scheduled_start_time
-    : new Date(fiveMinFromNowWc).toISOString()
+    : new Date(Date.now() + SHORT_BUFFER_MS_WC).toISOString()
 
   try {
     const streamResult = await c.env.DB.prepare(`
