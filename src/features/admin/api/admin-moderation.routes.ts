@@ -322,6 +322,33 @@ adminModerationRoutes.delete('/live-monitor/:id', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-13 (안정성 #3): OME health check + 운영 알람 조회
+adminModerationRoutes.get('/alerts', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const rows = await executeQuery<{ id: number; kind: string; title: string; body: string | null; created_at: string }>(DB,
+      `SELECT id, kind, title, body, created_at FROM admin_alerts
+       WHERE resolved = 0
+       ORDER BY created_at DESC LIMIT 20`
+    ).catch(() => [] as Array<{ id: number; kind: string; title: string; body: string | null; created_at: string }>);
+    return c.json({ success: true, data: rows });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] alerts list error:', err);
+    return c.json({ success: true, data: [] });  // fail-soft — UI 가 비어 있어도 다른 기능 영향 X
+  }
+});
+
+adminModerationRoutes.post('/alerts/:id/resolve', cors(), async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400);
+    await executeRun(c.env.DB, `UPDATE admin_alerts SET resolved = 1 WHERE id = ?`, [id]);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminModerationRoutes.get('/live-monitor/history', cors(), async (c) => {
   try {
     const DB = c.env.DB;

@@ -1932,10 +1932,43 @@ export async function omeAdmissionHandler(
         const [, sidStr] = closingPayload.split('|')
         const sid = parseInt(sidStr)
         if (sid) {
-          await env.DB.prepare(`
+          const updateRes = await env.DB.prepare(`
             UPDATE live_streams SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND status = 'live'
           `).bind(sid).run()
+          // 🛡️ 2026-05-13 (안정성 #2): meta.changes > 0 → status='live' 였는데 unexpected close.
+          //   셀러가 명시적 종료 안 했는데 RTMP 끊김 = OBS crash / 인터넷 disconnect / 모바일 백그라운드.
+          //   셀러에게 알림 → 즉시 인지 후 재시작 가능.
+          if ((updateRes.meta?.changes ?? 0) > 0) {
+            const notify = async () => {
+              try {
+                const s = await env.DB.prepare(
+                  `SELECT seller_id, title FROM live_streams WHERE id = ?`
+                ).bind(sid).first<{ seller_id: number; title: string }>()
+                if (!s) return
+                await env.DB.prepare(`
+                  INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+                  VALUES (
+                    (SELECT user_id FROM sellers WHERE id = ?),
+                    'seller',
+                    'broadcast_disconnect',
+                    '방송 송출이 끊겼어요',
+                    ?,
+                    ?,
+                    CURRENT_TIMESTAMP
+                  )
+                `).bind(
+                  s.seller_id,
+                  `"${s.title}" 방송의 송출 신호가 끊겨 자동 종료됐어요. OBS / 인터넷 확인 후 새 방송을 시작해주세요.`,
+                  `/seller/live-broadcast`
+                ).run().catch(() => { /* notifications 테이블 없거나 user_id 없으면 skip */ })
+              } catch (e) {
+                console.error('[OME admission] disconnect notify failed', e)
+              }
+            }
+            if (waitUntil) waitUntil(notify())
+            else await notify()
+          }
           // 🛡️ 2026-05-11: closing event 시 OME push 도 정리 — 다음 broadcast 의 Duplicate ID 방지
           if (waitUntil) waitUntil(stopOmePush(env, sid))
           else await stopOmePush(env, sid)
@@ -1980,22 +2013,40 @@ export async function omeAdmissionHandler(
   // 🛡️ 2026-05-11: admission(opening) 직후엔 OME stream 이 아직 OME 내부에 등록 안 됨.
   //   startPush 는 stream 존재가 전제 — 1500ms 지연으로 stream 인입 완료 시점을 기다림.
   //   /create 시점에도 push 등록을 시도하지만 stream 미존재로 실패할 가능성이 높음 → 여기가 실질적 등록 경로.
+  // 🛡️ 2026-05-13 (안정성 #1): 1회 실패 시 끝이었던 로직 → 최대 3회 exponential backoff 재시도.
+  //   네트워크 일시 장애 / OME 부팅 중 / OME API rate limit 등 일시적 실패 자동 복구.
+  //   비용 0 (waitUntil 안에서 비동기, blocking X).
   if (env.OME_HOST && env.OME_API_TOKEN) {
     const reRegister = async () => {
-      try {
-        await new Promise((r) => setTimeout(r, 1500))
-        const r = await registerOmePush(env, streamId, stream.rtmp_url, stream.rtmp_key)
-        if (r.ok) {
-          await env.DB.prepare(`UPDATE live_streams SET last_error = NULL WHERE id = ? AND last_error IS NOT NULL`)
-            .bind(streamId).run().catch(() => {})
-        } else {
-          await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-            .bind(`OME push 등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`, streamId)
-            .run().catch(() => {})
+      const MAX_RETRIES = 3
+      const INITIAL_DELAY_MS = 1500
+      let lastError = ''
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          // exponential backoff: 1.5s → 3s → 6s (총 ~10.5s, 일시 장애 충분 cover)
+          const delay = INITIAL_DELAY_MS * Math.pow(2, attempt)
+          await new Promise((r) => setTimeout(r, delay))
+          const r = await registerOmePush(env, streamId, stream.rtmp_url, stream.rtmp_key)
+          if (r.ok) {
+            await env.DB.prepare(`UPDATE live_streams SET last_error = NULL WHERE id = ? AND last_error IS NOT NULL`)
+              .bind(streamId).run().catch(() => {})
+            if (attempt > 0) {
+              console.log(`[OME admission] push register succeeded on retry ${attempt + 1}/${MAX_RETRIES}`)
+            }
+            return  // success
+          }
+          lastError = `OME push 등록 실패 (${r.status}): ${(r.body || '').substring(0, 200)}`
+          console.warn(`[OME admission] push register attempt ${attempt + 1}/${MAX_RETRIES} failed:`, lastError)
+        } catch (e) {
+          lastError = (e as Error).message || String(e)
+          console.warn(`[OME admission] push register attempt ${attempt + 1}/${MAX_RETRIES} threw:`, lastError)
         }
-      } catch (e) {
-        console.error('[OME admission] push register failed', e)
       }
+      // 모든 재시도 실패 → DB 에 마지막 에러 기록 + 셀러 알림 (Phase #2 에서 추가)
+      await env.DB.prepare(`UPDATE live_streams SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+        .bind(`[3회 재시도 실패] ${lastError}`, streamId)
+        .run().catch(() => {})
+      console.error('[OME admission] push register exhausted retries, sellerId=' + sellerId + ' streamId=' + streamId)
     }
     if (waitUntil) waitUntil(reRegister())
     else await reRegister()
