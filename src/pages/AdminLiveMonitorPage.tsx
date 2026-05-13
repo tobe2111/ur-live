@@ -53,6 +53,29 @@ export default function AdminLiveMonitorPage() {
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  // 🛡️ 2026-05-13 (Phase C): 어드민 실시간 알람 — 이전 snapshot 과 비교해서 이벤트 감지.
+  //   감지 이벤트: (1) 새 라이브 시작 (2) 라이브 종료 (3) 시청자 급감 (>50% drop)
+  const prevLiveRef = useRef<LiveStream[]>([])
+  const [notifyEnabled, setNotifyEnabled] = useState(false)
+  // 사운드 (브라우저 자체 API — 추가 자산 없음, 비용 0)
+  const playAlert = (freq: number = 880) => {
+    try {
+      const ctx = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.frequency.value = freq
+      osc.type = 'sine'
+      gain.gain.setValueAtTime(0.001, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+      osc.connect(gain).connect(ctx.destination)
+      osc.start(); osc.stop(ctx.currentTime + 0.5)
+    } catch { /* AudioContext unavailable — silent fail */ }
+  }
+  const sendBrowserNotification = (title: string, body: string) => {
+    if (!notifyEnabled || Notification.permission !== 'granted') return
+    try { new Notification(title, { body, icon: '/favicon.ico' }) } catch { /* noop */ }
+  }
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
@@ -82,8 +105,63 @@ export default function AdminLiveMonitorPage() {
   async function loadLive() {
     try {
       const res = await api.get('/api/admin/live-monitor', h)
-      if (res.data.success) setLiveStreams(res.data.data || [])
+      if (res.data.success) {
+        const newList = (res.data.data || []) as LiveStream[]
+        // 🛡️ 2026-05-13 (Phase C): snapshot 비교 → 이벤트 감지 + 알람
+        const prev = prevLiveRef.current
+        if (prev.length > 0) {  // 첫 로드 X (전체 라이브를 신규로 잘못 알람 X)
+          const prevIds = new Set(prev.map(s => s.id))
+          const newIds = new Set(newList.map(s => s.id))
+          // (1) 새 라이브 시작
+          for (const s of newList) {
+            if (!prevIds.has(s.id)) {
+              toast.success(`🔴 새 라이브 시작: ${s.seller_name} — ${s.title}`, { duration: 6000 })
+              playAlert(880)
+              sendBrowserNotification('🔴 새 라이브 시작', `${s.seller_name}: ${s.title}`)
+            }
+          }
+          // (2) 라이브 사라짐 (종료)
+          for (const s of prev) {
+            if (!newIds.has(s.id)) {
+              toast(`방송 종료: ${s.seller_name} — ${s.title}`, { duration: 4000 })
+              playAlert(440)  // 낮은 음
+            }
+          }
+          // (3) 시청자 급감 (50% drop + 동일 stream)
+          for (const cur of newList) {
+            const before = prev.find(p => p.id === cur.id)
+            if (!before) continue
+            if (before.viewer_count >= 20 && cur.viewer_count < before.viewer_count * 0.5) {
+              toast.error(`⚠️ 시청자 급감: ${cur.title} (${before.viewer_count} → ${cur.viewer_count})`, { duration: 8000 })
+              playAlert(220)
+              sendBrowserNotification('⚠️ 시청자 급감', `${cur.title}: ${before.viewer_count} → ${cur.viewer_count}`)
+            }
+          }
+        }
+        prevLiveRef.current = newList
+        setLiveStreams(newList)
+      }
     } catch {}
+  }
+
+  // 🛡️ Phase C: 브라우저 알림 권한 요청 (사용자 명시적 액션 후)
+  async function requestNotifyPermission() {
+    if (!('Notification' in window)) {
+      toast.error('이 브라우저는 알림을 지원하지 않습니다')
+      return
+    }
+    if (Notification.permission === 'granted') {
+      setNotifyEnabled(true)
+      toast.success('알림이 활성화됐습니다')
+      return
+    }
+    const result = await Notification.requestPermission()
+    if (result === 'granted') {
+      setNotifyEnabled(true)
+      toast.success('알림이 활성화됐습니다 — 새 라이브 시작 / 시청자 급감 시 알림')
+    } else {
+      toast.error('알림 권한이 거부됐습니다. 브라우저 설정에서 허용해주세요.')
+    }
   }
 
   async function loadHistory() {
@@ -129,13 +207,23 @@ export default function AdminLiveMonitorPage() {
           subtitle="진행 중인 라이브 방송 실시간 현황"
           icon={<Radio className="h-5 w-5" />}
           actions={
-            <button onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-                autoRefresh ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
-              }`}>
-              <RefreshCw className={`h-3.5 w-3.5 ${autoRefresh ? 'animate-spin' : ''}`} style={autoRefresh ? { animationDuration: '3s' } : {}} />
-              {autoRefresh ? '자동 갱신 ON' : '자동 갱신 OFF'}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* 🛡️ 2026-05-13 (Phase C): 브라우저 알림 토글 */}
+              <button onClick={requestNotifyPermission}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  notifyEnabled ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                }`}
+                title="새 라이브 시작 / 시청자 급감 시 브라우저 알림 + 사운드">
+                🔔 {notifyEnabled ? '알림 ON' : '알림 OFF'}
+              </button>
+              <button onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  autoRefresh ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                }`}>
+                <RefreshCw className={`h-3.5 w-3.5 ${autoRefresh ? 'animate-spin' : ''}`} style={autoRefresh ? { animationDuration: '3s' } : {}} />
+                {autoRefresh ? '자동 갱신 ON' : '자동 갱신 OFF'}
+              </button>
+            </div>
           }
         />
       {loading ? (
