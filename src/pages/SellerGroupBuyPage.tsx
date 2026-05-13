@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Copy, Send, RefreshCw } from 'lucide-react'
+import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -20,11 +20,18 @@ interface VoucherStat {
   product_id: number; total: number; used: number; unused: number; expired: number
 }
 
+interface VoucherLogSummary {
+  total: number; success_count: number; pin_errors: number; expired_errors: number; already_used_errors: number
+}
+
 export default function SellerGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<GroupBuyProduct[]>([])
   const [voucherStats, setVoucherStats] = useState<Record<number, VoucherStat>>({})
+  const [voucherLogSummary, setVoucherLogSummary] = useState<VoucherLogSummary | null>(null)
+  // 🛡️ 2026-05-13 (공구 UX #1): 셀러 정산 / 수수료 정보
+  const [commissionRate, setCommissionRate] = useState<number>(0.05)  // 기본 5% (서버에서 fetch)
   const [loading, setLoading] = useState(true)
 
   const headers = { Authorization: `Bearer ${getSellerToken()}` }
@@ -37,13 +44,40 @@ export default function SellerGroupBuyPage() {
   async function loadData() {
     setLoading(true)
     try {
-      const res = await api.get('/api/seller/products', { headers })
-      if (res.data.success) {
-        const mealVouchers = (res.data.data || []).filter((p: { category?: string }) => p.category === 'meal_voucher')
+      // 🛡️ 2026-05-13 (공구 UX #1+#2): products + voucher logs summary + 수수료율 병렬 fetch
+      const [productsRes, logsRes, settingsRes] = await Promise.all([
+        api.get('/api/seller/products', { headers }),
+        api.get('/api/group-buy/voucher-logs', { headers }).catch(() => ({ data: { data: { summary: null, logs: [] } } })),
+        api.get('/api/group-buy/commission-rate').catch(() => ({ data: { rate: 0.05 } })),
+      ])
+      if (productsRes.data.success) {
+        const mealVouchers = (productsRes.data.data || []).filter((p: { category?: string }) => p.category === 'meal_voucher')
         setProducts(mealVouchers)
+        // 바우처 통계: 각 상품별 (vouchers 테이블에서 집계)
+        if (mealVouchers.length > 0) {
+          const statsRes = await api.get(`/api/group-buy/seller-voucher-stats?product_ids=${mealVouchers.map((p: GroupBuyProduct) => p.id).join(',')}`, { headers })
+            .catch(() => ({ data: { success: false } }))
+          if (statsRes.data?.success) {
+            const map: Record<number, VoucherStat> = {}
+            for (const s of (statsRes.data.data || [])) {
+              map[s.product_id] = s
+            }
+            setVoucherStats(map)
+          }
+        }
       }
+      if (logsRes.data?.data?.summary) setVoucherLogSummary(logsRes.data.data.summary)
+      if (settingsRes.data?.rate) setCommissionRate(Number(settingsRes.data.rate))
     } catch { /* ignore */ }
     finally { setLoading(false) }
+  }
+
+  // 정산액 계산: 셀러 수령액 = 가격 × 참여 × (1 - 수수료율)
+  function calcSettlement(product: GroupBuyProduct) {
+    const gross = (product.price || 0) * (product.group_buy_current || 0)
+    const commission = Math.round(gross * commissionRate)
+    const netToSeller = gross - commission
+    return { gross, commission, netToSeller }
   }
 
   // 🛡️ 2026-04-27: 사장님께 알림톡 재발송 (Magic Link)
@@ -92,6 +126,65 @@ export default function SellerGroupBuyPage() {
             </div>
           ))}
         </div>
+
+        {/* 🛡️ 2026-05-13 (공구 UX #1): 정산 대시보드 — 총 매출 / 수수료 / 셀러 수령액 */}
+        {products.length > 0 && (() => {
+          const totalGross = products.reduce((s, p) => s + (p.price * p.group_buy_current), 0)
+          const totalCommission = Math.round(totalGross * commissionRate)
+          const totalNet = totalGross - totalCommission
+          return (
+            <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider opacity-80">예상 정산</p>
+                  <p className="text-3xl font-extrabold mt-0.5">₩{totalNet.toLocaleString('ko-KR')}</p>
+                </div>
+                <DollarSign className="w-8 h-8 opacity-70" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/20 text-xs">
+                <div>
+                  <p className="opacity-70">총 매출</p>
+                  <p className="font-bold">₩{totalGross.toLocaleString('ko-KR')}</p>
+                </div>
+                <div>
+                  <p className="opacity-70">플랫폼 수수료 ({(commissionRate * 100).toFixed(1)}%)</p>
+                  <p className="font-bold">-₩{totalCommission.toLocaleString('ko-KR')}</p>
+                </div>
+              </div>
+              <p className="text-[10px] opacity-70 mt-2">실제 정산은 바우처 사용 완료 후 매월 정산일에 입금됩니다.</p>
+            </div>
+          )
+        })()}
+
+        {/* 🛡️ 2026-05-13 (공구 UX #2): 바우처 사용 추적 요약 (최근 7일) */}
+        {voucherLogSummary && voucherLogSummary.total > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-sm font-bold text-gray-900 mb-3">🎫 최근 7일 바우처 사용 시도</p>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div>
+                <p className="text-lg font-bold text-green-600">{voucherLogSummary.success_count}</p>
+                <p className="text-[10px] text-gray-500">성공</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-red-500">{voucherLogSummary.pin_errors}</p>
+                <p className="text-[10px] text-gray-500">PIN 오류</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-amber-500">{voucherLogSummary.expired_errors}</p>
+                <p className="text-[10px] text-gray-500">만료</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-500">{voucherLogSummary.already_used_errors}</p>
+                <p className="text-[10px] text-gray-500">중복</p>
+              </div>
+            </div>
+            {voucherLogSummary.pin_errors > voucherLogSummary.success_count && voucherLogSummary.total > 5 && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5 mt-2 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> PIN 오류가 많습니다. 가게에 안내된 PIN 을 확인해주세요.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 상품 없음 */}
         {products.length === 0 ? (
@@ -145,6 +238,36 @@ export default function SellerGroupBuyPage() {
                     </div>
                   </div>
 
+                  {/* 🛡️ 2026-05-13 (공구 UX #1+#2): 상품별 정산 + 바우처 통계 */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-gray-500">예상 정산액</p>
+                      <p className="font-bold text-emerald-600 text-sm mt-0.5">
+                        ₩{calcSettlement(p).netToSeller.toLocaleString('ko-KR')}
+                      </p>
+                      <p className="text-[10px] text-gray-400">총 {(p.price * p.group_buy_current).toLocaleString('ko-KR')}원 - 수수료 {(commissionRate * 100).toFixed(1)}%</p>
+                    </div>
+                    {voucherStats[p.id] ? (
+                      <div>
+                        <p className="text-gray-500">바우처 사용 현황</p>
+                        <div className="flex items-center gap-1 mt-0.5 text-[11px]">
+                          <CheckCircle2 className="w-3 h-3 text-green-500" />
+                          <span className="font-semibold text-gray-900">{voucherStats[p.id].used}</span>
+                          <span className="text-gray-400">/ {voucherStats[p.id].total}</span>
+                          {voucherStats[p.id].expired > 0 && (
+                            <span className="text-amber-600 ml-1">· 만료 {voucherStats[p.id].expired}</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-400">미사용 {voucherStats[p.id].unused}장</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-gray-500">바우처</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">발급 0장</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* 식당 사장 공유 링크 (Magic Link 우선) */}
                   <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
@@ -189,7 +312,17 @@ export default function SellerGroupBuyPage() {
                         </button>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-amber-600 mt-2">⚠️ 식당 연락처 미등록 — 알림톡 발송 불가</p>
+                      <div className="mt-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-amber-700 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> 식당 연락처 미등록 — 알림톡 불가
+                        </p>
+                        <button
+                          onClick={() => navigate(`/seller/products/${p.id}/edit`)}
+                          className="text-[10px] text-amber-700 font-bold underline underline-offset-2 shrink-0"
+                        >
+                          연락처 등록 →
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

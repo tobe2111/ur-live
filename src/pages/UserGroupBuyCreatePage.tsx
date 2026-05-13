@@ -174,6 +174,18 @@ export default function UserGroupBuyCreatePage() {
           )}
         </section>
 
+        {/* 🛡️ 2026-05-13 (공구 UX): 맛집 선택 후 제약 조건 미리 안내 — Step 2 진입 마찰 ↓ */}
+        {restaurant && (
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5 text-sm">
+            <p className="font-bold text-blue-900 dark:text-blue-200 mb-1.5">📌 공구 시작 조건</p>
+            <ul className="space-y-0.5 text-blue-800 dark:text-blue-300 text-xs">
+              <li>• 보증금 <strong>최소 1,000딜</strong>부터 시작 가능</li>
+              <li>• 목표 인원 <strong>3명 이상</strong> 필수</li>
+              <li>• 보증금은 모이지 않으면 자동 환불됩니다 (만료 후 5분 내)</li>
+            </ul>
+          </div>
+        )}
+
         {/* ── Step 2: 공구 설정 ── */}
         <section>
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
