@@ -220,6 +220,29 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber).run()
     }
 
+    // 🛡️ 2026-05-13 (운영 안정성 #2): 딜 차감 후 후속 INSERT (orders/items/vouchers/progress)
+    //   실패 시 자동 환불. D1 은 trx 미지원 — 명시적 rollback 으로 처리.
+    //   복구 대상: deal 차감 + stock 차감 (이미 위에서 atomic 처리됨 → 여기서 함께 복구).
+    const rollbackDealAndStock = async () => {
+      if (payment_method === 'deal') {
+        try {
+          await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+            .bind(totalAmount, userId).run()
+          await DB.prepare(
+            `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
+             VALUES (?, 'refund', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+          ).bind(userId, totalAmount, totalAmount, userId, `공동구매 자동 환불 (주문 실패): ${product.name}`, orderNumber).run()
+        } catch (e) { console.error('[group-buy/join] deal rollback failed', e) }
+      }
+      // stock 도 복구
+      try {
+        await DB.prepare("UPDATE products SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+          .bind(qty, productId).run()
+      } catch (e) { console.error('[group-buy/join] stock rollback failed', e) }
+    }
+
+    try {
+
     // 수수료 계산 (DB 설정값 platform_settings.commission_rate_meal_voucher, 기본 5%)
     const commissionRate = await getMealVoucherCommissionRate(DB)
     const commissionAmount = Math.round(totalAmount * commissionRate)
@@ -333,9 +356,15 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       },
       message: `공동구매 참여 완료! 바우처 ${qty}장이 발급되었습니다.`,
     })
+    } catch (innerErr) {
+      // 🛡️ 2026-05-13 (운영 안정성 #2): 딜 차감 후 후속 INSERT 실패 시 자동 환불 + stock 복구
+      console.error('[group-buy/join] post-deduction failure, rolling back', innerErr)
+      await rollbackDealAndStock()
+      throw innerErr  // 외부 catch 가 사용자에게 안내
+    }
   } catch (err) {
     console.error('[group-buy] Error:', err)
-    return c.json({ success: false, error: '공동구매 참여 중 오류가 발생했습니다' }, 500)
+    return c.json({ success: false, error: '공동구매 참여 중 오류가 발생했습니다. 차감된 딜은 자동 환불되었습니다.' }, 500)
   }
 })
 
@@ -498,22 +527,112 @@ groupBuyRoutes.post(
          )`
     ).bind(code, pin).run()
 
-    if ((result.meta?.changes ?? 0) === 0) {
-      // 실패 원인 분기: 존재 여부만 확인 (PIN 정답 여부는 노출하지 않음)
-      const exists = await DB.prepare(
-        "SELECT status, expires_at FROM vouchers WHERE code = ?"
-      ).bind(code).first<{ status: string; expires_at: string | null }>()
+    // 🛡️ 2026-05-13 (운영 안정성 #3): 모든 사용 시도 로그 — 셀러가 사용 흐름 추적.
+    //   PIN 정답 여부는 노출하지 않지만, 셀러 본인은 자기 가게의 PIN 오류 빈도 알 필요 있음.
+    //   table 자동 생성 (lazy CREATE IF NOT EXISTS).
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS voucher_use_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT NOT NULL,
+          product_id INTEGER,
+          seller_id INTEGER,
+          success INTEGER NOT NULL,
+          reason TEXT,
+          ip_hash TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      await DB.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_voucher_use_logs_seller ON voucher_use_logs(seller_id, created_at DESC)
+      `).run()
+    } catch { /* ignore */ }
 
-      if (!exists) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
-      if (exists.status === 'used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
-      if (exists.status === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
-      if (exists.status === 'refunded') return c.json({ success: false, error: '환불된 바우처입니다' }, 400)
+    const success = (result.meta?.changes ?? 0) > 0
+    let failReason: string | null = null
+    let voucherRecord: { status: string; expires_at: string | null; product_id: number } | null = null
+    if (!success) {
+      voucherRecord = await DB.prepare(
+        "SELECT status, expires_at, product_id FROM vouchers WHERE code = ?"
+      ).bind(code).first()
+      if (!voucherRecord) failReason = 'not_found'
+      else if (voucherRecord.status === 'used') failReason = 'already_used'
+      else if (voucherRecord.status === 'expired') failReason = 'expired'
+      else if (voucherRecord.status === 'refunded') failReason = 'refunded'
+      else failReason = 'pin_mismatch'
+    }
+    // 로그 INSERT (best-effort) — seller_id 는 product 에서 조회
+    try {
+      const productId = voucherRecord?.product_id ?? (success
+        ? (await DB.prepare("SELECT product_id FROM vouchers WHERE code = ?").bind(code).first<{ product_id: number }>())?.product_id
+        : null)
+      const sellerId = productId
+        ? (await DB.prepare("SELECT seller_id FROM products WHERE id = ?").bind(productId).first<{ seller_id: number }>())?.seller_id
+        : null
+      const ipRaw = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || ''
+      // IP 해시 (개인정보 직접 저장 X)
+      const ipHash = ipRaw ? Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ipRaw + (c.env.JWT_SECRET || '')))))
+        .slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('') : null
+      await DB.prepare(`
+        INSERT INTO voucher_use_logs (code, product_id, seller_id, success, reason, ip_hash)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(code, productId ?? null, sellerId ?? null, success ? 1 : 0, failReason, ipHash).run()
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[voucher use log]', e)
+    }
+
+    if (!success) {
+      if (failReason === 'not_found') return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
+      if (failReason === 'already_used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
+      if (failReason === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
+      if (failReason === 'refunded') return c.json({ success: false, error: '환불된 바우처입니다' }, 400)
       return c.json({ success: false, error: '이미 사용되었거나 PIN이 틀립니다.' }, 400)
     }
 
     return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
   }
 )
+
+// ── GET /api/group-buy/voucher-logs — 셀러 본인 가게 바우처 사용 시도 로그 ──
+// 🛡️ 2026-05-13 (운영 안정성 #3): 셀러가 PIN 오류 / 만료 / 사용 빈도 확인 → 가게 문제 자가 진단.
+groupBuyRoutes.get('/voucher-logs', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const userAsAny = user as unknown as { id: number | string; type?: string; role?: string }
+  const isSeller = userAsAny.type === 'seller' || userAsAny.role === 'seller'
+  if (!isSeller) return c.json({ success: false, error: '셀러만 접근 가능합니다' }, 403)
+
+  const { DB } = c.env
+  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')))
+  try {
+    const { results } = await DB.prepare(`
+      SELECT l.id, l.code, l.product_id, l.success, l.reason, l.created_at,
+             p.name as product_name, p.restaurant_name
+      FROM voucher_use_logs l
+      LEFT JOIN products p ON p.id = l.product_id
+      WHERE l.seller_id = ?
+      ORDER BY l.created_at DESC
+      LIMIT ?
+    `).bind(user.id, limit).all()
+
+    // 요약 통계
+    const summary = await DB.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN reason = 'pin_mismatch' THEN 1 ELSE 0 END) as pin_errors,
+        SUM(CASE WHEN reason = 'expired' THEN 1 ELSE 0 END) as expired_errors,
+        SUM(CASE WHEN reason = 'already_used' THEN 1 ELSE 0 END) as already_used_errors
+      FROM voucher_use_logs
+      WHERE seller_id = ? AND created_at >= datetime('now', '-7 days')
+    `).bind(user.id).first()
+
+    return c.json({ success: true, data: { logs: results ?? [], summary } })
+  } catch (err) {
+    console.error('[voucher-logs]', err)
+    return c.json({ success: true, data: { logs: [], summary: { total: 0 } } })  // fail-soft
+  }
+})
 
 // ── POST /api/group-buy/store-stats/:productId — 식당 사장 통계 (PIN 또는 token 인증) ──
 // 🛡️ 2026-04-22: 조회 전 PIN 검증 필수 + rate limit (PIN brute force 방어)
