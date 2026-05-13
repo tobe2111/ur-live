@@ -367,21 +367,17 @@ export class YouTubeAPIService {
     // 🛡️ 2026-05-07: persistent stream 에 묶여있는 이전 broadcast 가 'ready'/'live' 상태로
     //   남아있으면 YouTube 가 "스트림 키가 이미 할당됨" 에러를 노출. 새 broadcast 바인딩
     //   전에 stale broadcast 들을 모두 complete 로 전환.
-    await this.endActiveBroadcastsForStream(accessToken, persistentStreamId)
+    // 🛡️ 2026-05-13 (perf): endActiveBroadcastsForStream / createBroadcast / getStream 을
+    //   가능한 한 병렬화 — 셀러 체감 속도 1.5-3s → 0.5-1.5s 단축.
+    //   endActive 는 createBroadcast 와 동시에 시작 (어차피 새 broadcast 는 다른 ID).
+    //   bindBroadcastToStream 만 두 결과 모두 필요 → 순차.
+    const [, broadcast, stream] = await Promise.all([
+      this.endActiveBroadcastsForStream(accessToken, persistentStreamId),
+      this.createBroadcast(accessToken, title, description, scheduledStartTime, privacyStatus),
+      this.getStream(accessToken, persistentStreamId),
+    ])
 
-    // Create broadcast only (no new stream)
-    const broadcast = await this.createBroadcast(
-      accessToken,
-      title,
-      description,
-      scheduledStartTime,
-      privacyStatus
-    )
-
-    // Get existing persistent stream info
-    const stream = await this.getStream(accessToken, persistentStreamId)
-
-    // Bind broadcast to existing stream
+    // Bind broadcast to existing stream (must run after both)
     await this.bindBroadcastToStream(accessToken, broadcast.id, stream.id)
 
     return {
@@ -403,9 +399,9 @@ export class YouTubeAPIService {
     accessToken: string,
     persistentStreamId: string
   ): Promise<void> {
-    // YouTube API 는 단일 status 만 받음 — 두 번 호출
+    // YouTube API 는 단일 status 만 받음 — active + upcoming 두 list 동시 호출 (perf).
     const statusesToCheck: Array<'active' | 'upcoming'> = ['active', 'upcoming']
-    for (const status of statusesToCheck) {
+    const lists = await Promise.all(statusesToCheck.map(async (status) => {
       try {
         const res = await fetch(
           `${YOUTUBE_API_BASE}/liveBroadcasts?part=id,contentDetails,status&broadcastStatus=${status}&maxResults=20&mine=true`,
@@ -414,7 +410,7 @@ export class YouTubeAPIService {
             signal: AbortSignal.timeout(15000)
           }
         )
-        if (!res.ok) continue
+        if (!res.ok) return [] as Array<{ id: string; lifecycle?: string; boundStreamId?: string }>
         const data = await res.json() as {
           items?: Array<{
             id: string
@@ -422,20 +418,30 @@ export class YouTubeAPIService {
             status?: { lifeCycleStatus?: string }
           }>
         }
-        for (const item of data.items ?? []) {
-          if (item.contentDetails?.boundStreamId !== persistentStreamId) continue
-          const lifecycle = item.status?.lifeCycleStatus
-          if (lifecycle === 'complete' || lifecycle === 'revoked') continue
-          try {
-            await this.endBroadcast(accessToken, item.id)
-          } catch {
-            // 'live' 가 아니라 transition 실패 가능 — 무시 (다음 단계에서 bind 가 재시도)
-          }
-        }
+        return (data.items ?? []).map(it => ({
+          id: it.id,
+          lifecycle: it.status?.lifeCycleStatus,
+          boundStreamId: it.contentDetails?.boundStreamId,
+        }))
       } catch {
-        // 네트워크/권한 오류 — fail-open (기존 동작 유지)
+        return [] as Array<{ id: string; lifecycle?: string; boundStreamId?: string }>
       }
-    }
+    }))
+
+    // 🛡️ 2026-05-13: 진행 중 LIVE 방송은 절대 자동 종료 금지 (시청자 일방적 끊김 차단).
+    //   호출자(create endpoint) 가 DB 측에서 1차 차단하지만 이중 방어.
+    const targets = lists.flat().filter(item =>
+      item.boundStreamId === persistentStreamId &&
+      item.lifecycle !== 'complete' &&
+      item.lifecycle !== 'revoked' &&
+      item.lifecycle !== 'live' &&
+      item.lifecycle !== 'liveStarting'
+    )
+
+    // stale broadcast 정리는 병렬 — 보통 0-1개, 많아도 빠르게 끝남
+    await Promise.all(targets.map(item =>
+      this.endBroadcast(accessToken, item.id).catch(() => { /* transition 실패 무시 */ })
+    ))
   }
 
   /**

@@ -115,6 +115,11 @@ function ReelCardImpl({
   const [autoplayFailed, setAutoplayFailed] = useState(false)
   // v15-4: YouTube iframe API error code별 사용자 안내 메시지
   const [playerError, setPlayerError] = useState<string | null>(null)
+  // 🛡️ 2026-05-13: 라이브 시작 직후 YouTube CDN 전파 지연 (broadcast.lifeCycleStatus=ready
+  //   인데 embed 호출) → IPADDOS 400 / error 100 발생. 영구 실패로 처리하면 안 됨 — 자동 재시도.
+  const retryCountRef = useRef(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const MAX_PLAYER_RETRIES = 6  // 5초 간격 * 6 = 30초 (YouTube 가 ready→live 전환되는 평균 시간)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
 
   // Cart & Purchase state
@@ -404,9 +409,30 @@ function ReelCardImpl({
               // YouTube iframe API 공식 에러 코드:
               //   2  = invalid video ID
               //   5  = HTML5 player 재생 오류
-              //   100 = video not found / deleted
+              //   100 = video not found / deleted (라이브 시작 직후엔 일시적 — 재시도)
               //   101 = private video (embed disallowed)
               //   150 = same as 101 (owner disabled embedding)
+              // 🛡️ 2026-05-13: 라이브 시작 직후 100/2 는 broadcast.lifeCycleStatus=ready 인데
+              //   embed 호출된 race condition (IPADDOS 400). 영구 실패 처리하지 말고 5초 후 재시도.
+              if ((event.data === 100 || event.data === 2) && stream.status === 'live') {
+                if (retryCountRef.current < MAX_PLAYER_RETRIES) {
+                  retryCountRef.current += 1
+                  if (import.meta.env.DEV) console.log(`[YT] Retry ${retryCountRef.current}/${MAX_PLAYER_RETRIES} in 5s — broadcast warming up`)
+                  if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+                  retryTimerRef.current = setTimeout(() => {
+                    if (!isMounted) return
+                    // Player destroy 후 useEffect deps 변경 없이 재초기화하려면 dom 직접 조작이 안전.
+                    try { player?.destroy() } catch { /* noop */ }
+                    playerRef.current = null
+                    setPlayerReady(false)
+                    initializePlayer()  // 같은 클로저의 player 변수 재할당
+                  }, 5000)
+                  return  // playerError 설정 안 함 — 사용자에겐 계속 로딩 spinner 노출
+                }
+                // MAX_RETRIES 초과 → 정말로 안 됨
+                setPlayerError(t('live.player.cannotPlay'))
+                return
+              }
               switch (event.data) {
                 case 2:
                 case 100:
@@ -455,6 +481,11 @@ function ReelCardImpl({
 
     return () => {
       isMounted = false
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
+      retryCountRef.current = 0
       if (player && typeof player.destroy === 'function') {
         try {
           player.destroy()

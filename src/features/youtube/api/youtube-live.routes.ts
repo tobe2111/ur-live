@@ -81,6 +81,25 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     }
   }
 
+  // 🛡️ 2026-05-13: 진행 중 LIVE 방송이 있으면 새 broadcast 생성 차단.
+  //   사고: setupLiveStreamWithPersistentStream 내부의 endActiveBroadcastsForStream 이
+  //         persistent stream 에 묶인 모든 broadcast 를 강제 complete 처리 → 시청자가 보고 있던
+  //         LIVE 가 일방적으로 종료. (셀러 의도와 무관, "자동 종료" 사고의 핵심 원인)
+  //   해결: 같은 셀러의 status='live' DB 레코드가 있으면 새 방송 만들기 거부 + 안내.
+  const existingLive = await c.env.DB.prepare(`
+    SELECT id, title FROM live_streams
+    WHERE seller_id = ? AND status = 'live'
+    ORDER BY created_at DESC LIMIT 1
+  `).bind(sellerId).first<{ id: number; title: string }>()
+  if (existingLive) {
+    return c.json({
+      success: false,
+      error: `진행 중인 방송 "${existingLive.title}" 이 있어 새 방송을 만들 수 없습니다. 먼저 종료해주세요.`,
+      error_code: 'EXISTING_LIVE_BROADCAST',
+      existing_stream_id: existingLive.id,
+    }, 409)
+  }
+
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
 
