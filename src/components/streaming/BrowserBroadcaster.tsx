@@ -106,30 +106,16 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     return () => clearTimeout(timer)
   }, [status, streamId])
 
-  // 🛡️ 2026-05-11 P0-#1: 탭/브라우저 닫힘 시 좀비 스트림 방지.
-  //   beforeunload → sendBeacon 으로 /live/:id/end 호출 (비동기 fetch 는 unload 시 차단됨).
-  //   sendBeacon 은 페이지 unload 후에도 백그라운드로 전송 보장.
-  useEffect(() => {
-    function handleUnload() {
-      // pc 가 살아있는 동안만 (방송 중) cleanup 요청
-      if (!pcRef.current || pcRef.current.connectionState !== 'connected') return
-      try {
-        // Authorization 헤더는 sendBeacon 에 못 실음 → 토큰을 body 에 함께 전송.
-        const token = localStorage.getItem('seller_token') || localStorage.getItem('admin_token') || ''
-        const blob = new Blob(
-          [JSON.stringify({ stream_id: streamId, token, reason: 'tab_close' })],
-          { type: 'application/json' }
-        )
-        navigator.sendBeacon(`/api/seller/youtube/live/${streamId}/end-beacon`, blob)
-      } catch { /* best-effort */ }
-    }
-    window.addEventListener('beforeunload', handleUnload)
-    window.addEventListener('pagehide', handleUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleUnload)
-      window.removeEventListener('pagehide', handleUnload)
-    }
-  }, [streamId])
+  // 🛡️ 2026-05-13: beforeunload/pagehide 자동 종료 제거 (큰 사고 — stream 77 case).
+  //   기존 동작: 셀러가 다른 페이지 이동 / 탭 전환 / 새로고침 시에도 sendBeacon 으로 즉시 종료 →
+  //              시청자가 보고 있는 라이브가 셀러의 사소한 이탈로 죽음.
+  //              YouTube 측은 OME keep-alive 로 여전히 받지만 우리 DB.status='ended' 로 표시.
+  //   현재 정책: 셀러가 명시적 "방송 종료" 버튼 누를 때만 종료.
+  //              페이지 이동/탭 이탈 시엔 WebRTC 끊김 → OME 알아서 stopPush →
+  //              YouTube broadcast 가 5-15분 후 자체 종료 → 우리 cron 이 감지하여 ended 처리.
+  //   안전망: PR #327 의 12시간 idle cron + youtube-broadcast-end-detect cron.
+  //
+  //   ※ 정말 "탭 닫힘 = 종료" 가 필요한 케이스가 미래에 생기면 grace period (5분) 후 ended 처리로 변경.
 
   async function startBroadcast() {
     setErrorMsg(null)
