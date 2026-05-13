@@ -192,43 +192,30 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
 
   // 🛡️ 2026-05-11 P1-#6: 라이브 시작 5초 후 video 프레임 캡처 → thumbnail 자동 설정
   //   셀러가 thumbnail 미설정 시 빈 이미지로 표시되는 문제 해결. 백그라운드 자동 — UI 변경 없음.
-  //   🛡️ 2026-05-13: 한 stream 당 1번만 시도 (autoStart / 재연결로 인한 재시도 방지).
-  //     localStorage 에 마커 → 같은 streamId 면 skip → upload-image 500 스팸 차단.
-  const thumbnailCapturedRef = useRef(false)
+  // 🛡️ 2026-05-13 v3 (사용자 요청 — 100% 작동 보장):
+  //   imgbb 의존 제거. 라이브 시작 후 thumbnail_url 을 YouTube CDN 패턴 URL 로 즉시 설정.
+  //   YouTube 가 30-60초 후 그 URL 에 자동 frame 띄움 (img.youtube.com/vi/{id}/maxresdefault.jpg).
+  //   장점: 비용 0, 빠름 (CDN), 500 에러 없음, 항상 최신 frame.
+  //   broadcaster prop 에 youtubeVideoId 없으므로 streamId 로 backend 에 요청 → backend 가
+  //   DB 에서 youtube_video_id 조회 후 thumbnail_url 업데이트.
+  const thumbnailSetRef = useRef(false)
   useEffect(() => {
-    if (status !== 'live' || thumbnailCapturedRef.current) return
-    const markerKey = `thumb_captured_v1:${streamId}`
+    if (status !== 'live' || thumbnailSetRef.current) return
+    const markerKey = `thumb_set_v2:${streamId}`
     try {
       if (localStorage.getItem(markerKey)) {
-        thumbnailCapturedRef.current = true
+        thumbnailSetRef.current = true
         return
       }
     } catch { /* ignore */ }
-    thumbnailCapturedRef.current = true
+    thumbnailSetRef.current = true
     const timer = setTimeout(async () => {
-      const video = videoRef.current
-      if (!video || video.videoWidth === 0) return
       try {
-        const canvas = document.createElement('canvas')
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const blob: Blob | null = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85))
-        if (!blob) return
-        const form = new FormData()
-        form.append('image', new File([blob], `stream_${streamId}_auto.jpg`, { type: 'image/jpeg' }))
-        const upload = await api.post('/api/seller/upload-image', form)
-        // 🛡️ 2026-05-13: response 는 { success, url } — 기존 .data.data.url 은 잘못된 path
-        const url = upload.data?.url
-        if (url) {
-          await api.put(`/api/seller/streams/${streamId}`, { thumbnail: url })
-          // 성공 마커 — 다음 mount 시 skip
-          try { localStorage.setItem(markerKey, String(Date.now())) } catch { /* ignore */ }
-        }
-      } catch { /* best-effort, 실패해도 라이브엔 영향 없음 */ }
-    }, 5000)
+        // backend endpoint 가 자동으로 youtube_video_id 기반 CDN URL 로 thumbnail_url 갱신
+        await api.post(`/api/seller/youtube/live/${streamId}/refresh-thumbnail`)
+        try { localStorage.setItem(markerKey, String(Date.now())) } catch { /* ignore */ }
+      } catch { /* best-effort */ }
+    }, 30000)  // 30초 후 — YouTube CDN 에 frame 생성 시점
     return () => clearTimeout(timer)
   }, [status, streamId])
 
