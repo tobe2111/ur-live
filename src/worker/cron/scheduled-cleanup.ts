@@ -877,6 +877,72 @@ export async function handleScheduled(env: Env) {
     if ((d1?.length ?? 0) > 0) results.voucher_d1_reminders = d1!.length;
   } catch (e) { logError('[Cron] voucher_expiry_reminder error:', { error: String(e) }) }
 
+  // ── 22d. 🛡️ 2026-05-13: 커뮤니티 공동구매 만료 + 보증금 자동 환불 ──
+  //   community_group_buys 가 expires_at 지났는데 status='proposed'/'negotiating' 인 좀비 차단.
+  //   1) 상태를 'failed' 로 마킹
+  //   2) deposited 멤버 보증금 일괄 환불 (멱등: community_group_buy_refunds 테이블)
+  try {
+    // Step 1: status='proposed'/'negotiating' AND expires_at < now() → 'failed'
+    const { meta: failMeta } = await DB.prepare(`
+      UPDATE community_group_buys
+      SET status = 'failed', updated_at = datetime('now')
+      WHERE status IN ('proposed', 'negotiating')
+        AND expires_at IS NOT NULL
+        AND expires_at < datetime('now')
+    `).run().catch(() => ({ meta: { changes: 0 } } as { meta: { changes: number } }))
+    results.community_group_buys_failed = failMeta.changes ?? 0
+
+    // Step 2: status='failed' OR 'expired' 인 그룹의 deposited 멤버 환불 (멱등)
+    //   환불 처리 안 된 멤버만 추출 → 딜 복구 + 멤버 status='refunded' + refund 레코드 INSERT.
+    const { results: refundMembers } = await DB.prepare(`
+      SELECT m.id as member_id, m.group_buy_id, m.user_id, m.deposit_amount, g.status as group_status
+      FROM community_group_buy_members m
+      JOIN community_group_buys g ON g.id = m.group_buy_id
+      WHERE m.status = 'deposited'
+        AND g.status IN ('failed', 'expired')
+        AND NOT EXISTS (
+          SELECT 1 FROM community_group_buy_refunds r
+          WHERE r.group_id = m.group_buy_id AND r.user_id = m.user_id
+        )
+      LIMIT 200
+    `).all<{ member_id: number; group_buy_id: number; user_id: string; deposit_amount: number; group_status: string }>().catch(() => ({ results: [] }))
+
+    let refunded = 0
+    for (const m of refundMembers ?? []) {
+      try {
+        // 딜 복구 (UPSERT 대신 안전한 SELECT-then-UPDATE)
+        const existing = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(m.user_id).first<{ balance: number }>()
+        if (existing) {
+          await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
+            .bind(m.deposit_amount, m.user_id).run()
+        } else {
+          await DB.prepare("INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))")
+            .bind(m.user_id, m.deposit_amount).run()
+        }
+        // 멤버 status 갱신
+        await DB.prepare("UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?").bind(m.member_id).run()
+        // 멱등성 record
+        await DB.prepare(`
+          INSERT INTO community_group_buy_refunds (group_id, user_id, amount, refunded_at)
+          VALUES (?, ?, ?, datetime('now'))
+        `).bind(m.group_buy_id, m.user_id, m.deposit_amount).run()
+        // 사용자 알림 (best-effort)
+        try {
+          await DB.prepare(`
+            INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+            VALUES (?, 'user', 'community_group_buy_refunded', '공동구매 환불 완료',
+                    '참여하신 공동구매가 만료/실패하여 보증금 ${m.deposit_amount}원이 자동 환불됐어요.',
+                    '/mypage/group-buys', CURRENT_TIMESTAMP)
+          `).bind(m.user_id).run()
+        } catch { /* notifications 없으면 skip */ }
+        refunded++
+      } catch (err) {
+        logError('[Cron] community refund failed', { groupId: m.group_buy_id, userId: m.user_id, error: String(err) })
+      }
+    }
+    if (refunded > 0) results.community_group_buys_refunded = refunded
+  } catch (e) { logError('[Cron] community_group_buys_expired error:', { error: String(e) }) }
+
   // ── 23. 🛡️ 2026-04-28: consignment_settlements 자동 기록 (월간 윈도우) ──
   //   당월 1일 ~ 어제까지의 consignment 주문건을 분배 기록 (멱등).
   try {
