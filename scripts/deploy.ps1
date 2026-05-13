@@ -1,13 +1,13 @@
-# 🚀 ur-live 안전 배포 스크립트 (PowerShell)
+﻿# ur-live Safe Deployment Script (PowerShell)
 #
-# 2026-05-12 사고 방지: 'npx vite build' 만 실행하면 _worker.js 가 갱신 안 됨.
-# 이 스크립트는 항상 'npm run build' (worker + client + prepare 모두) 를 실행.
+# Prevents 2026-05-12 incident: 'npx vite build' alone does NOT refresh _worker.js.
+# This script always runs 'npm run build' (worker + client + prepare).
 #
-# 사용법:
-#   .\scripts\deploy.ps1                     # 기본 배포
-#   .\scripts\deploy.ps1 -Message "fix-X"    # 커밋 메시지 지정
-#   .\scripts\deploy.ps1 -SkipBuild          # 빌드 스킵 (재배포만)
-#   .\scripts\deploy.ps1 -Branch "preview"   # 다른 브랜치로 배포
+# Usage:
+#   .\scripts\deploy.ps1                     # default deploy
+#   .\scripts\deploy.ps1 -Message "fix-X"    # specify commit message
+#   .\scripts\deploy.ps1 -SkipBuild          # redeploy without rebuild
+#   .\scripts\deploy.ps1 -Branch "preview"   # different branch
 
 param(
   [string]$Message = "deploy",
@@ -32,15 +32,15 @@ function Write-Err($text) {
   Write-Host "    ERR $text" -ForegroundColor Red
 }
 
-# 1. Git 상태 확인
-Write-Step "Git 상태 확인"
+# 1. Git status check
+Write-Step "Git status check"
 if (-not $SkipPull) {
   git fetch origin
   $currentBranch = git rev-parse --abbrev-ref HEAD
   if ($currentBranch -ne $Branch) {
-    Write-Host "    현재 브랜치: $currentBranch (배포 대상: $Branch)" -ForegroundColor Yellow
-    Write-Host "    배포는 $Branch 브랜치에서만 진행됩니다." -ForegroundColor Yellow
-    $confirm = Read-Host "    계속하려면 'y' 입력"
+    Write-Host "    Current branch: $currentBranch (target: $Branch)" -ForegroundColor Yellow
+    Write-Host "    Deploy proceeds from $Branch only." -ForegroundColor Yellow
+    $confirm = Read-Host "    Type 'y' to continue"
     if ($confirm -ne 'y') { exit 1 }
   }
 
@@ -48,53 +48,54 @@ if (-not $SkipPull) {
   $localSha = (git rev-parse HEAD).Trim()
   if ($remoteSha -ne $localSha) {
     Write-Host "    local HEAD ($localSha) != origin/$Branch ($remoteSha)" -ForegroundColor Yellow
-    Write-Host "    push 누락 가능성 — 'git push origin $Branch' 먼저 실행 권장" -ForegroundColor Yellow
-    $confirm = Read-Host "    그래도 진행하려면 'y' 입력"
+    Write-Host "    Push may be missing - run 'git push origin $Branch' first." -ForegroundColor Yellow
+    $confirm = Read-Host "    Type 'y' to continue anyway"
     if ($confirm -ne 'y') { exit 1 }
   } else {
-    Write-Ok "local HEAD == origin/$Branch ($localSha.Substring(0, 7))"
+    $short = $localSha.Substring(0, 7)
+    Write-Ok "local HEAD == origin/$Branch ($short)"
   }
 }
 
-# 2. 빌드 (반드시 npm run build — vite build 아님!)
+# 2. Build (MUST be npm run build, NOT vite build!)
 if (-not $SkipBuild) {
   Write-Step "Full build (client + worker + prepare)"
   npm run build
   if ($LASTEXITCODE -ne 0) {
-    Write-Err "빌드 실패 — 배포 중단"
+    Write-Err "Build failed - aborting deploy"
     exit 1
   }
-  Write-Ok "빌드 성공"
+  Write-Ok "Build success"
 } else {
-  Write-Host "    빌드 스킵 (-SkipBuild 옵션)" -ForegroundColor Yellow
+  Write-Host "    Build skipped (-SkipBuild flag)" -ForegroundColor Yellow
 }
 
-# 3. _worker.js 존재 + 신선도 검증
-Write-Step "_worker.js 신선도 검증"
+# 3. _worker.js freshness check
+Write-Step "_worker.js freshness check"
 $workerPath = "dist/_worker.js"
 if (-not (Test-Path $workerPath)) {
   $workerPath = "dist/client/_worker.js"
 }
 if (-not (Test-Path $workerPath)) {
-  Write-Err "_worker.js 가 없습니다. 'npm run build:worker' 실행 후 재시도."
+  Write-Err "_worker.js not found. Run 'npm run build:worker' and retry."
   exit 1
 }
 $workerMtime = (Get-Item $workerPath).LastWriteTimeUtc
 $now = (Get-Date).ToUniversalTime()
 $ageMinutes = ($now - $workerMtime).TotalMinutes
 if ($ageMinutes -gt 10) {
-  Write-Host "    경고: _worker.js 가 $([int]$ageMinutes) 분 전 빌드됨" -ForegroundColor Yellow
-  $confirm = Read-Host "    그래도 진행하려면 'y' 입력"
+  Write-Host "    Warning: _worker.js is $([int]$ageMinutes) min old" -ForegroundColor Yellow
+  $confirm = Read-Host "    Type 'y' to continue"
   if ($confirm -ne 'y') { exit 1 }
 } else {
-  Write-Ok "_worker.js 신선 ($([int]$ageMinutes)분 전 빌드)"
+  Write-Ok "_worker.js fresh ($([int]$ageMinutes) min old)"
 }
 
-# 4. 배포 (ASCII commit message 필수 — CF API 가 일부 유니코드 거부)
-Write-Step "Cloudflare Pages 배포"
+# 4. Deploy (ASCII commit message required - CF API rejects some Unicode)
+Write-Step "Cloudflare Pages deploy"
 $asciiMessage = $Message -replace '[^\x00-\x7F]', '-'
 if ($asciiMessage -ne $Message) {
-  Write-Host "    한글/유니코드 제거: '$Message' -> '$asciiMessage'" -ForegroundColor Yellow
+  Write-Host "    Korean/Unicode stripped: '$Message' -> '$asciiMessage'" -ForegroundColor Yellow
 }
 
 $deployOutput = npx wrangler@3 pages deploy dist/client `
@@ -105,38 +106,37 @@ $deployOutput = npx wrangler@3 pages deploy dist/client `
 Write-Host $deployOutput
 $deployOutput | Out-File -FilePath "deploy-last.log" -Encoding UTF8
 
-if ($deployOutput -match "Deployment complete") {
-  Write-Ok "배포 완료"
-  if ($deployOutput -match "Uploaded (\d+) files") {
+$deployText = $deployOutput -join "`n"
+if ($deployText -match "Deployment complete") {
+  Write-Ok "Deploy complete"
+  if ($deployText -match "Uploaded (\d+) files") {
     $uploaded = [int]$matches[1]
     if ($uploaded -eq 0) {
-      Write-Host "    경고: 0 files uploaded — content hash dedup 또는 빌드 산출물 미변경" -ForegroundColor Yellow
-      Write-Host "    _worker.js 는 별도 업로드되므로 worker 변경은 반영됐을 수 있음" -ForegroundColor Yellow
+      Write-Host "    Note: 0 files uploaded (content hash dedup) - _worker.js may still have updated" -ForegroundColor Yellow
     }
   }
-
-  if ($deployOutput -match "https://[\w-]+\.([\w-]+\.)?pages\.dev") {
+  if ($deployText -match "https://[\w-]+\.ur-live\.pages\.dev") {
     $url = $matches[0]
-    Write-Host "    배포 URL: $url" -ForegroundColor Green
+    Write-Host "    Deploy URL: $url" -ForegroundColor Green
   }
 } else {
-  Write-Err "배포 실패 — deploy-last.log 확인"
+  Write-Err "Deploy failed - check deploy-last.log"
   exit 1
 }
 
-# 5. 핵심 endpoint 검증
-Write-Step "프로덕션 API smoke test"
+# 5. Smoke test
+Write-Step "Production API smoke test"
 $apiUrl = "https://live.ur-team.com/api/version"
 try {
   $resp = Invoke-WebRequest -Uri $apiUrl -Method GET -UseBasicParsing -TimeoutSec 10
   if ($resp.StatusCode -eq 200) {
     Write-Ok "/api/version OK ($($resp.StatusCode))"
   } else {
-    Write-Host "    /api/version 응답: $($resp.StatusCode)" -ForegroundColor Yellow
+    Write-Host "    /api/version returned: $($resp.StatusCode)" -ForegroundColor Yellow
   }
 } catch {
-  Write-Host "    /api/version 호출 실패: $_" -ForegroundColor Yellow
+  Write-Host "    /api/version request failed: $_" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "배포 완료. 브라우저 + DevTools 로 핵심 기능 검증 권장." -ForegroundColor Green
+Write-Host "Deploy complete. Verify critical features in browser + DevTools." -ForegroundColor Green
