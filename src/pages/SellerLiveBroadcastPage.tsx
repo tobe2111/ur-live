@@ -757,31 +757,41 @@ export default function SellerLiveBroadcastPage() {
           </div>
         )}
 
-        {/* STEP 2: 연결 설정 (송출 도구) — 라이브 중에도 BrowserBroadcaster 가 unmount 되지 않도록 유지 */}
+        {/* STEP 2: 연결 설정 + 라이브 컨트롤.
+            🛡️ 2026-05-13: PC (lg+) 에선 2컬럼 — 좌:송출 미리보기 / 우:라이브 컨트롤+채팅.
+              세로 스크롤 부담 해소, 라이브 중 상품 전환 + 채팅을 한 화면에서. */}
         {step === 'setup' && currentStream && (
-          <StepSetup
-            stream={currentStream}
-            method={method}
-            channels={channels}
-            copiedField={copiedField}
-            onCopy={copyField}
-            onGoLive={goLive}
-            onBack={() => { setCurrentStream(null); setStep('info') }}
-          />
-        )}
-
-        {/* 라이브 중: setup 화면 아래에 채팅 / 이벤트 / 공유링크 컨트롤도 함께 노출.
-            setStep('live') 사용 안 함 — broadcaster preview 와 라이브 컨트롤을 한 화면에 통합. */}
-        {step === 'setup' && currentStream && currentStream.status === 'live' && (
-          <StepLive
-            stream={currentStream}
-            products={sellableProducts}
-            method={method}
-            notifyFollowers={notifyFollowers}
-            practiceMode={practiceMode}
-            onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
-            onEndStream={requestEndStream}
-          />
+          <div className={
+            currentStream.status === 'live'
+              ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-6 lg:items-start space-y-5 lg:space-y-0'
+              : 'space-y-5'
+          }>
+            <div className="lg:sticky lg:top-6 lg:self-start space-y-5">
+              <StepSetup
+                stream={currentStream}
+                method={method}
+                channels={channels}
+                copiedField={copiedField}
+                onCopy={copyField}
+                onGoLive={goLive}
+                onBack={() => { setCurrentStream(null); setStep('info') }}
+              />
+            </div>
+            {/* 라이브 중: 우측에 컨트롤 패널 (채팅 + 상품 전환 + 통계). 송출 전엔 노출 X. */}
+            {currentStream.status === 'live' && (
+              <div className="space-y-5">
+                <StepLive
+                  stream={currentStream}
+                  products={sellableProducts}
+                  method={method}
+                  notifyFollowers={notifyFollowers}
+                  practiceMode={practiceMode}
+                  onChangeProduct={(productId: number) => setCurrentStream(s => s ? { ...s, current_product_id: productId } : s)}
+                  onEndStream={requestEndStream}
+                />
+              </div>
+            )}
+          </div>
         )}
 
         {/* 기존 방송 목록 (info 단계에서만) */}
