@@ -120,7 +120,9 @@ export type WSMessageType =
   | 'set_blocked_keywords'
   | 'flash_sale'
   | 'ban_user'
-  | 'unban_user';
+  | 'unban_user'
+  | 'order_proof'    // 🛡️ 2026-05-13: 라이브 결제 사회적 증명 toast (FOMO)
+  | 'stock_update';  // 🛡️ 2026-05-13: 재고 실시간 push (polling 대체)
 
 export interface WSMessage {
   type: WSMessageType;

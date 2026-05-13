@@ -278,20 +278,24 @@ paymentsRouter.post('/confirm', async (c) => {
     // 🛡️ 2026-05-13 (Phase A): 라이브 주문 social proof — 라이브 시청 중인 시청자들에게
     //   "🛍️ XX님이 [상품명] 구매!" 메시지 broadcast → conversion 자극 (FOMO 효과).
     //   best-effort: DO 미가용 / 라이브 외 주문이면 skip.
+    //   🛡️ 2026-05-13 (Phase B): stock_update 추가 broadcast — 시청자 측 polling → DO push 전환.
+    //     남은 재고 N개 실시간 표시 정확도 ↑.
     if ((c.env as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM) {
       for (const order of updatedOrders) {
         const liveStreamId = (order as unknown as { live_stream_id?: number | null }).live_stream_id;
         if (!liveStreamId) continue;
         try {
-          // 첫 상품 정보 + 익명화 사용자
+          // 첫 상품 정보 + 익명화 사용자 + 남은 재고 (재고 차감 후 read)
           const firstItem = await c.env.DB.prepare(`
-            SELECT oi.product_name FROM order_items oi WHERE oi.order_id = ? LIMIT 1
-          `).bind(order.id).first<{ product_name: string }>();
+            SELECT oi.product_id, oi.product_name, oi.quantity FROM order_items oi WHERE oi.order_id = ? LIMIT 1
+          `).bind(order.id).first<{ product_id: number; product_name: string; quantity: number }>();
           const buyer = (order as unknown as { shipping_name?: string }).shipping_name || '구매자'
           const maskedBuyer = buyer.length <= 1 ? buyer : `${buyer[0]}**`
           const productName = firstItem?.product_name || '상품'
           const doId = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(liveStreamId))
           const stub = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
+
+          // 1) order_proof — 사회적 증명 toast
           c.executionCtx.waitUntil(
             stub.fetch(new Request('https://internal/broadcast', {
               method: 'POST',
@@ -307,8 +311,32 @@ paymentsRouter.post('/confirm', async (c) => {
               }),
             })).catch(() => { /* DO 미가용 — 결제는 이미 완료, 무시 */ })
           )
+
+          // 2) stock_update — 재고 push (polling 대체)
+          if (firstItem?.product_id) {
+            const stockRow = await c.env.DB.prepare(
+              `SELECT COALESCE(stock_quantity, stock, 0) as remaining_stock FROM products WHERE id = ? LIMIT 1`
+            ).bind(firstItem.product_id).first<{ remaining_stock: number }>().catch(() => null);
+            if (stockRow) {
+              c.executionCtx.waitUntil(
+                stub.fetch(new Request('https://internal/broadcast', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Internal-Auth': c.env.JWT_SECRET || '',
+                    'X-Auth-User-Type': 'system',
+                  },
+                  body: JSON.stringify({
+                    type: 'stock_update',
+                    data: { product_id: firstItem.product_id, remaining: stockRow.remaining_stock },
+                    timestamp: Date.now(),
+                  }),
+                })).catch(() => { /* DO 미가용 — 무시 */ })
+              )
+            }
+          }
         } catch (err) {
-          if (import.meta.env?.DEV) console.warn('[payment.confirm] order proof broadcast failed:', err)
+          if (import.meta.env?.DEV) console.warn('[payment.confirm] order proof/stock broadcast failed:', err)
         }
       }
     }

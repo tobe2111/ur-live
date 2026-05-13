@@ -236,6 +236,8 @@ function ReelCardImpl({
     lastDonation,
     activeFlashSale,
     pinnedMessage,
+    lastOrderProof,
+    stockUpdates,
   } = useLiveStreamWebSocket(stream.id, isInViewport, stream.status === 'ended')
 
   // 🛡️ 2026-05-13 (cost): IntersectionObserver — viewport 진입 시 WS connect, 떠나면 disconnect.
@@ -1094,6 +1096,12 @@ function ReelCardImpl({
         </div>
       )}
 
+      {/* 🛡️ 2026-05-13: 결제 사회적 증명 toast (FOMO) — 다른 시청자가 방금 구매 시 노출.
+          ChatMessage 시스템 메시지로도 들어가지만 채팅 안 보는 시청자에게도 명확히 노출. */}
+      {lastOrderProof && effectiveStatus === 'live' && (
+        <OrderProofToast key={lastOrderProof.ts} proof={lastOrderProof} />
+      )}
+
       {/* 🎧 소리 켜기 hint — muted 라이브 시청 중에만 노출.
           영상 자체는 muted 로 자동 재생 중이고, hint 만 6초 후 페이드아웃.
           전체 영역이 unmute 버튼이라 어디 터치해도 소리 ON. iframe 의 YouTube 컨트롤바 (음소거 토글) 도 그대로 작동. */}
@@ -1308,6 +1316,42 @@ function ReelCardImpl({
         }}
       />
       {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-13: 결제 사회적 증명 toast — TikTok / 라이브 커머스 표준 패턴.
+//   4초 동안 슬라이드 인-아웃, 마스킹된 이름 + 상품명 표시.
+//   chat 시스템 메시지와 중복이지만 채팅 안 보는 시청자에게도 명확.
+function OrderProofToast({ proof }: { proof: { buyer: string; product: string; amount: number; ts: number } }) {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 4000)
+    return () => clearTimeout(t)
+  }, [proof.ts])
+  if (!visible) return null
+  return (
+    <div className="absolute bottom-24 left-3 z-30 max-w-[260px] pointer-events-none">
+      <div
+        className="rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 px-3 py-2 shadow-2xl animate-[slideUp_300ms_ease-out]"
+        style={{ animation: 'orderProofIn 300ms ease-out' }}
+      >
+        <div className="flex items-start gap-2">
+          <span className="text-base shrink-0">🛍️</span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-white truncate">
+              {proof.buyer}님 구매!
+            </p>
+            <p className="text-[10px] text-white/70 truncate">{proof.product}</p>
+          </div>
+        </div>
+      </div>
+      <style>{`
+        @keyframes orderProofIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
