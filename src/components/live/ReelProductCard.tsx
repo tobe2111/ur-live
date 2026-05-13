@@ -27,6 +27,10 @@ interface Product {
   seller_id?: number
   colors?: { name: string; hex: string }[]
   sizes?: string[]
+  // 🛡️ 2026-05-13 (공구 #4): 라이브 ↔ 공구 연계 — 상품이 공구이면 배지/진도 표시
+  group_buy_target?: number | null
+  group_buy_current?: number | null
+  group_buy_status?: 'active' | 'achieved' | 'expired' | string | null
 }
 
 interface ReelProductCardProps {
@@ -106,6 +110,18 @@ export default function ReelProductCard({
           <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>
             {t('live.nowLabel', { defaultValue: 'NOW · 지금 소개' })}
           </span>
+          {/* 🛡️ 2026-05-13 (공구 #4): 공구 상품 표시 — 라이브 ↔ 공구 연계 */}
+          {currentProduct?.group_buy_target && currentProduct.group_buy_target > 0 && (
+            <span
+              className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold"
+              style={{
+                background: currentProduct.group_buy_status === 'achieved' ? '#10B981' : '#EC4899',
+                color: '#fff',
+              }}
+            >
+              {currentProduct.group_buy_status === 'achieved' ? '✓ 공구 달성' : '🤝 공구 진행 중'}
+            </span>
+          )}
         </div>
         {typeof stock === 'number' && stock > 0 && (
           <span style={{ fontSize: 10, color: '#6B7280' }}>
@@ -113,6 +129,32 @@ export default function ReelProductCard({
           </span>
         )}
       </div>
+
+      {/* 🛡️ 2026-05-13 (공구 #5): 공구 진도바 — 모바일 가시성 ↑ (h-1.5 → h-2 + 명확한 카운트) */}
+      {currentProduct?.group_buy_target && currentProduct.group_buy_target > 0 && (() => {
+        const target = currentProduct.group_buy_target
+        const current = currentProduct.group_buy_current ?? 0
+        const progress = Math.min(100, Math.round((current / target) * 100))
+        const achieved = currentProduct.group_buy_status === 'achieved'
+        return (
+          <div className="px-3 pb-1.5">
+            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-gradient-to-r from-pink-500 to-orange-500'}`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-[10px] mt-1 flex items-center justify-between">
+              <span className={achieved ? 'text-emerald-600 font-bold' : 'text-pink-600 font-semibold'}>
+                {achieved ? `✓ ${current}/${target}명 달성!` : `${current}/${target}명 모이면 시작`}
+              </span>
+              {!achieved && (
+                <span className="text-gray-500 font-medium">{progress}%</span>
+              )}
+            </p>
+          </div>
+        )
+      })()}
 
       {/* Main row — 썸네일 60x60 */}
       <div className="flex items-center gap-2.5 px-3 py-2">

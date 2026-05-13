@@ -435,7 +435,7 @@ export default function GroupBuyListPage() {
                         {/* 진행률 */}
                         {target > 0 && (
                           <div className="mt-2">
-                            <div className="w-full h-1.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
+                            <div className="w-full h-2.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${
                                   achieved ? 'bg-emerald-500' : 'bg-pink-500'
@@ -569,7 +569,7 @@ export default function GroupBuyListPage() {
 
                       {/* 진행률 바 */}
                       <div className="mt-3">
-                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
                               achieved ? 'bg-emerald-500' : 'bg-pink-500'
