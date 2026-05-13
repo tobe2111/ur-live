@@ -38,6 +38,8 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   const videoSenderRef = useRef<RTCRtpSender | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [status, setStatus] = useState<Status>('idle')
+  // 🛡️ 2026-05-13: 실제 캡처 해상도 — 카메라가 1080p 못 잡으면 셀러에게 안내
+  const [captureRes, setCaptureRes] = useState<{ width: number; height: number } | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
   const [camOff, setCamOff] = useState(false)
@@ -276,6 +278,12 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     }
     streamRef.current = stream
     if (videoRef.current) videoRef.current.srcObject = stream
+    // 🛡️ 2026-05-13: 실제 캡처 해상도 측정 → 셀러 UI 경고용
+    try {
+      const vt = stream.getVideoTracks()[0]
+      const s = vt?.getSettings()
+      if (s?.width && s?.height) setCaptureRes({ width: s.width, height: s.height })
+    } catch { /* ignore */ }
 
     // 디바이스 라벨 다시 로드 (권한 후엔 라벨 채워짐)
     try {
@@ -369,15 +377,17 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       if (track.kind === 'video') {
         videoSenderRef.current = sender
         const params = sender.getParameters()
-        // 🛡️ 2026-05-13 v2: 화질 최대화 — 6M → 9M (YouTube 1080p 30fps 권장 상한).
-        //   사용자 요청: latency 보다 화질/음질 우선. 셀러 업로드 9Mbps 면 광케이블/5G 권장.
-        //   maintain-resolution: 대역폭 부족 시 프레임 떨어뜨려도 해상도 유지.
+        // 🛡️ 2026-05-13 v3: 화질 절대 사수 — scaleResolutionDownBy:1 (해상도 강제 다운 차단)
+        //   + minBitrate 3M (최저 3Mbps 보장, CBR 유사)
+        //   브라우저가 CPU 부족 시 720p 로 변환하는 동작 차단.
         params.encodings = [{
           maxBitrate: 9_000_000,
+          minBitrate: 3_000_000,
           maxFramerate: 30,
+          scaleResolutionDownBy: 1,
           networkPriority: 'high',
           priority: 'high',
-        }]
+        } as RTCRtpEncodingParameters & { minBitrate?: number; scaleResolutionDownBy?: number }]
         params.degradationPreference = 'maintain-resolution'
         sender.setParameters(params).catch((e) => { if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] video setParameters failed:', e) })
       } else if (track.kind === 'audio') {
@@ -475,6 +485,15 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
           </div>
         )}
+        {/* 🛡️ 2026-05-13: 실제 캡처 해상도 표시 — 셀러가 1080p 가 안 잡혔는지 즉시 인지 */}
+        {captureRes && status === 'live' && (
+          <div className={`absolute top-3 right-3 px-2 py-1 rounded text-[10px] font-bold ${
+            captureRes.height >= 1080 ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'
+          }`}>
+            {captureRes.width}×{captureRes.height}
+            {captureRes.height < 1080 && ' ⚠️'}
+          </div>
+        )}
         {(status === 'fetching_token' || status === 'connecting' || status === 'requesting_camera') && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-sm gap-2">
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -529,6 +548,19 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       </div>
 
       {/* 에러 */}
+      {/* 🛡️ 2026-05-13: 카메라가 1080p 못 잡으면 안내 banner */}
+      {captureRes && captureRes.height < 1080 && status === 'live' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs text-amber-800">
+            <p className="font-semibold">현재 {captureRes.width}×{captureRes.height} 송출 중</p>
+            <p className="text-[11px] text-amber-700 mt-0.5">
+              1080p (1920×1080) 권장 — 카메라가 1080p 미지원이거나 권한 제한일 수 있어요. 외장 웹캠 또는 다른 브라우저 시도 권장.
+            </p>
+          </div>
+        </div>
+      )}
+
       {errorMsg && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
