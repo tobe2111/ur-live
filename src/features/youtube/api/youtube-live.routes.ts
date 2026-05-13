@@ -111,6 +111,50 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     }, 500)
   }
 
+  // 🛡️ 2026-05-13: quota 사전 검사 — 95%+ 시 새 방송 생성 차단 (이미 quota 부족할 가능성 큼).
+  //   사고: 라이브 시작 직전 quota 초과 → broadcast 생성 실패 → 셀러 혼란.
+  //   조치: 사전 차단 + 명확한 대기 안내.
+  try {
+    const { getQuotaUsage } = await import('./youtube-quota')
+    const quotaUsage = await getQuotaUsage(c.env as Env)
+    if (quotaUsage.warning === 'critical') {
+      // PST 자정 = KST 17:00 다음날 (UTC 08:00)
+      const nowUtcHour = new Date().getUTCHours()
+      const hoursUntilReset = nowUtcHour < 8 ? 8 - nowUtcHour : 32 - nowUtcHour
+      return c.json({
+        success: false,
+        error: `오늘 YouTube API 사용량이 ${Math.floor(quotaUsage.ratio * 100)}% 도달했어요. 약 ${hoursUntilReset}시간 후 자동 리셋됩니다.`,
+        error_code: 'YOUTUBE_QUOTA_NEAR_LIMIT',
+        hours_until_reset: hoursUntilReset,
+        quota_ratio: quotaUsage.ratio,
+      }, 503)
+    }
+  } catch { /* quota 조회 실패해도 진행 (best-effort) */ }
+
+  // 🛡️ 2026-05-13: 셀러별 일일 생성 한도 — 1명이 quota 다 잡아먹지 못하게.
+  //   기본 5회/일. setupLiveStream = 150 units → 5회 = 750 units (전체 quota 의 7.5%).
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const sellerKey = `live_create_count:${sellerId}:${today}`
+    const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV
+    if (kv) {
+      const raw = await kv.get(sellerKey)
+      const count = raw ? parseInt(raw, 10) : 0
+      const SELLER_DAILY_LIMIT = 5
+      if (count >= SELLER_DAILY_LIMIT) {
+        return c.json({
+          success: false,
+          error: `오늘 라이브 방송 생성 한도 (${SELLER_DAILY_LIMIT}회) 를 초과했어요. 내일 다시 시도해주세요.`,
+          error_code: 'SELLER_DAILY_LIMIT',
+          daily_limit: SELLER_DAILY_LIMIT,
+          current_count: count,
+        }, 429)
+      }
+      // 카운터 증가는 setup 성공 후에만 (실패 시 카운트 안 늘림)
+      // 아래 try 내부 INSERT 직전 카운터 증가
+    }
+  } catch { /* skip */ }
+
   const privacyStatus: 'public' | 'unlisted' | 'private' =
     privacy_status === 'unlisted' || privacy_status === 'private' ? privacy_status : 'public'
 
@@ -238,6 +282,18 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     const streamId = streamResult.meta.last_row_id
 
     // Link products + 첫 상품 이미지를 방송 썸네일로 설정
+    // 🛡️ 2026-05-13: 셀러 일일 생성 카운터 증가 (성공 후, KV 26h TTL)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const sellerKey = `live_create_count:${sellerId}:${today}`
+      const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV
+      if (kv) {
+        const raw = await kv.get(sellerKey)
+        const count = (raw ? parseInt(raw, 10) : 0) + 1
+        await kv.put(sellerKey, String(count), { expirationTtl: 26 * 60 * 60 })
+      }
+    } catch { /* best-effort */ }
+
     if (product_ids && product_ids.length > 0) {
       for (const productId of product_ids) {
         await c.env.DB.prepare(`

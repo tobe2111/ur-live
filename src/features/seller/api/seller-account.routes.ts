@@ -288,6 +288,69 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
 });
 
 /**
+ * GET /api/seller/upload-image/health
+ *
+ * 🛡️ 2026-05-13: 이미지 업로드 500 사고 진단용. 셀러가 호출하면 IMGBB API 키 상태 + imgbb 도달 가능성 체크.
+ *   real 업로드 안 함 → quota 0.
+ */
+sellerAccountRoutes.get('/upload-image/health', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const env = c.env as unknown as Record<string, string | undefined>;
+  const imgbbKey = env.IMGBB_API_KEY;
+  const diagnosis: Record<string, unknown> = {
+    has_imgbb_key: !!imgbbKey,
+    imgbb_key_length: imgbbKey?.length ?? 0,
+    imgbb_key_prefix: imgbbKey?.slice(0, 4) ?? '',  // 안전한 부분만 노출
+  };
+
+  if (!imgbbKey) {
+    return c.json({
+      success: false,
+      error: 'IMGBB_API_KEY 미설정',
+      hint: 'Cloudflare Dashboard → Workers & Pages → ur-live → Settings → Variables and Secrets 에서 추가',
+      diagnosis,
+    }, 503);
+  }
+
+  // imgbb API 도달 가능성 — quota usage 조회 (가벼운 호출)
+  try {
+    const probeRes = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+      method: 'GET',  // POST 아님 → imgbb 가 405 returns 또는 specific error
+      signal: AbortSignal.timeout(10_000),
+    });
+    diagnosis.imgbb_reachable = true;
+    diagnosis.imgbb_probe_status = probeRes.status;
+    const text = await probeRes.text().catch(() => '');
+    diagnosis.imgbb_probe_body_preview = text.slice(0, 200);
+    // 401/403 → API 키 invalid
+    if (probeRes.status === 401 || probeRes.status === 403) {
+      return c.json({
+        success: false,
+        error: `IMGBB API 키 인증 실패 (HTTP ${probeRes.status})`,
+        hint: '키가 만료/회수됐을 가능성. imgbb.com 에서 새 키 발급 후 Cloudflare Secret 갱신',
+        diagnosis,
+      }, 503);
+    }
+  } catch (e) {
+    diagnosis.imgbb_reachable = false;
+    diagnosis.imgbb_probe_error = (e as Error).message;
+    return c.json({
+      success: false,
+      error: 'imgbb API 도달 실패 (네트워크)',
+      diagnosis,
+    }, 503);
+  }
+
+  return c.json({
+    success: true,
+    message: '이미지 업로드 인프라 정상',
+    diagnosis,
+  });
+});
+
+/**
  * GET  /api/seller/settlements
  * POST /api/seller/settlements/request
  * GET  /api/seller/settlements/stats

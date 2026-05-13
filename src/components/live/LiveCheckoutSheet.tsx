@@ -10,7 +10,7 @@
  *   - 딜 부족 / 사용자가 카드 결제 원함 → "카드 결제" 클릭 시 /checkout 페이지로 fallback
  *     (기존 흐름 그대로 — regression 0)
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { X, MapPin, Wallet, CreditCard, Loader2 } from 'lucide-react'
@@ -55,6 +55,14 @@ export default function LiveCheckoutSheet({
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [dealBalance, setDealBalance] = useState(0)
+  // 🛡️ 2026-05-13: 1-탭 자동 결제 — TikTok Shop / Whatnot 패턴.
+  //   sheet 열림 + 딜 충분 + 주소 있음 → 3초 카운트다운 → 자동 결제. "취소" 버튼으로 abort.
+  //   초기값: 사용자가 이전에 토글 켰는지 (localStorage live_autoconfirm_v1).
+  const [autoConfirmEnabled, setAutoConfirmEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('live_autoconfirm_v1') === '1'
+  })
+  const [autoConfirmCountdown, setAutoConfirmCountdown] = useState<number | null>(null)
 
   // Fetch addresses + deal balance on open
   useEffect(() => {
@@ -74,6 +82,36 @@ export default function LiveCheckoutSheet({
     }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [open])
+
+  // 🛡️ 2026-05-13: 자동 결제 카운트다운 — sheet 열림 + 토글 ON + 모든 조건 충족 시.
+  useEffect(() => {
+    if (!open || loading || paying) { setAutoConfirmCountdown(null); return }
+    if (!autoConfirmEnabled) return
+    if (!product || !addresses.length) return
+    const addr = addresses.find(a => a.id === selectedAddressId)
+    if (!addr) return
+    const total = product.price + sellerShippingFee
+    if (dealBalance < total) return  // 딜 부족 시 카운트다운 없음
+
+    setAutoConfirmCountdown(3)
+    const interval = setInterval(() => {
+      setAutoConfirmCountdown(prev => {
+        if (prev === null) return null
+        if (prev <= 1) {
+          clearInterval(interval)
+          // 자동 결제 트리거 (handlePayWithDeals 가 paying 가드)
+          void handlePayWithDealsRef.current?.()
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, loading, paying, autoConfirmEnabled, addresses.length, selectedAddressId, dealBalance])
+
+  // handlePayWithDeals 를 ref 로 (effect dependency 회피 + 최신 값 사용)
+  const handlePayWithDealsRef = useRef<(() => Promise<void>) | null>(null)
 
   if (!open || !product) return null
 
@@ -126,6 +164,8 @@ export default function LiveCheckoutSheet({
       setPaying(false)
     }
   }
+  // 🛡️ 2026-05-13: ref 갱신 — auto-confirm effect 에서 최신 handlePayWithDeals 호출.
+  handlePayWithDealsRef.current = handlePayWithDeals
 
   const handleFallbackToCheckout = () => {
     // 카드 결제 / 신규 주소 / 쿠폰 등 풍부한 UX 필요 시 기존 페이지로 이동
@@ -268,9 +308,44 @@ export default function LiveCheckoutSheet({
                   {t('liveCheckout.dealNote', { defaultValue: '결제 후 영상 그대로 시청 계속됩니다.' })}
                 </p>
               )}
+
+              {/* 🛡️ 2026-05-13: 1-탭 자동 결제 토글 — 다음부터 sheet 열리면 3초 카운트다운 후 자동 결제. */}
+              {canPayWithDeals && selectedAddress && (
+                <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoConfirmEnabled}
+                    onChange={(e) => {
+                      const v = e.target.checked
+                      setAutoConfirmEnabled(v)
+                      try { localStorage.setItem('live_autoconfirm_v1', v ? '1' : '0') } catch { /* ignore */ }
+                    }}
+                    className="w-3.5 h-3.5"
+                  />
+                  <span>⚡ 다음부터 1-탭 자동 결제 (3초 카운트다운 + 취소 가능)</span>
+                </label>
+              )}
             </>
           )}
         </div>
+
+        {/* 🛡️ 2026-05-13: auto-confirm 카운트다운 오버레이 — 큰 "취소" 버튼 */}
+        {autoConfirmCountdown !== null && (
+          <div className="absolute inset-x-0 bottom-0 bg-pink-500 text-white px-5 py-4 flex items-center justify-between gap-3 rounded-t-2xl shadow-2xl"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">⚡ {autoConfirmCountdown}초 후 자동 결제</p>
+              <p className="text-[11px] opacity-90">총 {fmt(total)} · 딜 결제</p>
+            </div>
+            <button
+              onClick={() => setAutoConfirmCountdown(null)}
+              className="shrink-0 px-4 py-2 bg-white text-pink-600 rounded-lg text-sm font-bold hover:bg-pink-50 transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
