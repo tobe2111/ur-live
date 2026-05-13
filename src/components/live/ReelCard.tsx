@@ -930,7 +930,18 @@ function ReelCardImpl({
         const customThumb = (stream as { custom_thumbnail_url?: string }).custom_thumbnail_url
         if (customThumb) candidates.push(customThumb)
         if (stream.thumbnail_url && !candidates.includes(stream.thumbnail_url)) candidates.push(stream.thumbnail_url)
-        if (stream.youtube_video_id) candidates.push(`https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`)
+        // 🛡️ 2026-05-13: YouTube 썸네일 fallback chain — maxres → sd → hq → mq.
+        //   라이브 시작 후엔 maxresdefault 가 생성됨 (1280×720). 시작 전엔 hqdefault 만 존재.
+        //   chain 으로 시도 → onError 가 다음 후보로 fallback.
+        if (stream.youtube_video_id) {
+          const vid = stream.youtube_video_id
+          candidates.push(
+            `https://img.youtube.com/vi/${vid}/maxresdefault.jpg`,
+            `https://img.youtube.com/vi/${vid}/sddefault.jpg`,
+            `https://img.youtube.com/vi/${vid}/hqdefault.jpg`,
+            `https://img.youtube.com/vi/${vid}/mqdefault.jpg`,
+          )
+        }
         if (candidates.length === 0) return null
         return (
           <img

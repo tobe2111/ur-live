@@ -2093,7 +2093,30 @@ export async function omeAdmissionHandler(
   // 🛡️ 2026-05-13 (Critical): push 등록 성공 후 +3s 대기 → YouTube transitionBroadcastToLive 호출.
   //   BrowserBroadcaster (WebRTC) 경로에서 YouTube broadcast lifeCycleStatus 가 'ready' 에 정체되어
   //   iframe embed 가 검은 화면이던 사고 직접 해결. transition 은 push 가 YouTube 에 도착해야만 성공.
+  // 🛡️ 2026-05-13 (race protection): admission 이 짧은 시간에 중복 호출되거나 reconnect 와 겹치면
+  //   reRegisterAndTransition 가 동시 실행 → YouTube API 중복 호출 + invalidTransition 폭주.
+  //   SESSION_KV 에 짧은 TTL lock (60s) 으로 reRegister 만 차단. DB status update 는 계속 진행
+  //   (idempotent UPDATE 라 안전).
+  let omeLockHeld = false
   if (env.OME_HOST && env.OME_API_TOKEN) {
+    const lockKey = `lock:admission:${streamId}`
+    const kvLock = (env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+    if (kvLock) {
+      try {
+        const existing = await kvLock.get(lockKey)
+        if (existing) {
+          omeLockHeld = true
+          console.log(`[OME admission] lock held for stream ${streamId}, skipping reRegister (DB update still runs)`)
+        } else {
+          await kvLock.put(lockKey, String(Date.now()), { expirationTtl: 60 })
+        }
+      } catch (e) {
+        console.warn('[OME admission] lock acquire failed (continuing):', (e as Error).message)
+      }
+    }
+  }
+
+  if (env.OME_HOST && env.OME_API_TOKEN && !omeLockHeld) {
     const reRegisterAndTransition = async () => {
       // 🛡️ 2026-05-13 (안정성 강화): push 재시도 3 → 5회 증가, 네트워크/OME 부팅 지연 더 폭넓게 cover.
       //   exponential backoff: 1.5s → 3s → 6s → 12s → 24s (총 ~46.5s)
