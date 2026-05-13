@@ -241,12 +241,11 @@ export class YouTubeAPIService {
             enableDvr: true,
             enableContentEncryption: false,
             enableEmbed: true,
-            // 🛡️ 2026-05-13 v4: 화질/음질 최대화 우선 (사용자 요청).
-            //   normal: 지연 10-30초 BUT YouTube 가 quality optimization 풀로 적용 → 최고 화질
-            //   low/ultraLow 는 trade-off 로 화질 ↓
-            //   라이브 커머스에서 셀러가 일방 소개 → 구매 패턴이면 latency 영향 미미.
-            //   화질이 매출 결정 (셀러 얼굴 + 상품 디테일).
-            latencyPreference: 'normal'
+            // 🛡️ 2026-05-13 v5: 'normal' (10-30s) → 'low' (5-10s) 균형 선택.
+            //   'low' 도 1080p + 60fps 지원, quality optimization 켜져있어 화질 거의 동일.
+            //   normal 의 30초 지연은 셀러 채팅 응답 어색함. 5-10초가 sweet spot.
+            //   9Mbps 송출 + 'low' = 시청자도 1080p HD 풀 화질 수신.
+            latencyPreference: 'low'
           }
         }),
         signal: AbortSignal.timeout(20000)
