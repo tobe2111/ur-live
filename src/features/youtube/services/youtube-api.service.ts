@@ -225,13 +225,16 @@ export class YouTubeAPIService {
             selfDeclaredMadeForKids: false
           },
           contentDetails: {
-            // 🛡️ 2026-05-11 Option D 최적화: enableAutoStart=true (수동 transition 15s 대기 제거).
-            //   YouTube 가 stream active 감지 즉시 ready→live 자동 전환 → 라이브까지 25s → 3s.
-            //   enableMonitorStream=false 라 testing 단계 없음, autoStart 가 ready→live 직행.
+            // 🛡️ 2026-05-13: enableAutoStart=true → false 로 변경.
+            //   사고: stream 79/80/81 모두 streamStatus='active' + lifeCycleStatus='ready' 정체.
+            //   원인 분석: YouTube auto-start 가 stream active 감지를 30-60s 늦게 처리하거나,
+            //     enableAutoStart=true 와 우리 수동 transition 시도가 race → invalidTransition 응답.
+            //   해결: enableAutoStart 끄고 우리가 명시적으로 streamStatus active 확인 후 transition 호출.
+            //     YouTube docs 권장 패턴 (https://developers.google.com/youtube/v3/live/life-of-a-broadcast).
             //   autoStop=false: 브라우저 일시 disconnect (백그라운드/네트워크 blip) → YouTube 가
             //   "송출 끊김" 으로 판단, broadcast 자동 종료 → 셀러 의도와 무관하게 방송 끝남.
             //   현재: 셀러가 명시적으로 [방송 종료] 누를 때만 /live/:id/end → transitionToComplete.
-            enableAutoStart: true,
+            enableAutoStart: false,
             enableAutoStop: false,
             monitorStream: { enableMonitorStream: false },
             recordFromStart: true,

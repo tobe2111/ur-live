@@ -1063,16 +1063,24 @@ app.post('/live/:id/force-transition', async (c) => {
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, yt)
     if (!accessToken) return c.json({ success: false, error: '유효한 YouTube 토큰 없음 (재연결 필요)' }, 401)
 
-    // 현재 lifeCycleStatus 확인
+    // broadcast + bound stream status 한 번에 조회
     const statusRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status&id=${stream.youtube_broadcast_id}`,
+      `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status,contentDetails&id=${stream.youtube_broadcast_id}`,
       { headers: { 'Authorization': `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15000) }
     )
     if (!statusRes.ok) {
       return c.json({ success: false, error: `getBroadcast 실패 (${statusRes.status})` }, 500)
     }
-    const statusData = await statusRes.json() as { items?: Array<{ status?: { lifeCycleStatus?: string } }> }
-    const lifeCycle = statusData.items?.[0]?.status?.lifeCycleStatus
+    const statusData = await statusRes.json() as {
+      items?: Array<{
+        status?: { lifeCycleStatus?: string }
+        contentDetails?: { boundStreamId?: string; enableAutoStart?: boolean }
+      }>
+    }
+    const item = statusData.items?.[0]
+    const lifeCycle = item?.status?.lifeCycleStatus
+    const boundStreamId = item?.contentDetails?.boundStreamId
+    const enableAutoStart = item?.contentDetails?.enableAutoStart
     if (!lifeCycle) return c.json({ success: false, error: 'broadcast not found' }, 404)
     if (lifeCycle === 'live' || lifeCycle === 'liveStarting') {
       return c.json({ success: true, message: '이미 live 상태입니다', lifeCycleStatus: lifeCycle })
@@ -1080,21 +1088,49 @@ app.post('/live/:id/force-transition', async (c) => {
     if (lifeCycle === 'complete' || lifeCycle === 'revoked') {
       return c.json({ success: false, error: `broadcast 가 ${lifeCycle} 상태 — transition 불가` }, 400)
     }
-    // transition 호출 (testing/ready 일 때)
+    // 🛡️ 2026-05-13 (v2): bound stream status='active' 확인 후 transition.
+    //   active 아니면 transition 절대 성공 못 함 — 의미 없는 API call 차단.
+    if (boundStreamId) {
+      const sRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/liveStreams?part=status&id=${boundStreamId}`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10000) }
+      )
+      if (sRes.ok) {
+        const sData = await sRes.json() as { items?: Array<{ status?: { streamStatus?: string; healthStatus?: { status?: string } } }> }
+        const streamStatus = sData.items?.[0]?.status?.streamStatus
+        const health = sData.items?.[0]?.status?.healthStatus?.status
+        if (streamStatus !== 'active') {
+          return c.json({
+            success: false,
+            error: `YouTube 가 아직 stream 신호 받는 중 (streamStatus=${streamStatus}, health=${health || 'unknown'}). 셀러 송출 도구 확인 후 30초 뒤 재시도.`,
+            stream_status: streamStatus,
+            health_status: health,
+          }, 409)
+        }
+      }
+    }
+    // transition 호출
     await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id)
 
-    // KV 캐시 무효화
     const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
     if (kv) await cacheInvalidate(kv, `stream:${streamId}`).catch(() => {})
 
-    return c.json({ success: true, message: 'transition 완료 — 곧 영상이 나옵니다 (5-15초)', previousLifeCycleStatus: lifeCycle })
+    return c.json({
+      success: true,
+      message: 'transition 완료 — 곧 영상이 나옵니다 (5-15초)',
+      previousLifeCycleStatus: lifeCycle,
+      ...(enableAutoStart ? { note: 'enableAutoStart=true 인 옛 broadcast — 새로 만들면 자동 transition 안정성 ↑' } : {}),
+    })
   } catch (e) {
     const msg = (e as Error).message || ''
     if (/redundant|already/i.test(msg)) {
       return c.json({ success: true, message: '이미 live 상태입니다' })
     }
     if (/invalid/i.test(msg)) {
-      return c.json({ success: false, error: 'YouTube 가 아직 stream 신호 미감지 — 5-10초 후 다시 시도하세요' }, 409)
+      return c.json({
+        success: false,
+        error: 'YouTube 가 transition 거부 — enableAutoStart 와 race 중일 수 있어요. 10-30초 뒤 다시 시도하거나, 새 broadcast 만들면 안정적.',
+      }, 409)
     }
     return c.json({ success: false, error: msg }, 500)
   }
@@ -1250,6 +1286,87 @@ app.get('/live/_quota', async (c) => {
   }
   const usage = await getQuotaUsage(c.env)
   return c.json({ success: true, data: usage })
+})
+
+/**
+ * GET /api/youtube/live/_health-check
+ *
+ * 🛡️ 2026-05-13: Launch 전 인프라 health check — env 변수 + DB 스키마 + OME 도달.
+ *   어드민이 호출하면 라이브 송출 인프라 전체 상태 한 화면.
+ */
+app.get('/live/_health-check', requireAdmin(), async (c) => {
+  const env = c.env
+  const checks: Record<string, { ok: boolean; detail?: string }> = {}
+
+  // 1. 환경 변수
+  checks.OME_HOST = { ok: !!env.OME_HOST, detail: env.OME_HOST ? '설정됨' : '❌ 미설정 — admission webhook 안 옴' }
+  checks.OME_WEBHOOK_SECRET = { ok: !!env.OME_WEBHOOK_SECRET, detail: env.OME_WEBHOOK_SECRET ? '설정됨' : '❌ 미설정' }
+  checks.OME_API_TOKEN = { ok: !!env.OME_API_TOKEN, detail: env.OME_API_TOKEN ? '설정됨' : '❌ 미설정 — push 등록 불가' }
+  checks.YOUTUBE_CLIENT_ID = { ok: !!env.YOUTUBE_CLIENT_ID, detail: env.YOUTUBE_CLIENT_ID ? '설정됨' : '❌ 미설정' }
+  checks.YOUTUBE_CLIENT_SECRET = { ok: !!env.YOUTUBE_CLIENT_SECRET, detail: env.YOUTUBE_CLIENT_SECRET ? '설정됨' : '❌ 미설정' }
+  checks.IMGBB_API_KEY = { ok: !!(env as unknown as { IMGBB_API_KEY?: string }).IMGBB_API_KEY, detail: (env as unknown as { IMGBB_API_KEY?: string }).IMGBB_API_KEY ? '설정됨' : '❌ 이미지 업로드 불가' }
+  checks.SESSION_KV = { ok: !!env.SESSION_KV, detail: env.SESSION_KV ? '설정됨' : '❌ 캐시 동작 안 함' }
+  checks.LIVE_STREAM_DO = { ok: !!(env as unknown as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM, detail: (env as unknown as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM ? '설정됨' : '❌ WebSocket 채팅/상품 sync 불가' }
+
+  // 2. DB 스키마 — disconnected_at 컬럼 존재 확인 (PRAGMA)
+  try {
+    const cols = await env.DB.prepare(`PRAGMA table_info(live_streams)`).all<{ name: string }>()
+    const colNames = (cols.results || []).map(r => r.name)
+    checks['live_streams.disconnected_at'] = {
+      ok: colNames.includes('disconnected_at'),
+      detail: colNames.includes('disconnected_at') ? '있음' : '❌ repair-schema 실행 필요 (POST /api/_internal/repair-schema)',
+    }
+    checks['live_streams.last_error'] = { ok: colNames.includes('last_error'), detail: colNames.includes('last_error') ? '있음' : '❌ repair-schema' }
+    checks['live_streams.started_at'] = { ok: colNames.includes('started_at'), detail: colNames.includes('started_at') ? '있음' : '❌ repair-schema' }
+  } catch (e) {
+    checks['db_schema'] = { ok: false, detail: `❌ ${(e as Error).message}` }
+  }
+
+  // 3. OME 도달 가능성
+  if (env.OME_HOST && env.OME_API_TOKEN) {
+    try {
+      const auth = btoa(env.OME_API_TOKEN)
+      const res = await fetch(`http://${env.OME_HOST}:8081/v1/stats/current`, {
+        headers: { Authorization: `Basic ${auth}` },
+        signal: AbortSignal.timeout(5000),
+      })
+      checks.ome_reachable = { ok: res.ok, detail: res.ok ? `HTTP ${res.status}` : `❌ HTTP ${res.status}` }
+    } catch (e) {
+      checks.ome_reachable = { ok: false, detail: `❌ ${(e as Error).message}` }
+    }
+  }
+
+  // 4. 좀비 스트림
+  try {
+    const zombies = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM live_streams
+      WHERE status = 'live' AND started_at IS NOT NULL
+        AND datetime(started_at) < datetime('now', '-10 minutes')
+    `).first<{ count: number }>()
+    checks.zombie_streams = {
+      ok: (zombies?.count ?? 0) === 0,
+      detail: zombies?.count ? `⚠️ ${zombies.count}개 의심 (cron 가 자동 복구하지만 모니터링 필요)` : '없음',
+    }
+  } catch { /* skip */ }
+
+  // 5. Quota usage
+  try {
+    const usage = await getQuotaUsage(env)
+    checks.youtube_quota = {
+      ok: usage.warning !== 'critical',
+      detail: `${Math.floor(usage.ratio * 100)}% (${usage.total} / ${usage.limit}) — ${usage.warning}`,
+    }
+  } catch { /* skip */ }
+
+  const allOk = Object.values(checks).every(c => c.ok)
+  return c.json({
+    success: true,
+    overall_status: allOk ? 'healthy' : 'issues_detected',
+    checks,
+    recommendation: allOk
+      ? '✅ 라이브 송출 인프라 모두 정상. launch 가능.'
+      : '⚠️ 위 ❌ 항목을 먼저 해결해야 launch 안정.',
+  })
 })
 
 /**
@@ -2439,14 +2556,14 @@ export async function omeAdmissionHandler(
         return
       }
 
-      // 🛡️ 2026-05-13 (Critical refinement): push 성공 후 broadcast lifeCycleStatus 폴링.
-      //   기존: 3s sleep 후 무조건 transition → invalidTransition 시 retry → 비효율 (불필요 API call 多)
-      //   개선: lifeCycleStatus 폴링하여 'ready' 면 transition, 'live'/'liveStarting' 이면 enableAutoStart
-      //         자동 완료된 것으로 보고 skip, 'testing' 이면 활성화 대기. 최대 7회 × 3s = 21s.
-      //   YouTube quota 절감 + race condition 감소.
+      // 🛡️ 2026-05-13 (Critical refinement v3): enableAutoStart=false 로 변경 후 명시적 transition.
+      //   stream 79/80/81 사고: streamStatus=active + lifeCycleStatus=ready 인데 transition 거부.
+      //   원인: enableAutoStart=true 와 우리 수동 transition 의 race (YouTube 가 "transitioning" 상태로 invalidTransition 응답).
+      //   해결: enableAutoStart=false (createBroadcast) → 우리가 명시적으로 streamStatus active 확인 → transition.
+      //   재시도: 15회 × 4s = 60s (YouTube auto-start 옛 broadcast 호환 + 새 broadcast 안정 전환).
       if (stream.youtube_broadcast_id && env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET) {
-        await new Promise((r) => setTimeout(r, 2000))  // 첫 폴링 전 짧은 대기
-        const MAX_TX_RETRIES = 7
+        await new Promise((r) => setTimeout(r, 2000))
+        const MAX_TX_RETRIES = 15
         const yt = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID, env.YOUTUBE_CLIENT_SECRET)
         const accessToken = await getValidAccessToken(env.DB, sellerId, yt)
         if (!accessToken) {
@@ -2455,36 +2572,59 @@ export async function omeAdmissionHandler(
         }
         for (let attempt = 0; attempt < MAX_TX_RETRIES; attempt++) {
           try {
-            // broadcast lifeCycleStatus 직접 조회 (raw fetch — mapBroadcastStatus 가 enum 으로 축소시켜 정보 손실 방지)
+            // broadcast + bound stream status 한 번에 조회
             const res = await fetch(
-              `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status&id=${stream.youtube_broadcast_id}`,
+              `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status,contentDetails&id=${stream.youtube_broadcast_id}`,
               { headers: { 'Authorization': `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15000) }
             )
             if (!res.ok) {
-              console.warn(`[OME admission] getBroadcast status failed (${res.status}), retry`)
-              await new Promise((r) => setTimeout(r, 3000))
+              await new Promise((r) => setTimeout(r, 4000))
               continue
             }
-            const data = await res.json() as { items?: Array<{ status?: { lifeCycleStatus?: string; recordingStatus?: string } }> }
-            const lifeCycleStatus = data.items?.[0]?.status?.lifeCycleStatus
+            const data = await res.json() as {
+              items?: Array<{
+                status?: { lifeCycleStatus?: string }
+                contentDetails?: { boundStreamId?: string }
+              }>
+            }
+            const item = data.items?.[0]
+            const lifeCycleStatus = item?.status?.lifeCycleStatus
+            const boundStreamId = item?.contentDetails?.boundStreamId
             if (!lifeCycleStatus) {
-              await new Promise((r) => setTimeout(r, 3000))
+              await new Promise((r) => setTimeout(r, 4000))
               continue
             }
-            // 이미 live/완료 → 종료
+            // 이미 live → 종료
             if (lifeCycleStatus === 'live' || lifeCycleStatus === 'liveStarting') {
-              console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} lifeCycleStatus=${lifeCycleStatus} (auto-transitioned by enableAutoStart)`)
+              console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} → ${lifeCycleStatus} ✅`)
               return
             }
-            if (lifeCycleStatus === 'complete') {
-              console.warn(`[OME admission] broadcast ${stream.youtube_broadcast_id} already complete`)
+            if (lifeCycleStatus === 'complete' || lifeCycleStatus === 'revoked') {
+              console.warn(`[OME admission] broadcast already ${lifeCycleStatus}, abort`)
               return
             }
-            // testing / ready → transition 호출 가능
-            if (lifeCycleStatus === 'testing' || lifeCycleStatus === 'ready') {
+            // ready / created / testing → bound stream status 확인 후 transition
+            if (lifeCycleStatus === 'ready' || lifeCycleStatus === 'testing') {
+              // 🛡️ bound stream status='active' 확인 — invalidTransition 방지
+              if (boundStreamId) {
+                const sRes = await fetch(
+                  `https://www.googleapis.com/youtube/v3/liveStreams?part=status&id=${boundStreamId}`,
+                  { headers: { 'Authorization': `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10000) }
+                )
+                if (sRes.ok) {
+                  const sData = await sRes.json() as { items?: Array<{ status?: { streamStatus?: string } }> }
+                  const streamStatus = sData.items?.[0]?.status?.streamStatus
+                  if (streamStatus !== 'active') {
+                    console.log(`[OME admission] streamStatus=${streamStatus} (waiting for active), attempt ${attempt + 1}/${MAX_TX_RETRIES}`)
+                    await new Promise((r) => setTimeout(r, 4000))
+                    continue
+                  }
+                }
+              }
+              // streamStatus active → transition
               try {
                 await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id!)
-                console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} transitioned to live (was ${lifeCycleStatus})`)
+                console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} → live ✅ (attempt ${attempt + 1})`)
                 return
               } catch (e) {
                 const msg = (e as Error).message || ''
@@ -2493,24 +2633,21 @@ export async function omeAdmissionHandler(
                   return
                 }
                 if (/invalid/i.test(msg)) {
-                  // YouTube 측 streamStatus 가 아직 active 아님. 폴링 계속.
-                  console.log(`[OME admission] transition invalidTransition (streamStatus inactive yet), attempt ${attempt + 1}/${MAX_TX_RETRIES}`)
-                  await new Promise((r) => setTimeout(r, 3000))
+                  console.log(`[OME admission] invalidTransition (race with autoStart), retry ${attempt + 1}/${MAX_TX_RETRIES}`)
+                  await new Promise((r) => setTimeout(r, 4000))
                   continue
                 }
                 console.warn(`[OME admission] transition unknown error:`, msg)
                 return
               }
             }
-            // created / testStarting / liveStarting / revoked 등 → 대기
-            console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} lifeCycleStatus=${lifeCycleStatus}, waiting...`)
-            await new Promise((r) => setTimeout(r, 3000))
+            await new Promise((r) => setTimeout(r, 4000))
           } catch (e) {
             console.warn(`[OME admission] poll attempt ${attempt + 1}/${MAX_TX_RETRIES} threw:`, (e as Error).message)
-            await new Promise((r) => setTimeout(r, 3000))
+            await new Promise((r) => setTimeout(r, 4000))
           }
         }
-        console.warn(`[OME admission] broadcast ${stream.youtube_broadcast_id} did not reach live state within ${MAX_TX_RETRIES * 3}s — visa cron 가 후속 처리`)
+        console.warn(`[OME admission] broadcast ${stream.youtube_broadcast_id} did not reach live within ${MAX_TX_RETRIES * 4}s — cron 가 후속 처리`)
       }
     }
     if (waitUntil) waitUntil(reRegisterAndTransition())
