@@ -361,9 +361,12 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
       {/* 시청자 링크 공유 */}
       <ShareLiveLink streamId={stream.id} />
 
-      {/* 채팅 (영상 미리보기 제거 — YouTube embed는 30초 지연으로 모니터링 무의미) */}
+      {/* 채팅 (영상 미리보기 제거 — YouTube embed는 30초 지연으로 모니터링 무의미)
+          🛡️ 2026-05-13: PC 에선 더 큰 영역 (lg+ 60vh). 모바일에선 기존 320. */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ minHeight: 320 }}>
-        <LiveChatPanel streamId={stream.id} />
+        <div className="lg:h-[60vh]">
+          <LiveChatPanel streamId={stream.id} />
+        </div>
       </div>
 
       {/* 상품 전환 + 경매/타임딜 */}
