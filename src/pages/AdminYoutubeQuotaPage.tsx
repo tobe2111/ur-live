@@ -49,15 +49,20 @@ export default function AdminYoutubeQuotaPage() {
 
   const formatNum = (n: number) => n.toLocaleString('ko-KR')
 
-  const handleZombieAction = async (streamId: number, action: 'force-transition' | 'reset-zombie') => {
+  const handleForceEnd = async (streamId: number, title: string) => {
+    if (!confirm(`정말 stream #${streamId} "${title}" 을 강제 종료할까요?\n셀러에게 알림이 발송됩니다.`)) return
+    const reason = prompt('종료 사유 (셀러에게 전송됨):', '좀비 의심 stream — 송출 신호 미감지') || '어드민 수동 종료'
     try {
-      // admin이 다른 셀러의 stream 조작은 별도 endpoint 필요 — 일단 진단/감지 용도로만.
-      // 실제 복구는 셀러 본인이 셀러 페이지에서 해야 함.
-      toast.info(`Stream ${streamId} — 셀러에게 ${action === 'force-transition' ? '강제 라이브 전환' : '좀비 복구'} 안내 필요`)
-      // eslint-disable-next-line no-console
-      console.log('action', action, 'streamId', streamId)
-    } catch {
-      toast.error('실패')
+      const res = await api.post(`/api/youtube/live/${streamId}/admin-force-end?reason=${encodeURIComponent(reason)}`)
+      if (res.data?.success) {
+        toast.success(`Stream #${streamId} 강제 종료 완료`)
+        load()  // 대시보드 새로고침
+      } else {
+        toast.error(res.data?.error || '실패')
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } }
+      toast.error(err?.response?.data?.error || '실패')
     }
   }
 
@@ -211,10 +216,10 @@ export default function AdminYoutubeQuotaPage() {
                           {z.last_error && <p className="text-[11px] text-red-600 mt-1 truncate">⚠️ {z.last_error}</p>}
                         </div>
                         <button
-                          onClick={() => handleZombieAction(z.id, 'reset-zombie')}
-                          className="shrink-0 px-2.5 py-1 rounded-md bg-white border border-amber-300 text-amber-700 text-[11px] font-semibold hover:bg-amber-100"
+                          onClick={() => handleForceEnd(z.id, z.title)}
+                          className="shrink-0 px-2.5 py-1 rounded-md bg-red-600 text-white text-[11px] font-bold hover:bg-red-700"
                         >
-                          상세
+                          강제 종료
                         </button>
                       </div>
                     </div>

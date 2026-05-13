@@ -153,60 +153,30 @@ export async function handleOmeHealthCheck(env: Env): Promise<void> {
       const expectedName = `s${z.id}`
       if (liveOmeStreams.has(expectedName)) continue  // 실제 송출 중 — skip
 
-      // 🛡️ 2026-05-13 v2: 2-strike 검증 — KV 에 첫 detect 표시, 다음 cron run (~5분 후) 에서도
-      //   여전히 missing 이면 그때 reset. 단발 blip (OME 재시작 등) 거짓 양성 방지.
-      const strikeKey = `ome_zombie_strike:${z.id}`
-      const kv = env.SESSION_KV
-      let firstStrike = false
-      if (kv) {
-        try {
-          const prev = await kv.get(strikeKey)
-          if (!prev) {
-            await kv.put(strikeKey, '1', { expirationTtl: 900 })  // 15분 후 만료
-            firstStrike = true
-            logInfo(`[cron:ome-health] zombie 1st strike — stream ${z.id} (${z.title}). 다음 cron run 에서 확정.`)
-            continue  // 첫 번째 detect 는 reset 하지 않음
-          }
-        } catch { /* KV 실패 시 그냥 진행 */ }
-      }
-      if (firstStrike) continue
+      // 🛡️ 2026-05-13 v3 (사용자 정책): 자동 reset 제거. 어드민 강제 종료만 가능.
+      //   대신 admin_alerts 에 INSERT → 어드민 대시보드 (/admin/youtube-quota) 에 노출.
+      //   어드민이 보고 판단 후 강제 종료.
+      logInfo(`[cron:ome-health] zombie suspect (admin 알림만) — stream ${z.id} (${z.title}) — DB live but no OME stream`)
 
-      logInfo(`[cron:ome-health] zombie CONFIRMED (2 strikes) — stream ${z.id} (${z.title}) — DB live but no OME stream`)
-
-      // status reset + 셀러 알림 + push 정리
-      await env.DB.prepare(`
-        UPDATE live_streams
-        SET status = 'scheduled', started_at = NULL, last_error = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND status = 'live'
-      `).bind('자동 복구: OME 에 송출 신호 15분+ 미감지 (2회 확인). 다시 송출하세요.', z.id).run()
-        .catch((e) => logError(`[cron:ome-health] zombie reset failed stream=${z.id}`, { error: (e as Error).message }))
-
-      // KV strike 키 제거 — 다음 라이브용
-      if (kv) try { await kv.delete(strikeKey) } catch { /* ignore */ }
-
-      await env.DB.prepare(`
-        INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-        VALUES (
-          (SELECT user_id FROM sellers WHERE id = ?),
-          'seller', 'broadcast_zombie_recovered',
-          '방송 신호가 끊겨 다시 시작이 필요해요',
-          ?, ?, CURRENT_TIMESTAMP
-        )
-      `).bind(
-        z.seller_id,
-        `"${z.title}" 방송 송출 신호가 15분 이상 OME 에 도달하지 않아 자동으로 대기 상태로 되돌렸어요. 송출 도구 / 인터넷 확인 후 다시 시작하세요.`,
-        `/seller/live-broadcast/${z.id}`,
-      ).run().catch(() => { /* notifications 없으면 skip */ })
-
-      // OME push 정리 (다음 시도 시 Duplicate ID 방지)
+      // admin_alerts 에 INSERT (15분 throttle — 같은 stream 중복 알림 방지)
       try {
-        await fetch(`http://${env.OME_HOST}:8081/v1/vhosts/default/apps/app:stopPush`, {
-          method: 'POST',
-          headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: `youtube-${z.id}` }),
-          signal: AbortSignal.timeout(5000),
-        })
-      } catch { /* best-effort */ }
+        await env.DB.prepare(`
+          INSERT INTO admin_alerts (kind, title, body, created_at)
+          SELECT ?, ?, ?, CURRENT_TIMESTAMP
+          WHERE NOT EXISTS (
+            SELECT 1 FROM admin_alerts
+            WHERE kind = ? AND resolved = 0
+              AND created_at > datetime('now', '-15 minutes')
+          )
+        `).bind(
+          `zombie_stream:${z.id}`,
+          '좀비 의심 라이브 stream 감지',
+          `Stream #${z.id} "${z.title}" — DB.status='live' 인데 OME 에 송출 신호 15분+ 없음. 어드민 대시보드에서 강제 종료 검토 필요.`,
+          `zombie_stream:${z.id}`,
+        ).run()
+      } catch (e) {
+        logError('[cron:ome-health] admin alert insert failed', { error: (e as Error).message })
+      }
     }
   } catch (e) {
     logError('[cron:ome-health] zombie scan failed', { error: (e as Error).message })
