@@ -104,10 +104,11 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         <Suspense fallback={<div className="flex items-center justify-center py-12 bg-gray-50 rounded-2xl"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>}>
           <BrowserBroadcaster
             streamId={stream.id}
+            // 🛡️ 2026-05-13: 새로고침 후 mount 시 stream.status='live' 면 자동 재연결.
+            //   기존: 셀러가 매번 "방송 시작" 다시 눌러야 함. 60s grace 안에 못 누르면 종료.
+            //   변경: 페이지 reload 만으로 자동 복귀 (카메라 권한 재허용 prompt 없이 통과 가정).
+            autoStart={stream.status === 'live'}
             onStreaming={(mode) => {
-              // YouTube WHIP direct: 브라우저 → YouTube 직접 연결됨.
-              // OME admission handler 없으므로 수동으로 broadcast 전환 트리거.
-              // OME mode: admission handler 가 12s 후 자동 전환 — 여기서는 no-op.
               if (mode === 'youtube_whip') onGoLive('youtube_whip')
             }}
             onUnsupported={() => setOmeAvailable(false)}
