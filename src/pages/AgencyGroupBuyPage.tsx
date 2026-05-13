@@ -199,11 +199,17 @@ export default function AgencyGroupBuyPage() {
       listUrl = '/api/community-group-buy/list?sort=popular'
     }
 
-    Promise.all([
-      api.get(listUrl, { headers }),
-      api.get('/api/community-group-buy/list?sort=popular', { headers }),
-    ])
-      .then(([listRes, allRes]) => {
+    // 🛡️ 2026-05-13 (공구 UX): stats 용 fetch 중복 호출 제거.
+    //   currentTab='all' 면 listUrl 와 stats URL 이 동일 → 같은 데이터 사용.
+    const statsUrl = '/api/community-group-buy/list?sort=popular'
+    const requests = listUrl === statsUrl
+      ? [api.get(listUrl, { headers })]
+      : [api.get(listUrl, { headers }), api.get(statsUrl, { headers })]
+
+    Promise.all(requests)
+      .then((responses) => {
+        const listRes = responses[0]
+        const allRes = responses[1] ?? responses[0]
         setGroupBuys(listRes.data.data || [])
         const all: GroupBuy[] = allRes.data.data || []
         setStats({
@@ -217,6 +223,14 @@ export default function AgencyGroupBuyPage() {
         toast.error(t('agency.groupBuy.loadFailed', { defaultValue: '데이터를 불러오는데 실패했습니다.' }))
       })
       .finally(() => setLoading(false))
+  }
+
+  // 🛡️ 2026-05-13 (공구 UX): 에이전시 수익 계산 — 확정가 × 참여자 × 수수료율.
+  //   기본 3% (agency_commission_rate platform 설정값 미구현 시 fallback).
+  const AGENCY_COMMISSION_RATE = 0.03
+  function estimateAgencyRevenue(g: GroupBuy): number {
+    if (!g.confirmed_price || !g.participant_count) return 0
+    return Math.round(g.confirmed_price * g.participant_count * AGENCY_COMMISSION_RATE)
   }
 
   useEffect(() => {
@@ -287,8 +301,75 @@ export default function AgencyGroupBuyPage() {
           ))}
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* 🛡️ 2026-05-13 (공구 UX): 모바일 카드 layout — 가로 스크롤 대신 세로 카드 (lg 미만) */}
+        <div className="lg:hidden divide-y divide-gray-100">
+          {loading ? (
+            <p className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.loading', { defaultValue: '불러오는 중...' })}</p>
+          ) : groupBuys.length === 0 ? (
+            <p className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.empty', { defaultValue: '해당하는 공구가 없습니다.' })}</p>
+          ) : groupBuys.map(g => {
+            const revenue = estimateAgencyRevenue(g)
+            return (
+              <div key={g.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-gray-900 truncate">{g.restaurant_name}</h4>
+                    {g.restaurant_address && (
+                      <p className="text-[11px] text-gray-500 truncate">{g.restaurant_address}</p>
+                    )}
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${STATUS_CLS_GB[g.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {t(`agency.groupBuy.status.${g.status}`, { defaultValue: g.status })}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-400">참여자</p>
+                    <p className="font-bold text-gray-900">{g.participant_count}/{g.target_participants}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">예치 딜</p>
+                    <p className="font-bold text-gray-900">{formatNumber(g.total_deposit_deals || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">예상 수익</p>
+                    <p className="font-bold text-emerald-600">
+                      {revenue > 0 ? `₩${formatNumber(revenue)}` : '-'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  <p className="text-[10px] text-gray-400">
+                    {g.expires_at ? `만료 ${new Date(g.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
+                  </p>
+                  <div className="flex gap-1.5">
+                    {g.status === 'proposed' && (
+                      <button onClick={() => changeStatus(g.id, 'negotiating')}
+                        className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-medium">
+                        협상 시작
+                      </button>
+                    )}
+                    {(g.status === 'proposed' || g.status === 'negotiating') && (
+                      <button onClick={() => setConfirmTarget(g)}
+                        className="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-[11px] font-medium">
+                        딜 확정
+                      </button>
+                    )}
+                    {g.status === 'confirmed' && (
+                      <button onClick={() => generateContract(g)}
+                        className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-[11px] font-medium flex items-center gap-1">
+                        <FileDown className="w-3 h-3" /> 계약서
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop Table (lg+) */}
+        <div className="overflow-x-auto hidden lg:block">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
@@ -297,6 +378,7 @@ export default function AgencyGroupBuyPage() {
                   t('agency.groupBuy.colAddress', { defaultValue: '주소' }),
                   t('agency.groupBuy.colParticipants', { defaultValue: '참여자' }),
                   t('agency.groupBuy.colTotalDeposit', { defaultValue: '총 예치 딜' }),
+                  t('agency.groupBuy.colRevenue', { defaultValue: '예상 수익' }),
                   t('common.status', { defaultValue: '상태' }),
                   t('agency.groupBuy.colExpiry', { defaultValue: '만료일' }),
                   t('common.action', { defaultValue: '액션' }),
@@ -309,7 +391,7 @@ export default function AgencyGroupBuyPage() {
               {loading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.loading', { defaultValue: '불러오는 중...' })}</td></tr>
               ) : groupBuys.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.empty', { defaultValue: '해당하는 공구가 없습니다.' })}</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.empty', { defaultValue: '해당하는 공구가 없습니다.' })}</td></tr>
               ) : groupBuys.map(g => (
                 <tr key={g.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{g.restaurant_name}</td>
@@ -319,6 +401,14 @@ export default function AgencyGroupBuyPage() {
                     <span className="text-gray-400"> / {g.target_participants}</span>
                   </td>
                   <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(g.total_deposit_deals || 0)} {t('common.deal', { defaultValue: '딜' })}</td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const r = estimateAgencyRevenue(g)
+                      return r > 0
+                        ? <span className="font-bold text-emerald-600">₩{formatNumber(r)}</span>
+                        : <span className="text-gray-400 text-xs">미확정</span>
+                    })()}
+                  </td>
                   <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CLS_GB[g.status] || 'bg-gray-100 text-gray-600'}`}>{t(`agency.groupBuy.status.${g.status}`, { defaultValue: g.status })}</span></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {g.expires_at
