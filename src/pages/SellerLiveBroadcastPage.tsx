@@ -107,6 +107,7 @@ export default function SellerLiveBroadcastPage() {
   // Step 1 폼 — draft 우선, 없으면 마지막 방송 값으로 prefill
   const lastBroadcast = useRef(getLastBroadcast()).current
   const draft = useRef(getDraft()).current
+  const draftRestored = useRef(!!(draft && (draft.title || (draft.selectedProducts?.length ?? 0) > 0))).current
   const [title, setTitle] = useState(draft?.title ?? '')
   const [description, setDescription] = useState(draft?.description ?? lastBroadcast.description ?? '')
   const [thumbnailUrl, setThumbnailUrl] = useState(draft?.thumbnailUrl ?? lastBroadcast.thumbnailUrl ?? '')
@@ -115,6 +116,16 @@ export default function SellerLiveBroadcastPage() {
   const [scheduledDate, setScheduledDate] = useState(draft?.scheduledDate ?? '')
   const [scheduledTime, setScheduledTime] = useState(draft?.scheduledTime ?? '')
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>(draft?.privacy ?? lastBroadcast.privacy ?? 'public')
+  // 🛡️ 2026-05-13: draft 복원 인지 토글 — 셀러가 "왜 미리 채워져 있지?" 헷갈리던 사고 해결.
+  const [showDraftBanner, setShowDraftBanner] = useState(draftRestored)
+  function resetForm() {
+    clearDraft()
+    setTitle(''); setDescription(''); setThumbnailUrl(''); setSelectedProducts([])
+    setIsScheduled(false); setScheduledDate(''); setScheduledTime('')
+    setPrivacy('public')
+    setShowDraftBanner(false)
+    toast.success('폼이 초기화되었어요')
+  }
 
   // UI
   const [creating, setCreating] = useState(false)
@@ -700,6 +711,34 @@ export default function SellerLiveBroadcastPage() {
             </div>
           )
         })()}
+
+        {/* 🛡️ 2026-05-13: draft 복원 안내 banner — "왜 미리 채워져 있지?" 사고 해결.
+            24h 이내 작성하다 떠난 임시저장 자동 복원 + 초기화 옵션 제공. */}
+        {step === 'info' && showDraftBanner && (
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0 flex-1">
+              <span className="text-base shrink-0">💾</span>
+              <div className="text-xs text-blue-900 leading-relaxed">
+                <p className="font-semibold">이전에 작성하던 내용을 복원했어요</p>
+                <p className="text-blue-700 mt-0.5">24시간 이내 임시저장된 폼이에요. 새로 작성하려면 초기화하세요.</p>
+              </div>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={() => setShowDraftBanner(false)}
+                className="px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                계속
+              </button>
+              <button
+                onClick={resetForm}
+                className="px-2.5 py-1.5 text-[11px] font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* STEP 1: 방송 정보 */}
         {step === 'info' && (
