@@ -7,6 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Eye, ShoppingBag, Clock } from 'lucide-react'
 import api from '@/lib/api'
+import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 
@@ -162,6 +163,7 @@ export default function LiveRecapPage() {
                       src={`https://i.ytimg.com/vi/${s.youtube_video_id}/mqdefault.jpg`}
                       alt=""
                       className="w-full h-full object-cover"
+                      onError={onYoutubeThumbError}
                     />
                   ) : (
                     <Eye className="w-4 h-4 text-white/20" />

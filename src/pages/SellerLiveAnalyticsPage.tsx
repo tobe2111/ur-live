@@ -7,9 +7,10 @@ import ReplayChapterMarkers from '@/components/live/ReplayChapterMarkers'
 import {
   Eye, Users, MessageCircle, ShoppingBag, TrendingUp,
   Heart, ArrowLeft, BarChart3, Clock, DollarSign,
-  Play, ChevronRight, Loader2
+  Play, ChevronRight, Loader2, Trash2
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/hooks/useToast'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
 const CombinedTimelineChart = lazy(() => import('@/components/charts/SellerLiveAnalyticsCharts').then(m => ({ default: m.CombinedTimelineChart })))
@@ -84,14 +85,41 @@ function AnalyticsSummary() {
   const [data, setData] = useState<SummaryData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d')
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  useEffect(() => {
+  function loadSummary() {
     setLoading(true)
     api.get(`/api/seller/streams/analytics/summary?period=${period}`)
       .then(r => { if (r.data?.success) setData(r.data.data) })
       .catch((err: unknown) => { if (import.meta.env.DEV) console.error(err) })
       .finally(() => setLoading(false))
-  }, [period])
+  }
+
+  useEffect(() => { loadSummary() }, [period])
+
+  async function handleDelete(e: React.MouseEvent, stream: StreamSummary) {
+    e.preventDefault(); e.stopPropagation()
+    if (stream.status === 'live') {
+      toast.error(t('seller.cannotDeleteLiveStream', { defaultValue: '진행 중인 라이브는 삭제할 수 없습니다. 먼저 종료해 주세요.' }))
+      return
+    }
+    if (!confirm(t('seller.confirmDeleteStream', { title: stream.title, defaultValue: `"${stream.title}" 방송을 삭제하시겠습니까?\n\n· 소프트 삭제 (매출/이력 보존)\n· 메인 / 다시보기 피드에서 즉시 제거됩니다` }))) return
+    try {
+      setDeletingId(stream.id)
+      const res = await api.delete(`/api/seller/streams/${stream.id}`)
+      if (res.data?.success) {
+        toast.success(t('seller.streamDeleted', { defaultValue: '방송이 삭제되었습니다' }))
+        loadSummary()
+      } else {
+        toast.error(res.data?.error || t('seller.deleteFailed', { defaultValue: '삭제 실패' }))
+      }
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string } } }
+      toast.error(err_.response?.data?.error || t('seller.deleteFailed', { defaultValue: '삭제 실패' }))
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -160,61 +188,81 @@ function AnalyticsSummary() {
         ) : (
           <div className="divide-y">
             {streams.map(stream => (
-              <Link
-                key={stream.id}
-                to={`/seller/live-analytics/${stream.id}`}
-                className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors"
-              >
-                {/* Thumbnail */}
-                <div className="w-16 h-9 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                  {stream.youtube_video_id ? (
-                    <img
-                      src={`https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
-                      alt=""
-                      className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
+              <div key={stream.id} className="relative group">
+                <Link
+                  to={`/seller/live-analytics/${stream.id}`}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-16 h-9 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                    {stream.youtube_video_id ? (
+                      <img
+                        src={`https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
+                        alt=""
+                        className="w-full h-full object-cover" loading="lazy"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          if (img.src.includes('mqdefault.jpg')) {
+                            img.src = `https://i.ytimg.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
+                          } else {
+                            img.style.display = 'none'
+                          }
+                        }} />
+                    ) : (
                       <Play className="w-4 h-4 text-gray-400" />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{stream.title}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        stream.status === 'live' ? 'bg-red-100 text-red-700' :
+                        stream.status === 'ended' ? 'bg-gray-100 text-gray-600' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {stream.status === 'live' ? 'LIVE' : stream.status === 'ended' ? t('seller.endedLabel') : t('seller.scheduledStatus')}
+                      </span>
                     </div>
-                  )}
-                </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {new Date(stream.created_at).toLocaleDateString('ko-KR', {
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">{stream.title}</p>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                      stream.status === 'live' ? 'bg-red-100 text-red-700' :
-                      stream.status === 'ended' ? 'bg-gray-100 text-gray-600' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {stream.status === 'live' ? 'LIVE' : stream.status === 'ended' ? t('seller.endedLabel') : t('seller.scheduledStatus')}
-                    </span>
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="text-center">
+                      <p className="font-bold text-gray-900">{stream.chat_count}</p>
+                      <p>{t('seller.chatLabel')}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-gray-900">{stream.order_count}</p>
+                      <p>{t('seller.orderLabelAnalytics')}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-gray-900">{fmtPrice(stream.revenue)}</p>
+                      <p>{t('seller.salesLabelAnalytics')}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(stream.created_at).toLocaleDateString('ko-KR', {
-                      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-
-                {/* Stats */}
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <div className="text-center">
-                    <p className="font-bold text-gray-900">{stream.chat_count}</p>
-                    <p>{t('seller.chatLabel')}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-bold text-gray-900">{stream.order_count}</p>
-                    <p>{t('seller.orderLabelAnalytics')}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-bold text-gray-900">{fmtPrice(stream.revenue)}</p>
-                    <p>{t('seller.salesLabelAnalytics')}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300" />
-                </div>
-              </Link>
+                </Link>
+                {/* Delete button — overlay (live 상태는 비활성) */}
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(e, stream)}
+                  disabled={deletingId === stream.id || stream.status === 'live'}
+                  aria-label={t('seller.deleteStreamAriaLabel', { title: stream.title, defaultValue: `"${stream.title}" 방송 삭제` })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 hidden group-hover:inline-flex items-center justify-center w-8 h-8 rounded-md bg-white border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={stream.status === 'live'
+                    ? t('seller.cannotDeleteLiveStream', { defaultValue: '진행 중인 라이브는 삭제할 수 없습니다' })
+                    : t('seller.deleteAction', { defaultValue: '삭제' })}
+                >
+                  {deletingId === stream.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             ))}
           </div>
         )}

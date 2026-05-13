@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
@@ -216,7 +217,8 @@ export default function AdminReplayPage() {
                       <img
                         src={`https://img.youtube.com/vi/${videoPreviewId}/mqdefault.jpg`}
                         alt={t('admin.replay.previewAlt', { defaultValue: '미리보기' })}
-                        className="w-full h-full object-cover" loading="lazy" />
+                        className="w-full h-full object-cover" loading="lazy"
+                        onError={onYoutubeThumbError} />
                     </div>
                   )}
                 </div>
@@ -312,7 +314,8 @@ export default function AdminReplayPage() {
                     <img
                       src={`https://img.youtube.com/vi/${s.youtube_video_id}/mqdefault.jpg`}
                       alt=""
-                      className="w-full h-full object-cover" loading="lazy" />
+                      className="w-full h-full object-cover" loading="lazy"
+                      onError={onYoutubeThumbError} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Youtube className="w-10 h-10 text-gray-300" />

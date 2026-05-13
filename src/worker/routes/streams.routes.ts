@@ -136,6 +136,10 @@ streamsRouter.get('/', async (c) => {
         conditions.push("(ls.title NOT LIKE '[연습]%' OR ls.title IS NULL)");
       }
 
+      // 🛡️ 2026-05-13: 소프트 삭제된 스트림 제외 — 어드민/셀러가 삭제한 방송이
+      //   메인/홈/다시보기 피드에 다시 노출되지 않도록.
+      conditions.push("ls.status != 'deleted'");
+
       if (status) {
         conditions.push('ls.status = ?');
         params.push(status);
@@ -155,7 +159,10 @@ streamsRouter.get('/', async (c) => {
           ls.id,
           ls.title,
           ls.description,
-          ls.youtube_video_id,
+          -- 🛡️ 2026-05-13: stream 71 같은 케이스 회복 — youtube_video_id 가 빈 상태로
+          --   status='live' 가 된 dead stream 도 broadcast_id 로 자동 회복.
+          --   YouTube Live 에서 broadcast.id === video_id 이므로 안전.
+          COALESCE(NULLIF(ls.youtube_video_id, ''), ls.youtube_broadcast_id) AS youtube_video_id,
           ls.status,
           ls.seller_id,
           ls.created_at,
@@ -318,8 +325,15 @@ streamsRouter.get('/:id', async (c) => {
           .first<StreamDetailRow>();
 
         if (!row) return null;
+        // 🛡️ 2026-05-13: youtube_video_id 가 비었지만 broadcast_id 가 있으면 자동 회복.
+        //   stream 71 같은 dead-stream (status='live' + video_id='') 케이스를 시청자가 즉시 볼 수 있게.
+        //   YouTube Live 는 broadcast.id === video_id 이므로 안전한 fallback.
+        const rawVideoId = (row as Record<string, unknown>).youtube_video_id as string | null | undefined;
+        const rawBroadcastId = (row as Record<string, unknown>).youtube_broadcast_id as string | null | undefined;
+        const effectiveVideoId = (rawVideoId && String(rawVideoId).trim()) || rawBroadcastId || null;
         return {
           ...row,
+          youtube_video_id: effectiveVideoId,
           seller_name: row.seller_name,
           seller_image: row.seller_image,
           current_product: row.current_product_id

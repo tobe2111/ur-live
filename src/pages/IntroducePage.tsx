@@ -5,6 +5,7 @@ import { Play, ChevronRight, Check, Star, Users, Zap, ShoppingBag, MessageCircle
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
+import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 
 const APP_STORE_URL = 'https://apps.apple.com/kr/app/%EC%9C%A0%EC%96%B4%EB%94%9C/id6745051422'
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.urdeal.app'
@@ -293,6 +294,7 @@ export default function IntroducePage() {
                     className="absolute inset-0 w-full h-full object-cover"
                     loading="lazy"
                     decoding="async"
+                    onError={onYoutubeThumbError}
                   />
                 )}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.4), transparent 35%, rgba(0,0,0,0.85))' }} />

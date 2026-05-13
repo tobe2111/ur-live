@@ -550,13 +550,22 @@ app.post('/live/:id/start', async (c) => {
 
     if (broadcast.status === 'live') {
       // Already live (auto-started by OBS/Prism RTMP) — just sync DB
+      // 🛡️ 2026-05-13: youtube_video_id 가 비어 있으면 broadcast.id 로 backfill.
+      //   YouTube Live 에서 broadcast.id === video_id 이므로 (line 230 주석 참고),
+      //   stream 71 처럼 status='live' 이지만 video_id=NULL 인 dead stream 방지.
+      //   ReelCard 가 "방송 준비 중" 영구 표시되는 근본 원인.
+      const videoIdToSet = (stream.youtube_video_id && String(stream.youtube_video_id).trim())
+        || broadcast.id
+        || (stream.youtube_broadcast_id as string)
       await c.env.DB.prepare(`
         UPDATE live_streams
-        SET status = 'live', updated_at = CURRENT_TIMESTAMP
+        SET status = 'live',
+            youtube_video_id = COALESCE(NULLIF(youtube_video_id, ''), ?),
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).bind(streamId).run()
+      `).bind(videoIdToSet, streamId).run()
 
-      return c.json({ success: true, message: 'Stream is already live (auto-started)' })
+      return c.json({ success: true, message: 'Stream is already live (auto-started)', video_id: videoIdToSet })
     }
 
     // 🛡️ 2026-05-11 Option D 최적화: enableAutoStart=true 라 YouTube 가 데이터 도착 즉시
@@ -574,13 +583,19 @@ app.post('/live/:id/start', async (c) => {
     }
 
     // Update database
+    // 🛡️ 2026-05-13: youtube_video_id backfill (broadcast.id === video_id).
+    const videoIdToSet = (stream.youtube_video_id && String(stream.youtube_video_id).trim())
+      || broadcast.id
+      || (stream.youtube_broadcast_id as string)
     await c.env.DB.prepare(`
       UPDATE live_streams
-      SET status = 'live', updated_at = CURRENT_TIMESTAMP
+      SET status = 'live',
+          youtube_video_id = COALESCE(NULLIF(youtube_video_id, ''), ?),
+          updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(streamId).run()
+    `).bind(videoIdToSet, streamId).run()
 
-    return c.json({ success: true, message: 'Stream is now live' })
+    return c.json({ success: true, message: 'Stream is now live', video_id: videoIdToSet })
   } catch (error: unknown) {
     console.error('[YouTube Live Start] Error:', error)
     return c.json({
@@ -651,16 +666,23 @@ app.get('/live/:id/status', async (c) => {
       // 🛡️ 2026-05-07: 라이브 전환 시 YouTube CDN 썸네일 자동 적용 (비용 0, quota 0)
       //   maxresdefault.jpg 는 YouTube 가 broadcast frame 에서 동적 생성.
       //   30-60초 후엔 셀러 실제 화면 frame 으로 자동 교체.
-      const ytThumb = stream.youtube_video_id
-        ? `https://i.ytimg.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`
+      // 🛡️ 2026-05-13: youtube_video_id backfill — broadcast.id === video_id.
+      //   stream 71 처럼 video_id 비어 있으면 ReelCard 가 "방송 준비 중" 영구 표시.
+      const videoIdToSet = (stream.youtube_video_id && String(stream.youtube_video_id).trim())
+        || (stream.youtube_broadcast_id as string)
+      const ytThumb = videoIdToSet
+        ? `https://i.ytimg.com/vi/${videoIdToSet}/maxresdefault.jpg`
         : null
 
-      if (ytThumb) {
+      if (videoIdToSet && ytThumb) {
         await c.env.DB.prepare(`
           UPDATE live_streams
-          SET status = 'live', thumbnail_url = ?, updated_at = CURRENT_TIMESTAMP
+          SET status = 'live',
+              youtube_video_id = COALESCE(NULLIF(youtube_video_id, ''), ?),
+              thumbnail_url = ?,
+              updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).bind(ytThumb, streamId).run()
+        `).bind(videoIdToSet, ytThumb, streamId).run()
       } else {
         await c.env.DB.prepare(`
           UPDATE live_streams
@@ -671,7 +693,13 @@ app.get('/live/:id/status', async (c) => {
 
       return c.json({
         success: true,
-        data: { status: 'live', youtube_status: ytStatus, synced: true, thumbnail_synced: !!ytThumb }
+        data: {
+          status: 'live',
+          youtube_status: ytStatus,
+          synced: true,
+          thumbnail_synced: !!ytThumb,
+          video_id: videoIdToSet || null
+        }
       })
     }
 

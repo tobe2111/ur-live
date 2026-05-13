@@ -216,7 +216,17 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     // ── Safe filename (no path traversal) ─────────────────────────────────────
     const safeName = `seller_${sellerId}_${Date.now()}${ext}`;
 
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    // 🛡️ 2026-05-13: btoa(String.fromCharCode(...arr)) 는 spread 인자 수가
+    //   콜스택 한도를 넘어 100KB+ 파일에서 RangeError → 500 사고 발생.
+    //   32KB 청크로 분할 인코딩 → 5MB 까지 안정.
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+    }
+    const base64 = btoa(binary);
+
     const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -224,6 +234,10 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
       // 🛡️ 2026-04-22: 30s timeout — 큰 이미지 업로드 + imgbb 응답 지연 대비
       signal: AbortSignal.timeout(30_000),
     });
+    if (!resp.ok) {
+      const bodyText = await resp.text().catch(() => '');
+      throw new Error(`imgbb HTTP ${resp.status}: ${bodyText.slice(0, 200)}`);
+    }
     const json = await resp.json() as ImgbbResponse;
     if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
 
@@ -240,8 +254,19 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     // 클라이언트가 받으면 악의적으로 이미지 삭제 가능. 서버 내부에만 저장.
     return c.json({ success: true, url: json.data!.url });
   } catch (err: unknown) {
-    console.error('[Seller] Upload image error:', (err as Error).message);
-    return c.json({ success: false, error: '이미지 업로드에 실패했습니다.' }, 500);
+    const msg = (err as Error).message || String(err);
+    console.error('[Seller] Upload image error:', msg);
+    // 🛡️ 2026-05-13: imgbb / 인코딩 실패를 사용자에게 구체적으로 안내 — 디버깅 가능성 ↑.
+    //   IMGBB_API_KEY 미설정은 이미 위에서 503 으로 처리. 여기까지 도달 = 외부 호출/인코딩 실패.
+    const userHint = msg.toLowerCase().includes('imgbb')
+      ? 'imgbb 응답이 비정상입니다. API 키 유효성 또는 일일 한도를 확인하세요.'
+      : '이미지 업로드에 실패했습니다.';
+    const isProd = (c.env as unknown as { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
+    return c.json({
+      success: false,
+      error: userHint,
+      ...(isProd ? {} : { debug: msg.slice(0, 300) })
+    }, 500);
   }
 });
 

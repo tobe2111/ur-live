@@ -12,6 +12,7 @@
  * 엔드포인트 (라이브 모니터):
  * - GET    /live-monitor          — 진행중 라이브 목록
  * - PATCH  /live-monitor/:id/end  — 라이브 강제 종료
+ * - DELETE /live-monitor/:id      — 라이브 소프트 삭제 (status='deleted')
  * - GET    /live-monitor/history  — 종료된 라이브 이력
  */
 import { Hono } from 'hono';
@@ -277,6 +278,46 @@ adminModerationRoutes.patch('/live-monitor/:id/end', cors(), async (c) => {
     return c.json({ success: true, message: '스트림이 강제 종료되었습니다' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] live-monitor end error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminModerationRoutes.delete('/live-monitor/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const streamId = c.req.param('id');
+
+    const rows = await executeQuery<{ id: number; status: string; seller_id: number; title: string }>(DB,
+      `SELECT id, status, seller_id, title FROM live_streams WHERE id = ?`, [streamId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
+    }
+    if (rows[0].status === 'deleted') {
+      return c.json({ success: false, error: '이미 삭제된 스트림입니다' }, 400);
+    }
+
+    try { await executeRun(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* exists */ }
+    await executeRun(DB,
+      `UPDATE live_streams
+         SET status = 'deleted',
+             ended_at = COALESCE(ended_at, datetime('now')),
+             deleted_at = datetime('now')
+       WHERE id = ?`,
+      [streamId]
+    );
+
+    await writeAuditLog(c, {
+      action: 'delete_stream',
+      targetType: 'live_stream',
+      targetId: streamId,
+      before: { status: rows[0].status, title: rows[0].title },
+      after: { status: 'deleted' }
+    });
+
+    return c.json({ success: true, message: '스트림이 삭제되었습니다 (소프트 삭제)' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] live-monitor delete error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

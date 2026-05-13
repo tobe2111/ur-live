@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Radio, Eye, Clock, StopCircle, RefreshCw, ExternalLink } from 'lucide-react'
+import { Radio, Eye, Clock, StopCircle, RefreshCw, ExternalLink, Trash2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface LiveStream {
@@ -107,6 +107,20 @@ export default function AdminLiveMonitorPage() {
     }
   }
 
+  async function deleteStream(stream: { id: number; title: string }) {
+    if (!confirm(`"${stream.title}" 방송을 메인 노출에서 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다`)) return
+    try {
+      const res = await api.delete(`/api/admin/live-monitor/${stream.id}`, h)
+      if (res.data.success) {
+        toast.success('방송이 삭제되었습니다')
+        loadData()
+      }
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '삭제 실패')
+    }
+  }
+
   return (
     <AdminLayout title={t('admin.pages.liveMonitor')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -147,8 +161,15 @@ export default function AdminLiveMonitorPage() {
                   {stream.youtube_video_id && (
                     <div className="relative aspect-video bg-gray-100">
                       <img
-                        src={`https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
-                        alt="" className="w-full h-full object-cover" loading="lazy" />
+                        src={stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
+                        alt="" className="w-full h-full object-cover" loading="lazy"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          // YouTube 영상 삭제/비공개 시 mqdefault 가 404 → hqdefault 또는 placeholder
+                          if (img.src.includes('mqdefault.jpg')) {
+                            img.src = `https://i.ytimg.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
+                          } else { img.style.display = 'none' }
+                        }} />
                       <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-red-600 rounded-full">
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                         <span className="text-[10px] font-bold text-white">LIVE</span>
@@ -189,8 +210,13 @@ export default function AdminLiveMonitorPage() {
                         <ExternalLink className="w-3 h-3" /> 보기
                       </a>
                       <button onClick={() => forceEnd(stream)}
-                        className="flex-1 flex items-center justify-center gap-1 py-2 bg-red-50 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100">
+                        className="flex-1 flex items-center justify-center gap-1 py-2 bg-amber-50 text-amber-600 text-xs font-medium rounded-lg hover:bg-amber-100">
                         <StopCircle className="w-3 h-3" /> 종료
+                      </button>
+                      <button onClick={() => deleteStream(stream)}
+                        aria-label={`"${stream.title}" 방송 삭제`}
+                        className="flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100">
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -210,7 +236,7 @@ export default function AdminLiveMonitorPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
-                        {['ID', '제목', '셀러', '시청자', '시작일', '종료일'].map(h => (
+                        {['ID', '제목', '셀러', '시청자', '시작일', '종료일', '액션'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                         ))}
                       </tr>
@@ -224,6 +250,13 @@ export default function AdminLiveMonitorPage() {
                           <td className="px-4 py-3 text-xs text-gray-600">{s.viewer_count || 0}</td>
                           <td className="px-4 py-3 text-xs text-gray-400">{new Date(s.created_at).toLocaleString('ko-KR')}</td>
                           <td className="px-4 py-3 text-xs text-gray-400">{s.updated_at ? new Date(s.updated_at).toLocaleString('ko-KR') : '-'}</td>
+                          <td className="px-4 py-3 text-xs">
+                            <button onClick={() => deleteStream(s)}
+                              aria-label={`"${s.title}" 다시보기 삭제`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100">
+                              <Trash2 className="w-3 h-3" /> 삭제
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

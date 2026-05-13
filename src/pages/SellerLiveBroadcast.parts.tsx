@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { CheckCircle2, Copy, Eye, MessageSquare, ShoppingBag, DollarSign, TrendingUp } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 
@@ -264,7 +265,7 @@ export function StreamList({ streams, onManage }: StreamListProps) {
           {ended.slice(0, 5).map((s: LiveStreamLite) => (
             <div key={s.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
               <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                {s.youtube_video_id && <img src={`https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                {s.youtube_video_id && <img src={`https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`} alt="" className="w-full h-full object-cover" loading="lazy" onError={onYoutubeThumbError} />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
