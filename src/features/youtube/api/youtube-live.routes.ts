@@ -1139,7 +1139,9 @@ app.post('/live/:id/_force-live', async (c) => {
           recordFromStart: true,
           enableDvr: true,
           enableEmbed: true,
-          latencyPreference: 'low',
+          // 🛡️ 2026-05-13: 'low' (5-15s) → 'ultraLow' (2-5s) 통일. 라이브 커머스 핵심:
+          //   셀러가 "5개 남았어요" 외쳐도 시청자가 30초 뒤에 보면 → 이미 다 팔림.
+          latencyPreference: 'ultraLow',
         },
       }),
     }

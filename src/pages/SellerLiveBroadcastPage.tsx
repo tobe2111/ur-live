@@ -17,6 +17,7 @@ import OBSRemoteControl from './SellerLiveBroadcast.OBSRemoteControl'
 import StepLive from './seller-live-broadcast/StepLive'
 import StepInfo from './seller-live-broadcast/StepInfo'
 import StepSetup from './seller-live-broadcast/StepSetup'
+import SellerCameraPreview from './seller-live-broadcast/SellerCameraPreview'
 import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
@@ -642,15 +643,16 @@ export default function SellerLiveBroadcastPage() {
   // ── 메인 렌더 (위저드) ────────────────────────────────────────
   return (
     <SellerLayout title={t('seller.nav.liveBroadcast')}>
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+      {/* 🛡️ 2026-05-13: PC 에서 가로 폭 확장 — max-w-3xl 1024px 에선 비좁아 모바일 그대로 늘려놓은 느낌.
+          mobile (모바일/태블릿) 기존 그대로, lg+ 에서 max-w-7xl 로 확장 + 2컬럼 grid. */}
+      <div className="mx-auto max-w-3xl lg:max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.nav.liveBroadcast')}
           subtitle={t('seller.liveBroadcastSubtitle', { defaultValue: '라이브 방송 시작 및 관리' })}
           icon={<Youtube className="h-5 w-5" />}
         />
 
-        {/* 연동 채널 (P2-9 다중 채널 + P2-11 해제 메뉴) */}
+        {/* 연동 채널 — 전체 폭 */}
         <ChannelCard
           channels={channels}
           activeChannelId={activeChannelId}
@@ -692,36 +694,54 @@ export default function SellerLiveBroadcastPage() {
           )
         })()}
 
-        {/* STEP 1: 방송 정보 */}
+        {/* STEP 1: 방송 정보 — PC (lg+) 에선 좌:폼 / 우:카메라 미리보기 2컬럼.
+            모바일은 기존 1컬럼 stack (CameraPreview 는 hidden). */}
         {step === 'info' && (
-          <StepInfo
-            title={title} setTitle={setTitle}
-            description={description} setDescription={setDescription}
-            thumbnailUrl={thumbnailUrl} setThumbnailUrl={setThumbnailUrl}
-            privacy={privacy} setPrivacy={setPrivacy}
-            isScheduled={isScheduled} setIsScheduled={setIsScheduled}
-            scheduledDate={scheduledDate} setScheduledDate={setScheduledDate}
-            scheduledTime={scheduledTime} setScheduledTime={setScheduledTime}
-            sellableProducts={sellableProducts}
-            selectedProducts={selectedProducts}
-            setSelectedProducts={setSelectedProducts}
-            toggleProduct={(id: number) => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
-            method={method} setMethod={setMethod}
-            destination={destination} setDestination={setDestination}
-            destinations={destinations}
-            creating={creating} onCreate={createBroadcast}
-            navigate={navigate}
-            channels={channels}
-            recentProductIds={getRecentProducts()}
-            tokenExpired={!!channels.find(c => c.id === activeChannelId)?.token_expired}
-            onReauthenticate={connectYouTube}
-            connectingYouTube={connectingYouTube}
-            channelsLoading={channelsLoading}
-            notifyFollowers={notifyFollowers}
-            setNotifyFollowers={setNotifyFollowers}
-            practiceMode={practiceMode}
-            setPracticeMode={setPracticeMode}
-          />
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start space-y-5 lg:space-y-0">
+            <StepInfo
+              title={title} setTitle={setTitle}
+              description={description} setDescription={setDescription}
+              thumbnailUrl={thumbnailUrl} setThumbnailUrl={setThumbnailUrl}
+              privacy={privacy} setPrivacy={setPrivacy}
+              isScheduled={isScheduled} setIsScheduled={setIsScheduled}
+              scheduledDate={scheduledDate} setScheduledDate={setScheduledDate}
+              scheduledTime={scheduledTime} setScheduledTime={setScheduledTime}
+              sellableProducts={sellableProducts}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+              toggleProduct={(id: number) => setSelectedProducts(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
+              method={method} setMethod={setMethod}
+              destination={destination} setDestination={setDestination}
+              destinations={destinations}
+              creating={creating} onCreate={createBroadcast}
+              navigate={navigate}
+              channels={channels}
+              recentProductIds={getRecentProducts()}
+              tokenExpired={!!channels.find(c => c.id === activeChannelId)?.token_expired}
+              onReauthenticate={connectYouTube}
+              connectingYouTube={connectingYouTube}
+              channelsLoading={channelsLoading}
+              notifyFollowers={notifyFollowers}
+              setNotifyFollowers={setNotifyFollowers}
+              practiceMode={practiceMode}
+              setPracticeMode={setPracticeMode}
+            />
+            {/* 우측 패널 — PC 만 (카메라 미리보기 + 빠른 안내). 모바일에선 hidden */}
+            <aside className="hidden lg:block lg:sticky lg:top-6 space-y-4">
+              <SellerCameraPreview />
+              <div className="rounded-2xl bg-white border border-gray-200 p-4 space-y-2">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  💡 라이브 커머스 팁
+                </h3>
+                <ul className="text-[11px] text-gray-600 space-y-1.5 leading-relaxed">
+                  <li>• 좌측 카메라 미리보기로 각도/조명 확인</li>
+                  <li>• 송출 중에는 시청자에게 영상이 3-5초 늦게 보여요</li>
+                  <li>• "5개 남았어요" 같은 안내는 여유 있게 외쳐주세요</li>
+                  <li>• 화면 우측 채팅창을 자주 확인하세요</li>
+                </ul>
+              </div>
+            </aside>
+          </div>
         )}
 
         {/* STEP 2: 연결 설정 (송출 도구) — 라이브 중에도 BrowserBroadcaster 가 unmount 되지 않도록 유지 */}

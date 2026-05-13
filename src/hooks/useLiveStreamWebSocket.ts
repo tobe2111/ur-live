@@ -64,6 +64,12 @@ export interface UseLiveStreamWebSocketReturn {
 
   // Pinned message (셀러 고정 공지)
   pinnedMessage: string | null
+
+  // 🛡️ 2026-05-13: 라이브 결제 사회적 증명 toast (FOMO)
+  lastOrderProof: { buyer: string; product: string; amount: number; ts: number } | null
+
+  // 🛡️ 2026-05-13: 재고 실시간 push (polling 대체)
+  stockUpdates: Record<number, number>  // product_id → remaining_stock
 }
 
 export function useLiveStreamWebSocket(
@@ -80,6 +86,8 @@ export function useLiveStreamWebSocket(
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastDonation, setLastDonation] = useState<DonationEvent | null>(null)
+  const [lastOrderProof, setLastOrderProof] = useState<{ buyer: string; product: string; amount: number; ts: number } | null>(null)
+  const [stockUpdates, setStockUpdates] = useState<Record<number, number>>({})
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleEvent | null>(null)
   const [pinnedMessage, setPinnedMessage] = useState<string | null>(null)
 
@@ -271,22 +279,32 @@ export function useLiveStreamWebSocket(
               }
             )
           } else if (msg.type === 'product_change') {
-            setStreamData((prev) =>
-              prev
-                ? { ...prev, current_product_id: msg.data?.id ?? null }
-                : {
-                    id: streamId,
-                    status: 'live',
-                    current_product_id: msg.data?.id ?? null,
-                    viewer_count: 0,
-                    updated_at: Date.now(),
-                  }
-            )
+            // 🛡️ 2026-05-13: server-time sync — iframe (YouTube ultraLow) latency 가 ~3s.
+            //   WS (즉시) > iframe 영상 → 셀러가 상품 바꾼 순간 시청자 UI 만 먼저 갱신되는 사고.
+            //   timestamp + viewer 현지 시각 차이로 보정 (서버시각=클라시각 가정, 최대 3s delay).
+            const EMBED_DELAY_MS = 3000
+            const elapsed = Date.now() - (msg.timestamp || Date.now())
+            const delay = Math.max(0, EMBED_DELAY_MS - elapsed)
+            const applyChange = () => {
+              setStreamData((prev) =>
+                prev
+                  ? { ...prev, current_product_id: msg.data?.id ?? null }
+                  : {
+                      id: streamId,
+                      status: 'live',
+                      current_product_id: msg.data?.id ?? null,
+                      viewer_count: 0,
+                      updated_at: Date.now(),
+                    }
+              )
+            }
+            if (delay === 0) applyChange()
+            else setTimeout(applyChange, delay)
           } else if (msg.type === 'donation') {
             setLastDonation(msg.data as DonationEvent)
           } else if (msg.type === 'order_proof') {
-            // 🛡️ 2026-05-13 (Phase A): 라이브 시청 중 다른 시청자의 주문 → social proof 채팅 메시지로.
-            //   FOMO 효과 → conversion 자극 (TikTok / 라이브 커머스 표준).
+            // 🛡️ 2026-05-13 (Phase A): 라이브 시청 중 다른 시청자의 주문 → social proof.
+            //   채팅 시스템 메시지 + 우측 하단 toast (FOMO 효과 → conversion 자극).
             const d = msg.data as { buyer: string; product: string; amount: number }
             addLocalMessage({
               id: `order-proof-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -296,6 +314,11 @@ export function useLiveStreamWebSocket(
               message: `🛍️ ${d.buyer}님이 [${d.product}] 구매!`,
               timestamp: Date.now(),
             })
+            setLastOrderProof({ ...d, ts: Date.now() })
+          } else if (msg.type === 'stock_update') {
+            // 🛡️ 2026-05-13 (Phase B): 재고 실시간 push — polling 대체.
+            const d = msg.data as { product_id: number; remaining: number }
+            setStockUpdates(prev => ({ ...prev, [d.product_id]: d.remaining }))
           } else if (msg.type === 'flash_sale') {
             setActiveFlashSale(msg.data)
           } else if (msg.type === 'pinned_message') {
@@ -434,5 +457,7 @@ export function useLiveStreamWebSocket(
     lastDonation,
     activeFlashSale,
     pinnedMessage,
+    lastOrderProof,
+    stockUpdates,
   }
 }

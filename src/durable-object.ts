@@ -241,10 +241,12 @@ export class LiveStreamDurableObject extends DurableObject {
       // 🛡️ 2026-04-22: DO 레벨 권한 확인 (worker 의 X-Internal-Auth 헤더 신뢰)
       // Worker 가 requireSeller/requireAdmin 통과 시에만 이 헤더를 세팅.
       // DO 는 Worker 신뢰 (같은 account binding).
+      // 🛡️ 2026-05-13: 'system' 추가 — payment.routes.ts 가 결제 완료 직후 order_proof / stock_update
+      //   broadcast (사용자 인증 X, 백엔드가 직접 호출). Worker 내부 호출만 X-Internal-Auth 셋팅 가능.
       const internalAuth = request.headers.get('X-Internal-Auth');
       const authUserType = request.headers.get('X-Auth-User-Type');
-      if (!internalAuth || (authUserType !== 'seller' && authUserType !== 'admin')) {
-        return new Response(JSON.stringify({ success: false, error: 'Broadcast requires seller/admin auth' }), {
+      if (!internalAuth || !['seller', 'admin', 'system'].includes(authUserType ?? '')) {
+        return new Response(JSON.stringify({ success: false, error: 'Broadcast requires seller/admin/system auth' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' },
         });
