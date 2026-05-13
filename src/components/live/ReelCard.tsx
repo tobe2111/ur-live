@@ -401,6 +401,15 @@ function ReelCardImpl({
       try {
         win.postMessage(JSON.stringify({ event: 'listening', id: `yt-${stream.youtube_video_id}` }), 'https://www.youtube.com')
         win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), 'https://www.youtube.com')
+        win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onPlaybackQualityChange'] }), 'https://www.youtube.com')
+        // 🛡️ 2026-05-13: 시청자 측 화질 hd1080 강제 시도 — YouTube 가 자동으로 낮추는 거 방지.
+        //   YouTube 가 거절하면 자동 (auto) 로 fallback — 안전.
+        //   networkBandwidth 가 충분하면 hd1080 유지, 부족하면 YouTube 가 알아서 하향.
+        setTimeout(() => {
+          try {
+            win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }), 'https://www.youtube.com')
+          } catch { /* ignore */ }
+        }, 2500)
       } catch (e) { if (import.meta.env.DEV) console.warn('[ReelCard] postMessage listening failed', e) }
     }
 
@@ -1008,7 +1017,7 @@ function ReelCardImpl({
             <iframe
               ref={iframeRef}
               key={`yt-${stream.youtube_video_id}`}
-              src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1`}
+              src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1&vq=hd1080&hd=1`}
               // 🛡️ 2026-05-13: allow 에 fullscreen 포함 → allowFullScreen 속성과 중복 → React 경고. 통합.
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               title={stream.title || 'Live broadcast'}

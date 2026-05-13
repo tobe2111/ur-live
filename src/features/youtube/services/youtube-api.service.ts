@@ -241,11 +241,12 @@ export class YouTubeAPIService {
             enableDvr: true,
             enableContentEncryption: false,
             enableEmbed: true,
-            // 🛡️ 2026-05-13 v3: latency 'ultraLow' → 'low' 로 변경 (사용자 화질 불만 신고).
-            //   ultraLow: 지연 2-5s 인데 YouTube 가 quality optimization 끔 → 화질 ⭐⭐⭐
-            //   low: 지연 5-10s, 화질 ⭐⭐⭐⭐ — 라이브 커머스 sweet spot.
-            //   상품 디테일 + 셀러 얼굴이 또렷하게 보여야 매출 영향. 5-10s 지연은 충분히 real-time.
-            latencyPreference: 'low'
+            // 🛡️ 2026-05-13 v4: 화질/음질 최대화 우선 (사용자 요청).
+            //   normal: 지연 10-30초 BUT YouTube 가 quality optimization 풀로 적용 → 최고 화질
+            //   low/ultraLow 는 trade-off 로 화질 ↓
+            //   라이브 커머스에서 셀러가 일방 소개 → 구매 패턴이면 latency 영향 미미.
+            //   화질이 매출 결정 (셀러 얼굴 + 상품 디테일).
+            latencyPreference: 'normal'
           }
         }),
         signal: AbortSignal.timeout(20000)
