@@ -104,7 +104,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     const pc = pcRef.current
     if (!pc) return
 
-    const BITRATE_LADDER = [6_000_000, 4_000_000, 2_500_000, 1_500_000, 800_000]
+    // 🛡️ 2026-05-13 v2: 화질 최대화 우선 — 하한 3Mbps (1080p 최저 권장). 그 아래로 안 내려감.
+    //   "끊기느니 저화질" 보다 "끊기더라도 최고 화질 유지" 가 사용자 요청.
+    //   네트워크 약하면 영상 끊김 위험은 있지만 화질 보장.
+    const BITRATE_LADDER = [9_000_000, 7_000_000, 5_000_000, 4_000_000, 3_000_000]
     let currentLevel = 0
     let consecutiveGood = 0
     let lastPacketsLost = 0
@@ -366,11 +369,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       if (track.kind === 'video') {
         videoSenderRef.current = sender
         const params = sender.getParameters()
-        // 🛡️ 2026-05-11 Option D: YouTube WHIP direct 는 셀러가 보내는 게 그대로 시청자에게 전달됨
-        //   → 화질이 더 중요. 1080p30 YouTube 권장 상한 6 Mbps 로 상향. 모바일 LTE 도 보통 6Mbps 업로드 OK.
-        //   maintain-resolution: 대역폭 부족 시 프레임 떨어뜨려도 해상도 유지 (상품 디테일 살림).
+        // 🛡️ 2026-05-13 v2: 화질 최대화 — 6M → 9M (YouTube 1080p 30fps 권장 상한).
+        //   사용자 요청: latency 보다 화질/음질 우선. 셀러 업로드 9Mbps 면 광케이블/5G 권장.
+        //   maintain-resolution: 대역폭 부족 시 프레임 떨어뜨려도 해상도 유지.
         params.encodings = [{
-          maxBitrate: 6_000_000,
+          maxBitrate: 9_000_000,
           maxFramerate: 30,
           networkPriority: 'high',
           priority: 'high',
