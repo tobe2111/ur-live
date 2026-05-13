@@ -6,7 +6,7 @@ import { ShoppingBag as ShoppingBagIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown } from 'lucide-react'
+import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown, MessageCircle, Send } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface GroupBuy {
@@ -140,6 +140,109 @@ function ConfirmModal({ groupBuy, onClose, onConfirm }: {
   )
 }
 
+// 🛡️ 2026-05-13 (공구 UX Phase C): 에이전시 ↔ 식당 협상 메시지 모달
+interface ChatMessage {
+  id: number
+  sender_type: 'agency' | 'restaurant' | 'user' | 'admin' | 'system'
+  sender_name: string | null
+  message: string
+  created_at: string
+}
+
+function MessagesModal({ groupBuy, headers, onClose }: {
+  groupBuy: GroupBuy
+  headers: Record<string, string>
+  onClose: () => void
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const loadMessages = async () => {
+    try {
+      const res = await api.get(`/api/community-group-buy/${groupBuy.id}/messages`, { headers })
+      if (res.data?.success) setMessages(res.data.data || [])
+    } catch { /* ignore */ } finally { setLoading(false) }
+  }
+
+  useEffect(() => {
+    loadMessages()
+    const id = setInterval(loadMessages, 5000)
+    return () => clearInterval(id)
+  }, [groupBuy.id])
+
+  const handleSend = async () => {
+    const trimmed = draft.trim()
+    if (!trimmed) return
+    setSending(true)
+    try {
+      const res = await api.post(`/api/community-group-buy/${groupBuy.id}/messages`, { message: trimmed }, { headers })
+      if (res.data?.success) {
+        setDraft('')
+        loadMessages()
+      } else {
+        toast.error(res.data?.error || '전송 실패')
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '전송 실패')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col" style={{ height: '80vh', maxHeight: '600px' }} onClick={e => e.stopPropagation()}>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-gray-500">{groupBuy.restaurant_name} · 협상 메시지</p>
+            <p className="text-sm font-bold text-gray-900 truncate">{groupBuy.participant_count}/{groupBuy.target_participants}명 모집 중</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 shrink-0">
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50">
+          {loading ? (
+            <p className="text-center text-gray-400 text-sm py-6">불러오는 중...</p>
+          ) : messages.length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-6">첫 메시지를 보내 협상을 시작하세요.</p>
+          ) : messages.map(m => {
+            const isMine = m.sender_type === 'agency' || m.sender_type === 'admin'
+            return (
+              <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] ${isMine ? 'bg-blue-600 text-white' : 'bg-white text-gray-900 border border-gray-200'} rounded-2xl px-3 py-2`}>
+                  {!isMine && <p className="text-[10px] text-gray-500 mb-0.5">{m.sender_name || m.sender_type}</p>}
+                  <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>
+                  <p className={`text-[10px] mt-0.5 ${isMine ? 'text-white/70' : 'text-gray-400'}`}>
+                    {new Date(m.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="border-t border-gray-100 p-3 flex gap-2">
+          <input
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            placeholder="식당에 협상 메시지 보내기"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            maxLength={1000}
+          />
+          <button onClick={handleSend} disabled={sending || !draft.trim()}
+            className="px-3 py-2 bg-blue-600 text-white rounded-xl disabled:opacity-50">
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function generateContract(groupBuy: GroupBuy) {
   const html = `
     <html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:40px;} h1{text-align:center;} table{width:100%;border-collapse:collapse;} td,th{border:1px solid #ddd;padding:8px;}</style></head>
@@ -180,6 +283,8 @@ export default function AgencyGroupBuyPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>('popular')
   const [confirmTarget, setConfirmTarget] = useState<GroupBuy | null>(null)
+  // 🛡️ 2026-05-13 (Phase C): 메시지 모달 타겟
+  const [messagesTarget, setMessagesTarget] = useState<GroupBuy | null>(null)
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
@@ -419,10 +524,20 @@ export default function AgencyGroupBuyPage() {
                     <div className="flex items-center gap-1.5">
                       {g.status === 'proposed' && (
                         <button
-                          onClick={() => changeStatus(g.id, 'negotiating')}
-                          className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200"
+                          onClick={() => { changeStatus(g.id, 'negotiating'); setMessagesTarget(g) }}
+                          className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 flex items-center gap-1"
                         >
+                          <MessageCircle className="w-3 h-3" />
                           {t('agency.groupBuy.startNegotiation', { defaultValue: '협상 시작' })}
+                        </button>
+                      )}
+                      {(g.status === 'negotiating' || g.status === 'confirmed') && (
+                        <button
+                          onClick={() => setMessagesTarget(g)}
+                          className="px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 flex items-center gap-1"
+                          title="식당과 메시지"
+                        >
+                          <MessageCircle className="w-3 h-3" /> 메시지
                         </button>
                       )}
                       {(g.status === 'proposed' || g.status === 'negotiating') && (
@@ -472,6 +587,15 @@ export default function AgencyGroupBuyPage() {
           groupBuy={confirmTarget}
           onClose={() => setConfirmTarget(null)}
           onConfirm={(price, discount) => confirmDeal(confirmTarget.id, price, discount)}
+        />
+      )}
+
+      {/* 🛡️ 2026-05-13 (Phase C): 협상 메시지 모달 */}
+      {messagesTarget && (
+        <MessagesModal
+          groupBuy={messagesTarget}
+          headers={headers}
+          onClose={() => setMessagesTarget(null)}
         />
       )}
       </div>

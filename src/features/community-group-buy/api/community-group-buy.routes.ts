@@ -784,4 +784,147 @@ communityGroupBuyRoutes.get('/popular', async (c) => {
   });
 });
 
+// 🛡️ 2026-05-13 (공구 UX Phase C): 에이전시 ↔ 식당 협상 메시지 채널
+//   기존: "협상 시작" 버튼이 상태만 변경하고 실제 소통 도구 없음.
+//   현재: messages 테이블 + 양방향 endpoint.
+//   인증:
+//     - 어드민 (admin token)
+//     - 에이전시 (agency token)
+//     - 공구 생성자 (creator_user_id = current user)
+//     - 식당 (restaurant_seller_id 가 본인이거나, 향후 magic-link token 도 가능)
+async function ensureMessagesTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS community_group_buy_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL,
+        sender_type TEXT NOT NULL CHECK(sender_type IN ('agency','restaurant','user','admin','system')),
+        sender_id TEXT,
+        sender_name TEXT,
+        message TEXT NOT NULL,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_cgb_messages_group ON community_group_buy_messages(group_id, created_at DESC)`).run()
+  } catch { /* exists */ }
+}
+
+function canAccessGroupMessages(
+  user: { id?: string | number; type?: string; role?: string } | null,
+  group: { creator_user_id?: string; restaurant_seller_id?: string | number | null }
+): { canRead: boolean; senderType: 'agency' | 'restaurant' | 'user' | 'admin' | null } {
+  if (!user) return { canRead: false, senderType: null }
+  if (user.type === 'admin' || user.role === 'admin') return { canRead: true, senderType: 'admin' }
+  if (user.type === 'agency' || user.role === 'agency') return { canRead: true, senderType: 'agency' }
+  if (user.type === 'seller' && group.restaurant_seller_id && String(group.restaurant_seller_id) === String(user.id)) {
+    return { canRead: true, senderType: 'restaurant' }
+  }
+  if (group.creator_user_id && String(group.creator_user_id) === String(user.id)) {
+    return { canRead: true, senderType: 'user' }
+  }
+  return { canRead: false, senderType: null }
+}
+
+// GET /:id/messages — 협상 스레드 조회
+communityGroupBuyRoutes.get('/:id/messages', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const groupId = Number(c.req.param('id'))
+  if (!Number.isFinite(groupId) || groupId <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  const { DB } = c.env
+  await ensureMessagesTable(DB)
+
+  const group = await queryFirst<{ id: number; creator_user_id: string; restaurant_seller_id: string | null }>(
+    DB,
+    'SELECT id, creator_user_id, restaurant_seller_id FROM community_group_buys WHERE id = ?',
+    [groupId]
+  )
+  if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404)
+
+  const userAsAny = user as unknown as { id: string | number; type?: string; role?: string }
+  const { canRead } = canAccessGroupMessages(userAsAny, group)
+  if (!canRead) return c.json({ success: false, error: '접근 권한 없음' }, 403)
+
+  const messages = await executeQuery<{
+    id: number; sender_type: string; sender_name: string | null; message: string; created_at: string
+  }>(DB, `
+    SELECT id, sender_type, sender_name, message, created_at
+    FROM community_group_buy_messages
+    WHERE group_id = ?
+    ORDER BY created_at ASC
+    LIMIT 200
+  `, [groupId])
+
+  return c.json({ success: true, data: messages })
+})
+
+// POST /:id/messages — 메시지 전송
+communityGroupBuyRoutes.post('/:id/messages',
+  rateLimit({ action: 'group_buy_message', max: 30, windowSec: 60 }),
+  requireAuth(),
+  async (c) => {
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+    const groupId = Number(c.req.param('id'))
+    if (!Number.isFinite(groupId) || groupId <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
+
+    const { message } = await c.req.json<{ message?: string }>().catch(() => ({ message: undefined }))
+    if (!message || typeof message !== 'string') return c.json({ success: false, error: '메시지를 입력해주세요' }, 400)
+    const clean = message.trim().replace(/<[^>]+>/g, '').slice(0, 1000)
+    if (!clean) return c.json({ success: false, error: '메시지가 비어있습니다' }, 400)
+
+    const { DB } = c.env
+    await ensureMessagesTable(DB)
+
+    const group = await queryFirst<{ id: number; creator_user_id: string; restaurant_seller_id: string | null; restaurant_name: string }>(
+      DB,
+      'SELECT id, creator_user_id, restaurant_seller_id, restaurant_name FROM community_group_buys WHERE id = ?',
+      [groupId]
+    )
+    if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404)
+
+    const userAsAny = user as unknown as { id: string | number; type?: string; role?: string; name?: string }
+    const { canRead, senderType } = canAccessGroupMessages(userAsAny, group)
+    if (!canRead || !senderType) return c.json({ success: false, error: '메시지 전송 권한 없음' }, 403)
+
+    const senderName = userAsAny.name || (
+      senderType === 'agency' ? '에이전시' :
+      senderType === 'restaurant' ? '식당' :
+      senderType === 'admin' ? '운영자' : '제안자'
+    )
+
+    await executeRun(DB, `
+      INSERT INTO community_group_buy_messages (group_id, sender_type, sender_id, sender_name, message)
+      VALUES (?, ?, ?, ?, ?)
+    `, [groupId, senderType, String(userAsAny.id), senderName, clean])
+
+    // 상대방에게 알림 (best-effort)
+    try {
+      // 발신자 외 모든 stakeholder 에게 알림
+      const recipients: Array<{ user_id: string; user_type: string }> = []
+      if (senderType !== 'user' && group.creator_user_id) {
+        recipients.push({ user_id: group.creator_user_id, user_type: 'user' })
+      }
+      if (senderType !== 'restaurant' && group.restaurant_seller_id) {
+        recipients.push({ user_id: String(group.restaurant_seller_id), user_type: 'seller' })
+      }
+      for (const r of recipients) {
+        await DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+          VALUES (?, ?, 'group_buy_message', ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(
+          r.user_id,
+          r.user_type,
+          `${senderName} 메시지`,
+          clean.slice(0, 100) + (clean.length > 100 ? '...' : ''),
+          `/community-group-buy/${groupId}/messages`
+        ).run().catch(() => { /* notifications 없으면 skip */ })
+      }
+    } catch { /* ignore */ }
+
+    return c.json({ success: true, message: '메시지 전송 완료' })
+  }
+)
+
 export { communityGroupBuyRoutes };
