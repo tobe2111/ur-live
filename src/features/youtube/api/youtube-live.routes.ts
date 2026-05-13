@@ -167,14 +167,19 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
 
     let liveSetup
     if (sellerAuth?.default_stream_id) {
-      // Reuse persistent stream (no new RTMP key needed)
+      // 🛡️ 2026-05-13 v3 (perf): 캐시된 RTMP info 전달 → getStream() 호출 1회 절약 (-300~500ms).
+      //   bind 실패 시 setupLiveStreamWithPersistentStream 내부에서 fresh fetch fallback.
+      const cachedRtmp = (sellerAuth.default_rtmp_url && sellerAuth.default_rtmp_key)
+        ? { rtmpUrl: sellerAuth.default_rtmp_url, rtmpKey: sellerAuth.default_rtmp_key }
+        : undefined
       liveSetup = await youtubeService.setupLiveStreamWithPersistentStream(
         accessToken,
         title,
         description || '',
         sellerAuth.default_stream_id,
         scheduledTime,
-        privacyStatus
+        privacyStatus,
+        cachedRtmp
       )
     } else {
       // First time or no persistent stream — create new + save as default
