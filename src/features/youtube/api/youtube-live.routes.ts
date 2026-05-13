@@ -972,6 +972,64 @@ app.get('/live/:id/diagnose', async (c) => {
  * 🛡️ 2026-05-11: ready 또는 testing 상태에 멈춘 broadcast 를 강제로 live 로 전환.
  *   admin_token 매칭 시 인증 우회. 정상 admission 의 transition 이 실패한 stream 응급 복구용.
  */
+/**
+ * POST /live/:id/reset-zombie
+ *
+ * 🛡️ 2026-05-13: 셀러 본인이 호출 가능한 좀비 reset endpoint.
+ *   사고: status='live' 인데 OME 에 실제 stream 없음 → iframe 검은 화면 영구.
+ *   처리: status='scheduled' 로 되돌리고 OME push 정리 → 셀러가 새로 송출 가능.
+ *   조건 검증: 셀러 소유 + status='live' + OME 에 실제 stream 미존재 (안전장치)
+ */
+app.post('/live/:id/reset-zombie', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  const stream = await c.env.DB.prepare(`
+    SELECT id, status FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{ id: number; status: string }>()
+  if (!stream) return c.json({ success: false, error: 'stream not found' }, 404)
+  if (stream.status !== 'live') return c.json({ success: false, error: 'status 가 live 가 아닙니다' }, 400)
+
+  // OME 에 실제 stream 있으면 거부 (정상 송출 중인 걸 잘못 reset 하면 안 됨)
+  if (c.env.OME_HOST && c.env.OME_API_TOKEN) {
+    try {
+      const auth = btoa(c.env.OME_API_TOKEN)
+      const res = await fetch(
+        `http://${c.env.OME_HOST}:8081/v1/vhosts/default/apps/app/streams/s${streamId}`,
+        { headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(5000) },
+      )
+      if (res.ok) {
+        return c.json({
+          success: false,
+          error: 'OME 에 실제 송출이 감지됩니다. 정상적으로 송출 중이면 잠시 기다리고, 강제 종료하려면 종료 버튼을 사용하세요.'
+        }, 409)
+      }
+    } catch { /* OME 조회 실패 시 reset 진행 (좀비 가능성 큼) */ }
+  }
+
+  // reset
+  await c.env.DB.prepare(`
+    UPDATE live_streams
+    SET status = 'scheduled', started_at = NULL,
+        last_error = '셀러 수동 reset — 송출 신호 미감지로 대기 상태 복귀',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND seller_id = ? AND status = 'live'
+  `).bind(streamId, sellerId).run()
+
+  // OME push 정리
+  await stopOmePush(c.env, streamId)
+
+  // KV 캐시 무효화
+  const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+  if (kv) {
+    await cacheInvalidate(kv, [`stream:${streamId}`, `streams:status:live:limit:20:offset:0`]).catch(() => {})
+  }
+
+  return c.json({ success: true, message: '방송 상태가 대기 상태로 되돌아갔어요. 다시 송출 시작해주세요.' })
+})
+
 app.post('/live/:id/_force-live', async (c) => {
   const adminToken = c.req.query('admin_token')
   const expectedAdminToken = (c.env as { DIAGNOSE_TOKEN?: string }).DIAGNOSE_TOKEN
