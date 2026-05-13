@@ -12,7 +12,6 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
 // 테이블 ensure (agency.routes.ts 와 동일 — 모듈 분리 후속 정리 대상)

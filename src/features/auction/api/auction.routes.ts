@@ -12,8 +12,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
-
 import { swallow } from '@/worker/utils/swallow';
 const auctionRoutes = new Hono<{ Bindings: Env }>();
 

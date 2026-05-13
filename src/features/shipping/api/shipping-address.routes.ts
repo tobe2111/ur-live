@@ -20,7 +20,6 @@ import {
   requireAuth,
   getCurrentUser
 } from '@/worker/middleware/auth';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
   validateRequiredString,
   validateOptionalString,

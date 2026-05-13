@@ -20,8 +20,6 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { cacheGet } from '@/worker/utils/cache';
 import type { Env } from '@/worker/types/env';
 import type { KVNamespace } from '@cloudflare/workers-types';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
-
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.

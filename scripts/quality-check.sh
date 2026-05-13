@@ -109,7 +109,7 @@ fi
 # ── 5. 빌드 확인 ───────────────────────────────────────────
 echo ""
 echo "5️⃣  빌드 확인..."
-if npx vite build 2>&1 | grep -q "built in"; then
+if npm run build 2>&1 | grep -q "built in"; then
   echo -e "   ${GREEN}✅ 프론트 빌드 성공${NC}"
 else
   echo -e "   ${RED}❌ 프론트 빌드 실패${NC}"

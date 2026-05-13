@@ -8,10 +8,8 @@
  * - GET  /api/seller/kakao-link-status — 연동 상태 + 연동된 유저 정보
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 
 type Bindings = {

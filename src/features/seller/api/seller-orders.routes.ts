@@ -17,8 +17,6 @@ import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
-
 import { swallow } from '@/worker/utils/swallow';
 type Bindings = {
   DB: D1Database;

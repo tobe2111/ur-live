@@ -18,7 +18,6 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()

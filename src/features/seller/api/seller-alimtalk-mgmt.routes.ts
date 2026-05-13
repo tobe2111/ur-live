@@ -13,9 +13,7 @@
  * - POST  /api/seller/alimtalk/charge   — 충전 요청
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string

@@ -14,8 +14,6 @@ import { cors } from 'hono/cors';
 import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
-
 // ── Table setup ────────────────────────────────────────────────────────────
 
 async function ensureSettlementTables(DB: D1Database) {

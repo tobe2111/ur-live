@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
+import {TOSS_PAYMENT_URL } from '@/shared/constants';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
 

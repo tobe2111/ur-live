@@ -10,9 +10,7 @@
  *   POST /api/digital/revoke/:accessId   — 환불 시 access 무효화 (admin/seller 본인)
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 export const digitalRoutes = new Hono<{ Bindings: Env }>()

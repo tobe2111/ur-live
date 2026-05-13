@@ -15,7 +15,7 @@ import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
-import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE } from '@/shared/constants';
+import {DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { validateFileMagicBytes } from '@/lib/upload-security';
 import { rateLimit } from '@/worker/middleware/rate-limit';

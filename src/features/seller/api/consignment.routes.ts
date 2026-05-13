@@ -10,9 +10,7 @@
  * 마운트: app.route('/api/seller/consignment', consignmentRoutes)
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { canApprove, canTerminate } from '@/lib/consignment-split'
 import { getConsignmentSettlementsForSeller } from '@/lib/consignment-settlement'
 

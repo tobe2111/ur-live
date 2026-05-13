@@ -11,7 +11,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { getKakaoToken, getKakaoTokenSimple, callKakaoApi } from '@/lib/kakao-token';
 
 const kakaoSocialRoutes = new Hono<{ Bindings: Env }>();
