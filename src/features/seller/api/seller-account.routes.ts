@@ -216,21 +216,17 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     // ── Safe filename (no path traversal) ─────────────────────────────────────
     const safeName = `seller_${sellerId}_${Date.now()}${ext}`;
 
-    // 🛡️ 2026-05-13: btoa(String.fromCharCode(...arr)) 는 spread 인자 수가
-    //   콜스택 한도를 넘어 100KB+ 파일에서 RangeError → 500 사고 발생.
-    //   32KB 청크로 분할 인코딩 → 5MB 까지 안정.
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    const CHUNK = 0x8000;
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
-    }
-    const base64 = btoa(binary);
+    // 🛡️ 2026-05-13 v2: base64 경로 영구 폐기 (이전 32KB 청크 인코딩도 5MB 파일에서
+    //   encodeURIComponent 3배 부풀림 + URL-form body 한계로 간헐적 500 잔존).
+    //   imgbb 는 multipart/form-data 로 raw binary 도 받음 — base64/encodeURIComponent
+    //   둘 다 제거하고 원본 바이트 그대로 전송. 메모리 ~5MB 1회 복사로 끝남.
+    const fd = new FormData();
+    fd.append('image', new Blob([buffer], { type: file.type || 'application/octet-stream' }), safeName);
+    fd.append('name', safeName);
 
     const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `image=${encodeURIComponent(base64)}&name=${encodeURIComponent(safeName)}`,
+      body: fd,
       // 🛡️ 2026-04-22: 30s timeout — 큰 이미지 업로드 + imgbb 응답 지연 대비
       signal: AbortSignal.timeout(30_000),
     });
@@ -238,8 +234,15 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
       const bodyText = await resp.text().catch(() => '');
       throw new Error(`imgbb HTTP ${resp.status}: ${bodyText.slice(0, 200)}`);
     }
-    const json = await resp.json() as ImgbbResponse;
-    if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
+    const respText = await resp.text();
+    let json: ImgbbResponse;
+    try {
+      json = JSON.parse(respText) as ImgbbResponse;
+    } catch {
+      throw new Error(`imgbb non-JSON response (${resp.status}): ${respText.slice(0, 200)}`);
+    }
+    if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed (success=false)');
+    if (!json.data?.url) throw new Error('imgbb response missing data.url');
 
     // ── Bump daily quota counter (TTL = 26h to safely cross day boundary) ────
     if (kv) {
