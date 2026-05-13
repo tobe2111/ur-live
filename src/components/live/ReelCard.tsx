@@ -232,6 +232,11 @@ function ReelCardImpl({
     pinnedMessage,
   } = useLiveStreamWebSocket(stream.id, isActive, stream.status === 'ended')
 
+  // 🛡️ 2026-05-13: 시청자가 status='scheduled' 일 때 진입 → 셀러가 라이브 시작 후
+  //   WebSocket 의 stream_status 이벤트가 wsStreamData 를 갱신하지만, props.stream 은 그대로 →
+  //   ScheduledOverlay 영구 표시되는 사고. WebSocket 이 더 fresh 한 상태를 알고 있으면 그쪽 우선.
+  const effectiveStatus: string = (wsStreamData?.status as string | undefined) ?? stream.status
+
   // ── PC 패널 공유 스토어 사이드이펙트 ──────────────────────────────────────
   // ReelCard 핵심 로직 무변경. 스토어에 쓰기만 담당.
   const {
@@ -330,6 +335,14 @@ function ReelCardImpl({
     // Initialize player for all reels (not just active one)
     // isActive check removed - this fixes YouTube video not playing issue
     if (!stream.youtube_video_id) return
+
+    // 🛡️ 2026-05-13: video_id 변경 시 retry counter / timer 초기화 (이전 broadcast 의 retry 상태가
+    //   새 broadcast 에 그대로 이어져 재시도 횟수 부족해지는 사고 차단)
+    retryCountRef.current = 0
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current)
+      retryTimerRef.current = null
+    }
 
     let player: YTPlayer | null = null
     let isMounted = true
@@ -587,6 +600,10 @@ function ReelCardImpl({
       iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(window.location.origin)}&enablejsapi=1`
       iframe.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture'
       iframe.allowFullscreen = true
+      // 🛡️ 2026-05-13: iOS Safari 가 native iframe 의 URL 쿼리 playsinline=1 외에 HTML attribute 도 검사 →
+      //   누락 시 가로화면 강제 진입. 명시적 속성 추가.
+      iframe.setAttribute('playsinline', 'true')
+      iframe.setAttribute('webkit-playsinline', 'true')
       iframe.style.cssText = 'width:100%;height:100%;border:0;position:absolute;inset:0'
       playerEl.appendChild(iframe)
       if (import.meta.env.DEV) console.log('[ReelCard] Native iframe attached for video', stream.youtube_video_id)
@@ -1053,7 +1070,7 @@ function ReelCardImpl({
       />
 
       {/* 예약 방송 + 라이브 시작 직후 (video_id 미수신) UI */}
-      {(stream.status === 'scheduled' || (stream.status === 'live' && !stream.youtube_video_id)) && (
+      {(effectiveStatus === 'scheduled' || (effectiveStatus === 'live' && !stream.youtube_video_id)) && (
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
@@ -1123,7 +1140,7 @@ function ReelCardImpl({
       )}
 
       {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
-      {stream.status !== 'scheduled' && stream.youtube_video_id && !playerError && showPlayButton && (
+      {effectiveStatus !== 'scheduled' && stream.youtube_video_id && !playerError && showPlayButton && (
         <button
           onClick={handleVideoClick}
           className="absolute inset-0 z-10 flex flex-col items-center justify-center transition-all bg-black/60 cursor-pointer"

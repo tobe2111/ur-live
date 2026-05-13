@@ -22,6 +22,7 @@ import { registerOmePush, stopOmePush, cleanupAllOmePushes, terminateOmeStream }
 import { trackQuota, getQuotaUsage, QUOTA_COST } from './youtube-quota'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { cacheInvalidate } from '@/worker/utils/cache'
 
 const app = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-12: 서브라우터 cors() 제거 — index.ts 전역 cors() 가 처리. 중복 제거.
@@ -1986,6 +1987,18 @@ export async function omeAdmissionHandler(
     justWentLive = (updateRes.meta?.changes ?? 0) > 0
   } catch (e) {
     console.error('[OME admission] DB status update failed', e)
+  }
+
+  // 🛡️ 2026-05-13: status='live' 전환 즉시 SESSION_KV 캐시 무효화.
+  //   사고: /api/streams/:id 는 30초 KV 캐시 → admission webhook 직후 시청자가 접속하면
+  //         stale status='scheduled' 응답 → ScheduledOverlay 영구 표시 → 페이지 새로고침 강제.
+  //   해결: 전환 즉시 stream:${id} 캐시 키 제거 → 다음 요청은 fresh DB 응답.
+  if (justWentLive) {
+    const kv = (env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+    if (kv) {
+      if (waitUntil) waitUntil(cacheInvalidate(kv, `stream:${streamId}`))
+      else await cacheInvalidate(kv, `stream:${streamId}`)
+    }
   }
 
   // 🛡️ 2026-05-10: 'waiting' → 'live' 전환 시 팔로워 알림 발송 (연습 모드 제외)
