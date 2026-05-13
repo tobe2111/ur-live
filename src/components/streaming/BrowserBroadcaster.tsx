@@ -90,20 +90,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart])
 
-  // 🛡️ 2026-05-13: 송출 중 새로고침/닫기 경고 — 실수 방지.
-  //   beforeunload 에서 confirm 다이얼로그 노출. status='live' 일 때만 활성화.
-  //   주의: end-beacon / sendBeacon 호출 안 함 (PR #344 에서 제거된 자동 종료 패턴 부활 X).
-  //   단지 confirm 만 — OME 가 RTCPeerConnection 끊김 감지 후 60s grace period 진입 (admission closing fix).
-  useEffect(() => {
-    if (status !== 'live') return
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = '방송 중입니다. 새로고침/닫으면 3-10초 끊김이 발생할 수 있어요. 계속하시겠어요?'
-      return e.returnValue
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [status])
+  // 🛡️ 2026-05-13 v2: beforeunload confirm 제거 (사용자 요청 — 시도때도 없이 떠서 불편).
+  //   대신 안전망:
+  //   1. 60s grace period (admission closing) — 새로고침해도 60s 안에 재연결 OK
+  //   2. autoStart=true on mount — 새로고침 후 자동 재연결
+  //   → 사용자 실수로 새로고침해도 3-10s 끊김만 발생, 자동 복귀.
 
   // 🛡️ 2026-05-11 P1-#6: 라이브 시작 5초 후 video 프레임 캡처 → thumbnail 자동 설정
   //   셀러가 thumbnail 미설정 시 빈 이미지로 표시되는 문제 해결. 백그라운드 자동 — UI 변경 없음.
