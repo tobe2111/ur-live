@@ -17,6 +17,7 @@ import ScheduledOverlay from '@/components/live/ScheduledOverlay'
 import ReelProductCard from '@/components/live/ReelProductCard'
 import ReelChatSheet from '@/components/live/ReelChatSheet'
 import ReelActionRail from '@/components/live/ReelActionRail'
+import LiveCheckoutSheet from '@/components/live/LiveCheckoutSheet'
 
 interface ApiError {
   response?: { status?: number; statusText?: string; data?: { error?: string } }
@@ -115,6 +116,8 @@ function ReelCardImpl({
   const cardRef = useRef<HTMLDivElement>(null)
   const [isMuted, setIsMuted] = useState(true)
   const [showUnmuteHint, setShowUnmuteHint] = useState(true)
+  // 🛡️ 2026-05-13 (Phase A1): bottomsheet 결제 — 영상 끊김 없는 1탭 결제
+  const [checkoutSheetOpen, setCheckoutSheetOpen] = useState(false)
   // 🛡️ 2026-05-13: iframe stuck 시 시청자에게 "재연결 중" hint 표시 — 검은 화면 안심 신호.
   const [reloadingHint, setReloadingHint] = useState<{ count: number; max: number } | null>(null)
   // 🛡️ 2026-05-13 (cost): IntersectionObserver 로 카드 가시성 추적 → WS connect 결정.
@@ -717,7 +720,7 @@ function ReelCardImpl({
   // ============================================
   async function handleCheckout() {
     if (checkingOut) return // Prevent double-click
-    
+
     // Check login FIRST
     if (!isLoggedIn) {
       showAlert(t('live.loginRequired', { defaultValue: '로그인이 필요합니다!' }), 'warning', t('live.loginRequiredTitle', { defaultValue: '로그인 필요' }))
@@ -730,7 +733,18 @@ function ReelCardImpl({
       showAlert(t('live.noProductForSale', { defaultValue: '판매 중인 상품이 없습니다.' }), 'info', t('live.noProductTitle', { defaultValue: '상품 없음' }))
       return
     }
-    
+
+    // 🛡️ 2026-05-13 (Phase A1): Bottomsheet 결제 — 영상 그대로 진행, 시청 끊김 0
+    //   sheet 내부에서 카드 결제 선택 시 기존 /checkout 페이지 fallback (regression 0).
+    setCheckoutSheetOpen(true)
+    return
+  }
+
+  // 🛡️ 2026-05-13 (Phase A1): 카드 결제 fallback 시 사용 — 기존 navigate 로직 유지.
+  //   sheet 의 "다른 결제 수단" 버튼은 직접 /checkout 으로 navigate 하므로 이 함수는 사용 X.
+  //   향후 sheet 우회가 필요한 경우를 대비해 보존.
+  async function legacyCheckoutNavigate() {
+    if (!currentProduct) return
     setCheckingOut(true)
     try {
       // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
@@ -1221,6 +1235,19 @@ function ReelCardImpl({
           onSubmit={handleSendMessage}
         />
       )}
+      {/* 🛡️ 2026-05-13 (Phase A1): 바로구매 → bottomsheet 결제 (영상 끊김 0) */}
+      <LiveCheckoutSheet
+        open={checkoutSheetOpen}
+        product={currentProduct}
+        streamId={stream.id}
+        sellerShippingFee={stream.seller_shipping_fee}
+        onClose={() => setCheckoutSheetOpen(false)}
+        onSuccess={() => {
+          setCheckoutSheetOpen(false)
+          // social proof 는 백엔드 broadcast (PR #336) 가 자동 처리.
+          // 영상은 unmount X — 그대로 시청 계속.
+        }}
+      />
       {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
     </div>
   )

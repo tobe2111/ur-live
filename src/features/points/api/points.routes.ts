@@ -563,9 +563,11 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   const userId = String(user.id);
 
   // ✅ SECURITY FIX: Ignore client-supplied total_amount/price. Recompute server-side.
-  const { order_number, items, shipping } = await c.req.json<{
+  const { order_number, items, shipping, live_stream_id } = await c.req.json<{
     order_number: string;
     total_amount?: number; // ignored (kept for back-compat parsing)
+    // 🛡️ 2026-05-13 (Phase A1): 라이브 결제면 social proof broadcast 트리거.
+    live_stream_id?: number;
     items: Array<{
       product_id: string | number;
       product_name?: string;
@@ -745,15 +747,31 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
       const sellerOrderNumber = `${order_number}_s${sellerId}`;
 
-      const orderInsert = await DB.prepare(`
-        INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
-        VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
-      `).bind(
-        sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
-        groupSubtotal, shippingFee, groupSubtotal + shippingFee,
-        shipping.name, shipping.phone,
-        JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
-      ).run();
+      // 🛡️ 2026-05-13 (Phase A1): live_stream_id 포함 → 라이브 분석/Social proof 트리거.
+      //   컬럼 없는 환경 대비 try-catch + 일반 INSERT fallback.
+      let orderInsert: D1Result;
+      try {
+        orderInsert = await DB.prepare(`
+          INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo, live_stream_id)
+          VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '', ?)
+        `).bind(
+          sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
+          groupSubtotal, shippingFee, groupSubtotal + shippingFee,
+          shipping.name, shipping.phone,
+          JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' }),
+          live_stream_id ?? null,
+        ).run();
+      } catch {
+        orderInsert = await DB.prepare(`
+          INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
+          VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
+        `).bind(
+          sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
+          groupSubtotal, shippingFee, groupSubtotal + shippingFee,
+          shipping.name, shipping.phone,
+          JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
+        ).run();
+      }
 
       const orderId = orderInsert.meta.last_row_id as number | undefined;
 
