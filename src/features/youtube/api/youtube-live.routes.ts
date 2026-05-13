@@ -1289,6 +1289,87 @@ app.get('/live/_quota', async (c) => {
 })
 
 /**
+ * GET /api/youtube/live/_health-check
+ *
+ * 🛡️ 2026-05-13: Launch 전 인프라 health check — env 변수 + DB 스키마 + OME 도달.
+ *   어드민이 호출하면 라이브 송출 인프라 전체 상태 한 화면.
+ */
+app.get('/live/_health-check', requireAdmin(), async (c) => {
+  const env = c.env
+  const checks: Record<string, { ok: boolean; detail?: string }> = {}
+
+  // 1. 환경 변수
+  checks.OME_HOST = { ok: !!env.OME_HOST, detail: env.OME_HOST ? '설정됨' : '❌ 미설정 — admission webhook 안 옴' }
+  checks.OME_WEBHOOK_SECRET = { ok: !!env.OME_WEBHOOK_SECRET, detail: env.OME_WEBHOOK_SECRET ? '설정됨' : '❌ 미설정' }
+  checks.OME_API_TOKEN = { ok: !!env.OME_API_TOKEN, detail: env.OME_API_TOKEN ? '설정됨' : '❌ 미설정 — push 등록 불가' }
+  checks.YOUTUBE_CLIENT_ID = { ok: !!env.YOUTUBE_CLIENT_ID, detail: env.YOUTUBE_CLIENT_ID ? '설정됨' : '❌ 미설정' }
+  checks.YOUTUBE_CLIENT_SECRET = { ok: !!env.YOUTUBE_CLIENT_SECRET, detail: env.YOUTUBE_CLIENT_SECRET ? '설정됨' : '❌ 미설정' }
+  checks.IMGBB_API_KEY = { ok: !!(env as unknown as { IMGBB_API_KEY?: string }).IMGBB_API_KEY, detail: (env as unknown as { IMGBB_API_KEY?: string }).IMGBB_API_KEY ? '설정됨' : '❌ 이미지 업로드 불가' }
+  checks.SESSION_KV = { ok: !!env.SESSION_KV, detail: env.SESSION_KV ? '설정됨' : '❌ 캐시 동작 안 함' }
+  checks.LIVE_STREAM_DO = { ok: !!(env as unknown as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM, detail: (env as unknown as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM ? '설정됨' : '❌ WebSocket 채팅/상품 sync 불가' }
+
+  // 2. DB 스키마 — disconnected_at 컬럼 존재 확인 (PRAGMA)
+  try {
+    const cols = await env.DB.prepare(`PRAGMA table_info(live_streams)`).all<{ name: string }>()
+    const colNames = (cols.results || []).map(r => r.name)
+    checks['live_streams.disconnected_at'] = {
+      ok: colNames.includes('disconnected_at'),
+      detail: colNames.includes('disconnected_at') ? '있음' : '❌ repair-schema 실행 필요 (POST /api/_internal/repair-schema)',
+    }
+    checks['live_streams.last_error'] = { ok: colNames.includes('last_error'), detail: colNames.includes('last_error') ? '있음' : '❌ repair-schema' }
+    checks['live_streams.started_at'] = { ok: colNames.includes('started_at'), detail: colNames.includes('started_at') ? '있음' : '❌ repair-schema' }
+  } catch (e) {
+    checks['db_schema'] = { ok: false, detail: `❌ ${(e as Error).message}` }
+  }
+
+  // 3. OME 도달 가능성
+  if (env.OME_HOST && env.OME_API_TOKEN) {
+    try {
+      const auth = btoa(env.OME_API_TOKEN)
+      const res = await fetch(`http://${env.OME_HOST}:8081/v1/stats/current`, {
+        headers: { Authorization: `Basic ${auth}` },
+        signal: AbortSignal.timeout(5000),
+      })
+      checks.ome_reachable = { ok: res.ok, detail: res.ok ? `HTTP ${res.status}` : `❌ HTTP ${res.status}` }
+    } catch (e) {
+      checks.ome_reachable = { ok: false, detail: `❌ ${(e as Error).message}` }
+    }
+  }
+
+  // 4. 좀비 스트림
+  try {
+    const zombies = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM live_streams
+      WHERE status = 'live' AND started_at IS NOT NULL
+        AND datetime(started_at) < datetime('now', '-10 minutes')
+    `).first<{ count: number }>()
+    checks.zombie_streams = {
+      ok: (zombies?.count ?? 0) === 0,
+      detail: zombies?.count ? `⚠️ ${zombies.count}개 의심 (cron 가 자동 복구하지만 모니터링 필요)` : '없음',
+    }
+  } catch { /* skip */ }
+
+  // 5. Quota usage
+  try {
+    const usage = await getQuotaUsage(env)
+    checks.youtube_quota = {
+      ok: usage.warning !== 'critical',
+      detail: `${Math.floor(usage.ratio * 100)}% (${usage.total} / ${usage.limit}) — ${usage.warning}`,
+    }
+  } catch { /* skip */ }
+
+  const allOk = Object.values(checks).every(c => c.ok)
+  return c.json({
+    success: true,
+    overall_status: allOk ? 'healthy' : 'issues_detected',
+    checks,
+    recommendation: allOk
+      ? '✅ 라이브 송출 인프라 모두 정상. launch 가능.'
+      : '⚠️ 위 ❌ 항목을 먼저 해결해야 launch 안정.',
+  })
+})
+
+/**
  * GET /api/youtube/live/_admin-quota-dashboard
  *
  * 🛡️ 2026-05-13: 어드민용 풀 quota 대시보드 데이터.
