@@ -409,6 +409,7 @@ export default function LivePageV2() {
       <h1 className="sr-only">{reels[activeIndex]?.stream?.title || t('live.page.srHeading', { defaultValue: '라이브 방송' })}</h1>
       <TopNav
         viewers={viewerCount}
+        status={reels[activeIndex]?.stream?.status}
         sellerName={reels[activeIndex]?.stream?.seller_name || reels[activeIndex]?.stream?.streamerName}
         sellerAvatar={reels[activeIndex]?.stream?.streamerAvatar}
         sellerId={reels[activeIndex]?.stream?.seller_id}

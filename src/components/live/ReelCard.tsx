@@ -964,23 +964,36 @@ function ReelCardImpl({
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
       {/* YouTube Player Container — native iframe direct render (PR #329).
-          기존 YT.Player API + click overlay 통째 폐기. effectiveStatus 가 live/ended 면 즉시 iframe. */}
+          기존 YT.Player API + click overlay 통째 폐기. effectiveStatus 가 live/ended 면 즉시 iframe.
+          🛡️ 2026-05-13: scheduled 상태에서도 시작 10분 전부터 iframe 사전 마운트 →
+            YouTube 가 자체적으로 "곧 시작" UI + transition 처리 → live 전환 시 새로고침 없이 즉시 재생.
+            ScheduledOverlay 가 위에 덮여 있어서 시청자에게는 우리 UI 만 보임. */}
       <div className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]">
-        {effectiveStatus !== 'scheduled' && stream.youtube_video_id && (stream.status !== 'ended' || vodReady) && (
-          <iframe
-            ref={iframeRef}
-            key={`yt-${stream.youtube_video_id}`}
-            src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1`}
-            // 🛡️ 2026-05-13: allow 에 fullscreen 포함 → allowFullScreen 속성과 중복 → React 경고. 통합.
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            title={stream.title || 'Live broadcast'}
-            // playsinline (iOS Safari) — DOM attr 둘 다 명시
-            // eslint-disable-next-line react/no-unknown-property
-            playsInline
-            // eslint-disable-next-line react/no-unknown-property
-            webkit-playsinline="true"
-          />
-        )}
+        {(() => {
+          if (!stream.youtube_video_id) return null
+          if (stream.status === 'ended' && !vodReady) return null
+          // scheduled 인데 임박(10분) 안이면 pre-mount, 아니면 unmount
+          if (effectiveStatus === 'scheduled') {
+            if (!stream.scheduled_at) return null
+            const msUntil = new Date(stream.scheduled_at).getTime() - Date.now()
+            if (msUntil > 10 * 60 * 1000) return null  // 10분 초과 → 자원 절약
+          }
+          return (
+            <iframe
+              ref={iframeRef}
+              key={`yt-${stream.youtube_video_id}`}
+              src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1`}
+              // 🛡️ 2026-05-13: allow 에 fullscreen 포함 → allowFullScreen 속성과 중복 → React 경고. 통합.
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              title={stream.title || 'Live broadcast'}
+              // playsinline (iOS Safari) — DOM attr 둘 다 명시
+              // eslint-disable-next-line react/no-unknown-property
+              playsInline
+              // eslint-disable-next-line react/no-unknown-property
+              webkit-playsinline="true"
+            />
+          )
+        })()}
       </div>
 
       {/* 예약 방송 + 라이브 시작 직후 (video_id 미수신) UI */}

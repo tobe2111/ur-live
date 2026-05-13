@@ -668,6 +668,38 @@ export default function SellerLiveBroadcastPage() {
           connectingYouTube={connectingYouTube}
         />
 
+        {/* 🛡️ 2026-05-13: 예약된 방송 prominent 안내 — info 화면이 새 방송 폼 처럼 보여서
+            셀러가 "내가 예약한 방송 어디 갔지?" 헷갈리던 사고 해결. 가장 임박한 1개를 강조. */}
+        {step === 'info' && (() => {
+          const nextScheduled = streams
+            .filter(s => s.status === 'scheduled' && s.scheduled_at)
+            .sort((a, b) => safeTime(a.scheduled_at!) - safeTime(b.scheduled_at!))[0]
+          if (!nextScheduled) return null
+          const ms = safeTime(nextScheduled.scheduled_at!) - Date.now()
+          const totalMin = Math.floor(ms / 60000)
+          const hours = Math.floor(totalMin / 60)
+          const mins = totalMin % 60
+          const countdownText = ms <= 0 ? '시작 시간이 지났어요' :
+            hours > 0 ? `${hours}시간 ${mins}분 뒤 시작` : `${mins}분 뒤 시작`
+          return (
+            <div className="rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 p-4 text-white shadow-lg">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold opacity-90 mb-1">📅 예약된 방송이 있어요</p>
+                  <p className="text-sm font-bold truncate">{nextScheduled.title}</p>
+                  <p className="text-xs opacity-90 mt-0.5">⏰ {countdownText}</p>
+                </div>
+                <button
+                  onClick={() => navigate(`/seller/live-broadcast/${nextScheduled.id}`)}
+                  className="shrink-0 px-4 py-2 bg-white text-pink-600 rounded-lg text-sm font-bold hover:bg-pink-50 transition-colors"
+                >
+                  송출 준비 →
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* STEP 1: 방송 정보 */}
         {step === 'info' && (
           <StepInfo

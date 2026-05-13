@@ -176,6 +176,7 @@ export interface LiveStreamsTable {
   like_count: number | null
   last_error: string | null     // 2026-05-10: OME push / YouTube broadcast 자동감지 실패 시 셀러 진단용
   started_at: string | null     // 2026-05-11: admission webhook 이 status='live' 와 동시에 박음
+  disconnected_at: string | null // 2026-05-13: OME closing webhook 시 grace period 진입. reconnect 시 클리어
   ended_at: string | null
   created_at: string
   updated_at: string

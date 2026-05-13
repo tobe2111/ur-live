@@ -1909,7 +1909,10 @@ export async function omeAdmissionHandler(
     return { allowed: false, reason: 'invalid signature' }
   }
 
-  // closing event — cleanup 알림용. DB status 도 'ended' 로 업데이트.
+  // closing event — 60s grace period 진입. 재연결 안 오면 종료.
+  // 🛡️ 2026-05-13: 이전엔 closing 즉시 status='ended' → 네트워크 일시 끊김 (WiFi 전환 / 모바일 핸드오버 /
+  //   페이지 새로고침 ~5-10s) 만으로 방송 종료되던 사고. 60s grace period 두고 그 사이 새 admission(opening)
+  //   오면 reconnect 로 간주, disconnected_at 클리어. 안 오면 그때 종료 + 알림 + OME push 해제.
   if (body.request.status === 'closing') {
     try {
       const url = new URL(body.request.url)
@@ -1920,50 +1923,60 @@ export async function omeAdmissionHandler(
         const [, sidStr] = closingPayload.split('|')
         const sid = parseInt(sidStr)
         if (sid) {
-          const updateRes = await env.DB.prepare(`
-            UPDATE live_streams SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          // 1) disconnect marker 박기 (status 는 'live' 유지)
+          await env.DB.prepare(`
+            UPDATE live_streams SET disconnected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND status = 'live'
-          `).bind(sid).run()
-          // 🛡️ 2026-05-13 (안정성 #2): meta.changes > 0 → status='live' 였는데 unexpected close.
-          //   셀러가 명시적 종료 안 했는데 RTMP 끊김 = OBS crash / 인터넷 disconnect / 모바일 백그라운드.
-          //   셀러에게 알림 → 즉시 인지 후 재시작 가능.
-          if ((updateRes.meta?.changes ?? 0) > 0) {
-            const notify = async () => {
-              try {
-                const s = await env.DB.prepare(
-                  `SELECT seller_id, title FROM live_streams WHERE id = ?`
-                ).bind(sid).first<{ seller_id: number; title: string }>()
-                if (!s) return
-                await env.DB.prepare(`
-                  INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-                  VALUES (
-                    (SELECT user_id FROM sellers WHERE id = ?),
-                    'seller',
-                    'broadcast_disconnect',
-                    '방송 송출이 끊겼어요',
-                    ?,
-                    ?,
-                    CURRENT_TIMESTAMP
-                  )
-                `).bind(
-                  s.seller_id,
-                  `"${s.title}" 방송의 송출 신호가 끊겨 자동 종료됐어요. OBS / 인터넷 확인 후 새 방송을 시작해주세요.`,
-                  `/seller/live-broadcast`
-                ).run().catch(() => { /* notifications 테이블 없거나 user_id 없으면 skip */ })
-              } catch (e) {
-                console.error('[OME admission] disconnect notify failed', e)
-              }
+          `).bind(sid).run().catch((e) => {
+            // disconnected_at 컬럼 없으면 (repair-schema 미실행) → 기존 동작 fallback: 즉시 종료
+            console.warn('[OME admission] disconnect marker failed (column missing?), falling back to immediate end:', e)
+          })
+
+          // 2) 60s 후 재확인 → 여전히 disconnected_at 살아있고 status='live' 면 종료 확정
+          const GRACE_PERIOD_MS = 60_000
+          const finalize = async () => {
+            await new Promise((r) => setTimeout(r, GRACE_PERIOD_MS))
+            const s = await env.DB.prepare(`
+              SELECT status, disconnected_at, seller_id, title FROM live_streams WHERE id = ?
+            `).bind(sid).first<{ status: string; disconnected_at: string | null; seller_id: number; title: string }>()
+            if (!s) return
+            // reconnect 가 admission(opening) 으로 disconnected_at 클리어했으면 → 종료 X
+            if (s.status !== 'live' || !s.disconnected_at) return
+
+            // grace 만료 → 종료 확정
+            const updateRes = await env.DB.prepare(`
+              UPDATE live_streams
+              SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
+                  last_error = COALESCE(last_error, '60초 grace period 동안 재연결 없음 — 자동 종료')
+              WHERE id = ? AND status = 'live' AND disconnected_at IS NOT NULL
+            `).bind(sid).run()
+
+            if ((updateRes.meta?.changes ?? 0) > 0) {
+              // 셀러 알림
+              await env.DB.prepare(`
+                INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+                VALUES (
+                  (SELECT user_id FROM sellers WHERE id = ?),
+                  'seller', 'broadcast_disconnect',
+                  '방송 송출이 끊겼어요',
+                  ?, ?, CURRENT_TIMESTAMP
+                )
+              `).bind(
+                s.seller_id,
+                `"${s.title}" 방송의 송출 신호가 60초 이상 끊겨 자동 종료됐어요. 네트워크/송출 도구 확인 후 새 방송을 시작해주세요.`,
+                `/seller/live-broadcast`
+              ).run().catch(() => { /* notifications 없거나 user_id 없으면 skip */ })
+
+              // OME push 해제 (다음 broadcast Duplicate ID 방지)
+              await stopOmePush(env, sid)
             }
-            if (waitUntil) waitUntil(notify())
-            else await notify()
           }
-          // 🛡️ 2026-05-11: closing event 시 OME push 도 정리 — 다음 broadcast 의 Duplicate ID 방지
-          if (waitUntil) waitUntil(stopOmePush(env, sid))
-          else await stopOmePush(env, sid)
+          if (waitUntil) waitUntil(finalize())
+          // foreground 동기 종료는 OME 응답 지연 → grace 도 못 살림. 백그라운드 only.
         }
       }
     } catch (e) {
-      console.error('[OME admission] closing status update failed', e)
+      console.error('[OME admission] closing handler failed', e)
     }
     return { allowed: true }
   }
@@ -1997,6 +2010,11 @@ export async function omeAdmissionHandler(
   if (!stream || !stream.rtmp_url || !stream.rtmp_key) {
     return { allowed: false, reason: 'stream/rtmp_key not found' }
   }
+
+  // 🛡️ 2026-05-13: reconnect 감지 — closing 후 grace period 안에 새 admission 오면 disconnect marker 클리어.
+  //   finalize() 가 60s 후 disconnected_at NOT NULL 조건으로만 ended 처리하므로, 여기서 NULL 처리하면 살아남.
+  await env.DB.prepare(`UPDATE live_streams SET disconnected_at = NULL WHERE id = ? AND disconnected_at IS NOT NULL`)
+    .bind(streamId).run().catch(() => { /* column 없으면 무시 */ })
 
   // 🛡️ 2026-05-11: admission(opening) 직후엔 OME stream 이 아직 OME 내부에 등록 안 됨.
   //   startPush 는 stream 존재가 전제 — 1500ms 지연으로 stream 인입 완료 시점을 기다림.
