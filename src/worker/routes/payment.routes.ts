@@ -275,6 +275,44 @@ paymentsRouter.post('/confirm', async (c) => {
 
     logInfo('payment.confirmed', { orderId: orderNumber, method: tossData.method, count: updatedOrders.length });
 
+    // 🛡️ 2026-05-13 (Phase A): 라이브 주문 social proof — 라이브 시청 중인 시청자들에게
+    //   "🛍️ XX님이 [상품명] 구매!" 메시지 broadcast → conversion 자극 (FOMO 효과).
+    //   best-effort: DO 미가용 / 라이브 외 주문이면 skip.
+    if ((c.env as { LIVE_STREAM?: DurableObjectNamespace }).LIVE_STREAM) {
+      for (const order of updatedOrders) {
+        const liveStreamId = (order as unknown as { live_stream_id?: number | null }).live_stream_id;
+        if (!liveStreamId) continue;
+        try {
+          // 첫 상품 정보 + 익명화 사용자
+          const firstItem = await c.env.DB.prepare(`
+            SELECT oi.product_name FROM order_items oi WHERE oi.order_id = ? LIMIT 1
+          `).bind(order.id).first<{ product_name: string }>();
+          const buyer = (order as unknown as { shipping_name?: string }).shipping_name || '구매자'
+          const maskedBuyer = buyer.length <= 1 ? buyer : `${buyer[0]}**`
+          const productName = firstItem?.product_name || '상품'
+          const doId = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(liveStreamId))
+          const stub = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
+          c.executionCtx.waitUntil(
+            stub.fetch(new Request('https://internal/broadcast', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Internal-Auth': c.env.JWT_SECRET || '',
+                'X-Auth-User-Type': 'system',
+              },
+              body: JSON.stringify({
+                type: 'order_proof',
+                data: { buyer: maskedBuyer, product: productName, amount: order.total_amount },
+                timestamp: Date.now(),
+              }),
+            })).catch(() => { /* DO 미가용 — 결제는 이미 완료, 무시 */ })
+          )
+        } catch (err) {
+          if (import.meta.env?.DEV) console.warn('[payment.confirm] order proof broadcast failed:', err)
+        }
+      }
+    }
+
     // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
     // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
     // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만

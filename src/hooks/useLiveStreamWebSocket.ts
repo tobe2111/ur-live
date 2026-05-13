@@ -284,6 +284,18 @@ export function useLiveStreamWebSocket(
             )
           } else if (msg.type === 'donation') {
             setLastDonation(msg.data as DonationEvent)
+          } else if (msg.type === 'order_proof') {
+            // 🛡️ 2026-05-13 (Phase A): 라이브 시청 중 다른 시청자의 주문 → social proof 채팅 메시지로.
+            //   FOMO 효과 → conversion 자극 (TikTok / 라이브 커머스 표준).
+            const d = msg.data as { buyer: string; product: string; amount: number }
+            addLocalMessage({
+              id: `order-proof-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              userId: 0,
+              userName: 'system',
+              userType: 'system',
+              message: `🛍️ ${d.buyer}님이 [${d.product}] 구매!`,
+              timestamp: Date.now(),
+            })
           } else if (msg.type === 'flash_sale') {
             setActiveFlashSale(msg.data)
           } else if (msg.type === 'pinned_message') {

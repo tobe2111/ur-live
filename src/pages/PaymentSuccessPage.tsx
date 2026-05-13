@@ -15,6 +15,10 @@ export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // 🛡️ 2026-05-13 (Phase A): 라이브 자동 복귀 카운트다운 — 결제 완료 후 5초 뒤 자동 이동.
+  //   FOMO + 시청 유지 동시 잡음. 시청자 명시적 취소 가능.
+  const [autoReturnSec, setAutoReturnSec] = useState<number | null>(null)
+  const autoReturnTargetRef = useRef<string | null>(null)
   const [orderInfo, setOrderInfo] = useState<{
     orderId?: string;
     method?: string;
@@ -177,8 +181,29 @@ export default function PaymentSuccessPage() {
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료
+      // 🛡️ 2026-05-13 (Phase A): 라이브에서 진입한 결제면 5초 카운트다운 후 자동 라이브 복귀.
+      //   시청 유지 + FOMO 자극. 사용자 명시적 취소 가능.
+      const lastLiveId = localStorage.getItem('lastViewedLiveId')
+      const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
+      const isFromLive = lastLiveId && lastViewedAt && (Date.now() - parseInt(lastViewedAt, 10)) < 600_000  // 10분 이내
+      if (isFromLive && lastLiveId) {
+        autoReturnTargetRef.current = `/live/${lastLiveId}`
+        setAutoReturnSec(5)
+      }
     }
   }
+
+  // 🛡️ 2026-05-13 (Phase A): autoReturn 카운트다운 + 자동 navigate
+  useEffect(() => {
+    if (autoReturnSec === null) return
+    if (autoReturnSec <= 0) {
+      const target = autoReturnTargetRef.current
+      if (target) navigate(target)
+      return
+    }
+    const t = setTimeout(() => setAutoReturnSec(s => (s !== null ? s - 1 : null)), 1000)
+    return () => clearTimeout(t)
+  }, [autoReturnSec, navigate])
 
   if (loading) {
     return (
@@ -310,6 +335,7 @@ export default function PaymentSuccessPage() {
                 <Button
                   onClick={() => {
                     // ✅ UX M20 FIX: 1시간 이상 경과한 lastViewedLiveId는 stale로 간주하여 홈으로 이동
+                    setAutoReturnSec(null)  // 카운트다운 취소
                     const lastLiveId = localStorage.getItem('lastViewedLiveId')
                     const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
                     const isStale = !lastViewedAt || (Date.now() - parseInt(lastViewedAt, 10)) > 3600000
@@ -321,7 +347,9 @@ export default function PaymentSuccessPage() {
                   }}
                   className="w-full sm:flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-all"
                 >
-                  쇼핑 계속하기
+                  {autoReturnSec !== null && autoReturnSec > 0
+                    ? `라이브 복귀 (${autoReturnSec}초)`
+                    : '쇼핑 계속하기'}
                 </Button>
               </>
             )}
