@@ -121,44 +121,83 @@ export function PromptModal({ title, placeholder, confirmLabel, onConfirm, onCan
   )
 }
 
-// ── 방송 종료 후 리캡 모달 (P1-7) ────────────────────────────────
+// ── 방송 종료 후 리캡 모달 — 2026-05-13 강화 ────────────────────────────────
+// peak/unique 시청자, 후원, unique chatters/buyers 추가 + 진행시간 자동 계산.
 export function RecapModal({ stream, stats, onClose }: {
   stream: LiveStreamLite
-  stats: { duration: string; viewers: number; chat: number; orders: number; revenue: number }
+  stats: {
+    duration: string
+    viewers: number
+    peak_viewers?: number
+    unique_viewers?: number
+    chat: number
+    unique_chatters?: number
+    orders: number
+    unique_buyers?: number
+    revenue: number
+    donation_count?: number
+    donation_amount?: number
+  }
   onClose: () => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const hasDonation = (stats.donation_amount ?? 0) > 0
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="text-center space-y-1">
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{t('seller.liveBroadcast.recapTitle')}</p>
+          <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">{t('seller.liveBroadcast.recapTitle', { defaultValue: '방송 결산' })}</p>
           <h3 className="text-lg font-bold text-gray-900 truncate">{stream.title}</h3>
           <p className="text-xs text-gray-500">{stats.duration}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+
+        {/* 핵심 매출 카드 — 가장 크게 */}
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
+          <p className="text-[11px] uppercase tracking-wider opacity-80">{t('seller.liveBroadcast.statsRevenue', { defaultValue: '매출' })}</p>
+          <p className="text-3xl font-extrabold mt-1">₩{formatNumber(stats.revenue)}</p>
+          <p className="text-xs opacity-90 mt-1">
+            주문 {stats.orders}건
+            {stats.unique_buyers != null && stats.unique_buyers > 0 && ` · 구매자 ${stats.unique_buyers}명`}
+          </p>
+        </div>
+
+        {/* 시청 / 채팅 / 후원 grid */}
+        <div className="grid grid-cols-3 gap-2">
           <div className="bg-blue-50 rounded-xl p-3 text-center">
             <Eye className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-blue-700">{formatNumber(stats.viewers)}</p>
-            <p className="text-[10px] text-blue-600">{t('seller.liveBroadcast.statsViewers')}</p>
+            <p className="text-base font-bold text-blue-700">{formatNumber(stats.peak_viewers ?? stats.viewers)}</p>
+            <p className="text-[10px] text-blue-600">최대 동시</p>
+            {stats.unique_viewers != null && stats.unique_viewers > 0 && (
+              <p className="text-[9px] text-blue-500 mt-0.5">총 {formatNumber(stats.unique_viewers)}명</p>
+            )}
           </div>
           <div className="bg-purple-50 rounded-xl p-3 text-center">
             <MessageSquare className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-purple-700">{formatNumber(stats.chat)}</p>
-            <p className="text-[10px] text-purple-600">{t('seller.liveBroadcast.statsChat')}</p>
+            <p className="text-base font-bold text-purple-700">{formatNumber(stats.chat)}</p>
+            <p className="text-[10px] text-purple-600">채팅</p>
+            {stats.unique_chatters != null && stats.unique_chatters > 0 && (
+              <p className="text-[9px] text-purple-500 mt-0.5">{stats.unique_chatters}명 발화</p>
+            )}
           </div>
-          <div className="bg-amber-50 rounded-xl p-3 text-center">
-            <ShoppingBag className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-amber-700">{stats.orders}</p>
-            <p className="text-[10px] text-amber-600">{t('seller.liveBroadcast.statsOrders')}</p>
-          </div>
-          <div className="bg-green-50 rounded-xl p-3 text-center">
-            <DollarSign className="w-4 h-4 text-green-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-green-700">₩{formatNumber(stats.revenue)}</p>
-            <p className="text-[10px] text-green-600">{t('seller.liveBroadcast.statsRevenue')}</p>
-          </div>
+          {hasDonation ? (
+            <div className="bg-pink-50 rounded-xl p-3 text-center">
+              <span className="text-pink-600 text-base">💝</span>
+              <p className="text-base font-bold text-pink-700">{formatNumber(stats.donation_amount!)}</p>
+              <p className="text-[10px] text-pink-600">후원딜</p>
+              {(stats.donation_count ?? 0) > 0 && (
+                <p className="text-[9px] text-pink-500 mt-0.5">{stats.donation_count}건</p>
+              )}
+            </div>
+          ) : (
+            <div className="bg-amber-50 rounded-xl p-3 text-center">
+              <ShoppingBag className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+              <p className="text-base font-bold text-amber-700">{stats.orders}</p>
+              <p className="text-[10px] text-amber-600">주문</p>
+            </div>
+          )}
         </div>
+
         <div className="flex gap-2 pt-1">
           <button onClick={onClose}
             className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">
@@ -166,7 +205,7 @@ export function RecapModal({ stream, stats, onClose }: {
           </button>
           <button onClick={() => { onClose(); navigate(`/seller/live-analytics/${stream.id}`) }}
             className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold">
-            {t('seller.liveBroadcast.viewAnalytics')}
+            {t('seller.liveBroadcast.viewAnalytics', { defaultValue: '상세 분석 보기' })}
           </button>
         </div>
       </div>

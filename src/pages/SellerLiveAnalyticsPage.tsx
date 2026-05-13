@@ -86,6 +86,8 @@ function AnalyticsSummary() {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d')
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  // 🛡️ 2026-05-13 (#3): status 탭 — 모든 / 예약 / 진행 / 종료 (관리 통합 페이지)
+  const [statusTab, setStatusTab] = useState<'all' | 'scheduled' | 'live' | 'ended'>('all')
 
   function loadSummary() {
     setLoading(true)
@@ -180,14 +182,48 @@ function AnalyticsSummary() {
 
       {/* Streams list */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b">
-          <h3 className="text-sm font-semibold text-gray-900">{t('seller.streamPerformance')}</h3>
+        <div className="px-5 py-3 border-b flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-sm font-semibold text-gray-900">{t('seller.streamPerformance', { defaultValue: '방송 관리' })}</h3>
+          {/* 🛡️ 2026-05-13 (#3): status 탭 — 예약/진행/종료 한곳에서 관리 */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1 text-xs">
+            {([
+              { key: 'all', label: '전체' },
+              { key: 'live', label: 'LIVE', color: 'text-red-600' },
+              { key: 'scheduled', label: '예약', color: 'text-blue-600' },
+              { key: 'ended', label: '종료', color: 'text-gray-500' },
+            ] as const).map(tab => {
+              const count = tab.key === 'all'
+                ? streams.length
+                : streams.filter(s => s.status === tab.key).length
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusTab(tab.key)}
+                  className={`px-2.5 py-1 font-medium rounded-md transition-all ${
+                    statusTab === tab.key
+                      ? `bg-white shadow-sm ${tab.color ?? 'text-gray-900'}`
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab.label} <span className="text-[10px] opacity-60">({count})</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
-        {streams.length === 0 ? (
-          <p className="text-center text-gray-400 py-12 text-sm">{t('seller.noStreamRecord')}</p>
-        ) : (
+        {(() => {
+          const filteredStreams = statusTab === 'all' ? streams : streams.filter(s => s.status === statusTab)
+          if (filteredStreams.length === 0) {
+            return <p className="text-center text-gray-400 py-12 text-sm">{
+              statusTab === 'live' ? '진행 중인 라이브가 없습니다' :
+              statusTab === 'scheduled' ? '예약된 방송이 없습니다' :
+              statusTab === 'ended' ? '종료된 방송이 없습니다' :
+              t('seller.noStreamRecord', { defaultValue: '방송 기록이 없습니다' })
+            }</p>
+          }
+          return (
           <div className="divide-y">
-            {streams.map(stream => (
+            {filteredStreams.map(stream => (
               <div key={stream.id} className="relative group">
                 <Link
                   to={`/seller/live-analytics/${stream.id}`}
@@ -265,7 +301,8 @@ function AnalyticsSummary() {
               </div>
             ))}
           </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )

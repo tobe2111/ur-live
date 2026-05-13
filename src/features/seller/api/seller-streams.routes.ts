@@ -815,38 +815,81 @@ sellerStreamsRoutes.get('/:id/live-stats', async (c) => {
     const streamId = c.req.param('id');
     const db = c.env.DB;
 
+    // 🛡️ 2026-05-13 (#1): 종료 결산 모달 강화 — peak_viewers / unique_viewers / donations 추가.
     const stream = await db.prepare(
-      'SELECT id, current_viewers FROM live_streams WHERE id = ? AND seller_id = ?'
-    ).bind(streamId, sellerId).first<{ id: number; current_viewers?: number }>();
+      'SELECT id, current_viewers, peak_viewers, started_at, ended_at FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ id: number; current_viewers?: number; peak_viewers?: number; started_at?: string; ended_at?: string }>();
     if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404);
 
     let chatCount = 0;
+    let uniqueChatters = 0;
     try {
       const r = await db.prepare(
-        'SELECT COUNT(*) as c FROM chat_messages WHERE live_stream_id = ?'
-      ).bind(streamId).first<{ c: number }>();
+        'SELECT COUNT(*) as c, COUNT(DISTINCT user_id) as u FROM chat_messages WHERE live_stream_id = ?'
+      ).bind(streamId).first<{ c: number; u: number }>();
       chatCount = r?.c || 0;
+      uniqueChatters = r?.u || 0;
     } catch { /* table may not exist */ }
 
     let orderCount = 0;
     let revenue = 0;
+    let uniqueBuyers = 0;
     try {
       const r = await db.prepare(`
-        SELECT COUNT(*) as c, COALESCE(SUM(total_amount), 0) as r
+        SELECT COUNT(*) as c, COALESCE(SUM(total_amount), 0) as r, COUNT(DISTINCT user_id) as b
         FROM orders
         WHERE live_stream_id = ? AND status IN ('PAID','DONE','SHIPPING','DELIVERED')
-      `).bind(streamId).first<{ c: number; r: number }>();
+      `).bind(streamId).first<{ c: number; r: number; b: number }>();
       orderCount = r?.c || 0;
       revenue = r?.r || 0;
+      uniqueBuyers = r?.b || 0;
     } catch { /* columns may differ */ }
+
+    // 후원 (딜 포인트) — donations 테이블이 없으면 0
+    let donationCount = 0;
+    let donationAmount = 0;
+    try {
+      const r = await db.prepare(`
+        SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as a
+        FROM donations WHERE stream_id = ? AND status = 'completed'
+      `).bind(streamId).first<{ c: number; a: number }>();
+      donationCount = r?.c || 0;
+      donationAmount = r?.a || 0;
+    } catch { /* table may not exist */ }
+
+    // 유니크 시청자 — live_stream_views 가 있으면 사용
+    let uniqueViewers = 0;
+    try {
+      const r = await db.prepare(`
+        SELECT COUNT(DISTINCT session_id) as u FROM live_stream_views WHERE stream_id = ?
+      `).bind(streamId).first<{ u: number }>();
+      uniqueViewers = r?.u || 0;
+    } catch { /* fallback to current_viewers */ }
+
+    // 진행 시간 (초)
+    let durationSec = 0;
+    if (stream.started_at) {
+      const start = new Date(stream.started_at.replace(' ', 'T') + (stream.started_at.endsWith('Z') ? '' : 'Z')).getTime();
+      const end = stream.ended_at
+        ? new Date(stream.ended_at.replace(' ', 'T') + (stream.ended_at.endsWith('Z') ? '' : 'Z')).getTime()
+        : Date.now();
+      if (Number.isFinite(start) && Number.isFinite(end)) durationSec = Math.max(0, Math.floor((end - start) / 1000));
+    }
 
     return c.json({
       success: true,
       data: {
         viewer_count: stream.current_viewers || 0,
+        peak_viewers: stream.peak_viewers || stream.current_viewers || 0,
+        unique_viewers: uniqueViewers,
         chat_count: chatCount,
+        unique_chatters: uniqueChatters,
         order_count: orderCount,
+        unique_buyers: uniqueBuyers,
         revenue,
+        donation_count: donationCount,
+        donation_amount: donationAmount,
+        duration_sec: durationSec,
       }
     });
   } catch (error: unknown) {
