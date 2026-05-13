@@ -38,6 +38,7 @@ const AdminAdSlotsPage = lazy(() => import('@/pages/AdminAdSlotsPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
 const AdminLiveMonitorPage = lazy(() => import('@/pages/AdminLiveMonitorPage'))
+const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage'))
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('@/pages/AdminReviewModerationPage'))
@@ -224,6 +225,11 @@ export function AdminRoutes() {
       <Route path="/admin/live-monitor" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/youtube-quota" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminYoutubeQuotaPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/health" element={

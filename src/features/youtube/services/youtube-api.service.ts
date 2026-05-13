@@ -271,7 +271,8 @@ export class YouTubeAPIService {
   async createStream(
     accessToken: string,
     title: string,
-    resolution: '1080p' | '720p' | '480p' = '1080p'
+    resolution: '1080p' | '720p' | '480p' = '1080p',
+    frameRate: '30fps' | '60fps' | 'variable' = '30fps'  // 🛡️ 2026-05-13: 60fps 옵션 (패션/뷰티 카테고리 자연스러운 움직임)
   ): Promise<YouTubeStream> {
     const response = await fetch(
       `${YOUTUBE_API_BASE}/liveStreams?part=snippet,cdn,status`,
@@ -286,7 +287,7 @@ export class YouTubeAPIService {
             title
           },
           cdn: {
-            frameRate: '30fps',
+            frameRate,
             ingestionType: 'rtmp',
             resolution
           }
@@ -521,7 +522,8 @@ export class YouTubeAPIService {
     title: string,
     description: string,
     scheduledStartTime: string = new Date().toISOString(),
-    privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
+    privacyStatus: 'public' | 'unlisted' | 'private' = 'public',
+    frameRate: '30fps' | '60fps' | 'variable' = '30fps'
   ): Promise<YouTubeLiveSetup> {
     // Create broadcast
     const broadcast = await this.createBroadcast(
@@ -535,7 +537,9 @@ export class YouTubeAPIService {
     // Create stream
     const stream = await this.createStream(
       accessToken,
-      `${title} - Stream`
+      `${title} - Stream`,
+      '1080p',
+      frameRate
     )
 
     // Bind them together

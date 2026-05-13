@@ -113,6 +113,16 @@ export default function SellerLiveBroadcastPage() {
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
+  // 🛡️ 2026-05-13: frameRate — 30fps (기본) / 60fps (패션/뷰티 자연스러움) / variable.
+  //   localStorage 에 마지막 선택 기억 — 셀러 카테고리 따라 매번 안 바꿔도 됨.
+  const [frameRate, setFrameRate] = useState<'30fps' | '60fps' | 'variable'>(() => {
+    if (typeof window === 'undefined') return '30fps'
+    const v = localStorage.getItem('ur_seller_framerate_v1')
+    return v === '60fps' || v === 'variable' ? v : '30fps'
+  })
+  useEffect(() => {
+    try { localStorage.setItem('ur_seller_framerate_v1', frameRate) } catch { /* ignore */ }
+  }, [frameRate])
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('public')
 
   // UI
@@ -404,6 +414,7 @@ export default function SellerLiveBroadcastPage() {
         scheduled_start_time: scheduledStartTime,
         privacy_status: effectivePrivacy,
         channel_id: activeChannelId || undefined,
+        frame_rate: frameRate,
       })
       if (res.data?.success) {
         const d = res.data.data
@@ -725,6 +736,8 @@ export default function SellerLiveBroadcastPage() {
               setNotifyFollowers={setNotifyFollowers}
               practiceMode={practiceMode}
               setPracticeMode={setPracticeMode}
+              frameRate={frameRate}
+              setFrameRate={setFrameRate}
             />
             {/* 우측 패널 — PC 만 (카메라 미리보기 + 빠른 안내). 모바일에선 hidden */}
             <aside className="hidden lg:block lg:sticky lg:top-6 space-y-4">
