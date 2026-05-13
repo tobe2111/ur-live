@@ -17,7 +17,13 @@ param(
   [switch]$SkipPull
 )
 
-$ErrorActionPreference = "Stop"
+# Note: Do NOT use $ErrorActionPreference = "Stop" globally.
+# wrangler writes informational warnings to stderr; with Stop, PowerShell aborts.
+# Use $LASTEXITCODE checks instead for external command failure detection.
+$ErrorActionPreference = "Continue"
+# Force UTF-8 output to handle wrangler's Unicode characters correctly
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Write-Step($text) {
   Write-Host ""
@@ -98,15 +104,27 @@ if ($asciiMessage -ne $Message) {
   Write-Host "    Korean/Unicode stripped: '$Message' -> '$asciiMessage'" -ForegroundColor Yellow
 }
 
-$deployOutput = npx wrangler@3 pages deploy dist/client `
-  --project-name=$ProjectName `
-  --commit-dirty=true `
-  --commit-message="$asciiMessage" 2>&1
+# Wrap wrangler call in try block — wrangler writes WARNING to stderr which
+# PowerShell may convert to error records. Redirect stderr to stdout via 2>&1
+# and collect output as array of strings. Then check $LASTEXITCODE for failure.
+$deployLines = @()
+try {
+  # Use cmd /c to flatten output streams and avoid PowerShell stderr handling
+  $deployLines = & cmd /c "npx wrangler@3 pages deploy dist/client --project-name=$ProjectName --commit-dirty=true --commit-message=`"$asciiMessage`" 2>&1"
+} catch {
+  Write-Err "wrangler invocation failed: $_"
+  exit 1
+}
 
-Write-Host $deployOutput
-$deployOutput | Out-File -FilePath "deploy-last.log" -Encoding UTF8
+# Print each line so user can see progress
+$deployLines | ForEach-Object { Write-Host $_ }
+$deployLines -join "`n" | Out-File -FilePath "deploy-last.log" -Encoding UTF8
 
-$deployText = $deployOutput -join "`n"
+$deployText = $deployLines -join "`n"
+if ($LASTEXITCODE -ne 0 -and $deployText -notmatch "Deployment complete") {
+  Write-Err "wrangler exited with code $LASTEXITCODE"
+  exit 1
+}
 if ($deployText -match "Deployment complete") {
   Write-Ok "Deploy complete"
   if ($deployText -match "Uploaded (\d+) files") {
