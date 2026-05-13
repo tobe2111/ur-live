@@ -26,11 +26,13 @@ interface Props {
   onStreaming?: (mode: WhipMode) => void  // WebRTC 연결 성립 시, mode 전달
   onError?: (msg: string) => void
   onUnsupported?: (reason: string) => void
+  // 🛡️ 2026-05-13: mount 시 자동 시작 — 새로고침 후 status='live' 인 경우 셀러가 다시 클릭 안 해도 재연결.
+  autoStart?: boolean
 }
 
 type Status = 'idle' | 'requesting_camera' | 'fetching_token' | 'connecting' | 'live' | 'failed' | 'permission_denied'
 
-export default function BrowserBroadcaster({ streamId, onStreaming, onError, onUnsupported }: Props) {
+export default function BrowserBroadcaster({ streamId, onStreaming, onError, onUnsupported, autoStart }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -75,6 +77,33 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       pcRef.current?.close()
     }
   }, [])
+
+  // 🛡️ 2026-05-13: 자동 시작 — 페이지 새로고침 후 status='live' 면 셀러 클릭 없이 재연결.
+  //   getUserMedia 권한은 이미 허용된 도메인이면 prompt 없이 통과. autoplay-permission 정책상 동작.
+  //   1회만 실행, status='idle' 일 때만 (이미 진행 중이면 skip).
+  const autoStartedRef = useRef(false)
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return
+    if (status !== 'idle') return
+    autoStartedRef.current = true
+    void startBroadcast()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
+
+  // 🛡️ 2026-05-13: 송출 중 새로고침/닫기 경고 — 실수 방지.
+  //   beforeunload 에서 confirm 다이얼로그 노출. status='live' 일 때만 활성화.
+  //   주의: end-beacon / sendBeacon 호출 안 함 (PR #344 에서 제거된 자동 종료 패턴 부활 X).
+  //   단지 confirm 만 — OME 가 RTCPeerConnection 끊김 감지 후 60s grace period 진입 (admission closing fix).
+  useEffect(() => {
+    if (status !== 'live') return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = '방송 중입니다. 새로고침/닫으면 3-10초 끊김이 발생할 수 있어요. 계속하시겠어요?'
+      return e.returnValue
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [status])
 
   // 🛡️ 2026-05-11 P1-#6: 라이브 시작 5초 후 video 프레임 캡처 → thumbnail 자동 설정
   //   셀러가 thumbnail 미설정 시 빈 이미지로 표시되는 문제 해결. 백그라운드 자동 — UI 변경 없음.
