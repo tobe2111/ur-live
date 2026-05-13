@@ -122,6 +122,58 @@ criticalFiles.forEach(file => {
 });
 
 // ============================================
+// 5b. CRITICAL: _worker.js 신선도 검증 (2026-05-12 사고 후 추가)
+//   증상: 'npx vite build' 만 실행 → client 만 빌드, _worker.js 미갱신
+//        → 모든 worker 코드 fix 가 production 에 반영 안 됨 (405 에러 반복)
+//   방어: _worker.js 의 mtime 이 worker 소스 (src/worker/*, src/features/*/api/*)
+//        의 최신 mtime 보다 오래되면 빌드 실패. npm run build 강제.
+// ============================================
+const workerPath = path.join(distPath, '_worker.js');
+if (fs.existsSync(workerPath)) {
+  const workerMtime = fs.statSync(workerPath).mtimeMs;
+  const workerSourceDirs = [
+    path.join(process.cwd(), 'src/worker'),
+    path.join(process.cwd(), 'src/features'),
+    path.join(process.cwd(), 'src/lib'),
+    path.join(process.cwd(), 'src/shared/db'),
+  ];
+
+  let newestSourceMtime = 0;
+  let newestSourcePath = '';
+  function walk(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile() && /\.(ts|tsx|mjs|cjs)$/.test(entry.name)) {
+        const m = fs.statSync(full).mtimeMs;
+        if (m > newestSourceMtime) {
+          newestSourceMtime = m;
+          newestSourcePath = full;
+        }
+      }
+    }
+  }
+  workerSourceDirs.forEach(walk);
+
+  // 5초 grace period — 빌드 중 동시 저장된 파일 허용
+  const STALE_THRESHOLD_MS = 5_000;
+  if (newestSourceMtime > workerMtime + STALE_THRESHOLD_MS) {
+    console.error('\n❌ ERROR: _worker.js is STALE!');
+    console.error(`   _worker.js mtime: ${new Date(workerMtime).toISOString()}`);
+    console.error(`   Newer source:     ${new Date(newestSourceMtime).toISOString()}`);
+    console.error(`   File:             ${path.relative(process.cwd(), newestSourcePath)}`);
+    console.error('\n   진단: worker 소스가 변경됐는데 _worker.js 는 이전 빌드.');
+    console.error('   원인: \'npx vite build\' 또는 \'npm run build:client\' 만 실행한 듯.');
+    console.error('   해결: 반드시 \'npm run build\' 실행 (worker + client + prepare 모두)');
+    console.error('   또는 \'npm run build:worker\' 만 실행해도 가능.');
+    hasError = true;
+  } else {
+    console.log(`✅ _worker.js is fresh (built after latest worker source)`);
+  }
+}
+
+// ============================================
 // 6. Summary
 // ============================================
 console.log('\n' + '='.repeat(50));

@@ -294,8 +294,37 @@ navigate(returnUrl)
 ⚠️ **Cloudflare Pages 단일 배포** (Workers 아님):
 - `live.ur-team.com` → Pages `ur-live` (Custom Domain)
 - `ur-live.pages.dev` → 동일 프로젝트 기본 도메인
-- 명령: `npx wrangler@3 pages deploy dist/client --project-name=ur-live`
 - 구조: Pages with `_worker.js`. `wrangler deploy` (Workers용) 사용 금지.
+
+### 🚨 빌드 명령 절대 룰 (2026-05-12 사고 후)
+
+**원인**: `npx vite build` 만 실행하면 **`_worker.js` 가 갱신 안 됨** → 모든 worker 코드 변경이 production 에 반영 안 됨.
+
+```jsonc
+// package.json
+"build": "npm run build:client && npm run build:worker && npm run build:prepare"
+"build:client": "vite build"           ← client 만
+"build:worker": "node scripts/build-worker.js"  ← worker 별도
+```
+
+- ✅ **올바른 명령**: `npm run build` (또는 PowerShell `.\scripts\deploy.ps1`)
+- ❌ **금지**: `npx vite build` 단독 사용 — `_worker.js` 갱신 안 됨
+- 🛡️ **자동 방어**: `scripts/validate-build-output.cjs` 가 `_worker.js` mtime 을
+  `src/worker/`, `src/features/*/api/` 의 최신 mtime 과 비교 → 오래되면 빌드 실패.
+
+### 권장 배포 명령
+
+```powershell
+# PC PowerShell — 안전 스크립트 (권장)
+.\scripts\deploy.ps1 -Message "feat-XYZ"
+
+# 또는 직접 명령
+npm run build                                                            # ← 핵심: vite build 아님!
+npx wrangler@3 pages deploy dist/client --project-name=ur-live `
+  --commit-dirty=true --commit-message="ascii-only-no-korean"
+```
+
+> ⚠️ `commit-message` 는 **ASCII only** — 한글/em-dash/이모지 포함 시 CF API 가 거부 (`Invalid commit message, it must be a valid UTF-8 string` 에러).
 
 ### Secret/환경변수
 - Cloudflare Dashboard → Workers & Pages → ur-live → Settings → Variables and Secrets
@@ -309,9 +338,10 @@ navigate(returnUrl)
 1. `bash scripts/check-schema-refs.sh`
 2. `bash scripts/check-api-auth.sh`
 3. `npx tsc --noEmit --skipLibCheck` (에러 0)
-4. `npx vite build`
+4. `npm run build`  ← **`vite build` 아님!** (위 빌드 룰 참조)
 5. `git push origin <branch>` (훅이 main 자동 머지 + 배포)
 6. Actions 탭 녹색 확인
+7. 배포 후 `curl -X POST -i https://live.ur-team.com/api/version` 등 핵심 endpoint smoke test
 
 ### 절대 하지 말 것 (배포 관련)
 - ❌ Service Worker / PWA 라이브러리 — 카카오 OAuth 차단 사고 (2026-04-27, `docs/INCIDENTS.md`)

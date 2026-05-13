@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-05-12 — `npx vite build` 누락 → `_worker.js` 미갱신 → 405 반복
+
+**증상**: 셀러가 방송 생성 시도 → `POST /api/seller/youtube/live/create` 405 Method Not Allowed.
+여러 fix (mount order swap, ad-slots scope 한정, top-level direct registration) 적용 후 push +
+배포까지 마쳤음에도 405 가 사라지지 않음. curl 검증 시 응답에 CSP/X-Request-Id 헤더 부재 →
+worker 자체가 실행되지 않은 것 발견.
+
+**원인**: 사용자가 PC PowerShell 에서 빌드 시 `npx vite build` 단독 실행. 이 명령은
+`build:client` 만 실행하여 `dist/client/assets/*.js` 만 갱신. `_worker.js` 는 별도로
+`build:worker` (`node scripts/build-worker.js`) 가 처리하는데 한 번도 실행되지 않아
+production `_worker.js` 가 오래된 버전 그대로 → 어떤 worker 코드 변경도 반영 안 됨.
+
+`package.json`:
+```jsonc
+"build": "npm run build:client && npm run build:worker && npm run build:prepare"
+"build:client": "vite build"           ← 사용자가 실행한 부분
+"build:worker": "node scripts/build-worker.js"  ← 실행 안 됨
+```
+
+`wrangler pages deploy` 의 "Uploaded 0 files" 도 같은 맥락 — assets 내용이 안 바뀌고
+`_worker.js` 도 안 바뀌어서.
+
+**해결**: 4-layer 방어책 도입.
+1. `scripts/validate-build-output.cjs` 강화: `_worker.js` mtime 이 `src/worker/`, `src/features/*/api/`,
+   `src/lib/`, `src/shared/db/` 의 최신 source mtime 보다 오래되면 빌드 실패 (5초 grace period).
+2. `scripts/deploy.ps1` — PC PowerShell 안전 배포 스크립트. git 상태 확인 + `npm run build` 강제 +
+   ASCII commit message + smoke test 자동화.
+3. `CLAUDE.md` 배포 섹션 강화: "🚨 빌드 명령 절대 룰" 추가. `vite build` 단독 사용 금지.
+4. 체크리스트 4번 항목 `npx vite build` → `npm run build` 로 변경.
+
+---
+
 ## 2026-05-12 — youtube-live.routes.ts 통째 삭제 (PowerShell 덮어쓰기 사고)
 
 - **증상**:
