@@ -973,6 +973,73 @@ app.get('/live/:id/diagnose', async (c) => {
  *   admin_token 매칭 시 인증 우회. 정상 admission 의 transition 이 실패한 stream 응급 복구용.
  */
 /**
+ * POST /live/:id/force-transition
+ *
+ * 🛡️ 2026-05-13: 셀러 본인이 호출 가능한 transition 강제 호출 endpoint.
+ *   사고: OME→YouTube 송신 정상인데 broadcast lifeCycleStatus='ready' 정체 → iframe 검은 화면.
+ *   원인 가능: admission 시 KV lock 충돌 / transition 폴링 21s 윈도우 놓침 / Worker 재시작 등.
+ *   처리: youtube_broadcast_id 로 즉시 transitionBroadcastToLive 호출.
+ *   조건: 셀러 소유, status='live', youtube_broadcast_id 존재
+ */
+app.post('/live/:id/force-transition', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const streamId = parseInt(c.req.param('id'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+  const stream = await c.env.DB.prepare(`
+    SELECT id, status, youtube_broadcast_id FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{ id: number; status: string; youtube_broadcast_id: string | null }>()
+  if (!stream) return c.json({ success: false, error: 'stream not found' }, 404)
+  if (!stream.youtube_broadcast_id) return c.json({ success: false, error: 'youtube_broadcast_id 없음' }, 400)
+  if (stream.status !== 'live') return c.json({ success: false, error: 'status 가 live 가 아닙니다' }, 400)
+  if (!c.env.YOUTUBE_CLIENT_ID || !c.env.YOUTUBE_CLIENT_SECRET) {
+    return c.json({ success: false, error: 'YouTube API 미구성' }, 500)
+  }
+
+  try {
+    const yt = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, yt)
+    if (!accessToken) return c.json({ success: false, error: '유효한 YouTube 토큰 없음 (재연결 필요)' }, 401)
+
+    // 현재 lifeCycleStatus 확인
+    const statusRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status&id=${stream.youtube_broadcast_id}`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15000) }
+    )
+    if (!statusRes.ok) {
+      return c.json({ success: false, error: `getBroadcast 실패 (${statusRes.status})` }, 500)
+    }
+    const statusData = await statusRes.json() as { items?: Array<{ status?: { lifeCycleStatus?: string } }> }
+    const lifeCycle = statusData.items?.[0]?.status?.lifeCycleStatus
+    if (!lifeCycle) return c.json({ success: false, error: 'broadcast not found' }, 404)
+    if (lifeCycle === 'live' || lifeCycle === 'liveStarting') {
+      return c.json({ success: true, message: '이미 live 상태입니다', lifeCycleStatus: lifeCycle })
+    }
+    if (lifeCycle === 'complete' || lifeCycle === 'revoked') {
+      return c.json({ success: false, error: `broadcast 가 ${lifeCycle} 상태 — transition 불가` }, 400)
+    }
+    // transition 호출 (testing/ready 일 때)
+    await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id)
+
+    // KV 캐시 무효화
+    const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+    if (kv) await cacheInvalidate(kv, `stream:${streamId}`).catch(() => {})
+
+    return c.json({ success: true, message: 'transition 완료 — 곧 영상이 나옵니다 (5-15초)', previousLifeCycleStatus: lifeCycle })
+  } catch (e) {
+    const msg = (e as Error).message || ''
+    if (/redundant|already/i.test(msg)) {
+      return c.json({ success: true, message: '이미 live 상태입니다' })
+    }
+    if (/invalid/i.test(msg)) {
+      return c.json({ success: false, error: 'YouTube 가 아직 stream 신호 미감지 — 5-10초 후 다시 시도하세요' }, 409)
+    }
+    return c.json({ success: false, error: msg }, 500)
+  }
+})
+
+/**
  * POST /live/:id/reset-zombie
  *
  * 🛡️ 2026-05-13: 셀러 본인이 호출 가능한 좀비 reset endpoint.
