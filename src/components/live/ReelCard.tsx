@@ -223,7 +223,7 @@ function ReelCardImpl({
     lastDonation,
     activeFlashSale,
     pinnedMessage,
-  } = useLiveStreamWebSocket(stream.id, isActive, stream.status === 'ended')
+  } = useLiveStreamWebSocket(stream.id, true /* always enabled — isActive 무관, 채팅 항상 수신 */, stream.status === 'ended')
 
   // 🛡️ 2026-05-13: 시청자가 status='scheduled' 일 때 진입 → 셀러가 라이브 시작 후
   //   WebSocket 의 stream_status 이벤트가 wsStreamData 를 갱신하지만, props.stream 은 그대로 →
@@ -334,6 +334,84 @@ function ReelCardImpl({
     const t = setTimeout(() => setShowUnmuteHint(false), 6000)
     return () => clearTimeout(t)
   }, [isMuted, effectiveStatus, stream.youtube_video_id])
+
+  // 🛡️ 2026-05-13: iframe 영상 미재생 자동 감지 + reload (영상 대신 썸네일만 표시 사고).
+  //   원인: 셀러 OBS RTMP 시작 전이면 YouTube broadcast.lifeCycleStatus='ready' →
+  //         embed 가 thumbnail + "재생할 수 없음" 표시. iframe onError 는 안 옴.
+  //   해결: YouTube IFrame API 의 postMessage protocol 로 player state 감지.
+  //         -1 (unstarted) 또는 5 (cued) 상태가 10초 이상 → iframe.src reload (최대 3회).
+  //         playing/buffering 으로 전환되면 reload 중단.
+  useEffect(() => {
+    if (effectiveStatus !== 'live' || !stream.youtube_video_id) return
+    let reloadCount = 0
+    const MAX_RELOADS = 3
+    let stuckTimer: ReturnType<typeof setTimeout> | null = null
+    let isPlaying = false
+
+    // iframe 에 listening 메시지 전송 — YT IFrame API 가 받으면 state 이벤트 시작
+    const setupListener = () => {
+      const win = iframeRef.current?.contentWindow
+      if (!win) return
+      try {
+        win.postMessage(JSON.stringify({ event: 'listening', id: `yt-${stream.youtube_video_id}` }), 'https://www.youtube.com')
+        win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), 'https://www.youtube.com')
+      } catch (e) { if (import.meta.env.DEV) console.warn('[ReelCard] postMessage listening failed', e) }
+    }
+
+    const handleMessage = (e: MessageEvent) => {
+      if (typeof e.data !== 'string') return
+      if (!e.origin.includes('youtube.com')) return
+      try {
+        const data = JSON.parse(e.data)
+        // YT state: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+        if (data?.event === 'infoDelivery' || data?.event === 'onStateChange') {
+          const state = data.info?.playerState ?? data.info
+          if (state === 1 || state === 3) {
+            isPlaying = true
+            if (stuckTimer) { clearTimeout(stuckTimer); stuckTimer = null }
+          } else if (state === -1 || state === 5) {
+            // unstarted / cued — 10초 후에도 안 바뀌면 reload
+            if (stuckTimer) clearTimeout(stuckTimer)
+            stuckTimer = setTimeout(() => {
+              if (isPlaying || reloadCount >= MAX_RELOADS) return
+              reloadCount++
+              if (import.meta.env.DEV) console.log(`[ReelCard] iframe stuck — reload ${reloadCount}/${MAX_RELOADS}`)
+              if (iframeRef.current) {
+                const cur = iframeRef.current.src
+                iframeRef.current.src = ''
+                setTimeout(() => { if (iframeRef.current) iframeRef.current.src = cur }, 100)
+              }
+            }, 10_000)
+          }
+        }
+      } catch { /* noop */ }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    // 초기 listener 설정 — iframe load 직후 약간 지연
+    const initTimer = setTimeout(setupListener, 1500)
+
+    // 안전망: 20초 동안 단 한 번도 playing 못 들어가면 무조건 1회 reload
+    const safetyTimer = setTimeout(() => {
+      if (!isPlaying && reloadCount === 0) {
+        reloadCount = 1
+        if (import.meta.env.DEV) console.log('[ReelCard] safety reload — no playing state in 20s')
+        if (iframeRef.current) {
+          const cur = iframeRef.current.src
+          iframeRef.current.src = ''
+          setTimeout(() => { if (iframeRef.current) iframeRef.current.src = cur }, 100)
+        }
+      }
+    }, 20_000)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      clearTimeout(initTimer)
+      clearTimeout(safetyTimer)
+      if (stuckTimer) clearTimeout(stuckTimer)
+    }
+  }, [stream.youtube_video_id, effectiveStatus])
 
   // 시청자 클릭 시 postMessage 로 iframe unMute — YouTube IFrame API 가 내부적으로 쓰는 동일 protocol
   const handleUnmute = () => {

@@ -197,18 +197,17 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
       return c.json({ success: false, error: '허용되지 않는 파일 확장자입니다.' }, 400);
     }
 
-    // ── Magic-byte validation (MIME + extension can both be spoofed) ─────────
-    // 🛡️ 2026-05-13: magic byte check 가 정상 이미지에서 500 일으키는 경우 발견 →
-    //   try/catch 로 감싸고, 검사 자체 실패 시 fail-open (MIME + ext 검증 통과한 경우만).
-    const buffer = await file.arrayBuffer();
+    // ── Magic-byte validation (best-effort, 첫 16바이트만) ────────────────────
+    // 🛡️ 2026-05-13 v3: 전체 arrayBuffer 읽는 대신 file.slice(0, 16) 만 검사 → 메모리/CPU 절약.
+    //   magic byte check 자체가 throw 하면 fail-open (MIME + ext 가 1차 방어).
     try {
-      const magicCheck = await validateFileMagicBytes(buffer, file.type);
+      const headBuf = await file.slice(0, 16).arrayBuffer();
+      const magicCheck = await validateFileMagicBytes(headBuf, file.type);
       if (!magicCheck.valid) {
         return c.json({ success: false, error: magicCheck.error || '파일 형식이 올바르지 않습니다' }, 400);
       }
     } catch (magicErr) {
       if (import.meta.env.DEV) console.warn('[Seller] Magic byte check threw — fail-open', magicErr);
-      // continue — MIME + ext 검증은 통과한 상태
     }
 
     const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
@@ -223,12 +222,11 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     // ── Safe filename (no path traversal) ─────────────────────────────────────
     const safeName = `seller_${sellerId}_${Date.now()}${ext}`;
 
-    // 🛡️ 2026-05-13 v2: base64 경로 영구 폐기 (이전 32KB 청크 인코딩도 5MB 파일에서
-    //   encodeURIComponent 3배 부풀림 + URL-form body 한계로 간헐적 500 잔존).
-    //   imgbb 는 multipart/form-data 로 raw binary 도 받음 — base64/encodeURIComponent
-    //   둘 다 제거하고 원본 바이트 그대로 전송. 메모리 ~5MB 1회 복사로 끝남.
+    // 🛡️ 2026-05-13 v3: File 객체를 직접 FormData 에 — arrayBuffer 변환 단계 제거.
+    //   File 은 Blob 의 서브타입이므로 FormData 가 그대로 받음. 추가 메모리 copy 0.
+    //   이전 v2 의 new Blob([buffer]) 는 buffer 를 또 한 번 메모리 wrap → 메모리 2배 사용.
     const fd = new FormData();
-    fd.append('image', new Blob([buffer], { type: file.type || 'application/octet-stream' }), safeName);
+    fd.append('image', file, safeName);
     fd.append('name', safeName);
 
     const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
