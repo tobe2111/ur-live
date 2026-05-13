@@ -120,6 +120,8 @@ function ReelCardImpl({
   const [checkoutSheetOpen, setCheckoutSheetOpen] = useState(false)
   // 🛡️ 2026-05-13: iframe stuck 시 시청자에게 "재연결 중" hint 표시 — 검은 화면 안심 신호.
   const [reloadingHint, setReloadingHint] = useState<{ count: number; max: number } | null>(null)
+  // 🛡️ 2026-05-13: 모든 reload 시도 후에도 영상 안 나오면 명확한 안내로 전환 (silence 방지)
+  const [streamNotFlowing, setStreamNotFlowing] = useState(false)
   // 🛡️ 2026-05-13 (cost): IntersectionObserver 로 카드 가시성 추적 → WS connect 결정.
   //   기존: PR #331 에서 항상 연결 (모든 카드 N개 WS connection) → DO/서버비 N배.
   //   개선: 화면에 30% 이상 보이는 카드만 WS connect → 서버 부하 1/N.
@@ -373,7 +375,14 @@ function ReelCardImpl({
     let isPlaying = false
 
     const performReload = (reason: string) => {
-      if (isPlaying || reloadCount >= MAX_RELOADS) return
+      if (isPlaying) return
+      if (reloadCount >= MAX_RELOADS) {
+        // 🛡️ 2026-05-13: MAX_RELOADS 도달 후엔 silence 대신 명확한 안내.
+        //   "방송 데이터 수신 중" → "셀러가 송출 준비 중" 으로 메시지 전환.
+        setStreamNotFlowing(true)
+        setReloadingHint(null)
+        return
+      }
       reloadCount++
       if (import.meta.env.DEV) console.log(`[ReelCard] iframe reload ${reloadCount}/${MAX_RELOADS} — ${reason}`)
       setReloadingHint({ count: reloadCount, max: MAX_RELOADS })
@@ -405,6 +414,7 @@ function ReelCardImpl({
             isPlaying = true
             if (stuckTimer) { clearTimeout(stuckTimer); stuckTimer = null }
             setReloadingHint(null)
+            setStreamNotFlowing(false)
           } else if (state === -1 || state === 5) {
             if (stuckTimer) clearTimeout(stuckTimer)
             stuckTimer = setTimeout(() => performReload('unstarted/cued 3s'), STUCK_TIMEOUT_MS)
@@ -928,7 +938,8 @@ function ReelCardImpl({
             data-fallback-index="0"
             data-fallbacks={JSON.stringify(candidates)}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover -z-10"
+            // 🛡️ 2026-05-13: 배경 fallback 이미지는 dim (영상이 나와야 정상, 썸네일이 부각되면 안 됨)
+            className="absolute inset-0 h-full w-full object-cover -z-10 opacity-40 blur-sm"
             loading="eager"
             decoding="async"
             fetchPriority="high"
@@ -1026,8 +1037,32 @@ function ReelCardImpl({
         </div>
       )}
 
+      {/* 🛡️ 2026-05-13: MAX_RELOADS 도달 후 명확한 안내 — silence 방지.
+          셀러 본인이 보고 있으면 디버그 힌트, 시청자는 일반 안내. */}
+      {streamNotFlowing && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 px-6 text-center">
+          <div className="h-16 w-16 rounded-full bg-amber-500/20 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          {isSeller ? (
+            <>
+              <p className="text-white text-lg font-bold mb-1">송출 신호가 도달하지 않았어요</p>
+              <p className="text-white/70 text-sm mb-2">OBS / Prism 에서 송출 시작 버튼을 눌렀나요?</p>
+              <p className="text-white/40 text-xs">YouTube Studio 의 broadcast 상태도 확인해주세요.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-white text-lg font-bold mb-1">셀러가 송출 준비 중입니다</p>
+              <p className="text-white/70 text-sm">잠시 후 방송이 시작됩니다. 채팅으로 응원해보세요!</p>
+            </>
+          )}
+        </div>
+      )}
+
       {/* 🔄 재연결 중 hint — iframe stuck 감지 시 노출 (검은 화면 안심 신호) */}
-      {reloadingHint && (
+      {reloadingHint && !streamNotFlowing && (
         <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-black/85 backdrop-blur-md text-white text-sm font-semibold px-4 py-2.5 rounded-full flex items-center gap-2 shadow-2xl">
           <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           <span>{t('live.reconnecting', { defaultValue: '방송 데이터 수신 중...' })}</span>
