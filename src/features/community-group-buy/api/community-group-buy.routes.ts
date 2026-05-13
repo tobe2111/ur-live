@@ -16,7 +16,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { rateLimit } from '@/worker/middleware/rate-limit';

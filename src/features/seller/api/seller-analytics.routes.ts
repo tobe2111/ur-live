@@ -8,11 +8,8 @@
  * - 쿠폰 관리
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
-
 export const sellerAnalyticsRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 //   서브라우터 wildcard 미들웨어가 같은 prefix 의 다른 라우터 경로 가로채는 버그 (Hono v4) 방지.

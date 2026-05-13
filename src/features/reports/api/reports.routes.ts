@@ -6,12 +6,9 @@
  */
 
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
-
 export const reportsRoutes = new Hono<{ Bindings: Env }>()
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.

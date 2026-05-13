@@ -14,7 +14,6 @@ import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import type { KVNamespace } from '@cloudflare/workers-types';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { cacheInvalidate } from '@/worker/utils/cache';
 
 import { swallow } from '@/worker/utils/swallow';

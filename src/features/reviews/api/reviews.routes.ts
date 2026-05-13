@@ -15,7 +15,6 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import {
   MAX_REVIEW_LENGTH,

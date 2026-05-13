@@ -8,8 +8,6 @@
  * - GET /api/funding/:id/progress — 진행률 (실시간 polling 용)
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { calcFundingProgress, type FundingStatus } from '@/lib/live-funding'
 
 type Bindings = { DB: D1Database }

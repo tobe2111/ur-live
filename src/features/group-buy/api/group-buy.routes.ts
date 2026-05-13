@@ -9,11 +9,9 @@
  */
 
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { cacheGet } from '@/worker/utils/cache'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()

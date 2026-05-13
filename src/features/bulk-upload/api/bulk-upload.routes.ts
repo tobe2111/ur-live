@@ -11,8 +11,6 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { validateImageUrl } from '@/worker/utils/validation';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
-
 const bulkUploadRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.

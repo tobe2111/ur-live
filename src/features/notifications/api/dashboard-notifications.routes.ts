@@ -10,8 +10,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
-
 const dashboardNotificationsRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 

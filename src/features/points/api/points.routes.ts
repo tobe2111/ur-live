@@ -13,7 +13,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
-import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
+import { TOSS_PAYMENT_URL} from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';

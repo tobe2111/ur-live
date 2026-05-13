@@ -19,7 +19,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { AuthUser } from '@/worker/middleware/auth';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 
 // v31 FIX: wishlist mutation rate limit (per-IP, 분당 20회)

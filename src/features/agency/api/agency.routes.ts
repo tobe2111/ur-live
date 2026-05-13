@@ -27,7 +27,6 @@ import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password'
 import { sendEmail } from '@/services/email'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
 import { swallow } from '@/worker/utils/swallow';

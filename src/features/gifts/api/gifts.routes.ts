@@ -16,7 +16,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker'
 import {
   normalizePhone,

@@ -6,10 +6,8 @@
  * - 24시간 쿠키 추적 + 부정 방지
  */
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 
 const DEFAULT_COMMISSION_RATE = 0.02 // 2%

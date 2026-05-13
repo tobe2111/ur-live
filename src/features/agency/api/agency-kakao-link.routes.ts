@@ -13,7 +13,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verifyPassword } from '@/lib/password'
 import type { Env } from '@/worker/types/env'
-import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
