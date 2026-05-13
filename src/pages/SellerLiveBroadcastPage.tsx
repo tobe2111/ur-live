@@ -59,10 +59,7 @@ import {
   rememberMethod,
   getRecentProducts,
   rememberRecentProducts,
-  getLastBroadcast,
   rememberLastBroadcast,
-  getDraft,
-  saveDraft,
   clearDraft,
   getTemplates,
   saveTemplates,
@@ -104,28 +101,18 @@ export default function SellerLiveBroadcastPage() {
     localStorage.setItem('ur_notify_followers_v1', notifyFollowers ? '1' : '0')
   }, [notifyFollowers])
 
-  // Step 1 폼 — draft 우선, 없으면 마지막 방송 값으로 prefill
-  const lastBroadcast = useRef(getLastBroadcast()).current
-  const draft = useRef(getDraft()).current
-  const draftRestored = useRef(!!(draft && (draft.title || (draft.selectedProducts?.length ?? 0) > 0))).current
-  const [title, setTitle] = useState(draft?.title ?? '')
-  const [description, setDescription] = useState(draft?.description ?? lastBroadcast.description ?? '')
-  const [thumbnailUrl, setThumbnailUrl] = useState(draft?.thumbnailUrl ?? lastBroadcast.thumbnailUrl ?? '')
-  const [selectedProducts, setSelectedProducts] = useState<number[]>(draft?.selectedProducts ?? [])
-  const [isScheduled, setIsScheduled] = useState(draft?.isScheduled ?? false)
-  const [scheduledDate, setScheduledDate] = useState(draft?.scheduledDate ?? '')
-  const [scheduledTime, setScheduledTime] = useState(draft?.scheduledTime ?? '')
-  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>(draft?.privacy ?? lastBroadcast.privacy ?? 'public')
-  // 🛡️ 2026-05-13: draft 복원 인지 토글 — 셀러가 "왜 미리 채워져 있지?" 헷갈리던 사고 해결.
-  const [showDraftBanner, setShowDraftBanner] = useState(draftRestored)
-  function resetForm() {
-    clearDraft()
-    setTitle(''); setDescription(''); setThumbnailUrl(''); setSelectedProducts([])
-    setIsScheduled(false); setScheduledDate(''); setScheduledTime('')
-    setPrivacy('public')
-    setShowDraftBanner(false)
-    toast.success('폼이 초기화되었어요')
-  }
+  // 🛡️ 2026-05-13: 폼 자동 채움 제거 (사용자 요청). 매번 빈 상태로 시작 → 셀러 혼란 방지.
+  //   기존: draft (24h 임시저장) + lastBroadcast (영구) 자동 복원으로 제목/상품/설명 등 prefill.
+  //   변경: 모든 필드 빈 값 default. clearDraft() 로 잔존 localStorage 정리.
+  useEffect(() => { clearDraft() }, [])
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [thumbnailUrl, setThumbnailUrl] = useState('')
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([])
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
+  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('public')
 
   // UI
   const [creating, setCreating] = useState(false)
@@ -148,14 +135,7 @@ export default function SellerLiveBroadcastPage() {
     loadData()
   }, [navigate])
 
-  // 방송 정보 임시저장 — step=info 일 때만, 1초 debounce (과도한 write 방지)
-  useEffect(() => {
-    if (step !== 'info') return
-    const id = setTimeout(() => {
-      saveDraft({ title, description, thumbnailUrl, privacy, selectedProducts, isScheduled, scheduledDate, scheduledTime })
-    }, 1000)
-    return () => clearTimeout(id)
-  }, [step, title, description, thumbnailUrl, privacy, selectedProducts, isScheduled, scheduledDate, scheduledTime])
+  // 🛡️ 2026-05-13: 자동 임시저장 제거 (사용자 요청). 매번 빈 폼 시작.
 
   // 첫 방문 셀러에게 튜토리얼 1회 노출 (채널 있고 방송 기록 없을 때)
   useEffect(() => {
@@ -711,34 +691,6 @@ export default function SellerLiveBroadcastPage() {
             </div>
           )
         })()}
-
-        {/* 🛡️ 2026-05-13: draft 복원 안내 banner — "왜 미리 채워져 있지?" 사고 해결.
-            24h 이내 작성하다 떠난 임시저장 자동 복원 + 초기화 옵션 제공. */}
-        {step === 'info' && showDraftBanner && (
-          <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-center justify-between gap-3">
-            <div className="flex items-start gap-2 min-w-0 flex-1">
-              <span className="text-base shrink-0">💾</span>
-              <div className="text-xs text-blue-900 leading-relaxed">
-                <p className="font-semibold">이전에 작성하던 내용을 복원했어요</p>
-                <p className="text-blue-700 mt-0.5">24시간 이내 임시저장된 폼이에요. 새로 작성하려면 초기화하세요.</p>
-              </div>
-            </div>
-            <div className="flex gap-1.5 shrink-0">
-              <button
-                onClick={() => setShowDraftBanner(false)}
-                className="px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
-              >
-                계속
-              </button>
-              <button
-                onClick={resetForm}
-                className="px-2.5 py-1.5 text-[11px] font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-              >
-                초기화
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* STEP 1: 방송 정보 */}
         {step === 'info' && (
