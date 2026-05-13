@@ -121,7 +121,11 @@ export default function SellerLiveBroadcastPage() {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [endModalOpen, setEndModalOpen] = useState(false)
   const [recapStream, setRecapStream] = useState<LiveStream | null>(null)
-  const [recapStats, setRecapStats] = useState<{ duration: string; viewers: number; chat: number; orders: number; revenue: number } | null>(null)
+  const [recapStats, setRecapStats] = useState<{
+    duration: string; viewers: number; chat: number; orders: number; revenue: number
+    peak_viewers?: number; unique_viewers?: number; unique_chatters?: number; unique_buyers?: number
+    donation_count?: number; donation_amount?: number
+  } | null>(null)
   const [pollFailures, setPollFailures] = useState(0)
   const [transitionCountdown, setTransitionCountdown] = useState<number | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
@@ -538,15 +542,30 @@ export default function SellerLiveBroadcastPage() {
         }
       }
       toast.success(t('seller.liveBroadcast.ended'))
-      // 리캡 표시
-      if (stats && liveStartTimeRef.current > 0) {
-        const sec = Math.floor((Date.now() - liveStartTimeRef.current) / 1000)
+      // 🛡️ 2026-05-13 (#1): 리캡 항상 표시 — 서버 duration_sec 우선 (liveStartTimeRef 0 인 케이스 회복).
+      //   peak/unique/donations 포함한 풍부한 결산.
+      if (stats) {
+        const sec = (stats.duration_sec as number) > 0
+          ? (stats.duration_sec as number)
+          : Math.max(0, Math.floor((Date.now() - (liveStartTimeRef.current || Date.now())) / 1000))
         const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60
         const duration = h > 0
           ? t('seller.liveBroadcast.durationHMS', { h, m, s, defaultValue: `${h}시간 ${m}분 ${s}초` })
           : t('seller.liveBroadcast.durationMS', { m, s, defaultValue: `${m}분 ${s}초` })
         setRecapStream(endingStream)
-        setRecapStats({ duration, viewers: stats.viewer_count, chat: stats.chat_count, orders: stats.order_count, revenue: stats.revenue })
+        setRecapStats({
+          duration,
+          viewers: stats.viewer_count,
+          peak_viewers: stats.peak_viewers,
+          unique_viewers: stats.unique_viewers,
+          chat: stats.chat_count,
+          unique_chatters: stats.unique_chatters,
+          orders: stats.order_count,
+          unique_buyers: stats.unique_buyers,
+          revenue: stats.revenue,
+          donation_count: stats.donation_count,
+          donation_amount: stats.donation_amount,
+        })
       }
       setCurrentStream(null); setStep('info')
       setTitle(''); setSelectedProducts([])
