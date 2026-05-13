@@ -28,7 +28,7 @@ function isApiError(error: unknown): error is ApiError {
 }
 
 // 🛡️ YouTube iframe API 타입은 LiveTypes.ts (SSOT) 에서 import 합니다.
-import type { YTPlayer, YTPlayerEvent } from '@/components/live/LiveTypes'
+// 🛡️ 2026-05-13: YTPlayer / YTPlayerEvent import 제거 — native iframe + postMessage 로 전환.
 
 interface Stream {
   id: number
@@ -88,7 +88,7 @@ import LiveChat from '@/components/live/LiveChatStream'
 import { ProductListSheet } from '@/components/live/ProductListSheet'
 import { formatNumber } from '@/utils/format'
 import { useStreamStore } from '@/shared/stores/useStreamStore'
-export type { Stream, Product, ReelData, YTPlayer, YTPlayerEvent, ApiError }
+export type { Stream, Product, ReelData, ApiError }
 
 function ReelCardImpl({
   reel,
@@ -108,19 +108,12 @@ function ReelCardImpl({
   const [chatModalOpen, setChatModalOpen] = useState(true)
   const [chatInputOpen, setChatInputOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<YTPlayer | null>(null)
-  const [playerReady, setPlayerReady] = useState(false)
-  const [showPlayButton, setShowPlayButton] = useState(true)
-  const showPlayButtonRef = useRef(true)
-  const [autoplayFailed, setAutoplayFailed] = useState(false)
-  // v15-4: YouTube iframe API error code별 사용자 안내 메시지
-  const [playerError, setPlayerError] = useState<string | null>(null)
-  // 🛡️ 2026-05-13: 라이브 시작 직후 YouTube CDN 전파 지연 (broadcast.lifeCycleStatus=ready
-  //   인데 embed 호출) → IPADDOS 400 / error 100 발생. 영구 실패로 처리하면 안 됨 — 자동 재시도.
-  const retryCountRef = useRef(0)
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const MAX_PLAYER_RETRIES = 6  // 5초 간격 * 6 = 30초 (YouTube 가 ready→live 전환되는 평균 시간)
-  const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
+  // 🛡️ 2026-05-13: YT.Player API + 자체 overlay 통째 폐기 → native iframe + 코너 hint UX.
+  //   상세: PR #329. 이전 8개 player state (showPlayButton, autoplayFailed, playerError,
+  //   playerReady, retryCountRef 등) 모두 제거. iframe direct render + postMessage 로 충분.
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [isMuted, setIsMuted] = useState(true)
+  const [showUnmuteHint, setShowUnmuteHint] = useState(true)
 
   // Cart & Purchase state
   const [addingToCart, setAddingToCart] = useState(false)
@@ -330,197 +323,41 @@ function ReelCardImpl({
     return () => window.removeEventListener('donationAlert', handler)
   }, [addLocalMessage])
 
-  // YouTube Player Integration
+  // 🛡️ 2026-05-13: YouTube Player — native iframe + postMessage (PR #329).
+  //   기존 YT.Player API 래퍼 / autoplay overlay / 8개 state / 600줄 통째 폐기.
+  //   iframe 은 effectiveStatus === 'live'/'ended' 일 때 JSX 에서 직접 렌더.
+
+  // 소리 켜기 hint — muted 라이브 시청 중 6초 뒤 자동 페이드아웃
   useEffect(() => {
-    // Initialize player for all reels (not just active one)
-    // isActive check removed - this fixes YouTube video not playing issue
-    if (!stream.youtube_video_id) return
+    if (!isMuted || effectiveStatus !== 'live') return
+    setShowUnmuteHint(true)
+    const t = setTimeout(() => setShowUnmuteHint(false), 6000)
+    return () => clearTimeout(t)
+  }, [isMuted, effectiveStatus, stream.youtube_video_id])
 
-    // 🛡️ 2026-05-13: video_id 변경 시 retry counter / timer 초기화 (이전 broadcast 의 retry 상태가
-    //   새 broadcast 에 그대로 이어져 재시도 횟수 부족해지는 사고 차단)
-    retryCountRef.current = 0
-    if (retryTimerRef.current) {
-      clearTimeout(retryTimerRef.current)
-      retryTimerRef.current = null
+  // 시청자 클릭 시 postMessage 로 iframe unMute — YouTube IFrame API 가 내부적으로 쓰는 동일 protocol
+  const handleUnmute = () => {
+    const win = iframeRef.current?.contentWindow
+    if (!win) {
+      setIsMuted(false)
+      setShowUnmuteHint(false)
+      return
     }
-
-    let player: YTPlayer | null = null
-    let isMounted = true
-
-    const initializePlayer = () => {
-      try {
-        if (!window.YT || !window.YT.Player) {
-          return
-        }
-        if (!isMounted) {
-          return
-        }
-
-        const playerElement = document.getElementById(`youtube-player-${stream.id}`)
-        if (!playerElement) {
-          return
-        }
-
-        while (playerElement.firstChild) playerElement.removeChild(playerElement.firstChild)
-
-        player = new window.YT.Player(`youtube-player-${stream.id}`, {
-          height: '100%',
-          width: '100%',
-          videoId: stream.youtube_video_id,
-          playerVars: {
-            autoplay: 1, // 음소거 상태에서 자동재생
-            mute: 1,
-            controls: 0,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0,
-            iv_load_policy: 3,
-            playsinline: 1,
-            enablejsapi: 1,
-            loop: 1,
-            playlist: stream.youtube_video_id,
-            fs: 1,  // 🛡️ 2026-04-22: fullscreen 활성화 — 모바일 가로 시청 지원
-            cc_load_policy: 0,
-            origin: window.location.origin, // ✅ CORS 에러 방지
-          },
-          events: {
-            onReady: (event: YTPlayerEvent) => {
-              if (!isMounted) return
-              playerRef.current = event.target
-              setPlayerReady(true)
-              // 자동 재생 시도 (음소거 상태)
-              try {
-                event.target.playVideo()
-              } catch {
-                // autoplay 실패
-              }
-              // 2초 후에도 재생 안 되면 탭 유도 CTA 표시 (ref로 stale closure 방지)
-              setTimeout(() => {
-                if (isMounted && showPlayButtonRef.current) {
-                  setAutoplayFailed(true)
-                }
-              }, 2000)
-            },
-            onStateChange: (event: YTPlayerEvent) => {
-              if (!isMounted) return
-              try {
-                if (event.data === window.YT?.PlayerState.PLAYING) {
-                  setShowPlayButton(false)
-                  showPlayButtonRef.current = false
-                  setAutoplayFailed(false)
-                } else if (event.data === window.YT?.PlayerState.PAUSED) {
-                  setShowPlayButton(true)
-                  showPlayButtonRef.current = true
-                }
-              } catch (e) {
-                // Suppress postMessage errors
-              }
-            },
-            onError: (event: YTPlayerEvent) => {
-              if (!isMounted) return
-              if (import.meta.env.DEV) console.warn(`[YT] Player error for video ${stream.youtube_video_id}:`, event.data)
-              // YouTube iframe API 공식 에러 코드:
-              //   2  = invalid video ID
-              //   5  = HTML5 player 재생 오류
-              //   100 = video not found / deleted (라이브 시작 직후엔 일시적 — 재시도)
-              //   101 = private video (embed disallowed)
-              //   150 = same as 101 (owner disabled embedding)
-              // 🛡️ 2026-05-13: 라이브 시작 직후 100/2 는 broadcast.lifeCycleStatus=ready 인데
-              //   embed 호출된 race condition (IPADDOS 400). 영구 실패 처리하지 말고 5초 후 재시도.
-              if ((event.data === 100 || event.data === 2) && stream.status === 'live') {
-                if (retryCountRef.current < MAX_PLAYER_RETRIES) {
-                  retryCountRef.current += 1
-                  if (import.meta.env.DEV) console.log(`[YT] Retry ${retryCountRef.current}/${MAX_PLAYER_RETRIES} in 5s — broadcast warming up`)
-                  if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
-                  retryTimerRef.current = setTimeout(() => {
-                    if (!isMounted) return
-                    // Player destroy 후 useEffect deps 변경 없이 재초기화하려면 dom 직접 조작이 안전.
-                    try { player?.destroy() } catch { /* noop */ }
-                    playerRef.current = null
-                    setPlayerReady(false)
-                    initializePlayer()  // 같은 클로저의 player 변수 재할당
-                  }, 5000)
-                  return  // playerError 설정 안 함 — 사용자에겐 계속 로딩 spinner 노출
-                }
-                // MAX_RETRIES 초과 → 정말로 안 됨
-                setPlayerError(t('live.player.cannotPlay'))
-                return
-              }
-              switch (event.data) {
-                case 2:
-                case 100:
-                case 101:
-                case 150:
-                  setPlayerError(t('live.player.cannotPlay'))
-                  break
-                case 5:
-                  setPlayerError(t('live.player.browserError'))
-                  break
-                default:
-                  setShowPlayButton(true)
-              }
-            },
-          },
-        })
-      } catch (error) {
-        // Only log critical errors, suppress postMessage
-        if (error instanceof Error && !error.message.includes('postMessage')) {
-          if (import.meta.env.DEV) console.error('[ReelCard] YouTube player error:', error.message)
-        }
-      }
+    try {
+      win.postMessage(
+        JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
+        'https://www.youtube.com',
+      )
+      win.postMessage(
+        JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }),
+        'https://www.youtube.com',
+      )
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[ReelCard] unmute postMessage failed', e)
     }
-
-    if (window.YT && window.YT.Player) {
-      initializePlayer()
-    } else {
-      // API 로드 완료 시 콜백 등록 (index.html에서 초기화된 배열 사용)
-      window.youtubeCallbacks = window.youtubeCallbacks || []
-      window.youtubeCallbacks.push(() => {
-        if (isMounted) initializePlayer()
-      })
-      // 🛡️ 2026-05-06: YouTube iframe_api 스크립트는 어디서도 lazy load 되지 않아
-      //   playerReady 가 영원히 false → "라이브 입장 중..." 무한 로딩 사고. 여기서 1회 로드.
-      const SCRIPT_ID = 'youtube-iframe-api'
-      if (!document.getElementById(SCRIPT_ID)) {
-        const tag = document.createElement('script')
-        tag.id = SCRIPT_ID
-        tag.src = 'https://www.youtube.com/iframe_api'
-        tag.async = true
-        const cspNonce = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content
-        if (cspNonce) tag.setAttribute('nonce', cspNonce)
-        document.head.appendChild(tag)
-      }
-    }
-
-    return () => {
-      isMounted = false
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current)
-        retryTimerRef.current = null
-      }
-      retryCountRef.current = 0
-      if (player && typeof player.destroy === 'function') {
-        try {
-          player.destroy()
-        } catch (error) {
-          // Suppress cleanup errors
-        }
-      }
-    }
-  }, [stream.youtube_video_id, stream.id])  // isActive removed from dependencies
-
-  // Cleanup: Pause video when component unmounts or becomes inactive
-  useEffect(() => {
-    return () => {
-      if (playerRef.current && !isActive) {
-        try {
-          playerRef.current.pauseVideo()
-        } catch (e) {
-          // Ignore errors
-        }
-      }
-    }
-  }, [isActive, stream.id])
+    setIsMuted(false)
+    setShowUnmuteHint(false)
+  }
 
   // View tracking: 2초 디바운스하여 빠른 스크롤 시 중복 join 방지
   useEffect(() => {
@@ -559,58 +396,6 @@ function ReelCardImpl({
       }
     }
   }, [isActive, stream.id])
-
-  // Pause video when no longer active
-  useEffect(() => {
-    if (!isActive && playerRef.current && playerReady) {
-      try {
-        playerRef.current.pauseVideo()
-        setShowPlayButton(true)
-      } catch (e) {
-        // Ignore errors
-      }
-    }
-  }, [isActive, playerReady, stream.id])
-  
-  // Handle video click to unmute and play
-  // 🛡️ 2026-05-13: 사용자 클릭 = 명시적 user gesture. YT.Player API 의 postMessage 한계로
-  //   클릭이 무반응인 사고 발생 (특히 Permissions-Policy: autoplay 누락 환경).
-  //   가장 신뢰도 높은 경로 = native iframe with allow="autoplay" 를 user gesture 안에서 생성.
-  //   YT API 시도 → 실패 시 fallback 이 아니라, native iframe 을 1차 시도로 승격.
-  const handleVideoClick = () => {
-    if (!stream.youtube_video_id) return
-    setShowPlayButton(false)
-    showPlayButtonRef.current = false
-    setAutoplayFailed(false)
-    setIsMuted(false)
-    setPlayerError(null)
-
-    // 기존 YT.Player 가 있으면 destroy (이중 player 충돌 방지)
-    if (playerRef.current) {
-      try { playerRef.current.destroy() } catch { /* noop */ }
-      playerRef.current = null
-      setPlayerReady(false)
-    }
-
-    // user gesture 안에서 native iframe 직접 생성 — 가장 신뢰도 높은 unmuted autoplay 경로.
-    const playerEl = document.getElementById(`youtube-player-${stream.id}`)
-    if (playerEl) {
-      while (playerEl.firstChild) playerEl.removeChild(playerEl.firstChild)
-      const iframe = document.createElement('iframe')
-      iframe.src = `https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(window.location.origin)}&enablejsapi=1`
-      iframe.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture'
-      iframe.allowFullscreen = true
-      // 🛡️ 2026-05-13: iOS Safari 가 native iframe 의 URL 쿼리 playsinline=1 외에 HTML attribute 도 검사 →
-      //   누락 시 가로화면 강제 진입. 명시적 속성 추가.
-      iframe.setAttribute('playsinline', 'true')
-      iframe.setAttribute('webkit-playsinline', 'true')
-      iframe.style.cssText = 'width:100%;height:100%;border:0;position:absolute;inset:0'
-      playerEl.appendChild(iframe)
-      if (import.meta.env.DEV) console.log('[ReelCard] Native iframe attached for video', stream.youtube_video_id)
-    } else if (import.meta.env.DEV) {
-      console.warn('[ReelCard] Player container not found for stream', stream.id)
-    }
-  }
 
   // ============================================
   // Real-time Product Updates via DO WebSocket + D1 polling
@@ -1063,31 +848,29 @@ function ReelCardImpl({
       })()}
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
-      {/* YouTube Player Container */}
-      <div
-        id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]"
-      />
+      {/* YouTube Player Container — native iframe direct render (PR #329).
+          기존 YT.Player API + click overlay 통째 폐기. effectiveStatus 가 live/ended 면 즉시 iframe. */}
+      <div className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]">
+        {effectiveStatus !== 'scheduled' && stream.youtube_video_id && (stream.status !== 'ended' || vodReady) && (
+          <iframe
+            ref={iframeRef}
+            key={`yt-${stream.youtube_video_id}`}
+            src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1`}
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            allowFullScreen
+            title={stream.title || 'Live broadcast'}
+            // playsinline (iOS Safari) — DOM attr 둘 다 명시
+            // eslint-disable-next-line react/no-unknown-property
+            playsInline
+            // eslint-disable-next-line react/no-unknown-property
+            webkit-playsinline="true"
+          />
+        )}
+      </div>
 
       {/* 예약 방송 + 라이브 시작 직후 (video_id 미수신) UI */}
       {(effectiveStatus === 'scheduled' || (effectiveStatus === 'live' && !stream.youtube_video_id)) && (
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
-      )}
-
-      {/* v15-4: YouTube 재생 오류 안내 오버레이 */}
-      {playerError && stream.status !== 'scheduled' && (
-        <div
-          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 px-6 text-center"
-          role="alert"
-        >
-          <div className="h-16 w-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            </svg>
-          </div>
-          <p className="text-white text-lg font-bold mb-1">{t('live.player.errorTitle')}</p>
-          <p className="text-white/70 text-sm">{playerError}</p>
-        </div>
       )}
 
       {/* 라이브 종료 후 VOD 준비 대기 오버레이 (5분) */}
@@ -1139,56 +922,25 @@ function ReelCardImpl({
         </div>
       )}
 
-      {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
-      {effectiveStatus !== 'scheduled' && stream.youtube_video_id && !playerError && showPlayButton && (
+      {/* 🎧 소리 켜기 hint — muted 라이브 시청 중에만 노출.
+          영상 자체는 muted 로 자동 재생 중이고, hint 만 6초 후 페이드아웃.
+          전체 영역이 unmute 버튼이라 어디 터치해도 소리 ON. iframe 의 YouTube 컨트롤바 (음소거 토글) 도 그대로 작동. */}
+      {effectiveStatus === 'live' && stream.youtube_video_id && isMuted && (
         <button
-          onClick={handleVideoClick}
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center transition-all bg-black/60 cursor-pointer"
+          type="button"
+          onClick={handleUnmute}
+          aria-label={t('live.tapForSound', { defaultValue: '탭하여 소리 켜기' })}
+          className="absolute inset-0 z-10 bg-transparent cursor-pointer"
           style={{ touchAction: 'manipulation' }}
-          aria-label={stream.status === 'ended' ? t('live.replayAria', { defaultValue: '다시보기' }) : t('live.enterAria', { defaultValue: '방송 입장하기' })}
         >
-          <div className="flex flex-col items-center gap-4">
-            {stream.status === 'ended' ? (
-              <div className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                <span className="text-white text-sm font-bold">{t('live.replayLabel', { defaultValue: '다시보기' })}</span>
-              </div>
-            ) : (
-              <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                <span className="text-white text-sm font-bold">LIVE</span>
-              </div>
-            )}
-
-            {autoplayFailed ? (
-              <>
-                {/* 자동재생 실패 → 명확한 재생 버튼 */}
-                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/40">
-                  <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-                <div className="text-center px-6">
-                  <p className="text-white text-xl font-bold mb-1">{t('live.tapToStart')}</p>
-                  <p className="text-white/50 text-xs">{t('live.tapToStartSub')}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* 로딩 스피너 */}
-                <div className="relative">
-                  <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
-                  </div>
-                </div>
-                <div className="text-center px-6">
-                  <p className="text-white text-xl font-bold mb-1.5">{stream.status === 'ended' ? t('live.replayEntering', { defaultValue: '다시보기 로딩 중' }) : t('live.entering')}</p>
-                  <p className="text-white/60 text-sm">{t('live.enteringSub')}</p>
-                </div>
-              </>
-            )}
-          </div>
+          {showUnmuteHint && (
+            <div className="pointer-events-none absolute bottom-28 right-4 bg-black/85 backdrop-blur-md text-white text-sm font-semibold px-4 py-2.5 rounded-full flex items-center gap-2 shadow-2xl">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+              </svg>
+              <span>{t('live.tapForSound', { defaultValue: '탭하여 소리 켜기' })}</span>
+            </div>
+          )}
         </button>
       )}
 
