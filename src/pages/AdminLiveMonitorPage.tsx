@@ -36,6 +36,14 @@ interface EndedStream {
   updated_at: string
 }
 
+interface AdminAlert {
+  id: number
+  kind: string
+  title: string
+  body: string | null
+  created_at: string
+}
+
 function formatDuration(startDate: string): string {
   const diff = Date.now() - new Date(startDate).getTime()
   const h = Math.floor(diff / 3600000)
@@ -57,6 +65,9 @@ export default function AdminLiveMonitorPage() {
   //   감지 이벤트: (1) 새 라이브 시작 (2) 라이브 종료 (3) 시청자 급감 (>50% drop)
   const prevLiveRef = useRef<LiveStream[]>([])
   const [notifyEnabled, setNotifyEnabled] = useState(false)
+  // 🛡️ 2026-05-13 (안정성 #3): OME health / 운영 알람 표시
+  const [adminAlerts, setAdminAlerts] = useState<AdminAlert[]>([])
+  const adminAlertsRef = useRef<AdminAlert[]>([])
   // 사운드 (브라우저 자체 API — 추가 자산 없음, 비용 0)
   const playAlert = (freq: number = 880) => {
     try {
@@ -84,8 +95,13 @@ export default function AdminLiveMonitorPage() {
 
   useEffect(() => {
     if (autoRefresh) {
-      intervalRef.current = setInterval(() => { if (!document.hidden) loadLive() }, 10000)
-      const onVisible = () => { if (!document.hidden && autoRefresh) loadLive() }
+      intervalRef.current = setInterval(() => {
+        if (!document.hidden) {
+          loadLive()
+          loadAlerts()  // 🛡️ 2026-05-13 (#3): OME health alerts 도 같은 주기로 폴링
+        }
+      }, 10000)
+      const onVisible = () => { if (!document.hidden && autoRefresh) { loadLive(); loadAlerts() } }
       document.addEventListener('visibilitychange', onVisible)
       return () => {
         if (intervalRef.current) clearInterval(intervalRef.current)
@@ -98,7 +114,7 @@ export default function AdminLiveMonitorPage() {
   }, [autoRefresh])
 
   async function loadData() {
-    await Promise.all([loadLive(), loadHistory()])
+    await Promise.all([loadLive(), loadHistory(), loadAlerts()])
     setLoading(false)
   }
 
@@ -171,6 +187,34 @@ export default function AdminLiveMonitorPage() {
     } catch {}
   }
 
+  // 🛡️ 2026-05-13 (안정성 #3): OME health alerts + 운영 알람 로드 (라이브 폴링 주기에 함께)
+  async function loadAlerts() {
+    try {
+      const res = await api.get('/api/admin/alerts', h)
+      if (res.data.success) {
+        const newAlerts: AdminAlert[] = res.data.data || []
+        const prevIds = new Set(adminAlertsRef.current.map(a => a.id))
+        for (const a of newAlerts) {
+          if (!prevIds.has(a.id)) {
+            // 새 알람 → 사운드 + 브라우저 알림
+            playAlert(165)  // 가장 낮은 음 — 시스템 alert 강조
+            sendBrowserNotification(`🚨 ${a.title}`, a.body || '')
+            toast.error(`🚨 ${a.title}: ${a.body || ''}`, { duration: 12_000 })
+          }
+        }
+        adminAlertsRef.current = newAlerts
+        setAdminAlerts(newAlerts)
+      }
+    } catch { /* fail-soft */ }
+  }
+
+  async function resolveAlert(id: number) {
+    try {
+      await api.post(`/api/admin/alerts/${id}/resolve`, {}, h)
+      setAdminAlerts(prev => prev.filter(a => a.id !== id))
+    } catch { /* ignore */ }
+  }
+
   async function forceEnd(stream: LiveStream) {
     if (!confirm(`"${stream.title}" 방송을 강제 종료하시겠습니까?`)) return
     try {
@@ -226,6 +270,25 @@ export default function AdminLiveMonitorPage() {
             </div>
           }
         />
+      {/* 🛡️ 2026-05-13 (안정성 #3): 운영 알람 배너 — OME 다운 / 시스템 이슈 즉시 표시 */}
+      {adminAlerts.length > 0 && (
+        <div className="space-y-2">
+          {adminAlerts.map(a => (
+            <div key={a.id} className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
+              <div className="text-2xl">🚨</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-red-800">{a.title}</p>
+                {a.body && <p className="text-xs text-red-600 mt-1">{a.body}</p>}
+                <p className="text-[10px] text-red-400 mt-1.5">{new Date(a.created_at).toLocaleString('ko-KR')}</p>
+              </div>
+              <button onClick={() => resolveAlert(a.id)}
+                className="text-xs text-red-700 hover:text-red-900 font-semibold underline underline-offset-2 shrink-0">
+                해결됨
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : (

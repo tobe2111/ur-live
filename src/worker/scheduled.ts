@@ -42,6 +42,7 @@ import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
+import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
@@ -81,6 +82,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
     // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리
     ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
+    // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지
+    ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
