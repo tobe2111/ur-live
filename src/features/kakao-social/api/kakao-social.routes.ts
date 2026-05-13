@@ -15,7 +15,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { getKakaoToken, getKakaoTokenSimple, callKakaoApi } from '@/lib/kakao-token';
 
 const kakaoSocialRoutes = new Hono<{ Bindings: Env }>();
-kakaoSocialRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 function isKakaoScopeError(data: any, httpStatus: number): boolean {
   if (httpStatus === 403) return true;

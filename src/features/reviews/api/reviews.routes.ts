@@ -28,10 +28,7 @@ import { ensurePointsTables } from '@/worker/utils/ensure-tables';
 import { swallow } from '@/worker/utils/swallow';
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
-reviewsRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // 테이블 자동 생성
 async function ensureTable(DB: D1Database) {

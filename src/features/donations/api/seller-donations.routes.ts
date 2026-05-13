@@ -13,10 +13,7 @@ import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 const sellerDonationsRoutes = new Hono<{ Bindings: Env }>();
 
-sellerDonationsRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'https://ur-live.pages.dev', 'http://localhost:5173', 'http://localhost:3000'],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null;

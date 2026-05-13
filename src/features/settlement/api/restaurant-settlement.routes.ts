@@ -51,10 +51,7 @@ async function ensureSettlementTables(DB: D1Database) {
 
 const restaurantSettlementRoutes = new Hono<{ Bindings: Env }>();
 
-restaurantSettlementRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── POST /calculate — Batch-calculate settlements for all unsettled used vouchers ──
 
@@ -332,10 +329,7 @@ restaurantSettlementRoutes.get('/stats', async (c) => {
 
 const sellerSettlementRoutes = new Hono<{ Bindings: Env }>();
 
-sellerSettlementRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // GET /api/seller/restaurant-settlements — Seller views their own settlements
 sellerSettlementRoutes.get('/', requireAuth(), async (c) => {

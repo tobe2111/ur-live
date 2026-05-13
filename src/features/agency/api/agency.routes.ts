@@ -35,7 +35,7 @@ type AgencyVars = { agency: { id: number; email: string } }
 type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
 
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
-app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
 // ── 테이블 자동 생성 ──────────────────────────────────────────
 let _agencyTablesEnsured = false;

@@ -40,6 +40,35 @@ bash scripts/check-no-sw-register.sh || {
   exit 1
 }
 
+# 🚨 2026-05-12/13 (405 사고 재발 방지): Hono v4 wildcard cors 안티패턴 차단
+echo "==> Pre-commit: Hono v4 라우터 안티패턴 검사..."
+if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROUTER_CHECK\]"; then
+  bash scripts/check-router-patterns.sh || {
+    echo "❌ Commit blocked. Wildcard cors 안티패턴 — 405 사고 재발 위험."
+    exit 1
+  }
+fi
+
+# 🚨 2026-05-12 (vite build 단독 사고 방지): build:worker 누락 차단
+echo "==> Pre-commit: 빌드 명령 검사..."
+if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_BUILD_CHECK\]"; then
+  bash scripts/check-build-command.sh || {
+    echo "❌ Commit blocked. 'vite build' 단독 사용 — _worker.js 미갱신 사고 재발 위험."
+    exit 1
+  }
+fi
+
+# 🚨 Secret 누출 차단 (public repo 영구 노출 방지)
+echo "==> Pre-commit: hardcoded secret 검사..."
+bash scripts/check-no-secrets.sh || {
+  echo "❌ Commit blocked. Secret 누출 위험 — public repo 에 영구 노출됨."
+  exit 1
+}
+
+# ⚠️ Silent error swallowing 검출 (warn-only)
+echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
+bash scripts/check-silent-errors.sh || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

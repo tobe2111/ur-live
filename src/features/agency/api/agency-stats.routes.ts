@@ -20,7 +20,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
-app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
 app.use('*', requireAgency)
 

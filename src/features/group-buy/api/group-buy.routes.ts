@@ -18,10 +18,7 @@ import { cacheGet } from '@/worker/utils/cache'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
-groupBuyRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}))
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
 

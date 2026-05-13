@@ -3,14 +3,13 @@ name: PR Verification
 # PR 단위 빠른 검증 — 빌드 + 정적 분석 + 번들 예산 체크.
 # 배포는 main.yml 이 담당하므로 여기는 검증만.
 #
-# 트리거: PR open/sync, push to non-main branch
-# 작성: 2026-04-26 (N1)
-
-# 🛡️ 2026-05-07: GitHub Actions 무료 한도 (2,000분/월) 100% 소진으로 인한 임시 비활성화.
-#   자동 트리거 제거 → workflow_dispatch (수동) 전용.
-#   대체 검증: 로컬 pre-commit hook (bash scripts/install-git-hooks.sh).
-#   Actions 한도 리셋 (매월 1일) 후 재개하려면 pull_request/push 트리거 복원.
+# 🛡️ 2026-05-13: push trigger 복원 (public repo 라 Actions 무제한 무료).
+#   pre-commit hook 우회 (-n) 해도 PR 에서 반드시 통과해야 main 머지 가능.
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]   # main push 는 main.yml 이 처리
   workflow_dispatch:
 
 jobs:
@@ -31,7 +30,51 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── 1. 정적 검사 (빠름, 의존성 없음) ──
+      # ── 1. 영구 안티패턴 검사 (사고 재발 방지) ──
+      - name: Hono v4 라우터 안티패턴 (wildcard cors)
+        run: |
+          # 모든 features/*.routes.ts 검사 — 2026-05-12/13 405 사고 패턴
+          violations=$(grep -rnE "\.use\s*\(\s*['\"]\*['\"][^)]*cors\s*\(" \
+            src/features/ --include='*.routes.ts' 2>/dev/null || true)
+          if [ -n "$violations" ]; then
+            echo "❌ Wildcard cors() 발견 — 405 사고 재발 위험:"
+            echo "$violations"
+            echo "해결: worker/index.ts:244 글로벌 cors 가 처리. sub-router cors() 제거."
+            exit 1
+          fi
+          echo "✅ 라우터 안티패턴 없음"
+
+      - name: "'vite build' 단독 사용 차단"
+        run: |
+          violations=$(grep -rnE "(^|[^a-zA-Z_:-])(npx +)?vite +build([^a-zA-Z_]|$)" \
+            scripts/ docs/ CLAUDE.md README.md \
+            2>/dev/null \
+            | grep -v "npm run build" \
+            | grep -v "build:client" \
+            | grep -vE "^[^:]*:[0-9]*:[[:space:]]*[#/]" \
+            || true)
+          if [ -n "$violations" ]; then
+            echo "❌ 'vite build' 단독 사용 — _worker.js 미갱신 사고 패턴:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "✅ 빌드 명령 안전"
+
+      - name: Hardcoded secret 검출
+        run: |
+          violations=""
+          for f in $(find src/ -type f \( -name "*.ts" -o -name "*.tsx" \) | grep -vE "\.test\.|\.spec\.|/tests/|/__tests__/"); do
+            m=$(grep -nE "sk_live_[A-Za-z0-9]{20,}|BEGIN RSA PRIVATE KEY|BEGIN PRIVATE KEY|AKIA[0-9A-Z]{16}" "$f" 2>/dev/null || true)
+            [ -n "$m" ] && violations="$violations\n[$f]\n$m"
+          done
+          if [ -n "$violations" ]; then
+            echo "❌ Secret 누출 의심 — public repo 영구 노출 위험:"
+            echo -e "$violations"
+            exit 1
+          fi
+          echo "✅ Secret 없음"
+
+      # ── 2. 정적 검사 (빠름, 의존성 없음) ──
       - name: Schema references check
         run: bash scripts/check-schema-refs.sh
         continue-on-error: false

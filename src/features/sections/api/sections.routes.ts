@@ -24,7 +24,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
-sectionsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
   try {

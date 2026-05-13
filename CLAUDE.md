@@ -358,3 +358,42 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 1. `npm install`
 2. `bash scripts/install-git-hooks.sh` — pre-commit 훅 설치
 3. 이후 모든 커밋 전 자동 검증
+
+## 🛡️ 영구 방어선 (사고 재발 방지)
+
+과거 사고 패턴이 다시 commit / deploy 되는 것을 차단하는 자동 검사:
+
+| 검사 항목 | Pre-commit Hook | CI Workflow | 사고 출처 |
+|---|---|---|---|
+| Hono v4 wildcard `cors()` | `check-router-patterns.sh` | `verify.yml` | 2026-05-12/13 405 |
+| `vite build` 단독 사용 | `check-build-command.sh` | `verify.yml` | 2026-05-12 _worker.js 미갱신 |
+| `_worker.js` 신선도 | `validate-build-output.cjs` (post-build) | - | 2026-05-12 |
+| Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험 |
+| Schema drift | `check-schema-refs.sh` | `verify.yml` | DB 컬럼 부정확 |
+| API 인증 누락 | `check-api-auth.sh` | `verify.yml` | IDOR |
+| 대시보드 dark variant | `check-dashboard-theme.sh` | `verify.yml` | 사용자 룰 |
+| Service Worker 등록 | `check-no-sw-register.sh` | `verify.yml` | 2026-04-27 OAuth 차단 |
+| 파일 중간 import | (install-git-hooks.sh) | - | 2026-04-22 worker crash |
+| Silent error (warn) | `check-silent-errors.sh` | - | 디버깅 곤란 |
+
+**Bypass (정당 사유만):**
+- commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시
+- 또는 `git commit -n` (모든 hook 우회) — CI 에서 reject 됨
+
+**배포 흐름 (자동):**
+```
+git push origin main
+   ↓
+GitHub Actions (main.yml) auto-trigger
+   ↓
+[verify.yml steps] 안티패턴 / 빌드 / 타입 / secret 검증
+   ↓
+[main.yml steps] npm run build → wrangler pages deploy
+   ↓
+Pages 갱신 → live.ur-team.com 반영
+```
+
+**Worker / Cron 변경 시 추가 (드물게):**
+```powershell
+npx wrangler@3 deploy   # Workers 프로젝트 (cron 코드 동기화)
+```

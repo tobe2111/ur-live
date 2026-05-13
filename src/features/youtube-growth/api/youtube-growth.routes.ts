@@ -18,12 +18,12 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const youtubeGrowthRoutes = new Hono<{ Bindings: Env }>();
-youtubeGrowthRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // SECURITY (HIGH-5): admin-only 엔드포인트는 adminApp 내부 마운트용 별도 라우터로 분리
 // adminApp에서 requireAdmin + IP whitelist + audit log 자동 적용됨
 const youtubeGrowthAdminRoutes = new Hono<{ Bindings: Env }>();
-youtubeGrowthAdminRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 const GROWTH_PACKAGES = [
   { subscribers: 100,   price: 20000,   label: '100명 / 20,000원' },

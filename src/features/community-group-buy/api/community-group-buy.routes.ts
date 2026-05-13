@@ -23,10 +23,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
-communityGroupBuyRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── 테이블 자동 생성 + 마이그레이션 ───────────────────────────────────
 async function ensureRefundTable(DB: D1Database) {

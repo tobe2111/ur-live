@@ -25,10 +25,8 @@ type Bindings = {
 
 export const sellerAlimtalkMgmtRoutes = new Hono<{ Bindings: Bindings }>()
 
-sellerAlimtalkMgmtRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}))
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
+//   서브라우터 wildcard 미들웨어가 같은 prefix 의 다른 라우터 경로 가로채는 버그 (Hono v4) 방지.
 
 sellerAlimtalkMgmtRoutes.get('/alimtalk', requireSeller(), async (c) => {
   const { DB } = c.env

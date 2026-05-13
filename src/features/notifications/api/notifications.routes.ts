@@ -20,7 +20,7 @@ type Variables = { user: AuthUser };
 export const notificationsRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // ─── Auth Middleware ────────────────────────────────────────────────────────
-notificationsRoutes.use('*', cors());
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // 🛡️ 2026-04-23 배치 175: /unread-count 는 비로그인 시에도 호출되는 홈 bell polling 엔드포인트.
 //   401 반환 대신 { count: 0 } 반환해서 Sentry 스팸 + 강제 로그아웃 방지.

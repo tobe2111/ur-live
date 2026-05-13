@@ -17,10 +17,7 @@ import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
 
-alimtalkRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 interface DbPackage {
   id: number;

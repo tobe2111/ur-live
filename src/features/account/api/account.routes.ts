@@ -34,7 +34,7 @@ type Bindings = {
 };
 
 export const accountRoutes = new Hono<{ Bindings: Bindings }>();
-accountRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
 /**
  * DELETE /api/account/delete

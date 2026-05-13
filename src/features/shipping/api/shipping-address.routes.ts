@@ -86,10 +86,7 @@ const ALLOWED_ENTRY_METHODS: EntryMethod[] = ['free', 'password', 'intercom', 'p
 export const shippingAddressRoutes = new Hono<{ Bindings: Bindings }>();
 
 // CORS 설정
-shippingAddressRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 /**
  * 사용자 DB ID 가져오기 (Helper)

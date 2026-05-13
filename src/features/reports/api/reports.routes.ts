@@ -14,7 +14,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants'
 
 export const reportsRoutes = new Hono<{ Bindings: Env }>()
 
-reportsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTable(DB: D1Database) {
   try {

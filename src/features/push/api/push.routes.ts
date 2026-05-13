@@ -55,7 +55,7 @@ async function deletePushSubscription(db: D1Database, endpoint: string): Promise
 }
 
 export const pushRoutes = new Hono<{ Bindings: Bindings }>();
-pushRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // Push 알림 구독 등록 — JWT 인증 필수 (X-User-ID 헤더는 스푸핑 가능하여 제거)
 pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
