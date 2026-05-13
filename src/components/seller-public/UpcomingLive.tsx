@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, Eye, ChevronRight } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { safeDate, safeTime } from '@/utils/safe-date'
+import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 
 interface LiveStream {
   id: number
@@ -70,6 +71,7 @@ export function UpcomingLive({ streams }: UpcomingLiveProps) {
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={onYoutubeThumbError}
               />
               
               {/* Live Badge or D-Day Badge */}
