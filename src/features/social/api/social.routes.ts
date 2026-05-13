@@ -6,7 +6,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants'
 
 import { swallow } from '@/worker/utils/swallow';
 const socialRoutes = new Hono<{ Bindings: Env }>()
-socialRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_follows (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, seller_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, seller_id))`).run() } catch {}

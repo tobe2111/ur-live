@@ -20,10 +20,7 @@ import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
-pointsRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 const DEFAULT_COMMISSION_RATE = 0.10; // 🛡️ 2026-04-22: 기본 10% (CLAUDE.md 정책). DB platform_settings.commission_rate_default 로 오버라이드 가능.
 

@@ -15,7 +15,7 @@ import { calcFundingProgress, type FundingStatus } from '@/lib/live-funding'
 type Bindings = { DB: D1Database }
 
 export const fundingRoutes = new Hono<{ Bindings: Bindings }>()
-fundingRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 interface FundingRow {
   id: number

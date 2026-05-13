@@ -19,10 +19,7 @@ import { notifyUser } from '@/lib/notifications';
 import { swallow } from '@/worker/utils/swallow';
 const referralRoutes = new Hono<{ Bindings: Env }>();
 
-referralRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 export interface ReferralTier {
   count: number;

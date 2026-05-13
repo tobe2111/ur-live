@@ -36,10 +36,7 @@ type Variables = {
 
 export const wishlistRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-wishlistRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
 async function ensureTable(DB: D1Database) {

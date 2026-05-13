@@ -17,10 +17,7 @@ import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
-donationsRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'https://world.ur-team.com', 'https://ur-live.pages.dev', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── POST /api/donations/init ─────────────────────────────────────────────────
 // 후원 결제 시작: pending 레코드를 DB에 저장 후 토스 결제 정보 반환

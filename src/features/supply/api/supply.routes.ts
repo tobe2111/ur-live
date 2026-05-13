@@ -16,10 +16,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 const supplyRoutes = new Hono<{ Bindings: Env }>();
 
-supplyRoutes.use('*', cors({
-  origin: [...ALLOWED_ORIGINS],
-  credentials: true,
-}));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── 공통: JWT에서 seller_id 추출 ─────────────────────────────────────────────
 async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {

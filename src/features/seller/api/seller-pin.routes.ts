@@ -27,7 +27,8 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
 export const sellerPinRoutes = new Hono<{ Bindings: Bindings }>()
-sellerPinRoutes.use('*', cors({ origin: '*', credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
+//   서브라우터 wildcard 미들웨어가 같은 prefix 의 다른 라우터 경로 가로채는 버그 (Hono v4) 방지.
 
 async function getSellerId(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null

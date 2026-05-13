@@ -22,7 +22,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
 export const agencyPinRoutes = new Hono<{ Bindings: Bindings }>()
-agencyPinRoutes.use('*', cors({ origin: '*', credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
 async function getAgencyId(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null

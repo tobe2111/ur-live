@@ -13,7 +13,7 @@ import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 const dashboardNotificationsRoutes = new Hono<{ Bindings: Env }>();
-dashboardNotificationsRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTable(DB: D1Database) {
   try {

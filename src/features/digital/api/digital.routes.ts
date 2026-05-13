@@ -16,7 +16,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 export const digitalRoutes = new Hono<{ Bindings: Env }>()
-digitalRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── GET /api/digital/my — 내 디지털 보관함 ─────────────────────────
 digitalRoutes.get('/my', requireAuth(), async (c) => {

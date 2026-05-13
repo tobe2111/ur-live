@@ -16,7 +16,7 @@ import { requireAdmin } from '@/worker/middleware/auth';
 import { swallow } from '@/worker/utils/swallow';
 
 export const adminAbuseRoutes = new Hono<{ Bindings: Env }>();
-adminAbuseRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 adminAbuseRoutes.use('*', requireAdmin());
 
 // GET /abuse-detections

@@ -5,7 +5,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 const couponRoutes = new Hono<{ Bindings: Env }>()
-couponRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
