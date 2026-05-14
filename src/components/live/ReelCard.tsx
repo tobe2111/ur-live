@@ -403,13 +403,15 @@ function ReelCardImpl({
         win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), 'https://www.youtube.com')
         win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onPlaybackQualityChange'] }), 'https://www.youtube.com')
         // 🛡️ 2026-05-13: 시청자 측 화질 hd1080 강제 시도 — YouTube 가 자동으로 낮추는 거 방지.
-        //   YouTube 가 거절하면 자동 (auto) 로 fallback — 안전.
-        //   networkBandwidth 가 충분하면 hd1080 유지, 부족하면 YouTube 가 알아서 하향.
-        setTimeout(() => {
-          try {
-            win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }), 'https://www.youtube.com')
-          } catch { /* ignore */ }
-        }, 2500)
+        // 🛡️ 2026-05-14: 다중 시점 + 재시도 — 2.5s / 6s / 12s 세 번 push.
+        //   YouTube embed 가 onPlaybackQualityChange 에서 'auto' 로 떨어트리는 경우 잡기 위함.
+        ;[2500, 6000, 12000].forEach(delay => {
+          setTimeout(() => {
+            try {
+              win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }), 'https://www.youtube.com')
+            } catch { /* ignore */ }
+          }, delay)
+        })
       } catch (e) { if (import.meta.env.DEV) console.warn('[ReelCard] postMessage listening failed', e) }
     }
 
@@ -429,6 +431,21 @@ function ReelCardImpl({
           } else if (state === -1 || state === 5) {
             if (stuckTimer) clearTimeout(stuckTimer)
             stuckTimer = setTimeout(() => performReload('unstarted/cued 3s'), STUCK_TIMEOUT_MS)
+          }
+        }
+        // 🛡️ 2026-05-14: 화질 다운그레이드 감지 → hd1080 재요청 (네트워크 충분 시).
+        //   YouTube 가 auto/medium/hd720 으로 떨어지면 5초 후 hd1080 다시 시도.
+        if (data?.event === 'onPlaybackQualityChange') {
+          const q = data.info as string
+          if (q && q !== 'hd1080' && q !== 'hd1440' && q !== 'hd2160') {
+            const win = iframeRef.current?.contentWindow
+            if (win) {
+              setTimeout(() => {
+                try {
+                  win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }), 'https://www.youtube.com')
+                } catch { /* ignore */ }
+              }, 5000)
+            }
           }
         }
       } catch { /* noop */ }
