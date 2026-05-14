@@ -15,6 +15,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { swallow } from '@/worker/utils/swallow'
+import { broadcastStreamStatus } from '@/worker/utils/broadcast-stream-status'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { ensureYouTubeTables, getValidAccessToken } from './youtube.routes'
@@ -1716,6 +1717,10 @@ app.post('/live/:id/admin-force-end', requireAdmin(), async (c) => {
   await c.env.DB.prepare(`
     UPDATE admin_alerts SET resolved = 1 WHERE kind = ? AND resolved = 0
   `).bind(`zombie_stream:${streamId}`).run().catch(() => {})
+
+  // 🛡️ 2026-05-14: DO broadcast — 시청자 즉시 'ended' WS 신호 (Tier S seq + eventLog 자동).
+  //   이전: admin-force-end 만 DO broadcast 누락 → 시청자가 30s 폴링 후 알게 됨.
+  await broadcastStreamStatus(c.env, streamId, 'ended', { type: 'admin', id: 0 }, c.executionCtx?.waitUntil?.bind(c.executionCtx))
 
   return c.json({ success: true, message: `Stream ${streamId} 강제 종료 완료` })
 })
