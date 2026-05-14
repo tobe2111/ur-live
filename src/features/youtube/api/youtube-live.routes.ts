@@ -3206,11 +3206,51 @@ export async function omeAdmissionHandler(
               try {
                 await yt.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id!)
                 console.log(`[OME admission] broadcast ${stream.youtube_broadcast_id} → live ✅ (attempt ${attempt + 1})`)
+                // 🛡️ 2026-05-14: DB status 즉시 업데이트 + WebSocket broadcast.
+                //   기존: transition 성공 후 cron 폴링 (수십초 후) 까지 시청자가 scheduled 상태 봄.
+                //   변경: 즉시 DB + DO 알림 → 시청자 라이브 영상 보임 (지연 0).
+                await env.DB.prepare(`
+                  UPDATE live_streams SET status = 'live', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+                  WHERE id = ? AND status IN ('scheduled', 'starting', 'ready')
+                `).bind(stream.id).run().catch((e) => console.warn('[OME admission] status update failed:', (e as Error).message))
+                // DO broadcast — 시청자 페이지 즉시 'live' WebSocket 신호.
+                if (env.LIVE_STREAM) {
+                  try {
+                    const doId = env.LIVE_STREAM.idFromName(String(stream.id))
+                    const stub = env.LIVE_STREAM.get(doId)
+                    const broadcastLive = stub.fetch('https://internal/broadcast', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': '1', 'X-Auth-User-Type': 'system', 'X-Auth-User-Id': '0' },
+                      body: JSON.stringify({ type: 'stream_status', data: { status: 'live', live_stream_id: stream.id }, timestamp: Date.now() }),
+                    })
+                    if (waitUntil) waitUntil(broadcastLive.then(() => {}).catch(() => {}))
+                    else await broadcastLive.catch(() => {})
+                  } catch (e) {
+                    console.warn('[OME admission] DO live broadcast failed:', (e as Error).message)
+                  }
+                }
                 return
               } catch (e) {
                 const msg = (e as Error).message || ''
                 if (/redundant|already/i.test(msg)) {
                   console.log(`[OME admission] transition redundant (already live)`)
+                  // 🛡️ 2026-05-14: already-live 도 DB/DO 동기화 (cron 누락 방지)
+                  await env.DB.prepare(`
+                    UPDATE live_streams SET status = 'live', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ? AND status IN ('scheduled', 'starting', 'ready')
+                  `).bind(stream.id).run().catch(() => {})
+                  if (env.LIVE_STREAM) {
+                    try {
+                      const doId = env.LIVE_STREAM.idFromName(String(stream.id))
+                      const stub = env.LIVE_STREAM.get(doId)
+                      const bp = stub.fetch('https://internal/broadcast', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': '1', 'X-Auth-User-Type': 'system', 'X-Auth-User-Id': '0' },
+                        body: JSON.stringify({ type: 'stream_status', data: { status: 'live', live_stream_id: stream.id }, timestamp: Date.now() }),
+                      })
+                      if (waitUntil) waitUntil(bp.then(() => {}).catch(() => {}))
+                    } catch { /* ignore */ }
+                  }
                   return
                 }
                 if (/invalid/i.test(msg)) {
