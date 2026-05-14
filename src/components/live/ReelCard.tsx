@@ -412,6 +412,16 @@ function ReelCardImpl({
             } catch { /* ignore */ }
           }, delay)
         })
+        // 🛡️ 2026-05-14 M2: Skip-to-Live — YouTube 가 cold start 시 buffer 시작 시점 (옛날) 에서 재생할 수 있음.
+        //   seekTo(9999999, true) = 영상 끝 (라이브 edge) 으로 이동. YouTube 가 라이브 최신 시점으로 clamp.
+        //   3초 후 + 8초 후 두 번 시도 (네트워크 안정 후 효과).
+        ;[3000, 8000].forEach(delay => {
+          setTimeout(() => {
+            try {
+              win.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [9999999, true] }), 'https://www.youtube.com')
+            } catch { /* ignore */ }
+          }, delay)
+        })
       } catch (e) { if (import.meta.env.DEV) console.warn('[ReelCard] postMessage listening failed', e) }
     }
 
@@ -1034,7 +1044,7 @@ function ReelCardImpl({
             <iframe
               ref={iframeRef}
               key={`yt-${stream.youtube_video_id}`}
-              src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1&vq=hd1080&hd=1`}
+              src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&controls=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com')}&enablejsapi=1&vq=hd1080&hd=1&disablekb=1&iv_load_policy=3&cc_load_policy=0&fs=1&color=white`}
               // 🛡️ 2026-05-13: allow 에 fullscreen 포함 → allowFullScreen 속성과 중복 → React 경고. 통합.
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               title={stream.title || 'Live broadcast'}

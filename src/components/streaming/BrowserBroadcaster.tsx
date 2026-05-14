@@ -284,6 +284,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
           //   잡는 경우에도 강제 stereo 캡처. 음악·소리 풍부함 +50%.
           channelCount: { ideal: 2 },
           sampleRate: { ideal: 48000 },
+          // 🛡️ 2026-05-14 M5: 'system' echo cancel — macOS/iOS 하드웨어 에코 캔슬 우선.
+          //   브라우저 SW echo cancel (기본) 보다 깨끗 + CPU ↓. 미지원 OS 는 자동 SW fallback.
+          //   echoCancellationType 은 Chrome 확장 — 표준 외 속성이라 cast.
+          ...({ echoCancellationType: { ideal: 'system' } } as MediaTrackConstraints),
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
@@ -391,6 +395,9 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         { urls: 'stun:stun2.l.google.com:19302' },
       ],
       iceTransportPolicy: 'all',
+      // 🛡️ 2026-05-14 M1: ICE 후보 사전 gathering — PC 생성 시점부터 백그라운드로 STUN 후보 모음.
+      //   createOffer 시점에는 이미 후보 준비됨 → 송출 시작 -500~1000ms (가장 큰 단일 개선).
+      iceCandidatePoolSize: 4,
       bundlePolicy: 'max-bundle',
     })
     pcRef.current = pc
