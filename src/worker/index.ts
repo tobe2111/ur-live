@@ -185,6 +185,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
+export { RateLimiterDurableObject } from '../durable-objects/rate-limiter';
 
 // ============================================================
 // Cache Control Middleware — adds CDN + browser cache headers

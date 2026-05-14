@@ -81,12 +81,17 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 # ============================================================
 [durable_objects]
 bindings = [
-  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" }
+  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" },
+  { name = "RATE_LIMITER", class_name = "RateLimiterDurableObject" }
 ]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["LiveStreamDurableObject"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RateLimiterDurableObject"]
 
 # ============================================================
 # Development Variables
@@ -180,10 +185,11 @@ binding = "DB"
 database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
-# Durable Objects binding for production (required for WebSocket chat)
+# Durable Objects binding for production (required for WebSocket chat + rate limiting)
 [env.production.durable_objects]
 bindings = [
-  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" }
+  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" },
+  { name = "RATE_LIMITER", class_name = "RateLimiterDurableObject" }
 ]
 
 # ============================================================
