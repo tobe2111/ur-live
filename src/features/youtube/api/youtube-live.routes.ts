@@ -1443,6 +1443,170 @@ app.get('/live/_health-check', requireAdmin(), async (c) => {
 })
 
 /**
+ * POST /api/youtube/live/_verify-whip-proxy
+ *
+ * 🛡️ 2026-05-14: Worker WHIP proxy 검증 — 셀러 한 명이 토큰 1번 클릭으로 결과 확인.
+ *
+ * 동작:
+ *   1. 셀러 본인의 좀비 라이브 (live/ready/starting) 일괄 종료 (DB + best-effort YouTube)
+ *   2. YouTube liveStreams.insert (ingestionType='webrtc') 호출 — 테스트용 stream 생성 (50 quota)
+ *   3. cdn.ingestionInfo.ingestionAddress 가 https://(WHIP) 로 시작하는지 확인
+ *   4. 테스트 stream 즉시 삭제 (liveStreams.delete) — broadcast 아니므로 quota 추가 비용 거의 없음
+ *   5. JSON 결과 반환:
+ *      - env.YOUTUBE_USE_WEBRTC_INGEST 설정값
+ *      - DB 컬럼 whip_url 존재 여부
+ *      - YouTube WebRTC ingestion 작동 여부 + whip_url 샘플
+ *      - 정리된 좀비 stream id 목록
+ *
+ * 인증: 셀러 Bearer 토큰. 본인 데이터만 만지고 본인 토큰으로만 YouTube API 호출.
+ */
+app.post('/live/_verify-whip-proxy', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  await ensureYouTubeTables(c.env.DB)
+
+  const result: {
+    env_YOUTUBE_USE_WEBRTC_INGEST: string | null
+    db_whip_url_column: boolean
+    db_whip_url_column_detail: string
+    cleaned_zombies: number[]
+    cleanup_errors: { id: number; error: string }[]
+    webrtc_supported: boolean | null
+    webrtc_detail: string
+    sample_whip_url: string | null
+    sample_ingestion_type: string | null
+    test_stream_id: string | null
+    test_stream_deleted: boolean
+    overall: 'ok' | 'partial' | 'fail'
+    recommendation: string
+  } = {
+    env_YOUTUBE_USE_WEBRTC_INGEST: (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST ?? null,
+    db_whip_url_column: false,
+    db_whip_url_column_detail: '',
+    cleaned_zombies: [],
+    cleanup_errors: [],
+    webrtc_supported: null,
+    webrtc_detail: '',
+    sample_whip_url: null,
+    sample_ingestion_type: null,
+    test_stream_id: null,
+    test_stream_deleted: false,
+    overall: 'fail',
+    recommendation: '',
+  }
+
+  // 1. DB 스키마 — whip_url 컬럼 확인
+  try {
+    const cols = await c.env.DB.prepare(`PRAGMA table_info(live_streams)`).all<{ name: string }>()
+    const colNames = (cols.results || []).map(r => r.name)
+    result.db_whip_url_column = colNames.includes('whip_url')
+    result.db_whip_url_column_detail = result.db_whip_url_column
+      ? '✅ live_streams.whip_url 컬럼 존재'
+      : '❌ whip_url 컬럼 없음 — POST /api/_internal/repair-schema 실행 필요'
+  } catch (e) {
+    result.db_whip_url_column_detail = `❌ PRAGMA 실패: ${(e as Error).message}`
+  }
+
+  // 2. 좀비 stream 일괄 종료 (본인 것만)
+  const ytClientId = c.env.YOUTUBE_CLIENT_ID || ''
+  const ytClientSecret = c.env.YOUTUBE_CLIENT_SECRET || ''
+  const kv = c.env.SESSION_KV
+  try {
+    const zombies = await c.env.DB.prepare(`
+      SELECT id, youtube_broadcast_id FROM live_streams
+      WHERE seller_id = ? AND status IN ('live', 'ready', 'starting', 'scheduled')
+    `).bind(sellerId).all<{ id: number; youtube_broadcast_id: string | null }>()
+
+    const youtubeService = new YouTubeAPIService(ytClientId, ytClientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+
+    for (const z of zombies.results || []) {
+      try {
+        if (accessToken && z.youtube_broadcast_id) {
+          await youtubeService.endBroadcast(accessToken, z.youtube_broadcast_id).catch(swallow('verify_end_broadcast'))
+        }
+        await stopOmePush(c.env, z.id).catch(swallow('verify_stop_ome'))
+        await c.env.DB.prepare(`
+          UPDATE live_streams
+          SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? AND seller_id = ?
+        `).bind(z.id, sellerId).run()
+        if (kv) await cacheInvalidate(kv, [`stream:${z.id}`, 'streams:status:live:limit:20:offset:0']).catch(swallow('verify_cache_invalidate'))
+        result.cleaned_zombies.push(z.id)
+      } catch (e) {
+        result.cleanup_errors.push({ id: z.id, error: (e as Error).message })
+      }
+    }
+  } catch (e) {
+    result.cleanup_errors.push({ id: 0, error: `좀비 조회 실패: ${(e as Error).message}` })
+  }
+
+  // 3. YouTube WebRTC ingestion 실제 호출 테스트
+  try {
+    const youtubeService = new YouTubeAPIService(ytClientId, ytClientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    if (!accessToken) {
+      result.webrtc_supported = false
+      result.webrtc_detail = '❌ YouTube OAuth 토큰 없음 — /seller/youtube/connect 먼저 연결 필요'
+    } else {
+      const testTitle = `_verify-whip-proxy-${Date.now()}`
+      const testStream = await youtubeService.createStream(accessToken, testTitle, '1080p', '30fps', 'webrtc')
+      await trackQuota(c.env, QUOTA_COST.insert, 'verify_whip_proxy', c.executionCtx)
+      result.test_stream_id = testStream.id
+      const addr = testStream.ingestionInfo.ingestionAddress || ''
+      const itype = testStream.cdn.ingestionType
+      result.sample_whip_url = addr
+      result.sample_ingestion_type = itype
+
+      // WHIP 패턴 검증: https:// + youtube.com 도메인 (rtmp:// 가 아니어야 함)
+      const isWhip = addr.startsWith('https://') && /youtube\.com|youtu\.be|googleapis\.com|googlevideo\.com|ytstatic/.test(addr) && itype === 'webrtc'
+      result.webrtc_supported = isWhip
+      result.webrtc_detail = isWhip
+        ? `✅ YouTube WebRTC ingestion 정상 — ingestionType=${itype}, address=${addr.slice(0, 60)}...`
+        : `❌ WebRTC ingestion 반환 안 됨 — ingestionType=${itype}, address=${addr.slice(0, 60)}...`
+
+      // 4. 테스트 stream 즉시 삭제
+      try {
+        const delRes = await fetch(`${(`https://www.googleapis.com/youtube/v3`)}/liveStreams?id=${testStream.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(10_000),
+        })
+        await trackQuota(c.env, QUOTA_COST.delete ?? 50, 'verify_whip_proxy_delete', c.executionCtx)
+        result.test_stream_deleted = delRes.ok || delRes.status === 204
+      } catch (e) {
+        result.test_stream_deleted = false
+        result.webrtc_detail += ` | 테스트 stream 삭제 실패 (수동 정리 필요 id=${testStream.id}): ${(e as Error).message}`
+      }
+    }
+  } catch (e) {
+    result.webrtc_supported = false
+    result.webrtc_detail = `❌ YouTube API 호출 실패: ${(e as Error).message}`
+  }
+
+  // 5. 종합 평가
+  if (
+    result.env_YOUTUBE_USE_WEBRTC_INGEST === 'true' &&
+    result.db_whip_url_column &&
+    result.webrtc_supported === true
+  ) {
+    result.overall = 'ok'
+    result.recommendation = '✅ Worker WHIP Proxy 활성 가능 — 새 방송 시작 시 whip_url 이 자동 채워짐.'
+  } else if (result.webrtc_supported === true) {
+    result.overall = 'partial'
+    const issues: string[] = []
+    if (result.env_YOUTUBE_USE_WEBRTC_INGEST !== 'true') issues.push('env YOUTUBE_USE_WEBRTC_INGEST=true 설정 필요')
+    if (!result.db_whip_url_column) issues.push('repair-schema 실행 필요 (whip_url 컬럼 추가)')
+    result.recommendation = `⚠️ YouTube 는 지원하지만 미배포 항목 있음: ${issues.join(' / ')}`
+  } else {
+    result.overall = 'fail'
+    result.recommendation = '❌ ' + (result.webrtc_detail || '확인 실패')
+  }
+
+  return c.json({ success: true, data: result })
+})
+
+/**
  * POST /api/youtube/live/:id/admin-force-end
  *
  * 🛡️ 2026-05-13 (사용자 정책): 어드민이 좀비 의심 stream 강제 종료.
