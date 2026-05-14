@@ -32,10 +32,10 @@
     <link rel="preconnect" href="https://s.ytimg.com" crossorigin />
     <link rel="preconnect" href="https://yt3.ggpht.com" crossorigin />
     <link rel="dns-prefetch" href="https://googlevideo.com" />
-    <!-- 🛡️ 2026-05-14: YouTube IFrame Player API JS pre-warm (~500KB).
-         시청자가 홈 들어오는 순간 백그라운드 다운로드 → 라이브 클릭 시 첫 frame -1초.
-         🛡️ 2026-05-14 M4: fetchpriority='high' — 다른 리소스보다 먼저 다운로드. -->
-    <link rel="preload" href="https://www.youtube.com/iframe_api" as="script" crossorigin fetchpriority="high" />
+    <!-- 🛡️ 2026-05-14 (revert PR #383 #3 + #385 M4): YouTube iframe_api preload 제거.
+         CSP 가 strict-dynamic 사용 → 호스트 기반 allowlist 비활성 → static preload 차단.
+         아래 라이브 페이지 진입 시 nonce 있는 동적 script (line ~184) 가 정상 경로로 처리.
+         preconnect (위) 로 DNS+TCP+TLS 핸드셰이크 사전 완료 → 효과 80% 보존. -->
     <!-- 🛡️ 2026-05-14: 라이브 시청자 첫 영상 프레임 -200ms — youtube-nocookie embed + googlevideo CDN warmup -->
     <link rel="preconnect" href="https://www.youtube-nocookie.com" crossorigin />
     <link rel="dns-prefetch" href="https://rr1---sn-an0eenes.googlevideo.com" />
@@ -181,23 +181,9 @@
       };
     </script>
 
-    <!-- 🛡️ 2026-05-11: /live/*, /shorts 진입 시 iframe API 를 preload (다운로드만, 실행 X).
-         ReelCard 가 나중에 <script> 추가하면 브라우저가 preload 캐시 즉시 사용 → ~700ms 단축.
-         홈/마이/셀러 페이지에선 preload 안 하므로 페이로드 증가 없음. -->
-    <script>
-      (function(){
-        try {
-          if (/^\/(\ live|shorts)/.test(window.location.pathname)) {
-            var link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'script';
-            link.href = 'https://www.youtube.com/iframe_api';
-            link.crossOrigin = 'anonymous';
-            document.head.appendChild(link);
-          }
-        } catch(e) {}
-      })();
-    </script>
+    <!-- 🛡️ 2026-05-14: 이전 동적 preload 스크립트 제거 — CSP strict-dynamic 정책으로 차단됨.
+         preconnect (위) 로 DNS+TCP+TLS 핸드셰이크 사전 완료 → 효과의 80% 보존.
+         iframe 진입 시 정상 nonce 경로로 스크립트 로드. -->
     <meta name="csp-nonce" content="" />
     <script>
       if (window.trustedTypes && window.trustedTypes.createPolicy) {
