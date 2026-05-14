@@ -91,7 +91,15 @@ export default function SellerLiveBroadcastPage() {
 
   // 위저드 상태
   const [step, setStep] = useState<WizardStep>('info')
-  const [method, setMethod] = useState<StreamMethod>(() => getLastUsedMethod())
+  // 🛡️ 2026-05-14: 모바일에선 'youtube-webcam' 자동 차단 → 'quick' (브라우저 직접) 으로 전환.
+  //   localStorage 에 PC 사용 기록 있으면 'youtube-webcam' 으로 시작 → 모바일에서 팝업 노출 사고.
+  //   조용히 전환 (셀러 인지 X).
+  const [method, setMethod] = useState<StreamMethod>(() => {
+    const last = getLastUsedMethod()
+    const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+    if (isMobile && last === 'youtube-webcam') return 'quick'
+    return last
+  })
   const [destination, setDestination] = useState<Destination>('youtube')
   const [destinations, setDestinations] = useState<DestinationPlatform[]>([])
   const [currentStream, setCurrentStream] = useState<LiveStream | null>(null)

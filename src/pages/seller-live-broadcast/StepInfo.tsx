@@ -204,13 +204,15 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-      <div className="flex items-start justify-between gap-2">
-        <div>
+      {/* 🛡️ 2026-05-14: 모바일 너비 부족 → 한 글자씩 세로 깨짐 사고.
+          flex-col 으로 헤딩 아래에 버튼 그룹 배치, sm+ 부터 가로 배치. */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-base font-bold text-gray-900">{t('seller.liveBroadcast.enterBroadcastInfo')}</h2>
           <p className="text-xs text-gray-500 mt-0.5">{t('seller.liveBroadcast.enterBroadcastInfoDesc')}</p>
         </div>
         {/* Quick Start + Clone Last + Test broadcast */}
-        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+        <div className="flex gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
           {sellableProducts.length > 0 && (
             <button onClick={handleTestBroadcast} disabled={creating}
               className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
