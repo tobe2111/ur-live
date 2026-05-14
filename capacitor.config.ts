@@ -47,6 +47,11 @@ const config: CapacitorConfig = {
     backgroundColor: '#020202',
     // 딥링크
     appendUrlPath: true,
+    // 🛡️ 2026-05-14: WebView 비디오 재생 최적화.
+    //   modern bridge (useLegacyBridge=false) = 메시지 처리 빠름.
+    //   captureInput=false = 키보드 입력 가로채지 않음 (라이브 채팅 안정).
+    useLegacyBridge: false,
+    captureInput: false,
   },
   ios: {
     contentInset: 'automatic',
@@ -55,6 +60,12 @@ const config: CapacitorConfig = {
     preferredContentMode: 'mobile',
     // 딥링크 지원을 위한 Associated Domains
     limitsNavigationsToAppBoundDomains: true,
+    // 🛡️ 2026-05-14: WKWebView 비디오 재생 최적화.
+    //   allowsLinkPreview=false = 길게 누름 preview 비활성화 (라이브 시청자 오작동 방지)
+    //   YouTube embed 와 충돌 안 함.
+    allowsLinkPreview: false,
+    // hardware 가속은 WKWebView 기본 ON — 변경 불필요.
+    // 비디오 inline 재생은 YouTube embed 의 playsinline=1 + allow="autoplay" 가 처리.
   },
 };
 

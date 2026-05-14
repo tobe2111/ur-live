@@ -32,6 +32,9 @@
     <link rel="preconnect" href="https://s.ytimg.com" crossorigin />
     <link rel="preconnect" href="https://yt3.ggpht.com" crossorigin />
     <link rel="dns-prefetch" href="https://googlevideo.com" />
+    <!-- 🛡️ 2026-05-14: YouTube IFrame Player API JS pre-warm (~500KB).
+         시청자가 홈 들어오는 순간 백그라운드 다운로드 → 라이브 클릭 시 첫 frame -1초. -->
+    <link rel="preload" href="https://www.youtube.com/iframe_api" as="script" crossorigin />
     <!-- 🛡️ 2026-05-14: 라이브 시청자 첫 영상 프레임 -200ms — youtube-nocookie embed + googlevideo CDN warmup -->
     <link rel="preconnect" href="https://www.youtube-nocookie.com" crossorigin />
     <link rel="dns-prefetch" href="https://rr1---sn-an0eenes.googlevideo.com" />
