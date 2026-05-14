@@ -213,10 +213,12 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
           LIMIT 1
         `).bind(sellerId).first() as any
 
-    // 🛡️ 2026-05-13: env YOUTUBE_USE_WEBRTC_INGEST=true 면 webrtc ingestion 강제.
-    //   persistent stream 캐시 (RTMP) 가 있어도 무시하고 새 webrtc stream 생성.
-    //   webrtc 선택 시 ingestionAddress 가 WHIP URL 로 반환 → DB.whip_url 에 저장.
-    const useWebRTC = (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST === 'true'
+    // 🛡️ 2026-05-13: env YOUTUBE_USE_WEBRTC_INGEST=true 면 webrtc ingestion 시도.
+    //   🛡️ 2026-05-14: YouTube Data API v3 가 `cdn.ingestionType='webrtc'` 거부 확인됨
+    //     ("Invalid value for ingestion type"). YouTube Studio UI 내부 전용이고 API 미노출.
+    //     → env 가 true 여도 무조건 'rtmp' 로 fallback. webrtc 분기는 YouTube 가 API 열 때 활성.
+    const useWebRTC = false  // 보존된 분기 — YouTube API 가 webrtc ingestion 열면 env 다시 사용
+    void (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST
 
     let liveSetup
     if (sellerAuth?.default_stream_id && !useWebRTC) {
