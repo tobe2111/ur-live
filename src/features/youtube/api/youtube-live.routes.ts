@@ -906,20 +906,20 @@ app.get('/live/:id/diagnose', async (c) => {
     ? c.env.DB.prepare(`
         SELECT id, seller_id, status, started_at, ended_at, last_error,
                youtube_video_id, youtube_broadcast_id, youtube_stream_key,
-               rtmp_url, rtmp_key, youtube_embed_url, title, created_at
+               rtmp_url, rtmp_key, youtube_embed_url, whip_url, title, created_at
         FROM live_streams WHERE id = ?
       `).bind(streamId)
     : c.env.DB.prepare(`
         SELECT id, seller_id, status, started_at, ended_at, last_error,
                youtube_video_id, youtube_broadcast_id, youtube_stream_key,
-               rtmp_url, rtmp_key, youtube_embed_url, title, created_at
+               rtmp_url, rtmp_key, youtube_embed_url, whip_url, title, created_at
         FROM live_streams WHERE id = ? AND seller_id = ?
       `).bind(streamId, sellerId)
   ).first<{
     id: number; seller_id: number; status: string; started_at: string | null; ended_at: string | null;
     last_error: string | null; youtube_video_id: string | null; youtube_broadcast_id: string | null;
     youtube_stream_key: string | null; rtmp_url: string | null; rtmp_key: string | null;
-    youtube_embed_url: string | null; title: string; created_at: string;
+    youtube_embed_url: string | null; whip_url: string | null; title: string; created_at: string;
   }>()
 
   if (!dbStream) return c.json({ success: false, error: 'Stream not found' }, 404)
@@ -936,6 +936,7 @@ app.get('/live/:id/diagnose', async (c) => {
       youtube_broadcast_id: dbStream.youtube_broadcast_id,
       has_rtmp_key: !!dbStream.rtmp_key,
       rtmp_url: dbStream.rtmp_url,
+      whip_url: dbStream.whip_url,
       youtube_embed_url: dbStream.youtube_embed_url,
       created_at: dbStream.created_at,
     },
