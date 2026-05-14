@@ -50,9 +50,12 @@ function maybeCleanup() {
 }
 
 export const RATE_LIMIT_TIERS = {
-  PUBLIC:        { windowMs: 60_000, maxRequests: 200 },
-  AUTHENTICATED: { windowMs: 60_000, maxRequests: 400 },
-  PREMIUM:       { windowMs: 60_000, maxRequests: 300 },
+  // 🛡️ 2026-05-14: 한도 대폭 상향 — 셀러가 라이브 만들 때 일시적으로 여러 API 동시 호출 (cart/products/live/check)
+  //   기존 300/분 = 5 req/sec 너무 빡빡. 셀러 1명이 화면 전환 시 10+ API 호출 정상.
+  //   PREMIUM 이 AUTHENTICATED 보다 낮았던 이상한 설정도 정상화.
+  PUBLIC:        { windowMs: 60_000, maxRequests: 300 },   // 200 → 300 (이미지 lazyload 등)
+  AUTHENTICATED: { windowMs: 60_000, maxRequests: 1000 },  // 400 → 1000
+  PREMIUM:       { windowMs: 60_000, maxRequests: 3000 },  // 300 → 3000 (셀러/어드민 충분히)
 } as const;
 
 export function detectUserTier(c: Context): keyof typeof RATE_LIMIT_TIERS {
