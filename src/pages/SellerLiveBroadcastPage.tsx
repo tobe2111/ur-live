@@ -445,7 +445,14 @@ export default function SellerLiveBroadcastPage() {
 
         // 🛡️ 2026-05-11: 웹캠 모드면 YouTube Studio 웹캠 송출 popup 자동 열기.
         //   셀러가 popup 에서 [스트리밍 시작] 클릭 → /detect-webcam 폴링이 우리 stream 과 link.
+        // 🛡️ 2026-05-14: 모바일에선 popup 차단 + 현재 탭 redirect 사고 빈발 → 모바일 강제 차단.
+        //   모바일 셀러는 브라우저 WebRTC (BrowserBroadcaster) 만 사용.
         if (method === 'youtube-webcam') {
+          const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+          if (isMobile) {
+            toast.error('YouTube Studio 웹캠 모드는 PC 에서만 사용 가능해요. 모바일은 위의 \'직접 송출\' 사용해주세요.')
+            return
+          }
           const activeChannel = channels.find(ch => ch.id === activeChannelId) || channels[0]
           if (activeChannel?.channel_id) {
             const studioUrl = `https://studio.youtube.com/channel/${activeChannel.channel_id}/livestreaming/stream/webcam`
