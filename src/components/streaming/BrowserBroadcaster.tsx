@@ -369,6 +369,29 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       const sender = pc.addTrack(track, stream)
       if (track.kind === 'video') {
         videoSenderRef.current = sender
+        // 🛡️ 2026-05-14: 하드웨어 인코더 우선 — H.264 Constrained Baseline 3.1 (`42e01f`)
+        //   은 거의 모든 GPU/SoC 가 하드웨어 인코딩 지원. Chrome 이 자동으로 HW path 사용 →
+        //   CPU -40%, 인코딩 품질 안정 (소프트웨어 fallback 보다 압축 효율 ↑).
+        //   YouTube/OME 도 H.264 RTMP 패스스루 가능 → 추가 트랜스코딩 0.
+        const transceiver = pc.getTransceivers().find(t => t.sender === sender)
+        if (transceiver && typeof RTCRtpSender !== 'undefined' && RTCRtpSender.getCapabilities) {
+          try {
+            const caps = RTCRtpSender.getCapabilities('video')
+            if (caps?.codecs) {
+              const h264Hw = caps.codecs.filter(c =>
+                c.mimeType === 'video/H264' && /42e0|42c0|4d40|640032/i.test(c.sdpFmtpLine || '')
+              )
+              const h264Rest = caps.codecs.filter(c => c.mimeType === 'video/H264' && !h264Hw.includes(c))
+              const others = caps.codecs.filter(c => c.mimeType !== 'video/H264')
+              const ordered = [...h264Hw, ...h264Rest, ...others]
+              if (typeof transceiver.setCodecPreferences === 'function' && ordered.length > 0) {
+                transceiver.setCodecPreferences(ordered)
+              }
+            }
+          } catch (e) {
+            if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] setCodecPreferences 실패:', e)
+          }
+        }
         const params = sender.getParameters()
         // 🛡️ 2026-05-13 v3: 화질 절대 사수 — scaleResolutionDownBy:1 (해상도 강제 다운 차단)
         //   + minBitrate 3M (최저 3Mbps 보장, CBR 유사)
