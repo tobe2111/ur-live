@@ -459,16 +459,19 @@ export default function StepInfo({ title, setTitle, description, setDescription,
             </div>
             <a href="/seller/streaming-setup" className="text-[11px] text-green-700 hover:text-green-900 underline underline-offset-2">키 다시 보기</a>
           </div>
+          {/* 🛡️ 2026-05-14: YouTube Studio 웹캠 옵션은 PC 전용 (모바일에선 숨김).
+              모바일에서 클릭 시 studio.youtube.com 으로 redirect → 현재 탭 갈아치워 우리 페이지 나감.
+              모바일 셀러는 브라우저 WebRTC (위) 사용 권장. */}
           <button
             type="button"
             onClick={() => setMethod(method === 'youtube-webcam' ? 'obs' : 'youtube-webcam')}
-            className={`w-full text-left text-xs px-3 py-2 rounded-lg border transition-colors ${
+            className={`hidden md:block w-full text-left text-xs px-3 py-2 rounded-lg border transition-colors ${
               method === 'youtube-webcam'
                 ? 'border-red-300 bg-red-50 text-red-800'
                 : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <span className="font-semibold">{method === 'youtube-webcam' ? '✓ ' : ''}🎥 또는 YouTube Studio 웹캠으로 즉시 시작 (OBS 불필요, PC 권장)</span>
+            <span className="font-semibold">{method === 'youtube-webcam' ? '✓ ' : ''}🎥 또는 YouTube Studio 웹캠으로 즉시 시작 (OBS 불필요, PC 만)</span>
           </button>
         </div>
       ) : (
