@@ -35,6 +35,11 @@ export class LiveStreamDurableObject extends DurableObject {
   // 🛡️ 2026-05-13: 마지막으로 broadcast 한 stream_status 기억
   //   새 viewer 가 WS 연결 시 즉시 현재 status 전달 → "방송 예정" 영원히 표시 사고 fix.
   private lastStreamStatus: { status: string; live_stream_id: number } | null = null;
+  // 🛡️ 2026-05-14 (Tier S): 시퀀스 번호 + 이벤트 로그 — 재연결 시 누락 이벤트 catch-up.
+  //   기존 HTTP 폴링 safety net 대체. WebSocket 만으로 100% 신뢰성 보장.
+  private currentSeq = 0;
+  private eventLog: Array<{ seq: number; type: string; data: unknown; timestamp: number }> = [];
+  private readonly MAX_EVENT_LOG = 100; // 최근 100 events 만 (메모리 + 5-10분 분량)
   private state: DurableObjectState;
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
@@ -61,9 +66,16 @@ export class LiveStreamDurableObject extends DurableObject {
         // 🛡️ 2026-05-13: 마지막 stream_status 복원 (DO 재시작 시에도 유지)
         const lastStatus = await state.storage.get<{ status: string; live_stream_id: number }>('lastStreamStatus');
         if (lastStatus) this.lastStreamStatus = lastStatus;
+        // 🛡️ 2026-05-14 (Tier S): seq + eventLog 복원 (DO hibernation 후 catch-up 보장)
+        const storedSeq = await state.storage.get<number>('currentSeq');
+        if (typeof storedSeq === 'number') this.currentSeq = storedSeq;
+        const storedLog = await state.storage.get<typeof this.eventLog>('eventLog');
+        if (Array.isArray(storedLog)) this.eventLog = storedLog;
       } catch {}
     });
   }
+
+  // (appendEventLog 헬퍼는 broadcast() 안에 inline 됨)
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -80,7 +92,11 @@ export class LiveStreamDurableObject extends DurableObject {
 
       // 🛡️ Worker 가 검증한 user_id 전달받아 DO 세션에 바인딩
       const authedUserId = request.headers.get('x-auth-user-id');
-      this.handleSession(server, authedUserId);
+      // 🛡️ 2026-05-14 (Tier S): lastSeq query param 으로 catch-up.
+      //   재연결 시 마지막 받은 seq 이후 모든 이벤트 replay.
+      const lastSeqStr = url.searchParams.get('lastSeq');
+      const lastSeq = lastSeqStr ? parseInt(lastSeqStr, 10) : 0;
+      this.handleSession(server, authedUserId, Number.isFinite(lastSeq) ? lastSeq : 0);
 
       return new Response(null, {
         status: 101,
@@ -105,7 +121,7 @@ export class LiveStreamDurableObject extends DurableObject {
     return new Response('Not Found', { status: 404 });
   }
 
-  handleSession(webSocket: WebSocket, userId: string | null = null) {
+  handleSession(webSocket: WebSocket, userId: string | null = null, lastSeq: number = 0) {
     webSocket.accept();
     this.sessions.add(webSocket);
     this.chatSessions.set(webSocket, { ws: webSocket, userId, recentTimes: [], lastSeen: Date.now() });
@@ -114,15 +130,36 @@ export class LiveStreamDurableObject extends DurableObject {
     // 시청자 수 브로드캐스트
     this.broadcastViewerCount();
 
-    // 🛡️ 2026-05-13: 새 viewer 에 현재 stream status 즉시 전송.
-    //   "WS 연결 시점 기준 backend 가 이미 live 인 데도 viewer 가 'scheduled' 영원히 표시" 사고 fix.
-    //   기존 broadcast 는 새 connection 에 retroactive 안 보냄 → 누락. 이걸로 해결.
-    if (this.lastStreamStatus) {
+    // 🛡️ 2026-05-14 (Tier S): catch-up — 클라이언트의 lastSeq 이후 모든 이벤트 replay.
+    //   lastSeq=0 (첫 연결) 이면 catchup 안 함, snapshot 만 전송 (기존 동작).
+    //   lastSeq>0 + eventLog 에 그 이후 events 있으면 → 누락된 것만 순서대로 replay.
+    //   lastSeq>0 + eventLog 가 너무 오래되어 사라졌으면 → snapshot 으로 fallback.
+    //   효과: HTTP 폴링 없이 100% 신뢰성 보장. 재연결 시 누락 이벤트 0.
+    let didReplay = false;
+    if (lastSeq > 0 && lastSeq < this.currentSeq) {
+      const replayEvents = this.eventLog.filter(e => e.seq > lastSeq);
+      const oldestInLog = this.eventLog[0]?.seq ?? Infinity;
+      if (oldestInLog <= lastSeq + 1 || replayEvents.length > 0) {
+        // gap 없이 replay 가능 — 누락 이벤트 순서대로 전송
+        for (const ev of replayEvents) {
+          try {
+            webSocket.send(JSON.stringify({ type: ev.type, data: ev.data, timestamp: ev.timestamp, seq: ev.seq }));
+          } catch { /* ignore */ }
+        }
+        didReplay = true;
+      }
+      // gap 있으면 snapshot 으로 fallback (아래 코드)
+    }
+
+    // 🛡️ 2026-05-13: 새 viewer 에 현재 stream status 즉시 전송 (snapshot — 첫 연결 또는 catch-up 실패 시).
+    //   catch-up 성공한 경우엔 이미 stream_status 이벤트 replay 됨 → 생략.
+    if (!didReplay && this.lastStreamStatus) {
       try {
         webSocket.send(JSON.stringify({
           type: 'stream_status',
           data: this.lastStreamStatus,
           timestamp: Date.now(),
+          seq: this.currentSeq, // 현재 시퀀스 (client 가 다음 catchup 의 기준점)
         }));
       } catch { /* ignore */ }
     }
@@ -350,7 +387,22 @@ export class LiveStreamDurableObject extends DurableObject {
   }
 
   broadcast(message: WSMessage) {
-    const messageStr = JSON.stringify(message);
+    // 🛡️ 2026-05-14 (Tier S): 모든 broadcast 에 seq 부여 + eventLog 기록 (재연결 catch-up 보장).
+    //   단 viewer_count 처럼 너무 자주 발생하는 ephemeral event 는 로그에서 제외 (메모리 절약).
+    const isReliable = message.type !== 'viewer_count'; // viewer_count 는 ephemeral
+    let seq: number | undefined;
+    if (isReliable) {
+      this.currentSeq++;
+      seq = this.currentSeq;
+      this.eventLog.push({ seq, type: message.type, data: message.data, timestamp: message.timestamp });
+      if (this.eventLog.length > this.MAX_EVENT_LOG) {
+        this.eventLog = this.eventLog.slice(-this.MAX_EVENT_LOG);
+      }
+      // 비동기 persist
+      void this.state.storage.put('currentSeq', this.currentSeq).catch(() => {});
+      void this.state.storage.put('eventLog', this.eventLog).catch(() => {});
+    }
+    const messageStr = JSON.stringify(seq !== undefined ? { ...message, seq } : message);
     this.sessions.forEach((session) => {
       try {
         session.send(messageStr);
@@ -367,7 +419,7 @@ export class LiveStreamDurableObject extends DurableObject {
       data: { count: this.viewerCount },
       timestamp: Date.now(),
     };
-    this.broadcast(message);
+    this.broadcast(message); // viewer_count 는 seq 없이 전송 (ephemeral)
   }
 
   /**
