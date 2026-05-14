@@ -355,9 +355,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     let whipUrl: string
     let isProxyMode = false
     // 🛡️ 2026-05-14: prewarmed 토큰 사용 (mount 시 백그라운드 fetch 됨).
-    //   60s 이내 fresh 면 fetch 1번 건너뛰어 시작 시간 -300~500ms.
+    //   60s → 240s 이내 fresh 면 fetch 1번 건너뛰어 시작 시간 -300~500ms.
+    //   서버 token expiry 가 300s 라서 240s 는 충분히 안전한 여유 (60s 마진).
     const prewarmed = prewarmedTokenRef.current
-    const useFresh = !prewarmed || Date.now() - prewarmed.ts >= 60_000
+    const useFresh = !prewarmed || Date.now() - prewarmed.ts >= 240_000
     if (!useFresh && prewarmed) {
       whipUrl = prewarmed.whipUrl
       modeRef.current = prewarmed.mode
@@ -579,11 +580,26 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         const token = typeof localStorage !== 'undefined' ? localStorage.getItem('seller_token') : null
         if (token) whipHeaders['Authorization'] = `Bearer ${token}`
       }
-      const res = await fetch(whipUrl, {
+      let res = await fetch(whipUrl, {
         method: 'POST',
         headers: whipHeaders,
         body: pc.localDescription?.sdp || '',
       })
+      // 🛡️ 2026-05-14: 401 (admission token 만료) 자동 재시도 — fresh token 발급 후 1회 재시도.
+      //   prewarm 토큰 사용 + 카메라 권한 대기 등으로 5분 초과한 경우 자동 복구.
+      if (res.status === 401) {
+        prewarmedTokenRef.current = null // stale prewarm 폐기
+        try {
+          const refreshRes = await api.post('/api/seller/youtube/streaming/whip-token', { stream_id: streamId })
+          if (refreshRes.data?.success && refreshRes.data?.data?.whip_url) {
+            whipUrl = refreshRes.data.data.whip_url
+            modeRef.current = (refreshRes.data.data.mode as WhipMode) || modeRef.current
+            res = await fetch(whipUrl, { method: 'POST', headers: whipHeaders, body: pc.localDescription?.sdp || '' })
+          }
+        } catch (e) {
+          if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] token refresh failed:', e)
+        }
+      }
       if (!res.ok) {
         const text = await res.text()
         throw new Error(`WHIP HTTP ${res.status}: ${text}`)

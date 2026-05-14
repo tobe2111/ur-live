@@ -2757,7 +2757,10 @@ app.post('/streaming/whip-token', async (c) => {
   // OME admission webhook 에서 같은 secret 으로 검증.
   // 🛡️ 2026-05-10: 60s → 120s. 모바일 4G/공개 Wi-Fi 등 느린 네트워크에서 SDP 교환 + ICE
   // gathering 이 50초 이상 걸리면 token 만료 → 무한 재연결 loop. 120s 로 여유 확보.
-  const exp = Math.floor(Date.now() / 1000) + 120
+  // 🛡️ 2026-05-14: 120s → 300s (5분). prewarm + camera 권한 + SDP + WHIP POST 총 시간 +
+  //   사용자가 페이지 잠시 보고 클릭하는 시간 다 합치면 120s 초과 빈발 → "AdmissionWebhooks error 401".
+  //   300s 면 모든 정상 흐름 cover. 토큰 1회용이라 길어도 보안 영향 없음.
+  const exp = Math.floor(Date.now() / 1000) + 300
   const payload = `${sellerId}|${stream_id}|${exp}`
   const sig = await hmacHex(c.env.OME_WEBHOOK_SECRET, payload)
   const token = `${btoa(payload)}.${sig}`
