@@ -215,9 +215,18 @@ export function useLiveStreamWebSocket(
     try {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
       const accessToken = getAccessToken()
+      // 🛡️ 2026-05-14 (Tier S): lastSeq query param — 재연결 시 DurableObject 가 누락 이벤트 replay.
+      //   첫 연결 시 lastSeq=0 (snapshot 만). 재연결 시 마지막 받은 seq → 그 이후 events 보내달라.
+      //   localStorage 에 stream 별로 저장 — 페이지 새로고침 후에도 catch-up 가능.
+      let lastSeq = 0
+      try {
+        const stored = localStorage.getItem(`ur_ws_lastSeq:${streamId}`)
+        if (stored) lastSeq = parseInt(stored, 10) || 0
+      } catch { /* ignore */ }
+      const seqParam = lastSeq > 0 ? `&lastSeq=${lastSeq}` : ''
       const wsUrl = accessToken
-        ? `${protocol}//${location.host}/api/live/${streamId}/ws?token=${encodeURIComponent(accessToken)}`
-        : `${protocol}//${location.host}/api/live/${streamId}/ws`
+        ? `${protocol}//${location.host}/api/live/${streamId}/ws?token=${encodeURIComponent(accessToken)}${seqParam}`
+        : `${protocol}//${location.host}/api/live/${streamId}/ws?${seqParam.slice(1)}`
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
@@ -244,6 +253,12 @@ export function useLiveStreamWebSocket(
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data as string)
+
+          // 🛡️ 2026-05-14 (Tier S): seq 가 있는 이벤트면 localStorage 에 저장 (재연결 catch-up 용).
+          //   viewer_count 처럼 seq 없는 ephemeral event 는 무시.
+          if (typeof msg.seq === 'number' && msg.seq > 0) {
+            try { localStorage.setItem(`ur_ws_lastSeq:${streamId}`, String(msg.seq)) } catch { /* ignore */ }
+          }
 
           if (msg.type === 'chat') {
             const d = msg.data

@@ -257,10 +257,9 @@ function ReelCardImpl({
   //   ScheduledOverlay 영구 표시되는 사고. WebSocket 이 더 fresh 한 상태를 알고 있으면 그쪽 우선.
   const effectiveStatus: string = (wsStreamData?.status as string | undefined) ?? stream.status
 
-  // 🛡️ 2026-05-14 (영구 fix): HTTP 폴링 safety net.
-  //   WebSocket stream_status 미수신 / DO 다운 / 셀러 transition 지연 등 모든 케이스에서
-  //   시청자 페이지가 자체적으로 stream 상태 확인. 5초마다 polling, 라이브 시작되면 자동 중단.
-  //   기존 무한 로딩 = WS 의존 → 이제 HTTP fallback 으로 보장.
+  // 🛡️ 2026-05-14 (Tier S last-resort fallback): WS 가 seq+catch-up 으로 99% 보장.
+  //   하지만 DO 자체 다운 / 워커 장애 등 극단 케이스를 위해 30s 간격 매우 느슨한 폴링 safety net 유지.
+  //   주: 5s → 30s 로 늘려 배터리/서버 부하 ↓. WS 가 main, HTTP 는 최후 보루.
   const [polledStream, setPolledStream] = useState<typeof stream | null>(null)
   useEffect(() => {
     // 폴링 조건: scheduled / live-but-no-video-id 상태 + viewport 안에 있을 때만
@@ -271,8 +270,8 @@ function ReelCardImpl({
     if (!needsPolling) return
     let cancelled = false
     let elapsedMs = 0
-    const MAX_POLL_MS = 120_000 // 2분 후 폴링 중단 (셀러 문제로 표시)
-    const POLL_INTERVAL = 5000
+    const MAX_POLL_MS = 180_000 // 3분 후 폴링 중단 (Tier S WS 가 main, 폴링은 극단 fallback)
+    const POLL_INTERVAL = 30_000 // 30s (Tier S WS catch-up 가 99% 처리)
     const tick = async () => {
       if (cancelled || elapsedMs >= MAX_POLL_MS) return
       try {
