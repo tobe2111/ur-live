@@ -136,7 +136,10 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
   } catch { /* quota 조회 실패해도 진행 (best-effort) */ }
 
   // 🛡️ 2026-05-13: 셀러별 일일 생성 한도 — 1명이 quota 다 잡아먹지 못하게.
-  //   기본 5회/일. setupLiveStream = 150 units → 5회 = 750 units (전체 quota 의 7.5%).
+  //   🛡️ 2026-05-14 (사용자 요청): 한도 비활성. 테스트 + 정상 운영 양쪽에서 5회 너무 빡빡.
+  //     YouTube 일일 quota 10,000 자체가 큰 제한이라 추가 셀러별 cap 불필요.
+  //     다시 켜고 싶으면 SELLER_DAILY_LIMIT 값 + 아래 if 블록 복원.
+  /*
   try {
     const today = new Date().toISOString().slice(0, 10)
     const sellerKey = `live_create_count:${sellerId}:${today}`
@@ -154,10 +157,9 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
           current_count: count,
         }, 429)
       }
-      // 카운터 증가는 setup 성공 후에만 (실패 시 카운트 안 늘림)
-      // 아래 try 내부 INSERT 직전 카운터 증가
     }
-  } catch { /* skip */ }
+  } catch { /* skip */ /*}
+  */
 
   const privacyStatus: 'public' | 'unlisted' | 'private' =
     privacy_status === 'unlisted' || privacy_status === 'private' ? privacy_status : 'public'
@@ -317,14 +319,13 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
 
     // Link products + 첫 상품 이미지를 방송 썸네일로 설정
     // 🛡️ 2026-05-13: 셀러 일일 생성 카운터 증가 (성공 후, KV 26h TTL)
+    // 🛡️ 2026-05-14 (사용자 요청): 한도 비활성 — 증가 로직도 같이 비활성 + 기존 키 삭제.
     try {
       const today = new Date().toISOString().slice(0, 10)
       const sellerKey = `live_create_count:${sellerId}:${today}`
       const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV
       if (kv) {
-        const raw = await kv.get(sellerKey)
-        const count = (raw ? parseInt(raw, 10) : 0) + 1
-        await kv.put(sellerKey, String(count), { expirationTtl: 26 * 60 * 60 })
+        await kv.delete(sellerKey).catch(() => { /* ignore */ })
       }
     } catch { /* best-effort */ }
 
