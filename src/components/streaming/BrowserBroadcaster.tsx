@@ -571,8 +571,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       // 4. WHIP POST
       // 🛡️ 2026-05-13: proxy mode 시 Authorization 헤더 필수 (우리 endpoint 인증 통과용).
       //   OME 직접 URL 은 token 이 URL query 안에 있어서 Authorization 불필요.
+      // 🛡️ 2026-05-14: OME 도 same-origin Worker proxy 로 변경 (모바일 CORS 해결).
+      //   whip_url 이 우리 도메인 (/api/seller/youtube/streaming/...) 시작이면 항상 Bearer 토큰.
+      const isSameOriginProxy = whipUrl.startsWith('/api/') || whipUrl.includes(window.location.host)
       const whipHeaders: Record<string, string> = { 'Content-Type': 'application/sdp' }
-      if (isProxyMode) {
+      if (isProxyMode || isSameOriginProxy) {
         const token = typeof localStorage !== 'undefined' ? localStorage.getItem('seller_token') : null
         if (token) whipHeaders['Authorization'] = `Bearer ${token}`
       }

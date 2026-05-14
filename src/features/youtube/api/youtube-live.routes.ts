@@ -2772,16 +2772,91 @@ app.post('/streaming/whip-token', async (c) => {
 
   const whipUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?direction=whip&token=${encodeURIComponent(token)}`
 
+  // 🛡️ 2026-05-14: 모바일 브라우저는 stream.ur-team.com:3334 직접 호출 시 CORS 차단.
+  //   Worker proxy 경유 (same origin, 443) → CORS 해결 + 통신사 포트 차단 우회.
+  //   기존 PC 동작 영향 없음 (proxy 가 OME 로 그대로 forward).
+  const proxyBase = new URL(c.req.url)
+  proxyBase.pathname = `/api/seller/youtube/streaming/whip-proxy-ome/${stream_id}`
+  proxyBase.search = `?token=${encodeURIComponent(token)}&stream_name=${encodeURIComponent(streamName)}`
+
   return c.json({
     success: true,
     data: {
-      whip_url: whipUrl,
+      whip_url: proxyBase.toString(),
       mode: 'ome_whip',
       stream_name: streamName,
       expires_at: exp,
+      // 원본 직접 URL 도 함께 반환 (디버깅 / 데스크탑 우회용)
+      direct_whip_url: whipUrl,
     },
   })
 })
+
+/**
+ * POST/PATCH/DELETE /api/seller/youtube/streaming/whip-proxy-ome/:streamId
+ *
+ * 🛡️ 2026-05-14: OME WHIP Worker proxy — CORS 우회 (모바일 통신사 차단 회피).
+ *   브라우저 (live.ur-team.com same origin)
+ *     → 본 endpoint
+ *     → OME (stream.ur-team.com:3334)
+ *     → 응답 그대로 반환
+ *   미디어 데이터는 통과 X — signaling (SDP 교환) 만 ~1-3초.
+ */
+const omeProxyHandler = async (c: Context<{ Bindings: Env }>) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('streamId') || '0')
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid streamId' }, 400)
+
+  // 본인 stream 검증
+  const stream = await c.env.DB.prepare(`
+    SELECT id FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first()
+  if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+
+  if (!c.env.OME_HOST) {
+    return c.json({ success: false, error: 'OME_HOST not configured' }, 503)
+  }
+
+  const token = c.req.query('token')
+  const streamName = c.req.query('stream_name') || `s${streamId}`
+  if (!token) return c.json({ success: false, error: 'token query required' }, 400)
+
+  const omeUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?direction=whip&token=${encodeURIComponent(token)}`
+
+  try {
+    // PATCH 는 trickle ICE candidate, DELETE 는 stream 정리
+    const body = (c.req.method === 'POST' || c.req.method === 'PATCH')
+      ? await c.req.text()
+      : undefined
+    const headers: Record<string, string> = {}
+    const ct = c.req.header('Content-Type')
+    if (ct) headers['Content-Type'] = ct
+
+    const omeRes = await fetch(omeUrl, {
+      method: c.req.method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(20_000),
+    })
+
+    const responseBody = await omeRes.text()
+    const respHeaders: Record<string, string> = { 'Content-Type': omeRes.headers.get('Content-Type') || 'application/sdp' }
+    const location = omeRes.headers.get('Location') || omeRes.headers.get('location')
+    if (location) respHeaders['Location'] = location
+    return new Response(responseBody, { status: omeRes.status, headers: respHeaders })
+  } catch (e) {
+    return c.json({
+      success: false,
+      error: 'OME WHIP forward failed: ' + (e as Error).message,
+    }, 502)
+  }
+}
+
+app.post('/streaming/whip-proxy-ome/:streamId', omeProxyHandler)
+app.patch('/streaming/whip-proxy-ome/:streamId', omeProxyHandler)
+app.delete('/streaming/whip-proxy-ome/:streamId', omeProxyHandler)
 
 /**
  * POST /api/internal/ome/admission
