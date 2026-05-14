@@ -638,9 +638,9 @@ function ReelCardImpl({
     return () => clearInterval(id)
   }, [activeFlashSale?.ends_at])
 
-  // Wake Lock — 활성 라이브 시청 중 화면 꺼짐 방지
+  // Wake Lock — 활성 라이브 시청 중 화면 꺼짐 방지 (종료되면 해제, finalStatus 사용)
   useEffect(() => {
-    if (!isActive || stream.status === 'ended') return
+    if (!isActive || finalStatus === 'ended') return
     const acquire = async () => {
       try {
         if ('wakeLock' in navigator) {
@@ -656,25 +656,27 @@ function ReelCardImpl({
       try { wakeLockRef.current?.release() } catch { /* */ }
       wakeLockRef.current = null
     }
-  }, [isActive, stream.status])
+  }, [isActive, finalStatus])
 
   // VOD 준비 대기: ended 전환 후 5분 뒤 YouTube 처리 완료 가정
+  // 🛡️ 2026-05-14: finalStatus 사용 — WS / 폴링으로 ended 받았을 때도 작동.
+  //   기존: stream.status (초기 props) 만 봐서 WS 이벤트 무시 → 시청자 무한 loading 사고.
   useEffect(() => {
-    if (stream.status !== 'ended') { setVodReady(true); return }
+    if (finalStatus !== 'ended') { setVodReady(true); return }
     setVodReady(false)
     const id = setTimeout(() => setVodReady(true), 5 * 60 * 1000)
     return () => clearTimeout(id)
-  }, [stream.status])
+  }, [finalStatus])
 
-  // 다음 라이브 예고: 스트림 종료 시 셀러의 다음 scheduled 라이브 조회
+  // 다음 라이브 예고: 스트림 종료 시 셀러의 다음 scheduled 라이브 조회 — finalStatus 사용
   useEffect(() => {
-    if (stream.status !== 'ended' || !stream.seller_id) return
+    if (finalStatus !== 'ended' || !stream.seller_id) return
     let active = true
     api.get(`/api/seller/${stream.seller_id}/public-streams?status=scheduled&limit=1`)
       .then(r => { if (active && r.data?.data?.[0]) setNextLive(r.data.data[0]) })
       .catch((e) => { if (import.meta.env.DEV) console.warn('[NextLive] fetch failed:', e?.message || e) })
     return () => { active = false }
-  }, [stream.status, stream.seller_id])
+  }, [finalStatus, stream.seller_id])
 
   // D1 폴링에서 재고 변경 감지 시 UI 업데이트
   useEffect(() => {
@@ -1085,8 +1087,9 @@ function ReelCardImpl({
             ScheduledOverlay 가 위에 덮여 있어서 시청자에게는 우리 UI 만 보임. */}
       <div className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]">
         {(() => {
-          if (!stream.youtube_video_id) return null
-          if (stream.status === 'ended' && !vodReady) return null
+          // 🛡️ 2026-05-14: finalStatus 사용 — WS 로 'ended' 받으면 iframe 즉시 unmount.
+          if (!finalVideoId) return null
+          if (finalStatus === 'ended' && !vodReady) return null
           // scheduled 인데 임박(10분) 안이면 pre-mount, 아니면 unmount
           if (effectiveStatus === 'scheduled') {
             if (!stream.scheduled_at) return null
@@ -1117,8 +1120,8 @@ function ReelCardImpl({
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
-      {/* 라이브 종료 후 VOD 준비 대기 오버레이 (5분) */}
-      {stream.status === 'ended' && !vodReady && (
+      {/* 라이브 종료 후 VOD 준비 대기 오버레이 (5분) — finalStatus 사용 */}
+      {finalStatus === 'ended' && !vodReady && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 px-6 text-center">
           <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center mb-4 animate-pulse">
             <svg className="w-8 h-8 text-white/60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -1140,7 +1143,7 @@ function ReelCardImpl({
       )}
 
       {/* 다음 라이브 예고 (VOD 준비 완료 후에도 표시) */}
-      {stream.status === 'ended' && vodReady && nextLive && (
+      {finalStatus === 'ended' && vodReady && nextLive && (
         <div className="absolute bottom-32 left-4 right-4 z-20 pointer-events-none">
           <div className="rounded-xl bg-black/70 backdrop-blur-sm px-4 py-3">
             <p className="text-white/60 text-xs mb-1">{t('live.nextLive', { defaultValue: '다음 라이브' })}</p>
