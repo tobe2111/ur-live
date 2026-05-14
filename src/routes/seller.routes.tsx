@@ -35,6 +35,7 @@ const SellerDonationsPage = lazy(() => import('@/pages/SellerDonationsPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
 const SellerShortsPage = lazy(() => import('@/pages/SellerShortsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('@/pages/SellerLiveBroadcastPage'))
+const SellerVerifyWhipProxyPage = lazy(() => import('@/pages/SellerVerifyWhipProxyPage'))
 const SellerStreamingSetupPage = lazy(() => import('@/pages/SellerStreamingSetupPage'))
 const SellerLiveAnalyticsPage = lazy(() => import('@/pages/SellerLiveAnalyticsPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
@@ -227,6 +228,11 @@ export function SellerRoutes() {
       <Route path="/seller/live-broadcast" element={
         <ProtectedRoute requireSeller>
           <SellerLiveBroadcastPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/verify-whip-proxy" element={
+        <ProtectedRoute requireSeller>
+          <SellerVerifyWhipProxyPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/live-broadcast/:streamId" element={
