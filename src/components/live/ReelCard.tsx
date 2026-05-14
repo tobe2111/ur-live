@@ -257,6 +257,48 @@ function ReelCardImpl({
   //   ScheduledOverlay 영구 표시되는 사고. WebSocket 이 더 fresh 한 상태를 알고 있으면 그쪽 우선.
   const effectiveStatus: string = (wsStreamData?.status as string | undefined) ?? stream.status
 
+  // 🛡️ 2026-05-14 (영구 fix): HTTP 폴링 safety net.
+  //   WebSocket stream_status 미수신 / DO 다운 / 셀러 transition 지연 등 모든 케이스에서
+  //   시청자 페이지가 자체적으로 stream 상태 확인. 5초마다 polling, 라이브 시작되면 자동 중단.
+  //   기존 무한 로딩 = WS 의존 → 이제 HTTP fallback 으로 보장.
+  const [polledStream, setPolledStream] = useState<typeof stream | null>(null)
+  useEffect(() => {
+    // 폴링 조건: scheduled / live-but-no-video-id 상태 + viewport 안에 있을 때만
+    const needsPolling = (
+      effectiveStatus === 'scheduled' ||
+      (effectiveStatus === 'live' && !(polledStream?.youtube_video_id || stream.youtube_video_id))
+    ) && isInViewport
+    if (!needsPolling) return
+    let cancelled = false
+    let elapsedMs = 0
+    const MAX_POLL_MS = 120_000 // 2분 후 폴링 중단 (셀러 문제로 표시)
+    const POLL_INTERVAL = 5000
+    const tick = async () => {
+      if (cancelled || elapsedMs >= MAX_POLL_MS) return
+      try {
+        const res = await api.get(`/api/streams/${stream.id}`)
+        const fresh = res.data?.data || res.data
+        if (cancelled) return
+        if (fresh?.status === 'live' && fresh?.youtube_video_id) {
+          setPolledStream(fresh as typeof stream)
+          return // 폴링 중단 — 라이브 진입
+        }
+        if (fresh?.status === 'ended') {
+          setPolledStream(fresh as typeof stream)
+          return
+        }
+        setPolledStream(fresh as typeof stream)
+      } catch { /* 네트워크 실패 — 다음 tick 재시도 */ }
+      elapsedMs += POLL_INTERVAL
+    }
+    const interval = setInterval(tick, POLL_INTERVAL)
+    void tick() // 즉시 1회
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [effectiveStatus, stream.id, stream.youtube_video_id, polledStream?.youtube_video_id, isInViewport])
+  // 폴링 결과를 effectiveStatus 와 video_id 에 반영 — WS 우선이지만 폴링이 더 fresh 하면 그쪽 사용
+  const finalStatus = (polledStream?.status as string | undefined) ?? effectiveStatus
+  const finalVideoId = polledStream?.youtube_video_id || stream.youtube_video_id
+
   // ── PC 패널 공유 스토어 사이드이펙트 ──────────────────────────────────────
   // ReelCard 핵심 로직 무변경. 스토어에 쓰기만 담당.
   const {
@@ -1071,7 +1113,8 @@ function ReelCardImpl({
       </div>
 
       {/* 예약 방송 + 라이브 시작 직후 (video_id 미수신) UI */}
-      {(effectiveStatus === 'scheduled' || (effectiveStatus === 'live' && !stream.youtube_video_id)) && (
+      {/* 🛡️ 2026-05-14: finalStatus / finalVideoId 사용 — HTTP 폴링이 WS 보다 빠르면 폴링 결과 사용. */}
+      {(finalStatus === 'scheduled' || (finalStatus === 'live' && !finalVideoId)) && (
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
