@@ -41,6 +41,27 @@
     <link rel="dns-prefetch" href="https://rr2---sn-an0eenes.googlevideo.com" />
     <link rel="dns-prefetch" href="https://rr3---sn-an0eenes.googlevideo.com" />
     <link rel="dns-prefetch" href="https://rr4---sn-an0eenes.googlevideo.com" />
+    <!-- 🛡️ 2026-05-14 S4: 추가 도메인 DNS 사전 해석 (한국 통신사 DNS 우회 가속) -->
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+    <link rel="dns-prefetch" href="https://oauth2.googleapis.com" />
+    <link rel="dns-prefetch" href="https://www.googleapis.com" />
+    <link rel="dns-prefetch" href="https://stun.l.google.com" />
+    <!-- 🛡️ 2026-05-14 S2: Speculation Rules API — 라이브 페이지 hover 시 백그라운드 prerender.
+         Chrome 121+ 지원. 미지원 브라우저는 자동 무시 (안전). -->
+    <script type="speculationrules">
+    {
+      "prerender": [{
+        "source": "document",
+        "where": { "href_matches": "/live/*" },
+        "eagerness": "moderate"
+      }],
+      "prefetch": [{
+        "source": "document",
+        "where": { "href_matches": "/seller/*" },
+        "eagerness": "conservative"
+      }]
+    }
+    </script>
     <!-- 🛡️ 2026-05-07: 카카오맵 SDK preconnect — RestaurantMapPage 진입 시 핸드셰이크 절감 -->
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />

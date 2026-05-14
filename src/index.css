@@ -634,6 +634,15 @@ html.dark .mobile-app-container {
   margin-right: auto;
 }
 
+/* 🛡️ 2026-05-14 V2: CSS Containment for 라이브/상품 카드 — 스크롤 60fps 유지.
+   각 카드의 layout/paint 가 독립 → 다른 카드 변경 시 리플로 0. 긴 리스트일수록 효과 ↑. */
+.ur-live-card,
+.ur-product-card {
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 200px 280px;
+}
+
 /* ============================================
    Mobile Ratio Layout (max-w-md)
    CRITICAL: Outside @layer to prevent purging
