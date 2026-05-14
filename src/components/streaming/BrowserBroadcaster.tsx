@@ -388,9 +388,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
 
     // 3. RTCPeerConnection
     setStatus('connecting')
-    const pc = new RTCPeerConnection({
+    // 🛡️ 2026-05-14 v2: 일부 모바일 브라우저 (iOS Safari 16.x 등) 가 iceCandidatePoolSize 거부 가능.
+    //   try-catch 로 감싸 — 거부 시 옵션 제거하고 재시도.
+    const baseRtcConfig: RTCConfiguration = {
       // 🛡️ 2026-05-14 N2: 다중 STUN 서버 — 병렬 gathering → 가장 빠른 응답 사용.
-      //   한국에서 stun.l.google.com 이 약간 느림 (~80ms). Cloudflare/Twilio STUN 추가 시 -30~50ms.
       iceServers: [
         { urls: 'stun:stun.cloudflare.com:3478' },
         { urls: 'stun:stun.l.google.com:19302' },
@@ -398,11 +399,16 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         { urls: 'stun:stun2.l.google.com:19302' },
       ],
       iceTransportPolicy: 'all',
-      // 🛡️ 2026-05-14 M1: ICE 후보 사전 gathering — PC 생성 시점부터 백그라운드로 STUN 후보 모음.
-      //   createOffer 시점에는 이미 후보 준비됨 → 송출 시작 -500~1000ms (가장 큰 단일 개선).
-      iceCandidatePoolSize: 4,
       bundlePolicy: 'max-bundle',
-    })
+    }
+    let pc: RTCPeerConnection
+    try {
+      // 🛡️ M1: ICE 후보 사전 gathering — 송출 시작 -500~1000ms.
+      pc = new RTCPeerConnection({ ...baseRtcConfig, iceCandidatePoolSize: 4 })
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] iceCandidatePoolSize 거부, 기본 설정 사용:', e)
+      pc = new RTCPeerConnection(baseRtcConfig)
+    }
     pcRef.current = pc
 
     pc.addEventListener('connectionstatechange', () => {
@@ -531,6 +537,9 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       //   useinbandfec=1   패킷 손실 시 음성 인밴드 복구 (2-5% 손실 환경 음질 ↑↑)
       //   stereo=1; sprop-stereo=1   stereo 협상 명시 (mono fallback 차단)
       //   maxaveragebitrate=192000   상한 보존
+      // 🛡️ 2026-05-14 v2: try-catch 로 감싸 — iOS Safari 등 일부 브라우저가 munge 거부 시 원본 SDP 사용 (안전망).
+      const originalSdp = offer.sdp
+      try {
       if (offer.sdp) {
         offer.sdp = offer.sdp.replace(
           /a=fmtp:(\d+) ([^\r\n]*)/g,
@@ -560,6 +569,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
             )
           }
         }
+      }
+      } catch (sdpErr) {
+        // SDP munging 실패 — 원본 SDP 로 fallback (iOS Safari 등 호환성)
+        if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] SDP munging 실패, 원본 사용:', sdpErr)
+        offer.sdp = originalSdp
       }
       await pc.setLocalDescription(offer)
 
@@ -602,7 +616,33 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       }
       if (!res.ok) {
         const text = await res.text()
-        throw new Error(`WHIP HTTP ${res.status}: ${text}`)
+        // 🛡️ 2026-05-14: 사용자 친화 에러 메시지 매핑.
+        //   서버가 JSON 으로 error_code 반환 시 한국어 안내 + 권장 액션 표시.
+        let userMsg = `WHIP HTTP ${res.status}: ${text}`
+        try {
+          const parsed = JSON.parse(text) as { error_code?: string; error?: string; reason?: string }
+          const code = parsed.error_code
+          if (code === 'NO_RTMP_KEY') {
+            userMsg = '🔄 이전 방송 설정 잔재가 있어 새로 만들어야 해요. "다시 시도" 누르면 자동 청소됩니다.'
+          } else if (code === 'TOKEN_EXPIRED') {
+            userMsg = '⏱️ 토큰 만료 — 페이지 새로고침 후 다시 시도해주세요.'
+          } else if (code === 'TOKEN_MISMATCH') {
+            userMsg = '🔐 토큰 불일치 — 페이지 새로고침 후 다시 시도해주세요.'
+          } else if (code === 'BAD_SIG') {
+            userMsg = '🔑 서버 인증 키 불일치 — 관리자 문의가 필요해요 (OME_WEBHOOK_SECRET).'
+          } else if (code === 'BAD_TOKEN') {
+            userMsg = '🔧 토큰 형식 오류 — 페이지 새로고침 후 다시 시도해주세요.'
+          } else if (res.status === 401) {
+            userMsg = '🚫 권한 거부 — 페이지 새로고침 후 다시 시도해주세요.'
+          } else if (res.status === 409) {
+            userMsg = '⚠️ 이전 방송 정리 중 — 30초 후 다시 시도해주세요.'
+          } else if (res.status === 502 || res.status === 503) {
+            userMsg = '🌐 미디어 서버 일시 장애 — 1분 후 다시 시도해주세요.'
+          } else if (parsed.error) {
+            userMsg = parsed.error
+          }
+        } catch { /* not JSON — 기본 메시지 유지 */ }
+        throw new Error(userMsg)
       }
       const answerSdp = await res.text()
       // 🛡️ 2026-05-10: OME 0.16.7 SDP answer 가 ssrc-audio-level 와 transport-wide-cc 를
