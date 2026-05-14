@@ -42,10 +42,13 @@ export interface CloudflareBindings {
   
   /**
    * Rate Limiting 저장소 (KV)
-   * @description API 요청 제한을 위한 저장소
-   * @required true
+   * @description API 요청 제한을 위한 저장소 (deprecated — 2026-05-13 부터 RATE_LIMITER DO 사용)
+   * @required false
    */
-  RATE_LIMIT_KV: KVNamespace;
+  RATE_LIMIT_KV?: KVNamespace;
+
+  /** 🛡️ 2026-05-13: Rate limiter Durable Object — KV 무료 한도 보호 */
+  RATE_LIMITER?: DurableObjectNamespace;
   
   // ========================================
   // 환경 변수 (Secrets)

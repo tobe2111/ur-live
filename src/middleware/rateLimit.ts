@@ -65,7 +65,9 @@ function generateKey(ip: string, path: string): string {
 const inMemoryStore = new Map<string, RateLimitRecord>()
 
 /**
- * KV 기반 Rate Limiter
+ * 🛡️ 2026-05-13: DO 우선 → KV fallback → in-memory fallback.
+ *   DO 가 정확도 100% + 무료 한도 1M/월 (KV 의 10배+).
+ *   기존 KV 코드는 호환성을 위해 fallback 으로 유지 (DO binding 없는 환경).
  */
 async function checkRateLimit(
   c: Context,
@@ -83,10 +85,30 @@ async function checkRateLimit(
     ? config.maxRequests * config.authenticatedMultiplier
     : config.maxRequests
 
+  // 🛡️ 2026-05-13: Durable Object 우선 — 글로벌 일관성 + 무료 한도 1M req/월
+  const rlDO = (c.env as { RATE_LIMITER?: DurableObjectNamespace })?.RATE_LIMITER
+  if (rlDO) {
+    try {
+      const id = rlDO.idFromName(key)
+      const stub = rlDO.get(id)
+      const res = await stub.fetch('https://do/check', {
+        method: 'POST',
+        body: JSON.stringify({ maxRequests, windowMs }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        const data = await res.json() as { allowed: boolean; count: number; remaining: number; resetAt: number }
+        return { allowed: data.allowed, remaining: data.remaining, resetTime: data.resetAt }
+      }
+    } catch (err) {
+      console.warn('[rateLimit] DO failed, falling back to KV', (err as Error).message)
+    }
+  }
+
   try {
-    // KV 스토리지 사용 시도
+    // KV 스토리지 사용 시도 (fallback)
     const kv = c.env?.RATE_LIMIT_KV
-    
+
     if (kv) {
       // KV에서 현재 기록 가져오기
       const recordStr = await kv.get(key)
