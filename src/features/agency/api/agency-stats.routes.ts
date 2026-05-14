@@ -199,7 +199,8 @@ app.get('/stats/daily', async (c: AgencyCtx) => {
 // ── GET /stats/realtime — 실시간 매출/주문 (Agency P0 #2) ─────
 //
 // 대시보드 폴링용. Today (KST midnight ~ now) + 최근 1시간 + 라이브 카운트.
-// KV 캐시 30초 TTL (RATE_LIMIT_KV 가 있으면). 없으면 매번 D1 직접 조회.
+// 🛡️ 2026-05-13: KV 무료 한도 보호 — 30초 → 300초 (5분) 캐시.
+//   매출 통계는 5분 지연 무관. admin 폴링 시 KV ops 90% 감소.
 //
 // 클라이언트 권장 폴링: 30초 간격 (캐시 TTL 와 동기).
 //
@@ -282,7 +283,7 @@ app.get('/stats/realtime', async (c) => {
   // 3. KV 캐시 저장 (best-effort, TTL 30초)
   if (KV) {
     c.executionCtx?.waitUntil?.(
-      KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 }).catch(swallow('agency:api:agency'))
+      KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 300 }).catch(swallow('agency:api:agency'))
     )
   }
 
