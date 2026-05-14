@@ -486,23 +486,18 @@ export default function SellerLiveBroadcastPage() {
           { duration: 15_000 }
         )
       } else if (data?.error_code === 'EXISTING_LIVE_BROADCAST' && data?.existing_stream_id) {
-        // 🛡️ 2026-05-13: 진행 중 방송이 있을 때 — UX. 셀러에게 "종료 후 새로 시작" 선택지 제공.
-        const ok = window.confirm(
-          `${data.error || '진행 중인 방송이 있습니다.'}\n\n[확인] = 기존 방송을 종료하고 새 방송을 시작합니다.\n[취소] = 기존 방송 페이지로 이동합니다.`
-        )
-        if (ok) {
-          try {
-            await api.post(`/api/seller/youtube/live/${data.existing_stream_id}/end`)
-            toast.success(t('seller.liveBroadcast.previousEnded', { defaultValue: '기존 방송을 종료했습니다. 새 방송을 다시 시도해주세요.' }))
-            // 1초 후 재시도 (백엔드 cron 캐시 + transition latency 고려)
-            setTimeout(() => createBroadcast(overrides), 1000)
-            return  // setCreating(false) 는 재시도에서 처리됨
-          } catch (endErr) {
-            const endErrMsg = (endErr as { response?: { data?: { error?: string } } }).response?.data?.error
-            toast.error(endErrMsg || t('seller.liveBroadcast.endFailed', { defaultValue: '기존 방송 종료에 실패했습니다. 셀러 대시보드에서 직접 종료해주세요.' }))
-          }
-        } else {
-          navigate(`/seller/live-broadcast/${data.existing_stream_id}`)
+        // 🛡️ 2026-05-13 v2: confirm popup 제거 — 자동으로 기존 종료 + 재시도.
+        //   사용자 신고: popup 마찰. 어차피 셀러가 새 방송 누른 의도 = 기존 종료 + 새로 시작.
+        //   기존 방송 페이지로 이동 원하면 셀러 대시보드 streamList 에서 클릭 가능.
+        toast.info(t('seller.liveBroadcast.endingPrevious', { defaultValue: '기존 방송을 자동 종료하고 새 방송을 시작합니다...' }), { duration: 3000 })
+        try {
+          await api.post(`/api/seller/youtube/live/${data.existing_stream_id}/end`)
+          // 1초 후 재시도 (백엔드 cron 캐시 + transition latency 고려)
+          setTimeout(() => createBroadcast(overrides), 1000)
+          return  // setCreating(false) 는 재시도에서 처리됨
+        } catch (endErr) {
+          const endErrMsg = (endErr as { response?: { data?: { error?: string } } }).response?.data?.error
+          toast.error(endErrMsg || t('seller.liveBroadcast.endFailed', { defaultValue: '기존 방송 종료에 실패했습니다. 셀러 대시보드에서 직접 종료해주세요.' }))
         }
       } else {
         toast.error(data?.error || t('seller.liveBroadcast.createFailed'))
