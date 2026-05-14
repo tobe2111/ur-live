@@ -213,10 +213,16 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
           LIMIT 1
         `).bind(sellerId).first() as any
 
+    // 🛡️ 2026-05-13: env YOUTUBE_USE_WEBRTC_INGEST=true 면 webrtc ingestion 강제.
+    //   persistent stream 캐시 (RTMP) 가 있어도 무시하고 새 webrtc stream 생성.
+    //   webrtc 선택 시 ingestionAddress 가 WHIP URL 로 반환 → DB.whip_url 에 저장.
+    const useWebRTC = (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST === 'true'
+
     let liveSetup
-    if (sellerAuth?.default_stream_id) {
+    if (sellerAuth?.default_stream_id && !useWebRTC) {
       // 🛡️ 2026-05-13 v3 (perf): 캐시된 RTMP info 전달 → getStream() 호출 1회 절약 (-300~500ms).
       //   bind 실패 시 setupLiveStreamWithPersistentStream 내부에서 fresh fetch fallback.
+      //   useWebRTC=true 면 persistent 무시하고 항상 새 webrtc stream 생성.
       const cachedRtmp = (sellerAuth.default_rtmp_url && sellerAuth.default_rtmp_key)
         ? { rtmpUrl: sellerAuth.default_rtmp_url, rtmpKey: sellerAuth.default_rtmp_key }
         : undefined
@@ -230,10 +236,7 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
         cachedRtmp
       )
     } else {
-      // First time or no persistent stream — create new + save as default
-      // 🛡️ 2026-05-13: env YOUTUBE_USE_WEBRTC_INGEST=true 면 webrtc ingestion 사용 (WHIP direct).
-      //   webrtc 선택 시 ingestionAddress 가 WHIP URL 로 반환 → DB.whip_url 에 저장 → Worker proxy 가 forward.
-      const useWebRTC = (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST === 'true'
+      // First time / no persistent stream / useWebRTC=true → 새 stream 생성
       liveSetup = await youtubeService.setupLiveStream(
         accessToken,
         title,
