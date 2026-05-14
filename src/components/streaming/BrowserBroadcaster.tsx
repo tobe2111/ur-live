@@ -269,10 +269,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          // 🛡️ 2026-05-11: 1080p 우선 — 5Mbps 업로드면 가능. 카메라 미지원 시 자동 720p fallback.
+          // 🛡️ 2026-05-14: 1080p60 강제 (UI 선택 제거 — 무조건 최고 화질).
+          //   카메라가 60fps 못 잡으면 자동 30fps fallback (min:24). 1080p 못 잡으면 720p fallback.
           width: { ideal: 1920, min: 1280 },
           height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 24, max: 30 },
+          frameRate: { ideal: 60, min: 24, max: 60 },
         },
         audio: {
           deviceId: selected.micId ? { exact: selected.micId } : undefined,
@@ -462,9 +463,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         //   + minBitrate 3M (최저 3Mbps 보장, CBR 유사)
         //   브라우저가 CPU 부족 시 720p 로 변환하는 동작 차단.
         params.encodings = [{
+          // 🛡️ 2026-05-14: maxFramerate 60 — UI 선택 제거 후 무조건 최고 화질.
+          //   카메라가 30fps 만 잡으면 어차피 그 값 — 60 은 상한일 뿐 강제 보간 X.
           maxBitrate: 9_000_000,
           minBitrate: 3_000_000,
-          maxFramerate: 30,
+          maxFramerate: 60,
           scaleResolutionDownBy: 1,
           networkPriority: 'high',
           priority: 'high',
@@ -483,7 +486,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     try {
       const offer = await pc.createOffer()
       // 🛡️ 2026-05-14: Opus SDP munging — DTX + inband FEC + stereo.
-      //   usedtx=1     침묵 시 패킷 전송 중단 (bandwidth -10%, 음질 영향 0)
+      //   usedtx=0     침묵 시 패킷 전송 중단 (bandwidth -10%, 음질 영향 0)
       //   useinbandfec=1   패킷 손실 시 음성 인밴드 복구 (2-5% 손실 환경 음질 ↑↑)
       //   stereo=1; sprop-stereo=1   stereo 협상 명시 (mono fallback 차단)
       //   maxaveragebitrate=192000   상한 보존
@@ -495,7 +498,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
             // 간단히 fmtp 내용에 minptime 이나 useinbandfec 키가 이미 있으면 Opus 가능성 ↑
             if (/minptime|useinbandfec|stereo/i.test(fmtp) || /\bopus\b/i.test(fmtp)) {
               const params = new Set(fmtp.split(';').map(s => s.trim()).filter(Boolean))
-              params.add('usedtx=1')
+              params.add('usedtx=0')
               params.add('useinbandfec=1')
               params.add('stereo=1')
               params.add('sprop-stereo=1')
@@ -512,7 +515,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
           if (!new RegExp(`a=fmtp:${opusPt}\\b`).test(offer.sdp)) {
             offer.sdp = offer.sdp.replace(
               new RegExp(`(a=rtpmap:${opusPt}\\s+opus/48000[^\\r\\n]*)`, 'i'),
-              `$1\r\na=fmtp:${opusPt} minptime=10;usedtx=1;useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=192000`
+              `$1\r\na=fmtp:${opusPt} minptime=10;usedtx=0;useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=192000`
             )
           }
         }
@@ -761,18 +764,20 @@ function waitIceGathering(pc: RTCPeerConnection, timeoutMs: number): Promise<voi
  *   네트워크 변동 시 끊김 없이 최적 화질 유지. 비용 영향 0 (cap 안에서만 움직임).
  */
 async function startBitrateAdapter(pc: RTCPeerConnection): Promise<void> {
-  const BITRATE_STEPS = [3_000_000, 5_000_000, 7_000_000, 9_000_000]
+  // 🛡️ 2026-05-14: 보수화 — 최저 5M, severe 일 때만 하향. YouTube health 'low' 분류 회피.
+  //   기존 3M 까지 떨어지면 YouTube 가 stream 강제 종료 가능 (audio/video loss + low quality).
+  const BITRATE_STEPS = [5_000_000, 7_000_000, 9_000_000]
   let currentStep = BITRATE_STEPS.length - 1 // 9M 부터 시작
-  let lastBytesSent = 0
   let lastPacketsLost = 0
-  let lastTs = Date.now()
   let goodStreak = 0
+  let warmUpCycles = 3 // 첫 12초는 측정만 (cold start 노이즈 회피)
 
   const interval = setInterval(async () => {
     if (pc.connectionState !== 'connected') {
       clearInterval(interval)
       return
     }
+    if (warmUpCycles > 0) { warmUpCycles--; return }
     try {
       const stats = await pc.getStats()
       let rtt = 0
@@ -787,22 +792,19 @@ async function startBitrateAdapter(pc: RTCPeerConnection): Promise<void> {
           lossRate = total > 0 ? newLoss / total : 0
           lastPacketsLost = packetsLost
         }
-        if (s.type === 'outbound-rtp' && s.kind === 'video') {
-          lastBytesSent = (s as { bytesSent?: number }).bytesSent ?? 0
-        }
       })
-      lastTs = Date.now()
 
-      const bad = (rtt > 0.25) || (lossRate > 0.02)
+      // severe 조건만 하향 (RTT 500ms+ or loss 5%+)
+      const severe = (rtt > 0.5) || (lossRate > 0.05)
       const great = (rtt < 0.15) && (lossRate < 0.005)
 
-      if (bad && currentStep > 0) {
+      if (severe && currentStep > 0) {
         currentStep--
         goodStreak = 0
         applyBitrate(pc, BITRATE_STEPS[currentStep])
       } else if (great) {
         goodStreak++
-        if (goodStreak >= 7 && currentStep < BITRATE_STEPS.length - 1) {
+        if (goodStreak >= 5 && currentStep < BITRATE_STEPS.length - 1) {
           currentStep++
           goodStreak = 0
           applyBitrate(pc, BITRATE_STEPS[currentStep])
@@ -810,7 +812,6 @@ async function startBitrateAdapter(pc: RTCPeerConnection): Promise<void> {
       } else {
         goodStreak = 0
       }
-      void lastBytesSent; void lastTs // suppress unused
     } catch (e) {
       if (import.meta.env.DEV) console.warn('[bitrate adapter]', e)
     }
