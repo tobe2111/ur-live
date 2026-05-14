@@ -121,6 +121,34 @@ export async function handleOmeHealthCheck(env: Env): Promise<void> {
         'OME 미디어 서버 응답 없음',
         `OME (${env.OME_HOST}) health check ${newCount}회 연속 실패. 송출 장애 가능성 — 즉시 확인 필요. 마지막 에러: ${errorMsg}`
       )
+      // 🛡️ 2026-05-13: 진행 중 (status='live') 셀러에게도 알림 — OME 다운 시 셀러가 즉시 인지하고 대처
+      try {
+        const activeSellers = await env.DB.prepare(`
+          SELECT DISTINCT seller_id, title FROM live_streams
+          WHERE status = 'live' AND seller_id IS NOT NULL
+          LIMIT 50
+        `).all<{ seller_id: number; title: string }>()
+        for (const s of activeSellers.results || []) {
+          await env.DB.prepare(`
+            INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+            SELECT (SELECT user_id FROM sellers WHERE id = ?), 'seller',
+                   'ome_down_alert', '⚠️ 송출 서버 장애 가능성',
+                   ?, '/seller/live-broadcast', CURRENT_TIMESTAMP
+            WHERE NOT EXISTS (
+              SELECT 1 FROM notifications
+              WHERE user_id = (SELECT user_id FROM sellers WHERE id = ?)
+                AND type = 'ome_down_alert'
+                AND created_at > datetime('now', '-30 minutes')
+            )
+          `).bind(
+            s.seller_id,
+            `방송 송출 서버 응답 지연이 감지됐어요. "${s.title}" 라이브가 끊기면 새로 시작해주세요.`,
+            s.seller_id,
+          ).run().catch(() => { /* skip */ })
+        }
+      } catch (e) {
+        logError('[cron:ome-health] seller alert insert failed', { error: (e as Error).message })
+      }
     }
     return  // OME down 시 zombie 감지 skip
   }
