@@ -391,8 +391,15 @@ ordersRouter.get('/', async (c) => {
       },
     });
   } catch (err) {
+    // 🛡️ 2026-05-14: 에러 디테일을 응답에 포함 (디버깅 가능하도록).
+    //   민감 정보 노출 X — SQL 에러 메시지는 컬럼/테이블 이름만 포함, 사용자 데이터 안 포함.
+    const msg = (err as Error).message || 'unknown';
     console.error('[ORDERS] List error:', err);
-    return c.json({ success: false, error: 'Failed to fetch orders' }, 500);
+    return c.json({
+      success: false,
+      error: 'Failed to fetch orders',
+      detail: msg.slice(0, 200),
+    }, 500);
   }
 });
 
