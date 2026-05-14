@@ -32,6 +32,9 @@ export class LiveStreamDurableObject extends DurableObject {
   private pinnedMessage: string | null;
   private blockedKeywords: string[];
   private bannedUserIds: Set<string>;
+  // 🛡️ 2026-05-13: 마지막으로 broadcast 한 stream_status 기억
+  //   새 viewer 가 WS 연결 시 즉시 현재 status 전달 → "방송 예정" 영원히 표시 사고 fix.
+  private lastStreamStatus: { status: string; live_stream_id: number } | null = null;
   private state: DurableObjectState;
 
   constructor(state: DurableObjectState, env: Cloudflare.Env) {
@@ -55,6 +58,9 @@ export class LiveStreamDurableObject extends DurableObject {
         if (blocked) this.blockedKeywords = blocked;
         const banned = await state.storage.get<string[]>('bannedUserIds');
         if (banned) this.bannedUserIds = new Set(banned);
+        // 🛡️ 2026-05-13: 마지막 stream_status 복원 (DO 재시작 시에도 유지)
+        const lastStatus = await state.storage.get<{ status: string; live_stream_id: number }>('lastStreamStatus');
+        if (lastStatus) this.lastStreamStatus = lastStatus;
       } catch {}
     });
   }
@@ -107,6 +113,19 @@ export class LiveStreamDurableObject extends DurableObject {
 
     // 시청자 수 브로드캐스트
     this.broadcastViewerCount();
+
+    // 🛡️ 2026-05-13: 새 viewer 에 현재 stream status 즉시 전송.
+    //   "WS 연결 시점 기준 backend 가 이미 live 인 데도 viewer 가 'scheduled' 영원히 표시" 사고 fix.
+    //   기존 broadcast 는 새 connection 에 retroactive 안 보냄 → 누락. 이걸로 해결.
+    if (this.lastStreamStatus) {
+      try {
+        webSocket.send(JSON.stringify({
+          type: 'stream_status',
+          data: this.lastStreamStatus,
+          timestamp: Date.now(),
+        }));
+      } catch { /* ignore */ }
+    }
 
     // 현재 상품 정보 전송 (있는 경우)
     if (this.currentProduct) {
@@ -258,6 +277,13 @@ export class LiveStreamDurableObject extends DurableObject {
       if (message.type === 'product_change') {
         this.currentProduct = message.data as { product: Product; options: ProductOption[] };
         try { await this.state.storage.put('currentProduct', message.data); } catch {}
+      }
+
+      // 🛡️ 2026-05-13: stream_status 메시지 — DO 가 마지막 상태를 기억해서 다음 viewer connection 에 전달
+      if (message.type === 'stream_status') {
+        const d = message.data as { status: string; live_stream_id: number }
+        this.lastStreamStatus = { status: d.status, live_stream_id: d.live_stream_id }
+        try { await this.state.storage.put('lastStreamStatus', this.lastStreamStatus); } catch {}
       }
 
       // 고정 공지 설정 (브로드캐스트 포함)
