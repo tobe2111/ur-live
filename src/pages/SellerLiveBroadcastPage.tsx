@@ -114,10 +114,10 @@ export default function SellerLiveBroadcastPage() {
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
-  // 🛡️ 2026-05-14: frameRate UI 제거 — 무조건 60fps 강제 (최고 화질).
-  //   StepInfo 가 더 이상 선택지 노출 안 함. 셀러 PC/모바일 카메라가 60fps 못 잡으면
-  //   getUserMedia 가 자동 fallback (30fps) → 화질 손실 없음.
-  const frameRate: '60fps' = '60fps'
+  // 🛡️ 2026-05-14 v2: 30fps 로 되돌림 — 같은 9Mbps 에서 프레임당 화질 2배 (300 vs 150 kbps).
+  //   라이브 커머스 = "정지 상품 보여주기" 80% → 부드러움보다 선명도가 핵심.
+  //   UI 선택지는 여전히 숨김 (셀러 부담 0).
+  const frameRate: '30fps' = '30fps'
   const setFrameRate = () => { /* no-op — UI 제거됨 */ }
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('public')
 

@@ -269,11 +269,11 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          // 🛡️ 2026-05-14: 1080p60 강제 (UI 선택 제거 — 무조건 최고 화질).
-          //   카메라가 60fps 못 잡으면 자동 30fps fallback (min:24). 1080p 못 잡으면 720p fallback.
+          // 🛡️ 2026-05-14 v2: 1080p30 (60→30 되돌림) — 라이브 커머스 = 선명도 우선.
+          //   9Mbps ÷ 30fps = 300kbps/frame (60fps 의 2배 디테일). 1080p 못 잡으면 720p fallback.
           width: { ideal: 1920, min: 1280 },
           height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 60, min: 24, max: 60 },
+          frameRate: { ideal: 30, min: 24, max: 30 },
         },
         audio: {
           deviceId: selected.micId ? { exact: selected.micId } : undefined,
@@ -463,11 +463,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         //   + minBitrate 3M (최저 3Mbps 보장, CBR 유사)
         //   브라우저가 CPU 부족 시 720p 로 변환하는 동작 차단.
         params.encodings = [{
-          // 🛡️ 2026-05-14: maxFramerate 60 — UI 선택 제거 후 무조건 최고 화질.
-          //   카메라가 30fps 만 잡으면 어차피 그 값 — 60 은 상한일 뿐 강제 보간 X.
+          // 🛡️ 2026-05-14 v2: maxFramerate 60→30 — 라이브 커머스 = 프레임당 선명도 우선.
           maxBitrate: 9_000_000,
           minBitrate: 3_000_000,
-          maxFramerate: 60,
+          maxFramerate: 30,
           scaleResolutionDownBy: 1,
           networkPriority: 'high',
           priority: 'high',
