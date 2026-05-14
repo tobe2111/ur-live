@@ -740,10 +740,12 @@ app.use('/api/search/*', edgeCache(30), cacheControl(30));                // 검
 // ============================================================
 // Search: prevent keyword-abuse / scraping
 app.use('/api/search/*', rateLimit({ action: 'search', max: 30, windowSec: 60 }));
-// Product list: prevent scraping the catalog
-app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec: 60 }));
-// Seller public profile view: prevent enumeration
-app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
+// 🛡️ 2026-05-13: KV 무료 한도 보호 — Products/Sellers 의 GET 트래픽이 rate-limit KV ops 의 대부분 차지.
+//   이 endpoint 들은 캐시 (5-30s TTL) 가 있고 scraping abuse 위험 낮음 → rate-limit 제거.
+//   필요 시 Cloudflare WAF 또는 turnstile 로 대체.
+// app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec: 60 }));
+// app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
+// app.use('/api/moderation/*', rateLimit({ action: 'moderation_check', max: 60, windowSec: 60 }));
 // Chat send: prevent spam; only on POSTs handled inside chatRoutes
 // HIGH-4: lowered from 30/min → 10/min to make message-flood / URL-spam harder.
 app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 10, windowSec: 60 }));
@@ -809,9 +811,9 @@ app.route('/api/seller/optimal-time', optimalTimeRoutes);
 // 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
 app.route('/api/faq-bot', faqBotRoutes);
 // 🛡️ 2026-04-27 Phase 3-3: 채팅 모더레이션
-// 🛡️ 2026-04-29 보안 audit (TD-016 MEDIUM): rate limit + 인증 — DoS / DB write 폭주 방어
+// 🛡️ 2026-04-29 보안 audit (TD-016 MEDIUM): 인증 필수 — DoS / DB write 폭주 방어
+// 🛡️ 2026-05-13: KV 무료 한도 보호 — moderation rate-limit 제거 (인증으로 충분, 1m 60회 abuse 위험 낮음)
 app.use('/api/moderation/*', requireAuth());
-app.use('/api/moderation/*', rateLimit({ action: 'moderation_check', max: 60, windowSec: 60 }));
 app.route('/api/moderation', moderationRoutes);
 // 🛡️ 2026-04-27 Phase 3-4: 어드민 TikTok 발굴
 app.route('/api/admin/tiktok-discovery', adminTikTokDiscoveryRoutes);
