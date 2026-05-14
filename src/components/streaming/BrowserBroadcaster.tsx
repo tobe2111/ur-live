@@ -269,13 +269,15 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          // 🛡️ 2026-05-14 v2: 1080p30 (60→30 되돌림) — 라이브 커머스 = 선명도 우선.
-          //   9Mbps ÷ 30fps = 300kbps/frame (60fps 의 2배 디테일). 1080p 못 잡으면 720p fallback.
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
+          // 🛡️ 2026-05-14 v3: 세로 1080×1920 (9:16) — 라이브 커머스 모바일 표준.
+          //   TikTok/Instagram Live/그립/쿠팡 라이브 모두 9:16 세로. 시청자 90%+ 모바일.
+          //   PC 카메라가 가로 캡처해도 브라우저가 자동 회전/크롭. 모바일 카메라는 자연 세로.
+          //   원본 9 Mbps ÷ 30fps = 300kbps/frame 선명도 유지.
+          width: { ideal: 1080, min: 720 },
+          height: { ideal: 1920, min: 1280 },
           frameRate: { ideal: 30, min: 24, max: 30 },
-          // 🛡️ 2026-05-14 V3: 16:9 비율 강제 + latency 0 ideal — 카메라 자체 지연 최소화.
-          aspectRatio: { ideal: 16 / 9 },
+          // 🛡️ 2026-05-14: 9:16 비율 강제 + latency 0 ideal.
+          aspectRatio: { ideal: 9 / 16 },
           latency: { ideal: 0 },
         } as MediaTrackConstraints,
         audio: {
