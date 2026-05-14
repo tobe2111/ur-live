@@ -231,13 +231,17 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
       )
     } else {
       // First time or no persistent stream — create new + save as default
+      // 🛡️ 2026-05-13: env YOUTUBE_USE_WEBRTC_INGEST=true 면 webrtc ingestion 사용 (WHIP direct).
+      //   webrtc 선택 시 ingestionAddress 가 WHIP URL 로 반환 → DB.whip_url 에 저장 → Worker proxy 가 forward.
+      const useWebRTC = (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST === 'true'
       liveSetup = await youtubeService.setupLiveStream(
         accessToken,
         title,
         description || '',
         scheduledTime,
         privacyStatus,
-        frameRate
+        frameRate,
+        useWebRTC ? 'webrtc' : 'rtmp'
       )
       // 🛡️ 2026-05-11 P3-#10: setupLiveStream = liveBroadcasts.insert(50) + liveStreams.insert(50) + bind(50) = 150
       await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream', c.executionCtx)
@@ -260,13 +264,17 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
 
     // Save to database
     // 🛡️ 2026-05-10: 셀러 업로드 썸네일은 custom_thumbnail_url 에 별도 저장 (YouTube 자동 썸네일이 thumbnail_url 덮어쓰기 후에도 보존)
+    // 🛡️ 2026-05-13: whip_url — webrtc ingestion 시 YouTube 가 반환하는 WHIP endpoint URL.
+    //   rtmp ingestion 이면 NULL. BrowserBroadcaster 가 우선 시도 → 없으면 OME fallback.
+    const cdnIngestionType = (liveSetup.stream as { cdn?: { ingestionType?: string } }).cdn?.ingestionType
+    const whipUrl = cdnIngestionType === 'webrtc' ? liveSetup.stream.ingestionInfo.ingestionAddress : null
     const streamResult = await c.env.DB.prepare(`
       INSERT INTO live_streams (
         seller_id, title, description, status, thumbnail_url, custom_thumbnail_url,
         youtube_video_id, youtube_broadcast_id, youtube_stream_key, youtube_live_chat_id,
-        rtmp_url, rtmp_key, youtube_embed_url,
+        rtmp_url, rtmp_key, youtube_embed_url, whip_url,
         scheduled_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).bind(
       sellerId,
       title,
@@ -281,8 +289,24 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
       liveSetup.rtmpUrl,
       liveSetup.rtmpKey,
       liveSetup.embedUrl,
+      whipUrl,
       scheduledTime
-    ).run()
+    ).run().catch(async (e) => {
+      // whip_url 컬럼 없는 경우 (repair-schema 미실행) — fallback INSERT
+      console.warn('[create-broadcast] whip_url column missing, fallback INSERT', e)
+      return c.env.DB.prepare(`
+        INSERT INTO live_streams (
+          seller_id, title, description, status, thumbnail_url, custom_thumbnail_url,
+          youtube_video_id, youtube_broadcast_id, youtube_stream_key, youtube_live_chat_id,
+          rtmp_url, rtmp_key, youtube_embed_url,
+          scheduled_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).bind(
+        sellerId, title, description || '', 'scheduled', thumbnail_url || null, thumbnail_url || null,
+        liveSetup.broadcast.id, liveSetup.broadcast.id, liveSetup.stream.ingestionInfo.streamName,
+        liveSetup.broadcast.liveChatId || null, liveSetup.rtmpUrl, liveSetup.rtmpKey, liveSetup.embedUrl, scheduledTime
+      ).run()
+    })
 
     const streamId = streamResult.meta.last_row_id
 
@@ -2386,6 +2410,115 @@ app.get('/streaming/health', async (c) => {
  *   - OME 미구성 + rtmp_key 있음 → OBS 등 외부 도구 안내 (OBS_REQUIRED)
  *   - 둘 다 없음 → 503
  */
+/**
+ * POST /api/seller/youtube/streaming/whip-proxy/:streamId
+ *
+ * 🛡️ 2026-05-13: Worker WHIP proxy — OME 우회 / YouTube WHIP direct ingest.
+ *
+ * 흐름:
+ *   1. 셀러 브라우저 → POST (Content-Type: application/sdp, body=SDP offer)
+ *   2. 본 endpoint → 셀러 본인의 stream.whip_url (YouTube WHIP endpoint) 로 forward
+ *   3. YouTube 응답 (SDP answer + Location header) → 그대로 브라우저 반환
+ *
+ * CORS 우회: 브라우저 → 우리 Worker (same origin) → YouTube (server-to-server, CORS X)
+ *
+ * 미디어 데이터는 본 endpoint 통과 X — 이후 브라우저 ↔ YouTube WebRTC P2P.
+ * 본 endpoint 는 signaling (SDP 교환) 약 1-3초만 부담.
+ */
+app.post('/streaming/whip-proxy/:streamId', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const streamId = parseInt(c.req.param('streamId'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid streamId' }, 400)
+
+  // 본인 stream 검증 + whip_url 로드
+  const stream = await c.env.DB.prepare(`
+    SELECT id, whip_url, status FROM live_streams
+    WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{ id: number; whip_url: string | null; status: string }>()
+
+  if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+  if (!stream.whip_url) {
+    return c.json({
+      success: false,
+      error: 'WHIP URL 미설정 — broadcast 생성 시 ingestionType=webrtc 로 만들어진 stream 만 가능',
+      error_code: 'NO_WHIP_URL',
+    }, 400)
+  }
+
+  // SDP offer 받기 (브라우저가 보냄)
+  const sdpOffer = await c.req.text()
+  if (!sdpOffer || !sdpOffer.includes('v=0')) {
+    return c.json({ success: false, error: 'Invalid SDP offer' }, 400)
+  }
+
+  // YouTube WHIP 으로 forward
+  try {
+    const ytRes = await fetch(stream.whip_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sdp',
+      },
+      body: sdpOffer,
+      signal: AbortSignal.timeout(15_000),
+    })
+
+    const responseBody = await ytRes.text()
+    // YouTube WHIP 은 보통 201 Created + SDP answer + Location header (resource URL) 반환
+    const locationHeader = ytRes.headers.get('Location') || ytRes.headers.get('location') || ''
+
+    if (!ytRes.ok) {
+      console.warn('[WHIP proxy] YouTube WHIP rejected:', ytRes.status, responseBody.slice(0, 200))
+      return new Response(responseBody, {
+        status: ytRes.status,
+        headers: { 'Content-Type': 'application/sdp' },
+      })
+    }
+
+    // 응답: SDP answer + Location (resource URL — DELETE 시 사용)
+    const headers: Record<string, string> = { 'Content-Type': 'application/sdp' }
+    if (locationHeader) headers['Location'] = locationHeader
+    return new Response(responseBody, {
+      status: ytRes.status,
+      headers,
+    })
+  } catch (e) {
+    return c.json({
+      success: false,
+      error: 'YouTube WHIP forward failed: ' + (e as Error).message,
+    }, 502)
+  }
+})
+
+/**
+ * DELETE /api/seller/youtube/streaming/whip-proxy/:streamId
+ *
+ * 🛡️ 2026-05-13: WHIP resource 정리 (라이브 종료 시).
+ *   브라우저가 받은 Location header 를 streamId 와 함께 보내면 백엔드가 YouTube WHIP 에 DELETE.
+ */
+app.delete('/streaming/whip-proxy/:streamId', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const resourceUrl = c.req.query('resource')
+  if (!resourceUrl) return c.json({ success: false, error: 'resource URL required' }, 400)
+
+  // 본인 stream 확인 (간단한 권한 검증)
+  const streamId = parseInt(c.req.param('streamId'))
+  const stream = await c.env.DB.prepare(`
+    SELECT id FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first()
+  if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+
+  try {
+    await fetch(resourceUrl, { method: 'DELETE', signal: AbortSignal.timeout(10_000) })
+    return c.json({ success: true })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})
+
 app.post('/streaming/whip-token', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -2395,18 +2528,42 @@ app.post('/streaming/whip-token', async (c) => {
     return c.json({ success: false, error: 'stream_id 가 필요합니다' }, 400)
   }
 
-  // 본인 stream 검증
+  // 본인 stream 검증 (whip_url 도 같이 로드 — Worker proxy 모드 지원)
   const stream = await c.env.DB.prepare(`
-    SELECT id, rtmp_url, rtmp_key, youtube_broadcast_id, status
+    SELECT id, rtmp_url, rtmp_key, youtube_broadcast_id, status, whip_url
     FROM live_streams WHERE id = ? AND seller_id = ?
   `).bind(stream_id, sellerId).first<{
     id: number; rtmp_url: string; rtmp_key: string;
-    youtube_broadcast_id: string | null; status: string;
-  }>()
+    youtube_broadcast_id: string | null; status: string; whip_url: string | null;
+  }>().catch(async () => {
+    // whip_url 컬럼 없으면 (repair-schema 미실행) — fallback 쿼리
+    return await c.env.DB.prepare(`
+      SELECT id, rtmp_url, rtmp_key, youtube_broadcast_id, status
+      FROM live_streams WHERE id = ? AND seller_id = ?
+    `).bind(stream_id, sellerId).first<{
+      id: number; rtmp_url: string; rtmp_key: string;
+      youtube_broadcast_id: string | null; status: string;
+    }>().then(r => r ? { ...r, whip_url: null as string | null } : null)
+  })
 
   if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
 
-  // OME 가 없으면 브라우저 라이브 불가 (YouTube 직접 WHIP 은 CORS 차단)
+  // 🛡️ 2026-05-13: Worker WHIP proxy 우선 — stream.whip_url 있으면 OME 우회.
+  //   YouTube 가 webrtc ingestion 으로 발급한 WHIP URL 을 우리 Worker 가 forward.
+  if (stream.whip_url) {
+    const proxyUrl = new URL(c.req.url)
+    proxyUrl.pathname = `/api/seller/youtube/streaming/whip-proxy/${stream_id}`
+    proxyUrl.search = ''
+    return c.json({
+      success: true,
+      data: {
+        whip_url: proxyUrl.toString(),
+        mode: 'youtube_whip_proxy',
+      },
+    })
+  }
+
+  // OME fallback (whip_url 없는 broadcast / OME 미구성 환경)
   if (!c.env.OME_HOST || !c.env.OME_WEBHOOK_SECRET) {
     // rtmp_key 있으면 OBS 외부 도구로 송출 가능 — 명확히 안내
     if (stream.rtmp_key) {
