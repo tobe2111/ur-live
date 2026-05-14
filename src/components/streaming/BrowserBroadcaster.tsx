@@ -19,7 +19,7 @@ import { Loader2, Camera, Mic, MicOff, Video, VideoOff, AlertCircle, RefreshCw }
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
-type WhipMode = 'youtube_whip' | 'ome_whip'
+type WhipMode = 'youtube_whip' | 'ome_whip' | 'youtube_whip_proxy'
 
 interface Props {
   streamId: number
@@ -282,14 +282,20 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     } catch { /* noop */ }
     }  // end "새 stream 획득" block
 
-    // 2. WHIP endpoint 발급 (YouTube WHIP direct 또는 OME WHIP fallback)
+    // 2. WHIP endpoint 발급 (3-tier 우선순위: YouTube WHIP proxy → OME WHIP → OBS)
+    // 🛡️ 2026-05-13: Worker WHIP proxy 우선 시도 — 우리 Worker 가 YouTube WHIP 으로 forward.
+    //   장점: OME 인프라 0, 미디어 P2P, 무한 확장.
+    //   서버 응답: { mode: 'youtube_whip_proxy', whip_url: '/api/seller/youtube/streaming/whip-proxy/:id' }
+    //   실패 시 OME WHIP 으로 자동 fallback.
     setStatus('fetching_token')
     let whipUrl: string
+    let isProxyMode = false
     try {
       const res = await api.post('/api/seller/youtube/streaming/whip-token', { stream_id: streamId })
       if (!res.data?.success) throw new Error(res.data?.error || '토큰 발급 실패')
       whipUrl = res.data.data.whip_url
       modeRef.current = (res.data.data.mode as WhipMode) || 'youtube_whip'
+      isProxyMode = (res.data.data.mode as string) === 'youtube_whip_proxy'
     } catch (e) {
       const errResp = (e as { response?: { data?: { error_code?: string; error?: string; rtmp_url?: string } } })?.response?.data
       const errCode = errResp?.error_code
@@ -396,9 +402,16 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       await waitIceGathering(pc, 2000)
 
       // 4. WHIP POST
+      // 🛡️ 2026-05-13: proxy mode 시 Authorization 헤더 필수 (우리 endpoint 인증 통과용).
+      //   OME 직접 URL 은 token 이 URL query 안에 있어서 Authorization 불필요.
+      const whipHeaders: Record<string, string> = { 'Content-Type': 'application/sdp' }
+      if (isProxyMode) {
+        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('seller_token') : null
+        if (token) whipHeaders['Authorization'] = `Bearer ${token}`
+      }
       const res = await fetch(whipUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/sdp' },
+        headers: whipHeaders,
         body: pc.localDescription?.sdp || '',
       })
       if (!res.ok) {

@@ -271,12 +271,15 @@ export class YouTubeAPIService {
 
   /**
    * Create a YouTube live stream
+   * 🛡️ 2026-05-13: ingestionType 'webrtc' 옵션 추가 — YouTube WHIP direct ingest 활용.
+   *   webrtc 선택 시 cdn.ingestionInfo.ingestionAddress 가 WHIP URL 형태로 반환 (rtmp 아닌 https).
    */
   async createStream(
     accessToken: string,
     title: string,
     resolution: '1080p' | '720p' | '480p' = '1080p',
-    frameRate: '30fps' | '60fps' | 'variable' = '30fps'  // 🛡️ 2026-05-13: 60fps 옵션 (패션/뷰티 카테고리 자연스러운 움직임)
+    frameRate: '30fps' | '60fps' | 'variable' = '30fps',
+    ingestionType: 'rtmp' | 'webrtc' = 'rtmp'
   ): Promise<YouTubeStream> {
     const response = await fetch(
       `${YOUTUBE_API_BASE}/liveStreams?part=snippet,cdn,status`,
@@ -292,7 +295,7 @@ export class YouTubeAPIService {
           },
           cdn: {
             frameRate,
-            ingestionType: 'rtmp',
+            ingestionType,
             resolution
           }
         }),
@@ -527,7 +530,8 @@ export class YouTubeAPIService {
     description: string,
     scheduledStartTime: string = new Date().toISOString(),
     privacyStatus: 'public' | 'unlisted' | 'private' = 'public',
-    frameRate: '30fps' | '60fps' | 'variable' = '30fps'
+    frameRate: '30fps' | '60fps' | 'variable' = '30fps',
+    ingestionType: 'rtmp' | 'webrtc' = 'rtmp'
   ): Promise<YouTubeLiveSetup> {
     // Create broadcast
     const broadcast = await this.createBroadcast(
@@ -543,7 +547,8 @@ export class YouTubeAPIService {
       accessToken,
       `${title} - Stream`,
       '1080p',
-      frameRate
+      frameRate,
+      ingestionType
     )
 
     // Bind them together
