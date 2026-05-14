@@ -15,6 +15,7 @@ import { ScheduledBroadcastWaiting, YouTubeStudioWaiting } from './SellerLiveBro
 import OBSRemoteControl from './SellerLiveBroadcast.OBSRemoteControl'
 // 🛡️ 2026-05-01: TD-018 분할 — Step{Info, Setup, Live} 모두 추출 (총 ~733줄).
 import StepLive from './seller-live-broadcast/StepLive'
+import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
 import StepInfo from './seller-live-broadcast/StepInfo'
 import StepSetup from './seller-live-broadcast/StepSetup'
 import SellerCameraPreview from './seller-live-broadcast/SellerCameraPreview'
@@ -211,22 +212,20 @@ export default function SellerLiveBroadcastPage() {
     if (active) navigate(`/seller/live-broadcast/${active.id}`, { replace: true })
   }, [streams, urlStreamId, loading, navigate])
 
-  // Step 2: OBS/Prism/YouTube 연결 자동 감지 폴링
-  // 적응형: 초반 2분은 5s, 이후 15s (YouTube API quota 절감)
-  // 🛡️ 2026-05-11: youtube-webcam 모드는 broadcast_id 가 null 이라 /status 호출 시 에러 → /detect-webcam 만 폴링
+  // 🛡️ 2026-05-13 v2: 5초 폴링 → WebSocket 구독.
+  //   기존: 5초마다 /status 호출 → YouTube quota 720 units/시간 + 깜빡임 + D1 read
+  //   개선: LIVE_STREAM DurableObject WS subscribe → status 변화 시에만 push
+  //   효과: quota 절감, 깜빡임 제거, latency 0
+  //   webcam 모드는 별도 폴링 유지 — broadcast_id 없는 흐름이라 WS sync 불가
   useEffect(() => {
     if (step !== 'setup' || !currentStream || transitionCountdown !== null) return
-    const isWebcam = method === 'youtube-webcam'
-    const endpoint = isWebcam
-      ? `/api/seller/youtube/live/${currentStream.id}/detect-webcam`
-      : `/api/seller/youtube/live/${currentStream.id}/status`
-    const poll = async () => {
-      try {
-        const res = await api.get(endpoint)
-        setPollFailures(0)
-        if (isWebcam) {
-          // /detect-webcam 응답: { success, data: { youtube_video_id, title, status } | null }
-          // candidate 발견 시 → PATCH /link-broadcast 자동 호출 → status='live' 로 transition
+    if (method === 'youtube-webcam') {
+      // webcam 모드만 폴링 유지 (broadcast_id null → WS sync 불가)
+      const endpoint = `/api/seller/youtube/live/${currentStream.id}/detect-webcam`
+      const poll = async () => {
+        try {
+          const res = await api.get(endpoint)
+          setPollFailures(0)
           const candidate = res.data?.data
           if (candidate?.youtube_video_id) {
             try {
@@ -239,22 +238,37 @@ export default function SellerLiveBroadcastPage() {
               }
             } catch { /* link 실패 시 다음 폴링에 재시도 */ }
           }
-        } else {
-          if (res.data?.success && res.data.data?.synced && res.data.data?.status === 'live') {
-            setTransitionCountdown(3)
-          }
-        }
-      } catch { setPollFailures(c => c + 1) }
+        } catch { setPollFailures(c => c + 1) }
+      }
+      poll()
+      const interval = setInterval(poll, 10000)
+      return () => clearInterval(interval)
     }
-    poll() // 최초 즉시 실행
-    let interval = setInterval(poll, 5000)
-    // 2분 후 15s 간격으로 전환
-    const slowDown = setTimeout(() => {
-      clearInterval(interval)
-      interval = setInterval(poll, 15000)
-    }, 120000)
-    return () => { clearInterval(interval); clearTimeout(slowDown) }
+    // youtube/obs/prism 모드 — WS subscription 만 (폴링 없음)
+    // useLiveStreamWebSocket 이 status 변화 시 wsStreamData.status='live' push → 아래 useEffect 에서 setTransitionCountdown
+    // 별도 setup 필요 없음 — wsStreamData 처리는 별도 useEffect 로
   }, [step, currentStream, transitionCountdown, method])
+
+  // 🛡️ 2026-05-13: WebSocket status 변화 감지 → transition countdown 트리거
+  //   useLiveStreamWebSocket 의 streamData.status 가 'live' 로 변화하면 (admission opening 시 backend broadcast)
+  //   1회만 트리거. setTransitionCountdown 으로 UI 전환.
+  const wsTransitionTriggered = useRef(false)
+  const wsHookEnabled = step === 'setup' && !!currentStream && currentStream.status !== 'live' && method !== 'youtube-webcam'
+  const { streamData: wsStreamData } = useLiveStreamWebSocket(
+    wsHookEnabled ? (currentStream?.id ?? null) : null,
+    wsHookEnabled,
+    false
+  )
+  useEffect(() => {
+    if (!wsHookEnabled || wsTransitionTriggered.current) return
+    if (wsStreamData?.status === 'live') {
+      wsTransitionTriggered.current = true
+      setCurrentStream(prev => prev ? { ...prev, status: 'live' } : prev)
+      setTransitionCountdown(3)
+    }
+  }, [wsStreamData?.status, wsHookEnabled])
+  // currentStream.id 변경 시 ref 리셋
+  useEffect(() => { wsTransitionTriggered.current = false }, [currentStream?.id])
 
   // 카운트다운 tick
   useEffect(() => {
