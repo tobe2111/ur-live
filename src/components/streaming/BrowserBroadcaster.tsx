@@ -274,7 +274,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
           width: { ideal: 1920, min: 1280 },
           height: { ideal: 1080, min: 720 },
           frameRate: { ideal: 30, min: 24, max: 30 },
-        },
+          // 🛡️ 2026-05-14 V3: 16:9 비율 강제 + latency 0 ideal — 카메라 자체 지연 최소화.
+          aspectRatio: { ideal: 16 / 9 },
+          latency: { ideal: 0 },
+        } as MediaTrackConstraints,
         audio: {
           deviceId: selected.micId ? { exact: selected.micId } : undefined,
           // 🛡️ 2026-05-14: stereo 명시 + Opus native 48kHz — 디바이스가 기본 mono/44.1kHz
@@ -304,6 +307,27 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       // 🛡️ 2026-05-14: contentHint='motion' — 라이브 커머스는 고움직임 (옷 입어보기/상품 흔들기).
       //   인코더가 motion 우선으로 비트 분배 → 잔상 ↓, 같은 bitrate 에서 체감 화질 ↑.
       if (vt && 'contentHint' in vt) (vt as MediaStreamTrack).contentHint = 'motion'
+      // 🛡️ 2026-05-14 V1: 카메라 capabilities lock — auto 모드의 깜빡임/색온도 변동 차단.
+      //   - exposureMode 'continuous' (자동 노출 부드럽게 유지)
+      //   - whiteBalanceMode 'continuous' (색온도 부드럽게 유지)
+      //   - focusMode 'continuous' (얼굴/상품 자동 포커싱)
+      //   카메라가 미지원 시 무시됨 (try-catch). 지원 기기에서 화면 안정성 큰 향상.
+      if (vt) {
+        try {
+          const caps = (vt.getCapabilities?.() as MediaTrackCapabilities & {
+            exposureMode?: string[]; whiteBalanceMode?: string[]; focusMode?: string[];
+          }) || {}
+          const applied: MediaTrackConstraintSet & {
+            exposureMode?: string; whiteBalanceMode?: string; focusMode?: string;
+          } = {}
+          if (caps.exposureMode?.includes('continuous')) applied.exposureMode = 'continuous'
+          if (caps.whiteBalanceMode?.includes('continuous')) applied.whiteBalanceMode = 'continuous'
+          if (caps.focusMode?.includes('continuous')) applied.focusMode = 'continuous'
+          if (Object.keys(applied).length > 0) {
+            await vt.applyConstraints({ advanced: [applied] } as MediaTrackConstraints).catch(() => { /* 일부 카메라 unsupported */ })
+          }
+        } catch { /* 미지원 카메라 — skip */ }
+      }
     } catch { /* ignore */ }
 
     // 디바이스 라벨 다시 로드 (권한 후엔 라벨 채워짐)
@@ -358,7 +382,15 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     // 3. RTCPeerConnection
     setStatus('connecting')
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      // 🛡️ 2026-05-14 N2: 다중 STUN 서버 — 병렬 gathering → 가장 빠른 응답 사용.
+      //   한국에서 stun.l.google.com 이 약간 느림 (~80ms). Cloudflare/Twilio STUN 추가 시 -30~50ms.
+      iceServers: [
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+      ],
+      iceTransportPolicy: 'all',
       bundlePolicy: 'max-bundle',
     })
     pcRef.current = pc

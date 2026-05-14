@@ -47,6 +47,9 @@ export default defineConfig({
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,
+    // 🛡️ 2026-05-14 S3: modulePreload polyfill 활성 — 모든 브라우저에서 동작 보장.
+    //   Vite 가 entry → import 한 chunk 들을 자동 preload (병렬 fetch) → JS 파싱 -300ms.
+    modulePreload: { polyfill: true },
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,

@@ -217,9 +217,9 @@ export default function LiveListPage() {
                     className="shrink-0 w-[280px] lg:w-full text-left active:scale-[0.99] transition-transform"
                     aria-label={t('liveList.ariaLiveJoin', { title: s.title })}
                   >
-                    <div className="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-[#121212]" style={{ aspectRatio: '4/5' }}>
+                    <div className="ur-live-card relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-[#121212]" style={{ aspectRatio: '4/5' }}>
                       {getThumb(s) ? (
-                        <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
+                        <img src={getThumb(s)!} alt={s.title} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                       )}
@@ -284,7 +284,7 @@ export default function LiveListPage() {
                     >
                       <div className="shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ width: 72, height: 72 }}>
                         {getThumb(s) ? (
-                          <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
+                          <img src={getThumb(s)!} alt={s.title} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                         )}
@@ -340,9 +340,9 @@ export default function LiveListPage() {
                     className="text-left active:scale-[0.99] transition-transform"
                     aria-label={t('liveList.ariaReplay', { title: s.title })}
                   >
-                    <div className="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '3/4' }}>
+                    <div className="ur-live-card relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '3/4' }}>
                       {getThumb(s) ? (
-                        <img src={getThumb(s)!} alt={s.title} loading="lazy" className="w-full h-full object-cover" style={{ filter: 'brightness(0.8) saturate(0.9)' }} onError={onYoutubeThumbError} />
+                        <img src={getThumb(s)!} alt={s.title} loading="lazy" decoding="async" className="w-full h-full object-cover" style={{ filter: 'brightness(0.8) saturate(0.9)' }} onError={onYoutubeThumbError} />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                       )}
@@ -498,9 +498,9 @@ function StreamCard({ stream, type, onClick, getThumb }: {
 
   return (
     <button onClick={onClick} className="text-left active:scale-[0.97] transition-transform w-full">
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 dark:bg-[#121212]">
+      <div className="ur-live-card relative aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 dark:bg-[#121212]">
         {thumb ? (
-          <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
+          <img src={thumb} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
             <Play className="w-7 h-7 text-gray-400 dark:text-gray-700" />
