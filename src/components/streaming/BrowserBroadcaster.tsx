@@ -646,8 +646,9 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-      {/* 비디오 미리보기 */}
-      <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+      {/* 비디오 미리보기 — 🛡️ 2026-05-14: 송출이 9:16 세로 (모바일 라이브 커머스 표준)
+          → 미리보기 컨테이너도 9:16 으로 변경. 모바일은 max-h 로 화면 넘침 방지. */}
+      <div className="relative bg-black rounded-xl overflow-hidden mx-auto aspect-[9/16] max-h-[70vh] w-auto">
         <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         {status === 'idle' && (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400">

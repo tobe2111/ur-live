@@ -402,19 +402,24 @@ function ReelCardImpl({
         win.postMessage(JSON.stringify({ event: 'listening', id: `yt-${stream.youtube_video_id}` }), 'https://www.youtube.com')
         win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), 'https://www.youtube.com')
         win.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onPlaybackQualityChange'] }), 'https://www.youtube.com')
+        win.postMessage(JSON.stringify({ event: 'command', func: 'getPlaybackQuality', args: [] }), 'https://www.youtube.com')
+        win.postMessage(JSON.stringify({ event: 'command', func: 'getAvailableQualityLevels', args: [] }), 'https://www.youtube.com')
         // 🛡️ 2026-05-13: 시청자 측 화질 hd1080 강제 시도 — YouTube 가 자동으로 낮추는 거 방지.
-        // 🛡️ 2026-05-14: 다중 시점 + 재시도 — 2.5s / 6s / 12s 세 번 push.
-        //   YouTube embed 가 onPlaybackQualityChange 에서 'auto' 로 떨어트리는 경우 잡기 위함.
-        ;[2500, 6000, 12000].forEach(delay => {
+        // 🛡️ 2026-05-14 v3: 다중 시점 + 재시도 강화 — 1s / 3s / 7s / 15s / 30s 다섯 번 push.
+        //   YouTube embed 가 onPlaybackQualityChange 에서 'auto' 로 떨어트리는 경우 끈질기게 잡기.
+        //   'highres' (4K) 가 가능한 경우 그것도 시도 (자동 fallback).
+        ;[1000, 3000, 7000, 15000, 30000].forEach(delay => {
           setTimeout(() => {
             try {
               win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }), 'https://www.youtube.com')
+              // 한 번 더 강제로 highres 시도 (YouTube 가 1080p 거부하면 차상 quality 자동)
+              setTimeout(() => {
+                win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['highres'] }), 'https://www.youtube.com')
+              }, 200)
             } catch { /* ignore */ }
           }, delay)
         })
         // 🛡️ 2026-05-14 M2: Skip-to-Live — YouTube 가 cold start 시 buffer 시작 시점 (옛날) 에서 재생할 수 있음.
-        //   seekTo(9999999, true) = 영상 끝 (라이브 edge) 으로 이동. YouTube 가 라이브 최신 시점으로 clamp.
-        //   3초 후 + 8초 후 두 번 시도 (네트워크 안정 후 효과).
         ;[3000, 8000].forEach(delay => {
           setTimeout(() => {
             try {
@@ -444,19 +449,26 @@ function ReelCardImpl({
           }
         }
         // 🛡️ 2026-05-14: 화질 다운그레이드 감지 → hd1080 재요청 (네트워크 충분 시).
-        //   YouTube 가 auto/medium/hd720 으로 떨어지면 5초 후 hd1080 다시 시도.
+        //   YouTube 가 auto/medium/hd720 으로 떨어지면 짧게 후 hd1080 다시 시도.
+        // 🛡️ 2026-05-14 v3: DEV 모드 + 한국 모바일 디버깅용 — quality 변화 콘솔 로그.
         if (data?.event === 'onPlaybackQualityChange') {
           const q = data.info as string
-          if (q && q !== 'hd1080' && q !== 'hd1440' && q !== 'hd2160') {
+          if (import.meta.env.DEV) console.log('[ReelCard] quality:', q)
+          if (q && q !== 'hd1080' && q !== 'hd1440' && q !== 'hd2160' && q !== 'highres') {
             const win = iframeRef.current?.contentWindow
             if (win) {
+              // 더 짧은 retry (5s → 2s) — 셀러 source 안정 시 빠르게 1080p 복귀.
               setTimeout(() => {
                 try {
                   win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }), 'https://www.youtube.com')
                 } catch { /* ignore */ }
-              }, 5000)
+              }, 2000)
             }
           }
+        }
+        // getAvailableQualityLevels 응답 — 디버깅용 (DEV 모드만)
+        if (data?.event === 'infoDelivery' && data?.info?.availableQualityLevels) {
+          if (import.meta.env.DEV) console.log('[ReelCard] availableQualityLevels:', data.info.availableQualityLevels)
         }
       } catch { /* noop */ }
     }
