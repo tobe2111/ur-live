@@ -542,16 +542,18 @@ export class YouTubeAPIService {
       privacyStatus
     )
 
-    // 🛡️ 2026-05-14: WebRTC ingestion 은 cdn.resolution 을 'variable' 로만 허용.
-    //   '1080p' / '720p' 등 고정값 보내면 "Invalid value for resolution" 400.
-    //   WebRTC 는 브라우저가 적응형 송출하므로 YouTube 가 resolution 자동 결정.
+    // 🛡️ 2026-05-14: WebRTC ingestion 은 cdn.resolution / cdn.frameRate 모두 'variable' 만 허용.
+    //   '1080p' / '30fps' 등 고정값 보내면 "Invalid value for resolution|frame rate" 400.
+    //   WebRTC 는 브라우저가 적응형 송출하므로 YouTube 가 자동 결정.
     const resolution: '1080p' | '720p' | '480p' | 'variable' =
       ingestionType === 'webrtc' ? 'variable' : '1080p'
+    const effectiveFrameRate: '30fps' | '60fps' | 'variable' =
+      ingestionType === 'webrtc' ? 'variable' : frameRate
     const stream = await this.createStream(
       accessToken,
       `${title} - Stream`,
       resolution,
-      frameRate,
+      effectiveFrameRate,
       ingestionType
     )
 
