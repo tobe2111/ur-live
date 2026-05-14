@@ -227,18 +227,55 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
       // 🛡️ 2026-05-13 v3 (perf): 캐시된 RTMP info 전달 → getStream() 호출 1회 절약 (-300~500ms).
       //   bind 실패 시 setupLiveStreamWithPersistentStream 내부에서 fresh fetch fallback.
       //   useWebRTC=true 면 persistent 무시하고 항상 새 webrtc stream 생성.
-      const cachedRtmp = (sellerAuth.default_rtmp_url && sellerAuth.default_rtmp_key)
-        ? { rtmpUrl: sellerAuth.default_rtmp_url, rtmpKey: sellerAuth.default_rtmp_key }
-        : undefined
-      liveSetup = await youtubeService.setupLiveStreamWithPersistentStream(
-        accessToken,
-        title,
-        description || '',
-        sellerAuth.default_stream_id,
-        scheduledTime,
-        privacyStatus,
-        cachedRtmp
-      )
+      // 🛡️ 2026-05-14: WHIP URL 잔재 감지 — default_rtmp_url 이 https:// 시작이면 (webrtc 시절 잔재)
+      //   캐시 무효화하고 새 RTMP stream 생성. 셀러 한 번 broadcast 만들면 자동 청소됨.
+      const isWhipLeftover = sellerAuth.default_rtmp_url && /^https:\/\//.test(sellerAuth.default_rtmp_url)
+      if (isWhipLeftover) {
+        // 잔재 캐시 즉시 삭제
+        await c.env.DB.prepare(`
+          UPDATE seller_youtube_oauth
+          SET default_stream_id = NULL, default_rtmp_url = NULL, default_rtmp_key = NULL, updated_at = CURRENT_TIMESTAMP
+          WHERE seller_id = ? AND is_active = 1
+        `).bind(sellerId).run().catch(() => { /* ignore */ })
+        // 새 stream 생성 경로로 fall-through
+        liveSetup = await youtubeService.setupLiveStream(
+          accessToken,
+          title,
+          description || '',
+          scheduledTime,
+          privacyStatus,
+          frameRate,
+          'rtmp'
+        )
+        await trackQuota(c.env, QUOTA_COST.insert * 3, 'setup_live_stream_whip_recover', c.executionCtx)
+        // 새 stream 정보 cache 에 저장
+        if (channel_id) {
+          await c.env.DB.prepare(`
+            UPDATE seller_youtube_oauth
+            SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE seller_id = ? AND id = ? AND is_active = 1
+          `).bind(liveSetup.stream.id, liveSetup.rtmpUrl, liveSetup.rtmpKey, sellerId, channel_id).run()
+        } else {
+          await c.env.DB.prepare(`
+            UPDATE seller_youtube_oauth
+            SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE seller_id = ? AND is_active = 1
+          `).bind(liveSetup.stream.id, liveSetup.rtmpUrl, liveSetup.rtmpKey, sellerId).run()
+        }
+      } else {
+        const cachedRtmp = (sellerAuth.default_rtmp_url && sellerAuth.default_rtmp_key)
+          ? { rtmpUrl: sellerAuth.default_rtmp_url, rtmpKey: sellerAuth.default_rtmp_key }
+          : undefined
+        liveSetup = await youtubeService.setupLiveStreamWithPersistentStream(
+          accessToken,
+          title,
+          description || '',
+          sellerAuth.default_stream_id,
+          scheduledTime,
+          privacyStatus,
+          cachedRtmp
+        )
+      }
     } else {
       // First time / no persistent stream / useWebRTC=true → 새 stream 생성
       liveSetup = await youtubeService.setupLiveStream(
