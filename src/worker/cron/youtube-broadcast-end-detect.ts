@@ -1,4 +1,5 @@
 import { logInfo, logError } from '../utils/logger'
+import { broadcastStreamStatus } from '../utils/broadcast-stream-status'
 /**
  * 라이브 방송 상태 동기화 — 5분 cron (시작 + 종료 자동 감지)
  *
@@ -100,6 +101,8 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
             SET status = 'ended', ended_at = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND status IN ('scheduled', 'live')
           `).bind(lsd.actualEndTime, stream.id).run();
+          // 🛡️ 2026-05-14: DO broadcast — 시청자 즉시 'ended' WS 신호 (Tier S seq + eventLog).
+          await broadcastStreamStatus(env, stream.id, 'ended', { type: 'system', id: 0 })
           ended++;
 
           // 셀러 알림 — 방송 종료 + 다시보기 재생 가능 여부
