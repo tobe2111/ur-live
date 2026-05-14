@@ -196,15 +196,36 @@ export class OrderRepository {
     );
     const total = countRow?.count ?? 0;
 
-    const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
-       FROM orders o
-       LEFT JOIN sellers s ON o.seller_id = s.id
-       WHERE o.user_id = ?
-       ORDER BY o.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
-    );
+    // 🛡️ 2026-05-14: sellers.kakao_chat_url 컬럼은 migration 0041/0128 으로 추가됐지만
+    //   production D1 에 미적용 가능성 → SQL error → 500. fallback 쿼리로 보호.
+    let rows: Record<string, unknown>[];
+    try {
+      rows = await this.qb.queryMany<Record<string, unknown>>(
+        `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
+         FROM orders o
+         LEFT JOIN sellers s ON o.seller_id = s.id
+         WHERE o.user_id = ?
+         ORDER BY o.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [userId, limit, offset]
+      );
+    } catch (e) {
+      const msg = (e as Error).message || '';
+      if (/no such column|kakao_chat_url|seller_phone/i.test(msg)) {
+        // 컬럼 누락 시 최소 필수 컬럼만으로 fallback (kakao_chat_url + phone 제외)
+        rows = await this.qb.queryMany<Record<string, unknown>>(
+          `SELECT o.*, s.name as seller_name
+           FROM orders o
+           LEFT JOIN sellers s ON o.seller_id = s.id
+           WHERE o.user_id = ?
+           ORDER BY o.created_at DESC
+           LIMIT ? OFFSET ?`,
+          [userId, limit, offset]
+        );
+      } else {
+        throw e;
+      }
+    }
 
     const orders = await Promise.all(
       rows.map(async row => {
