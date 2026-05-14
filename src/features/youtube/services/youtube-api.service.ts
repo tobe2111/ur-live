@@ -241,11 +241,10 @@ export class YouTubeAPIService {
             enableDvr: true,
             enableContentEncryption: false,
             enableEmbed: true,
-            // 🛡️ 2026-05-14 (사용자 결정): 'low' → 'normal' — 최고 화질 모드.
-            //   YouTube 가 더 천천히 인코딩 → B-frame 등 활용 → 출력 화질 명백히 ↑.
-            //   대가: 시청자 지연 15초 (라이브 커머스 인터랙션 약간 답답).
-            //   화질 우선 정책.
-            latencyPreference: 'normal'
+            // 🛡️ 2026-05-14 v3 (사용자 결정): 'normal' (15s) → 'low' (5-10s) 되돌림.
+            //   normal 은 화질 +α 이지만 시청자 지연 15초 → 라이브 커머스 답답.
+            //   진짜 화질 개선은 30fps (이미 적용) 가 더 영향 큼.
+            latencyPreference: 'low'
           }
         }),
         signal: AbortSignal.timeout(20000)
