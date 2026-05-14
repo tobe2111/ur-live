@@ -466,7 +466,9 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
 }
 
 // sub-router 내부에도 동일하게 등록 (정상 라우팅 시 동작) — 미들웨어 + handler 결합.
-app.post('/live/create', rateLimit({ action: 'youtube_live_create', max: 5, windowSec: 3600 }), createLiveBroadcastHandler)
+// 🛡️ 2026-05-14: 테스트 편의를 위해 rate limit 제거 (사용자 요청).
+//   필요 시 다시 `rateLimit({ action: 'youtube_live_create', max: 15, windowSec: 3600 })` 추가.
+app.post('/live/create', createLiveBroadcastHandler)
 
 /**
  * POST /api/youtube/live/create-webcam
