@@ -1145,9 +1145,11 @@ app.route('/api/guides', guideRoutes);
 //   sub-router 마운트 순서 swap 으로도 405 가 계속 발생 → Hono v4 에서 같은 prefix 의
 //   여러 sub-app 마운트 시 라우팅 분쟁이 있음. top-level 직접 등록은 분쟁 없음.
 //   sub-router 내부 등록도 유지하여 정상 작동 시 동일하게 동작.
-const _liveCreateRateLimit = rateLimitMw({ action: 'youtube_live_create', max: 5, windowSec: 3600 });
-app.post('/api/seller/youtube/live/create', _liveCreateRateLimit, createLiveBroadcastHandler);
-app.post('/api/youtube/live/create', _liveCreateRateLimit, createLiveBroadcastHandler);
+// 🛡️ 2026-05-14: rate limit 제거 (테스트 편의 — 사용자 요청). 필요 시 다시:
+//   `const _liveCreateRateLimit = rateLimitMw({ action: 'youtube_live_create', max: 15, windowSec: 3600 });`
+//   `app.post(..., _liveCreateRateLimit, createLiveBroadcastHandler);`
+app.post('/api/seller/youtube/live/create', createLiveBroadcastHandler);
+app.post('/api/youtube/live/create', createLiveBroadcastHandler);
 
 // 그 외 /live/* 경로 (status, start, end, chat 등) 는 기존대로 sub-router 사용.
 // 🛡️ 2026-05-12: youtubeLiveRoutes 를 먼저 마운트 — Hono v4 에서 같은 prefix 에
