@@ -277,7 +277,7 @@ export class YouTubeAPIService {
   async createStream(
     accessToken: string,
     title: string,
-    resolution: '1080p' | '720p' | '480p' = '1080p',
+    resolution: '1080p' | '720p' | '480p' | 'variable' = '1080p',
     frameRate: '30fps' | '60fps' | 'variable' = '30fps',
     ingestionType: 'rtmp' | 'webrtc' = 'rtmp'
   ): Promise<YouTubeStream> {
@@ -542,11 +542,15 @@ export class YouTubeAPIService {
       privacyStatus
     )
 
-    // Create stream
+    // 🛡️ 2026-05-14: WebRTC ingestion 은 cdn.resolution 을 'variable' 로만 허용.
+    //   '1080p' / '720p' 등 고정값 보내면 "Invalid value for resolution" 400.
+    //   WebRTC 는 브라우저가 적응형 송출하므로 YouTube 가 resolution 자동 결정.
+    const resolution: '1080p' | '720p' | '480p' | 'variable' =
+      ingestionType === 'webrtc' ? 'variable' : '1080p'
     const stream = await this.createStream(
       accessToken,
       `${title} - Stream`,
-      '1080p',
+      resolution,
       frameRate,
       ingestionType
     )
