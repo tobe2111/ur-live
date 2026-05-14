@@ -2812,19 +2812,73 @@ const omeProxyHandler = async (c: Context<{ Bindings: Env }>) => {
   const streamId = parseInt(c.req.param('streamId') || '0')
   if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid streamId' }, 400)
 
-  // 본인 stream 검증
+  // 🛡️ 2026-05-14: stream + RTMP key 함께 검증. admission webhook 의 deny 'stream/rtmp_key not found'
+  //   사고 방지 — 사전에 같은 조건 체크해서 명확한 reason 반환.
   const stream = await c.env.DB.prepare(`
-    SELECT id FROM live_streams WHERE id = ? AND seller_id = ?
-  `).bind(streamId, sellerId).first()
+    SELECT id, rtmp_url, rtmp_key FROM live_streams WHERE id = ? AND seller_id = ?
+  `).bind(streamId, sellerId).first<{ id: number; rtmp_url: string | null; rtmp_key: string | null }>()
   if (!stream) return c.json({ success: false, error: 'Stream not found' }, 404)
+  if (!stream.rtmp_url || !stream.rtmp_key) {
+    return c.json({
+      success: false,
+      error: 'RTMP key 없는 stream — broadcast 다시 생성 필요',
+      error_code: 'NO_RTMP_KEY',
+      reason: 'stream/rtmp_key not found',
+    }, 400)
+  }
 
   if (!c.env.OME_HOST) {
     return c.json({ success: false, error: 'OME_HOST not configured' }, 503)
+  }
+  if (!c.env.OME_WEBHOOK_SECRET) {
+    return c.json({ success: false, error: 'OME_WEBHOOK_SECRET not configured' }, 503)
   }
 
   const token = c.req.query('token')
   const streamName = c.req.query('stream_name') || `s${streamId}`
   if (!token) return c.json({ success: false, error: 'token query required' }, 400)
+
+  // 🛡️ 2026-05-14: 사전 token 검증 — admission webhook 의 reason 을 명확히 사용자에게 전달.
+  //   OME 가 401 반환 시 "AdmissionWebhooks error" 만 보이고 진짜 이유 안 보이는 문제 해결.
+  try {
+    const [payloadB64, sig] = token.split('.')
+    if (!payloadB64 || !sig) {
+      return c.json({ success: false, error: 'Malformed token (missing payload or signature)', error_code: 'BAD_TOKEN' }, 400)
+    }
+    let payload: string
+    try { payload = atob(payloadB64) } catch {
+      return c.json({ success: false, error: 'Token base64 decode failed', error_code: 'BAD_TOKEN' }, 400)
+    }
+    const [sIdStr, stIdStr, expStr] = payload.split('|')
+    const tokenSellerId = parseInt(sIdStr)
+    const tokenStreamId = parseInt(stIdStr)
+    const tokenExp = parseInt(expStr)
+    if (!tokenSellerId || !tokenStreamId || !tokenExp) {
+      return c.json({ success: false, error: 'Token payload malformed', error_code: 'BAD_TOKEN' }, 400)
+    }
+    if (tokenSellerId !== sellerId || tokenStreamId !== streamId) {
+      return c.json({ success: false, error: 'Token sellerId/streamId mismatch with proxy URL', error_code: 'TOKEN_MISMATCH' }, 401)
+    }
+    if (Date.now() / 1000 > tokenExp) {
+      return c.json({
+        success: false,
+        error: '토큰 만료 — 라이브 시작 페이지 새로고침 후 다시 시도',
+        error_code: 'TOKEN_EXPIRED',
+        expired_at: tokenExp,
+        now: Math.floor(Date.now() / 1000),
+      }, 401)
+    }
+    const expectedSig = await hmacHex(c.env.OME_WEBHOOK_SECRET, payload)
+    if (sig !== expectedSig) {
+      return c.json({
+        success: false,
+        error: 'Token signature mismatch (OME_WEBHOOK_SECRET 불일치 가능)',
+        error_code: 'BAD_SIG',
+      }, 401)
+    }
+  } catch (e) {
+    return c.json({ success: false, error: 'Token validation error: ' + (e as Error).message }, 500)
+  }
 
   const omeUrl = `https://${c.env.OME_HOST}:3334/app/${streamName}?direction=whip&token=${encodeURIComponent(token)}`
 
@@ -2848,6 +2902,11 @@ const omeProxyHandler = async (c: Context<{ Bindings: Env }>) => {
     const respHeaders: Record<string, string> = { 'Content-Type': omeRes.headers.get('Content-Type') || 'application/sdp' }
     const location = omeRes.headers.get('Location') || omeRes.headers.get('location')
     if (location) respHeaders['Location'] = location
+    // 🛡️ OME 가 401 반환 시 body 에 reason 헤더로 같이 전달 (디버깅 용이)
+    if (omeRes.status === 401) {
+      console.warn('[OME WHIP proxy] OME returned 401 — admission denied. URL:', omeUrl.slice(0, 100), 'body:', responseBody.slice(0, 200))
+      respHeaders['X-OME-Status'] = String(omeRes.status)
+    }
     return new Response(responseBody, { status: omeRes.status, headers: respHeaders })
   } catch (e) {
     return c.json({
