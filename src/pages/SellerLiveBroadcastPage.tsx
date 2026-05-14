@@ -114,16 +114,11 @@ export default function SellerLiveBroadcastPage() {
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
-  // 🛡️ 2026-05-13: frameRate — 30fps (기본) / 60fps (패션/뷰티 자연스러움) / variable.
-  //   localStorage 에 마지막 선택 기억 — 셀러 카테고리 따라 매번 안 바꿔도 됨.
-  const [frameRate, setFrameRate] = useState<'30fps' | '60fps' | 'variable'>(() => {
-    if (typeof window === 'undefined') return '30fps'
-    const v = localStorage.getItem('ur_seller_framerate_v1')
-    return v === '60fps' || v === 'variable' ? v : '30fps'
-  })
-  useEffect(() => {
-    try { localStorage.setItem('ur_seller_framerate_v1', frameRate) } catch { /* ignore */ }
-  }, [frameRate])
+  // 🛡️ 2026-05-14: frameRate UI 제거 — 무조건 60fps 강제 (최고 화질).
+  //   StepInfo 가 더 이상 선택지 노출 안 함. 셀러 PC/모바일 카메라가 60fps 못 잡으면
+  //   getUserMedia 가 자동 fallback (30fps) → 화질 손실 없음.
+  const frameRate: '60fps' = '60fps'
+  const setFrameRate = () => { /* no-op — UI 제거됨 */ }
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('public')
 
   // UI
