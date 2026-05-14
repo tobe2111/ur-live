@@ -1550,7 +1550,8 @@ app.post('/live/_verify-whip-proxy', async (c) => {
       result.webrtc_detail = '❌ YouTube OAuth 토큰 없음 — /seller/youtube/connect 먼저 연결 필요'
     } else {
       const testTitle = `_verify-whip-proxy-${Date.now()}`
-      const testStream = await youtubeService.createStream(accessToken, testTitle, '1080p', '30fps', 'webrtc')
+      // 🛡️ 2026-05-14: WebRTC ingestion 은 cdn.resolution='variable' 만 허용
+      const testStream = await youtubeService.createStream(accessToken, testTitle, 'variable', '30fps', 'webrtc')
       await trackQuota(c.env, QUOTA_COST.insert, 'verify_whip_proxy', c.executionCtx)
       result.test_stream_id = testStream.id
       const addr = testStream.ingestionInfo.ingestionAddress || ''
