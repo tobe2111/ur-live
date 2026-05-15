@@ -259,7 +259,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
-      <div className="w-full max-w-[360px]">
+      {/* 🛡️ 2026-05-14: 태블릿/PC 에서 form 너비 자연스럽게 — 모바일 360px / 태블릿+ 420px */}
+      <div className="w-full max-w-[360px] md:max-w-[420px]">
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-16">
