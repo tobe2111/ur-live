@@ -5,7 +5,7 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { safeTime } from '@/utils/safe-date'
 import { ScheduledBroadcastWaiting } from '../SellerLiveBroadcast.WaitingScreens'
@@ -126,6 +126,28 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
               RTMP 키 다시 보기 →
             </a>
           </div>
+        </div>
+      )}
+
+      {/* 🛡️ 2026-05-14: OME 미가용 + 모바일 fallback — 모바일에선 OBS 불가능, 명확한 안내. */}
+      {omeAvailable === false && !hasPersistentKey && !(stream.rtmp_url && stream.rtmp_key) && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-red-900">미디어 서버 일시 장애</p>
+              <p className="text-xs text-red-700 mt-1">송출 인프라가 일시적으로 사용 불가합니다. 잠시 후 새로고침해주세요.</p>
+              <p className="text-[11px] text-red-600 mt-2">계속 문제 시 운영팀 문의</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🛡️ 로딩 상태 표시 (omeAvailable === null) — 빈 화면 방지 */}
+      {omeAvailable === null && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 flex items-center justify-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+          <span className="text-sm text-gray-600">송출 준비 중...</span>
         </div>
       )}
 
