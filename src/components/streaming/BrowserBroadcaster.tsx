@@ -874,7 +874,9 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       {/* 비디오 미리보기 — 🛡️ 2026-05-14: 송출이 9:16 세로 (모바일 라이브 커머스 표준)
           → 미리보기 컨테이너도 9:16 으로 변경. 모바일은 max-h 로 화면 넘침 방지. */}
       <div className="relative bg-black rounded-xl overflow-hidden mx-auto aspect-[9/16] max-h-[70vh] w-auto">
-        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+        {/* 🛡️ 2026-05-14: object-cover → object-contain. cover 가 container 채우려고 확대+잘라서
+            셀러에게 "zoom 인" 사고 발생. contain 으로 letterbox (검은 띠) 표시 — 영상 원본 비율 유지 + zoom 0. */}
+        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain bg-black" />
         {status === 'idle' && (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400">
             <Camera className="w-12 h-12 opacity-30" />
