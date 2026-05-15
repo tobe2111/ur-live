@@ -644,7 +644,7 @@ export default function SellerLiveBroadcastPage() {
     <SellerLayout title={t('seller.nav.liveBroadcast')}>
       <div className="max-w-md mx-auto py-16 text-center space-y-4">
         <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto" />
-        <p className="text-sm text-gray-500">{t('seller.liveBroadcast.checkingYoutube', { defaultValue: 'YouTube 연동 상태 확인 중…' })}</p>
+        <p className="text-sm text-gray-700">{t('seller.liveBroadcast.checkingYoutube', { defaultValue: 'YouTube 연동 상태 확인 중…' })}</p>
       </div>
     </SellerLayout>
   )
@@ -658,7 +658,7 @@ export default function SellerLiveBroadcastPage() {
         </div>
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">{t('seller.liveBroadcast.youtubeRequired')}</h2>
-          <p className="text-sm text-gray-500">{t('seller.liveBroadcast.youtubeRequiredDesc')}</p>
+          <p className="text-sm text-gray-700">{t('seller.liveBroadcast.youtubeRequiredDesc')}</p>
         </div>
         <Button onClick={connectYouTube} disabled={connectingYouTube} className="bg-red-600 hover:bg-red-700 text-white w-full">
           {connectingYouTube ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Youtube className="h-4 w-4 mr-2" />}
