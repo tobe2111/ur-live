@@ -1719,8 +1719,8 @@ app.post('/live/:id/admin-force-end', requireAdmin(), async (c) => {
   `).bind(`zombie_stream:${streamId}`).run().catch(() => {})
 
   // 🛡️ 2026-05-14: DO broadcast — 시청자 즉시 'ended' WS 신호 (Tier S seq + eventLog 자동).
-  //   이전: admin-force-end 만 DO broadcast 누락 → 시청자가 30s 폴링 후 알게 됨.
-  await broadcastStreamStatus(c.env, streamId, 'ended', { type: 'admin', id: 0 }, c.executionCtx?.waitUntil?.bind(c.executionCtx))
+  //   waitUntil 사용 X — 동기 await 로 진짜 즉시 시청자에게 전달.
+  await broadcastStreamStatus(c.env, streamId, 'ended', { type: 'admin', id: 0 })
 
   return c.json({ success: true, message: `Stream ${streamId} 강제 종료 완료` })
 })
@@ -1975,7 +1975,8 @@ app.post('/live/:id/end', async (c) => {
       }
     }
     // DO broadcast — 라이브 페이지 시청자 즉시 'ended' WebSocket 신호.
-    //   handleBroadcast 형식: { type: 'stream_status', data: { status, live_stream_id }, timestamp }
+    // 🛡️ 2026-05-14: waitUntil (lazy 1-2s 지연) 제거 → 동기 await.
+    //   '셀러 종료 즉시 = 시청자도 즉시' 보장. 셀러는 응답 1-2초 늦어져도 무방.
     if (env.LIVE_STREAM) {
       try {
         const doId = env.LIVE_STREAM.idFromName(String(streamId))
@@ -1994,8 +1995,7 @@ app.post('/live/:id/end', async (c) => {
             timestamp: Date.now(),
           }),
         })
-        if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(broadcastEnd.then(() => {}).catch(() => {}))
-        else await broadcastEnd.catch(() => {})
+        await broadcastEnd.catch(() => {})
       } catch (e) {
         console.warn('[YouTube Live End] DO broadcast failed:', (e as Error).message)
       }
