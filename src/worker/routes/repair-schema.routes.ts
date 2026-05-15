@@ -119,6 +119,12 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     { desc: 'live_streams.peak_viewers', sql: "ALTER TABLE live_streams ADD COLUMN peak_viewers INTEGER DEFAULT 0" },
     // 2026-05-10: OME push 등 송출 측 에러를 셀러 진단 페이지에서 노출하기 위함
     { desc: 'live_streams.last_error', sql: "ALTER TABLE live_streams ADD COLUMN last_error TEXT" },
+    // 🛡️ 2026-05-14: VOD 다시보기 상태 — cron 이 YouTube videos.list 로 채움.
+    //   vod_ready 1 = YouTube 가 VOD 처리 완료, 시청 가능
+    //   vod_blocked_reason: 'private' / 'embed_disabled' / 'made_for_kids' / 'processing_failed'
+    { desc: 'live_streams.vod_ready', sql: "ALTER TABLE live_streams ADD COLUMN vod_ready INTEGER DEFAULT 0" },
+    { desc: 'live_streams.vod_blocked_reason', sql: "ALTER TABLE live_streams ADD COLUMN vod_blocked_reason TEXT" },
+    { desc: 'live_streams.vod_checked_at', sql: "ALTER TABLE live_streams ADD COLUMN vod_checked_at DATETIME" },
     // 2026-05-10: 셀러가 직접 업로드한 썸네일 (YouTube 자동 썸네일과 별도 보존)
     { desc: 'live_streams.custom_thumbnail_url', sql: "ALTER TABLE live_streams ADD COLUMN custom_thumbnail_url TEXT" },
     // 2026-05-11: admission webhook 이 status='live' 와 동시에 박는 시각. agency-calendar/kpi/stats 가 참조.

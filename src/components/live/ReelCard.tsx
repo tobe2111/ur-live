@@ -661,15 +661,30 @@ function ReelCardImpl({
     }
   }, [isActive, finalStatus])
 
-  // VOD 준비 대기: ended 전환 후 5분 뒤 YouTube 처리 완료 가정
-  // 🛡️ 2026-05-14: finalStatus 사용 — WS / 폴링으로 ended 받았을 때도 작동.
-  //   기존: stream.status (초기 props) 만 봐서 WS 이벤트 무시 → 시청자 무한 loading 사고.
+  // 🛡️ 2026-05-14 (이상적 fix): VOD 상태 — 서버 DB 값 (vod_ready) 우선 사용.
+  //   기존: 5분 timeout assumption (실제 YouTube 상태 모름).
+  //   변경: cron 이 YouTube videos.list 로 uploadStatus 확인 → vod_ready/vod_blocked_reason DB 저장.
+  //         시청자는 polledStream 통해 정확한 상태 알 수 있음.
+  //         polling 30s 마다 한 번씩 자동 체크.
+  //   fallback: 서버 값 없거나 polledStream 미수신 시 5분 timeout.
   useEffect(() => {
     if (finalStatus !== 'ended') { setVodReady(true); return }
+    const polled = polledStream as (typeof stream & { vod_ready?: number; vod_blocked_reason?: string | null }) | null
+    const serverVodReady = polled?.vod_ready
+    if (serverVodReady === 1) {
+      setVodReady(true)
+      return
+    }
+    if (polled?.vod_blocked_reason) {
+      // VOD 차단됨 — vodReady false 유지, UI 가 차단 사유 표시
+      setVodReady(false)
+      return
+    }
+    // 서버 데이터 없으면 5분 timeout (legacy fallback)
     setVodReady(false)
     const id = setTimeout(() => setVodReady(true), 5 * 60 * 1000)
     return () => clearTimeout(id)
-  }, [finalStatus])
+  }, [finalStatus, polledStream])
 
   // 다음 라이브 예고: 스트림 종료 시 셀러의 다음 scheduled 라이브 조회 — finalStatus 사용
   useEffect(() => {
@@ -1126,16 +1141,48 @@ function ReelCardImpl({
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
-      {/* 라이브 종료 후 VOD 준비 대기 오버레이 (5분) — finalStatus 사용 */}
-      {finalStatus === 'ended' && !vodReady && (
+      {/* 🛡️ 2026-05-14 (이상적 fix): VOD 상태별 차별화 UI.
+          - 차단 (private/embed_disabled/등): 명확한 사유 + 셀러에게 문의 안내
+          - 처리 중: 진행 + 다음 라이브 안내 (단순 'X분 후' 추측 대신 자동 새로고침으로 실제 ready 알림 받음) */}
+      {finalStatus === 'ended' && !vodReady && (() => {
+        const polled = polledStream as (typeof stream & { vod_blocked_reason?: string | null }) | null
+        const blockedReason = polled?.vod_blocked_reason
+        const reasonMap: Record<string, string> = {
+          'private': '비공개 영상',
+          'embed_disabled': '임베드 차단',
+          'made_for_kids': '아동용 표시',
+          'processing_failed': 'YouTube 처리 실패',
+        }
+        const isBlocked = !!blockedReason
+        const reasonText = blockedReason
+          ? blockedReason.split(',').map(r => reasonMap[r.trim()] || r).join(', ')
+          : null
+        return (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 px-6 text-center">
-          <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center mb-4 animate-pulse">
-            <svg className="w-8 h-8 text-white/60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.132a1 1 0 01-1.447.899L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-            </svg>
+          <div className={`h-16 w-16 rounded-full flex items-center justify-center mb-4 ${isBlocked ? 'bg-rose-500/20' : 'bg-white/10 animate-pulse'}`}>
+            {isBlocked ? (
+              <svg className="w-8 h-8 text-rose-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-white/60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.132a1 1 0 01-1.447.899L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+              </svg>
+            )}
           </div>
-          <p className="text-white text-base font-bold mb-1">{t('live.vodPreparing', { defaultValue: '다시보기 준비 중' })}</p>
-          <p className="text-white/50 text-sm">{t('live.vodPreparingDesc', { defaultValue: '방송이 종료되었습니다. 잠시 후 다시보기가 제공됩니다.' })}</p>
+          {isBlocked ? (
+            <>
+              <p className="text-white text-base font-bold mb-1">다시보기 제공 불가</p>
+              <p className="text-white/70 text-sm mb-1">사유: {reasonText}</p>
+              <p className="text-white/50 text-xs">셀러가 YouTube Studio 에서 공개 + 임베드 허용으로 변경하면 다시 시청 가능합니다.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-white text-base font-bold mb-1">{t('live.vodPreparing', { defaultValue: '다시보기 준비 중' })}</p>
+              <p className="text-white/50 text-sm">{t('live.vodPreparingDesc', { defaultValue: '방송 종료됨. YouTube 가 다시보기 준비 중 (보통 3-10분).' })}</p>
+              <p className="text-white/40 text-xs mt-2">준비되면 자동으로 시청 가능합니다.</p>
+            </>
+          )}
           {nextLive && (
             <div className="mt-4 rounded-xl bg-white/10 px-4 py-3 text-left w-full max-w-xs">
               <p className="text-white/60 text-xs mb-1">{t('live.nextLive', { defaultValue: '다음 라이브' })}</p>
@@ -1146,7 +1193,8 @@ function ReelCardImpl({
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* 다음 라이브 예고 (VOD 준비 완료 후에도 표시) */}
       {finalStatus === 'ended' && vodReady && nextLive && (

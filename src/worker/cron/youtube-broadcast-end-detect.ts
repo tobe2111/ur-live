@@ -37,6 +37,7 @@ interface VideoItem {
     privacyStatus?: 'public' | 'unlisted' | 'private';
     embeddable?: boolean;
     madeForKids?: boolean;
+    uploadStatus?: 'uploaded' | 'processed' | 'failed' | 'rejected' | 'deleted';
   };
 }
 
@@ -93,6 +94,35 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
     if (!lsd) continue;
 
     try {
+      // 🛡️ 2026-05-14: VOD 상태 함께 체크 (모든 ended stream 에 대해 매 cron 마다).
+      //   uploadStatus = 'processed' 이고 차단 사유 없으면 vod_ready=1.
+      //   차단 사유 있으면 vod_blocked_reason 저장.
+      const vodStatus = video.status;
+      const blockReasons: string[] = [];
+      if (vodStatus?.privacyStatus === 'private') blockReasons.push('private');
+      if (vodStatus?.embeddable === false) blockReasons.push('embed_disabled');
+      if (vodStatus?.madeForKids === true) blockReasons.push('made_for_kids');
+      const uploadStatus = vodStatus?.uploadStatus; // 'uploaded' | 'processed' | 'failed' | 'rejected' | 'deleted'
+      const isProcessed = uploadStatus === 'processed';
+      const isFailed = uploadStatus === 'failed' || uploadStatus === 'rejected' || uploadStatus === 'deleted';
+      let vodReady = 0;
+      let vodBlockedReason: string | null = null;
+      if (blockReasons.length > 0) vodBlockedReason = blockReasons.join(',');
+      else if (isFailed) vodBlockedReason = 'processing_failed';
+      else if (isProcessed) vodReady = 1;
+      // 종료된 stream 만 vod 컬럼 업데이트
+      if (stream.status === 'ended' || lsd.actualEndTime) {
+        await DB.prepare(`
+          UPDATE live_streams
+          SET vod_ready = ?, vod_blocked_reason = ?, vod_checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(vodReady, vodBlockedReason, stream.id).run().catch(() => { /* column 없으면 skip */ });
+        // VOD 상태 변화 알림 (이번 cron 에서 처음 ready 가 됐으면 시청자 WS 알림)
+        if (vodReady === 1 || vodBlockedReason) {
+          await broadcastStreamStatus(env, stream.id, 'ended', { type: 'system', id: 0 }).catch(() => {})
+        }
+      }
+
       // 종료 감지 (최우선)
       if (lsd.actualEndTime) {
         if (stream.status !== 'ended') {
