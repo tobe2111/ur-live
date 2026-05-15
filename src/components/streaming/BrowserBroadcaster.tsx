@@ -85,6 +85,29 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     return () => { cancelled = true }
   }, [streamId])
 
+  // 🛡️ 2026-05-14: Page Visibility 자동 reconnect — 모바일 탭 복귀 / 다른 앱 → 복귀 케이스.
+  //   탭이 background 갔다가 foreground 로 돌아왔는데 status='failed' 거나 PC 연결이 끊긴 상태면
+  //   사용자 클릭 없이 자동 재연결. 모바일 셀러가 카톡 답하고 돌아왔을 때 끊김 없는 경험.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) return
+      // 복귀 시점에 연결이 깨져있으면 자동 재연결
+      const pc = pcRef.current
+      const connectionBroken = !pc || pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed'
+      const shouldReconnect = wasConnectedRef.current && connectionBroken && !userStoppedRef.current
+      if (shouldReconnect) {
+        if (import.meta.env.DEV) console.log('[BrowserBroadcaster] 탭 복귀 — 자동 재연결')
+        // 기존 PC 정리 + token 재발급 + 재시작
+        try { pcRef.current?.close() } catch { /* ignore */ }
+        prewarmedTokenRef.current = null
+        void startBroadcast()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 디바이스 목록 로드 (카메라/마이크 선택용)
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) return

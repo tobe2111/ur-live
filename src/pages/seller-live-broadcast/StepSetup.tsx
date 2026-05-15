@@ -64,17 +64,36 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
 
   // 브라우저 송출 가용성:
   //   1. stream.rtmp_key 있으면 YouTube WHIP direct → 항상 가능 (OME 불필요)
-  //   2. rtmp_key 없으면 OME health check
+  //   2. rtmp_key 없으면 OME health check (가용성 false 면 5s 마다 자동 재시도 → 회복 시 자동 표시)
+  // 🛡️ 2026-05-14: 사용자에게 "새로고침 하세요" 강요 X. 자동 복구가 우선.
   useEffect(() => {
     if (stream.rtmp_key) {
       setOmeAvailable(true)  // YouTube WHIP direct 사용 가능
       return
     }
     let cancelled = false
-    api.get('/api/seller/youtube/streaming/health')
-      .then(r => { if (!cancelled) setOmeAvailable(!!(r.data?.data?.ome_available || r.data?.data?.youtube_whip_available)) })
-      .catch(() => { if (!cancelled) setOmeAvailable(false) })
-    return () => { cancelled = true }
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    const check = () => {
+      api.get('/api/seller/youtube/streaming/health')
+        .then(r => {
+          if (cancelled) return
+          const ok = !!(r.data?.data?.ome_available || r.data?.data?.youtube_whip_available)
+          setOmeAvailable(ok)
+          if (!ok) {
+            retryTimer = setTimeout(check, 5000) // 5s 마다 자동 재시도
+          }
+        })
+        .catch(() => {
+          if (cancelled) return
+          setOmeAvailable(false)
+          retryTimer = setTimeout(check, 5000)
+        })
+    }
+    check()
+    return () => {
+      cancelled = true
+      if (retryTimer) clearTimeout(retryTimer)
+    }
   }, [stream.rtmp_key])
 
   // 대기 경과 시간 카운터 (탈출 안내 표시용)
@@ -129,16 +148,14 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         </div>
       )}
 
-      {/* 🛡️ 2026-05-14: OME 미가용 + 모바일 fallback — 모바일에선 OBS 불가능, 명확한 안내. */}
+      {/* 🛡️ 2026-05-14: OME 미가용 시 자동 재시도 — "새로고침 하세요" 안 함, 5s 마다 자동 health check.
+          가용성 회복 시 자동으로 BrowserBroadcaster 표시. */}
       {omeAvailable === false && !hasPersistentKey && !(stream.rtmp_url && stream.rtmp_key) && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-red-900">미디어 서버 일시 장애</p>
-              <p className="text-xs text-red-700 mt-1">송출 인프라가 일시적으로 사용 불가합니다. 잠시 후 새로고침해주세요.</p>
-              <p className="text-[11px] text-red-600 mt-2">계속 문제 시 운영팀 문의</p>
-            </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-amber-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900">송출 인프라 점검 중...</p>
+            <p className="text-[11px] text-amber-700 mt-0.5">잠시 후 자동으로 시작됩니다 (수동 새로고침 불필요)</p>
           </div>
         </div>
       )}
