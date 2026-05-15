@@ -363,49 +363,83 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
     setErrorMsg(null)
 
     // 1. 카메라/마이크 권한 + stream — 재연결 시엔 기존 stream 재사용
-    let stream: MediaStream
+    let stream: MediaStream | null = null
     if (streamRef.current && streamRef.current.getTracks().every(t => t.readyState === 'live')) {
       stream = streamRef.current
     } else {
     setStatus('requesting_camera')
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
+    // 🛡️ 2026-05-14 v6 (이상적): Multi-step constraint negotiation.
+    //   카메라 capability 단계별로 시도. 가장 9:16 에 가까운 native 비율 자동 선택, crop/zoom 없음.
+    //
+    //   1차: 9:16 ideal 1080×1920 — 모던 폰 (iPhone 12+ / Galaxy S20+) 메인 카메라
+    //   2차: 4:3 portrait 1080×1440 — 4:3 sensor 폰 fallback
+    //   3차: 720p 어떤 비율이든 — 구형 디바이스 호환성 보장
+    //
+    //   각 단계 실패 시 다음 단계 시도. 권한 거부 시 즉시 중단.
+    const baseAudio: MediaTrackConstraints = {
+      deviceId: selected.micId ? { exact: selected.micId } : undefined,
+      channelCount: { ideal: 2 },
+      sampleRate: { ideal: 48000 },
+      ...({ echoCancellationType: { ideal: 'system' } } as MediaTrackConstraints),
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    }
+    const videoDeviceConstraint: { deviceId?: { exact: string } } = selected.camId ? { deviceId: { exact: selected.camId } } : {}
+    const constraintLadder: MediaStreamConstraints[] = [
+      // 1차: 9:16 portrait (TikTok/Shorts 스타일)
+      {
         video: {
-          deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          // 🛡️ 2026-05-14 v5 (최종): aspectRatio 강제 제거, 1080×1920 요청만 — TikTok/Shorts 스타일.
-          //   동작:
-          //     - 모던 폰 (iPhone 12+ / Galaxy S20+) 메인 카메라: native 9:16 지원 → 1080×1920 (풀스크린, zoom 0)
-          //     - 4:3 sensor 폰: native 4:3 → 1080×1440 (검은띠 약간 있지만 zoom 0)
-          //   브라우저 getUserMedia 가 카메라 가능 범위에서 가장 가까운 값 자동 선택.
-          //   aspectRatio 강제 안 함 → 카메라가 4:3 만 지원해도 crop (zoom 인) 없음.
+          ...videoDeviceConstraint,
           width: { ideal: 1080, min: 720 },
           height: { ideal: 1920, min: 1280 },
           frameRate: { ideal: 30, min: 24, max: 30 },
           latency: { ideal: 0 },
         } as MediaTrackConstraints,
-        audio: {
-          deviceId: selected.micId ? { exact: selected.micId } : undefined,
-          // 🛡️ 2026-05-14: stereo 명시 + Opus native 48kHz — 디바이스가 기본 mono/44.1kHz
-          //   잡는 경우에도 강제 stereo 캡처. 음악·소리 풍부함 +50%.
-          channelCount: { ideal: 2 },
-          sampleRate: { ideal: 48000 },
-          // 🛡️ 2026-05-14 M5: 'system' echo cancel — macOS/iOS 하드웨어 에코 캔슬 우선.
-          //   브라우저 SW echo cancel (기본) 보다 깨끗 + CPU ↓. 미지원 OS 는 자동 SW fallback.
-          //   echoCancellationType 은 Chrome 확장 — 표준 외 속성이라 cast.
-          ...({ echoCancellationType: { ideal: 'system' } } as MediaTrackConstraints),
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      })
+        audio: baseAudio,
+      },
+      // 2차: 4:3 portrait (구형 폰 fallback)
+      {
+        video: {
+          ...videoDeviceConstraint,
+          width: { ideal: 1080, min: 720 },
+          height: { ideal: 1440, min: 960 },
+          frameRate: { ideal: 30, min: 24, max: 30 },
+        } as MediaTrackConstraints,
+        audio: baseAudio,
+      },
+      // 3차: 720p 어떤 비율이든 (호환성 보장)
+      {
+        video: {
+          ...videoDeviceConstraint,
+          width: { ideal: 720, min: 480 },
+          height: { ideal: 1280, min: 720 },
+        } as MediaTrackConstraints,
+        audio: baseAudio,
+      },
+    ]
+    try {
+      let lastErr: unknown = null
+      for (let i = 0; i < constraintLadder.length; i++) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraintLadder[i])
+          if (import.meta.env.DEV) console.log(`[BrowserBroadcaster] getUserMedia step ${i + 1} 성공`)
+          break
+        } catch (e) {
+          lastErr = e
+          if (import.meta.env.DEV) console.warn(`[BrowserBroadcaster] getUserMedia step ${i + 1} 실패:`, (e as Error).message)
+          if ((e as Error).name === 'NotAllowedError' || (e as Error).name === 'PermissionDeniedError') throw e
+        }
+      }
+      if (!stream) throw lastErr || new Error('카메라 접근 실패')
     } catch (e) {
-      const isPermDenied = (e as Error).name === 'NotAllowedError'
+      const isPermDenied = (e as Error).name === 'NotAllowedError' || (e as Error).name === 'PermissionDeniedError'
       const msg = isPermDenied
         ? '카메라/마이크 권한이 거부됐어요. 주소창의 자물쇠 아이콘에서 허용으로 변경해주세요.'
         : '카메라 접근 실패: ' + (e as Error).message
-      // 🛡️ 2026-05-11: 권한 거부는 별도 status — 재시도해도 같은 에러 반복되므로 사용자 행동 필요.
       setErrorMsg(msg); setStatus(isPermDenied ? 'permission_denied' : 'failed'); onError?.(msg); return
     }
+    if (!stream) { setErrorMsg('카메라 스트림 없음'); setStatus('failed'); return }
     streamRef.current = stream
     if (videoRef.current) videoRef.current.srcObject = stream
     // 🛡️ 2026-05-13: 실제 캡처 해상도 측정 → 셀러 UI 경고용
@@ -425,15 +459,27 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
         try {
           const caps = (vt.getCapabilities?.() as MediaTrackCapabilities & {
             exposureMode?: string[]; whiteBalanceMode?: string[]; focusMode?: string[];
+            zoom?: { min: number; max: number; step: number };
+            backgroundBlur?: boolean[];
+            centerStage?: boolean[];
           }) || {}
           const applied: MediaTrackConstraintSet & {
             exposureMode?: string; whiteBalanceMode?: string; focusMode?: string;
+            zoom?: number; backgroundBlur?: boolean; centerStage?: boolean;
           } = {}
           if (caps.exposureMode?.includes('continuous')) applied.exposureMode = 'continuous'
           if (caps.whiteBalanceMode?.includes('continuous')) applied.whiteBalanceMode = 'continuous'
           if (caps.focusMode?.includes('continuous')) applied.focusMode = 'continuous'
+          // 🛡️ 2026-05-14 (zoom 사고 fix): iOS Center Stage / Android Auto-framing / 디지털 zoom 강제 OFF.
+          //   사용자 신고: '카메라가 줌 된 것 같음, 그런 세팅 안 함'.
+          //   원인: iPhone Pro 의 Center Stage / Galaxy Auto-framing 이 자동 활성 → 얼굴 zoom 추적.
+          //   해결: zoom=1.0 (기본) + centerStage/backgroundBlur false 강제.
+          if (caps.zoom && typeof caps.zoom.min === 'number') applied.zoom = caps.zoom.min // 가장 wide (zoom out)
+          if (Array.isArray(caps.centerStage) && caps.centerStage.includes(false)) applied.centerStage = false
+          if (Array.isArray(caps.backgroundBlur) && caps.backgroundBlur.includes(false)) applied.backgroundBlur = false
           if (Object.keys(applied).length > 0) {
             await vt.applyConstraints({ advanced: [applied] } as MediaTrackConstraints).catch(() => { /* 일부 카메라 unsupported */ })
+            if (import.meta.env.DEV) console.log('[BrowserBroadcaster] 카메라 settings applied:', applied)
           }
         } catch { /* 미지원 카메라 — skip */ }
       }
