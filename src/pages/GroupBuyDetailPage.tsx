@@ -291,7 +291,7 @@ export default function GroupBuyDetailPage() {
         </button>
         <KakaoShareButton
           title={`${detail.name} 공구 참여하기`}
-          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '단계별 할인'}${myUserId ? ' · 친구 초대 시 양쪽 1% 보너스' : ''}`}
+          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '단계별 할인'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
           imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
           link={shareLink}
           buttonText="나도 참여하기"

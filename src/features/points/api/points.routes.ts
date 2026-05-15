@@ -33,12 +33,17 @@ async function getDefaultCommissionRate(DB: D1Database): Promise<number> {
 }
 
 // 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 기본 10% 차감 / 식사권 5% / 어드민 조정 가능)
+// 🛡️ 2026-05-15: 충전 패키지 재설계 — 5만/10만/20만 권장 + 보너스 딜.
+//   PG 수수료 (~2.5%) 가 충전 1건마다 발생 → 1만 충전 시 마진 거의 0.
+//   고액 충전 유도로 결제 횟수 ↓ + bonus 로 사용자 perceived value ↑.
+//   bonus 는 비용이지만 마케팅 acquisition cost 로 간주 (PG 변동비보다 작음).
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 5000,   label: '5,000원 → 5,000딜' },
-  { amount: 10000,  points: 10000,  label: '10,000원 → 10,000딜' },
-  { amount: 30000,  points: 30000,  label: '30,000원 → 30,000딜' },
-  { amount: 50000,  points: 50000,  label: '50,000원 → 50,000딜' },
-  { amount: 100000, points: 100000, label: '100,000원 → 100,000딜' },
+  { amount: 5000,   points: 5000,   bonus: 0,     label: '5,000원' },
+  { amount: 10000,  points: 10000,  bonus: 0,     label: '10,000원' },
+  { amount: 30000,  points: 30000,  bonus: 600,   label: '30,000원 +2%', recommended: false },
+  { amount: 50000,  points: 50000,  bonus: 1500,  label: '50,000원 +3%', recommended: true },
+  { amount: 100000, points: 100000, bonus: 4000,  label: '100,000원 +4%', recommended: true, best: true },
+  { amount: 200000, points: 200000, bonus: 10000, label: '200,000원 +5%', recommended: false },
 ];
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
@@ -124,13 +129,19 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
     }
   } catch { /* column/shape fallback: skip guard */ }
 
+  // 🛡️ 2026-05-15: bonus 딜 포함 (5만+ 충전 시 추가 적립)
+  const bonusPoints = (pkg as { bonus?: number }).bonus ?? 0
+  const totalPoints = pkg.points + bonusPoints
+
   // pending 트랜잭션 기록
   await DB.prepare(`
     INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
     VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
   `).bind(
-    userId, amount, 0, pkg.points, // 충전은 수수료 0 (1:1)
-    `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`, orderId
+    userId, amount, 0, totalPoints, // 충전은 수수료 0 (1:1) + bonus
+    bonusPoints > 0
+      ? `딜 ${Number(pkg.points).toLocaleString('ko-KR')}개 충전 (+${bonusPoints.toLocaleString('ko-KR')}딜 보너스)`
+      : `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`, orderId
   ).run();
 
   return c.json({
@@ -138,9 +149,11 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
     data: {
       orderId,
       amount,
-      points: pkg.points,
+      points: totalPoints,
+      base_points: pkg.points,
+      bonus_points: bonusPoints,
       commission: 0, // 충전은 수수료 없음
-      orderName: `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`,
+      orderName: `딜 ${Number(totalPoints).toLocaleString('ko-KR')}개 충전`,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
   });
