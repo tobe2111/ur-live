@@ -18,6 +18,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
+import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -772,8 +773,7 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
         `SELECT category, group_buy_status, group_buy_current FROM products WHERE id = ? AND seller_id = ?`
       ).bind(productId, sellerId).first<{ category: string; group_buy_status: string; group_buy_current: number }>();
       if (gb) {
-        const VOUCHER = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher'];
-        if (VOUCHER.includes(gb.category) && gb.group_buy_status === 'active' && (gb.group_buy_current ?? 0) > 0) {
+        if (VOUCHER_CATEGORY_SET.has(gb.category) && gb.group_buy_status === 'active' && (gb.group_buy_current ?? 0) > 0) {
           return c.json({
             success: false,
             error: '진행 중인 공구는 삭제할 수 없습니다. 참여자 환불 후 삭제하세요.',

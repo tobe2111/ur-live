@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Gift, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId } from '@/utils/auth'
+import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -103,8 +104,7 @@ export default function ProductDetailPage() {
   // 🛡️ 2026-05-15: voucher 카테고리는 전용 detail page 로 자동 redirect (URL 보존, replace history)
   useEffect(() => {
     if (!product) return
-    const VOUCHER_CATEGORIES = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
-    if (VOUCHER_CATEGORIES.includes(product.category || '')) {
+    if (VOUCHER_CATEGORY_SET.has(product.category || '')) {
       navigate(`/group-buy/${product.id}`, { replace: true })
     }
   }, [product, navigate])
@@ -204,8 +204,7 @@ export default function ProductDetailPage() {
 
     // 🛡️ 2026-05-15: voucher 카테고리는 group-buy /join API 사용 (딜 결제 + 바우처 발급).
     //   배송 X / 옵션 X / 즉시 발급. 일반 checkout 거치면 group_buy_current 가 안 늘어 공구 미작동.
-    const VOUCHER_CATEGORIES = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
-    if (VOUCHER_CATEGORIES.includes(product.category || '')) {
+    if (VOUCHER_CATEGORY_SET.has(product.category || '')) {
       const total = product.price * quantity
       const ok = window.confirm(
         t('groupBuy.confirmJoin', {
