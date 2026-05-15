@@ -48,6 +48,7 @@ const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
 const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
+const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
 const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
@@ -225,6 +226,12 @@ export function SellerRoutes() {
       <Route path="/seller/2fa" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><Seller2FASetupPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 단골에게 push 알림 발송 */}
+      <Route path="/seller/notify-followers" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerNotifyFollowersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/streaming-setup" element={

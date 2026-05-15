@@ -174,6 +174,7 @@ import { currencyRoutes } from './routes/currency.routes';
 import { ocrRoutes } from './routes/ocr.routes';
 import { disputesRoutes } from './routes/disputes.routes';
 import { twofaRoutes } from './routes/twofa.routes';
+import { sellerPublicRoutes } from '../features/seller-public/api/seller-public.routes';
 import { csrfIssue } from './middleware/csrf';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
@@ -1046,6 +1047,9 @@ app.route('/api/disputes', disputesRoutes);
 
 // 🛡️ 2026-05-15: 2FA TOTP (셀러/어드민 추가 보안 — Workers crypto 만 사용, 외부 lib 0)
 app.route('/api/2fa', twofaRoutes);
+
+// 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 단골 / 라이브 예고 / 단골 push
+app.route('/api/seller-public', sellerPublicRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

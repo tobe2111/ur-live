@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Eye, Play, Plus, MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import StreamCard from './StreamCard'
+import UpcomingStreamsBanner from './UpcomingStreamsBanner'
 import type { Product, Short, LiveStream, Tab } from './types'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   isOwner: boolean
   textClass: string
   setTab: (tab: Tab) => void
+  sellerId?: number  // 🛡️ 2026-05-15: 라이브 예고 배너용
 }
 
 /**
@@ -20,13 +22,16 @@ interface Props {
  * 🛡️ TD-006 추출 (2026-05-06).
  */
 export default function HomeTab({
-  mealVouchers, shorts, recentStreams, streams, isOwner, textClass, setTab
+  mealVouchers, shorts, recentStreams, streams, isOwner, textClass, setTab, sellerId
 }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
   return (
     <div className="space-y-6">
+      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 라이브 예고 + LIVE 진행 중 배너 */}
+      {sellerId && sellerId > 0 && <UpcomingStreamsBanner sellerId={sellerId} />}
+
       {mealVouchers.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">

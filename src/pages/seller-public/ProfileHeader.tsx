@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, Star, MessageCircle, Heart } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import FollowButton from './FollowButton'
+import RegularBadge from './RegularBadge'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -182,6 +183,10 @@ export default function ProfileHeader({
         ) : (
           <>
             <FollowButton sellerId={sellerId} />
+            {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 단골 등록 (알림 opt-in) */}
+            <div className="mt-2">
+              <RegularBadge sellerId={Number(sellerId)} variant="full" />
+            </div>
             <div className="flex gap-2 mt-2">
               {seller.kakao_chat_link && (
                 <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}>
