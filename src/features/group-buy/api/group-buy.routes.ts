@@ -486,7 +486,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         .bind(userId).first<{ email: string | null; display_name: string | null }>().catch(() => null)
       const userEmail = userRow?.email
       if (userEmail && (c.env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY) {
-        const { sendEmail } = await import('../../../services/email')
+        // 🛡️ 2026-05-15: sendSystemEmail 사용 — 실패 시 email_failures 큐 자동 적재 → cron 재시도
+        const { sendSystemEmail } = await import('../../../lib/system-email')
         const voucherList = (vouchers.results ?? []).map(v => `
           <tr>
             <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:monospace;font-size:13px;color:#ec4899;font-weight:700;">${v.code}</td>
@@ -524,12 +525,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
               <p style="margin:0;">© 2026 리스터코퍼레이션. 문의: jiwon@ur-team.com</p>
             </div>
           </div>`
-        await sendEmail(
-          { to: userEmail, subject: `[유어딜] 공구 참여 완료 — ${product.name} (${qty}장)`, html },
-          (c.env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY!,
-          undefined,
-          DB,
-        ).catch((e) => console.warn('[group-buy email]', e))
+        await sendSystemEmail(c.env, userEmail, {
+          subject: `[유어딜] 공구 참여 완료 — ${product.name} (${qty}장)`,
+          html,
+        }).catch((e) => console.warn('[group-buy email]', e))
       }
     } catch (e) { console.warn('[group-buy email outer]', e) }
 
