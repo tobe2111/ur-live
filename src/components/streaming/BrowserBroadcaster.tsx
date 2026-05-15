@@ -50,6 +50,10 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   const [camOff, setCamOff] = useState(false)
   const [devices, setDevices] = useState<{ cams: MediaDeviceInfo[]; mics: MediaDeviceInfo[] }>({ cams: [], mics: [] })
   const [selected, setSelected] = useState<{ camId?: string; micId?: string }>({})
+  // 🛡️ 2026-05-14: 네트워크 품질 사전 측정 — 송출 시작 전에 셀러 환경 검증.
+  //   downlink 5Mbps 미만 / rtt 200ms 이상 시 사용자에게 사전 경고 (Wi-Fi 권장 등).
+  //   객관 데이터로 환경 부적합 예방.
+  const [networkWarn, setNetworkWarn] = useState<string | null>(null)
   // 자동 재연결 — 의도적 종료 (사용자 클릭 stop) 가 아닌 끊김 시에만.
   const userStoppedRef = useRef(false)
   const reconnectAttemptsRef = useRef(0)
@@ -63,6 +67,37 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       onUnsupported?.('이 브라우저는 WebRTC 송출을 지원하지 않습니다')
     }
   }, [onUnsupported])
+
+  // 🛡️ 2026-05-14: 네트워크 품질 사전 측정 — 송출 시작 전 환경 검증.
+  //   Network Information API + connection 변화 감지. 부적합 환경에 사전 경고.
+  useEffect(() => {
+    type NavConn = { downlink?: number; rtt?: number; effectiveType?: string; type?: string; addEventListener?: (e: string, f: () => void) => void; removeEventListener?: (e: string, f: () => void) => void }
+    const conn = (navigator as Navigator & { connection?: NavConn; mozConnection?: NavConn; webkitConnection?: NavConn }).connection
+      || (navigator as Navigator & { mozConnection?: NavConn }).mozConnection
+      || (navigator as Navigator & { webkitConnection?: NavConn }).webkitConnection
+    if (!conn) return
+    const update = () => {
+      const dl = conn.downlink || 0 // Mbps
+      const rtt = conn.rtt || 0 // ms
+      const eff = conn.effectiveType
+      const type = conn.type
+      // 매우 안 좋은 환경
+      if (eff === 'slow-2g' || eff === '2g') {
+        setNetworkWarn('🚨 네트워크 매우 느림 (2G) — Wi-Fi 또는 5G 환경 권장')
+      } else if (dl > 0 && dl < 3) {
+        setNetworkWarn(`📡 업로드 속도 부족 추정 (${dl.toFixed(1)} Mbps) — Wi-Fi 권장`)
+      } else if (rtt > 500) {
+        setNetworkWarn(`⏱️ 네트워크 지연 큼 (RTT ${rtt}ms) — 신호 약함 / 통신사 NAT`)
+      } else if (type === 'cellular' && (eff === '3g' || dl < 5)) {
+        setNetworkWarn('📶 셀룰러 신호 약함 — Wi-Fi 사용 권장')
+      } else {
+        setNetworkWarn(null)
+      }
+    }
+    update()
+    conn.addEventListener?.('change', update)
+    return () => conn.removeEventListener?.('change', update)
+  }, [])
 
   // 🛡️ 2026-05-14: WHIP 토큰 pre-warm — 셀러가 "시작" 클릭 전에 백그라운드 fetch.
   //   60s 유효성 보장. 효과: 클릭 → 라이브 활성 -300~500ms.
@@ -877,6 +912,14 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
               1080p (1920×1080) 권장 — 카메라가 1080p 미지원이거나 권한 제한일 수 있어요. 외장 웹캠 또는 다른 브라우저 시도 권장.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* 🛡️ 2026-05-14: 네트워크 사전 경고 — idle 상태 (송출 시작 전) 에만 표시 */}
+      {networkWarn && status === 'idle' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+          <span className="text-base shrink-0">⚠️</span>
+          <p className="flex-1 text-xs text-amber-800">{networkWarn}</p>
         </div>
       )}
 
