@@ -14,6 +14,7 @@ import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } f
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
+import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
 import TierBadge from '@/components/seller/TierBadge'
 import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 import { formatNumber } from '@/utils/format'
@@ -445,6 +446,9 @@ export default function SellerPage() {
 
         {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
         <SellerOnboardingChecklist />
+
+        {/* 🛡️ 2026-05-15: 공구 진행 현황 — 대시보드 메인에서 즉시 액션 (at_risk 시 강조) */}
+        <SellerGroupBuyOverview />
 
         {/* 🛡️ 2026-05-05: 등급 배지 — diamond/gold/silver/bronze/new */}
         <TierBadge />

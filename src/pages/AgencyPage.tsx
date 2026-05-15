@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
+import AgencyGroupBuyAlert from '@/components/agency/AgencyGroupBuyAlert'
 import { DashboardPageHeader } from '@/components/dashboard'
 import PLSimulator from '@/components/agency/PLSimulator'
 import { LayoutDashboard } from 'lucide-react'
@@ -279,6 +280,10 @@ export default function AgencyPage() {
           subtitle={t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
+
+        {/* 🛡️ 2026-05-15: 본인 셀러망 즉시 액션 alert (churn / 미달성 / 분쟁) */}
+        <AgencyGroupBuyAlert />
+
       {/* 0. 월간 매출 목표 진행률 */}
       <div className="bg-white rounded-2xl p-4 border border-[#E8EAEE]">
         <div className="flex items-center justify-between mb-2 gap-2">
