@@ -8,6 +8,10 @@ export interface Seller {
   kakao_chat_link?: string; website_url?: string; created_at: string
   business_number?: string; email?: string; phone?: string
   ceo_name?: string; mail_order_number?: string; business_address?: string
+  // 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징
+  banner_url?: string; brand_color?: string
+  external_live_tiktok?: string; external_live_instagram?: string; external_live_facebook?: string
+  follower_count?: number
 }
 
 export interface LiveStream {

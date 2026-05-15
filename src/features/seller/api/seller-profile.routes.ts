@@ -104,7 +104,13 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       profile_image: 'profile_image', bio: 'bio',
       sns_instagram: 'sns_instagram', sns_youtube: 'sns_youtube',
       sns_facebook: 'sns_facebook', sns_twitter: 'sns_twitter',
-      website_url: 'website_url', kakao_chat_link: 'kakao_chat_url'
+      website_url: 'website_url', kakao_chat_link: 'kakao_chat_url',
+      // 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 미니샵 커스터마이징
+      banner_url: 'banner_url',           // 셀러 페이지 상단 헤더 이미지 (1280x320 권장)
+      brand_color: 'brand_color',         // 메인 컬러 (#RRGGBB)
+      external_live_tiktok: 'external_live_tiktok',     // TikTok Live URL (다채널 송출 시)
+      external_live_instagram: 'external_live_instagram',
+      external_live_facebook: 'external_live_facebook',
     };
 
     // 🛡️ 2026-04-22: 정산 계좌 변경 시 is_verified=0 강제 → 어드민 재인증 전까지 출금 차단.
@@ -121,7 +127,8 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     }
 
     // URL 필드: https:// 또는 http:// 로 시작해야 함
-    const urlFields = ['profile_image', 'website_url', 'kakao_chat_link'];
+    const urlFields = ['profile_image', 'website_url', 'kakao_chat_link', 'banner_url',
+      'external_live_tiktok', 'external_live_instagram', 'external_live_facebook'];
     for (const key of urlFields) {
       const val = body[key as keyof typeof body];
       if (val !== undefined && val !== null && val !== '') {
@@ -133,6 +140,23 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
           return c.json({ success: false, error: `${key} is too long` }, 400);
         }
       }
+    }
+
+    // 🛡️ 2026-05-15: brand_color 검증 — '#RRGGBB' 6자리 hex
+    if (body.brand_color !== undefined && body.brand_color !== null && body.brand_color !== '') {
+      const c2 = String(body.brand_color);
+      if (!/^#[0-9A-Fa-f]{6}$/.test(c2)) {
+        return c.json({ success: false, error: 'brand_color 는 #RRGGBB 형식' }, 400);
+      }
+    }
+
+    // 🛡️ 2026-05-15: 신규 컬럼 자동 ALTER (마이그레이션 fallback)
+    const newCols = [
+      'banner_url TEXT', 'brand_color TEXT',
+      'external_live_tiktok TEXT', 'external_live_instagram TEXT', 'external_live_facebook TEXT',
+    ];
+    for (const col of newCols) {
+      try { await c.env.DB.prepare(`ALTER TABLE sellers ADD COLUMN ${col}`).run() } catch { /* exists */ }
     }
 
     for (const [bodyKey, dbCol] of Object.entries(fieldMap)) {
