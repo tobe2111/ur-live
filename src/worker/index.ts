@@ -170,6 +170,7 @@ import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 import { ogRoutes } from './routes/og-image.routes';
 import { analyticsRoutes } from './routes/analytics.routes';
 import { flagRoutes } from './routes/feature-flag.routes';
+import { currencyRoutes } from './routes/currency.routes';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
@@ -724,6 +725,12 @@ app.route('/api/users', usersRouter);
 app.use('/api/products', edgeCache(60), cacheControl(60));     // 1 min
 app.use('/api/streams', edgeCache(30), cacheControl(30));      // 30 sec
 app.use('/api/group-buy/products', edgeCache(60), cacheControl(60)); // 1 min
+// 🛡️ 2026-05-15: 공구 detail (개별) 30초 — group_buy_current 자주 바뀌지만 stale-while-revalidate 가 사용성 보존
+app.use('/api/group-buy/products/*', edgeCache(30), cacheControl(30));
+// 참여자 마스킹 리스트 — 1분 (자주 바뀌지만 prv 정보 X)
+app.use('/api/group-buy/products/*/participants', edgeCache(60), cacheControl(60));
+app.use('/api/og/group-buy/*', edgeCache(3600), cacheControl(3600)); // OG image 1h
+app.use('/api/currency/rates', edgeCache(3600), cacheControl(3600)); // 환율 1h
 app.use('/api/banners', edgeCache(300), cacheControl(300));    // 5 min
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
 app.use('/api/shorts', edgeCache(60), cacheControl(60));                // 쇼츠 피드 1min
@@ -1016,6 +1023,9 @@ app.route('/api/analytics', analyticsRoutes);
 
 // 🛡️ 2026-05-15: A/B Feature Flag (KV 기반, 0원 운영)
 app.route('/api/flags', flagRoutes);
+
+// 🛡️ 2026-05-15: 환율 (1시간 KV 캐시)
+app.route('/api/currency', currencyRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

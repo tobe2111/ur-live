@@ -8,12 +8,42 @@ import { formatNumber } from '@/utils/format'
 
 type CurrencyCode = 'KRW' | 'USD' | 'JPY' | 'CNY' | 'EUR'
 
-const RATES: Record<CurrencyCode, number> = {
+// 🛡️ 2026-05-15: fallback (실시간 fetch 실패 시) — 2026-05 기준
+let RATES: Record<CurrencyCode, number> = {
   KRW: 1,
-  USD: 0.00074,  // 1 KRW ≈ 0.00074 USD
-  JPY: 0.11,     // 1 KRW ≈ 0.11 JPY
-  CNY: 0.0053,   // 1 KRW ≈ 0.0053 CNY
-  EUR: 0.00068,  // 1 KRW ≈ 0.00068 EUR
+  USD: 0.00072,  // 1 KRW ≈ 0.00072 USD
+  JPY: 0.108,    // 1 KRW ≈ 0.108 JPY
+  CNY: 0.0052,   // 1 KRW ≈ 0.0052 CNY
+  EUR: 0.00067,  // 1 KRW ≈ 0.00067 EUR
+}
+
+// 🛡️ 2026-05-15: 환율 prefetch — 한국 외 locale 첫 진입 시 1회. localStorage 1h 캐시.
+const RATES_CACHE_KEY = 'ur_currency_rates_v1'
+const RATES_CACHE_TTL = 60 * 60 * 1000
+
+export async function prefetchRates(): Promise<void> {
+  if (isKorea()) return
+  try {
+    const cached = localStorage.getItem(RATES_CACHE_KEY)
+    if (cached) {
+      const { rates, expires } = JSON.parse(cached) as { rates: Record<string, number>; expires: number }
+      if (Date.now() < expires) {
+        RATES = { ...RATES, ...rates } as Record<CurrencyCode, number>
+        return
+      }
+    }
+  } catch { /* ignore */ }
+  try {
+    const res = await fetch('/api/currency/rates', { signal: AbortSignal.timeout(3000) })
+    if (!res.ok) return
+    const data = await res.json() as { success?: boolean; rates?: Record<string, number> }
+    if (data.success && data.rates) {
+      RATES = { ...RATES, ...data.rates } as Record<CurrencyCode, number>
+      try {
+        localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates: data.rates, expires: Date.now() + RATES_CACHE_TTL }))
+      } catch { /* silent */ }
+    }
+  } catch { /* fallback OK */ }
 }
 
 const SYMBOLS: Record<CurrencyCode, string> = {
