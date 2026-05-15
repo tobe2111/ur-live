@@ -136,15 +136,21 @@ export default function GroupBuyDetailPage() {
     if (!window.confirm(`${detail.name}\n${quantity}장 × ${unitPrice.toLocaleString('ko-KR')}딜 = ${total.toLocaleString('ko-KR')}딜\n\n${detail.current_discount_pct > 0 ? `🎉 티어 할인 ${detail.current_discount_pct}% 적용\n\n` : ''}딜로 결제하고 바우처를 발급받습니다. 진행할까요?`)) return
 
     setJoining(true)
+    // 🛡️ 2026-05-15: Optimistic UI — 즉시 카운터 +N 반영, 실패 시 롤백
+    const prevSnapshot = detail
+    setDetail(d => d ? { ...d, group_buy_current: d.group_buy_current + quantity } : d)
     try {
       const res = await api.post(`/api/group-buy/join/${productId}`, { quantity, payment_method: 'deal' })
       if (res.data?.success) {
         toast.success(res.data.message || '공구 참여 완료!')
+        // 백엔드 반환된 정확한 값으로 동기화 후 이동
         navigate('/my-vouchers')
       } else {
+        setDetail(prevSnapshot)  // 롤백
         toast.error(res.data?.error || '참여 실패')
       }
     } catch (err: unknown) {
+      setDetail(prevSnapshot)  // 롤백
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
       const code = e?.response?.data?.code
       if (code === 'INSUFFICIENT_POINTS') {
@@ -165,9 +171,33 @@ export default function GroupBuyDetailPage() {
   }
 
   if (loading) {
+    // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gray-50">
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-3 py-2.5 flex items-center justify-between">
+          <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
+          <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
+        </div>
+        <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
+          <div className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+            <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse" />
+          </div>
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+            <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
+            <div className="h-4 w-1/3 bg-gray-100 rounded animate-pulse" />
+            <div className="pt-3 border-t border-gray-100">
+              <div className="h-8 w-32 bg-pink-100 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-6 w-16 bg-pink-100 rounded animate-pulse" />
+            </div>
+            <div className="h-3 w-full bg-gray-100 rounded animate-pulse" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -235,27 +265,45 @@ export default function GroupBuyDetailPage() {
         }]}
       />
 
+      {/* WCAG AA: skip-link */}
+      <a href="#gb-main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-pink-500 focus:text-white focus:px-3 focus:py-2 focus:rounded-lg focus:text-sm focus:font-bold">
+        본문으로 건너뛰기
+      </a>
+
       {/* 상단 chrome */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-3 py-2.5 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-3 py-2.5 flex items-center justify-between" role="banner">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
+          aria-label="뒤로가기"
+        >
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
         <KakaoShareButton
           title={`${detail.name} 공구 참여하기`}
           description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '단계별 할인'}`}
-          imageUrl={detail.image_url}
+          imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
           link={`/group-buy/${productId}`}
           buttonText="나도 참여하기"
           compact
-          className="w-9 h-9 rounded-full bg-[#FEE500] flex items-center justify-center"
+          className="w-9 h-9 rounded-full bg-[#FEE500] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-pink-500"
         />
-      </div>
+      </header>
 
-      <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
+      <main id="gb-main" className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4" role="main">
         {/* 이미지 + 상태 */}
         <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100">
           {detail.image_url ? (
-            <img src={detail.image_url} alt={detail.name} className="w-full aspect-[4/3] object-cover" />
+            <img
+              src={detail.image_url}
+              alt={detail.name}
+              className="w-full aspect-[4/3] object-cover bg-gradient-to-br from-pink-50 to-rose-100"
+              width={1200}
+              height={900}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+            />
           ) : (
             <div className="w-full aspect-[4/3] bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center text-6xl">
               <CategoryEmoji cat={detail.category} />
@@ -441,39 +489,42 @@ export default function GroupBuyDetailPage() {
         )}
 
         <div style={{ height: 100 }} />
-      </div>
+      </main>
 
       {/* sticky 하단 결제 영역 */}
-      <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-3 z-30 lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl">
+      <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-3 z-30 lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden">
+          <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
             <button
               onClick={() => setQuantity(q => Math.max(1, q - 1))}
               disabled={!isJoinable || quantity <= 1}
-              className="w-9 h-9 flex items-center justify-center text-gray-700 disabled:text-gray-400"
+              className="w-9 h-9 flex items-center justify-center text-gray-700 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
+              aria-label="수량 감소"
             >−</button>
-            <span className="w-10 text-center text-sm font-bold text-gray-900">{quantity}</span>
+            <span className="w-10 text-center text-sm font-bold text-gray-900" aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
             <button
               onClick={() => setQuantity(q => Math.min(10, q + 1))}
               disabled={!isJoinable || quantity >= 10}
-              className="w-9 h-9 flex items-center justify-center text-gray-700 disabled:text-gray-400"
+              className="w-9 h-9 flex items-center justify-center text-gray-700 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
+              aria-label="수량 증가"
             >+</button>
           </div>
           <button
             onClick={handleJoin}
             disabled={!isJoinable || joining}
-            className={`flex-1 h-11 rounded-lg text-sm font-bold text-white transition-all ${
+            className={`flex-1 h-11 rounded-lg text-sm font-bold text-white transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-pink-500 focus-visible:outline-none ${
               isJoinable
                 ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-95 active:scale-[0.98]'
                 : 'bg-gray-300'
             }`}
+            aria-label={isJoinable ? `${formatNumber(total)}딜로 ${quantity}장 참여하기` : '참여 불가'}
           >
             {joining ? '처리 중…' :
               !isJoinable ? '참여 불가' :
               `${formatNumber(total)}딜 참여하기`}
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

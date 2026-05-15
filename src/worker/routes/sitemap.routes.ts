@@ -13,7 +13,7 @@ const sitemapRoutes = new Hono<{ Bindings: Env }>();
 sitemapRoutes.get('/sitemap.xml', async (c) => {
   const origin = new URL(c.req.url).origin;
   const DB = c.env.DB as D1Database | undefined;
-  const urls: Array<{ loc: string; priority: number; changefreq: string }> = [
+  const urls: Array<{ loc: string; priority: number; changefreq: string; image?: string; lastmod?: string }> = [
     // 정적 페이지
     { loc: '/', priority: 1.0, changefreq: 'daily' },
     { loc: '/browse', priority: 0.9, changefreq: 'daily' },
@@ -22,13 +22,36 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/search', priority: 0.7, changefreq: 'weekly' },
     { loc: '/login', priority: 0.5, changefreq: 'monthly' },
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
+    // 🛡️ 2026-05-15: 공동구매 hub
+    { loc: '/group-buy', priority: 0.95, changefreq: 'hourly' },
   ];
 
   if (DB) {
     try {
-      // 활성 상품 최신 500개
+      // 🛡️ 2026-05-15: 진행 중 공동구매 — 가장 높은 우선순위 (시간 민감)
+      const groupBuys = await DB.prepare(
+        `SELECT id, image_url, updated_at FROM products
+         WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+           AND is_active = 1
+           AND group_buy_status IN ('active','achieved')
+         ORDER BY updated_at DESC LIMIT 500`
+      ).all<{ id: number; image_url: string | null; updated_at: string }>().catch(() => ({ results: [] as Array<{ id: number; image_url: string | null; updated_at: string }> }));
+      for (const g of groupBuys.results || []) {
+        urls.push({
+          loc: `/group-buy/${g.id}`,
+          priority: 0.9,
+          changefreq: 'hourly',
+          image: g.image_url || `${origin}/api/og/group-buy/${g.id}`,
+          lastmod: g.updated_at,
+        });
+      }
+
+      // 활성 상품 최신 500개 (voucher 카테고리는 위에서 처리됨)
       const products = await DB.prepare(
-        `SELECT id FROM products WHERE is_active = 1 ORDER BY id DESC LIMIT 500`
+        `SELECT id FROM products
+         WHERE is_active = 1
+           AND category NOT IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+         ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
       for (const p of products.results || []) {
         urls.push({ loc: `/products/${p.id}`, priority: 0.8, changefreq: 'weekly' });
@@ -63,8 +86,12 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(u => `  <url><loc>${origin}${u.loc}</loc><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`).join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${urls.map(u => {
+    const imageBlock = u.image ? `\n    <image:image><image:loc>${u.image.startsWith('http') ? u.image : origin + u.image}</image:loc></image:image>` : '';
+    const lastmodBlock = u.lastmod ? `\n    <lastmod>${u.lastmod.replace(' ', 'T')}Z</lastmod>` : '';
+    return `  <url>\n    <loc>${origin}${u.loc}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
+  }).join('\n')}
 </urlset>`;
 
   return c.body(xml, 200, {
