@@ -299,14 +299,14 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   return (
     <div className="agency-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <div className="hidden lg:flex">
+      <div className="hidden md:flex">
         {sidebar}
       </div>
 
-      <div className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-300 ${
+      <div className={`fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {sidebar}
@@ -318,7 +318,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
             <button
               aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
               aria-expanded={sidebarOpen}
-              className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
+              className="md:hidden p-1.5 rounded-lg hover:bg-gray-100"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -338,7 +338,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       </div>
 
       {/* Mobile quick-action FAB */}
-      <div className="lg:hidden fixed bottom-6 right-4 z-40">
+      <div className="md:hidden fixed bottom-6 right-4 z-40">
         <button
           onClick={() => navigate('/agency/schedule')}
           className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
