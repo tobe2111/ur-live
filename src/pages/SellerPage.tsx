@@ -477,7 +477,8 @@ export default function SellerPage() {
           />
 
           {/* ── Stats row ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+          {/* 🛡️ 2026-05-14: 태블릿 (md+) 4 cols → 풀 너비 활용 (iPad sidebar 있어도 588px+ 콘텐츠 영역). */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             {[
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
@@ -578,7 +579,7 @@ export default function SellerPage() {
           )}
 
           {/* ── Main grid ── */}
-          <div className="grid lg:grid-cols-3 gap-3 sm:gap-5">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
 
             {/* ── Real-time orders (col-span-2) ── */}
             <RealtimeOrdersPanel
@@ -625,7 +626,7 @@ export default function SellerPage() {
 
           {/* ── Chart ── */}
           {dailyStats.length > 0 && (
-            <div className="grid lg:grid-cols-3 gap-3 sm:gap-5">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
               {/* Sales chart — 스크롤 진입 시 recharts 번들 로드 */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">
