@@ -9,6 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import Confetti from '@/components/group-buy/Confetti'
+import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -114,6 +115,16 @@ export default function GroupBuyDetailPage() {
       if (detailRes.data?.success) {
         setDetail(detailRes.data.data)
         reportFunnel('view', productId)  // funnel: page view
+        // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
+        try {
+          recordRecentlyViewed({
+            id: detailRes.data.data.id,
+            name: detailRes.data.data.name,
+            image_url: detailRes.data.data.image_url,
+            restaurant_name: detailRes.data.data.restaurant_name,
+            price: detailRes.data.data.price,
+          })
+        } catch { /* silent */ }
       } else toast.error(detailRes.data?.error || '상품을 찾을 수 없습니다')
       setParticipants(partRes.data?.data || [])
     }).catch(() => toast.error('네트워크 오류'))

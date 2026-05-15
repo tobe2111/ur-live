@@ -58,7 +58,9 @@ export function auditLog(action: string) {
       const userAsAny = user as unknown as { id?: number | string; type?: string; role?: string }
       const ipRaw = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || ''
       const uaRaw = c.req.header('User-Agent') || ''
-      const salt = c.env.JWT_SECRET || 'audit-default-salt'
+      // 🛡️ JWT_SECRET 미설정 시 해시 skip (보안 regression test 호환 — 하드코딩 default 금지)
+      const salt = c.env.JWT_SECRET
+      if (!salt) return  // secret 없으면 audit log 자체 skip (운영에서는 항상 설정됨)
       const [ipHash, uaHash] = await Promise.all([hashStr(ipRaw, salt), hashStr(uaRaw, salt)])
       await DB.prepare(`
         INSERT INTO audit_logs (actor_type, actor_id, action, method, path, status_code, ip_hash, ua_hash)

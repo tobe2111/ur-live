@@ -12,6 +12,7 @@ import { Hono } from 'hono'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
+import { recordLedger } from '@/worker/utils/ledger'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 
@@ -418,6 +419,20 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method)
       VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?)
     `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss').run()
+
+    // 🛡️ 2026-05-15: Double-entry ledger 기록 (정합성 검증 가능)
+    try {
+      await recordLedger(DB, {
+        event_type: 'group_buy_join',
+        reference_id: orderNumber,
+        amount: totalAmount,
+        debit_account: `user:${userId}`,                  // 유저 wallet 차감
+        credit_account: `seller:${product.seller_id}`,    // 셀러 receivable 증가
+        fee_amount: commissionAmount,
+        fee_account: 'platform:commission',
+        metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
+      })
+    } catch (e) { console.warn('[gb ledger]', e) }
 
     // 정산 기록 (셀러 수령액 = 총액 - 10% 수수료)
     try {
@@ -1194,6 +1209,103 @@ groupBuyRoutes.get('/admin/analytics', requireAdmin(), async (c) => {
     return c.json({ success: false, error: '집계 실패' }, 500)
   }
 })
+
+// ── POST /api/group-buy/voucher/:code/partial-refund — 부분 사용 후 잔여 환불 ──
+// 🛡️ 2026-05-15: 1만원 voucher 중 5천원만 사용 → 5천원 자동 환불.
+//   유스케이스: 음식 가격이 voucher 가격보다 싸면 차액 환불.
+//   sellers 만 호출 가능 (본인 product 의 voucher 만).
+groupBuyRoutes.post(
+  '/voucher/:code/partial-refund',
+  rateLimit({ action: 'voucher_partial_refund', max: 30, windowSec: 300 }),
+  requireAuth(),
+  auditLog('group_buy.partial_refund'),
+  async (c) => {
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const userAsAny = user as unknown as { id?: number | string; type?: string }
+    if (userAsAny.type !== 'seller' && userAsAny.type !== 'admin') {
+      return c.json({ success: false, error: '셀러/어드민만 가능' }, 403)
+    }
+
+    const code = c.req.param('code')
+    if (!/^[A-Za-z0-9-]{4,64}$/.test(code)) {
+      return c.json({ success: false, error: '잘못된 voucher 코드' }, 400)
+    }
+
+    let body: { used_amount?: number; refund_reason?: string }
+    try { body = await c.req.json() } catch { return c.json({ success: false, error: 'JSON 형식 오류' }, 400) }
+
+    const usedAmount = Number(body.used_amount)
+    if (!Number.isFinite(usedAmount) || !Number.isInteger(usedAmount) || usedAmount <= 0 || usedAmount > 100_000_000) {
+      return c.json({ success: false, error: '사용 금액(원)을 0보다 큰 정수로 입력해주세요' }, 400)
+    }
+    const reason = (body.refund_reason || '').toString().slice(0, 500)
+
+    const { DB } = c.env
+
+    // voucher 조회 + 셀러 본인 product 검증
+    const voucher = await DB.prepare(`
+      SELECT v.id, v.user_id, v.product_id, v.status, v.applied_price,
+             p.price AS product_price, p.seller_id
+      FROM vouchers v
+      LEFT JOIN products p ON p.id = v.product_id
+      WHERE v.code = ?
+    `).bind(code).first<{ id: number; user_id: string; product_id: number; status: string; applied_price: number | null; product_price: number; seller_id: number }>()
+    if (!voucher) return c.json({ success: false, error: 'voucher 없음' }, 404)
+    if (voucher.status !== 'unused') {
+      return c.json({ success: false, error: `이미 ${voucher.status} 상태` }, 400)
+    }
+    // 셀러 권한 — 본인 product 만
+    if (userAsAny.type === 'seller' && Number(voucher.seller_id) !== Number(userAsAny.id)) {
+      return c.json({ success: false, error: '본인 product 의 voucher 만 처리 가능' }, 403)
+    }
+
+    const voucherValue = Number(voucher.applied_price ?? voucher.product_price)
+    if (usedAmount > voucherValue) {
+      return c.json({ success: false, error: `사용 금액(${usedAmount}원)이 voucher 가치(${voucherValue}원) 초과` }, 400)
+    }
+
+    const refundAmount = voucherValue - usedAmount
+    if (refundAmount === 0) {
+      // 전액 사용 — 일반 use 와 동일
+      const useResult = await DB.prepare(`UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused'`).bind(voucher.id).run()
+      if (!useResult.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
+      return c.json({ success: true, data: { used: usedAmount, refunded: 0, message: '전액 사용 처리' } })
+    }
+
+    // CAS: unused → used (status atomic)
+    const useResult = await DB.prepare(`
+      UPDATE vouchers SET status = 'used', used_at = datetime('now')
+      WHERE id = ? AND status = 'unused'
+    `).bind(voucher.id).run()
+    if (!useResult.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
+
+    // 부분 환불 — 유저 user_points 에 차액 환불
+    try {
+      const order = await DB.prepare("SELECT payment_method FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string }>()
+      if (order?.payment_method === 'deal_points' && voucher.user_id) {
+        await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(refundAmount, voucher.user_id).run()
+        await DB.prepare(
+          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+        ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`).run()
+        // 유저 push
+        try {
+          const { sendSystemPush } = await import('../../../lib/system-push')
+          await sendSystemPush(c.env, 'user', voucher.user_id, {
+            title: '부분 환불 완료',
+            body: `사용 ${usedAmount.toLocaleString()}원 / 환불 ${refundAmount.toLocaleString()}딜`,
+            url: '/user/profile', tag: `partial-refund-${voucher.id}`,
+          })
+        } catch { /* ignore */ }
+      }
+    } catch (e) { console.error('[partial-refund]', e) }
+
+    return c.json({
+      success: true,
+      data: { used: usedAmount, refunded: refundAmount, message: `${usedAmount}원 사용, ${refundAmount}원 환불` },
+    })
+  }
+)
 
 // ── GET /api/group-buy/admin/list — 어드민: 전체 공구 현황 ──────────
 // 🛡️ 2026-05-15: 어드민이 진행중/만료/취소 전부 조회 + 미달성 공구 필터
