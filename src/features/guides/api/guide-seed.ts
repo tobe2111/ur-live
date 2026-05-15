@@ -282,10 +282,21 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 원가 대비 90% 이상 할인 → 자동 플래그 → 관리자 검토 필요
 
 ### 공동구매 모니터링 (\`/admin/group-buy\`) — 2026-05-15 추가
-- 진행중/달성/마감/취소/⚠️미달성 필터로 voucher 카테고리 (식사·뷰티·헬스·펫·숙박·액티비티) 전체 조회
+- **모니터링 탭**: 진행중/달성/마감/취소/⚠️미달성 필터로 voucher 카테고리 (식사·뷰티·헬스·펫·숙박·액티비티) 전체 조회
+- **분석 탭**: 카테고리별 달성률 / 매출 Top 10 / 일별 추이 (최근 30일)
 - 자동 환불 cron (5분 주기, \`scheduled-cleanup\`) 이 \`group_buy_status='expired'\` + \`current<target\` 인 상품의 미사용 voucher 를 자동 환불 + 셀러 알림톡 발송
 - **강제 환불** 버튼: 분쟁/긴급 케이스에 어드민이 status 무관하게 직접 환불 (사유 필수, audit_logs 기록)
 - 환불 처리: 미사용 voucher → refunded, 딜 결제건 → 자동 환불, 상품 → cancelled, 참여자/셀러에게 푸시
+
+### 공동구매 — 2026-05-15 이상적 구현 완료
+1. **전용 detail page** (\`/group-buy/:id\`): 카운트다운, 티어 시각화, 참여자 아바타, KakaoLink share
+2. **티어 할인** (\`group_buy_tiers\` JSON): 단계별 할인 자동 적용, voucher 마다 적용가 기록
+3. **마일스톤 푸시** (50/80/lastone): interest_list 등록자에게 hot 알림 (atomic CAS dedup)
+4. **이메일 영수증**: Resend 로 voucher 코드 + 매장 정보 + 티어 할인 발송
+5. **동적 OG 이미지** (\`/api/og/group-buy/:id\`): KakaoLink/Twitter share 시 1200x630 SVG (진행률 포함)
+6. **JSON-LD Product/Offer/BreadcrumbList**: Google rich result 노출
+7. **VoucherMap**: MyVouchersPage 에 카카오 멀티 마커 지도 (미사용 식사권 위치)
+8. **엣지 가드**: voucher_expiry < deadline 차단, 진행 중 공구 상품 삭제 차단
 
 💡 신규 프로모션 기획 전에 과거 지표(쿠폰 사용률, 배너 CTR) 확인 → 효과적이지 않은 방식 반복 방지.`,
   },

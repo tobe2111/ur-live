@@ -5,6 +5,44 @@
 **최근 main 머지 커밋**: `cb48a60` (cross-page UX/안정성 개선)
 **미배포 (PC 머지 대기)**: `bf3b75e` (GroupBuyList/Search/Embed i18n)
 
+## 📦 2026-05-15 (Round 2) — 공동구매 이상적 구현 (10개 영역)
+
+10개 영역 모두 구현 완료 — 전용 detail page, 티어 할인, 마일스톤 알림, 이메일 영수증,
+동적 OG 이미지, JSON-LD SEO, voucher map, 어드민 analytics, 엣지 케이스 가드.
+
+### 신규 추가
+- **`GroupBuyDetailPage` (`/group-buy/:id`)**: 카운트다운 ring, 티어 시각화, 참여자 아바타,
+  셀러 카드, KakaoLink share, sticky bottom 결제. 6개 voucher 카테고리 전체 지원.
+- **`/api/group-buy/products/:id/participants`**: 마스킹된 최근 참여자 20명.
+- **`/api/group-buy/admin/analytics`**: 카테고리별 funnel, GMV top 10, 일별 추이 30일.
+- **`/api/og/group-buy/:id`**: 동적 SVG OG 이미지 (1200x630), 진행률/할인율 포함.
+- **`og-image.routes.ts`**: 신규 worker route, 1시간 edge cache.
+- **티어 할인 시스템**: `products.group_buy_tiers` JSON, `vouchers.applied_discount_pct/applied_price`,
+  `calcTierDiscount()` 헬퍼, SellerMealVoucherNewPage 에 토글 + 단계 입력 UI.
+- **마일스톤 알림**: 50%/80%/1명 남음 hot push, atomic CAS dedup 컬럼 3개.
+- **이메일 영수증**: Resend 로 voucher 코드 + 매장 정보 + 티어 할인 내역 HTML 메일.
+- **VoucherMap**: MyVouchersPage 에 미사용 식사권 카카오 멀티 마커 지도 (lat/lng 응답에 추가).
+- **AdminGroupBuyPage**: 모니터링/분석 탭 분리, 카테고리별 통계 + Top 10 + 일별 표.
+
+### SEO 풀 적용
+- `<SEO>` JSON-LD: Product + Offer + GeoCoordinates + BreadcrumbList + ItemList (목록 페이지)
+- 동적 OG image (위 endpoint)
+- KakaoShareButton 통합
+
+### 엣지 가드
+- POST /join: voucher_expiry ≤ group_buy_deadline 차단 (불가능 voucher 발급 방지)
+- POST /join: status=expired/cancelled 명시적 차단
+- DELETE /seller/products/:id: active 공구 + 참여자 1명+ 이면 409 (참여자 보호)
+- ProductDetailPage: voucher 카테고리 6종 → /group-buy/:id 자동 redirect (URL 보존)
+
+### 커밋 흐름
+- `881c3f4b`: Round 1 (티어/마일스톤/이메일/detail/edge cases)
+- 다음 commit: Round 2 (SEO/OG/voucher map/admin analytics)
+
+라이브 서비스와 완전 독립 — OAuth verification 검토 영향 없음.
+
+---
+
 ## 📦 2026-05-15 — 공동구매 6대 영역 런칭 준비 완료
 
 OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운영 가능 상태로 마무리.

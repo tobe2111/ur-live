@@ -167,9 +167,38 @@ export default function GroupBuyListPage() {
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
-        title={t('groupBuy.seoTitle', { defaultValue: '공동구매' })}
-        description={t('groupBuy.seoDesc', { defaultValue: '인기 공동구매 상품을 한눈에. 맛집 식사권부터 공동구매 특가 상품까지' })}
+        title={t('groupBuy.seoTitle', { defaultValue: '공동구매 — 식사권 / 뷰티 / 헬스 / 펫 / 숙박 / 액티비티' })}
+        description={t('groupBuy.seoDesc', { defaultValue: '맛집 식사권, 뷰티 시술, 헬스 PT, 펜션, 액티비티까지 — 함께 모이면 더 싸게! 진행 중인 공동구매를 한 눈에 확인하세요.' })}
         url="/group-buy"
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: '유어딜 공동구매',
+            description: '맛집·뷰티·헬스·펫·숙박·액티비티 공동구매 모음',
+            url: 'https://live.ur-team.com/group-buy',
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: '홈', item: 'https://live.ur-team.com/' },
+              { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://live.ur-team.com/group-buy' },
+            ],
+          },
+          // 진행 중 공구가 있으면 ItemList 로 노출 (SERP rich result)
+          ...(items.length > 0 ? [{
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            itemListElement: items.slice(0, 10).map((p, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              name: p.name,
+              url: `https://live.ur-team.com/group-buy/${p.id}`,
+              ...(p.image_url ? { image: p.image_url } : {}),
+            })),
+          }] : []),
+        ]}
       />
 
       {/* 헤더 */}
@@ -358,7 +387,7 @@ export default function GroupBuyListPage() {
                   return (
                     <button
                       key={p.id}
-                      onClick={() => navigate(`/products/${p.id}`)}
+                      onClick={() => navigate(`/group-buy/${p.id}`)}
                       className="text-left active:scale-[0.98] transition-transform"
                     >
                       {/* 이미지 */}

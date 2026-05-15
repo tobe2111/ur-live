@@ -40,6 +40,14 @@ async function ensureTables(DB: D1Database) {
     'store_verify_pin TEXT',
     // 🛡️ 2026-04-27: Magic Link — 사장님 PIN 없이 통계 페이지 진입.
     'store_owner_token TEXT',
+    // 🛡️ 2026-05-15: 티어 할인 시스템 — JSON 배열 [{ "min": 5, "discount_pct": 10 }, ...]
+    //   현재 group_buy_current 가 minimum 이상 충족된 가장 높은 tier 의 discount_pct 적용.
+    //   참여자별 환불 차액 자동 계산은 Phase 2 (cron 또는 voucher 발급 직전 정확한 가격 적용).
+    'group_buy_tiers TEXT',
+    // 🛡️ 2026-05-15: 마일스톤 알림 dedup (1명 남음, 50%, 80%, 100%)
+    'milestone_notified_50 INTEGER DEFAULT 0',
+    'milestone_notified_80 INTEGER DEFAULT 0',
+    'milestone_notified_lastone INTEGER DEFAULT 0',
   ]
   for (const col of columns) {
     try { await DB.prepare(`ALTER TABLE products ADD COLUMN ${col}`).run() } catch { /* exists */ }
@@ -58,10 +66,37 @@ async function ensureTables(DB: D1Database) {
         status TEXT DEFAULT 'unused',
         used_at DATETIME,
         expires_at DATETIME,
+        applied_discount_pct INTEGER DEFAULT 0,
+        applied_price INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run()
   } catch { /* exists */ }
+  // applied_* 컬럼 자동 추가 (기존 테이블 마이그레이션)
+  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER']) {
+    try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
+  }
+}
+
+// 🛡️ 2026-05-15: 티어 할인 계산 — group_buy_tiers JSON 파싱 + current 에 맞는 최고 tier 적용.
+//   tiers = [{ min: 5, discount_pct: 5 }, { min: 10, discount_pct: 15 }, { min: 20, discount_pct: 25 }]
+//   current=12 → discount_pct=15 (가장 높은 충족 tier)
+//   tiers null/empty → discount_pct=0
+function calcTierDiscount(tiersJson: string | null, current: number): { discount_pct: number; next_tier: { min: number; discount_pct: number } | null } {
+  if (!tiersJson) return { discount_pct: 0, next_tier: null }
+  try {
+    const tiers = JSON.parse(tiersJson) as Array<{ min: number; discount_pct: number }>
+    if (!Array.isArray(tiers) || tiers.length === 0) return { discount_pct: 0, next_tier: null }
+    // 정렬 후 current 이하 max + current 초과 min 찾기
+    const sorted = [...tiers].sort((a, b) => a.min - b.min)
+    let achieved = 0
+    let next: { min: number; discount_pct: number } | null = null
+    for (const t of sorted) {
+      if (current >= t.min) achieved = Math.max(achieved, t.discount_pct)
+      else { next = t; break }
+    }
+    return { discount_pct: achieved, next_tier: next }
+  } catch { return { discount_pct: 0, next_tier: null } }
 }
 
 // 바우처 코드 생성
@@ -132,12 +167,53 @@ groupBuyRoutes.get('/products/:id', async (c) => {
            s.bio as seller_bio, s.sns_instagram as seller_instagram
     FROM products p
     LEFT JOIN sellers s ON p.seller_id = s.id
-    WHERE p.id = ? AND p.category = 'meal_voucher'
-  `).bind(id).first()
+    WHERE p.id = ? AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+  `).bind(id).first<any>()
 
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
-  return c.json({ success: true, data: product })
+  // 🛡️ 2026-05-15: 티어 정보 + 다음 tier 까지 남은 인원 함께 반환
+  const tierInfo = calcTierDiscount(product.group_buy_tiers, Number(product.group_buy_current ?? 0))
+
+  return c.json({
+    success: true,
+    data: {
+      ...product,
+      current_discount_pct: tierInfo.discount_pct,
+      next_tier: tierInfo.next_tier,
+      next_tier_remaining: tierInfo.next_tier ? Math.max(0, tierInfo.next_tier.min - Number(product.group_buy_current ?? 0)) : null,
+    },
+  })
+})
+
+// ── GET /api/group-buy/products/:id/participants ──── 최근 참여자 (마스킹) ──
+groupBuyRoutes.get('/products/:id/participants', async (c) => {
+  const { DB } = c.env
+  const idRaw = c.req.param('id')
+  const idNum = Number(idRaw)
+  if (!Number.isFinite(idNum) || idNum <= 0 || !Number.isInteger(idNum)) {
+    return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+  }
+  const id = idNum
+  try {
+    const { results } = await DB.prepare(`
+      SELECT
+        SUBSTR(COALESCE(u.display_name, u.email, '익명'), 1, 1) || '**' AS masked_name,
+        u.profile_image AS avatar,
+        o.created_at,
+        oi.quantity
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      LEFT JOIN users u ON u.id = o.user_id
+      WHERE oi.product_id = ? AND o.status = 'PAID'
+      ORDER BY o.created_at DESC
+      LIMIT 20
+    `).bind(id).all().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: results ?? [] })
+  } catch (err) {
+    console.error('[gb participants]', err)
+    return c.json({ success: true, data: [] })
+  }
 })
 
 // ── POST /api/group-buy/join/:id — 공동구매 참여 ────────────────────
@@ -186,6 +262,18 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
     }
 
+    // 🛡️ 2026-05-15: 이미 종료/취소된 공구 차단 (status 가드)
+    if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
+      return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
+    }
+
+    // 🛡️ 2026-05-15: voucher 만료일 가드 — 공구 마감 전에 voucher 가 먼저 만료되면 무용지물
+    if (product.voucher_expiry && product.group_buy_deadline) {
+      if (new Date(product.voucher_expiry) <= new Date(product.group_buy_deadline)) {
+        return c.json({ success: false, error: '바우처 만료일이 공구 마감 전이라 발급할 수 없습니다. 셀러에게 문의해주세요.' }, 400)
+      }
+    }
+
     // ✅ BUG #26 FIX: Atomic stock reservation. Previous SELECT-then-UPDATE
     // pattern allowed two concurrent joiners to both pass the stock check and
     // then oversell via unconditional decrement.
@@ -196,7 +284,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       return c.json({ success: false, error: '재고가 부족합니다' }, 409)
     }
 
-    const totalAmount = product.price * qty
+    // 🛡️ 2026-05-15: 티어 할인 적용 — 현재 group_buy_current 기준 (이번 참여자 포함 전).
+    //   join 직후 increment 되면서 다음 참여자부터 새 tier 적용 가능 (자연스러운 dynamic pricing).
+    const currentTier = calcTierDiscount(product.group_buy_tiers, Number(product.group_buy_current ?? 0))
+    const appliedDiscountPct = currentTier.discount_pct
+    const unitPrice = Math.round(product.price * (1 - appliedDiscountPct / 100))
+    const totalAmount = unitPrice * qty
     const orderNumber = `GB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
     // 딜 결제
@@ -277,15 +370,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(order.id, productId, product.name, product.price, product.price, qty, totalAmount).run()
 
-      // 바우처 발급
+      // 바우처 발급 (티어 할인 정보도 함께 기록)
       for (let i = 0; i < qty; i++) {
         const code = generateVoucherCode()
         const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
 
         await DB.prepare(`
-          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at)
-          VALUES (?, ?, ?, ?, ?)
-        `).bind(order.id, productId, userId, code, expiresAt).run()
+          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(order.id, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice).run()
       }
     }
 
@@ -305,8 +398,51 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
        WHERE id = ?
     `).bind(qty, qty, productId).run()
 
-    const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status FROM products WHERE id = ?')
+    const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status, milestone_notified_50, milestone_notified_80, milestone_notified_lastone FROM products WHERE id = ?')
       .bind(productId).first<any>()
+
+    // 🛡️ 2026-05-15: 마일스톤 알림 (50%, 80%, 1명 남음) — atomic CAS dedup
+    //   진행 중 공구의 전환율을 높이기 위한 hot notification. push 만 (이메일 X — 너무 잦음).
+    try {
+      const tgt = Number(updated?.group_buy_target ?? 0)
+      const cur = Number(updated?.group_buy_current ?? 0)
+      if (tgt > 0 && updated?.group_buy_status === 'active') {
+        const pct = (cur / tgt) * 100
+        const remaining = tgt - cur
+
+        const milestones: Array<{ flag: 'lastone' | '80' | '50'; condition: boolean; title: string; body: string }> = []
+        if (remaining === 1 && !updated.milestone_notified_lastone) {
+          milestones.push({ flag: 'lastone', condition: true, title: '🔥 1명만 더 모이면 공구 성공!', body: `${product.name} — 마지막 한 자리, 지금 참여하세요` })
+        } else if (pct >= 80 && !updated.milestone_notified_80) {
+          milestones.push({ flag: '80', condition: true, title: '🎯 공구 80% 달성!', body: `${product.name} — ${remaining}자리 남았어요` })
+        } else if (pct >= 50 && !updated.milestone_notified_50) {
+          milestones.push({ flag: '50', condition: true, title: '✨ 공구 절반 달성!', body: `${product.name} — ${remaining}자리 더 모이면 성공` })
+        }
+
+        for (const m of milestones) {
+          // CAS: flag 컬럼이 0 일 때만 1로 set (멱등)
+          const colName = `milestone_notified_${m.flag}`
+          const cas = await DB.prepare(`UPDATE products SET ${colName} = 1 WHERE id = ? AND ${colName} = 0`).bind(productId).run().catch(() => ({ meta: { changes: 0 } }))
+          if ((cas.meta?.changes ?? 0) === 0) continue
+
+          // 관심 유저 알림 (interest_list 등록자) — 참여자 본인은 제외
+          try {
+            const { results: interested } = await DB.prepare(
+              `SELECT DISTINCT user_id FROM interest_list WHERE product_id = ? AND user_id IS NOT NULL AND user_id != ?`
+            ).bind(productId, userId).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }))
+            const { sendSystemPush } = await import('../../../lib/system-push')
+            for (const u of interested ?? []) {
+              try {
+                await sendSystemPush(c.env, 'user', u.user_id, {
+                  title: m.title, body: m.body,
+                  url: `/group-buy/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
+                })
+              } catch { /* ignore */ }
+            }
+          } catch { /* interest_list table may not exist */ }
+        }
+      }
+    } catch (e) { console.error('[group-buy milestone notify]', e) }
 
     // 🛡️ 공구 성공 시 모든 참여자에게 푸시 + dashboard notification (best-effort)
     //   updated.group_buy_status === 'achieved' 이며, 직전 UPDATE 가 처음으로 트랜지션 시켰을 때만 발송하도록
@@ -341,21 +477,80 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 바우처 코드 조회
     const vouchers = await DB.prepare(
       'SELECT code, expires_at FROM vouchers WHERE order_id = ? AND user_id = ?'
-    ).bind(order?.id, userId).all()
+    ).bind(order?.id, userId).all<{ code: string; expires_at: string }>()
+
+    // 🛡️ 2026-05-15: 이메일 영수증 — voucher 코드 첨부, best-effort (실패해도 join 성공).
+    //   유저 email 조회 → Resend 발송 → 실패 시 silent (push 알림이 백업).
+    try {
+      const userRow = await DB.prepare("SELECT email, display_name FROM users WHERE id = ?")
+        .bind(userId).first<{ email: string | null; display_name: string | null }>().catch(() => null)
+      const userEmail = userRow?.email
+      if (userEmail && (c.env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY) {
+        const { sendEmail } = await import('../../../services/email')
+        const voucherList = (vouchers.results ?? []).map(v => `
+          <tr>
+            <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:monospace;font-size:13px;color:#ec4899;font-weight:700;">${v.code}</td>
+            <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px;color:#6b7280;">${v.expires_at ? new Date(v.expires_at).toLocaleDateString('ko-KR') + ' 까지' : '-'}</td>
+          </tr>`).join('')
+        const html = `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fff;">
+            <div style="text-align:center;padding:20px 0;border-bottom:1px solid #e5e7eb;">
+              <h1 style="margin:0;font-size:22px;color:#111827;">🎫 공동구매 참여 영수증</h1>
+              <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">유어딜 (live.ur-team.com)</p>
+            </div>
+            <div style="padding:20px 0;">
+              <p style="margin:0 0 12px;font-size:15px;color:#111827;">${userRow?.display_name || '고객'}님, 공동구매 참여를 확인했어요!</p>
+              <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+                <tr><td style="padding:6px 0;color:#6b7280;width:120px;">주문번호</td><td style="padding:6px 0;font-family:monospace;color:#111827;">${orderNumber}</td></tr>
+                <tr><td style="padding:6px 0;color:#6b7280;">상품명</td><td style="padding:6px 0;color:#111827;">${product.name}</td></tr>
+                ${product.restaurant_name ? `<tr><td style="padding:6px 0;color:#6b7280;">매장</td><td style="padding:6px 0;color:#111827;">${product.restaurant_name}</td></tr>` : ''}
+                <tr><td style="padding:6px 0;color:#6b7280;">수량</td><td style="padding:6px 0;color:#111827;">${qty}장</td></tr>
+                ${appliedDiscountPct > 0 ? `<tr><td style="padding:6px 0;color:#6b7280;">🎉 티어 할인</td><td style="padding:6px 0;color:#ec4899;font-weight:700;">-${appliedDiscountPct}% 적용</td></tr>` : ''}
+                <tr><td style="padding:6px 0;color:#6b7280;">결제 금액</td><td style="padding:6px 0;color:#111827;font-weight:700;">${totalAmount.toLocaleString('ko-KR')}딜</td></tr>
+              </table>
+              <h3 style="margin:20px 0 8px;font-size:15px;color:#111827;">발급된 바우처 코드</h3>
+              <table style="width:100%;border-collapse:collapse;">
+                <thead><tr><th style="padding:8px 12px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;text-align:left;color:#6b7280;">코드</th><th style="padding:8px 12px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;text-align:left;color:#6b7280;">만료일</th></tr></thead>
+                <tbody>${voucherList}</tbody>
+              </table>
+              <div style="margin:24px 0;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
+                <p style="margin:0;font-size:13px;color:#991b1b;">💡 매장 방문 시 위 코드를 보여주세요. QR 코드는 <a href="https://live.ur-team.com/my-vouchers" style="color:#ec4899;text-decoration:none;font-weight:700;">내 바우처</a> 페이지에서 확인 가능합니다.</p>
+              </div>
+              <p style="margin:16px 0 0;text-align:center;">
+                <a href="https://live.ur-team.com/my-vouchers" style="display:inline-block;padding:12px 24px;background:#ec4899;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;">내 바우처 보기</a>
+              </p>
+            </div>
+            <div style="padding:16px 0;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;">
+              <p style="margin:0;">© 2026 리스터코퍼레이션. 문의: jiwon@ur-team.com</p>
+            </div>
+          </div>`
+        await sendEmail(
+          { to: userEmail, subject: `[유어딜] 공구 참여 완료 — ${product.name} (${qty}장)`, html },
+          (c.env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY!,
+          undefined,
+          DB,
+        ).catch((e) => console.warn('[group-buy email]', e))
+      }
+    } catch (e) { console.warn('[group-buy email outer]', e) }
 
     return c.json({
       success: true,
       data: {
         order_number: orderNumber,
         amount: totalAmount,
+        unit_price: unitPrice,
+        applied_discount_pct: appliedDiscountPct,
         commission: commissionAmount,
         seller_amount: sellerAmount,
         commission_rate: commissionRate,
         vouchers: vouchers.results ?? [],
         group_buy_current: (updated?.group_buy_current ?? 0),
         group_buy_target: updated?.group_buy_target ?? 0,
+        next_tier: currentTier.next_tier,
       },
-      message: `공동구매 참여 완료! 바우처 ${qty}장이 발급되었습니다.`,
+      message: appliedDiscountPct > 0
+        ? `공동구매 참여 완료! 티어 할인 ${appliedDiscountPct}% 적용 + 바우처 ${qty}장 발급`
+        : `공동구매 참여 완료! 바우처 ${qty}장이 발급되었습니다.`,
     })
     } catch (innerErr) {
       // 🛡️ 2026-05-13 (운영 안정성 #2): 딜 차감 후 후속 INSERT 실패 시 자동 환불 + stock 복구
@@ -377,8 +572,11 @@ groupBuyRoutes.get('/my', requireAuth(), async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
+  // 🛡️ 2026-05-15: lat/lng 추가 — 지도 뷰용
   const { results } = await DB.prepare(`
-    SELECT v.*, p.name as product_name, p.restaurant_name, p.restaurant_address, p.image_url as product_image
+    SELECT v.*, p.name as product_name, p.restaurant_name, p.restaurant_address,
+           p.restaurant_lat, p.restaurant_lng, p.restaurant_phone,
+           p.image_url as product_image
     FROM vouchers v
     LEFT JOIN products p ON v.product_id = p.id
     WHERE v.user_id = ?
@@ -805,6 +1003,79 @@ ${data.statsUrl}
     }).catch(() => { /* silently fail — 운영 영향 없게 */ })
   } catch { /* graceful */ }
 }
+
+// ── GET /api/group-buy/admin/analytics — 어드민: 카테고리별 funnel + top groups ──
+// 🛡️ 2026-05-15: 공구 의사결정 데이터 — 카테고리별 진행/달성률, 매출 top, 평균 참여율
+groupBuyRoutes.get('/admin/analytics', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  try {
+    // 카테고리별 통계
+    const { results: byCategory } = await DB.prepare(`
+      SELECT
+        category,
+        COUNT(*) AS total_groups,
+        SUM(CASE WHEN group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved,
+        SUM(CASE WHEN group_buy_status = 'expired' AND group_buy_current < group_buy_target THEN 1 ELSE 0 END) AS failed,
+        SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active,
+        SUM(group_buy_current) AS total_participants,
+        SUM(group_buy_current * price) AS total_gmv
+      FROM products
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND group_buy_target > 0
+      GROUP BY category
+      ORDER BY total_gmv DESC
+    `).all().catch(() => ({ results: [] }))
+
+    // GMV top 10
+    const { results: topGroups } = await DB.prepare(`
+      SELECT p.id, p.name, p.category, p.group_buy_current, p.group_buy_target, p.group_buy_status,
+             p.price, (p.group_buy_current * p.price) AS gmv,
+             s.name AS seller_name
+      FROM products p
+      LEFT JOIN sellers s ON s.id = p.seller_id
+      WHERE p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND p.group_buy_target > 0
+        AND p.group_buy_current > 0
+      ORDER BY gmv DESC
+      LIMIT 10
+    `).all().catch(() => ({ results: [] }))
+
+    // 일별 참여 추이 (최근 30일)
+    const { results: daily } = await DB.prepare(`
+      SELECT DATE(o.created_at) AS day,
+             COUNT(DISTINCT o.id) AS orders,
+             COUNT(DISTINCT v.id) AS vouchers_issued,
+             SUM(o.total_amount) AS gmv
+      FROM orders o
+      LEFT JOIN vouchers v ON v.order_id = o.id
+      WHERE o.order_number LIKE 'GB-%'
+        AND o.created_at >= datetime('now', '-30 days')
+        AND o.status = 'PAID'
+      GROUP BY DATE(o.created_at)
+      ORDER BY day DESC
+    `).all().catch(() => ({ results: [] }))
+
+    // 전체 합계
+    const totals = await DB.prepare(`
+      SELECT
+        COUNT(*) AS total_groups,
+        SUM(CASE WHEN group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved_groups,
+        SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active_groups,
+        SUM(group_buy_current) AS total_participants
+      FROM products
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND group_buy_target > 0
+    `).first().catch(() => null)
+
+    return c.json({
+      success: true,
+      data: { totals, by_category: byCategory ?? [], top_groups: topGroups ?? [], daily: daily ?? [] }
+    })
+  } catch (err) {
+    console.error('[admin gb analytics]', err)
+    return c.json({ success: false, error: '집계 실패' }, 500)
+  }
+})
 
 // ── GET /api/group-buy/admin/list — 어드민: 전체 공구 현황 ──────────
 // 🛡️ 2026-05-15: 어드민이 진행중/만료/취소 전부 조회 + 미달성 공구 필터
