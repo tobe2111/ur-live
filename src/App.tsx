@@ -65,6 +65,7 @@ const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
+const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage'))
@@ -329,6 +330,7 @@ function AppContent() {
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />
+            <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/recap/:id" element={<LiveRecapPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />

@@ -523,6 +523,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       group_buy_target?: number;
       group_buy_deadline?: string;
       store_verify_pin?: string;
+      // 🛡️ 2026-05-15: 티어 할인 — JSON 문자열로 받음
+      group_buy_tiers?: string | null;
       // 🛡️ 2026-05-05: 디지털 상품 필드
       product_kind?: string;
       delivery_type?: string;
@@ -600,8 +602,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       }
     }
 
-    if (category === 'meal_voucher') {
-      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin'] as const;
+    if (category === 'meal_voucher' || category === 'beauty_voucher' || category === 'health_voucher' || category === 'pet_voucher' || category === 'stay_voucher' || category === 'activity_voucher') {
+      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers'] as const;
       for (const field of mealFields) {
         const val = body[field];
         if (val !== undefined && val !== null && val !== '') {
@@ -762,6 +764,24 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
 
     const productId = c.req.param('id');
     const db = c.env.DB;
+
+    // 🛡️ 2026-05-15: 진행 중인 공구 상품은 삭제 차단 (참여자 보호)
+    //   active 상태 + 참여자 1명 이상이면 거부. 강제 종료/환불 거치도록 안내.
+    try {
+      const gb = await db.prepare(
+        `SELECT category, group_buy_status, group_buy_current FROM products WHERE id = ? AND seller_id = ?`
+      ).bind(productId, sellerId).first<{ category: string; group_buy_status: string; group_buy_current: number }>();
+      if (gb) {
+        const VOUCHER = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher'];
+        if (VOUCHER.includes(gb.category) && gb.group_buy_status === 'active' && (gb.group_buy_current ?? 0) > 0) {
+          return c.json({
+            success: false,
+            error: '진행 중인 공구는 삭제할 수 없습니다. 참여자 환불 후 삭제하세요.',
+            code: 'GROUP_BUY_ACTIVE_WITH_PARTICIPANTS'
+          }, 409);
+        }
+      }
+    } catch { /* gating best-effort, fall through to soft delete */ }
 
     // soft delete (status = DELETED)
     const result = await db.prepare(

@@ -358,7 +358,7 @@ export default function GroupBuyListPage() {
                   return (
                     <button
                       key={p.id}
-                      onClick={() => navigate(`/products/${p.id}`)}
+                      onClick={() => navigate(`/group-buy/${p.id}`)}
                       className="text-left active:scale-[0.98] transition-transform"
                     >
                       {/* 이미지 */}

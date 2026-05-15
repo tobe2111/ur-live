@@ -100,6 +100,15 @@ export default function ProductDetailPage() {
     }
   }, [product])
 
+  // 🛡️ 2026-05-15: voucher 카테고리는 전용 detail page 로 자동 redirect (URL 보존, replace history)
+  useEffect(() => {
+    if (!product) return
+    const VOUCHER_CATEGORIES = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
+    if (VOUCHER_CATEGORIES.includes(product.category || '')) {
+      navigate(`/group-buy/${product.id}`, { replace: true })
+    }
+  }, [product, navigate])
+
   useEffect(() => {
     const referrer = document.referrer
     if (referrer && !referrer.includes('/login') && !referrer.includes('/auth/kakao')) {
