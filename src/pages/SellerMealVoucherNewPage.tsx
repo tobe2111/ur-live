@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Phone, Users, Utensils, CheckCircle } from 'lucide-react'
+import { MapPin, Phone, Users, Utensils, CheckCircle, Camera, Sparkles, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
@@ -47,6 +47,42 @@ export default function SellerMealVoucherNewPage() {
   const [placeSelected, setPlaceSelected] = useState(false)
   const [suggestedImages, setSuggestedImages] = useState<string[]>([])
   const [loadingImages, setLoadingImages] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrItems, setOcrItems] = useState<Array<{ menu: string; price: number }>>([])
+
+  // 🛡️ 2026-05-15: OCR 메뉴 자동 입력 — 메뉴판 사진 1장으로 30초 등록.
+  async function handleOcrUpload(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('5MB 이하 이미지만 가능합니다')
+      return
+    }
+    setOcrLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await api.post('/api/ocr/menu', fd, {
+        headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+      })
+      if (res.data?.success) {
+        const { name, items, suggested_price } = res.data.data
+        setForm(f => ({
+          ...f,
+          name: name || f.name,
+          price: suggested_price > 0 ? suggested_price : f.price,
+          original_price: suggested_price > 0 ? Math.round(suggested_price * 1.3) : f.original_price,
+        }))
+        setOcrItems(items || [])
+        toast.success(`✨ ${items?.length ?? 0}개 메뉴 자동 입력 완료!`)
+      } else if (res.data?.fallback === 'manual') {
+        toast.info(res.data.message || 'OCR 사용 불가. 직접 입력해주세요.')
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || 'OCR 처리 실패. 직접 입력해주세요.')
+    } finally {
+      setOcrLoading(false)
+    }
+  }
 
   if (!isSellerAuthenticated()) { redirectToLogin(navigate); return null }
 
@@ -178,6 +214,51 @@ export default function SellerMealVoucherNewPage() {
           subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '식사권/공동구매 상품 등록' })}
           icon={<Utensils className="h-5 w-5" />}
         />
+        {/* 🛡️ 2026-05-15: OCR Quick Start — 메뉴판 사진 1장으로 30초 등록 */}
+        <div className="bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-dashed border-pink-300 rounded-2xl p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-xl bg-pink-500 text-white flex items-center justify-center shrink-0">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold text-gray-900">메뉴판 사진 1장으로 자동 등록</p>
+              <p className="text-[11px] text-gray-600 mt-0.5">AI 가 메뉴/가격/상품명을 추출합니다 (3분 → 30초)</p>
+              <label className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">
+                {ocrLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중…</>
+                ) : (
+                  <><Camera className="w-4 h-4" /> 메뉴판 사진 업로드</>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  disabled={ocrLoading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleOcrUpload(f)
+                    e.target.value = ''  // re-upload 가능
+                  }}
+                />
+              </label>
+              {ocrItems.length > 0 && (
+                <div className="mt-3 p-2.5 bg-white rounded-lg border border-pink-200">
+                  <p className="text-[10px] font-bold text-pink-700 mb-1.5">✨ 추출된 메뉴 ({ocrItems.length}개)</p>
+                  <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                    {ocrItems.map((item, i) => (
+                      <div key={i} className="flex justify-between text-[11px]">
+                        <span className="text-gray-700 truncate">{item.menu}</span>
+                        <span className="text-gray-600 font-mono ml-2">{item.price.toLocaleString('ko-KR')}원</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* 🛡️ 2026-04-28: voucher 카테고리 (식사/뷰티/헬스) — 같은 인프라 재활용 */}

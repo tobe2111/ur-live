@@ -11,6 +11,7 @@
 import { Hono } from 'hono'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 
@@ -725,7 +726,7 @@ groupBuyRoutes.get('/verify/:code', async (c) => {
 })
 
 // ── POST /api/group-buy/refund/:productId — 미달성 공동구매 환불 ────
-groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
+groupBuyRoutes.post('/refund/:productId', requireAuth(), auditLog('group_buy.seller.refund'), async (c) => {
   const { DB } = c.env
   const productIdRaw = c.req.param('productId')
   const productIdNum = Number(productIdRaw)
@@ -1227,7 +1228,7 @@ groupBuyRoutes.get('/admin/list', requireAdmin(), async (c) => {
 // ── POST /api/group-buy/admin/force-refund/:productId — 어드민 강제 환불 ──
 // 🛡️ 2026-05-15: status 와 무관하게 미사용 voucher 일괄 환불 + audit_logs 기록.
 //   기존 /refund/:productId 는 status='expired' 필요. 분쟁/긴급 케이스에 어드민 직접 개입.
-groupBuyRoutes.post('/admin/force-refund/:productId', requireAdmin(), async (c) => {
+groupBuyRoutes.post('/admin/force-refund/:productId', requireAdmin(), auditLog('group_buy.admin.force_refund'), async (c) => {
   const { DB } = c.env
   const adminUser = getCurrentUser(c)
   const productIdRaw = c.req.param('productId')
