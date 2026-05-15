@@ -98,10 +98,16 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
 
                 {/* CTA - Single Electric Red button */}
                 <div className="flex items-center gap-6">
-                  <button className="group inline-flex animate-pulse-glow items-center gap-3 rounded-full bg-red-500 px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition-all hover:scale-[1.03]">
+                  {/* 🛡️ 2026-05-14: PDF 다운로드 — public/company-brochure.pdf 준비 필요. */}
+                  <a
+                    href="/company-brochure.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex animate-pulse-glow items-center gap-3 rounded-full bg-red-500 px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white transition-all hover:scale-[1.03]"
+                  >
                     회사소개서 보기
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
