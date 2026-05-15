@@ -47,6 +47,7 @@ const AdminRestaurantDemandPage = lazy(() => import('@/pages/AdminRestaurantDema
 const AdminCastingsPage = lazy(() => import('@/pages/AdminCastingsPage'))
 const AdminOpsInsightsPage = lazy(() => import('@/pages/AdminOpsInsightsPage'))
 const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
+const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
 
 export function AdminRoutes() {
   return (
@@ -139,6 +140,12 @@ export function AdminRoutes() {
       <Route path="/admin/group-buy" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminGroupBuyPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 분쟁 큐 (AI 자동 분류 + escalation) */}
+      <Route path="/admin/disputes" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminDisputesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/reviews" element={

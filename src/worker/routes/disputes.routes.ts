@@ -196,6 +196,97 @@ disputesRoutes.post(
   }
 )
 
+// 어드민 분쟁 처리 — 환불 승인
+// 🛡️ 2026-05-15: voucher refunded + 딜 환불 + dispute resolved 표시 + 유저 푸시
+disputesRoutes.post('/admin/:id/approve', requireAuth(), auditLog('dispute.admin.approve'), async (c) => {
+  const user = getCurrentUser(c)
+  const userAsAny = user as unknown as { type?: string; id?: string | number }
+  if (!user || userAsAny.type !== 'admin') return c.json({ success: false, error: 'forbidden' }, 403)
+  const idStr = c.req.param('id')
+  const id = Number(idStr)
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 dispute id' }, 400)
+
+  let body: { admin_notes?: string }
+  try { body = await c.req.json() } catch { body = {} }
+  const notes = (body.admin_notes || '').toString().slice(0, 500)
+
+  const { DB } = c.env
+  await ensureDisputesTable(DB)
+
+  const dispute = await DB.prepare("SELECT * FROM disputes WHERE id = ? AND action IN ('escalated', 'pending')").bind(id).first<{ id: number; voucher_code: string; user_id: string; ai_category: string }>()
+  if (!dispute) return c.json({ success: false, error: '처리 가능한 분쟁 없음' }, 404)
+
+  // voucher 환불 처리
+  const voucher = await DB.prepare(
+    "SELECT v.id, v.user_id, v.product_id, v.status, p.price, o.payment_method FROM vouchers v LEFT JOIN orders o ON o.id = v.order_id LEFT JOIN products p ON p.id = v.product_id WHERE v.code = ?"
+  ).bind(dispute.voucher_code).first<{ id: number; user_id: string; product_id: number; status: string; price: number; payment_method: string }>()
+  if (!voucher) return c.json({ success: false, error: 'voucher 없음' }, 404)
+  if (voucher.status !== 'unused') return c.json({ success: false, error: `이미 ${voucher.status} 상태` }, 400)
+
+  // CAS
+  const casRes = await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'").bind(voucher.id).run()
+  if (!casRes.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
+
+  // 딜 환불
+  if (voucher.payment_method === 'deal_points' && voucher.user_id) {
+    await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(voucher.price, voucher.user_id).run().catch(() => {})
+    await DB.prepare(
+      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+    ).bind(voucher.user_id, voucher.price, voucher.price, voucher.user_id, `[분쟁 ${id} 환불 승인] ${dispute.ai_category}`).run().catch(() => {})
+  }
+
+  // dispute 상태 업데이트
+  await DB.prepare(`UPDATE disputes SET action = 'resolved', admin_notes = ?, admin_user_id = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?`)
+    .bind(notes || null, String(userAsAny.id ?? ''), id).run()
+
+  // 유저 푸시
+  try {
+    const { sendSystemPush } = await import('../../lib/system-push')
+    await sendSystemPush(c.env, 'user', voucher.user_id, {
+      title: '✅ 분쟁 환불 승인',
+      body: `voucher 환불이 완료됐습니다 (${voucher.price.toLocaleString()}딜)`,
+      url: '/user/profile', tag: `dispute-${id}`,
+    })
+  } catch { /* ignore */ }
+
+  return c.json({ success: true, message: `분쟁 #${id} 환불 처리 완료` })
+})
+
+// 어드민 분쟁 거절
+disputesRoutes.post('/admin/:id/reject', requireAuth(), auditLog('dispute.admin.reject'), async (c) => {
+  const user = getCurrentUser(c)
+  const userAsAny = user as unknown as { type?: string; id?: string | number }
+  if (!user || userAsAny.type !== 'admin') return c.json({ success: false, error: 'forbidden' }, 403)
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 id' }, 400)
+  let body: { admin_notes?: string }
+  try { body = await c.req.json() } catch { body = {} }
+  const notes = (body.admin_notes || '').toString().slice(0, 500)
+  if (!notes || notes.length < 5) return c.json({ success: false, error: '거절 사유 5자+ 필수' }, 400)
+
+  const { DB } = c.env
+  await ensureDisputesTable(DB)
+
+  const result = await DB.prepare(`UPDATE disputes SET action = 'rejected', admin_notes = ?, admin_user_id = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ? AND action IN ('escalated', 'pending')`)
+    .bind(notes, String(userAsAny.id ?? ''), id).run()
+  if (!result.meta?.changes) return c.json({ success: false, error: '처리 가능한 분쟁 없음' }, 404)
+
+  // 유저에게 거절 통보
+  try {
+    const dispute = await DB.prepare("SELECT user_id FROM disputes WHERE id = ?").bind(id).first<{ user_id: string }>()
+    if (dispute?.user_id) {
+      const { sendSystemPush } = await import('../../lib/system-push')
+      await sendSystemPush(c.env, 'user', dispute.user_id, {
+        title: '분쟁 결과 안내',
+        body: `분쟁이 검토 후 거절되었습니다. 사유: ${notes.slice(0, 100)}`,
+        url: '/user/profile', tag: `dispute-rejected-${id}`,
+      })
+    }
+  } catch { /* ignore */ }
+
+  return c.json({ success: true, message: `분쟁 #${id} 거절 처리` })
+})
+
 // 어드민용 분쟁 리스트
 disputesRoutes.get('/admin/list', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

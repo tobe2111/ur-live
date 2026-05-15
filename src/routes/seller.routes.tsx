@@ -47,6 +47,7 @@ const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
 const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
 const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
+const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
@@ -218,6 +219,12 @@ export function SellerRoutes() {
       <Route path="/seller/meal-voucher/new" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 셀러 2FA TOTP 설정 */}
+      <Route path="/seller/2fa" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><Seller2FASetupPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/streaming-setup" element={

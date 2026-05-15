@@ -868,3 +868,80 @@ High/Medium 은 코드 품질 & 유지보수성 이슈 — 단계적으로.
 **예상 작업 시간**: 30분
 
 - **2026-04-22**: 이 문서 작성. 대장애 복구 완료 후 baseline 부채 정리.
+
+---
+
+## 🆕 2026-05-15 — 공구 서비스 기술 부채 (Round 14 commits 후)
+
+### TD-G01 (MEDIUM): group-buy.routes.ts 1446줄 — 분리 권장
+**위치**: `src/features/group-buy/api/group-buy.routes.ts`
+**문제**: 1446줄 단일 파일. admin / seller / public / voucher 4 영역 혼재.
+- admin: `/admin/list`, `/admin/force-refund`, `/admin/analytics`
+- seller: `/refund/:productId`, `/seller-voucher-stats`, `/voucher-logs`
+- public: `/products`, `/products/:id`, `/live-ticker`, `/products/:id/participants`
+- voucher: `/join/:id`, `/:code/use`, `/voucher/:code/partial-refund`, `/verify/:code`, `/store-stats/:productId`
+- helper: tier discount, magic link, alimtalk
+
+**권장 분리**:
+```
+src/features/group-buy/api/
+├── group-buy-public.routes.ts    (~300줄, products 조회 / live-ticker)
+├── group-buy-join.routes.ts      (~400줄, /join + tier + ledger + email + 마일스톤)
+├── group-buy-voucher.routes.ts   (~300줄, voucher use / refund / partial-refund)
+├── group-buy-seller.routes.ts    (~200줄, seller-voucher-stats / voucher-logs / refund)
+├── group-buy-admin.routes.ts     (~250줄, admin/list / force-refund / analytics)
+└── helpers/
+    ├── tier-discount.ts
+    ├── magic-link.ts
+    └── alimtalk.ts
+```
+
+**위험**: 한 번에 분리하면 import 경로 폭발 + git history 추적 곤란. **점진 분리** (admin → 한 commit, voucher → 다음 commit).
+**예상 작업 시간**: 2-3 세션
+
+### TD-G02 (LOW): 12개 `as any` / `<any>` 캐스트
+**위치**: `group-buy.routes.ts` (10), `disputes.routes.ts` (2)
+**해결**: 핵심 row 타입 정의 (Voucher, Order, ProductWithGroupBuy 등) 후 `<Voucher>` 처럼 generic.
+**예상 작업 시간**: 1세션
+
+### TD-G03 (LOW): voucher-categories enum 6개 반복 선언
+**위치**: `group-buy.routes.ts`, `seller-orders.routes.ts`, `disputes.routes.ts`, `og-image.routes.ts`, `affiliate.routes.ts`, `analytics.routes.ts`, `sitemap.routes.ts`, frontend pages
+**해결**: `src/shared/constants/voucher-categories.ts` 단일 source.
+**예상 작업 시간**: 30분
+
+### TD-G04 (LOW): 22개 console.* — 일부 production noise
+**위치**: `group-buy.routes.ts` (22), `disputes.routes.ts` (3)
+**현재**: 대부분 `console.error` 정당 (운영 디버깅용). `console.warn` 일부 DEV 게이트 추천.
+**예상 작업 시간**: 30분
+
+### TD-G05 (MEDIUM): 부분 환불 → ledger 미통합
+**위치**: `group-buy.routes.ts /voucher/:code/partial-refund` (방금 추가)
+**현재**: `point_transactions` 만 update. `ledger_entries` 에 reverse entry 추가 안 함.
+**해결**: 환불 시 `recordLedger({ event_type: 'partial_refund', debit: 'seller:N', credit: 'user:N', amount: refundAmount })`
+**예상 작업 시간**: 15분
+
+### TD-G06 (LOW): 분쟁 endpoint 2FA 검증 미적용
+**위치**: `disputes.routes.ts /admin/:id/approve` & `/reject`
+**현재**: requireAuth() 만. 2FA 활성화 어드민의 경우 한번 더 검증 권장 (sensitive action).
+**해결**: 미들웨어 `require2FA()` 추가 후 sensitive endpoint 에 적용.
+**예상 작업 시간**: 1세션
+
+### TD-G07 (LOW): live-ticker / participants polling 5s 간격 — 동시 사용자 1000명+ 시 D1 부하
+**위치**: `GroupBuyDetailPage.tsx`, `LiveTicker.tsx`
+**현재**: 30초 (ticker), 5초 (detail).
+**해결 옵션**:
+1. SSE / Durable Object pub/sub → push 모델 (개발 cost 큼)
+2. Edge cache 더 공격적 + 클라 jitter (5±2초 random)
+3. visibilitychange 시만 activate
+**예상 작업 시간**: 2세션 (DO 옵션) / 30분 (jitter)
+
+### TD-G08 (HIGH): 정합성 검증 cron 없음
+**위치**: 없음
+**현재**: ledger_entries 추가됨, 그런데 정합성 자동 검증 cron 부재.
+**해결**: daily cron 추가
+```
+SELECT account, SUM(...) - SUM(...) FROM ledger_entries GROUP BY account HAVING ABS(...) > 0
+→ Discord alert
+```
+**예상 작업 시간**: 1세션
+

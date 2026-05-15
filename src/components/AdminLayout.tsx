@@ -54,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
       { path: '/admin/coupons',          label: '쿠폰 관리',    icon: Ticket },
       { path: '/admin/castings',         label: '캐스팅',        icon: Megaphone },
       { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
