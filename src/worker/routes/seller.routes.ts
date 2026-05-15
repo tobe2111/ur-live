@@ -104,11 +104,15 @@ sellersRouter.get('/:id/public', async (c) => {
     //                       SNS 링크, 사업자 정보 (전자상거래법 표시 의무 항목), 대표자명 추가.
     //                       프론트 호환을 위해 DB 컬럼명 alias: kakao_chat_url→kakao_chat_link, representative_name→ceo_name
     //                       민감 필드는 여전히 제외: password_hash/email/phone/bank_*/account_holder/tax_email
+    // 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징 컬럼 추가
+    //   banner_url / brand_color / external_live_* (TikTok/Instagram/Facebook)
     const PUBLIC_SELLER_COLUMNS =
       's.id, s.username, s.name, s.business_name, s.business_number, s.business_address, ' +
       's.profile_image, s.bio, s.commission_rate, s.created_at, ' +
       's.sns_instagram, s.sns_youtube, s.sns_facebook, s.sns_twitter, s.website_url, ' +
       's.kakao_chat_url AS kakao_chat_link, s.representative_name AS ceo_name, ' +
+      's.banner_url, s.brand_color, ' +
+      's.external_live_tiktok, s.external_live_instagram, s.external_live_facebook, ' +
       '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
     const seller = await cacheGet(
       c.env.SESSION_KV,

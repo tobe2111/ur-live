@@ -192,6 +192,56 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
             CURRENT_TIMESTAMP
           )
         `).bind(stream.seller_id, `/live/${stream.id}`).run().catch(() => { /* noop */ });
+
+        // 🛡️ 2026-05-15 (PRISM 따라잡기): scheduled → live 전환 시 단골 자동 push.
+        //   seller_follows 테이블에서 단골 user_id 조회 → web push + dashboard notification.
+        //   stream 별 1회만 발송 (started_at 가 NULL 이었던 케이스만, 위 UPDATE 가 처리됨).
+        try {
+          const streamMeta = await DB.prepare(
+            `SELECT id, title, seller_id, youtube_video_id, thumbnail_url
+             FROM live_streams WHERE id = ?`
+          ).bind(stream.id).first<{ id: number; title: string; seller_id: number; youtube_video_id: string | null; thumbnail_url: string | null }>();
+          if (!streamMeta) continue;
+
+          const sellerRow = await DB.prepare(
+            `SELECT name FROM sellers WHERE id = ?`
+          ).bind(streamMeta.seller_id).first<{ name: string }>().catch(() => null);
+          const sellerName = sellerRow?.name || '셀러';
+
+          const { results: followers } = await DB.prepare(
+            `SELECT user_id FROM seller_follows WHERE seller_id = ? AND notify_live_start = 1`
+          ).bind(streamMeta.seller_id).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }));
+
+          if (followers && followers.length > 0) {
+            const { sendSystemPush } = await import('../../lib/system-push');
+            const liveUrl = `/live/${streamMeta.id}`;
+            const pushBody = `${sellerName}님이 라이브를 시작했어요!`;
+            const pushTitle = `📺 ${streamMeta.title.slice(0, 80)}`;
+            let pushSent = 0;
+
+            for (const f of followers) {
+              try {
+                // dashboard notification (D1 영구 기록)
+                await DB.prepare(
+                  `INSERT INTO user_notifications (user_id, type, title, message, link)
+                   VALUES (?, 'live_start_follower', ?, ?, ?)`
+                ).bind(f.user_id, pushTitle, pushBody, liveUrl).run().catch(() => { /* table may not exist */ });
+
+                // web push (단골 사용자 본인의 push_subscription 으로)
+                const r = await sendSystemPush(env, 'user', f.user_id, {
+                  title: pushTitle,
+                  body: pushBody,
+                  url: liveUrl,
+                  tag: `live-start-${streamMeta.id}`,  // 같은 라이브 중복 push 방어
+                });
+                if (r.success) pushSent++;
+              } catch { /* per-follower 실패 skip */ }
+            }
+            logInfo(`[cron:yt-broadcast-sync] stream=${stream.id} live_start_push followers=${followers.length} sent=${pushSent}`);
+          }
+        } catch (e) {
+          logError(`[cron:yt-broadcast-sync] stream=${stream.id} follower notify failed`, { error: (e as Error).message });
+        }
       }
     } catch (err) {
       logError(`[cron:yt-broadcast-sync] stream=${stream.id} update failed:`, { error: (err as Error).message });

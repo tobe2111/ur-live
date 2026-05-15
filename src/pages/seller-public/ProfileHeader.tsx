@@ -8,6 +8,7 @@ import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, Star, MessageCircl
 import { toast } from '@/hooks/useToast'
 import FollowButton from './FollowButton'
 import RegularBadge from './RegularBadge'
+import ExternalLivePlatforms from './ExternalLivePlatforms'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -43,11 +44,24 @@ export default function ProfileHeader({
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  // 🛡️ 2026-05-15 (PRISM 따라잡기): brand_color 가 있으면 커버 그라디언트 대신 컬러 사용
+  const customCoverStyle = seller.brand_color
+    ? { background: `linear-gradient(135deg, ${seller.brand_color}, ${seller.brand_color}cc)` }
+    : undefined
+
   return (
     <>
       {/* 커버 + 프로필 */}
       <div className="relative">
-        <div className={`h-44 bg-gradient-to-br ${T.cover}`} />
+        {/* 🛡️ 2026-05-15: banner_url 우선 → brand_color 그라디언트 → 기본 그라디언트 */}
+        {seller.banner_url ? (
+          <div className="h-44 relative overflow-hidden">
+            <img src={seller.banner_url} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" fetchPriority="high" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        ) : (
+          <div className={`h-44 bg-gradient-to-br ${customCoverStyle ? '' : T.cover}`} style={customCoverStyle} />
+        )}
 
         {/* 상단 네비 */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-safe pb-2 z-10">
@@ -182,6 +196,14 @@ export default function ProfileHeader({
           </button>
         ) : (
           <>
+            {/* 🛡️ 2026-05-15: liveNow 일 때 외부 플랫폼 (TikTok/Instagram) 라이브 배지 */}
+            {liveNow && (seller.external_live_tiktok || seller.external_live_instagram || seller.external_live_facebook) && (
+              <ExternalLivePlatforms externalLiveUrls={{
+                tiktok: seller.external_live_tiktok,
+                instagram: seller.external_live_instagram,
+                facebook: seller.external_live_facebook,
+              }} />
+            )}
             <FollowButton sellerId={sellerId} />
             {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 단골 등록 (알림 opt-in) */}
             <div className="mt-2">
