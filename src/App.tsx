@@ -66,6 +66,10 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
+// 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
+const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'))
+const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage'))
+const AgencyPartnerLandingPage = lazy(() => import('./pages/AgencyPartnerLandingPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage'))
@@ -331,6 +335,10 @@ function AppContent() {
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
+            {/* 🛡️ 2026-05-15: B2B 랜딩 페이지 — PC 풀 너비, 영업/모집용 */}
+            <Route path="/business" element={<BusinessLandingPage />} />
+            <Route path="/influencer" element={<InfluencerLandingPage />} />
+            <Route path="/agency-partner" element={<AgencyPartnerLandingPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/recap/:id" element={<LiveRecapPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />

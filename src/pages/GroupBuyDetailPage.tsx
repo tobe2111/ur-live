@@ -119,6 +119,44 @@ export default function GroupBuyDetailPage() {
     return () => { cancelled = true }
   }, [productId, navigate])
 
+  // 🛡️ 2026-05-15: 실시간 polling — 5초 주기. 페이지 hidden 시 일시정지 (배터리 보호).
+  //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
+  useEffect(() => {
+    if (!detail || (detail.group_buy_status !== 'active' && detail.group_buy_status !== 'achieved')) return
+    let timer: ReturnType<typeof setInterval> | null = null
+    let lastCount = detail.group_buy_current
+    let prevParticipantNames = participants.slice(0, 5).map(p => p.masked_name).join(',')
+
+    const poll = async () => {
+      if (document.hidden) return
+      try {
+        const [d, p] = await Promise.all([
+          api.get(`/api/group-buy/products/${productId}`),
+          api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
+        ])
+        if (d.data?.success) {
+          const newDetail = d.data.data
+          const delta = newDetail.group_buy_current - lastCount
+          if (delta > 0) {
+            toast.success(`🎉 방금 ${delta}명이 참여했어요!`)
+            lastCount = newDetail.group_buy_current
+          }
+          setDetail(newDetail)
+        }
+        if (p.data?.data) {
+          const newParticipants = p.data.data
+          const newNamesKey = newParticipants.slice(0, 5).map((np: Participant) => np.masked_name).join(',')
+          if (newNamesKey !== prevParticipantNames) {
+            prevParticipantNames = newNamesKey
+            setParticipants(newParticipants)
+          }
+        }
+      } catch { /* silent */ }
+    }
+    timer = setInterval(poll, 5000)
+    return () => { if (timer) clearInterval(timer) }
+  }, [detail?.group_buy_status, productId])
+
   const tiers = useMemo(() => {
     if (!detail?.group_buy_tiers) return []
     try {
