@@ -15,6 +15,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
 import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
+import SellerKpiDashboard from '@/components/seller/SellerKpiDashboard'
 import TierBadge from '@/components/seller/TierBadge'
 import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 import { formatNumber } from '@/utils/format'
@@ -446,6 +447,9 @@ export default function SellerPage() {
 
         {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
         <SellerOnboardingChecklist />
+
+        {/* 🛡️ 2026-05-15: KPI 통합 대시보드 (단골 / 공구 / 매출 / 분쟁) */}
+        <SellerKpiDashboard />
 
         {/* 🛡️ 2026-05-15: 공구 진행 현황 — 대시보드 메인에서 즉시 액션 (at_risk 시 강조) */}
         <SellerGroupBuyOverview />
