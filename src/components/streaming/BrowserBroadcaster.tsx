@@ -110,14 +110,59 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   // 🛡️ 2026-05-13: 자동 시작 — 페이지 새로고침 후 status='live' 면 셀러 클릭 없이 재연결.
   //   getUserMedia 권한은 이미 허용된 도메인이면 prompt 없이 통과. autoplay-permission 정책상 동작.
   //   1회만 실행, status='idle' 일 때만 (이미 진행 중이면 skip).
+  // 🛡️ 2026-05-14: BroadcastChannel 로 같은 브라우저 다른 탭 coordination.
+  //   첫 탭이 송출 중이면 두 번째 탭이 autoStart 안 함 → 'Stream is already exist' 409 사전 차단.
   const autoStartedRef = useRef(false)
+  const [otherTabBroadcasting, setOtherTabBroadcasting] = useState(false)
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = new BroadcastChannel(`ur_broadcast_lock:${streamId}`)
+      const handler = (e: MessageEvent) => {
+        if (e.data?.type === 'broadcasting') setOtherTabBroadcasting(true)
+        else if (e.data?.type === 'stopped') setOtherTabBroadcasting(false)
+        else if (e.data?.type === 'who_is_broadcasting') {
+          // 다른 탭이 우리에게 물어봄 — 우리가 송출 중이면 응답
+          if (status === 'live' || status === 'connecting') {
+            try { bc?.postMessage({ type: 'broadcasting' }) } catch { /* ignore */ }
+          }
+        }
+      }
+      bc.addEventListener('message', handler)
+      // mount 시 "누가 송출 중?" 질문 — 1초 안에 응답 없으면 우리가 시작 가능
+      try { bc.postMessage({ type: 'who_is_broadcasting' }) } catch { /* ignore */ }
+    } catch { /* BroadcastChannel 미지원 (구형 브라우저) */ }
+    return () => { try { bc?.close() } catch { /* ignore */ } }
+  }, [streamId, status])
+
+  // 송출 시작/종료 시 BroadcastChannel 알림
+  useEffect(() => {
+    if (status !== 'live' && status !== 'connecting') return
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = new BroadcastChannel(`ur_broadcast_lock:${streamId}`)
+      bc.postMessage({ type: 'broadcasting' })
+    } catch { /* ignore */ }
+    return () => {
+      try { bc?.postMessage({ type: 'stopped' }); bc?.close() } catch { /* ignore */ }
+    }
+  }, [status, streamId])
+
   useEffect(() => {
     if (!autoStart || autoStartedRef.current) return
     if (status !== 'idle') return
-    autoStartedRef.current = true
-    void startBroadcast()
+    // 🛡️ 1초 대기 후 다른 탭 송출 여부 확인 — 응답 있으면 autoStart 안 함
+    const timer = setTimeout(() => {
+      if (otherTabBroadcasting) {
+        if (import.meta.env.DEV) console.log('[BrowserBroadcaster] 다른 탭에서 송출 중 — autoStart skip')
+        return
+      }
+      autoStartedRef.current = true
+      void startBroadcast()
+    }, 1000)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart])
+  }, [autoStart, otherTabBroadcasting])
 
   // 🛡️ 2026-05-13: Network-aware 적응형 비트레이트 — 패킷 손실/RTT 모니터링 → 자동 하향/복구.
   //   "끊기느니 저화질" 원칙. 라이브 커머스 안정성 매출 직결.
@@ -634,8 +679,8 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
             userMsg = '🔧 토큰 형식 오류 — 페이지 새로고침 후 다시 시도해주세요.'
           } else if (res.status === 401) {
             userMsg = '🚫 권한 거부 — 페이지 새로고침 후 다시 시도해주세요.'
-          } else if (res.status === 409) {
-            userMsg = '⚠️ 이전 방송 정리 중 — 30초 후 다시 시도해주세요.'
+          } else if (res.status === 409 || /already exist/i.test(text)) {
+            userMsg = '⚠️ 이미 다른 탭/디바이스에서 송출 중이에요. 그곳에서 먼저 종료해주세요. (또는 30초 후 자동 정리)'
           } else if (res.status === 502 || res.status === 503) {
             userMsg = '🌐 미디어 서버 일시 장애 — 1분 후 다시 시도해주세요.'
           } else if (parsed.error) {
