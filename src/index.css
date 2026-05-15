@@ -693,3 +693,24 @@ html.dark .mobile-app-container {
   0%   { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
 }
+
+/* 🛡️ 2026-05-15: 공구 LiveTicker / Milestone fade-in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 350ms ease-out; }
+
+/* Milestone burst — 50/80% 도달 시 progress bar 에 glow */
+@keyframes milestone-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236,72,153,0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(236,72,153,0); }
+}
+.animate-milestone-pulse { animation: milestone-pulse 1.5s ease-in-out infinite; }
+
+/* Confetti — 100% 달성 축하 */
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
+}
+

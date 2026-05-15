@@ -20,6 +20,7 @@ import { toast } from '@/hooks/useToast'
 import { SORT_LABELS, STATUS_BADGES } from './group-buy-list/constants'
 import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
+import LiveTicker from '@/components/group-buy/LiveTicker'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
@@ -334,11 +335,63 @@ export default function GroupBuyListPage() {
           기존엔 우측 하단 floating 버튼이 카카오 상담 버튼과 겹치고 우측 벽에 붙어 어색했음.
           현재는 hero banner 우측 '시작' 버튼 + empty state CTA 로 자연스럽게 통합. */}
 
+      {/* 🛡️ 2026-05-15: 실시간 ticker — "지금 이 사람이 참여" SNS 흐름 */}
+      <div className="ur-content-wide px-4 lg:px-8 mt-3">
+        <LiveTicker />
+      </div>
+
       {/* 콘텐츠 영역 */}
       <div className="ur-content-wide px-4 lg:px-8 py-4 pb-20">
         {mainTab === 'seller' ? (
           /* ── 셀러 공구 상품 그리드 (2열) ── */
           <>
+            {/* 🛡️ 2026-05-15: 큐레이션 섹션 — 1명 남음 / 오늘 마감 / 거의 성공 */}
+            {!loading && filtered.length > 0 && (() => {
+              const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)
+              const closingToday = filtered.filter(p => {
+                if (!p.group_buy_deadline) return false
+                const ms = new Date(p.group_buy_deadline).getTime() - Date.now()
+                return ms > 0 && ms < 24 * 3600 * 1000
+              }).slice(0, 4)
+              const almostDone = filtered.filter(p => {
+                if (!p.group_buy_target) return false
+                const pct = (p.group_buy_current ?? 0) / p.group_buy_target
+                return pct >= 0.7 && pct < 1
+              }).slice(0, 4)
+
+              return (
+                <>
+                  {lastOne.length > 0 && (
+                    <CurationStrip
+                      title="🔥 1명만 더 모이면 성공"
+                      subtitle="지금 참여하면 바로 공구 확정"
+                      items={lastOne}
+                      navigate={navigate}
+                      accent="red"
+                    />
+                  )}
+                  {closingToday.length > 0 && (
+                    <CurationStrip
+                      title="⏰ 오늘 마감"
+                      subtitle="놓치면 다음 기회까지 며칠"
+                      items={closingToday}
+                      navigate={navigate}
+                      accent="amber"
+                    />
+                  )}
+                  {almostDone.length > 0 && (
+                    <CurationStrip
+                      title="✨ 거의 성공"
+                      subtitle="목표의 70% 이상"
+                      items={almostDone}
+                      navigate={navigate}
+                      accent="pink"
+                    />
+                  )}
+                </>
+              )
+            })()}
+
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {[...Array(4)].map((_, i) => (
@@ -645,5 +698,66 @@ export default function GroupBuyListPage() {
         )}
       </div>
     </div>
+  )
+}
+
+
+// 🛡️ 2026-05-15: 큐레이션 strip — horizontal scroll 카드 (1명 남음 / 오늘 마감 / 거의 성공)
+function CurationStrip({
+  title, subtitle, items, navigate, accent,
+}: {
+  title: string
+  subtitle: string
+  items: GroupBuyProduct[]
+  navigate: (to: string) => void
+  accent: "red" | "amber" | "pink"
+}) {
+  const accentMap = {
+    red:   { bg: "bg-red-50",   text: "text-red-600",   bar: "bg-red-500"   },
+    amber: { bg: "bg-amber-50", text: "text-amber-600", bar: "bg-amber-500" },
+    pink:  { bg: "bg-pink-50",  text: "text-pink-600",  bar: "bg-pink-500"  },
+  }
+  const a = accentMap[accent]
+  return (
+    <section className="mb-6">
+      <div className="flex items-baseline justify-between mb-2 px-1">
+        <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h3>
+        <span className="text-[10px] text-gray-400">{subtitle}</span>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
+        {items.map((p) => {
+          const progress = (p.group_buy_target ?? 0) > 0
+            ? Math.min(100, ((p.group_buy_current ?? 0) / (p.group_buy_target ?? 1)) * 100)
+            : 0
+          const remaining = Math.max(0, (p.group_buy_target ?? 0) - (p.group_buy_current ?? 0))
+          return (
+            <button
+              key={p.id}
+              onClick={() => navigate(`/group-buy/${p.id}`)}
+              className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:shadow-md transition-shadow"
+            >
+              <div className="relative w-full aspect-square bg-gray-100">
+                {p.image_url ? (
+                  <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-pink-100 to-rose-200" />
+                )}
+                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
+                  {accent === "red" ? "1명 남음" : accent === "amber" ? "오늘 마감" : `${Math.round(progress)}%`}
+                </div>
+              </div>
+              <div className="p-2.5 space-y-1">
+                <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
+                {p.restaurant_name && <p className="text-[10px] text-gray-500 truncate">{p.restaurant_name}</p>}
+                <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
+                  <div className={`h-full ${a.bar} rounded-full transition-all`} style={{ width: `${progress}%` }} />
+                </div>
+                <p className="text-[10px] text-gray-500"><span className={`${a.text} font-bold`}>{remaining}명</span> 남음 · ₩{p.price?.toLocaleString("ko-KR") ?? "-"}</p>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }

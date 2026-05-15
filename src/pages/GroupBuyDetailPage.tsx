@@ -8,6 +8,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { reportFunnel } from '@/lib/web-vitals-report'
+import Confetti from '@/components/group-buy/Confetti'
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -88,6 +89,7 @@ export default function GroupBuyDetailPage() {
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [showConfetti, setShowConfetti] = useState(false)
 
   const productId = Number(id)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
@@ -139,6 +141,13 @@ export default function GroupBuyDetailPage() {
           const delta = newDetail.group_buy_current - lastCount
           if (delta > 0) {
             toast.success(`🎉 방금 ${delta}명이 참여했어요!`)
+            // 🛡️ 2026-05-15: 100% 달성 감지 시 confetti
+            const wasBelow = lastCount < newDetail.group_buy_target
+            const nowReached = newDetail.group_buy_current >= newDetail.group_buy_target
+            if (wasBelow && nowReached && newDetail.group_buy_target > 0) {
+              setShowConfetti(true)
+              try { if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]) } catch { /* unsupported */ }
+            }
             lastCount = newDetail.group_buy_current
           }
           setDetail(newDetail)
@@ -260,6 +269,7 @@ export default function GroupBuyDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
@@ -435,12 +445,18 @@ export default function GroupBuyDetailPage() {
             </div>
             <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${
+                className={`h-full rounded-full transition-all duration-500 ${
                   detail.group_buy_status === 'achieved' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                  progress >= 80 ? 'bg-gradient-to-r from-pink-500 to-rose-500' :
+                  progress >= 80 ? 'bg-gradient-to-r from-pink-500 to-rose-500 animate-milestone-pulse' :
+                  progress >= 50 ? 'bg-gradient-to-r from-pink-500 to-rose-500' :
                   'bg-gradient-to-r from-pink-400 to-rose-400'
                 }`}
                 style={{ width: `${progress}%` }}
+                role="progressbar"
+                aria-valuenow={Math.round(progress)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`공구 진행률 ${Math.round(progress)}%`}
               />
             </div>
 

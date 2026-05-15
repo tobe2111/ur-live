@@ -221,6 +221,41 @@ groupBuyRoutes.get('/products/:id', async (c) => {
   })
 })
 
+// ── GET /api/group-buy/live-ticker — 전체 공구 최근 참여 (SNS 스타일 ticker) ──
+// 🛡️ 2026-05-15: 실시간 "지원님이 N분 전 참여" 흐름. 홈 / 리스트 페이지에 노출.
+//   privacy: name 1자만 + 마스킹. cache 30s (실시간 느낌 유지하면서 D1 부하 방어).
+groupBuyRoutes.get('/live-ticker', async (c) => {
+  const { DB } = c.env
+  try {
+    const { results } = await DB.prepare(`
+      SELECT
+        SUBSTR(COALESCE(u.display_name, u.email, '익명'), 1, 1) || '**' AS masked_name,
+        u.profile_image AS avatar,
+        p.id AS product_id,
+        p.name AS product_name,
+        p.restaurant_name,
+        p.image_url AS product_image,
+        p.category,
+        oi.quantity,
+        o.created_at
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      JOIN products p ON p.id = oi.product_id
+      LEFT JOIN users u ON u.id = o.user_id
+      WHERE o.order_number LIKE 'GB-%'
+        AND o.status = 'PAID'
+        AND o.created_at >= datetime('now', '-2 hours')
+        AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      ORDER BY o.created_at DESC
+      LIMIT 30
+    `).all().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: results ?? [] })
+  } catch (err) {
+    console.error('[gb live-ticker]', err)
+    return c.json({ success: true, data: [] })
+  }
+})
+
 // ── GET /api/group-buy/products/:id/participants ──── 최근 참여자 (마스킹) ──
 groupBuyRoutes.get('/products/:id/participants', async (c) => {
   const { DB } = c.env
