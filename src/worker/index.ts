@@ -729,6 +729,7 @@ app.use('/api/group-buy/products', edgeCache(60), cacheControl(60)); // 1 min
 app.use('/api/group-buy/products/*', edgeCache(30), cacheControl(30));
 // 참여자 마스킹 리스트 — 1분 (자주 바뀌지만 prv 정보 X)
 app.use('/api/group-buy/products/*/participants', edgeCache(60), cacheControl(60));
+app.use('/api/group-buy/live-ticker', edgeCache(30), cacheControl(30));
 app.use('/api/og/group-buy/*', edgeCache(3600), cacheControl(3600)); // OG image 1h
 app.use('/api/currency/rates', edgeCache(3600), cacheControl(3600)); // 환율 1h
 app.use('/api/banners', edgeCache(300), cacheControl(300));    // 5 min
