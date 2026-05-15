@@ -48,6 +48,7 @@ const AdminCastingsPage = lazy(() => import('@/pages/AdminCastingsPage'))
 const AdminOpsInsightsPage = lazy(() => import('@/pages/AdminOpsInsightsPage'))
 const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
+const Admin2FASetupPage = lazy(() => import('@/pages/Admin2FASetupPage'))
 
 export function AdminRoutes() {
   return (
@@ -146,6 +147,12 @@ export function AdminRoutes() {
       <Route path="/admin/disputes" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminDisputesPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 어드민 2FA TOTP 설정 */}
+      <Route path="/admin/2fa" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><Admin2FASetupPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/reviews" element={

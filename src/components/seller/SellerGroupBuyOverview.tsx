@@ -30,39 +30,38 @@ export default function SellerGroupBuyOverview() {
 
   useEffect(() => {
     const headers = { Authorization: `Bearer ${getSellerToken()}` }
-    api.get('/api/seller/products?category=meal_voucher', { headers })
-      .then(r => {
-        const products = r.data?.data || []
-        const VOUCHER = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
-        const vouchers = products.filter((p: { category?: string }) => VOUCHER.includes(p.category || ''))
-        const now = Date.now()
-        const active = vouchers.filter((p: { group_buy_status?: string }) => p.group_buy_status === 'active').length
-        const closingSoon = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string }) => {
-          if (p.group_buy_status !== 'active' || !p.group_buy_deadline) return false
-          const ms = new Date(p.group_buy_deadline).getTime() - now
-          return ms > 0 && ms < 24 * 3600 * 1000
-        }).length
-        const atRisk = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string; group_buy_target?: number; group_buy_current?: number }) => {
-          if (p.group_buy_status !== 'active' || !p.group_buy_deadline) return false
-          const ms = new Date(p.group_buy_deadline).getTime() - now
-          if (ms <= 0 || ms > 24 * 3600 * 1000) return false
-          const progress = (p.group_buy_target ?? 0) > 0 ? (p.group_buy_current ?? 0) / (p.group_buy_target ?? 1) : 0
-          return progress < 0.5
-        }).length
-        // 다음 정산 예상액 = 사용된 voucher 합 - 수수료
-        // 단순화: 진행 중 GMV 의 95% (5% 수수료 가정)
-        const ongoing = vouchers.reduce((s: number, p: { price?: number; group_buy_current?: number }) =>
-          s + ((p.price ?? 0) * (p.group_buy_current ?? 0)), 0)
-        const nextPayoutEstimate = Math.round(ongoing * 0.95)
+    Promise.all([
+      api.get('/api/seller/products?category=meal_voucher', { headers }).catch(() => ({ data: { data: [] } })),
+      api.get('/api/disputes/seller/pending', { headers }).catch(() => ({ data: { data: { summary: { total: 0 } } } })),
+    ]).then(([prodRes, disputeRes]) => {
+      const products = prodRes.data?.data || []
+      const VOUCHER = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
+      const vouchers = products.filter((p: { category?: string }) => VOUCHER.includes(p.category || ''))
+      const now = Date.now()
+      const active = vouchers.filter((p: { group_buy_status?: string }) => p.group_buy_status === 'active').length
+      const closingSoon = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string }) => {
+        if (p.group_buy_status !== 'active' || !p.group_buy_deadline) return false
+        const ms = new Date(p.group_buy_deadline).getTime() - now
+        return ms > 0 && ms < 24 * 3600 * 1000
+      }).length
+      const atRisk = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string; group_buy_target?: number; group_buy_current?: number }) => {
+        if (p.group_buy_status !== 'active' || !p.group_buy_deadline) return false
+        const ms = new Date(p.group_buy_deadline).getTime() - now
+        if (ms <= 0 || ms > 24 * 3600 * 1000) return false
+        const progress = (p.group_buy_target ?? 0) > 0 ? (p.group_buy_current ?? 0) / (p.group_buy_target ?? 1) : 0
+        return progress < 0.5
+      }).length
+      const ongoing = vouchers.reduce((s: number, p: { price?: number; group_buy_current?: number }) =>
+        s + ((p.price ?? 0) * (p.group_buy_current ?? 0)), 0)
+      const nextPayoutEstimate = Math.round(ongoing * 0.95)
+      const pendingDisputes = Number(disputeRes.data?.data?.summary?.escalated ?? 0)
 
-        setData({
-          active, closing_soon: closingSoon, at_risk: atRisk,
-          pending_disputes: 0,  // TODO: /api/disputes/seller/pending endpoint 추가 시 연동
-          next_payout_estimate: nextPayoutEstimate,
-        })
+      setData({
+        active, closing_soon: closingSoon, at_risk: atRisk,
+        pending_disputes: pendingDisputes,
+        next_payout_estimate: nextPayoutEstimate,
       })
-      .catch(() => { /* silent */ })
-      .finally(() => setLoading(false))
+    }).finally(() => setLoading(false))
   }, [])
 
   if (loading || !data || data.active === 0) return null
@@ -121,6 +120,17 @@ export default function SellerGroupBuyOverview() {
         >
           <AlertTriangle className="w-3.5 h-3.5" />
           {data.at_risk}개 공구 — 지금 share 하면 살릴 수 있어요
+        </button>
+      )}
+
+      {/* 분쟁 알림 */}
+      {data.pending_disputes > 0 && (
+        <button
+          onClick={() => navigate('/seller/group-buy')}
+          className="w-full mt-2 px-4 py-2.5 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          {data.pending_disputes}건 분쟁 진행 중 — 어드민 검토 대기
         </button>
       )}
     </div>
