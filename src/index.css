@@ -227,19 +227,23 @@
   animation: scale-in 0.2s cubic-bezier(0.28, 0.11, 0.32, 1);
 }
 
+/* 🛡️ 2026-05-14: sheet 가로 중앙 정렬 (left-1/2 -translate-x-1/2) 유지하면서 아래에서 위로.
+   기존: translateY 만 → 부모의 -translate-x-1/2 덮어씀 → 오른쪽에서 위로 올라오는 어색한 애니메이션. */
 @keyframes sheet-up {
   from {
     opacity: 0;
-    transform: translateY(100%);
+    transform: translateX(-50%) translateY(100%);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
 }
 
 .animate-sheet-up {
   animation: sheet-up 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
+  /* animation-fill-mode: both — animation 종료 후에도 transform 유지 (다시 right 로 안 튐) */
+  animation-fill-mode: both;
 }
 
 @keyframes donation-pop {
