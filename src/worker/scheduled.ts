@@ -43,6 +43,7 @@ import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
+import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -98,6 +99,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
     // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
     ctx.waitUntil(safeCron('seller-churn-detect', () => handleSellerChurnDetect(env)));
+    // 🛡️ 2026-05-15 (TD-G08): ledger 정합성 검증 — Σdebit ≠ Σcredit / 음수 wallet → Discord alert
+    ctx.waitUntil(safeCron('ledger-reconcile', () => handleLedgerReconcile(env)));
     ctx.waitUntil(safeCron('agency-cron-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       if (flags.enable_agency_campaigns_aggregate) {

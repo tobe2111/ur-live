@@ -12,9 +12,11 @@ import { Hono } from 'hono'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
+import { require2FA } from '@/worker/middleware/require-2fa'
 import { recordLedger } from '@/worker/utils/ledger'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
+import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -162,7 +164,7 @@ groupBuyRoutes.get('/products', async (c) => {
 
   const status = c.req.query('status') || 'active'
   const categoryParam = c.req.query('category') || 'all'
-  const validCategories = ['meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
+  const validCategories = VOUCHER_CATEGORIES as readonly string[]
   const categories = categoryParam === 'all'
     ? validCategories
     : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
@@ -1280,7 +1282,7 @@ groupBuyRoutes.post(
     `).bind(voucher.id).run()
     if (!useResult.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
 
-    // 부분 환불 — 유저 user_points 에 차액 환불
+    // 부분 환불 — 유저 user_points 에 차액 환불 + ledger reverse entry
     try {
       const order = await DB.prepare("SELECT payment_method FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string }>()
       if (order?.payment_method === 'deal_points' && voucher.user_id) {
@@ -1288,6 +1290,19 @@ groupBuyRoutes.post(
         await DB.prepare(
           "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
         ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`).run()
+
+        // 🛡️ 2026-05-15 (TD-G05): ledger reverse entry — 셀러 receivable 차감, 유저 wallet 환불
+        try {
+          await recordLedger(DB, {
+            event_type: 'partial_refund',
+            reference_id: `voucher-${voucher.id}`,
+            amount: refundAmount,
+            debit_account: `seller:${voucher.seller_id}`,  // 셀러 receivable 차감
+            credit_account: `user:${voucher.user_id}`,     // 유저 wallet 환불
+            metadata: { voucher_id: voucher.id, code, used_amount: usedAmount, total_value: voucherValue, reason: reason || null },
+          })
+        } catch (e) { console.warn('[partial-refund ledger]', e) }
+
         // 유저 push
         try {
           const { sendSystemPush } = await import('../../../lib/system-push')
@@ -1340,7 +1355,7 @@ groupBuyRoutes.get('/admin/list', requireAdmin(), async (c) => {
 // ── POST /api/group-buy/admin/force-refund/:productId — 어드민 강제 환불 ──
 // 🛡️ 2026-05-15: status 와 무관하게 미사용 voucher 일괄 환불 + audit_logs 기록.
 //   기존 /refund/:productId 는 status='expired' 필요. 분쟁/긴급 케이스에 어드민 직접 개입.
-groupBuyRoutes.post('/admin/force-refund/:productId', requireAdmin(), auditLog('group_buy.admin.force_refund'), async (c) => {
+groupBuyRoutes.post('/admin/force-refund/:productId', requireAdmin(), require2FA(), auditLog('group_buy.admin.force_refund'), async (c) => {
   const { DB } = c.env
   const adminUser = getCurrentUser(c)
   const productIdRaw = c.req.param('productId')

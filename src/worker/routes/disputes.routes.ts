@@ -20,6 +20,7 @@ import type { Env } from '../types/env'
 import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { auditLog } from '../middleware/audit-log'
+import { require2FA } from '../middleware/require-2fa'
 
 interface AIEnv {
   AI?: {
@@ -198,7 +199,7 @@ disputesRoutes.post(
 
 // 어드민 분쟁 처리 — 환불 승인
 // 🛡️ 2026-05-15: voucher refunded + 딜 환불 + dispute resolved 표시 + 유저 푸시
-disputesRoutes.post('/admin/:id/approve', requireAuth(), auditLog('dispute.admin.approve'), async (c) => {
+disputesRoutes.post('/admin/:id/approve', requireAuth(), require2FA(), auditLog('dispute.admin.approve'), async (c) => {
   const user = getCurrentUser(c)
   const userAsAny = user as unknown as { type?: string; id?: string | number }
   if (!user || userAsAny.type !== 'admin') return c.json({ success: false, error: 'forbidden' }, 403)
@@ -253,7 +254,7 @@ disputesRoutes.post('/admin/:id/approve', requireAuth(), auditLog('dispute.admin
 })
 
 // 어드민 분쟁 거절
-disputesRoutes.post('/admin/:id/reject', requireAuth(), auditLog('dispute.admin.reject'), async (c) => {
+disputesRoutes.post('/admin/:id/reject', requireAuth(), require2FA(), auditLog('dispute.admin.reject'), async (c) => {
   const user = getCurrentUser(c)
   const userAsAny = user as unknown as { type?: string; id?: string | number }
   if (!user || userAsAny.type !== 'admin') return c.json({ success: false, error: 'forbidden' }, 403)

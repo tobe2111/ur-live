@@ -132,11 +132,12 @@ export default function GroupBuyDetailPage() {
     return () => { cancelled = true }
   }, [productId, navigate])
 
-  // 🛡️ 2026-05-15: 실시간 polling — 5초 주기. 페이지 hidden 시 일시정지 (배터리 보호).
+  // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
   useEffect(() => {
     if (!detail || (detail.group_buy_status !== 'active' && detail.group_buy_status !== 'achieved')) return
-    let timer: ReturnType<typeof setInterval> | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let cancelled = false
     let lastCount = detail.group_buy_current
     let prevParticipantNames = participants.slice(0, 5).map(p => p.masked_name).join(',')
 
@@ -173,8 +174,17 @@ export default function GroupBuyDetailPage() {
         }
       } catch { /* silent */ }
     }
-    timer = setInterval(poll, 5000)
-    return () => { if (timer) clearInterval(timer) }
+    // 🛡️ 2026-05-15 (TD-G07): jitter ±2초 — 동시 사용자 많을 때 D1 thundering herd 방어
+    const jitter = () => 5000 + Math.floor((Math.random() - 0.5) * 4000)  // 3-7초
+    const scheduleNext = () => {
+      if (cancelled) return
+      timer = setTimeout(async () => {
+        await poll()
+        scheduleNext()
+      }, jitter())
+    }
+    scheduleNext()
+    return () => { cancelled = true; if (timer) clearTimeout(timer) }
   }, [detail?.group_buy_status, productId])
 
   const tiers = useMemo(() => {
