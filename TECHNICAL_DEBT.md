@@ -933,34 +933,25 @@ src/features/group-buy/api/
 - console.error 는 실제 운영 디버깅용으로 유지 (Workers tail 로 수집)
 - DEV-only noise 제거 완료
 
-### TD-G05 (MEDIUM): 부분 환불 → ledger 미통합
-**위치**: `group-buy.routes.ts /voucher/:code/partial-refund` (방금 추가)
-**현재**: `point_transactions` 만 update. `ledger_entries` 에 reverse entry 추가 안 함.
-**해결**: 환불 시 `recordLedger({ event_type: 'partial_refund', debit: 'seller:N', credit: 'user:N', amount: refundAmount })`
-**예상 작업 시간**: 15분
+### TD-G05 (MEDIUM): 부분 환불 → ledger 미통합 ✅ **해결됨 (2026-05-15)**
+- ✅ `group-buy-voucher.routes.ts /voucher/:code/partial-refund` 에 `recordLedger({ event_type: 'partial_refund', debit_account: seller:N, credit_account: user:N })` reverse entry 추가
+- 회계 정합성: partial-refund 도 ledger_entries 에 정상 기록됨
 
-### TD-G06 (LOW): 분쟁 endpoint 2FA 검증 미적용
-**위치**: `disputes.routes.ts /admin/:id/approve` & `/reject`
-**현재**: requireAuth() 만. 2FA 활성화 어드민의 경우 한번 더 검증 권장 (sensitive action).
-**해결**: 미들웨어 `require2FA()` 추가 후 sensitive endpoint 에 적용.
-**예상 작업 시간**: 1세션
+### TD-G06 (LOW): 분쟁 endpoint 2FA 검증 미적용 ✅ **해결됨 (2026-05-15)**
+- ✅ `src/worker/middleware/require-2fa.ts` 신규 미들웨어 (2FA 활성 어드민 대상 totp 헤더 검증)
+- ✅ `disputes.routes.ts /admin/:id/approve`, `/reject` 에 `require2FA()` 적용
+- ✅ `group-buy-admin.routes.ts /admin/force-refund/:productId` 에도 적용
+- 추가 sensitive action (settlement override 등) 도 동일 패턴으로 확장 가능
 
-### TD-G07 (LOW): live-ticker / participants polling 5s 간격 — 동시 사용자 1000명+ 시 D1 부하
-**위치**: `GroupBuyDetailPage.tsx`, `LiveTicker.tsx`
-**현재**: 30초 (ticker), 5초 (detail).
-**해결 옵션**:
-1. SSE / Durable Object pub/sub → push 모델 (개발 cost 큼)
-2. Edge cache 더 공격적 + 클라 jitter (5±2초 random)
-3. visibilitychange 시만 activate
-**예상 작업 시간**: 2세션 (DO 옵션) / 30분 (jitter)
+### TD-G07 (LOW): live-ticker / participants polling 부하 ✅ **해결됨 (2026-05-15)**
+- ✅ `GroupBuyDetailPage` polling 5초 → **3~7초 jitter** (`5000 + (Math.random()-0.5)*4000`) 적용 → D1 thundering herd 방어
+- ✅ `document.hidden` 체크 → 백그라운드 탭 polling 중단 (배터리 + 트래픽 절감)
+- ✅ `LiveTicker` 도 `document.hidden` 가드 + 30초 interval (변경 없음, 부하 낮음)
+- SSE / Durable Object 도입은 동시 5000명+ 시 재검토
 
-### TD-G08 (HIGH): 정합성 검증 cron 없음
-**위치**: 없음
-**현재**: ledger_entries 추가됨, 그런데 정합성 자동 검증 cron 부재.
-**해결**: daily cron 추가
-```
-SELECT account, SUM(...) - SUM(...) FROM ledger_entries GROUP BY account HAVING ABS(...) > 0
-→ Discord alert
-```
-**예상 작업 시간**: 1세션
+### TD-G08 (HIGH): 정합성 검증 cron 없음 ✅ **해결됨 (2026-05-15)**
+- ✅ `src/worker/cron/ledger-reconcile.ts` 신규 (Σdebit - Σcredit 검증 + user wallet 음수 잔액 감지)
+- ✅ `scheduled.ts` 의 daily 18:00 트리거에 등록 (`safeCron('ledger-reconcile', ...)`)
+- ✅ 불일치 ≥ 1원 또는 음수 wallet 1개+ 감지 시 Discord webhook 즉시 alert
+- 임계값 (`IMBALANCE_THRESHOLD = 1`) 은 반올림 오차 ε 허용
 
