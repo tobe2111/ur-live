@@ -68,6 +68,8 @@ const NAV_GROUPS: {
     labelKey: 'seller.layout.settings',
     items: [
       { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2 },
+      { path: '/seller/mini-shop', labelKey: 'seller.nav.miniShop', icon: Megaphone },
+      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play },
       { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell },
       { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone },
       { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen },
