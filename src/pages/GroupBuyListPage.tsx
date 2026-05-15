@@ -450,7 +450,7 @@ export default function GroupBuyListPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
-                {filtered.map((p) => {
+                {filtered.map((p, idx) => {
                   const discount = calcDiscountRate(p)
                   const target = p.group_buy_target || 0
                   const current = p.group_buy_current || 0
@@ -468,11 +468,15 @@ export default function GroupBuyListPage() {
                       {/* 이미지 */}
                       <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
                         {p.image_url ? (
+                          // 🛡️ 2026-05-15: LCP 최적화 — 첫 row (idx < 4) eager + fetchpriority high.
+                          //   above-the-fold 이미지 즉시 로딩 → Lighthouse LCP 개선.
                           <img
                             src={p.image_url}
                             alt={p.name}
                             className="w-full h-full object-cover"
-                            loading="lazy" decoding="async"
+                            loading={idx < 4 ? 'eager' : 'lazy'}
+                            fetchPriority={idx < 2 ? 'high' : 'auto'}
+                            decoding="async"
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
