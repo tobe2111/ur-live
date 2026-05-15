@@ -268,14 +268,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   return (
     <div className="seller-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <div className="hidden lg:flex">
+      {/* 🛡️ 2026-05-14: 태블릿+ (md=768px) 부터 sidebar 표시 — iPad 사용 셀러 UX 향상 */}
+      <div className="hidden md:flex">
         {sidebar}
       </div>
 
-      <div className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-300 ${
+      <div className={`fixed inset-y-0 left-0 z-50 md:hidden transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {sidebar}
@@ -287,7 +288,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <button
               aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
               aria-expanded={sidebarOpen}
-              className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
+              className="md:hidden p-1.5 rounded-lg hover:bg-gray-100"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -349,7 +350,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {/* Mobile quick-action FAB
           🛡️ 2026-04-30: 이미 라이브 방송 페이지면 숨김 (현 페이지 navigate = no-op 인 것 처럼 보였던 사용자 신고) */}
       {!location.pathname.startsWith('/seller/live') && (
-        <div className="lg:hidden fixed bottom-6 right-4 z-40">
+        <div className="md:hidden fixed bottom-6 right-4 z-40">
           <button
             onClick={() => navigate('/seller/live-broadcast')}
             className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
