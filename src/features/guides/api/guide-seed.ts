@@ -281,6 +281,12 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 셀러가 자율 생성하나 허위 가격 감지 시 관리자가 중단 가능
 - 원가 대비 90% 이상 할인 → 자동 플래그 → 관리자 검토 필요
 
+### 공동구매 모니터링 (\`/admin/group-buy\`) — 2026-05-15 추가
+- 진행중/달성/마감/취소/⚠️미달성 필터로 voucher 카테고리 (식사·뷰티·헬스·펫·숙박·액티비티) 전체 조회
+- 자동 환불 cron (5분 주기, \`scheduled-cleanup\`) 이 \`group_buy_status='expired'\` + \`current<target\` 인 상품의 미사용 voucher 를 자동 환불 + 셀러 알림톡 발송
+- **강제 환불** 버튼: 분쟁/긴급 케이스에 어드민이 status 무관하게 직접 환불 (사유 필수, audit_logs 기록)
+- 환불 처리: 미사용 voucher → refunded, 딜 결제건 → 자동 환불, 상품 → cancelled, 참여자/셀러에게 푸시
+
 💡 신규 프로모션 기획 전에 과거 지표(쿠폰 사용률, 배너 CTR) 확인 → 효과적이지 않은 방식 반복 방지.`,
   },
   {
