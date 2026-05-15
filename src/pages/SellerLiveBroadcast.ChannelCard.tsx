@@ -45,9 +45,10 @@ export default function ChannelCard({ channels, activeChannelId, onSelectChannel
           className="flex-1 min-w-0 text-left">
           <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">
             {active.channel_title}
-            {hasMultiple && <span className="text-xs text-gray-400">▾</span>}
+            {hasMultiple && <span className="text-xs text-gray-600">▾</span>}
           </p>
-          <p className="text-xs text-gray-400">{String(t('seller.liveBroadcast.subscribers', { count: active.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
+          {/* 🛡️ 2026-05-14: gray-400 (RGB 156) 너무 흐려 가독성 떨어짐 → gray-600 (RGB 75) */}
+          <p className="text-xs text-gray-600">{String(t('seller.liveBroadcast.subscribers', { count: active.subscriber_count?.toLocaleString() || '0' } as Record<string, string>))}</p>
         </button>
         {active.token_expired ? (
           <button onClick={onReauthenticate} disabled={connectingYouTube}
