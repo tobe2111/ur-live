@@ -175,6 +175,7 @@ import { ocrRoutes } from './routes/ocr.routes';
 import { disputesRoutes } from './routes/disputes.routes';
 import { twofaRoutes } from './routes/twofa.routes';
 import { sellerPublicRoutes } from '../features/seller-public/api/seller-public.routes';
+import { promoRoutes } from '../features/promo/api/promo.routes';
 import { csrfIssue } from './middleware/csrf';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
@@ -1050,6 +1051,9 @@ app.route('/api/2fa', twofaRoutes);
 
 // 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 단골 / 라이브 예고 / 단골 push
 app.route('/api/seller-public', sellerPublicRoutes);
+
+// 🛡️ 2026-05-15: 셀러 자체 promo 코드 (단골 전용 할인 등)
+app.route('/api/promo', promoRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

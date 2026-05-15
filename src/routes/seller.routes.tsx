@@ -51,6 +51,7 @@ const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
 const SellerStreamingGuidePage = lazy(() => import('@/pages/SellerStreamingGuidePage'))
+const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
@@ -246,6 +247,12 @@ export function SellerRoutes() {
       <Route path="/seller/streaming-guide" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerStreamingGuidePage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 셀러 promo 코드 (단골 전용 할인) */}
+      <Route path="/seller/promo-codes" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerPromoCodesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/streaming-setup" element={

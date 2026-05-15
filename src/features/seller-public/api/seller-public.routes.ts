@@ -55,12 +55,15 @@ async function ensureFollowsTable(DB: D1Database): Promise<void> {
         user_id TEXT NOT NULL,
         notify_new_product INTEGER DEFAULT 1,
         notify_live_start INTEGER DEFAULT 1,
+        notify_group_buy INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(seller_id, user_id)
       )
     `).run()
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_seller_follows_seller ON seller_follows(seller_id, created_at DESC)`).run()
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_seller_follows_user ON seller_follows(user_id)`).run()
+    // 🛡️ 기존 테이블 마이그레이션 (notify_group_buy 추가)
+    try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
   } catch { /* exists */ }
 }
 
@@ -193,6 +196,116 @@ sellerPublicRoutes.post('/notify-followers',
   } catch (err) {
     console.error('[seller-public notify-followers]', err)
     return c.json({ success: false, error: '알림 발송 실패' }, 500)
+  }
+})
+
+// ── PATCH /:sellerId/follow/preferences — 단골 알림 옵션 토글 ──
+// 🛡️ 2026-05-15: notify_new_product / notify_live_start / notify_group_buy 별도 ON/OFF
+//   사용자가 셀러별로 알림 종류 세분화 → 셀러 push 부담 ↓, 사용자 retention ↑
+sellerPublicRoutes.patch('/:sellerId/follow/preferences', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const sellerId = Number(c.req.param('sellerId'))
+  if (!Number.isFinite(sellerId) || sellerId <= 0) {
+    return c.json({ success: false, error: '잘못된 sellerId' }, 400)
+  }
+
+  let body: { notify_new_product?: boolean; notify_live_start?: boolean; notify_group_buy?: boolean }
+  try { body = await c.req.json() } catch { return c.json({ success: false, error: 'JSON 형식 오류' }, 400) }
+
+  const { DB } = c.env
+  await ensureFollowsTable(DB)
+
+  // 🛡️ notify_group_buy 컬럼 자동 ALTER (기존 테이블 마이그레이션)
+  try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
+
+  const updates: string[] = []
+  const values: unknown[] = []
+  if (typeof body.notify_new_product === 'boolean') { updates.push('notify_new_product = ?'); values.push(body.notify_new_product ? 1 : 0) }
+  if (typeof body.notify_live_start === 'boolean') { updates.push('notify_live_start = ?'); values.push(body.notify_live_start ? 1 : 0) }
+  if (typeof body.notify_group_buy === 'boolean') { updates.push('notify_group_buy = ?'); values.push(body.notify_group_buy ? 1 : 0) }
+  if (updates.length === 0) return c.json({ success: false, error: '변경할 항목 없음' }, 400)
+
+  values.push(sellerId, String(user.id))
+  try {
+    const result = await DB.prepare(
+      `UPDATE seller_follows SET ${updates.join(', ')} WHERE seller_id = ? AND user_id = ?`
+    ).bind(...values).run()
+    if (!result.meta?.changes) return c.json({ success: false, error: '단골 등록 안 됨' }, 404)
+    return c.json({ success: true, message: '알림 설정 변경됨' })
+  } catch (err) {
+    console.error('[seller-public preferences]', err)
+    return c.json({ success: false, error: '변경 실패' }, 500)
+  }
+})
+
+// ── GET /:sellerId/follow/preferences — 본인 알림 설정 조회 ──
+sellerPublicRoutes.get('/:sellerId/follow/preferences', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const sellerId = Number(c.req.param('sellerId'))
+  const { DB } = c.env
+  await ensureFollowsTable(DB)
+  try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
+
+  try {
+    const row = await DB.prepare(
+      `SELECT notify_new_product, notify_live_start, notify_group_buy
+       FROM seller_follows WHERE seller_id = ? AND user_id = ?`
+    ).bind(sellerId, String(user.id)).first<{ notify_new_product: number; notify_live_start: number; notify_group_buy: number }>()
+
+    if (!row) return c.json({ success: true, data: null, message: '단골 미등록' })
+    return c.json({
+      success: true,
+      data: {
+        notify_new_product: !!row.notify_new_product,
+        notify_live_start: !!row.notify_live_start,
+        notify_group_buy: row.notify_group_buy === null ? true : !!row.notify_group_buy,
+      },
+    })
+  } catch (err) {
+    console.error('[seller-public get preferences]', err)
+    return c.json({ success: true, data: null })
+  }
+})
+
+// ── GET /my/follows — 내가 단골 등록한 셀러 전체 + 알림 설정 ──
+sellerPublicRoutes.get('/my/follows', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const { DB } = c.env
+  await ensureFollowsTable(DB)
+  try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
+
+  try {
+    const { results } = await DB.prepare(`
+      SELECT sf.seller_id, sf.notify_new_product, sf.notify_live_start, sf.notify_group_buy, sf.created_at,
+             s.name AS seller_name, s.username AS seller_username, s.profile_image AS seller_avatar
+      FROM seller_follows sf
+      LEFT JOIN sellers s ON s.id = sf.seller_id
+      WHERE sf.user_id = ?
+      ORDER BY sf.created_at DESC
+    `).bind(String(user.id)).all<{
+      seller_id: number; notify_new_product: number; notify_live_start: number; notify_group_buy: number;
+      created_at: string; seller_name: string; seller_username: string | null; seller_avatar: string | null
+    }>()
+
+    return c.json({
+      success: true,
+      data: (results ?? []).map(r => ({
+        seller_id: r.seller_id,
+        seller_name: r.seller_name,
+        seller_username: r.seller_username,
+        seller_avatar: r.seller_avatar,
+        notify_new_product: !!r.notify_new_product,
+        notify_live_start: !!r.notify_live_start,
+        notify_group_buy: r.notify_group_buy === null ? true : !!r.notify_group_buy,
+        created_at: r.created_at,
+      })),
+    })
+  } catch (err) {
+    console.error('[seller-public my follows]', err)
+    return c.json({ success: true, data: [] })
   }
 })
 

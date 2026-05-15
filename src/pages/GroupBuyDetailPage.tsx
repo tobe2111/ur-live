@@ -554,7 +554,7 @@ export default function GroupBuyDetailPage() {
                   title={`${p.masked_name} · ${p.quantity}장`}
                 >
                   {p.avatar ? (
-                    <img src={p.avatar} alt="" className="w-4 h-4 rounded-full object-cover" loading="lazy" />
+                    <img src={p.avatar} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover" loading="lazy" decoding="async" />
                   ) : (
                     <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-300 to-rose-300" />
                   )}
@@ -589,7 +589,7 @@ export default function GroupBuyDetailPage() {
             className="w-full bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-3 hover:bg-gray-50"
           >
             {detail.seller_avatar ? (
-              <img src={detail.seller_avatar} alt="" className="w-10 h-10 rounded-full object-cover" loading="lazy" />
+              <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-300 to-rose-400" />
             )}
