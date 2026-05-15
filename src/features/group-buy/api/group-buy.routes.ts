@@ -50,13 +50,21 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   }
   const productId = productIdNum
   const userId = String(user.id)
-  const { quantity, payment_method } = await c.req.json<{ quantity?: number; payment_method?: 'deal' | 'toss' }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const }))
+  const body = await c.req.json<{
+    quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string
+  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined }))
+  const { quantity, payment_method, promo_code } = body
   const qty = Number(quantity ?? 1)
   if (!Number.isFinite(qty) || !Number.isInteger(qty) || qty < 1 || qty > 100) {
     return c.json({ success: false, error: '수량은 1~100 사이의 정수여야 합니다' }, 400)
   }
   if (payment_method !== undefined && payment_method !== 'deal' && payment_method !== 'toss') {
     return c.json({ success: false, error: '잘못된 결제 수단입니다' }, 400)
+  }
+  // 🛡️ 2026-05-15: promo_code 형식 검증 (실제 검증은 아래 적용 직전)
+  const promoCodeNormalized = promo_code ? String(promo_code).trim().toUpperCase() : ''
+  if (promoCodeNormalized && !/^[A-Z0-9]{4,20}$/.test(promoCodeNormalized)) {
+    return c.json({ success: false, error: '잘못된 promo 코드 형식' }, 400)
   }
 
   try {
@@ -106,7 +114,60 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 🛡️ 2026-05-15: 티어 할인 적용 — 현재 group_buy_current 기준 (이번 참여자 포함 전).
     //   join 직후 increment 되면서 다음 참여자부터 새 tier 적용 가능 (자연스러운 dynamic pricing).
     const currentTier = calcTierDiscount(product.group_buy_tiers, Number(product.group_buy_current ?? 0))
-    const appliedDiscountPct = currentTier.discount_pct
+    const tierDiscountPct = currentTier.discount_pct
+
+    // 🛡️ 2026-05-15: Promo 코드 추가 할인 — 셀러 자체 발급, audience/한도/만료 검증.
+    //   여기서 검증 + 즉시 used_count 증가 (race 방어). 차감 후 정상 응답 못 받으면 외부 catch 가 rollback.
+    let promoDiscountPct = 0
+    let appliedPromoId: number | null = null
+    if (promoCodeNormalized) {
+      const promo = await DB.prepare(
+        `SELECT id, seller_id, discount_pct, audience, max_uses, per_user_limit, used_count, expires_at, is_active
+         FROM promo_codes WHERE code = ?`
+      ).bind(promoCodeNormalized).first<{
+        id: number; seller_id: number; discount_pct: number; audience: string;
+        max_uses: number; per_user_limit: number; used_count: number; expires_at: string | null; is_active: number
+      }>().catch(() => null)
+      if (!promo || !promo.is_active) {
+        return c.json({ success: false, error: '코드 없음 또는 비활성', code: 'PROMO_INVALID' }, 400)
+      }
+      if (Number(promo.seller_id) !== Number(product.seller_id)) {
+        return c.json({ success: false, error: '이 셀러의 코드가 아닙니다', code: 'PROMO_WRONG_SELLER' }, 400)
+      }
+      if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+        return c.json({ success: false, error: '만료된 코드', code: 'PROMO_EXPIRED' }, 400)
+      }
+      if (promo.max_uses > 0 && promo.used_count >= promo.max_uses) {
+        return c.json({ success: false, error: '사용 한도 도달', code: 'PROMO_LIMIT' }, 400)
+      }
+      // audience 검증
+      if (promo.audience === 'followers_only') {
+        const isFollower = await DB.prepare(
+          `SELECT 1 FROM seller_follows WHERE seller_id = ? AND user_id = ?`
+        ).bind(promo.seller_id, userId).first().catch(() => null)
+        if (!isFollower) return c.json({ success: false, error: '단골 전용 코드 — 단골 등록 후 다시 시도', code: 'PROMO_FOLLOWERS_ONLY' }, 400)
+      } else if (promo.audience === 'new_users_only') {
+        const hasOrder = await DB.prepare(
+          `SELECT 1 FROM orders WHERE user_id = ? AND seller_id = ? AND status = 'PAID' LIMIT 1`
+        ).bind(userId, promo.seller_id).first().catch(() => null)
+        if (hasOrder) return c.json({ success: false, error: '신규 고객 전용 코드', code: 'PROMO_NEW_ONLY' }, 400)
+      }
+      // per-user-limit
+      const userUses = await DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM promo_redemptions WHERE promo_id = ? AND user_id = ?`
+      ).bind(promo.id, userId).first<{ cnt: number }>().catch(() => ({ cnt: 0 } as { cnt: number }))
+      if ((userUses?.cnt ?? 0) >= promo.per_user_limit) {
+        return c.json({ success: false, error: `1인당 ${promo.per_user_limit}회 한도 도달`, code: 'PROMO_USER_LIMIT' }, 400)
+      }
+      // 적용 결정 — 차감은 voucher 발급 직전 (atomic)
+      promoDiscountPct = promo.discount_pct
+      appliedPromoId = promo.id
+    }
+
+    // 🛡️ 두 할인 합산은 곱셈 적용 (cascade): 가격 × (1 - tier) × (1 - promo)
+    //   예: tier 10% + promo 20% → 1 × 0.9 × 0.8 = 0.72 → 28% 할인 효과
+    //   덧셈 적용 (1 - 0.10 - 0.20 = 0.70) 보다 약간 적게 — 셀러 마진 보호
+    const appliedDiscountPct = Math.round(100 - (1 - tierDiscountPct / 100) * (1 - promoDiscountPct / 100) * 100)
     const unitPrice = Math.round(product.price * (1 - appliedDiscountPct / 100))
     const totalAmount = unitPrice * qty
     const orderNumber = `GB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
@@ -213,6 +274,23 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `).bind(order.id, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice).run()
       }
+
+      // 🛡️ 2026-05-15: Promo 코드 사용 기록 + used_count atomic increment
+      //   redemptions UNIQUE(promo_id, user_id, order_number) → 같은 주문 중복 차단
+      //   used_count 는 max_uses 미만 일 때만 증가 (race 방어)
+      if (appliedPromoId) {
+        try {
+          await DB.prepare(
+            `INSERT INTO promo_redemptions (promo_id, user_id, order_number, product_id, discount_amount)
+             VALUES (?, ?, ?, ?, ?)`
+          ).bind(appliedPromoId, userId, orderNumber, productId, totalAmount * promoDiscountPct / 100).run()
+          // used_count atomic increment (max_uses=0 무제한 or 미만 시)
+          await DB.prepare(`
+            UPDATE promo_codes SET used_count = used_count + 1
+            WHERE id = ? AND (max_uses = 0 OR used_count < max_uses)
+          `).bind(appliedPromoId).run()
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[promo redemption record]', e) }
+      }
     }
 
     // ✅ BUG #26 FIX: Stock was already decremented atomically above — only
@@ -260,9 +338,17 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
           // 관심 유저 알림 (interest_list 등록자) — 참여자 본인은 제외
           try {
+            // 🛡️ 2026-05-15: 마일스톤 알림 대상 = interest_list (찜) + seller_follows (단골 notify_group_buy=1)
+            //   본인 참여자 + 셀러는 제외 (이미 받음 / 본인 매장)
             const { results: interested } = await DB.prepare(
-              `SELECT DISTINCT user_id FROM interest_list WHERE product_id = ? AND user_id IS NOT NULL AND user_id != ?`
-            ).bind(productId, userId).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }))
+              `SELECT DISTINCT user_id FROM (
+                SELECT user_id FROM interest_list WHERE product_id = ? AND user_id IS NOT NULL AND user_id != ?
+                UNION
+                SELECT user_id FROM seller_follows WHERE seller_id = ? AND notify_group_buy = 1 AND user_id != ?
+              )`
+            ).bind(productId, userId, product.seller_id, userId)
+              .all<{ user_id: string }>()
+              .catch(() => ({ results: [] as { user_id: string }[] }))
             const { sendSystemPush } = await import('../../../lib/system-push')
             for (const u of interested ?? []) {
               try {
@@ -272,7 +358,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
                 })
               } catch { /* ignore */ }
             }
-          } catch { /* interest_list table may not exist */ }
+          } catch { /* table may not exist */ }
         }
       }
     } catch (e) { console.error('[group-buy milestone notify]', e) }
@@ -412,6 +498,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         amount: totalAmount,
         unit_price: unitPrice,
         applied_discount_pct: appliedDiscountPct,
+        tier_discount_pct: tierDiscountPct,
+        promo_discount_pct: promoDiscountPct,
+        promo_code: appliedPromoId ? promoCodeNormalized : null,
         commission: commissionAmount,
         seller_amount: sellerAmount,
         commission_rate: commissionRate,

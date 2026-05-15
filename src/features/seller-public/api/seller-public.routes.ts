@@ -166,12 +166,24 @@ sellerPublicRoutes.post('/notify-followers',
   await ensureFollowsTable(DB)
 
   try {
-    const { results: followers } = await DB.prepare(`
-      SELECT user_id FROM seller_follows WHERE seller_id = ?
-    `).bind(sellerId).all<{ user_id: string }>()
+    // 🛡️ 2026-05-15: reason 별 단골 preferences 필터
+    //   new_product → notify_new_product=1
+    //   live_start  → notify_live_start=1
+    //   group_buy   → notify_group_buy=1
+    //   custom      → 단골 전원 (커스텀은 셀러 본인 책임)
+    const reasonToColumn: Record<string, string> = {
+      new_product: 'notify_new_product',
+      live_start: 'notify_live_start',
+      group_buy: 'notify_group_buy',
+    }
+    const filterColumn = reasonToColumn[body.reason || 'custom']
+    const sql = filterColumn
+      ? `SELECT user_id FROM seller_follows WHERE seller_id = ? AND ${filterColumn} = 1`
+      : `SELECT user_id FROM seller_follows WHERE seller_id = ?`
+    const { results: followers } = await DB.prepare(sql).bind(sellerId).all<{ user_id: string }>()
 
     if (!followers || followers.length === 0) {
-      return c.json({ success: true, data: { sent: 0, message: '단골 0명 — 알림 발송 안 함' } })
+      return c.json({ success: true, data: { sent: 0, total_followers: 0, message: '알림 받기로 한 단골 없음 — 발송 안 함' } })
     }
 
     const { sendSystemPush } = await import('../../../lib/system-push')
