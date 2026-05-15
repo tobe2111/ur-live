@@ -873,13 +873,20 @@ High/Medium 은 코드 품질 & 유지보수성 이슈 — 단계적으로.
 
 ## 🆕 2026-05-15 — 공구 서비스 기술 부채 (Round 14 commits 후)
 
-### TD-G01 (MEDIUM): group-buy.routes.ts 1446줄 — 분리 ✅ **1단계 완료 (2026-05-15)**
-**1단계 완료**:
-- ✅ `group-buy-admin.routes.ts` (228줄) — analytics / list / force-refund 추출
-- ✅ main 파일: 1446 → 1266줄 (-180)
-- 마운트: `groupBuyRoutes.route('/admin', groupBuyAdminRoutes)` (외부 path 동일)
+### TD-G01 (MEDIUM): group-buy.routes.ts 분리 ✅ **3단계 완료 (2026-05-15)**
 
-**2-3단계 (다음 세션 후보)**: voucher / seller / public sub-router 추가 추출.
+**최종 결과** (1446 → **475줄, -67%**):
+- `helpers.ts` (199줄) — 공유 helper / 상수 (commission rate, ensureTables, calcTierDiscount, voucher code, magic link, alimtalk)
+- `group-buy-admin.routes.ts` (228줄) — analytics / list / force-refund (sub-router)
+- `group-buy-seller.routes.ts` (174줄) — refund / seller-voucher-stats / voucher-logs (register 패턴)
+- `group-buy-public.routes.ts` (228줄) — products / live-ticker / participants / commission-rate / my / verify (register 패턴)
+- `group-buy-voucher.routes.ts` (309줄) — /:code/use / partial-refund / store-stats (register 패턴)
+- `group-buy.routes.ts` (475줄) — /join/:id 만 main 에 남김 + sub-router 마운트
+
+**검증**:
+- 외부 API path 변경 0 — 모든 sub-router 가 같은 prefix `/api/group-buy/`, `/api/vouchers/` 에서 응답
+- 1738개 테스트 (helpers.ts 단위 테스트 11개 추가) 모두 pass
+- TypeScript / build 클린
 
 ---
 
