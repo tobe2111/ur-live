@@ -138,7 +138,7 @@ export default function SellerLoginPage() {
           </span>
         </div>
 
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm md:max-w-md">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-7">
               <h2 className="text-2xl font-bold text-gray-900">{t('seller.sellerLogin')}</h2>

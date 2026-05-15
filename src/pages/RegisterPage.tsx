@@ -118,7 +118,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-5 py-12">
       <SEO title={t('register.seoTitle', { defaultValue: '회원가입 - 유어딜' })} description={t('register.seoDesc', { defaultValue: '유어딜에 가입하고 라이브 쇼핑을 시작하세요' })} url="/register" noindex />
-      <div className="w-full max-w-[360px]">
+      <div className="w-full max-w-[360px] md:max-w-[420px]">
 
         {/* Logo */}
         <div className="text-center mb-12">
