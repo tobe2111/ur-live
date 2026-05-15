@@ -173,6 +173,7 @@ import { flagRoutes } from './routes/feature-flag.routes';
 import { currencyRoutes } from './routes/currency.routes';
 import { ocrRoutes } from './routes/ocr.routes';
 import { disputesRoutes } from './routes/disputes.routes';
+import { twofaRoutes } from './routes/twofa.routes';
 import { csrfIssue } from './middleware/csrf';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
@@ -1042,6 +1043,9 @@ app.route('/api/ocr', ocrRoutes);
 //   AI 가 voucher_refused / merchant_closed 분류 + confidence > 0.75 → 즉시 자동 환불
 //   나머지는 어드민 escalation
 app.route('/api/disputes', disputesRoutes);
+
+// 🛡️ 2026-05-15: 2FA TOTP (셀러/어드민 추가 보안 — Workers crypto 만 사용, 외부 lib 0)
+app.route('/api/2fa', twofaRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

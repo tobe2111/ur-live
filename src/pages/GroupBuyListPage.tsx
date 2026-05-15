@@ -21,6 +21,7 @@ import { SORT_LABELS, STATUS_BADGES } from './group-buy-list/constants'
 import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import LiveTicker from '@/components/group-buy/LiveTicker'
+import RecentlyViewedStrip from '@/components/group-buy/RecentlyViewedStrip'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
@@ -345,6 +346,9 @@ export default function GroupBuyListPage() {
         {mainTab === 'seller' ? (
           /* ── 셀러 공구 상품 그리드 (2열) ── */
           <>
+            {/* 🛡️ 2026-05-15: 최근 본 공구 — localStorage 기반 (재방문 promote) */}
+            <RecentlyViewedStrip />
+
             {/* 🛡️ 2026-05-15: 큐레이션 섹션 — 1명 남음 / 오늘 마감 / 거의 성공 */}
             {!loading && filtered.length > 0 && (() => {
               const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)

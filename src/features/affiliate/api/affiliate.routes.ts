@@ -206,6 +206,71 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
   })
 })
 
+// ── GET /api/affiliate/funnel — 인플루언서 share 성과 funnel ──
+// 🛡️ 2026-05-15: 본인 share 링크 클릭 → 가입 → 첫 결제 funnel 시각화
+//   데이터: referral_commissions + point_transactions(type='referral_bonus')
+affiliateRoutes.get('/funnel', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const userId = user.id
+  const { DB } = c.env
+
+  try {
+    // 1. 추천 보상 받은 횟수 (= 친구가 결제한 횟수)
+    const bonusRow = await DB.prepare(`
+      SELECT COUNT(*) AS bonus_count, COALESCE(SUM(amount), 0) AS total_earned
+      FROM point_transactions
+      WHERE user_id = ? AND type = 'referral_bonus'
+    `).bind(userId).first<{ bonus_count: number; total_earned: number }>().catch(() => null)
+
+    // 2. 카테고리별 분포 (description 에서 product 추출 — best-effort)
+    const { results: byCategory } = await DB.prepare(`
+      SELECT
+        CASE
+          WHEN description LIKE '%식사%' THEN 'meal'
+          WHEN description LIKE '%뷰티%' THEN 'beauty'
+          WHEN description LIKE '%헬스%' THEN 'health'
+          WHEN description LIKE '%펫%' OR description LIKE '%반려%' THEN 'pet'
+          WHEN description LIKE '%숙박%' OR description LIKE '%펜션%' THEN 'stay'
+          WHEN description LIKE '%액티비티%' OR description LIKE '%클래스%' THEN 'activity'
+          ELSE 'other'
+        END AS category,
+        COUNT(*) AS count,
+        SUM(amount) AS earned
+      FROM point_transactions
+      WHERE user_id = ? AND type = 'referral_bonus'
+      GROUP BY category
+      ORDER BY earned DESC
+    `).bind(userId).all().catch(() => ({ results: [] }))
+
+    // 3. 일별 추이 (최근 30일)
+    const { results: daily } = await DB.prepare(`
+      SELECT DATE(created_at, '+9 hours') AS day,
+             COUNT(*) AS count,
+             SUM(amount) AS earned
+      FROM point_transactions
+      WHERE user_id = ?
+        AND type = 'referral_bonus'
+        AND created_at >= datetime('now', '-30 days')
+      GROUP BY day
+      ORDER BY day DESC
+    `).bind(userId).all().catch(() => ({ results: [] }))
+
+    return c.json({
+      success: true,
+      data: {
+        total_referrals: Number(bonusRow?.bonus_count ?? 0),
+        total_earned: Number(bonusRow?.total_earned ?? 0),
+        by_category: byCategory ?? [],
+        daily: daily ?? [],
+      },
+    })
+  } catch (err) {
+    console.error('[affiliate funnel]', err)
+    return c.json({ success: true, data: { total_referrals: 0, total_earned: 0, by_category: [], daily: [] } })
+  }
+})
+
 // ── GET /api/affiliate/top-groups — 인플루언서 추천: 지금 share 하면 좋을 공구 ──
 // 🛡️ 2026-05-15: 알고리즘 — (1) 마감임박 + (2) 진행률 60%+ + (3) 단계별 할인 활성
 //   = 지금 share → 친구 가입 가능성 높음 (양쪽 0.5% 보너스).
