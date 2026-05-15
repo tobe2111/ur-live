@@ -69,6 +69,7 @@ const NAV_GROUPS: {
     items: [
       { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2 },
       { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell },
+      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone },
       { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen },
     ],
   },

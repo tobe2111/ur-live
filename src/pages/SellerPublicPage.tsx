@@ -283,6 +283,7 @@ export default function SellerPublicPage() {
             isOwner={isOwner}
             textClass={T.text}
             setTab={setTab}
+            sellerId={seller?.id ? Number(seller.id) : undefined}
           />
         )}
 
