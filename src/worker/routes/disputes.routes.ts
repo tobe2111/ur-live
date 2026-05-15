@@ -150,7 +150,7 @@ disputesRoutes.post(
           }
         }
       } catch (err) {
-        console.warn('[disputes/submit] AI failed, escalating', err)
+        if (import.meta.env?.DEV) console.warn('[disputes/submit] AI failed, escalating', err)
       }
     }
 

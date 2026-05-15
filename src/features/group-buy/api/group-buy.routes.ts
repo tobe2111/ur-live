@@ -9,10 +9,9 @@
  */
 
 import { Hono } from 'hono'
-import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
-import { require2FA } from '@/worker/middleware/require-2fa'
 import { recordLedger } from '@/worker/utils/ledger'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
@@ -488,7 +487,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     `).bind(qty, qty, productId).run()
 
     const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status, milestone_notified_50, milestone_notified_80, milestone_notified_lastone FROM products WHERE id = ?')
-      .bind(productId).first<any>()
+      .bind(productId).first<Pick<GroupBuyProductRow, 'group_buy_current' | 'group_buy_target' | 'group_buy_status' | 'milestone_notified_50' | 'milestone_notified_80' | 'milestone_notified_lastone'>>()
 
     // 🛡️ 2026-05-15: 마일스톤 알림 (50%, 80%, 1명 남음) — atomic CAS dedup
     //   진행 중 공구의 전환율을 높이기 위한 hot notification. push 만 (이메일 X — 너무 잦음).
@@ -726,7 +725,7 @@ groupBuyRoutes.get('/verify/:code', async (c) => {
     SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image
     FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
     WHERE v.code = ?
-  `).bind(code).first<any>()
+  `).bind(code).first<VoucherRow & { product_name?: string; restaurant_name?: string; product_image?: string }>()
 
   if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
 
@@ -756,7 +755,7 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), auditLog('group_buy.sel
   try {
     const product = await DB.prepare(
       "SELECT * FROM products WHERE id = ? AND category = 'meal_voucher'"
-    ).bind(productId).first<any>()
+    ).bind(productId).first<GroupBuyProductRow>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
@@ -773,9 +772,10 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), auditLog('group_buy.sel
     if (product.group_buy_current >= product.group_buy_target) return c.json({ success: false, error: '목표 달성된 공동구매는 환불 불가' }, 400)
 
     // 미사용 바우처 환불 처리
+    interface RefundVoucherRow { id: number; user_id: string | null; total_amount: number; payment_method: string | null }
     const { results: vouchers } = await DB.prepare(
-      "SELECT v.*, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
-    ).bind(productId).all()
+      "SELECT v.id, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
+    ).bind(productId).all<RefundVoucherRow>()
 
     let refundCount = 0
     for (const v of (vouchers || [])) {
@@ -784,7 +784,7 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), auditLog('group_buy.sel
       //    when two admins/sellers race on the same refund API call).
       const casRes = await DB.prepare(
         "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
-      ).bind((v as any).id).run()
+      ).bind(v.id).run()
 
       if ((casRes.meta?.changes ?? 0) === 0) continue
 
@@ -792,13 +792,13 @@ groupBuyRoutes.post('/refund/:productId', requireAuth(), auditLog('group_buy.sel
       // ✅ BUG #45 FIX: `o.total_amount` covers the whole order (N vouchers).
       // Refunding that per-voucher would multiply the refund by N.  Refund
       // exactly one voucher's worth of points — `product.price`.
-      if ((v as any).payment_method === 'deal_points' && (v as any).user_id) {
+      if (v.payment_method === 'deal_points' && v.user_id) {
         const amount = product.price
         await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-          .bind(amount, (v as any).user_id).run()
+          .bind(amount, v.user_id).run()
         await DB.prepare(
           "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-        ).bind((v as any).user_id, amount, amount, (v as any).user_id, `공동구매 미달성 환불: ${product.name}`).run()
+        ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 환불: ${product.name}`).run()
       }
       refundCount++
     }
@@ -1045,13 +1045,14 @@ groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_
 
   try {
     // 🛡️ CAS 패턴: token/PIN 검증과 조회를 한 번에 (timing attack 방어)
+    type StoreStatsProduct = Pick<GroupBuyProductRow, 'id' | 'name' | 'restaurant_name' | 'group_buy_target' | 'group_buy_current'>
     const product = tokenFromQuery
       ? await DB.prepare(
           "SELECT id, name, restaurant_name, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher' AND store_owner_token = ?"
-        ).bind(productId, tokenFromQuery).first<any>()
+        ).bind(productId, tokenFromQuery).first<StoreStatsProduct>()
       : await DB.prepare(
           "SELECT id, name, restaurant_name, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher' AND store_verify_pin = ?"
-        ).bind(productId, pin).first<any>()
+        ).bind(productId, pin).first<StoreStatsProduct>()
 
     if (!product) {
       // 상품 없음 vs 인증 실패 구분하지 않음 (enumeration 방어)
@@ -1066,7 +1067,7 @@ groupBuyRoutes.post('/store-stats/:productId', rateLimit({ action: 'store_stats_
         SUM(CASE WHEN status = 'unused' THEN 1 ELSE 0 END) as unused,
         SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired
       FROM vouchers WHERE product_id = ?
-    `).bind(productId).first<any>()
+    `).bind(productId).first<{ total_vouchers: number; used: number; unused: number; expired: number }>()
 
     return c.json({
       success: true,
@@ -1140,78 +1141,11 @@ ${data.statsUrl}
   } catch { /* graceful */ }
 }
 
-// ── GET /api/group-buy/admin/analytics — 어드민: 카테고리별 funnel + top groups ──
-// 🛡️ 2026-05-15: 공구 의사결정 데이터 — 카테고리별 진행/달성률, 매출 top, 평균 참여율
-groupBuyRoutes.get('/admin/analytics', requireAdmin(), async (c) => {
-  const { DB } = c.env
-  try {
-    // 카테고리별 통계
-    const { results: byCategory } = await DB.prepare(`
-      SELECT
-        category,
-        COUNT(*) AS total_groups,
-        SUM(CASE WHEN group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved,
-        SUM(CASE WHEN group_buy_status = 'expired' AND group_buy_current < group_buy_target THEN 1 ELSE 0 END) AS failed,
-        SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active,
-        SUM(group_buy_current) AS total_participants,
-        SUM(group_buy_current * price) AS total_gmv
-      FROM products
-      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
-        AND group_buy_target > 0
-      GROUP BY category
-      ORDER BY total_gmv DESC
-    `).all().catch(() => ({ results: [] }))
-
-    // GMV top 10
-    const { results: topGroups } = await DB.prepare(`
-      SELECT p.id, p.name, p.category, p.group_buy_current, p.group_buy_target, p.group_buy_status,
-             p.price, (p.group_buy_current * p.price) AS gmv,
-             s.name AS seller_name
-      FROM products p
-      LEFT JOIN sellers s ON s.id = p.seller_id
-      WHERE p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
-        AND p.group_buy_target > 0
-        AND p.group_buy_current > 0
-      ORDER BY gmv DESC
-      LIMIT 10
-    `).all().catch(() => ({ results: [] }))
-
-    // 일별 참여 추이 (최근 30일)
-    const { results: daily } = await DB.prepare(`
-      SELECT DATE(o.created_at) AS day,
-             COUNT(DISTINCT o.id) AS orders,
-             COUNT(DISTINCT v.id) AS vouchers_issued,
-             SUM(o.total_amount) AS gmv
-      FROM orders o
-      LEFT JOIN vouchers v ON v.order_id = o.id
-      WHERE o.order_number LIKE 'GB-%'
-        AND o.created_at >= datetime('now', '-30 days')
-        AND o.status = 'PAID'
-      GROUP BY DATE(o.created_at)
-      ORDER BY day DESC
-    `).all().catch(() => ({ results: [] }))
-
-    // 전체 합계
-    const totals = await DB.prepare(`
-      SELECT
-        COUNT(*) AS total_groups,
-        SUM(CASE WHEN group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved_groups,
-        SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active_groups,
-        SUM(group_buy_current) AS total_participants
-      FROM products
-      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
-        AND group_buy_target > 0
-    `).first().catch(() => null)
-
-    return c.json({
-      success: true,
-      data: { totals, by_category: byCategory ?? [], top_groups: topGroups ?? [], daily: daily ?? [] }
-    })
-  } catch (err) {
-    console.error('[admin gb analytics]', err)
-    return c.json({ success: false, error: '집계 실패' }, 500)
-  }
-})
+// 🛡️ 2026-05-15 (TD-G01): 어드민 endpoints 는 sub-router 로 분리 (group-buy-admin.routes.ts).
+//   - GET  /admin/analytics
+//   - GET  /admin/list
+//   - POST /admin/force-refund/:productId
+// → main 파일 끝에서 groupBuyRoutes.route('/admin', groupBuyAdminRoutes) 마운트
 
 // ── POST /api/group-buy/voucher/:code/partial-refund — 부분 사용 후 잔여 환불 ──
 // 🛡️ 2026-05-15: 1만원 voucher 중 5천원만 사용 → 5천원 자동 환불.
@@ -1323,139 +1257,9 @@ groupBuyRoutes.post(
   }
 )
 
-// ── GET /api/group-buy/admin/list — 어드민: 전체 공구 현황 ──────────
-// 🛡️ 2026-05-15: 어드민이 진행중/만료/취소 전부 조회 + 미달성 공구 필터
-groupBuyRoutes.get('/admin/list', requireAdmin(), async (c) => {
-  const { DB } = c.env
-  const status = c.req.query('status') || 'all'
-  const filter = c.req.query('filter') || ''
-  try {
-    let sql = `
-      SELECT p.id, p.name, p.price, p.image_url, p.category,
-             p.group_buy_target, p.group_buy_current, p.group_buy_status, p.group_buy_deadline,
-             p.seller_id, s.name AS seller_name, s.profile_image AS seller_avatar,
-             p.created_at, p.updated_at
-      FROM products p
-      LEFT JOIN sellers s ON s.id = p.seller_id
-      WHERE p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
-    `
-    const binds: unknown[] = []
-    if (status !== 'all') { sql += ` AND p.group_buy_status = ?`; binds.push(status) }
-    if (filter === 'unsuccessful') {
-      sql += ` AND p.group_buy_status IN ('expired','cancelled') AND p.group_buy_target > 0 AND p.group_buy_current < p.group_buy_target`
-    }
-    sql += ` ORDER BY p.created_at DESC LIMIT 200`
-    const { results } = await DB.prepare(sql).bind(...binds).all()
-    return c.json({ success: true, data: results ?? [] })
-  } catch (err) {
-    console.error('[admin gb list]', err)
-    return c.json({ success: false, error: '조회 실패' }, 500)
-  }
-})
-
-// ── POST /api/group-buy/admin/force-refund/:productId — 어드민 강제 환불 ──
-// 🛡️ 2026-05-15: status 와 무관하게 미사용 voucher 일괄 환불 + audit_logs 기록.
-//   기존 /refund/:productId 는 status='expired' 필요. 분쟁/긴급 케이스에 어드민 직접 개입.
-groupBuyRoutes.post('/admin/force-refund/:productId', requireAdmin(), require2FA(), auditLog('group_buy.admin.force_refund'), async (c) => {
-  const { DB } = c.env
-  const adminUser = getCurrentUser(c)
-  const productIdRaw = c.req.param('productId')
-  const productIdNum = Number(productIdRaw)
-  if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
-    return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
-  }
-  const productId = productIdNum
-  let body: { reason?: string } = {}
-  try { body = await c.req.json() } catch { /* allow empty */ }
-  const reason = (body?.reason || '').toString().slice(0, 500)
-  if (!reason || reason.length < 5) {
-    return c.json({ success: false, error: '환불 사유(5자 이상)를 입력해주세요' }, 400)
-  }
-
-  try {
-    const product = await DB.prepare(
-      "SELECT id, name, price, seller_id, group_buy_status FROM products WHERE id = ?"
-    ).bind(productId).first<{ id: number; name: string; price: number; seller_id: number; group_buy_status: string }>()
-    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
-
-    const { results: vouchers } = await DB.prepare(
-      "SELECT v.id, v.user_id, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
-    ).bind(productId).all<{ id: number; user_id: string; payment_method: string | null }>()
-
-    let refundCount = 0
-    const refundedUsers = new Set<string>()
-    for (const v of vouchers ?? []) {
-      const cas = await DB.prepare(
-        "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
-      ).bind(v.id).run()
-      if ((cas.meta?.changes ?? 0) === 0) continue
-      if (v.payment_method === 'deal_points' && v.user_id) {
-        const amount = product.price
-        try {
-          await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
-            .bind(amount, v.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(v.user_id, amount, amount, v.user_id, `[어드민 환불] ${product.name}: ${reason}`).run()
-        } catch (e) { console.error('[admin force-refund credit]', e) }
-      }
-      if (v.user_id) refundedUsers.add(v.user_id)
-      refundCount++
-    }
-
-    await DB.prepare("UPDATE products SET group_buy_status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(productId).run()
-
-    // audit log
-    try {
-      await DB.prepare(`
-        CREATE TABLE IF NOT EXISTS audit_logs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          actor_type TEXT, actor_id TEXT,
-          action TEXT NOT NULL, target_type TEXT, target_id TEXT,
-          metadata TEXT, ip_hash TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `).run()
-      await DB.prepare(
-        "INSERT INTO audit_logs (actor_type, actor_id, action, target_type, target_id, metadata) VALUES ('admin', ?, 'group_buy.force_refund', 'product', ?, ?)"
-      ).bind(String(adminUser?.id ?? ''), String(productId), JSON.stringify({ reason, refundCount, productName: product.name })).run()
-    } catch { /* table missing — skip */ }
-
-    // 환불받은 유저 + 셀러에게 푸시
-    try {
-      const { sendSystemPush } = await import('../../../lib/system-push')
-      for (const uid of refundedUsers) {
-        try {
-          await DB.prepare(
-            `INSERT INTO user_notifications (user_id, type, title, message, link)
-             VALUES (?, 'group_buy_refunded', ?, ?, ?)`
-          ).bind(uid, '공구 환불 완료', `${product.name} 보증금이 환불됐어요`, '/user/profile').run()
-        } catch { /* ignore */ }
-        try {
-          await sendSystemPush(c.env, 'user', uid, {
-            title: '공구 환불 완료',
-            body: `${product.name} 환불됐어요`,
-            url: '/user/profile',
-            tag: `gb-refunded-${productId}`,
-          })
-        } catch { /* ignore */ }
-      }
-      // 셀러 dashboard notification
-      try {
-        await DB.prepare(
-          `INSERT INTO notifications (user_id, type, title, body, link, created_at)
-           VALUES ((SELECT user_id FROM sellers WHERE id = ?), 'group_buy_admin_refund', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
-        ).bind(product.seller_id, '관리자 환불 처리', `${product.name} 공구가 어드민에 의해 환불 처리됐습니다 (${refundCount}건). 사유: ${reason}`).run()
-      } catch { /* notifications table may not exist */ }
-    } catch (e) { console.error('[admin force-refund notify]', e) }
-
-    return c.json({ success: true, data: { refunded: refundCount }, message: `${refundCount}건 환불 처리 완료` })
-  } catch (err) {
-    console.error('[admin gb force-refund]', err)
-    return c.json({ success: false, error: '환불 처리 중 오류' }, 500)
-  }
-})
+// 🛡️ 2026-05-15 (TD-G01): admin sub-router 마운트 (자세한 endpoint 정의는 group-buy-admin.routes.ts)
+import { groupBuyAdminRoutes } from './group-buy-admin.routes'
+groupBuyRoutes.route('/admin', groupBuyAdminRoutes)
 
 export { generateStoreOwnerToken, sendStoreOwnerAlimtalk }
 

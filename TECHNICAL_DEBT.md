@@ -873,7 +873,17 @@ High/Medium 은 코드 품질 & 유지보수성 이슈 — 단계적으로.
 
 ## 🆕 2026-05-15 — 공구 서비스 기술 부채 (Round 14 commits 후)
 
-### TD-G01 (MEDIUM): group-buy.routes.ts 1446줄 — 분리 권장
+### TD-G01 (MEDIUM): group-buy.routes.ts 1446줄 — 분리 ✅ **1단계 완료 (2026-05-15)**
+**1단계 완료**:
+- ✅ `group-buy-admin.routes.ts` (228줄) — analytics / list / force-refund 추출
+- ✅ main 파일: 1446 → 1266줄 (-180)
+- 마운트: `groupBuyRoutes.route('/admin', groupBuyAdminRoutes)` (외부 path 동일)
+
+**2-3단계 (다음 세션 후보)**: voucher / seller / public sub-router 추가 추출.
+
+---
+
+**원본 부채 분석 (참고)**:
 **위치**: `src/features/group-buy/api/group-buy.routes.ts`
 **문제**: 1446줄 단일 파일. admin / seller / public / voucher 4 영역 혼재.
 - admin: `/admin/list`, `/admin/force-refund`, `/admin/analytics`
@@ -899,20 +909,22 @@ src/features/group-buy/api/
 **위험**: 한 번에 분리하면 import 경로 폭발 + git history 추적 곤란. **점진 분리** (admin → 한 commit, voucher → 다음 commit).
 **예상 작업 시간**: 2-3 세션
 
-### TD-G02 (LOW): 12개 `as any` / `<any>` 캐스트
-**위치**: `group-buy.routes.ts` (10), `disputes.routes.ts` (2)
-**해결**: 핵심 row 타입 정의 (Voucher, Order, ProductWithGroupBuy 등) 후 `<Voucher>` 처럼 generic.
-**예상 작업 시간**: 1세션
+### TD-G02 (LOW): 12개 `as any` / `<any>` 캐스트 ✅ **해결됨 (2026-05-15)**
+- ✅ `src/shared/db/group-buy-types.ts` 정의 (GroupBuyProductRow / VoucherRow / OrderRow / ParticipantRow)
+- ✅ group-buy.routes.ts 의 `first<any>()` / `(v as any).xxx` 전부 제거
+- 잔존 `<any>` (다른 파일) — 별도 부채로 추적
 
-### TD-G03 (LOW): voucher-categories enum 6개 반복 선언
-**위치**: `group-buy.routes.ts`, `seller-orders.routes.ts`, `disputes.routes.ts`, `og-image.routes.ts`, `affiliate.routes.ts`, `analytics.routes.ts`, `sitemap.routes.ts`, frontend pages
-**해결**: `src/shared/constants/voucher-categories.ts` 단일 source.
-**예상 작업 시간**: 30분
+### TD-G03 (LOW): voucher-categories enum 6개 반복 선언 ✅ **해결됨 (2026-05-15)**
+- ✅ `src/shared/constants/voucher-categories.ts` 단일 source 생성
+- ✅ TS 배열 참조 모두 `VOUCHER_CATEGORY_SET` / `VOUCHER_CATEGORIES` 교체
+  - SellerGroupBuyOverview.tsx / seller-orders.routes.ts / ProductDetailPage.tsx / group-buy.routes.ts /products
+- SQL inline 6 카테고리 string 은 그대로 유지 (변경 빈도 0, 안정성 우선)
 
-### TD-G04 (LOW): 22개 console.* — 일부 production noise
-**위치**: `group-buy.routes.ts` (22), `disputes.routes.ts` (3)
-**현재**: 대부분 `console.error` 정당 (운영 디버깅용). `console.warn` 일부 DEV 게이트 추천.
-**예상 작업 시간**: 30분
+### TD-G04 (LOW): 22개 console.* — 일부 production noise ✅ **해결됨 (2026-05-15)**
+- ✅ 5개 console.warn (best-effort 실패) DEV 게이트
+  - [gb ledger] / [group-buy referral] / [group-buy email] / [partial-refund ledger] / [disputes/submit AI]
+- console.error 는 실제 운영 디버깅용으로 유지 (Workers tail 로 수집)
+- DEV-only noise 제거 완료
 
 ### TD-G05 (MEDIUM): 부분 환불 → ledger 미통합
 **위치**: `group-buy.routes.ts /voucher/:code/partial-refund` (방금 추가)

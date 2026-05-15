@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { Ticket, Clock, AlertTriangle, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
+import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories'
 
 interface Overview {
   active: number
@@ -35,8 +36,7 @@ export default function SellerGroupBuyOverview() {
       api.get('/api/disputes/seller/pending', { headers }).catch(() => ({ data: { data: { summary: { total: 0 } } } })),
     ]).then(([prodRes, disputeRes]) => {
       const products = prodRes.data?.data || []
-      const VOUCHER = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
-      const vouchers = products.filter((p: { category?: string }) => VOUCHER.includes(p.category || ''))
+      const vouchers = products.filter((p: { category?: string }) => VOUCHER_CATEGORY_SET.has(p.category || ''))
       const now = Date.now()
       const active = vouchers.filter((p: { group_buy_status?: string }) => p.group_buy_status === 'active').length
       const closingSoon = vouchers.filter((p: { group_buy_deadline?: string; group_buy_status?: string }) => {
