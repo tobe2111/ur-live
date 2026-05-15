@@ -13,10 +13,11 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Palette, Image as ImageIcon, ExternalLink, Save, Loader2, Eye } from 'lucide-react'
+import { Palette, Image as ImageIcon, ExternalLink, Save, Loader2, Eye, Upload } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { compressForUpload } from '@/lib/image-compress'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 
@@ -52,7 +53,33 @@ export default function SellerMiniShopPage() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const [sellerSlug, setSellerSlug] = useState<string | null>(null)
+
+  // 🛡️ 2026-05-15: 배너 직접 업로드 — compressForUpload (WebP 1280px ≤500KB) + Data URL.
+  async function handleBannerUpload(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('10MB 이하 이미지만 가능합니다')
+      return
+    }
+    setUploadingBanner(true)
+    try {
+      // 1280×320 권장 — width 1920 max, quality 85
+      const compressed = await compressForUpload(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, toWebP: true })
+      const reader = new FileReader()
+      reader.onload = () => {
+        update('banner_url', reader.result as string)
+        toast.success('배너 업로드 완료 — 저장 버튼 눌러주세요')
+      }
+      reader.onerror = () => toast.error('이미지 읽기 실패')
+      reader.readAsDataURL(compressed)
+    } catch (err) {
+      toast.error('이미지 처리 실패')
+      if (import.meta.env.DEV) console.error(err)
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
 
   useEffect(() => {
     if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
@@ -148,13 +175,31 @@ export default function SellerMiniShopPage() {
             <h3 className="text-base font-bold text-gray-900">헤더 배너 이미지</h3>
           </div>
           <p className="text-[11px] text-gray-500">셀러 페이지 상단에 표시 — 1280×320 권장 (와이드 가로)</p>
-          <input
-            type="url"
-            value={form.banner_url}
-            onChange={e => update('banner_url', e.target.value)}
-            placeholder="https://i.ibb.co/.../banner.jpg"
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-          />
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={form.banner_url.startsWith('data:') ? '(업로드된 이미지)' : form.banner_url}
+              onChange={e => update('banner_url', e.target.value)}
+              placeholder="https://i.ibb.co/.../banner.jpg 또는 직접 업로드"
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              disabled={form.banner_url.startsWith('data:')}
+            />
+            <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-xs font-bold cursor-pointer">
+              {uploadingBanner ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {uploadingBanner ? '처리 중' : '업로드'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingBanner}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleBannerUpload(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          </div>
           {form.banner_url && (
             <div className="rounded-xl overflow-hidden border border-gray-200 aspect-[4/1] bg-gray-100">
               <img src={form.banner_url} alt="banner preview" className="w-full h-full object-cover" />

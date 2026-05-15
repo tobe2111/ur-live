@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { Button } from '@/components/ui/button'
 import { LiveStatsBar, ShareLiveLink } from '../SellerLiveBroadcast.parts'
+import SellerKakaoNotifyButton from '@/components/seller/SellerKakaoNotifyButton'
 import AuctionTimeDealControls from '../SellerLiveBroadcast.AuctionTimeDealControls'
 import DonationBoosterButton from '@/components/seller/DonationBoosterButton'
 import PKLiveBanner from '@/components/live/PKLiveBanner'
@@ -358,8 +359,13 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
       <DonationBoosterButton liveStreamId={stream.id} />
       <PKLiveBanner liveStreamId={stream.id} />
 
-      {/* 시청자 링크 공유 */}
-      <ShareLiveLink streamId={stream.id} />
+      {/* 시청자 링크 공유 + 카카오 친구 알림 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ShareLiveLink streamId={stream.id} />
+        {!practiceMode && (
+          <SellerKakaoNotifyButton streamId={stream.id} streamTitle={stream.title} />
+        )}
+      </div>
 
       {/* 채팅 (영상 미리보기 제거 — YouTube embed는 30초 지연으로 모니터링 무의미)
           🛡️ 2026-05-13: PC 에선 더 큰 영역 (lg+ 60vh). 모바일에선 기존 320. */}
