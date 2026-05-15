@@ -20,6 +20,14 @@ const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
 const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
 
+// 🛡️ 2026-05-15: 차등 수수료 — 셀러 GMV 기반 자동 산정 (셀러 lock-in)
+//   기본 5%, 월 GMV 1,000만+ 셀러 4%, 월 GMV 1억+ 셀러 3%
+//   sellers.commission_rate 컬럼이 있으면 어드민 수동 override 우선.
+const TIER_COMMISSION = [
+  { min_monthly_gmv: 100_000_000, rate: 0.03 },  // 1억+ → 3%
+  { min_monthly_gmv: 10_000_000,  rate: 0.04 },  // 1천만+ → 4%
+] as const
+
 // DB에서 수수료율 조회 (어드민 설정 우선, 없으면 기본값)
 async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {
   try {
@@ -27,6 +35,33 @@ async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {
     if (row) return Number(row.value) / 100
   } catch { /* table may not exist */ }
   return DEFAULT_MEAL_VOUCHER_COMMISSION_RATE
+}
+
+// 🛡️ 2026-05-15: 셀러별 commission rate (override > tier > default)
+async function getSellerCommissionRate(DB: D1Database, sellerId: number): Promise<number> {
+  // 1. 어드민 수동 설정 (sellers.commission_rate)
+  try {
+    const seller = await DB.prepare("SELECT commission_rate FROM sellers WHERE id = ?").bind(sellerId).first<{ commission_rate: number | null }>()
+    if (seller && seller.commission_rate != null && seller.commission_rate > 0 && seller.commission_rate < 100) {
+      return Number(seller.commission_rate) / 100
+    }
+  } catch { /* column may not exist */ }
+  // 2. 자동 tier — 최근 30일 GMV 기준
+  try {
+    const gmvRow = await DB.prepare(`
+      SELECT COALESCE(SUM(p.price * p.group_buy_current), 0) AS gmv
+      FROM products p
+      WHERE p.seller_id = ?
+        AND p.updated_at >= datetime('now', '-30 days')
+        AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+    `).bind(sellerId).first<{ gmv: number }>()
+    const gmv = Number(gmvRow?.gmv ?? 0)
+    for (const tier of TIER_COMMISSION) {
+      if (gmv >= tier.min_monthly_gmv) return tier.rate
+    }
+  } catch { /* fallback to default */ }
+  // 3. 기본값 (platform_settings)
+  return await getMealVoucherCommissionRate(DB)
 }
 
 // 테이블 자동 생성
@@ -337,8 +372,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
     try {
 
-    // 수수료 계산 (DB 설정값 platform_settings.commission_rate_meal_voucher, 기본 5%)
-    const commissionRate = await getMealVoucherCommissionRate(DB)
+    // 🛡️ 2026-05-15: 셀러 차등 수수료 — GMV 기반 자동 (1천만+ 4%, 1억+ 3%) / 어드민 override 우선
+    const commissionRate = await getSellerCommissionRate(DB, Number(product.seller_id))
     const commissionAmount = Math.round(totalAmount * commissionRate)
     const sellerAmount = totalAmount - commissionAmount
 
@@ -479,28 +514,41 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       'SELECT code, expires_at FROM vouchers WHERE order_id = ? AND user_id = ?'
     ).bind(order?.id, userId).all<{ code: string; expires_at: string }>()
 
-    // 🛡️ 2026-05-15: Referral 추적 — affiliate_ref 쿠키/header 로 추천인 식별 시
-    //   양쪽에 보너스 딜 1% (네트워크 효과 부스트). 본인 self-refer 차단.
+    // 🛡️ 2026-05-15: Referral 추적 — affiliate_ref 헤더로 추천인 식별 시
+    //   양쪽 0.5% 보너스 딜 (네트워크 효과 vs 마진 보호 균형).
+    //   ✨ first-time-only: 같은 (ref, joiner) 조합은 1회만 보상 — point_transactions 에서 dedup.
+    //   본인 self-refer 차단.
     try {
       const refRaw = c.req.header('X-Affiliate-Ref') || ''
       const refUserId = refRaw && /^\d+$/.test(refRaw) ? refRaw : null
       if (refUserId && refUserId !== String(userId)) {
         const refExists = await DB.prepare("SELECT 1 FROM users WHERE id = ?").bind(refUserId).first().catch(() => null)
         if (refExists) {
-          const bonus = Math.round(totalAmount * 0.01)  // 1% 양쪽 보너스
-          if (bonus > 0) {
-            // 추천인 보너스
-            await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, refUserId).run().catch(() => {})
-            await DB.prepare(
-              `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-               VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-            ).bind(refUserId, bonus, bonus, refUserId, `공구 추천 보상: ${product.name}`, orderNumber).run().catch(() => {})
-            // 참여자 보너스
-            await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, userId).run().catch(() => {})
-            await DB.prepare(
-              `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-               VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-            ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상: ${product.name}`, orderNumber).run().catch(() => {})
+          // first-time check — 같은 추천 조합 이미 보상 받았는지 확인
+          const alreadyRewarded = await DB.prepare(
+            `SELECT 1 FROM point_transactions
+             WHERE type = 'referral_bonus'
+               AND user_id = ?
+               AND description LIKE '%' || ? || '%'
+             LIMIT 1`
+          ).bind(userId, `from:${refUserId}`).first().catch(() => null)
+
+          if (!alreadyRewarded) {
+            const bonus = Math.round(totalAmount * 0.005)  // 0.5% 양쪽 (이전 1% → 절반)
+            if (bonus > 0) {
+              // 추천인 보너스
+              await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, refUserId).run().catch(() => {})
+              await DB.prepare(
+                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+              ).bind(refUserId, bonus, bonus, refUserId, `공구 추천 보상 (to:${userId}): ${product.name}`, orderNumber).run().catch(() => {})
+              // 참여자 보너스
+              await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, userId).run().catch(() => {})
+              await DB.prepare(
+                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+              ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상 (from:${refUserId}): ${product.name}`, orderNumber).run().catch(() => {})
+            }
           }
         }
       }
@@ -819,12 +867,20 @@ groupBuyRoutes.post(
 )
 
 // 🛡️ 2026-05-13 (공구 UX #1): 공개 수수료율 — 셀러 정산 미리보기용
+//   셀러 인증 시 본인 차등 수수료 (GMV 기반) 반환, 비인증 시 기본값.
 groupBuyRoutes.get('/commission-rate', async (c) => {
   try {
+    const user = getCurrentUser(c)
+    const userAsAny = user as unknown as { id?: number | string; type?: string; role?: string }
+    const isSeller = user && (userAsAny.type === 'seller' || userAsAny.role === 'seller')
+    if (isSeller && userAsAny.id) {
+      const rate = await getSellerCommissionRate(c.env.DB, Number(userAsAny.id))
+      return c.json({ success: true, rate, tiered: true })
+    }
     const rate = await getMealVoucherCommissionRate(c.env.DB)
-    return c.json({ success: true, rate })
+    return c.json({ success: true, rate, tiered: false })
   } catch {
-    return c.json({ success: true, rate: 0.05 })  // fallback 5%
+    return c.json({ success: true, rate: 0.05, tiered: false })  // fallback 5%
   }
 })
 

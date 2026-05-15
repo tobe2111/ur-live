@@ -16,6 +16,8 @@ interface ChargeOption {
   points: number
   label: string
   bonus?: number
+  recommended?: boolean
+  best?: boolean
 }
 
 export default function PointsChargePage() {
@@ -176,16 +178,33 @@ export default function PointsChargePage() {
                 {options.map(opt => {
                   const isSelected = selected?.amount === opt.amount
                   const hasBonus = opt.bonus && opt.bonus > 0
+                  const isBest = opt.best
+                  const isRecommended = opt.recommended && !isBest
                   return (
                     <button
                       key={opt.amount}
                       onClick={() => setSelected(opt)}
                       className={`relative flex flex-col items-center justify-center py-5 rounded-2xl border-2 transition-all ${
                         isSelected
-                          ? 'border-pink-500 bg-pink-50'
-                          : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300'
+                          ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-200'
+                          : isBest
+                            ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500'
+                            : isRecommended
+                              ? 'border-pink-300 bg-pink-50/40 hover:border-pink-400'
+                              : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300'
                       }`}
+                      aria-label={`${formatNumber(opt.amount)}원 충전${hasBonus ? ` 보너스 ${opt.bonus}딜 추가` : ''}${isBest ? ' 가장 인기' : isRecommended ? ' 추천' : ''}`}
                     >
+                      {isBest && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-extrabold whitespace-nowrap shadow-sm">
+                          🔥 BEST
+                        </span>
+                      )}
+                      {isRecommended && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-extrabold whitespace-nowrap shadow-sm">
+                          ⭐ 추천
+                        </span>
+                      )}
                       {isSelected && (
                         <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
