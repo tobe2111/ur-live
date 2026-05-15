@@ -288,6 +288,125 @@ disputesRoutes.post('/admin/:id/reject', requireAuth(), require2FA(), auditLog('
   return c.json({ success: true, message: `분쟁 #${id} 거절 처리` })
 })
 
+// ── GET /api/disputes/seller/pending — 본인 매장의 진행 중 분쟁 ──
+// 🛡️ 2026-05-15: 셀러 대시보드에서 "내 매장 분쟁 N건" 카드 노출용.
+disputesRoutes.get('/seller/pending', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  const userAsAny = user as unknown as { id?: number | string; type?: string }
+  if (!user || userAsAny.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403)
+
+  const { DB } = c.env
+  await ensureDisputesTable(DB)
+
+  try {
+    const { results } = await DB.prepare(`
+      SELECT d.id, d.voucher_code, d.ai_category, d.action, d.created_at, p.name AS product_name
+      FROM disputes d
+      LEFT JOIN vouchers v ON v.code = d.voucher_code
+      LEFT JOIN products p ON p.id = v.product_id
+      WHERE p.seller_id = ?
+        AND d.action IN ('escalated', 'pending', 'auto_refunded')
+        AND d.created_at >= datetime('now', '-30 days')
+      ORDER BY d.created_at DESC
+      LIMIT 20
+    `).bind(userAsAny.id).all().catch(() => ({ results: [] }))
+
+    const list = (results ?? []) as Array<{ action: string }>
+    const summary = {
+      total: list.length,
+      escalated: list.filter(d => d.action === 'escalated' || d.action === 'pending').length,
+      auto_refunded: list.filter(d => d.action === 'auto_refunded').length,
+    }
+    return c.json({ success: true, data: { list, summary } })
+  } catch (err) {
+    console.error('[disputes/seller/pending]', err)
+    return c.json({ success: true, data: { list: [], summary: { total: 0, escalated: 0, auto_refunded: 0 } } })
+  }
+})
+
+// ── GET /api/disputes/agency/pending — 에이전시 본인 셀러망 분쟁 ──
+disputesRoutes.get('/agency/pending', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  const userAsAny = user as unknown as { id?: number | string; type?: string }
+  if (!user || userAsAny.type !== 'agency') return c.json({ success: false, error: 'forbidden' }, 403)
+
+  const { DB } = c.env
+  await ensureDisputesTable(DB)
+
+  try {
+    const { results } = await DB.prepare(`
+      SELECT d.id, d.voucher_code, d.ai_category, d.action, d.created_at,
+             p.name AS product_name, s.name AS seller_name
+      FROM disputes d
+      LEFT JOIN vouchers v ON v.code = d.voucher_code
+      LEFT JOIN products p ON p.id = v.product_id
+      LEFT JOIN sellers s ON s.id = p.seller_id
+      WHERE s.agency_id = ?
+        AND d.action IN ('escalated', 'pending')
+        AND d.created_at >= datetime('now', '-30 days')
+      ORDER BY d.created_at DESC
+      LIMIT 50
+    `).bind(userAsAny.id).all().catch(() => ({ results: [] }))
+
+    return c.json({ success: true, data: { count: (results ?? []).length, list: results ?? [] } })
+  } catch (err) {
+    console.error('[disputes/agency/pending]', err)
+    return c.json({ success: true, data: { count: 0, list: [] } })
+  }
+})
+
+// ── GET /api/agency/group-buy/overview — 에이전시 본인 셀러망 공구 요약 ──
+disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  const userAsAny = user as unknown as { id?: number | string; type?: string }
+  if (!user || userAsAny.type !== 'agency') return c.json({ success: false, error: 'forbidden' }, 403)
+
+  const { DB } = c.env
+  try {
+    const now = Date.now()
+    const cutoff24h = new Date(now + 24 * 3600 * 1000).toISOString()
+    const cutoff14d = new Date(now - 14 * 24 * 3600 * 1000).toISOString()
+
+    const [groupsRow, churnRow] = await Promise.all([
+      DB.prepare(`
+        SELECT
+          COUNT(*) AS active_count,
+          SUM(CASE
+            WHEN p.group_buy_deadline < ?
+              AND (p.group_buy_current * 1.0 / NULLIF(p.group_buy_target, 0)) < 0.5
+            THEN 1 ELSE 0
+          END) AS at_risk_count
+        FROM products p
+        JOIN sellers s ON s.id = p.seller_id
+        WHERE s.agency_id = ?
+          AND p.group_buy_status = 'active'
+          AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      `).bind(cutoff24h, userAsAny.id).first<{ active_count: number; at_risk_count: number }>().catch(() => null),
+      DB.prepare(`
+        SELECT COUNT(*) AS churn_count
+        FROM sellers s
+        WHERE s.agency_id = ?
+          AND s.status = 'approved'
+          AND NOT EXISTS (
+            SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.created_at >= ?
+          )
+      `).bind(userAsAny.id, cutoff14d).first<{ churn_count: number }>().catch(() => null),
+    ])
+
+    return c.json({
+      success: true,
+      data: {
+        active_groups: Number(groupsRow?.active_count ?? 0),
+        at_risk_groups: Number(groupsRow?.at_risk_count ?? 0),
+        churn_sellers: Number(churnRow?.churn_count ?? 0),
+      },
+    })
+  } catch (err) {
+    console.error('[agency-overview]', err)
+    return c.json({ success: true, data: { active_groups: 0, at_risk_groups: 0, churn_sellers: 0 } })
+  }
+})
+
 // 어드민용 분쟁 리스트
 disputesRoutes.get('/admin/list', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

@@ -27,19 +27,18 @@ export default function AgencyGroupBuyAlert() {
 
   useEffect(() => {
     const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
-    // 에이전시 본인 셀러망 데이터 — TODO: /api/agency/group-buy/overview endpoint 가 이상적
-    // 우선 기존 endpoints 활용
+    // 🛡️ 2026-05-15: 실데이터 연동 — /api/disputes/agency-overview + /agency/pending
     Promise.all([
-      api.get('/api/agency/sellers', { headers }).catch(() => ({ data: { data: [] } })),
-    ]).then(([sellersRes]) => {
-      const sellers = sellersRes.data?.data || []
-      // churn signal: notifications 중 type='seller_churn_risk' 카운트
-      // 단순화: 그냥 셀러 수 표시 (실제 churn 은 daily cron 결과)
+      api.get('/api/disputes/agency-overview', { headers }).catch(() => ({ data: { data: { active_groups: 0, at_risk_groups: 0, churn_sellers: 0 } } })),
+      api.get('/api/disputes/agency/pending', { headers }).catch(() => ({ data: { data: { count: 0 } } })),
+    ]).then(([overviewRes, disputesRes]) => {
+      const ov = overviewRes.data?.data || {}
+      const pendingCount = Number(disputesRes.data?.data?.count ?? 0)
       setData({
-        churn_sellers: 0,  // TODO: notifications 조회 시 실제값
-        at_risk_groups: 0,
-        active_groups: sellers.length,
-        pending_disputes: 0,
+        active_groups: Number(ov.active_groups ?? 0),
+        at_risk_groups: Number(ov.at_risk_groups ?? 0),
+        churn_sellers: Number(ov.churn_sellers ?? 0),
+        pending_disputes: pendingCount,
       })
     }).finally(() => setLoading(false))
   }, [])

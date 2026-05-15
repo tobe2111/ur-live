@@ -76,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
       { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
+      { path: '/admin/2fa',               label: '2단계 인증',    icon: Shield },
       { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
       { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
       { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },

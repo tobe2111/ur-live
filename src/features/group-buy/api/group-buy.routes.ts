@@ -17,6 +17,7 @@ import { recordLedger } from '@/worker/utils/ledger'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
+import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -207,7 +208,7 @@ groupBuyRoutes.get('/products/:id', async (c) => {
     FROM products p
     LEFT JOIN sellers s ON p.seller_id = s.id
     WHERE p.id = ? AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
-  `).bind(id).first<any>()
+  `).bind(id).first<GroupBuyProductRow & { seller_name?: string; seller_avatar?: string; seller_bio?: string; seller_instagram?: string }>()
 
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
@@ -318,7 +319,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 상품 확인
     const product = await DB.prepare(
       "SELECT * FROM products WHERE id = ? AND category = 'meal_voucher' AND is_active = 1"
-    ).bind(productId).first<any>()
+    ).bind(productId).first<GroupBuyProductRow>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
@@ -434,7 +435,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
       })
-    } catch (e) { console.warn('[gb ledger]', e) }
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[gb ledger]', e) }
 
     // 정산 기록 (셀러 수령액 = 총액 - 10% 수수료)
     try {
@@ -605,7 +606,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           }
         }
       }
-    } catch (e) { console.warn('[group-buy referral]', e) }
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[group-buy referral]', e) }
 
     // 🛡️ 2026-05-15: 이메일 영수증 — voucher 코드 첨부, best-effort (실패해도 join 성공).
     //   유저 email 조회 → Resend 발송 → 실패 시 silent (push 알림이 백업).
@@ -656,9 +657,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         await sendSystemEmail(c.env, userEmail, {
           subject: `[유어딜] 공구 참여 완료 — ${product.name} (${qty}장)`,
           html,
-        }).catch((e) => console.warn('[group-buy email]', e))
+        }).catch((e) => { if (import.meta.env?.DEV) console.warn('[group-buy email]', e) })
       }
-    } catch (e) { console.warn('[group-buy email outer]', e) }
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[group-buy email outer]', e) }
 
     return c.json({
       success: true,
@@ -1229,7 +1230,7 @@ groupBuyRoutes.post(
       return c.json({ success: false, error: '셀러/어드민만 가능' }, 403)
     }
 
-    const code = c.req.param('code')
+    const code = c.req.param('code') || ''
     if (!/^[A-Za-z0-9-]{4,64}$/.test(code)) {
       return c.json({ success: false, error: '잘못된 voucher 코드' }, 400)
     }
@@ -1301,7 +1302,7 @@ groupBuyRoutes.post(
             credit_account: `user:${voucher.user_id}`,     // 유저 wallet 환불
             metadata: { voucher_id: voucher.id, code, used_amount: usedAmount, total_value: voucherValue, reason: reason || null },
           })
-        } catch (e) { console.warn('[partial-refund ledger]', e) }
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[partial-refund ledger]', e) }
 
         // 유저 push
         try {
