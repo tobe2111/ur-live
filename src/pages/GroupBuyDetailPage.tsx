@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
 import api from '@/lib/api'
@@ -85,6 +85,10 @@ export default function GroupBuyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
+  // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
+  const refUserId = searchParams.get('ref')
+  const isInfluencerLanding = !!refUserId
   const [detail, setDetail] = useState<GroupBuyDetail | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,6 +98,9 @@ export default function GroupBuyDetailPage() {
 
   const productId = Number(id)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
+  // 🛡️ 2026-05-15: 본인 product 인 경우 "공구 관리" CTA 표시 (셀러 대시보드 진입점)
+  const sellerId = localStorage.getItem('seller_id')
+  const isOwnProduct = !!sellerId && detail?.seller_id != null && Number(detail.seller_id) === Number(sellerId)
   // 🛡️ 2026-05-15: 본인 추천 링크 (친구 초대 시 양쪽 1% 보너스 딜)
   const myUserId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
   const shareLink = myUserId
@@ -221,7 +228,16 @@ export default function GroupBuyDetailPage() {
       if (res.data?.success) {
         reportFunnel('success', productId)
         toast.success(res.data.message || '공구 참여 완료!')
-        // 백엔드 반환된 정확한 값으로 동기화 후 이동
+        // 🛡️ 2026-05-15: 참여 후 공유 강조 (3 AI 합의: post-purchase share)
+        // localStorage 에 마지막 참여 productId 기록 → /my-vouchers 진입 시 share modal 표시
+        try {
+          localStorage.setItem('gb_just_joined', JSON.stringify({
+            product_id: productId,
+            name: detail.name,
+            image_url: detail.image_url,
+            timestamp: Date.now(),
+          }))
+        } catch { /* silent */ }
         navigate('/my-vouchers')
       } else {
         setDetail(prevSnapshot)  // 롤백
@@ -370,6 +386,17 @@ export default function GroupBuyDetailPage() {
       </header>
 
       <main id="gb-main" className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4" role="main">
+        {/* 🛡️ 2026-05-15: 인플루언서 attribution 배너 (?ref= 진입 시) */}
+        {isInfluencerLanding && (
+          <div className="bg-gradient-to-r from-amber-500 to-pink-500 text-white rounded-2xl p-3 flex items-center gap-3 shadow-lg">
+            <Sparkles className="w-5 h-5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold opacity-90">친구 추천 공구</p>
+              <p className="text-sm font-extrabold">참여 시 양쪽 0.5% 보너스 딜 🎁</p>
+            </div>
+          </div>
+        )}
+
         {/* 이미지 + 상태 */}
         <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100">
           {detail.image_url ? (
@@ -535,6 +562,23 @@ export default function GroupBuyDetailPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 🛡️ 2026-05-15: 본인 product 인 경우 셀러 대시보드 진입점 (공구 플로우 활용도 ↑) */}
+        {isOwnProduct && (
+          <div className="bg-pink-50 border-2 border-pink-200 rounded-2xl p-4 flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-pink-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-pink-700">내 공구</p>
+              <p className="text-[11px] text-gray-600 mt-0.5">대시보드에서 voucher 통계 / 정산 확인</p>
+            </div>
+            <button
+              onClick={() => navigate('/seller/group-buy')}
+              className="px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-xs font-bold shrink-0"
+            >
+              공구 관리 →
+            </button>
           </div>
         )}
 

@@ -407,26 +407,44 @@ export default function GroupBuyListPage() {
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-[36px] mb-3">🛒</p>
-                <p className="text-gray-900 dark:text-white font-semibold text-[14px]">
-                  {t('groupBuy.emptySeller', { defaultValue: '진행 중인 공동구매가 없습니다' })}
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                  {t('groupBuy.emptySellerSub', { defaultValue: '곧 새로운 상품이 올라와요!' })}
-                </p>
-                <div className="mt-5 flex gap-2 justify-center">
-                  <button
-                    onClick={() => navigate('/browse')}
-                    className="px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
-                  >
-                    {t('groupBuy.ctaShop', { defaultValue: '쇼핑하러 가기' })}
-                  </button>
+              <div className="space-y-4 py-8">
+                {/* 🛡️ 2026-05-15: 빈 화면 → "곧 오픈 예정" Coming Soon 카드 (3 AI 합의) */}
+                <div className="text-center mb-4">
+                  <p className="text-[28px] mb-2">🚀</p>
+                  <p className="text-gray-900 dark:text-white font-bold text-[15px]">
+                    {t('groupBuy.emptySellerNew', { defaultValue: '곧 오픈 예정' })}
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
+                    {t('groupBuy.emptySellerNewSub', { defaultValue: '셀러들이 매일 새 공구를 등록 중이에요. 알림 받아두세요!' })}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                  {[
+                    { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' },
+                    { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
+                    { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
+                    { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
+                  ].map((c, i) => (
+                    <div key={i} className="bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity">
+                      <p className="text-3xl mb-1.5">{c.emoji}</p>
+                      <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">곧 오픈</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 flex gap-2 justify-center flex-wrap">
                   <button
                     onClick={() => navigate('/community-group-buy/new')}
-                    className="flex items-center gap-1 px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 text-[13px] font-semibold rounded-full"
+                    className="flex items-center gap-1 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
                   >
-                    <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '맛집 공구 시작' })}
+                    <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '내 동네 공구 제안' })}
+                  </button>
+                  <button
+                    onClick={() => navigate('/browse')}
+                    className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                  >
+                    {t('groupBuy.ctaShop', { defaultValue: '쇼핑하러 가기' })}
                   </button>
                 </div>
               </div>
