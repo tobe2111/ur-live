@@ -168,6 +168,7 @@ import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 import { ogRoutes } from './routes/og-image.routes';
+import { analyticsRoutes } from './routes/analytics.routes';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
@@ -1008,6 +1009,9 @@ app.route('/api/vouchers', groupBuyRoutes);
 
 // 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
 app.route('/api/og', ogRoutes);
+
+// 🛡️ 2026-05-15: Web Vitals + funnel 수집 (1% sampling, KV 카운터, 0원 운영)
+app.route('/api/analytics', analyticsRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

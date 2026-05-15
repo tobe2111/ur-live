@@ -256,6 +256,9 @@ if (!rootElement) {
         <App />
       </ThemeProvider>
     )
+
+    // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
+    import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
   } catch (error) {
     console.error('[App] ❌ React 렌더링 실패:', error)
     rootElement.innerHTML = `

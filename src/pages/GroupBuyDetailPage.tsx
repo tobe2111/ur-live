@@ -7,6 +7,7 @@ import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { reportFunnel } from '@/lib/web-vitals-report'
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -103,8 +104,10 @@ export default function GroupBuyDetailPage() {
       api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
     ]).then(([detailRes, partRes]) => {
       if (cancelled) return
-      if (detailRes.data?.success) setDetail(detailRes.data.data)
-      else toast.error(detailRes.data?.error || '상품을 찾을 수 없습니다')
+      if (detailRes.data?.success) {
+        setDetail(detailRes.data.data)
+        reportFunnel('view', productId)  // funnel: page view
+      } else toast.error(detailRes.data?.error || '상품을 찾을 수 없습니다')
       setParticipants(partRes.data?.data || [])
     }).catch(() => toast.error('네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
@@ -136,12 +139,14 @@ export default function GroupBuyDetailPage() {
     if (!window.confirm(`${detail.name}\n${quantity}장 × ${unitPrice.toLocaleString('ko-KR')}딜 = ${total.toLocaleString('ko-KR')}딜\n\n${detail.current_discount_pct > 0 ? `🎉 티어 할인 ${detail.current_discount_pct}% 적용\n\n` : ''}딜로 결제하고 바우처를 발급받습니다. 진행할까요?`)) return
 
     setJoining(true)
+    reportFunnel('click', productId)
     // 🛡️ 2026-05-15: Optimistic UI — 즉시 카운터 +N 반영, 실패 시 롤백
     const prevSnapshot = detail
     setDetail(d => d ? { ...d, group_buy_current: d.group_buy_current + quantity } : d)
     try {
       const res = await api.post(`/api/group-buy/join/${productId}`, { quantity, payment_method: 'deal' })
       if (res.data?.success) {
+        reportFunnel('success', productId)
         toast.success(res.data.message || '공구 참여 완료!')
         // 백엔드 반환된 정확한 값으로 동기화 후 이동
         navigate('/my-vouchers')
