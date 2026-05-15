@@ -83,8 +83,30 @@
     <noscript>
       <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
     </noscript>
+
+    <!-- 🛡️ 2026-05-15 (Lighthouse): Pretendard 폰트 preload — LCP 텍스트 임팩트 보호.
+         Variable font subset 1개만 preload (전체 weight 한 파일에 포함됨). -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2-subset/PretendardVariable.subset.woff2"
+    />
+
+    <!-- 🛡️ 2026-05-15 (Lighthouse): 첫 paint 최적화 — 핵심 CSS inline.
+         Tailwind preflight + 페이지 진입 시 깜빡임 방지. -->
     <style>
       @font-face { font-family: 'Pretendard Variable'; font-display: swap; }
+
+      /* Critical reset + layout (Tailwind preflight subset) */
+      *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
+      html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:'Pretendard Variable',-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+      body{margin:0;line-height:inherit;background:#fff;color:#0a0a0a}
+      img,svg,video,canvas,iframe{display:block;max-width:100%;height:auto}
+      button{background:transparent;background-image:none;padding:0;font-family:inherit;font-feature-settings:inherit;cursor:pointer}
+      /* 다크 모드 진입 직전 깜빡임 방지 */
+      html.dark body{background:#020202;color:#fff}
 
       /* 🛡️ 2026-04-28: 인앱 브라우저 안내 (default 표시).
          JS 차단·CSP 차단·document.write 차단 환경에서도 정상 표시. */

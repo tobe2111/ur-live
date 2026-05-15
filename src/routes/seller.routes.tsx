@@ -49,6 +49,8 @@ const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
+const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
+const SellerStreamingGuidePage = lazy(() => import('@/pages/SellerStreamingGuidePage'))
 const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
@@ -232,6 +234,18 @@ export function SellerRoutes() {
       <Route path="/seller/notify-followers" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerNotifyFollowersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징 */}
+      <Route path="/seller/mini-shop" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerMiniShopPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): PRISM/OBS 송출 가이드 */}
+      <Route path="/seller/streaming-guide" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStreamingGuidePage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/streaming-setup" element={
