@@ -46,6 +46,7 @@ const AdminTikTokDiscoveryPage = lazy(() => import('@/pages/AdminTikTokDiscovery
 const AdminRestaurantDemandPage = lazy(() => import('@/pages/AdminRestaurantDemandPage'))
 const AdminCastingsPage = lazy(() => import('@/pages/AdminCastingsPage'))
 const AdminOpsInsightsPage = lazy(() => import('@/pages/AdminOpsInsightsPage'))
+const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 
 export function AdminRoutes() {
   return (
@@ -132,6 +133,12 @@ export function AdminRoutes() {
       <Route path="/admin/deals" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminDealMonitorPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 공동구매 모니터링 + 강제 환불 */}
+      <Route path="/admin/group-buy" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminGroupBuyPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/reviews" element={

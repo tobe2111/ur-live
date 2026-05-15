@@ -193,6 +193,47 @@ export default function ProductDetailPage() {
 
     if (!product) return
 
+    // 🛡️ 2026-05-15: voucher 카테고리는 group-buy /join API 사용 (딜 결제 + 바우처 발급).
+    //   배송 X / 옵션 X / 즉시 발급. 일반 checkout 거치면 group_buy_current 가 안 늘어 공구 미작동.
+    const VOUCHER_CATEGORIES = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
+    if (VOUCHER_CATEGORIES.includes(product.category || '')) {
+      const total = product.price * quantity
+      const ok = window.confirm(
+        t('groupBuy.confirmJoin', {
+          defaultValue: `공구 참여\n\n${product.name}\n${quantity}장 × ${product.price.toLocaleString('ko-KR')}원 = ${total.toLocaleString('ko-KR')}딜\n\n딜로 결제됩니다. 진행할까요?`
+        })
+      )
+      if (!ok) return
+      try {
+        const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal' })
+        if (res.data?.success) {
+          showToast(t('groupBuy.joinSuccess', { defaultValue: '공구 참여 완료! 바우처가 발급됐어요.' }), 'success')
+          navigate('/my-vouchers')
+        } else {
+          showToast(res.data?.error || t('common.error'), 'error')
+        }
+      } catch (err: unknown) {
+        const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
+        const code = e?.response?.data?.code
+        if (code === 'INSUFFICIENT_POINTS') {
+          const charge = window.confirm(
+            t('groupBuy.insufficientDeal', { defaultValue: '딜이 부족합니다. 충전 페이지로 이동할까요?' })
+          )
+          if (charge) {
+            localStorage.setItem('loginReturnUrl', window.location.pathname)
+            navigate('/points/charge')
+          }
+          return
+        }
+        if (e?.response?.status === 429) {
+          showToast(t('groupBuy.tooManyAttempts', { defaultValue: '잠시 후 다시 시도해주세요.' }), 'error')
+          return
+        }
+        showToast(e?.response?.data?.error || t('common.error'), 'error')
+      }
+      return
+    }
+
     // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
     navigate('/checkout', {
       state: {

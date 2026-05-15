@@ -1,9 +1,30 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-12 (라이브 페이지 UX 개선 + i18n 4차 배포)
-**브랜치**: `claude/review-local-deployment-L2BXS` → main 머지 + 프로덕션 배포 완료
+**최종 업데이트**: 2026-05-15 (공동구매 런칭 마무리 + 어드민 환불 도구)
+**브랜치**: `claude/check-live-commerce-flow-jgNs8` → main 머지 + 프로덕션 배포 예정
 **최근 main 머지 커밋**: `cb48a60` (cross-page UX/안정성 개선)
 **미배포 (PC 머지 대기)**: `bf3b75e` (GroupBuyList/Search/Embed i18n)
+
+## 📦 2026-05-15 — 공동구매 6대 영역 런칭 준비 완료
+
+OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운영 가능 상태로 마무리.
+
+### 변경 (`claude/check-live-commerce-flow-jgNs8`)
+- **`/api/group-buy/join/:id`**: rate limit 5/min 추가 (동시 클릭 / 봇 방어, voucher 중복 발급 차단)
+- **`/api/group-buy/admin/list`** (NEW): 어드민 전체 공구 조회 + status/filter (unsuccessful) 지원
+- **`/api/group-buy/admin/force-refund/:productId`** (NEW): 어드민 강제 환불 + audit_logs + 참여자/셀러 알림
+- **`AdminGroupBuyPage.tsx`** (NEW): `/admin/group-buy` — 모니터링 + 필터 + 강제 환불 버튼 UI
+- **AdminLayout 메뉴** 추가: `공동구매` (Ticket icon, 거래 그룹)
+- **scheduled-cleanup cron**: 미달성 자동 환불 시 셀러에게 dashboard notification + Alimtalk 발송 (best-effort)
+- **`ProductDetailPage.handleBuyNow`**: voucher 카테고리 6종 감지 시 `/api/group-buy/join` 호출 (기존엔 일반 checkout 으로 빠져 group_buy_current 미증가 + voucher 미발급 버그). 딜 부족 시 `/points/charge` 안내 confirm.
+- **운영 가이드**: `/admin/operations-guide` 의 "공동구매/타임딜 승인" 섹션에 어드민 도구 사용법 추가
+
+### 핵심 진단 결과
+공동구매 시스템은 백엔드 80% 완성 (atomic CAS, 자동 환불 cron, voucher 발급) — 차단 이슈는 단 2개:
+1. ✅ ProductDetailPage 가 voucher 를 일반 checkout 으로 보내던 버그 (해결)
+2. ✅ 어드민이 분쟁 환불 시 DB 직접 수정해야 하던 문제 (해결)
+
+라이브 서비스와 완전 독립 (DB / 라우트 / 외부 의존성 모두 분리) — OAuth 검토 영향 없음.
 
 ## 📦 2026-05-12 후반 세션 — 4차 배포 (배포 대기)
 

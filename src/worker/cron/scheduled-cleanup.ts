@@ -781,6 +781,12 @@ export async function handleScheduled(env: Env) {
     let totalRefunded = 0;
     for (const product of failedGroupBuys ?? []) {
       try {
+        // 🛡️ 2026-05-15: 셀러 정보 (Alimtalk + dashboard 알림용) 사전 조회
+        const sellerInfo = await DB.prepare(
+          `SELECT s.id AS seller_id, s.user_id, s.name AS seller_name, s.phone AS seller_phone
+           FROM products p LEFT JOIN sellers s ON s.id = p.seller_id
+           WHERE p.id = ?`
+        ).bind(product.id).first<{ seller_id: number; user_id: string | null; seller_name: string; seller_phone: string | null }>().catch(() => null);
         const { results: vouchers } = await DB.prepare(
           `SELECT v.id, v.user_id, o.payment_method
            FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id
@@ -830,6 +836,36 @@ export async function handleScheduled(env: Env) {
               tag: `gb-refunded-${product.id}`,
             });
           } catch { /* ignore */ }
+        }
+
+        // 🛡️ 2026-05-15: 셀러에게도 만료/환불 통보 (dashboard + Alimtalk)
+        if (sellerInfo?.seller_id) {
+          try {
+            await DB.prepare(
+              `INSERT INTO notifications (user_id, type, title, body, link, created_at)
+               VALUES (?, 'group_buy_failed', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
+            ).bind(
+              sellerInfo.user_id ?? String(sellerInfo.seller_id),
+              '공구 미달성 — 자동 환불 완료',
+              `${product.name} 공구가 목표 미달성으로 자동 환불 처리됐습니다 (${refundedUsers.size}명, ${vouchers?.length ?? 0}건). 셀러 페이지에서 결산을 확인하세요.`
+            ).run();
+          } catch { /* notifications may not exist */ }
+
+          // Alimtalk (best-effort)
+          if (sellerInfo.seller_phone) {
+            try {
+              const { sendStoreOwnerAlimtalk } = await import('../../features/group-buy/api/group-buy.routes');
+              await sendStoreOwnerAlimtalk(
+                env as unknown as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+                sellerInfo.seller_phone,
+                {
+                  restaurantName: sellerInfo.seller_name || '셀러',
+                  productName: `${product.name} (공구 미달성 환불)`,
+                  statsUrl: 'https://live.ur-team.com/seller/group-buy',
+                }
+              );
+            } catch { /* graceful */ }
+          }
         }
       } catch (e) { logError('[Cron] gb auto-refund per-product', { product_id: product.id, error: String(e) }); }
     }
