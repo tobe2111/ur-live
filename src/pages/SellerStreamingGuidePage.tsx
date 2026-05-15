@@ -165,6 +165,41 @@ export default function SellerStreamingGuidePage() {
           </div>
         </section>
 
+        {/* 5b. TikTok Live (한국 셀러 현실) */}
+        <section className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            🎵 5-1. TikTok Live (한국 셀러 가이드)
+          </h2>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800">
+            <p className="font-bold mb-1">⚠️ 한국 TikTok 라이브 제한 사항 (2026 기준)</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>본인 TikTok 계정 <b>팔로워 1,000명+</b> 또는 추천 계정만 라이브 가능</li>
+              <li>TikTok Live Studio (PC 앱) 한국 정식 지원 X — 영문 인터페이스, 미국/SEA 위주</li>
+              <li>한국 셀러는 보통 <b>모바일 TikTok 앱에서만</b> 라이브 가능 → PRISM 다채널 송출 어려움</li>
+            </ul>
+          </div>
+
+          <p className="text-sm font-bold text-gray-900 mt-3">조건 충족 인플루언서 송출 흐름:</p>
+          <ol className="text-xs text-gray-700 space-y-1 list-decimal pl-5">
+            <li>TikTok 본인 계정 → 설정 → "Live" 메뉴 활성화 확인 (1000+ 팔로워 필요)</li>
+            <li>TikTok Live Studio 다운로드 (<a href="https://livecenter.tiktok.com/" target="_blank" rel="noopener" className="text-pink-600 underline">livecenter.tiktok.com</a>)</li>
+            <li>Live Studio 에서 "Custom RTMP" 옵션 선택 → RTMP URL + Stream Key 복사</li>
+            <li>PRISM 에 추가 채널로 입력 (Custom RTMP)</li>
+            <li>YouTube + TikTok 동시 송출 진행</li>
+          </ol>
+
+          <p className="text-sm font-bold text-gray-900 mt-3">팔로워 1000 미만 셀러 대안:</p>
+          <ol className="text-xs text-gray-700 space-y-1 list-decimal pl-5">
+            <li><b>YouTube 단일 채널만 송출</b> → 본 사이트 임베드 (우리 시스템 메인 경로)</li>
+            <li>TikTok 은 라이브 대신 <b>숏폼 클립</b>으로 활용 (라이브 다시보기 편집)</li>
+            <li>본인 TikTok 팔로워 증가 시 그때 다채널 전환</li>
+          </ol>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 mt-3">
+            💡 본 사이트는 <b>TikTok 라이브 영상 임베드 불가</b> (TikTok 정책상). 대신 <button onClick={() => navigate('/seller/mini-shop')} className="underline font-bold">미니샵 설정</button>에서 TikTok 라이브 URL 입력 → 셀러 페이지에 "TikTok 에서도 라이브 중" 배지 표시 (클릭 시 TikTok 앱 이동).
+          </div>
+        </section>
+
         {/* 6. 트러블슈팅 */}
         <section className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
           <h2 className="text-base font-bold text-gray-900">🔧 자주 묻는 문제</h2>
@@ -175,6 +210,9 @@ export default function SellerStreamingGuidePage() {
               { q: 'CPU 100% 사용 중', a: 'PRISM 인코더 = NVENC (NVIDIA) 또는 Quick Sync (Intel) — H264 소프트웨어 → 하드웨어 인코딩.' },
               { q: '시청자 영상이 깜빡임', a: '인터넷 패킷 손실. 유선 LAN 연결 권장 (Wi-Fi 5GHz 차선).' },
               { q: 'YouTube "스트림 키 오류"', a: '본 사이트에서 라이브 다시 생성 → 새 RTMP Key 발급 → PRISM 에 재입력.' },
+              { q: 'TikTok 라이브 메뉴가 안 보여요', a: 'TikTok 계정 팔로워 1000명+ 필요 (한국 정책). 미충족 시 본인 모바일 앱에 Live 메뉴 자체 없음.' },
+              { q: 'TikTok Live Studio 한국 못 받아요', a: '한국 정식 지원 X. VPN (미국) 으로 다운로드 가능하나 권장 X. 모바일 라이브로 대체.' },
+              { q: 'Instagram Live 임베드 가능?', a: '불가. Instagram Embed API 가 Live 미지원. 외부 링크 (미니샵 설정) 만 사용.' },
             ].map((faq, i) => (
               <details key={i} className="bg-gray-50 rounded-lg p-3 group">
                 <summary className="text-sm font-bold text-gray-900 cursor-pointer flex items-center justify-between">

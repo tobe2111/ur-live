@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
@@ -52,6 +52,7 @@ const NAV_GROUPS: {
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket },
+      { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag },
     ],
   },
   {
