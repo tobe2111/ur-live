@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Ticket, AlertCircle, RefreshCw } from 'lucide-react'
+import { Ticket, AlertCircle, RefreshCw, TrendingUp, BarChart3 } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 
@@ -29,6 +29,45 @@ interface GroupBuyRow {
 }
 
 type StatusFilter = 'all' | 'active' | 'achieved' | 'expired' | 'cancelled' | 'unsuccessful'
+type Tab = 'monitor' | 'analytics'
+
+interface AnalyticsByCategory {
+  category: string
+  total_groups: number
+  achieved: number
+  failed: number
+  active: number
+  total_participants: number
+  total_gmv: number
+}
+
+interface AnalyticsTopGroup {
+  id: number
+  name: string
+  category: string
+  group_buy_current: number
+  group_buy_target: number
+  group_buy_status: string
+  price: number
+  gmv: number
+  seller_name: string | null
+}
+
+interface AnalyticsData {
+  totals: { total_groups: number; achieved_groups: number; active_groups: number; total_participants: number } | null
+  by_category: AnalyticsByCategory[]
+  top_groups: AnalyticsTopGroup[]
+  daily: Array<{ day: string; orders: number; vouchers_issued: number; gmv: number }>
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  meal_voucher: '🍽️ 식사권',
+  beauty_voucher: '💇 뷰티',
+  health_voucher: '💪 헬스',
+  pet_voucher: '🐶 펫',
+  stay_voucher: '🏨 숙박',
+  activity_voucher: '🎯 액티비티',
+}
 
 const STATUS_LABEL: Record<string, string> = {
   active: '진행중',
@@ -50,12 +89,30 @@ export default function AdminGroupBuyPage() {
   const [items, setItems] = useState<GroupBuyRow[]>([])
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [refunding, setRefunding] = useState<number | null>(null)
+  const [tab, setTab] = useState<Tab>('monitor')
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
     if (!token) { navigate('/admin/login'); return }
-    loadList(filter)
-  }, [filter])
+    if (tab === 'monitor') loadList(filter)
+    else loadAnalytics()
+  }, [filter, tab])
+
+  async function loadAnalytics() {
+    setAnalyticsLoading(true)
+    try {
+      const res = await api.get('/api/group-buy/admin/analytics', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` },
+      })
+      if (res.data?.success) setAnalytics(res.data.data)
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('[admin gb analytics]', err)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
 
   async function loadList(f: StatusFilter) {
     setLoading(true)
@@ -119,10 +176,132 @@ export default function AdminGroupBuyPage() {
       <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="공동구매 모니터링"
-          subtitle="진행 중 / 달성 / 미달성 / 어드민 강제 환불"
+          subtitle="진행 중 / 달성 / 미달성 / 어드민 강제 환불 + 카테고리별 analytics"
           icon={<Ticket className="h-5 w-5" />}
         />
 
+        {/* 탭 — 모니터링 / 분석 */}
+        <div className="flex gap-1 border-b border-gray-200">
+          <button
+            onClick={() => setTab('monitor')}
+            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'monitor' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <Ticket className="w-4 h-4 inline mr-1" /> 모니터링
+          </button>
+          <button
+            onClick={() => setTab('analytics')}
+            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'analytics' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <BarChart3 className="w-4 h-4 inline mr-1" /> 분석
+          </button>
+        </div>
+
+        {tab === 'analytics' && (
+          analyticsLoading ? (
+            <div className="py-20 flex justify-center">
+              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : analytics ? (
+            <div className="space-y-5">
+              {/* 전체 합계 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <SummaryCard label="총 공구" value={analytics.totals?.total_groups ?? 0} color="text-gray-700" />
+                <SummaryCard label="진행중" value={analytics.totals?.active_groups ?? 0} color="text-blue-600" />
+                <SummaryCard label="달성" value={analytics.totals?.achieved_groups ?? 0} color="text-green-600" />
+                <SummaryCard label="총 참여자" value={analytics.totals?.total_participants ?? 0} color="text-pink-600" />
+              </div>
+
+              {/* 카테고리별 funnel */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
+                  <BarChart3 className="w-4 h-4 text-pink-500" /> 카테고리별 통계
+                </p>
+                {analytics.by_category.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-4 text-center">데이터 없음</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-[11px] text-gray-500">
+                        <tr><th className="text-left py-2">카테고리</th><th className="text-right">전체</th><th className="text-right">진행</th><th className="text-right">달성</th><th className="text-right">실패</th><th className="text-right">달성률</th><th className="text-right">참여자</th><th className="text-right">GMV</th></tr>
+                      </thead>
+                      <tbody>
+                        {analytics.by_category.map(c => {
+                          const finished = c.achieved + c.failed
+                          const rate = finished > 0 ? Math.round((c.achieved / finished) * 100) : 0
+                          return (
+                            <tr key={c.category} className="border-t border-gray-100">
+                              <td className="py-2 font-medium text-gray-900">{CATEGORY_LABEL[c.category] || c.category}</td>
+                              <td className="text-right text-gray-700">{formatNumber(c.total_groups)}</td>
+                              <td className="text-right text-blue-600">{formatNumber(c.active)}</td>
+                              <td className="text-right text-green-600 font-bold">{formatNumber(c.achieved)}</td>
+                              <td className="text-right text-amber-600">{formatNumber(c.failed)}</td>
+                              <td className="text-right">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${rate >= 70 ? 'bg-green-100 text-green-700' : rate >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                  {rate}%
+                                </span>
+                              </td>
+                              <td className="text-right text-gray-700">{formatNumber(c.total_participants)}</td>
+                              <td className="text-right text-pink-600 font-bold">₩{formatNumber(c.total_gmv)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Top 10 GMV */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4 text-pink-500" /> 매출 Top 10
+                </p>
+                {analytics.top_groups.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-4 text-center">데이터 없음</p>
+                ) : (
+                  <div className="space-y-2">
+                    {analytics.top_groups.map((g, i) => (
+                      <div key={g.id} onClick={() => navigate(`/group-buy/${g.id}`)} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-300 text-orange-900' : 'bg-gray-200 text-gray-600'}`}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-900 truncate">{g.name}</p>
+                          <p className="text-[10px] text-gray-500">{g.seller_name || '-'} · {g.group_buy_current}/{g.group_buy_target}명</p>
+                        </div>
+                        <p className="text-sm font-bold text-pink-600 shrink-0">₩{formatNumber(g.gmv)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 일별 추이 */}
+              {analytics.daily.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <p className="text-sm font-bold text-gray-900 mb-3">📅 일별 추이 (최근 30일)</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="text-[10px] text-gray-500"><tr><th className="text-left py-1.5">날짜</th><th className="text-right">주문수</th><th className="text-right">바우처</th><th className="text-right">GMV</th></tr></thead>
+                      <tbody>
+                        {analytics.daily.slice(0, 14).map(d => (
+                          <tr key={d.day} className="border-t border-gray-100">
+                            <td className="py-1.5 text-gray-700">{d.day}</td>
+                            <td className="text-right">{formatNumber(d.orders)}</td>
+                            <td className="text-right">{formatNumber(d.vouchers_issued)}</td>
+                            <td className="text-right text-pink-600">₩{formatNumber(d.gmv)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null
+        )}
+
+        {tab === 'monitor' && (<>
         {/* 요약 카드 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <SummaryCard label="전체" value={summary.total} color="text-gray-700" />
@@ -231,7 +410,7 @@ export default function AdminGroupBuyPage() {
 
                   <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
                     <button
-                      onClick={() => navigate(`/products/${p.id}`)}
+                      onClick={() => navigate(`/group-buy/${p.id}`)}
                       className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200"
                     >
                       상품 보기
@@ -251,6 +430,7 @@ export default function AdminGroupBuyPage() {
             })}
           </div>
         )}
+        </>)}
       </div>
     </AdminLayout>
   )

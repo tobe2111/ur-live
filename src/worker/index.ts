@@ -167,6 +167,7 @@ import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/
 import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+import { ogRoutes } from './routes/og-image.routes';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
@@ -1004,6 +1005,9 @@ app.route('/api/shorts', shortsRoutes);
 // ── 공동구매 & 바우처 ──
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
+
+// 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
+app.route('/api/og', ogRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

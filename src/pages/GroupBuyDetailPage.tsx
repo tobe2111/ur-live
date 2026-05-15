@@ -182,11 +182,57 @@ export default function GroupBuyDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
-        title={`${detail.name} - 공동구매`}
-        description={`${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여 중`}
+        title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
+        description={
+          detail.current_discount_pct > 0
+            ? `🎉 ${detail.current_discount_pct}% 할인 진행 중! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여, ${unitPrice.toLocaleString('ko-KR')}딜`
+            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여 중, ${detail.price.toLocaleString('ko-KR')}딜부터`
+        }
         url={`/group-buy/${productId}`}
-        image={detail.image_url}
+        image={detail.image_url || `https://live.ur-team.com/api/og/group-buy/${productId}.png`}
+        type="product"
+        jsonLd={[{
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: detail.name,
+          description: detail.description || `${detail.restaurant_name || ''} ${detail.name} 공동구매`,
+          image: detail.image_url ? [detail.image_url] : undefined,
+          brand: detail.restaurant_name ? { '@type': 'Brand', name: detail.restaurant_name } : undefined,
+          offers: {
+            '@type': 'Offer',
+            url: `https://live.ur-team.com/group-buy/${productId}`,
+            priceCurrency: 'KRW',
+            price: unitPrice,
+            availability: detail.group_buy_status === 'active' || detail.group_buy_status === 'achieved'
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/OutOfStock',
+            priceValidUntil: detail.group_buy_deadline,
+            seller: detail.seller_name ? { '@type': 'Organization', name: detail.seller_name } : undefined,
+          },
+          ...(detail.restaurant_lat && detail.restaurant_lng ? {
+            address: detail.restaurant_address ? {
+              '@type': 'PostalAddress',
+              streetAddress: detail.restaurant_address,
+              addressCountry: 'KR',
+            } : undefined,
+            geo: {
+              '@type': 'GeoCoordinates',
+              latitude: detail.restaurant_lat,
+              longitude: detail.restaurant_lng,
+            },
+          } : {}),
+        }, {
+          // Breadcrumb
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://live.ur-team.com/' },
+            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://live.ur-team.com/group-buy' },
+            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://live.ur-team.com/group-buy/${productId}` },
+          ],
+        }]}
       />
 
       {/* 상단 chrome */}

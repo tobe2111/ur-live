@@ -572,8 +572,11 @@ groupBuyRoutes.get('/my', requireAuth(), async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
+  // 🛡️ 2026-05-15: lat/lng 추가 — 지도 뷰용
   const { results } = await DB.prepare(`
-    SELECT v.*, p.name as product_name, p.restaurant_name, p.restaurant_address, p.image_url as product_image
+    SELECT v.*, p.name as product_name, p.restaurant_name, p.restaurant_address,
+           p.restaurant_lat, p.restaurant_lng, p.restaurant_phone,
+           p.image_url as product_image
     FROM vouchers v
     LEFT JOIN products p ON v.product_id = p.id
     WHERE v.user_id = ?
@@ -1000,6 +1003,79 @@ ${data.statsUrl}
     }).catch(() => { /* silently fail — 운영 영향 없게 */ })
   } catch { /* graceful */ }
 }
+
+// ── GET /api/group-buy/admin/analytics — 어드민: 카테고리별 funnel + top groups ──
+// 🛡️ 2026-05-15: 공구 의사결정 데이터 — 카테고리별 진행/달성률, 매출 top, 평균 참여율
+groupBuyRoutes.get('/admin/analytics', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  try {
+    // 카테고리별 통계
+    const { results: byCategory } = await DB.prepare(`
+      SELECT
+        category,
+        COUNT(*) AS total_groups,
+        SUM(CASE WHEN group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved,
+        SUM(CASE WHEN group_buy_status = 'expired' AND group_buy_current < group_buy_target THEN 1 ELSE 0 END) AS failed,
+        SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active,
+        SUM(group_buy_current) AS total_participants,
+        SUM(group_buy_current * price) AS total_gmv
+      FROM products
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND group_buy_target > 0
+      GROUP BY category
+      ORDER BY total_gmv DESC
+    `).all().catch(() => ({ results: [] }))
+
+    // GMV top 10
+    const { results: topGroups } = await DB.prepare(`
+      SELECT p.id, p.name, p.category, p.group_buy_current, p.group_buy_target, p.group_buy_status,
+             p.price, (p.group_buy_current * p.price) AS gmv,
+             s.name AS seller_name
+      FROM products p
+      LEFT JOIN sellers s ON s.id = p.seller_id
+      WHERE p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND p.group_buy_target > 0
+        AND p.group_buy_current > 0
+      ORDER BY gmv DESC
+      LIMIT 10
+    `).all().catch(() => ({ results: [] }))
+
+    // 일별 참여 추이 (최근 30일)
+    const { results: daily } = await DB.prepare(`
+      SELECT DATE(o.created_at) AS day,
+             COUNT(DISTINCT o.id) AS orders,
+             COUNT(DISTINCT v.id) AS vouchers_issued,
+             SUM(o.total_amount) AS gmv
+      FROM orders o
+      LEFT JOIN vouchers v ON v.order_id = o.id
+      WHERE o.order_number LIKE 'GB-%'
+        AND o.created_at >= datetime('now', '-30 days')
+        AND o.status = 'PAID'
+      GROUP BY DATE(o.created_at)
+      ORDER BY day DESC
+    `).all().catch(() => ({ results: [] }))
+
+    // 전체 합계
+    const totals = await DB.prepare(`
+      SELECT
+        COUNT(*) AS total_groups,
+        SUM(CASE WHEN group_buy_status = 'achieved' THEN 1 ELSE 0 END) AS achieved_groups,
+        SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active_groups,
+        SUM(group_buy_current) AS total_participants
+      FROM products
+      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND group_buy_target > 0
+    `).first().catch(() => null)
+
+    return c.json({
+      success: true,
+      data: { totals, by_category: byCategory ?? [], top_groups: topGroups ?? [], daily: daily ?? [] }
+    })
+  } catch (err) {
+    console.error('[admin gb analytics]', err)
+    return c.json({ success: false, error: '집계 실패' }, 500)
+  }
+})
 
 // ── GET /api/group-buy/admin/list — 어드민: 전체 공구 현황 ──────────
 // 🛡️ 2026-05-15: 어드민이 진행중/만료/취소 전부 조회 + 미달성 공구 필터
