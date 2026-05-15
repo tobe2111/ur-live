@@ -52,6 +52,7 @@ const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowe
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
 const SellerStreamingGuidePage = lazy(() => import('@/pages/SellerStreamingGuidePage'))
 const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
+const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
 const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
@@ -253,6 +254,12 @@ export function SellerRoutes() {
       <Route path="/seller/promo-codes" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerPromoCodesPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 단골 분석 (수 추이 + 알림 ON 비율) */}
+      <Route path="/seller/followers" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerFollowersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/streaming-setup" element={
