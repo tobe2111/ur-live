@@ -500,6 +500,9 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
           setReconnectingIn(null)
           // 기존 PC 정리 후 재시도 (stream 은 유지 — 재getUserMedia 불필요)
           pc.close()
+          // 🛡️ 2026-05-14: 재연결 시 prewarmed token 폐기 → 새 token 발급 (whip-token 가
+          //   terminateOmeStream 호출 → OME 좀비 stream 정리 → 409 'already exist' 회피).
+          prewarmedTokenRef.current = null
           if (!userStoppedRef.current) void startBroadcast()
         }, delaySec * 1000)
       }
@@ -657,6 +660,23 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
           }
         } catch (e) {
           if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] token refresh failed:', e)
+        }
+      }
+      // 🛡️ 2026-05-14: 409 'Stream is already exist' 자동 재시도.
+      //   whip-token 엔드포인트가 terminateOmeStream 호출 → OME 좀비 stream 정리 → 재시도 성공.
+      //   탭 백그라운드 → 복귀 시 발생하는 흔한 케이스 자동 회복.
+      if (res.status === 409) {
+        prewarmedTokenRef.current = null
+        await new Promise(r => setTimeout(r, 1500)) // OME terminate 반영 대기
+        try {
+          const refreshRes = await api.post('/api/seller/youtube/streaming/whip-token', { stream_id: streamId })
+          if (refreshRes.data?.success && refreshRes.data?.data?.whip_url) {
+            whipUrl = refreshRes.data.data.whip_url
+            modeRef.current = (refreshRes.data.data.mode as WhipMode) || modeRef.current
+            res = await fetch(whipUrl, { method: 'POST', headers: whipHeaders, body: pc.localDescription?.sdp || '' })
+          }
+        } catch (e) {
+          if (import.meta.env.DEV) console.warn('[BrowserBroadcaster] 409 retry token refresh failed:', e)
         }
       }
       if (!res.ok) {
