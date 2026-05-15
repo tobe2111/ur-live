@@ -172,6 +172,8 @@ import { analyticsRoutes } from './routes/analytics.routes';
 import { flagRoutes } from './routes/feature-flag.routes';
 import { currencyRoutes } from './routes/currency.routes';
 import { ocrRoutes } from './routes/ocr.routes';
+import { disputesRoutes } from './routes/disputes.routes';
+import { csrfIssue } from './middleware/csrf';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
@@ -286,6 +288,10 @@ app.use('*', async (c, next) => {
 
 // 🚨 5xx 스파이크 자동 감지 + Discord 알림 (1인 운영자용)
 app.use('/api/*', errorRateMonitor());
+
+// 🛡️ 2026-05-15: CSRF cookie 발급 (모든 GET 응답) — double-submit pattern.
+//   POST/PATCH/DELETE 검증은 endpoint 별 csrfGuard() 적용 (Bearer 토큰은 자동 면제).
+app.use('*', csrfIssue());
 
 app.use('*', async (c, next) => {
   await next();
@@ -1031,6 +1037,11 @@ app.route('/api/currency', currencyRoutes);
 
 // 🛡️ 2026-05-15: 메뉴 OCR (Workers AI llava-1.5-7b, 무료 10K req/day, fallback graceful)
 app.route('/api/ocr', ocrRoutes);
+
+// 🛡️ 2026-05-15: 분쟁 자동 분류 (Workers AI llama-3.1-8b, fallback graceful)
+//   AI 가 voucher_refused / merchant_closed 분류 + confidence > 0.75 → 즉시 자동 환불
+//   나머지는 어드민 escalation
+app.route('/api/disputes', disputesRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);

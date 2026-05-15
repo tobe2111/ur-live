@@ -13,6 +13,7 @@ import {
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
 import TierBadge from '@/components/seller/TierBadge'
 import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 import { formatNumber } from '@/utils/format'
@@ -441,6 +442,9 @@ export default function SellerPage() {
           subtitle={t('seller.dashboardSubtitle', { defaultValue: '셀러 대시보드 — 매출 / 주문 / 라이브 현황' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
+
+        {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
+        <SellerOnboardingChecklist />
 
         {/* 🛡️ 2026-05-05: 등급 배지 — diamond/gold/silver/bronze/new */}
         <TierBadge />

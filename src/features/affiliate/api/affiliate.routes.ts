@@ -206,6 +206,49 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
   })
 })
 
+// ── GET /api/affiliate/top-groups — 인플루언서 추천: 지금 share 하면 좋을 공구 ──
+// 🛡️ 2026-05-15: 알고리즘 — (1) 마감임박 + (2) 진행률 60%+ + (3) 단계별 할인 활성
+//   = 지금 share → 친구 가입 가능성 높음 (양쪽 0.5% 보너스).
+affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const userId = user.id
+  const { DB } = c.env
+  try {
+    const { results } = await DB.prepare(`
+      SELECT
+        p.id, p.name, p.image_url, p.price, p.category,
+        p.restaurant_name, p.group_buy_target, p.group_buy_current,
+        p.group_buy_deadline, p.group_buy_tiers,
+        s.name AS seller_name,
+        ROUND(p.group_buy_current * 100.0 / NULLIF(p.group_buy_target, 0)) AS progress_pct,
+        ROUND(p.price * 0.005) AS my_potential_bonus
+      FROM products p
+      LEFT JOIN sellers s ON s.id = p.seller_id
+      WHERE p.is_active = 1
+        AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND p.group_buy_status = 'active'
+        AND p.group_buy_target > 0
+        AND p.group_buy_deadline > datetime('now')
+        AND p.group_buy_deadline < datetime('now', '+72 hours')
+      ORDER BY
+        (p.group_buy_current * 1.0 / p.group_buy_target) DESC,  -- 진행률 높은 순
+        p.group_buy_deadline ASC                                  -- 마감임박 순
+      LIMIT 10
+    `).all().catch(() => ({ results: [] }))
+
+    // share URL with ref
+    const data = (results ?? []).map((r: any) => ({
+      ...r,
+      share_url: `https://live.ur-team.com/group-buy/${r.id}?ref=${userId}`,
+    }))
+    return c.json({ success: true, data })
+  } catch (err) {
+    console.error('[affiliate top-groups]', err)
+    return c.json({ success: true, data: [] })
+  }
+})
+
 // ── GET /api/affiliate/link/:type/:id — 추천 링크 생성 (상품/라이브) ──
 affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

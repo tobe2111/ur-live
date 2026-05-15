@@ -127,6 +127,9 @@ export default function AffiliatePage() {
             </div>
           </div>
 
+          {/* 🛡️ 2026-05-15: 인플루언서 추천 — share 하면 좋을 핫 공구 */}
+          <TopGroupsToShare />
+
           {/* 최근 내역 */}
           <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
@@ -164,6 +167,72 @@ export default function AffiliatePage() {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-15: 인플루언서 추천 — 지금 share 하기 좋은 공구 (마감임박 + 진행률 60%+)
+function TopGroupsToShare() {
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const [groups, setGroups] = useState<Array<{
+    id: number; name: string; image_url?: string; price: number;
+    restaurant_name?: string; group_buy_target: number; group_buy_current: number;
+    group_buy_deadline?: string; progress_pct: number; my_potential_bonus: number;
+    share_url: string;
+  }>>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/affiliate/top-groups')
+      .then(r => { if (r.data?.success) setGroups(r.data.data || []) })
+      .catch(() => { /* silent */ })
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return null
+  if (groups.length === 0) return null
+
+  return (
+    <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white">🔥 지금 share 하기 좋은 공구</p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">마감임박 + 진행률 높음 = 친구 가입 가능성 높음</p>
+      </div>
+      <div className="divide-y divide-gray-50 dark:divide-[#1A1A1A]">
+        {groups.slice(0, 6).map(g => (
+          <div key={g.id} className="px-4 py-3 flex items-center gap-3">
+            {g.image_url ? (
+              <img src={g.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-200 to-rose-300 shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
+              <p className="text-[10px] text-gray-500 truncate">{g.restaurant_name || ''} · {g.progress_pct}% · {g.group_buy_current}/{g.group_buy_target}명</p>
+              <p className="text-[10px] text-pink-600 font-bold mt-0.5">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(g.share_url)
+                  toast.success('링크 복사됨')
+                } catch { toast.error('복사 실패') }
+              }}
+              className="px-3 py-1.5 bg-pink-50 dark:bg-pink-900/30 text-pink-600 rounded-lg text-[11px] font-bold shrink-0 active:scale-95"
+            >
+              <Copy className="w-3 h-3 inline mr-0.5" /> 복사
+            </button>
+            <button
+              onClick={() => navigate(`/group-buy/${g.id}`)}
+              className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 rounded-lg text-[11px] font-bold shrink-0"
+              aria-label="상세 보기"
+            >
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
