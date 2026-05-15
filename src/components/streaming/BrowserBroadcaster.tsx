@@ -372,15 +372,15 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          // 🛡️ 2026-05-14 v3: 세로 1080×1920 (9:16) — 라이브 커머스 모바일 표준.
-          //   TikTok/Instagram Live/그립/쿠팡 라이브 모두 9:16 세로. 시청자 90%+ 모바일.
-          //   PC 카메라가 가로 캡처해도 브라우저가 자동 회전/크롭. 모바일 카메라는 자연 세로.
-          //   원본 9 Mbps ÷ 30fps = 300kbps/frame 선명도 유지.
+          // 🛡️ 2026-05-14 v4: aspectRatio 강제 제거 — 카메라 native 비율 사용.
+          //   원인: 폰 카메라 센서 = 4:3 native (예: 1080×1440 portrait). 9:16 강제 시 브라우저가
+          //   센서 중앙만 crop → 줌인 효과 발생. 셀러가 줌 안 했는데 화면 확대 보임.
+          //   해결: width/height 만 지정, aspectRatio 명시 안 함 → 카메라 native 4:3 그대로 사용.
+          //   결과 비율: 모바일 portrait 시 1080×1440 (4:3 세로) — 9:16 보다 가로 ↑, 줌인 0.
+          //   YouTube 가 어떤 aspect 든 자동 처리.
           width: { ideal: 1080, min: 720 },
-          height: { ideal: 1920, min: 1280 },
+          height: { ideal: 1440, min: 960 },
           frameRate: { ideal: 30, min: 24, max: 30 },
-          // 🛡️ 2026-05-14: 9:16 비율 강제 + latency 0 ideal.
-          aspectRatio: { ideal: 9 / 16 },
           latency: { ideal: 0 },
         } as MediaTrackConstraints,
         audio: {
