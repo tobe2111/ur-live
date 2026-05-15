@@ -590,13 +590,11 @@ html.dark .mobile-app-container {
   background-color: #020202;
 }
 
-/* 🛡️ 2026-05-14: 라이브/쇼츠 액자 반응형.
+/* 🛡️ 2026-05-14 revert: 라이브/쇼츠 액자 항상 430px 모바일 폰 크기 (확대 X).
    - 모바일 (≤640px): 풀 너비
-   - 태블릿 (641-1023px): 540px (430 → 540 늘려 가독성 ↑)
-   - PC (≥1024px): 430px (양쪽 채팅 패널 + 라이브 영상 비례)
-*/
+   - 그 외: 430px (모바일 폰 형태 액자 일관 유지). 태블릿 키워서 "확대" 보이는 사고 회피. */
 .mobile-app-container[data-mobile-only="true"] {
-  max-width: 540px;
+  max-width: 430px;
 }
 
 /* 모바일 (≤640px): 풀 너비 */
@@ -604,13 +602,6 @@ html.dark .mobile-app-container {
   .mobile-app-container,
   .mobile-app-container[data-mobile-only="true"] {
     max-width: 100%;
-  }
-}
-
-/* PC (≥1024px): 430px 표준 (사이드 패널과 비례 균형) */
-@media (min-width: 1024px) {
-  .mobile-app-container[data-mobile-only="true"] {
-    max-width: 430px;
   }
 }
 
