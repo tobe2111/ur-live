@@ -127,6 +127,9 @@ export default function AffiliatePage() {
             </div>
           </div>
 
+          {/* 🛡️ 2026-05-15: 인플루언서 funnel — 카테고리별 분포 + 일별 추이 */}
+          <FunnelStats />
+
           {/* 🛡️ 2026-05-15: 인플루언서 추천 — share 하면 좋을 핫 공구 */}
           <TopGroupsToShare />
 
@@ -233,6 +236,82 @@ function TopGroupsToShare() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-15: 인플루언서 funnel — 카테고리별 / 일별 추이
+function FunnelStats() {
+  const [data, setData] = useState<{
+    total_referrals: number; total_earned: number;
+    by_category: Array<{ category: string; count: number; earned: number }>;
+    daily: Array<{ day: string; count: number; earned: number }>;
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/affiliate/funnel')
+      .then(r => { if (r.data?.success) setData(r.data.data) })
+      .catch(() => { /* silent */ })
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading || !data || data.total_referrals === 0) return null
+
+  const CATEGORY_LABEL: Record<string, string> = {
+    meal: '🍽️ 식사', beauty: '💇 뷰티', health: '💪 헬스',
+    pet: '🐶 펫', stay: '🏨 숙박', activity: '🎯 액티비티', other: '기타',
+  }
+  const maxDailyCount = Math.max(...data.daily.map(d => d.count), 1)
+
+  return (
+    <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white">📊 내 share 성과</p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">친구 가입 → 보상 받은 횟수 + 카테고리별 / 일별 추이</p>
+      </div>
+
+      {/* 카테고리별 */}
+      {data.by_category.length > 0 && (
+        <div className="p-4 border-b border-gray-100 dark:border-[#1A1A1A]">
+          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">카테고리별</p>
+          <div className="space-y-1.5">
+            {data.by_category.map(c => (
+              <div key={c.category} className="flex items-center justify-between text-xs">
+                <span className="text-gray-700 dark:text-gray-300">{CATEGORY_LABEL[c.category] || c.category}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">{c.count}회</span>
+                  <span className="font-bold text-violet-600 w-16 text-right">{c.earned.toLocaleString()}딜</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 일별 mini chart (간단한 bar) */}
+      {data.daily.length > 0 && (
+        <div className="p-4">
+          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">최근 14일</p>
+          <div className="flex items-end gap-0.5 h-20">
+            {data.daily.slice(0, 14).reverse().map((d, i) => {
+              const h = Math.max(2, (d.count / maxDailyCount) * 80)
+              return (
+                <div
+                  key={i}
+                  className="flex-1 bg-gradient-to-t from-violet-500 to-violet-400 rounded-t transition-all"
+                  style={{ height: h }}
+                  title={`${d.day}: ${d.count}회 / ${d.earned}딜`}
+                />
+              )
+            })}
+          </div>
+          <div className="flex items-center justify-between mt-2 text-[10px] text-gray-400">
+            <span>{data.daily[Math.min(13, data.daily.length - 1)]?.day || ''}</span>
+            <span>{data.daily[0]?.day || ''}</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
