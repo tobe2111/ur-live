@@ -372,14 +372,14 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selected.camId ? { exact: selected.camId } : undefined,
-          // 🛡️ 2026-05-14 v4: aspectRatio 강제 제거 — 카메라 native 비율 사용.
-          //   원인: 폰 카메라 센서 = 4:3 native (예: 1080×1440 portrait). 9:16 강제 시 브라우저가
-          //   센서 중앙만 crop → 줌인 효과 발생. 셀러가 줌 안 했는데 화면 확대 보임.
-          //   해결: width/height 만 지정, aspectRatio 명시 안 함 → 카메라 native 4:3 그대로 사용.
-          //   결과 비율: 모바일 portrait 시 1080×1440 (4:3 세로) — 9:16 보다 가로 ↑, 줌인 0.
-          //   YouTube 가 어떤 aspect 든 자동 처리.
+          // 🛡️ 2026-05-14 v5 (최종): aspectRatio 강제 제거, 1080×1920 요청만 — TikTok/Shorts 스타일.
+          //   동작:
+          //     - 모던 폰 (iPhone 12+ / Galaxy S20+) 메인 카메라: native 9:16 지원 → 1080×1920 (풀스크린, zoom 0)
+          //     - 4:3 sensor 폰: native 4:3 → 1080×1440 (검은띠 약간 있지만 zoom 0)
+          //   브라우저 getUserMedia 가 카메라 가능 범위에서 가장 가까운 값 자동 선택.
+          //   aspectRatio 강제 안 함 → 카메라가 4:3 만 지원해도 crop (zoom 인) 없음.
           width: { ideal: 1080, min: 720 },
-          height: { ideal: 1440, min: 960 },
+          height: { ideal: 1920, min: 1280 },
           frameRate: { ideal: 30, min: 24, max: 30 },
           latency: { ideal: 0 },
         } as MediaTrackConstraints,
