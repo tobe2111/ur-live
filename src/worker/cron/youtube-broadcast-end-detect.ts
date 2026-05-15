@@ -49,14 +49,25 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
   if (!DB || !apiKey) return;
 
   // status IN ('scheduled', 'live') + youtube_video_id 있는 stream — 시작/종료 동기화 대상
+  // 🛡️ 2026-05-14: + 최근 24h 안에 종료된 stream 도 vod_ready 재확인 대상.
+  //   YouTube VOD 처리는 보통 5-30분, 가끔 몇 시간. 첫 cron 후 vod_ready=0 면 매 cron 마다 재확인 필요.
+  //   24h 후엔 거의 모든 케이스 처리 완료 → 더 이상 체크 안 함 (API quota 절약).
   const pending = await DB.prepare(`
     SELECT id, seller_id, youtube_video_id, status, started_at
     FROM live_streams
-    WHERE status IN ('scheduled', 'live')
-      AND youtube_video_id IS NOT NULL
+    WHERE youtube_video_id IS NOT NULL
       AND youtube_video_id != ''
+      AND (
+        status IN ('scheduled', 'live')
+        OR (
+          status = 'ended'
+          AND ended_at > datetime('now', '-24 hours')
+          AND (vod_ready IS NULL OR vod_ready = 0)
+          AND (vod_blocked_reason IS NULL OR vod_blocked_reason = '')
+        )
+      )
     ORDER BY
-      CASE status WHEN 'live' THEN 0 ELSE 1 END,
+      CASE status WHEN 'live' THEN 0 WHEN 'scheduled' THEN 1 ELSE 2 END,
       created_at DESC
     LIMIT ?
   `).bind(BATCH_SIZE).all<PendingStream>().catch(() => ({ results: [] as PendingStream[] }));
