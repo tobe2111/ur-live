@@ -210,9 +210,11 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
 affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
-  const type = c.req.param('type') // 'product' or 'live'
+  const type = c.req.param('type') // 'product' | 'live' | 'group-buy'
   const id = c.req.param('id')
-  const path = type === 'live' ? `/live/${id}` : `/products/${id}`
+  const path = type === 'live' ? `/live/${id}`
+    : type === 'group-buy' ? `/group-buy/${id}`
+    : `/products/${id}`
   return c.json({
     success: true,
     data: { url: `https://live.ur-team.com${path}?ref=${user.id}` },

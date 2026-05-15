@@ -171,6 +171,16 @@ api.interceptors.request.use(
     if (!config.headers) return config;
     const url = config.url || '';
 
+    // 🛡️ 2026-05-15: Affiliate referral 자동 첨부 (모든 요청, 공개 API 포함)
+    //   localStorage 'affiliate_ref' 24h TTL — ProductDetailPage 가 ?ref= 진입 시 저장.
+    try {
+      const refRaw = localStorage.getItem('affiliate_ref');
+      const expires = parseInt(localStorage.getItem('affiliate_ref_expires') || '0', 10);
+      if (refRaw && /^\d+$/.test(refRaw) && expires > Date.now()) {
+        config.headers['X-Affiliate-Ref'] = refRaw;
+      }
+    } catch { /* silent */ }
+
     // 공개 API: 토큰 불필요
     if (isPublicAPI(url)) return config;
 

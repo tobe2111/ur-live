@@ -479,6 +479,33 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       'SELECT code, expires_at FROM vouchers WHERE order_id = ? AND user_id = ?'
     ).bind(order?.id, userId).all<{ code: string; expires_at: string }>()
 
+    // 🛡️ 2026-05-15: Referral 추적 — affiliate_ref 쿠키/header 로 추천인 식별 시
+    //   양쪽에 보너스 딜 1% (네트워크 효과 부스트). 본인 self-refer 차단.
+    try {
+      const refRaw = c.req.header('X-Affiliate-Ref') || ''
+      const refUserId = refRaw && /^\d+$/.test(refRaw) ? refRaw : null
+      if (refUserId && refUserId !== String(userId)) {
+        const refExists = await DB.prepare("SELECT 1 FROM users WHERE id = ?").bind(refUserId).first().catch(() => null)
+        if (refExists) {
+          const bonus = Math.round(totalAmount * 0.01)  // 1% 양쪽 보너스
+          if (bonus > 0) {
+            // 추천인 보너스
+            await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, refUserId).run().catch(() => {})
+            await DB.prepare(
+              `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+               VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+            ).bind(refUserId, bonus, bonus, refUserId, `공구 추천 보상: ${product.name}`, orderNumber).run().catch(() => {})
+            // 참여자 보너스
+            await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, userId).run().catch(() => {})
+            await DB.prepare(
+              `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+               VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+            ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상: ${product.name}`, orderNumber).run().catch(() => {})
+          }
+        }
+      }
+    } catch (e) { console.warn('[group-buy referral]', e) }
+
     // 🛡️ 2026-05-15: 이메일 영수증 — voucher 코드 첨부, best-effort (실패해도 join 성공).
     //   유저 email 조회 → Resend 발송 → 실패 시 silent (push 알림이 백업).
     try {

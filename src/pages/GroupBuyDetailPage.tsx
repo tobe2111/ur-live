@@ -91,6 +91,11 @@ export default function GroupBuyDetailPage() {
 
   const productId = Number(id)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
+  // 🛡️ 2026-05-15: 본인 추천 링크 (친구 초대 시 양쪽 1% 보너스 딜)
+  const myUserId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
+  const shareLink = myUserId
+    ? `/group-buy/${productId}?ref=${myUserId}`
+    : `/group-buy/${productId}`
 
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
@@ -286,9 +291,9 @@ export default function GroupBuyDetailPage() {
         </button>
         <KakaoShareButton
           title={`${detail.name} 공구 참여하기`}
-          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '단계별 할인'}`}
+          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '단계별 할인'}${myUserId ? ' · 친구 초대 시 양쪽 1% 보너스' : ''}`}
           imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
-          link={`/group-buy/${productId}`}
+          link={shareLink}
           buttonText="나도 참여하기"
           compact
           className="w-9 h-9 rounded-full bg-[#FEE500] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-pink-500"
