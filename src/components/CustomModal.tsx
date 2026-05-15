@@ -58,12 +58,13 @@ export function CustomModal({
     }
   }
 
+  // 🛡️ 2026-05-14: 태블릿 (md+) 부터 한 단계 큰 max-w 사용 — 모달이 작은 카드처럼 떠있는 어색함 해결.
   const getMaxWidth = () => {
     switch (maxWidth) {
-      case 'md': return 'max-w-md'
-      case 'lg': return 'max-w-lg'
-      case 'xl': return 'max-w-xl'
-      default: return 'max-w-sm'
+      case 'md': return 'max-w-md md:max-w-lg'
+      case 'lg': return 'max-w-lg md:max-w-xl'
+      case 'xl': return 'max-w-xl md:max-w-2xl'
+      default: return 'max-w-sm md:max-w-md'
     }
   }
 

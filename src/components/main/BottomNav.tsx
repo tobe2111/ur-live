@@ -202,8 +202,8 @@ export default function BottomNav() {
             onClick={() => setSheetOpen(false)}
           />
 
-          {/* Sheet — 🛡️ 2026-05-14: max-h-[85dvh] + overflow-y-auto 추가 (작은 화면 안전). */}
-          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[10001] animate-sheet-up max-h-[85dvh] overflow-y-auto">
+          {/* Sheet — 🛡️ 2026-05-14: max-h-[85dvh] + 태블릿 max-w-[540px]. */}
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] z-[10001] animate-sheet-up max-h-[85dvh] overflow-y-auto">
             <div>
               <div
                 className="bg-gray-50 dark:bg-[#121212] rounded-t-3xl"
