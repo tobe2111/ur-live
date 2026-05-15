@@ -590,9 +590,13 @@ html.dark .mobile-app-container {
   background-color: #020202;
 }
 
-/* 모바일 액자 모드: data-mobile-only 페이지 (라이브/쇼츠 등) — PC 에서도 430px 폭 유지 */
+/* 🛡️ 2026-05-14: 라이브/쇼츠 액자 반응형.
+   - 모바일 (≤640px): 풀 너비
+   - 태블릿 (641-1023px): 540px (430 → 540 늘려 가독성 ↑)
+   - PC (≥1024px): 430px (양쪽 채팅 패널 + 라이브 영상 비례)
+*/
 .mobile-app-container[data-mobile-only="true"] {
-  max-width: 430px;
+  max-width: 540px;
 }
 
 /* 모바일 (≤640px): 풀 너비 */
@@ -603,7 +607,14 @@ html.dark .mobile-app-container {
   }
 }
 
-/* PC 액자 모드: data-mobile-only 페이지에만 box-shadow */
+/* PC (≥1024px): 430px 표준 (사이드 패널과 비례 균형) */
+@media (min-width: 1024px) {
+  .mobile-app-container[data-mobile-only="true"] {
+    max-width: 430px;
+  }
+}
+
+/* 태블릿/PC 액자 box-shadow */
 @media (min-width: 641px) {
   body {
     background-color: #111;
