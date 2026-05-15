@@ -202,7 +202,7 @@ export default function MainHomePage() {
   const featuredDisc = featured ? disc(featured.price, featured.original_price) : 0
 
   return (
-    <div className="bg-white dark:bg-[#020202] min-h-screen pb-16">
+    <div className="bg-white dark:bg-[#020202] min-h-screen pb-safe-nav md:pb-16">
       <SEO title={t('mainHome.seoTitle')} description={t('mainHome.seoDesc')} url="/" jsonLd={[organizationJsonLd, webSiteJsonLd]} />
 
       {/* ═══ Sticky Top Bar ═══ — 모바일 전용. md+ 는 DesktopTopNav 가 담당. */}

@@ -513,6 +513,11 @@ html {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+/* 🛡️ 2026-05-14: 모바일 페이지 하단 BottomNav 공간 확보 — nav 높이 + 홈 indicator. */
+.pb-safe-nav {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* 키보드 열릴 때 하단 고정 요소 숨기기 */
 body.keyboard-open .hide-on-keyboard {
   display: none !important;
