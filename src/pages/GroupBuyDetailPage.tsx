@@ -95,6 +95,11 @@ export default function GroupBuyDetailPage() {
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [showConfetti, setShowConfetti] = useState(false)
+  // 🛡️ 2026-05-15: Promo 코드 입력 + 미리보기
+  const [promoCode, setPromoCode] = useState('')
+  const [promoPreview, setPromoPreview] = useState<{ discount_pct: number; audience: string; description: string | null } | null>(null)
+  const [promoError, setPromoError] = useState('')
+  const [checkingPromo, setCheckingPromo] = useState(false)
 
   const productId = Number(id)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
@@ -209,6 +214,47 @@ export default function GroupBuyDetailPage() {
   const total = unitPrice * quantity
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
 
+  async function checkPromo() {
+    setPromoError('')
+    setPromoPreview(null)
+    const code = promoCode.trim().toUpperCase()
+    if (!/^[A-Z0-9]{4,20}$/.test(code)) {
+      setPromoError('영문 대문자 + 숫자 4-20자')
+      return
+    }
+    setCheckingPromo(true)
+    try {
+      const res = await api.post('/api/promo/redeem', { code, product_id: productId })
+      if (res.data?.success) {
+        const d = res.data.data
+        // 셀러 매칭 확인 — 서버에서 검증되지만 클라이언트도 확인
+        if (detail && d.seller_id !== detail.seller_id) {
+          setPromoError('이 셀러 상품이 아닌 코드')
+          return
+        }
+        setPromoPreview({ discount_pct: d.discount_pct, audience: 'all', description: d.message || null })
+        toast.success(`✅ ${d.discount_pct}% 할인 적용 가능`)
+      } else {
+        setPromoError(res.data?.error || '사용 불가')
+      }
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string; code?: string } } }
+      const errCode = e?.response?.data?.code
+      setPromoError(e?.response?.data?.error || '코드 확인 실패')
+      if (errCode === 'FOLLOWERS_ONLY') {
+        // 단골 등록 안 됨 — 단골 등록 유도
+      }
+    } finally {
+      setCheckingPromo(false)
+    }
+  }
+
+  function clearPromo() {
+    setPromoCode('')
+    setPromoPreview(null)
+    setPromoError('')
+  }
+
   async function handleJoin() {
     if (!detail) return
     if (!isLoggedIn) {
@@ -224,7 +270,10 @@ export default function GroupBuyDetailPage() {
     const prevSnapshot = detail
     setDetail(d => d ? { ...d, group_buy_current: d.group_buy_current + quantity } : d)
     try {
-      const res = await api.post(`/api/group-buy/join/${productId}`, { quantity, payment_method: 'deal' })
+      const res = await api.post(`/api/group-buy/join/${productId}`, {
+        quantity, payment_method: 'deal',
+        promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
+      })
       if (res.data?.success) {
         reportFunnel('success', productId)
         toast.success(res.data.message || '공구 참여 완료!')
@@ -579,6 +628,50 @@ export default function GroupBuyDetailPage() {
             >
               공구 관리 →
             </button>
+          </div>
+        )}
+
+        {/* 🛡️ 2026-05-15: Promo 코드 입력 — 단골/신규 할인 코드 */}
+        {isJoinable && !isOwnProduct && (
+          <div className="bg-white rounded-2xl p-4 border border-gray-200">
+            <p className="text-xs font-bold text-gray-900 mb-2 flex items-center gap-1">
+              🎁 할인 코드 (선택)
+            </p>
+            {promoPreview ? (
+              <div className="flex items-center gap-2 p-2.5 bg-pink-50 border border-pink-200 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-pink-700 font-mono">{promoCode.toUpperCase()}</p>
+                  <p className="text-[11px] text-pink-600 mt-0.5">{promoPreview.discount_pct}% 추가 할인 적용됨</p>
+                </div>
+                <button
+                  onClick={clearPromo}
+                  className="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-700"
+                >
+                  해제
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={e => { setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)); setPromoError('') }}
+                    placeholder="DANGOL10"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 focus:border-pink-500 focus:outline-none"
+                    maxLength={20}
+                  />
+                  <button
+                    onClick={checkPromo}
+                    disabled={checkingPromo || promoCode.length < 4}
+                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold whitespace-nowrap"
+                  >
+                    {checkingPromo ? '확인…' : '적용'}
+                  </button>
+                </div>
+                {promoError && <p className="text-[11px] text-red-500 mt-1.5">{promoError}</p>}
+              </div>
+            )}
           </div>
         )}
 

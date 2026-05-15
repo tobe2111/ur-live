@@ -281,6 +281,78 @@ sellerPublicRoutes.get('/:sellerId/follow/preferences', requireAuth(), async (c)
   }
 })
 
+// ── GET /seller/analytics — 셀러: 본인 단골 분석 ──
+// 🛡️ 2026-05-15: 단골 수 추이 + 알림 종류별 ON 비율 + 신규 단골 30일
+sellerPublicRoutes.get('/seller/analytics', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  const userAsAny = user as unknown as { id?: number | string; type?: string }
+  if (!user || userAsAny.type !== 'seller') {
+    return c.json({ success: false, error: '셀러만 가능' }, 403)
+  }
+  const sellerId = Number(userAsAny.id)
+  if (!Number.isFinite(sellerId)) return c.json({ success: false, error: '잘못된 sellerId' }, 400)
+
+  const { DB } = c.env
+  await ensureFollowsTable(DB)
+
+  try {
+    // 총 단골 수 + 알림 종류별 ON 수
+    const total = await DB.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN notify_live_start = 1 THEN 1 ELSE 0 END) AS live_on,
+        SUM(CASE WHEN notify_group_buy = 1 THEN 1 ELSE 0 END) AS group_buy_on,
+        SUM(CASE WHEN notify_new_product = 1 THEN 1 ELSE 0 END) AS new_product_on
+      FROM seller_follows WHERE seller_id = ?
+    `).bind(sellerId).first<{ total: number; live_on: number; group_buy_on: number; new_product_on: number }>()
+
+    // 일별 신규 단골 (최근 30일)
+    const { results: daily } = await DB.prepare(`
+      SELECT DATE(created_at, '+9 hours') AS day, COUNT(*) AS new_count
+      FROM seller_follows
+      WHERE seller_id = ? AND created_at >= datetime('now', '-30 days')
+      GROUP BY day
+      ORDER BY day DESC
+    `).bind(sellerId).all<{ day: string; new_count: number }>()
+
+    // 최근 단골 10명
+    const { results: recent } = await DB.prepare(`
+      SELECT sf.user_id, sf.created_at,
+             u.display_name, u.profile_image
+      FROM seller_follows sf
+      LEFT JOIN users u ON u.id = sf.user_id
+      WHERE sf.seller_id = ?
+      ORDER BY sf.created_at DESC
+      LIMIT 10
+    `).bind(sellerId).all<{
+      user_id: string; created_at: string;
+      display_name: string | null; profile_image: string | null
+    }>().catch(() => ({ results: [] as { user_id: string; created_at: string; display_name: string | null; profile_image: string | null }[] }))
+
+    return c.json({
+      success: true,
+      data: {
+        total: Number(total?.total ?? 0),
+        notify_on: {
+          live_start: Number(total?.live_on ?? 0),
+          group_buy: Number(total?.group_buy_on ?? 0),
+          new_product: Number(total?.new_product_on ?? 0),
+        },
+        daily: daily ?? [],
+        recent_followers: (recent ?? []).map(r => ({
+          user_id: r.user_id,
+          masked_name: r.display_name ? r.display_name.charAt(0) + '**' : '익명',
+          avatar: r.profile_image,
+          created_at: r.created_at,
+        })),
+      },
+    })
+  } catch (err) {
+    console.error('[seller-public seller analytics]', err)
+    return c.json({ success: true, data: { total: 0, notify_on: { live_start: 0, group_buy: 0, new_product: 0 }, daily: [], recent_followers: [] } })
+  }
+})
+
 // ── GET /my/follows — 내가 단골 등록한 셀러 전체 + 알림 설정 ──
 sellerPublicRoutes.get('/my/follows', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

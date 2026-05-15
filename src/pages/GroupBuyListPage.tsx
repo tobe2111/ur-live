@@ -14,6 +14,7 @@ import {
   Bell,
 } from 'lucide-react'
 import api from '@/lib/api'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
@@ -470,8 +471,11 @@ export default function GroupBuyListPage() {
                         {p.image_url ? (
                           // 🛡️ 2026-05-15: LCP 최적화 — 첫 row (idx < 4) eager + fetchpriority high.
                           //   above-the-fold 이미지 즉시 로딩 → Lighthouse LCP 개선.
+                          //   CF Image Resizing — 카드 width 400px 기준 1x/2x/3x DPI.
                           <img
-                            src={p.image_url}
+                            src={cfImage(p.image_url, { width: 400, format: 'auto' })}
+                            srcSet={cfSrcSet(p.image_url, 400)}
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
                             alt={p.name}
                             className="w-full h-full object-cover"
                             loading={idx < 4 ? 'eager' : 'lazy'}

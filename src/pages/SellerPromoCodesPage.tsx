@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Plus, Copy, Trash2, Loader2, Share2, Users, CheckCircle2 } from 'lucide-react'
+import { Tag, Plus, Copy, Trash2, Loader2, Share2, Users, CheckCircle2, Megaphone } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -130,6 +130,31 @@ export default function SellerPromoCodesPage() {
       await navigator.clipboard.writeText(text)
       toast.success('share 메시지 복사됨')
     } catch { toast.error('실패') }
+  }
+
+  // 🛡️ 2026-05-15: 단골 전원에게 코드 push 알림 발송 (notify-followers 통합)
+  async function pushToFollowers(c: PromoCode) {
+    if (!confirm(`단골 전원에게 "${c.code}" 코드를 push 로 알릴까요?\n\n• 1인당 한도: ${c.per_user_limit}회\n• 만료: ${c.expires_at || '없음'}`)) return
+    try {
+      const audienceLabel = c.audience === 'followers_only' ? '단골 전용' : c.audience === 'new_users_only' ? '신규 전용' : '모두'
+      const res = await api.post('/api/seller-public/notify-followers', {
+        title: `🎁 ${c.discount_pct}% 할인 코드 ${c.code}`,
+        message: `${c.description || audienceLabel + ' 할인'} — 공구에서 코드 입력 후 적용`,
+        url: '/group-buy',
+        reason: 'custom',
+      }, { headers })
+      if (res.data?.success) {
+        const sent = res.data.data?.sent ?? 0
+        const total = res.data.data?.total_followers ?? 0
+        toast.success(`✅ ${sent}/${total} 단골에게 발송 완료`)
+      } else {
+        toast.error(res.data?.error || '발송 실패')
+      }
+    } catch (err) {
+      const e = err as { response?: { status?: number; data?: { error?: string } } }
+      if (e?.response?.status === 429) toast.error('너무 자주 발송하지 마세요 (10분 5회 제한)')
+      else toast.error(e?.response?.data?.error || '발송 실패')
+    }
   }
 
   return (
@@ -266,6 +291,14 @@ export default function SellerPromoCodesPage() {
                       </button>
                       <button onClick={() => shareCode(c)} className="p-1.5 hover:bg-gray-100 rounded" aria-label="공유">
                         <Share2 className="w-3.5 h-3.5 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={() => pushToFollowers(c)}
+                        className="p-1.5 hover:bg-pink-50 rounded"
+                        aria-label="단골에게 push"
+                        title="단골 전원에게 알림 발송 (10분 5회 제한)"
+                      >
+                        <Megaphone className="w-3.5 h-3.5 text-pink-500" />
                       </button>
                       <button onClick={() => deleteCode(c.id, c.code)} className="p-1.5 hover:bg-red-50 rounded" aria-label="비활성화">
                         <Trash2 className="w-3.5 h-3.5 text-red-500" />

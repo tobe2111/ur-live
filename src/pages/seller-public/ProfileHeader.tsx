@@ -9,6 +9,7 @@ import { toast } from '@/hooks/useToast'
 import FollowButton from './FollowButton'
 import RegularBadge from './RegularBadge'
 import ExternalLivePlatforms from './ExternalLivePlatforms'
+import { cfImage } from '@/utils/cf-image'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -56,7 +57,19 @@ export default function ProfileHeader({
         {/* 🛡️ 2026-05-15: banner_url 우선 → brand_color 그라디언트 → 기본 그라디언트 */}
         {seller.banner_url ? (
           <div className="h-44 relative overflow-hidden">
-            <img src={seller.banner_url} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" fetchPriority="high" />
+            {/* 🛡️ 2026-05-15 (Lighthouse): CF Image Resizing — webp/avif 자동 + 1280 width */}
+            <img
+              src={cfImage(seller.banner_url, { width: 1280, format: 'auto', quality: 85 })}
+              srcSet={`${cfImage(seller.banner_url, { width: 640, format: 'auto' })} 640w, ${cfImage(seller.banner_url, { width: 1280, format: 'auto' })} 1280w, ${cfImage(seller.banner_url, { width: 1920, format: 'auto' })} 1920w`}
+              sizes="100vw"
+              alt=""
+              width={1280}
+              height={320}
+              className="w-full h-full object-cover"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           </div>
         ) : (

@@ -53,6 +53,7 @@ const NAV_GROUPS: {
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag },
+      { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart },
     ],
   },
   {
