@@ -171,6 +171,7 @@ import { ogRoutes } from './routes/og-image.routes';
 import { analyticsRoutes } from './routes/analytics.routes';
 import { flagRoutes } from './routes/feature-flag.routes';
 import { currencyRoutes } from './routes/currency.routes';
+import { ocrRoutes } from './routes/ocr.routes';
 import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
@@ -1027,6 +1028,9 @@ app.route('/api/flags', flagRoutes);
 
 // 🛡️ 2026-05-15: 환율 (1시간 KV 캐시)
 app.route('/api/currency', currencyRoutes);
+
+// 🛡️ 2026-05-15: 메뉴 OCR (Workers AI llava-1.5-7b, 무료 10K req/day, fallback graceful)
+app.route('/api/ocr', ocrRoutes);
 
 // ── 쿠폰 ──
 app.route('/api/coupons', couponRoutes);
