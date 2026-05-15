@@ -411,9 +411,12 @@ function ReelCardImpl({
   useEffect(() => {
     if (effectiveStatus !== 'live' || !stream.youtube_video_id) return
     let reloadCount = 0
-    const MAX_RELOADS = 3
-    const STUCK_TIMEOUT_MS = 3000   // 3초 — YouTube embed P95 load time 안 margin
-    const SAFETY_TIMEOUT_MS = 8000  // 8초 — state event 자체가 안 와도 강제 reload 1회
+    // 🛡️ 2026-05-14: YouTube 첫 frame 까지 30-60초 걸릴 수 있음 (cold start).
+    //   기존 3회 reload × 3s = 9초 후 포기 → 사용자에게 "셀러 송출 준비 중" 잘못 표시.
+    //   5회 + 8초 stuck = 총 40초 인내 → 정상 cold start 안에서 자동 회복.
+    const MAX_RELOADS = 5
+    const STUCK_TIMEOUT_MS = 8000   // 3초 → 8초 (YouTube cold start 여유)
+    const SAFETY_TIMEOUT_MS = 15000  // 8초 → 15초 (state event 자체 안 오는 케이스만)
     let stuckTimer: ReturnType<typeof setTimeout> | null = null
     let isPlaying = false
 
@@ -1085,7 +1088,10 @@ function ReelCardImpl({
           🛡️ 2026-05-13: scheduled 상태에서도 시작 10분 전부터 iframe 사전 마운트 →
             YouTube 가 자체적으로 "곧 시작" UI + transition 처리 → live 전환 시 새로고침 없이 즉시 재생.
             ScheduledOverlay 가 위에 덮여 있어서 시청자에게는 우리 UI 만 보임. */}
-      <div className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78dvh)] [&_iframe]:!h-[max(100dvh,56.25vw)]">
+      {/* 🛡️ 2026-05-14: iframe 가득 채우기 (영상 확대 X).
+          기존: max(100vw,177.78dvh) 같은 16:9 zoom-fill 로직 → 9:16 세로 송출 (PR #388) 에선 과도 확대 + 잘림.
+          변경: 컨테이너 (9:16) 와 동일하게 iframe 100%. YouTube player 가 source aspect 에 맞춰 자동 letterbox. */}
+      <div className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!w-full [&_iframe]:!h-full">
         {(() => {
           // 🛡️ 2026-05-14: finalStatus 사용 — WS 로 'ended' 받으면 iframe 즉시 unmount.
           if (!finalVideoId) return null

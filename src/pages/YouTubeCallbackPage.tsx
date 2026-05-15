@@ -137,12 +137,13 @@ export default function YouTubeCallbackPage() {
                       <span className="w-4 h-4 rounded-full border-2 border-gray-200 block" />
                     )}
                   </div>
+                  {/* 🛡️ 2026-05-14: 진행 안 한 단계 text-[#c7c7cc] (RGB 199) 너무 흐림 → 가독성 보강 (gray-500). */}
                   <span className={`text-[14px] transition-colors duration-300 ${
                     i < loadingStep
-                      ? 'text-[#8e8e93] line-through decoration-gray-300'
+                      ? 'text-gray-500 line-through decoration-gray-400'
                       : i === loadingStep
                       ? 'text-[#1d1d1f] font-medium'
-                      : 'text-[#c7c7cc]'
+                      : 'text-gray-500'
                   }`}>
                     {step}
                   </span>
