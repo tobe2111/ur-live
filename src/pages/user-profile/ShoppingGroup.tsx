@@ -15,6 +15,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 바우처' }), sub: t('shopping.voucherSub', { defaultValue: '식사권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
     { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
     { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
+    // 🛡️ 2026-05-15: 단골 셀러 + 알림 매트릭스 진입점
+    { icon: '⭐', label: t('shopping.myFollows', { defaultValue: '내 단골 셀러' }), sub: t('shopping.myFollowsSub', { defaultValue: '셀러별 알림 설정' }), path: '/my/follows' },
     { icon: '📦', label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
   ]
 
