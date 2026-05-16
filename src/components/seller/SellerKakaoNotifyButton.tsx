@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Send, Loader2, MessageCircle } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -23,39 +24,40 @@ interface Props {
 }
 
 export default function SellerKakaoNotifyButton({ streamId, streamTitle, customMessage }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
 
   async function handleSend() {
     if (sent) {
-      if (!confirm('이미 발송했습니다. 다시 발송하시겠습니까?')) return
+      if (!confirm(t('seller.kakaoNotify.confirmResend', { defaultValue: '이미 발송했습니다. 다시 발송하시겠습니까?' }))) return
     }
     setSending(true)
     try {
       const res = await api.post('/api/kakao-social/message/broadcast', {
         stream_id: Number(streamId),
         title: streamTitle,
-        message: customMessage || '지금 라이브가 시작됐어요! 같이 봐요 🔴',
+        message: customMessage || t('seller.kakaoNotify.defaultMessage', { defaultValue: '지금 라이브가 시작됐어요! 같이 봐요 🔴' }),
       }, { headers: { Authorization: `Bearer ${getSellerToken()}` } })
 
       if (res.data?.success) {
-        toast.success('✅ 카카오톡에 메시지가 전송됐어요')
+        toast.success(t('seller.kakaoNotify.sentSuccess', { defaultValue: '✅ 카카오톡에 메시지가 전송됐어요' }))
         setSent(true)
       } else {
-        toast.error(res.data?.error || '발송 실패')
+        toast.error(res.data?.error || t('seller.kakaoNotify.sendFailed', { defaultValue: '발송 실패' }))
       }
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
       const errCode = e?.response?.data?.code
       if (errCode === 'KAKAO_REAUTH_REQUIRED') {
-        if (confirm('카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?')) {
+        if (confirm(t('seller.kakaoNotify.reauthRequired', { defaultValue: '카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?' }))) {
           navigate('/seller/login')
         }
       } else if (errCode === 'KAKAO_SCOPE_MISSING') {
-        toast.error('카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.')
+        toast.error(t('seller.kakaoNotify.scopeMissing', { defaultValue: '카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.' }))
       } else {
-        toast.error(e?.response?.data?.error || '발송 실패')
+        toast.error(e?.response?.data?.error || t('seller.kakaoNotify.sendFailed', { defaultValue: '발송 실패' }))
       }
     } finally {
       setSending(false)
@@ -71,10 +73,14 @@ export default function SellerKakaoNotifyButton({ streamId, streamTitle, customM
           ? 'bg-gray-100 text-gray-500'
           : 'bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] shadow-sm'
       } disabled:opacity-50`}
-      aria-label="카카오 친구에게 라이브 알림"
+      aria-label={t('seller.kakaoNotify.ariaLabel', { defaultValue: '카카오 친구에게 라이브 알림' })}
     >
       {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageCircle className="w-3.5 h-3.5" />}
-      {sending ? '발송 중…' : sent ? '✓ 발송됨' : '카카오 친구 알림'}
+      {sending
+        ? t('seller.kakaoNotify.sending', { defaultValue: '발송 중…' })
+        : sent
+          ? t('seller.kakaoNotify.sentLabel', { defaultValue: '✓ 발송됨' })
+          : t('seller.kakaoNotify.buttonLabel', { defaultValue: '카카오 친구 알림' })}
     </button>
   )
 }
