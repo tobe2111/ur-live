@@ -160,6 +160,8 @@ export default function UserProfilePage() {
             { icon: '📍', label: t('userProfile.addressManage'), path: '/mypage/addresses' },
             { icon: '📝', label: t('userProfile.myReviews'), path: '/my-reviews' },
             { icon: '👥', label: t('userProfile.inviteFriends'), path: '/referral' },
+            // 🛡️ 2026-05-16: 인플루언서 활동 진입점 (누구나 가능 — 추천 링크 생성 + 정산)
+            { icon: '🎤', label: t('userProfile.influencerActivity', { defaultValue: '인플루언서 활동 (추천/정산)' }), path: '/influencer/settlement' },
           ].map((item, i) => (
             <button
               key={item.label}

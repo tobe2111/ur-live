@@ -36,6 +36,106 @@ const STATUS_MAP = {
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 //   장점: 외부 서비스 다운에 영향 X, latency 0, 오프라인에서도 렌더, 프라이버시.
 import { QRCodeSVG } from 'qrcode.react'
+
+// 🛡️ 2026-05-16: 카카오맵 후기 보너스 제출 버튼 (used voucher 에 노출)
+//   URL 또는 스크린샷 둘 중 하나 제출 → 백엔드가 OCR / 어드민 검증
+function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
+  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<'url' | 'screenshot'>('url')
+  const [reviewUrl, setReviewUrl] = useState('')
+  const [screenshotUrl, setScreenshotUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function uploadScreenshot(file: File) {
+    if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만'); return }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      // 셀러 upload endpoint 재사용 — 일반 user 도 imgbb 업로드 필요
+      // ★ 별도 user-upload endpoint 필요하나, 우선 imgbb 직접 호출 X. 임시: DataURL.
+      const reader = new FileReader()
+      reader.onload = () => { setScreenshotUrl(reader.result as string); setUploading(false) }
+      reader.onerror = () => { toast.error('읽기 실패'); setUploading(false) }
+      reader.readAsDataURL(file)
+    } catch { toast.error('업로드 실패'); setUploading(false) }
+  }
+
+  async function submit() {
+    if (mode === 'url' && !reviewUrl) { toast.error('URL 입력'); return }
+    if (mode === 'screenshot' && !screenshotUrl) { toast.error('스크린샷 업로드'); return }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/api/review-bonus/submit', {
+        voucher_code: voucherCode,
+        review_url: mode === 'url' ? reviewUrl : undefined,
+        screenshot_url: mode === 'screenshot' ? screenshotUrl : undefined,
+      })
+      if (res.data?.success) {
+        toast.success(res.data.message || '제출됨')
+        setOpen(false)
+      } else toast.error(res.data?.error || '실패')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '실패')
+    } finally { setSubmitting(false) }
+  }
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)}
+        className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center gap-1">
+        ⭐ 카카오맵 후기 작성하고 보너스 받기
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">⭐ 카카오맵 후기 작성 보너스</h3>
+            <p className="text-[11px] text-gray-500 mb-4">
+              매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
+              <br/>1) 카카오맵 앱에서 매장 검색 → 후기 작성
+              <br/>2) 후기 페이지 URL 복사 또는 스크린샷 캡쳐
+              <br/>3) 아래에 제출
+            </p>
+            <div className="grid grid-cols-2 gap-1 mb-3">
+              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>스크린샷 (AI 자동 검증)</button>
+            </div>
+            {mode === 'url' ? (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">카카오맵 후기 URL</label>
+                <input value={reviewUrl} onChange={(e) => setReviewUrl(e.target.value)}
+                  placeholder="https://place.map.kakao.com/..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white dark:bg-[#1A1A1A]" />
+                <p className="text-[10px] text-gray-500 mt-1">어드민 검증 후 1~3일 내 보너스 지급</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">후기 스크린샷</label>
+                <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadScreenshot(e.target.files[0])}
+                  className="w-full text-xs" />
+                {uploading && <p className="text-[10px] text-gray-500 mt-1">업로드 중...</p>}
+                {screenshotUrl && screenshotUrl.startsWith('data:') && (
+                  <img src={screenshotUrl} alt="preview" className="mt-2 max-h-40 rounded" />
+                )}
+                <p className="text-[10px] text-emerald-600 mt-1">✨ AI 가 매장명/후기 내용 확인 시 즉시 보너스 지급</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 mt-5">
+              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700">취소</button>
+              <button onClick={submit} disabled={submitting || uploading}
+                className="py-2 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+                {submitting ? '제출 중...' : '제출'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
   return (
     <div className="mx-auto bg-white p-2 rounded">
@@ -95,6 +195,11 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
               <Gift className="w-3.5 h-3.5" /> {t('voucher.gift')}
             </button>
           </div>
+        )}
+
+        {/* 🛡️ 2026-05-16: 사용한 voucher 에 후기 보너스 안내 */}
+        {voucher.status === 'used' && (
+          <ReviewBonusButton voucherCode={voucher.code} />
         )}
       </div>
     </div>
