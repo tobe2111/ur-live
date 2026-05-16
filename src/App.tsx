@@ -261,6 +261,23 @@ function AppContent() {
 
   const location = useLocation()
 
+  // 🛡️ 2026-05-16: Toss SDK 초기 idle preload — 결제 페이지 진입 전에 SDK 캐시.
+  //   기존엔 CheckoutPage 모듈 진입 시 import → 첫 결제 시도 시 SDK 다운로드 대기.
+  //   이제 App 마운트 후 1초 또는 idle 시점에 백그라운드 fetch → checkout 진입 시 즉시 사용.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const preload = () => {
+      import('@tosspayments/tosspayments-sdk').catch(() => { /* silent — checkout 진입 시 재시도 */ })
+    }
+    const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback
+    if (ric) {
+      ric(preload, { timeout: 3000 })
+    } else {
+      const t = setTimeout(preload, 1500)
+      return () => clearTimeout(t)
+    }
+  }, [])
+
   // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {
     // 화이트 테마 페이지 (CLAUDE.md 정책)

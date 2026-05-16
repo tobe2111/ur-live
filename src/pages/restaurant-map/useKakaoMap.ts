@@ -66,6 +66,9 @@ export function useKakaoMap({
         center,
         level: 7,
       })
+      // 🛡️ 2026-05-16: 명시적 줌/팬 활성화 — 기본값이지만 명시로 안전
+      mapInstance.current.setDraggable(true)
+      mapInstance.current.setZoomable(true)
       const zoomControl = new window.kakao.maps.ZoomControl()
       mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {

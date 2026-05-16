@@ -56,7 +56,8 @@ export default function SellerMiniShopPage() {
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [sellerSlug, setSellerSlug] = useState<string | null>(null)
 
-  // 🛡️ 2026-05-15: 배너 직접 업로드 — compressForUpload (WebP 1280px ≤500KB) + Data URL.
+  // 🛡️ 2026-05-16: DataURL 대신 imgbb 정식 업로드 → DB row 부피 폭증 방지.
+  //   compress (WebP 1920px ≤500KB) → /api/seller/upload-image → CDN URL 만 저장.
   async function handleBannerUpload(file: File) {
     if (file.size > 10 * 1024 * 1024) {
       toast.error('10MB 이하 이미지만 가능합니다')
@@ -64,17 +65,25 @@ export default function SellerMiniShopPage() {
     }
     setUploadingBanner(true)
     try {
-      // 1280×320 권장 — width 1920 max, quality 85
       const compressed = await compressForUpload(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, toWebP: true })
-      const reader = new FileReader()
-      reader.onload = () => {
-        update('banner_url', reader.result as string)
+      // File 이름이 손실되지 않도록 새 File 객체로 재생성 (compressForUpload 는 Blob 반환 가능)
+      const uploadFile = compressed instanceof File
+        ? compressed
+        : new File([compressed], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' })
+      const fd = new FormData()
+      fd.append('image', uploadFile)
+      const res = await api.post('/api/seller/upload-image', fd, {
+        headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+      })
+      if (res.data?.success && res.data?.url) {
+        update('banner_url', res.data.url)
         toast.success('배너 업로드 완료 — 저장 버튼 눌러주세요')
+      } else {
+        toast.error(res.data?.error || '업로드 실패 — 다시 시도해주세요')
       }
-      reader.onerror = () => toast.error('이미지 읽기 실패')
-      reader.readAsDataURL(compressed)
     } catch (err) {
-      toast.error('이미지 처리 실패')
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '이미지 업로드 실패')
       if (import.meta.env.DEV) console.error(err)
     } finally {
       setUploadingBanner(false)
