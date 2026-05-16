@@ -41,6 +41,41 @@ export default function AdminInfluencerPayoutsPage() {
   const [payoutMin, setPayoutMin] = useState(100000)
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkProcessing, setBulkProcessing] = useState(false)
+
+  function toggleSelect(id: string) {
+    setSelectedIds(s => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  function toggleSelectAll() {
+    if (selectedIds.size === list.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(list.map(r => r.influencer_id)))
+  }
+  async function bulkProcess() {
+    const targets = list.filter(r => selectedIds.has(r.influencer_id))
+    if (targets.length === 0) { toast.error('선택된 항목 없음'); return }
+    const cashCount = targets.filter(r => r.payout_method !== 'deal' && r.bank_name && r.bank_account && r.account_holder).length
+    const dealCount = targets.filter(r => r.payout_method === 'deal').length
+    const skipCount = targets.length - cashCount - dealCount
+    if (!confirm(`${targets.length}건 일괄 처리:\n- 현금 ${cashCount}건 (송금 후 status='paid')\n- 딜 ${dealCount}건 (즉시 적립)\n- 계좌 누락 ${skipCount}건 (skip)\n진행?`)) return
+    setBulkProcessing(true)
+    let ok = 0, fail = 0
+    for (const r of targets) {
+      if (r.payout_method !== 'deal' && (!r.bank_name || !r.bank_account || !r.account_holder)) { fail++; continue }
+      try {
+        const res = await api.post('/api/admin-payouts/payouts/process', { influencer_id: r.influencer_id, method: r.payout_method || 'cash' })
+        if (res.data?.success) ok++; else fail++
+      } catch { fail++ }
+    }
+    toast.success(`완료: 성공 ${ok}, 실패 ${fail}`)
+    setSelectedIds(new Set())
+    setBulkProcessing(false)
+    load()
+  }
 
   useEffect(() => { load() }, [])
 
@@ -88,7 +123,18 @@ export default function AdminInfluencerPayoutsPage() {
           title="인플루언서 송금"
           subtitle={`송금 대기 ${list.length}명 · 합계 ${totalPending.toLocaleString()}원 (최소 ${payoutMin.toLocaleString()}원 이상)`}
           icon={<Wallet className="h-5 w-5" />}
-          actions={<button onClick={load} className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> 새로고침</button>}
+          actions={
+            <div className="flex gap-2">
+              <button onClick={load} className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> 새로고침</button>
+              <button
+                onClick={bulkProcess}
+                disabled={selectedIds.size === 0 || bulkProcessing}
+                className="px-3 py-1.5 text-xs bg-emerald-500 text-white rounded-lg font-bold disabled:opacity-40"
+              >
+                선택 일괄 처리 ({selectedIds.size})
+              </button>
+            </div>
+          }
         />
 
         {list.length === 0 ? (
@@ -101,6 +147,7 @@ export default function AdminInfluencerPayoutsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-700">
                 <tr>
+                  <th className="px-4 py-2"><input type="checkbox" checked={selectedIds.size === list.length && list.length > 0} onChange={toggleSelectAll} /></th>
                   <th className="text-left px-4 py-2 font-medium">인플루언서</th>
                   <th className="text-right px-4 py-2 font-medium">잔액</th>
                   <th className="text-center px-4 py-2 font-medium">방식</th>
@@ -115,6 +162,7 @@ export default function AdminInfluencerPayoutsPage() {
                   const accountOk = r.payout_method === 'deal' || (r.bank_name && r.bank_account && r.account_holder)
                   return (
                     <tr key={r.influencer_id} className="border-t border-gray-100">
+                      <td className="px-4 py-3"><input type="checkbox" checked={selectedIds.has(r.influencer_id)} onChange={() => toggleSelect(r.influencer_id)} /></td>
                       <td className="px-4 py-3 text-gray-900 font-mono text-xs">{r.influencer_id}</td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{r.available_amount.toLocaleString()}원</td>
                       <td className="px-4 py-3 text-center">

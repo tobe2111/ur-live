@@ -104,6 +104,9 @@ const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 
 // 약관 페이지들
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
+const InfluencerTermsPage = lazy(() => import('./pages/InfluencerTermsPage'))
+const SellerTermsPage = lazy(() => import('./pages/SellerTermsPage'))
+const GroupBuyTermsPage = lazy(() => import('./pages/GroupBuyTermsPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
@@ -541,6 +544,9 @@ function AppContent() {
 
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/terms/influencer" element={<InfluencerTermsPage />} />
+            <Route path="/terms/seller" element={<SellerTermsPage />} />
+            <Route path="/terms/group-buy" element={<GroupBuyTermsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
             <Route path="/user/affiliate" element={<AffiliatePage />} />
