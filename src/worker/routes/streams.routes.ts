@@ -154,6 +154,8 @@ streamsRouter.get('/', async (c) => {
       // 🛡️ 2026-05-05: 셀러 등급별 exposure_weight 반영 — diamond=4×, gold=2.5×, silver=1.5×, bronze=1×, new=0.7×
       // status priority 가 1순위, 그 다음 가중치 × recency.
       // 🛡️ 2026-05-06: migration 0244 (sellers.tier/exposure_weight) 미적용 환경 fallback.
+      // 🛡️ 2026-05-16: 광고 슬롯 자동 push — current_seller_id 가 활성 슬롯 보유 시 status priority 다음으로 최우선.
+      //   상태 변경 없이 ad_slots.expires_at 으로 자동 만료 → cron 실패해도 안전.
       const buildQuery = (withTier: boolean) => `
         SELECT
           ls.id,
@@ -174,6 +176,7 @@ streamsRouter.get('/', async (c) => {
           ${withTier ? 's.tier             AS seller_tier,' : "NULL              AS seller_tier,"}
           ${withTier ? 'COALESCE(s.exposure_weight, 1.0) AS exposure_weight,' : '1.0               AS exposure_weight,'}
           ${withTier ? 'COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS seller_shipping_fee,' : '3000              AS seller_shipping_fee,'}
+          ${withTier ? '(ad.slot_id IS NOT NULL) AS has_ad_slot,' : '0                 AS has_ad_slot,'}
           cp.id              AS current_product_id,
           cp.name            AS current_product_name,
           cp.price           AS current_product_price,
@@ -184,10 +187,15 @@ streamsRouter.get('/', async (c) => {
           cp.description     AS current_product_description
         FROM live_streams ls
         LEFT JOIN sellers s ON s.id = ls.seller_id
+        ${withTier ? `LEFT JOIN ad_slots ad ON ad.current_seller_id = ls.seller_id
+            AND ad.is_active = 1
+            AND ad.expires_at IS NOT NULL
+            AND ad.expires_at > datetime('now')` : ''}
         LEFT JOIN products cp ON cp.id = ls.current_product_id
         ${whereClause}
         ORDER BY
           CASE ls.status WHEN 'live' THEN 0 WHEN 'scheduled' THEN 1 ELSE 2 END,
+          ${withTier ? 'CASE WHEN ad.slot_id IS NOT NULL THEN 0 ELSE 1 END,' : ''}
           ${withTier
             ? `(COALESCE(s.exposure_weight, 1.0) *
                 (1.0 / (1 + (julianday('now') - julianday(ls.created_at)) * 0.5))
