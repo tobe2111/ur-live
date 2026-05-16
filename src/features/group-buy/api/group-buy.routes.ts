@@ -13,6 +13,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger } from '@/worker/utils/ledger'
+import { getCommissionRates } from './commission-rates'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 // 🛡️ 2026-05-15 (TD-G01 3단계): helper / sub-router 분리.
@@ -51,9 +52,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   const productId = productIdNum
   const userId = String(user.id)
   const body = await c.req.json<{
-    quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string
-  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined }))
-  const { quantity, payment_method, promo_code } = body
+    quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string
+  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined }))
+  const { quantity, payment_method, promo_code, ref } = body
+  // 🛡️ 2026-05-16: ref = 인플루언서 ID (?ref= 진입 또는 본문). 형식 검증.
+  const refRaw = ref ? String(ref).trim() : ''
+  const referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
   const qty = Number(quantity ?? 1)
   if (!Number.isFinite(qty) || !Number.isInteger(qty) || qty < 1 || qty > 100) {
     return c.json({ success: false, error: '수량은 1~100 사이의 정수여야 합니다' }, 400)
@@ -220,7 +224,31 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 🛡️ 2026-05-15: 셀러 차등 수수료 — GMV 기반 자동 (1천만+ 4%, 1억+ 3%) / 어드민 override 우선
     const commissionRate = await getSellerCommissionRate(DB, Number(product.seller_id))
     const commissionAmount = Math.round(totalAmount * commissionRate)
-    const sellerAmount = totalAmount - commissionAmount
+
+    // 🛡️ 2026-05-16: 인플루언서 referral 정산 4-account split.
+    //   1) 매장 marketing_enabled = 0 → 인플 commission 0 (사용자 보너스는 우리가 떠안음)
+    //   2) seller_blocked_influencers 에 매핑 있음 → 동일
+    //   3) products.referral_disabled = 1 → 동일
+    //   4) 모두 통과 → 정상 인플 + 사용자 보너스 지급
+    const rates = await getCommissionRates(DB)
+    let hasInfluencer = false
+    let influencerActive = false
+    if (referralInfluencerId) {
+      hasInfluencer = true  // ?ref= 자체는 있음 (사용자 보너스 트리거)
+      const blocked = await DB.prepare(
+        "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL"
+      ).bind(product.seller_id, referralInfluencerId).first().catch(() => null)
+      const sellerRow = await DB.prepare(
+        "SELECT COALESCE(marketing_enabled, 1) AS marketing_enabled FROM sellers WHERE id = ?"
+      ).bind(product.seller_id).first<{ marketing_enabled: number }>().catch(() => null)
+      const productReferralDisabled = Number((product as { referral_disabled?: number }).referral_disabled) === 1
+      influencerActive = !blocked && Number(sellerRow?.marketing_enabled ?? 1) === 1 && !productReferralDisabled
+    }
+    const influencerAmount = influencerActive ? Math.floor(totalAmount * rates.influencer_pct / 100) : 0
+    const userBonusAmount = hasInfluencer ? Math.floor(totalAmount * rates.user_referral_bonus_pct / 100) : 0
+    // sellerAmount = 총액 - 셀러 commission (유어딜) - 인플 - 사용자 보너스
+    //   (에이전시 commission 은 셀러 수수료에 이미 포함된 경로로 처리 — agencies 별도 routing)
+    const sellerAmount = totalAmount - commissionAmount - influencerAmount - userBonusAmount
 
     // 주문 생성
     await DB.prepare(`
@@ -241,6 +269,57 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
       })
     } catch (e) { if (import.meta.env?.DEV) console.warn('[gb ledger]', e) }
+
+    // 🛡️ 2026-05-16: 인플루언서 attribution + 사용자 referral 보너스 (4-account 확장)
+    if (hasInfluencer) {
+      // 사용자 보너스 즉시 적립 (active 든 차단이든 사용자에겐 약속한 보너스 지급)
+      if (userBonusAmount > 0) {
+        try {
+          await DB.prepare(
+            "UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
+          ).bind(userBonusAmount, userId).run()
+          await DB.prepare(
+            `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+             VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+          ).bind(userId, userBonusAmount, userBonusAmount, userId, `친구 추천 보너스 (${product.name})`, orderNumber).run()
+          await recordLedger(DB, {
+            event_type: 'user_referral_bonus',
+            reference_id: orderNumber,
+            amount: userBonusAmount,
+            debit_account: influencerActive ? `seller:${product.seller_id}` : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
+            credit_account: `user:${userId}`,
+            metadata: { source: 'influencer_referral', influencer_id: referralInfluencerId, absorbed_by_platform: !influencerActive },
+          })
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[gb user-bonus ledger]', e) }
+      }
+      // 인플루언서 attribution + balance pending (활성 시만)
+      if (influencerActive && influencerAmount > 0) {
+        try {
+          // attribution row
+          const refundWindowMs = rates.refund_window_days * 86400_000
+          const availableAt = new Date(Date.now() + refundWindowMs).toISOString()
+          await DB.prepare(
+            `INSERT INTO influencer_attributions (influencer_id, order_id, product_id, seller_id, commission_amount, status, available_at)
+             VALUES (?, ?, ?, ?, ?, 'pending', ?)`
+          ).bind(referralInfluencerId, 0, productId, product.seller_id, influencerAmount, availableAt).run()
+          // balance pending 증가 (UPSERT)
+          await DB.prepare(
+            `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
+             VALUES (?, ?, datetime('now'))
+             ON CONFLICT(influencer_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')`
+          ).bind(referralInfluencerId, influencerAmount).run()
+          // ledger entry — 셀러 receivable 차감 → 인플 balance
+          await recordLedger(DB, {
+            event_type: 'influencer_commission',
+            reference_id: orderNumber,
+            amount: influencerAmount,
+            debit_account: `seller:${product.seller_id}`,
+            credit_account: `influencer:${referralInfluencerId}`,
+            metadata: { product_id: productId, available_at: availableAt },
+          })
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[gb influencer attribution]', e) }
+      }
+    }
 
     // 정산 기록 (셀러 수령액 = 총액 - 10% 수수료)
     try {
