@@ -37,6 +37,7 @@ const AdminAbusePage = lazy(() => import('@/pages/AdminAbusePage'))
 const AdminAdSlotsPage = lazy(() => import('@/pages/AdminAdSlotsPage'))
 const AdminCommissionSettingsPage = lazy(() => import('@/pages/AdminCommissionSettingsPage'))
 const AdminInfluencerPayoutsPage = lazy(() => import('@/pages/AdminInfluencerPayoutsPage'))
+const AdminInfluencerDisputesPage = lazy(() => import('@/pages/AdminInfluencerDisputesPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
 const AdminLiveMonitorPage = lazy(() => import('@/pages/AdminLiveMonitorPage'))
@@ -238,6 +239,11 @@ export function AdminRoutes() {
       <Route path="/admin/influencer-payouts" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminInfluencerPayoutsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/influencer-disputes" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminInfluencerDisputesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/audit-log" element={
