@@ -50,6 +50,7 @@ export default function InfluencerDiscoverPage() {
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState('all')
   const [filter, setFilter] = useState('')
+  const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'deadline'>('latest')
 
   const myId = getUserId() || 'me'
 
@@ -87,9 +88,19 @@ export default function InfluencerDiscoverPage() {
     copyLink(product.id)
   }
 
-  const filtered = products.filter(p =>
-    !filter || p.name.toLowerCase().includes(filter.toLowerCase()) || (p.restaurant_name || '').toLowerCase().includes(filter.toLowerCase())
-  )
+  const filtered = products
+    .filter(p =>
+      !filter || p.name.toLowerCase().includes(filter.toLowerCase()) || (p.restaurant_name || '').toLowerCase().includes(filter.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === 'popular') return b.group_buy_current - a.group_buy_current
+      if (sortBy === 'deadline') {
+        const ad = a.group_buy_deadline ? new Date(a.group_buy_deadline).getTime() : Infinity
+        const bd = b.group_buy_deadline ? new Date(b.group_buy_deadline).getTime() : Infinity
+        return ad - bd
+      }
+      return 0  // latest = 서버 ORDER BY created_at DESC 기본
+    })
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -114,15 +125,26 @@ export default function InfluencerDiscoverPage() {
           ))}
         </div>
 
-        {/* 검색 */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="공구명/매장명 검색"
-            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-full text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
-          />
+        {/* 검색 + 정렬 */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="공구명/매장명 검색"
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-full text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
+            />
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular' | 'deadline')}
+            className="px-3 py-2 border border-gray-200 rounded-full text-xs text-gray-900 font-medium bg-white"
+          >
+            <option value="latest">최신순</option>
+            <option value="popular">인기순</option>
+            <option value="deadline">마감임박순</option>
+          </select>
         </div>
 
         {loading ? (
