@@ -35,11 +35,26 @@ export default function SellerPublicPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('home')
 
-  // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id 비교
+  // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id/username 비교
   // 🛡️ 2026-04-30: 듀얼 세션 (user_type='user' + seller_token 동시 보유) 도 owner 인정.
+  // 🛡️ 2026-05-16: storedSellerId 가 username 으로 저장된 경우도 매칭 (id vs username 모두 비교)
   const storedSellerId = localStorage.getItem('seller_id')
   const sellerToken = localStorage.getItem('seller_token')
-  const isOwner = !!sellerToken && !!seller && String(seller.id) === storedSellerId
+  const isOwner = !!sellerToken && !!seller && (
+    String(seller.id) === storedSellerId ||
+    String(seller.username || '') === storedSellerId ||
+    String(seller.username || '') === rawParam  // 본인이 본인 URL 로 진입한 경우
+  )
+  // 🛡️ 2026-05-16: DEV 디버그 — isOwner 가 false 일 때 콘솔에 이유 표시 (운영자가 진단 용이)
+  if (typeof window !== 'undefined' && import.meta.env.DEV && seller && !isOwner) {
+    console.log('[SellerPublicPage] isOwner=false:', {
+      hasToken: !!sellerToken,
+      sellerIdInDb: seller.id,
+      sellerUsernameInDb: seller.username,
+      storedSellerId,
+      rawParam,
+    })
+  }
 
   // ── 인라인 편집 상태 ──
   const [editingField, setEditingField] = useState<string | null>(null)
