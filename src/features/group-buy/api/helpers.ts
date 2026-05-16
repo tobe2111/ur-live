@@ -235,6 +235,46 @@ https://live.ur-team.com/my-vouchers
 }
 
 /**
+ * 🛡️ 2026-05-16: 매장 사장님에게 "곧 손님 옵니다" 친절 알림톡 (첫 voucher 발급 시 1회).
+ *   sellers.first_voucher_notified flag 로 dedup.
+ */
+export async function sendSellerFirstVoucherAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; statsUrl: string }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const message = `[유어딜] 🎉 첫 손님이 곧 방문합니다
+
+${data.restaurantName} 사장님,
+"${data.productName}" 첫 손님이 식권을 구매했어요!
+
+📋 사용 처리 방법
+1. 본인 폰으로 아래 링크 진입 (즐겨찾기 권장)
+   ${data.statsUrl}
+2. 손님이 QR 보여주면 [QR 스캔] 버튼 → 자동 처리
+3. 화면에 "메뉴 X 제공" 표시 후 음식 준비
+4. POS / T오더 결제 X (이미 유어딜에서 결제 완료)
+
+💰 정산
+사용 + 7일 후 등록 계좌로 자동 송금됩니다.
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {})
+  } catch { /* graceful */ }
+}
+
+/**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
  */
 export async function sendBuyerVoucherUsedAlimtalk(

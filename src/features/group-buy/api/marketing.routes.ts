@@ -209,6 +209,35 @@ influencerApp.get('/me', async (c) => {
   })
 })
 
+// 🛡️ 2026-05-16: 본인 ranking 조회 (지역별 / 전국)
+influencerApp.get('/my-rank', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const DB = c.env.DB
+  // 이번 달 commission 기준 ranking (단순화)
+  try {
+    const all = await DB.prepare(
+      `SELECT influencer_id, COALESCE(SUM(commission_amount), 0) AS total
+       FROM influencer_attributions
+       WHERE status != 'clawed_back'
+         AND created_at >= datetime('now', 'start of month')
+       GROUP BY influencer_id
+       ORDER BY total DESC`
+    ).all<{ influencer_id: string; total: number }>().catch(() => ({ results: [] as any[] }))
+    const rank = (all.results || []).findIndex(r => r.influencer_id === userId) + 1
+    const my = (all.results || []).find(r => r.influencer_id === userId)
+    return c.json({
+      success: true,
+      data: {
+        national_rank: rank > 0 ? rank : null,
+        national_total_participants: (all.results || []).length,
+        my_commission: my?.total ?? 0,
+      },
+    })
+  } catch {
+    return c.json({ success: false }, 503)
+  }
+})
+
 influencerApp.put('/me', async (c) => {
   const userId = String((c.get('user') as AuthUser).id)
   const body = await c.req.json<{
@@ -218,6 +247,7 @@ influencerApp.put('/me', async (c) => {
     bank_account?: string
     account_holder?: string
     payout_method?: 'cash' | 'deal'
+    ranking_public?: boolean
   }>().catch(() => ({}))
 
   // 사업자번호 형식 (10자리 숫자, 선택)
@@ -260,6 +290,7 @@ influencerApp.put('/me', async (c) => {
     if (body.bank_account !== undefined) { sets.push('bank_account = ?'); binds.push(body.bank_account || null) }
     if (body.account_holder !== undefined) { sets.push('account_holder = ?'); binds.push(body.account_holder || null) }
     if (body.payout_method !== undefined) { sets.push('payout_method = ?'); binds.push(body.payout_method) }
+    if (body.ranking_public !== undefined) { sets.push('ranking_public = ?'); binds.push(body.ranking_public ? 1 : 0) }
     if (sets.length === 0) return c.json({ success: false, error: 'nothing to update' }, 400)
     sets.push("updated_at = datetime('now')")
     binds.push(userId)

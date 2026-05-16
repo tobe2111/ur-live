@@ -122,7 +122,11 @@ export default function StoreStatsPage() {
       if (success) {
         // 🛡️ 2026-05-16: 사용 처리 성공 시 어떤 메뉴인지 큰 toast + 자동 5초 표시
         const menuName = res.data?.data?.product_name || stats?.product_name || ''
-        toast.success(`✅ 메뉴 제공: ${menuName}`, { duration: 5000 })
+        const influencerId = res.data?.data?.influencer_id
+        const msg = influencerId
+          ? `✅ 메뉴 제공: ${menuName}\n📢 ${influencerId} 의 추천 손님`
+          : `✅ 메뉴 제공: ${menuName}`
+        toast.success(msg, { duration: 6000 })
         setVoucherCode('')
         // stats refresh
         try {

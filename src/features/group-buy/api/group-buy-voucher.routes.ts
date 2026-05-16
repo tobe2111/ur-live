@@ -122,27 +122,130 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         return c.json({ success: false, error: '이미 사용되었거나 PIN이 틀립니다.' }, 400)
       }
 
-      // 🛡️ 2026-05-16: 사용자에게 사용 완료 알림톡 (fire-and-forget)
+      // 🛡️ 2026-05-16: 사용자에게 사용 완료 알림톡 + 사장님 화면용 attribution 정보 수집
+      let responseMeta: { product_name: string; restaurant_name: string | null; influencer_id?: string | null; influencer_commission?: number } = {
+        product_name: '식사권', restaurant_name: null,
+      }
       try {
         const meta = await DB.prepare(
-          `SELECT v.user_id, u.phone, p.name AS product_name, p.restaurant_name
+          `SELECT v.id AS voucher_id, v.user_id, u.phone, p.name AS product_name, p.restaurant_name
            FROM vouchers v
            LEFT JOIN users u ON u.id = v.user_id
            LEFT JOIN products p ON p.id = v.product_id
            WHERE v.code = ?`
-        ).bind(code).first<{ user_id: string; phone: string | null; product_name: string; restaurant_name: string | null }>()
-        if (meta?.phone) {
+        ).bind(code).first<{ voucher_id: number; user_id: string; phone: string | null; product_name: string; restaurant_name: string | null }>()
+        if (meta) {
+          responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
+          // 🛡️ 2026-05-16: 어느 인플이 데려온 손님인지 attribution 조회 (사장님 화면 표시용)
+          try {
+            const attr = await DB.prepare(
+              `SELECT influencer_id, commission_amount FROM influencer_attributions
+               WHERE voucher_id = ? AND status != 'clawed_back' LIMIT 1`
+            ).bind(meta.voucher_id).first<{ influencer_id: string; commission_amount: number }>()
+            if (attr) {
+              responseMeta.influencer_id = attr.influencer_id
+              responseMeta.influencer_commission = attr.commission_amount
+            }
+          } catch { /* graceful */ }
+          if (meta.phone) {
+            c.executionCtx.waitUntil(
+              sendBuyerVoucherUsedAlimtalk(
+                c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+                meta.phone,
+                { restaurantName: meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+              )
+            )
+          }
+        }
+      } catch { /* graceful */ }
+
+      return c.json({
+        success: true,
+        message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️',
+        data: responseMeta,
+      })
+    }
+  )
+
+  // ── POST /:code/use-by-seller — 매장 사장님이 본인 매장 voucher 사용 (PIN 없이, seller JWT) ──
+  // 🛡️ 2026-05-16: 기본 카메라 스캔으로 진입한 사장님이 1탭 사용 처리 가능하게.
+  //   PIN 입력 없이 seller token 만으로 product 소유권 검증 후 atomic CAS.
+  router.post(
+    '/:code/use-by-seller',
+    rateLimit({ action: 'voucher_use_seller', max: 30, windowSec: 60 }),
+    requireAuth(),
+    async (c) => {
+      const user = getCurrentUser(c)
+      if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
+        return c.json({ success: false, error: '셀러/어드민만 가능' }, 403)
+      }
+      const code = c.req.param('code')
+      if (!code || !/^[A-Za-z0-9-]{4,64}$/.test(code)) {
+        return c.json({ success: false, error: '잘못된 바우처 코드' }, 400)
+      }
+      const { DB } = c.env
+
+      // 만료 차단
+      try {
+        await DB.prepare(
+          "UPDATE vouchers SET status = 'expired' WHERE code = ? AND status = 'unused' AND expires_at IS NOT NULL AND expires_at < datetime('now')"
+        ).bind(code).run()
+      } catch { /* ignore */ }
+
+      // voucher + product seller 검증
+      const voucher = await DB.prepare(
+        `SELECT v.id, v.status, v.user_id, v.product_id, p.seller_id, p.name AS product_name, p.restaurant_name
+         FROM vouchers v LEFT JOIN products p ON p.id = v.product_id
+         WHERE v.code = ?`
+      ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; seller_id: number; product_name: string; restaurant_name: string | null }>()
+      if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
+      if (user.type === 'seller' && Number(voucher.seller_id) !== Number(user.id)) {
+        return c.json({ success: false, error: '본인 매장의 voucher 가 아닙니다' }, 403)
+      }
+      if (voucher.status === 'used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
+      if (voucher.status === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
+      if (voucher.status === 'refunded') return c.json({ success: false, error: '환불된 바우처입니다' }, 400)
+
+      // atomic CAS
+      const result = await DB.prepare(
+        "UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused'"
+      ).bind(voucher.id).run()
+      if (!result.meta?.changes) return c.json({ success: false, error: '동시성 충돌 — 다시 시도해주세요' }, 409)
+
+      // attribution + 사용자 알림톡
+      let attribution: { influencer_id?: string; influencer_commission?: number } = {}
+      try {
+        const attr = await DB.prepare(
+          `SELECT influencer_id, commission_amount FROM influencer_attributions
+           WHERE voucher_id = ? AND status != 'clawed_back' LIMIT 1`
+        ).bind(voucher.id).first<{ influencer_id: string; commission_amount: number }>()
+        if (attr) {
+          attribution = { influencer_id: attr.influencer_id, influencer_commission: attr.commission_amount }
+        }
+      } catch { /* graceful */ }
+
+      try {
+        const userPhone = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(voucher.user_id).first<{ phone: string | null }>()
+        if (userPhone?.phone) {
           c.executionCtx.waitUntil(
             sendBuyerVoucherUsedAlimtalk(
               c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
-              meta.phone,
-              { restaurantName: meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+              userPhone.phone,
+              { restaurantName: voucher.restaurant_name || '매장', productName: voucher.product_name, usedAt: new Date().toISOString() },
             )
           )
         }
       } catch { /* graceful */ }
 
-      return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
+      return c.json({
+        success: true,
+        message: `✅ 메뉴 제공: ${voucher.product_name}`,
+        data: {
+          product_name: voucher.product_name,
+          restaurant_name: voucher.restaurant_name,
+          ...attribution,
+        },
+      })
     }
   )
 
