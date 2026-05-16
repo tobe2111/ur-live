@@ -29,6 +29,9 @@ interface CommissionRates {
   agency_pct: number
   refund_window_days: number
   influencer_payout_min: number
+  seller_referral_bonus_pct: number
+  seller_referral_bonus_months: number
+  max_influencer_commission_pct: number
 }
 
 const DEFAULTS: CommissionRates = {
@@ -38,6 +41,9 @@ const DEFAULTS: CommissionRates = {
   agency_pct: 2,
   refund_window_days: 7,
   influencer_payout_min: 100000,
+  seller_referral_bonus_pct: 1,
+  seller_referral_bonus_months: 6,
+  max_influencer_commission_pct: 2,
 }
 
 const KEY_MAP: Record<keyof CommissionRates, string> = {
@@ -47,6 +53,9 @@ const KEY_MAP: Record<keyof CommissionRates, string> = {
   agency_pct: 'agency_commission_pct',
   refund_window_days: 'refund_window_days',
   influencer_payout_min: 'influencer_payout_min',
+  seller_referral_bonus_pct: 'seller_referral_bonus_pct',
+  seller_referral_bonus_months: 'seller_referral_bonus_months',
+  max_influencer_commission_pct: 'max_influencer_commission_pct',
 }
 
 /**
@@ -125,6 +134,29 @@ export function calcSplitInfluencerBlocked(rates: CommissionRates, input: Omit<S
     platform, influencer: 0, user_bonus, agency, seller_receivable,
     platform_absorbs_user_bonus: true,
   }
+}
+
+/**
+ * 인플 commission % 계산 — 영입 보너스 + 협업 deal + cap 고려.
+ * 우선순위: max(base + 영입 보너스 (활성 시), 협업 deal %) — 최대 cap 까지.
+ */
+export function calcInfluencerCommissionPct(
+  rates: CommissionRates,
+  ctx: {
+    is_referred_by_this_influencer: boolean       // 매장이 이 인플이 영입한 경우
+    referral_bonus_active: boolean                 // 보너스 기간 내
+    deal_commission_pct: number | null              // 협업 deal 활성 시 우대 %
+  },
+): number {
+  const base = rates.influencer_pct
+  const referralPct = (ctx.is_referred_by_this_influencer && ctx.referral_bonus_active)
+    ? rates.seller_referral_bonus_pct
+    : 0
+  const candidateBase = base + referralPct
+  const candidateDeal = ctx.deal_commission_pct ?? 0
+  // 우대 deal 이 base+referral 보다 크면 deal 우선
+  const winner = Math.max(candidateBase, candidateDeal)
+  return Math.min(winner, rates.max_influencer_commission_pct)
 }
 
 export type { CommissionRates, SplitInput, SplitResult }
