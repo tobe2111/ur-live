@@ -166,13 +166,15 @@ export default function BottomNav() {
 
   return (
     <>
-      {/* Nav bar — 모바일만 표시. PC (lg+) 는 DesktopTopNav 가 대신 표시. */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[9999] pointer-events-none hide-on-keyboard md:hidden">
-        <div className="pointer-events-auto">
-          <nav
-            className="bg-white dark:bg-[#020202] border-t border-[#0A0A0A]"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-          >
+      {/* Nav bar — 모바일 + 작은 태블릿 표시. PC (lg+) 는 DesktopTopNav 가 대신 표시. */}
+      {/* 🛡️ 2026-05-16: max-w-[430px] 좁은 중앙 박스 → 화면 전체 폭 (left-0 right-0) 으로 변경.
+         태블릿/큰 폰 가로모드에서 가운데 떠 있던 어색한 UI 영구 해결.
+         내부 nav 만 max-w-[430px] mx-auto 로 버튼 간격 유지. */}
+      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard lg:hidden">
+        <div className="pointer-events-auto bg-white dark:bg-[#020202] border-t border-[#0A0A0A]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <nav className="max-w-[430px] mx-auto">
             <div className="flex items-center h-14">
               {leftItems.map(renderItem)}
 
