@@ -187,6 +187,15 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     { desc: 'seed: agency_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('agency_commission_pct', '2', '에이전시 commission (%)', datetime('now'))" },
     { desc: 'seed: refund_window_days', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('refund_window_days', '7', '매장 송금 전 환불 가능 기간 (일)', datetime('now'))" },
     { desc: 'seed: influencer_payout_min', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_min', '100000', '인플루언서 월 최소 송금액 (원)', datetime('now'))" },
+    // 🛡️ 2026-05-16: 정산일자 조절 + 인플 송금방식 (migration 0248)
+    { desc: 'influencer_balances.payout_method', sql: "ALTER TABLE influencer_balances ADD COLUMN payout_method TEXT DEFAULT 'cash'" },
+    { desc: 'sellers.settlement_frequency', sql: "ALTER TABLE sellers ADD COLUMN settlement_frequency TEXT DEFAULT 'on_use_plus_7'" },
+    { desc: 'sellers.settlement_day', sql: "ALTER TABLE sellers ADD COLUMN settlement_day INTEGER DEFAULT 1" },
+    { desc: 'seed: influencer_payout_frequency', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_frequency', 'monthly', '인플 송금 주기', datetime('now'))" },
+    { desc: 'seed: influencer_payout_day_of_month', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_day_of_month', '1', '월간 송금 날짜', datetime('now'))" },
+    { desc: 'seed: influencer_deal_bonus_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_deal_bonus_pct', '20', '딜 선택 시 보너스 %', datetime('now'))" },
+    { desc: 'table influencer_disputes', sql: "CREATE TABLE IF NOT EXISTS influencer_disputes (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, seller_id INTEGER, type TEXT NOT NULL, description TEXT NOT NULL, status TEXT DEFAULT 'open', resolution TEXT, created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME)" },
+    { desc: 'idx_inf_disputes_status', sql: "CREATE INDEX IF NOT EXISTS idx_inf_disputes_status ON influencer_disputes(status, created_at)" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
