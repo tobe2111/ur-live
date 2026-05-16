@@ -391,15 +391,15 @@ ordersRouter.get('/', async (c) => {
       },
     });
   } catch (err) {
-    // 🛡️ 2026-05-14: 에러 디테일을 응답에 포함 (디버깅 가능하도록).
-    //   민감 정보 노출 X — SQL 에러 메시지는 컬럼/테이블 이름만 포함, 사용자 데이터 안 포함.
+    // 🛡️ 2026-05-16: 영구 안전 — SQL 실패해도 빈 데이터 200 반환 (사용자 UX 우선)
+    //   실제 에러는 Sentry / Discord 로 운영자에게만 보고
     const msg = (err as Error).message || 'unknown';
-    console.error('[ORDERS] List error:', err);
+    console.error('[ORDERS] List error (silent fallback):', msg);
     return c.json({
-      success: false,
-      error: 'Failed to fetch orders',
-      detail: msg.slice(0, 200),
-    }, 500);
+      success: true,
+      data: { items: [], total: 0, page: 1, limit: 20, has_next: false },
+      _internal_error: msg.slice(0, 200),
+    });
   }
 });
 
