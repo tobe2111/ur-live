@@ -10,6 +10,7 @@ interface AgencyPublic {
   bio: string | null
   logo_url: string | null
   cover_url: string | null
+  brand_color: string | null
   created_at: string
   stats: {
     total_sellers: number | null
@@ -62,10 +63,16 @@ export default function AgencyPublicPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Cover */}
+      {/* Cover — brand_color 우선, cover_url 다음, fallback gradient */}
       <div
         className="h-48 sm:h-64 bg-gradient-to-br from-purple-400 via-pink-400 to-orange-400 relative"
-        style={data.cover_url ? { backgroundImage: `url(${data.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+        style={
+          data.cover_url
+            ? { backgroundImage: `url(${data.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : data.brand_color
+              ? { backgroundColor: data.brand_color, backgroundImage: 'none' }
+              : {}
+        }
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
       </div>

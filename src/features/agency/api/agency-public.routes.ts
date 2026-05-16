@@ -66,9 +66,15 @@ interface AgencyPublicRow {
   bio: string | null;
   logo_url: string | null;
   cover_url: string | null;
+  brand_color: string | null;
   public_show_revenue: number;
   public_show_sellers: number;
   created_at: string;
+}
+
+// 🛡️ 2026-05-16 (#20 white-label): brand_color 컬럼 자동 보장.
+async function ensureBrandColumn(db: D1Database) {
+  try { await db.prepare("ALTER TABLE agencies ADD COLUMN brand_color TEXT").run(); } catch { /* 이미 존재 */ }
 }
 
 // GET /:slug — 공개 페이지 데이터
@@ -78,10 +84,12 @@ publicApp.get('/:slug', async (c) => {
     return c.json({ success: false, error: 'invalid slug' }, 400);
   }
 
+  await ensureBrandColumn(c.env.DB);
+
   let row: AgencyPublicRow | null = null;
   try {
     row = await c.env.DB.prepare(`
-      SELECT id, name, slug, bio, logo_url, cover_url,
+      SELECT id, name, slug, bio, logo_url, cover_url, brand_color,
              COALESCE(public_show_revenue, 0) AS public_show_revenue,
              COALESCE(public_show_sellers, 1) AS public_show_sellers,
              created_at
@@ -134,6 +142,7 @@ publicApp.get('/:slug', async (c) => {
       bio: row.bio,
       logo_url: row.logo_url,
       cover_url: row.cover_url,
+      brand_color: row.brand_color,
       created_at: row.created_at,
       stats: {
         total_sellers: row.public_show_sellers ? totalSellers : null,
@@ -148,11 +157,14 @@ publicApp.get('/:slug', async (c) => {
 // PATCH /me/public — 본인 공개 페이지 정보 편집
 authedApp.patch('/me/public', async (c) => {
   const agency = c.get('agency');
+  await ensureBrandColumn(c.env.DB);
+
   const body = await c.req.json<{
     slug?: string;
     bio?: string;
     logo_url?: string;
     cover_url?: string;
+    brand_color?: string;
     public_show_revenue?: boolean;
     public_show_sellers?: boolean;
   }>().catch(() => ({} as any));
@@ -192,6 +204,14 @@ authedApp.patch('/me/public', async (c) => {
     sets.push('cover_url = ?');
     binds.push(body.cover_url || null);
   }
+  if (body.brand_color !== undefined) {
+    // HEX color (#RGB / #RRGGBB) 또는 빈 값
+    if (body.brand_color && !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(body.brand_color)) {
+      return c.json({ success: false, error: 'brand_color must be HEX (#RGB or #RRGGBB)' }, 400);
+    }
+    sets.push('brand_color = ?');
+    binds.push(body.brand_color || null);
+  }
   if (body.public_show_revenue !== undefined) {
     sets.push('public_show_revenue = ?');
     binds.push(body.public_show_revenue ? 1 : 0);
@@ -216,9 +236,10 @@ authedApp.patch('/me/public', async (c) => {
 // GET /me/public — 본인 공개 페이지 정보 조회 (편집용)
 authedApp.get('/me/public', async (c) => {
   const agency = c.get('agency');
+  await ensureBrandColumn(c.env.DB);
   try {
     const row = await c.env.DB.prepare(`
-      SELECT slug, bio, logo_url, cover_url,
+      SELECT slug, bio, logo_url, cover_url, brand_color,
              COALESCE(public_show_revenue, 0) AS public_show_revenue,
              COALESCE(public_show_sellers, 1) AS public_show_sellers
       FROM agencies WHERE id = ?

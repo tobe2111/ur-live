@@ -14,6 +14,9 @@ export default function AgencyProfilePage() {
   const navigate = useNavigate()
   const [profile, setProfile] = useState<any>(null)
   const [form, setForm] = useState({ name: '', contact_name: '', phone: '', bank_name: '', bank_account: '', account_holder: '' })
+  // 🛡️ 2026-05-16 (#20 white-label): 브랜드 커스터마이징
+  const [brand, setBrand] = useState({ slug: '', bio: '', logo_url: '', cover_url: '', brand_color: '' })
+  const [savingBrand, setSavingBrand] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const token = localStorage.getItem('agency_token')
@@ -42,15 +45,44 @@ export default function AgencyProfilePage() {
       })
       .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
       .finally(() => setLoading(false))
+    // 🛡️ 2026-05-16 (#20): 브랜드 정보 별도 fetch
+    api.get('/api/agency-public/me/public', { headers })
+      .then(r => {
+        if (r.data?.success && r.data.data) {
+          setBrand({
+            slug: r.data.data.slug || '',
+            bio: r.data.data.bio || '',
+            logo_url: r.data.data.logo_url || '',
+            cover_url: r.data.data.cover_url || '',
+            brand_color: r.data.data.brand_color || '',
+          })
+        }
+      })
+      .catch(() => { /* migration 0225 미적용 환경 무시 */ })
   }, [])
 
   async function handleSave() {
     setSaving(true)
     try {
       await api.put('/api/agency/profile', form, { headers })
-      toast.success('프로필이 수정되었습니다')
-    } catch { toast.error('수정 실패') }
+      toast.success(t('agency.agencyProfile.savedToast', { defaultValue: '프로필이 수정되었습니다' }))
+    } catch { toast.error(t('agency.agencyProfile.saveFailed', { defaultValue: '수정 실패' })) }
     finally { setSaving(false) }
+  }
+
+  async function handleSaveBrand() {
+    setSavingBrand(true)
+    try {
+      const res = await api.patch('/api/agency-public/me/public', brand, { headers })
+      if (res.data?.success) {
+        toast.success(t('agency.agencyProfile.brandSavedToast', { defaultValue: '브랜드 설정이 저장되었습니다' }))
+      } else {
+        toast.error(res.data?.error || t('agency.agencyProfile.saveFailed', { defaultValue: '수정 실패' }))
+      }
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || t('agency.agencyProfile.saveFailed', { defaultValue: '수정 실패' }))
+    } finally { setSavingBrand(false) }
   }
 
   if (loading) return <AgencyLayout title={t('agency.profile')}><div className="mx-auto max-w-xl p-6"><DashboardLoading /></div></AgencyLayout>
@@ -142,6 +174,62 @@ export default function AgencyProfilePage() {
             </div>
           </div>
           <KakaoLinkButton role="agency" />
+        </div>
+
+        {/* 🛡️ 2026-05-16 (#20 white-label): 브랜드 커스터마이징 */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🎨</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">{t('agency.agencyProfile.brandTitle', { defaultValue: '브랜드 설정' })}</h3>
+              <p className="text-[11px] text-gray-500">{t('agency.agencyProfile.brandDesc', { defaultValue: '공개 페이지(/a/슬러그)에 표시되는 로고/색상' })}</p>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.agencyProfile.brandSlug', { defaultValue: '슬러그 (공개 URL: /a/슬러그)' })}</label>
+            <input value={brand.slug} onChange={e => setBrand(b => ({ ...b, slug: e.target.value }))}
+              placeholder="my-agency" maxLength={31}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.agencyProfile.brandBio', { defaultValue: '소개 (최대 500자)' })}</label>
+            <textarea value={brand.bio} onChange={e => setBrand(b => ({ ...b, bio: e.target.value }))}
+              rows={3} maxLength={500}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.agencyProfile.brandLogoUrl', { defaultValue: '로고 URL (https://)' })}</label>
+            <input value={brand.logo_url} onChange={e => setBrand(b => ({ ...b, logo_url: e.target.value }))}
+              placeholder="https://..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.agencyProfile.brandCoverUrl', { defaultValue: '커버 이미지 URL (https://)' })}</label>
+            <input value={brand.cover_url} onChange={e => setBrand(b => ({ ...b, cover_url: e.target.value }))}
+              placeholder="https://..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.agencyProfile.brandColor', { defaultValue: '브랜드 색상 (HEX)' })}</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={brand.brand_color || '#3b82f6'}
+                onChange={e => setBrand(b => ({ ...b, brand_color: e.target.value }))}
+                className="w-12 h-10 border border-gray-300 rounded cursor-pointer" />
+              <input value={brand.brand_color} onChange={e => setBrand(b => ({ ...b, brand_color: e.target.value }))}
+                placeholder="#3b82f6" maxLength={7}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono" />
+              {brand.brand_color && (
+                <button onClick={() => setBrand(b => ({ ...b, brand_color: '' }))}
+                  className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700">
+                  {t('common.clear', { defaultValue: '지우기' })}
+                </button>
+              )}
+            </div>
+          </div>
+          <button onClick={handleSaveBrand} disabled={savingBrand}
+            className="w-full px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+            {savingBrand
+              ? t('agency.agencyProfile.saving', { defaultValue: '저장 중...' })
+              : t('agency.agencyProfile.saveBrand', { defaultValue: '브랜드 설정 저장' })}
+          </button>
         </div>
 
         {/* 보안 PIN */}
