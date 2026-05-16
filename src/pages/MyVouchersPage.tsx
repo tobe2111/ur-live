@@ -22,6 +22,9 @@ interface Voucher {
   expires_at?: string
   used_at?: string
   created_at: string
+  applied_price?: number  // 🛡️ 2026-05-16: voucher 액면가 (차감 금액 안내용)
+  product_price?: number
+  usage_guide?: string    // 매장이 등록한 사용 가이드 (예: "평일 점심만")
 }
 
 type ViewMode = 'list' | 'map'
@@ -181,6 +184,22 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
         <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-lg px-3 py-2 text-center">
           <code className="text-sm font-mono font-bold text-pink-500">{voucher.code}</code>
         </div>
+
+        {/* 🛡️ 2026-05-16: 차감 금액 + 사용 안내 (사장님이 손님 화면 보고 즉시 이해) */}
+        {voucher.status === 'unused' && (voucher.applied_price || voucher.product_price) && (
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-center">
+            <p className="text-[11px] text-amber-700 font-medium">💳 결제 시 차감</p>
+            <p className="text-base font-extrabold text-amber-800 mt-0.5">
+              {(voucher.applied_price ?? voucher.product_price ?? 0).toLocaleString()}원 할인
+            </p>
+            <p className="text-[10px] text-amber-600 mt-0.5">사장님께 보여주시면 차액만 결제하세요</p>
+          </div>
+        )}
+        {voucher.usage_guide && voucher.status === 'unused' && (
+          <p className="text-[11px] text-gray-600 dark:text-gray-300 text-center mt-2 whitespace-pre-wrap">
+            ℹ️ {voucher.usage_guide}
+          </p>
+        )}
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2">{t('voucher.showQrAtStore')}</p>
 
         {/* 선물/공유 버튼 (사용 가능한 식사권만) */}
