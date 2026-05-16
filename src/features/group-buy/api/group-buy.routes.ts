@@ -13,7 +13,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger } from '@/worker/utils/ledger'
-import { getCommissionRates } from './commission-rates'
+import { getCommissionRates, calcInfluencerCommissionPct } from './commission-rates'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 // 🛡️ 2026-05-15 (TD-G01 3단계): helper / sub-router 분리.
@@ -234,18 +234,38 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const rates = await getCommissionRates(DB)
     let hasInfluencer = false
     let influencerActive = false
+    let effectiveInfluencerPct = 0  // 영입 보너스 + deal 적용 후 최종 %
     if (referralInfluencerId) {
       hasInfluencer = true  // ?ref= 자체는 있음 (사용자 보너스 트리거)
       const blocked = await DB.prepare(
         "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL"
       ).bind(product.seller_id, referralInfluencerId).first().catch(() => null)
       const sellerRow = await DB.prepare(
-        "SELECT COALESCE(marketing_enabled, 1) AS marketing_enabled FROM sellers WHERE id = ?"
-      ).bind(product.seller_id).first<{ marketing_enabled: number }>().catch(() => null)
+        `SELECT COALESCE(marketing_enabled, 1) AS marketing_enabled,
+                referred_by_influencer, referral_bonus_until
+         FROM sellers WHERE id = ?`
+      ).bind(product.seller_id).first<{ marketing_enabled: number; referred_by_influencer: string | null; referral_bonus_until: string | null }>().catch(() => null)
       const productReferralDisabled = Number((product as { referral_disabled?: number }).referral_disabled) === 1
       influencerActive = !blocked && Number(sellerRow?.marketing_enabled ?? 1) === 1 && !productReferralDisabled
+
+      if (influencerActive) {
+        // 🛡️ 2026-05-16: 영입 보너스 + 협업 deal cap 종합 계산
+        const isReferredByThis = sellerRow?.referred_by_influencer === referralInfluencerId
+        const referralBonusActive = !!sellerRow?.referral_bonus_until && new Date(sellerRow.referral_bonus_until) > new Date()
+        const dealRow = await DB.prepare(
+          `SELECT commission_pct FROM seller_influencer_deals
+           WHERE seller_id = ? AND influencer_id = ? AND status = 'active'
+             AND (ends_at IS NULL OR ends_at > datetime('now'))
+           LIMIT 1`
+        ).bind(product.seller_id, referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
+        effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
+          is_referred_by_this_influencer: isReferredByThis,
+          referral_bonus_active: referralBonusActive,
+          deal_commission_pct: dealRow?.commission_pct ?? null,
+        })
+      }
     }
-    const influencerAmount = influencerActive ? Math.floor(totalAmount * rates.influencer_pct / 100) : 0
+    const influencerAmount = influencerActive ? Math.floor(totalAmount * effectiveInfluencerPct / 100) : 0
     const userBonusAmount = hasInfluencer ? Math.floor(totalAmount * rates.user_referral_bonus_pct / 100) : 0
     // sellerAmount = 총액 - 셀러 commission (유어딜) - 인플 - 사용자 보너스
     //   (에이전시 commission 은 셀러 수수료에 이미 포함된 경로로 처리 — agencies 별도 routing)

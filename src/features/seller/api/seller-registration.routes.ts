@@ -167,6 +167,27 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       }
     }
 
+    // 🛡️ 2026-05-16: 인플루언서 매장 영입 referral (body.referred_by_influencer)
+    //   인플 ID 가 있으면 sellers.referred_by_influencer + referral_bonus_until 자동 설정.
+    //   기간은 platform_settings.seller_referral_bonus_months (default 6) 에서 읽음.
+    const referredByInfluencer = (body as { referred_by_influencer?: string }).referred_by_influencer
+    if (referredByInfluencer && result.meta.last_row_id && /^[a-zA-Z0-9_\-:]{1,64}$/.test(referredByInfluencer)) {
+      try {
+        const sellerId = Number(result.meta.last_row_id);
+        const monthsRow = await db.prepare("SELECT value FROM platform_settings WHERE key = 'seller_referral_bonus_months'").first<{ value: string }>().catch(() => null);
+        const months = Number(monthsRow?.value ?? 6);
+        const until = new Date(Date.now() + months * 30 * 86400_000).toISOString();
+        // ALTER 가능성 — try/catch
+        try { await db.prepare("ALTER TABLE sellers ADD COLUMN referred_by_influencer TEXT").run(); } catch {}
+        try { await db.prepare("ALTER TABLE sellers ADD COLUMN referral_bonus_until DATETIME").run(); } catch {}
+        await db.prepare(
+          "UPDATE sellers SET referred_by_influencer = ?, referral_bonus_until = ? WHERE id = ?"
+        ).bind(referredByInfluencer, until, sellerId).run();
+      } catch (e) {
+        console.warn('[seller-register] referred_by_influencer mapping failed (non-fatal):', e);
+      }
+    }
+
     // 7. 셀러 가입 신청 → 어드민 대시보드 알림 + 신청자 알림톡
     createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(swallow('seller:api:seller-management'));
 

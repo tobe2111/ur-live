@@ -8,10 +8,86 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
-import { Megaphone, Ban, RotateCcw } from 'lucide-react'
+import { Megaphone, Ban, RotateCcw, Handshake } from 'lucide-react'
 
 interface Blocked { influencer_id: string; reason: string; blocked_at: string }
 interface Recent { influencer_id: string; count: number; total_commission: number }
+interface Deal { id: number; influencer_id: string; commission_pct: number; status: string; proposed_by: string; message: string | null; ends_at: string | null; created_at: string }
+
+// 🛡️ 2026-05-16: 협업 deal — 매장이 인플에게 우대 commission 제안 + 받은 신청 응답
+function DealsSection() {
+  const [deals, setDeals] = useState<Deal[]>([])
+  const [proposing, setProposing] = useState(false)
+  const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }
+  useEffect(() => {
+    api.get('/api/seller-marketing/deals', { headers })
+      .then(r => { if (r.data?.success) setDeals(r.data.data || []) })
+      .catch(() => { /* silent */ })
+  }, [])
+  async function proposeDeal() {
+    const influencerId = prompt('우대 commission 제안할 인플루언서 ID (예: user_12345)')
+    if (!influencerId) return
+    const pctStr = prompt('우대 commission % (예: 1.5, 최대는 어드민 cap)')
+    const pct = Number(pctStr)
+    if (!Number.isFinite(pct) || pct <= 0) { toast.error('잘못된 %'); return }
+    const message = prompt('인플에게 보낼 메시지 (선택)') || ''
+    setProposing(true)
+    try {
+      const r = await api.post('/api/seller-marketing/deals/propose', { influencer_id: influencerId.trim(), commission_pct: pct, message }, { headers })
+      if (r.data?.success) {
+        toast.success('제안 발송')
+        setProposing(false)
+        const r2 = await api.get('/api/seller-marketing/deals', { headers })
+        if (r2.data?.success) setDeals(r2.data.data || [])
+      } else toast.error(r.data?.error || '실패')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '실패')
+    } finally { setProposing(false) }
+  }
+  async function respond(id: number, action: 'accept' | 'reject') {
+    if (!confirm(action === 'accept' ? '이 deal 수락?' : '거절?')) return
+    try {
+      await api.post(`/api/seller-marketing/deals/${id}/respond`, { action }, { headers })
+      toast.success(action === 'accept' ? '활성화됨' : '거절됨')
+      const r2 = await api.get('/api/seller-marketing/deals', { headers })
+      if (r2.data?.success) setDeals(r2.data.data || [])
+    } catch { toast.error('실패') }
+  }
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+          <Handshake className="w-4 h-4 text-blue-500" /> 인플 협업 deal ({deals.length})
+        </h3>
+        <button onClick={proposeDeal} disabled={proposing} className="text-[11px] px-3 py-1.5 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-40">
+          + 우대 commission 제안
+        </button>
+      </div>
+      {deals.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-4">인플과 우대 협업 제안/수락 가능. 영입 보너스와 합산되지 않고 max() 적용 (어드민 cap 까지).</p>
+      ) : (
+        <ul className="space-y-2">
+          {deals.map(d => (
+            <li key={d.id} className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{d.influencer_id}</p>
+                <p className="text-[10px] text-gray-500">우대 {d.commission_pct}% · {d.proposed_by === 'seller' ? '내가 제안' : '인플이 신청'} · {d.status}</p>
+                {d.message && <p className="text-[10px] text-gray-600 mt-0.5 italic">"{d.message}"</p>}
+              </div>
+              {d.status === 'proposed' && d.proposed_by === 'influencer' && (
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => respond(d.id, 'accept')} className="px-2 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-200 rounded">수락</button>
+                  <button onClick={() => respond(d.id, 'reject')} className="px-2 py-1 text-[10px] font-bold text-red-600 border border-red-200 rounded">거절</button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function SellerMarketingPage() {
   const navigate = useNavigate()
@@ -136,6 +212,9 @@ export default function SellerMarketingPage() {
             </ul>
           )}
         </div>
+
+        {/* 협업 deal — 우대 commission 제안 / 받기 */}
+        <DealsSection />
 
         {/* 차단 목록 */}
         <div className="bg-white border border-gray-200 rounded-xl p-5">

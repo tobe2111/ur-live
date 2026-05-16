@@ -10,6 +10,9 @@ export default function SellerRegisterPage() {
   const [searchParams] = useSearchParams()
   const agencyId = searchParams.get('agency')
   const inviteCode = searchParams.get('invite')?.toUpperCase()
+  // 🛡️ 2026-05-16: 인플루언서 referral (?ref=influencerId)
+  //   URL 파라미터 또는 (없으면) 사용자 직접 입력
+  const refFromUrl = searchParams.get('ref') || ''
   const [inviteAgency, setInviteAgency] = useState<{ name: string; contact: string } | null>(null)
   const [formData, setFormData] = useState({
     sellerType: 'influencer' as 'influencer' | 'store_owner' | 'both',
@@ -99,6 +102,7 @@ export default function SellerRegisterPage() {
         seller_type: formData.sellerType,
         agency_id: agencyId ? Number(agencyId) : undefined,
         invite_code: inviteCode || undefined,
+        referred_by_influencer: (formData as { referredByInfluencer?: string }).referredByInfluencer || refFromUrl || undefined,
       } as any)
 
       if (response.data.success) {

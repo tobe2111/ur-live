@@ -35,6 +35,74 @@ interface Attribution {
   paid_at: string | null
 }
 
+// 🛡️ 2026-05-16: 내가 영입한 매장 + 협업 deals
+function MyStoresAndDeals() {
+  const [referred, setReferred] = useState<Array<{ id: number; name: string; referral_bonus_until: string | null; total_commission: number }>>([])
+  const [deals, setDeals] = useState<Array<{ id: number; seller_id: number; seller_name: string | null; commission_pct: number; status: string; proposed_by: string; created_at: string; ends_at: string | null }>>([])
+  useEffect(() => {
+    api.get('/api/influencer-settlement/my-stores')
+      .then(r => {
+        if (r.data?.success) {
+          setReferred(r.data.data.referred || [])
+          setDeals(r.data.data.deals || [])
+        }
+      })
+      .catch(() => { /* silent */ })
+  }, [])
+  return (
+    <>
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
+        {referred.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://live.ur-team.com/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
+        ) : (
+          <ul className="space-y-2">
+            {referred.map(s => {
+              const remaining = s.referral_bonus_until ? Math.max(0, Math.ceil((new Date(s.referral_bonus_until).getTime() - Date.now()) / (30 * 86400_000))) : 0
+              return (
+                <li key={s.id} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
+                    <p className="text-[10px] text-gray-500">누적 commission {s.total_commission.toLocaleString()}원</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-1 rounded font-bold ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {remaining > 0 ? `보너스 ${remaining}개월 남음` : '보너스 종료'}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">🤝 매장 협업 ({deals.length}건)</h3>
+        {deals.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">매장과 우대 commission 협상 가능 (예: 1.5%). 매장 홍보 가서 직접 협의하거나 사이트에서 신청.</p>
+        ) : (
+          <ul className="space-y-2">
+            {deals.map(d => (
+              <li key={d.id} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{d.seller_name || `매장 ${d.seller_id}`}</p>
+                  <p className="text-[10px] text-gray-500">우대 {d.commission_pct}% · {d.proposed_by === 'seller' ? '매장 제안' : '내가 신청'}</p>
+                </div>
+                <span className={`text-[10px] px-2 py-1 rounded font-bold ${
+                  d.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                  d.status === 'proposed' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-gray-100 text-gray-500'
+                }`}>
+                  {d.status === 'active' ? '활성' : d.status === 'proposed' ? '대기' : d.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  )
+}
+
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   pending: { label: '환불기간 (대기)', color: 'bg-yellow-100 text-yellow-700' },
   available: { label: '송금 대기', color: 'bg-blue-100 text-blue-700' },
@@ -222,6 +290,9 @@ export default function InfluencerSettlementPage() {
             <Save className="w-4 h-4" /> {saving ? '저장 중...' : '정산 정보 저장'}
           </button>
         </div>
+
+        {/* 내가 영입한 매장 (Phase 1) + 협업 deals (Phase 2) */}
+        <MyStoresAndDeals />
 
         {/* 최근 내역 */}
         <div className="bg-white border border-gray-200 rounded-xl p-5">

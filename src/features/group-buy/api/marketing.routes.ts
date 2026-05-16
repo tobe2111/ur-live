@@ -196,6 +196,104 @@ influencerApp.put('/me', async (c) => {
   return c.json({ success: true })
 })
 
+// ───────── 매장 ↔ 인플 협업 deal (Phase 2) ─────────
+
+// 매장이 인플에게 우대 commission 제안
+sellerApp.post('/deals/propose', async (c) => {
+  const sellerId = getSellerId(c)
+  const body = await c.req.json<{ influencer_id: string; commission_pct: number; ends_at?: string; message?: string }>().catch(() => ({} as any))
+  const influencerId = String(body.influencer_id || '').trim()
+  const pct = Number(body.commission_pct)
+  if (!influencerId || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(influencerId)) {
+    return c.json({ success: false, error: 'invalid influencer_id' }, 400)
+  }
+  // platform cap 확인
+  const capRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'max_influencer_commission_pct'").first<{ value: string }>().catch(() => null)
+  const cap = Number(capRow?.value ?? 2)
+  if (!Number.isFinite(pct) || pct <= 0 || pct > cap) {
+    return c.json({ success: false, error: `commission % 은 0 ~ ${cap} 범위` }, 400)
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message)
+     VALUES (?, ?, ?, ?, 'proposed', 'seller', ?)
+     ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
+       commission_pct = excluded.commission_pct,
+       ends_at = excluded.ends_at,
+       status = 'proposed',
+       proposed_by = 'seller',
+       message = excluded.message,
+       created_at = datetime('now'),
+       responded_at = NULL`
+  ).bind(sellerId, influencerId, pct, body.ends_at || null, body.message || null).run()
+  return c.json({ success: true })
+})
+
+sellerApp.get('/deals', async (c) => {
+  const sellerId = getSellerId(c)
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, influencer_id, commission_pct, starts_at, ends_at, status, proposed_by, message, created_at, responded_at
+     FROM seller_influencer_deals WHERE seller_id = ?
+     ORDER BY created_at DESC LIMIT 100`
+  ).bind(sellerId).all().catch(() => ({ results: [] as any[] }))
+  return c.json({ success: true, data: results || [] })
+})
+
+sellerApp.post('/deals/:id/respond', async (c) => {
+  const sellerId = getSellerId(c)
+  const dealId = Number(c.req.param('id'))
+  const body = await c.req.json<{ action: 'accept' | 'reject' }>().catch(() => ({ action: 'reject' as const }))
+  const newStatus = body.action === 'accept' ? 'active' : 'rejected'
+  const result = await c.env.DB.prepare(
+    `UPDATE seller_influencer_deals SET status = ?, responded_at = datetime('now')
+     WHERE id = ? AND seller_id = ? AND status = 'proposed' AND proposed_by = 'influencer'`
+  ).bind(newStatus, dealId, sellerId).run()
+  if (!result.meta?.changes) return c.json({ success: false, error: 'not found or already responded' }, 404)
+  return c.json({ success: true, status: newStatus })
+})
+
+// 인플이 매장에 우대 협업 신청
+influencerApp.post('/deals/propose', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const body = await c.req.json<{ seller_id: number; commission_pct: number; ends_at?: string; message?: string }>().catch(() => ({} as any))
+  const sellerId = Number(body.seller_id)
+  const pct = Number(body.commission_pct)
+  if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'invalid seller_id' }, 400)
+  const capRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'max_influencer_commission_pct'").first<{ value: string }>().catch(() => null)
+  const cap = Number(capRow?.value ?? 2)
+  if (!Number.isFinite(pct) || pct <= 0 || pct > cap) return c.json({ success: false, error: `0 ~ ${cap}` }, 400)
+  await c.env.DB.prepare(
+    `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message)
+     VALUES (?, ?, ?, ?, 'proposed', 'influencer', ?)
+     ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
+       commission_pct = excluded.commission_pct, ends_at = excluded.ends_at, status = 'proposed', proposed_by = 'influencer',
+       message = excluded.message, created_at = datetime('now'), responded_at = NULL`
+  ).bind(sellerId, userId, pct, body.ends_at || null, body.message || null).run()
+  return c.json({ success: true })
+})
+
+// 인플 측 — 내가 영입한 매장 + 받은/보낸 deal 목록
+influencerApp.get('/my-stores', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  // 내가 영입한 매장 (referred_by_influencer = me)
+  const referred = await c.env.DB.prepare(
+    `SELECT s.id, s.name, s.referral_bonus_until,
+            (SELECT COALESCE(SUM(commission_amount), 0) FROM influencer_attributions
+             WHERE influencer_id = ? AND seller_id = s.id) AS total_commission
+     FROM sellers s
+     WHERE s.referred_by_influencer = ?
+     ORDER BY s.id DESC LIMIT 100`
+  ).bind(userId, userId).all().catch(() => ({ results: [] as any[] }))
+  // 협업 deals
+  const deals = await c.env.DB.prepare(
+    `SELECT d.id, d.seller_id, s.name AS seller_name, d.commission_pct, d.starts_at, d.ends_at, d.status, d.proposed_by, d.message, d.created_at
+     FROM seller_influencer_deals d
+     LEFT JOIN sellers s ON s.id = d.seller_id
+     WHERE d.influencer_id = ?
+     ORDER BY d.created_at DESC LIMIT 100`
+  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+  return c.json({ success: true, data: { referred: referred.results || [], deals: deals.results || [] } })
+})
+
 // ───────── 어드민 — 인플 송금 처리 ─────────
 
 adminApp.get('/payouts', async (c) => {

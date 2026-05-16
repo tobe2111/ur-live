@@ -26,6 +26,9 @@ interface Settings {
   influencer_payout_frequency: string
   influencer_payout_day_of_month: string
   influencer_deal_bonus_pct: string
+  seller_referral_bonus_pct: string
+  seller_referral_bonus_months: string
+  max_influencer_commission_pct: string
 }
 
 const DEFAULTS: Settings = {
@@ -38,6 +41,9 @@ const DEFAULTS: Settings = {
   influencer_payout_frequency: 'monthly',
   influencer_payout_day_of_month: '1',
   influencer_deal_bonus_pct: '20',
+  seller_referral_bonus_pct: '1',
+  seller_referral_bonus_months: '6',
+  max_influencer_commission_pct: '2',
 }
 
 export default function AdminCommissionSettingsPage() {
@@ -216,6 +222,48 @@ export default function AdminCommissionSettingsPage() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
             />
             <p className="text-[11px] text-gray-500 mt-1">인플이 현금 대신 딜 포인트 선택 시 추가 보너스 (락인 효과 유도)</p>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 space-y-4">
+            <h4 className="text-sm font-bold text-gray-900">매장 영입 보너스 (인플 → 신규 매장)</h4>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">영입 보너스 추가 % (기본 commission + 이만큼)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="5"
+                value={form.seller_referral_bonus_pct}
+                onChange={(e) => setForm((f) => ({ ...f, seller_referral_bonus_pct: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">인플이 새 매장 영입 시 그 매장 매출 commission 에 추가 가산</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">영입 보너스 기간 (개월)</label>
+              <input
+                type="number"
+                min="0"
+                max="60"
+                value={form.seller_referral_bonus_months}
+                onChange={(e) => setForm((f) => ({ ...f, seller_referral_bonus_months: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">매장 가입 후 이 기간 동안 영입 보너스 적용 (기본 6개월)</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">인플 commission 최대 cap (%)</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0.5"
+                max="10"
+                value={form.max_influencer_commission_pct}
+                onChange={(e) => setForm((f) => ({ ...f, max_influencer_commission_pct: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">기본 + 영입 + 협업 deal 모두 합산 후 이 % 까지만 (셀러 보호)</p>
+            </div>
           </div>
         </div>
 
