@@ -243,75 +243,6 @@ export default function MainHomePage() {
         {/* SVG 그라디언트 배너 — 페이지네이션 */}
         <SocarStyleBanner />
 
-      {/* ═══ Region Hero (어드민 배너를 풀스크린 배경으로) ═══
-           🛡️ 2026-04-22: 어드민 등록 배너(image_url)를 우선 배경으로 사용.
-           - 배너 등록되어 있으면: 배너 이미지가 배경, 배너 클릭 시 link_url 이동
-           - 배너 없으면: 기존처럼 featured 상품 이미지를 배경으로 fallback */}
-      <div className="relative" style={{ height: 300, background: '#000' }}>
-        {/* 배경 이미지 (어드민 배너 우선, fallback featured) — LCP 최적화 */}
-        {(heroBanner?.image_url || featured?.image_url) && (
-          <img
-            src={heroBanner?.image_url || featured?.image_url}
-            alt={heroBanner?.title || featured?.name || t('mainHome.altBanner')}
-            className="absolute inset-0 w-full h-full object-cover opacity-55"
-            fetchPriority="high"
-            decoding="async"
-          />
-        )}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 30%, rgba(0,0,0,0) 55%, rgba(5,5,5,1) 100%)' }} />
-        {/* 배너 클릭 핸들러 (link_url 있을 때) — 텍스트/CTA 버튼 위 z-index 보다 낮게 */}
-        {heroBanner?.link_url && (
-          <button
-            onClick={() => {
-              const link = String(heroBanner.link_url || '').trim()
-              if (link.startsWith('/') && !link.startsWith('//')) navigate(link)
-              else if (link.startsWith('http://') || link.startsWith('https://')) window.open(link, '_blank', 'noopener,noreferrer')
-            }}
-            aria-label={t('mainHome.bannerAria', { defaultValue: '배너: {{title}}', title: heroBanner.title })}
-            className="absolute inset-0 z-0 cursor-pointer"
-          />
-        )}
-
-        {/* Region + featured content */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <button
-            onClick={() => setRegionModalOpen(true)}
-            aria-label={t('mainHome.regionPickerAria', { defaultValue: '지역 선택' })}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/[0.15] backdrop-blur-md border border-white/30 shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] animate-pulse shrink-0" />
-            <MapPin className="w-3 h-3 text-white/80" />
-            <span className="text-[12px] font-bold text-white">{region}</span>
-            <ChevronDown className="w-2.5 h-2.5 text-white/70" />
-          </button>
-          <p className="text-[11px] text-white/70 font-semibold tracking-widest mt-3">{t('mainHome.nowDeadline')}</p>
-          <h1 className="text-[26px] font-black text-white mt-1" style={{ letterSpacing: '-0.04em', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
-            {featured?.name || t('mainHome.fallbackProduct')}
-          </h1>
-          {featured && (
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-[12px] font-extrabold text-red-400">{featuredDisc}%</span>
-              <span className="text-[18px] font-black text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(featured.price) })}</span>
-              {featured.original_price && <span className="text-[10px] text-white/55 line-through">{formatNumber(featured.original_price)}</span>}
-            </div>
-          )}
-        </div>
-
-        {/* Bottom CTA */}
-        <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 z-10">
-          <div className="flex-1 rounded-xl p-2.5 flex items-center gap-2 bg-red-500/[0.18] backdrop-blur-md border border-red-500/40">
-            <Clock className="w-3.5 h-3.5 text-red-300 shrink-0" />
-            <div>
-              <p className="text-[11px] text-white font-bold leading-tight">{featured ? fmtEnd(featured.group_buy_deadline) : t('mainHome.ongoing')}</p>
-              <p className="text-[10px] text-red-300 font-semibold">
-                {featured && (featured.group_buy_current || 0) > 0
-                  ? t('mainHome.buyersCount', { count: featured.group_buy_current }) + ' ' + t('mainHome.buyingNow')
-                  : t('mainHome.deadlineSoon')}
-              </p>
-            </div>
-          </div>
-          <button onClick={() => featured && navigate(`/products/${featured.id}`)} className="rounded-xl px-4 py-3 shrink-0 bg-white text-black text-[12px] font-extrabold">{t('mainHome.buyNow')}</button>
-        </div>
-      </div>
 
       {/* ═══ Quick 3-entry ═══ */}
       <div className="px-4 pt-4 pb-1">
@@ -542,18 +473,6 @@ export default function MainHomePage() {
         <div className="px-4 pt-5 pb-3">
           <p className="text-[10px] text-blue-500 dark:text-blue-300 font-extrabold tracking-[0.14em]">{t('mainHome.specialTag')}</p>
           <p className="text-[22px] font-black text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
-        </div>
-
-        {/* Category grid */}
-        <div className="px-4 pb-4">
-          <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-y-4">
-            {CATEGORIES.map(c => (
-              <button key={c.k} onClick={() => navigate(`/browse?category=${c.k}`)} className="flex flex-col items-center gap-1.5">
-                <div className="rounded-2xl flex items-center justify-center w-[52px] h-[52px] text-[22px]" style={{ background: c.bg }}>{c.i}</div>
-                <span className="text-[11px] text-gray-700 dark:text-gray-200 font-semibold">{c.l}</span>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* 실시간 랭킹 */}
