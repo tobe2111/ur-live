@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Users, Ticket, DollarSign, AlertTriangle, TrendingUp, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
@@ -25,6 +26,7 @@ interface KpiData {
 }
 
 export default function SellerKpiDashboard() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [data, setData] = useState<KpiData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,27 +79,29 @@ export default function SellerKpiDashboard() {
   const items = [
     {
       icon: Users,
-      label: '단골',
+      label: t('seller.kpi.followers', { defaultValue: '단골' }),
       value: data.followers.total,
-      sub: data.followers.recent_7d > 0 ? `+${data.followers.recent_7d}/7일` : '신규 0',
+      sub: data.followers.recent_7d > 0
+        ? t('seller.kpi.followersRecent', { defaultValue: '+{{n}}/7일', n: data.followers.recent_7d })
+        : t('seller.kpi.followersNoneRecent', { defaultValue: '신규 0' }),
       color: 'text-pink-600',
       bg: 'bg-pink-50',
       path: '/seller/followers',
     },
     {
       icon: Ticket,
-      label: '진행 공구',
+      label: t('seller.kpi.activeGroups', { defaultValue: '진행 공구' }),
       value: data.active_groups,
-      sub: '개',
+      sub: t('seller.kpi.unitCount', { defaultValue: '개' }),
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       path: '/seller/group-buy',
     },
     {
       icon: DollarSign,
-      label: '이번 달',
+      label: t('seller.kpi.thisMonth', { defaultValue: '이번 달' }),
       value: data.monthly_revenue_est,
-      sub: '원',
+      sub: t('seller.kpi.unitWon', { defaultValue: '원' }),
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
       path: '/seller/settlement',
@@ -105,9 +109,11 @@ export default function SellerKpiDashboard() {
     },
     {
       icon: AlertTriangle,
-      label: '분쟁',
+      label: t('seller.kpi.disputes', { defaultValue: '분쟁' }),
       value: data.pending_disputes,
-      sub: data.pending_disputes > 0 ? '검토 대기' : '없음',
+      sub: data.pending_disputes > 0
+        ? t('seller.kpi.disputesPending', { defaultValue: '검토 대기' })
+        : t('seller.kpi.disputesNone', { defaultValue: '없음' }),
       color: data.pending_disputes > 0 ? 'text-amber-600' : 'text-gray-400',
       bg: data.pending_disputes > 0 ? 'bg-amber-50' : 'bg-gray-50',
       path: '/seller/group-buy',
@@ -120,7 +126,7 @@ export default function SellerKpiDashboard() {
         <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-pink-500" /> KPI
         </h3>
-        <span className="text-[10px] text-gray-400">실시간</span>
+        <span className="text-[10px] text-gray-400">{t('seller.kpi.realtime', { defaultValue: '실시간' })}</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {items.map(item => (
