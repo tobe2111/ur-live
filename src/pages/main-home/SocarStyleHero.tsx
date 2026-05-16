@@ -40,7 +40,7 @@ export default function SocarStyleHero({ userName, availableVouchers = 0 }: Prop
       {/* 인사 + 슬로건 */}
       <div className="mb-4">
         <h2 className="text-[15px] font-medium text-gray-700 dark:text-gray-300">
-          ✨ {userName ? `${userName}님` : '안녕하세요'}, 오늘도 좋은 하루
+          ✨ 안녕하세요 <span className="font-bold text-gray-900 dark:text-white">{userName?.trim() || '유저'}</span>님, 오늘도 좋은 하루
         </h2>
         <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 tracking-tight">
           특가는 <span className="text-pink-500">역시 유어딜</span>
