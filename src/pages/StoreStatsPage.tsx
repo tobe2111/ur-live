@@ -120,7 +120,9 @@ export default function StoreStatsPage() {
       const success = res.data?.success === true
       setRecentUses(prev => [{ code, success, reason: success ? undefined : (res.data?.error as string), at: Date.now() }, ...prev].slice(0, 10))
       if (success) {
-        toast.success(res.data?.message || '바우처 사용 완료!')
+        // 🛡️ 2026-05-16: 사용 처리 성공 시 어떤 메뉴인지 큰 toast + 자동 5초 표시
+        const menuName = res.data?.data?.product_name || stats?.product_name || ''
+        toast.success(`✅ 메뉴 제공: ${menuName}`, { duration: 5000 })
         setVoucherCode('')
         // stats refresh
         try {
@@ -266,13 +268,21 @@ export default function StoreStatsPage() {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
         </div>
 
-        {/* 🛡️ 2026-05-13 (공구 UX): 가게 현장에서 바우처 사용 처리 — 손님 코드 입력 + 사용 처리 */}
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border-2 border-pink-200 dark:border-pink-900 mb-5">
+        {/* 🛡️ 2026-05-16 (선물하기 모델): 손님이 미리 결제한 메뉴 제공 */}
+        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-900 mb-5">
           <div className="flex items-center gap-2 mb-3">
-            <ScanLine className="w-5 h-5 text-pink-600" />
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용 처리</h3>
+            <ScanLine className="w-5 h-5 text-emerald-600" />
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">손님 식권 확인 → 메뉴 제공</h3>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">QR 스캔하거나 코드 직접 입력 후 사용 처리.</p>
+          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 mb-3">
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">📋 사용 방법</p>
+            <ol className="text-xs text-emerald-800 dark:text-emerald-200 mt-1 space-y-0.5 list-decimal pl-4">
+              <li>손님 QR 스캔 또는 코드 입력</li>
+              <li>화면에 "메뉴 X 제공" 확인 후 음식 만들기</li>
+              <li>POS / T오더 결제 X (이미 유어딜에서 결제 완료)</li>
+              <li>추가 주문은 T오더로 별도 받기</li>
+            </ol>
+          </div>
           {/* QR 스캔 버튼 (메인) */}
           <button
             onClick={() => setScannerOpen(true)}

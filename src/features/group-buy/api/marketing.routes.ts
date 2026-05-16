@@ -429,6 +429,83 @@ influencerApp.get('/my-stores', async (c) => {
   return c.json({ success: true, data: { referred: referred.results || [], deals: deals.results || [] } })
 })
 
+// ───────── 인플 지역 ranking (공개) ─────────
+
+// 🛡️ 2026-05-16: 인플루언서 매장 영입 + commission 매출 ranking — 지역/기간/기준 별
+const rankingApp = new Hono<{ Bindings: Env }>()
+
+rankingApp.get('/', async (c) => {
+  const DB = c.env.DB
+  const region = c.req.query('region') || 'all'         // 'all' / 'seoul' / 'gangnam' / etc.
+  const period = c.req.query('period') || 'month'       // 'month' (이번 달) / 'all' (누적)
+  const metric = c.req.query('metric') || 'commission'  // 'commission' / 'count'
+
+  // 기간 필터
+  const timeFilter = period === 'month'
+    ? "AND a.created_at >= datetime('now', 'start of month')"
+    : ''
+
+  // 지역 필터 — products.restaurant_address LIKE 매칭
+  const regionMap: Record<string, string> = {
+    seoul: '서울', busan: '부산', incheon: '인천', daegu: '대구', daejeon: '대전',
+    gwangju: '광주', ulsan: '울산', sejong: '세종', gyeonggi: '경기',
+    gangnam: '강남구', seocho: '서초구', mapo: '마포구', jongno: '종로구', yongsan: '용산구',
+    songpa: '송파구', gangdong: '강동구', seongdong: '성동구', gwangjin: '광진구',
+  }
+  const regionKw = regionMap[region]
+  const regionFilter = regionKw ? `AND p.restaurant_address LIKE '%${regionKw}%'` : ''
+
+  const orderBy = metric === 'count' ? 'attribution_count' : 'total_commission'
+
+  try {
+    const { results } = await DB.prepare(
+      `SELECT a.influencer_id,
+              COUNT(*) AS attribution_count,
+              COALESCE(SUM(a.commission_amount), 0) AS total_commission,
+              COUNT(DISTINCT a.seller_id) AS seller_count,
+              COUNT(DISTINCT a.product_id) AS product_count
+       FROM influencer_attributions a
+       LEFT JOIN products p ON p.id = a.product_id
+       WHERE a.status != 'clawed_back'
+         ${timeFilter}
+         ${regionFilter}
+       GROUP BY a.influencer_id
+       ORDER BY ${orderBy} DESC
+       LIMIT 100`
+    ).all<{ influencer_id: string; attribution_count: number; total_commission: number; seller_count: number; product_count: number }>()
+
+    // 익명화 여부 처리 — influencer_balances.ranking_public = 0 인 인플은 익명화
+    const publicMap = new Map<string, boolean>()
+    try {
+      const ids = (results || []).map(r => r.influencer_id)
+      if (ids.length > 0) {
+        const ph = ids.map(() => '?').join(',')
+        const { results: privs } = await DB.prepare(
+          `SELECT influencer_id, COALESCE(ranking_public, 1) AS ranking_public FROM influencer_balances WHERE influencer_id IN (${ph})`
+        ).bind(...ids).all<{ influencer_id: string; ranking_public: number }>()
+        for (const p of (privs || [])) publicMap.set(p.influencer_id, Number(p.ranking_public) === 1)
+      }
+    } catch { /* ranking_public 컬럼 미존재 시 default public */ }
+
+    const ranked = (results || []).map((r, i) => {
+      const isPublic = publicMap.get(r.influencer_id) ?? true
+      return {
+        rank: i + 1,
+        influencer_id: isPublic ? r.influencer_id : null,
+        display_name: isPublic ? r.influencer_id : `익명 인플 #${(i + 1).toString().padStart(3, '0')}`,
+        attribution_count: r.attribution_count,
+        total_commission: r.total_commission,
+        seller_count: r.seller_count,
+        product_count: r.product_count,
+      }
+    })
+
+    return c.json({ success: true, data: ranked, region, period, metric })
+  } catch (e) {
+    return c.json({ success: false, error: 'ranking_unavailable' }, 503)
+  }
+})
+
 // ───────── 인플 분쟁 신고 + 어드민 조정 ─────────
 
 influencerApp.post('/disputes', async (c) => {
@@ -579,4 +656,4 @@ discoverApp.get('/products', async (c) => {
   return c.json({ success: true, data: eligible })
 })
 
-export { sellerApp as sellerMarketingRoutes, influencerApp as influencerSettlementRoutes, adminApp as adminPayoutRoutes, discoverApp as influencerDiscoverRoutes }
+export { sellerApp as sellerMarketingRoutes, influencerApp as influencerSettlementRoutes, adminApp as adminPayoutRoutes, discoverApp as influencerDiscoverRoutes, rankingApp as influencerRankingsRoutes }
