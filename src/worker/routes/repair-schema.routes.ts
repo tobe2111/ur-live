@@ -213,6 +213,16 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     { desc: 'seed: kakao_review_auto_approve', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('kakao_review_auto_approve', '0', '0=수동 검증 / 1=자동 승인', datetime('now'))" },
     // 🛡️ 2026-05-16: 인플 ranking 공개 여부 (default 1 = 공개)
     { desc: 'influencer_balances.ranking_public', sql: "ALTER TABLE influencer_balances ADD COLUMN ranking_public INTEGER DEFAULT 1" },
+    // 🛡️ 2026-05-16: sellers 신규 컬럼 보강 — production /api/sellers/:id/public 500 fix
+    { desc: 'sellers.banner_url', sql: "ALTER TABLE sellers ADD COLUMN banner_url TEXT" },
+    { desc: 'sellers.brand_color', sql: "ALTER TABLE sellers ADD COLUMN brand_color TEXT" },
+    { desc: 'sellers.external_live_tiktok', sql: "ALTER TABLE sellers ADD COLUMN external_live_tiktok TEXT" },
+    { desc: 'sellers.external_live_instagram', sql: "ALTER TABLE sellers ADD COLUMN external_live_instagram TEXT" },
+    { desc: 'sellers.external_live_facebook', sql: "ALTER TABLE sellers ADD COLUMN external_live_facebook TEXT" },
+    { desc: 'sellers.kakao_chat_url', sql: "ALTER TABLE sellers ADD COLUMN kakao_chat_url TEXT" },
+    { desc: 'sellers.representative_name', sql: "ALTER TABLE sellers ADD COLUMN representative_name TEXT" },
+    { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },
+    { desc: 'influencer_balances.payout_method', sql: "ALTER TABLE influencer_balances ADD COLUMN payout_method TEXT DEFAULT 'cash'" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];

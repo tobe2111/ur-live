@@ -87,15 +87,9 @@
       <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
     </noscript>
 
-    <!-- 🛡️ 2026-05-15 (Lighthouse): Pretendard 폰트 preload — LCP 텍스트 임팩트 보호.
-         Variable font subset 1개만 preload (전체 weight 한 파일에 포함됨). -->
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      crossorigin
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2-subset/PretendardVariable.subset.woff2"
-    />
+    <!-- 🛡️ 2026-05-16: Pretendard preload 제거 — dynamic subset CSS 가 알아서 woff2 chunks 로드.
+         이전 preload 한 PretendardVariable.subset.woff2 single 파일은 dynamic-subset 모드에선 404.
+         dynamic subset CSS (위 link rel="stylesheet") 가 필요한 글자만 로드 = LCP 영향 더 적음. -->
 
     <!-- 🛡️ 2026-05-15 (Lighthouse): 첫 paint 최적화 — 핵심 CSS inline.
          Tailwind preflight + 페이지 진입 시 깜빡임 방지. -->
