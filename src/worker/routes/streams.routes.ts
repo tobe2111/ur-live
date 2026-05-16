@@ -176,7 +176,13 @@ streamsRouter.get('/', async (c) => {
           ${withTier ? 's.tier             AS seller_tier,' : "NULL              AS seller_tier,"}
           ${withTier ? 'COALESCE(s.exposure_weight, 1.0) AS exposure_weight,' : '1.0               AS exposure_weight,'}
           ${withTier ? 'COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS seller_shipping_fee,' : '3000              AS seller_shipping_fee,'}
-          ${withTier ? '(ad.slot_id IS NOT NULL) AS has_ad_slot,' : '0                 AS has_ad_slot,'}
+          ${withTier ? `EXISTS(
+            SELECT 1 FROM ad_slots ad
+            WHERE ad.current_seller_id = ls.seller_id
+              AND ad.is_active = 1
+              AND ad.expires_at IS NOT NULL
+              AND ad.expires_at > datetime('now')
+          ) AS has_ad_slot,` : '0                 AS has_ad_slot,'}
           cp.id              AS current_product_id,
           cp.name            AS current_product_name,
           cp.price           AS current_product_price,
@@ -187,15 +193,17 @@ streamsRouter.get('/', async (c) => {
           cp.description     AS current_product_description
         FROM live_streams ls
         LEFT JOIN sellers s ON s.id = ls.seller_id
-        ${withTier ? `LEFT JOIN ad_slots ad ON ad.current_seller_id = ls.seller_id
-            AND ad.is_active = 1
-            AND ad.expires_at IS NOT NULL
-            AND ad.expires_at > datetime('now')` : ''}
         LEFT JOIN products cp ON cp.id = ls.current_product_id
         ${whereClause}
         ORDER BY
           CASE ls.status WHEN 'live' THEN 0 WHEN 'scheduled' THEN 1 ELSE 2 END,
-          ${withTier ? 'CASE WHEN ad.slot_id IS NOT NULL THEN 0 ELSE 1 END,' : ''}
+          ${withTier ? `CASE WHEN EXISTS(
+            SELECT 1 FROM ad_slots ad2
+            WHERE ad2.current_seller_id = ls.seller_id
+              AND ad2.is_active = 1
+              AND ad2.expires_at IS NOT NULL
+              AND ad2.expires_at > datetime('now')
+          ) THEN 0 ELSE 1 END,` : ''}
           ${withTier
             ? `(COALESCE(s.exposure_weight, 1.0) *
                 (1.0 / (1 + (julianday('now') - julianday(ls.created_at)) * 0.5))
