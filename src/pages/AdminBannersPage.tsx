@@ -163,15 +163,17 @@ export default function AdminBannersPage() {
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k017', { defaultValue: '이미지 URL *' })}</label>
               <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="https://..." required />
               <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <p className="text-xs font-semibold text-blue-700 mb-1.5">{t('admin.banners.k018', { defaultValue: '권장 이미지 규격' })}</p>
+                <p className="text-xs font-semibold text-blue-700 mb-1.5">📐 권장 이미지 규격 (메인 hero 배너)</p>
                 <ul className="space-y-1 text-xs text-blue-600">
-                  <li><span className="font-medium">{t('admin.banners.k019', { defaultValue: 'PC 비율:' })}</span> {t('admin.banners.k020', { defaultValue: '21:9 (울트라와이드) — 예) 2100 × 900 px' })}</li>
-                  <li><span className="font-medium">{t('admin.banners.k021', { defaultValue: '모바일 비율:' })}</span> {t('admin.banners.k022', { defaultValue: '16:9 — 예) 1920 × 1080 px' })}</li>
-                  <li><span className="font-medium">{t('admin.banners.k023', { defaultValue: '최소 가로폭:' })}</span> {t('admin.banners.k024', { defaultValue: '1200 px 이상' })}</li>
-                  <li><span className="font-medium">{t('admin.banners.k025', { defaultValue: '최대 용량:' })}</span> {t('admin.banners.k026', { defaultValue: '2MB 이하' })}</li>
-                  <li><span className="font-medium">{t('admin.banners.k027', { defaultValue: '형식:' })}</span> JPG, PNG, WebP</li>
+                  <li><strong>⭐ 권장 사이즈:</strong> 1600 × 500 px (16:5) — 모바일/PC 모두 자연</li>
+                  <li>대체 사이즈: 1200 × 420 px (≈2.86:1)</li>
+                  <li><strong>안전영역:</strong> 이미지 중앙 16:7 (1120×490) 안에 핵심 텍스트/로고</li>
+                  <li>화면 적용 aspect: 모바일 16:7 / sm 21:6 / PC 28:5 (max-h 280px)</li>
+                  <li><strong>최대 용량:</strong> 500KB 이하 (큰 이미지 = 페이지 느려짐)</li>
+                  <li><strong>형식:</strong> WebP &gt; PNG &gt; JPEG</li>
                 </ul>
-                <p className="text-xs text-blue-500 mt-1.5">{t('admin.banners.k028', { defaultValue: '※ 여러 배너 등록 시 5초 간격으로 자동 슬라이드됩니다.' })}</p>
+                <p className="text-xs text-blue-500 mt-1.5">※ 여러 배너 등록 시 사용자가 dots 클릭으로 전환 / 자동 슬라이드 X</p>
+                <p className="text-xs text-blue-500 mt-0.5">※ image_url 없이 등록 시 코드 fallback 그라디언트 (4종) 사용</p>
               </div>
               {formData.image_url && <img src={formData.image_url} alt={t('admin.banners.k029', { defaultValue: "미리보기" })} className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" loading="lazy" />}
             </div>
