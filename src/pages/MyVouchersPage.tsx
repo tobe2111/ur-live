@@ -147,10 +147,40 @@ function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) 
   )
 }
 
-function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }) {
+function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClose: () => void }) {
   const { t } = useTranslation()
   useEscapeKey(onClose)
+  const [voucher, setVoucher] = useState(initialVoucher)
+  const [now, setNow] = useState(Date.now())
   const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
+
+  // 🛡️ 2026-05-16: 실시간 status 폴링 (5초마다) — 사장님이 스캔하면 즉시 "사용 완료" 표시
+  //   백엔드 atomic CAS 로 재사용 자체는 차단되어 있음. UI 가 늦게 인지하는 것만 해결.
+  useEffect(() => {
+    if (voucher.status !== 'unused') return
+    const t = setInterval(async () => {
+      try {
+        const res = await api.get(`/api/vouchers/verify/${voucher.code}`)
+        if (res.data?.success && res.data?.data?.status) {
+          const newStatus = res.data.data.status
+          if (newStatus !== voucher.status) {
+            setVoucher(v => ({ ...v, status: newStatus, used_at: res.data.data.used_at || v.used_at }))
+          }
+        }
+      } catch { /* silent */ }
+    }, 5000)
+    return () => clearInterval(t)
+  }, [voucher.code, voucher.status])
+
+  // 시간 점멸 (캡쳐 도용 방지 — 사용 가능 상태일 때만)
+  useEffect(() => {
+    if (voucher.status !== 'unused') return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [voucher.status])
+
+  const isUsed = voucher.status === 'used'
+  const isExpired = voucher.status === 'expired' || voucher.status === 'refunded'
 
   async function shareVoucher() {
     const shareData = {
@@ -178,21 +208,51 @@ function QRModal({ voucher, onClose }: { voucher: Voucher; onClose: () => void }
         {voucher.restaurant_name && (
           <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-4">{voucher.restaurant_name}</p>
         )}
-        <div className="flex justify-center mb-4">
-          <VoucherQRCode value={qrUrl} size={160} />
+        <div className="flex justify-center mb-4 relative">
+          <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
+            <VoucherQRCode value={qrUrl} size={160} />
+          </div>
+          {/* 🛡️ 2026-05-16: 사용 완료 / 만료 시 큰 오버레이 (재사용 방지) */}
+          {isUsed && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/10 rounded-xl">
+              <div className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center">
+                <CheckCircle className="w-12 h-12 text-white" strokeWidth={3} />
+              </div>
+              <p className="mt-2 text-base font-extrabold text-emerald-700">사용 완료</p>
+              {voucher.used_at && (
+                <p className="text-[10px] text-emerald-600">{new Date(voucher.used_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+              )}
+            </div>
+          )}
+          {isExpired && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/10 rounded-xl">
+              <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center">
+                <XCircle className="w-12 h-12 text-white" strokeWidth={3} />
+              </div>
+              <p className="mt-2 text-base font-extrabold text-red-700">
+                {voucher.status === 'expired' ? '만료됨' : '환불됨'}
+              </p>
+            </div>
+          )}
         </div>
         <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-lg px-3 py-2 text-center">
-          <code className="text-sm font-mono font-bold text-pink-500">{voucher.code}</code>
+          <code className={`text-sm font-mono font-bold ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-pink-500'}`}>{voucher.code}</code>
         </div>
+        {/* 🛡️ 2026-05-16: 캡쳐 도용 방지 — 실시간 시간 표시 (사용 가능 상태만) */}
+        {!isUsed && !isExpired && (
+          <p className="text-[10px] text-gray-400 text-center mt-1 font-mono">
+            {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </p>
+        )}
 
-        {/* 🛡️ 2026-05-16: 차감 금액 + 사용 안내 (사장님이 손님 화면 보고 즉시 이해) */}
-        {voucher.status === 'unused' && (voucher.applied_price || voucher.product_price) && (
-          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-center">
-            <p className="text-[11px] text-amber-700 font-medium">💳 결제 시 차감</p>
-            <p className="text-base font-extrabold text-amber-800 mt-0.5">
-              {(voucher.applied_price ?? voucher.product_price ?? 0).toLocaleString()}원 할인
+        {/* 🛡️ 2026-05-16: 선물하기 모델 — voucher = "이 메뉴 사놓음" (할인권 X) */}
+        {voucher.status === 'unused' && (
+          <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-center">
+            <p className="text-[11px] text-emerald-700 font-medium">🎁 이미 결제 완료</p>
+            <p className="text-base font-extrabold text-emerald-800 mt-0.5">
+              {voucher.product_name}
             </p>
-            <p className="text-[10px] text-amber-600 mt-0.5">사장님께 보여주시면 차액만 결제하세요</p>
+            <p className="text-[10px] text-emerald-600 mt-0.5">매장에서 추가 결제 없이 받으세요</p>
           </div>
         )}
         {voucher.usage_guide && voucher.status === 'unused' && (

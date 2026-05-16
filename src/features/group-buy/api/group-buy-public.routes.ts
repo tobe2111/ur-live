@@ -224,6 +224,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         restaurant_name: voucher.restaurant_name,
         product_image: voucher.product_image,
         expires_at: voucher.expires_at,
+        used_at: voucher.used_at,  // 🛡️ 2026-05-16: 사용 시각 — 폴링 시 손님 화면에 표시
       },
     })
   })
