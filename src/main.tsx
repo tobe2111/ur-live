@@ -189,43 +189,29 @@ if (import.meta.env.PROD) {
 }
 
 // 🚨 2026-04-27 (긴급 롤백): PWA SW 가 OAuth redirect 차단 → 모든 페이지 ERR_FAILED.
-//   "FetchEvent resulted in a network error: a redirected response was used for
-//   a request whose redirect mode is not 'follow'"
-//   원인: vite-plugin-pwa 의 navigateFallback 가 카카오 OAuth redirect 도 가로챔.
-//   해결: 옛 SW 강제 unregister + 캐시 비우기.
-//
 // 🛡️ 2026-04-28: push-sw.js (push-only, fetch 핸들러 없음) 는 보호.
-//   PushNotificationSetup 이 명시적으로 등록한 SW 는 unregister 대상 제외.
-// 🛡️ 2026-04-30: pwa-sw.js 도 보호 — PWA installability 위해 등록한 minimal SW.
+// 🛡️ 2026-05-16 영구 fix: pwa-sw.js 도 unregister 대상 추가.
+//   원인: pwa-sw.js v1 (cache-first) 가 사용자 폰에 old chunk 캐시 → 새 빌드 후
+//   무한 로딩 / 콘솔 empty / MIME type 오류 사고 (2026-05-16).
+//   해결: pwa-sw.js 도 강제 unregister + 모든 ur-pwa-* 캐시 삭제.
+//        PWA 설치 가능성보다 안정성이 우선. push-sw.js 만 보호.
 try {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
       regs.forEach(r => {
         const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
-        // push-sw.js / pwa-sw.js 는 보호 (의도적 SW)
-        if (scriptUrl.includes('push-sw.js') || scriptUrl.includes('pwa-sw.js')) return
+        // push-sw.js 만 보호 (push 알림 전용, fetch handler 없음)
+        if (scriptUrl.includes('push-sw.js')) return
         r.unregister().catch(swallow('main:sw-unregister'))
       })
     }).catch(swallow('main:sw-getRegistrations'))
     if ('caches' in window) {
       caches.keys().then(keys => keys.forEach(k => {
-        // PWA SW 의 캐시 (ur-pwa-v1) 는 보호
-        if (k.startsWith('ur-pwa-')) return
+        // 모든 캐시 삭제 (ur-pwa-* 포함)
         caches.delete(k)
       })).catch(swallow('main:caches-clear'))
     }
-
-    // 🛡️ 2026-04-30: PWA 설치 가능 만들기 위한 minimal SW 등록.
-    //   인앱 webview 면 skip (Kakao webview SW 차단 + OAuth 흐름 보호).
-    try {
-      // Lazy detect — UA 패턴 minimal check (in-app-browser.ts import 보다 가벼움)
-      const ua = navigator.userAgent || ''
-      const isInApp = /KAKAOTALK|NAVER\(inapp|FB_IAB|FBAV|FBAN|Instagram|\bLine\/|GSA\/|Bytedance|TikTok/i.test(ua)
-      if (!isInApp) {
-        navigator.serviceWorker.register('/pwa-sw.js', { scope: '/' })
-          .catch((err) => { if (import.meta.env.DEV) console.warn('[PWA SW] register failed:', err) })
-      }
-    } catch { /* ignore */ }
+    // pwa-sw.js 등록 제거 — 사고 재발 방지
   }
 } catch { /* ignore */ }
 
