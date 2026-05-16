@@ -166,15 +166,18 @@ export default function BottomNav() {
 
   return (
     <>
-      {/* Nav bar — 모바일 + 작은 태블릿 표시. PC (lg+) 는 DesktopTopNav 가 대신 표시. */}
-      {/* 🛡️ 2026-05-16: max-w-[430px] 좁은 중앙 박스 → 화면 전체 폭 (left-0 right-0) 으로 변경.
-         태블릿/큰 폰 가로모드에서 가운데 떠 있던 어색한 UI 영구 해결.
-         내부 nav 만 max-w-[430px] mx-auto 로 버튼 간격 유지. */}
+      {/* Nav bar — 모바일 + 큰 폰 + 태블릿 표시. PC (lg+) 는 DesktopTopNav 가 대신 표시. */}
+      {/* 🛡️ 2026-05-16 (반응형 영구 fix): 화면 폭에 따라 inner nav 자연스럽게 확장.
+         - 모바일 (≤640px): max-w-[430px] (한 손 조작 친화)
+         - sm (640~768px): max-w-[540px] (큰 폰 가로모드)
+         - md (768~1024px): max-w-[640px] (작은 태블릿)
+         - lg+ (≥1024px): hidden, DesktopTopNav 사용
+         배경 + border 는 항상 화면 전체 폭. */}
       <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard lg:hidden">
         <div className="pointer-events-auto bg-white dark:bg-[#020202] border-t border-[#0A0A0A]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <nav className="max-w-[430px] mx-auto">
+          <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-4">
             <div className="flex items-center h-14">
               {leftItems.map(renderItem)}
 
