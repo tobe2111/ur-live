@@ -27,8 +27,8 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.voucher',   labelDefault: '식사권',   icon: Ticket,      path: '/meal-vouchers', active: (p) => p.startsWith('/meal-vouchers') },
 ]
 
+// 🛡️ 2026-05-16: '음식·식사권' 제거 — MENU 의 '식사권' 과 중복 (사용자 보고).
 const CATEGORY_ITEMS = [
-  { labelKey: 'category.food',     labelDefault: '음식·식사권',   icon: Utensils,        slug: 'food' },
   { labelKey: 'category.voucher',  labelDefault: '식사권',        icon: Ticket,          slug: 'meal_voucher' },
   { labelKey: 'category.beauty',   labelDefault: '뷰티·헬스',     icon: Sparkles,        slug: 'beauty' },
   { labelKey: 'category.living',   labelDefault: '리빙·인테리어', icon: Sofa,            slug: 'living' },
