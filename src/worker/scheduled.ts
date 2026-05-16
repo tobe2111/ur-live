@@ -44,6 +44,7 @@ import { retryEmailFailures, retryPushFailures } from './cron/retry-notification
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
+import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
@@ -132,6 +133,9 @@ export async function handleCronScheduled(
 
   if (cron === '0 19 * * *') {
     ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
+    // 🛡️ 2026-05-16: 인플루언서 attribution pending→available 매일 19시 동기화.
+    //   매월 1일에만 실제 송금 큐잉. 그 외엔 status 동기화만.
+    ctx.waitUntil(safeCron('influencer-payout', () => handleInfluencerPayout(env)));
   }
 
   if (cron === '0 20 * * 0') {
