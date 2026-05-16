@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronLeft,
@@ -29,13 +29,25 @@ import RecentlyViewedStrip from '@/components/group-buy/RecentlyViewedStrip'
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🛡️ 2026-05-16: URL ?category= 처리 — 메인 hero 의 8 카테고리 클릭 시 자동 필터
+  //   voucher 종류 (meal/beauty/health/pet/stay/activity) → CategoryFilter 매핑
+  const [searchParams] = useSearchParams()
+  const urlCategory = (searchParams.get('category') || '').toLowerCase()
+  const urlSort = (searchParams.get('sort') || '').toLowerCase()
+  const initialCategory: CategoryFilter =
+    urlCategory === 'meal_voucher' ? 'meal_voucher'
+    : (urlCategory && urlCategory !== 'all' && urlCategory !== 'general' && urlCategory.includes('voucher')) ? 'meal_voucher'  // voucher 류 → meal_voucher 탭
+    : urlCategory === 'general' ? 'general'
+    : 'all'
+  const initialSort: SortOption = urlSort === 'discount' ? 'discount' : 'popular'
+
   const [mainTab, setMainTab] = useState<MainTab>('seller')
   const [items, setItems] = useState<GroupBuyProduct[]>([])
   const [communityItems, setCommunityItems] = useState<CommunityGroupBuy[]>([])
   const [loading, setLoading] = useState(true)
   const [communityLoading, setCommunityLoading] = useState(true)
-  const [category, setCategory] = useState<CategoryFilter>('all')
-  const [sortBy, setSortBy] = useState<SortOption>('popular')
+  const [category, setCategory] = useState<CategoryFilter>(initialCategory)
+  const [sortBy, setSortBy] = useState<SortOption>(initialSort)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
@@ -135,6 +147,17 @@ export default function GroupBuyListPage() {
         result.sort((a, b) => getTs(a) - getTs(b))
         break
       }
+      // 🛡️ 2026-05-16: 'discount' 정렬 — 메인 hero "특가" 카테고리 진입 시
+      case 'discount': {
+        const discPct = (p: { original_price?: number; price: number }) => {
+          const op = p.original_price || 0
+          const pr = p.price || 0
+          if (op > 0 && op > pr) return Math.round((1 - pr / op) * 100)
+          return 0
+        }
+        result.sort((a, b) => discPct(b) - discPct(a))
+        break
+      }
       case 'newest':
         result.sort((a, b) => {
           const aTs = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -160,6 +183,17 @@ export default function GroupBuyListPage() {
             ? new Date(p.expires_at).getTime()
             : Number.MAX_SAFE_INTEGER
         result.sort((a, b) => getTs(a) - getTs(b))
+        break
+      }
+      // 🛡️ 2026-05-16: 'discount' 정렬 — 메인 hero "특가" 카테고리 진입 시
+      case 'discount': {
+        const discPct = (p: { original_price?: number; price: number }) => {
+          const op = p.original_price || 0
+          const pr = p.price || 0
+          if (op > 0 && op > pr) return Math.round((1 - pr / op) * 100)
+          return 0
+        }
+        result.sort((a, b) => discPct(b) - discPct(a))
         break
       }
       case 'newest':
