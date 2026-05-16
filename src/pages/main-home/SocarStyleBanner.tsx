@@ -86,16 +86,34 @@ export default function SocarStyleBanner() {
         // 어드민 배너 → SocarStyle 형식으로 매핑 (gradient 는 인덱스 회전)
         const fallbackGradients = BANNERS.map(b => b.gradient)
         const fallbackEmojis = BANNERS.map(b => b.decorEmoji)
-        const mapped: Banner[] = list.map((b, i) => ({
-          title: b.title || '',
-          subtitle: b.description || '',
-          cta: '자세히 보기 →',
-          ctaPath: b.link_url || '/',
-          gradient: fallbackGradients[i % fallbackGradients.length],
-          decorEmoji: fallbackEmojis[i % fallbackEmojis.length],
-          textTone: 'light',
-          imageUrl: b.image_url,
-        }))
+        const mapped: Banner[] = list.map((b, i) => {
+          // 🛡️ 2026-05-16: link_url 안전 처리 — 빈값 / # anchor / 잘못된 형식 모두 안전 fallback
+          let safePath = '/group-buy'  // default: 공구 카탈로그
+          const raw = (b.link_url || '').trim()
+          if (raw) {
+            if (raw.startsWith('http://') || raw.startsWith('https://')) {
+              // 외부 URL — 원본 그대로 (아래 anchor 태그로 처리)
+              safePath = raw
+            } else if (raw.startsWith('#')) {
+              // anchor — 같은 페이지 내 스크롤
+              safePath = `/${raw}`
+            } else if (raw.startsWith('/')) {
+              safePath = raw
+            } else {
+              safePath = `/${raw}`
+            }
+          }
+          return {
+            title: b.title || '',
+            subtitle: b.description || '',
+            cta: '자세히 보기 →',
+            ctaPath: safePath,
+            gradient: fallbackGradients[i % fallbackGradients.length],
+            decorEmoji: fallbackEmojis[i % fallbackEmojis.length],
+            textTone: 'light',
+            imageUrl: b.image_url,
+          }
+        })
         setBanners(mapped)
       }
     }).catch(() => { /* fallback BANNERS 그대로 사용 */ })
@@ -105,9 +123,16 @@ export default function SocarStyleBanner() {
   const textColor = banner.textTone === 'light' ? 'text-white' : 'text-gray-900'
   const subTextColor = banner.textTone === 'light' ? 'text-white/80' : 'text-gray-700'
 
+  // 🛡️ 2026-05-16: 외부 URL 은 <a target="_blank">, 내부는 <Link> 로 분기
+  const isExternal = /^https?:\/\//i.test(banner.ctaPath)
+  const LinkComponent = isExternal ? 'a' : Link
+  const linkProps = isExternal
+    ? { href: banner.ctaPath, target: '_blank', rel: 'noopener noreferrer' }
+    : { to: banner.ctaPath }
+
   return (
     <section className="px-4 py-4">
-      <Link to={banner.ctaPath} className="block">
+      <LinkComponent {...(linkProps as any)} className="block">
         {/* 🛡️ 2026-05-16: 반응형 aspect — PC에서 배너가 너무 커지는 문제 fix.
              모바일 (16:7) → sm (21:6 더 짧게) → md+ (28:5 가로 길이 늘림 + 높이 짧게)
              max-h-[280px] 도 안전망. */}
@@ -152,7 +177,7 @@ export default function SocarStyleBanner() {
             </div>
           </div>
         </div>
-      </Link>
+      </LinkComponent>
 
       {/* 페이지네이션 dots */}
       <div className="flex justify-center gap-1.5 mt-3">
