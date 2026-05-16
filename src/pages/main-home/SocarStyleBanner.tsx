@@ -66,7 +66,10 @@ export default function SocarStyleBanner() {
   return (
     <section className="px-4 py-4">
       <Link to={banner.ctaPath} className="block">
-        <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${banner.gradient} aspect-[16/7] p-5 active:scale-[0.98] transition-transform`}>
+        {/* 🛡️ 2026-05-16: 반응형 aspect — PC에서 배너가 너무 커지는 문제 fix.
+             모바일 (16:7) → sm (21:6 더 짧게) → md+ (28:5 가로 길이 늘림 + 높이 짧게)
+             max-h-[280px] 도 안전망. */}
+        <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${banner.gradient} aspect-[16/7] sm:aspect-[21/6] md:aspect-[28/5] max-h-[280px] p-5 active:scale-[0.98] transition-transform`}>
           {/* 우측 배경 큰 이모지 (장식) */}
           <span className="absolute -right-2 -bottom-4 text-[140px] opacity-20 select-none leading-none" aria-hidden>
             {banner.decorEmoji}
