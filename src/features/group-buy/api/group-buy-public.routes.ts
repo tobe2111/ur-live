@@ -55,7 +55,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         `).bind(...categories, status, status).all()
         return results ?? []
       },
-      { ttl: 60, staleWhileRevalidate: 30 }
+      // 🛡️ 2026-05-16: TTL 60→300s + SWR 30→120s — 지도 페이지 콜드 hit latency 완화.
+      //   상품 목록 변경 빈도 낮음, 60s 보다 5분 stale 허용해도 UX 영향 미미.
+      { ttl: 300, staleWhileRevalidate: 120 }
     )
 
     return c.json({ success: true, data: results })
