@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import { Wallet, TrendingUp, Clock, CheckCircle, Save } from 'lucide-react'
+import { Wallet, TrendingUp, Clock, CheckCircle, Save, AlertTriangle } from 'lucide-react'
 
 interface Balance {
   pending_amount: number
@@ -175,7 +175,23 @@ export default function InfluencerSettlementPage() {
       <SEO title="인플루언서 정산 - 유어딜" description="referral commission 잔액 / 송금 내역 / 세금 정보 관리" url="/influencer/settlement" />
       <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-2">
         <Wallet className="w-5 h-5 text-pink-500" />
-        <h1 className="text-base font-bold text-gray-900">인플루언서 정산</h1>
+        <h1 className="text-base font-bold text-gray-900 flex-1">인플루언서 정산</h1>
+        <button
+          onClick={async () => {
+            const type = prompt('분쟁 유형 (unfair_block / commission_dispute / other)')?.trim() as 'unfair_block' | 'commission_dispute' | 'other'
+            if (!type || !['unfair_block', 'commission_dispute', 'other'].includes(type)) return
+            const sellerIdStr = type === 'unfair_block' ? prompt('대상 매장 ID (있으면)') : null
+            const desc = prompt('신고 내용 (최소 10자)')
+            if (!desc || desc.length < 10) { toast.error('10자 이상'); return }
+            try {
+              await api.post('/api/influencer-settlement/disputes', { seller_id: sellerIdStr ? Number(sellerIdStr) : undefined, type, description: desc })
+              toast.success('분쟁 신고 접수 — 어드민이 검토합니다')
+            } catch { toast.error('신고 실패') }
+          }}
+          className="text-[11px] px-2.5 py-1 bg-red-50 text-red-600 rounded font-bold flex items-center gap-1"
+        >
+          <AlertTriangle className="w-3 h-3" /> 분쟁 신고
+        </button>
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">

@@ -294,6 +294,75 @@ influencerApp.get('/my-stores', async (c) => {
   return c.json({ success: true, data: { referred: referred.results || [], deals: deals.results || [] } })
 })
 
+// ───────── 인플 분쟁 신고 + 어드민 조정 ─────────
+
+influencerApp.post('/disputes', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const body = await c.req.json<{ seller_id?: number; type: 'unfair_block' | 'commission_dispute' | 'other'; description: string }>().catch(() => ({} as any))
+  if (!body.type || !['unfair_block', 'commission_dispute', 'other'].includes(body.type)) {
+    return c.json({ success: false, error: 'invalid type' }, 400)
+  }
+  const desc = String(body.description || '').trim().slice(0, 1000)
+  if (desc.length < 10) return c.json({ success: false, error: '신고 내용 10자 이상' }, 400)
+  await c.env.DB.prepare(
+    `INSERT INTO influencer_disputes (influencer_id, seller_id, type, description, status)
+     VALUES (?, ?, ?, ?, 'open')`
+  ).bind(userId, body.seller_id || null, body.type, desc).run()
+  // 어드민 dashboard 알림
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+       VALUES ('admin', 'all', 'influencer_dispute', ?, ?, '/admin/influencer-disputes', datetime('now'))`
+    ).bind(`⚠️ 인플 분쟁 신고: ${body.type}`, desc.slice(0, 200)).run()
+  } catch { /* silent */ }
+  return c.json({ success: true })
+})
+
+adminApp.get('/disputes', async (c) => {
+  const status = c.req.query('status') || 'open'
+  const { results } = await c.env.DB.prepare(
+    `SELECT d.id, d.influencer_id, d.seller_id, s.name AS seller_name,
+            d.type, d.description, d.status, d.resolution, d.created_at, d.resolved_at
+     FROM influencer_disputes d
+     LEFT JOIN sellers s ON s.id = d.seller_id
+     WHERE d.status = ?
+     ORDER BY d.created_at DESC LIMIT 200`
+  ).bind(status).all().catch(() => ({ results: [] as any[] }))
+  return c.json({ success: true, data: results || [] })
+})
+
+adminApp.post('/disputes/:id/resolve', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json<{ action: 'resolved' | 'rejected'; resolution: string; unblock_influencer?: boolean }>().catch(() => ({} as any))
+  if (!['resolved', 'rejected'].includes(body.action)) return c.json({ success: false, error: 'invalid action' }, 400)
+  const resolution = String(body.resolution || '').trim().slice(0, 500)
+  if (!resolution) return c.json({ success: false, error: '조정 내용 필수' }, 400)
+
+  const dispute = await c.env.DB.prepare("SELECT influencer_id, seller_id FROM influencer_disputes WHERE id = ?").bind(id).first<{ influencer_id: string; seller_id: number | null }>()
+  if (!dispute) return c.json({ success: false, error: 'not found' }, 404)
+
+  await c.env.DB.prepare(
+    "UPDATE influencer_disputes SET status = ?, resolution = ?, resolved_at = datetime('now') WHERE id = ?"
+  ).bind(body.action, resolution, id).run()
+
+  // 차단 해제 옵션 — resolved 면서 unblock_influencer=true
+  if (body.action === 'resolved' && body.unblock_influencer && dispute.seller_id) {
+    await c.env.DB.prepare(
+      "UPDATE seller_blocked_influencers SET unblocked_at = datetime('now') WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL"
+    ).bind(dispute.seller_id, dispute.influencer_id).run()
+  }
+
+  // 인플에게 결과 알림 (best-effort)
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO user_notifications (user_id, type, title, message, link)
+       VALUES (?, 'dispute_resolved', ?, ?, '/influencer/settlement')`
+    ).bind(dispute.influencer_id, body.action === 'resolved' ? '분쟁 조정 완료' : '분쟁 거절됨', resolution).run()
+  } catch { /* silent */ }
+
+  return c.json({ success: true })
+})
+
 // ───────── 어드민 — 인플 송금 처리 ─────────
 
 adminApp.get('/payouts', async (c) => {

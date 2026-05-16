@@ -169,6 +169,27 @@ groupBuyAdminRoutes.post('/force-refund/:productId', requireAdmin(), require2FA(
       }
       if (v.user_id) refundedUsers.add(v.user_id)
       refundCount++
+
+      // 🛡️ 2026-05-16: 인플 commission clawback (강제 환불 시)
+      try {
+        const { results: attrs } = await DB.prepare(
+          `SELECT id, influencer_id, commission_amount, status
+           FROM influencer_attributions
+           WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
+        ).bind(v.id).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+        for (const a of (attrs || [])) {
+          await DB.prepare(
+            "UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = 'admin_force_refund' WHERE id = ?"
+          ).bind(a.id).run()
+          if (a.status === 'pending') {
+            await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+              .bind(a.commission_amount, a.influencer_id).run()
+          } else if (a.status === 'available') {
+            await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+              .bind(a.commission_amount, a.influencer_id).run()
+          }
+        }
+      } catch (e) { if (import.meta.env?.DEV) console.warn('[force-refund clawback]', e) }
     }
 
     await DB.prepare("UPDATE products SET group_buy_status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
