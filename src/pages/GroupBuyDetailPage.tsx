@@ -713,8 +713,8 @@ export default function GroupBuyDetailPage() {
         <div style={{ height: 100 }} />
       </main>
 
-      {/* sticky 하단 결제 영역 */}
-      <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-3 z-30 lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
+      {/* sticky 하단 결제 영역 — BottomNav (z-9999) 위로 올림 + BottomNav 높이만큼 ur-content padding 적용됨 */}
+      <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
             <button
