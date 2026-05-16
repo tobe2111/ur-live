@@ -161,7 +161,9 @@
         if (!v) { try { v = sessionStorage.getItem('ur_theme_mode_v1'); } catch (e) { /* sandbox */ } }
         var sysDark = false;
         try { sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-        var dark = v === 'dark' || ((v === null || v === 'system') && sysDark);
+        // 🛡️ 2026-05-16: 신규 사용자 (v === null) default = light.
+        //   기존 'system' 사용자만 OS 따라감. 'dark' 명시는 그대로.
+        var dark = v === 'dark' || (v === 'system' && sysDark);
         try {
           if (dark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');

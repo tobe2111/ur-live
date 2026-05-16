@@ -20,6 +20,7 @@ interface Balance {
   bank_name: string | null
   bank_account: string | null
   account_holder: string | null
+  payout_method: 'cash' | 'deal' | null
 }
 
 interface Attribution {
@@ -52,6 +53,7 @@ export default function InfluencerSettlementPage() {
     bank_name: '',
     bank_account: '',
     account_holder: '',
+    payout_method: 'cash' as 'cash' | 'deal',
   })
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function InfluencerSettlementPage() {
             bank_name: b.bank_name || '',
             bank_account: b.bank_account || '',
             account_holder: b.account_holder || '',
+            payout_method: (b.payout_method as 'cash' | 'deal') || 'cash',
           })
         }
       })
@@ -130,6 +133,28 @@ export default function InfluencerSettlementPage() {
         {/* 정산 정보 입력 */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900">정산 정보</h3>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">송금 방식</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, payout_method: 'cash' }))}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}
+              >
+                <p className="text-sm font-bold text-gray-900">현금 송금</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">원천징수 후 계좌 입금</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white'}`}
+              >
+                <p className="text-sm font-bold text-gray-900">딜 포인트 <span className="text-pink-600">+20%</span></p>
+                <p className="text-[10px] text-gray-500 mt-0.5">유어딜 결제 / 환불 X</p>
+              </button>
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">사업자번호 (있을 때만)</label>

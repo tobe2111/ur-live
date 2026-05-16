@@ -31,8 +31,10 @@ function readMode(): ThemeMode {
     const v = sessionStorage.getItem(STORAGE_KEY)
     if (v === 'light' || v === 'dark' || v === 'system') return v
   } catch { /* full sandbox */ }
-  // 신규 사용자는 OS prefers-color-scheme 자동 추적 ('system').
-  return 'system'
+  // 🛡️ 2026-05-16: 신규 사용자 default = 'light' (사용자 명시 요구).
+  //   기존 'system' 은 OS 다크 모드 켠 사용자가 우리 사이트도 다크로 보게 만들었음.
+  //   라이트 기본 + 토글로 dark/system 선택 가능 유지.
+  return 'light'
 }
 
 function detectSystemTheme(): AppliedTheme {

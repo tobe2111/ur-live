@@ -23,6 +23,9 @@ interface Settings {
   agency_commission_pct: string
   refund_window_days: string
   influencer_payout_min: string
+  influencer_payout_frequency: string
+  influencer_payout_day_of_month: string
+  influencer_deal_bonus_pct: string
 }
 
 const DEFAULTS: Settings = {
@@ -32,6 +35,9 @@ const DEFAULTS: Settings = {
   agency_commission_pct: '2',
   refund_window_days: '7',
   influencer_payout_min: '100000',
+  influencer_payout_frequency: 'monthly',
+  influencer_payout_day_of_month: '1',
+  influencer_deal_bonus_pct: '20',
 }
 
 export default function AdminCommissionSettingsPage() {
@@ -167,7 +173,49 @@ export default function AdminCommissionSettingsPage() {
               onChange={(e) => setForm((f) => ({ ...f, influencer_payout_min: e.target.value }))}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
             />
-            <p className="text-[11px] text-gray-500 mt-1">매월 1일 이 금액 이상인 인플루언서만 송금 (미달 시 다음 달 누적)</p>
+            <p className="text-[11px] text-gray-500 mt-1">이 금액 이상인 인플루언서만 송금 (미달 시 다음 정산 주기 누적)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">인플 송금 주기</label>
+            <select
+              value={form.influencer_payout_frequency}
+              onChange={(e) => setForm((f) => ({ ...f, influencer_payout_frequency: e.target.value }))}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
+            >
+              <option value="weekly">매주 (월요일)</option>
+              <option value="biweekly">격주 (월요일)</option>
+              <option value="monthly">매월</option>
+            </select>
+          </div>
+
+          {form.influencer_payout_frequency === 'monthly' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">월간 송금 날짜 (1~28)</label>
+              <input
+                type="number"
+                min="1"
+                max="28"
+                value={form.influencer_payout_day_of_month}
+                onChange={(e) => setForm((f) => ({ ...f, influencer_payout_day_of_month: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">매월 이 날짜에 송금 처리 (29~31일은 월별 차이로 1일 권장)</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">딜 선택 시 보너스 (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="5"
+              value={form.influencer_deal_bonus_pct}
+              onChange={(e) => setForm((f) => ({ ...f, influencer_deal_bonus_pct: e.target.value }))}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+            />
+            <p className="text-[11px] text-gray-500 mt-1">인플이 현금 대신 딜 포인트 선택 시 추가 보너스 (락인 효과 유도)</p>
           </div>
         </div>
 
