@@ -19,6 +19,7 @@ import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
+import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -648,6 +649,12 @@ sellerOrdersRoutes.post('/products', async (c) => {
       sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${productId}`, '상품 보기').catch(swallow('seller:api:seller-orders'));
     }
 
+    // 🛡️ 2026-05-16: voucher 카테고리 상품 등록 시 공구 목록 캐시 무효화
+    if (category && VOUCHER_CATEGORY_SET.has(category)) {
+      const kv = (c.env as Bindings).SESSION_KV;
+      invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+    }
+
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
     console.error('Create seller product error:', error);
@@ -750,6 +757,12 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
        FROM products WHERE id = ?`
     ).bind(productId).first<Record<string, unknown>>();
 
+    // 🛡️ 2026-05-16: voucher 카테고리 상품 수정 시 공구 목록 캐시 무효화
+    if (updated?.category && VOUCHER_CATEGORY_SET.has(String(updated.category))) {
+      const kv = (c.env as Bindings).SESSION_KV;
+      invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+    }
+
     return c.json({ success: true, data: updated });
   } catch (error: unknown) {
     console.error('Update seller product error:', error);
@@ -789,6 +802,10 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
     ).bind(productId, sellerId).run();
 
     if (!result.meta.changes) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
+
+    // 🛡️ 2026-05-16: 상품 삭제 시 공구 목록 캐시 무효화 (카테고리 모름 → 전체 nuke)
+    const kv = (c.env as Bindings).SESSION_KV;
+    invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
 
     return c.json({ success: true, message: '상품이 삭제되었습니다.' });
   } catch (error: unknown) {

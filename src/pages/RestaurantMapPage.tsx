@@ -383,7 +383,9 @@ export default function RestaurantMapPage() {
       {/* ═══ 풀스크린 카카오맵 (배경) ═══
           🛡️ 2026-04-30 CLS: mapRef 컨테이너 항상 렌더 → SDK load 시 placeholder
             swap 없이 inset-0 에 카카오맵이 그려짐. layout shift 0. */}
-      <div ref={mapRef} className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A]" />
+      {/* 🛡️ 2026-05-16: touchAction='none' — 카카오 SDK 가 핀치/패닝 제스처 완전 take-over.
+            기존엔 부모(pb-16) 의 scroll touch 가 핀치 제스처 가로채 줌 안 됨. */}
+      <div ref={mapRef} className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A]" style={{ touchAction: 'none' }} />
       {!(sdkLoaded && window.kakao?.maps) && (
         <div className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A] flex flex-col items-center justify-center pointer-events-none">
           <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
