@@ -856,6 +856,31 @@
     "seoDesc": "관심 상품을 모아보세요"
   },
   "seller": {
+    "kakaoNotify": {
+      "confirmResend": "이미 발송했습니다. 다시 발송하시겠습니까?",
+      "defaultMessage": "지금 라이브가 시작됐어요! 같이 봐요 🔴",
+      "sentSuccess": "✅ 카카오톡에 메시지가 전송됐어요",
+      "sendFailed": "발송 실패",
+      "reauthRequired": "카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?",
+      "scopeMissing": "카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.",
+      "ariaLabel": "카카오 친구에게 라이브 알림",
+      "sending": "발송 중…",
+      "sentLabel": "✓ 발송됨",
+      "buttonLabel": "카카오 친구 알림"
+    },
+    "kpi": {
+      "followers": "단골",
+      "followersRecent": "+{{n}}/7일",
+      "followersNoneRecent": "신규 0",
+      "activeGroups": "진행 공구",
+      "unitCount": "개",
+      "thisMonth": "이번 달",
+      "unitWon": "원",
+      "disputes": "분쟁",
+      "disputesPending": "검토 대기",
+      "disputesNone": "없음",
+      "realtime": "실시간"
+    },
     "dashboard": "대시보드",
     "dashboardSubtitle": "셀러 대시보드 — 매출 / 주문 / 라이브 현황",
     "products": {
