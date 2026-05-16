@@ -43,6 +43,10 @@ export default function AdminInfluencerPayoutsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkProcessing, setBulkProcessing] = useState(false)
+  // 🛡️ 2026-05-16: 정렬/필터 추가
+  const [sortBy, setSortBy] = useState<'available_desc' | 'available_asc' | 'paid_desc' | 'updated_desc'>('available_desc')
+  const [methodFilter, setMethodFilter] = useState<'all' | 'cash' | 'deal'>('all')
+  const [accountFilter, setAccountFilter] = useState<'all' | 'ok' | 'missing'>('all')
 
   function toggleSelect(id: string) {
     setSelectedIds(s => {
@@ -52,8 +56,8 @@ export default function AdminInfluencerPayoutsPage() {
     })
   }
   function toggleSelectAll() {
-    if (selectedIds.size === list.length) setSelectedIds(new Set())
-    else setSelectedIds(new Set(list.map(r => r.influencer_id)))
+    if (selectedIds.size === filteredSorted.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(filteredSorted.map(r => r.influencer_id)))
   }
   async function bulkProcess() {
     const targets = list.filter(r => selectedIds.has(r.influencer_id))
@@ -114,7 +118,25 @@ export default function AdminInfluencerPayoutsPage() {
 
   if (loading) return <AdminLayout title="인플루언서 송금"><div className="p-6"><DashboardLoading /></div></AdminLayout>
 
-  const totalPending = list.reduce((s, r) => s + r.available_amount, 0)
+  // 정렬/필터 적용
+  const filteredSorted = list
+    .filter(r => methodFilter === 'all' || r.payout_method === methodFilter)
+    .filter(r => {
+      if (accountFilter === 'all') return true
+      const ok = r.payout_method === 'deal' || (r.bank_name && r.bank_account && r.account_holder)
+      return accountFilter === 'ok' ? ok : !ok
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'available_asc': return a.available_amount - b.available_amount
+        case 'paid_desc': return b.total_paid_out - a.total_paid_out
+        case 'updated_desc': return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        case 'available_desc':
+        default: return b.available_amount - a.available_amount
+      }
+    })
+
+  const totalPending = filteredSorted.reduce((s, r) => s + r.available_amount, 0)
 
   return (
     <AdminLayout title="인플루언서 송금">
@@ -137,7 +159,33 @@ export default function AdminInfluencerPayoutsPage() {
           }
         />
 
-        {list.length === 0 ? (
+        {/* 정렬/필터 */}
+        <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200 rounded-xl p-3">
+          <label className="text-[11px] text-gray-700">정렬</label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+            <option value="available_desc">잔액 ↓</option>
+            <option value="available_asc">잔액 ↑</option>
+            <option value="paid_desc">누적 송금 ↓</option>
+            <option value="updated_desc">최근 업데이트</option>
+          </select>
+          <span className="text-gray-300 mx-1">·</span>
+          <label className="text-[11px] text-gray-700">방식</label>
+          <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value as typeof methodFilter)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+            <option value="all">전체</option>
+            <option value="cash">현금</option>
+            <option value="deal">딜</option>
+          </select>
+          <span className="text-gray-300 mx-1">·</span>
+          <label className="text-[11px] text-gray-700">계좌</label>
+          <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value as typeof accountFilter)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+            <option value="all">전체</option>
+            <option value="ok">등록됨</option>
+            <option value="missing">미등록</option>
+          </select>
+          <span className="text-[10px] text-gray-500 ml-auto">표시 {filteredSorted.length} / 전체 {list.length}건</span>
+        </div>
+
+        {filteredSorted.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
             <p className="text-sm text-gray-500">송금 대기 중인 인플루언서가 없습니다.</p>
             <p className="text-xs text-gray-400 mt-1">매일 19시 cron 이 pending→available 자동 전환합니다.</p>
@@ -147,7 +195,7 @@ export default function AdminInfluencerPayoutsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-700">
                 <tr>
-                  <th className="px-4 py-2"><input type="checkbox" checked={selectedIds.size === list.length && list.length > 0} onChange={toggleSelectAll} /></th>
+                  <th className="px-4 py-2"><input type="checkbox" checked={selectedIds.size === filteredSorted.length && filteredSorted.length > 0} onChange={toggleSelectAll} /></th>
                   <th className="text-left px-4 py-2 font-medium">인플루언서</th>
                   <th className="text-right px-4 py-2 font-medium">잔액</th>
                   <th className="text-center px-4 py-2 font-medium">방식</th>
@@ -157,7 +205,7 @@ export default function AdminInfluencerPayoutsPage() {
                 </tr>
               </thead>
               <tbody>
-                {list.map((r) => {
+                {filteredSorted.map((r) => {
                   const w = calcWithholding(r.available_amount, r.tax_type, r.business_number)
                   const accountOk = r.payout_method === 'deal' || (r.bank_name && r.bank_account && r.account_holder)
                   return (

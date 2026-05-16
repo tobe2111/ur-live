@@ -168,6 +168,7 @@ import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes } from '../features/group-buy/api/marketing.routes';
+import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { requireAdmin } from './middleware/auth';
 import { ogRoutes } from './routes/og-image.routes';
 import { analyticsRoutes } from './routes/analytics.routes';
@@ -1033,6 +1034,10 @@ app.route('/api/influencer-settlement', influencerSettlementRoutes);
 app.use('/api/admin-payouts/*', requireAdmin());
 app.route('/api/admin-payouts', adminPayoutRoutes);
 app.route('/api/influencer-discover', influencerDiscoverRoutes);
+// 🛡️ 2026-05-16: 카카오맵 후기 보너스
+app.route('/api/review-bonus', reviewBonusUserRoutes);
+app.use('/api/admin-review-bonus/*', requireAdmin());
+app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
 
 // 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
 app.route('/api/og', ogRoutes);
