@@ -35,6 +35,33 @@ interface Attribution {
   paid_at: string | null
 }
 
+// 🛡️ 2026-05-16: 본인 ranking 카드 (이번 달 commission 기준)
+function MyRankCard() {
+  const [rank, setRank] = useState<{ national_rank: number | null; national_total_participants: number; my_commission: number } | null>(null)
+  useEffect(() => {
+    api.get('/api/influencer-settlement/my-rank')
+      .then(r => { if (r.data?.success) setRank(r.data.data) })
+      .catch(() => { /* silent */ })
+  }, [])
+  if (!rank) return null
+  return (
+    <a href="/influencer/rankings" className="block bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
+          <p className="text-2xl font-extrabold text-amber-800 mt-0.5">
+            {rank.national_rank ? `전국 ${rank.national_rank}위` : '아직 데이터 없음'}
+          </p>
+          {rank.national_total_participants > 0 && (
+            <p className="text-[10px] text-amber-600 mt-0.5">총 {rank.national_total_participants}명 중 / commission {rank.my_commission.toLocaleString()}원</p>
+          )}
+        </div>
+        <span className="text-3xl">🏆</span>
+      </div>
+    </a>
+  )
+}
+
 // 🛡️ 2026-05-16: 내가 영입한 매장 + 협업 deals
 function MyStoresAndDeals() {
   const [referred, setReferred] = useState<Array<{ id: number; name: string; referral_bonus_until: string | null; total_commission: number }>>([])
@@ -122,6 +149,7 @@ export default function InfluencerSettlementPage() {
     bank_account: '',
     account_holder: '',
     payout_method: 'cash' as 'cash' | 'deal',
+    ranking_public: true,
   })
 
   useEffect(() => {
@@ -143,6 +171,7 @@ export default function InfluencerSettlementPage() {
             bank_account: b.bank_account || '',
             account_holder: b.account_holder || '',
             payout_method: (b.payout_method as 'cash' | 'deal') || 'cash',
+            ranking_public: (b as { ranking_public?: number }).ranking_public !== 0,
           })
         }
       })
@@ -195,23 +224,24 @@ export default function InfluencerSettlementPage() {
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
-        {/* 🛡️ 2026-05-16: 카탈로그 + 성과표 진입 카드 */}
-        <div className="grid grid-cols-2 gap-2">
-          <a href="/influencer/discover" className="bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-xl p-3.5 flex items-center justify-between active:scale-95 transition-transform">
-            <div>
-              <p className="text-[10px] opacity-90">추천 공구 둘러보기</p>
-              <p className="text-sm font-bold mt-0.5">카탈로그 →</p>
-            </div>
+        {/* 🛡️ 2026-05-16: 카탈로그 + 성과표 + 랭킹 진입 카드 */}
+        <div className="grid grid-cols-3 gap-2">
+          <a href="/influencer/discover" className="bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
             <span className="text-xl">🛍️</span>
+            <p className="text-[10px] opacity-90 mt-1">카탈로그</p>
           </a>
-          <a href="/influencer/analytics" className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white rounded-xl p-3.5 flex items-center justify-between active:scale-95 transition-transform">
-            <div>
-              <p className="text-[10px] opacity-90">내 판매 실적</p>
-              <p className="text-sm font-bold mt-0.5">성과표 →</p>
-            </div>
+          <a href="/influencer/analytics" className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
             <span className="text-xl">📊</span>
+            <p className="text-[10px] opacity-90 mt-1">성과표</p>
+          </a>
+          <a href="/influencer/rankings" className="bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
+            <span className="text-xl">🏆</span>
+            <p className="text-[10px] opacity-90 mt-1">랭킹</p>
           </a>
         </div>
+
+        {/* 본인 랭킹 카드 */}
+        <MyRankCard />
 
         {/* 잔액 요약 */}
         <div className="grid grid-cols-3 gap-2">
@@ -256,6 +286,21 @@ export default function InfluencerSettlementPage() {
                 <p className="text-[10px] text-gray-500 mt-0.5">유어딜 결제 / 환불 X</p>
               </button>
             </div>
+          </div>
+
+          {/* 🛡️ 2026-05-16: ranking_public 토글 */}
+          <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-amber-800">🏆 랭킹 공개</p>
+              <p className="text-[11px] text-amber-700 mt-0.5">공개 시 /influencer/rankings 에 본인 ID 노출. 비공개 시 "익명 인플 #XXX" 표시</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-emerald-500 text-white' : 'bg-gray-300 text-gray-700'}`}
+            >
+              {form.ranking_public ? '공개' : '비공개'}
+            </button>
           </div>
 
           <div>

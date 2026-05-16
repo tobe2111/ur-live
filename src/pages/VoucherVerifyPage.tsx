@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Ticket, CheckCircle, XCircle, Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 
 /**
  * Parse voucher code from QR scanned content.
@@ -37,6 +38,33 @@ export default function VoucherVerifyPage() {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
+  const isSeller = isSellerAuthenticated()
+
+  // 🛡️ 2026-05-16: URL 로 진입 시 (기본 카메라 스캔) 자동으로 voucher 조회
+  useEffect(() => {
+    if (urlCode && !voucher && !loading) {
+      lookupVoucher()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlCode])
+
+  // 🛡️ 2026-05-16: 사장님이 본인 매장 voucher 스캔 시 한 번에 사용 처리 (PIN 없이, seller token 검증)
+  async function useVoucherAsSeller() {
+    if (!isSeller) return
+    setVerifying(true)
+    try {
+      const res = await api.post(`/api/vouchers/${code.trim()}/use-by-seller`, {}, {
+        headers: { Authorization: `Bearer ${getSellerToken() || ''}` },
+      })
+      setResult({ success: res.data.success, message: res.data.message || res.data.error || '' })
+      if (res.data.success) setVoucher((v: any) => v ? { ...v, status: 'used' } : v)
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string } } }
+      setResult({ success: false, message: err_.response?.data?.error || t('voucher.verify.processingError') })
+    } finally {
+      setVerifying(false)
+    }
+  }
 
   // 바우처 조회
   async function lookupVoucher() {
@@ -152,8 +180,25 @@ export default function VoucherVerifyPage() {
               )}
             </div>
 
-            {/* 비밀번호 입력 */}
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('voucher.verify.enterPin')}</label>
+            {/* 🛡️ 2026-05-16: 사장님 로그인 시 PIN 없이 즉시 사용 처리 */}
+            {isSeller && (
+              <div className="mb-5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">🏪 사장님으로 로그인됨 — PIN 없이 사용 처리 가능</p>
+                <button
+                  onClick={useVoucherAsSeller}
+                  disabled={verifying}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-extrabold rounded-xl text-base disabled:opacity-40"
+                >
+                  {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `✅ "${voucher.product_name}" 제공 (사용 처리)`}
+                </button>
+                <p className="text-[10px] text-emerald-600 mt-2 text-center">POS / T오더 결제 X — 이 메뉴는 이미 결제 완료</p>
+              </div>
+            )}
+
+            {/* 비밀번호 입력 (사장님 PIN 또는 손님 인증) */}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              {isSeller ? '또는 PIN 으로 사용 처리' : t('voucher.verify.enterPin')}
+            </label>
             <input
               value={pin}
               onChange={e => setPin(e.target.value)}

@@ -23,6 +23,7 @@ import {
   generateVoucherCode,
   getSellerCommissionRate,
   sendBuyerVoucherIssuedAlimtalk,
+  sendSellerFirstVoucherAlimtalk,
 } from './helpers'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
@@ -388,6 +389,26 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
               { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt: lastExpiresAt },
             )
           )
+        }
+      } catch { /* graceful */ }
+
+      // 🛡️ 2026-05-16: 매장 사장님에게 첫 voucher 안내 알림톡 (sellers.first_voucher_notified=0 일 때만)
+      try {
+        try { await DB.prepare("ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0").run() } catch {}
+        const seller = await DB.prepare(
+          "SELECT phone, business_name, COALESCE(first_voucher_notified, 0) AS notified, store_owner_token FROM sellers WHERE id = ?"
+        ).bind(product.seller_id).first<{ phone: string | null; business_name: string; notified: number; store_owner_token: string | null }>()
+        if (seller && Number(seller.notified) === 0 && seller.phone) {
+          const token = seller.store_owner_token || ''
+          const statsUrl = `https://live.ur-team.com/store/stats/${productId}${token ? `?t=${token}` : ''}`
+          c.executionCtx.waitUntil(
+            sendSellerFirstVoucherAlimtalk(
+              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              seller.phone,
+              { restaurantName: seller.business_name, productName: product.name, statsUrl },
+            )
+          )
+          await DB.prepare("UPDATE sellers SET first_voucher_notified = 1 WHERE id = ?").bind(product.seller_id).run()
         }
       } catch { /* graceful */ }
 
