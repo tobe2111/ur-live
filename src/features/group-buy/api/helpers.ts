@@ -197,3 +197,75 @@ ${data.statsUrl}
     }).catch(() => { /* silently fail — 운영 영향 없게 */ })
   } catch { /* graceful */ }
 }
+
+/**
+ * 🛡️ 2026-05-16: 사용자에게 voucher 발급 알림톡 (결제 완료 직후).
+ *   링크: https://live.ur-team.com/my-vouchers (QR 코드 화면 진입)
+ */
+export async function sendBuyerVoucherIssuedAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { productName: string; restaurantName?: string; qty: number; expiresAt: string }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const expDate = new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    const message = `[유어딜] 식사권 발급 완료
+
+${data.restaurantName ? data.restaurantName + ' · ' : ''}${data.productName}
+${data.qty}장 발급되었습니다.
+
+📱 매장에서 QR 코드 보여주세요:
+https://live.ur-team.com/my-vouchers
+
+⏰ 유효기간: ${expDate}까지
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {})
+  } catch { /* graceful */ }
+}
+
+/**
+ * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
+ */
+export async function sendBuyerVoucherUsedAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; usedAt?: string }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+    const message = `[유어딜] ✅ 식사권 사용 완료
+
+${data.restaurantName}
+"${data.productName}"
+${ts ? '사용 시각: ' + ts : ''}
+
+맛있게 드세요! 🍱
+
+후기 작성하면 보너스 딜 지급:
+https://live.ur-team.com/my-vouchers
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {})
+  } catch { /* graceful */ }
+}

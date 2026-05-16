@@ -16,6 +16,7 @@ import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
 import { recordLedger } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
+import { sendBuyerVoucherUsedAlimtalk } from './helpers'
 import { ensureTables } from './helpers'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
@@ -120,6 +121,26 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         if (failReason === 'refunded') return c.json({ success: false, error: '환불된 바우처입니다' }, 400)
         return c.json({ success: false, error: '이미 사용되었거나 PIN이 틀립니다.' }, 400)
       }
+
+      // 🛡️ 2026-05-16: 사용자에게 사용 완료 알림톡 (fire-and-forget)
+      try {
+        const meta = await DB.prepare(
+          `SELECT v.user_id, u.phone, p.name AS product_name, p.restaurant_name
+           FROM vouchers v
+           LEFT JOIN users u ON u.id = v.user_id
+           LEFT JOIN products p ON p.id = v.product_id
+           WHERE v.code = ?`
+        ).bind(code).first<{ user_id: string; phone: string | null; product_name: string; restaurant_name: string | null }>()
+        if (meta?.phone) {
+          c.executionCtx.waitUntil(
+            sendBuyerVoucherUsedAlimtalk(
+              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              meta.phone,
+              { restaurantName: meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+            )
+          )
+        }
+      } catch { /* graceful */ }
 
       return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
     }

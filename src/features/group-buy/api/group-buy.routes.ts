@@ -22,6 +22,7 @@ import {
   calcTierDiscount,
   generateVoucherCode,
   getSellerCommissionRate,
+  sendBuyerVoucherIssuedAlimtalk,
 } from './helpers'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
@@ -344,15 +345,31 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       `).bind(order.id, productId, product.name, product.price, product.price, qty, totalAmount).run()
 
       // 바우처 발급 (티어 할인 정보도 함께 기록)
+      let lastExpiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
       for (let i = 0; i < qty; i++) {
         const code = generateVoucherCode()
         const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
+        lastExpiresAt = expiresAt
 
         await DB.prepare(`
           INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `).bind(order.id, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice).run()
       }
+
+      // 🛡️ 2026-05-16: 사용자 phone 으로 voucher 발급 알림톡 (fire-and-forget)
+      try {
+        const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
+        if (userRow?.phone) {
+          c.executionCtx.waitUntil(
+            sendBuyerVoucherIssuedAlimtalk(
+              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              userRow.phone,
+              { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt: lastExpiresAt },
+            )
+          )
+        }
+      } catch { /* graceful */ }
 
       // 🛡️ 2026-05-15: Promo 코드 사용 기록 + used_count atomic increment
       //   redemptions UNIQUE(promo_id, user_id, order_number) → 같은 주문 중복 차단
