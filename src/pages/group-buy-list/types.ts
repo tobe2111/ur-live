@@ -38,4 +38,4 @@ export interface CommunityGroupBuy {
 
 export type MainTab = 'seller' | 'community'
 export type CategoryFilter = 'all' | 'meal_voucher' | 'general'
-export type SortOption = 'popular' | 'deadline' | 'newest'
+export type SortOption = 'popular' | 'deadline' | 'newest' | 'discount'
