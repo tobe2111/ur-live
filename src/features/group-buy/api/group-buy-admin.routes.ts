@@ -121,6 +121,71 @@ groupBuyAdminRoutes.get('/list', requireAdmin(), async (c) => {
   }
 })
 
+// ── POST /admin/seller-closure/:sellerId — 매장 폐업 시 모든 미사용 voucher 일괄 환불 (require2FA) ──
+// 🛡️ 2026-05-16: 매장이 폐업/계약 해지된 경우 어드민이 한 번에 모든 미사용 voucher 환불 처리.
+//   처리: voucher.status='unused' AND product.seller_id = ? → 환불 + clawback + 매장 receivable 차감
+groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA(), auditLog('group_buy.admin.seller_closure'), async (c) => {
+  const sellerId = Number(c.req.param('sellerId'))
+  const body = await c.req.json<{ reason: string }>().catch(() => ({ reason: '' }))
+  const reason = String(body.reason || '').trim().slice(0, 500)
+  if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'invalid seller_id' }, 400)
+  if (!reason || reason.length < 10) return c.json({ success: false, error: '폐업 사유 10자 이상 필수' }, 400)
+
+  const DB = c.env.DB
+  const { results: vouchers } = await DB.prepare(
+    `SELECT v.id, v.user_id, v.product_id, v.applied_price, p.name AS product_name
+     FROM vouchers v JOIN products p ON p.id = v.product_id
+     WHERE v.status = 'unused' AND p.seller_id = ?`
+  ).bind(sellerId).all<{ id: number; user_id: string; product_id: number; applied_price: number; product_name: string }>().catch(() => ({ results: [] as any[] }))
+
+  let refundCount = 0
+  let refundTotal = 0
+  for (const v of (vouchers || [])) {
+    const cas = await DB.prepare(
+      "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
+    ).bind(v.id).run().catch(() => ({ meta: { changes: 0 } }))
+    if (!cas.meta?.changes) continue
+
+    const amount = v.applied_price || 0
+    // 사용자 환불
+    if (amount > 0 && v.user_id) {
+      try {
+        await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(amount, v.user_id).run()
+        await DB.prepare(
+          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+        ).bind(v.user_id, amount, amount, v.user_id, `[매장 폐업 환불] ${v.product_name}: ${reason}`).run()
+      } catch (e) { console.error('[seller-closure refund]', e) }
+    }
+    // 인플 clawback
+    try {
+      const { results: attrs } = await DB.prepare(
+        `SELECT id, influencer_id, commission_amount, status FROM influencer_attributions
+         WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
+      ).bind(v.id).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+      for (const a of (attrs || [])) {
+        await DB.prepare("UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = 'seller_closure' WHERE id = ?").bind(a.id).run()
+        if (a.status === 'pending') {
+          await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+            .bind(a.commission_amount, a.influencer_id).run()
+        } else if (a.status === 'available') {
+          await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+            .bind(a.commission_amount, a.influencer_id).run()
+        }
+      }
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[seller-closure clawback]', e) }
+    refundCount++
+    refundTotal += amount
+  }
+
+  // 매장 모든 product is_active=0
+  try {
+    await DB.prepare("UPDATE products SET is_active = 0, group_buy_status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE seller_id = ?").bind(sellerId).run()
+    await DB.prepare("UPDATE sellers SET status = 'closed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(sellerId).run().catch(() => {})
+  } catch { /* graceful */ }
+
+  return c.json({ success: true, refund_count: refundCount, refund_total: refundTotal })
+})
+
 // ── POST /admin/force-refund/:productId — 강제 환불 (require2FA + audit_log) ──
 // 🛡️ 2026-05-15: status 와 무관하게 미사용 voucher 일괄 환불 + audit_logs 기록.
 //   기존 /refund/:productId 는 status='expired' 필요. 분쟁/긴급 케이스에 어드민 직접 개입.

@@ -21,6 +21,7 @@ import {
   ensureTables,
   calcTierDiscount,
   generateVoucherCode,
+  generateUniqueVoucherCode,
   getSellerCommissionRate,
   sendBuyerVoucherIssuedAlimtalk,
   sendSellerFirstVoucherAlimtalk,
@@ -365,10 +366,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(order.id, productId, product.name, product.price, product.price, qty, totalAmount).run()
 
-      // 바우처 발급 (티어 할인 정보도 함께 기록)
+      // 바우처 발급 (티어 할인 정보도 함께 기록) — UNIQUE 검증 retry
       let lastExpiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
       for (let i = 0; i < qty; i++) {
-        const code = generateVoucherCode()
+        const code = await generateUniqueVoucherCode(DB)
         const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
         lastExpiresAt = expiresAt
 

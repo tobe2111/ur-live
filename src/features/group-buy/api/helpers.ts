@@ -144,6 +144,22 @@ export function generateVoucherCode(): string {
   return code
 }
 
+/**
+ * 🛡️ 2026-05-16: UNIQUE 충돌 retry 가능한 voucher code 생성.
+ *   32^8 = 1.1조 조합이라 충돌 확률 극히 낮지만 0 아님 (생일 역설 — 100만 voucher 발급 시 ~0.5%).
+ *   DB collision 발생하면 최대 5회 재시도 후 예외.
+ */
+export async function generateUniqueVoucherCode(DB: D1Database): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateVoucherCode()
+    try {
+      const existing = await DB.prepare("SELECT 1 FROM vouchers WHERE code = ?").bind(code).first().catch(() => null)
+      if (!existing) return code
+    } catch { return code /* 검증 자체 실패 시 fallback (DB 부담 회피) */ }
+  }
+  throw new Error('voucher_code_collision_max_retry')
+}
+
 /** Magic Link 사장님 토큰 — 32자 hex (128bit), URL-safe. */
 export function generateStoreOwnerToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16))
