@@ -16,6 +16,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireSeller, requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 
 const sellerApp = new Hono<{ Bindings: Env }>()
 const influencerApp = new Hono<{ Bindings: Env }>()
@@ -465,11 +466,24 @@ influencerApp.get('/my-stores', async (c) => {
 // 🛡️ 2026-05-16: 인플루언서 매장 영입 + commission 매출 ranking — 지역/기간/기준 별
 const rankingApp = new Hono<{ Bindings: Env }>()
 
+// 공개 endpoint — IP 당 분당 30회 (봇 / 폭증 트래픽 방어)
+rankingApp.use('*', rateLimit({ action: 'influencer_rankings', max: 30, windowSec: 60 }))
+
 rankingApp.get('/', async (c) => {
   const DB = c.env.DB
   const region = c.req.query('region') || 'all'         // 'all' / 'seoul' / 'gangnam' / etc.
   const period = c.req.query('period') || 'month'       // 'month' (이번 달) / 'all' (누적)
   const metric = c.req.query('metric') || 'commission'  // 'commission' / 'count'
+
+  // 🛡️ 2026-05-16: KV 캐시 5분 — 공개 endpoint 봇 / 폭증 트래픽 방어
+  const kv = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV
+  const cacheKey = `infl_ranking:${region}:${period}:${metric}`
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey)
+      if (cached) return c.json(JSON.parse(cached))
+    } catch { /* miss */ }
+  }
 
   // 기간 필터
   const timeFilter = period === 'month'
@@ -531,7 +545,12 @@ rankingApp.get('/', async (c) => {
       }
     })
 
-    return c.json({ success: true, data: ranked, region, period, metric })
+    const response = { success: true, data: ranked, region, period, metric }
+    // KV 캐시 저장 (5분)
+    if (kv) {
+      try { await kv.put(cacheKey, JSON.stringify(response), { expirationTtl: 300 }) } catch { /* silent */ }
+    }
+    return c.json(response)
   } catch (e) {
     return c.json({ success: false, error: 'ranking_unavailable' }, 503)
   }
