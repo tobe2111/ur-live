@@ -167,6 +167,7 @@ import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/
 import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+import { sellerMarketingRoutes, influencerSettlementRoutes } from '../features/group-buy/api/marketing.routes';
 import { ogRoutes } from './routes/og-image.routes';
 import { analyticsRoutes } from './routes/analytics.routes';
 import { flagRoutes } from './routes/feature-flag.routes';
@@ -1025,6 +1026,9 @@ app.route('/api/shorts', shortsRoutes);
 // ── 공동구매 & 바우처 ──
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
+// 🛡️ 2026-05-16: 셀러 마케팅 (인플 차단) + 인플루언서 정산
+app.route('/api/seller-marketing', sellerMarketingRoutes);
+app.route('/api/influencer-settlement', influencerSettlementRoutes);
 
 // 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
 app.route('/api/og', ogRoutes);

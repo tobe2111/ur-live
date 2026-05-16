@@ -35,6 +35,7 @@ const AdminCouponsPage = lazy(() => import('@/pages/AdminCouponsPage'))
 const AdminAuditLogPage = lazy(() => import('@/pages/AdminAuditLogPage'))
 const AdminAbusePage = lazy(() => import('@/pages/AdminAbusePage'))
 const AdminAdSlotsPage = lazy(() => import('@/pages/AdminAdSlotsPage'))
+const AdminCommissionSettingsPage = lazy(() => import('@/pages/AdminCommissionSettingsPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
 const AdminLiveMonitorPage = lazy(() => import('@/pages/AdminLiveMonitorPage'))
@@ -226,6 +227,11 @@ export function AdminRoutes() {
       <Route path="/admin/ad-slots" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminAdSlotsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/commission-settings" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminCommissionSettingsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/audit-log" element={
