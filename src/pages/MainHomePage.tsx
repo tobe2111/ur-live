@@ -238,7 +238,8 @@ export default function MainHomePage() {
 
       <div className="ur-content-wide">
         {/* 🛡️ 2026-05-16: 쏘카 스타일 hero — 인사 + 슬로건 + 8 카테고리 그리드 */}
-        <SocarStyleHero />
+        {/*   userName: 카카오 로그인 시 별명 / 비로그인 시 '유저' 자동 fallback */}
+        <SocarStyleHero userName={typeof window !== 'undefined' ? (localStorage.getItem('user_name') || undefined) : undefined} />
         {/* SVG 그라디언트 배너 — 페이지네이션 */}
         <SocarStyleBanner />
 
