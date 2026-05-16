@@ -62,6 +62,7 @@ const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
+const InfluencerRankingsPage = lazy(() => import('./pages/InfluencerRankingsPage'))
 const MyFollowsPage = lazy(() => import('./pages/MyFollowsPage'))
 const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
@@ -470,6 +471,7 @@ function AppContent() {
                 <InfluencerAnalyticsPage />
               </ProtectedRoute>
             } />
+            <Route path="/influencer/rankings" element={<InfluencerRankingsPage />} />
             {/* 🛡️ 2026-05-15: 단골 알림 매트릭스 설정 */}
             <Route path="/my/follows" element={
               <ProtectedRoute requireUser>
