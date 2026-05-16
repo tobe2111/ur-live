@@ -18,25 +18,30 @@ interface Deal { id: number; influencer_id: string; commission_pct: number; stat
 function DealsSection() {
   const [deals, setDeals] = useState<Deal[]>([])
   const [proposing, setProposing] = useState(false)
+  const [showProposeModal, setShowProposeModal] = useState(false)
+  const [proposeForm, setProposeForm] = useState({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '' })
   const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }
   useEffect(() => {
     api.get('/api/seller-marketing/deals', { headers })
       .then(r => { if (r.data?.success) setDeals(r.data.data || []) })
       .catch(() => { /* silent */ })
   }, [])
-  async function proposeDeal() {
-    const influencerId = prompt('우대 commission 제안할 인플루언서 ID (예: user_12345)')
-    if (!influencerId) return
-    const pctStr = prompt('우대 commission % (예: 1.5, 최대는 어드민 cap)')
-    const pct = Number(pctStr)
+  async function submitPropose() {
+    const influencerId = proposeForm.influencer_id.trim()
+    const pct = Number(proposeForm.commission_pct)
+    if (!influencerId || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(influencerId)) { toast.error('잘못된 인플 ID'); return }
     if (!Number.isFinite(pct) || pct <= 0) { toast.error('잘못된 %'); return }
-    const message = prompt('인플에게 보낼 메시지 (선택)') || ''
     setProposing(true)
     try {
-      const r = await api.post('/api/seller-marketing/deals/propose', { influencer_id: influencerId.trim(), commission_pct: pct, message }, { headers })
+      const r = await api.post('/api/seller-marketing/deals/propose', {
+        influencer_id: influencerId, commission_pct: pct,
+        ends_at: proposeForm.ends_at || undefined,
+        message: proposeForm.message || undefined,
+      }, { headers })
       if (r.data?.success) {
-        toast.success('제안 발송')
-        setProposing(false)
+        toast.success('제안 발송됨 — 인플이 수락하면 활성화')
+        setShowProposeModal(false)
+        setProposeForm({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '' })
         const r2 = await api.get('/api/seller-marketing/deals', { headers })
         if (r2.data?.success) setDeals(r2.data.data || [])
       } else toast.error(r.data?.error || '실패')
@@ -60,7 +65,7 @@ function DealsSection() {
         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
           <Handshake className="w-4 h-4 text-blue-500" /> 인플 협업 deal ({deals.length})
         </h3>
-        <button onClick={proposeDeal} disabled={proposing} className="text-[11px] px-3 py-1.5 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-40">
+        <button onClick={() => setShowProposeModal(true)} disabled={proposing} className="text-[11px] px-3 py-1.5 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-40">
           + 우대 commission 제안
         </button>
       </div>
@@ -84,6 +89,46 @@ function DealsSection() {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* 🛡️ 2026-05-16: 제안 modal (prompt 대신 정식 form) */}
+      {showProposeModal && (
+        <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowProposeModal(false)}>
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-4">우대 commission 제안</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">인플루언서 ID</label>
+                <input value={proposeForm.influencer_id} onChange={(e) => setProposeForm(f => ({ ...f, influencer_id: e.target.value }))}
+                  placeholder="user_12345" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">우대 commission (%, 최대 cap 어드민 정책)</label>
+                <input type="number" step="0.1" min="0.1" max="10" value={proposeForm.commission_pct}
+                  onChange={(e) => setProposeForm(f => ({ ...f, commission_pct: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">만료일 (선택)</label>
+                <input type="datetime-local" value={proposeForm.ends_at}
+                  onChange={(e) => setProposeForm(f => ({ ...f, ends_at: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">메시지 (선택)</label>
+                <textarea value={proposeForm.message} onChange={(e) => setProposeForm(f => ({ ...f, message: e.target.value }))}
+                  rows={2} placeholder="협업 조건 / 무료 식사 제공 등"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setShowProposeModal(false)} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700">취소</button>
+              <button onClick={submitPropose} disabled={proposing} className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+                {proposing ? '발송중...' : '제안 발송'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
