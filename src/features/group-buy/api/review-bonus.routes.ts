@@ -48,15 +48,21 @@ async function payBonus(DB: D1Database, userId: string, amount: number, voucherI
 
 userApp.post('/submit', async (c) => {
   const userId = String((c.get('user') as AuthUser).id)
-  const body = await c.req.json<{ voucher_code: string; review_url: string }>().catch(() => ({} as any))
+  const body = await c.req.json<{ voucher_code: string; review_url?: string; screenshot_url?: string }>().catch(() => ({} as any))
   const voucherCode = String(body.voucher_code || '').trim().toUpperCase()
   const url = String(body.review_url || '').trim()
+  const screenshotUrl = String(body.screenshot_url || '').trim()
   if (!voucherCode) return c.json({ success: false, error: 'voucher 코드 필요' }, 400)
-  // URL 검증 — 카카오맵 / 카카오 place 도메인만
-  if (!/^https?:\/\/(map\.kakao\.com|place\.map\.kakao\.com|map\.naver\.com|naver\.me|kko\.to)/i.test(url)) {
+  if (!url && !screenshotUrl) return c.json({ success: false, error: 'URL 또는 스크린샷 중 하나 필요' }, 400)
+  // URL 검증 — 카카오맵 / 카카오 place 도메인만 (URL 제출 시)
+  if (url && !/^https?:\/\/(map\.kakao\.com|place\.map\.kakao\.com|map\.naver\.com|naver\.me|kko\.to)/i.test(url)) {
     return c.json({ success: false, error: '카카오맵 또는 네이버맵 후기 URL 만 허용' }, 400)
   }
-  if (url.length > 500) return c.json({ success: false, error: 'URL 너무 김' }, 400)
+  if (url.length > 500 || screenshotUrl.length > 500) return c.json({ success: false, error: 'URL 너무 김' }, 400)
+  // 스크린샷 URL 도 https 검증
+  if (screenshotUrl && !/^https?:\/\//i.test(screenshotUrl)) {
+    return c.json({ success: false, error: '스크린샷 URL 형식 오류' }, 400)
+  }
   const DB = c.env.DB
   await ensureTable(DB)
 
@@ -77,21 +83,59 @@ userApp.post('/submit', async (c) => {
   const autoRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_auto_approve'").first<{ value: string }>().catch(() => null)
   const autoApprove = String(autoRow?.value ?? '0') === '1'
 
-  const status = autoApprove ? 'paid' : 'submitted'
+  // 🛡️ 2026-05-16: 스크린샷 제출 시 Workers AI llava OCR 자동 검증 시도
+  //   매칭 성공 → status='paid' 즉시 지급. 실패 → status='submitted' 어드민 검증으로.
+  let ocrPassed = false
+  let ocrNotes = ''
+  if (screenshotUrl) {
+    try {
+      const restaurant = await DB.prepare("SELECT restaurant_name, name FROM products WHERE id = ?").bind(voucher.product_id).first<{ restaurant_name: string | null; name: string }>().catch(() => null)
+      const expectedStore = (restaurant?.restaurant_name || restaurant?.name || '').trim()
+      const ai = (c.env as { AI?: { run: (model: string, input: unknown) => Promise<unknown> } }).AI
+      if (ai && expectedStore) {
+        // llava 호출 — 이미지 분석
+        const imgResp = await fetch(screenshotUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null)
+        if (imgResp && imgResp.ok) {
+          const buf = await imgResp.arrayBuffer()
+          const aiResp = await ai.run('@cf/llava-1.5-7b-hf', {
+            image: [...new Uint8Array(buf)],
+            prompt: `이 이미지가 카카오맵 또는 네이버맵의 음식점 후기 스크린샷인지 확인. 후기에 매장 이름과 본문(5자 이상)이 보이는지 답해줘. JSON 형식: {"is_review": true/false, "store_name": "추정 매장명", "content_preview": "후기 본문 첫 30자"}`,
+            max_tokens: 200,
+          }).catch(() => null) as { description?: string; response?: string } | null
+          const aiText = aiResp?.description || aiResp?.response || ''
+          ocrNotes = aiText.slice(0, 300)
+          // 매장명 매칭 (대소문자 무시, 공백/특수문자 제거 후 부분일치)
+          const normalize = (s: string) => s.toLowerCase().replace(/[\s\W]/g, '')
+          const expectedNorm = normalize(expectedStore)
+          const aiNorm = normalize(aiText)
+          if (aiText.toLowerCase().includes('is_review": true') || /후기|리뷰/i.test(aiText)) {
+            if (expectedNorm && aiNorm.includes(expectedNorm.slice(0, 4))) {
+              ocrPassed = true
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[ocr]', e)
+    }
+  }
+
+  const status = (autoApprove || ocrPassed) ? 'paid' : 'submitted'
+  const willPay = autoApprove || ocrPassed
   try {
     await DB.prepare(
-      `INSERT INTO kakao_review_submissions (voucher_id, user_id, product_id, seller_id, review_url, bonus_amount, status, reviewed_at, paid_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ${autoApprove ? "datetime('now')" : 'NULL'}, ${autoApprove ? "datetime('now')" : 'NULL'})`
-    ).bind(voucher.id, userId, voucher.product_id, product?.seller_id ?? null, url, autoApprove ? bonusAmount : 0, status).run()
+      `INSERT INTO kakao_review_submissions (voucher_id, user_id, product_id, seller_id, review_url, bonus_amount, status, admin_notes, reviewed_at, paid_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${willPay ? "datetime('now')" : 'NULL'}, ${willPay ? "datetime('now')" : 'NULL'})`
+    ).bind(voucher.id, userId, voucher.product_id, product?.seller_id ?? null, url || screenshotUrl, willPay ? bonusAmount : 0, status, ocrPassed ? `OCR auto-approved: ${ocrNotes}` : (ocrNotes ? `OCR review: ${ocrNotes}` : null)).run()
   } catch (e) {
     return c.json({ success: false, error: '이미 제출된 voucher 입니다' }, 409)
   }
 
-  if (autoApprove) {
+  if (willPay) {
     await payBonus(DB, userId, bonusAmount, voucher.id)
-    return c.json({ success: true, message: `${bonusAmount.toLocaleString()}딜 즉시 지급되었습니다`, bonus: bonusAmount })
+    return c.json({ success: true, message: `${bonusAmount.toLocaleString()}딜 즉시 지급되었습니다 ${ocrPassed ? '(OCR 자동 승인)' : ''}`, bonus: bonusAmount, auto_approved: true })
   }
-  return c.json({ success: true, message: '제출됨 — 어드민 검증 후 보너스 지급', bonus: bonusAmount })
+  return c.json({ success: true, message: '제출됨 — 어드민 검증 후 보너스 지급 (보통 1~3일)', bonus: bonusAmount, auto_approved: false })
 })
 
 userApp.get('/my', async (c) => {

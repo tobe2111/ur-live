@@ -195,6 +195,24 @@ export default function InfluencerSettlementPage() {
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
+        {/* 🛡️ 2026-05-16: 카탈로그 + 성과표 진입 카드 */}
+        <div className="grid grid-cols-2 gap-2">
+          <a href="/influencer/discover" className="bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-xl p-3.5 flex items-center justify-between active:scale-95 transition-transform">
+            <div>
+              <p className="text-[10px] opacity-90">추천 공구 둘러보기</p>
+              <p className="text-sm font-bold mt-0.5">카탈로그 →</p>
+            </div>
+            <span className="text-xl">🛍️</span>
+          </a>
+          <a href="/influencer/analytics" className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white rounded-xl p-3.5 flex items-center justify-between active:scale-95 transition-transform">
+            <div>
+              <p className="text-[10px] opacity-90">내 판매 실적</p>
+              <p className="text-sm font-bold mt-0.5">성과표 →</p>
+            </div>
+            <span className="text-xl">📊</span>
+          </a>
+        </div>
+
         {/* 잔액 요약 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-yellow-50 rounded-xl p-3 text-center">
