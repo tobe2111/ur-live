@@ -33,14 +33,14 @@ const STATUS_MAP = {
   refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
 } as const
 
+// 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
+//   장점: 외부 서비스 다운에 영향 X, latency 0, 오프라인에서도 렌더, 프라이버시.
+import { QRCodeSVG } from 'qrcode.react'
 function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
   return (
-    <img
-      src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`}
-      alt="QR Code"
-      className="mx-auto"
-      width={size}
-      height={size} loading="lazy" />
+    <div className="mx-auto bg-white p-2 rounded">
+      <QRCodeSVG value={value} size={size} level="M" includeMargin={false} />
+    </div>
   )
 }
 

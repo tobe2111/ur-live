@@ -1,10 +1,84 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine } from 'lucide-react'
+import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine, Camera, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+
+// 🛡️ 2026-05-16: QR 스캐너 모달 — qr-scanner 라이브러리 사용 (~10KB gzipped).
+//   사용 흐름: 매장 점주가 [QR 스캔] 버튼 → 카메라 활성화 → QR 인식 → 코드 자동 입력 후 사용 처리.
+//   카메라 권한 거부 / 미지원 시 자동으로 모달 닫힘 + 토스트 안내.
+function QRScannerModal({ onResult, onClose }: { onResult: (code: string) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const scannerRef = useRef<{ stop: () => void; destroy: () => void } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let scanner: { start: () => Promise<void>; stop: () => void; destroy: () => void } | null = null
+
+    async function start() {
+      try {
+        const QrScanner = (await import('qr-scanner')).default
+        if (cancelled || !videoRef.current) return
+        scanner = new QrScanner(
+          videoRef.current,
+          (res: { data: string }) => {
+            const raw = res.data
+            // URL 형식이면 마지막 path segment 추출, 아니면 그대로
+            let code = raw
+            try {
+              const u = new URL(raw)
+              const segs = u.pathname.split('/').filter(Boolean)
+              code = segs[segs.length - 1] || raw
+            } catch { /* not a URL — use as-is */ }
+            onResult(code.toUpperCase())
+            scanner?.stop()
+          },
+          { preferredCamera: 'environment', highlightScanRegion: true, maxScansPerSecond: 5 },
+        )
+        scannerRef.current = scanner
+        await scanner.start()
+      } catch (e) {
+        if (cancelled) return
+        const msg = (e as Error)?.message || String(e)
+        if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('denied')) {
+          setError('카메라 권한을 허용해주세요')
+        } else if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no camera')) {
+          setError('카메라를 사용할 수 없습니다')
+        } else {
+          setError('QR 스캐너 초기화 실패 — 코드 직접 입력해주세요')
+        }
+      }
+    }
+    start()
+    return () => {
+      cancelled = true
+      try { scannerRef.current?.stop() } catch { /* ignore */ }
+      try { scannerRef.current?.destroy() } catch { /* ignore */ }
+    }
+  }, [onResult])
+
+  return (
+    <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/90" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="relative w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute -top-12 right-0 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white" aria-label="닫기">
+          <X className="w-6 h-6" />
+        </button>
+        <div className="bg-black rounded-2xl overflow-hidden aspect-square">
+          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        </div>
+        <p className="text-center text-white text-sm mt-4">손님 화면의 QR 코드를 스캔해주세요</p>
+        {error && (
+          <div className="mt-3 bg-red-500/20 border border-red-400 rounded-lg px-3 py-2 text-center">
+            <p className="text-xs text-white">{error}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 interface StoreStats {
   product_name: string
@@ -29,6 +103,7 @@ export default function StoreStatsPage() {
   const [error, setError] = useState('')
   // 🛡️ 2026-05-13 (공구 UX): 가게 현장 바우처 사용 처리 UI
   const [voucherCode, setVoucherCode] = useState('')
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [usingVoucher, setUsingVoucher] = useState(false)
   const [recentUses, setRecentUses] = useState<Array<{ code: string; success: boolean; reason?: string; at: number }>>([])
 
@@ -197,7 +272,16 @@ export default function StoreStatsPage() {
             <ScanLine className="w-5 h-5 text-pink-600" />
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용 처리</h3>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">손님이 보여주는 바우처 코드를 입력하고 사용 처리하세요.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">QR 스캔하거나 코드 직접 입력 후 사용 처리.</p>
+          {/* QR 스캔 버튼 (메인) */}
+          <button
+            onClick={() => setScannerOpen(true)}
+            disabled={usingVoucher}
+            className="w-full mb-3 py-3.5 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-40"
+          >
+            <Camera className="w-5 h-5" /> QR 스캔하기
+          </button>
+          <p className="text-center text-[11px] text-gray-400 mb-2">— 또는 코드 직접 입력 —</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -249,6 +333,19 @@ export default function StoreStatsPage() {
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">유어딜 · 식당 공동구매 서비스</p>
       </div>
+
+      {/* QR 스캐너 모달 */}
+      {scannerOpen && (
+        <QRScannerModal
+          onResult={(code) => {
+            setVoucherCode(code)
+            setScannerOpen(false)
+            // 스캔 즉시 자동 사용 처리 (UX 친화 — 매장 점주가 별도 버튼 안 눌러도 됨)
+            setTimeout(() => { void handleUseVoucher() }, 100)
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
     </div>
   )
 }
