@@ -47,6 +47,7 @@ const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
 const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
 const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
 const SellerMarketingPage = lazy(() => import('@/pages/SellerMarketingPage'))
+const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDashboardPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
@@ -225,6 +226,11 @@ export function SellerRoutes() {
       <Route path="/seller/marketing" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerMarketingPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/realtime" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerRealtimeDashboardPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/meal-voucher/new" element={

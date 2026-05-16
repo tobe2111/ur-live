@@ -33,6 +33,78 @@ function getSellerId(c: { get: (k: string) => unknown }): number {
 
 // ───────── 셀러 측 ─────────
 
+// 🛡️ 2026-05-16: 매장 매출 실시간 대시보드 — 오늘/이번주/이번달 + voucher 사용률 + 인플 referral 비중
+sellerApp.get('/realtime-stats', async (c) => {
+  const sellerId = getSellerId(c)
+  const DB = c.env.DB
+
+  // 1) 매출 (오늘 / 7일 / 30일) — orders 테이블 기반
+  const today = await DB.prepare(
+    `SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS amt
+     FROM orders WHERE seller_id = ? AND status = 'PAID'
+       AND DATE(created_at) = DATE('now', 'localtime')`
+  ).bind(sellerId).first<{ cnt: number; amt: number }>().catch(() => ({ cnt: 0, amt: 0 }))
+
+  const week = await DB.prepare(
+    `SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS amt
+     FROM orders WHERE seller_id = ? AND status = 'PAID'
+       AND created_at >= datetime('now', '-7 days')`
+  ).bind(sellerId).first<{ cnt: number; amt: number }>().catch(() => ({ cnt: 0, amt: 0 }))
+
+  const month = await DB.prepare(
+    `SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS amt
+     FROM orders WHERE seller_id = ? AND status = 'PAID'
+       AND created_at >= datetime('now', '-30 days')`
+  ).bind(sellerId).first<{ cnt: number; amt: number }>().catch(() => ({ cnt: 0, amt: 0 }))
+
+  // 2) voucher 사용률 (지난 30일 발급 voucher 중 사용된 비율)
+  const voucherStats = await DB.prepare(
+    `SELECT
+       COUNT(*) AS total,
+       SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) AS used,
+       SUM(CASE WHEN v.status = 'expired' THEN 1 ELSE 0 END) AS expired,
+       SUM(CASE WHEN v.status = 'unused' THEN 1 ELSE 0 END) AS unused
+     FROM vouchers v
+     JOIN products p ON p.id = v.product_id
+     WHERE p.seller_id = ? AND v.created_at >= datetime('now', '-30 days')`
+  ).bind(sellerId).first<{ total: number; used: number; expired: number; unused: number }>().catch(() => ({ total: 0, used: 0, expired: 0, unused: 0 }))
+
+  // 3) 인플 referral 매출 비중 (지난 30일)
+  const referralStats = await DB.prepare(
+    `SELECT COUNT(*) AS cnt, COALESCE(SUM(commission_amount), 0) AS total_commission
+     FROM influencer_attributions
+     WHERE seller_id = ? AND created_at >= datetime('now', '-30 days') AND status != 'clawed_back'`
+  ).bind(sellerId).first<{ cnt: number; total_commission: number }>().catch(() => ({ cnt: 0, total_commission: 0 }))
+
+  // 4) 최근 사용 voucher 10개 (실시간 활동 표시)
+  const recentUses = await DB.prepare(
+    `SELECT v.id, v.code, v.used_at, p.name AS product_name, v.applied_price
+     FROM vouchers v
+     JOIN products p ON p.id = v.product_id
+     WHERE p.seller_id = ? AND v.status = 'used'
+     ORDER BY v.used_at DESC LIMIT 10`
+  ).bind(sellerId).all().catch(() => ({ results: [] as any[] }))
+
+  // 5) 일별 매출 추세 (지난 14일)
+  const daily = await DB.prepare(
+    `SELECT DATE(created_at) AS d, COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS amt
+     FROM orders WHERE seller_id = ? AND status = 'PAID'
+       AND created_at >= datetime('now', '-14 days')
+     GROUP BY DATE(created_at) ORDER BY d DESC`
+  ).bind(sellerId).all().catch(() => ({ results: [] as any[] }))
+
+  return c.json({
+    success: true,
+    data: {
+      today, week, month,
+      voucher_stats: voucherStats,
+      referral_stats: referralStats,
+      recent_uses: recentUses.results || [],
+      daily: daily.results || [],
+    },
+  })
+})
+
 sellerApp.get('/me', async (c) => {
   const sellerId = getSellerId(c)
   const DB = c.env.DB
@@ -269,6 +341,69 @@ influencerApp.post('/deals/propose', async (c) => {
        message = excluded.message, created_at = datetime('now'), responded_at = NULL`
   ).bind(sellerId, userId, pct, body.ends_at || null, body.message || null).run()
   return c.json({ success: true })
+})
+
+// 🛡️ 2026-05-16: 인플루언서 성과표 — referral 매출 / 전환율 / 매장별 ranking / 일별 추세
+influencerApp.get('/analytics', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const DB = c.env.DB
+
+  // 1) 총 commission (status 별)
+  const summary = await DB.prepare(
+    `SELECT
+       COUNT(*) AS total_attributions,
+       COALESCE(SUM(CASE WHEN status = 'pending' THEN commission_amount ELSE 0 END), 0) AS pending,
+       COALESCE(SUM(CASE WHEN status = 'available' THEN commission_amount ELSE 0 END), 0) AS available,
+       COALESCE(SUM(CASE WHEN status = 'paid' THEN commission_amount ELSE 0 END), 0) AS paid,
+       COALESCE(SUM(CASE WHEN status = 'clawed_back' THEN commission_amount ELSE 0 END), 0) AS clawed_back,
+       COALESCE(SUM(commission_amount), 0) AS total
+     FROM influencer_attributions WHERE influencer_id = ?`
+  ).bind(userId).first().catch(() => null)
+
+  // 2) 매장별 ranking (Top 10)
+  const topSellers = await DB.prepare(
+    `SELECT a.seller_id, s.name AS seller_name,
+            COUNT(*) AS attribution_count,
+            COALESCE(SUM(a.commission_amount), 0) AS total_commission
+     FROM influencer_attributions a
+     LEFT JOIN sellers s ON s.id = a.seller_id
+     WHERE a.influencer_id = ? AND a.status != 'clawed_back'
+     GROUP BY a.seller_id
+     ORDER BY total_commission DESC
+     LIMIT 10`
+  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+
+  // 3) 일별 추세 (지난 30일)
+  const daily = await DB.prepare(
+    `SELECT DATE(created_at) AS d, COUNT(*) AS cnt, COALESCE(SUM(commission_amount), 0) AS amt
+     FROM influencer_attributions
+     WHERE influencer_id = ? AND created_at >= datetime('now', '-30 days')
+     GROUP BY DATE(created_at)
+     ORDER BY d DESC`
+  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+
+  // 4) Top product
+  const topProducts = await DB.prepare(
+    `SELECT a.product_id, p.name AS product_name, p.restaurant_name,
+            COUNT(*) AS attribution_count,
+            COALESCE(SUM(a.commission_amount), 0) AS total_commission
+     FROM influencer_attributions a
+     LEFT JOIN products p ON p.id = a.product_id
+     WHERE a.influencer_id = ? AND a.status != 'clawed_back'
+     GROUP BY a.product_id
+     ORDER BY total_commission DESC
+     LIMIT 10`
+  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+
+  return c.json({
+    success: true,
+    data: {
+      summary: summary || { total_attributions: 0, pending: 0, available: 0, paid: 0, clawed_back: 0, total: 0 },
+      top_sellers: topSellers.results || [],
+      top_products: topProducts.results || [],
+      daily: daily.results || [],
+    },
+  })
 })
 
 // 인플 측 — 내가 영입한 매장 + 받은/보낸 deal 목록
