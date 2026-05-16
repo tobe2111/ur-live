@@ -11,6 +11,8 @@ import { formatNumber } from '@/utils/format'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import RecentlyViewed from './main-home/RecentlyViewed'
 import InvitePrompt from './main-home/InvitePrompt'
+import SocarStyleHero from './main-home/SocarStyleHero'
+import SocarStyleBanner from './main-home/SocarStyleBanner'
 import { REGIONS, CATEGORIES } from './main-home/constants'
 import { detectRegionFromCoords, getThumb, disc, fmtEnd } from './main-home/utils'
 import type { LiveStream, Product } from './main-home/types'
@@ -235,6 +237,11 @@ export default function MainHomePage() {
       </div>
 
       <div className="ur-content-wide">
+        {/* 🛡️ 2026-05-16: 쏘카 스타일 hero — 인사 + 슬로건 + 8 카테고리 그리드 */}
+        <SocarStyleHero />
+        {/* SVG 그라디언트 배너 — 페이지네이션 */}
+        <SocarStyleBanner />
+
       {/* ═══ Region Hero (어드민 배너를 풀스크린 배경으로) ═══
            🛡️ 2026-04-22: 어드민 등록 배너(image_url)를 우선 배경으로 사용.
            - 배너 등록되어 있으면: 배너 이미지가 배경, 배너 클릭 시 link_url 이동
