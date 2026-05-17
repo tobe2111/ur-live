@@ -34,3 +34,24 @@ export function formatPriceShort(value: unknown): string {
   if (n >= 10_000) return `${(n / 10_000).toFixed(1)}만`
   return n.toLocaleString('ko-KR')
 }
+
+/**
+ * 🛡️ 2026-05-17: 산술 연산용 안전 숫자 변환.
+ *   `a * b` 를 직접 하면 한 쪽이 null/undefined 일 때 NaN 전파 → 화면에 ₩NaN 노출.
+ *   safeNum(value) 로 항상 finite number 보장.
+ *
+ *   safeNum(null)         // → 0
+ *   safeNum(undefined)    // → 0
+ *   safeNum(NaN)          // → 0
+ *   safeNum("3.5")        // → 3.5
+ *   safeNum(7)            // → 7
+ */
+export function safeNum(value: unknown, fallback = 0): number {
+  const n = Number(value ?? fallback)
+  return Number.isFinite(n) ? n : fallback
+}
+
+/** ₩1,234 — 셀러/어드민 대시보드에서 자주 쓰이는 ₩ 접두 포매팅 */
+export function formatWon(value: unknown): string {
+  return `₩${formatNumber(value)}`
+}

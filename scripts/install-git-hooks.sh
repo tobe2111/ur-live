@@ -69,6 +69,10 @@ bash scripts/check-no-secrets.sh || {
 echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
 bash scripts/check-silent-errors.sh || true
 
+# 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
+echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
+bash scripts/check-nan-dashboard.sh || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

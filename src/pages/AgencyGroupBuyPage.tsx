@@ -252,7 +252,7 @@ function generateContract(groupBuy: GroupBuy) {
       <table>
         <tr><th>항목</th><th>내용</th></tr>
         <tr><td>식당명</td><td>${groupBuy.restaurant_name}</td></tr>
-        <tr><td>확정 가격</td><td>${groupBuy.confirmed_price?.toLocaleString()}원</td></tr>
+        <tr><td>확정 가격</td><td>${formatNumber(groupBuy.confirmed_price)}원</td></tr>
         <tr><td>할인율</td><td>${groupBuy.confirmed_discount_percent}%</td></tr>
         <tr><td>참여 인원</td><td>${groupBuy.participant_count}명</td></tr>
         <tr><td>총 거래액</td><td>${formatNumber(groupBuy.total_deposit_deals || 0)}딜</td></tr>

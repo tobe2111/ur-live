@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 import {
   Loader2, CheckCircle2, XCircle, Clock, Package,
   ChevronLeft, ChevronRight, MessageSquare
@@ -172,9 +173,9 @@ export default function AdminSampleRequestsPage() {
 
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span>{item.seller_name} ({item.business_name})</span>
-                        <span>소비자가 {item.retail_price?.toLocaleString()}원</span>
+                        <span>소비자가 {formatNumber(item.retail_price)}원</span>
                         {item.supply_price > 0 && (
-                          <span>공급가 {item.supply_price?.toLocaleString()}원</span>
+                          <span>공급가 {formatNumber(item.supply_price)}원</span>
                         )}
                       </div>
 

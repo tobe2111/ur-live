@@ -313,8 +313,8 @@ export default function SellerSupplyPage() {
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-gray-500">{t('seller.retailPrice')} {req.retail_price?.toLocaleString()}{t('common.won')}</span>
-                        <span className="text-xs text-purple-600 font-medium">{t('seller.supplyPrice')} {req.supply_price?.toLocaleString()}{t('common.won')}</span>
+                        <span className="text-xs text-gray-500">{t('seller.retailPrice')} {formatNumber(req.retail_price)}{t('common.won')}</span>
+                        <span className="text-xs text-purple-600 font-medium">{t('seller.supplyPrice')} {formatNumber(req.supply_price)}{t('common.won')}</span>
                       </div>
                       {req.seller_memo && (
                         <p className="mt-1 text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">{t('seller.requestMemo')}: {req.seller_memo}</p>
@@ -399,7 +399,7 @@ export default function SellerSupplyPage() {
             <div className="bg-green-50 rounded-lg p-3 mb-4 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500">{t('seller.supplyPriceCost')}</span>
-                <span className="font-medium text-purple-700">{registerModal.supply_price?.toLocaleString()}{t('common.won')}</span>
+                <span className="font-medium text-purple-700">{formatNumber(registerModal.supply_price)}{t('common.won')}</span>
               </div>
               <p className="text-xs text-green-700 mt-1">{t('seller.profitExplain')}</p>
             </div>

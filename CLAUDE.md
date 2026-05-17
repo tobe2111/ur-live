@@ -287,7 +287,16 @@ navigate(returnUrl)
 3. **text-gray-900**: 화이트 테마 input/select/textarea 에 명시
 4. **App.tsx**: lazy import + Route 추가
 5. **console.log 금지**: `import.meta.env.DEV` 게이트 필수
-6. **검증**: `bash scripts/quality-check.sh`
+6. **숫자 포매팅** (대시보드 ₩NaN 사고 — 2026-05-17): `value.toLocaleString()` 직접 호출 금지.
+   DB row 값이 null/undefined 이거나 `a * b` 곱셈에 한쪽이 null 이면 `NaN` 노출.
+   대신 `@/utils/format` 의 헬퍼 사용:
+   ```ts
+   import { formatNumber, formatWon, safeNum } from '@/utils/format'
+   {formatWon(value)}                       // → ₩1,234 (null → ₩0)
+   {formatNumber(value)}                    // → 1,234 (null → 0)
+   formatNumber(safeNum(a) * safeNum(b))    // 산술 후 포매팅 — NaN 방지
+   ```
+7. **검증**: `bash scripts/quality-check.sh`
 
 ## 🚀 배포 아키텍처
 
@@ -375,6 +384,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | Service Worker 등록 | `check-no-sw-register.sh` | `verify.yml` | 2026-04-27 OAuth 차단 |
 | 파일 중간 import | (install-git-hooks.sh) | - | 2026-04-22 worker crash |
 | Silent error (warn) | `check-silent-errors.sh` | - | 디버깅 곤란 |
+| 대시보드 NaN/undefined (warn) | `check-nan-dashboard.sh` | - | 2026-05-17 ₩NaN 노출 |
 
 **Bypass (정당 사유만):**
 - commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시

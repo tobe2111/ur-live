@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit2, Package, Loader2, ArrowLeft } from 'lucide-react'
@@ -121,7 +122,7 @@ export default function AgencyProductsPage() {
                 {p.image_url && <img src={p.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                  <p className="text-xs text-gray-500">{p.price?.toLocaleString()}원 · 재고 {p.stock}개</p>
+                  <p className="text-xs text-gray-500">{formatNumber(p.price)}원 · 재고 {p.stock}개</p>
                 </div>
                 <button onClick={() => { setEditingId(p.id); setForm({ name: p.name, description: p.description || '', price: p.price ?? 0, original_price: p.original_price || 0, stock: p.stock || 0, image_url: p.image_url || '', category: p.category || 'general' }); setShowForm(true) }}
                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
