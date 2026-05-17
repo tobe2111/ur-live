@@ -37,5 +37,15 @@ export interface CommunityGroupBuy {
 }
 
 export type MainTab = 'seller' | 'community'
-export type CategoryFilter = 'all' | 'meal_voucher' | 'general'
+// 🛡️ 2026-05-16: voucher 6 카테고리 + general 모두 받도록 확장
+//   메인 hero 의 8 카테고리 클릭 → 정확한 필터 적용
+export type CategoryFilter =
+  | 'all'
+  | 'general'
+  | 'meal_voucher'
+  | 'beauty_voucher'
+  | 'health_voucher'
+  | 'pet_voucher'
+  | 'stay_voucher'
+  | 'activity_voucher'
 export type SortOption = 'popular' | 'deadline' | 'newest' | 'discount'
