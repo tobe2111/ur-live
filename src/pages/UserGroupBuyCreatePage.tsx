@@ -23,14 +23,82 @@ export default function UserGroupBuyCreatePage() {
   // Auth check
   const userType = localStorage.getItem('user_type')
   const userId = localStorage.getItem('user_id')
+  const sellerToken = localStorage.getItem('seller_token')
   const isLoggedIn = userType === 'user' && !!userId
+
+  // 🛡️ 2026-05-16: 공구 등록 권한 강화 — 점주(셀러) OR 인플루언서만 등록 가능
+  //   일반 user (영업/공구 등록 자격 없음) 차단 — 사용자 보고:
+  //   "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
+  const [eligibleAsInfluencer, setEligibleAsInfluencer] = useState<boolean | null>(null)
+  const isSeller = !!sellerToken
 
   useEffect(() => {
     if (!isLoggedIn) {
       toast.error(t('groupbuy.loginRequired', { defaultValue: '로그인이 필요합니다' }))
       navigate('/login', { replace: true })
+      return
     }
-  }, [isLoggedIn, navigate])
+    if (isSeller) {
+      // 셀러는 즉시 통과
+      setEligibleAsInfluencer(true)
+      return
+    }
+    // 일반 user — 인플 자격 (referral attribution) 백엔드 검증
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/influencer-settlement/analytics')
+        .then((r) => {
+          const total = r.data?.data?.summary?.total_attributions ?? 0
+          if (total > 0) {
+            setEligibleAsInfluencer(true)  // 1회 이상 referral commission 받은 적 있음 = 활동 인플
+          } else {
+            setEligibleAsInfluencer(false)
+          }
+        })
+        .catch(() => setEligibleAsInfluencer(false))
+    })
+  }, [isLoggedIn, isSeller, navigate, t])
+
+  // 자격 없음 안내 화면
+  if (eligibleAsInfluencer === false) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-6 text-center">
+        <span className="text-5xl mb-3">🔒</span>
+        <h1 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">공구 등록 권한이 필요해요</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 max-w-sm leading-relaxed">
+          공구는 <strong>점주(셀러)</strong> 또는 <strong>인플루언서 (referral commission 받은 경험 있음)</strong> 만 등록 가능합니다.
+        </p>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <button
+            onClick={() => navigate('/seller/register')}
+            className="w-full py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
+          >
+            🏪 점주로 가입하기
+          </button>
+          <button
+            onClick={() => navigate('/influencer/discover')}
+            className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold text-sm"
+          >
+            🎤 인플루언서 활동 시작 (카탈로그)
+          </button>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full py-3 border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm"
+          >
+            돌아가기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // 자격 확인 중 로딩
+  if (eligibleAsInfluencer === null) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
+        <p className="text-sm text-gray-500">권한 확인 중...</p>
+      </div>
+    )
+  }
 
   // Step state
   const [restaurant, setRestaurant] = useState<SelectedRestaurant | null>(null)
