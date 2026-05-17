@@ -29,15 +29,14 @@ import RecentlyViewedStrip from '@/components/group-buy/RecentlyViewedStrip'
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🛡️ 2026-05-16: URL ?category= 처리 — 메인 hero 의 8 카테고리 클릭 시 자동 필터
-  //   voucher 종류 (meal/beauty/health/pet/stay/activity) → CategoryFilter 매핑
+  // 🛡️ 2026-05-16: URL ?category= 처리 — 메인 hero 의 8 카테고리 각각 정확 필터
+  //   voucher 6종 (meal/beauty/health/pet/stay/activity) + general + all 모두 직접 매칭
   const [searchParams] = useSearchParams()
   const urlCategory = (searchParams.get('category') || '').toLowerCase()
   const urlSort = (searchParams.get('sort') || '').toLowerCase()
-  const initialCategory: CategoryFilter =
-    urlCategory === 'meal_voucher' ? 'meal_voucher'
-    : (urlCategory && urlCategory !== 'all' && urlCategory !== 'general' && urlCategory.includes('voucher')) ? 'meal_voucher'  // voucher 류 → meal_voucher 탭
-    : urlCategory === 'general' ? 'general'
+  const VALID_CATEGORIES: CategoryFilter[] = ['all', 'general', 'meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
+  const initialCategory: CategoryFilter = VALID_CATEGORIES.includes(urlCategory as CategoryFilter)
+    ? (urlCategory as CategoryFilter)
     : 'all'
   const initialSort: SortOption = urlSort === 'discount' ? 'discount' : 'popular'
 
@@ -114,11 +113,13 @@ export default function GroupBuyListPage() {
   const filtered = useMemo(() => {
     let result = [...items]
 
-    // 카테고리 필터
-    if (category === 'meal_voucher') {
-      result = result.filter((p) => p.category === 'meal_voucher')
-    } else if (category === 'general') {
-      result = result.filter((p) => p.category !== 'meal_voucher')
+    // 🛡️ 2026-05-16: 카테고리 필터 — voucher 6종 + general 모두 정확 매칭
+    const VOUCHER_CATEGORIES = ['meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
+    if (category === 'general') {
+      result = result.filter((p) => !VOUCHER_CATEGORIES.includes(p.category || ''))
+    } else if (category !== 'all') {
+      // 특정 voucher 카테고리 (meal_voucher / beauty_voucher / etc.) 정확 매칭
+      result = result.filter((p) => p.category === category)
     }
 
     // 🛡️ 2026-05-16: 텍스트 검색 (상품명 / 매장명)
@@ -314,11 +315,17 @@ export default function GroupBuyListPage() {
 
       {/* 카테고리 탭 (셀러 공구 전용) */}
       {mainTab === 'seller' && (
-        <div className="ur-content-wide px-4 lg:px-8 mt-4">
-          <div className="flex gap-2">
+        <div className="ur-content-wide px-4 lg:px-8 mt-4 overflow-x-auto no-scrollbar">
+          {/* 🛡️ 2026-05-16: 6 voucher 카테고리 모두 탭으로 노출 (이전엔 3 탭만) */}
+          <div className="flex gap-2 min-w-max">
             {([
               { key: 'all', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '맛집 식사권' }) },
+              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍱 식사권' }) },
+              { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💄 뷰티' }) },
+              { key: 'health_voucher', label: t('groupBuy.categoryHealth', { defaultValue: '💪 헬스' }) },
+              { key: 'pet_voucher', label: t('groupBuy.categoryPet', { defaultValue: '🐶 펫' }) },
+              { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏠 숙박' }) },
+              { key: 'activity_voucher', label: t('groupBuy.categoryActivity', { defaultValue: '🎯 액티비티' }) },
               { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '일반 상품' }) },
             ] as const).map((tab) => (
               <button
