@@ -370,11 +370,29 @@ export default function RestaurantMapPage() {
   //   full = 92vh (거의 풀스크린)
   // 🛡️ 2026-04-30 v2: peek 18vh → 28vh — 결과 카드 안 보이던 문제 (사용자 신고).
   // 🛡️ 2026-05-04 (iOS Safari fix): 100vh → 100dvh. iOS 주소창 토글 시 viewport 점프 회피.
+  // 🛡️ 2026-05-17 (PC wheel zoom 영역 확보): 데스크톱에서 lg+ 클래스로 더 작게 — wheel zoom 영역 확보.
   const sheetTopByState: Record<typeof sheetSnap, string> = {
     peek: 'calc(100dvh - 28dvh)',
     mid: 'calc(100dvh - 60dvh)',
     full: 'calc(100dvh - 92dvh)',
   }
+  // 🛡️ 2026-05-17: PC (lg+) 에서는 sheet 더 작게 (peek 16dvh, mid 40dvh, full 80dvh)
+  //   → 지도 영역 60~84% 확보 → wheel zoom UX 정상.
+  const sheetTopByStateLg: Record<typeof sheetSnap, string> = {
+    peek: 'calc(100dvh - 16dvh)',
+    mid: 'calc(100dvh - 40dvh)',
+    full: 'calc(100dvh - 80dvh)',
+  }
+  const [isLgViewport, setIsLgViewport] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => setIsLgViewport(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  const currentSheetTop = (isLgViewport ? sheetTopByStateLg : sheetTopByState)[sheetSnap]
 
   return (
     <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
@@ -429,7 +447,7 @@ export default function RestaurantMapPage() {
       <div
         className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
         style={{
-          top: sheetTopByState[sheetSnap],
+          top: currentSheetTop,
           transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
           transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
