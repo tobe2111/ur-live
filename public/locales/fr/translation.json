@@ -1673,7 +1673,12 @@
       "castings": "Demandes de casting",
       "promoteBoosts": "Boosts de visibilité",
       "guide": "Guide",
-      "bundles": "Lots"
+      "bundles": "Lots",
+      "promoCodes": "Codes promo",
+      "followers": "Abonnés",
+      "miniShop": "Mini boutique",
+      "streamingGuide": "Guide de diffusion",
+      "notifyFollowers": "Notifier les abonnés"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
