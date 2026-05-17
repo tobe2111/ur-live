@@ -2339,7 +2339,12 @@
       "castings": "选角申请",
       "promoteBoosts": "曝光加成",
       "guide": "运营指南",
-      "bundles": "套装商品"
+      "bundles": "套装商品",
+      "promoCodes": "促销码",
+      "followers": "粉丝",
+      "miniShop": "迷你商店",
+      "streamingGuide": "直播指南",
+      "notifyFollowers": "通知粉丝"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

@@ -2355,7 +2355,12 @@
       "castings": "キャスティング依頼",
       "promoteBoosts": "露出ブースト",
       "guide": "運営ガイド",
-      "bundles": "バンドル商品"
+      "bundles": "バンドル商品",
+      "promoCodes": "プロモコード",
+      "followers": "フォロワー",
+      "miniShop": "ミニショップ",
+      "streamingGuide": "配信ガイド",
+      "notifyFollowers": "フォロワー通知"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",

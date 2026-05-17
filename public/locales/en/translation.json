@@ -2349,7 +2349,12 @@
       "liveBroadcast": "Live Broadcast",
       "castings": "Casting Requests",
       "promoteBoosts": "Feed Boosts",
-      "guide": "Guide"
+      "guide": "Guide",
+      "promoCodes": "Promo Codes",
+      "followers": "Followers",
+      "miniShop": "Mini Shop",
+      "streamingGuide": "Streaming Guide",
+      "notifyFollowers": "Notify Followers"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

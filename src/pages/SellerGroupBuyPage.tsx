@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import api from '@/lib/api'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -51,7 +52,8 @@ export default function SellerGroupBuyPage() {
         api.get('/api/group-buy/commission-rate').catch(() => ({ data: { rate: 0.05 } })),
       ])
       if (productsRes.data.success) {
-        const mealVouchers = (productsRes.data.data || []).filter((p: { category?: string }) => p.category === 'meal_voucher')
+        // 🛡️ 2026-05-17: meal_voucher 만 보던 필터 → 6 voucher 카테고리 전체로 확장
+        const mealVouchers = (productsRes.data.data || []).filter((p: { category?: string }) => isVoucherCategory(p.category))
         setProducts(mealVouchers)
         // 바우처 통계: 각 상품별 (vouchers 테이블에서 집계)
         if (mealVouchers.length > 0) {
@@ -111,6 +113,15 @@ export default function SellerGroupBuyPage() {
           title={t('seller.nav.mealVoucher')}
           subtitle={t('seller.groupBuySubtitle', { defaultValue: '공동구매 / 식사권 관리' })}
           icon={<Ticket className="h-5 w-5" />}
+          actions={
+            <button
+              onClick={() => navigate('/seller/meal-voucher/new')}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-pink-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-pink-600 active:scale-[0.98] transition"
+            >
+              <Plus className="h-4 w-4" />
+              {t('seller.groupBuy.registerVoucher', { defaultValue: '공구권 등록' })}
+            </button>
+          }
         />
 
         {/* 요약 카드 */}

@@ -435,6 +435,58 @@ sellerOrdersRoutes.get('/products', async (c) => {
   }
 });
 
+// ─── GET /api/seller/products/:id ─────────────────────────────────────────
+// 🛡️ 2026-05-17: SellerProductEditPage 가 호출하던 endpoint — 부재로 404.
+sellerOrdersRoutes.get('/products/:id', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const productId = c.req.param('id');
+    const db = c.env.DB;
+
+    const product = await db.prepare(
+      `SELECT
+         p.id, p.name, p.description, p.price, p.original_price,
+         COALESCE(p.stock_quantity, p.stock, 0)                AS stock,
+         COALESCE(p.thumbnail_url, p.image_url, p.image)       AS image_url,
+         p.detail_images,
+         p.category, p.product_type,
+         p.live_stream_id, p.live_only_price, p.live_price_enabled,
+         COALESCE(p.status, 'ACTIVE')                          AS status,
+         COALESCE(p.is_active, 1)                              AS is_active,
+         p.restaurant_name, p.restaurant_address, p.restaurant_phone,
+         p.voucher_terms, p.voucher_expiry,
+         p.group_buy_target, p.group_buy_deadline,
+         p.store_verify_pin,
+         p.created_at, p.updated_at
+       FROM products p
+       WHERE p.id = ? AND p.seller_id = ?`
+    ).bind(productId, sellerId).first<Record<string, unknown>>();
+
+    if (!product) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
+
+    // options 함께 반환 (있으면)
+    let options: unknown[] = [];
+    try {
+      const optRes = await db.prepare(
+        `SELECT id, name, price, stock, sort_order
+           FROM product_options
+          WHERE product_id = ?
+          ORDER BY sort_order ASC, id ASC`
+      ).bind(productId).all();
+      options = optRes.results || [];
+    } catch {
+      // product_options 테이블 미존재 시 무시
+    }
+
+    return c.json({ success: true, data: { ...product, options } });
+  } catch (error: unknown) {
+    console.error('Get seller product detail error:', error);
+    return c.json({ success: false, error: (error as Error).message || 'Failed to get product' }, 500);
+  }
+});
+
 // ─── PATCH /api/seller/orders/bulk-status ─────────────────────────────────
 // 주문 일괄 상태변경: { order_ids: number[], status: string }
 sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {

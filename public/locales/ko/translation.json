@@ -2379,7 +2379,12 @@
       "liveBroadcast": "라이브 방송",
       "castings": "캐스팅 신청",
       "promoteBoosts": "노출 부스팅",
-      "guide": "운영 가이드"
+      "guide": "운영 가이드",
+      "promoCodes": "프로모 코드",
+      "followers": "팔로워",
+      "miniShop": "미니샵",
+      "streamingGuide": "송출 가이드",
+      "notifyFollowers": "팔로워 알림"
     },
     "guide": {
       "title": "셀러 운영 가이드",
