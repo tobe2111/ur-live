@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken } from '@/lib/seller-auth'
 import { TrendingUp, Ticket, Users, RefreshCw } from 'lucide-react'
+import { formatNumber, safeNum } from '@/utils/format'
 
 interface RealtimeStats {
   today: { cnt: number; amt: number }
@@ -44,10 +45,13 @@ export default function SellerRealtimeDashboardPage() {
   if (loading && !data) return <SellerLayout title="실시간 대시보드"><div className="p-6"><p className="text-gray-500">로딩 중...</p></div></SellerLayout>
   if (!data) return null
 
-  const useRate = data.voucher_stats.total > 0
-    ? Math.round((data.voucher_stats.used / data.voucher_stats.total) * 100)
+  // 🛡️ 2026-05-17: safeNum 으로 NaN 방어 — 데이터 누락 시 0%, 0건 표시
+  const totalVouchers = safeNum(data.voucher_stats?.total)
+  const usedVouchers = safeNum(data.voucher_stats?.used)
+  const useRate = totalVouchers > 0
+    ? Math.round((usedVouchers / totalVouchers) * 100)
     : 0
-  const maxDaily = Math.max(...data.daily.map(d => d.amt), 1)
+  const maxDaily = Math.max(...(data.daily || []).map(d => safeNum(d.amt)), 1)
 
   return (
     <SellerLayout title="실시간 매출 대시보드">
@@ -68,18 +72,18 @@ export default function SellerRealtimeDashboardPage() {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-pink-50 rounded-xl p-4 text-center">
             <p className="text-[10px] text-pink-700 font-medium">오늘</p>
-            <p className="text-2xl font-extrabold text-pink-800 mt-1">{data.today.amt.toLocaleString()}원</p>
-            <p className="text-[10px] text-pink-600 mt-1">{data.today.cnt}건</p>
+            <p className="text-2xl font-extrabold text-pink-800 mt-1">{formatNumber(data.today?.amt)}원</p>
+            <p className="text-[10px] text-pink-600 mt-1">{safeNum(data.today?.cnt)}건</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-4 text-center">
             <p className="text-[10px] text-blue-700 font-medium">최근 7일</p>
-            <p className="text-2xl font-extrabold text-blue-800 mt-1">{data.week.amt.toLocaleString()}원</p>
-            <p className="text-[10px] text-blue-600 mt-1">{data.week.cnt}건</p>
+            <p className="text-2xl font-extrabold text-blue-800 mt-1">{formatNumber(data.week?.amt)}원</p>
+            <p className="text-[10px] text-blue-600 mt-1">{safeNum(data.week?.cnt)}건</p>
           </div>
           <div className="bg-emerald-50 rounded-xl p-4 text-center">
             <p className="text-[10px] text-emerald-700 font-medium">최근 30일</p>
-            <p className="text-2xl font-extrabold text-emerald-800 mt-1">{data.month.amt.toLocaleString()}원</p>
-            <p className="text-[10px] text-emerald-600 mt-1">{data.month.cnt}건</p>
+            <p className="text-2xl font-extrabold text-emerald-800 mt-1">{formatNumber(data.month?.amt)}원</p>
+            <p className="text-[10px] text-emerald-600 mt-1">{safeNum(data.month?.cnt)}건</p>
           </div>
         </div>
 
@@ -96,8 +100,8 @@ export default function SellerRealtimeDashboardPage() {
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> 인플 Referral 매출 (30일)</h3>
-            <p className="text-3xl font-extrabold text-gray-900">{data.referral_stats.cnt}건</p>
-            <p className="text-[11px] text-gray-500 mt-1">인플에 지급된 commission: {data.referral_stats.total_commission.toLocaleString()}원</p>
+            <p className="text-3xl font-extrabold text-gray-900">{safeNum(data.referral_stats?.cnt)}건</p>
+            <p className="text-[11px] text-gray-500 mt-1">인플에 지급된 commission: {formatNumber(data.referral_stats?.total_commission)}원</p>
           </div>
         </div>
 
@@ -112,9 +116,9 @@ export default function SellerRealtimeDashboardPage() {
                 <div key={d.d} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 w-16 font-mono">{d.d.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 rounded h-4 relative overflow-hidden">
-                    <div className="bg-pink-400 h-full" style={{ width: `${(d.amt / maxDaily) * 100}%` }} />
+                    <div className="bg-pink-400 h-full" style={{ width: `${(safeNum(d.amt) / maxDaily) * 100}%` }} />
                   </div>
-                  <span className="text-[10px] text-gray-700 w-24 text-right font-bold">{d.amt.toLocaleString()}원</span>
+                  <span className="text-[10px] text-gray-700 w-24 text-right font-bold">{formatNumber(d.amt)}원</span>
                 </div>
               ))}
             </div>

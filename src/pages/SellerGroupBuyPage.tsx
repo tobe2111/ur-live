@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import api from '@/lib/api'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { safeNum, formatNumber, formatWon } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -75,9 +76,10 @@ export default function SellerGroupBuyPage() {
   }
 
   // 정산액 계산: 셀러 수령액 = 가격 × 참여 × (1 - 수수료율)
+  // 🛡️ 2026-05-17: safeNum 으로 NaN 방지 (DB null → 0 변환)
   function calcSettlement(product: GroupBuyProduct) {
-    const gross = (product.price || 0) * (product.group_buy_current || 0)
-    const commission = Math.round(gross * commissionRate)
+    const gross = safeNum(product.price) * safeNum(product.group_buy_current)
+    const commission = Math.round(gross * safeNum(commissionRate))
     const netToSeller = gross - commission
     return { gross, commission, netToSeller }
   }
@@ -129,7 +131,7 @@ export default function SellerGroupBuyPage() {
           {[
             { label: t('seller.groupBuy.active'), value: products.filter(p => p.group_buy_status === 'active').length, color: 'text-blue-600', bg: 'bg-blue-50' },
             { label: t('seller.groupBuy.achieved'), value: products.filter(p => p.group_buy_status === 'achieved').length, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + (p.group_buy_current || 0), 0), color: 'text-pink-600', bg: 'bg-pink-50' },
+            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + safeNum(p.group_buy_current), 0), color: 'text-pink-600', bg: 'bg-pink-50' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-200 text-center">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -140,26 +142,27 @@ export default function SellerGroupBuyPage() {
 
         {/* 🛡️ 2026-05-13 (공구 UX #1): 정산 대시보드 — 총 매출 / 수수료 / 셀러 수령액 */}
         {products.length > 0 && (() => {
-          const totalGross = products.reduce((s, p) => s + (p.price * p.group_buy_current), 0)
-          const totalCommission = Math.round(totalGross * commissionRate)
+          // 🛡️ 2026-05-17: safeNum 으로 NaN 영구 차단 — 신규 등록 직후 price/current 가 null 일 때 ₩NaN 노출되던 문제
+          const totalGross = products.reduce((s, p) => s + safeNum(p.price) * safeNum(p.group_buy_current), 0)
+          const totalCommission = Math.round(totalGross * safeNum(commissionRate))
           const totalNet = totalGross - totalCommission
           return (
             <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-wider opacity-80">예상 정산</p>
-                  <p className="text-3xl font-extrabold mt-0.5">₩{totalNet.toLocaleString('ko-KR')}</p>
+                  <p className="text-3xl font-extrabold mt-0.5">{formatWon(totalNet)}</p>
                 </div>
                 <DollarSign className="w-8 h-8 opacity-70" />
               </div>
               <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/20 text-xs">
                 <div>
                   <p className="opacity-70">총 매출</p>
-                  <p className="font-bold">₩{totalGross.toLocaleString('ko-KR')}</p>
+                  <p className="font-bold">{formatWon(totalGross)}</p>
                 </div>
                 <div>
-                  <p className="opacity-70">플랫폼 수수료 ({(commissionRate * 100).toFixed(1)}%)</p>
-                  <p className="font-bold">-₩{totalCommission.toLocaleString('ko-KR')}</p>
+                  <p className="opacity-70">플랫폼 수수료 ({(safeNum(commissionRate) * 100).toFixed(1)}%)</p>
+                  <p className="font-bold">-{formatWon(totalCommission)}</p>
                 </div>
               </div>
               <p className="text-[10px] opacity-70 mt-2">실제 정산은 바우처 사용 완료 후 매월 정산일에 입금됩니다.</p>
@@ -208,7 +211,10 @@ export default function SellerGroupBuyPage() {
         ) : (
           <div className="space-y-3">
             {products.map(p => {
-              const progress = p.group_buy_target > 0 ? Math.min(100, (p.group_buy_current / p.group_buy_target) * 100) : 0
+              // 🛡️ 2026-05-17: safeNum 으로 NaN/null 방어 (target=0 또는 null 일 때 0% 표시)
+              const targetNum = safeNum(p.group_buy_target)
+              const currentNum = safeNum(p.group_buy_current)
+              const progress = targetNum > 0 ? Math.min(100, (currentNum / targetNum) * 100) : 0
               const isActive = p.group_buy_status === 'active'
               const isAchieved = p.group_buy_status === 'achieved'
 
@@ -232,7 +238,7 @@ export default function SellerGroupBuyPage() {
                       {/* 진행률 */}
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-500">{t('seller.groupBuy.participantCount', { current: p.group_buy_current, target: p.group_buy_target })}</span>
+                          <span className="text-gray-500">{t('seller.groupBuy.participantCount', { current: currentNum, target: targetNum })}</span>
                           <span className="font-bold text-pink-500">{Math.round(progress)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -254,9 +260,9 @@ export default function SellerGroupBuyPage() {
                     <div>
                       <p className="text-gray-500">예상 정산액</p>
                       <p className="font-bold text-emerald-600 text-sm mt-0.5">
-                        ₩{calcSettlement(p).netToSeller.toLocaleString('ko-KR')}
+                        {formatWon(calcSettlement(p).netToSeller)}
                       </p>
-                      <p className="text-[10px] text-gray-400">총 {(p.price * p.group_buy_current).toLocaleString('ko-KR')}원 - 수수료 {(commissionRate * 100).toFixed(1)}%</p>
+                      <p className="text-[10px] text-gray-400">총 {formatNumber(safeNum(p.price) * currentNum)}원 - 수수료 {(safeNum(commissionRate) * 100).toFixed(1)}%</p>
                     </div>
                     {voucherStats[p.id] ? (
                       <div>

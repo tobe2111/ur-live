@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { formatNumber } from '@/utils/format'
 import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
@@ -273,7 +274,7 @@ export default function AdminReplayPage() {
                       >
                         {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                         <span className="flex-1 truncate">{p.name}</span>
-                        <span className="text-xs text-gray-400 shrink-0">{p.price?.toLocaleString()}원</span>
+                        <span className="text-xs text-gray-400 shrink-0">{formatNumber(p.price)}원</span>
                         {selected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
                       </button>
                     )

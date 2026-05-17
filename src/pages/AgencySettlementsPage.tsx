@@ -123,7 +123,7 @@ export default function AgencySettlementsPage() {
                   <tr key={r.id}>
                     <td className="px-4 py-3 font-mono text-xs">{r.order_number}</td>
                     <td className="px-4 py-3">{r.seller_name}</td>
-                    <td className="px-4 py-3 text-right font-bold">{r.total_amount?.toLocaleString()}원</td>
+                    <td className="px-4 py-3 text-right font-bold">{formatNumber(r.total_amount)}원</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         r.settlement_status === 'completed' ? 'bg-green-100 text-green-700' :
