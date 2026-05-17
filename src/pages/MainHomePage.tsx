@@ -243,36 +243,8 @@ export default function MainHomePage() {
         {/* SVG 그라디언트 배너 — 페이지네이션 */}
         <SocarStyleBanner />
 
-
-      {/* ═══ Quick 3-entry ═══ */}
-      <div className="px-4 pt-4 pb-1">
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={() => navigate('/live')} className="rounded-xl p-2.5 text-left bg-red-500/[0.08] border border-red-500/20">
-            <div className="flex items-center gap-1 mb-0.5">
-              <span className="w-1.5 h-1.5 bg-[#EF4444] rounded-full animate-pulse" />
-              <span className="text-[9px] text-red-300 font-extrabold tracking-widest">LIVE</span>
-            </div>
-            <p className="text-[12px] text-gray-900 dark:text-white font-extrabold">{t('mainHome.quickLiveTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.quickLiveSub', { count: liveStreams.length })}</p>
-          </button>
-          <button onClick={() => navigate('/browse?category=meal_voucher')} className="rounded-xl p-2.5 text-left bg-yellow-400/[0.08] border border-yellow-400/25">
-            <div className="flex items-center gap-1 mb-0.5">
-              <span className="text-[10px]">🍽</span>
-              <span className="text-[9px] text-yellow-200 font-extrabold tracking-widest">MEAL</span>
-            </div>
-            <p className="text-[12px] text-gray-900 dark:text-white font-extrabold">{t('mainHome.quickMealTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.quickMealSub', { count: displayMeals.length })}</p>
-          </button>
-          <button onClick={() => navigate('/browse')} className="rounded-xl p-2.5 text-left bg-blue-400/[0.08] border border-blue-400/25">
-            <div className="flex items-center gap-1 mb-0.5">
-              <span className="text-[10px]">🛍</span>
-              <span className="text-[9px] text-blue-300 font-extrabold tracking-widest">SPECIAL</span>
-            </div>
-            <p className="text-[12px] text-gray-900 dark:text-white font-extrabold">{t('mainHome.quickSpecialTitle')}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.quickSpecialSub')}</p>
-          </button>
-        </div>
-      </div>
+      {/* 🛡️ 2026-05-17: Quick 3-entry (LIVE/MEAL/SPECIAL) 제거.
+            SocarStyleHero 카테고리 그리드 (라이브/식사권/특가) 와 100% 중복 + 식사권 destination 불일치 (/browse vs /group-buy) — UX 일관성 위해 Hero 만 SSOT 로 유지. */}
 
       {/* ═══ 내 주변 맛집 식사권 ═══ */}
       <div className="px-4 pt-7">
@@ -292,7 +264,8 @@ export default function MainHomePage() {
             <button onClick={() => navigate('/restaurant-map')} className="flex items-center gap-1 text-[11px] text-[#FBBF24] font-bold">
               <Map className="w-3.5 h-3.5" /> {t('mainHome.mapShortcut')}
             </button>
-            <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
+            {/* 🛡️ 2026-05-17: Hero 카테고리 그리드와 destination 통일 — /group-buy SSOT */}
+            <button onClick={() => navigate('/group-buy?category=meal_voucher')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
         </div>
 
