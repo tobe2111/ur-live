@@ -69,11 +69,30 @@ export function useKakaoMap({
       // 🛡️ 2026-05-16: 명시적 줌/팬 활성화 — 기본값이지만 명시로 안전
       mapInstance.current.setDraggable(true)
       mapInstance.current.setZoomable(true)
+      // 🛡️ 2026-05-17: 줌 레벨 명시 — 너무 깊거나 얕은 줌 차단
+      mapInstance.current.setMinLevel(1)
+      mapInstance.current.setMaxLevel(14)
+      // 🛡️ 2026-05-17: ZoomControl 을 TOPRIGHT 로 — RIGHT 는 바텀시트(mid/full)에 가려짐
       const zoomControl = new window.kakao.maps.ZoomControl()
-      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
+      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.TOPRIGHT)
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
         if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
       })
+
+      // 🛡️ 2026-05-17: 커스텀 wheel zoom — Kakao native 가 sluggish/inconsistent 한 경우 보강.
+      //   capture phase + stopImmediatePropagation 으로 Kakao native 가로채 double-zoom 방지.
+      //   wheel 한 tick = 1 level 변화. passive: false 로 페이지 스크롤 차단.
+      const wheelHandler = (e: WheelEvent) => {
+        if (!mapInstance.current) return
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        const cur = mapInstance.current.getLevel()
+        // deltaY < 0 (휠 위) = 줌 인 = 레벨 감소
+        const next = Math.max(1, Math.min(14, cur + (e.deltaY > 0 ? 1 : -1)))
+        if (next !== cur) mapInstance.current.setLevel(next, { animate: true })
+      }
+      mapRef.current.addEventListener('wheel', wheelHandler, { passive: false, capture: true })
+      // cleanup: mapRef DOM unmount 시 listener GC. mapInstance ref 만 useEffect 에서 null 처리.
     }
 
     markersRef.current.forEach(m => m.setMap(null))
