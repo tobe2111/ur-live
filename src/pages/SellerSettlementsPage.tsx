@@ -220,7 +220,64 @@ export default function SellerSettlementsPage() {
         navigate('/seller/profile')
         return
       }
+      // 🛡️ 2026-05-18: 사업자등록 미검증 — 검증 흐름으로 안내.
+      if (code === 'BUSINESS_REGISTRATION_REQUIRED') {
+        toast.error(error_.response?.data?.error || '사업자등록증 검증이 필요합니다')
+        setBizRegModalOpen(true)
+        return
+      }
       toast.error(error_.response?.data?.error || t('seller.settlementRequestFailed2'))
+    }
+  }
+
+  // 🛡️ 2026-05-18: 사업자등록 검증 상태 + 옵션 조회.
+  const [bizRegStatus, setBizRegStatus] = useState<string>('pending')
+  const [bizRegImageUrl, setBizRegImageUrl] = useState<string | null>(null)
+  const [bizRegRejectReason, setBizRegRejectReason] = useState<string | null>(null)
+  const [bizRegModalOpen, setBizRegModalOpen] = useState(false)
+  const [bizRegSubmitImage, setBizRegSubmitImage] = useState('')
+  const [bizRegSubmitNumber, setBizRegSubmitNumber] = useState('')
+  const [bizRegSubmitting, setBizRegSubmitting] = useState(false)
+
+  useEffect(() => {
+    const sessionToken = localStorage.getItem('seller_token')
+    if (!sessionToken) return
+    api.get('/api/seller/settlement-options', { headers: { Authorization: `Bearer ${sessionToken}` } })
+      .then((res) => {
+        if (res.data?.success) {
+          const br = res.data.data.business_registration
+          setBizRegStatus(br?.status || 'pending')
+          setBizRegImageUrl(br?.image_url || null)
+          setBizRegRejectReason(br?.reject_reason || null)
+        }
+      })
+      .catch(() => { /* fail-soft */ })
+  }, [])
+
+  async function submitBusinessRegistration() {
+    if (!bizRegSubmitImage.trim()) {
+      toast.error('이미지 URL 을 입력해주세요')
+      return
+    }
+    setBizRegSubmitting(true)
+    try {
+      const sessionToken = localStorage.getItem('seller_token')
+      const res = await api.post('/api/seller/business-registration/submit',
+        { image_url: bizRegSubmitImage.trim(), business_number: bizRegSubmitNumber.trim() },
+        { headers: { Authorization: `Bearer ${sessionToken}` } })
+      if (res.data?.success) {
+        toast.success(res.data.message || '제출되었습니다')
+        setBizRegStatus('pending')
+        setBizRegImageUrl(bizRegSubmitImage.trim())
+        setBizRegModalOpen(false)
+        setBizRegSubmitImage('')
+        setBizRegSubmitNumber('')
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '제출 실패')
+    } finally {
+      setBizRegSubmitting(false)
     }
   }
 
@@ -311,6 +368,54 @@ export default function SellerSettlementsPage() {
           subtitle={t('seller.settlements.notice', { defaultValue: '정산 관리' })}
           icon={<DollarSign className="h-5 w-5" />}
         />
+
+        {/* 🛡️ 2026-05-18: 사업자등록 검증 상태 배너 — 현금 정산 가능 여부 안내. */}
+        {bizRegStatus !== 'verified' && bizRegStatus !== 'exempt' && (
+          <div className={`rounded-xl p-4 border ${
+            bizRegStatus === 'rejected' ? 'bg-red-50 border-red-200' :
+            bizRegStatus === 'pending' && bizRegImageUrl ? 'bg-amber-50 border-amber-200' :
+            'bg-blue-50 border-blue-200'
+          }`}>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0">
+                {bizRegStatus === 'rejected' ? '⚠️' : bizRegImageUrl ? '⏳' : '📋'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-bold text-sm ${
+                  bizRegStatus === 'rejected' ? 'text-red-900' :
+                  bizRegImageUrl ? 'text-amber-900' : 'text-blue-900'
+                }`}>
+                  {bizRegStatus === 'rejected' ? '사업자등록 반려됨 — 재제출 필요' :
+                   bizRegImageUrl ? '사업자등록 검증 대기 중' :
+                   '사업자등록증을 등록하면 현금 정산이 가능합니다'}
+                </p>
+                {bizRegStatus === 'rejected' && bizRegRejectReason && (
+                  <p className="text-xs text-red-700 mt-1.5 bg-red-100 px-2 py-1 rounded">
+                    반려 사유: {bizRegRejectReason}
+                  </p>
+                )}
+                <p className="text-xs text-gray-600 mt-1.5">
+                  {bizRegImageUrl && bizRegStatus === 'pending'
+                    ? '어드민 검증 후 알려드립니다 (보통 1-3 영업일)'
+                    : '미등록 상태 — 현재는 딜(포인트) / 상품권으로만 수령 가능 · 딜은 플랫폼 내 사용만 가능 (현금화 불가)'}
+                </p>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setBizRegModalOpen(true)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md ${
+                      bizRegStatus === 'rejected'
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {bizRegImageUrl ? '다시 제출하기' : '사업자등록증 등록하기'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 정산 안내 */}
         <DashboardCard>
@@ -564,6 +669,75 @@ export default function SellerSettlementsPage() {
           onVerified={() => { setPinPrompt(false); requestSettlement() }}
           onCancel={() => setPinPrompt(false)}
         />
+      )}
+      {/* 🛡️ 2026-05-18: 사업자등록증 제출 모달. */}
+      {bizRegModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => !bizRegSubmitting && setBizRegModalOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-1">사업자등록증 등록</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              검증 완료 시 현금 정산 + 딜 환급이 가능합니다 (1-3 영업일 소요)
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  사업자등록증 이미지 URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={bizRegSubmitImage}
+                  onChange={(e) => setBizRegSubmitImage(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  disabled={bizRegSubmitting}
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  ※ 이미지를 R2 / Cloudflare Images / 외부 호스팅에 업로드 후 URL 입력
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  사업자등록번호 (선택)
+                </label>
+                <input
+                  type="text"
+                  value={bizRegSubmitNumber}
+                  onChange={(e) => setBizRegSubmitNumber(e.target.value)}
+                  placeholder="123-45-67890"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  disabled={bizRegSubmitting}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                type="button"
+                onClick={() => setBizRegModalOpen(false)}
+                disabled={bizRegSubmitting}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={submitBusinessRegistration}
+                disabled={bizRegSubmitting || !bizRegSubmitImage.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bizRegSubmitting ? '제출 중...' : '제출하기'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </SellerLayout>
   )

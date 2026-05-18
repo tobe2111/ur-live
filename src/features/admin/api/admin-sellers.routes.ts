@@ -202,6 +202,126 @@ adminSellersRoutes.patch('/sellers/:id/business-info/reject', cors(), async (c) 
   }
 });
 
+// 🛡️ 2026-05-18: 사업자등록증 (migration 0257) 검증 — 셀러가 제출한 이미지 확인 후 verified/rejected.
+//   verified → 현금 정산 + 딜 환급 가능
+//   rejected → 사유 안내, 셀러 재제출 가능
+adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const { action, reason } = await c.req.json<{ action?: string; reason?: string }>();
+    if (action !== 'verify' && action !== 'reject') {
+      return c.json({ success: false, error: 'action 은 verify 또는 reject 여야 합니다' }, 400);
+    }
+
+    // 셀러 존재 + 제출된 이미지 있는지 확인.
+    const row = await DB.prepare(
+      `SELECT id, business_registration_status, business_registration_image_url
+         FROM sellers WHERE id = ?`
+    ).bind(sellerId).first<{
+      id: number;
+      business_registration_status: string | null;
+      business_registration_image_url: string | null;
+    }>().catch(() => null);
+    if (!row) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    if (!row.business_registration_image_url && action === 'verify') {
+      return c.json({ success: false, error: '제출된 사업자등록증 이미지가 없습니다' }, 400);
+    }
+
+    if (action === 'verify') {
+      // 관리자 토큰에서 admin id 추출 (audit 용 — JWTPayload 형식 따름).
+      const auth = c.req.header('Authorization') || '';
+      let adminId: number | null = null;
+      try {
+        const tk = auth.replace(/^Bearer\s+/i, '');
+        const payload = await import('hono/jwt').then(m => m.verify(tk, c.env.JWT_SECRET, 'HS256'));
+        adminId = Number((payload as { admin_id?: number; user_id?: number }).admin_id ?? (payload as { user_id?: number }).user_id ?? 0) || null;
+      } catch { /* token parse 실패 — null 유지 */ }
+
+      await DB.prepare(
+        `UPDATE sellers
+            SET business_registration_status = 'verified',
+                business_registration_verified_at = datetime('now'),
+                business_registration_verified_by = ?,
+                business_registration_reject_reason = NULL,
+                updated_at = datetime('now')
+          WHERE id = ?`
+      ).bind(adminId, sellerId).run();
+
+      await writeAuditLog(c, {
+        action: 'verify_business_registration',
+        targetType: 'seller',
+        targetId: sellerId,
+        before: { status: row.business_registration_status },
+        after: { status: 'verified' },
+      });
+      createDashboardNotification(DB, 'seller', String(sellerId), 'business_reg_verified',
+        '사업자등록 검증 완료', '현금 정산 + 딜 환급이 가능합니다',
+        '/seller/settlements').catch(() => { /* noop */ });
+      return c.json({ success: true, message: '사업자등록을 승인했습니다' });
+    }
+
+    // action === 'reject'
+    const rejectReason = String(reason || '').trim().slice(0, 500);
+    if (!rejectReason) return c.json({ success: false, error: '거부 사유가 필요합니다' }, 400);
+
+    await DB.prepare(
+      `UPDATE sellers
+          SET business_registration_status = 'rejected',
+              business_registration_reject_reason = ?,
+              updated_at = datetime('now')
+        WHERE id = ?`
+    ).bind(rejectReason, sellerId).run();
+
+    await writeAuditLog(c, {
+      action: 'reject_business_registration',
+      targetType: 'seller',
+      targetId: sellerId,
+      before: { status: row.business_registration_status },
+      after: { status: 'rejected', reason: rejectReason },
+    });
+    createDashboardNotification(DB, 'seller', String(sellerId), 'business_reg_rejected',
+      '사업자등록 반려', rejectReason, '/seller/settlements').catch(() => { /* noop */ });
+
+    return c.json({ success: true, message: '사업자등록을 반려했습니다' });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 사업자 검증 대기 목록 조회 — 어드민 대시보드에서 사용.
+adminSellersRoutes.get('/sellers/business-registration/pending', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    // defensive: 컬럼 없으면 빈 배열 반환.
+    const rows = await DB.prepare(
+      `SELECT s.id, s.name, s.business_name, s.business_number, s.business_registration_image_url,
+              s.business_registration_status, s.business_registration_reject_reason, s.created_at, s.updated_at
+         FROM sellers s
+        WHERE s.business_registration_image_url IS NOT NULL
+          AND s.business_registration_status = 'pending'
+        ORDER BY s.updated_at DESC
+        LIMIT 50`
+    ).all<{
+      id: number; name: string; business_name: string; business_number: string | null;
+      business_registration_image_url: string;
+      business_registration_status: string;
+      business_registration_reject_reason: string | null;
+      created_at: string; updated_at: string;
+    }>().catch(() => ({ results: [] as Array<{
+      id: number; name: string; business_name: string; business_number: string | null;
+      business_registration_image_url: string;
+      business_registration_status: string;
+      business_registration_reject_reason: string | null;
+      created_at: string; updated_at: string;
+    }> }));
+    return c.json({ success: true, data: rows.results || [] });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
   try {
     const { DB } = c.env;
