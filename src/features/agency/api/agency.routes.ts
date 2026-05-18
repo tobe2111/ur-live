@@ -782,9 +782,11 @@ app.post('/sellers/:id/streams', async (c) => {
 
   if (!title) return c.json({ success: false, error: '방송 제목은 필수입니다.' }, 400)
 
+  // 🛡️ 2026-05-18: youtube_video_id NOT NULL — 사전 예약 시점 미발급 상태이므로 빈 문자열로.
+  //   실제 송출 시작 시 update 됨. 마이그레이션 0259 가 기존 NULL row 도 ''로 정리.
   const result = await c.env.DB.prepare(`
-    INSERT INTO live_streams (seller_id, title, description, status, scheduled_at, created_at, updated_at)
-    VALUES (?, ?, ?, 'scheduled', ?, datetime('now'), datetime('now'))
+    INSERT INTO live_streams (seller_id, title, description, youtube_video_id, status, scheduled_at, created_at, updated_at)
+    VALUES (?, ?, ?, '', 'scheduled', ?, datetime('now'), datetime('now'))
   `).bind(sellerId, title, description || null, scheduled_at || null).run()
 
   return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)

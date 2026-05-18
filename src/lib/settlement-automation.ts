@@ -311,11 +311,13 @@ export async function saveSettlementReport(
   DB: D1Database,
   report: SettlementReport
 ): Promise<void> {
-  // 정산 마스터 저장
+  // 정산 마스터 저장.
+  // 🛡️ 2026-05-18: seller_id NOT NULL — 본 row 는 '전체 집계' 마스터 행 (셀러별 row 는 별도).
+  //   seller_id = 0 을 시스템 집계 마커로 사용. 인덱스 충돌 없음 (sellers.id 는 1+).
   const result = await DB.prepare(`
-    INSERT INTO settlements 
-    (period_start, period_end, total_sales, total_platform_fee, total_settlement, generated_at, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    INSERT INTO settlements
+    (seller_id, period_start, period_end, total_sales, total_platform_fee, total_settlement, generated_at, status)
+    VALUES (0, ?, ?, ?, ?, ?, ?, 'pending')
   `).bind(
     report.period.startDate,
     report.period.endDate,

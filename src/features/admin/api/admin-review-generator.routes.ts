@@ -140,8 +140,9 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
             const option = options?.length ? options[Math.floor(Math.random() * options.length)] : null;
 
             return DB.prepare(
-              'INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)'
-            ).bind(product_id, maskedName, r.rating, r.content || null, option, reviewDate);
+              'INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
+            // 🛡️ 2026-05-18: NOT NULL user_id 충족 — 'system-generated' 마커 (이력 추적 + 진짜 user 와 구분).
+            ).bind(product_id, 'system-generated', maskedName, r.rating, r.content || null, option, reviewDate);
           });
 
           await DB.batch(stmts);
@@ -172,8 +173,8 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
         const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
 
         stmts.push(
-          DB.prepare(`INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)`)
-            .bind(product_id, maskedName, rating, content, option, reviewDate)
+          DB.prepare(`INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)`)
+            .bind(product_id, 'system-generated', maskedName, rating, content, option, reviewDate)
         );
       }
 

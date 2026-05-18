@@ -101,10 +101,15 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
 
     const { amount, bank_name, account_number, account_holder } = await c.req.json();
     if (!amount || amount <= 0) return c.json({ success: false, error: '정산 금액이 올바르지 않습니다' }, 400);
+    // 🛡️ 2026-05-18: NOT NULL period_start/period_end — 신청 시점의 전월 1일 ~ 말일 (관행).
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const periodStart = prevMonth.toISOString().slice(0, 10);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
     const result = await db.prepare(`
-      INSERT INTO settlements (seller_id, amount, bank_name, account_number, account_holder, status, created_at)
-      VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
-    `).bind(sellerId, amount, bank_name || null, account_number || null, account_holder || null).run()
+      INSERT INTO settlements (seller_id, amount, period_start, period_end, bank_name, account_number, account_holder, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+    `).bind(sellerId, amount, periodStart, periodEnd, bank_name || null, account_number || null, account_holder || null).run()
       .catch(() => null);
     if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
     // 1. 정산 신청 → 어드민 알림

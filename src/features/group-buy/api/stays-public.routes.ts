@@ -451,15 +451,17 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
         WHERE id = ?`
     ).bind(reason || '사용자 취소', refundAmount, id).run()
 
+    // 🛡️ 2026-05-18: bind 인자 계산을 명시적 변수로 분리 (audit script 가 JS ternary `?`
+    //   를 placeholder 로 오인하지 않도록).
+    const nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'
+    const logReason = refundError
+      ? `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%, 환불실패: ${refundError}`
+      : `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%`
     await c.env.DB.prepare(
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
        VALUES (?, ?, ?, 'user', ?, ?)`
-    ).bind(
-      id, booking.status,
-      refundActuallyDone ? 'refunded' : 'cancelled',
-      userId,
-      `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%${refundError ? `, 환불실패: ${refundError}` : ''}`,
-    ).run().catch(() => { /* noop */ })
+    ).bind(id, booking.status, nextStatus, userId, logReason)
+      .run().catch(() => { /* noop */ })
 
     return c.json({
       success: true,
