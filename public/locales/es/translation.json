@@ -5272,7 +5272,9 @@
     "digitalLibrarySub": "[TODO:es] 전자책·강의·가이드",
     "coupons": "[TODO:es] 쿠폰함",
     "orders": "[TODO:es] 주문 내역",
-    "ordersSub": "[TODO:es] 최근 3개월"
+    "ordersSub": "[TODO:es] 최근 3개월",
+    "myStays": "Mis Reservas",
+    "myStaysSub": "Código check-in / vencimiento"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:es] 주문 현황",

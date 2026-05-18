@@ -4927,7 +4927,9 @@
     "digitalLibrarySub": "전자책·강의·가이드",
     "coupons": "쿠폰함",
     "orders": "주문 내역",
-    "ordersSub": "최근 3개월"
+    "ordersSub": "최근 3개월",
+    "myStays": "내 숙소 예약",
+    "myStaysSub": "체크인 코드 / voucher 유효기간"
   },
   "orderStatus": {
     "sectionTitle": "주문 현황",

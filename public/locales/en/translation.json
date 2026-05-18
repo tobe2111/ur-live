@@ -5320,7 +5320,9 @@
     "digitalLibrarySub": "[TODO:en] 전자책·강의·가이드",
     "coupons": "[TODO:en] 쿠폰함",
     "orders": "[TODO:en] 주문 내역",
-    "ordersSub": "[TODO:en] 최근 3개월"
+    "ordersSub": "[TODO:en] 최근 3개월",
+    "myStays": "My Stay Bookings",
+    "myStaysSub": "Check-in code / voucher expiry"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:en] 주문 현황",

@@ -18,6 +18,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     // 🛡️ 2026-05-15: 단골 셀러 + 알림 매트릭스 진입점
     { icon: '⭐', label: t('shopping.myFollows', { defaultValue: '내 단골 셀러' }), sub: t('shopping.myFollowsSub', { defaultValue: '셀러별 알림 설정' }), path: '/my/follows' },
     { icon: '📦', label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
+    // 🛡️ 2026-05-18: 숙소 예약 마이페이지 진입점 — voucher 만료 임박 알림 + 체크인 코드 확인.
+    { icon: '🏨', label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / voucher 유효기간' }), path: '/my-stays' },
   ]
 
   return (

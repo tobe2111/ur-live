@@ -5272,7 +5272,9 @@
     "digitalLibrarySub": "[TODO:zh] 전자책·강의·가이드",
     "coupons": "[TODO:zh] 쿠폰함",
     "orders": "[TODO:zh] 주문 내역",
-    "ordersSub": "[TODO:zh] 최근 3개월"
+    "ordersSub": "[TODO:zh] 최근 3개월",
+    "myStays": "我的住宿预订",
+    "myStaysSub": "入住码 / 有效期"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:zh] 주문 현황",

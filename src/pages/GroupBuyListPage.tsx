@@ -383,7 +383,11 @@ export default function GroupBuyListPage() {
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setCategory(tab.key)}
+                onClick={() => {
+                  // 🛡️ 2026-05-18: 숙소 카테고리 → /stays 전용 페이지 (객실/voucher/날짜 모드 분기 필요).
+                  if (tab.key === 'stay_voucher') { navigate('/stays'); return }
+                  setCategory(tab.key)
+                }}
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   category === tab.key
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
