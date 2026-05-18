@@ -158,12 +158,17 @@ export default function SocarStyleBanner() {
 
           <div className="relative z-10 h-full flex flex-col justify-between">
             <div>
-              <p className={`text-xl sm:text-2xl font-extrabold ${textColor} leading-tight`}>
-                {banner.title}
-              </p>
-              <p className={`text-xs sm:text-sm ${subTextColor} mt-1.5 leading-snug`}>
-                {banner.subtitle}
-              </p>
+              {/* 🛡️ 2026-05-18: 제목 없으면 텍스트 오버레이 숨김 — 이미지 자체가 메시지인 경우. */}
+              {banner.title && (
+                <p className={`text-xl sm:text-2xl font-extrabold ${textColor} leading-tight`}>
+                  {banner.title}
+                </p>
+              )}
+              {banner.subtitle && (
+                <p className={`text-xs sm:text-sm ${subTextColor} mt-1.5 leading-snug`}>
+                  {banner.subtitle}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

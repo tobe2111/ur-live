@@ -78,8 +78,9 @@ export default function AdminBannersPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!formData.title || !formData.image_url) {
-      showAlert(t('admin.banners.k002', { defaultValue: '제목과 이미지 URL은 필수입니다.' }), 'error'); return
+    // 🛡️ 2026-05-18: 제목 optional 화 — 이미지만 있어도 등록 허용 (이미지 자체가 메시지인 경우).
+    if (!formData.image_url) {
+      showAlert(t('admin.banners.imageRequired', { defaultValue: '이미지 URL은 필수입니다.' }), 'error'); return
     }
     try {
       if (editingBanner) {
@@ -151,8 +152,8 @@ export default function AdminBannersPage() {
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k014', { defaultValue: '제목 *' })}</label>
-                <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" required />
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.titleOptional', { defaultValue: '제목 (선택)' })}</label>
+                <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder={t('admin.banners.titlePlaceholder', { defaultValue: '비워두면 이미지만 표시됩니다' })} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k015', { defaultValue: '순서' })} <span className="text-gray-400 font-normal">{t('admin.banners.k016', { defaultValue: '(숫자 낮을수록 앞에 표시)' })}</span></label>
@@ -220,7 +221,7 @@ export default function AdminBannersPage() {
         ) : banners.map(banner => (
           <div key={banner.id} className={`bg-white rounded-xl shadow-sm p-4 flex items-start gap-4 ${!banner.is_active ? 'opacity-60' : ''}`}>
             <div className="relative w-40 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-              <img src={banner.image_url} alt={banner.title} className="w-full h-full object-cover" loading="lazy" />
+              <img src={banner.image_url} alt={banner.title || t('admin.banners.noTitleAlt', { defaultValue: '배너 이미지' })} className="w-full h-full object-cover" loading="lazy" />
               {!banner.is_active && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <EyeOff className="w-6 h-6 text-white" />
@@ -229,7 +230,7 @@ export default function AdminBannersPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-1">
-                <h3 className="text-sm font-semibold text-gray-900">{banner.title}</h3>
+                <h3 className={`text-sm font-semibold ${banner.title ? 'text-gray-900' : 'text-gray-400 italic'}`}>{banner.title || t('admin.banners.noTitle', { defaultValue: '(제목 없음 — 이미지만)' })}</h3>
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                   <span className="text-xs text-gray-400">순서 {banner.display_order}</span>
                   <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${banner.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>

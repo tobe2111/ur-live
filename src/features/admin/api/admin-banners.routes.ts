@@ -45,7 +45,8 @@ adminBannersRoutes.post('/', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const { title, image_url, link_url, description, is_active, display_order, start_date, end_date } = await c.req.json();
-    if (!title || !image_url) return c.json({ success: false, error: '제목과 이미지 URL은 필수입니다.' }, 400);
+    // 🛡️ 2026-05-18: 제목 optional 화 — 이미지만 있어도 등록 허용 (이미지 자체가 메시지).
+    if (!image_url) return c.json({ success: false, error: '이미지 URL은 필수입니다.' }, 400);
 
     // URL 검증 (XSS/SSRF 방지)
     const imgCheck = validateImageUrl(image_url);
@@ -58,12 +59,12 @@ adminBannersRoutes.post('/', cors(), async (c) => {
     const result = await executeRun(DB,
       `INSERT INTO banners (title, image_url, link_url, description, is_active, display_order, start_date, end_date, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [title, image_url, link_url || null, description || null,
+      [title || '', image_url, link_url || null, description || null,
        is_active !== undefined ? (is_active ? 1 : 0) : 1,
        display_order || 0, start_date || null, end_date || null]
     );
     c.executionCtx.waitUntil(invalidateBannerCache());
-    return c.json({ success: true, data: { id: result.meta.last_row_id, title } });
+    return c.json({ success: true, data: { id: result.meta.last_row_id, title: title || '' } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -88,10 +89,11 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
       if (!linkCheck.valid) return c.json({ success: false, error: `링크 URL: ${linkCheck.error}` }, 400);
     }
 
+    // 🛡️ 2026-05-18: title optional — 빈 문자열 허용.
     await executeRun(DB,
       `UPDATE banners SET title=?, image_url=?, link_url=?, description=?, is_active=?,
        display_order=?, start_date=?, end_date=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-      [title, image_url, link_url || null, description || null,
+      [title || '', image_url, link_url || null, description || null,
        is_active !== undefined ? (is_active ? 1 : 0) : 1,
        display_order || 0, start_date || null, end_date || null, bannerId]
     );
