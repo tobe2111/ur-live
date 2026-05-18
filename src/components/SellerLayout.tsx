@@ -131,6 +131,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   function switchMode(m: SellerMode) {
     setActiveMode(m)
     localStorage.setItem('seller_dashboard_mode', m)
+    // 🛡️ 2026-05-18: 같은 탭의 다른 컴포넌트 (SellerPage 등) 가 mode 변경에 반응하도록 이벤트 발행.
+    //   storage event 는 다른 탭에만 발행되므로 같은 탭 동기화는 CustomEvent 필요.
+    try { window.dispatchEvent(new CustomEvent('seller-mode-changed', { detail: m })) } catch { /* noop */ }
   }
 
   // 🛡️ 2026-05-17: 항목 mode 가 activeMode + common 일 때만 노출.

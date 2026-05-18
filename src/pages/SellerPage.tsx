@@ -11,6 +11,7 @@ import {
   LayoutDashboard
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { useSellerMode } from '@/hooks/useSellerMode'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
@@ -46,6 +47,13 @@ export default function SellerPage() {
 
   const sellerType = localStorage.getItem('seller_type') || 'influencer'
   const isInfluencer = sellerType === 'influencer' || sellerType === 'both'
+  // 🛡️ 2026-05-18: Mode-specific 대시보드 — SellerLayout 의 mode 토글과 동기화.
+  //   'live' 모드 = 라이브 셀러용 (시청자/방송 KPI 강조)
+  //   'store' 모드 = 공구 셀러용 (공구 진행률/매장 voucher 매출 강조)
+  // 'both' 사용자는 토글로 전환, 단일 타입은 자동 고정.
+  const activeMode = useSellerMode()
+  const isLiveMode = activeMode === 'live'
+  const isStoreMode = activeMode === 'store'
 
   // Stats
   const [hasBank, setHasBank] = useState(false)
@@ -448,11 +456,29 @@ export default function SellerPage() {
         {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
         <SellerOnboardingChecklist />
 
+        {/* 🛡️ 2026-05-18: Mode-specific 헤더 배지 — 어느 모드인지 시각적으로 즉시 인지. */}
+        {sellerType === 'both' && (
+          <div className={`rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-bold ${
+            isLiveMode
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : 'bg-amber-50 text-amber-800 border border-amber-200'
+          }`}>
+            {isLiveMode ? '📺 라이브 셀러 모드' : '🏪 공구 셀러 모드'}
+            <span className="text-xs font-normal text-gray-500">
+              · {isLiveMode ? '라이브 송출 + 시청자 + 일반 상품 KPI 강조' : '공구 진행률 + 매장 voucher 매출 강조'}
+            </span>
+          </div>
+        )}
+
+        {/* 🛡️ 2026-05-18: Mode-specific 섹션 순서.
+              store 모드: 공구 진행 현황을 KPI 위에 (공구 셀러의 1순위 관심사).
+              live 모드: 기존 순서 유지 (KPI → 공구) — 라이브 셀러는 공구가 부수 활동. */}
+        {isStoreMode && <SellerGroupBuyOverview />}
+
         {/* 🛡️ 2026-05-15: KPI 통합 대시보드 (단골 / 공구 / 매출 / 분쟁) */}
         <SellerKpiDashboard />
 
-        {/* 🛡️ 2026-05-15: 공구 진행 현황 — 대시보드 메인에서 즉시 액션 (at_risk 시 강조) */}
-        <SellerGroupBuyOverview />
+        {isLiveMode && <SellerGroupBuyOverview />}
 
         {/* 🛡️ 2026-05-05: 등급 배지 — diamond/gold/silver/bronze/new */}
         <TierBadge />
@@ -489,34 +515,45 @@ export default function SellerPage() {
           />
 
           {/* ── Stats row ── */}
-          {/* 🛡️ 2026-05-14: 태블릿 (md+) 4 cols → 풀 너비 활용 (iPad sidebar 있어도 588px+ 콘텐츠 영역). */}
+          {/* 🛡️ 2026-05-14: 태블릿 (md+) 4 cols → 풀 너비 활용 (iPad sidebar 있어도 588px+ 콘텐츠 영역).
+              2026-05-18: Mode-specific 4번째 카드 — live 모드는 '진행 라이브', store 모드는 '진행 공구'. */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             {[
               {
                 label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
                 sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
                 icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50',
-                influencerOnly: false, delta: revenueDelta, showDelta: dailyStats.length >= 2,
+                visible: true, delta: revenueDelta, showDelta: dailyStats.length >= 2,
               },
               {
                 label: t('seller.totalOrders'), value: `${formatNumber(stats.totalOrders || 0)}`,
                 sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
                 icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50',
-                influencerOnly: false, delta: ordersDelta, showDelta: dailyStats.length >= 2,
+                visible: true, delta: ordersDelta, showDelta: dailyStats.length >= 2,
               },
               {
                 label: t('seller.pendingOrders'), value: `${formatNumber(stats.pendingOrders || 0)}`,
                 sub: t('seller.needsAction'),
                 icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50',
-                influencerOnly: false, delta: pendingDelta, showDelta: pendingDelta !== 0,
+                visible: true, delta: pendingDelta, showDelta: pendingDelta !== 0,
               },
+              // 🛡️ 2026-05-18: live 모드 — 진행 중 라이브 + 누적 시청자
               {
                 label: t('seller.activeStreams'), value: `${stats.activeStreams || 0}`,
                 sub: stats.totalViewers > 0 ? t('seller.viewerCount', { count: stats.totalViewers }) : t('seller.noStreams'),
                 icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50',
-                influencerOnly: true, delta: viewersDelta, showDelta: viewersDelta !== 0,
+                visible: isLiveMode && isInfluencer, delta: viewersDelta, showDelta: viewersDelta !== 0,
               },
-            ].filter(card => !card.influencerOnly || isInfluencer).map(card => (
+              // 🛡️ 2026-05-18: store 모드 — '진행 공구 보기' CTA 카드 (데이터는 SellerGroupBuyOverview 가 표시).
+              //   KPI 카드 4칸 채우면서 SellerGroupBuyOverview 섹션으로 자연스럽게 유도.
+              {
+                label: t('seller.groupBuysCta', { defaultValue: '공구 운영' }),
+                value: t('seller.viewGroupBuys', { defaultValue: '진행 현황' }),
+                sub: t('seller.groupBuysCtaSub', { defaultValue: '👇 아래 섹션 확인' }),
+                icon: <Package className="w-5 h-5" />, color: 'text-amber-700', bg: 'bg-amber-50',
+                visible: isStoreMode, delta: 0, showDelta: false,
+              },
+            ].filter(card => card.visible).map(card => (
               <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
