@@ -180,7 +180,9 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
   // 매장 모든 product is_active=0
   try {
     await DB.prepare("UPDATE products SET is_active = 0, group_buy_status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE seller_id = ?").bind(sellerId).run()
-    await DB.prepare("UPDATE sellers SET status = 'closed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(sellerId).run().catch(() => {})
+    // 🛡️ 2026-05-17: sellers.status CHECK(IN 'pending','approved','rejected','suspended') —
+    //   'closed' 는 허용값 아님 → CHECK 위반 silent fail. '폐업' 의미상 'suspended' (영업 정지) 가 가장 가깝다.
+    await DB.prepare("UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(sellerId).run().catch(() => {})
   } catch { /* graceful */ }
 
   return c.json({ success: true, refund_count: refundCount, refund_total: refundTotal })

@@ -445,9 +445,11 @@ sellerStreamsRoutes.delete('/:id', async (c) => {
 
     // 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE.
     //   매출/시청자 이력 보존 필수. 셀러도 자기 방송 hard-delete 금지.
+    // 🛡️ 2026-05-17: live_streams.status CHECK(IN 'scheduled','live','ended') 위반 fix —
+    //   'deleted' 쓰면 SqlError → 500. status='ended' + deleted_at 컬럼으로만 soft-delete 표시.
     try { await db.prepare(`ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`).run(); } catch { /* exists */ }
     const result = await db.prepare(
-      `UPDATE live_streams SET status = 'deleted', ended_at = COALESCE(ended_at, datetime('now')),
+      `UPDATE live_streams SET status = 'ended', ended_at = COALESCE(ended_at, datetime('now')),
        deleted_at = datetime('now') WHERE id = ? AND seller_id = ?`
     ).bind(streamId, sellerId).run();
 

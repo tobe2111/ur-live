@@ -52,10 +52,19 @@ function addCheck(table, column, values) {
   for (const v of values) set.add(v)
 }
 
+function removeCheck(table, column) {
+  const t = table.toLowerCase()
+  const c = column.toLowerCase()
+  const colMap = checkMap.get(t)
+  if (colMap) colMap.delete(c)
+}
+
 function parseMigrations() {
   const migDir = path.join(ROOT, 'migrations')
   if (!fs.existsSync(migDir)) return
-  const files = fs.readdirSync(migDir).filter((f) => f.endsWith('.sql'))
+  // 🛡️ 2026-05-17 v2: 마이그레이션을 파일명 순서대로 적용 (DROP COLUMN / ADD COLUMN 순서 의존).
+  //   예: 0001 이 CHECK 추가 → 0118 이 DROP COLUMN + ADD COLUMN (CHECK 없음) → 제약 사라짐.
+  const files = fs.readdirSync(migDir).filter((f) => f.endsWith('.sql')).sort()
   for (const f of files) {
     const sql = fs.readFileSync(path.join(migDir, f), 'utf8')
 
@@ -65,10 +74,8 @@ function parseMigrations() {
     while ((m = createRegex.exec(sql))) {
       const table = m[1]
       const body = m[2]
-      // 컬럼 정의 라인 단위로 분리 (한 줄에 컬럼 정의 + CHECK)
-      const lines = body.split(/,(?![^()]*\))/g) // 괄호 안 쉼표는 분리하지 않음
+      const lines = body.split(/,(?![^()]*\))/g)
       for (const line of lines) {
-        // CHECK(<col> IN ('a','b','c'))
         const checkRegex = /CHECK\s*\(\s*[`"]?(\w+)[`"]?\s+IN\s*\(([^)]+)\)\s*\)/i
         const cm = line.match(checkRegex)
         if (cm) {
@@ -80,12 +87,22 @@ function parseMigrations() {
     }
 
     // (b) ALTER TABLE <t> ADD COLUMN <c> ... CHECK(<c> IN (...))
-    const alterRegex = /ALTER\s+TABLE\s+[`"]?(\w+)[`"]?\s+ADD\s+COLUMN\s+[`"]?(\w+)[`"]?[^;]*?CHECK\s*\(\s*[`"]?\w+[`"]?\s+IN\s*\(([^)]+)\)\s*\)\s*;/gi
-    while ((m = alterRegex.exec(sql))) {
+    const alterAddCheckRegex = /ALTER\s+TABLE\s+[`"]?(\w+)[`"]?\s+ADD\s+COLUMN\s+[`"]?(\w+)[`"]?[^;]*?CHECK\s*\(\s*[`"]?\w+[`"]?\s+IN\s*\(([^)]+)\)\s*\)\s*;/gi
+    while ((m = alterAddCheckRegex.exec(sql))) {
       const table = m[1]
       const col = m[2]
       const values = [...m[3].matchAll(/'([^']*)'/g)].map((x) => x[1])
       if (values.length > 0) addCheck(table, col, values)
+    }
+
+    // (c) ALTER TABLE <t> DROP COLUMN <c> — 기존 CHECK 무효화.
+    //   D1/SQLite 는 DROP COLUMN 시 컬럼+CHECK 모두 제거. 후속 ADD COLUMN 이 CHECK 없으면
+    //   복원 안 됨 (0118 의 orders.status 케이스).
+    //   ⚠️ 같은 ADD/DROP 이 idempotent 하지 않은 SQLite 특성 상,
+    //   ADD COLUMN 중복 호출은 fail 만 하고 기존 CHECK 영향 없음 → rule (d) 추가 안 함.
+    const dropRegex = /ALTER\s+TABLE\s+[`"]?(\w+)[`"]?\s+DROP\s+COLUMN\s+[`"]?(\w+)[`"]?\s*;/gi
+    while ((m = dropRegex.exec(sql))) {
+      removeCheck(m[1], m[2])
     }
   }
 }
@@ -98,10 +115,12 @@ const violations = []
 function scanFile(file) {
   const src = fs.readFileSync(file, 'utf8')
 
-  // UPDATE <table> SET <col> = '<value>' (단일 컬럼만 정확히 매칭)
-  //   백틱/따옴표 문자열 안에 있어도 매칭됨 (TS 의 SQL 임베드).
-  //   여러 줄에 걸친 UPDATE: \s+ 가 newline 포함.
-  const updateRegex = /UPDATE\s+[`"]?(\w+)[`"]?(?:\s+\w+)?\s+SET\s+([\s\S]*?)(?:\s+WHERE\s|\s+RETURNING\s|`|"|'\s*[\),])/gi
+  // UPDATE <table> SET <col> = '<value>'
+  //   여러 줄에 걸친 UPDATE 도 매칭 (\s+ 가 newline 포함).
+  //   🛡️ 2026-05-17 v2: terminator 에서 quote 제거 — 'deleted' 같은 값이 따옴표 닫기로
+  //     캡쳐 종료시켜 SET 절이 잘리던 버그 fix.
+  //     이제 WHERE/RETURNING/ON CONFLICT/세미콜론 또는 백틱 닫힘까지 캡쳐.
+  const updateRegex = /UPDATE\s+[`"]?(\w+)[`"]?(?:\s+\w+)?\s+SET\s+([\s\S]*?)(?:\s+WHERE\b|\s+RETURNING\b|\s+ON\s+CONFLICT\b|;|\n\s*`)/gi
 
   let m
   while ((m = updateRegex.exec(src))) {
