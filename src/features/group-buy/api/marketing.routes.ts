@@ -685,7 +685,7 @@ adminApp.post('/payouts/process', async (c) => {
 discoverApp.get('/products', async (c) => {
   const DB = c.env.DB
   const cat = c.req.query('category') || 'all'
-  const validCats = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
+  const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
   const placeholders = cat === 'all' ? validCats.map(() => '?').join(',') : '?'
   const params = cat === 'all' ? validCats : [cat]
   const { results } = await DB.prepare(

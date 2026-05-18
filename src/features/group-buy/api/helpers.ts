@@ -42,7 +42,7 @@ export async function getSellerCommissionRate(DB: D1Database, sellerId: number):
       FROM products p
       WHERE p.seller_id = ?
         AND p.updated_at >= datetime('now', '-30 days')
-        AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
     `).bind(sellerId).first<{ gmv: number }>()
     const gmv = Number(gmvRow?.gmv ?? 0)
     for (const tier of TIER_COMMISSION) {

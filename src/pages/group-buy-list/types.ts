@@ -37,15 +37,18 @@ export interface CommunityGroupBuy {
 }
 
 export type MainTab = 'seller' | 'community'
-// 🛡️ 2026-05-16: voucher 6 카테고리 + general 모두 받도록 확장
-//   메인 hero 의 8 카테고리 클릭 → 정확한 필터 적용
+// 🛡️ 2026-05-17: voucher 4 카테고리 (통합 후) + general + legacy 3종 (마이그레이션 사이 graceful).
+//   대분류: 'general' = 온라인(배송), voucher 4종 = 오프라인(매장 방문).
 export type CategoryFilter =
   | 'all'
-  | 'general'
+  | 'general'        // 온라인 (일반 상품, 배송)
+  // 오프라인 voucher 4종 (신규)
   | 'meal_voucher'
   | 'beauty_voucher'
+  | 'stay_voucher'
+  | 'etc_voucher'
+  // 레거시 (마이그레이션 완료 후 제거 가능)
   | 'health_voucher'
   | 'pet_voucher'
-  | 'stay_voucher'
   | 'activity_voucher'
 export type SortOption = 'popular' | 'deadline' | 'newest' | 'discount'

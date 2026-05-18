@@ -1,47 +1,78 @@
 /**
- * 🛡️ 2026-05-15: voucher 카테고리 단일 source (TD-G03 해결).
+ * 🛡️ 2026-05-17: 카테고리 4종 통합 (이전 6종 → 4종).
  *
- * 이전: group-buy.routes.ts / seller-orders.routes.ts / disputes.routes.ts /
- *        og-image.routes.ts / affiliate.routes.ts / sitemap.routes.ts /
- *        SellerMealVoucherNewPage.tsx / GroupBuyDetailPage.tsx 등 8+ 파일에서
- *        ['meal_voucher', 'beauty_voucher', ...] 6개 배열 반복 선언 → 누락 위험.
+ * 이전: meal / beauty / health / pet / stay / activity (6종)
+ * 지금: meal / beauty / stay / etc (4종)
+ *   - health → beauty 로 통합 (둘 다 미용/웰니스 범주)
+ *   - pet + activity + 기타 → etc 로 통합
+ *
+ * 대분류:
+ *   - 오프라인 (offline)  — 매장 방문 voucher 4종 (이 파일이 다룸)
+ *   - 온라인 (online)     — 일반 e-commerce 상품 (배송)
+ *
+ * 마이그레이션: migrations/0255_consolidate_categories.sql 가 기존 row 를 새 카테고리로 UPDATE.
  *
  * 사용:
- *   import { VOUCHER_CATEGORIES, isVoucherCategory } from '@/shared/constants/voucher-categories'
- *   if (isVoucherCategory(p.category)) { ... }
+ *   import { VOUCHER_CATEGORIES, isVoucherCategory, isOfflineProduct } from '@/shared/constants/voucher-categories'
  */
 
 export const VOUCHER_CATEGORIES = [
   'meal_voucher',
   'beauty_voucher',
-  'health_voucher',
-  'pet_voucher',
   'stay_voucher',
-  'activity_voucher',
+  'etc_voucher',
 ] as const
 
 export type VoucherCategory = typeof VOUCHER_CATEGORIES[number]
 
 export const VOUCHER_CATEGORY_SET: ReadonlySet<string> = new Set(VOUCHER_CATEGORIES)
 
-export function isVoucherCategory(category: string | undefined | null): category is VoucherCategory {
-  return !!category && VOUCHER_CATEGORY_SET.has(category)
+/** 🛡️ 레거시 카테고리 호환 — 기존 row 가 마이그레이션 전이거나 임시 미반영 시 대비. */
+export const LEGACY_CATEGORY_MAP: Record<string, VoucherCategory> = {
+  health_voucher: 'beauty_voucher',
+  pet_voucher: 'etc_voucher',
+  activity_voucher: 'etc_voucher',
 }
 
-/** SQL IN-clause 용 placeholder + bindings */
+/** 레거시 카테고리도 voucher 로 인식 (마이그레이션 사이 graceful). */
+export function isVoucherCategory(category: string | undefined | null): boolean {
+  if (!category) return false
+  return VOUCHER_CATEGORY_SET.has(category) || category in LEGACY_CATEGORY_MAP
+}
+
+/** 레거시 카테고리를 새 카테고리로 정규화. */
+export function normalizeCategory(category: string | undefined | null): VoucherCategory | null {
+  if (!category) return null
+  if (VOUCHER_CATEGORY_SET.has(category)) return category as VoucherCategory
+  return LEGACY_CATEGORY_MAP[category] ?? null
+}
+
+/** 🛡️ 대분류 — 오프라인 (voucher 4종) vs 온라인 (일반 상품). */
+export function isOfflineProduct(category: string | undefined | null): boolean {
+  return isVoucherCategory(category)
+}
+export function isOnlineProduct(category: string | undefined | null): boolean {
+  return !!category && !isOfflineProduct(category)
+}
+
+/** SQL IN-clause 용 placeholder + bindings (legacy 포함 — 마이그레이션 사이 row 모두 매칭). */
 export function voucherCategoriesSqlClause(): { placeholders: string; values: readonly string[] } {
+  const all = [...VOUCHER_CATEGORIES, ...Object.keys(LEGACY_CATEGORY_MAP)]
   return {
-    placeholders: VOUCHER_CATEGORIES.map(() => '?').join(','),
-    values: VOUCHER_CATEGORIES,
+    placeholders: all.map(() => '?').join(','),
+    values: all,
   }
 }
 
-/** 카테고리 → 한글 라벨 + emoji */
-export const VOUCHER_CATEGORY_LABEL: Record<VoucherCategory, { emoji: string; label: string; short: string }> = {
-  meal_voucher:     { emoji: '🍽️', label: '식사 공구권',     short: '식사' },
-  beauty_voucher:   { emoji: '💇', label: '뷰티 공구권',     short: '뷰티' },
-  health_voucher:   { emoji: '💪', label: '헬스 공구권',     short: '헬스' },
-  pet_voucher:      { emoji: '🐶', label: '반려 공구권',     short: '펫' },
-  stay_voucher:     { emoji: '🏨', label: '숙박 공구권',     short: '숙박' },
-  activity_voucher: { emoji: '🎯', label: '액티비티 공구권', short: '액티비티' },
+/** 카테고리 → 한글 라벨 + emoji (legacy 도 포함 — 정규화 안 된 row 도 표시 가능). */
+export const VOUCHER_CATEGORY_LABEL: Record<string, { emoji: string; label: string; short: string }> = {
+  // 새 카테고리 4종
+  meal_voucher:   { emoji: '🍽️', label: '식사권 (음식점/카페)', short: '식사' },
+  beauty_voucher: { emoji: '💇', label: '미용 (헬스/뷰티)',     short: '미용' },
+  stay_voucher:   { emoji: '🏨', label: '숙소',                  short: '숙소' },
+  etc_voucher:    { emoji: '🎯', label: '기타',                  short: '기타' },
+  // 레거시 (마이그레이션 사이 graceful 표시용 — 새 라벨로 매핑)
+  health_voucher:   { emoji: '💇', label: '미용 (헬스/뷰티)', short: '미용' },
+  pet_voucher:      { emoji: '🎯', label: '기타',              short: '기타' },
+  activity_voucher: { emoji: '🎯', label: '기타',              short: '기타' },
 }

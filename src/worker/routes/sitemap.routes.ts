@@ -31,7 +31,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       // 🛡️ 2026-05-15: 진행 중 공동구매 — 가장 높은 우선순위 (시간 민감)
       const groupBuys = await DB.prepare(
         `SELECT id, image_url, updated_at FROM products
-         WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+         WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
          ORDER BY updated_at DESC LIMIT 500`
@@ -50,7 +50,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       const products = await DB.prepare(
         `SELECT id FROM products
          WHERE is_active = 1
-           AND category NOT IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+           AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
       for (const p of products.results || []) {

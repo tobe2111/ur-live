@@ -17,15 +17,19 @@ interface Category {
   badge?: string
 }
 
+// 🛡️ 2026-05-17: 카테고리 6종 → 4종 통합. 대분류 오프라인(voucher 4) + 온라인(쇼핑/라이브) 분리.
+//   2x4 그리드 — 첫 줄: 오프라인 4종 / 둘째 줄: 온라인 4 entry (라이브/쇼핑/특가/지도).
 const CATEGORIES: Category[] = [
-  { key: 'meal',     label: '식사권',     emoji: '🍱', path: '/group-buy?category=meal_voucher',     bgClass: 'bg-orange-50 dark:bg-orange-950/30' },
-  { key: 'beauty',   label: '뷰티',       emoji: '💄', path: '/group-buy?category=beauty_voucher',   bgClass: 'bg-pink-50 dark:bg-pink-950/30' },
-  { key: 'health',   label: '헬스',       emoji: '💪', path: '/group-buy?category=health_voucher',   bgClass: 'bg-emerald-50 dark:bg-emerald-950/30' },
-  { key: 'pet',      label: '펫',         emoji: '🐶', path: '/group-buy?category=pet_voucher',      bgClass: 'bg-amber-50 dark:bg-amber-950/30' },
-  { key: 'stay',     label: '숙박',       emoji: '🏠', path: '/group-buy?category=stay_voucher',     bgClass: 'bg-sky-50 dark:bg-sky-950/30', badge: 'NEW' },
-  { key: 'activity', label: '액티비티',   emoji: '🎯', path: '/group-buy?category=activity_voucher', bgClass: 'bg-violet-50 dark:bg-violet-950/30' },
-  { key: 'live',     label: '라이브',     emoji: '📺', path: '/live',                                bgClass: 'bg-red-50 dark:bg-red-950/30', badge: 'LIVE' },
-  { key: 'deal',     label: '특가',       emoji: '🔥', path: '/group-buy?sort=discount',             bgClass: 'bg-yellow-50 dark:bg-yellow-950/30', badge: '~70%' },
+  // 🏪 오프라인 (1행) — 매장 방문 voucher 4종
+  { key: 'meal',   label: '식사권',  emoji: '🍽️', path: '/group-buy?category=meal_voucher',   bgClass: 'bg-orange-50 dark:bg-orange-950/30' },
+  { key: 'beauty', label: '미용',    emoji: '💇', path: '/group-buy?category=beauty_voucher', bgClass: 'bg-pink-50 dark:bg-pink-950/30' },
+  { key: 'stay',   label: '숙소',    emoji: '🏨', path: '/group-buy?category=stay_voucher',   bgClass: 'bg-sky-50 dark:bg-sky-950/30' },
+  { key: 'etc',    label: '기타',    emoji: '🎯', path: '/group-buy?category=etc_voucher',    bgClass: 'bg-emerald-50 dark:bg-emerald-950/30' },
+  // 🛍️ 온라인 (2행) — 라이브 커머스 + 쇼핑 + 특가 + 지도(매장 찾기)
+  { key: 'live',   label: '라이브',  emoji: '📺', path: '/live',                              bgClass: 'bg-red-50 dark:bg-red-950/30', badge: 'LIVE' },
+  { key: 'shop',   label: '쇼핑',    emoji: '🛍️', path: '/browse',                            bgClass: 'bg-violet-50 dark:bg-violet-950/30' },
+  { key: 'deal',   label: '특가',    emoji: '🔥', path: '/group-buy?sort=discount',           bgClass: 'bg-yellow-50 dark:bg-yellow-950/30', badge: '~70%' },
+  { key: 'map',    label: '내주변',  emoji: '📍', path: '/restaurant-map',                    bgClass: 'bg-amber-50 dark:bg-amber-950/30' },
 ]
 
 interface Props {
@@ -62,24 +66,54 @@ export default function SocarStyleHero({ userName, availableVouchers = 0 }: Prop
         </Link>
       )}
 
-      {/* 8 카테고리 그리드 (2x4) */}
-      <div className="bg-gray-50 dark:bg-[#0A0A0A] rounded-2xl p-3">
-        <div className="grid grid-cols-4 gap-2">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.key}
-              to={cat.path}
-              className={`${cat.bgClass} rounded-xl p-3 flex flex-col items-center justify-center text-center active:scale-95 transition-transform relative`}
-            >
-              {cat.badge && (
-                <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                  {cat.badge}
-                </span>
-              )}
-              <span className="text-2xl" aria-hidden>{cat.emoji}</span>
-              <span className="text-[11px] font-bold text-gray-900 dark:text-white mt-1.5">{cat.label}</span>
-            </Link>
-          ))}
+      {/* 🛡️ 2026-05-17: 오프라인/온라인 대분류 명시 — 카테고리 그리드 위 헤더 라벨. */}
+      <div className="bg-gray-50 dark:bg-[#0A0A0A] rounded-2xl p-3 space-y-3">
+        {/* 오프라인 (voucher 4종) */}
+        <div>
+          <p className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 tracking-[0.12em] mb-2 px-1">
+            🏪 오프라인 — 매장 방문 공구
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {CATEGORIES.slice(0, 4).map((cat) => (
+              <Link
+                key={cat.key}
+                to={cat.path}
+                className={`${cat.bgClass} rounded-xl p-3 flex flex-col items-center justify-center text-center active:scale-95 transition-transform relative`}
+              >
+                {cat.badge && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    {cat.badge}
+                  </span>
+                )}
+                <span className="text-2xl" aria-hidden>{cat.emoji}</span>
+                <span className="text-[11px] font-bold text-gray-900 dark:text-white mt-1.5">{cat.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* 온라인 (라이브 + 쇼핑) */}
+        <div>
+          <p className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 tracking-[0.12em] mb-2 px-1">
+            🛍️ 온라인 — 라이브 + 쇼핑
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {CATEGORIES.slice(4).map((cat) => (
+              <Link
+                key={cat.key}
+                to={cat.path}
+                className={`${cat.bgClass} rounded-xl p-3 flex flex-col items-center justify-center text-center active:scale-95 transition-transform relative`}
+              >
+                {cat.badge && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    {cat.badge}
+                  </span>
+                )}
+                <span className="text-2xl" aria-hidden>{cat.emoji}</span>
+                <span className="text-[11px] font-bold text-gray-900 dark:text-white mt-1.5">{cat.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </section>

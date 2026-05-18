@@ -40,7 +40,7 @@ export default function SellerKpiDashboard() {
     ]).then(([analyticsRes, productsRes, disputesRes]) => {
       const analytics = analyticsRes.data?.data
       const products = productsRes.data?.data || []
-      const VOUCHER = ['meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher']
+      const VOUCHER = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
       const vouchers = products.filter((p: { category?: string }) => VOUCHER.includes(p.category || ''))
       const active = vouchers.filter((p: { group_buy_status?: string }) => p.group_buy_status === 'active').length
 

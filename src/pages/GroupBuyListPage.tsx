@@ -36,7 +36,7 @@ export default function GroupBuyListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const urlCategory = (searchParams.get('category') || '').toLowerCase()
   const urlSort = (searchParams.get('sort') || '').toLowerCase()
-  const VALID_CATEGORIES: CategoryFilter[] = ['all', 'general', 'meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
+  const VALID_CATEGORIES: CategoryFilter[] = ['all', 'general', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'health_voucher', 'pet_voucher', 'activity_voucher']
   const initialCategory: CategoryFilter = VALID_CATEGORIES.includes(urlCategory as CategoryFilter)
     ? (urlCategory as CategoryFilter)
     : 'all'
@@ -141,7 +141,7 @@ export default function GroupBuyListPage() {
     let result = [...items]
 
     // 🛡️ 2026-05-16: 카테고리 필터 — voucher 6종 + general 모두 정확 매칭
-    const VOUCHER_CATEGORIES = ['meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
+    const VOUCHER_CATEGORIES = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'health_voucher', 'pet_voucher', 'activity_voucher']
     if (category === 'general') {
       result = result.filter((p) => !VOUCHER_CATEGORIES.includes(p.category || ''))
     } else if (category !== 'all') {

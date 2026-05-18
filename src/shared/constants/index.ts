@@ -106,36 +106,34 @@ export const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com';
 export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';
 
 // ============================================================
-// 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스/반려/숙박/액티비티)
-// products.category 의 텍스트 enum. SQL 에선 항상 IN (...) 으로 매칭.
+// 🛡️ 2026-05-17: 공구권 카테고리 6종 → 4종 통합.
+//   대분류: 오프라인(voucher 4종, 매장 방문) vs 온라인(일반 상품, 배송).
+//   기존 health → beauty 통합, pet/activity → etc 통합.
+//   레거시 카테고리 호환: voucher-categories.ts 의 normalizeCategory() 사용.
 // ============================================================
 export const VOUCHER_CATEGORIES = [
-  'meal_voucher',
-  'beauty_voucher',
-  'health_voucher',
-  'pet_voucher',       // 반려동물 (미용/호텔/병원)
-  'stay_voucher',      // 숙박 (펜션/호텔/모텔)
-  'activity_voucher',  // 액티비티 (방탈출/볼링/원데이클래스)
+  'meal_voucher',    // 식사권 (음식점/카페)
+  'beauty_voucher',  // 미용 (헬스/뷰티)
+  'stay_voucher',    // 숙소 (펜션/호텔/모텔)
+  'etc_voucher',     // 기타 (펫/액티비티/그 외)
 ] as const;
 export type VoucherCategory = typeof VOUCHER_CATEGORIES[number];
 
 export const VOUCHER_CATEGORY_LABELS: Record<VoucherCategory, string> = {
-  meal_voucher: '식사 공구권',
-  beauty_voucher: '뷰티 공구권',
-  health_voucher: '헬스 공구권',
-  pet_voucher: '반려 공구권',
-  stay_voucher: '숙박 공구권',
-  activity_voucher: '액티비티 공구권',
+  meal_voucher:   '식사권',
+  beauty_voucher: '미용',
+  stay_voucher:   '숙소',
+  etc_voucher:    '기타',
 };
 
 export const VOUCHER_CATEGORY_ICONS: Record<VoucherCategory, string> = {
-  meal_voucher: '🍽️',
+  meal_voucher:   '🍽️',
   beauty_voucher: '💇',
-  health_voucher: '💪',
-  pet_voucher: '🐶',
-  stay_voucher: '🏨',
-  activity_voucher: '🎯',
+  stay_voucher:   '🏨',
+  etc_voucher:    '🎯',
 };
 
-// SQL IN 절용 SQL placeholder (?, ?, ?, ...) — bind 인자는 [...VOUCHER_CATEGORIES]
-export const VOUCHER_CATEGORY_SQL_PLACEHOLDERS = VOUCHER_CATEGORIES.map(() => '?').join(',');
+// SQL IN 절용 SQL placeholder (legacy + new 모두 — 마이그레이션 사이 graceful).
+const _ALL_LEGACY_AND_NEW = [...VOUCHER_CATEGORIES, 'health_voucher', 'pet_voucher', 'activity_voucher'] as const;
+export const VOUCHER_CATEGORY_SQL_PLACEHOLDERS = _ALL_LEGACY_AND_NEW.map(() => '?').join(',');
+export const VOUCHER_CATEGORY_SQL_VALUES = _ALL_LEGACY_AND_NEW;

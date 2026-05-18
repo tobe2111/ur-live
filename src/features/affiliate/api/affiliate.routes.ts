@@ -291,7 +291,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
       WHERE p.is_active = 1
-        AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND p.group_buy_status = 'active'
         AND p.group_buy_target > 0
         AND p.group_buy_deadline > datetime('now')

@@ -78,7 +78,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
              s.bio as seller_bio, s.sns_instagram as seller_instagram
       FROM products p
       LEFT JOIN sellers s ON p.seller_id = s.id
-      WHERE p.id = ? AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE p.id = ? AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
     `).bind(id).first<GroupBuyProductRow & { seller_name?: string; seller_avatar?: string; seller_bio?: string; seller_instagram?: string }>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
@@ -119,7 +119,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         WHERE o.order_number LIKE 'GB-%'
           AND o.status = 'PAID'
           AND o.created_at >= datetime('now', '-2 hours')
-          AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+          AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         ORDER BY o.created_at DESC
         LIMIT 30
       `).all().catch(() => ({ results: [] }))

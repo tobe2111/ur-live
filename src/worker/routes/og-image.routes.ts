@@ -128,7 +128,7 @@ ogRoutes.get('/group-buy/:id', async (c) => {
       SELECT id, name, category, image_url, price, restaurant_name,
              group_buy_target, group_buy_current, group_buy_status, group_buy_tiers
       FROM products
-      WHERE id = ? AND category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE id = ? AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
     `).bind(id).first<ProductForOG>()
 
     if (!product) {

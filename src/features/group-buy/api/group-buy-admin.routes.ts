@@ -34,7 +34,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
         SUM(group_buy_current) AS total_participants,
         SUM(group_buy_current * price) AS total_gmv
       FROM products
-      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND group_buy_target > 0
       GROUP BY category
       ORDER BY total_gmv DESC
@@ -47,7 +47,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
              s.name AS seller_name
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
-      WHERE p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND p.group_buy_target > 0
         AND p.group_buy_current > 0
       ORDER BY gmv DESC
@@ -77,7 +77,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
         SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active_groups,
         SUM(group_buy_current) AS total_participants
       FROM products
-      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND group_buy_target > 0
     `).first().catch(() => null)
 
@@ -105,7 +105,7 @@ groupBuyAdminRoutes.get('/list', requireAdmin(), async (c) => {
              p.created_at, p.updated_at
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
-      WHERE p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
     `
     const binds: unknown[] = []
     if (status !== 'all') { sql += ` AND p.group_buy_status = ?`; binds.push(status) }

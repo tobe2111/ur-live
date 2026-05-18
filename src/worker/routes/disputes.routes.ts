@@ -380,7 +380,7 @@ disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
         JOIN sellers s ON s.id = p.seller_id
         WHERE s.agency_id = ?
           AND p.group_buy_status = 'active'
-          AND p.category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+          AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
       `).bind(cutoff24h, userAsAny.id).first<{ active_count: number; at_risk_count: number }>().catch(() => null),
       DB.prepare(`
         SELECT COUNT(*) AS churn_count

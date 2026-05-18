@@ -177,7 +177,7 @@ export async function handleScheduled(env: Env) {
     const { meta } = await DB.prepare(`
       UPDATE products
       SET group_buy_status = 'expired', updated_at = datetime('now')
-      WHERE category IN ('meal_voucher','beauty_voucher','health_voucher','pet_voucher','stay_voucher','activity_voucher')
+      WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND group_buy_status = 'active'
         AND group_buy_deadline IS NOT NULL
         AND group_buy_deadline < datetime('now')

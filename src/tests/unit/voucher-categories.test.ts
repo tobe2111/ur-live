@@ -22,7 +22,7 @@ function resolveCategories(param: string): VoucherCategory[] {
   return [...VOUCHER_CATEGORIES]; // unknown → 안전한 fallback (전체)
 }
 
-const ALL_CATS = ['meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher'];
+const ALL_CATS = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'health_voucher', 'pet_voucher', 'activity_voucher'];
 
 describe('VOUCHER_CATEGORIES — 카테고리 enum', () => {
   it('6종 카테고리 존재', () => {
