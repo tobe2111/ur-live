@@ -68,9 +68,16 @@ function parseMigrations() {
   for (const f of files) {
     const sql = fs.readFileSync(path.join(migDir, f), 'utf8')
 
+    // 🛡️ (z) DROP TABLE — 모든 CHECK 무효화. 'DROP TABLE IF EXISTS notifications;' 다음의
+    //   'CREATE TABLE IF NOT EXISTS notifications (...)' 가 새 CHECK 정의 가능.
+    const dropTableRegex = /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?[`"]?(\w+)[`"]?\s*;/gi
+    let m
+    while ((m = dropTableRegex.exec(sql))) {
+      checkMap.delete(m[1].toLowerCase())
+    }
+
     // (a) CREATE TABLE ... ( ... col TEXT ... CHECK(col IN (...)) ... )
     const createRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?(\w+)[`"]?\s*\(([\s\S]*?)\);/gi
-    let m
     while ((m = createRegex.exec(sql))) {
       const table = m[1]
       const body = m[2]
@@ -112,14 +119,38 @@ function parseMigrations() {
 // ─────────────────────────────────────────────
 const violations = []
 
+/**
+ * Paren-depth aware comma split — VALUES (a, b, foo(x, y)) 같은 nested 정확히 처리.
+ */
+function splitTopLevel(s, delim = ',') {
+  const out = []
+  let depth = 0
+  let inStr = null
+  let buf = ''
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (inStr) {
+      if (ch === '\\') { buf += ch + (s[i + 1] || ''); i++; continue }
+      buf += ch
+      if (ch === inStr) inStr = null
+      continue
+    }
+    if (ch === "'" || ch === '"' || ch === '`') { inStr = ch; buf += ch; continue }
+    if (ch === '(' || ch === '[' || ch === '{') { depth++; buf += ch; continue }
+    if (ch === ')' || ch === ']' || ch === '}') { depth--; buf += ch; continue }
+    if (ch === delim && depth === 0) { out.push(buf.trim()); buf = ''; continue }
+    buf += ch
+  }
+  if (buf.trim()) out.push(buf.trim())
+  return out
+}
+
 function scanFile(file) {
   const src = fs.readFileSync(file, 'utf8')
 
-  // UPDATE <table> SET <col> = '<value>'
-  //   여러 줄에 걸친 UPDATE 도 매칭 (\s+ 가 newline 포함).
-  //   🛡️ 2026-05-17 v2: terminator 에서 quote 제거 — 'deleted' 같은 값이 따옴표 닫기로
-  //     캡쳐 종료시켜 SET 절이 잘리던 버그 fix.
-  //     이제 WHERE/RETURNING/ON CONFLICT/세미콜론 또는 백틱 닫힘까지 캡쳐.
+  // ──────────────────────────────────────────
+  // (A) UPDATE <table> SET <col> = '<value>'
+  // ──────────────────────────────────────────
   const updateRegex = /UPDATE\s+[`"]?(\w+)[`"]?(?:\s+\w+)?\s+SET\s+([\s\S]*?)(?:\s+WHERE\b|\s+RETURNING\b|\s+ON\s+CONFLICT\b|;|\n\s*`)/gi
 
   let m
@@ -129,7 +160,6 @@ function scanFile(file) {
     const colMap = checkMap.get(table)
     if (!colMap) continue
 
-    // 'col = "value"' / "col = 'value'" 패턴 추출
     const assignRegex = /[`"]?(\w+)[`"]?\s*=\s*'([^']*)'/g
     let a
     while ((a = assignRegex.exec(setClause))) {
@@ -138,18 +168,106 @@ function scanFile(file) {
       const allowed = colMap.get(col)
       if (!allowed) continue
       if (!allowed.has(val)) {
-        // 라인 번호 계산
         const before = src.slice(0, m.index + a.index)
         const line = before.split('\n').length
         violations.push({
           file: path.relative(ROOT, file),
           line,
+          op: 'UPDATE',
           table,
           column: col,
           value: val,
           allowed: [...allowed],
         })
       }
+    }
+  }
+
+  // ──────────────────────────────────────────
+  // (B) INSERT INTO <t> (<cols>) VALUES (<vals>)
+  //   - 컬럼-값 위치 매핑.
+  //   - VALUES (...), (...) multi-row 도 처리.
+  //   - VALUES 안의 SELECT / 함수 호출은 paren-balanced split 으로 분리.
+  //   - 리터럴 '<val>' 만 비교. placeholder ?, 함수 호출, 변수 (${...}) 는 skip.
+  // ──────────────────────────────────────────
+  const insertHeaderRegex = /INSERT\s+(?:OR\s+(?:IGNORE|REPLACE|ABORT|FAIL|ROLLBACK)\s+)?INTO\s+[`"]?(\w+)[`"]?\s*\(([^)]*)\)\s*VALUES\s*/gi
+
+  while ((m = insertHeaderRegex.exec(src))) {
+    const table = m[1].toLowerCase()
+    const colsStr = m[2]
+    const colMap = checkMap.get(table)
+    if (!colMap) continue
+
+    // 컬럼 리스트
+    if (colsStr.includes('${')) continue  // dynamic — skip
+    const cols = colsStr.split(',').map((c) => c.trim().replace(/^[`"]?|[`"]?$/g, '').toLowerCase()).filter(Boolean)
+    if (cols.length === 0) continue
+
+    // 컬럼들 중 CHECK 가 있는 것만 검증 대상
+    const checkedCols = cols.map((c, i) => ({ name: c, idx: i, allowed: colMap.get(c) })).filter((x) => x.allowed)
+    if (checkedCols.length === 0) continue
+
+    // VALUES 절: 헤더 뒤부터 paren-balanced parsing.
+    //   여러 행 ((a,b),(c,d)) 가능. 각 행 처리.
+    const valuesStart = m.index + m[0].length
+    let cursor = valuesStart
+    let rowIndex = 0
+    while (cursor < src.length) {
+      // skip whitespace
+      while (cursor < src.length && /\s/.test(src[cursor])) cursor++
+      if (src[cursor] !== '(') break
+      // balanced extract
+      let depth = 1
+      let inStr = null
+      let i = cursor + 1
+      while (i < src.length && depth > 0) {
+        const ch = src[i]
+        if (inStr) {
+          if (ch === '\\') { i += 2; continue }
+          if (ch === inStr) inStr = null
+        } else {
+          if (ch === "'" || ch === '"' || ch === '`') inStr = ch
+          else if (ch === '(') depth++
+          else if (ch === ')') depth--
+        }
+        if (depth === 0) break
+        i++
+      }
+      if (depth !== 0) break
+      const valsStr = src.slice(cursor + 1, i)
+      // dynamic 보간 있으면 skip
+      if (!valsStr.includes('${')) {
+        const vals = splitTopLevel(valsStr)
+        if (vals.length === cols.length) {
+          for (const ck of checkedCols) {
+            const raw = vals[ck.idx]
+            // 리터럴 '<val>' 인 경우만 검증 (placeholder/함수/식별자 skip)
+            const litMatch = raw && raw.match(/^'([^']*)'$/)
+            if (!litMatch) continue
+            const val = litMatch[1]
+            if (!ck.allowed.has(val)) {
+              const before = src.slice(0, cursor + 1)
+              const line = before.split('\n').length
+              violations.push({
+                file: path.relative(ROOT, file),
+                line,
+                op: 'INSERT',
+                table,
+                column: ck.name,
+                value: val,
+                allowed: [...ck.allowed],
+                rowIndex,
+              })
+            }
+          }
+        }
+      }
+      cursor = i + 1
+      rowIndex++
+      // 다음 row 가능성 (comma)
+      while (cursor < src.length && /\s/.test(src[cursor])) cursor++
+      if (src[cursor] !== ',') break
+      cursor++
     }
   }
 }
@@ -182,9 +300,10 @@ if (violations.length === 0) {
 
 console.error('\n🚨 CHECK 제약 위반 후보 발견:')
 for (const v of violations) {
+  const sigil = v.op === 'INSERT' ? `INSERT INTO ${v.table} → (${v.column} = '${v.value}')${v.rowIndex ? ` [row ${v.rowIndex}]` : ''}` : `UPDATE ${v.table} SET ${v.column} = '${v.value}'`
   console.error(
     `  ${v.file}:${v.line}\n` +
-      `    UPDATE ${v.table} SET ${v.column} = '${v.value}'\n` +
+      `    ${sigil}\n` +
       `    허용값: ${v.allowed.map((x) => `'${x}'`).join(', ')}`,
   )
 }
