@@ -35,16 +35,9 @@ interface DBBanner {
   link_url: string | null
 }
 
+// 🛡️ 2026-05-17: '카카오맵 후기 작성' fallback 제거 (사용자 요청).
+//   메인 배너 클릭 직후 어드민 배너 fetch 전 짧게 깜빡이며 노출돼 산만하다는 피드백.
 const BANNERS: Banner[] = [
-  {
-    title: '카카오맵 후기 작성',
-    subtitle: '매장 다녀온 후 후기 작성하면 +1,000딜',
-    cta: '내 식권 보기 →',
-    ctaPath: '/my-vouchers',
-    gradient: 'from-amber-400 via-orange-500 to-pink-500',
-    decorEmoji: '⭐',
-    textTone: 'light',
-  },
   {
     title: '친구 추천 보너스',
     subtitle: '내 추천 링크로 친구가 결제하면 commission',
@@ -76,7 +69,9 @@ const BANNERS: Banner[] = [
 
 export default function SocarStyleBanner() {
   const [idx, setIdx] = useState(0)
-  const [banners, setBanners] = useState<Banner[]>(BANNERS)
+  // 🛡️ 2026-05-17: 초기 state 를 [] 로 변경 — 어드민 배너 fetch 전 fallback flash 방지.
+  //   이전엔 BANNERS 로 초기화돼서 페이지 진입 시 fallback (주황 카카오맵 등) 이 짧게 노출됨.
+  const [banners, setBanners] = useState<Banner[]>([])
 
   // 🛡️ 2026-05-16: 어드민 등록 배너 fetch — DB 우선, 비어 있으면 fallback BANNERS
   useEffect(() => {
@@ -115,9 +110,15 @@ export default function SocarStyleBanner() {
           }
         })
         setBanners(mapped)
+      } else {
+        // 어드민 배너 없으면 fallback 사용
+        setBanners(BANNERS)
       }
-    }).catch(() => { /* fallback BANNERS 그대로 사용 */ })
+    }).catch(() => { setBanners(BANNERS) /* fetch 실패 시에만 fallback */ })
   }, [])
+
+  // 🛡️ 2026-05-17: 배너 로딩 전엔 아무것도 렌더하지 않음 (flash 방지).
+  if (banners.length === 0) return null
 
   const banner = banners[idx] || banners[0]
   const textColor = banner.textTone === 'light' ? 'text-white' : 'text-gray-900'
