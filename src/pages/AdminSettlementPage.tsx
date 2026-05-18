@@ -332,7 +332,125 @@ export default function AdminSettlementPage() {
           </table>
         </div>
       </div>
+
+      {/* 🛡️ 2026-05-18: 원천징수 / 지급조서 CSV 다운로드 카드 */}
+      <TaxWithholdingCard />
       </div>
     </AdminLayout>
+  )
+}
+
+// 🛡️ 2026-05-18: 어드민 — 비사업자 셀러 원천징수 현황 + 국세청 양식 CSV.
+function TaxWithholdingCard() {
+  const currentYear = new Date().getFullYear()
+  const [year, setYear] = useState(currentYear)
+  const [summary, setSummary] = useState<{
+    year: number; seller_count: number; payouts_count: number;
+    total_gross: number; total_withheld: number; total_net: number;
+    reportable_count: number;
+    reportable_sellers: Array<{ seller_id: number; name: string; business_name?: string; business_number?: string; ytd_gross: number; ytd_withheld: number }>;
+  } | null>(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token')
+    if (!token) return
+    api.get(`/api/admin/tax-withholding/summary?year=${year}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => { if (r.data?.success) setSummary(r.data.data) })
+      .catch(() => { /* fail-soft */ })
+  }, [year])
+
+  function downloadCsv(reportableOnly: boolean) {
+    const token = localStorage.getItem('admin_token')
+    if (!token) return
+    fetch(`/api/admin/tax-withholding/export?year=${year}${reportableOnly ? '&reportable_only=1' : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `tax-withholding-${year}${reportableOnly ? '-reportable' : ''}.csv`
+        a.click()
+      })
+      .catch(() => { /* noop */ })
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-bold text-gray-900">📊 비사업자 셀러 원천징수 (지급조서)</h3>
+          <p className="text-xs text-gray-500 mt-0.5">소득세법 §145 — 다음 해 2월 말 국세청 제출용</p>
+        </div>
+        <select value={year} onChange={(e) => setYear(Number(e.target.value))}
+          className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg">
+          {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}년</option>)}
+        </select>
+      </div>
+
+      {summary && summary.payouts_count > 0 ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <KpiBox label="셀러" value={`${summary.seller_count}`} unit="명" color="text-blue-600" />
+            <KpiBox label="지급 건수" value={`${summary.payouts_count}`} unit="건" color="text-gray-700" />
+            <KpiBox label="원천징수액" value={`₩${summary.total_withheld.toLocaleString()}`} color="text-red-600" />
+            <KpiBox label="300만 초과" value={`${summary.reportable_count}`} unit="건" color="text-amber-600"
+              warn={summary.reportable_count > 0} />
+          </div>
+
+          <div className="flex gap-2 mb-3">
+            <button onClick={() => downloadCsv(false)}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700">
+              📥 전체 CSV 다운로드
+            </button>
+            {summary.reportable_count > 0 && (
+              <button onClick={() => downloadCsv(true)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700">
+                📥 합산의무 만 ({summary.reportable_count})
+              </button>
+            )}
+          </div>
+
+          {summary.reportable_sellers.length > 0 && (
+            <div className="border-t border-gray-100 pt-3">
+              <p className="text-xs font-bold text-amber-700 mb-2">⚠️ 종합소득 합산 의무 셀러 (Top 10)</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-gray-500">
+                      <th className="text-left py-1">셀러</th>
+                      <th className="text-left py-1">사업자번호</th>
+                      <th className="text-right py-1">연 지급액</th>
+                      <th className="text-right py-1">원천징수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.reportable_sellers.slice(0, 10).map((s) => (
+                      <tr key={s.seller_id} className="border-t border-gray-50">
+                        <td className="py-1.5">{s.name}</td>
+                        <td className="py-1.5 text-gray-500">{s.business_number || '-'}</td>
+                        <td className="py-1.5 text-right font-bold">₩{s.ytd_gross.toLocaleString()}</td>
+                        <td className="py-1.5 text-right text-red-600">₩{s.ytd_withheld.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-xs text-gray-500 italic">{year}년 원천징수 내역 없음</p>
+      )}
+    </div>
+  )
+}
+
+function KpiBox({ label, value, unit, color, warn }: { label: string; value: string; unit?: string; color: string; warn?: boolean }) {
+  return (
+    <div className={`p-2 rounded-lg ${warn ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
+      <p className="text-[10px] text-gray-500 font-medium">{label}</p>
+      <p className={`text-base font-extrabold ${color}`}>{value}{unit && <span className="text-xs font-medium ml-0.5">{unit}</span>}</p>
+    </div>
   )
 }
