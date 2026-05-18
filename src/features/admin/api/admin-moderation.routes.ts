@@ -287,20 +287,28 @@ adminModerationRoutes.delete('/live-monitor/:id', cors(), async (c) => {
     const DB = c.env.DB;
     const streamId = c.req.param('id');
 
-    const rows = await executeQuery<{ id: number; status: string; seller_id: number; title: string }>(DB,
+    const target = await executeQuery<{ id: number; status: string; seller_id: number; title: string }>(DB,
       `SELECT id, status, seller_id, title FROM live_streams WHERE id = ?`, [streamId]
     );
-    if (rows.length === 0) {
+    if (target.length === 0) {
       return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
     }
-    if (rows[0].status === 'deleted') {
+
+    // 🛡️ 2026-05-17: live_streams.status 는 CHECK(IN 'scheduled','live','ended') 제약 — 'deleted' 쓰면 500.
+    //   soft-delete 는 별도 deleted_at 컬럼으로 표시하고 status 는 'ended' 로만 변경.
+    try { await executeRun(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* 컬럼 이미 존재 */ }
+
+    // 이미 deleted_at 마킹된 스트림이면 중복 처리 차단
+    const existingDeleted = await executeQuery<{ deleted_at: string | null }>(DB,
+      `SELECT deleted_at FROM live_streams WHERE id = ?`, [streamId]
+    ).catch(() => [] as Array<{ deleted_at: string | null }>);
+    if (existingDeleted[0]?.deleted_at) {
       return c.json({ success: false, error: '이미 삭제된 스트림입니다' }, 400);
     }
 
-    try { await executeRun(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* exists */ }
     await executeRun(DB,
       `UPDATE live_streams
-         SET status = 'deleted',
+         SET status = 'ended',
              ended_at = COALESCE(ended_at, datetime('now')),
              deleted_at = datetime('now')
        WHERE id = ?`,
@@ -311,8 +319,8 @@ adminModerationRoutes.delete('/live-monitor/:id', cors(), async (c) => {
       action: 'delete_stream',
       targetType: 'live_stream',
       targetId: streamId,
-      before: { status: rows[0].status, title: rows[0].title },
-      after: { status: 'deleted' }
+      before: { status: target[0].status, title: target[0].title },
+      after: { status: 'ended', deleted_at: 'now' }
     });
 
     return c.json({ success: true, message: '스트림이 삭제되었습니다 (소프트 삭제)' });
