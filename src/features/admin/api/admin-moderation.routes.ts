@@ -286,6 +286,79 @@ adminModerationRoutes.patch('/live-monitor/:id/end', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-18: 일괄 soft-delete — 어드민이 다시보기 row 들을 체크박스로 선택 후 한번에 삭제.
+//   body: { ids: number[] }  (1~50 개 제한 — 단일 트랜잭션 부담 방지)
+//   응답: { success: true, deleted: N, skipped: M }  (이미 삭제된 row 는 skipped 로 카운트)
+adminModerationRoutes.delete('/live-monitor/bulk', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const body = await c.req.json<{ ids?: unknown }>().catch(() => ({ ids: undefined }));
+    const rawIds = Array.isArray(body.ids) ? body.ids : [];
+    const ids = rawIds
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n) && n > 0);
+
+    if (ids.length === 0) {
+      return c.json({ success: false, error: '삭제할 ID 가 없습니다' }, 400);
+    }
+    if (ids.length > 50) {
+      return c.json({ success: false, error: '한번에 최대 50건까지 삭제 가능합니다' }, 400);
+    }
+
+    // 컬럼 없을 가능성 — defensive ALTER (idempotent).
+    try { await executeRun(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* 이미 존재 */ }
+
+    // 대상 row 조회 (감사 로그 + skipped 카운트용).
+    const placeholders = ids.map(() => '?').join(',');
+    const targets = await executeQuery<{ id: number; status: string; title: string; deleted_at: string | null }>(
+      DB,
+      `SELECT id, status, title, deleted_at FROM live_streams WHERE id IN (${placeholders})`,
+      ids,
+    ).catch(() => [] as Array<{ id: number; status: string; title: string; deleted_at: string | null }>);
+
+    if (targets.length === 0) {
+      return c.json({ success: false, error: '대상 스트림을 찾을 수 없습니다' }, 404);
+    }
+
+    const toDelete = targets.filter((t) => !t.deleted_at).map((t) => t.id);
+    const skipped = targets.length - toDelete.length;
+
+    if (toDelete.length > 0) {
+      const updPlaceholders = toDelete.map(() => '?').join(',');
+      await executeRun(
+        DB,
+        `UPDATE live_streams
+           SET status = 'ended',
+               ended_at = COALESCE(ended_at, datetime('now')),
+               deleted_at = datetime('now')
+         WHERE id IN (${updPlaceholders})`,
+        toDelete,
+      );
+
+      // 감사 로그 — 개별 row 별 기록 (auditLog 의 targetId 가 단일이라 N 회 호출).
+      for (const t of targets.filter((x) => !x.deleted_at)) {
+        await writeAuditLog(c, {
+          action: 'bulk_delete_stream',
+          targetType: 'live_stream',
+          targetId: String(t.id),
+          before: { status: t.status, title: t.title },
+          after: { status: 'ended', deleted_at: 'now' },
+        }).catch(() => { /* audit 실패해도 삭제는 성공 처리 */ });
+      }
+    }
+
+    return c.json({
+      success: true,
+      deleted: toDelete.length,
+      skipped,
+      message: `${toDelete.length}건 삭제됨${skipped > 0 ? ` (${skipped}건은 이미 삭제됨)` : ''}`,
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] live-monitor bulk delete error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminModerationRoutes.delete('/live-monitor/:id', cors(), async (c) => {
   try {
     const DB = c.env.DB;

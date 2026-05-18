@@ -59,6 +59,9 @@ export default function AdminLiveMonitorPage() {
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [history, setHistory] = useState<EndedStream[]>([])
   const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-05-18: 일괄 삭제 — 종료된 방송 row 선택 상태.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   // 🛡️ 2026-05-13 (Phase C): 어드민 실시간 알람 — 이전 snapshot 과 비교해서 이벤트 감지.
@@ -243,6 +246,41 @@ export default function AdminLiveMonitorPage() {
     }
   }
 
+  // 🛡️ 2026-05-18: 일괄 삭제 — 체크된 row 들을 한번에 soft-delete.
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  function toggleSelectAll() {
+    if (selectedIds.size === history.length && history.length > 0) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(history.map((s) => s.id)))
+    }
+  }
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    if (!confirm(`선택한 ${ids.length}개 방송을 메인 노출에서 일괄 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다`)) return
+    setBulkDeleting(true)
+    try {
+      const res = await api.delete('/api/admin/live-monitor/bulk', { ...h, data: { ids } })
+      if (res.data.success) {
+        toast.success(res.data.message || `${res.data.deleted}건 삭제됨`)
+        setSelectedIds(new Set())
+        loadData()
+      }
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || '일괄 삭제 실패')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   return (
     <AdminLayout title={t('admin.pages.liveMonitor')}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -378,7 +416,30 @@ export default function AdminLiveMonitorPage() {
 
           {/* 최근 종료된 방송 */}
           <div className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2">최근 종료된 방송 (7일)</h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-gray-900">최근 종료된 방송 (7일)</h2>
+              {/* 🛡️ 2026-05-18: 일괄 삭제 액션 바 — 1건 이상 선택 시 노출. */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 font-medium">{selectedIds.size}건 선택됨</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2"
+                  >
+                    선택 해제
+                  </button>
+                  <button
+                    type="button"
+                    onClick={bulkDelete}
+                    disabled={bulkDeleting}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="w-3 h-3" /> {bulkDeleting ? '삭제 중...' : `${selectedIds.size}건 일괄 삭제`}
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               {history.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-400">최근 종료된 방송이 없습니다</div>
@@ -387,29 +448,54 @@ export default function AdminLiveMonitorPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50">
+                        {/* 🛡️ 2026-05-18: 전체 선택 체크박스 — 모든 row 선택/해제. */}
+                        <th className="px-3 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={history.length > 0 && selectedIds.size === history.length}
+                            ref={(el) => {
+                              if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < history.length
+                            }}
+                            onChange={toggleSelectAll}
+                            aria-label="전체 선택"
+                            className="h-4 w-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer"
+                          />
+                        </th>
                         {['ID', '제목', '셀러', '시청자', '시작일', '종료일', '액션'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {history.map(s => (
-                        <tr key={s.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-xs text-gray-500">{s.id}</td>
-                          <td className="px-4 py-3 text-xs text-gray-900 font-medium">{s.title}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600">{s.seller_name}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600">{s.viewer_count || 0}</td>
-                          <td className="px-4 py-3 text-xs text-gray-400">{new Date(s.created_at).toLocaleString('ko-KR')}</td>
-                          <td className="px-4 py-3 text-xs text-gray-400">{s.updated_at ? new Date(s.updated_at).toLocaleString('ko-KR') : '-'}</td>
-                          <td className="px-4 py-3 text-xs">
-                            <button onClick={() => deleteStream(s)}
-                              aria-label={`"${s.title}" 다시보기 삭제`}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100">
-                              <Trash2 className="w-3 h-3" /> 삭제
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {history.map(s => {
+                        const checked = selectedIds.has(s.id)
+                        return (
+                          <tr key={s.id} className={`hover:bg-gray-50 ${checked ? 'bg-red-50/40' : ''}`}>
+                            <td className="px-3 py-3 w-10">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleSelect(s.id)}
+                                aria-label={`"${s.title}" 선택`}
+                                className="h-4 w-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-500">{s.id}</td>
+                            <td className="px-4 py-3 text-xs text-gray-900 font-medium">{s.title}</td>
+                            <td className="px-4 py-3 text-xs text-gray-600">{s.seller_name}</td>
+                            <td className="px-4 py-3 text-xs text-gray-600">{s.viewer_count || 0}</td>
+                            <td className="px-4 py-3 text-xs text-gray-400">{new Date(s.created_at).toLocaleString('ko-KR')}</td>
+                            <td className="px-4 py-3 text-xs text-gray-400">{s.updated_at ? new Date(s.updated_at).toLocaleString('ko-KR') : '-'}</td>
+                            <td className="px-4 py-3 text-xs">
+                              <button onClick={() => deleteStream(s)}
+                                aria-label={`"${s.title}" 다시보기 삭제`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100">
+                                <Trash2 className="w-3 h-3" /> 삭제
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
