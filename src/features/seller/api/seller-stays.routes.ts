@@ -491,8 +491,11 @@ async function transitionBooking(
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
     // 🛡️ 2026-05-18: CHECK 제약 대체 — 잘못된 status 호출 시 즉시 throw.
-    const { assertStayBookingStatus } = await import('@/worker/utils/stay-status')
-    assertStayBookingStatus(targetStatus)
+    //   dynamic import 라 TS assertion signature 불가 → 직접 호출 (런타임 throw).
+    const stayStatus = await import('@/worker/utils/stay-status')
+    if (!(stayStatus.STAY_BOOKING_STATUS as readonly string[]).includes(targetStatus)) {
+      throw new Error(`invalid stay_bookings.status: ${targetStatus}`)
+    }
     const bookingId = Number(c.req.param('bookingId'))
     if (!Number.isFinite(bookingId)) return c.json({ success: false, error: 'Invalid bookingId' }, 400)
 
@@ -532,6 +535,63 @@ async function transitionBooking(
     return c.json({ success: false, error: (err as Error).message }, 500)
   }
 }
+
+// 🛡️ 2026-05-18: voucher 모드 — 사용 처리 (날짜 협의 후 매장 방문 시 셀러가 호출).
+//   body: { check_in_date, check_out_date }
+//   동작: voucher_used_at = now, voucher_used_check_in/out 기록, status='checked_out' 전환.
+sellerStaysRoutes.patch('/stays/bookings/:bookingId/use-voucher', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const bookingId = Number(c.req.param('bookingId'))
+    if (!Number.isFinite(bookingId)) return c.json({ success: false, error: 'Invalid bookingId' }, 400)
+
+    const booking = await c.env.DB.prepare(
+      'SELECT id, seller_id, status, sale_mode, voucher_expires_at, voucher_used_at FROM stay_bookings WHERE id = ?'
+    ).bind(bookingId).first<{
+      id: number; seller_id: number; status: string;
+      sale_mode: string | null; voucher_expires_at: string | null; voucher_used_at: string | null;
+    }>()
+    if (!booking) return c.json({ success: false, error: '예약 없음' }, 404)
+    if (booking.seller_id !== sellerId) return c.json({ success: false, error: '권한 없음' }, 403)
+    if (booking.sale_mode !== 'voucher') return c.json({ success: false, error: 'voucher 모드 예약만 가능' }, 400)
+    if (booking.voucher_used_at) return c.json({ success: false, error: '이미 사용된 voucher' }, 400)
+    if (booking.status !== 'confirmed') return c.json({ success: false, error: '결제 완료된 예약만 사용 가능' }, 400)
+    if (booking.voucher_expires_at && new Date(booking.voucher_expires_at) < new Date()) {
+      return c.json({ success: false, error: '만료된 voucher' }, 400)
+    }
+
+    const body = await c.req.json<{ check_in_date?: string; check_out_date?: string }>()
+      .catch(() => ({} as { check_in_date?: string; check_out_date?: string }))
+    const usedCheckIn = String(body?.check_in_date || '').trim()
+    const usedCheckOut = String(body?.check_out_date || '').trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(usedCheckIn) || !/^\d{4}-\d{2}-\d{2}$/.test(usedCheckOut)) {
+      return c.json({ success: false, error: '실제 체크인/체크아웃 날짜 필요' }, 400)
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE stay_bookings
+          SET voucher_used_at = datetime('now'),
+              voucher_used_check_in = ?,
+              voucher_used_check_out = ?,
+              status = 'checked_out',
+              checked_in_at = COALESCE(checked_in_at, datetime('now')),
+              checked_in_by = COALESCE(checked_in_by, ?),
+              checked_out_at = datetime('now'),
+              updated_at = datetime('now')
+        WHERE id = ?`
+    ).bind(usedCheckIn, usedCheckOut, sellerId, bookingId).run()
+
+    await c.env.DB.prepare(
+      `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
+       VALUES (?, ?, 'checked_out', 'seller', ?, 'voucher 사용 — 실제 체크인-체크아웃')`
+    ).bind(bookingId, booking.status, sellerId).run().catch(() => { /* noop */ })
+
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
 
 sellerStaysRoutes.patch('/stays/bookings/:bookingId/check-in',
   cors(), (c) => transitionBooking(c, 'checked_in', ['confirmed']))
