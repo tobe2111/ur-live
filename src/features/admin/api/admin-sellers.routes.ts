@@ -259,6 +259,10 @@ adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), as
       createDashboardNotification(DB, 'seller', String(sellerId), 'business_reg_verified',
         '사업자등록 검증 완료', '현금 정산 + 딜 환급이 가능합니다',
         '/seller/settlements').catch(() => { /* noop */ });
+
+      // 🛡️ 2026-05-18: 카카오 알림톡 발송 (ALIGO 설정된 경우).
+      sendBusinessRegistrationAlimtalk(c.env as unknown as { DB: D1Database } & Record<string, string | undefined>, Number(sellerId), 'verify', null).catch(() => { /* fail-soft */ });
+
       return c.json({ success: true, message: '사업자등록을 승인했습니다' });
     }
 
@@ -283,6 +287,9 @@ adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), as
     });
     createDashboardNotification(DB, 'seller', String(sellerId), 'business_reg_rejected',
       '사업자등록 반려', rejectReason, '/seller/settlements').catch(() => { /* noop */ });
+
+    // 🛡️ 2026-05-18: 카카오 알림톡 발송.
+    sendBusinessRegistrationAlimtalk(c.env as unknown as { DB: D1Database } & Record<string, string | undefined>, Number(sellerId), 'reject', rejectReason).catch(() => { /* fail-soft */ });
 
     return c.json({ success: true, message: '사업자등록을 반려했습니다' });
   } catch (err) {
@@ -471,5 +478,41 @@ adminSellersRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
+
+// 🛡️ 2026-05-18: 사업자 검증 결과 알림톡 — verify/reject 후 셀러에게 발송.
+//   ALIGO env 미설정 시 silent skip (가이드 docs/kakao-alimtalk-templates.md 참조).
+async function sendBusinessRegistrationAlimtalk(
+  env: { DB: D1Database } & Record<string, string | undefined>,
+  sellerId: number,
+  action: 'verify' | 'reject',
+  reason: string | null,
+): Promise<void> {
+  const apiKey = env.ALIGO_API_KEY
+  const userId = env.ALIGO_USER_ID
+  const senderKey = env.ALIGO_SENDER_KEY
+  const templateCode = env.ALIGO_BUSINESS_REGISTRATION_RESULT || 'business_registration_result'
+  if (!apiKey || !userId || !senderKey) return  // env 미설정 → skip
+
+  const seller = await env.DB.prepare(
+    'SELECT name, business_name, business_number, phone FROM sellers WHERE id = ?'
+  ).bind(sellerId).first<{ name: string; business_name: string | null; business_number: string | null; phone: string | null }>()
+    .catch(() => null)
+  if (!seller?.phone) return
+
+  const phone = seller.phone.replace(/\D/g, '')
+  if (!/^01\d{8,9}$/.test(phone)) return
+
+  const message = action === 'verify'
+    ? `[유어딜] 사업자등록증 검증 완료\n\n회원님의 사업자등록증이 승인되었습니다.\n\n· 상호: ${seller.business_name || seller.name}\n· 사업자번호: ${seller.business_number || '-'}\n\n이제 현금 정산 + 딜 환급이 가능합니다.`
+    : `[유어딜] 사업자등록증 반려\n\n· 사유: ${reason || '미상'}\n\n다시 제출해주세요. 검증 완료 후 현금 정산이 가능합니다.`
+
+  try {
+    const { sendAlimtalk } = await import('../../../lib/aligo')
+    await sendAlimtalk(
+      { ALIGO_API_KEY: apiKey, ALIGO_USER_ID: userId },
+      { senderKey, templateCode, to: phone, message },
+    )
+  } catch { /* silent fail */ }
+}
 
 export default adminSellersRoutes;

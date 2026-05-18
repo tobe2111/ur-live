@@ -141,6 +141,11 @@ export async function handleCronScheduled(
       const { runStayReminderCron } = await import('./cron/stay-reminder')
       await runStayReminderCron(env as { DB: D1Database })
     }))
+    // 🛡️ 2026-05-18: voucher 만료 D-30/D-7/D-1 알림.
+    ctx.waitUntil(safeCron('stay-voucher-expire', async () => {
+      const { runVoucherExpireCron } = await import('./cron/stay-voucher-expire')
+      await runVoucherExpireCron(env as { DB: D1Database })
+    }))
   }
 
   if (cron === '0 19 * * *') {
