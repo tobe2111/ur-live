@@ -156,10 +156,11 @@ export async function deleteUserAccount(
       .run()
       .catch(swallow("cleanup"));
 
-    // Cancel pending youtube growth requests
+    // 🛡️ 2026-05-17: youtube_growth_requests.status CHECK 제약은 ('pending','processing','completed','rejected').
+    //   계정 삭제 시 신청 자동 종료 = 'rejected' 가 의미상 적절 ('cancelled' 는 CHECK 위반 → 이전 silent 실패).
     await db
       .prepare(
-        "UPDATE youtube_growth_requests SET status = 'cancelled' WHERE user_id = ? AND status IN ('pending', 'processing')"
+        "UPDATE youtube_growth_requests SET status = 'rejected' WHERE user_id = ? AND status IN ('pending', 'processing')"
       )
       .bind(userIdStr)
       .run()
