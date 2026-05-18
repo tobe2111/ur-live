@@ -40,6 +40,9 @@ export default function AdminProductsPage() {
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
   const [showBulkUpload, setShowBulkUpload] = useState(false)
+  // 🛡️ 2026-05-18: 체크박스 선택 상태 — 일괄 삭제/활성화/비활성화.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkAction, setBulkAction] = useState<'delete' | 'activate' | 'deactivate' | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -152,6 +155,46 @@ export default function AdminProductsPage() {
     } finally { setDeleting(null) }
   }
 
+  // 🛡️ 2026-05-18: 체크박스 토글 & 일괄 작업 핸들러.
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  function toggleSelectAll() {
+    if (selectedIds.size === products.length && products.length > 0) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(products.map((p) => p.id)))
+    }
+  }
+  async function handleBulkAction(action: 'delete' | 'activate' | 'deactivate') {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    const label = action === 'delete' ? '삭제' : action === 'activate' ? '활성화' : '비활성화'
+    const warn = action === 'delete'
+      ? `\n\n· 주문 이력 있는 상품은 자동 비활성화 (이력 보존)\n· 주문 이력 없는 상품은 완전 삭제`
+      : ''
+    if (!confirm(`선택한 ${ids.length}개 상품을 일괄 ${label}하시겠습니까?${warn}`)) return
+    setBulkAction(action)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const res = await api.post('/api/admin/products/bulk-action', { ids, action }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) {
+        toast.success(res.data.message || `${ids.length}건 ${label} 완료`)
+        setSelectedIds(new Set())
+        loadProducts()
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || `일괄 ${label} 실패`)
+    } finally {
+      setBulkAction(null)
+    }
+  }
+
   async function handleToggleActive(productId: number, current: boolean) {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -258,6 +301,48 @@ export default function AdminProductsPage() {
 
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 mb-4">{error}</div>}
 
+      {/* 🛡️ 2026-05-18: 일괄 작업 액션 바 — 1건 이상 선택 시 노출. */}
+      {activeTab === 'products' && selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-blue-900">{selectedIds.size}개 선택됨</span>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-blue-700 underline underline-offset-2 hover:text-blue-900"
+            >
+              선택 해제
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleBulkAction('activate')}
+              disabled={bulkAction !== null}
+              className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+            >
+              <Eye className="w-3 h-3" /> {bulkAction === 'activate' ? '처리 중...' : '활성화'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkAction('deactivate')}
+              disabled={bulkAction !== null}
+              className="inline-flex items-center gap-1 rounded-md bg-gray-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-600 disabled:opacity-50"
+            >
+              <EyeOff className="w-3 h-3" /> {bulkAction === 'deactivate' ? '처리 중...' : '비활성화'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkAction('delete')}
+              disabled={bulkAction !== null}
+              className="inline-flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+            >
+              <Trash2 className="w-3 h-3" /> {bulkAction === 'delete' ? '처리 중...' : `${selectedIds.size}건 삭제`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 상품 목록 탭 */}
       {activeTab === 'products' && (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -274,6 +359,19 @@ export default function AdminProductsPage() {
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="bg-gray-50">
+                    {/* 🛡️ 2026-05-18: 전체 선택 체크박스 — indeterminate 지원. */}
+                    <th className="px-3 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={products.length > 0 && selectedIds.size === products.length}
+                        ref={(el) => {
+                          if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < products.length
+                        }}
+                        onChange={toggleSelectAll}
+                        aria-label="전체 선택"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
                     {[
                       t('admin.products.k021', { defaultValue: '이미지' }),
                       t('admin.products.k022', { defaultValue: '상품명' }),
@@ -289,8 +387,19 @@ export default function AdminProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {products.map(product => (
-                    <tr key={product.id} className="hover:bg-gray-50">
+                  {products.map(product => {
+                    const checked = selectedIds.has(product.id)
+                    return (
+                    <tr key={product.id} className={`hover:bg-gray-50 ${checked ? 'bg-blue-50/40' : ''}`}>
+                      <td className="px-3 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelect(product.id)}
+                          aria-label={`"${product.name}" 선택`}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
                           {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
@@ -368,7 +477,7 @@ export default function AdminProductsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

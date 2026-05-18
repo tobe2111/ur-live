@@ -66,6 +66,106 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-18: 일괄 작업 — 삭제 / 활성화 / 비활성화.
+//   body: { ids: number[], action: 'delete' | 'activate' | 'deactivate' }
+//   응답: { success, deleted: N, soft_deleted: M, updated: K, skipped: L, message }
+//   - delete: 주문 이력 있으면 soft (is_active=0), 없으면 hard delete (단일 DELETE 와 동일 정책)
+//   - activate/deactivate: is_active 만 일괄 UPDATE
+//   - 50건 제한 (단일 트랜잭션 부담 + 잘못된 일괄 작업 영향 범위 제한)
+adminProductsRoutes.post('/products/bulk-action', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json<{ ids?: unknown; action?: unknown }>().catch(() => ({}));
+    const rawIds = Array.isArray((body as any).ids) ? ((body as any).ids as unknown[]) : [];
+    const ids = rawIds
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const action = String((body as any).action || '');
+
+    if (ids.length === 0) {
+      return c.json({ success: false, error: '대상 ID 가 없습니다' }, 400);
+    }
+    if (ids.length > 50) {
+      return c.json({ success: false, error: '한번에 최대 50건까지 처리 가능합니다' }, 400);
+    }
+    if (!['delete', 'activate', 'deactivate'].includes(action)) {
+      return c.json({ success: false, error: 'action 은 delete / activate / deactivate 중 하나여야 합니다' }, 400);
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+
+    // 존재 검증.
+    const existing = await executeQuery<IdRow>(DB, `SELECT id FROM products WHERE id IN (${placeholders})`, ids)
+      .catch(() => [] as Array<IdRow>);
+    const existingIds = existing.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+    if (existingIds.length === 0) {
+      return c.json({ success: false, error: '대상 상품을 찾을 수 없습니다' }, 404);
+    }
+    const ePlaceholders = existingIds.map(() => '?').join(',');
+
+    if (action === 'activate' || action === 'deactivate') {
+      const next = action === 'activate' ? 1 : 0;
+      await executeRun(
+        DB,
+        `UPDATE products SET is_active = ?, updated_at = datetime('now') WHERE id IN (${ePlaceholders})`,
+        [next, ...existingIds],
+      );
+      await writeAuditLog(c, {
+        action: `bulk_${action}_product`,
+        targetType: 'product',
+        targetId: existingIds.join(','),
+        after: { is_active: next, count: existingIds.length },
+      }).catch(() => { /* audit 실패해도 성공 처리 */ });
+      return c.json({
+        success: true,
+        updated: existingIds.length,
+        skipped: ids.length - existingIds.length,
+        message: `${existingIds.length}건 ${action === 'activate' ? '활성화' : '비활성화'} 완료`,
+      });
+    }
+
+    // action === 'delete' — order_items 참조 분기로 soft vs hard.
+    const referenced = await executeQuery<{ product_id: number }>(
+      DB,
+      `SELECT DISTINCT product_id FROM order_items WHERE product_id IN (${ePlaceholders})`,
+      existingIds,
+    ).catch(() => [] as Array<{ product_id: number }>);
+    const refSet = new Set(referenced.map((r) => Number(r.product_id)));
+    const softIds = existingIds.filter((id) => refSet.has(id));
+    const hardIds = existingIds.filter((id) => !refSet.has(id));
+
+    if (softIds.length > 0) {
+      const sp = softIds.map(() => '?').join(',');
+      await executeRun(
+        DB,
+        `UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id IN (${sp})`,
+        softIds,
+      );
+    }
+    if (hardIds.length > 0) {
+      const hp = hardIds.map(() => '?').join(',');
+      await executeRun(DB, `DELETE FROM products WHERE id IN (${hp})`, hardIds);
+    }
+    await writeAuditLog(c, {
+      action: 'bulk_delete_product',
+      targetType: 'product',
+      targetId: existingIds.join(','),
+      after: { soft_deleted: softIds.length, hard_deleted: hardIds.length },
+    }).catch(() => { /* noop */ });
+
+    return c.json({
+      success: true,
+      deleted: hardIds.length,
+      soft_deleted: softIds.length,
+      skipped: ids.length - existingIds.length,
+      message: `${existingIds.length}건 처리 완료 (삭제 ${hardIds.length}건, 비활성 ${softIds.length}건)`,
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] bulk action error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
