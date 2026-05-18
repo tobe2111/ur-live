@@ -13,24 +13,33 @@ interface Category {
   label: string
   emoji: string
   path: string
-  bgClass: string
   badge?: string
 }
 
 // 🛡️ 2026-05-17: 카테고리 6종 → 4종 통합. 대분류 오프라인(voucher 4) + 온라인(쇼핑/라이브) 분리.
-//   2x4 그리드 — 첫 줄: 오프라인 4종 / 둘째 줄: 온라인 4 entry (라이브/쇼핑/특가/지도).
+//   2026-05-18: 카드별 컬러 배경 제거 (촌스러운 인상) → Monochrome 통일.
+//                카드 = bg-white (다크: bg-[#1A1A1A]) + subtle border.
+//                컬러는 아이콘 (이모지) 만 유지 → 시각 노이즈 감소.
 const CATEGORIES: Category[] = [
   // 🏪 오프라인 (1행) — 매장 방문 voucher 4종
-  { key: 'meal',   label: '식사권',  emoji: '🍽️', path: '/group-buy?category=meal_voucher',   bgClass: 'bg-orange-50 dark:bg-orange-950/30' },
-  { key: 'beauty', label: '미용',    emoji: '💇', path: '/group-buy?category=beauty_voucher', bgClass: 'bg-pink-50 dark:bg-pink-950/30' },
-  { key: 'stay',   label: '숙소',    emoji: '🏨', path: '/group-buy?category=stay_voucher',   bgClass: 'bg-sky-50 dark:bg-sky-950/30' },
-  { key: 'etc',    label: '기타',    emoji: '🎯', path: '/group-buy?category=etc_voucher',    bgClass: 'bg-emerald-50 dark:bg-emerald-950/30' },
+  { key: 'meal',   label: '식사권',  emoji: '🍽️', path: '/group-buy?category=meal_voucher'   },
+  { key: 'beauty', label: '미용',    emoji: '💇', path: '/group-buy?category=beauty_voucher' },
+  { key: 'stay',   label: '숙소',    emoji: '🏨', path: '/group-buy?category=stay_voucher'   },
+  { key: 'etc',    label: '기타',    emoji: '🎯', path: '/group-buy?category=etc_voucher'    },
   // 🛍️ 온라인 (2행) — 라이브 커머스 + 쇼핑 + 특가 + 지도(매장 찾기)
-  { key: 'live',   label: '라이브',  emoji: '📺', path: '/live',                              bgClass: 'bg-red-50 dark:bg-red-950/30', badge: 'LIVE' },
-  { key: 'shop',   label: '쇼핑',    emoji: '🛍️', path: '/browse',                            bgClass: 'bg-violet-50 dark:bg-violet-950/30' },
-  { key: 'deal',   label: '특가',    emoji: '🔥', path: '/group-buy?sort=discount',           bgClass: 'bg-yellow-50 dark:bg-yellow-950/30', badge: '~70%' },
-  { key: 'map',    label: '내주변',  emoji: '📍', path: '/restaurant-map',                    bgClass: 'bg-amber-50 dark:bg-amber-950/30' },
+  { key: 'live',   label: '라이브',  emoji: '📺', path: '/live',                              badge: 'LIVE' },
+  { key: 'shop',   label: '쇼핑',    emoji: '🛍️', path: '/browse'                             },
+  { key: 'deal',   label: '특가',    emoji: '🔥', path: '/group-buy?sort=discount',           badge: '~70%' },
+  { key: 'map',    label: '내주변',  emoji: '📍', path: '/restaurant-map'                     },
 ]
+
+// 🛡️ 2026-05-18: 카드 공통 클래스 — 모든 카테고리 동일 (Monochrome).
+//   bg-white (라이트) / bg-[#1A1A1A] (다크) + subtle border + 호버 강조.
+const CARD_BASE =
+  'bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] ' +
+  'rounded-xl p-3 flex flex-col items-center justify-center text-center ' +
+  'active:scale-95 hover:border-gray-200 dark:hover:border-[#3A3A3A] hover:shadow-sm ' +
+  'transition-all relative'
 
 interface Props {
   userName?: string
@@ -66,8 +75,10 @@ export default function SocarStyleHero({ userName, availableVouchers = 0 }: Prop
         </Link>
       )}
 
-      {/* 🛡️ 2026-05-17: 오프라인/온라인 대분류 명시 — 카테고리 그리드 위 헤더 라벨. */}
-      <div className="bg-gray-50 dark:bg-[#0A0A0A] rounded-2xl p-3 space-y-3">
+      {/* 🛡️ 2026-05-17: 오프라인/온라인 대분류 명시 — 카테고리 그리드 위 헤더 라벨.
+            2026-05-18: 카드 monochrome 화 후 wrapper 배경 제거 — 카드 자체가 white 인데
+            wrapper 가 gray-50 면 시각 노이즈만 증가. 라벨 + 그리드 직접 노출. */}
+      <div className="space-y-4">
         {/* 오프라인 (voucher 4종) */}
         <div>
           <p className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 tracking-[0.12em] mb-2 px-1">
@@ -78,7 +89,7 @@ export default function SocarStyleHero({ userName, availableVouchers = 0 }: Prop
               <Link
                 key={cat.key}
                 to={cat.path}
-                className={`${cat.bgClass} rounded-xl p-3 flex flex-col items-center justify-center text-center active:scale-95 transition-transform relative`}
+                className={CARD_BASE}
               >
                 {cat.badge && (
                   <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none">
@@ -102,7 +113,7 @@ export default function SocarStyleHero({ userName, availableVouchers = 0 }: Prop
               <Link
                 key={cat.key}
                 to={cat.path}
-                className={`${cat.bgClass} rounded-xl p-3 flex flex-col items-center justify-center text-center active:scale-95 transition-transform relative`}
+                className={CARD_BASE}
               >
                 {cat.badge && (
                   <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none">
