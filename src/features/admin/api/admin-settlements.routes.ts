@@ -364,4 +364,139 @@ adminSettlementsRoutes.get('/settlement/export-csv', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-18: 지급조서 — 비사업자 셀러 원천징수 내역 CSV export (국세청 양식 호환).
+//   소득세법 §145 — 매월 다음달 10일까지 지급명세서 제출. 종합소득은 다음 해 2월 말.
+//   본 endpoint 는 연/월 단위 조회 + CSV download (수동 국세청 제출용).
+adminSettlementsRoutes.get('/tax-withholding/export', cors(), async (c) => {
+  try {
+    const year = Number(c.req.query('year')) || new Date().getFullYear();
+    const month = c.req.query('month') ? Number(c.req.query('month')) : null;
+    const reportableOnly = c.req.query('reportable_only') === '1';
+
+    let sql = `
+      SELECT t.id, t.seller_id, s.name as seller_name, s.business_name, s.business_number,
+             s.phone as seller_phone, s.email as seller_email,
+             t.payout_year, t.payout_month, t.gross_amount,
+             t.withholding_rate, t.withholding_amount, t.net_amount,
+             t.source_type, t.source_id, t.ytd_gross_amount, t.reportable,
+             t.created_at
+        FROM tax_withholding_log t
+        LEFT JOIN sellers s ON s.id = t.seller_id
+       WHERE t.payout_year = ?`;
+    const params: unknown[] = [year];
+    if (month) { sql += ' AND t.payout_month = ?'; params.push(month); }
+    if (reportableOnly) sql += ' AND t.reportable = 1';
+    sql += ' ORDER BY t.payout_month, t.seller_id, t.created_at';
+
+    const rows = await c.env.DB.prepare(sql).bind(...params)
+      .all<{
+        id: number; seller_id: number; seller_name: string; business_name: string | null;
+        business_number: string | null; seller_phone: string | null; seller_email: string | null;
+        payout_year: number; payout_month: number;
+        gross_amount: number; withholding_rate: number; withholding_amount: number;
+        net_amount: number;
+        source_type: string; source_id: string | null;
+        ytd_gross_amount: number; reportable: number;
+        created_at: string;
+      }>().catch(() => ({ results: [] }));
+
+    // CSV format: 국세청 표준 (탭 구분) 호환 + 사용자 친화 컬럼명.
+    const headers = [
+      'ID', '셀러ID', '셀러명', '상호', '사업자번호', '전화', '이메일',
+      '지급연도', '지급월', '총지급액(원)', '원천징수율(%)', '원천징수액(원)', '실지급액(원)',
+      '소득구분', '참조ID', '연누계지급액(원)', '종합소득합산여부', '발생일시',
+    ];
+    const csv = [
+      headers.join(','),
+      ...((rows.results || []).map(r => [
+        r.id,
+        r.seller_id,
+        csvEscape(r.seller_name),
+        csvEscape(r.business_name || ''),
+        csvEscape(r.business_number || ''),
+        csvEscape(r.seller_phone || ''),
+        csvEscape(r.seller_email || ''),
+        r.payout_year,
+        r.payout_month,
+        r.gross_amount,
+        r.withholding_rate,
+        r.withholding_amount,
+        r.net_amount,
+        r.source_type,
+        csvEscape(r.source_id || ''),
+        r.ytd_gross_amount,
+        r.reportable ? '합산의무' : '분리과세',
+        r.created_at,
+      ].join(','))),
+    ].join('\n');
+
+    const filename = `tax-withholding-${year}${month ? `-${String(month).padStart(2, '0')}` : ''}.csv`;
+    return new Response('﻿' + csv, {  // BOM 추가 (Excel 한글 깨짐 방지)
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 지급조서 요약 (어드민 대시보드 — 연 누계 300만 초과 셀러 카운트 등).
+adminSettlementsRoutes.get('/tax-withholding/summary', cors(), async (c) => {
+  try {
+    const year = Number(c.req.query('year')) || new Date().getFullYear();
+
+    const summary = await c.env.DB.prepare(
+      `SELECT
+         COUNT(DISTINCT seller_id) as seller_count,
+         COUNT(*) as payouts_count,
+         COALESCE(SUM(gross_amount), 0) as total_gross,
+         COALESCE(SUM(withholding_amount), 0) as total_withheld,
+         COALESCE(SUM(net_amount), 0) as total_net,
+         SUM(CASE WHEN reportable = 1 THEN 1 ELSE 0 END) as reportable_count
+       FROM tax_withholding_log
+      WHERE payout_year = ?`
+    ).bind(year).first<{
+      seller_count: number; payouts_count: number;
+      total_gross: number; total_withheld: number; total_net: number;
+      reportable_count: number;
+    }>().catch(() => null);
+
+    // 300만 초과 셀러 목록.
+    const reportableSellers = await c.env.DB.prepare(
+      `SELECT t.seller_id, s.name, s.business_name, s.business_number,
+              SUM(t.gross_amount) as ytd_gross,
+              SUM(t.withholding_amount) as ytd_withheld
+         FROM tax_withholding_log t
+         LEFT JOIN sellers s ON s.id = t.seller_id
+        WHERE t.payout_year = ?
+        GROUP BY t.seller_id
+       HAVING ytd_gross > 3000000
+        ORDER BY ytd_gross DESC LIMIT 100`
+    ).bind(year).all<Record<string, unknown>>().catch(() => ({ results: [] }));
+
+    return c.json({
+      success: true,
+      data: {
+        year,
+        ...(summary || { seller_count: 0, payouts_count: 0, total_gross: 0, total_withheld: 0, total_net: 0, reportable_count: 0 }),
+        reportable_sellers: reportableSellers.results || [],
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+function csvEscape(v: string): string {
+  if (v == null) return '';
+  const s = String(v);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
 export default adminSettlementsRoutes;

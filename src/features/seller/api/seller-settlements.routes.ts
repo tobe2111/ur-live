@@ -198,6 +198,176 @@ sellerSettlementsRoutes.get('/settlement-options', async (c) => {
   }
 });
 
+// 🛡️ 2026-05-18: 딜 잔액 조회 — gated (환급 불가) vs redeemable (환급 가능) 분리.
+sellerSettlementsRoutes.get('/deal-balance', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+
+    const row = await c.env.DB.prepare(
+      'SELECT gated_deal_amount, redeemable_deal_amount FROM seller_deal_balances WHERE seller_id = ?'
+    ).bind(sellerId).first<{ gated_deal_amount: number; redeemable_deal_amount: number }>().catch(() => null);
+
+    // 사업자 등록 검증 상태도 같이.
+    const seller = await c.env.DB.prepare(
+      'SELECT business_registration_status FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_registration_status: string | null }>().catch(() => null);
+    const bizVerified = seller?.business_registration_status === 'verified' || seller?.business_registration_status === 'exempt';
+
+    return c.json({
+      success: true,
+      data: {
+        gated_deal_amount: row?.gated_deal_amount || 0,
+        redeemable_deal_amount: row?.redeemable_deal_amount || 0,
+        total: (row?.gated_deal_amount || 0) + (row?.redeemable_deal_amount || 0),
+        business_verified: bizVerified,
+        withdrawable: bizVerified ? (row?.redeemable_deal_amount || 0) : 0,
+        notice: bizVerified
+          ? '환급 시 8.8% 원천징수 후 계좌 입금'
+          : '사업자등록 미검증 — 환급 불가 (플랫폼 내 사용만 가능)',
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🛡️ 2026-05-18: 딜 환급 — verified 셀러의 redeemable_deal_amount 만 가능.
+//   8.8% 원천징수 자동 차감 + tax_withholding_log INSERT.
+sellerSettlementsRoutes.post('/deal-withdraw', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+
+    // 사업자 검증 필수.
+    const seller = await c.env.DB.prepare(
+      'SELECT business_registration_status FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_registration_status: string | null }>().catch(() => null);
+    const bizVerified = seller?.business_registration_status === 'verified' || seller?.business_registration_status === 'exempt';
+    if (!bizVerified) {
+      return c.json({
+        success: false,
+        error: '사업자등록증 검증 후 환급 가능합니다',
+        code: 'BUSINESS_REGISTRATION_REQUIRED',
+      }, 412);
+    }
+
+    // PIN 인증 (settlement/request 와 동일 패턴).
+    const { isPinVerified } = await import('./seller-pin.routes');
+    const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
+    if (!pinOk) {
+      return c.json({ success: false, error: 'PIN 인증 필요', code: 'PIN_REQUIRED' }, 412);
+    }
+
+    const body = await c.req.json<{ amount?: number; bank_name?: string; account_number?: string; account_holder?: string }>().catch(() => ({} as { amount?: number; bank_name?: string; account_number?: string; account_holder?: string }));
+    const amount = Math.floor(Number(body?.amount) || 0);
+    if (!amount || amount < 10_000) {
+      return c.json({ success: false, error: '최소 환급 금액은 10,000 딜입니다' }, 400);
+    }
+
+    // 잔액 확인.
+    const balance = await c.env.DB.prepare(
+      'SELECT redeemable_deal_amount FROM seller_deal_balances WHERE seller_id = ?'
+    ).bind(sellerId).first<{ redeemable_deal_amount: number }>().catch(() => null);
+    const available = balance?.redeemable_deal_amount || 0;
+    if (amount > available) {
+      return c.json({ success: false, error: `환급 가능 잔액 부족 (보유: ${available.toLocaleString()})` }, 400);
+    }
+
+    // 잔액 차감 + 거래 이력.
+    await c.env.DB.prepare(
+      `UPDATE seller_deal_balances
+          SET redeemable_deal_amount = redeemable_deal_amount - ?,
+              updated_at = datetime('now')
+        WHERE seller_id = ?`
+    ).bind(amount, sellerId).run();
+
+    const txResult = await c.env.DB.prepare(
+      `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, memo, created_at)
+       VALUES (?, ?, 'redeemable', 'cash_withdraw', ?, datetime('now'))`
+    ).bind(
+      sellerId, -amount,
+      `환급 신청 ${amount.toLocaleString()}원 → ${body?.bank_name || ''} ${body?.account_number || ''}`,
+    ).run().catch(() => null);
+
+    // 원천징수 + 지급조서.
+    const { withholdAndLog } = await import('@/worker/utils/tax-withholding');
+    const wh = await withholdAndLog(c.env as { DB: D1Database }, {
+      sellerId,
+      grossAmount: amount,
+      sourceType: 'deal_redeem',
+      sourceId: txResult ? String(txResult.meta.last_row_id) : undefined,
+    });
+
+    // settlements 테이블에도 row 생성 (어드민이 송금 처리).
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const periodStart = prevMonth.toISOString().slice(0, 10);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+
+    await c.env.DB.prepare(`
+      INSERT INTO settlements (seller_id, amount, period_start, period_end, bank_name, account_number, account_holder, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+    `).bind(
+      sellerId, wh.net_amount, periodStart, periodEnd,
+      body?.bank_name || null, body?.account_number || null, body?.account_holder || null,
+    ).run().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: {
+        gross_amount: wh.gross_amount,
+        withholding_amount: wh.withholding_amount,
+        net_amount: wh.net_amount,
+        ytd_gross_amount: wh.ytd_gross_amount,
+        reportable: wh.reportable,
+        message: wh.reportable
+          ? `${wh.net_amount.toLocaleString()}원 입금 예정 (원천징수 ${wh.withholding_amount.toLocaleString()}원 차감) — 연 누계 300만 초과: 종합소득세 합산 신고 의무`
+          : `${wh.net_amount.toLocaleString()}원 입금 예정 (원천징수 ${wh.withholding_amount.toLocaleString()}원 차감)`,
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🛡️ 2026-05-18: 셀러 본인 원천징수 현황 (마이페이지 — 연 누계 300만 임계 인지).
+sellerSettlementsRoutes.get('/tax-summary', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+
+    const year = Number(c.req.query('year')) || new Date().getFullYear();
+    const { getSellerTaxSummary } = await import('@/worker/utils/tax-withholding');
+    const summary = await getSellerTaxSummary(c.env as { DB: D1Database }, sellerId, year);
+
+    // 월별 분포 (참고).
+    const monthly = await c.env.DB.prepare(
+      `SELECT payout_month, SUM(gross_amount) as gross, SUM(withholding_amount) as withheld
+         FROM tax_withholding_log
+        WHERE seller_id = ? AND payout_year = ?
+        GROUP BY payout_month ORDER BY payout_month`
+    ).bind(sellerId, year).all<{ payout_month: number; gross: number; withheld: number }>()
+      .catch(() => ({ results: [] }));
+
+    return c.json({ success: true, data: { ...summary, monthly: monthly.results || [] } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // 🛡️ 2026-05-18: 사업자등록증 이미지 업로드 (URL 만 받음 — 실제 업로드는 R2 별도 endpoint).
 //   상태는 'pending' 으로 변경 → 어드민 검증 대기.
 sellerSettlementsRoutes.post('/business-registration/submit', async (c) => {
