@@ -128,6 +128,11 @@ jobs:
       - name: CHECK constraint violations
         run: node scripts/check-status-constraints.mjs -s
 
+      # 🛡️ 2026-05-17: SQL bind param mismatch — 'wrong number of bindings' SqlError 방지.
+      #   prepare(...).bind(...) 쌍의 ? 개수와 인자 개수가 일치하는지 검증.
+      - name: SQL bind param mismatch
+        run: node scripts/check-sql-bind-params.mjs -s
+
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)
         run: node scripts/verify-schema.mjs --json
