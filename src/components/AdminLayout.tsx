@@ -50,6 +50,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
+      // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
+      { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },

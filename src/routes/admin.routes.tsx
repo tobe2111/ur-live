@@ -42,6 +42,8 @@ const AdminKakaoReviewsPage = lazy(() => import('@/pages/AdminKakaoReviewsPage')
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
 const AdminLiveMonitorPage = lazy(() => import('@/pages/AdminLiveMonitorPage'))
+// 🛡️ 2026-05-18: 숙소 공구 어드민 — PR 5/6.
+const AdminStaysPage = lazy(() => import('@/pages/AdminStaysPage'))
 const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage'))
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
@@ -270,6 +272,11 @@ export function AdminRoutes() {
       <Route path="/admin/live-monitor" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/stays" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminStaysPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/youtube-quota" element={

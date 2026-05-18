@@ -37,6 +37,8 @@ const AgencySelfEventsPage = lazy(() => import('@/pages/AgencySelfEventsPage'))
 const AgencyPromoteBoostsPage = lazy(() => import('@/pages/AgencyPromoteBoostsPage'))
 const AgencyRegisterPage = lazy(() => import('@/pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('@/pages/AgencyGroupBuyPage'))
+// 🛡️ 2026-05-18: 숙소 공구 에이전시 — PR 5/6.
+const AgencyStaysPage = lazy(() => import('@/pages/AgencyStaysPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('@/pages/AgencyRegisterBusinessPage'))
 const AgencyWaitingPage = lazy(() => import('@/pages/AgencyWaitingPage'))
 const AgencyGuidePage = lazy(() => import('@/pages/AgencyGuidePage'))
@@ -89,6 +91,7 @@ export function AgencyRoutes() {
       <Route path="/agency/promote-boosts" element={<AgencyAuthGuard><AgencyPromoteBoostsPage /></AgencyAuthGuard>} />
       <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
       <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
+      <Route path="/agency/stays" element={<AgencyAuthGuard><AgencyStaysPage /></AgencyAuthGuard>} />
     </>
   )
 }

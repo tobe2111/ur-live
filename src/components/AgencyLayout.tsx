@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Users, ShoppingBag, BarChart2, LogOut, Menu, X,
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
   TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy, Rocket,
+  Building2,
   type LucideIcon
 } from 'lucide-react'
 
@@ -52,6 +53,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/agency/orders',    label: '주문 현황', i18nKey: 'agency.nav.orders', icon: ShoppingBag, mode: 'common' },
       { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
+      // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.
+      { path: '/agency/stays', label: '숙소 운영', i18nKey: 'agency.nav.stays', icon: Building2, mode: 'store' },
       { path: '/agency/returns',   label: '반품/CS',  i18nKey: 'agency.nav.returns', icon: ShoppingBag, mode: 'common' },
     ],
   },
