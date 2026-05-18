@@ -8,6 +8,65 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📊 2026-05-18 — 숙소 공구 + 사업자 정산 도입 후 잔여 부채
+
+### 🔴 Critical — production DB 적용 미확인
+
+1. **migration 0257 + 0258 production 적용 여부 미확인**
+   - 0257 (사업자등록 게이팅 정산 — sellers 컬럼 5개 + 4 신규 테이블)
+   - 0258 (숙소 공구 — 8 신규 테이블 + orders 컬럼 4개)
+   - 적용 안 되면: 숙소 등록/조회/예약 모두 500 에러
+   - 응급 적용: `POST /api/_internal/repair-schema`
+   - 정식: `wrangler d1 execute ur-live --file=migrations/0258_stay_voucher_foundation.sql`
+
+### 🟡 High — 숙소 공구 후속 (PR 6/6 의 'TODO' 항목)
+
+1. **결제 PG 환불 자동 트리거 누락**
+   - `stay_bookings.status='cancelled'` + `refund_amount` 만 마킹
+   - 실제 토스 카드 환불 API 미호출 → 사용자 카드에 돈이 안 돌아옴
+   - 후속 PR: 토스 환불 API + idempotency-key + 실패 시 재시도 큐
+
+2. **카카오 알림톡 실제 발송 미연결**
+   - `cron/stay-reminder.ts` → notifications 테이블 INSERT 만
+   - 실제 SMS/알림톡 발송 없음
+
+3. **객실 이미지 R2 업로드 흐름 없음**
+   - 셀러가 URL 직접 입력 (간단 https check 만)
+   - 후속: presigned URL 발급 + R2 업로드 + 자동 최적화
+
+4. **KT Alpha 기프티쇼 통합 미완료**
+   - `voucher_orders` 테이블만 있음, API 호출 코드 없음
+   - 계약 + API 키 확보 후 진행
+
+### 🟡 High — 사업자 게이팅 정산 후속
+
+1. **8.8% 원천징수 자동 계산 + ytd 추적 미구현**
+   - `tax_withholding_log` 테이블만 있음, INSERT 흐름 미연결
+2. **딜 환급 (cash withdraw) endpoint 미구현**
+3. **지급조서 CSV 어드민 export 미구현**
+
+### 🟢 Medium — 신규 코드 품질
+
+1. **i18n defaultValue 한국어 ~50개 6 언어 sync 누락**
+2. **CHECK 제약 정의 부재** — `stay_bookings.status`, `voucher_orders.status` 등
+3. **stay_bookings.dispute_id FK 미정의**
+
+### ⚪ Low — 사전 이슈
+
+1. **SellerTermsPage dark: variant 1건** — 대시보드 라이트 정책 위반
+2. **GroupBuyListPage.tsx:246 TS 경고** — pre-existing, 빌드는 통과
+
+### 🟢 Resolved (이번 세션)
+
+- ✅ 어드민 라이브 모니터링 삭제 버그 (`a04ce05b`)
+- ✅ Hero 카테고리 컬러 산만함 (`ad953313`)
+- ✅ 6 voucher 카테고리 통합 4종 + 레거시 호환
+- ✅ 일괄 작업 도구 3종 (라이브/상품/재고)
+- ✅ 사업자 게이팅 정산 Phase 1 검증 흐름
+- ✅ 숙소 공구 6 PRs 완료
+
+---
+
 ## 📊 2026-05-17 — NOT NULL INSERT 미해결 5건 (PR 2/N audit 잔여)
 
 `scripts/check-sql-not-null-insert.mjs` 가 보고하는 잔여 위반.

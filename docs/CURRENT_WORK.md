@@ -1,8 +1,95 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-15 (공동구매 런칭 마무리 + 어드민 환불 도구)
-**브랜치**: `claude/check-live-commerce-flow-jgNs8` → main 머지 + 프로덕션 배포 예정
-**최근 main 머지 커밋**: `cb48a60` (cross-page UX/안정성 개선)
+**최종 업데이트**: 2026-05-18 (숙소 공구 6 PRs + 사업자 게이팅 정산 + UI 리팩토링)
+**최근 main 머지 커밋**: `1317c7d3` (stay-voucher PR 6/6 — 알림 + 환불 + 리뷰)
+
+## 📦 2026-05-18 세션 누적 (대량 작업)
+
+### 🏨 숙소 공구 (stay_voucher) 완전 구현 — 6 PRs
+
+야놀자/Booking.com 수준 완전 구현. 5000+ 줄, 8 페이지, 30+ endpoints, 1 cron.
+
+| PR | Commit | 범위 |
+|---|---|---|
+| 1 | `fab38759` | DB schema (8 tables) + Backend CRUD (28 endpoints) |
+| 2 | `386f9006` | 셀러 UI — 등록/객실/캘린더 (3 페이지) |
+| 3 | `0bcb647c` | 사용자 검색/상세/예약 (2 페이지) |
+| 4 | `ba8c1e32` | 셀러 KPI (OCC/ADR/RevPAR) + 예약 처리 |
+| 5 | `ad8fd93d` | 어드민/에이전시 모니터링 + 분쟁 처리 |
+| 6 | `1317c7d3` | 알림 cron + 환불 자동화 + 리뷰 작성 |
+
+신규 테이블 8종:
+- `product_stay_info`, `product_stay_rooms`, `product_stay_calendar`
+- `stay_bookings`, `stay_booking_reviews`, `stay_booking_status_log`
+- `stay_property_amenities` (30개 시드)
+- `orders` 에 stay_booking_id 등 4 컬럼 추가
+
+신규 페이지: `/seller/stays`, `/seller/stays/new`, `/seller/stays/:id`,
+`/seller/stays/bookings`, `/stays`, `/stays/:id`, `/my-stays`,
+`/admin/stays`, `/agency/stays`
+
+### 💳 사업자등록 게이팅 정산 시스템 (Phase 1)
+
+- migration `0257_business_reg_gated_settlement.sql` — sellers 컬럼 + 4 신규 테이블
+  (`seller_deal_balances`, `seller_deal_transactions`, `voucher_orders`, `tax_withholding_log`)
+- POST /api/seller/settlements/request — verified 셀러만 (412 BUSINESS_REGISTRATION_REQUIRED)
+- GET /api/seller/settlement-options — 3 방식 (cash/voucher/deal) + 검증 상태
+- POST /api/seller/business-registration/submit — 셀러 제출
+- PATCH /api/admin/sellers/:id/business-registration/verify — 어드민 검증
+- SellerSettlementsPage 에 검증 상태 배너 + 모달
+
+### 🎨 UI 개선 (다수)
+
+- `ad953313`: Hero 카테고리 monochrome 통일 (촌스러운 컬러 배경 제거)
+- `6e5fc29e`: 어드민 배너 제목 optional (이미지만으로 등록 가능)
+- `c7fbc88b`: 메인 페이지 오프라인/온라인 대분류 헤더
+- `47f2f029`: Group buy 카테고리 탭 6→4 통합
+- `c4882404`: 셀러 대시보드 Mode-based IA (라이브/매장)
+- `6408723d`: 에이전시 대시보드 Mode-based IA
+- `b8be80db`: 셀러 대시보드 홈 Mode-specific KPI
+
+### 🛠️ 어드민 도구
+
+- `d91aaea2`: 라이브 모니터링 — 다시보기 일괄 삭제 (체크박스)
+- `a04ce05b`: 라이브 모니터링 삭제 fix (deleted_at 필터)
+- `f9d1cb2a`: 상품 관리 — 체크박스 일괄 삭제/활성/비활성
+- `1b393d26`: 상품 관리 — 재고 인라인 편집 (색상 시각화)
+
+### 📄 문서
+
+- `a17e2e33`: 공동구매 서비스 회사소개서 (`docs/company-intro-group-buy.md`)
+- 본 PR: production-schema.ts 업데이트 (8 stay tables + 4 settlement tables)
+
+## ⏭️ 다음 우선순위 (시장 검증 후 별도 PR)
+
+### 🔴 즉시 적용 필요 (DB)
+1. **production D1 에 migration 0257 + 0258 적용**
+   - 현재는 코드만 있고 production 스키마 미적용 가능성
+   - `/api/_internal/repair-schema` 또는 wrangler d1 execute 로 적용
+   - defensive ALTER TABLE 들이 첫 호출 시 자동 처리하지만 인덱스/시드는 별도
+
+### 🟡 후속 PR (필요 시)
+1. **결제 PG 환불 자동 트리거** — 토스 API 연동 (현재는 status='cancelled' 마킹만)
+2. **카카오 알림톡 실제 발송** — D-1/D-day cron (현재 notifications INSERT only)
+3. **객실 이미지 R2 업로드** — 현재 URL 입력만 가능
+4. **다객실 한 결제** — 2 객실 동시 예약
+5. **KT Alpha 기프티쇼 통합** — 사업자 미등록 셀러 상품권 정산 (계약 진행 필요)
+6. **8.8% 원천징수 자동 계산** + 지급조서 export (어드민 CSV)
+
+### 🟢 i18n 6개 언어 sync (낮은 우선순위)
+새로 추가된 defaultValue 한국어 키들 (~50개+) 6 언어 sync:
+- 숙소 공구 관련 라벨 (식사권/미용/숙소/기타 등)
+- 사업자등록 정산 안내 텍스트
+- KPI 라벨 (OCC/ADR/RevPAR)
+
+### 🐛 사전 이슈 (별도 작업)
+- `SellerTermsPage.tsx` — dark: variant 1건 (대시보드 정책 위반)
+- `GroupBuyListPage.tsx:246` — TypeScript 경고 (사전 이슈)
+- `TECHNICAL_DEBT.md` 의 NOT NULL INSERT 5건 (warn-only)
+
+---
+
+
 **미배포 (PC 머지 대기)**: `bf3b75e` (GroupBuyList/Search/Embed i18n)
 
 ## 📦 2026-05-15 (Round 2) — 공동구매 이상적 구현 (10개 영역)

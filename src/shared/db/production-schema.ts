@@ -234,3 +234,217 @@ export interface ShippingAddressesTable {
 // products 테이블에 view_count/avg_rating/review_count 추가 (0205 migration)
 // 해당 컬럼은 ProductsTable 위의 primary interface에서 관리
 
+// ─── stay_voucher 8 tables (migration 0258, 2026-05-18) ────────────────
+//   야놀자/Booking.com 수준 숙소 공구 — PR 1-6 완료.
+//   SSOT routes: src/features/seller/api/seller-stays.routes.ts + stays-public.routes.ts.
+
+export interface ProductStayInfoTable {
+  product_id: number              // PK + FK
+  property_type: string           // 'hotel'|'motel'|'pension'|'guesthouse'|'resort'|'glamping'|'house'
+  star_rating: number | null
+  total_rooms: number
+  check_in_time: string           // 'HH:MM' DEFAULT '15:00'
+  check_out_time: string          // DEFAULT '11:00'
+  address: string | null
+  region_sido: string | null
+  region_sigungu: string | null
+  latitude: number | null
+  longitude: number | null
+  amenities: string | null         // JSON array
+  room_amenities: string | null
+  cancellation_policy: string     // 'flexible'|'standard'|'strict'|'non_refundable'
+  custom_cancellation_text: string | null
+  house_rules: string | null
+  check_in_instructions: string | null
+  description_full: string | null
+  nearby_attractions: string | null
+  min_nights: number
+  max_nights: number | null
+  advance_booking_days: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductStayRoomsTable {
+  id: number
+  product_id: number
+  name: string
+  description: string | null
+  display_order: number
+  base_guests: number
+  max_guests: number
+  extra_guest_fee: number
+  bed_config: string | null
+  room_size_sqm: number | null
+  base_price_weekday: number
+  base_price_weekend: number
+  base_price_holiday: number | null
+  total_inventory: number
+  amenities: string | null         // JSON array
+  image_urls: string | null        // JSON array
+  is_active: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductStayCalendarTable {
+  id: number
+  room_id: number
+  product_id: number
+  stay_date: string                // 'YYYY-MM-DD'
+  available_count: number
+  price_override: number | null
+  is_blocked: number
+  blocked_reason: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StayBookingsTable {
+  id: number
+  order_id: number
+  product_id: number
+  room_id: number
+  seller_id: number
+  user_id: number
+  check_in_date: string
+  check_out_date: string
+  nights: number
+  guest_count: number
+  guest_name: string
+  guest_phone: string
+  guest_email: string | null
+  special_request: string | null
+  room_total: number
+  extra_guest_fee: number
+  cleaning_fee: number
+  tax_amount: number
+  total_amount: number
+  status: string                   // 'pending'|'confirmed'|'checked_in'|'checked_out'|'cancelled'|'no_show'|'refunded'|'dispute'
+  check_in_code: string | null     // 8자리 (예: 'A3K7-9M2P')
+  checked_in_at: string | null
+  checked_in_by: number | null
+  checked_out_at: string | null
+  cancelled_at: string | null
+  cancellation_reason: string | null
+  refund_amount: number | null
+  refunded_at: string | null
+  no_show_marked_at: string | null
+  no_show_marked_by: number | null
+  dispute_id: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StayBookingReviewsTable {
+  id: number
+  booking_id: number               // UNIQUE — 1 booking = 1 review
+  product_id: number
+  user_id: number
+  rating_cleanliness: number | null
+  rating_location: number | null
+  rating_service: number | null
+  rating_facility: number | null
+  rating_value: number | null
+  rating_overall: number
+  title: string | null
+  comment: string | null
+  photos: string | null            // JSON array
+  seller_reply: string | null
+  seller_replied_at: string | null
+  is_visible: number
+  is_verified: number
+  helpful_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface StayPropertyAmenitiesTable {
+  code: string                     // PK
+  label_ko: string
+  label_en: string
+  icon_emoji: string | null
+  category: string                 // 'property'|'room'|'service'
+  display_order: number
+  is_active: number
+}
+
+export interface StayBookingStatusLogTable {
+  id: number
+  booking_id: number
+  prev_status: string | null
+  new_status: string
+  changed_by_role: string          // 'user'|'seller'|'admin'|'system'
+  changed_by_id: number | null
+  reason: string | null
+  created_at: string
+}
+
+// ─── sellers 확장 (migration 0257, 2026-05-18) ──────────────────────────
+//   사업자등록 게이팅 정산. SellersTable 의 추가 컬럼:
+//   - business_registration_status: 'pending'|'verified'|'rejected'|'exempt'
+//   - business_registration_image_url
+//   - business_registration_verified_at / _by / _reject_reason
+//   - preferred_settlement_method: 'auto'|'cash'|'voucher'|'deal'
+
+export interface SellerDealBalancesTable {
+  seller_id: number                // PK + FK
+  gated_deal_amount: number        // 환급 불가 (사업자 미등록 적립)
+  redeemable_deal_amount: number   // 환급 가능
+  created_at: string
+  updated_at: string
+}
+
+export interface SellerDealTransactionsTable {
+  id: number
+  seller_id: number
+  amount: number
+  bucket: string                   // 'gated'|'redeemable'
+  type: string                     // 'settlement_accrual'|'voucher_redeem'|'platform_use'|'cash_withdraw'|'admin_adjust'
+  reference_id: string | null
+  memo: string | null
+  created_at: string
+}
+
+export interface VoucherOrdersTable {
+  id: number
+  seller_id: number
+  source: string                   // 'kt_alpha'|'kakao_gift'|'manual'
+  goods_code: string
+  goods_name: string
+  unit_price: number
+  quantity: number
+  total_amount: number
+  recipient_phone: string
+  withholding_amount: number
+  net_amount: number
+  status: string                   // 'pending'|'processing'|'sent'|'failed'|'cancelled'|'used'
+  external_order_id: string | null
+  coupon_code: string | null
+  failure_reason: string | null
+  created_at: string
+  sent_at: string | null
+  updated_at: string
+}
+
+export interface TaxWithholdingLogTable {
+  id: number
+  seller_id: number
+  payout_year: number
+  payout_month: number
+  gross_amount: number
+  withholding_rate: number         // 8.8 default
+  withholding_amount: number
+  net_amount: number
+  source_type: string              // 'settlement_cash'|'voucher_order'|'deal_redeem'
+  source_id: string | null
+  ytd_gross_amount: number
+  reportable: number               // 1: 300만 초과 / 0: 분리과세 가능
+  reported_at: string | null
+  created_at: string
+}
+
+// ─── orders 확장 (migration 0258, 2026-05-18) ──────────────────────────
+//   숙소 예약 메타 (빠른 조회용 캐시 컬럼) — OrdersTable 추가:
+//   stay_booking_id / stay_check_in_date / stay_check_out_date / stay_nights
+
