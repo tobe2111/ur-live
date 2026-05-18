@@ -13,6 +13,16 @@ import DashboardNotificationBell from './DashboardNotificationBell'
 
 type SellerType = 'influencer' | 'store_owner' | 'both'
 
+/**
+ * 🛡️ 2026-05-17: Mode-based IA — 각 nav 항목에 'mode' 표시.
+ *   live   = 라이브 송출 (인플루언서) 전용
+ *   store  = 매장 운영 (공구권 발행) 전용
+ *   common = 둘 다 사용
+ * 사용자가 selectedMode 토글하면 해당 mode + common 만 노출.
+ * 'both' 셀러는 상단에 segmented control 로 모드 전환 가능.
+ */
+type SellerMode = 'live' | 'store' | 'common'
+
 const NAV_GROUPS: {
   label?: string
   labelKey?: string
@@ -24,60 +34,71 @@ const NAV_GROUPS: {
     exact?: boolean
     highlight?: boolean
     hideFor?: SellerType[]
+    mode?: SellerMode
   }[]
+  mode?: SellerMode
 }[] = [
   {
     label: '', // 홈 (그룹 라벨 없음)
     items: [
-      { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true },
+      { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
     ],
   },
   {
     labelKey: 'seller.layout.broadcast',
     hideFor: ['store_owner'],
+    mode: 'live',
     items: [
-      { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true },
-      { path: '/seller/streaming-setup', labelKey: 'seller.streamingSetup', icon: Wifi },
-      { path: '/seller/shorts', labelKey: 'seller.shorts', icon: Play },
-      { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
+      { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true, mode: 'live' },
+      { path: '/seller/streaming-setup', labelKey: 'seller.streamingSetup', icon: Wifi, mode: 'live' },
+      { path: '/seller/shorts', labelKey: 'seller.shorts', icon: Play, mode: 'live' },
+      { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity, mode: 'live' },
     ],
   },
   {
     labelKey: 'seller.layout.sales',
     items: [
-      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package },
-      { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package },
-      { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket },
-      { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
-      { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
-      { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star },
-      { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket },
-      { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag },
-      { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart },
+      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' },
+      { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package, mode: 'common' },
+      // group-buy 는 매장 voucher 핵심 — store mode 우선이지만 인플도 voucher 발행 가능 → both 모드.
+      { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
+      { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag, mode: 'common' },
+      { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3, mode: 'common' },
+      { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
+      { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
+      { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
+      { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart, mode: 'common' },
     ],
   },
   {
     labelKey: 'seller.layout.revenue',
     items: [
-      { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2 },
-      { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign },
-      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'] },
-      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone },
-      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket },
+      { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2, mode: 'common' },
+      { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign, mode: 'common' },
+      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
+      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
+      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
     ],
   },
   {
     labelKey: 'seller.layout.settings',
     items: [
-      { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2 },
-      { path: '/seller/mini-shop', labelKey: 'seller.nav.miniShop', icon: Megaphone },
-      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play },
-      { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell },
-      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone },
-      { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen },
+      { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2, mode: 'common' },
+      { path: '/seller/mini-shop', labelKey: 'seller.nav.miniShop', icon: Megaphone, mode: 'common' },
+      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play, mode: 'live' },
+      { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell, mode: 'common' },
+      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone, mode: 'live' },
+      { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen, mode: 'common' },
     ],
   },
 ]
+
+/** mode segmented control 가시성: 'both' 셀러만 토글 가능. 다른 타입은 고정. */
+function modesForSellerType(st: SellerType): SellerMode[] {
+  if (st === 'influencer') return ['live']
+  if (st === 'store_owner') return ['store']
+  return ['live', 'store']  // both
+}
 
 interface SellerLayoutProps {
   title: string
@@ -99,11 +120,31 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   const sellerName = localStorage.getItem('seller_name') || 'Seller'
   const sellerType = (localStorage.getItem('seller_type') || 'influencer') as SellerType
 
+  // 🛡️ 2026-05-17: Mode 토글 — 'both' 셀러는 라이브/매장 모드 전환.
+  //   localStorage 에 저장하여 페이지 이동 후에도 유지.
+  const availableModes = modesForSellerType(sellerType)
+  const [activeMode, setActiveMode] = useState<SellerMode>(() => {
+    if (availableModes.length === 1) return availableModes[0]
+    const saved = (localStorage.getItem('seller_dashboard_mode') || 'live') as SellerMode
+    return availableModes.includes(saved) ? saved : availableModes[0]
+  })
+  function switchMode(m: SellerMode) {
+    setActiveMode(m)
+    localStorage.setItem('seller_dashboard_mode', m)
+  }
+
+  // 🛡️ 2026-05-17: 항목 mode 가 activeMode + common 일 때만 노출.
+  //   group 단위 hideFor 도 그대로 유지 (storeKey 전용 처리 등).
   const filteredNavGroups = NAV_GROUPS
     .filter(group => !group.hideFor?.includes(sellerType))
     .map(group => ({
       ...group,
-      items: group.items.filter(item => !item.hideFor?.includes(sellerType)),
+      items: group.items.filter(item => {
+        if (item.hideFor?.includes(sellerType)) return false
+        const itemMode = item.mode || 'common'
+        if (itemMode === 'common') return true
+        return itemMode === activeMode
+      }),
     }))
     .filter(group => group.items.length > 0)
 
@@ -167,6 +208,44 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           </div>
         </div>
       </div>
+
+      {/* 🛡️ 2026-05-17: Mode 토글 — 'both' 셀러만 표시 (라이브 ↔ 매장 모드 전환).
+            mode 별로 nav 항목이 동적 필터링되어 인지 부담 감소. */}
+      {availableModes.length > 1 && (
+        <div className="px-4 py-2 border-y border-white/10 bg-white/[0.02]">
+          <div className="flex gap-1 p-1 bg-black/30 rounded-full">
+            <button
+              type="button"
+              onClick={() => switchMode('live')}
+              className={`flex-1 py-1.5 px-2 rounded-full text-[10px] font-bold transition-colors ${
+                activeMode === 'live'
+                  ? 'bg-red-500 text-white shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+              aria-pressed={activeMode === 'live'}
+            >
+              📺 라이브 모드
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('store')}
+              className={`flex-1 py-1.5 px-2 rounded-full text-[10px] font-bold transition-colors ${
+                activeMode === 'store'
+                  ? 'bg-amber-500 text-white shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+              aria-pressed={activeMode === 'store'}
+            >
+              🏪 매장 모드
+            </button>
+          </div>
+          <p className="text-[9px] text-white/40 mt-1.5 px-1">
+            {activeMode === 'live'
+              ? '라이브 송출 + 일반 상품 메뉴만 표시'
+              : '매장 운영 + 공구권 발행 메뉴만 표시'}
+          </p>
+        </div>
+      )}
 
       {/* Grouped navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
