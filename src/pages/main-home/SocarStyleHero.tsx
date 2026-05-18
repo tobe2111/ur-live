@@ -24,7 +24,7 @@ const CATEGORIES: Category[] = [
   // 🏪 오프라인 (1행) — 매장 방문 voucher 4종
   { key: 'meal',   label: '식사권',  emoji: '🍽️', path: '/group-buy?category=meal_voucher'   },
   { key: 'beauty', label: '미용',    emoji: '💇', path: '/group-buy?category=beauty_voucher' },
-  { key: 'stay',   label: '숙소',    emoji: '🏨', path: '/group-buy?category=stay_voucher'   },
+  { key: 'stay',   label: '숙소',    emoji: '🏨', path: '/stays'                            },
   { key: 'etc',    label: '기타',    emoji: '🎯', path: '/group-buy?category=etc_voucher'    },
   // 🛍️ 온라인 (2행) — 라이브 커머스 + 쇼핑 + 특가 + 지도(매장 찾기)
   { key: 'live',   label: '라이브',  emoji: '📺', path: '/live',                              badge: 'LIVE' },
