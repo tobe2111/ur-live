@@ -313,6 +313,34 @@ paymentsRouter.post('/confirm', async (c) => {
               WHERE room_id = ? AND stay_date = ?`
           ).bind(booking.room_id, ds).run().catch(() => { /* noop */ })
         }
+
+        // 🛡️ 2026-05-18: 인플루언서 attribution 자동 INSERT (referrer_id 있을 시).
+        //   stay_bookings.referrer_id + influencer_commission_amount 가 있으면
+        //   affiliate_earnings 에 row 생성 → 인플 누적 적립.
+        //   self-referral 차단 (booking.referrer_id !== booking.user_id).
+        if (booking.referrer_id
+            && String(booking.referrer_id) !== String(booking.user_id)
+            && booking.influencer_commission_amount > 0) {
+          const existingAttr = await c.env.DB.prepare(
+            'SELECT id FROM affiliate_earnings WHERE referrer_id = ? AND order_id = ?'
+          ).bind(String(booking.referrer_id), order.id).first()
+          if (!existingAttr) {
+            await c.env.DB.prepare(
+              `INSERT INTO affiliate_earnings
+                 (referrer_id, order_id, product_id, product_name, buyer_id, order_amount, commission, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+            ).bind(
+              String(booking.referrer_id), order.id,
+              booking.product_id, `숙소 #${booking.product_id}`,
+              String(booking.user_id),
+              booking.total_amount, booking.influencer_commission_amount,
+            ).run().catch((e) => {
+              logError('payment.stay_referrer_insert_failed', {
+                orderId: order.id, referrerId: booking.referrer_id, error: String(e).slice(0, 200),
+              })
+            })
+          }
+        }
       } catch (e) {
         logError('payment.stay_booking_confirm_failed', { orderId: order.id, stayBookingId, error: String(e).slice(0, 200) })
       }
