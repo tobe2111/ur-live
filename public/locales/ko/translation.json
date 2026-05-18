@@ -5368,5 +5368,29 @@
     "bookingCreate": "예약하기",
     "reviewSubmit": "리뷰 등록",
     "cancelBooking": "예약 취소"
+  },
+  "influencer": {
+    "dashTitle": "💸 인플 대시보드",
+    "earned": "누적 적립",
+    "refCount": "추천 결제",
+    "refSales": "유발 매출",
+    "funnelTitle": "📊 추천 funnel",
+    "clicks": "클릭",
+    "signups": "가입",
+    "payments": "결제",
+    "topShare": "🔥 지금 share 권장",
+    "shareGuide": "📌 referral 공유 가이드",
+    "guide1": "본인 SNS / 카톡 / 블로그에 링크 공유",
+    "guide2": "소비자가 링크로 진입 + 결제 시 자동 적립",
+    "guide3": "본인 구매는 적립 불가 (self-referral 차단)",
+    "guide4": "누적 적립금은 정산 페이지에서 환급 신청 가능",
+    "noTop": "권장 상품 없음",
+    "linkCopied": "🔗 링크 복사",
+    "shareFail": "공유 실패",
+    "voucherSoonExpire": "{{n}}일 남음 — 매장 연락 권장",
+    "voucherExpired": "만료됨",
+    "voucherUsed": "✅ 사용 완료",
+    "linkFor": "본인 referral 링크",
+    "convRate": "전환율"
   }
 }

@@ -5341,5 +5341,29 @@
     "bookingCreate": "Book",
     "reviewSubmit": "Submit Review",
     "cancelBooking": "Cancel Booking"
+  },
+  "influencer": {
+    "dashTitle": "💸 Influencer Dashboard",
+    "earned": "Total Earned",
+    "refCount": "Paid Referrals",
+    "refSales": "Driven Sales",
+    "funnelTitle": "📊 Referral Funnel",
+    "clicks": "Clicks",
+    "signups": "Signups",
+    "payments": "Payments",
+    "topShare": "🔥 Share now",
+    "shareGuide": "📌 Referral guide",
+    "guide1": "Share to SNS / KakaoTalk / blog",
+    "guide2": "Auto-credited when consumer pays via link",
+    "guide3": "Self-purchase blocked (self-referral)",
+    "guide4": "Withdraw earnings from settlement page",
+    "noTop": "No recommended items",
+    "linkCopied": "🔗 Link copied",
+    "shareFail": "Share failed",
+    "voucherSoonExpire": "{{n}}d left — contact store soon",
+    "voucherExpired": "Expired",
+    "voucherUsed": "✅ Used",
+    "linkFor": "Your referral link",
+    "convRate": "Conversion"
   }
 }

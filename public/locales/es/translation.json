@@ -5341,5 +5341,29 @@
     "bookingCreate": "Reservar",
     "reviewSubmit": "Enviar Reseña",
     "cancelBooking": "Cancelar Reserva"
+  },
+  "influencer": {
+    "dashTitle": "💸 Panel de Influencer",
+    "earned": "Total Ganado",
+    "refCount": "Referencias pagadas",
+    "refSales": "Ventas generadas",
+    "funnelTitle": "📊 Embudo",
+    "clicks": "Clics",
+    "signups": "Registros",
+    "payments": "Pagos",
+    "topShare": "🔥 Compartir ahora",
+    "shareGuide": "📌 Guía",
+    "guide1": "Comparte en SNS / KakaoTalk / blog",
+    "guide2": "Acreditado al pagar via enlace",
+    "guide3": "Auto-compra bloqueada",
+    "guide4": "Retira desde liquidación",
+    "noTop": "Sin artículos",
+    "linkCopied": "🔗 Enlace copiado",
+    "shareFail": "Compartir fallido",
+    "voucherSoonExpire": "{{n}}d restantes — contactar tienda",
+    "voucherExpired": "Expirado",
+    "voucherUsed": "✅ Usado",
+    "linkFor": "Tu enlace",
+    "convRate": "Conversión"
   }
 }

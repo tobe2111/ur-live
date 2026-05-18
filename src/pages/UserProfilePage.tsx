@@ -10,6 +10,7 @@ import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
+import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import ChatNameSetting from './user-profile/ChatNameSetting'
 import CouponVoucherStats from './user-profile/CouponVoucherStats'
 import ShoppingGroup from './user-profile/ShoppingGroup'
@@ -134,6 +135,9 @@ export default function UserProfilePage() {
 
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
+
+      {/* 🛡️ 2026-05-18: referral 적립 카드 (인플 대시보드 entry point) */}
+      <ReferralEarnedCard />
 
       {/* v4 쿠폰 / 바우처 카운트 2분할 */}
       <CouponVoucherStats counts={counts} />

@@ -5341,5 +5341,29 @@
     "bookingCreate": "予約する",
     "reviewSubmit": "レビュー登録",
     "cancelBooking": "予約キャンセル"
+  },
+  "influencer": {
+    "dashTitle": "💸 インフルダッシュボード",
+    "earned": "累計報酬",
+    "refCount": "推薦決済",
+    "refSales": "誘発売上",
+    "funnelTitle": "📊 推薦ファネル",
+    "clicks": "クリック",
+    "signups": "登録",
+    "payments": "決済",
+    "topShare": "🔥 今シェア推薦",
+    "shareGuide": "📌 推薦ガイド",
+    "guide1": "本人SNS/カカオ/ブログに共有",
+    "guide2": "消費者がリンクから決済時自動加算",
+    "guide3": "本人購入は加算不可",
+    "guide4": "累計報酬は精算ページで換金申請可",
+    "noTop": "推薦商品なし",
+    "linkCopied": "🔗 リンクコピー",
+    "shareFail": "シェア失敗",
+    "voucherSoonExpire": "残り{{n}}日 — 店舗連絡推奨",
+    "voucherExpired": "期限切れ",
+    "voucherUsed": "✅ 使用済み",
+    "linkFor": "あなたのリファラルリンク",
+    "convRate": "転換率"
   }
 }

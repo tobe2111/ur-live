@@ -51,6 +51,11 @@ interface Booking {
   created_at: string
   checked_in_at: string | null
   checked_out_at: string | null
+  // 🛡️ 2026-05-18: voucher 모드 필드.
+  sale_mode?: 'date' | 'voucher'
+  voucher_type?: 'weekday' | 'weekend' | null
+  voucher_expires_at?: string | null
+  voucher_used_at?: string | null
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -101,6 +106,26 @@ export default function SellerStaysBookingsPage() {
       })
       if (r.data?.success) setBookings(r.data.data || [])
     } catch { /* noop */ } finally { setLoading(false) }
+  }
+
+  // 🛡️ 2026-05-18: voucher 사용 처리 — 매장에서 게스트가 voucher 코드 제시 시 호출.
+  async function useVoucher(b: Booking) {
+    const checkIn = prompt(`실제 체크인 날짜 (YYYY-MM-DD)\n게스트: ${b.guest_name}\nvoucher: ${b.check_in_code}`)
+    if (!checkIn || !/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) { toast.error('YYYY-MM-DD 형식 필요'); return }
+    const checkOut = prompt(`실제 체크아웃 날짜 (YYYY-MM-DD, ${b.nights}박 기준 ${addDays(checkIn, b.nights)})`,
+      addDays(checkIn, b.nights))
+    if (!checkOut || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) { toast.error('YYYY-MM-DD 형식 필요'); return }
+    if (!confirm(`voucher 사용 처리\n· ${checkIn} → ${checkOut}\n게스트와 협의 완료 후 진행`)) return
+    try {
+      const token = localStorage.getItem('seller_token')
+      const r = await api.patch(`/api/seller/stays/bookings/${b.id}/use-voucher`,
+        { check_in_date: checkIn, check_out_date: checkOut },
+        { headers: { Authorization: `Bearer ${token}` } })
+      if (r.data?.success) { toast.success('voucher 사용 처리됨'); loadBookings(); loadKpi() }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '처리 실패')
+    }
   }
 
   async function transition(bookingId: number, action: 'check-in' | 'check-out' | 'no-show') {
@@ -257,8 +282,18 @@ export default function SellerStaysBookingsPage() {
                           )}
                         </td>
                         <td className="px-3 py-3">
-                          <div className="flex gap-1">
-                            {b.status === 'confirmed' && (
+                          <div className="flex gap-1 flex-wrap">
+                            {/* 🛡️ 2026-05-18: voucher 모드 — 사용 처리 별도 버튼 (확정 상태에서만). */}
+                            {b.sale_mode === 'voucher' && b.status === 'confirmed' && !b.voucher_used_at && (
+                              <button onClick={() => useVoucher(b)} className="px-2 py-1 bg-pink-500 text-white text-[10px] font-bold rounded hover:bg-pink-600" title="voucher 사용 처리 (날짜 협의 후)">
+                                🎫 사용 처리
+                              </button>
+                            )}
+                            {b.sale_mode === 'voucher' && b.voucher_used_at && (
+                              <span className="text-[10px] text-purple-600 font-semibold">✓ 사용 완료</span>
+                            )}
+                            {/* date 모드 또는 voucher 사용 전 — 일반 체크인/체크아웃/노쇼 */}
+                            {b.sale_mode !== 'voucher' && b.status === 'confirmed' && (
                               <>
                                 <button onClick={() => transition(b.id, 'check-in')} className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50" title="체크인">
                                   <LogIn className="w-4 h-4" />
@@ -268,12 +303,12 @@ export default function SellerStaysBookingsPage() {
                                 </button>
                               </>
                             )}
-                            {b.status === 'checked_in' && (
+                            {b.sale_mode !== 'voucher' && b.status === 'checked_in' && (
                               <button onClick={() => transition(b.id, 'check-out')} className="p-1.5 rounded text-purple-600 hover:bg-purple-50" title="체크아웃">
                                 <LogOutIcon className="w-4 h-4" />
                               </button>
                             )}
-                            {b.status === 'checked_out' && (
+                            {b.sale_mode !== 'voucher' && b.status === 'checked_out' && (
                               <span className="text-[10px] text-purple-600 font-semibold">완료 ✓</span>
                             )}
                           </div>
@@ -314,4 +349,10 @@ function KpiCard({ label, value, sub, color, icon }: { label: string; value: str
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )
+}
+
+function addDays(yyyymmdd: string, n: number): string {
+  const d = new Date(yyyymmdd)
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
 }

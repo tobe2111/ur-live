@@ -5341,5 +5341,29 @@
     "bookingCreate": "Réserver",
     "reviewSubmit": "Soumettre Avis",
     "cancelBooking": "Annuler Réservation"
+  },
+  "influencer": {
+    "dashTitle": "💸 Tableau Influenceur",
+    "earned": "Total Gagné",
+    "refCount": "Paiements",
+    "refSales": "Ventes générées",
+    "funnelTitle": "📊 Entonnoir",
+    "clicks": "Clics",
+    "signups": "Inscriptions",
+    "payments": "Paiements",
+    "topShare": "🔥 Partager maintenant",
+    "shareGuide": "📌 Guide",
+    "guide1": "Partager sur SNS / KakaoTalk / blog",
+    "guide2": "Crédité auto au paiement",
+    "guide3": "Auto-achat bloqué",
+    "guide4": "Retirer depuis paiement",
+    "noTop": "Aucun article",
+    "linkCopied": "🔗 Lien copié",
+    "shareFail": "Échec partage",
+    "voucherSoonExpire": "{{n}}j restants — contacter magasin",
+    "voucherExpired": "Expiré",
+    "voucherUsed": "✅ Utilisé",
+    "linkFor": "Votre lien",
+    "convRate": "Conversion"
   }
 }

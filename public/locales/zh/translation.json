@@ -5341,5 +5341,29 @@
     "bookingCreate": "预订",
     "reviewSubmit": "提交评价",
     "cancelBooking": "取消预订"
+  },
+  "influencer": {
+    "dashTitle": "💸 网红仪表板",
+    "earned": "累计奖励",
+    "refCount": "推荐结算",
+    "refSales": "诱发销售",
+    "funnelTitle": "📊 推荐漏斗",
+    "clicks": "点击",
+    "signups": "注册",
+    "payments": "结算",
+    "topShare": "🔥 立即分享推荐",
+    "shareGuide": "📌 推荐指南",
+    "guide1": "分享到SNS/Kakao/博客",
+    "guide2": "消费者通过链接结算时自动累计",
+    "guide3": "本人购买不可累计",
+    "guide4": "累计奖励可在结算页面申请提现",
+    "noTop": "暂无推荐商品",
+    "linkCopied": "🔗 链接已复制",
+    "shareFail": "分享失败",
+    "voucherSoonExpire": "剩{{n}}天 — 建议联系店家",
+    "voucherExpired": "已过期",
+    "voucherUsed": "✅ 已使用",
+    "linkFor": "您的推荐链接",
+    "convRate": "转化率"
   }
 }

@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -38,6 +39,7 @@ interface TopItem {
 
 export default function InfluencerDashboardPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [stats, setStats] = useState<Stats | null>(null)
   const [funnel, setFunnel] = useState<Funnel | null>(null)
   const [topItems, setTopItems] = useState<TopItem[]>([])
@@ -67,6 +69,53 @@ export default function InfluencerDashboardPage() {
     } finally { setLoading(false) }
   }
 
+  async function shareViaKakao(item: TopItem) {
+    try {
+      const r = await api.get(`/api/affiliate/link/${item.type}/${item.id}`,
+        { headers: { Authorization: `Bearer ${token()}` } })
+      const url = r.data?.data?.url
+      if (!url) { toast.error('링크 생성 실패'); return }
+
+      // 카카오톡 공유 시도 — fail-soft (클립보드 fallback).
+      try {
+        const { ensureKakaoSdk } = await import('@/lib/kakao-sdk')
+        await ensureKakaoSdk()
+        const Kakao = (window as unknown as { Kakao?: { Share?: { sendDefault?: (params: unknown) => void } } }).Kakao
+        if (Kakao?.Share?.sendDefault) {
+          const typeLabel = item.type === 'stay' ? '🏨 숙소'
+            : item.type === 'live' ? '📺 라이브'
+            : item.type === 'group-buy' ? '🏪 공구'
+            : '🛍️ 상품'
+          const description = [
+            typeLabel,
+            item.discount_pct ? `${item.discount_pct}% 할인` : null,
+          ].filter(Boolean).join(' · ')
+          Kakao.Share.sendDefault({
+            objectType: 'feed',
+            content: {
+              title: item.name,
+              description,
+              imageUrl: item.image_url || 'https://live.ur-team.com/og-default.png',
+              link: { mobileWebUrl: url, webUrl: url },
+            },
+            buttons: [{ title: '바로 보기', link: { mobileWebUrl: url, webUrl: url } }],
+          })
+          return
+        }
+      } catch { /* fallback */ }
+
+      // navigator.share 또는 클립보드 fallback.
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({ title: item.name, url })
+          return
+        } catch { /* user cancel — fallback */ }
+      }
+      await navigator.clipboard.writeText(url)
+      toast.success('🔗 링크 복사 — SNS 공유')
+    } catch { toast.error('공유 실패') }
+  }
+
   async function copyLink(type: string, id: number) {
     try {
       const r = await api.get(`/api/affiliate/link/${type}/${id}`,
@@ -74,7 +123,7 @@ export default function InfluencerDashboardPage() {
       const url = r.data?.data?.url
       if (!url) { toast.error('링크 생성 실패'); return }
       await navigator.clipboard.writeText(url)
-      toast.success('🔗 링크 복사 — SNS 공유')
+      toast.success('🔗 링크 복사')
     } catch { toast.error('실패') }
   }
 
@@ -85,7 +134,7 @@ export default function InfluencerDashboardPage() {
       <div className="sticky top-0 z-30 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-1"><ChevronLeft className="w-5 h-5" /></button>
-          <h1 className="text-base font-bold flex-1">💸 인플 대시보드</h1>
+          <h1 className="text-base font-bold flex-1">{t('influencer.dashTitle', { defaultValue: '💸 인플 대시보드' })}</h1>
         </div>
       </div>
 
@@ -96,17 +145,17 @@ export default function InfluencerDashboardPage() {
           <>
             {/* 적립 누계 */}
             <div className="bg-gradient-to-br from-pink-500/[0.15] to-violet-500/[0.15] border border-pink-500/30 rounded-2xl p-5">
-              <p className="text-[10px] font-bold text-pink-200/70 tracking-[0.14em]">누적 적립</p>
+              <p className="text-[10px] font-bold text-pink-200/70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
               <p className="text-3xl font-black text-pink-300 mt-1">
                 ₩{formatNumber(stats?.total_earned || 0)}
               </p>
               <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-pink-500/20">
                 <div>
-                  <p className="text-[10px] text-pink-200/70">추천 결제</p>
+                  <p className="text-[10px] text-pink-200/70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
                   <p className="text-base font-extrabold text-white">{formatNumber(stats?.total_referrals || 0)}건</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-pink-200/70">유발 매출</p>
+                  <p className="text-[10px] text-pink-200/70">{t('influencer.refSales', { defaultValue: '유발 매출' })}</p>
                   <p className="text-base font-extrabold text-white">₩{formatNumber(stats?.total_sales || 0)}</p>
                 </div>
               </div>
@@ -115,7 +164,7 @@ export default function InfluencerDashboardPage() {
             {/* 펀넬 */}
             {funnel && (
               <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-4">
-                <h2 className="text-sm font-bold mb-3">📊 추천 funnel</h2>
+                <h2 className="text-sm font-bold mb-3">{t('influencer.funnelTitle', { defaultValue: '📊 추천 funnel' })}</h2>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
                     { label: '클릭', value: funnel.clicks, color: 'text-blue-300' },
@@ -137,9 +186,9 @@ export default function InfluencerDashboardPage() {
 
             {/* 추천 권장 (상위 공구/숙소) */}
             <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-4">
-              <h2 className="text-sm font-bold mb-3">🔥 지금 share 권장</h2>
+              <h2 className="text-sm font-bold mb-3">{t('influencer.topShare', { defaultValue: '🔥 지금 share 권장' })}</h2>
               {topItems.length === 0 ? (
-                <p className="text-xs text-gray-500">권장 상품 없음</p>
+                <p className="text-xs text-gray-500">{t('influencer.noTop', { defaultValue: '권장 상품 없음' })}</p>
               ) : (
                 <div className="space-y-2">
                   {topItems.slice(0, 10).map((item) => (
@@ -168,11 +217,18 @@ export default function InfluencerDashboardPage() {
                           ) : null}
                         </div>
                       </div>
-                      <button onClick={() => copyLink(item.type, item.id)}
-                        className="p-2 bg-pink-500 text-white rounded-lg shrink-0"
-                        title="referral 링크 복사">
-                        <Share2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => shareViaKakao(item)}
+                          className="p-2 bg-[#FEE500] text-[#3C1E1E] rounded-lg"
+                          title="카카오톡 공유">
+                          💬
+                        </button>
+                        <button onClick={() => copyLink(item.type, item.id)}
+                          className="p-2 bg-pink-500 text-white rounded-lg"
+                          title="링크 복사">
+                          <Share2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -181,7 +237,7 @@ export default function InfluencerDashboardPage() {
 
             {/* 안내 카드 */}
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
-              <p className="text-xs font-bold text-blue-300 mb-1">📌 referral 공유 가이드</p>
+              <p className="text-xs font-bold text-blue-300 mb-1">{t('influencer.shareGuide', { defaultValue: '📌 referral 공유 가이드' })}</p>
               <ul className="text-[11px] text-blue-200/80 space-y-1">
                 <li>• 본인 SNS / 카톡 / 블로그에 링크 공유</li>
                 <li>• 소비자가 링크로 진입 + 결제 시 자동 적립</li>
