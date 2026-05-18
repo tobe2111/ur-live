@@ -123,9 +123,34 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
       ? Math.max(0, Math.min(booking.total_amount, Math.floor(Number(body.refund_amount))))
       : booking.total_amount
 
+    // 🛡️ 2026-05-18: 토스 카드 환불 자동 트리거.
+    let refundActuallyDone = false
+    let refundError: string | null = null
+    const fullBooking = await c.env.DB.prepare(
+      'SELECT order_id FROM stay_bookings WHERE id = ?'
+    ).bind(id).first<{ order_id: number }>()
+    if (fullBooking?.order_id) {
+      const orderRow = await c.env.DB.prepare(
+        'SELECT payment_key FROM orders WHERE id = ?'
+      ).bind(fullBooking.order_id).first<{ payment_key: string | null }>().catch(() => null)
+      if (orderRow?.payment_key) {
+        const { tossCancelPayment } = await import('@/worker/utils/toss-refund')
+        const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
+          reason: `어드민 환불: ${reason}`.slice(0, 200),
+          amount: refundAmount < booking.total_amount ? refundAmount : undefined,
+          idempotencyKey: `admin-stay-refund-${id}`,
+        })
+        refundActuallyDone = result.ok
+        refundError = result.ok ? null : `${result.error_code}: ${result.error_message}`
+      } else {
+        refundError = 'payment_key 없음 (수동 환불 필요)'
+      }
+    }
+
     await executeRun(c.env.DB,
       `UPDATE stay_bookings
-          SET status = 'refunded', refund_amount = ?, refunded_at = datetime('now'),
+          SET status = 'refunded', refund_amount = ?,
+              refunded_at = ${refundActuallyDone ? "datetime('now')" : 'NULL'},
               cancellation_reason = ?, updated_at = datetime('now')
         WHERE id = ?`,
       [refundAmount, reason, id])
@@ -133,18 +158,23 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
     await executeRun(c.env.DB,
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, reason)
        VALUES (?, ?, 'refunded', 'admin', ?)`,
-      [id, booking.status, reason]).catch(() => { /* noop */ })
+      [id, booking.status, refundError ? `${reason} (환불API 실패: ${refundError})` : reason]).catch(() => { /* noop */ })
 
     await writeAuditLog(c, {
       action: 'admin_refund_stay_booking',
       targetType: 'stay_booking',
       targetId: String(id),
       before: { status: booking.status },
-      after: { status: 'refunded', refund_amount: refundAmount, reason },
+      after: { status: 'refunded', refund_amount: refundAmount, reason, refund_done: refundActuallyDone, refund_error: refundError },
     })
 
-    // TODO (PR 6): 실제 결제 환불 (토스 API 호출).
-    return c.json({ success: true, message: '환불 처리됨 (실제 카드 환불은 PR 6 에서 자동화)' })
+    return c.json({
+      success: true,
+      message: refundActuallyDone
+        ? `환불 처리됨 — 카드 ${refundAmount.toLocaleString()}원 환불 완료`
+        : `환불 마킹됨 — ${refundError ? `카드 환불 실패 (${refundError})` : '수동 환불 필요'}`,
+      data: { refund_done: refundActuallyDone, refund_error: refundError },
+    })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }

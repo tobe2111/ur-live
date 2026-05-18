@@ -417,30 +417,57 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
     }
     const refundAmount = Math.floor(booking.total_amount * refundRate)
 
+    // 🛡️ 2026-05-18: 토스 카드 환불 자동 트리거 — refund_amount > 0 인 경우.
+    let refundActuallyDone = false
+    let refundError: string | null = null
+    if (refundAmount > 0) {
+      // orders.payment_key 조회.
+      const orderRow = await c.env.DB.prepare(
+        'SELECT payment_key FROM orders WHERE id = ?'
+      ).bind(booking.order_id).first<{ payment_key: string | null }>().catch(() => null)
+
+      if (orderRow?.payment_key) {
+        const { tossCancelPayment } = await import('@/worker/utils/toss-refund')
+        const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
+          reason: `예약 취소 (정책 ${policy}, ${(refundRate * 100).toFixed(0)}% 환불) — ${reason || '사용자 요청'}`.slice(0, 200),
+          amount: refundRate < 1.0 ? refundAmount : undefined,  // 부분 환불일 때만 amount 명시
+          idempotencyKey: `stay-cancel-${id}`,
+        })
+        refundActuallyDone = result.ok
+        refundError = result.ok ? null : `${result.error_code}: ${result.error_message}`
+      } else {
+        refundError = 'payment_key 없음 (수동 환불 필요)'
+      }
+    }
+
     await c.env.DB.prepare(
       `UPDATE stay_bookings
           SET status = 'cancelled',
               cancelled_at = datetime('now'),
               cancellation_reason = ?,
               refund_amount = ?,
+              refunded_at = ${refundActuallyDone ? "datetime('now')" : 'NULL'},
               updated_at = datetime('now')
         WHERE id = ?`
     ).bind(reason || '사용자 취소', refundAmount, id).run()
 
     await c.env.DB.prepare(
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
-       VALUES (?, ?, 'cancelled', 'user', ?, ?)`
-    ).bind(id, booking.status, userId, `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%`).run()
-      .catch(() => { /* noop */ })
-
-    // 환불 비율이 100% 이면 즉시 처리, 부분 환불은 어드민 검토 큐로.
-    // 실제 결제 PG 환불은 별도 워커 (현재는 status='cancelled' 만 마킹 — TODO: 토스 API).
+       VALUES (?, ?, ?, 'user', ?, ?)`
+    ).bind(
+      id, booking.status,
+      refundActuallyDone ? 'refunded' : 'cancelled',
+      userId,
+      `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%${refundError ? `, 환불실패: ${refundError}` : ''}`,
+    ).run().catch(() => { /* noop */ })
 
     return c.json({
       success: true,
       data: {
         refund_amount: refundAmount,
         refund_rate: refundRate,
+        refund_done: refundActuallyDone,
+        refund_error: refundError,
         policy,
         hours_until_check_in: Math.round(hoursUntil),
       },
