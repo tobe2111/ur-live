@@ -140,10 +140,8 @@ export default function SocarStyleBanner() {
           className={`relative overflow-hidden rounded-2xl ${banner.imageUrl ? '' : `bg-gradient-to-br ${banner.gradient}`} aspect-[16/7] sm:aspect-[21/6] md:aspect-[28/5] max-h-[280px] p-5 active:scale-[0.98] transition-transform`}
           style={banner.imageUrl ? { backgroundImage: `url(${banner.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
         >
-          {/* 이미지 배너의 경우 가독성 위해 어두운 오버레이 */}
-          {banner.imageUrl && (
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" aria-hidden />
-          )}
+          {/* 🛡️ 2026-05-17: 검정 그라데이션 오버레이 제거 (사용자 요청) — 이미지 원본 그대로 노출.
+              가독성 필요 시 배너 이미지 자체에 어두운 영역을 포함시키도록 함. */}
           {/* 우측 배경 큰 이모지 (그라디언트 배너만 — 이미지 배너엔 숨김) */}
           {!banner.imageUrl && (
             <>
