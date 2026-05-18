@@ -230,24 +230,29 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
     const [live, scheduled, ended, mealVouchers, featured, latest] = await Promise.all([
       safeAll(DB.prepare(
         // 🛡️ 2026-05-07: started_at 6시간 이내만 (외부 도구로 종료된 stale 'live' 데이터 숨김)
+        // 🛡️ 2026-05-18: deleted_at IS NULL — 어드민 라이브 모니터링에서 삭제한 row 는 메인 페이지에서도 숨김.
         `SELECT id, title, youtube_video_id, viewer_count, current_viewers, status, seller_id,
                 created_at, scheduled_at, started_at, current_product_id
          FROM live_streams
          WHERE status='live'
+           AND (deleted_at IS NULL)
            AND (started_at IS NULL OR datetime(started_at) >= datetime('now', '-6 hours'))
          ORDER BY current_viewers DESC LIMIT 12`
       ).all<Record<string, unknown>>()),
       safeAll(DB.prepare(
         // 🛡️ 2026-05-07: scheduled_at 이 24시간 이상 지난 건 제외 (방치된 테스트 방송 숨김)
+        // 🛡️ 2026-05-18: deleted_at IS NULL 추가.
         `SELECT id, title, youtube_video_id, status, seller_id, scheduled_at, created_at
          FROM live_streams
          WHERE status='scheduled'
+           AND (deleted_at IS NULL)
            AND (scheduled_at IS NULL OR datetime(scheduled_at) >= datetime('now', '-1 day'))
          ORDER BY scheduled_at ASC LIMIT 8`
       ).all<Record<string, unknown>>()),
       safeAll(DB.prepare(
+        // 🛡️ 2026-05-18: deleted_at IS NULL — 다시보기 피드도 어드민 soft-delete 반영.
         `SELECT id, title, youtube_video_id, status, seller_id, ended_at, created_at
-         FROM live_streams WHERE status='ended' ORDER BY ended_at DESC LIMIT 6`
+         FROM live_streams WHERE status='ended' AND (deleted_at IS NULL) ORDER BY ended_at DESC LIMIT 6`
       ).all<Record<string, unknown>>()),
       safeAll(DB.prepare(
         `SELECT id, name, price, original_price, image_url, restaurant_name, restaurant_address,

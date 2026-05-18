@@ -215,6 +215,9 @@ adminModerationRoutes.get('/live-monitor', cors(), async (c) => {
   try {
     const DB = c.env.DB;
 
+    // 🛡️ 2026-05-18: deleted_at 컬럼 defensive ALTER — production schema lag 대비.
+    try { await executeRun(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* 컬럼 이미 존재 */ }
+
     // 🛡️ 2026-05-07: 강화된 모니터링 — 매출 / 채팅 수 / 진행 시간 / 상품 변경 횟수
     const streams = await executeQuery<LiveStreamRow & {
       total_messages: number; product_changes: number; total_revenue: number;
@@ -237,6 +240,7 @@ adminModerationRoutes.get('/live-monitor', cors(), async (c) => {
        LEFT JOIN sellers s ON s.id = ls.seller_id
        LEFT JOIN products p ON p.id = ls.current_product_id
        WHERE ls.status = 'live'
+         AND (ls.deleted_at IS NULL)
        ORDER BY ls.created_at DESC`
     );
 
@@ -362,6 +366,10 @@ adminModerationRoutes.get('/live-monitor/history', cors(), async (c) => {
     const DB = c.env.DB;
     const days = Math.min(90, Math.max(1, parseInt(c.req.query('days') || '7')));
 
+    // 🛡️ 2026-05-18: deleted_at IS NULL 필터 추가에 따른 defensive ALTER.
+    //   production 에 0256 migration 미적용 상태에서도 안전하게 동작 (column 이미 존재 시 throw → catch).
+    try { await executeRun(DB, `ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`, []); } catch { /* 컬럼 이미 존재 */ }
+
     const streams = await executeQuery<StreamHistoryRow>(DB,
       `SELECT ls.id, ls.seller_id,
               s.name as seller_name,
@@ -379,6 +387,7 @@ adminModerationRoutes.get('/live-monitor/history', cors(), async (c) => {
        FROM live_streams ls
        LEFT JOIN sellers s ON s.id = ls.seller_id
        WHERE ls.status = 'ended'
+         AND (ls.deleted_at IS NULL)
          AND ls.created_at >= datetime('now', '-' || ? || ' days')
        ORDER BY ls.created_at DESC`,
       [days]
