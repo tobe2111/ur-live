@@ -69,6 +69,11 @@ bash scripts/check-no-secrets.sh || {
 echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
 bash scripts/check-silent-errors.sh || true
 
+# 🛡️ 2026-05-17: CHECK 제약 위반 자동 탐지 (warn-only).
+#   admin live-monitor delete 사고 재발 방지 — 'status=\"deleted\"' 가 CHECK IN (...) 위반 → 500.
+echo "==> Pre-commit: CHECK 제약 위반 검사 (warn-only)..."
+node scripts/check-status-constraints.mjs || true
+
 # 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
 echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
 bash scripts/check-nan-dashboard.sh || true

@@ -122,6 +122,12 @@ jobs:
         run: bash scripts/check-naming-conflicts.sh
         continue-on-error: true
 
+      # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
+      #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
+      #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.
+      - name: CHECK constraint violations
+        run: node scripts/check-status-constraints.mjs -s
+
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)
         run: node scripts/verify-schema.mjs --json
