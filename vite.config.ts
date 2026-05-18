@@ -69,8 +69,11 @@ export default defineConfig({
           if (id.includes('@tanstack/react-query')) return 'tanstack-query'
           // Payment SDKs
           if (id.includes('@tosspayments') || id.includes('@stripe')) return 'payments'
-          // Charts (관리자 전용)
-          if (id.includes('recharts') || id.includes('d3-')) return 'charts'
+          // Charts (관리자/셀러 대시보드 전용) — recharts + d3-* 패키지 + 우리 chart 컴포넌트들.
+          //   🛡️ 2026-05-17: /src/components/charts/* 도 'charts' 청크에 포함 (이전엔 'app-components' 로 분류돼서
+          //     app-components → recharts static dep 만들어 charts (518 KB) 가 초기 preload 됨).
+          //   이제 charts 청크는 dashboard 페이지가 lazy-load 할 때만 fetch.
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('/src/components/charts/')) return 'charts'
           // Icons
           if (id.includes('lucide-react')) return 'lucide'
           // Sentry
