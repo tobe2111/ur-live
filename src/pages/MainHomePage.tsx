@@ -246,7 +246,57 @@ export default function MainHomePage() {
       {/* 🛡️ 2026-05-17: Quick 3-entry (LIVE/MEAL/SPECIAL) 제거.
             SocarStyleHero 카테고리 그리드 (라이브/식사권/특가) 와 100% 중복 + 식사권 destination 불일치 (/browse vs /group-buy) — UX 일관성 위해 Hero 만 SSOT 로 유지. */}
 
-      {/* ═══ 내 주변 맛집 식사권 ═══ */}
+      {/* 🛡️ 2026-05-17: 라이브 진행 중 섹션을 상단으로 이동 — 시간 민감 컨텐츠 우선 노출.
+            기존: hero → 내주변 맛집 → flash → 라이브 → 예정 → 다시보기 → UR특가
+            지금: hero → 라이브 → 오프라인(내주변 맛집) → 온라인(flash + UR특가) → 예정 → 다시보기 */}
+      {liveStreams.length > 0 && (
+        <div className="px-4 pt-4">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2 h-2 bg-[#EF4444] rounded-full animate-pulse" />
+                <span className="text-[10px] font-extrabold text-red-400 tracking-[0.14em]">{t('mainHome.nowLiveTag')}</span>
+              </div>
+              <p className="text-[18px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.quickLiveTitle')}</p>
+            </div>
+            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400 pb-1">{t('mainHome.seeAll')}</button>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 md:overflow-visible md:grid md:grid-cols-3 md:mx-0 md:px-0 lg:grid-cols-4 xl:grid-cols-5">
+            {liveStreams.map(s => {
+              const thumb = getThumb(s)
+              return (
+                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] md:w-auto text-left active:scale-[0.98] transition-transform">
+                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
+                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
+                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
+                      <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
+                      <span className="text-[10px] font-bold text-white">LIVE</span>
+                    </div>
+                    {s.viewer_count != null && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-md">
+                        <Eye className="h-3 w-3 text-white" />
+                        <span className="text-[9px] font-bold text-white">{s.viewer_count >= 1000 ? `${(s.viewer_count / 1000).toFixed(1)}K` : s.viewer_count}</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <p className="text-[10px] text-white/80 font-semibold truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
+                      <p className="text-[12px] text-white font-bold leading-tight line-clamp-2 mt-0.5">{s.title}</p>
+                    </div>
+                  </div>
+                  {s.current_product && (
+                    <div className="flex items-baseline gap-1 mt-2 px-0.5">
+                      <span className="text-[13px] font-extrabold text-red-400">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(s.current_product.price) })}</span>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 🏪 오프라인 — 내 주변 공구 (식사/숙소/미용/기타) ═══ */}
       <div className="px-4 pt-7">
         <div className="flex items-end justify-between mb-3">
           <div>
@@ -319,56 +369,10 @@ export default function MainHomePage() {
         </div>
       </div>
 
-      {/* ═══ Flash Deals ═══ */}
+      {/* ═══ 🛍️ 온라인 — FLASH DEALS ═══ */}
       <FlashDealsHero />
 
-      {/* ═══ 지금 라이브딜 ═══ */}
-      {liveStreams.length > 0 && (
-        <div className="px-4 pt-8">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="w-2 h-2 bg-[#EF4444] rounded-full animate-pulse" />
-                <span className="text-[10px] font-extrabold text-red-400 tracking-[0.14em]">{t('mainHome.nowLiveTag')}</span>
-              </div>
-              <p className="text-[18px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>{t('mainHome.quickLiveTitle')}</p>
-            </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400 pb-1">{t('mainHome.seeAll')}</button>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 md:overflow-visible md:grid md:grid-cols-3 md:mx-0 md:px-0 lg:grid-cols-4 xl:grid-cols-5">
-            {liveStreams.map(s => {
-              const thumb = getThumb(s)
-              return (
-                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[170px] md:w-auto text-left active:scale-[0.98] transition-transform">
-                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
-                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altLiveStream')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 35%, rgba(0,0,0,0.9) 100%)' }} />
-                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
-                      <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
-                      <span className="text-[10px] font-bold text-white">LIVE</span>
-                    </div>
-                    {s.viewer_count != null && (
-                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-md">
-                        <Eye className="h-3 w-3 text-white" />
-                        <span className="text-[9px] font-bold text-white">{s.viewer_count >= 1000 ? `${(s.viewer_count / 1000).toFixed(1)}K` : s.viewer_count}</span>
-                      </div>
-                    )}
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <p className="text-[10px] text-white/80 font-semibold truncate">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
-                      <p className="text-[12px] text-white font-bold leading-tight line-clamp-2 mt-0.5">{s.title}</p>
-                    </div>
-                  </div>
-                  {s.current_product && (
-                    <div className="flex items-baseline gap-1 mt-2 px-0.5">
-                      <span className="text-[13px] font-extrabold text-red-400">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(s.current_product.price) })}</span>
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* 🛡️ 2026-05-17: 기존 '지금 라이브딜' 섹션은 상단(banner 다음)으로 이동됨 → 중복 제거. */}
 
       {/* ═══ 예정 방송 ═══ */}
       {scheduledStreams.length > 0 && (
