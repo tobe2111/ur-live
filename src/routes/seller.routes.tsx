@@ -49,6 +49,10 @@ const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
 const SellerMarketingPage = lazy(() => import('@/pages/SellerMarketingPage'))
 const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDashboardPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
+// 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 셀러 페이지 — PR 2/6.
+const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
+const SellerStayNewPage = lazy(() => import('@/pages/SellerStayNewPage'))
+const SellerStayDetailPage = lazy(() => import('@/pages/SellerStayDetailPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
@@ -206,6 +210,22 @@ export function SellerRoutes() {
       <Route path="/seller/group-buy" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-18: 숙소 공구 — PR 2/6 */}
+      <Route path="/seller/stays" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStaysPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stays/new" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStayNewPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stays/:id" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStayDetailPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/bundles" element={
