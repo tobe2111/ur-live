@@ -16,7 +16,7 @@
 
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
-import { GUIDE_SEEDS } from './guide-seed';
+// 🛡️ 2026-05-18: GUIDE_SEEDS (87KB) dynamic import — worker bundle 외 분리.
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -94,8 +94,9 @@ app.get('/search', async (c) => {
       sections = rows?.results || [];
     } catch { /* skip */ }
 
-    // 2차: DB 비어있으면 시드 사용
+    // 2차: DB 비어있으면 시드 사용 (dynamic import — 87KB)
     if (!sections.length) {
+      const { GUIDE_SEEDS } = await import('./guide-seed');
       sections = GUIDE_SEEDS[r].map((s: any) => ({
         section_key: s.key,
         title: s.title,

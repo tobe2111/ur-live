@@ -18,7 +18,7 @@
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import type { Env } from './types/env';
 
-import { handleScheduled } from './cron/scheduled-cleanup';
+// 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { handleAutoSettlement, handleExpiredVoucherRefunds } from './cron/auto-settlement';
 import { runReconciliation } from './cron/reconciliation';
 import { runDailySelfDiagnostic } from './cron/daily-self-diagnostic';
@@ -76,7 +76,10 @@ export async function handleCronScheduled(
   };
 
   if (cron === '*/5 * * * *') {
-    ctx.waitUntil(safeCron('scheduled-cleanup', () => handleScheduled(env)));
+    ctx.waitUntil(safeCron('scheduled-cleanup', async () => {
+      const { handleScheduled } = await import('./cron/scheduled-cleanup')
+      return handleScheduled(env)
+    }));
     // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리
     ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)

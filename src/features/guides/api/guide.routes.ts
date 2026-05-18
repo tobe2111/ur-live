@@ -11,7 +11,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { executeQuery } from '@/worker/utils/database'
-import { GUIDE_SEEDS } from './guide-seed'
+// 🛡️ 2026-05-18: GUIDE_SEEDS (87KB) 는 dynamic import — 본 모듈에 정적 포함 X (worker bundle 축소).
 
 export const guideRoutes = new Hono<{ Bindings: Env }>()
 
@@ -45,6 +45,9 @@ async function ensureSeeded(DB: D1Database, guideType: GuideType): Promise<void>
   ).bind(guideType).first<{ n: number }>()
   if ((existing?.n ?? 0) > 0) return
 
+  // 🛡️ 2026-05-18: 87KB GUIDE_SEEDS dynamic import — worker bundle 에서 제외.
+  //   첫 진입 시 1회만 fetch (operation_guides 비어있을 때).
+  const { GUIDE_SEEDS } = await import('./guide-seed')
   const seed = GUIDE_SEEDS[guideType] || []
   for (const s of seed) {
     try {

@@ -14,7 +14,9 @@ async function buildWorker() {
       format: 'esm',
       platform: 'neutral', // Changed from 'browser' to 'neutral' for Workers
       target: 'es2022',
-      minify: false,  // Disable for debugging
+      // 🛡️ 2026-05-18: minify 활성화 — _worker.js 크기 ~40% 감소 (3.0MB → 1.8MB 예상).
+      //   debugging 필요 시: minify: false + sourcemap: true.
+      minify: true,
       sourcemap: false,
       // Exclude Node.js built-ins and packages that use them
       external: [
