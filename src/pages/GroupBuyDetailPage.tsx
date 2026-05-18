@@ -10,6 +10,7 @@ import { formatNumber } from '@/utils/format'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import Confetti from '@/components/group-buy/Confetti'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
+import RestaurantMiniMap from '@/components/RestaurantMiniMap'
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -524,6 +525,17 @@ export default function GroupBuyDetailPage() {
             )}
           </div>
         </div>
+
+        {/* 🛡️ 2026-05-17: 매장 위치 미니 지도 — 매장 기반 voucher 의 위치 발견성 향상.
+              restaurant_lat/lng 우선 사용, 없으면 address 로 geocoding. */}
+        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
+          <RestaurantMiniMap
+            name={detail.restaurant_name}
+            address={detail.restaurant_address}
+            lat={detail.restaurant_lat}
+            lng={detail.restaurant_lng}
+          />
+        )}
 
         {/* 진행 현황 + 티어 */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
