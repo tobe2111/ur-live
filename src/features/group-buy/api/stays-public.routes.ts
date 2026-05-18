@@ -798,13 +798,14 @@ staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
     const userId = Number(payload.user_id ?? payload.sub) || null
     if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
 
+    // 🛡️ 2026-05-18: voucher 모드는 check_in_date 가 NULL — created_at 으로 fallback.
     const rows = await c.env.DB.prepare(
       `SELECT b.*, p.name as product_name, r.name as room_name, p.image_url
          FROM stay_bookings b
          LEFT JOIN products p ON p.id = b.product_id
          LEFT JOIN product_stay_rooms r ON r.id = b.room_id
         WHERE b.user_id = ?
-        ORDER BY b.check_in_date DESC LIMIT 100`
+        ORDER BY COALESCE(b.check_in_date, b.created_at) DESC LIMIT 100`
     ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {

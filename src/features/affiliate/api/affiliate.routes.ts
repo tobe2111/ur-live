@@ -302,12 +302,36 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
       LIMIT 10
     `).all().catch(() => ({ results: [] }))
 
-    // share URL with ref
+    // share URL with ref + 'type' 필드 추가 (인플 대시보드가 type 별 다른 라우팅).
     const data = (results ?? []).map((r: any) => ({
       ...r,
+      type: 'group-buy' as const,
       share_url: `https://live.ur-team.com/group-buy/${r.id}?ref=${userId}`,
     }))
-    return c.json({ success: true, data })
+
+    // 🛡️ 2026-05-18: referral 활성화된 stay 도 같이 추가 (top 10).
+    const { results: stays } = await DB.prepare(`
+      SELECT
+        p.id, p.name, p.image_url, p.price,
+        psi.influencer_discount_pct AS discount_pct,
+        psi.influencer_commission_pct AS commission_pct,
+        psi.region_sido, psi.property_type
+      FROM products p
+      INNER JOIN product_stay_info psi ON psi.product_id = p.id
+      WHERE p.is_active = 1
+        AND p.category = 'stay_voucher'
+        AND psi.referral_enabled = 1
+        AND psi.influencer_discount_pct > 0
+      ORDER BY psi.influencer_commission_pct DESC, p.id DESC
+      LIMIT 10
+    `).all().catch(() => ({ results: [] }))
+    const stayData = (stays ?? []).map((r: any) => ({
+      ...r,
+      type: 'stay' as const,
+      share_url: `https://live.ur-team.com/stays/${r.id}?ref=${userId}`,
+    }))
+
+    return c.json({ success: true, data: [...stayData, ...data] })
   } catch (err) {
     console.error('[affiliate top-groups]', err)
     return c.json({ success: true, data: [] })

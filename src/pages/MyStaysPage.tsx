@@ -16,14 +16,19 @@ interface MyBooking {
   room_id: number
   room_name: string
   image_url: string | null
-  check_in_date: string
-  check_out_date: string
+  check_in_date: string | null
+  check_out_date: string | null
   nights: number
   guest_count: number
   total_amount: number
   status: string
   check_in_code: string | null
   created_at: string
+  // 🛡️ 2026-05-18: voucher 모드 필드.
+  sale_mode?: 'date' | 'voucher'
+  voucher_type?: 'weekday' | 'weekend' | null
+  voucher_expires_at?: string | null
+  voucher_used_at?: string | null
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -118,15 +123,24 @@ export default function MyStaysPage() {
                         <Link to={`/stays/${b.product_id}`} className="text-sm font-bold line-clamp-1 hover:underline">{b.product_name}</Link>
                         <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${st.color}`}>{st.label}</span>
                       </div>
-                      <p className="text-[11px] text-gray-400">{b.room_name}</p>
-                      <div className="flex items-center gap-1 text-[11px] text-gray-300 mt-1">
-                        <Calendar className="w-3 h-3" />
-                        <span>{b.check_in_date} ~ {b.check_out_date}</span>
-                        <span className="text-gray-500">({b.nights}박 · {b.guest_count}명)</span>
-                      </div>
+                      <p className="text-[11px] text-gray-400">
+                        {b.room_name}
+                        {b.sale_mode === 'voucher' && (
+                          <span className="ml-1.5 px-1.5 py-0.5 text-[9px] bg-pink-500/20 text-pink-300 rounded font-bold">🎫 숙소권</span>
+                        )}
+                      </p>
+                      {b.sale_mode === 'voucher' ? (
+                        <VoucherInfo booking={b} />
+                      ) : (
+                        <div className="flex items-center gap-1 text-[11px] text-gray-300 mt-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>{b.check_in_date} ~ {b.check_out_date}</span>
+                          <span className="text-gray-500">({b.nights}박 · {b.guest_count}명)</span>
+                        </div>
+                      )}
                       {b.check_in_code && b.status === 'confirmed' && (
                         <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-blue-500/20 rounded">
-                          <span className="text-[10px] text-blue-300">체크인 코드</span>
+                          <span className="text-[10px] text-blue-300">{b.sale_mode === 'voucher' ? 'voucher 코드' : '체크인 코드'}</span>
                           <span className="text-xs font-mono font-bold text-blue-200">{b.check_in_code}</span>
                         </div>
                       )}
@@ -245,6 +259,41 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-18: voucher 모드 예약의 만료일 + 사용 상태 표시.
+function VoucherInfo({ booking }: { booking: MyBooking }) {
+  if (booking.voucher_used_at) {
+    return (
+      <p className="text-[11px] text-emerald-400 mt-1">
+        ✅ 사용 완료 · {new Date(booking.voucher_used_at).toLocaleDateString('ko-KR')}
+      </p>
+    )
+  }
+  if (!booking.voucher_expires_at) {
+    return <p className="text-[11px] text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
+  }
+  const expiresAt = new Date(booking.voucher_expires_at)
+  const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)
+  const expired = daysLeft < 0
+  const expiringSoon = !expired && daysLeft <= 30
+  const colorClass = expired ? 'text-red-400'
+    : expiringSoon ? 'text-amber-400'
+    : 'text-gray-300'
+
+  return (
+    <div className={`text-[11px] mt-1 ${colorClass}`}>
+      🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박
+      {' · '}
+      {expired ? (
+        <span className="font-bold">만료됨 ({expiresAt.toLocaleDateString('ko-KR')})</span>
+      ) : expiringSoon ? (
+        <span className="font-bold">⚠️ {daysLeft}일 남음 — 매장 연락 권장</span>
+      ) : (
+        <span>유효기간: {expiresAt.toLocaleDateString('ko-KR')} ({daysLeft}일)</span>
+      )}
     </div>
   )
 }
