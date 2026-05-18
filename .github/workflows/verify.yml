@@ -140,6 +140,12 @@ jobs:
         run: node scripts/check-sql-not-null-insert.mjs
         continue-on-error: true
 
+      # 🛡️ 2026-05-17: 존재하지 않는 컬럼 참조 — 'no such column' SqlError 방지.
+      #   INSERT/UPDATE 컬럼이 마이그레이션 + 런타임 inline DDL 의 스키마에 있는지 검증.
+      - name: Column existence (warn)
+        run: node scripts/check-sql-column-exists.mjs
+        continue-on-error: true
+
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)
         run: node scripts/verify-schema.mjs --json

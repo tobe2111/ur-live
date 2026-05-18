@@ -84,6 +84,11 @@ node scripts/check-sql-bind-params.mjs || true
 echo "==> Pre-commit: NOT NULL INSERT 검사 (warn-only)..."
 node scripts/check-sql-not-null-insert.mjs || true
 
+# 🛡️ 2026-05-17: 존재하지 않는 컬럼 참조 검사 (warn-only).
+#   'no such column' SqlError → silent .catch → 기능 동작 안 함.
+echo "==> Pre-commit: 존재 없는 컬럼 참조 검사 (warn-only)..."
+node scripts/check-sql-column-exists.mjs || true
+
 # 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
 echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
 bash scripts/check-nan-dashboard.sh || true
