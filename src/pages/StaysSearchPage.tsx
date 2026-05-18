@@ -48,6 +48,8 @@ export default function StaysSearchPage() {
     check_out: params.get('check_out') || tomorrowIso(),
     guests: Number(params.get('guests')) || 2,
     property_type: params.get('property_type') || '',
+    // 🛡️ 2026-05-18: 판매 모드 필터 — 'date' (날짜 지정) / 'voucher' (기간 무관) / '' (전체).
+    sale_mode: params.get('sale_mode') || '',
     min_price: Number(params.get('min_price')) || 0,
     max_price: Number(params.get('max_price')) || 0,
     sort: params.get('sort') || 'recent',
@@ -237,6 +239,22 @@ export default function StaysSearchPage() {
                     <button key={v} onClick={() => setFilters({ ...filters, property_type: filters.property_type === v ? '' : v })}
                       className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-blue-600 text-white' : 'bg-[#1A1A1A] text-gray-300'}`}>
                       {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1.5">판매 방식</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { v: '', l: '전체' },
+                    { v: 'date', l: '📅 날짜 지정' },
+                    { v: 'voucher', l: '🎫 숙소권' },
+                  ].map((m) => (
+                    <button key={m.v} type="button"
+                      onClick={() => setFilters({ ...filters, sale_mode: m.v })}
+                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.sale_mode === m.v ? 'bg-pink-500 text-white' : 'bg-[#1A1A1A] text-gray-300'}`}>
+                      {m.l}
                     </button>
                   ))}
                 </div>

@@ -46,6 +46,14 @@ staysPublicRoutes.get('/stays/search', cors(), async (c) => {
       sql += ' AND psi.property_type = ?'
       params.push(propertyType)
     }
+    // 🛡️ 2026-05-18: 판매 방식 필터 (date / voucher / 빈 값=전체).
+    //   'both' 등록된 상품은 두 모드 검색 모두 노출.
+    const saleMode = c.req.query('sale_mode') || ''
+    if (saleMode === 'date') {
+      sql += " AND psi.sale_mode IN ('date', 'both')"
+    } else if (saleMode === 'voucher') {
+      sql += " AND psi.sale_mode IN ('voucher', 'both')"
+    }
     if (guests > 1) {
       sql += ' AND EXISTS (SELECT 1 FROM product_stay_rooms r WHERE r.product_id = p.id AND r.max_guests >= ? AND r.is_active = 1)'
       params.push(guests)

@@ -85,6 +85,23 @@ export default function SellerStayNewPage() {
     room_amenities: [] as string[],
   })
 
+  // 🛡️ 2026-05-18: 셀러 quota + referral 권한 (등급 기반).
+  const [quota, setQuota] = useState<{
+    tier: string | null
+    current_count: number
+    monthly_limit: number  // -1 = 무제한
+    can_create_more: boolean
+    referral_allowed: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('seller_token')
+    if (!token) return
+    api.get('/api/seller/stays-quota', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => { if (r.data?.success) setQuota(r.data.data) })
+      .catch(() => { /* fail-soft */ })
+  }, [])
+
   useEffect(() => {
     const token = localStorage.getItem('seller_token')
     if (!token) { navigate('/seller/login'); return }
@@ -147,6 +164,35 @@ export default function SellerStayNewPage() {
             </button>
           }
         />
+
+        {/* 🛡️ 2026-05-18: 셀러 quota 안내 (등급 기반 voucher 한도). */}
+        {quota && (
+          <div className={`rounded-xl border p-3 flex items-start gap-3 ${
+            !quota.can_create_more ? 'bg-red-50 border-red-200' :
+            quota.monthly_limit !== -1 && (quota.current_count / quota.monthly_limit) > 0.8 ? 'bg-amber-50 border-amber-200' :
+            'bg-blue-50 border-blue-200'
+          }`}>
+            <span className="text-xl shrink-0">
+              {!quota.can_create_more ? '🚫' : quota.tier === '다이아' ? '💎' : quota.tier === '플래티넘' ? '⭐' : quota.tier === '골드' ? '🥇' : quota.tier === '실버' ? '🥈' : '🥉'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-bold ${!quota.can_create_more ? 'text-red-900' : 'text-gray-900'}`}>
+                {quota.tier} 등급 — 이번 달 voucher 발행 {quota.current_count}
+                {quota.monthly_limit === -1 ? ' / 무제한' : ` / ${quota.monthly_limit}개`}
+              </p>
+              {!quota.can_create_more && (
+                <p className="text-[11px] text-red-700 mt-0.5 font-semibold">
+                  ⚠️ 이번 달 한도 초과 — 등급 상향 후 가능
+                </p>
+              )}
+              {!quota.referral_allowed && (
+                <p className="text-[10px] text-gray-600 mt-1">
+                  📌 인플 referral 활성화는 실버 이상 등급에서 가능합니다
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 1. 기본 정보 */}
@@ -421,11 +467,17 @@ export default function SellerStayNewPage() {
           {/* 🛡️ 2026-05-18: 인플루언서 referral — 시중에 없는 신규 모델 */}
           <Section icon={<span className="text-base">💸</span>} title="인플루언서 referral (옵션)">
             <Field label="referral 활성화">
-              <label className="flex items-center gap-2 text-xs">
+              <label className={`flex items-center gap-2 text-xs ${quota && !quota.referral_allowed ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <input type="checkbox" checked={form.referral_enabled}
+                  disabled={Boolean(quota && !quota.referral_allowed)}
                   onChange={(e) => setForm({ ...form, referral_enabled: e.target.checked })} />
                 인플루언서가 본인 URL 로 추천 → 소비자 할인 + 인플 커미션 지급
               </label>
+              {quota && !quota.referral_allowed && (
+                <p className="text-[10px] text-amber-700 mt-1">
+                  🔒 실버 이상 등급에서 활성화 가능 (현재 {quota.tier})
+                </p>
+              )}
             </Field>
             {form.referral_enabled && (
               <>
@@ -512,8 +564,8 @@ export default function SellerStayNewPage() {
             </div>
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              disabled={submitting || Boolean(quota && !quota.can_create_more)}
+              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? '등록 중...' : '숙소 등록 + 객실 설정으로 →'}
             </button>
