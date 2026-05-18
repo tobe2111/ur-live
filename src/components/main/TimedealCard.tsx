@@ -72,10 +72,10 @@ export default function TimedealCard({
   return (
     <button
       onClick={() => navigate(`/products/${id}`)}
-      className="w-full text-left bg-[#121212] dark:bg-[#121212] rounded-xl overflow-hidden border border-[#1A1A1A] dark:border-[#1A1A1A] active:scale-[0.98] transition-transform"
+      className="w-full text-left bg-white dark:bg-[#121212] rounded-xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] active:scale-[0.98] transition-transform"
     >
       {/* 상품 이미지 */}
-      <div className="relative aspect-square w-full bg-[#1A1A1A]">
+      <div className="relative aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
         {image_url && (
           <img
             src={image_url}
@@ -107,16 +107,16 @@ export default function TimedealCard({
 
       {/* 카드 본문 */}
       <div className="p-2.5">
-        <p className="text-[12px] text-gray-200 dark:text-gray-200 font-semibold leading-tight line-clamp-2 mb-1.5">
+        <p className="text-[12px] text-gray-800 dark:text-gray-200 font-semibold leading-tight line-clamp-2 mb-1.5">
           {name}
         </p>
 
         <div className="flex items-baseline gap-1.5 mb-2">
-          <span className="text-[15px] font-extrabold text-white dark:text-white">
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(price)}원
           </span>
           {original_price && original_price > price && (
-            <span className="text-[10px] text-gray-500 dark:text-gray-500 line-through">
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 line-through">
               {formatNumber(original_price)}원
             </span>
           )}
@@ -125,13 +125,13 @@ export default function TimedealCard({
         {/* 진행률 바 */}
         {stockN > 0 && (
           <div>
-            <div className="w-full h-1.5 bg-[#2A2A2A] rounded-full overflow-hidden mb-1">
+            <div className="w-full h-1.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden mb-1">
               <div
                 className="h-full bg-gradient-to-r from-pink-500 to-rose-400 rounded-full transition-all"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
-            <p className="text-[10px] text-gray-400 dark:text-gray-400">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">
               {progressPct}% · {formatNumber(soldN)}/{formatNumber(stockN)}개
             </p>
           </div>
