@@ -158,9 +158,13 @@ export default function GroupBuyListPage() {
       )
     }
 
-    // 🛡️ 2026-05-17: 지역 필터 — restaurant_address 매칭 (한 쪽 미지정 시 무필터)
-    if (regionKey) {
+    // 🛡️ 2026-05-17: 지역 필터 — voucher 카테고리에만 적용 (general 은 배송이라 위치 무관).
+    //   사용자 결정: "식사권/숙소권/헬스장 등에 필요" → general 탭은 region 무시.
+    //   category='all' 일 때: voucher 류만 region 필터, general 아이템은 통과.
+    if (regionKey && category !== 'general') {
       result = result.filter((p) => {
+        const isVoucher = VOUCHER_CATEGORIES.includes(p.category || '')
+        if (category === 'all' && !isVoucher) return true  // 전체 탭에서 general 은 region 무관 통과
         const addr = (p as { restaurant_address?: string; restaurant_name?: string }).restaurant_address
           || (p as { restaurant_name?: string }).restaurant_name
           || ''
@@ -381,8 +385,9 @@ export default function GroupBuyListPage() {
         </div>
       )}
 
-      {/* 🛡️ 2026-05-17: 지역 필터 버튼 — 당근 스타일 picker 진입 */}
-      <div className="ur-content-wide px-4 lg:px-8 mt-3 flex items-center gap-2">
+      {/* 🛡️ 2026-05-17: 지역 필터 버튼 — voucher 류 한정 (general 탭에선 숨김).
+            사용자 결정: "공구권에는 필요. 식사권/숙소권/헬스장 등에." */}
+      <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
         <button
           onClick={() => setRegionPickerOpen(true)}
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${

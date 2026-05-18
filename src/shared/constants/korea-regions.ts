@@ -153,6 +153,100 @@ const CHUNGBUK_GROUPS: DistrictGroup[] = [
   { key: 'boeun',      label: '보은/옥천/괴산/증평/영동',            keywords: ['보은', '옥천', '괴산', '증평', '영동'] },
 ]
 
+// 🛡️ 부산 12 그룹 — 사용자 시안 (2026-05-17)
+const BUSAN_GROUPS: DistrictGroup[] = [
+  { key: 'haeundae',     label: '해운대/센텀시티/재송',                       keywords: ['해운대', '센텀시티', '센텀', '재송'] },
+  { key: 'songjeong',    label: '송정/기장/정관/오시리아 관광단지',           keywords: ['송정', '기장', '정관', '오시리아'] },
+  { key: 'gwangalli',    label: '광안리/수영',                                keywords: ['광안리', '광안', '수영'] },
+  { key: 'gyeongseong',  label: '경성대/대연/용호동/문현',                    keywords: ['경성대', '대연', '용호동', '용호', '문현'] },
+  { key: 'seomyeon',     label: '서면/양정/초읍/부산시민공원',                keywords: ['서면', '양정', '초읍', '부산시민공원'] },
+  { key: 'nampodong',    label: '남포동/중앙동/태종대/송도/영도',             keywords: ['남포동', '남포', '중앙동', '태종대', '부산 송도', '영도'] },
+  { key: 'busan_yeok',   label: '부산역/범일동/부산진역',                     keywords: ['부산역', '범일동', '범일', '부산진역', '부산진'] },
+  { key: 'yeonsan',      label: '연산/토곡',                                  keywords: ['연산동', '연산역', '토곡'] },
+  { key: 'dongnae',      label: '동래/사직/미남/온천장/부산대/구서/서동',     keywords: ['동래', '사직', '미남', '온천장', '부산대', '구서', '서동'] },
+  { key: 'sasang',       label: '사상(경전철)/엄궁/학장',                     keywords: ['사상', '엄궁', '학장'] },
+  { key: 'deokcheon',    label: '덕천/화명/만덕/구포(구포역/KTX역)',          keywords: ['덕천', '화명', '만덕', '구포'] },
+  { key: 'hadan',        label: '하단/명지/김해공항/다대포/강서/신호/괴정/지사', keywords: ['하단', '명지', '김해공항', '다대포', '강서', '신호', '괴정', '지사'] },
+]
+
+// 🛡️ 울산 2 그룹 — 사용자 시안 (2026-05-17)
+const ULSAN_GROUPS: DistrictGroup[] = [
+  { key: 'namgu',  label: '남구/중구(삼산/성남/무거/신정)',                  keywords: ['삼산', '성남동', '무거', '신정', '울산 남구', '울산 중구'] },
+  { key: 'donggu', label: '동구/북구/울주군(일산/진장/진하/KTX역/영남알프스)', keywords: ['울산 일산', '진장', '진하', '울산 KTX', '영남알프스', '울산 동구', '울산 북구', '울주군'] },
+]
+
+// 🛡️ 경남 11 그룹 — 사용자 시안 (2026-05-17)
+const GYEONGNAM_GROUPS: DistrictGroup[] = [
+  { key: 'changwon_s',  label: '창원 상남동/용호동/중앙동/창원시청',                       keywords: ['창원 상남동', '상남동', '창원 용호동', '창원 중앙동', '창원시청'] },
+  { key: 'changwon_w',  label: '창원 명서동/봉곡동/팔용동/북면온천/창원종합버스터미널',     keywords: ['명서동', '봉곡동', '팔용동', '북면온천', '창원종합', '창원터미널'] },
+  { key: 'masan',       label: '마산',                                                    keywords: ['마산'] },
+  { key: 'jinhae',      label: '진해',                                                    keywords: ['진해'] },
+  { key: 'gimhae',      label: '김해/상유',                                               keywords: ['김해', '상유'] },
+  { key: 'yangsan',     label: '양산/밀양',                                               keywords: ['양산', '밀양'] },
+  { key: 'jinju',       label: '진주',                                                    keywords: ['진주'] },
+  { key: 'geoje',       label: '거제/통영/고성',                                          keywords: ['거제', '통영', '경남 고성'] },
+  { key: 'sacheon',     label: '사천/남해',                                               keywords: ['사천', '남해'] },
+  { key: 'hadong',      label: '하동/산청/함양',                                          keywords: ['하동', '산청', '함양'] },
+  { key: 'geochang',    label: '거창/함안/창녕/합천/의령',                                keywords: ['거창', '함안', '창녕', '합천', '의령'] },
+]
+
+// 🛡️ 대구 6 그룹 — 사용자 시안 (2026-05-17)
+const DAEGU_GROUPS: DistrictGroup[] = [
+  { key: 'dongseongno', label: '동성로/서문시장/대구역/경북대/엑스코',                                  keywords: ['동성로', '서문시장', '대구역', '경북대', '엑스코'] },
+  { key: 'dongdaegu',   label: '동대구역/신천동/수성못/범어/라이온즈파크/알파시티/시지',                keywords: ['동대구역', '동대구', '신천동', '수성못', '수성', '범어', '라이온즈파크', '알파시티', '시지'] },
+  { key: 'daegu_airp',  label: '대구공항/혁신도시/동촌유원지/팔공산/이시아폴리스/군위',                keywords: ['대구공항', '대구 혁신도시', '동촌유원지', '동촌', '팔공산', '이시아폴리스', '군위'] },
+  { key: 'seodaegu',    label: '서대구역/북부정류장/평리/비산/칠곡지구/동천동/금호지구',               keywords: ['서대구역', '서대구', '북부정류장', '대구 평리', '대구 비산', '칠곡지구', '동천동', '금호지구'] },
+  { key: 'duryu',       label: '두류/이월드/본리동/죽전동/서부정류장/앞산공원/안지랑/대명동/봉덕동',     keywords: ['두류', '이월드', '본리동', '죽전동', '서부정류장', '앞산공원', '앞산', '안지랑', '대명동', '봉덕동'] },
+  { key: 'seongseo',    label: '성서/계명대/상인동/대곡/현풍/테크노폴리스/가창/달성군',                keywords: ['성서', '계명대', '대구 상인동', '대구 대곡', '현풍', '대구 테크노폴리스', '가창', '달성군'] },
+]
+
+// 🛡️ 경북 11 그룹 — 사용자 시안 (2026-05-17)
+//   주의: 경산의 '대구대' 는 경북 경산시 소재 (대구광역시 아님) — keyword 충돌 가능성 있어 '경산 대구대' 로 wrap.
+const GYEONGBUK_GROUPS: DistrictGroup[] = [
+  { key: 'pohang_s',   label: '포항/남구(시청/시외버스터미널/구룡포/쌍사/문덕/오천/송도)', keywords: ['포항 남구', '포항시청', '포항 시외버스터미널', '구룡포', '포항 쌍사', '포항 문덕', '오천', '포항 송도'] },
+  { key: 'pohang_n',   label: '포항/북구(영일대/죽도시장/여객터미널)',                       keywords: ['포항 북구', '영일대', '죽도시장', '포항 여객터미널'] },
+  { key: 'gyeongju',   label: '경주(보문단지/황리단길/불국사/양남/감포/안강)',                keywords: ['경주', '보문단지', '황리단길', '불국사', '양남', '감포', '안강'] },
+  { key: 'gumi',       label: '구미',                                                       keywords: ['구미'] },
+  { key: 'gyeongsan',  label: '경산(영남대/대구대/갓바위/하양/진량/자인)',                   keywords: ['경산', '영남대', '경산 대구대', '갓바위', '하양', '진량', '자인'] },
+  { key: 'andong',     label: '안동(경북도청/하회마을)',                                     keywords: ['안동', '경북도청', '하회마을'] },
+  { key: 'yeongcheon', label: '영천/청도',                                                  keywords: ['영천', '청도'] },
+  { key: 'gimcheon',   label: '김천/칠곡/성주',                                             keywords: ['김천', '칠곡', '성주'] },
+  { key: 'mungyeong',  label: '문경/상주/영주/예천/의성/봉화',                              keywords: ['문경', '상주', '영주', '예천', '의성', '봉화'] },
+  { key: 'uljin',      label: '울진/영덕/청송',                                             keywords: ['울진', '영덕', '청송'] },
+  { key: 'ulleungdo',  label: '울릉도',                                                     keywords: ['울릉도', '울릉'] },
+]
+
+// 🛡️ 광주 5 그룹 — 사용자 시안 (2026-05-17)
+const GWANGJU_GROUPS: DistrictGroup[] = [
+  { key: 'sangmu',    label: '상무지구/금호지구/유스퀘어/서구',              keywords: ['상무지구', '광주 금호지구', '유스퀘어', '광주 서구'] },
+  { key: 'chungjang', label: '충장로/대인시장/국립아시아문화전당/동구/남구',  keywords: ['충장로', '대인시장', '국립아시아문화전당', '아시아문화전당', '광주 동구', '광주 남구'] },
+  { key: 'cheomdan',  label: '첨단지구/양산동',                              keywords: ['첨단지구', '광주 양산동'] },
+  { key: 'hanam_g',   label: '하남/광주여대/송정역/광산구',                  keywords: ['광주 하남', '광주여대', '광주송정역', '광산구'] },
+  { key: 'gwangjuyeok', label: '광주역/기아챔피언스필드/전대사거리/북구',     keywords: ['광주역', '기아챔피언스필드', '챔피언스필드', '전대사거리', '광주 북구'] },
+]
+
+// 🛡️ 전남 8 그룹 — 사용자 시안 (2026-05-17)
+const JEONNAM_GROUPS: DistrictGroup[] = [
+  { key: 'yeosu',      label: '여수',                                  keywords: ['여수'] },
+  { key: 'suncheon',   label: '순천',                                  keywords: ['순천'] },
+  { key: 'gwangyang',  label: '광양',                                  keywords: ['광양'] },
+  { key: 'mokpo',      label: '목포',                                  keywords: ['목포'] },
+  { key: 'muan',       label: '무안/영암/신안',                        keywords: ['무안', '영암', '신안'] },
+  { key: 'naju',       label: '나주/함평/영광/장성',                   keywords: ['나주', '함평', '영광', '장성'] },
+  { key: 'damyang',    label: '담양/곡성/화순/구례',                   keywords: ['담양', '곡성', '화순', '구례'] },
+  { key: 'haenam',     label: '해남/완도/진도/강진/장흥/보성/고흥',     keywords: ['해남', '완도', '진도', '강진', '장흥', '보성', '고흥'] },
+]
+
+// 🛡️ 전북 6 그룹 — 사용자 시안 (2026-05-17)  (label: '전주/전북')
+const JEONBUK_GROUPS: DistrictGroup[] = [
+  { key: 'jeonju_dj', label: '전주 덕진구',                          keywords: ['전주 덕진구', '덕진구'] },
+  { key: 'jeonju_ws', label: '전주 완산구/완주',                     keywords: ['전주 완산구', '완산구', '완주'] },
+  { key: 'gunsan',    label: '군산',                                  keywords: ['군산'] },
+  { key: 'iksan',     label: '익산',                                  keywords: ['익산'] },
+  { key: 'namwon_jb', label: '남원/임실/순창/무주/진안/장수',         keywords: ['전북 남원', '임실', '순창', '무주', '진안', '전북 장수'] },
+  { key: 'jeongeup',  label: '정읍/부안/김제/고창',                   keywords: ['정읍', '부안', '김제', '고창'] },
+]
+
 // 🛡️ 충남세종 11 그룹 — 사용자 시안 (2026-05-17)
 const CHUNGNAM_SEJONG_GROUPS: DistrictGroup[] = [
   { key: 'cheonan_w',  label: '천안 서북구',           keywords: ['천안 서북구', '천안서북구', '서북구'] },
@@ -177,14 +271,15 @@ export const KOREA_REGIONS: Region[] = [
   { key: '대전',       label: '대전',       districtGroups: DAEJEON_GROUPS },
   { key: '충북',       label: '충북',       districtGroups: CHUNGBUK_GROUPS },
   { key: '충남세종',   label: '충남\n세종', districtGroups: CHUNGNAM_SEJONG_GROUPS },
-  { key: '부산',       label: '부산',       districtGroups: [] },
-  { key: '울산',       label: '울산',       districtGroups: [] },
-  { key: '경남',       label: '경남',       districtGroups: [] },
-  { key: '대구',       label: '대구',       districtGroups: [] },
-  { key: '경북',       label: '경북',       districtGroups: [] },
-  { key: '광주',       label: '광주',       districtGroups: [] },
-  { key: '전남',       label: '전남',       districtGroups: [] },
-  { key: '전북',       label: '전북',       districtGroups: [] },
+  { key: '부산',       label: '부산',       districtGroups: BUSAN_GROUPS },
+  { key: '울산',       label: '울산',       districtGroups: ULSAN_GROUPS },
+  { key: '경남',       label: '경남',       districtGroups: GYEONGNAM_GROUPS },
+  { key: '대구',       label: '대구',       districtGroups: DAEGU_GROUPS },
+  { key: '경북',       label: '경북',       districtGroups: GYEONGBUK_GROUPS },
+  { key: '광주',       label: '광주',       districtGroups: GWANGJU_GROUPS },
+  { key: '전남',       label: '전남',       districtGroups: JEONNAM_GROUPS },
+  // 🛡️ 시안 우측 라벨 '전주/전북' 반영 (key 는 URL 안정성 위해 '전북' 유지)
+  { key: '전북',       label: '전주/전북',  districtGroups: JEONBUK_GROUPS },
 ]
 
 /** 시/도 키로 Region 찾기 */
