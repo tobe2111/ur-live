@@ -430,9 +430,43 @@ export default function AdminProductsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                          {product.stock > 0 ? t('admin.products.stockCount', { count: product.stock, defaultValue: `${product.stock}개` }) : t('admin.products.soldOut', { defaultValue: '품절' })}
-                        </span>
+                        {/* 🛡️ 2026-05-18: 재고 인라인 편집 — Number input + onBlur 자동 저장.
+                              0 = 품절 (red), 1-9 = 부족 (amber), 10+ = 정상 (emerald).
+                              테두리 색이 시각 신호를 제공해 한눈에 재고 상태 파악. */}
+                        <input
+                          type="number"
+                          key={`stock-${product.id}-${product.stock}`}
+                          defaultValue={product.stock}
+                          min={0}
+                          aria-label={`"${product.name}" 재고 수정`}
+                          className={`w-16 px-1.5 py-1 text-xs text-center border rounded-lg focus:outline-none ${
+                            product.stock === 0
+                              ? 'border-red-300 bg-red-50 text-red-600 focus:border-red-500'
+                              : product.stock < 10
+                                ? 'border-amber-300 bg-amber-50 text-amber-700 focus:border-amber-500'
+                                : 'border-emerald-200 bg-white text-gray-900 focus:border-emerald-500'
+                          }`}
+                          onBlur={async (e) => {
+                            const val = Number(e.target.value)
+                            if (!Number.isFinite(val) || val < 0) {
+                              e.target.value = String(product.stock)
+                              toast.error(t('admin.products.stockInvalid', { defaultValue: '재고는 0 이상의 숫자여야 합니다' }))
+                              return
+                            }
+                            if (val === product.stock) return
+                            try {
+                              const tk = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+                              await api.patch(`/api/admin/products/${product.id}`, { stock: val }, { headers: { Authorization: `Bearer ${tk}` } })
+                              setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: val } : p))
+                              toast.success(t('admin.products.stockChanged', { val, defaultValue: `재고 ${val}개로 변경` }))
+                            } catch (err: unknown) {
+                              e.target.value = String(product.stock)
+                              const ax = err as { response?: { data?: { error?: string } } }
+                              toast.error(ax.response?.data?.error || t('admin.products.stockChangeFail', { defaultValue: '재고 변경 실패' }))
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                        />
                       </td>
                       <td className="px-4 py-3 text-center">
                         <input

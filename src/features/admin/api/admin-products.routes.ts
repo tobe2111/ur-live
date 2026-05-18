@@ -7,7 +7,7 @@
  * - GET    /products                   — 전체 상품 목록
  * - POST   /products                   — 상품 생성
  * - PUT    /products/:id               — 상품 전체 수정
- * - PATCH  /products/:id               — 상품 부분 수정 (is_active, sold_count)
+ * - PATCH  /products/:id               — 상품 부분 수정 (is_active, sold_count, stock)
  * - DELETE /products/:id               — 상품 삭제 (soft/hard)
  * - GET    /sample-requests            — 샘플 신청 목록
  * - PATCH  /sample-requests/:id        — 샘플 신청 승인/거부 + 알림톡
@@ -303,7 +303,7 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
     const productId = c.req.param('id');
     if (!productId || !/^\d+$/.test(String(productId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json();
-    const { is_active, sold_count } = body;
+    const { is_active, sold_count, stock } = body;
 
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
@@ -315,11 +315,28 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
 
     if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active ? 1 : 0); }
     if (sold_count !== undefined) { updates.push('sold_count = ?'); params.push(Number(sold_count)); }
+    // 🛡️ 2026-05-18: 어드민 상품 목록에서 재고 인라인 편집 — stock 도 PATCH 지원.
+    //   음수 차단 + Number.isFinite 검증 (NaN/Infinity 차단).
+    if (stock !== undefined) {
+      const n = Number(stock);
+      if (!Number.isFinite(n) || n < 0) {
+        return c.json({ success: false, error: '재고는 0 이상의 숫자여야 합니다' }, 400);
+      }
+      updates.push('stock = ?'); params.push(Math.floor(n));
+    }
 
     params.push(productId);
     await executeRun(DB, `UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
 
-    return c.json({ success: true, data: { id: productId, ...(is_active !== undefined ? { is_active: is_active ? 1 : 0 } : {}), ...(sold_count !== undefined ? { sold_count: Number(sold_count) } : {}) } });
+    return c.json({
+      success: true,
+      data: {
+        id: productId,
+        ...(is_active !== undefined ? { is_active: is_active ? 1 : 0 } : {}),
+        ...(sold_count !== undefined ? { sold_count: Number(sold_count) } : {}),
+        ...(stock !== undefined ? { stock: Math.floor(Number(stock)) } : {}),
+      },
+    });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] patch product error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
