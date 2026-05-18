@@ -23,6 +23,8 @@ import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RecentlyViewedStrip from '@/components/group-buy/RecentlyViewedStrip'
+import RegionPickerModal from '@/components/RegionPickerModal'
+import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
@@ -31,7 +33,7 @@ export default function GroupBuyListPage() {
   const navigate = useNavigate()
   // 🛡️ 2026-05-16: URL ?category= 처리 — 메인 hero 의 8 카테고리 각각 정확 필터
   //   voucher 6종 (meal/beauty/health/pet/stay/activity) + general + all 모두 직접 매칭
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const urlCategory = (searchParams.get('category') || '').toLowerCase()
   const urlSort = (searchParams.get('sort') || '').toLowerCase()
   const VALID_CATEGORIES: CategoryFilter[] = ['all', 'general', 'meal_voucher', 'beauty_voucher', 'health_voucher', 'pet_voucher', 'stay_voucher', 'activity_voucher']
@@ -39,6 +41,9 @@ export default function GroupBuyListPage() {
     ? (urlCategory as CategoryFilter)
     : 'all'
   const initialSort: SortOption = urlSort === 'discount' ? 'discount' : 'popular'
+  // 🛡️ 2026-05-17: 지역 필터 (?region=서울&district=gangnam) — 당근 스타일 picker
+  const urlRegion = searchParams.get('region') || null
+  const urlDistrict = searchParams.get('district') || null
 
   const [mainTab, setMainTab] = useState<MainTab>('seller')
   const [items, setItems] = useState<GroupBuyProduct[]>([])
@@ -50,6 +55,28 @@ export default function GroupBuyListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
+  // 🛡️ 2026-05-17: 지역 필터 상태 + 모달
+  const [regionKey, setRegionKey] = useState<string | null>(urlRegion)
+  const [districtKey, setDistrictKey] = useState<string | null>(urlDistrict)
+  const [regionPickerOpen, setRegionPickerOpen] = useState(false)
+
+  // 지역 변경 시 URL 동기화 (browser back/share 지원)
+  function applyRegion(r: string | null, d: string | null) {
+    setRegionKey(r)
+    setDistrictKey(d)
+    const next = new URLSearchParams(searchParams)
+    if (r) next.set('region', r); else next.delete('region')
+    if (d) next.set('district', d); else next.delete('district')
+    setSearchParams(next, { replace: true })
+  }
+
+  const activeRegion = findRegionByKey(regionKey)
+  const activeDistrict = findDistrictGroup(regionKey, districtKey)
+  const regionButtonLabel = activeDistrict
+    ? activeDistrict.label
+    : activeRegion
+    ? `${activeRegion.label.replace('\n', ' ')} 전체`
+    : '전체 지역'
 
   const toggleInterest = (e: React.MouseEvent, productId: number, restaurantName?: string) => {
     e.stopPropagation()
@@ -131,6 +158,16 @@ export default function GroupBuyListPage() {
       )
     }
 
+    // 🛡️ 2026-05-17: 지역 필터 — restaurant_address 매칭 (한 쪽 미지정 시 무필터)
+    if (regionKey) {
+      result = result.filter((p) => {
+        const addr = (p as { restaurant_address?: string; restaurant_name?: string }).restaurant_address
+          || (p as { restaurant_name?: string }).restaurant_name
+          || ''
+        return matchAddress(addr, regionKey, districtKey)
+      })
+    }
+
     // 정렬
     switch (sortBy) {
       case 'popular':
@@ -169,7 +206,7 @@ export default function GroupBuyListPage() {
     }
 
     return result
-  }, [items, category, sortBy, searchQuery])
+  }, [items, category, sortBy, searchQuery, regionKey, districtKey])
 
   const filteredCommunity = useMemo(() => {
     let result = [...communityItems]
@@ -343,6 +380,32 @@ export default function GroupBuyListPage() {
           </div>
         </div>
       )}
+
+      {/* 🛡️ 2026-05-17: 지역 필터 버튼 — 당근 스타일 picker 진입 */}
+      <div className="ur-content-wide px-4 lg:px-8 mt-3 flex items-center gap-2">
+        <button
+          onClick={() => setRegionPickerOpen(true)}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
+            regionKey
+              ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300'
+              : 'bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300'
+          }`}
+          aria-label="지역 선택"
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          <span className="max-w-[150px] truncate">{regionButtonLabel}</span>
+          <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+        </button>
+        {regionKey && (
+          <button
+            onClick={() => applyRegion(null, null)}
+            className="text-[12px] text-gray-500 dark:text-gray-400 underline underline-offset-2"
+            aria-label="지역 필터 해제"
+          >
+            해제
+          </button>
+        )}
+      </div>
 
       {/* 🛡️ 2026-05-16: 텍스트 검색 input */}
       <div className="ur-content-wide px-4 lg:px-8 mt-3">
@@ -792,6 +855,15 @@ export default function GroupBuyListPage() {
           </>
         )}
       </div>
+
+      {/* 🛡️ 2026-05-17: 지역 선택 모달 (당근 스타일) */}
+      <RegionPickerModal
+        open={regionPickerOpen}
+        regionKey={regionKey}
+        districtKey={districtKey}
+        onClose={() => setRegionPickerOpen(false)}
+        onSelect={(r, d) => applyRegion(r, d)}
+      />
     </div>
   )
 }
