@@ -71,9 +71,10 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
-// 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6.
+// 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
 const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage'))
 const StayDetailPage = lazy(() => import('./pages/StayDetailPage'))
+const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
 const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'))
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage'))
@@ -366,6 +367,7 @@ function AppContent() {
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
+            <Route path="/my-stays" element={<MyStaysPage />} />
             {/* 🛡️ 2026-05-15: B2B 랜딩 페이지 — PC 풀 너비, 영업/모집용 */}
             <Route path="/business" element={<BusinessLandingPage />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} />

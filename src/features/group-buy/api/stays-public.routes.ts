@@ -215,25 +215,26 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
     let userId: number | null = null
     try {
       const { verify } = await import('hono/jwt')
-      const payload = await verify(auth.substring(7), (c.env as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
+      const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
       userId = Number(payload.user_id ?? payload.sub) || null
     } catch { return c.json({ success: false, error: '토큰 무효' }, 401) }
     if (!userId) return c.json({ success: false, error: '사용자 정보 없음' }, 401)
 
-    const body = await c.req.json<{
+    type CreateBookingBody = {
       product_id?: number; room_id?: number;
       check_in_date?: string; check_out_date?: string;
       guest_count?: number; guest_name?: string; guest_phone?: string;
       guest_email?: string; special_request?: string;
-    }>().catch(() => ({}))
+    }
+    const body = await c.req.json<CreateBookingBody>().catch(() => ({} as CreateBookingBody))
 
-    const productId = Number(body.product_id)
-    const roomId = Number(body.room_id)
-    const checkIn = String(body.check_in_date || '')
-    const checkOut = String(body.check_out_date || '')
-    const guestCount = Math.max(1, Number(body.guest_count) || 1)
-    const guestName = String(body.guest_name || '').trim()
-    const guestPhone = String(body.guest_phone || '').trim()
+    const productId = Number(body?.product_id)
+    const roomId = Number(body?.room_id)
+    const checkIn = String(body?.check_in_date || '')
+    const checkOut = String(body?.check_out_date || '')
+    const guestCount = Math.max(1, Number(body?.guest_count) || 1)
+    const guestName = String(body?.guest_name || '').trim()
+    const guestPhone = String(body?.guest_phone || '').trim()
 
     if (!Number.isFinite(productId) || !Number.isFinite(roomId)) {
       return c.json({ success: false, error: 'product_id / room_id 필요' }, 400)
@@ -326,7 +327,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
       orderId, productId, roomId, room.seller_id, userId,
       checkIn, checkOut, nights,
       guestCount, guestName, guestPhone,
-      body.guest_email || null, body.special_request || null,
+      body?.guest_email || null, body?.special_request || null,
       roomTotal, extraGuestFee, totalAmount, code,
     ).run().catch((e: Error) => { throw new Error(`예약 생성 실패: ${e.message}`) })
     const bookingId = Number(bookingResult.meta.last_row_id)
@@ -369,6 +370,169 @@ function generateCheckInCode(): string {
   }
   return out
 }
+
+// 🛡️ 2026-05-18 (PR 6): 사용자 예약 취소 — 취소 정책 따른 환불 비율 자동 계산.
+staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
+  try {
+    const auth = c.req.header('Authorization') || ''
+    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
+    const { verify } = await import('hono/jwt')
+    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
+    const userId = Number(payload.user_id ?? payload.sub) || null
+    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+
+    const id = Number(c.req.param('id'))
+    const cancelBody = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))
+    const reason = cancelBody?.reason
+
+    const booking = await c.env.DB.prepare(
+      `SELECT b.id, b.user_id, b.status, b.total_amount, b.check_in_date, b.product_id, b.order_id,
+              psi.cancellation_policy
+         FROM stay_bookings b
+         LEFT JOIN product_stay_info psi ON psi.product_id = b.product_id
+        WHERE b.id = ?`
+    ).bind(id).first<{
+      id: number; user_id: number; status: string; total_amount: number;
+      check_in_date: string; product_id: number; order_id: number;
+      cancellation_policy: string | null;
+    }>()
+    if (!booking) return c.json({ success: false, error: '예약 없음' }, 404)
+    if (booking.user_id !== userId) return c.json({ success: false, error: '권한 없음' }, 403)
+    if (!['confirmed', 'pending'].includes(booking.status)) {
+      return c.json({ success: false, error: `상태 '${booking.status}' 에서 취소 불가` }, 400)
+    }
+
+    // 취소 정책 따른 환불 비율 계산.
+    const hoursUntil = (new Date(booking.check_in_date).getTime() - Date.now()) / 3600000
+    let refundRate = 0
+    const policy = booking.cancellation_policy || 'standard'
+    if (policy === 'flexible') {
+      refundRate = hoursUntil >= 24 ? 1.0 : 0
+    } else if (policy === 'standard') {
+      refundRate = hoursUntil >= 48 ? 1.0 : (hoursUntil >= 24 ? 0.5 : 0)
+    } else if (policy === 'strict') {
+      refundRate = hoursUntil >= 72 ? 0.5 : 0
+    } else if (policy === 'non_refundable') {
+      refundRate = 0
+    }
+    const refundAmount = Math.floor(booking.total_amount * refundRate)
+
+    await c.env.DB.prepare(
+      `UPDATE stay_bookings
+          SET status = 'cancelled',
+              cancelled_at = datetime('now'),
+              cancellation_reason = ?,
+              refund_amount = ?,
+              updated_at = datetime('now')
+        WHERE id = ?`
+    ).bind(reason || '사용자 취소', refundAmount, id).run()
+
+    await c.env.DB.prepare(
+      `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
+       VALUES (?, ?, 'cancelled', 'user', ?, ?)`
+    ).bind(id, booking.status, userId, `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%`).run()
+      .catch(() => { /* noop */ })
+
+    // 환불 비율이 100% 이면 즉시 처리, 부분 환불은 어드민 검토 큐로.
+    // 실제 결제 PG 환불은 별도 워커 (현재는 status='cancelled' 만 마킹 — TODO: 토스 API).
+
+    return c.json({
+      success: true,
+      data: {
+        refund_amount: refundAmount,
+        refund_rate: refundRate,
+        policy,
+        hours_until_check_in: Math.round(hoursUntil),
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// 🛡️ 2026-05-18 (PR 6): 리뷰 작성 — 체크아웃 완료 예약만.
+staysPublicRoutes.post('/stays/bookings/:id/review', cors(), async (c) => {
+  try {
+    const auth = c.req.header('Authorization') || ''
+    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
+    const { verify } = await import('hono/jwt')
+    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
+    const userId = Number(payload.user_id ?? payload.sub) || null
+    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+
+    const bookingId = Number(c.req.param('id'))
+    type ReviewBody = {
+      rating_overall?: number; rating_cleanliness?: number; rating_location?: number;
+      rating_service?: number; rating_facility?: number; rating_value?: number;
+      title?: string; comment?: string; photos?: string[];
+    }
+    const body = await c.req.json<ReviewBody>().catch(() => ({} as ReviewBody))
+
+    const booking = await c.env.DB.prepare(
+      'SELECT id, user_id, product_id, status FROM stay_bookings WHERE id = ?'
+    ).bind(bookingId).first<{ id: number; user_id: number; product_id: number; status: string }>()
+    if (!booking) return c.json({ success: false, error: '예약 없음' }, 404)
+    if (booking.user_id !== userId) return c.json({ success: false, error: '권한 없음' }, 403)
+    if (booking.status !== 'checked_out') {
+      return c.json({ success: false, error: '체크아웃 완료된 예약만 리뷰 작성 가능' }, 400)
+    }
+
+    // 평점 검증 (1-5 범위).
+    const r = (v: unknown): number | null => {
+      const n = Number(v)
+      return Number.isFinite(n) && n >= 1 && n <= 5 ? n : null
+    }
+    const ratingOverall = r(body.rating_overall)
+    if (ratingOverall === null) return c.json({ success: false, error: '전체 평점 필요 (1-5)' }, 400)
+
+    // 중복 체크 (booking_id UNIQUE).
+    const dup = await c.env.DB.prepare('SELECT id FROM stay_booking_reviews WHERE booking_id = ?').bind(bookingId).first()
+    if (dup) return c.json({ success: false, error: '이미 리뷰가 작성되었습니다' }, 400)
+
+    const photosJson = JSON.stringify(Array.isArray(body.photos) ? body.photos.slice(0, 10) : [])
+
+    await c.env.DB.prepare(
+      `INSERT INTO stay_booking_reviews (
+         booking_id, product_id, user_id,
+         rating_cleanliness, rating_location, rating_service, rating_facility, rating_value, rating_overall,
+         title, comment, photos
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      bookingId, booking.product_id, userId,
+      r(body.rating_cleanliness), r(body.rating_location), r(body.rating_service),
+      r(body.rating_facility), r(body.rating_value), ratingOverall,
+      (body.title || '').slice(0, 200), (body.comment || '').slice(0, 5000), photosJson,
+    ).run()
+
+    return c.json({ success: true, message: '리뷰가 등록되었습니다' })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// 사용자 본인 예약 목록 (마이페이지용).
+staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
+  try {
+    const auth = c.req.header('Authorization') || ''
+    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
+    const { verify } = await import('hono/jwt')
+    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
+    const userId = Number(payload.user_id ?? payload.sub) || null
+    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+
+    const rows = await c.env.DB.prepare(
+      `SELECT b.*, p.name as product_name, r.name as room_name, p.image_url
+         FROM stay_bookings b
+         LEFT JOIN products p ON p.id = b.product_id
+         LEFT JOIN product_stay_rooms r ON r.id = b.room_id
+        WHERE b.user_id = ?
+        ORDER BY b.check_in_date DESC LIMIT 100`
+    ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: rows.results || [] })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
 
 // 리뷰 목록
 staysPublicRoutes.get('/stays/:productId/reviews', cors(), async (c) => {

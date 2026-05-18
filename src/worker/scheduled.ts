@@ -134,6 +134,15 @@ export async function handleCronScheduled(
     }));
   }
 
+  // 🛡️ 2026-05-18 (PR 6/6): 숙소 예약 D-1 / D-day 알림 — 매일 09:00 UTC (KST 18:00).
+  //   KST 09:00 으로 옮기려면 '0 0 * * *' (UTC).
+  if (cron === '0 9 * * *' || cron === '0 0 * * *') {
+    ctx.waitUntil(safeCron('stay-reminder', async () => {
+      const { runStayReminderCron } = await import('./cron/stay-reminder')
+      await runStayReminderCron(env as { DB: D1Database })
+    }))
+  }
+
   if (cron === '0 19 * * *') {
     ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
     // 🛡️ 2026-05-16: 인플루언서 attribution pending→available 매일 19시 동기화.
