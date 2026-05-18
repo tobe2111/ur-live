@@ -53,6 +53,7 @@ const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNew
 const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
 const SellerStayNewPage = lazy(() => import('@/pages/SellerStayNewPage'))
 const SellerStayDetailPage = lazy(() => import('@/pages/SellerStayDetailPage'))
+const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
@@ -216,6 +217,11 @@ export function SellerRoutes() {
       <Route path="/seller/stays" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerStaysPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stays/bookings" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStaysBookingsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/stays/new" element={

@@ -537,7 +537,120 @@ sellerStaysRoutes.patch('/stays/bookings/:bookingId/check-out',
 sellerStaysRoutes.patch('/stays/bookings/:bookingId/no-show',
   cors(), (c) => transitionBooking(c, 'no_show', ['confirmed']))
 
-// ─── 14. 어메니티 lookup (셀러 등록 폼에서 표시용) ──────────────────
+// ─── 14. 셀러 숙소 KPI (대시보드용 — OCC, ADR, RevPAR) ────────────────
+//   OCC (Occupancy Rate) = 예약된 객실-일 / 전체 객실-일 × 100
+//   ADR (Average Daily Rate) = 총 매출 / 예약된 객실-일
+//   RevPAR (Revenue Per Available Room) = 총 매출 / 전체 객실-일 = OCC × ADR
+sellerStaysRoutes.get('/stays-kpi', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const days = Math.min(90, Math.max(1, Number(c.req.query('days')) || 30))
+    const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
+
+    // 1) 총 객실 수 (셀러 전체).
+    const totalRoomsRow = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(r.total_inventory), 0) as n
+         FROM product_stay_rooms r
+         INNER JOIN products p ON p.id = r.product_id
+        WHERE p.seller_id = ? AND r.is_active = 1`
+    ).bind(sellerId).first<{ n: number }>()
+    const totalRooms = totalRoomsRow?.n || 0
+
+    // 2) 기간 내 예약된 객실-일 + 매출.
+    const bookingRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) as bookings,
+              COALESCE(SUM(nights), 0) as room_nights,
+              COALESCE(SUM(total_amount), 0) as revenue
+         FROM stay_bookings
+        WHERE seller_id = ?
+          AND status IN ('confirmed','checked_in','checked_out')
+          AND check_in_date >= ?`
+    ).bind(sellerId, since).first<{ bookings: number; room_nights: number; revenue: number }>()
+
+    const bookings = bookingRow?.bookings || 0
+    const roomNights = bookingRow?.room_nights || 0
+    const revenue = bookingRow?.revenue || 0
+
+    // 3) 노쇼/취소.
+    const noShowRow = await c.env.DB.prepare(
+      `SELECT
+         SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) as no_show,
+         SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) as cancelled,
+         SUM(CASE WHEN status='refunded' THEN 1 ELSE 0 END) as refunded,
+         SUM(CASE WHEN status='dispute' THEN 1 ELSE 0 END) as dispute
+       FROM stay_bookings
+      WHERE seller_id = ? AND check_in_date >= ?`
+    ).bind(sellerId, since).first<{ no_show: number; cancelled: number; refunded: number; dispute: number }>()
+
+    // 4) OCC / ADR / RevPAR 계산.
+    const availableRoomNights = totalRooms * days
+    const occ = availableRoomNights > 0 ? (roomNights / availableRoomNights) * 100 : 0
+    const adr = roomNights > 0 ? Math.round(revenue / roomNights) : 0
+    const revpar = availableRoomNights > 0 ? Math.round(revenue / availableRoomNights) : 0
+
+    // 5) 평균 평점.
+    const ratingRow = await c.env.DB.prepare(
+      `SELECT AVG(r.rating_overall) as avg, COUNT(*) as cnt
+         FROM stay_booking_reviews r
+         INNER JOIN products p ON p.id = r.product_id
+        WHERE p.seller_id = ? AND r.is_visible = 1`
+    ).bind(sellerId).first<{ avg: number | null; cnt: number }>()
+
+    return c.json({
+      success: true,
+      data: {
+        period_days: days,
+        total_rooms: totalRooms,
+        available_room_nights: availableRoomNights,
+        bookings,
+        room_nights: roomNights,
+        revenue,
+        occupancy_rate: Math.round(occ * 10) / 10,    // 소수점 1자리
+        adr,
+        revpar,
+        no_show_count: noShowRow?.no_show || 0,
+        cancelled_count: noShowRow?.cancelled || 0,
+        refunded_count: noShowRow?.refunded || 0,
+        dispute_count: noShowRow?.dispute || 0,
+        avg_rating: ratingRow?.avg || null,
+        review_count: ratingRow?.cnt || 0,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// ─── 15. 셀러 전체 예약 (모든 숙소 통합) ──────────────────────────────
+sellerStaysRoutes.get('/stays-bookings', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const status = c.req.query('status')
+    const from = c.req.query('from')
+    const to = c.req.query('to')
+
+    let sql = `SELECT b.*, p.name as product_name, r.name as room_name
+                 FROM stay_bookings b
+                 LEFT JOIN products p ON p.id = b.product_id
+                 LEFT JOIN product_stay_rooms r ON r.id = b.room_id
+                WHERE b.seller_id = ?`
+    const params: unknown[] = [sellerId]
+    if (status) { sql += ' AND b.status = ?'; params.push(status) }
+    if (from) { sql += ' AND b.check_in_date >= ?'; params.push(from) }
+    if (to) { sql += ' AND b.check_in_date <= ?'; params.push(to) }
+    sql += ' ORDER BY b.check_in_date DESC LIMIT 200'
+
+    const rows = await c.env.DB.prepare(sql).bind(...params)
+      .all<Record<string, unknown>>().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: rows.results || [] })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// ─── 16. 어메니티 lookup (셀러 등록 폼에서 표시용) ──────────────────
 sellerStaysRoutes.get('/stays-amenities', cors(), async (c) => {
   try {
     const rows = await c.env.DB.prepare(

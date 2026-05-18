@@ -62,8 +62,10 @@ const NAV_GROUPS: {
       { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package, mode: 'common' },
       // group-buy 는 매장 voucher 핵심 — store mode 우선이지만 인플도 voucher 발행 가능 → both 모드.
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
-      // 🛡️ 2026-05-18: 숙소 공구 — 객실/캘린더/예약 — 별도 페이지 (PR 2/6).
+      // 🛡️ 2026-05-18: 숙소 공구 — 객실/캘린더 (PR 2/6).
       { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store' },
+      // 🛡️ 2026-05-18: 숙소 예약 관리 + KPI — PR 4/6.
+      { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store' },
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag, mode: 'common' },
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3, mode: 'common' },
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
