@@ -44,6 +44,8 @@ import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
+// 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 어드민 — PR 1 Foundation.
+import { adminStaysRoutes } from '../features/admin/api/admin-stays.routes';
 import { adminOrdersRoutes } from '../features/admin/api/admin-orders.routes';
 import { adminStreamsRoutes } from '../features/admin/api/admin-streams.routes';
 import { adminAccountsRoutes } from '../features/admin/api/admin-accounts.routes';
@@ -71,6 +73,8 @@ import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk
 import { sellerRegistrationRoutes } from '../features/seller/api/seller-registration.routes';
 import { sellerProfileRoutes } from '../features/seller/api/seller-profile.routes';
 import { sellerSettlementsRoutes } from '../features/seller/api/seller-settlements.routes';
+// 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 셀러 CRUD — PR 1 Foundation.
+import { sellerStaysRoutes } from '../features/seller/api/seller-stays.routes';
 import { sellerAccountRoutes } from '../features/seller/api/seller-account.routes';
 import { consignmentRoutes } from '../features/seller/api/consignment.routes';
 import { giftsRoutes } from '../features/gifts/api/gifts.routes';
@@ -130,6 +134,8 @@ import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
 import { agencySettlementsRoutes } from '../features/agency/api/agency-settlements.routes';
+// 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
+import { agencyStaysRoutes } from '../features/agency/api/agency-stays.routes';
 import { agencyOpsRoutes } from '../features/agency/api/agency-ops.routes';
 import { agencySellersRoutes } from '../features/agency/api/agency-sellers.routes';
 import { agencyPinRoutes } from '../features/agency/api/agency-pin.routes';
@@ -167,6 +173,8 @@ import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/
 import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+// 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 사용자 측 public — PR 1 Foundation.
+import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { requireAdmin } from './middleware/auth';
@@ -811,6 +819,8 @@ app.route('/api/seller', sellerRegistrationRoutes);
 app.route('/api/seller', sellerProfileRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /settlements*, /dashboard/stats
 app.route('/api/seller', sellerSettlementsRoutes);
+// 🛡️ 2026-05-18: 숙소 공구 셀러 CRUD (PR 1 Foundation).
+app.route('/api/seller', sellerStaysRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /personal-info, /change-password, /upload-image
 app.route('/api/seller', sellerAccountRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
@@ -958,6 +968,8 @@ adminApp.route('/', adminStatsRoutes);
 adminApp.route('/', adminSellersRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);
+// 🛡️ 2026-05-18: 숙소 공구 어드민 (PR 1 Foundation).
+adminApp.route('/', adminStaysRoutes);
 // 🛡️ 2026-04-22 배치 149 (TD-006 부분): admin-orders 분리 (~356줄)
 adminApp.route('/', adminOrdersRoutes);
 // 🛡️ 2026-04-22 배치 150 (TD-006 부분): admin-streams + alimtalk 분리
@@ -1028,6 +1040,8 @@ app.route('/api/shorts', shortsRoutes);
 // ── 공동구매 & 바우처 ──
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
+// 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
+app.route('/api/group-buy', staysPublicRoutes);
 // 🛡️ 2026-05-16: 셀러 마케팅 (인플 차단) + 인플루언서 정산 + 어드민 송금 + 인플 카탈로그
 app.route('/api/seller-marketing', sellerMarketingRoutes);
 app.route('/api/influencer-settlement', influencerSettlementRoutes);
@@ -1169,6 +1183,8 @@ app.route('/api/agency', agencyKakaoLinkRoutes);
 app.route('/api/agency', agencyStatsRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /settlements, /settlement-invoices, /settlement-invoices/:id, /settlements/request
 app.route('/api/agency', agencySettlementsRoutes);
+// 🛡️ 2026-05-18: 숙소 공구 에이전시 (PR 1 Foundation).
+app.route('/api/agency', agencyStaysRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /notices, /monthly-tasks, /targets, /sellers/compare, /contracts
 app.route('/api/agency', agencyOpsRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /sellers*, /orders, /streams, /ranking, /schedule, /returns
