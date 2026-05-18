@@ -301,8 +301,8 @@ export default function MainHomePage() {
         <div className="flex items-end justify-between mb-3">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] animate-pulse" />
-              <span className="text-[10px] font-extrabold text-[#FBBF24] tracking-[0.14em]">{t('mainHome.nearbyTag')}</span>
+              {/* 🛡️ 2026-05-17: '오프라인' 대분류 라벨 명시 — 온라인 (FlashDeals/UR특가) 와 시각 분리. */}
+              <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 tracking-[0.14em]">🏪 {t('mainHome.offlineTag', { defaultValue: '오프라인 — 내 주변 공구' })}</span>
               <button onClick={() => setRegionModalOpen(true)} className="text-[9px] text-gray-500 dark:text-gray-400 underline underline-offset-2">
                 {region}
               </button>
@@ -311,12 +311,30 @@ export default function MainHomePage() {
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('mainHome.nearbyCount', { count: displayMeals.length })}</p>
           </div>
           <div className="flex items-center gap-2 pb-1">
-            <button onClick={() => navigate('/restaurant-map')} className="flex items-center gap-1 text-[11px] text-[#FBBF24] font-bold">
+            <button onClick={() => navigate('/restaurant-map')} className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-bold">
               <Map className="w-3.5 h-3.5" /> {t('mainHome.mapShortcut')}
             </button>
-            {/* 🛡️ 2026-05-17: Hero 카테고리 그리드와 destination 통일 — /group-buy SSOT */}
-            <button onClick={() => navigate('/group-buy?category=meal_voucher')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
+            {/* 🛡️ 2026-05-17: '전체 보기' 는 /group-buy 의 voucher 카테고리만 (특정 cat 강제 X). */}
+            <button onClick={() => navigate('/group-buy')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
           </div>
+        </div>
+
+        {/* 🛡️ 2026-05-17: 4 카테고리 sub-tab — 식사/미용/숙소/기타. 클릭 시 해당 필터로 /group-buy 이동. */}
+        <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar">
+          {[
+            { key: 'meal_voucher',   emoji: '🍽️', label: '식사' },
+            { key: 'beauty_voucher', emoji: '💇', label: '미용' },
+            { key: 'stay_voucher',   emoji: '🏨', label: '숙소' },
+            { key: 'etc_voucher',    emoji: '🎯', label: '기타' },
+          ].map((c) => (
+            <button
+              key={c.key}
+              onClick={() => navigate(`/group-buy?category=${c.key}`)}
+              className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 active:scale-95 transition-transform"
+            >
+              <span aria-hidden>{c.emoji}</span> {c.label}
+            </button>
+          ))}
         </div>
 
         {/* 🛡️ 2026-04-27: 카카오맵 지도 페이지 유입 — 메인 hook CTA 배너 */}
@@ -445,10 +463,11 @@ export default function MainHomePage() {
         </div>
       )}
 
-      {/* ═══ UR특가 ═══ */}
+      {/* ═══ 🛍️ 온라인 — UR특가 (일반 배송 상품) ═══ */}
       <div className="pt-8 mt-6 bg-gray-50 dark:bg-[#050505] border-t-8 border-gray-100 dark:border-[#0A0A0A]">
         <div className="px-4 pt-5 pb-3">
-          <p className="text-[10px] text-blue-500 dark:text-blue-300 font-extrabold tracking-[0.14em]">{t('mainHome.specialTag')}</p>
+          {/* 🛡️ 2026-05-17: '온라인' 대분류 라벨 명시 — 오프라인 (내 주변 공구) 와 시각 분리. */}
+          <p className="text-[10px] text-blue-600 dark:text-blue-400 font-extrabold tracking-[0.14em]">🛍️ {t('mainHome.onlineTag', { defaultValue: '온라인 — 배송 상품' })}</p>
           <p className="text-[22px] font-black text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
         </div>
 
