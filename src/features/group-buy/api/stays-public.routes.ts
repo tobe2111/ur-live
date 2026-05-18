@@ -120,17 +120,35 @@ staysPublicRoutes.get('/stays/:productId', cors(), async (c) => {
 })
 
 // 가용성 — 특정 기간의 객실별 잔여 + 가격 계산
+//   ?ref=USER_ID 시 인플루언서 할인 적용 가격도 반환 (referral_enabled + discount_pct > 0).
 staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
   try {
     const productId = Number(c.req.param('productId'))
     const checkIn = c.req.query('check_in') || ''
     const checkOut = c.req.query('check_out') || ''
+    const refId = c.req.query('ref') || ''
     if (!Number.isFinite(productId)) return c.json({ success: false, error: 'Invalid productId' }, 400)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) {
       return c.json({ success: false, error: '체크인/체크아웃 날짜 형식 오류' }, 400)
     }
     const nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
     if (nights < 1) return c.json({ success: false, error: '체크아웃은 체크인 이후여야 합니다' }, 400)
+
+    // 인플 referral 할인 정보.
+    let discountPct = 0
+    if (refId) {
+      const info = await c.env.DB.prepare(
+        `SELECT referral_enabled, influencer_discount_pct
+           FROM product_stay_info WHERE product_id = ?`
+      ).bind(productId).first<{ referral_enabled: number | null; influencer_discount_pct: number | null }>()
+        .catch(() => null)
+      if (info?.referral_enabled && (info.influencer_discount_pct || 0) > 0) {
+        // referrer 유효 검증.
+        const referrer = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
+          .bind(refId).first<{ id: string }>().catch(() => null)
+        if (referrer) discountPct = Math.min(50, Math.max(0, Number(info.influencer_discount_pct) || 0))
+      }
+    }
 
     const rooms = await c.env.DB.prepare(
       `SELECT id, name, base_guests, max_guests, extra_guest_fee, bed_config,
@@ -179,6 +197,8 @@ staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
         dates.push({ date: ds, price, available: avail, weekend: isWeekend })
       }
 
+      // 🛡️ 2026-05-18: 인플 referral 시 할인 가격 계산.
+      const discountedTotal = discountPct > 0 ? Math.floor(total * (100 - discountPct) / 100) : total
       result.push({
         room_id: r.id,
         name: r.name,
@@ -191,13 +211,22 @@ staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
         available: !unavailable,
         available_count: unavailable ? 0 : minAvailable,
         total_price: total,
+        discounted_price: discountedTotal,
+        discount_pct: discountPct,
         nights,
         avg_per_night: nights > 0 ? Math.round(total / nights) : 0,
+        avg_per_night_discounted: nights > 0 ? Math.round(discountedTotal / nights) : 0,
         dates,
       })
     }
 
-    return c.json({ success: true, data: { rooms: result, nights, check_in: checkIn, check_out: checkOut } })
+    return c.json({
+      success: true,
+      data: {
+        rooms: result, nights, check_in: checkIn, check_out: checkOut,
+        referral: { active: discountPct > 0, discount_pct: discountPct, referrer_id: discountPct > 0 ? refId : null },
+      },
+    })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }
@@ -225,6 +254,8 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
       check_in_date?: string; check_out_date?: string;
       guest_count?: number; guest_name?: string; guest_phone?: string;
       guest_email?: string; special_request?: string;
+      // 🛡️ 2026-05-18: 인플루언서 referral.
+      referrer_id?: string | number;
     }
     const body = await c.req.json<CreateBookingBody>().catch(() => ({} as CreateBookingBody))
 
@@ -246,12 +277,13 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
     if (nights < 1) return c.json({ success: false, error: '체크아웃은 체크인 이후여야 합니다' }, 400)
     if (!guestName || !guestPhone) return c.json({ success: false, error: '게스트 이름/전화번호 필수' }, 400)
 
-    // 객실 + 숙소 정보 조회.
+    // 객실 + 숙소 정보 조회 (인플 referral 필드 포함).
     const room = await c.env.DB.prepare(
       `SELECT r.id, r.product_id, r.name, r.base_guests, r.max_guests, r.extra_guest_fee,
               r.base_price_weekday, r.base_price_weekend, r.base_price_holiday, r.total_inventory,
               p.seller_id, p.name as product_name,
-              psi.min_nights, psi.advance_booking_days
+              psi.min_nights, psi.advance_booking_days,
+              psi.referral_enabled, psi.influencer_discount_pct, psi.influencer_commission_pct
          FROM product_stay_rooms r
          INNER JOIN products p ON p.id = r.product_id
          LEFT JOIN product_stay_info psi ON psi.product_id = p.id
@@ -260,6 +292,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
       id: number; product_id: number; name: string; base_guests: number; max_guests: number; extra_guest_fee: number;
       base_price_weekday: number; base_price_weekend: number; base_price_holiday: number | null; total_inventory: number;
       seller_id: number; product_name: string; min_nights: number | null; advance_booking_days: number | null;
+      referral_enabled: number | null; influencer_discount_pct: number | null; influencer_commission_pct: number | null;
     }>()
     if (!room) return c.json({ success: false, error: '객실 없음' }, 404)
     if (guestCount > room.max_guests) {
@@ -294,7 +327,30 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
     // 추가 인원 요금.
     const extraGuests = Math.max(0, guestCount - room.base_guests)
     const extraGuestFee = extraGuests * room.extra_guest_fee * nights
-    const totalAmount = roomTotal + extraGuestFee
+    const subtotal = roomTotal + extraGuestFee
+
+    // 🛡️ 2026-05-18: 인플루언서 referral 할인 + 커미션 계산.
+    let discountAmount = 0
+    let commissionAmount = 0
+    let validatedReferrerId: string | null = null
+    if (body?.referrer_id && room.referral_enabled && (room.influencer_discount_pct || 0) > 0) {
+      const refId = String(body.referrer_id).trim()
+      // self-referral 차단.
+      if (refId !== String(userId)) {
+        // referrer 가 유효한 user 인지 검증 (active 인플 또는 일반 사용자).
+        const referrer = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
+          .bind(refId).first<{ id: string }>().catch(() => null)
+        if (referrer) {
+          validatedReferrerId = refId
+          const discountPct = Math.min(50, Math.max(0, Number(room.influencer_discount_pct) || 0))  // 50% 안전 상한
+          discountAmount = Math.floor(subtotal * discountPct / 100)
+          const commissionPct = Math.min(20, Math.max(0, Number(room.influencer_commission_pct) || 0))  // 20% 안전 상한
+          commissionAmount = Math.floor((subtotal - discountAmount) * commissionPct / 100)
+        }
+      }
+    }
+
+    const totalAmount = subtotal - discountAmount
 
     // 체크인 코드 생성 (8자리 영숫자).
     const code = generateCheckInCode()
@@ -321,14 +377,16 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
          check_in_date, check_out_date, nights,
          guest_count, guest_name, guest_phone, guest_email, special_request,
          room_total, extra_guest_fee, total_amount,
-         status, check_in_code
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+         status, check_in_code,
+         referrer_id, discount_amount, influencer_commission_amount
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`
     ).bind(
       orderId, productId, roomId, room.seller_id, userId,
       checkIn, checkOut, nights,
       guestCount, guestName, guestPhone,
       body?.guest_email || null, body?.special_request || null,
       roomTotal, extraGuestFee, totalAmount, code,
+      validatedReferrerId, discountAmount, commissionAmount,
     ).run().catch((e: Error) => { throw new Error(`예약 생성 실패: ${e.message}`) })
     const bookingId = Number(bookingResult.meta.last_row_id)
 
@@ -347,9 +405,13 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
       data: {
         booking_id: bookingId,
         order_id: orderId,
-        total_amount: totalAmount,
+        subtotal,                  // 할인 전 금액
+        discount_amount: discountAmount,
+        total_amount: totalAmount, // 실 결제 금액
         room_total: roomTotal,
         extra_guest_fee: extraGuestFee,
+        commission_amount: commissionAmount,
+        referrer_id: validatedReferrerId,
         nights,
         check_in_code: code,
         check_in_date: checkIn,

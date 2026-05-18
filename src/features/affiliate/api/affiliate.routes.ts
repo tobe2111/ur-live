@@ -318,10 +318,12 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
 affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
-  const type = c.req.param('type') // 'product' | 'live' | 'group-buy'
+  const type = c.req.param('type') // 'product' | 'live' | 'group-buy' | 'stay'
   const id = c.req.param('id')
+  // 🛡️ 2026-05-18: 'stay' 타입 추가 — 인플루언서 호텔 referral.
   const path = type === 'live' ? `/live/${id}`
     : type === 'group-buy' ? `/group-buy/${id}`
+    : type === 'stay' ? `/stays/${id}`
     : `/products/${id}`
   return c.json({
     success: true,

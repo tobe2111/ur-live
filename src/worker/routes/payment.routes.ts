@@ -272,14 +272,20 @@ paymentsRouter.post('/confirm', async (c) => {
     }
 
     // 🛡️ 2026-05-18: 숙소 예약 (orders.stay_booking_id) 가 있으면 stay_bookings status='confirmed'
-    //   + 캘린더 available_count 차감. (orders 의 단일 row 만 대상 — 멀티 주문 stays 는 별도 PR.)
+    //   + 캘린더 available_count 차감 + 인플루언서 commission 지급 affiliate track.
     for (const order of orders) {
       const stayBookingId = (order as unknown as { stay_booking_id?: number | null }).stay_booking_id
       if (!stayBookingId) continue
       try {
         const booking = await c.env.DB.prepare(
-          'SELECT id, product_id, room_id, check_in_date, check_out_date, status FROM stay_bookings WHERE id = ?'
-        ).bind(stayBookingId).first<{ id: number; product_id: number; room_id: number; check_in_date: string; check_out_date: string; status: string }>()
+          `SELECT id, product_id, room_id, seller_id, user_id, check_in_date, check_out_date, status,
+                  referrer_id, influencer_commission_amount, total_amount
+             FROM stay_bookings WHERE id = ?`
+        ).bind(stayBookingId).first<{
+          id: number; product_id: number; room_id: number; seller_id: number; user_id: number;
+          check_in_date: string; check_out_date: string; status: string;
+          referrer_id: string | null; influencer_commission_amount: number; total_amount: number;
+        }>()
         if (!booking || booking.status === 'confirmed') continue
 
         // 상태 전환.
