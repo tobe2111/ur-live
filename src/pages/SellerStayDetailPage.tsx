@@ -107,13 +107,16 @@ export default function SellerStayDetailPage() {
           subtitle={`${info.region_sido} ${info.region_sigungu} · 체크인 ${info.check_in_time} / 체크아웃 ${info.check_out_time}`}
           icon={<Building2 className="h-5 w-5" />}
           actions={
-            <button
-              type="button"
-              onClick={() => navigate('/seller/stays')}
-              className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />목록
-            </button>
+            <div className="flex items-center gap-2">
+              <ShareLinkButton productId={productId} />
+              <button
+                type="button"
+                onClick={() => navigate('/seller/stays')}
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />목록
+              </button>
+            </div>
           }
         />
 
@@ -622,5 +625,32 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
         </p>
       </div>
     </div>
+  )
+}
+
+// 🛡️ 2026-05-18: 인플 / 셀러 본인 공유용 referral 링크 복사 버튼.
+function ShareLinkButton({ productId }: { productId: number }) {
+  async function copyLink() {
+    try {
+      const token = localStorage.getItem('seller_token')
+      const r = await api.get(`/api/affiliate/link/stay/${productId}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+      const url = r.data?.data?.url
+      if (!url) { toast.error('링크 생성 실패'); return }
+      await navigator.clipboard.writeText(url)
+      toast.success('🔗 referral 링크 복사 완료 — 인플루언서에게 공유')
+    } catch {
+      toast.error('링크 복사 실패')
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copyLink}
+      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-pink-50 text-pink-700 text-xs font-semibold rounded-lg hover:bg-pink-100"
+      title="이 숙소의 인플루언서 추천 링크 복사"
+    >
+      🔗 referral 링크
+    </button>
   )
 }

@@ -52,6 +52,17 @@ export default function SellerStayNewPage() {
     star_rating: '' as '' | '1' | '2' | '3' | '4' | '5',
     total_rooms: 1,
 
+    // 🛡️ 2026-05-18: 판매 모드 (시중에 없는 신규 모델).
+    sale_mode: 'date' as 'date' | 'voucher' | 'both',
+    voucher_validity_days: 180,
+    voucher_weekday_only: false,
+    voucher_weekend_only: false,
+
+    // 인플루언서 referral.
+    referral_enabled: false,
+    influencer_discount_pct: 0,
+    influencer_commission_pct: 5,
+
     check_in_time: '15:00',
     check_out_time: '11:00',
 
@@ -348,6 +359,99 @@ export default function SellerStayNewPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
               />
             </Field>
+          </Section>
+
+          {/* 🛡️ 2026-05-18: 판매 모드 선택 (voucher / date / both) */}
+          <Section icon={<span className="text-base">🎫</span>} title="판매 모드">
+            <Field label="판매 방식" required>
+              <div className="space-y-2">
+                {([
+                  { v: 'date', label: '📅 날짜 지정 예약 (야놀자 스타일)', desc: '캘린더 + 객실 가용일자 + 즉시 확정' },
+                  { v: 'voucher', label: '🎫 기간 무관 숙소권 (식사권 스타일)', desc: '평일/주말 가격만 — 사용 시 매장 협의' },
+                  { v: 'both', label: '🔀 두 모드 동시 운영', desc: '평시 voucher + 성수기 캘린더' },
+                ] as const).map((m) => (
+                  <label key={m.v} className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer ${
+                    form.sale_mode === m.v ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="sale_mode"
+                      checked={form.sale_mode === m.v}
+                      onChange={() => setForm({ ...form, sale_mode: m.v })}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-gray-900">{m.label}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{m.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            {(form.sale_mode === 'voucher' || form.sale_mode === 'both') && (
+              <>
+                <Field label="숙소권 유효기간 (일)">
+                  <input
+                    type="number"
+                    min={30} max={365}
+                    value={form.voucher_validity_days}
+                    onChange={(e) => setForm({ ...form, voucher_validity_days: Number(e.target.value) || 180 })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">소비자가 결제 후 사용 가능 기간 (default 180일)</p>
+                </Field>
+                <Field label="판매 제한">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="checkbox" checked={form.voucher_weekday_only}
+                        onChange={(e) => setForm({ ...form, voucher_weekday_only: e.target.checked, voucher_weekend_only: e.target.checked ? false : form.voucher_weekend_only })} />
+                      평일권만 판매 (월-목 사용 가능)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="checkbox" checked={form.voucher_weekend_only}
+                        onChange={(e) => setForm({ ...form, voucher_weekend_only: e.target.checked, voucher_weekday_only: e.target.checked ? false : form.voucher_weekday_only })} />
+                      주말권만 판매 (금-토 사용 가능)
+                    </label>
+                  </div>
+                </Field>
+              </>
+            )}
+          </Section>
+
+          {/* 🛡️ 2026-05-18: 인플루언서 referral — 시중에 없는 신규 모델 */}
+          <Section icon={<span className="text-base">💸</span>} title="인플루언서 referral (옵션)">
+            <Field label="referral 활성화">
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={form.referral_enabled}
+                  onChange={(e) => setForm({ ...form, referral_enabled: e.target.checked })} />
+                인플루언서가 본인 URL 로 추천 → 소비자 할인 + 인플 커미션 지급
+              </label>
+            </Field>
+            {form.referral_enabled && (
+              <>
+                <Field label="소비자 할인율 (%)">
+                  <input
+                    type="number" min={0} max={50}
+                    value={form.influencer_discount_pct}
+                    onChange={(e) => setForm({ ...form, influencer_discount_pct: Math.max(0, Math.min(50, Number(e.target.value) || 0)) })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">최대 50% — 인플 링크 통한 소비자만 적용</p>
+                </Field>
+                <Field label="인플루언서 커미션율 (%)">
+                  <input
+                    type="number" min={0} max={20}
+                    value={form.influencer_commission_pct}
+                    onChange={(e) => setForm({ ...form, influencer_commission_pct: Math.max(0, Math.min(20, Number(e.target.value) || 0)) })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">결제 금액의 N% — 인플 settle 시 지급. 최대 20%.</p>
+                </Field>
+                <div className="bg-amber-50 border border-amber-200 rounded p-2 text-[10px] text-amber-800">
+                  ⚠️ 셀러 수익 = 결제금 - 할인 - 커미션 - 플랫폼 수수료. 마진 계산 후 활성화 권장.
+                </div>
+              </>
+            )}
           </Section>
 
           {/* 4. 시설 (어메니티) */}

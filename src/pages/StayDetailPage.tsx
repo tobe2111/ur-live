@@ -36,6 +36,13 @@ interface StayDetail {
   seller_name: string
   avg_rating: number | null
   review_count: number
+  // 🛡️ 2026-05-18: 판매 모드 + voucher 옵션 + referral.
+  sale_mode?: 'date' | 'voucher' | 'both'
+  voucher_validity_days?: number
+  voucher_weekday_only?: number
+  voucher_weekend_only?: number
+  referral_enabled?: number
+  influencer_discount_pct?: number
 }
 
 interface AvailRoom {
@@ -50,6 +57,9 @@ interface AvailRoom {
   available: boolean
   available_count: number
   total_price: number
+  discounted_price?: number
+  discount_pct?: number
+  avg_per_night_discounted?: number
   nights: number
   avg_per_night: number
 }
@@ -84,6 +94,18 @@ export default function StayDetailPage() {
   const [bookingOpen, setBookingOpen] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState<AvailRoom | null>(null)
 
+  // 🛡️ 2026-05-18: 인플 referral — URL ?ref=USER_ID 유지.
+  const referrerId = params.get('ref') || ''
+
+  // 판매 모드 탭 (both 일 때만 사용자 선택).
+  const [activeMode, setActiveMode] = useState<'date' | 'voucher'>(
+    (params.get('mode') as 'date' | 'voucher') || 'date'
+  )
+
+  // voucher 모드 입력.
+  const [voucherType, setVoucherType] = useState<'weekday' | 'weekend'>('weekday')
+  const [voucherNights, setVoucherNights] = useState(1)
+
   useEffect(() => {
     if (!Number.isFinite(productId)) { navigate('/stays'); return }
     api.get(`/api/group-buy/stays/${productId}`)
@@ -94,14 +116,18 @@ export default function StayDetailPage() {
   useEffect(() => {
     if (!Number.isFinite(productId)) return
     setRoomsLoading(true)
-    api.get(`/api/group-buy/stays/${productId}/availability?check_in=${checkIn}&check_out=${checkOut}`)
+    // 🛡️ 2026-05-18: ref 도 함께 전송 → backend 가 할인 가격 계산.
+    const refQs = referrerId ? `&ref=${encodeURIComponent(referrerId)}` : ''
+    api.get(`/api/group-buy/stays/${productId}/availability?check_in=${checkIn}&check_out=${checkOut}${refQs}`)
       .then((r) => { if (r.data?.success) setRooms(r.data.data.rooms || []) })
       .catch(() => setRooms([]))
       .finally(() => setRoomsLoading(false))
     const p = new URLSearchParams(params)
     p.set('check_in', checkIn); p.set('check_out', checkOut); p.set('guests', String(guests))
+    if (referrerId) p.set('ref', referrerId)
+    if (activeMode === 'voucher') p.set('mode', 'voucher')
     setParams(p, { replace: true })
-  }, [productId, checkIn, checkOut, guests]) // eslint-disable-line
+  }, [productId, checkIn, checkOut, guests, referrerId, activeMode]) // eslint-disable-line
 
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
   const amenitiesArr: string[] = (() => {
@@ -149,23 +175,91 @@ export default function StayDetailPage() {
           ) : null}
         </div>
 
-        {/* Date/guest selector */}
+        {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
+        {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
+          <div className="bg-gradient-to-r from-pink-500/[0.15] to-violet-500/[0.15] border border-pink-500/30 rounded-xl p-3 mb-3 flex items-center gap-2.5">
+            <span className="text-xl">💸</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-pink-300">인플루언서 추천 — {stay.influencer_discount_pct}% 할인 적용</p>
+              <p className="text-[10px] text-pink-200/70 mt-0.5">결제 시 자동 적용됩니다</p>
+            </div>
+          </div>
+        )}
+
+        {/* 🛡️ 2026-05-18: 판매 모드 탭 (sale_mode='both' 시만 사용자 선택 가능). */}
+        {stay.sale_mode === 'both' && (
+          <div className="flex gap-1.5 mb-3">
+            {[
+              { v: 'date' as const, label: '📅 날짜 지정 예약' },
+              { v: 'voucher' as const, label: '🎫 숙소권 (날짜 협의)' },
+            ].map((m) => (
+              <button
+                key={m.v}
+                type="button"
+                onClick={() => setActiveMode(m.v)}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+                  activeMode === m.v ? 'bg-pink-500 text-white' : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1]'
+                }`}
+              >{m.label}</button>
+            ))}
+          </div>
+        )}
+
+        {/* selector — 모드에 따라 다른 UI */}
         <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-4 mb-5">
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 mb-1">체크인</label>
-              <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 mb-1">체크아웃</label>
-              <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 mb-1">인원</label>
-            <input type="number" min={1} max={20} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
-          </div>
-          <p className="text-xs text-gray-500 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
+          {(stay.sale_mode === 'voucher' || (stay.sale_mode === 'both' && activeMode === 'voucher')) ? (
+            <>
+              {/* voucher 모드: 평일/주말 + 박수 */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {!stay.voucher_weekend_only && (
+                  <button onClick={() => setVoucherType('weekday')}
+                    className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekday' ? 'bg-blue-500 text-white' : 'bg-[#1A1A1A] text-gray-300'}`}>
+                    🌅 평일권 (월-목)
+                  </button>
+                )}
+                {!stay.voucher_weekday_only && (
+                  <button onClick={() => setVoucherType('weekend')}
+                    className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekend' ? 'bg-amber-500 text-white' : 'bg-[#1A1A1A] text-gray-300'}`}>
+                    🌇 주말권 (금-토)
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-1">박수</label>
+                <input type="number" min={1} max={7} value={voucherNights}
+                  onChange={(e) => setVoucherNights(Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
+                  className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-1 mt-2">인원</label>
+                <input type="number" min={1} max={20} value={guests}
+                  onChange={(e) => setGuests(Number(e.target.value) || 1)}
+                  className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                ℹ️ 결제 후 매장과 직접 일정 협의 — 유효기간 {stay.voucher_validity_days || 180}일
+              </p>
+            </>
+          ) : (
+            <>
+              {/* date 모드 (기존) */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-1">체크인</label>
+                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-1">체크아웃</label>
+                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-1">인원</label>
+                <input type="number" min={1} max={20} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
+            </>
+          )}
         </div>
 
         {/* Description */}
@@ -287,7 +381,11 @@ export default function StayDetailPage() {
           checkIn={checkIn}
           checkOut={checkOut}
           guests={guests}
-          nights={nights}
+          nights={(stay.sale_mode === 'voucher' || (stay.sale_mode === 'both' && activeMode === 'voucher')) ? voucherNights : nights}
+          saleMode={(stay.sale_mode === 'voucher' || (stay.sale_mode === 'both' && activeMode === 'voucher')) ? 'voucher' : 'date'}
+          voucherType={voucherType}
+          voucherNights={voucherNights}
+          referrerId={referrerId}
           onClose={() => setBookingOpen(false)}
         />
       )}
@@ -304,8 +402,10 @@ function PolicyCard({ icon, title, content }: { icon: React.ReactNode; title: st
   )
 }
 
-function BookingModal({ stay, room, checkIn, checkOut, guests, nights, onClose }: {
-  stay: StayDetail; room: AvailRoom; checkIn: string; checkOut: string; guests: number; nights: number; onClose: () => void
+function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode, voucherType, voucherNights, referrerId, onClose }: {
+  stay: StayDetail; room: AvailRoom; checkIn: string; checkOut: string; guests: number; nights: number;
+  saleMode: 'date' | 'voucher'; voucherType: 'weekday' | 'weekend'; voucherNights: number; referrerId: string;
+  onClose: () => void
 }) {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
@@ -322,17 +422,27 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, onClose }
     setSubmitting(true)
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('firebase_token')
-      const res = await api.post('/api/group-buy/stays/bookings/create', {
+      const payload: Record<string, unknown> = {
         product_id: stay.id,
         room_id: room.room_id,
-        check_in_date: checkIn,
-        check_out_date: checkOut,
+        sale_mode: saleMode,
         guest_count: guests,
         guest_name: form.guest_name.trim(),
         guest_phone: form.guest_phone.trim(),
         guest_email: form.guest_email.trim() || undefined,
         special_request: form.special_request.trim() || undefined,
-      }, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+      }
+      if (saleMode === 'date') {
+        payload.check_in_date = checkIn
+        payload.check_out_date = checkOut
+      } else {
+        payload.voucher_type = voucherType
+        payload.voucher_nights = voucherNights
+      }
+      if (referrerId) payload.referrer_id = referrerId
+
+      const res = await api.post('/api/group-buy/stays/bookings/create', payload,
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
       if (res.data?.success) {
         const { order_id } = res.data.data
         toast.success('예약 생성됨 — 결제로 이동')
@@ -358,9 +468,22 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, onClose }
         </div>
         <div className="p-5 space-y-4">
           <div className="bg-white/[0.04] rounded-lg p-3 text-xs">
-            <p className="flex justify-between"><span className="text-gray-400">기간</span><span className="font-semibold">{checkIn} → {checkOut} ({nights}박)</span></p>
+            {saleMode === 'date' ? (
+              <p className="flex justify-between"><span className="text-gray-400">기간</span><span className="font-semibold">{checkIn} → {checkOut} ({nights}박)</span></p>
+            ) : (
+              <>
+                <p className="flex justify-between"><span className="text-gray-400">숙소권</span><span className="font-semibold">{voucherType === 'weekday' ? '평일권 (월-목)' : '주말권 (금-토)'} × {voucherNights}박</span></p>
+                <p className="flex justify-between mt-1"><span className="text-gray-400">유효기간</span><span className="font-semibold">{stay.voucher_validity_days || 180}일</span></p>
+              </>
+            )}
             <p className="flex justify-between mt-1"><span className="text-gray-400">인원</span><span className="font-semibold">{guests}명</span></p>
-            <p className="flex justify-between mt-2 pt-2 border-t border-white/10"><span className="text-gray-400">총 결제 금액</span><span className="font-extrabold text-pink-400">₩{formatNumber(room.total_price)}</span></p>
+            {referrerId && (room.discount_pct || 0) > 0 && (
+              <>
+                <p className="flex justify-between mt-1"><span className="text-gray-400">정가</span><span className="line-through text-gray-500">₩{formatNumber(room.total_price)}</span></p>
+                <p className="flex justify-between mt-1"><span className="text-pink-300">인플 할인 -{room.discount_pct}%</span><span className="font-semibold text-pink-300">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
+              </>
+            )}
+            <p className="flex justify-between mt-2 pt-2 border-t border-white/10"><span className="text-gray-400">총 결제 금액</span><span className="font-extrabold text-pink-400">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">예약자 이름 *</label>

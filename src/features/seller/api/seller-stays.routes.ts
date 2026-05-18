@@ -90,6 +90,9 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
       house_rules, check_in_instructions,
       description_full, nearby_attractions,
       min_nights, max_nights, advance_booking_days,
+      // 🛡️ 2026-05-18: 판매 모드 + 인플 referral.
+      sale_mode, voucher_validity_days, voucher_weekday_only, voucher_weekend_only,
+      referral_enabled, influencer_discount_pct, influencer_commission_pct,
     } = body
 
     if (!name || typeof name !== 'string' || name.length < 2) {
@@ -122,8 +125,10 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
          cancellation_policy, custom_cancellation_text,
          house_rules, check_in_instructions,
          description_full, nearby_attractions,
-         min_nights, max_nights, advance_booking_days
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         min_nights, max_nights, advance_booking_days,
+         sale_mode, voucher_validity_days, voucher_weekday_only, voucher_weekend_only,
+         referral_enabled, influencer_discount_pct, influencer_commission_pct
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       productId,
       property_type || 'pension',
@@ -149,6 +154,14 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
       Math.max(1, Number(min_nights) || 1),
       max_nights != null ? Number(max_nights) : null,
       Math.max(1, Math.min(365, Number(advance_booking_days) || 90)),
+      // 🛡️ 2026-05-18: sale_mode + voucher + referral.
+      (sale_mode === 'voucher' || sale_mode === 'both') ? sale_mode : 'date',
+      Math.max(30, Math.min(365, Number(voucher_validity_days) || 180)),
+      voucher_weekday_only ? 1 : 0,
+      voucher_weekend_only ? 1 : 0,
+      referral_enabled ? 1 : 0,
+      Math.max(0, Math.min(50, Number(influencer_discount_pct) || 0)),
+      Math.max(0, Math.min(20, Number(influencer_commission_pct) || 0)),
     ).run().catch((e: Error) => { throw new Error(`stay_info INSERT 실패: ${e.message}`) })
 
     return c.json({ success: true, data: { product_id: productId } })
@@ -221,6 +234,9 @@ sellerStaysRoutes.put('/stays/:productId', cors(), async (c) => {
       'latitude','longitude','amenities','room_amenities',
       'cancellation_policy','custom_cancellation_text','house_rules','check_in_instructions',
       'description_full','nearby_attractions','min_nights','max_nights','advance_booking_days',
+      // 🛡️ 2026-05-18: sale_mode + voucher + referral.
+      'sale_mode','voucher_validity_days','voucher_weekday_only','voucher_weekend_only',
+      'referral_enabled','influencer_discount_pct','influencer_commission_pct',
     ]
     const setParts: string[] = ["updated_at = datetime('now')"]
     const params: unknown[] = []
