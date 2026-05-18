@@ -99,6 +99,30 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
       return c.json({ success: false, error: '상품명은 2자 이상 필요합니다' }, 400)
     }
 
+    // 🛡️ 2026-05-18: 셀러 등급별 voucher 한도 검증.
+    const { checkVoucherLimit, canEnableReferral } = await import('@/worker/utils/seller-tier-limits')
+    const limit = await checkVoucherLimit(c.env, sellerId)
+    if (!limit.ok) {
+      return c.json({
+        success: false,
+        error: limit.reason || 'voucher 발행 한도 초과',
+        code: 'VOUCHER_LIMIT_EXCEEDED',
+        data: { tier: limit.tier_name, current: limit.current_count, limit: limit.monthly_limit },
+      }, 403)
+    }
+
+    // referral 권한 검증 — 실버 이상만.
+    if (referral_enabled) {
+      const allowed = await canEnableReferral(c.env, sellerId)
+      if (!allowed) {
+        return c.json({
+          success: false,
+          error: 'referral 활성화는 실버 이상 등급에서만 가능합니다',
+          code: 'TIER_INSUFFICIENT',
+        }, 403)
+      }
+    }
+
     // 1. products 테이블 INSERT (카테고리 강제 'stay_voucher')
     const insertProduct = await c.env.DB.prepare(
       `INSERT INTO products (
@@ -615,6 +639,30 @@ sellerStaysRoutes.patch('/stays/bookings/:bookingId/check-out',
   cors(), (c) => transitionBooking(c, 'checked_out', ['checked_in']))
 sellerStaysRoutes.patch('/stays/bookings/:bookingId/no-show',
   cors(), (c) => transitionBooking(c, 'no_show', ['confirmed']))
+
+// 🛡️ 2026-05-18: 셀러 본인 voucher 한도 + referral 권한 조회.
+//   셀러 등록 폼에서 호출 → '브론즈 등급 - 월 5개 중 2개 사용' 등 안내.
+sellerStaysRoutes.get('/stays-quota', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const { checkVoucherLimit, canEnableReferral } = await import('@/worker/utils/seller-tier-limits')
+    const limit = await checkVoucherLimit(c.env, sellerId)
+    const referralAllowed = await canEnableReferral(c.env, sellerId)
+    return c.json({
+      success: true,
+      data: {
+        tier: limit.tier_name,
+        current_count: limit.current_count,
+        monthly_limit: limit.monthly_limit,
+        can_create_more: limit.ok,
+        referral_allowed: referralAllowed,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
 
 // ─── 14. 셀러 숙소 KPI (대시보드용 — OCC, ADR, RevPAR) ────────────────
 //   OCC (Occupancy Rate) = 예약된 객실-일 / 전체 객실-일 × 100
