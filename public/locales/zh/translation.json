@@ -621,7 +621,9 @@
     "bannerAria": "横幅: {{title}}",
     "priceWon": "{{price}} 韩元",
     "ratingSold": "★ {{rating}} · {{n}} 已售",
-    "soldCount": "{{n}} 购买"
+    "soldCount": "{{n}} 购买",
+    "offlineHeader": "🏪 线下 — 到店团购",
+    "onlineHeader": "🛍️ 线上 — 直播+购物"
   },
   "browse": {
     "title": "购物",
@@ -2344,7 +2346,9 @@
       "followers": "粉丝",
       "miniShop": "迷你商店",
       "streamingGuide": "直播指南",
-      "notifyFollowers": "通知粉丝"
+      "notifyFollowers": "通知粉丝",
+      "stays": "住宿团购",
+      "staysBookings": "预订管理"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2650,7 +2654,14 @@
     "cameraAccessFailed": "摄像头访问失败",
     "cameraAudioToggle": "切换音频",
     "cameraOff": "关闭摄像头",
-    "cameraOffTitle": "关闭"
+    "cameraOffTitle": "关闭",
+    "stays": {
+      "title": "住宿团购",
+      "subtitle": "民宿·酒店·汽车旅馆 — 客房+日期预订",
+      "empty": "尚未登记住宿",
+      "create": "登记住宿",
+      "createFirst": "登记首个住宿"
+    }
   },
   "admin": {
     "login": {
@@ -3568,7 +3579,8 @@
       "pk": "PK活动",
       "events": "品牌挑战",
       "promoteBoosts": "曝光提升",
-      "transfers": "卖家转移"
+      "transfers": "卖家转移",
+      "stays": "住宿运营"
     },
     "guide": "运营指南",
     "guideSubtitle": "代理运营核心指南",
@@ -5317,5 +5329,17 @@
   "liveWs.reconnecting": "Disconnected. Reconnecting in {{seconds}}s...",
   "liveWs.fallbackInApp": "Real-time chat is unstable. Try an external browser for better streaming.",
   "liveWs.connectFailed": "WebSocket connection failed",
-  "liveWs.sendFailed": "Failed to send message"
+  "liveWs.sendFailed": "Failed to send message",
+  "stays": {
+    "searchTitle": "🏨 住宿团购",
+    "search": "搜索",
+    "filters": "筛选",
+    "sortRecent": "最新",
+    "sortPriceAsc": "价格低到高",
+    "sortPriceDesc": "价格高到低",
+    "sortRating": "评分高",
+    "bookingCreate": "预订",
+    "reviewSubmit": "提交评价",
+    "cancelBooking": "取消预订"
+  }
 }

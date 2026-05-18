@@ -1678,7 +1678,9 @@
       "followers": "Seguidores",
       "miniShop": "Mini tienda",
       "streamingGuide": "Guía de streaming",
-      "notifyFollowers": "Notificar seguidores"
+      "notifyFollowers": "Notificar seguidores",
+      "stays": "Vales de alojamiento",
+      "staysBookings": "Reservas"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1984,7 +1986,14 @@
     "cameraAccessFailed": "Error al acceder a la cámara",
     "cameraAudioToggle": "Alternar audio",
     "cameraOff": "Apagar cámara",
-    "cameraOffTitle": "Apagar"
+    "cameraOffTitle": "Apagar",
+    "stays": {
+      "title": "Vales de Alojamiento",
+      "subtitle": "Pensión·Hotel·Motel — Habitación + reserva por fecha",
+      "empty": "No hay alojamientos",
+      "create": "Añadir Alojamiento",
+      "createFirst": "Añadir Primer Alojamiento"
+    }
   },
   "admin": {
     "login": {
@@ -2902,7 +2911,8 @@
       "pk": "Eventos PK",
       "events": "Desafíos de marca",
       "promoteBoosts": "Impulso de exposición",
-      "transfers": "Transferencia de vendedor"
+      "transfers": "Transferencia de vendedor",
+      "stays": "Operaciones de Estancias"
     },
     "guide": "Guía operativa",
     "guideSubtitle": "Guía esencial de operaciones de agencia",
@@ -3796,7 +3806,9 @@
     "bannerAria": "Banner: {{title}}",
     "priceWon": "{{price}} KRW",
     "ratingSold": "★ {{rating}} · {{n}} vendidos",
-    "soldCount": "{{n}} comprado"
+    "soldCount": "{{n}} comprado",
+    "offlineHeader": "🏪 Offline — Compra Grupal en Tienda",
+    "onlineHeader": "🛍️ Online — Live + Compras"
   },
   "browse": {
     "title": "Comprar",
@@ -5317,5 +5329,17 @@
   "liveWs.reconnecting": "Disconnected. Reconnecting in {{seconds}}s...",
   "liveWs.fallbackInApp": "Real-time chat is unstable. Try an external browser for better streaming.",
   "liveWs.connectFailed": "WebSocket connection failed",
-  "liveWs.sendFailed": "Failed to send message"
+  "liveWs.sendFailed": "Failed to send message",
+  "stays": {
+    "searchTitle": "🏨 Vales de Alojamiento",
+    "search": "Buscar",
+    "filters": "Filtros",
+    "sortRecent": "Más nuevo",
+    "sortPriceAsc": "Precio bajo",
+    "sortPriceDesc": "Precio alto",
+    "sortRating": "Mejor valorado",
+    "bookingCreate": "Reservar",
+    "reviewSubmit": "Enviar Reseña",
+    "cancelBooking": "Cancelar Reserva"
+  }
 }

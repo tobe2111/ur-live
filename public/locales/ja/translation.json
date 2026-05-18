@@ -621,7 +621,9 @@
     "bannerAria": "バナー: {{title}}",
     "priceWon": "{{price}}ウォン",
     "ratingSold": "★ {{rating}} · {{n}}件購入",
-    "soldCount": "{{n}} 購入"
+    "soldCount": "{{n}} 購入",
+    "offlineHeader": "🏪 オフライン — 店舗訪問共同購入",
+    "onlineHeader": "🛍️ オンライン — ライブ+ショッピング"
   },
   "browse": {
     "title": "ショッピング",
@@ -2360,7 +2362,9 @@
       "followers": "フォロワー",
       "miniShop": "ミニショップ",
       "streamingGuide": "配信ガイド",
-      "notifyFollowers": "フォロワー通知"
+      "notifyFollowers": "フォロワー通知",
+      "stays": "宿泊共同購入",
+      "staysBookings": "予約管理"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -2650,7 +2654,14 @@
     "cameraAccessFailed": "カメラアクセス失敗",
     "cameraAudioToggle": "音声トグル",
     "cameraOff": "カメラをオフにする",
-    "cameraOffTitle": "オフ"
+    "cameraOffTitle": "オフ",
+    "stays": {
+      "title": "宿泊共同購入",
+      "subtitle": "ペンション・ホテル・モーテル — 客室+日付予約",
+      "empty": "登録された宿泊施設がありません",
+      "create": "宿泊登録",
+      "createFirst": "最初の宿泊登録"
+    }
   },
   "admin": {
     "login": {
@@ -3568,7 +3579,8 @@
       "pk": "PKイベント",
       "events": "ブランドチャレンジ",
       "promoteBoosts": "露出ブースティング",
-      "transfers": "セラー移転"
+      "transfers": "セラー移転",
+      "stays": "宿泊運営"
     },
     "guide": "運営ガイド",
     "guideSubtitle": "エージェンシー運営の核心ガイド",
@@ -5317,5 +5329,17 @@
   "liveWs.reconnecting": "Disconnected. Reconnecting in {{seconds}}s...",
   "liveWs.fallbackInApp": "Real-time chat is unstable. Try an external browser for better streaming.",
   "liveWs.connectFailed": "WebSocket connection failed",
-  "liveWs.sendFailed": "Failed to send message"
+  "liveWs.sendFailed": "Failed to send message",
+  "stays": {
+    "searchTitle": "🏨 宿泊共同購入",
+    "search": "検索",
+    "filters": "フィルター",
+    "sortRecent": "最新",
+    "sortPriceAsc": "価格安い順",
+    "sortPriceDesc": "価格高い順",
+    "sortRating": "評価順",
+    "bookingCreate": "予約する",
+    "reviewSubmit": "レビュー登録",
+    "cancelBooking": "予約キャンセル"
+  }
 }

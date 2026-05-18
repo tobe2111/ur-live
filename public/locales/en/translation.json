@@ -621,7 +621,9 @@
     "bannerAria": "Banner: {{title}}",
     "priceWon": "{{price}} KRW",
     "ratingSold": "★ {{rating}} · {{n}} sold",
-    "soldCount": "{{n}} sold"
+    "soldCount": "{{n}} sold",
+    "offlineHeader": "🏪 Offline — In-store Group Buy",
+    "onlineHeader": "🛍️ Online — Live + Shopping"
   },
   "browse": {
     "title": "Shop",
@@ -2354,7 +2356,9 @@
       "followers": "Followers",
       "miniShop": "Mini Shop",
       "streamingGuide": "Streaming Guide",
-      "notifyFollowers": "Notify Followers"
+      "notifyFollowers": "Notify Followers",
+      "stays": "Stay Vouchers",
+      "staysBookings": "Bookings"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -2650,7 +2654,14 @@
     "cameraAccessFailed": "Camera access failed",
     "cameraAudioToggle": "Toggle audio",
     "cameraOff": "Turn off camera",
-    "cameraOffTitle": "Off"
+    "cameraOffTitle": "Off",
+    "stays": {
+      "title": "Stay Vouchers",
+      "subtitle": "Pension·Hotel·Motel — Room + date booking",
+      "empty": "No stays registered",
+      "create": "Add Stay",
+      "createFirst": "Add First Stay"
+    }
   },
   "admin": {
     "login": {
@@ -3568,7 +3579,8 @@
       "pk": "PK Events",
       "events": "Brand Challenges",
       "promoteBoosts": "Exposure Boosting",
-      "transfers": "Seller Transfer"
+      "transfers": "Seller Transfer",
+      "stays": "Stays Ops"
     },
     "guide": "Guide",
     "guideSubtitle": "Core agency operations guide",
@@ -5317,5 +5329,17 @@
     "shipping": "[TODO:en] 배송중",
     "delivered": "[TODO:en] 배송완료",
     "review": "[TODO:en] 리뷰"
+  },
+  "stays": {
+    "searchTitle": "🏨 Stay Vouchers",
+    "search": "Search",
+    "filters": "Filters",
+    "sortRecent": "Newest",
+    "sortPriceAsc": "Price Low",
+    "sortPriceDesc": "Price High",
+    "sortRating": "Top Rated",
+    "bookingCreate": "Book",
+    "reviewSubmit": "Submit Review",
+    "cancelBooking": "Cancel Booking"
   }
 }

@@ -1678,7 +1678,9 @@
       "followers": "Abonnés",
       "miniShop": "Mini boutique",
       "streamingGuide": "Guide de diffusion",
-      "notifyFollowers": "Notifier les abonnés"
+      "notifyFollowers": "Notifier les abonnés",
+      "stays": "Bons d hébergement",
+      "staysBookings": "Réservations"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -1984,7 +1986,14 @@
     "cameraAccessFailed": "Échec de l'accès à la caméra",
     "cameraAudioToggle": "Basculer l'audio",
     "cameraOff": "Éteindre la caméra",
-    "cameraOffTitle": "Éteindre"
+    "cameraOffTitle": "Éteindre",
+    "stays": {
+      "title": "Bons dHébergement",
+      "subtitle": "Pension·Hôtel·Motel — Chambre + réservation par date",
+      "empty": "Aucun hébergement enregistré",
+      "create": "Ajouter Hébergement",
+      "createFirst": "Ajouter Premier Hébergement"
+    }
   },
   "admin": {
     "login": {
@@ -2902,7 +2911,8 @@
       "pk": "Événements PK",
       "events": "Défis de marque",
       "promoteBoosts": "Boost d'exposition",
-      "transfers": "Transfert vendeur"
+      "transfers": "Transfert vendeur",
+      "stays": "Opérations dHébergement"
     },
     "guide": "Guide opérationnel",
     "guideSubtitle": "Guide essentiel d'opérations d'agence",
@@ -3796,7 +3806,9 @@
     "bannerAria": "Bannière : {{title}}",
     "priceWon": "{{price}} KRW",
     "ratingSold": "★ {{rating}} · {{n}} vendus",
-    "soldCount": "{{n}} acheté"
+    "soldCount": "{{n}} acheté",
+    "offlineHeader": "🏪 Hors ligne — Achat groupé en magasin",
+    "onlineHeader": "🛍️ En ligne — Live + Shopping"
   },
   "browse": {
     "title": "Boutique",
@@ -5317,5 +5329,17 @@
   "liveWs.reconnecting": "Disconnected. Reconnecting in {{seconds}}s...",
   "liveWs.fallbackInApp": "Real-time chat is unstable. Try an external browser for better streaming.",
   "liveWs.connectFailed": "WebSocket connection failed",
-  "liveWs.sendFailed": "Failed to send message"
+  "liveWs.sendFailed": "Failed to send message",
+  "stays": {
+    "searchTitle": "🏨 Bons dHébergement",
+    "search": "Rechercher",
+    "filters": "Filtres",
+    "sortRecent": "Plus récent",
+    "sortPriceAsc": "Prix bas",
+    "sortPriceDesc": "Prix élevé",
+    "sortRating": "Meilleure note",
+    "bookingCreate": "Réserver",
+    "reviewSubmit": "Soumettre Avis",
+    "cancelBooking": "Annuler Réservation"
+  }
 }

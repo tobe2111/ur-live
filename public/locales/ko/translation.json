@@ -621,7 +621,9 @@
     "bannerAria": "배너: {{title}}",
     "priceWon": "{{price}}원",
     "ratingSold": "★ {{rating}} · {{n}} 구매",
-    "soldCount": "{{n}} 구매"
+    "soldCount": "{{n}} 구매",
+    "offlineHeader": "🏪 오프라인 — 매장 방문 공구",
+    "onlineHeader": "🛍️ 온라인 — 라이브 + 쇼핑"
   },
   "browse": {
     "title": "쇼핑",
@@ -2384,7 +2386,9 @@
       "followers": "팔로워",
       "miniShop": "미니샵",
       "streamingGuide": "송출 가이드",
-      "notifyFollowers": "팔로워 알림"
+      "notifyFollowers": "팔로워 알림",
+      "stays": "숙소 공구",
+      "staysBookings": "예약 관리"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -2675,7 +2679,14 @@
     "cameraAccessFailed": "카메라 접근 실패",
     "cameraAudioToggle": "소리 토글",
     "cameraOff": "카메라 끄기",
-    "cameraOffTitle": "끄기"
+    "cameraOffTitle": "끄기",
+    "stays": {
+      "title": "숙소 공구",
+      "subtitle": "펜션·호텔·모텔 — 객실 + 날짜 기반 예약",
+      "empty": "등록된 숙소가 없습니다",
+      "create": "숙소 등록",
+      "createFirst": "첫 숙소 등록하기"
+    }
   },
   "admin": {
     "login": {
@@ -3593,7 +3604,8 @@
       "pk": "PK 이벤트",
       "events": "자사 챌린지",
       "promoteBoosts": "노출 부스팅",
-      "transfers": "셀러 이전"
+      "transfers": "셀러 이전",
+      "stays": "숙소 운영"
     },
     "guide": "운영 가이드",
     "guideSubtitle": "에이전시 운영 핵심 가이드",
@@ -5344,5 +5356,17 @@
   },
   "search": {
     "inputPlaceholder": "상품명, 브랜드, 셀러 검색"
+  },
+  "stays": {
+    "searchTitle": "🏨 숙소 공구",
+    "search": "검색",
+    "filters": "필터",
+    "sortRecent": "최신 등록",
+    "sortPriceAsc": "가격 낮은순",
+    "sortPriceDesc": "가격 높은순",
+    "sortRating": "평점 높은순",
+    "bookingCreate": "예약하기",
+    "reviewSubmit": "리뷰 등록",
+    "cancelBooking": "예약 취소"
   }
 }
