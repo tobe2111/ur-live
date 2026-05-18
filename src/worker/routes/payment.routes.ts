@@ -325,13 +325,19 @@ paymentsRouter.post('/confirm', async (c) => {
             'SELECT id FROM affiliate_earnings WHERE referrer_id = ? AND order_id = ?'
           ).bind(String(booking.referrer_id), order.id).first()
           if (!existingAttr) {
+            // 상품명 정확히 조회 (notification 메시지용).
+            const productInfo = await c.env.DB.prepare(
+              'SELECT name FROM products WHERE id = ?'
+            ).bind(booking.product_id).first<{ name: string }>().catch(() => null)
+            const productName = productInfo?.name || `숙소 #${booking.product_id}`
+
             await c.env.DB.prepare(
               `INSERT INTO affiliate_earnings
                  (referrer_id, order_id, product_id, product_name, buyer_id, order_amount, commission, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
             ).bind(
               String(booking.referrer_id), order.id,
-              booking.product_id, `숙소 #${booking.product_id}`,
+              booking.product_id, productName,
               String(booking.user_id),
               booking.total_amount, booking.influencer_commission_amount,
             ).run().catch((e) => {
@@ -339,6 +345,53 @@ paymentsRouter.post('/confirm', async (c) => {
                 orderId: order.id, referrerId: booking.referrer_id, error: String(e).slice(0, 200),
               })
             })
+
+            // 🛡️ 2026-05-18: 인플에게 알림 (notifications + 카카오 알림톡).
+            //   notifications INSERT — 앱 내 알림 (referrer_id 가 user_id 라고 가정).
+            const refIdNum = Number(booking.referrer_id)
+            if (Number.isFinite(refIdNum) && refIdNum > 0) {
+              await c.env.DB.prepare(
+                `INSERT INTO notifications (user_id, type, title, message, created_at)
+                 VALUES (?, 'referral_commission_earned', ?, ?, datetime('now'))`
+              ).bind(
+                refIdNum,
+                `💸 referral 적립 ₩${booking.influencer_commission_amount.toLocaleString()}`,
+                `${productName} · 결제 ₩${booking.total_amount.toLocaleString()}`,
+              ).run().catch(() => { /* table 없으면 silent */ })
+
+              // 카카오 알림톡 (ALIGO env 설정 시).
+              try {
+                const env = c.env as unknown as Record<string, string | undefined>
+                if (env.ALIGO_API_KEY && env.ALIGO_USER_ID && env.ALIGO_SENDER_KEY) {
+                  const refUser = await c.env.DB.prepare('SELECT phone FROM users WHERE id = ?')
+                    .bind(refIdNum).first<{ phone: string | null }>().catch(() => null)
+                  const phone = (refUser?.phone || '').replace(/\D/g, '')
+                  if (/^01\d{8,9}$/.test(phone)) {
+                    const totalEarnedRow = await c.env.DB.prepare(
+                      'SELECT COALESCE(SUM(commission), 0) as total FROM affiliate_earnings WHERE referrer_id = ?'
+                    ).bind(String(refIdNum)).first<{ total: number }>().catch(() => null)
+                    const totalEarned = totalEarnedRow?.total || 0
+                    const message =
+                      `[유어딜] referral 적립 안내\n\n` +
+                      `회원님의 추천 링크로 결제가 발생했습니다.\n\n` +
+                      `· 상품: ${productName}\n` +
+                      `· 결제: ₩${booking.total_amount.toLocaleString()}\n` +
+                      `· 적립: ₩${booking.influencer_commission_amount.toLocaleString()}\n\n` +
+                      `누적 ₩${totalEarned.toLocaleString()} — 정산 페이지에서 환급 가능합니다.`
+                    const { sendAlimtalk } = await import('../../lib/aligo')
+                    await sendAlimtalk(
+                      { ALIGO_API_KEY: env.ALIGO_API_KEY!, ALIGO_USER_ID: env.ALIGO_USER_ID! },
+                      {
+                        senderKey: env.ALIGO_SENDER_KEY!,
+                        templateCode: env.ALIGO_REFERRAL_COMMISSION_EARNED || 'referral_commission_earned',
+                        to: phone,
+                        message,
+                      },
+                    ).catch(() => { /* silent fail — 메인 흐름 보호 */ })
+                  }
+                }
+              } catch { /* fail-soft */ }
+            }
           }
         }
       } catch (e) {
