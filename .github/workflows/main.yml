@@ -78,10 +78,13 @@ jobs:
 
           # 🛡️ Bundle size budget (2026-04-22 추가)
           # 번들 비대로 인한 초기 로딩 지연 방지.
-          # 한계: _worker.js 3MB, 초기 entry JS 500KB, 총 client 50MB.
+          # 한계: _worker.js 4MB (2026-05-18 상향 from 3MB — 숙소/정산/referral 코드 추가로 임계 근처).
+          #       초기 entry JS 500KB, 총 client 50MB.
+          # 참고: Cloudflare Workers Free plan 한도 1MB compressed (≈4MB uncompressed).
+          #       Paid plan 10MB uncompressed 까지 가능.
           WORKER_SIZE=$(stat -c%s dist/client/_worker.js 2>/dev/null || stat -f%z dist/client/_worker.js)
           echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB"
-          test $WORKER_SIZE -lt 3145728 || (echo "❌ _worker.js 너무 큼 ($(($WORKER_SIZE/1024))KB > 3MB)" && exit 1)
+          test $WORKER_SIZE -lt 4194304 || (echo "❌ _worker.js 너무 큼 ($(($WORKER_SIZE/1024))KB > 4MB)" && exit 1)
 
           ENTRY_SIZE=$(du -b dist/client/assets/index-*.js 2>/dev/null | head -1 | awk '{print $1}' || echo 0)
           echo "  entry JS size: $(($ENTRY_SIZE / 1024))KB"
