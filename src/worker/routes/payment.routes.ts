@@ -271,6 +271,47 @@ paymentsRouter.post('/confirm', async (c) => {
       await orderRepo.reduceStock(order.id);
     }
 
+    // 🛡️ 2026-05-18: 숙소 예약 (orders.stay_booking_id) 가 있으면 stay_bookings status='confirmed'
+    //   + 캘린더 available_count 차감. (orders 의 단일 row 만 대상 — 멀티 주문 stays 는 별도 PR.)
+    for (const order of orders) {
+      const stayBookingId = (order as unknown as { stay_booking_id?: number | null }).stay_booking_id
+      if (!stayBookingId) continue
+      try {
+        const booking = await c.env.DB.prepare(
+          'SELECT id, product_id, room_id, check_in_date, check_out_date, status FROM stay_bookings WHERE id = ?'
+        ).bind(stayBookingId).first<{ id: number; product_id: number; room_id: number; check_in_date: string; check_out_date: string; status: string }>()
+        if (!booking || booking.status === 'confirmed') continue
+
+        // 상태 전환.
+        await c.env.DB.prepare(
+          `UPDATE stay_bookings SET status = 'confirmed', updated_at = datetime('now') WHERE id = ?`
+        ).bind(stayBookingId).run()
+
+        await c.env.DB.prepare(
+          `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, reason)
+           VALUES (?, ?, 'confirmed', 'system', '결제 승인 — toss confirm')`
+        ).bind(stayBookingId, booking.status).run().catch(() => { /* noop */ })
+
+        // 캘린더 available_count 차감.
+        const nights = Math.round((new Date(booking.check_out_date).getTime() - new Date(booking.check_in_date).getTime()) / 86400000)
+        for (let i = 0; i < nights; i++) {
+          const d = new Date(new Date(booking.check_in_date).getTime() + i * 86400000)
+          const ds = d.toISOString().slice(0, 10)
+          await c.env.DB.prepare(
+            `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
+             SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
+          ).bind(booking.room_id, booking.product_id, ds, booking.room_id).run().catch(() => { /* noop */ })
+          await c.env.DB.prepare(
+            `UPDATE product_stay_calendar
+                SET available_count = MAX(0, available_count - 1), updated_at = datetime('now')
+              WHERE room_id = ? AND stay_date = ?`
+          ).bind(booking.room_id, ds).run().catch(() => { /* noop */ })
+        }
+      } catch (e) {
+        logError('payment.stay_booking_confirm_failed', { orderId: order.id, stayBookingId, error: String(e).slice(0, 200) })
+      }
+    }
+
     const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
 
     logInfo('payment.confirmed', { orderId: orderNumber, method: tossData.method, count: updatedOrders.length });

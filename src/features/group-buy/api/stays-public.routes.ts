@@ -371,6 +371,137 @@ function generateCheckInCode(): string {
   return out
 }
 
+// 🛡️ 2026-05-18: 숙소 결제 confirm — 토스 결제 페이지 returnUrl 에서 호출.
+//   흐름:
+//     1) /stays/:id 에서 예약 생성 → orders + stay_bookings (status='pending')
+//     2) /checkout?order_id=... 에서 토스 결제창 호출 → 사용자 카드 결제
+//     3) 결제 성공 → returnUrl=/payment/success?paymentKey=...&orderId=...&amount=...
+//     4) 클라이언트가 이 endpoint 호출 → 토스 confirm API + booking status='confirmed'
+//     5) 캘린더 available_count 차감 (race condition 가드)
+staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
+  try {
+    const auth = c.req.header('Authorization') || ''
+    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const { verify } = await import('hono/jwt')
+    const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
+    const userId = Number(payload.user_id ?? payload.sub) || null
+    if (!userId) return c.json({ success: false, error: '토큰 무효' }, 401)
+
+    type ConfirmBody = { paymentKey?: string; orderId?: number; amount?: number }
+    const body = await c.req.json<ConfirmBody>().catch(() => ({} as ConfirmBody))
+    const paymentKey = String(body?.paymentKey || '').trim()
+    const orderId = Number(body?.orderId)
+    const clientAmount = Number(body?.amount)
+
+    if (!paymentKey || !Number.isFinite(orderId)) {
+      return c.json({ success: false, error: 'paymentKey + orderId 필요' }, 400)
+    }
+
+    // 1. orders + stay_bookings 조회 (서버 신뢰 데이터 — 클라이언트 amount 검증 후 사용).
+    const order = await c.env.DB.prepare(
+      `SELECT o.id, o.user_id, o.total_amount, o.status, o.payment_status, o.stay_booking_id, o.payment_key,
+              b.id as booking_id, b.product_id, b.room_id, b.check_in_date, b.check_out_date, b.status as booking_status
+         FROM orders o
+         LEFT JOIN stay_bookings b ON b.id = o.stay_booking_id
+        WHERE o.id = ?`
+    ).bind(orderId).first<{
+      id: number; user_id: number; total_amount: number; status: string; payment_status: string;
+      stay_booking_id: number | null; payment_key: string | null;
+      booking_id: number | null; product_id: number | null; room_id: number | null;
+      check_in_date: string | null; check_out_date: string | null; booking_status: string | null;
+    }>()
+    if (!order) return c.json({ success: false, error: '주문 없음' }, 404)
+    if (order.user_id !== userId) return c.json({ success: false, error: '권한 없음' }, 403)
+    if (!order.stay_booking_id) return c.json({ success: false, error: '숙소 예약이 아닙니다' }, 400)
+
+    // 2. 멱등 — 이미 confirmed 이면 skip (재호출 안전).
+    if (order.payment_status === 'approved' && order.booking_status === 'confirmed') {
+      return c.json({ success: true, message: '이미 결제 완료', data: { booking_id: order.booking_id } })
+    }
+
+    // 3. 클라이언트 amount 검증 (서버 total_amount 와 일치).
+    if (!Number.isFinite(clientAmount) || clientAmount !== order.total_amount) {
+      return c.json({ success: false, error: '결제 금액 불일치 (변조 의심)' }, 400)
+    }
+
+    // 4. 토스 결제 confirm API 호출.
+    const secret = (c.env as unknown as { TOSS_SECRET_KEY?: string }).TOSS_SECRET_KEY
+    if (!secret) return c.json({ success: false, error: 'TOSS_SECRET_KEY 미설정' }, 500)
+    const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${secret}:`)}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `stay-confirm-${orderId}`,
+      },
+      body: JSON.stringify({ paymentKey, orderId: String(orderId), amount: order.total_amount }),
+    })
+    const tossData = await tossRes.json().catch(() => ({})) as Record<string, unknown>
+
+    if (!tossRes.ok) {
+      const code = String((tossData as { code?: string }).code || `HTTP_${tossRes.status}`)
+      const message = String((tossData as { message?: string }).message || '결제 승인 실패')
+      // 실패 시 booking status 유지 (pending) — 사용자 재시도 가능.
+      return c.json({ success: false, error: `${code}: ${message}` }, 400)
+    }
+
+    // 5. 캘린더 available_count 차감 (race condition 가드).
+    const nights = Math.round(
+      (new Date(order.check_out_date!).getTime() - new Date(order.check_in_date!).getTime()) / 86400000,
+    )
+    for (let i = 0; i < nights; i++) {
+      const d = new Date(new Date(order.check_in_date!).getTime() + i * 86400000)
+      const ds = d.toISOString().slice(0, 10)
+      // UPSERT: row 없으면 INSERT (total_inventory - 1), 있으면 -1.
+      // 단순화: INSERT OR IGNORE + 별도 UPDATE.
+      await c.env.DB.prepare(
+        `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
+         SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
+      ).bind(order.room_id, order.product_id, ds, order.room_id).run().catch(() => { /* noop */ })
+      await c.env.DB.prepare(
+        `UPDATE product_stay_calendar
+            SET available_count = MAX(0, available_count - 1),
+                updated_at = datetime('now')
+          WHERE room_id = ? AND stay_date = ?`
+      ).bind(order.room_id, ds).run().catch(() => { /* noop */ })
+    }
+
+    // 6. orders + booking 상태 갱신.
+    await c.env.DB.prepare(
+      `UPDATE orders
+          SET status = 'PAID',
+              payment_status = 'approved',
+              payment_key = ?,
+              updated_at = datetime('now')
+        WHERE id = ?`
+    ).bind(paymentKey, orderId).run().catch(() => { /* noop */ })
+
+    await c.env.DB.prepare(
+      `UPDATE stay_bookings
+          SET status = 'confirmed', updated_at = datetime('now')
+        WHERE id = ?`
+    ).bind(order.stay_booking_id).run()
+
+    await c.env.DB.prepare(
+      `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
+       VALUES (?, ?, 'confirmed', 'system', ?, '결제 승인 완료')`
+    ).bind(order.stay_booking_id, order.booking_status || 'pending', userId).run().catch(() => { /* noop */ })
+
+    return c.json({
+      success: true,
+      data: {
+        booking_id: order.stay_booking_id,
+        order_id: orderId,
+        amount: order.total_amount,
+        check_in: order.check_in_date,
+        check_out: order.check_out_date,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 // 🛡️ 2026-05-18 (PR 6): 사용자 예약 취소 — 취소 정책 따른 환불 비율 자동 계산.
 staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
   try {
