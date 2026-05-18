@@ -9,7 +9,10 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import * as Sentry from '@sentry/react';
+// 🛡️ 2026-05-17: Sentry 동적 import — 에러 시점에만 fetch.
+//   이전: `import * as Sentry from '@sentry/react'` 가 api.ts 를 통해 전 페이지 초기 번들에 포함
+//   (sentry 청크 252 KB preload). 일반 사용자 첫 페인트 -300ms 추가됨.
+//   지금: captureError 호출 시점에 lazy import — 첫 페인트 영향 0, 에러 발생 시만 fetch.
 
 // ─── Firebase Token 캐시 (55분 TTL) ────────────────────────────────────────
 interface TokenCache {
@@ -102,9 +105,14 @@ export function clearFirebaseTokenCache() {
   _firebaseTokenCache = null;
 }
 
-// ─── Sentry 에러 헬퍼 ────────────────────────────────────────────────────────
+// ─── Sentry 에러 헬퍼 — lazy load ────────────────────────────────────────────────
 function captureError(error: Error, context?: Record<string, any>) {
-  Sentry.captureException(error, { extra: context });
+  import('@sentry/react').then((Sentry) => {
+    Sentry.captureException(error, { extra: context });
+  }).catch(() => {
+    // Sentry chunk 로드 실패 시 silent skip (production telemetry 만 영향, app 동작 영향 없음).
+    if (import.meta.env.DEV) console.warn('[api] Sentry lazy load failed', error);
+  });
 }
 
 // ─── API 클라이언트 ──────────────────────────────────────────────────────────

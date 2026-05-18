@@ -1,4 +1,14 @@
-import * as Sentry from '@sentry/react'
+// 🛡️ 2026-05-17: Sentry 동적 import — 초기 번들에서 sentry 청크 제거.
+//   이전: `import * as Sentry from '@sentry/react'` 가 lib/sentry.ts → app-utils chunk → sentry chunk
+//   preload 강제. 일반 사용자 첫 페인트에 252KB 추가.
+//   지금: 함수 호출 시점에 import — 첫 페인트 영향 0.
+//   initSentry 만 main.tsx 에서 이미 lazy 처리됨 (line 131).
+type SentryModule = typeof import('@sentry/react')
+let _sentryPromise: Promise<SentryModule> | null = null
+function loadSentry(): Promise<SentryModule> {
+  if (!_sentryPromise) _sentryPromise = import('@sentry/react')
+  return _sentryPromise
+}
 
 /**
  * Sentry 초기화
@@ -7,7 +17,7 @@ import * as Sentry from '@sentry/react'
  * - 세션 재생 (에러 발생 시)
  * - 에러 필터링
  */
-export function initSentry() {
+export async function initSentry() {
   if (import.meta.env.PROD) {
     const dsn = import.meta.env.VITE_SENTRY_DSN
 
@@ -16,6 +26,7 @@ export function initSentry() {
       return
     }
 
+    const Sentry = await loadSentry()
     Sentry.init({
       dsn,
       environment: import.meta.env.MODE,
@@ -97,9 +108,7 @@ export function initSentry() {
  */
 export function captureError(error: Error, context?: Record<string, any>) {
   if (import.meta.env.PROD) {
-    Sentry.captureException(error, {
-      extra: context,
-    })
+    loadSentry().then((S) => S.captureException(error, { extra: context })).catch(() => {})
   } else {
     console.error('🐛 Error:', error, context)
   }
@@ -117,7 +126,7 @@ export function logError(error: Error, context?: Record<string, any>) {
  */
 export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
   if (import.meta.env.PROD) {
-    Sentry.captureMessage(message, level)
+    loadSentry().then((S) => S.captureMessage(message, level)).catch(() => {})
   } else {
     // Dev message suppressed
   }
@@ -128,7 +137,7 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
  */
 export function setUser(user: { id: string; email?: string; username?: string } | null) {
   if (import.meta.env.PROD) {
-    Sentry.setUser(user)
+    loadSentry().then((S) => S.setUser(user)).catch(() => {})
   }
 }
 
@@ -144,11 +153,7 @@ export function addBreadcrumb(
   data?: Record<string, any>,
   level: 'info' | 'warning' | 'error' = 'info',
 ) {
-  try {
-    Sentry.addBreadcrumb({ category, message, data, level })
-  } catch {
-    // Sentry 초기화 실패 시 무시
-  }
+  loadSentry().then((S) => S.addBreadcrumb({ category, message, data, level })).catch(() => {})
 }
 
 /**
@@ -156,15 +161,11 @@ export function addBreadcrumb(
  * `type`은 'user' | 'seller' | 'admin' 등 세그먼트 구분용.
  */
 export function setUserContext(user: { id: string | number; type?: string; email?: string }) {
-  try {
-    Sentry.setUser({
-      id: String(user.id),
-      ...(user.email ? { email: user.email } : {}),
-      ...(user.type ? { segment: user.type } : {}),
-    })
-  } catch {
-    // no-op
-  }
+  loadSentry().then((S) => S.setUser({
+    id: String(user.id),
+    ...(user.email ? { email: user.email } : {}),
+    ...(user.type ? { segment: user.type } : {}),
+  })).catch(() => {})
 }
 
 /**

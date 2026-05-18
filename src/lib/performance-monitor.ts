@@ -1,4 +1,29 @@
-import * as Sentry from '@sentry/react'
+// 🛡️ 2026-05-17: Sentry lazy load — 초기 번들에서 sentry 청크 제거.
+//   PerformanceObserver 콜백 안에서만 호출되므로 첫 페인트 영향 없음.
+//   import('@sentry/react') 의 promise 를 1회 캐싱.
+type SentryModule = typeof import('@sentry/react')
+let sentryPromise: Promise<SentryModule> | null = null
+function getSentry(): Promise<SentryModule> {
+  if (!sentryPromise) {
+    sentryPromise = import('@sentry/react').catch((e) => {
+      if (import.meta.env.DEV) console.warn('[perf-monitor] Sentry lazy load failed', e)
+      throw e
+    })
+  }
+  return sentryPromise
+}
+// fire-and-forget wrapper — 각 호출이 sentry chunk 도착 후 실행.
+const Sentry = {
+  addBreadcrumb: (b: Parameters<SentryModule['addBreadcrumb']>[0]) => {
+    getSentry().then((S) => S.addBreadcrumb(b)).catch(() => {})
+  },
+  captureMessage: (msg: string, level?: any) => {
+    getSentry().then((S) => S.captureMessage(msg, level)).catch(() => {})
+  },
+  captureException: (err: any, ctx?: any) => {
+    getSentry().then((S) => S.captureException(err, ctx)).catch(() => {})
+  },
+}
 
 /**
  * 성능 자동 추적 클래스
