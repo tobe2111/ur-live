@@ -140,13 +140,21 @@ export default function GroupBuyListPage() {
   const filtered = useMemo(() => {
     let result = [...items]
 
-    // 🛡️ 2026-05-16: 카테고리 필터 — voucher 6종 + general 모두 정확 매칭
+    // 🛡️ 2026-05-17: 카테고리 필터 — voucher 4종 (신규) + 레거시 3종 호환 매칭.
+    //   beauty 탭은 health 도 매칭 (마이그레이션 0255 가 row 자동 변환하지만 graceful).
+    //   etc 탭은 pet/activity 도 매칭.
     const VOUCHER_CATEGORIES = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'health_voucher', 'pet_voucher', 'activity_voucher']
+    const LEGACY_TO_NEW: Record<string, string> = {
+      health_voucher: 'beauty_voucher',
+      pet_voucher: 'etc_voucher',
+      activity_voucher: 'etc_voucher',
+    }
+    const normalizeCat = (c: string | undefined | null) => (c && LEGACY_TO_NEW[c]) || c || ''
     if (category === 'general') {
       result = result.filter((p) => !VOUCHER_CATEGORIES.includes(p.category || ''))
     } else if (category !== 'all') {
-      // 특정 voucher 카테고리 (meal_voucher / beauty_voucher / etc.) 정확 매칭
-      result = result.filter((p) => p.category === category)
+      // 특정 voucher 카테고리 — 신규 + 레거시 row 모두 매칭 (정규화 후 비교).
+      result = result.filter((p) => normalizeCat(p.category) === category)
     }
 
     // 🛡️ 2026-05-16: 텍스트 검색 (상품명 / 매장명)
@@ -357,17 +365,17 @@ export default function GroupBuyListPage() {
       {/* 카테고리 탭 (셀러 공구 전용) */}
       {mainTab === 'seller' && (
         <div className="ur-content-wide px-4 lg:px-8 mt-4 overflow-x-auto no-scrollbar">
-          {/* 🛡️ 2026-05-16: 6 voucher 카테고리 모두 탭으로 노출 (이전엔 3 탭만) */}
+          {/* 🛡️ 2026-05-17: 카테고리 4종 통합 + 온라인/오프라인 대분류 라벨 표시.
+                탭 순서: [전체] [🏪 오프라인 4종] [🛍️ 온라인]
+                health/pet/activity 는 마이그레이션 0255 가 자동 변환 — UI 에선 제거. */}
           <div className="flex gap-2 min-w-max">
             {([
               { key: 'all', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍱 식사권' }) },
-              { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💄 뷰티' }) },
-              { key: 'health_voucher', label: t('groupBuy.categoryHealth', { defaultValue: '💪 헬스' }) },
-              { key: 'pet_voucher', label: t('groupBuy.categoryPet', { defaultValue: '🐶 펫' }) },
-              { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏠 숙박' }) },
-              { key: 'activity_voucher', label: t('groupBuy.categoryActivity', { defaultValue: '🎯 액티비티' }) },
-              { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '일반 상품' }) },
+              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 식사권' }) },
+              { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
+              { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
+              { key: 'etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
+              { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 온라인 (배송)' }) },
             ] as const).map((tab) => (
               <button
                 key={tab.key}
