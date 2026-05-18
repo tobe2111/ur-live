@@ -160,7 +160,7 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
 
   // 본 에이전시 소속 셀러에게 알림 (참여 가능)
   await c.env.DB.prepare(`
-    INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+    INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
     SELECT 'seller', CAST(seller_id AS TEXT), 'agency_event', ?, ?, ?, datetime('now')
     FROM agency_sellers WHERE agency_id = ?
   `).bind(

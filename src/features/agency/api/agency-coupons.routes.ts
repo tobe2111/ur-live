@@ -163,7 +163,7 @@ app.post('/distribute', requireAgencyPermission('coupon'), async (c) => {
 
       // 셀러에게 알림
       await c.env.DB.prepare(`
-        INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+        INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
         VALUES ('seller', ?, 'coupon_distributed', '에이전시 쿠폰 배포', ?, '/seller/coupons', datetime('now'))
       `).bind(
         String(seller.seller_id),

@@ -88,8 +88,10 @@ export async function handleAgencyInactiveSellers(env: Env): Promise<void> {
       // 🛡️ 2026-04-27: 셀러 본인에게도 알림 (부드러운 활동 유도)
       // 7일 무라이브일 때만 (30일 무매출은 셀러가 알아서 — 압박 안 줌)
       if (noLive) {
+        // 🛡️ 2026-05-17: dashboard_notifications 스키마는 (recipient_type, recipient_id, ...)
+        //   이전 코드는 user_type/user_id 사용 → 컬럼 없어 silent fail.
         await DB.prepare(`
-          INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+          INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
           VALUES ('seller', ?, 'inactivity_reminder', ?, ?, '/seller/streams', datetime('now'))
         `).bind(
           String(r.seller_id),

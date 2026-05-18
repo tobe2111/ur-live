@@ -157,10 +157,13 @@ app.post('/', async (c) => {
 
         if (tierRank[loyalty] < minRank) continue;
 
+        // 🛡️ 2026-05-17: dashboard_notifications 는 admin/seller/agency 용 — 일반 사용자(user) 는
+        //   notifications 테이블 사용. 이전 코드는 dashboard_notifications 의 user_type 컬럼(존재X)
+        //   + recipient_type='user' (CHECK 허용 안 함) 으로 silent fail. 단골 알림이 한 건도 안 보내짐.
         inserts.push(
           c.env.DB.prepare(`
-            INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
-            VALUES ('user', ?, 'live_started', ?, ?, ?, datetime('now'))
+            INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+            VALUES (?, 'user', 'live_started', ?, ?, ?, datetime('now'))
           `).bind(
             String(row.user_id),
             `🔴 ${ls.title}`,

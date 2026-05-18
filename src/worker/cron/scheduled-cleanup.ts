@@ -841,9 +841,10 @@ export async function handleScheduled(env: Env) {
         // 🛡️ 2026-05-15: 셀러에게도 만료/환불 통보 (dashboard + Alimtalk)
         if (sellerInfo?.seller_id) {
           try {
+            // 🛡️ 2026-05-17: notifications 스키마 fix (user_type, message — body 컬럼 없음).
             await DB.prepare(
-              `INSERT INTO notifications (user_id, type, title, body, link, created_at)
-               VALUES (?, 'group_buy_failed', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
+              `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+               VALUES (?, 'seller', 'group_buy_failed', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
             ).bind(
               sellerInfo.user_id ?? String(sellerInfo.seller_id),
               '공구 미달성 — 자동 환불 완료',

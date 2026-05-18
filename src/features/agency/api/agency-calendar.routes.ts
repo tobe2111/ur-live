@@ -213,7 +213,7 @@ app.post('/streams/:id/notes', async (c) => {
       const seller = await c.env.DB.prepare("SELECT seller_id FROM live_streams WHERE id = ?").bind(id).first<{ seller_id: number }>()
       if (seller?.seller_id) {
         await c.env.DB.prepare(`
-          INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+          INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
           VALUES ('seller', ?, 'agency_note', '에이전시 노트', ?, ?, datetime('now'))
         `).bind(
           String(seller.seller_id),

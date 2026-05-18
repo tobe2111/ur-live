@@ -127,8 +127,9 @@ agencyApp.post('/', requireAgencyPermission('coupon'), async (c) => {
   `).bind(agency.id, body.seller_id, body.tier, durationHours, expiresAt, (body.note || '').slice(0, 200)).run();
 
   // 셀러 알림
+  // 🛡️ 2026-05-17: dashboard_notifications 컬럼명 fix — (recipient_type, recipient_id).
   await c.env.DB.prepare(`
-    INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+    INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
     VALUES ('seller', ?, 'promote_boost_received', ?, ?, '/seller', datetime('now'))
   `).bind(
     String(body.seller_id),

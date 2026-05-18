@@ -73,12 +73,15 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
       if (score === 'high') {
         highRiskCount++
         // 에이전시 dashboard 알림
+        // 🛡️ 2026-05-17: notifications 테이블은 user_type CHECK('seller','user','admin') — 'agency' 안 허용.
+        //   에이전시 대상은 dashboard_notifications 사용 (recipient_type IN admin/seller/agency, migration 0240).
         if (s.agency_id) {
           stmts.push(
             DB.prepare(`
-              INSERT INTO notifications (user_id, type, title, body, link, created_at)
+              INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
               VALUES (
-                (SELECT user_id FROM agencies WHERE id = ?),
+                'agency',
+                CAST(? AS TEXT),
                 'seller_churn_risk',
                 ?,
                 ?,

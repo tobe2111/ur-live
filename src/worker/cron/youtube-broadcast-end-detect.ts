@@ -158,10 +158,13 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
             ? `다시보기가 막혀있어요 (${status?.privacyStatus !== 'public' ? '비공개' : ''}${status?.embeddable === false ? ' 임베드차단' : ''}${status?.madeForKids ? ' 아동용' : ''}). YouTube Studio 에서 "공개" + "임베드 허용" 으로 변경하세요.`
             : '방송이 자동 감지되어 종료 처리되었습니다. 결산을 확인하세요.';
 
+          // 🛡️ 2026-05-17: notifications 스키마는 (user_type, user_id, type, title, message, link, ...).
+          //   이전 코드는 'body' 컬럼(존재 안 함) + user_type 누락 → silent fail. 시청자/셀러 알림 0건.
           await DB.prepare(`
-            INSERT INTO notifications (user_id, type, title, body, link, created_at)
+            INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
             VALUES (
               (SELECT user_id FROM sellers WHERE id = ?),
+              'seller',
               'broadcast_ended',
               ?,
               ?,
@@ -181,10 +184,12 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
         started++;
 
         // 셀러 알림 — 방송 시작 자동 감지
+        // 🛡️ 2026-05-17: notifications 스키마 fix (user_type, message — body 컬럼 없음).
         await DB.prepare(`
-          INSERT INTO notifications (user_id, type, title, body, link, created_at)
+          INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
           VALUES (
             (SELECT user_id FROM sellers WHERE id = ?),
+            'seller',
             'broadcast_started',
             '방송 시작 감지',
             'YouTube Studio 에서 방송 시작이 자동 감지되었습니다. 시청자에게 노출됩니다.',

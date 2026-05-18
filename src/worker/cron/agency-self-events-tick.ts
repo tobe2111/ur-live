@@ -127,8 +127,9 @@ export async function handleAgencySelfEventsTick(env: Env): Promise<void> {
             ]);
 
             // 셀러 알림
+            // 🛡️ 2026-05-17: dashboard_notifications 컬럼명 fix — (recipient_type, recipient_id).
             await DB.prepare(`
-              INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+              INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
               VALUES ('seller', ?, 'event_achieved', ?, ?, '/seller', datetime('now'))
             `).bind(
               String(p.seller_id),

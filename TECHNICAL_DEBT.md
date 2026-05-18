@@ -8,6 +8,39 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## 📊 2026-05-17 — NOT NULL INSERT 미해결 5건 (PR 2/N audit 잔여)
+
+`scripts/check-sql-not-null-insert.mjs` 가 보고하는 잔여 위반.
+production 스키마가 마이그레이션 정의와 다를 가능성 (manual ALTER 흔적). 추후 확인 필요.
+
+### 🟡 미해결 (CI warn-only)
+
+1. **product_reviews `user_id`** — `src/features/admin/api/admin-review-generator.routes.ts:143, 175`
+   - 어드민 더미 리뷰 생성 시 user_id 누락. 마이그레이션상 NOT NULL.
+   - 가능성: production 에서 nullable 로 변경됐을 가능성. 확인 후 마이그레이션 추가 or INSERT 에 dummy user_id 추가.
+
+2. **live_streams `youtube_video_id`** — `src/features/agency/api/agency.routes.ts:786`
+   - 에이전시가 셀러용 스트림 미리 생성 (예약). youtube_video_id 는 방송 시작 후 발급되어 NULL 가능.
+   - 가능성: 마이그레이션이 잘못 NOT NULL 로 정의. nullable 마이그레이션 추가 필요.
+
+3. **settlements `period_start, period_end`** — `src/features/seller/api/seller-settlements.routes.ts:89`
+   - 셀러 정산 요청. period 는 자동 정산 시점에 산정될 수 있음.
+   - 가능성: 동일 — production 스키마와 마이그레이션 불일치.
+
+4. **settlements `seller_id`** — `src/lib/settlement-automation.ts:316`
+   - 같은 테이블 다른 INSERT. seller_id 가 NULL 이면 안 됨 (정산 대상). 코드 점검 필요.
+
+### 처리 방법
+
+각 케이스마다:
+1. production D1 schema 확인 (`/api/_internal/repair-schema?dry=1` 또는 wrangler d1 execute)
+2. 컬럼이 정말 NULLABLE 이면 → 마이그레이션 추가
+3. 컬럼이 NOT NULL 이고 코드가 잘못 → INSERT 에 컬럼 추가
+
+PR 단위로 처리 권장. 한 번에 5건 fix 하지 말고 케이스별 분리.
+
+---
+
 ## 📊 2026-05-07 종료 시 상태 — i18n 마무리 + 파일 분할 + 라이브 버그 fix
 
 ### 이번 세션 처리

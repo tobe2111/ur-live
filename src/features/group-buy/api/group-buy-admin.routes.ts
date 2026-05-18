@@ -299,9 +299,10 @@ groupBuyAdminRoutes.post('/force-refund/:productId', requireAdmin(), require2FA(
       }
       // 셀러 dashboard notification
       try {
+        // 🛡️ 2026-05-17: notifications 스키마 fix — (user_type, message) 누락 시 silent fail.
         await DB.prepare(
-          `INSERT INTO notifications (user_id, type, title, body, link, created_at)
-           VALUES ((SELECT user_id FROM sellers WHERE id = ?), 'group_buy_admin_refund', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
+          `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+           VALUES ((SELECT user_id FROM sellers WHERE id = ?), 'seller', 'group_buy_admin_refund', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
         ).bind(product.seller_id, '관리자 환불 처리', `${product.name} 공구가 어드민에 의해 환불 처리됐습니다 (${refundCount}건). 사유: ${reason}`).run()
       } catch { /* notifications table may not exist */ }
     } catch (e) { console.error('[admin force-refund notify]', e) }

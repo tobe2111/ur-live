@@ -79,6 +79,11 @@ node scripts/check-status-constraints.mjs || true
 echo "==> Pre-commit: SQL bind param 개수 검사 (warn-only)..."
 node scripts/check-sql-bind-params.mjs || true
 
+# 🛡️ 2026-05-17: NOT NULL 컬럼 미포함 INSERT 검사 (warn-only).
+#   'NOT NULL constraint failed' SqlError → silent .catch fail → 알림 누락 사고 방지.
+echo "==> Pre-commit: NOT NULL INSERT 검사 (warn-only)..."
+node scripts/check-sql-not-null-insert.mjs || true
+
 # 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
 echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
 bash scripts/check-nan-dashboard.sh || true

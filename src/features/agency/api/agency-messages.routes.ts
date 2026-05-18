@@ -245,7 +245,7 @@ app.post('/send', requireAgencyPermission('message'), async (c) => {
     try {
       // in-app 알림 (셀러용 dashboard_notifications)
       await c.env.DB.prepare(`
-        INSERT INTO dashboard_notifications (user_type, user_id, type, title, message, link, created_at)
+        INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
         VALUES ('seller', ?, 'agency_message', ?, ?, ?, datetime('now'))
       `).bind(String(seller.seller_id), `${agencyName} 으로부터 메시지`, rendered, link).run()
 

@@ -133,6 +133,13 @@ jobs:
       - name: SQL bind param mismatch
         run: node scripts/check-sql-bind-params.mjs -s
 
+      # 🛡️ 2026-05-17: NOT NULL INSERT — 'NOT NULL constraint failed' 방지.
+      #   INSERT 시 마이그레이션의 NOT NULL (no DEFAULT) 컬럼이 빠졌는지 검증.
+      #   현재 잔여 5건 unclear (product_reviews/settlements/live_streams) — strict 보류, warn-only.
+      - name: NOT NULL INSERT (warn)
+        run: node scripts/check-sql-not-null-insert.mjs
+        continue-on-error: true
+
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)
         run: node scripts/verify-schema.mjs --json
