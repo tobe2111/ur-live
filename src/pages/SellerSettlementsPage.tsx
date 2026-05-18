@@ -7,6 +7,7 @@ import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
+import ImageUpload from '@/components/upload/ImageUpload'
 import { DashboardPageHeader, DashboardStatCard, DashboardCard, DashboardLoading } from '@/components/dashboard'
 import {
   DollarSign,
@@ -691,22 +692,14 @@ export default function SellerSettlementsPage() {
               검증 완료 시 현금 정산 + 딜 환급이 가능합니다 (1-3 영업일 소요)
             </p>
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  사업자등록증 이미지 URL <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="url"
-                  value={bizRegSubmitImage}
-                  onChange={(e) => setBizRegSubmitImage(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  disabled={bizRegSubmitting}
-                />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  ※ 이미지를 R2 / Cloudflare Images / 외부 호스팅에 업로드 후 URL 입력
-                </p>
-              </div>
+              <ImageUpload
+                label="사업자등록증 이미지"
+                required
+                value={bizRegSubmitImage}
+                onChange={(url) => setBizRegSubmitImage(url)}
+                tokenKey="seller_token"
+                aspectRatio="auto"
+              />
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   사업자등록번호 (선택)

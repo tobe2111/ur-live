@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, Bed, Calendar, ArrowLeft, Plus, Trash2, Save, ChevronLeft, ChevronRight, Ban, Edit } from 'lucide-react'
+import { MultiImageUpload } from '@/components/upload/ImageUpload'
 import { formatNumber } from '@/utils/format'
 
 interface StayRoom {
@@ -323,9 +324,9 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
     base_price_weekend: room?.base_price_weekend || 0,
     base_price_holiday: room?.base_price_holiday ?? '',
     total_inventory: room?.total_inventory || 1,
-    image_urls: (() => {
-      if (!room?.image_urls) return ''
-      try { return JSON.parse(room.image_urls).join('\n') } catch { return '' }
+    image_urls: ((): string[] => {
+      if (!room?.image_urls) return []
+      try { const v = JSON.parse(room.image_urls); return Array.isArray(v) ? v : [] } catch { return [] }
     })(),
     is_active: room?.is_active ?? 1,
   })
@@ -340,7 +341,7 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
         ...f,
         room_size_sqm: f.room_size_sqm === '' ? null : Number(f.room_size_sqm),
         base_price_holiday: f.base_price_holiday === '' ? null : Number(f.base_price_holiday),
-        image_urls: f.image_urls.split('\n').map((s: string) => s.trim()).filter(Boolean),
+        image_urls: f.image_urls,
       }
       const url = room
         ? `/api/seller/stays/${productId}/rooms/${room.id}`
@@ -376,16 +377,13 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
             <Inp label="공휴일 가격" type="number" value={f.base_price_holiday} onChange={(v) => setF({ ...f, base_price_holiday: v as number })} placeholder="(주말과 동일)" />
           </div>
           <Inp label="객실 재고 (이 타입 총 객실 수)" type="number" value={f.total_inventory} onChange={(v) => setF({ ...f, total_inventory: Number(v) || 1 })} />
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">이미지 URL (1줄 1개)</label>
-            <textarea
-              value={f.image_urls}
-              onChange={(e) => setF({ ...f, image_urls: e.target.value })}
-              rows={3}
-              placeholder="https://...&#10;https://..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 resize-none"
-            />
-          </div>
+          <MultiImageUpload
+            label="객실 이미지 (최대 10장, 첫 번째 대표)"
+            values={f.image_urls}
+            onChange={(urls) => setF({ ...f, image_urls: urls })}
+            tokenKey="seller_token"
+            max={10}
+          />
         </div>
         <div className="flex gap-2 mt-5">
           <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 disabled:opacity-50">취소</button>

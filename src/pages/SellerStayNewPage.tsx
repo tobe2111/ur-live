@@ -17,6 +17,7 @@ import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Building2, MapPin, Clock, Shield, Sparkles, ArrowLeft } from 'lucide-react'
+import ImageUpload from '@/components/upload/ImageUpload'
 
 interface Amenity { code: string; label_ko: string; icon_emoji: string; category: string }
 
@@ -158,15 +159,13 @@ export default function SellerStayNewPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </Field>
-            <Field label="대표 이미지 URL">
-              <input
-                type="url"
-                value={form.image_url}
-                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                placeholder="https://..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </Field>
+            <ImageUpload
+              label="대표 이미지"
+              value={form.image_url}
+              onChange={(url) => setForm({ ...form, image_url: url })}
+              tokenKey="seller_token"
+              aspectRatio="video"
+            />
             <Field label="숙소 타입" required>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {PROPERTY_TYPES.map((p) => (

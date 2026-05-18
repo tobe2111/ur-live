@@ -175,6 +175,8 @@ import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 사용자 측 public — PR 1 Foundation.
 import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes';
+// 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
+import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { requireAdmin } from './middleware/auth';
@@ -1042,6 +1044,8 @@ app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
 // 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
 app.route('/api/group-buy', staysPublicRoutes);
+// 🛡️ 2026-05-18: R2 이미지 업로드 (multi-role).
+app.route('/api', uploadRoutes);
 // 🛡️ 2026-05-16: 셀러 마케팅 (인플 차단) + 인플루언서 정산 + 어드민 송금 + 인플 카탈로그
 app.route('/api/seller-marketing', sellerMarketingRoutes);
 app.route('/api/influencer-settlement', influencerSettlementRoutes);

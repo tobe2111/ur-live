@@ -75,6 +75,15 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 # binding = "BACKUP_BUCKET"
 # bucket_name = "ur-live-backups"
 
+# 🛡️ 2026-05-18: 미디어 업로드 (사업자등록증 / 숙소 객실 이미지 / 상품 이미지 등).
+#   - 셀러 / 어드민 / 사용자가 POST /api/upload/image 호출 시 사용.
+#   - Cloudflare Dashboard 에서 R2 bucket 'ur-live-media' 생성 후 binding.
+#   - PUBLIC_R2_URL env: 'https://media.ur-team.com' (custom domain) 또는 r2.dev URL.
+#
+# [[r2_buckets]]
+# binding = "MEDIA_BUCKET"
+# bucket_name = "ur-live-media"
+
 # ============================================================
 # Durable Objects (for live streaming)
 # One DO instance per stream — handles WebSocket chat + product/viewer broadcasts
