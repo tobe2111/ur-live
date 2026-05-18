@@ -52,6 +52,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
       // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
+      // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
+      { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
