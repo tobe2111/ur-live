@@ -490,6 +490,9 @@ async function transitionBooking(
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
+    // 🛡️ 2026-05-18: CHECK 제약 대체 — 잘못된 status 호출 시 즉시 throw.
+    const { assertStayBookingStatus } = await import('@/worker/utils/stay-status')
+    assertStayBookingStatus(targetStatus)
     const bookingId = Number(c.req.param('bookingId'))
     if (!Number.isFinite(bookingId)) return c.json({ success: false, error: 'Invalid bookingId' }, 400)
 

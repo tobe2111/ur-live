@@ -11,18 +11,18 @@ import SEO from '@/components/SEO'
 export default function SellerTermsPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
+    <div className="min-h-screen bg-white pb-20">
       <SEO title="매장 약관 - 유어딜" description="유어딜 매장 입점 / 정산 / 인플루언서 협업 약관" url="/terms/seller" />
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-40 bg-white/90/90 backdrop-blur border-b border-gray-100">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">매장 약관</h1>
+          <button onClick={() => navigate(-1)} className="text-gray-900"><ChevronLeft className="w-6 h-6" /></button>
+          <h1 className="text-[16px] font-bold text-gray-900">매장 약관</h1>
           <div className="w-6" />
         </div>
       </div>
 
-      <div className="ur-content-medium px-5 pt-6 prose prose-sm max-w-none dark:prose-invert">
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">최종 수정일: 2026년 5월 16일 (초안 — 법무 검토 전)</p>
+      <div className="ur-content-medium px-5 pt-6 prose prose-sm max-w-none">
+        <p className="text-[11px] text-gray-400 mb-6">최종 수정일: 2026년 5월 16일 (초안 — 법무 검토 전)</p>
 
         <h2 className="text-lg font-bold mt-4 mb-2">제1조 (목적)</h2>
         <p className="text-sm">본 약관은 유어딜 (이하 "회사") 의 공동구매 식사권 플랫폼에 매장 (이하 "셀러") 로 입점하여 voucher 발행 / 사용 / 정산하는 절차를 규정합니다.</p>
@@ -85,7 +85,7 @@ export default function SellerTermsPage() {
         <h2 className="text-lg font-bold mt-6 mb-2">제9조 (분쟁 해결)</h2>
         <p className="text-sm">본 약관 관련 분쟁은 회사 본점 소재지 관할 법원을 1심 법원으로 합니다.</p>
 
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-10">⚠️ 본 약관은 초안이며, 실제 시행 전 법무 검토가 필요합니다.</p>
+        <p className="text-[11px] text-gray-400 mt-10">⚠️ 본 약관은 초안이며, 실제 시행 전 법무 검토가 필요합니다.</p>
       </div>
     </div>
   )

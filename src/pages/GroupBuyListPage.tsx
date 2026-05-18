@@ -198,10 +198,12 @@ export default function GroupBuyListPage() {
         break
       }
       // 🛡️ 2026-05-16: 'discount' 정렬 — 메인 hero "특가" 카테고리 진입 시
+      // 🛡️ 2026-05-18: TS type 호환 — items union type 처리 (CommunityGroupBuy 등).
       case 'discount': {
-        const discPct = (p: { original_price?: number; price: number }) => {
-          const op = p.original_price || 0
-          const pr = p.price || 0
+        const discPct = (p: unknown) => {
+          const r = (p ?? {}) as { original_price?: number | string | null; price?: number | string | null }
+          const op = Number(r.original_price) || 0
+          const pr = Number(r.price) || 0
           if (op > 0 && op > pr) return Math.round((1 - pr / op) * 100)
           return 0
         }
@@ -236,10 +238,12 @@ export default function GroupBuyListPage() {
         break
       }
       // 🛡️ 2026-05-16: 'discount' 정렬 — 메인 hero "특가" 카테고리 진입 시
+      // 🛡️ 2026-05-18: TS type 호환 — items union type 처리 (CommunityGroupBuy 등).
       case 'discount': {
-        const discPct = (p: { original_price?: number; price: number }) => {
-          const op = p.original_price || 0
-          const pr = p.price || 0
+        const discPct = (p: unknown) => {
+          const r = (p ?? {}) as { original_price?: number | string | null; price?: number | string | null }
+          const op = Number(r.original_price) || 0
+          const pr = Number(r.price) || 0
           if (op > 0 && op > pr) return Math.round((1 - pr / op) * 100)
           return 0
         }
