@@ -46,6 +46,8 @@ const AdminLiveMonitorPage = lazy(() => import('@/pages/AdminLiveMonitorPage'))
 const AdminStaysPage = lazy(() => import('@/pages/AdminStaysPage'))
 // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
 const AdminBusinessVerificationPage = lazy(() => import('@/pages/AdminBusinessVerificationPage'))
+// 🛡️ 2026-05-19: KT Alpha (기프티쇼) 관리.
+const AdminKtAlphaPage = lazy(() => import('@/pages/AdminKtAlphaPage'))
 const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage'))
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
@@ -284,6 +286,11 @@ export function AdminRoutes() {
       <Route path="/admin/business-verification" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBusinessVerificationPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/kt-alpha" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminKtAlphaPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/youtube-quota" element={

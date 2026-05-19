@@ -54,6 +54,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
+      // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 관리.
+      { path: '/admin/kt-alpha',              label: 'KT Alpha (상품권)', icon: Gift },
       { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },

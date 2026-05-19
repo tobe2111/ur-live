@@ -236,8 +236,204 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
   }
 });
 
-// 🛡️ 2026-05-18: 딜 환급 — verified 셀러의 redeemable_deal_amount 만 가능.
-//   8.8% 원천징수 자동 차감 + tax_withholding_log INSERT.
+// 🛡️ 2026-05-19: 비사업자 셀러용 — 적립금을 기프티쇼 상품권으로 받기.
+//   사업자 등록 X 인 셀러가 적립금 (gated_deal_amount) 을 voucher 로 교환.
+//   markup_pct (어드민 설정) 적용 — 우리 마진 확보.
+//
+//   흐름:
+//     1. 셀러가 voucher 선택 (gift_code + qty + 수신 phone) → POST /voucher-redeem
+//     2. 우리 시스템: voucher_orders INSERT (status='pending')
+//     3. KT Alpha sendCoupon 0204 호출
+//     4. 성공 → voucher_orders status='sent' + 셀러 적립금 차감
+//     5. 실패 → status='failed' + 셀러 알림
+sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
+  // 셀러 측 — voucher 선택용 카탈로그 (active 만).
+  try {
+    const q = c.req.query('q') || ''
+    const limit = Math.min(60, Number(c.req.query('limit')) || 30)
+    let sql = `SELECT gift_code, name, brand_name, brand_icon_url,
+                      sale_price, real_price, discount_rate,
+                      image_url_small, image_url_large,
+                      valid_period_type, valid_period_days,
+                      goods_type_detail
+                 FROM gift_catalog
+                WHERE is_active = 1 AND goods_state = 'SALE'`
+    const params: unknown[] = []
+    if (q) { sql += ' AND (name LIKE ? OR search_keywords LIKE ? OR brand_name LIKE ?)'; params.push(`%${q}%`, `%${q}%`, `%${q}%`) }
+    sql += ' ORDER BY popular ASC, sale_price ASC LIMIT ?'
+    params.push(limit)
+    const rows = await c.env.DB.prepare(sql).bind(...params).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+
+    // markup_pct 같이 전달 (셀러에게 최종 차감액 표시용).
+    const settings = await c.env.DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'kt_alpha_markup_pct'"
+    ).first<{ value: string }>().catch(() => null)
+    const markupPct = Number(settings?.value) || 5
+
+    return c.json({
+      success: true,
+      data: {
+        items: rows.results || [],
+        markup_pct: markupPct,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// 🛡️ 2026-05-19: 상품권 발송 요청 (비사업자 셀러용 voucher redeem).
+sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
+  const authorization = c.req.header('Authorization')
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const token = authorization.substring(7)
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
+    const sellerId = payload.seller_id
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
+
+    type Body = { gift_code?: string; qty?: number; phone?: string; mms_title?: string; mms_msg?: string }
+    const body = await c.req.json<Body>().catch(() => ({} as Body))
+    const giftCode = String(body?.gift_code || '').trim()
+    const qty = Math.max(1, Math.min(10, Number(body?.qty) || 1))
+    const phone = String(body?.phone || '').trim().replace(/\D/g, '')
+    if (!giftCode) return c.json({ success: false, error: 'gift_code 필요' }, 400)
+    if (!/^01\d{8,9}$/.test(phone)) return c.json({ success: false, error: '올바른 수신 휴대폰 번호 필요' }, 400)
+
+    // 1. 상품 조회 + 가격 계산.
+    const gift = await c.env.DB.prepare(
+      `SELECT gift_code, name, real_price, sale_price, image_url_small, is_active, goods_state
+         FROM gift_catalog WHERE gift_code = ?`
+    ).bind(giftCode).first<{
+      gift_code: string; name: string; real_price: number; sale_price: number;
+      image_url_small: string | null; is_active: number; goods_state: string;
+    }>()
+    if (!gift) return c.json({ success: false, error: '상품 없음 (catalog sync 후 시도)' }, 404)
+    if (!gift.is_active || gift.goods_state !== 'SALE') {
+      return c.json({ success: false, error: '판매 중지된 상품' }, 400)
+    }
+
+    // 2. markup_pct 가져오기 + 최종 차감액 계산.
+    const settings = await c.env.DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('kt_alpha_markup_pct', 'kt_alpha_user_id', 'kt_alpha_callback_no')"
+    ).all<{ key: string; value: string }>().catch(() => ({ results: [] }))
+    const settingsMap: Record<string, string> = {}
+    for (const r of (settings.results || [])) settingsMap[r.key] = r.value
+
+    const markupPct = Number(settingsMap.kt_alpha_markup_pct) || 5
+    const ktUserId = settingsMap.kt_alpha_user_id
+    const callbackNo = settingsMap.kt_alpha_callback_no
+    if (!ktUserId || !callbackNo) {
+      return c.json({ success: false, error: 'KT Alpha 운영자 설정 미완료 — 어드민 문의' }, 503)
+    }
+
+    // 셀러 차감액 = real_price (KT Alpha 공급가) × (1 + markup_pct/100) × qty.
+    const unitDeduct = Math.floor(gift.real_price * (1 + markupPct / 100))
+    const totalDeduct = unitDeduct * qty
+
+    // 3. 셀러 잔액 확인 — 사업자 검증 상태에 따라 gated 또는 redeemable.
+    const seller = await c.env.DB.prepare(
+      'SELECT business_registration_status FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_registration_status: string | null }>()
+    const verified = seller?.business_registration_status === 'verified' || seller?.business_registration_status === 'exempt'
+    const balCol = verified ? 'redeemable_deal_amount' : 'gated_deal_amount'
+
+    const bal = await c.env.DB.prepare(
+      `SELECT ${balCol} as amount FROM seller_deal_balances WHERE seller_id = ?`
+    ).bind(sellerId).first<{ amount: number }>().catch(() => null)
+    const available = bal?.amount || 0
+    if (totalDeduct > available) {
+      return c.json({
+        success: false,
+        error: `잔액 부족 (필요 ${totalDeduct.toLocaleString()}딜, 보유 ${available.toLocaleString()}딜)`,
+      }, 400)
+    }
+
+    // 4. voucher_orders INSERT (status='pending').
+    const trId = `ur-vr-${sellerId}-${Date.now()}`
+    const orderResult = await c.env.DB.prepare(
+      `INSERT INTO voucher_orders (
+         seller_id, source, goods_code, goods_name, goods_image_url,
+         unit_price, quantity, total_amount, recipient_phone,
+         withholding_amount, net_amount, status, external_order_id
+       ) VALUES (?, 'kt_alpha', ?, ?, ?, ?, ?, ?, ?, 0, ?, 'processing', ?)`
+    ).bind(
+      sellerId, gift.gift_code, gift.name, gift.image_url_small,
+      unitDeduct, qty, totalDeduct, phone, totalDeduct, trId,
+    ).run().catch((e: Error) => { throw new Error(`voucher_orders INSERT 실패: ${e.message}`) })
+
+    const voucherOrderId = Number(orderResult.meta.last_row_id)
+
+    // 5. KT Alpha sendCoupon 0204 호출.
+    try {
+      const { sendCoupon } = await import('@/worker/utils/giftishow-api')
+      const env = c.env as unknown as { KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
+
+      // qty 만큼 반복 (KT Alpha 는 1건씩 발송).
+      let lastOrderNo: string | undefined
+      for (let i = 0; i < qty; i++) {
+        const subTrId = qty === 1 ? trId : `${trId}-${i + 1}`
+        const result = await sendCoupon(env, {
+          goodsCode: gift.gift_code,
+          phoneNo: phone,
+          callbackNo,
+          mmsTitle: body?.mms_title?.slice(0, 30) || `[유어딜] ${gift.name}`,
+          mmsMsg: body?.mms_msg?.slice(0, 200) || `${gift.name} 상품권이 도착했습니다. 매장에서 사용해주세요.`,
+          trId: subTrId,
+          userId: ktUserId,
+          orderNo: `vr-${voucherOrderId}-${i + 1}`,
+          gubun: 'N',
+        })
+        lastOrderNo = result.orderNo
+      }
+
+      // 6. 성공 — status='sent' + 셀러 잔액 차감.
+      await c.env.DB.prepare(
+        `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+      ).bind(lastOrderNo || trId, voucherOrderId).run()
+
+      // 잔액 차감.
+      await c.env.DB.prepare(
+        `UPDATE seller_deal_balances SET ${balCol} = ${balCol} - ?, updated_at = datetime('now') WHERE seller_id = ?`
+      ).bind(totalDeduct, sellerId).run()
+
+      // 이력 INSERT.
+      await c.env.DB.prepare(
+        `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, reference_id, memo, created_at)
+         VALUES (?, ?, ?, 'voucher_redeem', ?, ?, datetime('now'))`
+      ).bind(
+        sellerId, -totalDeduct, verified ? 'redeemable' : 'gated',
+        String(voucherOrderId),
+        `${gift.name} × ${qty} → ${phone}`,
+      ).run().catch(() => { /* noop */ })
+
+      return c.json({
+        success: true,
+        data: {
+          voucher_order_id: voucherOrderId,
+          gift_code: gift.gift_code,
+          gift_name: gift.name,
+          qty,
+          unit_deduct: unitDeduct,
+          total_deduct: totalDeduct,
+          markup_pct: markupPct,
+          recipient_phone: phone,
+          external_order_no: lastOrderNo,
+        },
+      })
+    } catch (err) {
+      // KT Alpha 호출 실패 — voucher_orders 실패 처리.
+      const errMsg = (err as Error).message.slice(0, 500)
+      await c.env.DB.prepare(
+        `UPDATE voucher_orders SET status = 'failed', failure_reason = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(errMsg, voucherOrderId).run()
+      return c.json({ success: false, error: `발송 실패: ${errMsg}` }, 502)
+    }
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 sellerSettlementsRoutes.post('/deal-withdraw', async (c) => {
   const authorization = c.req.header('Authorization');
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);

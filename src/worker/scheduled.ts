@@ -139,6 +139,15 @@ export async function handleCronScheduled(
 
   // 🛡️ 2026-05-18 (PR 6/6): 숙소 예약 D-1 / D-day 알림 — 매일 09:00 UTC (KST 18:00).
   //   KST 09:00 으로 옮기려면 '0 0 * * *' (UTC).
+  // 🛡️ 2026-05-19: KT Alpha catalog sync — 매일 03:00 UTC (KST 12:00).
+  //   하루 1회만 → KV write 한도 영향 없음 (D1 only).
+  if (cron === '0 3 * * *') {
+    ctx.waitUntil(safeCron('kt-alpha-catalog-sync', async () => {
+      const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
+      await runKtAlphaCatalogSync(env as { DB: D1Database })
+    }))
+  }
+
   if (cron === '0 9 * * *' || cron === '0 0 * * *') {
     ctx.waitUntil(safeCron('stay-reminder', async () => {
       const { runStayReminderCron } = await import('./cron/stay-reminder')
