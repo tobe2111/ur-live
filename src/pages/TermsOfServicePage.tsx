@@ -65,6 +65,24 @@ export default function TermsOfServicePage() {
             </section>
 
             <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제2조의2 (회사가 판매하지 않는 항목)</h2>
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4 space-y-2">
+                <p className="text-[13px] font-bold text-amber-900 dark:text-amber-200">
+                  ℹ️ 모바일 상품권(기프티콘) 직접 판매 안 함
+                </p>
+                <p className="text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                  회사는 일반 구매자(소비자)에게 KT Alpha(기프티쇼) 등 모바일 상품권을 직접 판매하지 않습니다.
+                  모바일 상품권 발행은 <strong>회사가 자사 셀러(판매자)에게 정산금 지급 수단으로</strong> 사용되는
+                  B2B 정산 용도로만 이루어지며, 셀러 본인 명의 휴대폰으로만 발송됩니다.
+                </p>
+                <p className="text-[12px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                  구매자가 라이브 커머스에서 구매하는 상품은 셀러가 제공하는 실물 상품 / 음식 / 숙박 등이며,
+                  결제 대금은 토스페이먼츠 등 정식 PG사를 통해 처리됩니다.
+                </p>
+              </div>
+            </section>
+
+            <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제3조 (약관의 게시와 개정)</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 본 약관의 내용을 회원이 쉽게 알 수 있도록 서비스 초기 화면에 게시합니다.</p>

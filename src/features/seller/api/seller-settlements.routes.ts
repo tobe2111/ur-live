@@ -248,7 +248,14 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
 //     5. 실패 → status='failed' + 셀러 알림
 sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
   // 셀러 측 — voucher 선택용 카탈로그 (active 만).
+  const authorization = c.req.header('Authorization')
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
+    const token = authorization.substring(7)
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
+    const sellerId = payload.seller_id
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
+
     const q = c.req.query('q') || ''
     const limit = Math.min(60, Number(c.req.query('limit')) || 30)
     let sql = `SELECT gift_code, name, brand_name, brand_icon_url,
@@ -264,17 +271,30 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     params.push(limit)
     const rows = await c.env.DB.prepare(sql).bind(...params).all<Record<string, unknown>>().catch(() => ({ results: [] }))
 
-    // markup_pct 같이 전달 (셀러에게 최종 차감액 표시용).
+    // markup_pct + 셀러 본인 휴대폰 (모달 pre-fill 용) 같이 전달.
     const settings = await c.env.DB.prepare(
       "SELECT value FROM platform_settings WHERE key = 'kt_alpha_markup_pct'"
     ).first<{ value: string }>().catch(() => null)
     const markupPct = Number(settings?.value) || 5
+
+    const seller = await c.env.DB.prepare(
+      'SELECT phone FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ phone: string | null }>()
+    const sellerPhone = String(seller?.phone || '').replace(/\D/g, '')
 
     return c.json({
       success: true,
       data: {
         items: rows.results || [],
         markup_pct: markupPct,
+        seller_phone: sellerPhone,
+        // KT Alpha 가이드라인 — UI 에 표시할 핵심 약관 (frontend hardcode 방지).
+        terms: {
+          validity_days: 30,
+          refund_allowed: false,
+          b2b_only: true,
+          source: 'KT Alpha (기프티쇼) B2B API',
+        },
       },
     })
   } catch (err) {
@@ -292,13 +312,27 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     const sellerId = payload.seller_id
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
-    type Body = { gift_code?: string; qty?: number; phone?: string; mms_title?: string; mms_msg?: string }
+    type Body = {
+      gift_code?: string; qty?: number; phone?: string; mms_title?: string; mms_msg?: string;
+      // 🛡️ 2026-05-19: KT Alpha 비즈 API 가이드라인 — B2B 정산 동의 명시 강제.
+      terms_accepted_expiry?: boolean   // 30일 유효기간 / 환불 불가 동의
+      terms_accepted_b2b?: boolean      // 본인 명의 휴대폰 / B2B 정산 동의
+    }
     const body = await c.req.json<Body>().catch(() => ({} as Body))
     const giftCode = String(body?.gift_code || '').trim()
     const qty = Math.max(1, Math.min(10, Number(body?.qty) || 1))
     const phone = String(body?.phone || '').trim().replace(/\D/g, '')
     if (!giftCode) return c.json({ success: false, error: 'gift_code 필요' }, 400)
     if (!/^01\d{8,9}$/.test(phone)) return c.json({ success: false, error: '올바른 수신 휴대폰 번호 필요' }, 400)
+
+    // 🛡️ KT Alpha 가이드라인: 발송 전 두 가지 동의 강제 (감사 추적 가능).
+    if (!body?.terms_accepted_expiry || !body?.terms_accepted_b2b) {
+      return c.json({
+        success: false,
+        error: '발송 전 약관 동의 필요 (30일 유효기간 + B2B 본인 발송)',
+        code: 'TERMS_NOT_ACCEPTED',
+      }, 400)
+    }
 
     // 1. 상품 조회 + 가격 계산.
     const gift = await c.env.DB.prepare(
@@ -332,10 +366,31 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     const totalDeduct = unitDeduct * qty
 
     // 3. 셀러 잔액 확인 — 사업자 검증 상태에 따라 gated 또는 redeemable.
+    //    🛡️ 추가: 본인 명의 휴대폰 검증 (KT Alpha 가이드라인 — 타인 발송 차단).
     const seller = await c.env.DB.prepare(
-      'SELECT business_registration_status FROM sellers WHERE id = ?'
-    ).bind(sellerId).first<{ business_registration_status: string | null }>()
+      'SELECT business_registration_status, phone FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_registration_status: string | null; phone: string | null }>()
     const verified = seller?.business_registration_status === 'verified' || seller?.business_registration_status === 'exempt'
+
+    // 본인 명의 휴대폰 검증 — 회원가입 시 등록한 phone 과 발송 대상 phone 일치 필수.
+    //   - 자릿수만 비교 (하이픈 등 무시).
+    //   - sellers.phone 미등록 시 → 셀러 설정에서 먼저 등록하라고 안내.
+    const sellerPhone = String(seller?.phone || '').replace(/\D/g, '')
+    if (!sellerPhone) {
+      return c.json({
+        success: false,
+        error: '셀러 본인 휴대폰 미등록 — 셀러 설정에서 본인 인증 휴대폰 먼저 등록 필요',
+        code: 'SELLER_PHONE_NOT_SET',
+      }, 412)
+    }
+    if (sellerPhone !== phone) {
+      return c.json({
+        success: false,
+        error: '본인 명의 휴대폰으로만 발송 가능 (KT Alpha B2B 정산 정책)',
+        code: 'PHONE_MISMATCH',
+        seller_phone_masked: sellerPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1-****-$2'),
+      }, 403)
+    }
     const balCol = verified ? 'redeemable_deal_amount' : 'gated_deal_amount'
 
     const bal = await c.env.DB.prepare(

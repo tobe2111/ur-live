@@ -968,7 +968,11 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<CatalogItem | null>(null)
   const [qty, setQty] = useState(1)
-  const [phone, setPhone] = useState(localStorage.getItem('seller_phone') || '')
+  // 🛡️ KT Alpha 가이드라인: 본인 명의 휴대폰 강제 — 셀러 회원가입 시 등록한 phone 만 허용.
+  const [sellerPhone, setSellerPhone] = useState('')
+  // 🛡️ KT Alpha 가이드라인: 발송 전 두 가지 동의 강제.
+  const [acceptExpiry, setAcceptExpiry] = useState(false)
+  const [acceptB2B, setAcceptB2B] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => { load() }, []) // eslint-disable-line
@@ -982,6 +986,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
       if (r.data?.success) {
         setItems(r.data.data.items || [])
         setMarkupPct(Number(r.data.data.markup_pct) || 5)
+        setSellerPhone(String(r.data.data.seller_phone || ''))
       }
     } catch { /* fail-soft */ } finally { setLoading(false) }
   }
@@ -990,18 +995,27 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
     return Math.floor(item.real_price * (1 + markupPct / 100))
   }
   const totalDeduct = selected ? unitDeduct(selected) * qty : 0
-  const canSubmit = selected && totalDeduct > 0 && totalDeduct <= totalBalance && /^\d{10,11}$/.test(phone.replace(/\D/g, ''))
+  const hasPhone = /^01\d{8,9}$/.test(sellerPhone)
+  const canSubmit = selected && totalDeduct > 0 && totalDeduct <= totalBalance
+    && hasPhone && acceptExpiry && acceptB2B
+
+  const phoneMasked = hasPhone
+    ? sellerPhone.replace(/(\d{3})(\d{3,4})(\d{4})/, '$1-$2-$3')
+    : ''
 
   async function submit() {
     if (!selected) return
-    if (!confirm(`${selected.name} × ${qty} → ${phone}\n차감 예정: ₩${totalDeduct.toLocaleString()}\n발송하시겠습니까?`)) return
+    if (!acceptExpiry || !acceptB2B) { toast.error('약관 동의 필요'); return }
+    if (!confirm(`${selected.name} × ${qty} → ${phoneMasked}\n차감 예정: ₩${totalDeduct.toLocaleString()}\n\n⚠️ 30일 유효기간 / 환불 불가 동의하신 것 맞나요?`)) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')
       const r = await api.post('/api/seller/voucher-redeem', {
         gift_code: selected.gift_code,
         qty,
-        phone: phone.replace(/\D/g, ''),
+        phone: sellerPhone,
+        terms_accepted_expiry: acceptExpiry,
+        terms_accepted_b2b: acceptB2B,
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data?.success) {
         toast.success(`✅ 발송 완료 (${r.data.data.qty}건, 차감 ₩${r.data.data.total_deduct.toLocaleString()})`)
@@ -1022,10 +1036,21 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
           <div>
             <h3 className="text-lg font-bold text-gray-900">🎁 상품권으로 받기</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              잔액 ₩{totalBalance.toLocaleString()} 에서 차감 · 발송 후 환불 불가
+              잔액 ₩{totalBalance.toLocaleString()} 에서 차감 · KT Alpha (기프티쇼) B2B 정산
             </p>
           </div>
           <button onClick={onClose} disabled={submitting} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+
+        {/* 🛡️ KT Alpha 가이드라인 — 30일 유효기간 / 환불 불가 / B2B 사전 고지 */}
+        <div className="mx-5 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 space-y-1">
+          <p className="font-bold flex items-center gap-1">⚠️ 발송 전 반드시 확인하세요</p>
+          <ul className="list-disc list-inside space-y-0.5 ml-1">
+            <li><b>유효기간 30일 고정</b> — 연장 불가</li>
+            <li><b>발송 후 환불 / 취소 불가</b> (KT Alpha B2B 쿠폰 정책)</li>
+            <li><b>본인 명의 휴대폰만 발송 가능</b> — 회원가입 시 등록한 번호로 강제 발송</li>
+            <li>발송 = 셀러 적립금에서 즉시 차감 (현금 정산 대체)</li>
+          </ul>
         </div>
 
         {/* 검색 + 카탈로그 */}
@@ -1087,11 +1112,16 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">받을 휴대폰</label>
-                <input type="tel" value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01012345678"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">받을 휴대폰 (본인 명의 강제)</label>
+                {hasPhone ? (
+                  <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm font-mono text-gray-700 flex items-center gap-2">
+                    🔒 {phoneMasked}
+                  </div>
+                ) : (
+                  <div className="px-3 py-2 bg-red-50 border border-red-300 rounded-lg text-xs text-red-700">
+                    셀러 본인 휴대폰 미등록 — <a href="/seller/profile" className="underline font-bold">설정에서 등록</a>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1104,6 +1134,26 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
               )}
             </div>
 
+            {/* 🛡️ KT Alpha 가이드라인 — 발송 전 동의 체크박스 강제 */}
+            <div className="bg-white border border-amber-200 rounded p-3 mb-3 space-y-2">
+              <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={acceptExpiry} onChange={(e) => setAcceptExpiry(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
+                <span>
+                  <b className="text-amber-700">[필수]</b> 본 상품권은 <b>발행일로부터 30일 유효</b>하며,
+                  발송 후 <b>환불 / 취소 / 유효기간 연장이 불가</b>함을 확인했습니다 (KT Alpha B2B 쿠폰 정책).
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={acceptB2B} onChange={(e) => setAcceptB2B(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
+                <span>
+                  <b className="text-amber-700">[필수]</b> 본 상품권은 <b>유어딜이 자사 셀러(본인)에게 지급하는 B2B 정산 수단</b>이며,
+                  최종 소비자 판매 목적이 아님을 확인했습니다. 본인 명의 휴대폰으로만 발송됩니다.
+                </span>
+              </label>
+            </div>
+
             <div className="flex gap-2">
               <button onClick={onClose} disabled={submitting}
                 className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg disabled:opacity-50">
@@ -1114,9 +1164,13 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
                 {submitting ? '발송 중...' : `🎁 ₩${totalDeduct.toLocaleString()} 차감 후 발송`}
               </button>
             </div>
-            <p className="text-[10px] text-gray-400 mt-2">
-              ⓘ 입력한 휴대폰으로 MMS 쿠폰이 즉시 발송됩니다. 발송 후 취소/환불 불가.
-            </p>
+            {!canSubmit && selected && (
+              <p className="text-[10px] text-amber-600 mt-2 text-center">
+                {!hasPhone && '· 셀러 본인 휴대폰 등록 필요 '}
+                {(!acceptExpiry || !acceptB2B) && '· 약관 2종 동의 필요 '}
+                {totalDeduct > totalBalance && '· 잔액 부족'}
+              </p>
+            )}
           </div>
         )}
       </div>
