@@ -119,6 +119,7 @@ productsRoutes.get('/', cors(), async (c) => {
     const filter: ProductFilter = {
       sellerId: c.req.query('seller_id') ? Number(c.req.query('seller_id')) : undefined,
       category: c.req.query('category'),
+      brand: c.req.query('brand'),
       status: c.req.query('status') as 'active' | 'inactive' | undefined,
       search: safeSearch,
       minPrice: c.req.query('min_price') ? Number(c.req.query('min_price')) : undefined,

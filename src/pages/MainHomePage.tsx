@@ -66,8 +66,12 @@ export default function MainHomePage() {
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [mealProducts, setMealProducts] = useState<Product[]>([])
   const [products, setProducts] = useState<Product[]>([])
-  // 🛡️ 2026-05-19: 카테고리별 온라인 상품 섹션.
-  const [categorySections, setCategorySections] = useState<Array<{ category: string; count: number; products: Product[] }>>([])
+  // 🛡️ 2026-05-19: 카테고리별 온라인 상품 섹션 (브랜드 2차 분류).
+  const [categorySections, setCategorySections] = useState<Array<{
+    category: string; count: number;
+    products: Product[];
+    brands?: Array<{ brand_name: string; cnt: number }>;
+  }>>([])
   const [loading, setLoading] = useState(true)
   const [cartCount, setCartCount] = useState(0)
   // 🛡️ 2026-04-22: 알림 unread badge 실시간 동기화 (이전: static red dot)
@@ -484,7 +488,7 @@ export default function MainHomePage() {
 
           {categorySections.map((section) => (
             <div key={section.category} className="px-4 pb-6">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-[14px] font-extrabold text-gray-900 dark:text-white">
                   {section.category}
                   <span className="ml-2 text-[10px] font-normal text-gray-500 dark:text-gray-400">{section.count}개</span>
@@ -496,6 +500,20 @@ export default function MainHomePage() {
                   더보기 →
                 </button>
               </div>
+              {/* 🛡️ 2026-05-19: 브랜드 2차 분류 칩 (스타벅스/GS25 등) */}
+              {section.brands && section.brands.length > 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 -mx-4 px-4 scrollbar-hide">
+                  {section.brands.map((b) => (
+                    <button
+                      key={b.brand_name}
+                      onClick={() => navigate(`/browse?category=${encodeURIComponent(section.category)}&brand=${encodeURIComponent(b.brand_name)}`)}
+                      className="shrink-0 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-[11px] font-bold rounded-full hover:bg-amber-100"
+                    >
+                      {b.brand_name} <span className="opacity-60 ml-0.5">{b.cnt}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4">
                 {section.products.slice(0, 8).map((p) => {
                   const d = disc(p.price, p.original_price)

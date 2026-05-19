@@ -409,7 +409,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         updateStatements.push(c.env.DB.prepare(
           `UPDATE products SET
              name = ?, description = ?, price = ?, original_price = ?,
-             image_url = ?, detail_images = ?, category = ?,
+             image_url = ?, detail_images = ?, category = ?, brand_name = ?,
              is_active = ?, deal_only = 1, auto_voucher_send = 1,
              updated_at = datetime('now')
            WHERE id = ?`
@@ -417,22 +417,22 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
           r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           detailImagesJson,
-          itemCategory, isActive, existingId,
+          itemCategory, r.brand_name || null, isActive, existingId,
         ))
         updated++
       } else {
         insertStatements.push(c.env.DB.prepare(
           `INSERT INTO products (
              kt_alpha_gift_code, name, description, price, original_price,
-             image_url, detail_images, stock, category,
+             image_url, detail_images, stock, category, brand_name,
              is_active, deal_only, auto_voucher_send, seller_id,
              created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, 999999, ?, ?, 1, 1, ?, datetime('now'), datetime('now'))`
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 999999, ?, ?, ?, 1, 1, ?, datetime('now'), datetime('now'))`
         ).bind(
           r.gift_code, r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           detailImagesJson,
-          itemCategory, isActive, adminSellerId,
+          itemCategory, r.brand_name || null, isActive, adminSellerId,
         ))
         inserted++
       }

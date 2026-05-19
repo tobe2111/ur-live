@@ -308,18 +308,33 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
         ORDER BY cnt DESC LIMIT 12`
     ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] }))
 
-    // 2) 각 카테고리별 인기 상품 top 8.
-    const sections: Array<{ category: string; count: number; products: Record<string, unknown>[] }> = []
+    // 2) 각 카테고리별 인기 상품 top 8 + 브랜드 top 8.
+    const sections: Array<{
+      category: string; count: number;
+      products: Record<string, unknown>[];
+      brands: Array<{ brand_name: string; cnt: number }>;
+    }> = []
     for (const c of (cats.results || [])) {
       const items = await DB.prepare(
-        `SELECT id, name, price, original_price, image_url, category, seller_id,
+        `SELECT id, name, price, original_price, image_url, category, brand_name, seller_id,
                 view_count, sold_count, avg_rating, review_count, deal_only
            FROM products
           WHERE is_active = 1 AND category = ?
           ORDER BY sold_count DESC, view_count DESC, created_at DESC
           LIMIT 8`
       ).bind(c.category).all<Record<string, unknown>>().catch(() => ({ results: [] }))
-      sections.push({ category: c.category, count: c.cnt, products: items.results || [] })
+      const brands = await DB.prepare(
+        `SELECT brand_name, COUNT(*) as cnt
+           FROM products
+          WHERE is_active = 1 AND category = ? AND brand_name IS NOT NULL
+          GROUP BY brand_name
+          ORDER BY cnt DESC LIMIT 8`
+      ).bind(c.category).all<{ brand_name: string; cnt: number }>().catch(() => ({ results: [] }))
+      sections.push({
+        category: c.category, count: c.cnt,
+        products: items.results || [],
+        brands: brands.results || [],
+      })
     }
 
     return c.json({ success: true, data: { sections } })

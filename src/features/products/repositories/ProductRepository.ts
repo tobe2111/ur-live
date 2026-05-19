@@ -34,6 +34,11 @@ export class ProductRepository {
       params.push(filter.sellerId);
     }
     
+    if (filter.brand) {
+      query += ` AND brand_name = ?`;
+      params.push(filter.brand);
+    }
+
     if (filter.category) {
       query += ` AND category = ?`;
       params.push(filter.category);
@@ -119,6 +124,11 @@ export class ProductRepository {
       params.push(filter.sellerId);
     }
     
+    if (filter.brand) {
+      query += ` AND brand_name = ?`;
+      params.push(filter.brand);
+    }
+
     if (filter.category) {
       query += ` AND category = ?`;
       params.push(filter.category);

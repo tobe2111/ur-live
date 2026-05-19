@@ -27,6 +27,7 @@ export type ProductSort = 'newest' | 'popular' | 'price_low' | 'price_high' | 'r
 export interface ProductFilter {
   sellerId?: number;
   category?: string;
+  brand?: string;        // 🛡️ 2026-05-19: 브랜드 2차 분류 (KT Alpha 교환권 브랜드별).
   status?: 'active' | 'inactive';
   minPrice?: number;
   maxPrice?: number;
