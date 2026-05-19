@@ -807,6 +807,24 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 
     createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
 
+    // 🛡️ 2026-05-19: KT Alpha 상품권 자동 발송 — 딜 교환 전용 상품 결제 시.
+    try {
+      const ktOrders = await DB.prepare(
+        `SELECT id, shipping_phone, user_id FROM orders WHERE order_number LIKE ? AND user_id = ? AND status = 'PAID'`
+      ).bind(`${order_number}%`, userId).all<{ id: number; shipping_phone: string | null; user_id: string }>()
+        .catch(() => ({ results: [] }))
+      if (ktOrders.results && ktOrders.results.length > 0) {
+        const { autoSendKtAlphaVouchersForOrders } = await import('@/worker/utils/kt-alpha-auto-send')
+        await autoSendKtAlphaVouchersForOrders(
+          c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+          ktOrders.results,
+          userId,
+        )
+      }
+    } catch (e) {
+      console.error('[points/pay] kt-alpha auto-send failed:', e)
+    }
+
     return c.json({
       success: true,
       data: {

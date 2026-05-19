@@ -72,6 +72,10 @@ export interface Product {
   is_active: number; // SQLite uses 0/1 for boolean
   created_at: string;
   updated_at?: string;
+  // 🛡️ 2026-05-19: KT Alpha 직판 상품 마커.
+  kt_alpha_gift_code?: string | null;
+  deal_only?: number;          // 1 = 딜 교환 전용 (카드 결제 차단)
+  auto_voucher_send?: number;  // 1 = 결제 성공 시 자동 발송
 }
 
 /**

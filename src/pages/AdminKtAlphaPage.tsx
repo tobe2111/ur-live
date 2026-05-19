@@ -155,6 +155,75 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-19: 대량 등록 (KT Alpha catalog → products) 상태/액션.
+  const [consumerStats, setConsumerStats] = useState<{
+    total: number; visible: number; total_sold: number; avg_price: number; min_price: number; max_price: number;
+  }>({ total: 0, visible: 0, total_sold: 0, avg_price: 0, min_price: 0, max_price: 0 })
+  const [consumerLastImport, setConsumerLastImport] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [dryRunResult, setDryRunResult] = useState<{
+    inserted: number; updated: number; markup_pct: number;
+    samples: Array<{ gift_code: string; name: string; price: number; action: string }>;
+  } | null>(null)
+
+  async function loadConsumerStats() {
+    try {
+      const r = await api.get('/api/admin/kt-alpha/consumer-products/stats', { headers: h() })
+      if (r.data?.success) {
+        setConsumerStats(r.data.data.stats || consumerStats)
+        setConsumerLastImport(r.data.data.last_import_at || null)
+      }
+    } catch { /* fail-soft */ }
+  }
+
+  useEffect(() => { loadConsumerStats() }, []) // eslint-disable-line
+
+  async function runImport(dryRun: boolean) {
+    if (!dryRun && !confirm(
+      '⚠️ KT Alpha 상품 5000개를 일반 상품으로 자동 등록합니다.\n' +
+      '\n· 마진 20% (kt_alpha_consumer_markup_pct 설정값)\n' +
+      '· 딜 결제 전용\n· 노출 상태는 별도 토글로 제어\n\n' +
+      'KT Alpha 측 사전 승인 받으셨나요? (B2B 정책 리스크)\n계속 진행하시겠습니까?'
+    )) return
+    setImporting(true)
+    setDryRunResult(null)
+    try {
+      const r = await api.post('/api/admin/kt-alpha/bulk-import',
+        { dry_run: dryRun }, { headers: h() })
+      if (r.data?.success) {
+        const d = r.data.data
+        if (dryRun) {
+          setDryRunResult({ inserted: d.inserted, updated: d.updated, markup_pct: d.markup_pct, samples: d.samples || [] })
+          toast.success(`🔍 미리보기: 신규 ${d.inserted}건 / 갱신 ${d.updated}건`)
+        } else {
+          toast.success(`✅ 등록 완료 — 신규 ${d.inserted}건 / 갱신 ${d.updated}건 / 마진 ${d.markup_pct}%`)
+          loadConsumerStats()
+        }
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '대량 등록 실패')
+    } finally { setImporting(false) }
+  }
+
+  async function toggleConsumerVisibility(enabled: boolean) {
+    if (enabled && !confirm(
+      '⚠️ KT Alpha 상품 전체를 일반 사용자에게 노출합니다.\n' +
+      'KT Alpha 측 사전 승인 받으셨나요? (정책 위반 시 Key 회수 위험)\n계속하시겠습니까?'
+    )) return
+    try {
+      const r = await api.patch('/api/admin/kt-alpha/consumer-products/visibility',
+        { enabled }, { headers: h() })
+      if (r.data?.success) {
+        toast.success(enabled ? '✅ 노출 ON' : '🔒 노출 OFF')
+        loadConsumerStats()
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
   const balance = Number(settings.kt_alpha_biz_money_balance) || 0
   const balanceLow = balance > 0 && balance < 100_000
   const balanceEmpty = balance === 0
@@ -318,6 +387,83 @@ export default function AdminKtAlphaPage() {
 
               <p className="text-[10px] text-gray-400 mt-3">
                 ⓘ 마지막 sync: {settings.kt_alpha_last_sync_at || '없음'} · {settings.kt_alpha_last_sync_count || 0}건
+              </p>
+            </div>
+
+            {/* 🛡️ 2026-05-19: KT Alpha 상품 대량 등록 (소비자 직판) */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-amber-900">🛒 소비자 직판 (딜 교환 전용)</h3>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    KT Alpha 카탈로그를 일반 상품으로 등록 — 사용자가 딜로 교환 가능
+                  </p>
+                </div>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                  consumerStats.visible > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {consumerStats.visible > 0 ? '노출 중' : '숨김'}
+                </span>
+              </div>
+
+              {/* KPI */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                <div className="bg-white rounded-lg p-2.5">
+                  <p className="text-[10px] text-gray-500">등록 상품</p>
+                  <p className="text-lg font-extrabold text-amber-900">{consumerStats.total.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-lg p-2.5">
+                  <p className="text-[10px] text-gray-500">노출 중</p>
+                  <p className="text-lg font-extrabold text-emerald-700">{consumerStats.visible.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-lg p-2.5">
+                  <p className="text-[10px] text-gray-500">누적 판매</p>
+                  <p className="text-lg font-extrabold text-pink-600">{consumerStats.total_sold.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-lg p-2.5">
+                  <p className="text-[10px] text-gray-500">평균 가격</p>
+                  <p className="text-lg font-extrabold text-gray-900">₩{Math.floor(consumerStats.avg_price).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => runImport(true)} disabled={importing}
+                  className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  🔍 미리보기 (dry-run)
+                </button>
+                <button onClick={() => runImport(false)} disabled={importing || catalogStats.active === 0}
+                  className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 disabled:opacity-50">
+                  {importing ? '등록 중...' : `📦 대량 등록 ${catalogStats.active.toLocaleString()}개`}
+                </button>
+                <button onClick={() => toggleConsumerVisibility(consumerStats.visible === 0)} disabled={consumerStats.total === 0}
+                  className={`px-3 py-2 text-white text-xs font-bold rounded-lg disabled:opacity-50 ${
+                    consumerStats.visible > 0 ? 'bg-gray-700 hover:bg-gray-800' : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}>
+                  {consumerStats.visible > 0 ? '🔒 노출 OFF' : '🌐 노출 ON'}
+                </button>
+              </div>
+
+              {dryRunResult && (
+                <div className="mt-3 bg-white rounded-lg p-3 text-xs">
+                  <p className="font-bold text-gray-900 mb-2">
+                    🔍 dry-run 결과 · 신규 {dryRunResult.inserted} / 갱신 {dryRunResult.updated} · 마진 {dryRunResult.markup_pct}%
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {dryRunResult.samples.map((s) => (
+                      <div key={s.gift_code} className="flex justify-between text-[11px]">
+                        <span className="text-gray-600 truncate">[{s.action}] {s.name}</span>
+                        <span className="font-mono text-pink-600">₩{s.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {dryRunResult.samples.length === 20 && <p className="text-[10px] text-gray-400 mt-1">… 외 다수</p>}
+                </div>
+              )}
+
+              <p className="text-[10px] text-amber-800 mt-3 leading-relaxed">
+                ⚠️ KT Alpha 비즈 API 가이드라인: 최종 소비자 직판 금지. 본 기능은 운영자 결정으로 활성화됨.
+                <br/>승인 받기 전 노출 ON 하지 마세요 — Key 회수 위험.
+                {consumerLastImport && <><br/>· 마지막 등록: {consumerLastImport}</>}
               </p>
             </div>
 

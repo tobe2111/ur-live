@@ -8,6 +8,8 @@ interface FloatingActionBarProps {
   onToggleWishlist?: () => void;
   price?: number;
   originalPrice?: number;
+  // 🛡️ 2026-05-19: 딜 교환 전용 — 장바구니 숨김 + 라벨 변경.
+  dealOnly?: boolean;
 }
 
 export function FloatingActionBar({
@@ -18,6 +20,7 @@ export function FloatingActionBar({
   onToggleWishlist,
   price,
   originalPrice,
+  dealOnly = false,
 }: FloatingActionBarProps) {
   const discount = originalPrice && originalPrice > (price || 0)
     ? Math.round((1 - (price || 0) / originalPrice) * 100)
@@ -48,21 +51,34 @@ export function FloatingActionBar({
           </button>
         )}
 
-        <button
-          className="flex items-center justify-center gap-1 h-12 flex-1 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] transition-all active:scale-[0.98] disabled:opacity-40"
-          onClick={onAddToCart}
-          disabled={disabled}
-        >
-          <span className="text-[13px] font-bold text-gray-900 dark:text-white">장바구니</span>
-        </button>
+        {!dealOnly && (
+          <button
+            className="flex items-center justify-center gap-1 h-12 flex-1 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] transition-all active:scale-[0.98] disabled:opacity-40"
+            onClick={onAddToCart}
+            disabled={disabled}
+          >
+            <span className="text-[13px] font-bold text-gray-900 dark:text-white">장바구니</span>
+          </button>
+        )}
 
         <button
-          className="flex flex-col items-center justify-center h-12 flex-1 rounded-xl bg-gray-900 transition-all active:scale-[0.98] disabled:opacity-40"
+          className={`flex flex-col items-center justify-center h-12 flex-1 rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 ${
+            dealOnly ? 'bg-amber-500' : 'bg-gray-900'
+          }`}
           onClick={onBuyNow}
           disabled={disabled}
         >
-          <span className="text-[8px] font-bold text-white/70">공구 참여</span>
-          <span className="text-[13px] font-extrabold text-white">바로 구매</span>
+          {dealOnly ? (
+            <>
+              <span className="text-[8px] font-bold text-white/80">딜 결제 전용 · 30일 유효</span>
+              <span className="text-[13px] font-extrabold text-white">🎁 딜로 교환</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[8px] font-bold text-white/70">공구 참여</span>
+              <span className="text-[13px] font-extrabold text-white">바로 구매</span>
+            </>
+          )}
         </button>
       </div>
     </div>

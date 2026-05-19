@@ -106,6 +106,25 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: true, data: { orders } });
     }
 
+    // 🛡️ 2026-05-19: deal_only=1 상품은 Toss(카드) 결제 차단 — 클라이언트 우회 방어.
+    //   해당 상품은 /api/points/pay (딜 교환) 만 사용 가능.
+    const orderIds = orders.map(o => o.id).filter((id) => id != null && typeof id === 'number') as number[]
+    if (orderIds.length > 0) {
+      const ph = orderIds.map(() => '?').join(',')
+      const dealOnly = await c.env.DB.prepare(
+        `SELECT COUNT(*) as cnt FROM order_items oi
+           INNER JOIN products p ON p.id = oi.product_id
+          WHERE oi.order_id IN (${ph}) AND p.deal_only = 1`
+      ).bind(...orderIds).first<{ cnt: number }>().catch(() => null)
+      if (dealOnly && dealOnly.cnt > 0) {
+        return c.json({
+          success: false,
+          error: '딜 교환 전용 상품 — 카드 결제 불가. 딜 결제를 이용해주세요.',
+          code: 'DEAL_ONLY_PRODUCT',
+        }, 400);
+      }
+    }
+
     // ✅ SECURITY FIX (Payment C4): Reject confirm when any order is already
     // cancelled/refunded/failed. Without this guard an attacker who cancelled
     // an order could still re-confirm it on Toss after the fact and bypass
@@ -469,6 +488,22 @@ paymentsRouter.post('/confirm', async (c) => {
       }
     }
 
+    // 🛡️ 2026-05-19: KT Alpha 상품권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
+    try {
+      const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+      await autoSendKtAlphaVouchersForOrders(
+        c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+        updatedOrders.map(o => ({
+          id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
+          shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
+          user_id: o.user_id,
+        })),
+        String(userId),
+      )
+    } catch (err) {
+      logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
+    }
+
     // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
     // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
     // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
@@ -598,6 +633,20 @@ paymentsRouter.post('/checkout-session', async (c) => {
       return c.json({ success: false, error: 'Payment service not configured' }, 500);
     }
 
+    // 🛡️ 2026-05-19: 주문에 deal_only=1 상품 포함 여부 — 클라이언트에서 PG 카드 결제 차단용.
+    const orderIds = orders.map(o => o.id).filter((id) => id != null && typeof id === 'number') as number[]
+    let hasDealOnly = false
+    if (orderIds.length > 0) {
+      const ph = orderIds.map(() => '?').join(',')
+      const dealCheck = await c.env.DB.prepare(
+        `SELECT COUNT(*) as cnt
+           FROM order_items oi
+           INNER JOIN products p ON p.id = oi.product_id
+          WHERE oi.order_id IN (${ph}) AND p.deal_only = 1`
+      ).bind(...orderIds).first<{ cnt: number }>().catch(() => null)
+      hasDealOnly = Boolean(dealCheck && dealCheck.cnt > 0)
+    }
+
     return c.json({
       success: true,
       data: {
@@ -608,6 +657,8 @@ paymentsRouter.post('/checkout-session', async (c) => {
         toss_client_key: c.env.TOSS_CLIENT_KEY,
         customer_name: orders[0]?.shipping_name ?? '',
         customer_phone: orders[0]?.shipping_phone ?? '',
+        has_deal_only: hasDealOnly,
+        payment_required: hasDealOnly ? 'deal_only' : 'any',
       },
     });
   } catch (err) {

@@ -37,6 +37,10 @@ export interface Product {
   group_buy_tiers?: unknown
   restaurant_lat?: number
   restaurant_lng?: number
+  // 🛡️ 2026-05-19: KT Alpha 직판 상품 마커.
+  kt_alpha_gift_code?: string | null
+  deal_only?: number      // 1 = 딜 교환 전용
+  auto_voucher_send?: number
 }
 
 export interface ProductOption {

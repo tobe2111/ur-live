@@ -368,6 +368,13 @@ export default function ProductDetailPage() {
             </Suspense>
           </div>
           <div className="lg:col-span-2 lg:sticky lg:top-20 lg:self-start">
+            {/* 🛡️ 2026-05-19: 딜 교환 전용 배지 (KT Alpha 직판 상품). */}
+            {Number(product.deal_only) === 1 && (
+              <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-full">
+                <span className="text-[11px] font-extrabold text-amber-800">🎁 딜 교환 전용</span>
+                <span className="text-[10px] text-amber-700">· 30일 유효 · 환불 불가</span>
+              </div>
+            )}
             {/* Product Info */}
             <ProductHeader
               name={product.name}
@@ -380,6 +387,17 @@ export default function ProductDetailPage() {
               reviewCount={reviewSummary?.total_count}
               avgRating={reviewSummary?.avg_rating}
             />
+            {Number(product.deal_only) === 1 && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-900 space-y-1">
+                <p className="font-bold">ℹ️ 딜 교환 전용 상품 안내</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                  <li>본 상품은 <b>유어딜 딜로만 교환</b> 가능합니다 (카드 결제 불가)</li>
+                  <li>결제 즉시 <b>본인 명의 휴대폰</b>으로 MMS 발송</li>
+                  <li>유효기간 <b>발행일로부터 30일</b>, 환불/취소/연장 불가</li>
+                  <li>(KT Alpha 기프티쇼 B2B 정책)</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
@@ -596,6 +614,7 @@ export default function ProductDetailPage() {
           onToggleWishlist={handleToggleWishlist}
           price={product.price}
           originalPrice={product.original_price}
+          dealOnly={Number(product.deal_only) === 1}
         />
       </Suspense>
 
