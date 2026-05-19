@@ -396,6 +396,15 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
       // 카테고리 = goods_type_detail (편의점/카페/도서 등) → 없으면 fallback.
       const itemCategory = r.goods_type_detail || fallbackCategory
 
+      // 🛡️ 2026-05-19: detail_images 보강 — desc_image_url 없으면 big image 라도 표시.
+      const detailImages: string[] = []
+      if (r.desc_image_url) detailImages.push(r.desc_image_url)
+      if (r.image_url_large && !detailImages.includes(r.image_url_large)) detailImages.push(r.image_url_large)
+      if (r.image_url_small && !detailImages.includes(r.image_url_small) && detailImages.length === 0) {
+        detailImages.push(r.image_url_small)
+      }
+      const detailImagesJson = detailImages.length > 0 ? JSON.stringify(detailImages) : null
+
       if (existingId) {
         updateStatements.push(c.env.DB.prepare(
           `UPDATE products SET
@@ -407,7 +416,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         ).bind(
           r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
-          r.desc_image_url ? JSON.stringify([r.desc_image_url]) : null,
+          detailImagesJson,
           itemCategory, isActive, existingId,
         ))
         updated++
@@ -422,7 +431,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         ).bind(
           r.gift_code, r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
-          r.desc_image_url ? JSON.stringify([r.desc_image_url]) : null,
+          detailImagesJson,
           itemCategory, isActive, adminSellerId,
         ))
         inserted++
