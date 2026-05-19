@@ -22,6 +22,7 @@ adminKtAlphaRoutes.get('/kt-alpha/settings', cors(), async (c) => {
       'kt_alpha_api_enabled', 'kt_alpha_dev_mode', 'kt_alpha_markup_pct',
       'kt_alpha_user_id', 'kt_alpha_callback_no',
       'kt_alpha_template_id', 'kt_alpha_banner_id',
+      'kt_alpha_consumer_markup_pct', 'kt_alpha_consumer_category', 'kt_alpha_consumer_enabled',
       'kt_alpha_biz_money_balance', 'kt_alpha_biz_money_check_at',
       'kt_alpha_last_sync_at', 'kt_alpha_last_sync_count',
     ]
@@ -71,16 +72,18 @@ adminKtAlphaRoutes.patch('/kt-alpha/settings', cors(), async (c) => {
       'kt_alpha_api_enabled', 'kt_alpha_dev_mode',
       'kt_alpha_markup_pct', 'kt_alpha_user_id', 'kt_alpha_callback_no',
       'kt_alpha_template_id', 'kt_alpha_banner_id',
+      // 🛡️ 2026-05-19: 소비자 직판 마진 (kt_alpha_consumer_markup_pct).
+      'kt_alpha_consumer_markup_pct', 'kt_alpha_consumer_category',
     ])
 
     let updated = 0
     for (const [key, value] of Object.entries(body)) {
       if (!allowed.has(key)) continue
-      // markup_pct 검증.
-      if (key === 'kt_alpha_markup_pct') {
+      // 마진율 범위 검증 — markup_pct (셀러) 와 consumer_markup_pct (소비자) 동일하게 0-50.
+      if (key === 'kt_alpha_markup_pct' || key === 'kt_alpha_consumer_markup_pct') {
         const n = Number(value)
-        if (!Number.isFinite(n) || n < 0 || n > 50) {
-          return c.json({ success: false, error: 'markup_pct 는 0-50 범위' }, 400)
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          return c.json({ success: false, error: `${key} 는 0-100 범위` }, 400)
         }
       }
       // dev_mode 검증.

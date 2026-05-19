@@ -58,6 +58,7 @@ export default function AdminKtAlphaPage() {
   // 편집 가능한 설정 (input state).
   const [edit, setEdit] = useState({
     markup_pct: '5',
+    consumer_markup_pct: '20',
     user_id: '',
     callback_no: '',
     dev_mode: '1',
@@ -87,6 +88,7 @@ export default function AdminKtAlphaPage() {
         setSendStats(s.data.data.send_stats || { total: 0, sent: 0, failed: 0, total_amount: 0 })
         setEdit({
           markup_pct: s.data.data.settings.kt_alpha_markup_pct || '5',
+          consumer_markup_pct: s.data.data.settings.kt_alpha_consumer_markup_pct || '20',
           user_id: s.data.data.settings.kt_alpha_user_id || '',
           callback_no: s.data.data.settings.kt_alpha_callback_no || '',
           dev_mode: s.data.data.settings.kt_alpha_dev_mode || '1',
@@ -111,6 +113,7 @@ export default function AdminKtAlphaPage() {
     try {
       const r = await api.patch('/api/admin/kt-alpha/settings', {
         kt_alpha_markup_pct: edit.markup_pct,
+        kt_alpha_consumer_markup_pct: edit.consumer_markup_pct,
         kt_alpha_user_id: edit.user_id,
         kt_alpha_callback_no: edit.callback_no,
         kt_alpha_dev_mode: edit.dev_mode,
@@ -300,14 +303,14 @@ export default function AdminKtAlphaPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* markup % */}
+                {/* 셀러 markup % */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    셀러 차감 markup (%)
+                    🏪 셀러 마진 markup (%)
                   </label>
                   <div className="flex items-center gap-3">
                     <input
-                      type="range" min={0} max={30} step={1}
+                      type="range" min={0} max={50} step={1}
                       value={edit.markup_pct}
                       onChange={(e) => setEdit({ ...edit, markup_pct: e.target.value })}
                       className="flex-1"
@@ -315,7 +318,31 @@ export default function AdminKtAlphaPage() {
                     <span className="text-lg font-extrabold text-pink-600 w-12 text-right">{edit.markup_pct}%</span>
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
-                    예시: 1만원 (KT 공급가 9,400원) × 1.{String(edit.markup_pct).padStart(2, '0')} = 셀러 차감 ₩{Math.floor(9400 * (1 + Number(edit.markup_pct) / 100)).toLocaleString()}
+                    셀러 정산: 1만원 공급가 → 셀러 차감 ₩{Math.floor(9400 * (1 + Number(edit.markup_pct) / 100)).toLocaleString()}
+                  </p>
+                </div>
+
+                {/* 🛡️ 2026-05-19: 소비자 직판 markup % */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    🛒 소비자 마진 markup (%) — 딜 교환 전용
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range" min={0} max={50} step={1}
+                      value={edit.consumer_markup_pct}
+                      onChange={(e) => setEdit({ ...edit, consumer_markup_pct: e.target.value })}
+                      className="flex-1"
+                    />
+                    <span className="text-lg font-extrabold text-amber-600 w-12 text-right">{edit.consumer_markup_pct}%</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    소비자 직판: 1만원권 → 사용자 딜 차감 ₩{Math.floor(9400 * (1 + Number(edit.consumer_markup_pct) / 100)).toLocaleString()}
+                    {Number(edit.consumer_markup_pct) !== 20 && consumerStats.total > 0 && (
+                      <span className="block text-amber-600 font-bold mt-0.5">
+                        ⚠️ 변경 후 '📦 대량 등록' 다시 실행해야 기존 {consumerStats.total}개 상품 가격 갱신
+                      </span>
+                    )}
                   </p>
                 </div>
 
