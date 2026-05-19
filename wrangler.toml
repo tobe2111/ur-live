@@ -79,6 +79,11 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 #   - 셀러 / 어드민 / 사용자가 POST /api/upload/image 호출 시 사용.
 #   - Cloudflare Dashboard 에서 R2 bucket 'ur-live-media' 생성 후 binding.
 #   - PUBLIC_R2_URL env: 'https://media.ur-team.com' (custom domain) 또는 r2.dev URL.
+#   - 🚨 운영 활성화 순서:
+#     1) Dashboard R2 → 'ur-live-media' bucket 생성
+#     2) Dashboard Pages → ur-live → Settings → Bindings → R2 → MEDIA_BUCKET 등록
+#     3) (선택) Custom Domain 연결 → PUBLIC_R2_URL secret 등록
+#     4) /api/upload/image 호출 시 fail-soft (bucket 없으면 dataURI fallback 동작 — src/worker/upload.ts)
 #
 # [[r2_buckets]]
 # binding = "MEDIA_BUCKET"

@@ -1,7 +1,50 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-18 (숙소 공구 6 PRs + 사업자 게이팅 정산 + UI 리팩토링)
-**최근 main 머지 커밋**: `1317c7d3` (stay-voucher PR 6/6 — 알림 + 환불 + 리뷰)
+**최종 업데이트**: 2026-05-19 (KT Alpha B2B API 완전 통합 5 PRs)
+**최근 main 머지 커밋**: `e5f66093` (KT Alpha final — 셀러 voucher 모달 + 발송 이력 + 잔액 알림)
+
+## 📦 2026-05-19 세션 — KT Alpha (기프티쇼) B2B API 통합
+
+**비사업자 셀러** 정산 대안 완성 — 적립금으로 KT Alpha 기프티쇼 상품권 받기.
+
+| PR | Commit | 범위 |
+|---|---|---|
+| 1 | `d9302be3` | foundation — giftishow-api.ts utility + 0101 listGoods + 0111 getGoodsDetail |
+| 2 | `d3bfd177` | 0201 getCouponInfo + 0202 cancelCoupon + 에러 매핑 일부 |
+| 3 | `7958c88a` | 0203 resendCoupon + 0204 sendCoupon + 0301 getBizMoneyBalance + 에러 코드 40+ 매핑 |
+| 4 | `d9805d6` | 어드민 페이지 (\`/admin/kt-alpha\`) + 카탈로그 sync cron + 셀러 voucher 발송 endpoint |
+| 5 | `e5f66093` | 셀러 voucher 발송 모달 + 발송 이력 페이지 + 잔액 부족 자동 알림 |
+
+### 신규 파일
+- \`src/worker/utils/giftishow-api.ts\` — 7개 API (0101/0111/0102/0112/0201/0202/0203/0204/0301) + 에러 매핑
+- \`src/features/admin/api/admin-kt-alpha.routes.ts\` — 어드민 5 endpoints
+- \`src/pages/AdminKtAlphaPage.tsx\` — 어드민 설정/잔액/카탈로그 페이지
+- \`src/pages/SellerVoucherOrdersPage.tsx\` — 셀러 발송 이력
+- \`src/worker/cron/kt-alpha-catalog-sync.ts\` — 매일 03:00 UTC sync
+- \`migrations/0264_kt_alpha_gift_catalog.sql\` — gift_catalog 테이블
+- \`migrations/0265_kt_alpha_markup.sql\` — markup_pct, user_id, callback_no 설정
+
+### 셀러 통합
+- \`SellerSettlementsPage\` 에 VoucherRedeemModal 추가 — '🎁 상품권으로 받기' 버튼
+- \`/api/seller/voucher-catalog\` — 활성 상품 + 마진 포함 가격
+- \`/api/seller/voucher-redeem\` — 발송 + 적립금 차감 + voucher_orders 기록
+- \`/api/seller/voucher-orders\` — 발송 이력 조회
+
+### 자동 모니터링
+- cron 매일 KT Alpha 0301 잔액 호출 → \`platform_settings.kt_alpha_biz_money_balance\` 저장
+- 10만 원 이하 시 \`admin_dashboard_notifications\` 자동 추가 (24h 중복 방지)
+- 잔액 0 시 즉시 차단 경고
+
+### 운영 가이드 업데이트 (본 PR)
+- 어드민 가이드: \`kt-alpha-admin\` + \`stay-voucher-admin\` 섹션 추가
+- 셀러 가이드: \`seller-voucher-kt-alpha\` 섹션 추가
+
+### 🔴 운영 측 액션 필요 (별도 작업 — 코드로 처리 불가)
+1. **KT Alpha 상용 Key 신청** — \`/admin/kt-alpha\` 페이지 스크린샷 4종 첨부
+2. **wrangler secret put** — KT_ALPHA_AUTH_CODE, KT_ALPHA_TOKEN_KEY, KT_ALPHA_AUTH_TOKEN
+3. **Cloudflare Dashboard** — R2 bucket 'ur-live-media' 생성 + MEDIA_BUCKET binding
+4. **D1 production** — migration 0264 + 0265 적용 (\`wrangler d1 execute\`)
+5. **카탈로그 초기 sync** — 어드민 페이지 'Sync 지금 실행' 버튼 (수동 1회)
 
 ## 📦 2026-05-18 세션 누적 (대량 작업)
 
@@ -73,7 +116,7 @@
 2. **카카오 알림톡 실제 발송** — D-1/D-day cron (현재 notifications INSERT only)
 3. **객실 이미지 R2 업로드** — 현재 URL 입력만 가능
 4. **다객실 한 결제** — 2 객실 동시 예약
-5. **KT Alpha 기프티쇼 통합** — 사업자 미등록 셀러 상품권 정산 (계약 진행 필요)
+5. ~~**KT Alpha 기프티쇼 통합**~~ — ✅ 2026-05-19 완료 (5 PRs, 위 섹션 참조)
 6. **8.8% 원천징수 자동 계산** + 지급조서 export (어드민 CSV)
 
 ### 🟢 i18n 6개 언어 sync (낮은 우선순위)

@@ -644,6 +644,64 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - 한 셀러가 여러 슬롯 동시 보유 가능 (정책상 허용)
 - EXISTS 서브쿼리 사용 → row 중복 없음`,
   },
+  {
+    key: 'kt-alpha-admin', icon: '🎁', title: 'KT Alpha (기프티쇼) 운영 — 비사업자 셀러 정산', order: 235,
+    content: `### 무엇을 하는 시스템인가?
+**비사업자 셀러**(개인) 가 정산받을 적립금으로 **KT Alpha 기프티쇼 상품권**(스타벅스/CU/배민/올리브영 등) 을 받게 해주는 우회 정산. 사업자등록 없이도 셀러 활동 가능.
+
+**왜 필요?** 사업자등록 없는 개인은 세무 신고 의무 부담이 큼. 8.8% 원천징수 후 상품권으로 지급하면 법적 부담 없이 정산 완료.
+
+### 관리자 페이지
+- \`/admin/kt-alpha\` — 설정 + 비즈머니 잔액 + 카탈로그 미리보기
+- 핵심 설정:
+  - **마진율 (markup_pct)** — 원가 + N% 가산해서 셀러에게 차감 (기본 5%)
+  - **dev_flag** — 'Y' (테스트 발송, 차감 없음) / 'N' (실제 발송)
+  - **user_id** — KT Alpha 콘솔 사용자 ID (0301 잔액 조회에 필요)
+  - **callback_no** — 발송 시 MMS 발신번호
+
+### 비즈머니 잔액 모니터링
+- cron (UTC 03:00 = KST 12:00) 매일 0301 호출 → 잔액 저장
+- 10만 원 이하 시 \`admin_dashboard_notifications\` 자동 알림 (24h 중복 방지)
+- **잔액 0 시 즉시 발송 차단** — 잔액 확인 후 KT Alpha 콘솔에서 충전
+
+### 상품 카탈로그 sync (cron)
+- 매일 UTC 03:00 → \`runKtAlphaCatalogSync\` (\`src/worker/cron/kt-alpha-catalog-sync.ts\`)
+- 0101 listGoods 전체 페이지 (최대 50페이지 = 5000개) UPSERT to \`gift_catalog\`
+- 더 이상 SALE 아닌 상품은 \`is_active=0\` 처리
+- 수동 sync: \`/admin/kt-alpha\` 'Sync 지금 실행' 버튼
+
+### 발송 실패 시
+- \`/api/seller/voucher-redeem\` 에서 \`sendCoupon\` 실패 시 자동 재시도 없음 → 셀러에게 즉시 에러 표시
+- 발송 후 환불은 \`cancelCoupon\` (0202) — 24시간 이내만 가능
+- 발송 이력: \`voucher_orders\` 테이블
+
+### 운영 액션 우선순위
+1. 매일 09:00 \`/admin/kt-alpha\` 접속 → 비즈머니 잔액 확인
+2. 카탈로그 sync 실패 시 (sync_at > 24h) 수동 실행
+3. 셀러 voucher 발송 실패율 > 5% 시 KT Alpha 콘솔에서 상태 확인`,
+  },
+  {
+    key: 'stay-voucher-admin', icon: '🏨', title: '숙소 바우처 공동구매 운영 (2026-05)', order: 240,
+    content: `### 시스템 개요
+숙소 공동구매에 **3가지 sale_mode** 지원:
+- **'date'** — 기존 방식 (특정 체크인/아웃 날짜)
+- **'voucher'** — 날짜 없이 구매 → 나중에 셀러에게 예약 요청 (유효기간 내)
+- **'both'** — 두 방식 모두 활성
+
+### 어드민 액션
+- \`/admin/stay-bookings\` — 모든 숙소 예약 (date + voucher) 통합 조회
+- 셀러 사업자등록증 검증: \`/admin/seller-business-verify\`
+  - 미검증 셀러는 숙소 등록 시 \`pending\` 상태 (소비자 노출 안 됨)
+
+### 바우처 환불 처리
+- 결제 후 7일 이내 미사용 + 셀러 동의 시 환불 가능
+- cron (UTC 18:00) \`refund-expired-vouchers\` 가 자동 처리
+- 환불 사유 코드: \`VOUCHER_EXPIRED\`, \`SELLER_CANCELLED\`, \`USER_REQUESTED\`
+
+### 8.8% 원천징수 (비사업자)
+- 비사업자 셀러 정산 시 자동 차감 (소득세 8% + 지방세 0.8%)
+- 매년 1월 \`/admin/withholding-report\` 에서 지급조서 CSV 다운로드 → 국세청 홈택스 업로드`,
+  },
 ]
 const SELLER_SEED: SeedSection[] = [
   {
@@ -1311,6 +1369,40 @@ QR 스캔 성공 시 화면에 "📢 [인플ID] 의 추천 손님" 표시 →
 
 **Q. voucher 메뉴 재료가 다 떨어졌는데?**
 - 매장이 손님에게 사과 + 어드민에게 신고 → 어드민이 환불 처리.`,
+  },
+  {
+    key: 'seller-voucher-kt-alpha', icon: '🎁', title: '적립금으로 상품권 받기 (KT Alpha)', order: 225,
+    content: `### 누구를 위한 기능?
+**사업자등록 없는 개인 셀러** 가 정산받을 적립금으로 **기프티쇼 상품권**(스타벅스/CU/배민 등) 을 받는 방식. 현금 정산은 사업자만 가능 — 비사업자는 이 방식이 유일한 정산 수단.
+
+### 사용 흐름
+1. \`/seller/settlements\` 접속 → 본인 적립금 확인
+2. **'🎁 상품권으로 받기'** 버튼 클릭
+3. 상품권 검색/선택 (스타벅스 5천원권, CU 1만원권 등)
+4. **수량 + 받을 휴대폰 번호** 입력
+5. 차감액 확인 (원가 × 1.05 — 마진 포함) → '발송' 클릭
+6. 본인 휴대폰으로 MMS 도착 → 매장에서 사용
+
+### 발송 이력
+\`/seller/voucher-orders\` 페이지:
+- 상태: pending → processing → **sent** (성공) / failed (실패) / used (매장에서 사용됨)
+- 실패 시 사유 표시 + 차감 자동 복구
+- 발송 완료 후 **환불/취소 불가** — 발송 전 휴대폰 번호 재확인 필수
+
+### 주의사항
+- ⚠️ **휴대폰 번호 1글자라도 틀리면 다른 사람한테 발송됨** — 검수 필수
+- ⚠️ 발송 성공 후 7일 이내 매장 미사용 시 KT Alpha 정책에 따라 자동 환불 (보유 시간은 상품마다 다름)
+- ⚠️ 본인 명의 번호로만 발송 권장 (배우자/가족 OK, 타인 명의 사칭 금지)
+
+### 자주 묻는 질문
+**Q. 마진 5% 는 왜 차감되나요?**
+A. 유어딜이 KT Alpha 에 발송 요청할 때 발생하는 처리비. 어드민이 마진율 조정 가능.
+
+**Q. 사용 안 한 상품권 환불 가능?**
+A. 발송 후 24시간 이내 + 셀러 본인 요청 시 어드민이 \`cancelCoupon\` 처리 가능. 그 이후엔 KT Alpha 정책에 따라 자동 환불 대기.
+
+**Q. 카탈로그에 원하는 브랜드가 없어요.**
+A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT Alpha 측에서 등록해야 노출.`,
   },
 ]
 const AGENCY_SEED: SeedSection[] = [
