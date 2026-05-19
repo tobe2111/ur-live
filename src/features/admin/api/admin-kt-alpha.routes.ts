@@ -200,13 +200,13 @@ adminKtAlphaRoutes.get('/kt-alpha/debug-call', cors(), async (c) => {
     body.append('start', start)
     body.append('size', size)
 
-    const start = Date.now()
+    const startTime = Date.now()
     const res = await fetch('https://bizapi.giftishow.com/bizApi/goods', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
       body: body.toString(),
     })
-    const elapsed = Date.now() - start
+    const elapsed = Date.now() - startTime
     const rawText = await res.text()
     let parsed: unknown = null
     try { parsed = JSON.parse(rawText) } catch { /* not JSON */ }
