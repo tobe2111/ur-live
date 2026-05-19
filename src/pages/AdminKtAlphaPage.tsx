@@ -183,7 +183,7 @@ export default function AdminKtAlphaPage() {
 
   async function runImport(dryRun: boolean) {
     if (!dryRun && !confirm(
-      '⚠️ KT Alpha 상품 5000개를 일반 상품으로 자동 등록합니다.\n' +
+      '⚠️ KT Alpha 상품을 일반 상품으로 자동 등록합니다.\n' +
       '\n· 마진 20% (kt_alpha_consumer_markup_pct 설정값)\n' +
       '· 딜 결제 전용\n· 노출 상태는 별도 토글로 제어\n\n' +
       'KT Alpha 측 사전 승인 받으셨나요? (B2B 정책 리스크)\n계속 진행하시겠습니까?'
@@ -191,18 +191,45 @@ export default function AdminKtAlphaPage() {
     setImporting(true)
     setDryRunResult(null)
     try {
-      const r = await api.post('/api/admin/kt-alpha/bulk-import',
-        { dry_run: dryRun }, { headers: h() })
-      if (r.data?.success) {
-        const d = r.data.data
-        if (dryRun) {
+      if (dryRun) {
+        // 미리보기는 한 번만 (전체).
+        const r = await api.post('/api/admin/kt-alpha/bulk-import',
+          { dry_run: true }, { headers: h() })
+        if (r.data?.success) {
+          const d = r.data.data
           setDryRunResult({ inserted: d.inserted, updated: d.updated, markup_pct: d.markup_pct, samples: d.samples || [] })
           toast.success(`🔍 미리보기: 신규 ${d.inserted}건 / 갱신 ${d.updated}건`)
-        } else {
-          toast.success(`✅ 등록 완료 — 신규 ${d.inserted}건 / 갱신 ${d.updated}건 / 마진 ${d.markup_pct}%`)
-          loadConsumerStats()
         }
+        return
       }
+
+      // 🛡️ 2026-05-19: 실제 등록은 200개씩 chunked (Cloudflare 30s timeout 회피).
+      let totalInserted = 0
+      let totalUpdated = 0
+      let offset = 0
+      const CHUNK = 200
+      let iterations = 0
+      const MAX_ITERATIONS = 50  // 안전 한도 (200 × 50 = 10,000개)
+
+      while (iterations < MAX_ITERATIONS) {
+        iterations++
+        if (iterations > 1) {
+          toast.info(`등록 중... (${totalInserted + totalUpdated} 처리됨)`)
+        }
+        const r = await api.post('/api/admin/kt-alpha/bulk-import',
+          { limit: CHUNK, offset }, { headers: h() })
+        if (!r.data?.success) {
+          toast.error(r.data?.error || `${iterations}회차 실패 (offset=${offset})`)
+          return
+        }
+        const d = r.data.data
+        totalInserted += d.inserted || 0
+        totalUpdated += d.updated || 0
+        if (!d.has_more) break
+        offset = d.next_offset
+      }
+      toast.success(`✅ 등록 완료 — 신규 ${totalInserted}건 / 갱신 ${totalUpdated}건`)
+      loadConsumerStats()
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } }
       toast.error(ax.response?.data?.error || '대량 등록 실패')

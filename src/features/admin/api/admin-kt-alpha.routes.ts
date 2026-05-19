@@ -310,10 +310,11 @@ adminKtAlphaRoutes.get('/kt-alpha/catalog', cors(), async (c) => {
 //     - category_filter → 특정 brand 만 import
 adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
   try {
-    type Body = { dry_run?: boolean; limit?: number; brand_code?: string }
+    type Body = { dry_run?: boolean; limit?: number; offset?: number; brand_code?: string }
     const body = await c.req.json<Body>().catch(() => ({} as Body))
     const dryRun = Boolean(body?.dry_run)
     const limit = Math.min(5000, Math.max(1, Number(body?.limit) || 5000))
+    const offset = Math.max(0, Number(body?.offset) || 0)
 
     // 1. settings 로드.
     const settings = await c.env.DB.prepare(
@@ -337,8 +338,8 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
                 WHERE is_active = 1 AND goods_state = 'SALE'`
     const params: unknown[] = []
     if (body?.brand_code) { sql += ' AND brand_code = ?'; params.push(body.brand_code) }
-    sql += ' ORDER BY popular ASC, sale_price ASC LIMIT ?'
-    params.push(limit)
+    sql += ' ORDER BY popular ASC, sale_price ASC, gift_code ASC LIMIT ? OFFSET ?'
+    params.push(limit, offset)
     const rows = await c.env.DB.prepare(sql).bind(...params).all<{
       gift_code: string; name: string; brand_name: string | null;
       real_price: number; sale_price: number;
@@ -448,6 +449,11 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
       ).run().catch(() => { /* noop */ })
     }
 
+    // 다음 호출에 사용할 offset 계산 (rows.results 개수 < limit 이면 끝).
+    const processedCount = (rows.results || []).length
+    const hasMore = processedCount === limit
+    const nextOffset = offset + processedCount
+
     return c.json({
       success: true,
       data: {
@@ -457,6 +463,11 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         markup_pct: markupPct,
         is_active: isActive,
         samples: dryRun ? samples.slice(0, 20) : undefined,
+        // chunked 처리용 메타.
+        offset, limit,
+        processed_in_this_call: processedCount,
+        next_offset: hasMore ? nextOffset : null,
+        has_more: hasMore,
       },
     })
   } catch (err) {
