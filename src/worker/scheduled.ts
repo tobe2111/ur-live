@@ -148,6 +148,16 @@ export async function handleCronScheduled(
     }))
   }
 
+  // 🛡️ 2026-05-19: 식사권 주소 → 좌표 일괄 변환 cron — 매일 03:00 UTC 와 함께 실행.
+  //   클라이언트에서 페이지 진입 시마다 Kakao API 호출하던 패턴을 제거하기 위함.
+  //   효과: 일 트래픽 1000명 × 10건/명 = 10,000 호출/일 → 새 식사권만 (~10 호출/일) 로 감소.
+  if (cron === '0 3 * * *') {
+    ctx.waitUntil(safeCron('restaurant-geocode', async () => {
+      const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
+      await runRestaurantGeocode(env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+    }))
+  }
+
   if (cron === '0 9 * * *' || cron === '0 0 * * *') {
     ctx.waitUntil(safeCron('stay-reminder', async () => {
       const { runStayReminderCron } = await import('./cron/stay-reminder')

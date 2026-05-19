@@ -200,37 +200,11 @@ export default function RestaurantMapPage() {
       .catch(() => { /* silent */ })
   }, [userLoc, kr, category])
 
-  // 🛡️ 2026-04-28: 좌표 없는 식사권 자동 geocoding (카카오 주소 → lat/lng).
-  //   셀러가 카카오 장소검색을 안 거치고 등록한 식사권은 lat/lng 비어 있어 핀 X.
-  //   여기서 클라이언트 fallback 으로 보강 → 핀 표시 누락 방지.
-  //   (서버 cron 으로 일괄 보강하는 게 더 깔끔하지만 즉시 효과 큼)
-  useEffect(() => {
-    if (restaurants.length === 0 || !kr) return
-    const missingCoords = restaurants.filter(r => r.restaurant_address && (!r.restaurant_lat || !r.restaurant_lng))
-    if (missingCoords.length === 0) return
-    let cancelled = false
-    Promise.all(
-      missingCoords.slice(0, 10).map(async (r) => {
-        try {
-          const res = await api.get(`/api/kakao/place/address?query=${encodeURIComponent(r.restaurant_address)}`)
-          const doc = res.data?.data?.documents?.[0]
-          if (doc?.x && doc?.y) {
-            return { id: r.id, lat: Number(doc.y), lng: Number(doc.x) }
-          }
-        } catch { /* silent — 위치 없어도 목록엔 표시 */ }
-        return null
-      })
-    ).then(updates => {
-      if (cancelled) return
-      const map = new Map(updates.filter(Boolean).map(u => [u!.id, u!]))
-      if (map.size === 0) return
-      setRestaurants(prev => prev.map(r => {
-        const u = map.get(r.id)
-        return u ? { ...r, restaurant_lat: u.lat, restaurant_lng: u.lng } : r
-      }))
-    })
-    return () => { cancelled = true }
-  }, [restaurants.length, kr])
+  // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
+  //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
+  //   현재: 서버 cron (worker/cron/restaurant-geocode.ts) 매일 03:00 UTC 일괄 처리.
+  //         새 식사권 등록 후 다음 cron 까지 (최대 24h) 핀 표시 없을 수 있으나,
+  //         /api/kakao/place/* 호출은 0 — 페이지 로딩 속도 ~1-3초 개선.
 
 
   const filtered = useMemo(() => {
