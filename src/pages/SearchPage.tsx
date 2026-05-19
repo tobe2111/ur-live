@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import { useSearch } from '@/hooks/useSearch'
+import { useSearchInfinite } from '@/hooks/useSearch'
 import SearchHeader from '@/components/search/SearchHeader'
 import SearchStates from '@/components/search/SearchStates'
 import ProductCard from '@/components/search/ProductCard'
@@ -42,8 +42,34 @@ export default function SearchPage() {
   const { t } = useTranslation()
   const query = searchParams.get('q') || ''
 
-  // React Query 훅 사용 (2글자 이상만 검색)
-  const { data: searchResult, isLoading: loading, isError } = useSearch(query)
+  // 🛡️ 2026-05-19: 무한 스크롤 — useInfiniteQuery 로 페이지 누적.
+  const {
+    data: infiniteData,
+    isLoading: loading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSearchInfinite(query)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  // 모든 페이지의 products 합치기 + total 은 첫 페이지 값.
+  const searchResult = infiniteData
+    ? {
+        products: infiniteData.pages.flatMap(p => p.products),
+        total: infiniteData.pages[0]?.total ?? 0,
+        page: 1, limit: 50,
+      }
+    : undefined
+
+  // IntersectionObserver — sentinel 닿으면 다음 페이지 자동 fetch.
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) fetchNextPage()
+    }, { threshold: 0.1 })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const [error, setError] = useState('')
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
@@ -155,6 +181,19 @@ export default function SearchPage() {
                 />
               ))}
             </div>
+
+            {/* 🛡️ 2026-05-19: 무한 스크롤 sentinel + 로딩/더보기 UI */}
+            {hasNextPage && (
+              <div ref={loadMoreRef} className="flex justify-center mt-6 pb-6">
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="px-6 py-2 text-sm text-gray-500 dark:text-gray-400 disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? '로딩 중...' : '더보기'}
+                </button>
+              </div>
+            )}
 
             {/* Related Keywords Section */}
             <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#1A1A1A]">

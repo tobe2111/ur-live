@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { Product } from './useProduct'
 
@@ -20,11 +20,45 @@ export function useSearch(query: string, options?: { page?: number; limit?: numb
       if (options?.limit) params.append('limit', options.limit.toString())
 
       const response = await api.get(`/api/search?${params.toString()}`)
-      return response.data.data as SearchResult
+      // 🛡️ 2026-05-19: backend response = { data: [], pagination: {...} } → SearchResult 정규화.
+      return {
+        products: response.data.data || [],
+        total: response.data.pagination?.total ?? (response.data.data?.length || 0),
+        page: response.data.pagination?.page ?? 1,
+        limit: response.data.pagination?.limit ?? 20,
+      } as SearchResult
     },
     enabled: query.length >= 2, // 2글자 이상만 검색
     staleTime: 10 * 60 * 1000,  // 10분간 캐시
     gcTime: 30 * 60 * 1000,     // 30분 후 메모리 해제
+  })
+}
+
+// 🛡️ 2026-05-19: cursor 무한스크롤 hook — SearchPage 에서 사용.
+//   페이지 단위로 누적 로드. backend /api/search?page=N&limit=M.
+const SEARCH_PAGE_SIZE = 50
+export function useSearchInfinite(query: string) {
+  return useInfiniteQuery({
+    queryKey: ['search-infinite', query],
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({ q: query, page: String(pageParam), limit: String(SEARCH_PAGE_SIZE) })
+      const response = await api.get(`/api/search?${params.toString()}`)
+      return {
+        products: response.data.data || [],
+        total: response.data.pagination?.total ?? (response.data.data?.length || 0),
+        page: response.data.pagination?.page ?? 1,
+        limit: response.data.pagination?.limit ?? SEARCH_PAGE_SIZE,
+      } as SearchResult
+    },
+    enabled: query.length >= 2,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const loaded = lastPage.page * lastPage.limit
+      if (loaded >= lastPage.total) return undefined
+      return lastPage.page + 1
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   })
 }
 

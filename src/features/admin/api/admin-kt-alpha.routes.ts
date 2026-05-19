@@ -332,7 +332,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
     const isActive = Number(sMap.kt_alpha_consumer_enabled) || 0   // 노출 ON/OFF 글로벌 flag
 
     // 2. gift_catalog 활성 row 조회.
-    let sql = `SELECT gift_code, name, brand_name, real_price, sale_price,
+    let sql = `SELECT gift_code, name, brand_name, brand_icon_url, real_price, sale_price,
                       image_url_small, image_url_large, desc_image_url,
                       content, content_add_desc, valid_period_type, valid_period_days,
                       goods_type_detail
@@ -343,7 +343,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
     sql += ' ORDER BY popular ASC, sale_price ASC, gift_code ASC LIMIT ? OFFSET ?'
     params.push(limit, offset)
     const rows = await c.env.DB.prepare(sql).bind(...params).all<{
-      gift_code: string; name: string; brand_name: string | null;
+      gift_code: string; name: string; brand_name: string | null; brand_icon_url: string | null;
       real_price: number; sale_price: number;
       image_url_small: string | null; image_url_large: string | null; desc_image_url: string | null;
       content: string | null; content_add_desc: string | null;
@@ -409,7 +409,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         updateStatements.push(c.env.DB.prepare(
           `UPDATE products SET
              name = ?, description = ?, price = ?, original_price = ?,
-             image_url = ?, detail_images = ?, category = ?, brand_name = ?,
+             image_url = ?, detail_images = ?, category = ?, brand_name = ?, brand_icon_url = ?,
              is_active = ?, deal_only = 1, auto_voucher_send = 1,
              updated_at = datetime('now')
            WHERE id = ?`
@@ -417,22 +417,22 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
           r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           detailImagesJson,
-          itemCategory, r.brand_name || null, isActive, existingId,
+          itemCategory, r.brand_name || null, r.brand_icon_url || null, isActive, existingId,
         ))
         updated++
       } else {
         insertStatements.push(c.env.DB.prepare(
           `INSERT INTO products (
              kt_alpha_gift_code, name, description, price, original_price,
-             image_url, detail_images, stock, category, brand_name,
+             image_url, detail_images, stock, category, brand_name, brand_icon_url,
              is_active, deal_only, auto_voucher_send, seller_id,
              created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, 999999, ?, ?, ?, 1, 1, ?, datetime('now'), datetime('now'))`
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 999999, ?, ?, ?, ?, 1, 1, ?, datetime('now'), datetime('now'))`
         ).bind(
           r.gift_code, r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           detailImagesJson,
-          itemCategory, r.brand_name || null, isActive, adminSellerId,
+          itemCategory, r.brand_name || null, r.brand_icon_url || null, isActive, adminSellerId,
         ))
         inserted++
       }

@@ -324,12 +324,12 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
           LIMIT 8`
       ).bind(c.category).all<Record<string, unknown>>().catch(() => ({ results: [] }))
       const brands = await DB.prepare(
-        `SELECT brand_name, COUNT(*) as cnt
+        `SELECT brand_name, MAX(brand_icon_url) as brand_icon_url, COUNT(*) as cnt
            FROM products
           WHERE is_active = 1 AND category = ? AND brand_name IS NOT NULL
           GROUP BY brand_name
           ORDER BY cnt DESC LIMIT 8`
-      ).bind(c.category).all<{ brand_name: string; cnt: number }>().catch(() => ({ results: [] }))
+      ).bind(c.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
       sections.push({
         category: c.category, count: c.cnt,
         products: items.results || [],

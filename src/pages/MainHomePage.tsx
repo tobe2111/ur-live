@@ -66,11 +66,11 @@ export default function MainHomePage() {
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [mealProducts, setMealProducts] = useState<Product[]>([])
   const [products, setProducts] = useState<Product[]>([])
-  // 🛡️ 2026-05-19: 카테고리별 온라인 상품 섹션 (브랜드 2차 분류).
+  // 🛡️ 2026-05-19: 카테고리별 온라인 상품 섹션 (브랜드 2차 분류 + 아이콘).
   const [categorySections, setCategorySections] = useState<Array<{
     category: string; count: number;
     products: Product[];
-    brands?: Array<{ brand_name: string; cnt: number }>;
+    brands?: Array<{ brand_name: string; brand_icon_url?: string | null; cnt: number }>;
   }>>([])
   const [loading, setLoading] = useState(true)
   const [cartCount, setCartCount] = useState(0)
@@ -500,16 +500,24 @@ export default function MainHomePage() {
                   더보기 →
                 </button>
               </div>
-              {/* 🛡️ 2026-05-19: 브랜드 2차 분류 칩 (스타벅스/GS25 등) */}
+              {/* 🛡️ 2026-05-19: 브랜드 2차 분류 칩 (스타벅스/GS25 등) + 브랜드 아이콘 */}
               {section.brands && section.brands.length > 0 && (
                 <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 -mx-4 px-4 scrollbar-hide">
                   {section.brands.map((b) => (
                     <button
                       key={b.brand_name}
                       onClick={() => navigate(`/browse?category=${encodeURIComponent(section.category)}&brand=${encodeURIComponent(b.brand_name)}`)}
-                      className="shrink-0 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-[11px] font-bold rounded-full hover:bg-amber-100"
+                      className="shrink-0 inline-flex items-center gap-1.5 pl-1 pr-3 py-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-[11px] font-bold rounded-full hover:bg-amber-100"
                     >
-                      {b.brand_name} <span className="opacity-60 ml-0.5">{b.cnt}</span>
+                      {b.brand_icon_url ? (
+                        <img src={b.brand_icon_url} alt={b.brand_name} className="w-6 h-6 rounded-full object-cover bg-white" loading="lazy" />
+                      ) : (
+                        <span className="w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center text-[9px] text-amber-700">
+                          {b.brand_name.slice(0, 2)}
+                        </span>
+                      )}
+                      <span>{b.brand_name}</span>
+                      <span className="opacity-60">{b.cnt}</span>
                     </button>
                   ))}
                 </div>

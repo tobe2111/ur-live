@@ -370,19 +370,26 @@ export default function ProductDetailPage() {
         </div>
 
         {/* 브랜드 상품 더 보러가기 */}
-        {brandName && (
-          <div className="mx-5 mt-6 p-3 bg-amber-50 rounded-xl flex items-center gap-3"
-            onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
-            role="button" tabIndex={0}>
-            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
-              {brandName.slice(0, 4)}
+        {brandName && (() => {
+          const brandIcon = (product as unknown as { brand_icon_url?: string | null }).brand_icon_url
+          return (
+            <div className="mx-5 mt-6 p-3 bg-amber-50 rounded-xl flex items-center gap-3"
+              onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
+              role="button" tabIndex={0}>
+              {brandIcon ? (
+                <img src={brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white border border-amber-100" loading="lazy" />
+              ) : (
+                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
+                  {brandName.slice(0, 4)}
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="text-[11px] text-gray-500">브랜드 상품 더 보러가기</p>
+                <p className="text-[14px] font-bold text-gray-900">{brandName} <span className="text-amber-600">›</span></p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-[11px] text-gray-500">브랜드 상품 더 보러가기</p>
-              <p className="text-[14px] font-bold text-gray-900">{brandName} <span className="text-amber-600">›</span></p>
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* 상세 정보 */}
         <div className="mx-5 mt-6 divide-y divide-gray-100 border-t border-gray-100">

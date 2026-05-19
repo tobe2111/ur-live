@@ -151,7 +151,8 @@ productsRoutes.get('/', cors(), async (c) => {
     // featured=true 이면 어드민이 등록한 ur특가 상품(product_type='featured')만 반환
     const featuredOnly = c.req.query('featured') === 'true';
     // Defensive: cap search string length (200) to prevent giant LIKE DoS.
-    const rawSearch = c.req.query('search');
+    // 🛡️ 2026-05-19: 'q' query param 도 허용 (SearchPage / useSearch hook 호환).
+    const rawSearch = c.req.query('search') || c.req.query('q');
     const safeSearch = rawSearch && rawSearch.length <= 200 ? rawSearch : undefined;
     const rawSort = c.req.query('sort');
     const allowedSorts = ['newest', 'popular', 'price_low', 'price_high', 'rating', 'ranking'] as const;
