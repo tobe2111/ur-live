@@ -94,6 +94,10 @@ export default function StayDetailPage() {
   const [bookingOpen, setBookingOpen] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState<AvailRoom | null>(null)
 
+  // 🛡️ 2026-05-19: 다객실 한 결제 — 객실 ID → 수량 map.
+  const [cartQty, setCartQty] = useState<Record<number, number>>({})
+  const [multiBookingOpen, setMultiBookingOpen] = useState(false)
+
   // 🛡️ 2026-05-18: 인플 referral — URL ?ref=USER_ID 유지.
   const referrerId = params.get('ref') || ''
 
@@ -324,13 +328,32 @@ export default function StayDetailPage() {
                       <p className="text-[10px] text-gray-500">{r.nights}박 총액</p>
                       <p className="text-[10px] text-gray-400">평균 ₩{formatNumber(r.avg_per_night)}/박</p>
                       {r.available && (
-                        <button
-                          onClick={() => { setSelectedRoom(r); setBookingOpen(true) }}
-                          disabled={guests > r.max_guests}
-                          className="mt-2 px-3 py-1.5 bg-pink-500 text-white text-xs font-bold rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {guests > r.max_guests ? `최대 ${r.max_guests}인` : '예약하기'}
-                        </button>
+                        <div className="mt-2 space-y-1.5">
+                          <button
+                            onClick={() => { setSelectedRoom(r); setBookingOpen(true) }}
+                            disabled={guests > r.max_guests}
+                            className="block w-full px-3 py-1.5 bg-pink-500 text-white text-xs font-bold rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {guests > r.max_guests ? `최대 ${r.max_guests}인` : '1객실 즉시 예약'}
+                          </button>
+                          {/* 🛡️ 2026-05-19: 다객실 묶음 결제 — 수량 +/- */}
+                          <div className="flex items-center justify-end gap-2 text-xs">
+                            <span className="text-gray-400">묶기</span>
+                            <button
+                              type="button"
+                              onClick={() => setCartQty((q) => ({ ...q, [r.room_id]: Math.max(0, (q[r.room_id] || 0) - 1) }))}
+                              disabled={(cartQty[r.room_id] || 0) === 0}
+                              className="w-6 h-6 rounded-full bg-[#1A1A1A] text-white disabled:opacity-30 font-bold"
+                            >−</button>
+                            <span className="w-6 text-center font-bold text-white">{cartQty[r.room_id] || 0}</span>
+                            <button
+                              type="button"
+                              onClick={() => setCartQty((q) => ({ ...q, [r.room_id]: Math.min(r.available_count, (q[r.room_id] || 0) + 1) }))}
+                              disabled={(cartQty[r.room_id] || 0) >= Math.min(r.available_count, 10)}
+                              className="w-6 h-6 rounded-full bg-pink-500 text-white disabled:opacity-30 font-bold"
+                            >+</button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -387,6 +410,47 @@ export default function StayDetailPage() {
           voucherNights={voucherNights}
           referrerId={referrerId}
           onClose={() => setBookingOpen(false)}
+        />
+      )}
+
+      {/* 🛡️ 2026-05-19: 다객실 묶음 결제 sticky bar (cart 비어있지 않을 때만) */}
+      {(() => {
+        const cartItems = rooms.filter((r) => (cartQty[r.room_id] || 0) > 0)
+        if (cartItems.length === 0) return null
+        const totalQty = cartItems.reduce((s, r) => s + (cartQty[r.room_id] || 0), 0)
+        const cartSubtotal = cartItems.reduce((s, r) => s + r.total_price * (cartQty[r.room_id] || 0), 0)
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur border-t border-pink-500/30 p-3">
+            <div className="max-w-md mx-auto flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-gray-400">{cartItems.length}종 객실 / {totalQty}객실</p>
+                <p className="text-base font-extrabold text-pink-400">₩{formatNumber(cartSubtotal)}</p>
+              </div>
+              <button onClick={() => setCartQty({})}
+                className="px-3 py-2 text-xs text-gray-400 hover:text-white">비우기</button>
+              <button onClick={() => setMultiBookingOpen(true)}
+                className="px-4 py-2.5 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600">
+                묶음 예약 →
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
+      {multiBookingOpen && (
+        <MultiBookingModal
+          stay={stay}
+          rooms={rooms}
+          cartQty={cartQty}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          guests={guests}
+          nights={(stay.sale_mode === 'voucher' || (stay.sale_mode === 'both' && activeMode === 'voucher')) ? voucherNights : nights}
+          saleMode={(stay.sale_mode === 'voucher' || (stay.sale_mode === 'both' && activeMode === 'voucher')) ? 'voucher' : 'date'}
+          voucherType={voucherType}
+          voucherNights={voucherNights}
+          referrerId={referrerId}
+          onClose={() => setMultiBookingOpen(false)}
         />
       )}
     </div>
@@ -505,6 +569,142 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-white/[0.06] text-white text-sm font-semibold rounded-lg hover:bg-white/[0.1] disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600 disabled:opacity-50">
               {submitting ? '예약 중...' : '결제로 →'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-19: 다객실 묶음 결제 모달.
+function MultiBookingModal({
+  stay, rooms, cartQty, checkIn, checkOut, guests, nights, saleMode, voucherType, voucherNights, referrerId, onClose,
+}: {
+  stay: StayDetail; rooms: AvailRoom[]; cartQty: Record<number, number>;
+  checkIn: string; checkOut: string; guests: number; nights: number;
+  saleMode: 'date' | 'voucher'; voucherType: 'weekday' | 'weekend'; voucherNights: number;
+  referrerId: string; onClose: () => void
+}) {
+  const navigate = useNavigate()
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({
+    guest_name: localStorage.getItem('user_name') || '',
+    guest_phone: localStorage.getItem('user_phone') || '',
+    guest_email: localStorage.getItem('user_email') || '',
+    special_request: '',
+  })
+
+  // cart 를 (room, qty) 배열로 전개.
+  const cartEntries: Array<{ room: AvailRoom; qty: number }> = []
+  for (const r of rooms) {
+    const q = cartQty[r.room_id] || 0
+    if (q > 0) cartEntries.push({ room: r, qty: q })
+  }
+  const totalQty = cartEntries.reduce((s, e) => s + e.qty, 0)
+  const cartSubtotal = cartEntries.reduce((s, e) => s + e.room.total_price * e.qty, 0)
+
+  async function submit() {
+    if (form.guest_name.trim().length < 2) { toast.error('이름을 입력해주세요'); return }
+    if (!/^\d{10,11}$/.test(form.guest_phone.replace(/\D/g, ''))) { toast.error('올바른 전화번호'); return }
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('firebase_token')
+      // 각 객실 × qty 만큼 item 생성.
+      const items: Record<string, unknown>[] = []
+      for (const { room, qty } of cartEntries) {
+        for (let i = 0; i < qty; i++) {
+          const it: Record<string, unknown> = {
+            room_id: room.room_id,
+            guest_count: Math.min(guests, room.max_guests),
+          }
+          if (saleMode === 'date') {
+            it.check_in_date = checkIn
+            it.check_out_date = checkOut
+          } else {
+            it.voucher_type = voucherType
+            it.voucher_nights = voucherNights
+          }
+          items.push(it)
+        }
+      }
+      const payload: Record<string, unknown> = {
+        product_id: stay.id,
+        sale_mode: saleMode,
+        guest_name: form.guest_name.trim(),
+        guest_phone: form.guest_phone.trim(),
+        guest_email: form.guest_email.trim() || undefined,
+        special_request: form.special_request.trim() || undefined,
+        items,
+      }
+      if (referrerId) payload.referrer_id = referrerId
+
+      const res = await api.post('/api/group-buy/stays/bookings/create-multi', payload,
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+      if (res.data?.success) {
+        const { order_id, items_count } = res.data.data
+        toast.success(`${items_count}객실 묶음 예약 생성 — 결제로 이동`)
+        navigate(`/checkout?order_id=${order_id}&stay=1&multi=1`)
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string }; status?: number } }
+      if (ax.response?.status === 401) {
+        toast.error('로그인이 필요합니다')
+        navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+      } else {
+        toast.error(ax.response?.data?.error || '예약 실패')
+      }
+    } finally { setSubmitting(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#1A1A1A] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-[#0A0A0A] px-5 py-4 border-b border-[#1A1A1A]">
+          <h3 className="text-base font-bold">묶음 예약 ({totalQty}객실)</h3>
+          <p className="text-[11px] text-gray-400 mt-0.5">{stay.name}</p>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-white/[0.04] rounded-lg p-3 text-xs space-y-1.5">
+            {cartEntries.map(({ room, qty }) => (
+              <div key={room.room_id} className="flex justify-between">
+                <span className="text-gray-300">{room.name} × {qty}</span>
+                <span className="font-semibold">₩{formatNumber(room.total_price * qty)}</span>
+              </div>
+            ))}
+            <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
+              <span className="text-gray-400">총 금액 (할인 전)</span>
+              <span className="font-extrabold text-pink-400">₩{formatNumber(cartSubtotal)}</span>
+            </div>
+            {saleMode === 'date' ? (
+              <p className="text-[10px] text-gray-500 mt-1">기간: {checkIn} → {checkOut} ({nights}박)</p>
+            ) : (
+              <p className="text-[10px] text-gray-500 mt-1">숙소권 {voucherType === 'weekday' ? '평일권' : '주말권'} × {voucherNights}박</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-300 mb-1">대표 예약자 이름 *</label>
+            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-300 mb-1">전화번호 *</label>
+            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-300 mb-1">이메일</label>
+            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm resize-none" />
+          </div>
+          <p className="text-[10px] text-gray-500">
+            ⓘ {totalQty}객실 모두 같은 sale_mode / 기간으로 예약됩니다. 인원은 객실별 최대 인원까지 자동 분배.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-white/[0.06] text-white text-sm font-semibold rounded-lg hover:bg-white/[0.1] disabled:opacity-50">취소</button>
+            <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600 disabled:opacity-50">
+              {submitting ? '예약 중...' : `결제로 → ₩${formatNumber(cartSubtotal)}`}
             </button>
           </div>
         </div>

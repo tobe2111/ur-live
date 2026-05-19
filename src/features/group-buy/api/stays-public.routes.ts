@@ -497,6 +497,268 @@ function generateCheckInCode(): string {
   return out
 }
 
+// 🛡️ 2026-05-19: 다객실 한 번에 결제 (multi-room single payment).
+//   가족/친구 단위 예약 — 1 order_id, N stay_bookings.
+//
+//   제약:
+//     - 모든 items 가 같은 product_id (= 같은 seller).
+//     - items 최대 10개 (단일 결제 한도).
+//     - 모든 items 가 같은 sale_mode (혼합 불가).
+//     - 각 item 마다 별도 booking row + 캘린더 차감 + 체크인 코드.
+//     - 1 order 의 total_amount 는 모든 item 의 합.
+//
+//   응답: { order_id, bookings: [...], total_amount, items: [...] }
+staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
+  try {
+    const auth = c.req.header('Authorization') || ''
+    if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    let userId: number | null = null
+    try {
+      const { verify } = await import('hono/jwt')
+      const payload = await verify(auth.substring(7), (c.env as unknown as { JWT_SECRET: string }).JWT_SECRET, 'HS256') as { user_id?: number; sub?: string }
+      userId = Number(payload.user_id ?? payload.sub) || null
+    } catch { return c.json({ success: false, error: '토큰 무효' }, 401) }
+    if (!userId) return c.json({ success: false, error: '사용자 정보 없음' }, 401)
+
+    type Item = {
+      room_id: number;
+      check_in_date?: string; check_out_date?: string;       // date 모드
+      voucher_type?: 'weekday' | 'weekend'; voucher_nights?: number;  // voucher 모드
+      guest_count?: number;
+    }
+    type Body = {
+      product_id?: number;
+      sale_mode?: 'date' | 'voucher';
+      guest_name?: string; guest_phone?: string; guest_email?: string;
+      special_request?: string; referrer_id?: string | number;
+      items?: Item[];
+    }
+    const body = await c.req.json<Body>().catch(() => ({} as Body))
+    const productId = Number(body?.product_id)
+    const saleMode = body?.sale_mode === 'voucher' ? 'voucher' : 'date'
+    const guestName = String(body?.guest_name || '').trim()
+    const guestPhone = String(body?.guest_phone || '').trim()
+    const items = Array.isArray(body?.items) ? body.items : []
+
+    if (!Number.isFinite(productId)) return c.json({ success: false, error: 'product_id 필요' }, 400)
+    if (items.length === 0) return c.json({ success: false, error: 'items 비어 있음' }, 400)
+    if (items.length > 10) return c.json({ success: false, error: '최대 10개 객실까지 한 번에 결제 가능' }, 400)
+    if (!guestName || !guestPhone) return c.json({ success: false, error: '게스트 이름/전화번호 필수' }, 400)
+
+    // 1. 한 번에 모든 객실 조회 (모두 같은 product 인지 검증).
+    const roomIds = items.map((it) => Number(it.room_id)).filter((id) => Number.isFinite(id))
+    if (roomIds.length !== items.length) return c.json({ success: false, error: '모든 item 에 room_id 필요' }, 400)
+
+    const placeholders = roomIds.map(() => '?').join(',')
+    const rooms = await c.env.DB.prepare(
+      `SELECT r.id, r.product_id, r.name, r.base_guests, r.max_guests, r.extra_guest_fee,
+              r.base_price_weekday, r.base_price_weekend, r.total_inventory,
+              p.seller_id,
+              psi.min_nights, psi.referral_enabled,
+              psi.influencer_discount_pct, psi.influencer_commission_pct,
+              psi.sale_mode, psi.voucher_validity_days,
+              psi.voucher_weekday_only, psi.voucher_weekend_only
+         FROM product_stay_rooms r
+         INNER JOIN products p ON p.id = r.product_id
+         LEFT JOIN product_stay_info psi ON psi.product_id = p.id
+        WHERE r.id IN (${placeholders}) AND r.product_id = ? AND r.is_active = 1`
+    ).bind(...roomIds, productId).all<{
+      id: number; product_id: number; name: string; base_guests: number; max_guests: number; extra_guest_fee: number;
+      base_price_weekday: number; base_price_weekend: number; total_inventory: number;
+      seller_id: number; min_nights: number | null; referral_enabled: number | null;
+      influencer_discount_pct: number | null; influencer_commission_pct: number | null;
+      sale_mode: string | null; voucher_validity_days: number | null;
+      voucher_weekday_only: number | null; voucher_weekend_only: number | null;
+    }>().catch(() => ({ results: [] }))
+
+    const roomMap = new Map((rooms.results || []).map((r) => [r.id, r]))
+    if (roomMap.size !== items.length) {
+      return c.json({ success: false, error: '일부 객실이 존재하지 않거나 다른 숙소 소속입니다' }, 400)
+    }
+
+    // 모든 객실이 같은 product → 같은 seller.
+    const firstRoom = (rooms.results || [])[0]
+    const sellerId = firstRoom.seller_id
+    const allowedMode = firstRoom.sale_mode || 'date'
+    if (allowedMode !== 'both' && allowedMode !== saleMode) {
+      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소권' : '날짜 지정'} 모드만 지원합니다` }, 400)
+    }
+
+    // 2. 각 item 별 가격 계산 + 검증.
+    type Prepared = {
+      item: Item; room: typeof firstRoom; nights: number;
+      roomTotal: number; extraGuestFee: number; subtotal: number;
+      checkIn: string; checkOut: string;
+      voucherType: 'weekday' | 'weekend' | null; voucherExpiresAt: string | null;
+      guestCount: number;
+    }
+    const prepared: Prepared[] = []
+    for (const it of items) {
+      const room = roomMap.get(Number(it.room_id))!
+      const guestCount = Math.max(1, Number(it.guest_count) || 1)
+      if (guestCount > room.max_guests) {
+        return c.json({ success: false, error: `${room.name}: 최대 ${room.max_guests}인` }, 400)
+      }
+
+      let nights = 0
+      let checkIn = ''; let checkOut = ''
+      let voucherType: 'weekday' | 'weekend' | null = null
+      let voucherExpiresAt: string | null = null
+
+      if (saleMode === 'date') {
+        checkIn = String(it.check_in_date || '')
+        checkOut = String(it.check_out_date || '')
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) {
+          return c.json({ success: false, error: `${room.name}: 날짜 형식 오류` }, 400)
+        }
+        nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
+        if (nights < 1) return c.json({ success: false, error: `${room.name}: 체크아웃은 체크인 이후` }, 400)
+        if (room.min_nights && nights < room.min_nights) {
+          return c.json({ success: false, error: `${room.name}: 최소 ${room.min_nights}박` }, 400)
+        }
+      } else {
+        voucherType = it.voucher_type === 'weekend' ? 'weekend' : 'weekday'
+        nights = Math.max(1, Math.min(7, Number(it.voucher_nights) || 1))
+        if (voucherType === 'weekday' && room.voucher_weekend_only) return c.json({ success: false, error: `${room.name}: 주말권만 판매 중` }, 400)
+        if (voucherType === 'weekend' && room.voucher_weekday_only) return c.json({ success: false, error: `${room.name}: 평일권만 판매 중` }, 400)
+        const days = Number(room.voucher_validity_days) || 180
+        voucherExpiresAt = new Date(Date.now() + days * 86400000).toISOString().slice(0, 19).replace('T', ' ')
+      }
+
+      // 가격 계산.
+      let roomTotal = 0
+      if (saleMode === 'date') {
+        for (let i = 0; i < nights; i++) {
+          const d = new Date(new Date(checkIn).getTime() + i * 86400000)
+          const ds = d.toISOString().slice(0, 10)
+          const isWeekend = d.getDay() === 5 || d.getDay() === 6
+          const cal = await c.env.DB.prepare(
+            `SELECT available_count, price_override, is_blocked
+               FROM product_stay_calendar WHERE room_id = ? AND stay_date = ?`
+          ).bind(room.id, ds).first<{ available_count: number; price_override: number | null; is_blocked: number }>()
+            .catch(() => null)
+          if (cal?.is_blocked) return c.json({ success: false, error: `${room.name} ${ds}: 차단됨` }, 400)
+          const avail = cal?.available_count ?? room.total_inventory
+          if (avail <= 0) return c.json({ success: false, error: `${room.name} ${ds}: 매진` }, 400)
+          roomTotal += cal?.price_override ?? (isWeekend ? room.base_price_weekend : room.base_price_weekday)
+        }
+      } else {
+        const perNight = voucherType === 'weekend' ? room.base_price_weekend : room.base_price_weekday
+        roomTotal = perNight * nights
+      }
+
+      const extra = Math.max(0, guestCount - room.base_guests) * room.extra_guest_fee * nights
+      prepared.push({
+        item: it, room, nights, roomTotal, extraGuestFee: extra,
+        subtotal: roomTotal + extra, checkIn, checkOut,
+        voucherType, voucherExpiresAt, guestCount,
+      })
+    }
+
+    const grandSubtotal = prepared.reduce((s, p) => s + p.subtotal, 0)
+
+    // 3. Referral — 1 order 단위로 적용 (모든 booking 에 분산은 안 함, order 합계 기준).
+    let discountAmount = 0
+    let commissionAmount = 0
+    let validatedReferrerId: string | null = null
+    if (body?.referrer_id && firstRoom.referral_enabled && (firstRoom.influencer_discount_pct || 0) > 0) {
+      const refId = String(body.referrer_id).trim()
+      if (refId !== String(userId)) {
+        const referrer = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(refId).first<{ id: string }>().catch(() => null)
+        if (referrer) {
+          validatedReferrerId = refId
+          const discountPct = Math.min(50, Math.max(0, Number(firstRoom.influencer_discount_pct) || 0))
+          discountAmount = Math.floor(grandSubtotal * discountPct / 100)
+          const commissionPct = Math.min(20, Math.max(0, Number(firstRoom.influencer_commission_pct) || 0))
+          commissionAmount = Math.floor((grandSubtotal - discountAmount) * commissionPct / 100)
+        }
+      }
+    }
+    const totalAmount = grandSubtotal - discountAmount
+
+    // 4. orders INSERT (한 개).
+    const totalNights = prepared.reduce((s, p) => s + p.nights, 0)
+    const orderResult = await c.env.DB.prepare(
+      `INSERT INTO orders (
+         user_id, seller_id, total_amount, status, payment_status,
+         shipping_name, shipping_phone, created_at,
+         stay_check_in_date, stay_check_out_date, stay_nights
+       ) VALUES (?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
+    ).bind(
+      userId, sellerId, totalAmount, guestName, guestPhone,
+      saleMode === 'date' ? prepared[0].checkIn : null,
+      saleMode === 'date' ? prepared[0].checkOut : null,
+      totalNights,
+    ).run().catch(() => null)
+    const orderId = orderResult ? Number(orderResult.meta.last_row_id) : 0
+    if (!orderId) return c.json({ success: false, error: '주문 생성 실패' }, 500)
+
+    // 5. 각 item 별 stay_bookings INSERT.
+    //   discount/commission 는 비례 분배 (proportional).
+    const bookings: Array<{ booking_id: number; room_id: number; subtotal: number; check_in_code: string }> = []
+    for (const p of prepared) {
+      const share = grandSubtotal > 0 ? p.subtotal / grandSubtotal : 1 / prepared.length
+      const itemDiscount = Math.floor(discountAmount * share)
+      const itemCommission = Math.floor(commissionAmount * share)
+      const itemTotal = p.subtotal - itemDiscount
+      const code = generateCheckInCode()
+
+      const br = await c.env.DB.prepare(
+        `INSERT INTO stay_bookings (
+           order_id, product_id, room_id, seller_id, user_id,
+           check_in_date, check_out_date, nights,
+           guest_count, guest_name, guest_phone, guest_email, special_request,
+           room_total, extra_guest_fee, total_amount,
+           status, check_in_code,
+           referrer_id, discount_amount, influencer_commission_amount,
+           sale_mode, voucher_type, voucher_expires_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        orderId, productId, p.room.id, sellerId, userId,
+        saleMode === 'date' ? p.checkIn : null,
+        saleMode === 'date' ? p.checkOut : null,
+        p.nights,
+        p.guestCount, guestName, guestPhone,
+        body?.guest_email || null, body?.special_request || null,
+        p.roomTotal, p.extraGuestFee, itemTotal, code,
+        validatedReferrerId, itemDiscount, itemCommission,
+        saleMode, p.voucherType, p.voucherExpiresAt,
+      ).run().catch((e: Error) => { throw new Error(`booking 생성 실패 (room ${p.room.id}): ${e.message}`) })
+
+      const bid = Number(br.meta.last_row_id)
+      bookings.push({ booking_id: bid, room_id: p.room.id, subtotal: itemTotal, check_in_code: code })
+
+      await c.env.DB.prepare(
+        `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
+         VALUES (?, NULL, 'pending', 'user', ?, '다객실 예약 생성')`
+      ).bind(bid, userId).run().catch(() => { /* noop */ })
+    }
+
+    // 6. orders.stay_booking_id 는 첫 booking 기준 백필 (legacy 호환 — 다객실은 별도 stay_bookings 쿼리).
+    if (bookings.length > 0) {
+      await c.env.DB.prepare('UPDATE orders SET stay_booking_id = ? WHERE id = ?')
+        .bind(bookings[0].booking_id, orderId).run().catch(() => { /* noop */ })
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        order_id: orderId,
+        bookings,
+        total_amount: totalAmount,
+        subtotal: grandSubtotal,
+        discount_amount: discountAmount,
+        commission_amount: commissionAmount,
+        referrer_id: validatedReferrerId,
+        sale_mode: saleMode,
+        items_count: prepared.length,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 // 🛡️ 2026-05-18: 숙소 결제 confirm — 토스 결제 페이지 returnUrl 에서 호출.
 //   흐름:
 //     1) /stays/:id 에서 예약 생성 → orders + stay_bookings (status='pending')
