@@ -97,6 +97,48 @@ productsRoutes.get('/search/suggestions', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-19: alias — /api/search/suggestions 와 /api/search/popular 호출 매칭.
+//   worker/index.ts:813 의 app.route('/api/search', featureProductsRoutes) 로 인해
+//   '/search/suggestions' 는 /api/search/search/suggestions 가 됨 (불일치).
+//   같은 handler 를 '/suggestions' 와 '/popular' 에 추가 등록하여 /api/search/* 매칭 보장.
+productsRoutes.get('/suggestions', cors(), async (c) => {
+  const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
+  if (!flags.enable_search_suggestions) return c.json({ success: true, data: [] });
+  const { DB } = c.env;
+  const q = c.req.query('q') || '';
+  if (!q || q.length < 2) return c.json({ success: true, data: [] });
+  if (q.length > 200) return c.json({ success: true, data: [] });
+  try {
+    const result = await DB.prepare(
+      `SELECT DISTINCT name as suggestion FROM products
+       WHERE name LIKE ? AND is_active = 1
+       ORDER BY name ASC LIMIT 10`
+    ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
+    return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
+
+productsRoutes.get('/popular', cors(), async (c) => {
+  const { DB, SESSION_KV } = c.env;
+  try {
+    const data = await cacheGet(
+      SESSION_KV, 'popular-searches',
+      async () => {
+        const result = await DB.prepare(
+          `SELECT keyword, search_count FROM popular_searches ORDER BY search_count DESC LIMIT 10`
+        ).all().catch(() => ({ results: [] }));
+        return result.results || [];
+      },
+      { ttl: 600 }
+    );
+    return c.json({ success: true, data });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
+
 /**
  * GET /api/products
  * 상품 목록 조회
