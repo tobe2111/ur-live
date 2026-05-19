@@ -384,4 +384,36 @@ adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-19: 수동 cron trigger — 어드민 전용.
+//   body: { name: 'restaurant-geocode' | 'kt-alpha-catalog-sync' }
+//   화이트리스트 외 이름은 거부 (RCE 방지). 결과 JSON 으로 반환.
+adminMiscRoutes.post('/_run-cron', cors(), async (c) => {
+  try {
+    const body = await c.req.json<{ name?: string }>().catch(() => ({} as { name?: string }));
+    const name = String(body?.name || '');
+    const start = Date.now();
+    const env = c.env as unknown as { DB: D1Database; KAKAO_REST_API_KEY?: string; KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string };
+
+    if (name === 'restaurant-geocode') {
+      const { runRestaurantGeocode } = await import('../../../worker/cron/restaurant-geocode');
+      const result = await runRestaurantGeocode(env);
+      return c.json({ success: true, name, elapsed_ms: Date.now() - start, result });
+    }
+
+    if (name === 'kt-alpha-catalog-sync') {
+      const { runKtAlphaCatalogSync } = await import('../../../worker/cron/kt-alpha-catalog-sync');
+      const result = await runKtAlphaCatalogSync(env);
+      return c.json({ success: true, name, elapsed_ms: Date.now() - start, result });
+    }
+
+    return c.json({
+      success: false,
+      error: `허용되지 않은 cron name: ${name}`,
+      allowed: ['restaurant-geocode', 'kt-alpha-catalog-sync'],
+    }, 400);
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminMiscRoutes;
