@@ -41,6 +41,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     }, { replace: true })
   }
   const [showSortDropdown, setShowSortDropdown] = useState(false)
+  // 🛡️ 2026-05-19: 진짜 cursor-based 무한스크롤 (이전: client-side slice 만).
+  //   2260+ 개 상품에서도 메모리 효율 + 백엔드 1페이지씩 가져옴.
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const PAGE_SIZE = 50
   const [showCount, setShowCount] = useState(ITEMS_PER_PAGE)
   const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
   const [freeShipOnly, setFreeShipOnly] = useState(false)
@@ -174,31 +180,49 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     if (hasMarkers) mapInstanceRef.current.setBounds(bounds)
   }
 
-  const loadProducts = useCallback(() => {
-    setLoading(true)
-    setError(null)
-    // 🛡️ 2026-05-19: limit 100→500 (KT Alpha 2260개 등록 대응). 백엔드 max=500.
-    const url = category === 'all'
-      ? '/api/products?limit=500'
-      : `/api/products?category=${encodeURIComponent(category)}&limit=500`
-    api.get(url)
+  // 🛡️ 2026-05-19: page-based cursor pagination (50개씩 누적 로드).
+  const loadProducts = useCallback((pageNum: number, reset: boolean) => {
+    if (reset) setLoading(true); else setLoadingMore(true)
+    if (reset) setError(null)
+    const params = new URLSearchParams({ page: String(pageNum), limit: String(PAGE_SIZE) })
+    if (category !== 'all') params.set('category', category)
+    api.get(`/api/products?${params.toString()}`)
       .then(r => {
         if (r.data.success) {
-          setProducts(r.data.data || [])
-        } else {
+          const newItems: Product[] = r.data.data || []
+          setProducts(prev => reset ? newItems : [...prev, ...newItems])
+          setHasMore(newItems.length === PAGE_SIZE)
+          if (reset) setPage(1)
+        } else if (reset) {
           setError(t('browse.loadError'))
         }
       })
       .catch(() => {
-        // ✅ UX M17 FIX: 에러 상태 설정 (무시 금지)
-        setError(t('browse.loadRetry'))
+        if (reset) setError(t('browse.loadRetry'))
       })
-      .finally(() => setLoading(false))
-  }, [category])
+      .finally(() => {
+        if (reset) setLoading(false); else setLoadingMore(false)
+      })
+  }, [category, t])
 
   useEffect(() => {
-    loadProducts()
-  }, [loadProducts])
+    setProducts([])
+    loadProducts(1, true)
+  }, [category, loadProducts])
+
+  // IntersectionObserver — sentinel 닿으면 다음 페이지 자동 fetch.
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMore || loadingMore) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasMore && !loadingMore) {
+        const next = page + 1
+        setPage(next)
+        loadProducts(next, false)
+      }
+    }, { threshold: 0.1 })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, page, loadProducts])
 
   useEffect(() => {
     const handler = () => setShowSortDropdown(false)
@@ -229,7 +253,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   }, [products, sortBy, priceRange, freeShipOnly])
 
   const displayed = sorted.slice(0, showCount)
-  const hasMore = showCount < sorted.length
+  // showCount < 로드된 항목 OR 백엔드에 더 있음 → "더 있다" 표시.
+  const canShowMore = showCount < sorted.length || hasMore
 
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
@@ -404,7 +429,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
           <div className="text-center py-16">
             <p className="text-gray-900 dark:text-white mb-4">{error}</p>
             <button
-              onClick={loadProducts}
+              onClick={() => loadProducts(1, true)}
               className="px-6 py-2 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors"
             >
               다시 시도
@@ -516,9 +541,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             </div>
 
             {/* 더보기 — sentinel div: observer가 보이면 자동 로드 + 버튼 fallback */}
-            {hasMore && (
+            {canShowMore && (
               <div ref={loadMoreRef} className="flex justify-center mt-6 pb-20">
-                <button onClick={() => setShowCount(c => c + ITEMS_PER_PAGE)}
+                <button onClick={() => {
+                  if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
+                  else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }
+                }}
                   className="px-8 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:bg-[#121212]">
                   더보기 ({sorted.length - showCount}개 남음)
                 </button>
