@@ -398,6 +398,29 @@
   }
 }
 
+/* 🛡️ 2026-05-19: 영구 해결 — input/textarea/select 텍스트 색상 explicit fallback.
+   재발 사고 패턴: 다크 페이지에서 흰색 input 텍스트가 화이트 배경 페이지로 복붙되면
+   투명하게 보임. 모든 폼 컨트롤에 명시적 색 (라이트=gray-900, 다크=white) 강제.
+   placeholder 도 함께 보정. text-white/text-black 클래스가 있으면 Tailwind 가 override. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+textarea,
+select {
+  color: rgb(17 24 39); /* gray-900 — 라이트 테마 기본 */
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgb(156 163 175); /* gray-400 */
+}
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+.dark textarea,
+.dark select {
+  color: rgb(243 244 246); /* gray-100 — 다크 테마 기본 */
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgb(107 114 128); /* gray-500 */
+}
+
 /* 🛡️ iOS Safari: 가로 모드 회전 시 텍스트 강제 확대 방지 */
 html {
   -webkit-text-size-adjust: 100%;

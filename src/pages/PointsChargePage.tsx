@@ -193,18 +193,8 @@ export default function PointsChargePage() {
                               ? 'border-pink-300 bg-pink-50/40 hover:border-pink-400'
                               : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300'
                       }`}
-                      aria-label={`${formatNumber(opt.amount)}원 충전${hasBonus ? ` 보너스 ${opt.bonus}딜 추가` : ''}${isBest ? ' 가장 인기' : isRecommended ? ' 추천' : ''}`}
+                      aria-label={`${formatNumber(opt.amount)}원 충전${hasBonus ? ` 보너스 ${opt.bonus}딜 추가` : ''}`}
                     >
-                      {isBest && (
-                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-extrabold whitespace-nowrap shadow-sm">
-                          🔥 BEST
-                        </span>
-                      )}
-                      {isRecommended && (
-                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-extrabold whitespace-nowrap shadow-sm">
-                          ⭐ 추천
-                        </span>
-                      )}
                       {isSelected && (
                         <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
