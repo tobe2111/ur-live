@@ -337,10 +337,11 @@ adminKtAlphaRoutes.get('/kt-alpha/consumer-products/stats', cors(), async (c) =>
   try {
     const stats = await c.env.DB.prepare(
       `SELECT COUNT(*) as total,
-              SUM(CASE WHEN is_active=1 THEN 1 ELSE 0 END) as visible,
-              SUM(sold_count) as total_sold,
+              COALESCE(SUM(CASE WHEN is_active=1 THEN 1 ELSE 0 END), 0) as visible,
+              COALESCE(SUM(sold_count), 0) as total_sold,
               COALESCE(AVG(price), 0) as avg_price,
-              MIN(price) as min_price, MAX(price) as max_price
+              COALESCE(MIN(price), 0) as min_price,
+              COALESCE(MAX(price), 0) as max_price
          FROM products WHERE kt_alpha_gift_code IS NOT NULL`
     ).first<{ total: number; visible: number; total_sold: number; avg_price: number; min_price: number; max_price: number }>()
       .catch(() => null)

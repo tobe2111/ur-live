@@ -433,23 +433,23 @@ export default function AdminKtAlphaPage() {
                 </span>
               </div>
 
-              {/* KPI */}
+              {/* KPI — null 방어 */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">등록 상품</p>
-                  <p className="text-lg font-extrabold text-amber-900">{consumerStats.total.toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-amber-900">{Number(consumerStats.total ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">노출 중</p>
-                  <p className="text-lg font-extrabold text-emerald-700">{consumerStats.visible.toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-emerald-700">{Number(consumerStats.visible ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">누적 판매</p>
-                  <p className="text-lg font-extrabold text-pink-600">{consumerStats.total_sold.toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-pink-600">{Number(consumerStats.total_sold ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">평균 가격</p>
-                  <p className="text-lg font-extrabold text-gray-900">₩{Math.floor(consumerStats.avg_price).toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-gray-900">₩{Math.floor(Number(consumerStats.avg_price ?? 0)).toLocaleString()}</p>
                 </div>
               </div>
 
@@ -458,11 +458,11 @@ export default function AdminKtAlphaPage() {
                   className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   🔍 미리보기 (dry-run)
                 </button>
-                <button onClick={() => runImport(false)} disabled={importing || catalogStats.active === 0}
+                <button onClick={() => runImport(false)} disabled={importing || (catalogStats.active ?? 0) === 0}
                   className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 disabled:opacity-50">
-                  {importing ? '등록 중...' : `📦 대량 등록 ${catalogStats.active.toLocaleString()}개`}
+                  {importing ? '등록 중...' : `📦 대량 등록 ${Number(catalogStats.active ?? 0).toLocaleString()}개`}
                 </button>
-                <button onClick={() => toggleConsumerVisibility(consumerStats.visible === 0)} disabled={consumerStats.total === 0}
+                <button onClick={() => toggleConsumerVisibility((consumerStats.visible ?? 0) === 0)} disabled={(consumerStats.total ?? 0) === 0}
                   className={`px-3 py-2 text-white text-xs font-bold rounded-lg disabled:opacity-50 ${
                     consumerStats.visible > 0 ? 'bg-gray-700 hover:bg-gray-800' : 'bg-emerald-600 hover:bg-emerald-700'
                   }`}>
@@ -522,8 +522,8 @@ export default function AdminKtAlphaPage() {
                         <p className="text-[10px] text-gray-500 font-semibold">{item.brand_name}</p>
                         <p className="text-xs font-bold text-gray-900 line-clamp-2">{item.name}</p>
                         <div className="flex items-baseline gap-1 mt-1">
-                          {item.discount_rate > 0 && <span className="text-[10px] text-red-500 font-bold">{item.discount_rate}%</span>}
-                          <span className="text-xs font-extrabold text-gray-900">₩{item.sale_price.toLocaleString()}</span>
+                          {Number(item.discount_rate ?? 0) > 0 && <span className="text-[10px] text-red-500 font-bold">{item.discount_rate}%</span>}
+                          <span className="text-xs font-extrabold text-gray-900">₩{Number(item.sale_price ?? 0).toLocaleString()}</span>
                         </div>
                         <p className="text-[9px] text-gray-400 mt-0.5 font-mono">{item.gift_code}</p>
                         {!item.is_active && <p className="text-[9px] text-red-600 mt-0.5 font-bold">⊘ 비활성</p>}
