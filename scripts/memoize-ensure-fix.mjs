@@ -32,8 +32,12 @@
  *     // 파일 끝:
  *     const _done_ensureXyz = new WeakSet<object>()
  *
- *   WeakSet 사용 시 첫 인자가 객체여야 함. ensure 함수는 모두 DB 또는 env 객체를
- *   받으므로 안전. primitives 받는 경우는 변환 후 빌드/타입 오류로 감지.
+ *   WeakSet 사용 시 첫 인자가 객체여야 함. ensure 함수는 대부분 DB 또는 env 객체를
+ *   받지만, primitive (string lang 등) 받는 함수는 자동 skip 한다.
+ *
+ *   🛡️ 2026-05-19 회귀 수정: 초기 버전이 ensureLanguageLoaded(lang: string) 까지
+ *     변환 → WeakSet.add('ko') TypeError → 모든 i18n 키 raw 노출 사고 (메인 페이지
+ *     mainHome.* 노출). 이후 첫 인자 타입이 primitive (string/number/boolean) 이면 skip.
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs'
 import { join, extname } from 'path'
@@ -71,13 +75,28 @@ for (const file of targets) {
   let result = src
 
   // 1) 함수 body 안의 boolean 체크/세팅을 WeakSet 으로 변환.
-  //    각 ensure 함수의 첫 인자 이름을 알아야 함.
-  //    매칭: async function ensureXxx(arg1[, ...])
-  const fnSigRe = /async function (ensure[A-Z][a-zA-Z0-9_]*)\s*\(\s*([a-zA-Z_$][a-zA-Z0-9_$]*)/g
+  //    각 ensure 함수의 첫 인자 이름 + 타입을 알아야 함.
+  //    매칭: async function ensureXxx(arg1[: Type][, ...])
+  //
+  //    🛡️ 2026-05-19 회귀 수정: primitive 타입 (string/number/boolean) 첫 인자는
+  //    WeakSet 키로 사용 불가 → TypeError. ensureLanguageLoaded(lang: string) 사고 후 추가.
+  const fnSigRe = /async function (ensure[A-Z][a-zA-Z0-9_]*)\s*\(\s*([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\s*:\s*([^,)]+))?/g
   const fnFirstArg = new Map()
+  const skippedPrimitive = []
   let m
   while ((m = fnSigRe.exec(src)) !== null) {
-    fnFirstArg.set(m[1], m[2])
+    const fnName = m[1]
+    const argName = m[2]
+    const argType = (m[3] || '').trim()
+    // primitive 타입이면 skip — WeakSet 키 불가
+    if (/^(string|number|boolean|symbol|bigint)$/.test(argType)) {
+      skippedPrimitive.push(`${fnName}(${argName}: ${argType})`)
+      continue
+    }
+    fnFirstArg.set(fnName, argName)
+  }
+  if (skippedPrimitive.length > 0) {
+    console.warn(`  ⚠️  ${file} — skipped primitive args: ${skippedPrimitive.join(', ')}`)
   }
 
   let convertedBoolChecks = 0

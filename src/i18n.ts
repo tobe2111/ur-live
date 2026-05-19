@@ -57,8 +57,10 @@ const initialLanguage = detectInitialLanguage()
 const loaded = new Set<Lang>()
 
 async function ensureLanguageLoaded(lang: string): Promise<void> {
-  if (_done_ensureLanguageLoaded.has(lang)) return
-  _done_ensureLanguageLoaded.add(lang)
+  // 🛡️ 2026-05-19: WeakSet memoize 회귀 수정.
+  //   memoize-ensure-fix.mjs 가 lang: string 을 WeakSet 키로 변환 → TypeError →
+  //   locale 로드 실패 → 모든 i18n 키가 raw 노출 (mainHome.nearbyTitle 등).
+  //   `loaded: Set<Lang>` (아래) 이 이미 중복 호출 방어 → 별도 memoize 불필요.
   const base = lang.split('-')[0] as Lang
   if (!SUPPORTED.includes(base)) return
   if (loaded.has(base)) return
