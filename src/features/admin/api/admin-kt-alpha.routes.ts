@@ -175,6 +175,71 @@ adminKtAlphaRoutes.get('/kt-alpha/debug', cors(), async (c) => {
   }
 })
 
+// 🛡️ 2026-05-19: 디버그용 — KT Alpha API 한 페이지만 직접 호출 + raw 응답 반환.
+//   sync timeout 으로 진짜 에러 확인 불가일 때 사용.
+adminKtAlphaRoutes.get('/kt-alpha/debug-call', cors(), async (c) => {
+  try {
+    const env = c.env as unknown as { DB: D1Database; KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
+    if (!env.KT_ALPHA_AUTH_CODE) {
+      return c.json({ success: false, error: 'KT_ALPHA_AUTH_CODE 미설정' }, 500)
+    }
+    const tokenKey = env.KT_ALPHA_AUTH_TOKEN || env.KT_ALPHA_TOKEN_KEY
+    if (!tokenKey) {
+      return c.json({ success: false, error: 'KT_ALPHA_TOKEN_KEY/AUTH_TOKEN 미설정' }, 500)
+    }
+    const devYn = env.KT_ALPHA_DEV_MODE === 'N' ? 'N' : 'Y'
+
+    // 0101 listGoods 1 페이지만 호출.
+    const body = new URLSearchParams()
+    body.append('api_code', '0101')
+    body.append('custom_auth_code', env.KT_ALPHA_AUTH_CODE)
+    body.append('custom_auth_token', tokenKey)
+    body.append('dev_yn', devYn)
+    body.append('start', '1')
+    body.append('size', '5')
+
+    const start = Date.now()
+    const res = await fetch('https://bizapi.giftishow.com/bizApi/goods', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: body.toString(),
+    })
+    const elapsed = Date.now() - start
+    const rawText = await res.text()
+    let parsed: unknown = null
+    try { parsed = JSON.parse(rawText) } catch { /* not JSON */ }
+
+    return c.json({
+      success: true,
+      data: {
+        http_status: res.status,
+        http_ok: res.ok,
+        elapsed_ms: elapsed,
+        request: {
+          url: 'https://bizapi.giftishow.com/bizApi/goods',
+          method: 'POST',
+          body_keys: ['api_code', 'custom_auth_code', 'custom_auth_token', 'dev_yn', 'start', 'size'],
+          // 민감값 일부만 노출.
+          api_code: '0101',
+          custom_auth_code_prefix: env.KT_ALPHA_AUTH_CODE.slice(0, 4) + '...' + env.KT_ALPHA_AUTH_CODE.slice(-4),
+          custom_auth_token_prefix: tokenKey.slice(0, 4) + '...' + tokenKey.slice(-4),
+          dev_yn: devYn,
+          start: '1',
+          size: '5',
+        },
+        response_text: rawText.slice(0, 2000),  // 첫 2000자만
+        response_json: parsed,
+      },
+    })
+  } catch (err) {
+    return c.json({
+      success: false,
+      error: (err as Error).message,
+      stack: (err as Error).stack?.slice(0, 500),
+    }, 500)
+  }
+})
+
 // 4. POST /balance — 비즈머니 잔액 즉시 갱신.
 adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
   try {
