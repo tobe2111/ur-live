@@ -588,11 +588,22 @@ export async function fetchAllGoods(
   const pageSize = options.pageSize ?? 100
   const maxPages = options.maxPages ?? 50
   const all: GiftishowGoodsItem[] = []
+  // 🛡️ 2026-05-19: 빈 페이지 만나도 한 번 더 시도 (KT Alpha 가 partial page 반환 후
+  //   다음 페이지에 더 있는 경우 대응). 연속 2회 빈/짧은 페이지면 종료.
+  let consecutiveEmpty = 0
+  let totalExpected = 0
   for (let page = 1; page <= maxPages; page++) {
     const data = await listGoods(env, { start: page, size: pageSize })
-    if (!data.goodsList || data.goodsList.length === 0) break
+    if (data.listNum && page === 1) totalExpected = data.listNum
+    if (!data.goodsList || data.goodsList.length === 0) {
+      consecutiveEmpty++
+      if (consecutiveEmpty >= 2) break
+      continue
+    }
+    consecutiveEmpty = 0
     all.push(...data.goodsList)
-    if (data.goodsList.length < pageSize) break  // 마지막 페이지
+    // 전체 expected 모두 받았으면 종료.
+    if (totalExpected > 0 && all.length >= totalExpected) break
   }
   return all
 }

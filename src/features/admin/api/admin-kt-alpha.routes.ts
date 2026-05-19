@@ -189,14 +189,16 @@ adminKtAlphaRoutes.get('/kt-alpha/debug-call', cors(), async (c) => {
     }
     const devYn = env.KT_ALPHA_DEV_MODE === 'N' ? 'N' : 'Y'
 
-    // 0101 listGoods 1 페이지만 호출.
+    // 0101 listGoods 1 페이지만 호출. start/size 쿼리로 지정 가능.
+    const start = c.req.query('start') || '1'
+    const size = c.req.query('size') || '5'
     const body = new URLSearchParams()
     body.append('api_code', '0101')
     body.append('custom_auth_code', env.KT_ALPHA_AUTH_CODE)
     body.append('custom_auth_token', tokenKey)
     body.append('dev_yn', devYn)
-    body.append('start', '1')
-    body.append('size', '5')
+    body.append('start', start)
+    body.append('size', size)
 
     const start = Date.now()
     const res = await fetch('https://bizapi.giftishow.com/bizApi/goods', {
@@ -224,8 +226,8 @@ adminKtAlphaRoutes.get('/kt-alpha/debug-call', cors(), async (c) => {
           custom_auth_code_prefix: env.KT_ALPHA_AUTH_CODE.slice(0, 4) + '...' + env.KT_ALPHA_AUTH_CODE.slice(-4),
           custom_auth_token_prefix: tokenKey.slice(0, 4) + '...' + tokenKey.slice(-4),
           dev_yn: devYn,
-          start: '1',
-          size: '5',
+          start,
+          size,
         },
         response_text: rawText.slice(0, 2000),  // 첫 2000자만
         response_json: parsed,

@@ -290,9 +290,9 @@ export default function AdminKtAlphaPage() {
             {/* KPI cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiBox label="활성 상품" value={`${catalogStats.active}/${catalogStats.total}`} color="text-blue-600 bg-blue-50" icon={<Package className="w-4 h-4" />} />
-              <KpiBox label="총 발송 시도" value={String(sendStats.total)} color="text-violet-600 bg-violet-50" icon={<Gift className="w-4 h-4" />} />
-              <KpiBox label="발송 성공" value={String(sendStats.sent)} sub={sendStats.failed > 0 ? `실패 ${sendStats.failed}` : undefined} color="text-emerald-600 bg-emerald-50" icon={<TrendingUp className="w-4 h-4" />} warn={sendStats.failed > 0} />
-              <KpiBox label="누적 거래액" value={`₩${(sendStats.total_amount || 0).toLocaleString()}`} color="text-pink-600 bg-pink-50" icon={<DollarSign className="w-4 h-4" />} />
+              <KpiBox label="총 발송 시도" value={String(Number(sendStats.total ?? 0))} color="text-violet-600 bg-violet-50" icon={<Gift className="w-4 h-4" />} />
+              <KpiBox label="발송 성공" value={String(Number(sendStats.sent ?? 0))} sub={Number(sendStats.failed ?? 0) > 0 ? `실패 ${sendStats.failed}` : undefined} color="text-emerald-600 bg-emerald-50" icon={<TrendingUp className="w-4 h-4" />} warn={Number(sendStats.failed ?? 0) > 0} />
+              <KpiBox label="누적 거래액" value={`₩${Number(sendStats.total_amount ?? 0).toLocaleString()}`} color="text-pink-600 bg-pink-50" icon={<DollarSign className="w-4 h-4" />} />
             </div>
 
             {/* 설정 — 마진 + API config */}
