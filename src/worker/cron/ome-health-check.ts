@@ -22,8 +22,8 @@ const ALERT_THROTTLE_MIN = 15  // 같은 알람 15분 이내 중복 차단
 
 /** OME 가 down 상태일 때 ALERT 생성 (15분 throttle). */
 async function ensureAdminAlert(env: Env, kind: string, title: string, body: string) {
-  if (_done_ensureAdminAlert) return
-  _done_ensureAdminAlert = true
+  if (_done_ensureAdminAlert.has(env)) return
+  _done_ensureAdminAlert.add(env)
   try {
     // admin_alerts 테이블 ensure (lazy create)
     await env.DB.prepare(`
@@ -215,4 +215,4 @@ export async function handleOmeHealthCheck(env: Env): Promise<void> {
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAdminAlert = false
+const _done_ensureAdminAlert = new WeakSet<object>()

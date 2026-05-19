@@ -47,8 +47,8 @@ sellerPublicRoutes.get('/:sellerId/upcoming', async (c) => {
 })
 
 async function ensureFollowsTable(DB: D1Database): Promise<void> {
-  if (_done_ensureFollowsTable) return
-  _done_ensureFollowsTable = true
+  if (_done_ensureFollowsTable.has(DB)) return
+  _done_ensureFollowsTable.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS seller_follows (
@@ -399,4 +399,4 @@ export { sellerPublicRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureFollowsTable = false
+const _done_ensureFollowsTable = new WeakSet<object>()

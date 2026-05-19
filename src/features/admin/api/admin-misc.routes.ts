@@ -19,6 +19,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 export const adminMiscRoutes = new Hono<{ Bindings: Env }>();
 
@@ -387,7 +388,7 @@ adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
 // 🛡️ 2026-05-19: 수동 cron trigger — 어드민 전용.
 //   body: { name: 'restaurant-geocode' | 'kt-alpha-catalog-sync' }
 //   화이트리스트 외 이름은 거부 (RCE 방지). 결과 JSON 으로 반환.
-adminMiscRoutes.post('/_run-cron', cors(), async (c) => {
+adminMiscRoutes.post('/_run-cron', cors(), rateLimit({ action: 'admin_run_cron', max: 5, windowSec: 300 }), async (c) => {
   try {
     const body = await c.req.json<{ name?: string }>().catch(() => ({} as { name?: string }));
     const name = String(body?.name || '');

@@ -18,8 +18,8 @@ import { getCurrentUser } from './auth'
 const AUDIT_DDL_DONE = new Set<string>()
 
 async function ensureAuditTable(DB: D1Database): Promise<void> {
-  if (_done_ensureAuditTable) return
-  _done_ensureAuditTable = true
+  if (_done_ensureAuditTable.has(DB)) return
+  _done_ensureAuditTable.add(DB)
   if (AUDIT_DDL_DONE.has('done')) return
   try {
     await DB.prepare(`
@@ -84,4 +84,4 @@ export function auditLog(action: string) {
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAuditTable = false
+const _done_ensureAuditTable = new WeakSet<object>()

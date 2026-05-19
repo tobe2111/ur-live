@@ -93,6 +93,12 @@ node scripts/check-sql-column-exists.mjs || true
 echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
 bash scripts/check-nan-dashboard.sh || true
 
+# 🛡️ 2026-05-19: 변경성 엔드포인트 인증·rate-limit 커버리지 검사 (warn-only).
+#   src/features/*\/api/*.routes.ts + src/worker/routes 의 POST/PATCH/PUT/DELETE 가
+#   인증 미들웨어 / rate-limit / ownership 체크 없이 commit 되는 것 차단.
+echo "==> Pre-commit: 변경성 엔드포인트 커버리지 검사 (warn-only)..."
+node scripts/check-mutation-coverage.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

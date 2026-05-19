@@ -16,6 +16,7 @@ import { Hono, type Next } from 'hono';
 import { verify } from 'hono/jwt';
 import { parseSessionCookie } from '../../../worker/utils/session';
 import { swallow } from '../../../worker/utils/swallow';
+import { rateLimit } from '../../../worker/middleware/rate-limit';
 import type { Env } from '../../../worker/types/env';
 
 type SellerCtx = {
@@ -85,7 +86,7 @@ app.get('/', async (c) => {
 });
 
 // POST /:id/respond — 셀러 본인 동의/거부 → 매핑 변경
-app.post('/:id/respond', async (c) => {
+app.post('/:id/respond', rateLimit({ action: 'seller_transfer_respond', max: 20, windowSec: 300 }), async (c) => {
   const seller = c.get('seller');
   const id = Number(c.req.param('id'));
   const body = await c.req.json<{ approved: boolean; reason?: string }>().catch(() => ({} as any));

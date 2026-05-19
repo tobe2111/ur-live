@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import { requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { require2FA } from '@/worker/middleware/require-2fa'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 
 const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
@@ -191,7 +192,7 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
 // ── POST /admin/force-refund/:productId — 강제 환불 (require2FA + audit_log) ──
 // 🛡️ 2026-05-15: status 와 무관하게 미사용 voucher 일괄 환불 + audit_logs 기록.
 //   기존 /refund/:productId 는 status='expired' 필요. 분쟁/긴급 케이스에 어드민 직접 개입.
-groupBuyAdminRoutes.post('/force-refund/:productId', requireAdmin(), require2FA(), auditLog('group_buy.admin.force_refund'), async (c) => {
+groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_buy_force_refund', max: 10, windowSec: 300 }), requireAdmin(), require2FA(), auditLog('group_buy.admin.force_refund'), async (c) => {
   const { DB } = c.env
   const adminUser = getCurrentUser(c)
   const productIdRaw = c.req.param('productId')

@@ -20,6 +20,7 @@ import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { requireAdminRole } from '@/worker/middleware/auth';
 import { logAudit } from '../../../lib/audit-log';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 export const adminSettlementsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -190,7 +191,7 @@ adminSettlementsRoutes.get('/settlement/records', cors(), async (c) => {
   }
 });
 
-adminSettlementsRoutes.patch('/settlement/:id/status', cors(), requireAdminRole('finance'), async (c) => {
+adminSettlementsRoutes.patch('/settlement/:id/status', cors(), rateLimit({ action: 'admin_settlement_status', max: 30, windowSec: 60 }), requireAdminRole('finance'), async (c) => {
   try {
     const { DB } = c.env;
     const orderId = c.req.param('id');
@@ -219,7 +220,7 @@ adminSettlementsRoutes.patch('/settlement/:id/status', cors(), requireAdminRole(
   }
 });
 
-adminSettlementsRoutes.post('/settlement/batch-complete', cors(), requireAdminRole('finance'), async (c) => {
+adminSettlementsRoutes.post('/settlement/batch-complete', cors(), rateLimit({ action: 'admin_settlement_batch', max: 5, windowSec: 60 }), requireAdminRole('finance'), async (c) => {
   try {
     const { DB } = c.env;
     const { order_ids } = await c.req.json<{ order_ids: number[] }>();
@@ -262,7 +263,7 @@ adminSettlementsRoutes.post('/settlement/batch-complete', cors(), requireAdminRo
   }
 });
 
-adminSettlementsRoutes.post('/settlement/execute', cors(), requireAdminRole('finance'), async (c) => {
+adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: 'admin_settlement_execute', max: 5, windowSec: 60 }), requireAdminRole('finance'), async (c) => {
   try {
     const { DB } = c.env;
     const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({} as { period_start?: string; period_end?: string }));

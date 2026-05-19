@@ -17,8 +17,8 @@ import { swallow } from '@/worker/utils/swallow'
 // 테이블 ensure (agency.routes.ts 와 동일 — 모듈 분리 후속 정리 대상)
 let _agencyTablesEnsured = false
 async function ensureAgencyTables(DB: D1Database) {
-  if (_done_ensureAgencyTables) return
-  _done_ensureAgencyTables = true
+  if (_done_ensureAgencyTables.has(DB)) return
+  _done_ensureAgencyTables.add(DB)
   if (_agencyTablesEnsured) return
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agencies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)`).run().catch(swallow('agency-settlements'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_sellers (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL, UNIQUE(agency_id, seller_id))`).run().catch(swallow('agency-settlements'))
@@ -223,4 +223,4 @@ export { app as agencySettlementsRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAgencyTables = false
+const _done_ensureAgencyTables = new WeakSet<object>()

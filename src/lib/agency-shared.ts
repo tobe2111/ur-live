@@ -50,8 +50,8 @@ export const requireAgency = async (c: AgencyCtx, next: Next) => {
 
 let _agencyTablesEnsured = false
 export async function ensureAgencyTables(DB: D1Database): Promise<void> {
-  if (_done_ensureAgencyTables) return
-  _done_ensureAgencyTables = true
+  if (_done_ensureAgencyTables.has(DB)) return
+  _done_ensureAgencyTables.add(DB)
   if (_agencyTablesEnsured) return
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agencies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)`).run().catch(swallow('agency-shared'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_sellers (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL, UNIQUE(agency_id, seller_id))`).run().catch(swallow('agency-shared'))
@@ -60,4 +60,4 @@ export async function ensureAgencyTables(DB: D1Database): Promise<void> {
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAgencyTables = false
+const _done_ensureAgencyTables = new WeakSet<object>()

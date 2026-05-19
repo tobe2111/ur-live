@@ -13,8 +13,8 @@ const app = new Hono<{ Bindings: Env }>()
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
-  if (_done_ensureBlogTable) return
-  _done_ensureBlogTable = true
+  if (_done_ensureBlogTable.has(DB)) return
+  _done_ensureBlogTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS blog_posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -909,4 +909,4 @@ export { app as blogRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureBlogTable = false
+const _done_ensureBlogTable = new WeakSet<object>()

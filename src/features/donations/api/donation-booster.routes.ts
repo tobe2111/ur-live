@@ -23,6 +23,7 @@ import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 
 import { swallow } from '@/worker/utils/swallow';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 type SellerCtx = {
   Bindings: Env;
   Variables: { seller: { id: number; email: string } };
@@ -56,8 +57,8 @@ const ALLOWED_MULTIPLIERS = [1.5, 2.0, 3.0];
 const ALLOWED_DURATIONS = [300, 600, 900];
 
 async function ensureTable(DB: D1Database) {
-  if (_done_ensureTable) return
-  _done_ensureTable = true
+  if (_done_ensureTable.has(DB)) return
+  _done_ensureTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS donation_boosters (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,7 +76,7 @@ async function ensureTable(DB: D1Database) {
 }
 
 // POST / — 부스터 시작
-app.post('/', async (c) => {
+app.post('/', rateLimit({ action: 'donation_booster_create', max: 10, windowSec: 300 }), async (c) => {
   const seller = c.get('seller');
   const body = await c.req.json<{
     live_stream_id: number; multiplier: number; duration_seconds: number;
@@ -127,7 +128,7 @@ app.post('/', async (c) => {
 });
 
 // POST /:id/cancel — 조기 종료
-app.post('/:id/cancel', async (c) => {
+app.post('/:id/cancel', rateLimit({ action: 'donation_booster_cancel', max: 20, windowSec: 300 }), async (c) => {
   const seller = c.get('seller');
   const id = Number(c.req.param('id'));
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400);
@@ -192,4 +193,4 @@ export { app as donationBoosterRoutes, publicApp as donationBoosterPublicRoutes 
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTable = false
+const _done_ensureTable = new WeakSet<object>()

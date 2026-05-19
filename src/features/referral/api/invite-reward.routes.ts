@@ -16,8 +16,8 @@ const inviteRewardRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureInviteRewardsTable(DB: D1Database) {
-  if (_done_ensureInviteRewardsTable) return
-  _done_ensureInviteRewardsTable = true
+  if (_done_ensureInviteRewardsTable.has(DB)) return
+  _done_ensureInviteRewardsTable.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS invite_rewards (
@@ -223,4 +223,4 @@ export { inviteRewardRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureInviteRewardsTable = false
+const _done_ensureInviteRewardsTable = new WeakSet<object>()

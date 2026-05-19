@@ -93,8 +93,8 @@ export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
 // migration file when convenient.
 let _kakaoSchemaChecked = false;
 async function ensureKakaoColumns(DB: D1Database): Promise<void> {
-  if (_done_ensureKakaoColumns) return
-  _done_ensureKakaoColumns = true
+  if (_done_ensureKakaoColumns.has(DB)) return
+  _done_ensureKakaoColumns.add(DB)
   if (_kakaoSchemaChecked) return;
   try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT").run(); } catch {}
@@ -719,4 +719,4 @@ export default kakaoRoutes;
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureKakaoColumns = false
+const _done_ensureKakaoColumns = new WeakSet<object>()

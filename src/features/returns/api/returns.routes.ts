@@ -30,8 +30,8 @@ const returnsRoutes = new Hono<{ Bindings: Env }>();
 // ── Auto-create table ────────────────────────────────────────────────────────
 
 async function ensureTable(DB: D1Database) {
-  if (_done_ensureTable) return
-  _done_ensureTable = true
+  if (_done_ensureTable.has(DB)) return
+  _done_ensureTable.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS returns (
@@ -78,7 +78,7 @@ async function ensureTable(DB: D1Database) {
  * POST /request — 반품 신청
  * Body: { order_id, reason, detail_reason? }
  */
-returnsRoutes.post('/request', requireAuth(), async (c) => {
+returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, windowSec: 3600 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -194,7 +194,7 @@ returnsRoutes.get('/my', requireAuth(), async (c) => {
  * PUT /:id/shipping — 반품 배송 정보 등록
  * Body: { tracking_number, shipping_company }
  */
-returnsRoutes.put('/:id/shipping', requireAuth(), async (c) => {
+returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 30, windowSec: 3600 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -268,7 +268,7 @@ returnsRoutes.get('/seller', requireAuth(), async (c) => {
 /**
  * PUT /:id/approve — 반품 승인
  */
-returnsRoutes.put('/:id/approve', requireAuth(), async (c) => {
+returnsRoutes.put('/:id/approve', rateLimit({ action: 'return_approve', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
   const sellerId = Number(user.id);
@@ -305,7 +305,7 @@ returnsRoutes.put('/:id/approve', requireAuth(), async (c) => {
  * PUT /:id/reject — 반품 거부
  * Body: { rejection_reason }
  */
-returnsRoutes.put('/:id/reject', requireAuth(), async (c) => {
+returnsRoutes.put('/:id/reject', rateLimit({ action: 'return_reject', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
   const sellerId = Number(user.id);
@@ -343,7 +343,7 @@ returnsRoutes.put('/:id/reject', requireAuth(), async (c) => {
  * PUT /:id/inspect — 검수 완료
  * Body: { inspection_result: 'approved'|'rejected', inspection_notes? }
  */
-returnsRoutes.put('/:id/inspect', requireAuth(), async (c) => {
+returnsRoutes.put('/:id/inspect', rateLimit({ action: 'return_inspect', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
   const sellerId = Number(user.id);
@@ -624,4 +624,4 @@ export { returnsRoutes };
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTable = false
+const _done_ensureTable = new WeakSet<object>()

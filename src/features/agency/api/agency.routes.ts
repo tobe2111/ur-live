@@ -39,8 +39,8 @@ const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 // ── 테이블 자동 생성 ──────────────────────────────────────────
 let _agencyTablesEnsured = false;
 async function ensureAgencyTables(DB: D1Database) {
-  if (_done_ensureAgencyTables) return
-  _done_ensureAgencyTables = true
+  if (_done_ensureAgencyTables.has(DB)) return
+  _done_ensureAgencyTables.add(DB)
   if (_agencyTablesEnsured) return;
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
@@ -83,8 +83,8 @@ async function ensureAgencyTables(DB: D1Database) {
 
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
 async function ensurePasswordResetTable(DB: D1Database) {
-  if (_done_ensurePasswordResetTable) return
-  _done_ensurePasswordResetTable = true
+  if (_done_ensurePasswordResetTable.has(DB)) return
+  _done_ensurePasswordResetTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -676,7 +676,7 @@ app.put('/notifications/read-all', async (c) => {
 
 // ── POST /sellers/:id/products — 셀러 대신 상품 등록 ──────────────
 // 🛡️ 2026-04-22 배치 147: 입력 검증 강화 (음수/상한 체크 누락 버그 fix)
-app.post('/sellers/:id/products', async (c) => {
+app.post('/sellers/:id/products', rateLimit({ action: 'agency_seller_product_create', max: 30, windowSec: 60 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
   const sellerId = Number(c.req.param('id'))
@@ -718,7 +718,7 @@ app.post('/sellers/:id/products', async (c) => {
 })
 
 // ── PUT /sellers/:id/products/:productId — 셀러 대신 상품 수정 ────
-app.put('/sellers/:id/products/:productId', async (c) => {
+app.put('/sellers/:id/products/:productId', rateLimit({ action: 'agency_seller_product_update', max: 60, windowSec: 60 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
   const sellerId = Number(c.req.param('id'))
@@ -771,7 +771,7 @@ app.put('/sellers/:id/products/:productId', async (c) => {
 })
 
 // ── POST /sellers/:id/streams — 셀러 대신 방송 예약 ───────────────
-app.post('/sellers/:id/streams', async (c) => {
+app.post('/sellers/:id/streams', rateLimit({ action: 'agency_seller_stream_create', max: 20, windowSec: 60 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
   const sellerId = Number(c.req.param('id'))
@@ -909,5 +909,5 @@ export { app as agencyRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensurePasswordResetTable = false
-let _done_ensureAgencyTables = false
+const _done_ensurePasswordResetTable = new WeakSet<object>()
+const _done_ensureAgencyTables = new WeakSet<object>()

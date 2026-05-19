@@ -15,6 +15,7 @@ import { executeQuery } from '@/worker/utils/database';
 import { maskEmail } from '@/lib/mask';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -22,8 +23,8 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
  * 묶여 있어 숫자 ID를 가진 admin/seller에 쓰기 어렵다. 별도 테이블로 분리.
  */
 async function ensureAuthRefreshTokensTable(DB: D1Database) {
-  if (_done_ensureAuthRefreshTokensTable) return
-  _done_ensureAuthRefreshTokensTable = true
+  if (_done_ensureAuthRefreshTokensTable.has(DB)) return
+  _done_ensureAuthRefreshTokensTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +57,7 @@ export const adminRoutes = new Hono<{ Bindings: Bindings }>();
  * POST /api/admin/login
  * 관리자 로그인
  */
-adminRoutes.post('/login', cors(), async (c) => {
+adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }), async (c) => {
   const { DB, JWT_SECRET } = c.env;
 
   try {
@@ -199,7 +200,7 @@ adminRoutes.post('/login', cors(), async (c) => {
  * POST /api/admin/refresh
  * Refresh Token으로 새 Access Token 발급
  */
-adminRoutes.post('/refresh', cors(), async (c) => {
+adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 20, windowSec: 300 }), async (c) => {
   const { DB, JWT_SECRET } = c.env;
   
   try {
@@ -339,7 +340,7 @@ import { requireAdmin } from '@/worker/middleware/auth';
 
 import { swallow } from '@/worker/utils/swallow';
 // Setup: TOTP secret 생성 → QR 코드용 URI 반환
-adminRoutes.post('/2fa/setup', cors(), requireAdmin() as any, async (c) => {
+adminRoutes.post('/2fa/setup', cors(), rateLimit({ action: 'admin_2fa_setup', max: 10, windowSec: 600 }), requireAdmin() as any, async (c) => {
   const { DB } = c.env;
   const user = (c as any).get('user') as { id: string | number; email: string } | undefined;
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -384,7 +385,7 @@ adminRoutes.post('/2fa/setup', cors(), requireAdmin() as any, async (c) => {
 });
 
 // Verify: 최초 활성화 시 OTP 확인
-adminRoutes.post('/2fa/verify', cors(), requireAdmin() as any, async (c) => {
+adminRoutes.post('/2fa/verify', cors(), rateLimit({ action: 'admin_2fa_verify', max: 10, windowSec: 600 }), requireAdmin() as any, async (c) => {
   const { DB } = c.env;
   const user = (c as any).get('user') as { id: string | number; email: string } | undefined;
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -418,7 +419,7 @@ adminRoutes.post('/2fa/verify', cors(), requireAdmin() as any, async (c) => {
 });
 
 // Validate: 로그인 후 2FA 검증 (클라이언트가 로그인 성공 후 호출)
-adminRoutes.post('/2fa/validate', cors(), requireAdmin() as any, async (c) => {
+adminRoutes.post('/2fa/validate', cors(), rateLimit({ action: 'admin_2fa_validate', max: 10, windowSec: 600 }), requireAdmin() as any, async (c) => {
   const { DB } = c.env;
   const user = (c as any).get('user') as { id: string | number; email: string } | undefined;
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -450,4 +451,4 @@ export default adminRoutes;
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAuthRefreshTokensTable = false
+const _done_ensureAuthRefreshTokensTable = new WeakSet<object>()

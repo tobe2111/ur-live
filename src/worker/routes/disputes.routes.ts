@@ -47,8 +47,8 @@ confidence 는 0.0-1.0. reasoning 은 한 문장.`
 const AUTO_REFUND_CATEGORIES = new Set(['voucher_refused', 'merchant_closed'])
 
 async function ensureDisputesTable(DB: D1Database): Promise<void> {
-  if (_done_ensureDisputesTable) return
-  _done_ensureDisputesTable = true
+  if (_done_ensureDisputesTable.has(DB)) return
+  _done_ensureDisputesTable.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS disputes (
@@ -437,4 +437,4 @@ export { disputesRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureDisputesTable = false
+const _done_ensureDisputesTable = new WeakSet<object>()

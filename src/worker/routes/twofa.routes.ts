@@ -81,8 +81,8 @@ async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> 
 }
 
 async function ensureTotpColumn(DB: D1Database, table: 'sellers' | 'users'): Promise<void> {
-  if (_done_ensureTotpColumn) return
-  _done_ensureTotpColumn = true
+  if (_done_ensureTotpColumn.has(DB)) return
+  _done_ensureTotpColumn.add(DB)
   try { await DB.prepare(`ALTER TABLE ${table} ADD COLUMN totp_secret TEXT`).run() } catch { /* exists */ }
   try { await DB.prepare(`ALTER TABLE ${table} ADD COLUMN totp_enabled INTEGER DEFAULT 0`).run() } catch { /* exists */ }
 }
@@ -194,4 +194,4 @@ export { twofaRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTotpColumn = false
+const _done_ensureTotpColumn = new WeakSet<object>()

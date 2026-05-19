@@ -28,8 +28,8 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let tableEnsured = false;
 
 async function ensureTable(DB: D1Database): Promise<void> {
-  if (_done_ensureTable) return
-  _done_ensureTable = true
+  if (_done_ensureTable.has(DB)) return
+  _done_ensureTable.add(DB)
   if (tableEnsured) return;
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS slow_queries (
@@ -124,4 +124,4 @@ export async function getSlowQueryStats(DB: D1Database, hours = 24) {
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTable = false
+const _done_ensureTable = new WeakSet<object>()

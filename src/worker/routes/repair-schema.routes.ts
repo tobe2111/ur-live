@@ -21,8 +21,8 @@ import { swallow } from '@/shared/utils/swallow';
 const repairSchemaRoutes = new Hono<{ Bindings: Env }>();
 
 async function ensureMigrationTrackingTable(DB: D1Database) {
-  if (_done_ensureMigrationTrackingTable) return
-  _done_ensureMigrationTrackingTable = true
+  if (_done_ensureMigrationTrackingTable.has(DB)) return
+  _done_ensureMigrationTrackingTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS _migration_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -426,4 +426,4 @@ export { repairSchemaRoutes };
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureMigrationTrackingTable = false
+const _done_ensureMigrationTrackingTable = new WeakSet<object>()

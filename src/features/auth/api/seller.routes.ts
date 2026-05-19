@@ -39,8 +39,8 @@ type Bindings = {
  * admin.routes.ts의 동명 함수와 동일 스키마. 멱등(IF NOT EXISTS).
  */
 async function ensureAuthRefreshTokensTable(DB: D1Database) {
-  if (_done_ensureAuthRefreshTokensTable) return
-  _done_ensureAuthRefreshTokensTable = true
+  if (_done_ensureAuthRefreshTokensTable.has(DB)) return
+  _done_ensureAuthRefreshTokensTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,8 +58,8 @@ async function ensureAuthRefreshTokensTable(DB: D1Database) {
 
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
 async function ensurePasswordResetTable(DB: D1Database) {
-  if (_done_ensurePasswordResetTable) return
-  _done_ensurePasswordResetTable = true
+  if (_done_ensurePasswordResetTable.has(DB)) return
+  _done_ensurePasswordResetTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -361,7 +361,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
  * - accessToken: 새 Access Token (7일)
  * - refreshToken: 새 Refresh Token (30일, 선택사항)
  */
-sellerRoutes.post('/refresh', cors(), async (c) => {
+sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max: 20, windowSec: 300 }), async (c) => {
   const { DB, JWT_SECRET } = c.env;
   
   try {
@@ -735,5 +735,5 @@ export default sellerRoutes;
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensurePasswordResetTable = false
-let _done_ensureAuthRefreshTokensTable = false
+const _done_ensurePasswordResetTable = new WeakSet<object>()
+const _done_ensureAuthRefreshTokensTable = new WeakSet<object>()

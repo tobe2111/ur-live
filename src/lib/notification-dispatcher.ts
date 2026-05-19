@@ -69,8 +69,8 @@ const DEFAULT_CHANNELS: ChannelSettings = {
 // 🛡️ 2026-05-19: per-worker 메모이제이션.
 let _settingsTableEnsured = false
 async function ensureSettingsTable(db: D1Database) {
-  if (_done_ensureSettingsTable) return
-  _done_ensureSettingsTable = true
+  if (_done_ensureSettingsTable.has(db)) return
+  _done_ensureSettingsTable.add(db)
   if (_settingsTableEnsured) return
   try {
     await db.prepare(`CREATE TABLE IF NOT EXISTS notification_channel_settings (
@@ -211,4 +211,4 @@ export async function dispatchNotification(
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureSettingsTable = false
+const _done_ensureSettingsTable = new WeakSet<object>()

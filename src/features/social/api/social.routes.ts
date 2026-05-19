@@ -9,8 +9,8 @@ const socialRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-19: per-worker 메모이제이션.
 let _socialTablesEnsured = false
 async function ensureTables(DB: D1Database) {
-  if (_done_ensureTables) return
-  _done_ensureTables = true
+  if (_done_ensureTables.has(DB)) return
+  _done_ensureTables.add(DB)
   if (_socialTablesEnsured) return
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_follows (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, seller_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, seller_id))`).run() } catch {}
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
@@ -135,4 +135,4 @@ export { socialRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTables = false
+const _done_ensureTables = new WeakSet<object>()

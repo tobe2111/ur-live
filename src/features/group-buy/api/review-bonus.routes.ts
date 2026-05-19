@@ -22,8 +22,8 @@ const adminApp = new Hono<{ Bindings: Env }>()
 userApp.use('*', requireAuth())
 
 async function ensureTable(DB: D1Database) {
-  if (_done_ensureTable) return
-  _done_ensureTable = true
+  if (_done_ensureTable.has(DB)) return
+  _done_ensureTable.add(DB)
   try {
     await DB.prepare(
       "CREATE TABLE IF NOT EXISTS kakao_review_submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER NOT NULL, user_id TEXT NOT NULL, product_id INTEGER, seller_id INTEGER, review_url TEXT NOT NULL, bonus_amount INTEGER DEFAULT 0, status TEXT DEFAULT 'submitted', admin_notes TEXT, created_at DATETIME DEFAULT (datetime('now')), reviewed_at DATETIME, paid_at DATETIME, UNIQUE(voucher_id))"
@@ -221,4 +221,4 @@ export { userApp as reviewBonusUserRoutes, adminApp as reviewBonusAdminRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTable = false
+const _done_ensureTable = new WeakSet<object>()

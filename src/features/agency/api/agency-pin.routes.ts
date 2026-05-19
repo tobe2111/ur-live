@@ -36,8 +36,8 @@ async function getAgencyId(authorization: string | undefined, jwtSecret: string)
 }
 
 async function ensurePinColumn(DB: D1Database) {
-  if (_done_ensurePinColumn) return
-  _done_ensurePinColumn = true
+  if (_done_ensurePinColumn.has(DB)) return
+  _done_ensurePinColumn.add(DB)
   try { await DB.prepare('ALTER TABLE agencies ADD COLUMN pin_hash TEXT').run() } catch { /* exists */ }
 }
 
@@ -154,4 +154,4 @@ export async function isAgencyPinVerified(cookieHeader: string | undefined, agen
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensurePinColumn = false
+const _done_ensurePinColumn = new WeakSet<object>()

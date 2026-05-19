@@ -16,6 +16,7 @@
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { auditLog } from '@/worker/middleware/audit-log'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 
@@ -28,7 +29,7 @@ interface RefundVoucherRow {
 
 export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /refund/:productId — 마감된 미달성 공구 환불 ──
-  router.post('/refund/:productId', requireAuth(), auditLog('group_buy.seller.refund'), async (c) => {
+  router.post('/refund/:productId', rateLimit({ action: 'group_buy_seller_refund', max: 10, windowSec: 3600 }), requireAuth(), auditLog('group_buy.seller.refund'), async (c) => {
     const { DB } = c.env
     const productIdRaw = c.req.param('productId')
     const productIdNum = Number(productIdRaw)

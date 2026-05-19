@@ -16,6 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -256,7 +257,7 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
   }
 });
 
-adminAccountsRoutes.post('/admins/:id/reset-password', cors(), async (c) => {
+adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ action: 'admin_reset_admin_password', max: 10, windowSec: 3600 }), async (c) => {
   try {
     const DB = c.env.DB;
 

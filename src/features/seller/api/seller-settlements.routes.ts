@@ -17,6 +17,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { swallow } from '@/worker/utils/swallow'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SettlementStatsRow {
@@ -557,7 +558,7 @@ sellerSettlementsRoutes.get('/voucher-orders', async (c) => {
   }
 })
 
-sellerSettlementsRoutes.post('/deal-withdraw', async (c) => {
+sellerSettlementsRoutes.post('/deal-withdraw', rateLimit({ action: 'seller_deal_withdraw', max: 5, windowSec: 3600 }), async (c) => {
   const authorization = c.req.header('Authorization');
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
   try {

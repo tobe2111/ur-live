@@ -10,6 +10,7 @@ import { cors } from 'hono/cors';
 import { GoogleAuthService } from '../services/GoogleAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { verifyFirebaseIdToken } from '@/lib/firebase-token-verify';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 type Bindings = {
   DB: D1Database;
@@ -25,7 +26,7 @@ export const googleRoutes = new Hono<{ Bindings: Bindings }>();
  * POST /api/auth/google/register
  * Google 로그인 처리 (Firebase ID Token 검증 후 DB 저장)
  */
-googleRoutes.post('/register', cors(), async (c) => {
+googleRoutes.post('/register', cors(), rateLimit({ action: 'google_register', max: 5, windowSec: 600 }), async (c) => {
   const { DB } = c.env;
   
   try {

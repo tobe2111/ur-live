@@ -74,8 +74,8 @@ interface AgencyPublicRow {
 
 // 🛡️ 2026-05-16 (#20 white-label): brand_color 컬럼 자동 보장.
 async function ensureBrandColumn(db: D1Database) {
-  if (_done_ensureBrandColumn) return
-  _done_ensureBrandColumn = true
+  if (_done_ensureBrandColumn.has(db)) return
+  _done_ensureBrandColumn.add(db)
   try { await db.prepare("ALTER TABLE agencies ADD COLUMN brand_color TEXT").run(); } catch { /* 이미 존재 */ }
 }
 
@@ -256,4 +256,4 @@ export { publicApp as agencyPublicRoutes, authedApp as agencyPublicEditRoutes };
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureBrandColumn = false
+const _done_ensureBrandColumn = new WeakSet<object>()

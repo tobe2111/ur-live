@@ -26,8 +26,8 @@ import type { Env } from '@/worker/types/env'
 const promoRoutes = new Hono<{ Bindings: Env }>()
 
 async function ensurePromoTables(DB: D1Database): Promise<void> {
-  if (_done_ensurePromoTables) return
-  _done_ensurePromoTables = true
+  if (_done_ensurePromoTables.has(DB)) return
+  _done_ensurePromoTables.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS promo_codes (
@@ -299,4 +299,4 @@ export { promoRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensurePromoTables = false
+const _done_ensurePromoTables = new WeakSet<object>()

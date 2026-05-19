@@ -30,6 +30,7 @@ import type { Env } from '@/worker/types/env';
 
 import { swallow } from '@/worker/utils/swallow';
 import { createDashboardNotification } from '../../notifications/api/dashboard-notifications.routes';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 type AgencyCtx = {
   Bindings: Env;
   Variables: { agency: { id: number; email?: string } };
@@ -70,8 +71,8 @@ app.use('*', requireAgency);
 const COOLDOWN_DAYS = 30;
 
 async function ensureTable(DB: D1Database) {
-  if (_done_ensureTable) return
-  _done_ensureTable = true
+  if (_done_ensureTable.has(DB)) return
+  _done_ensureTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS seller_transfer_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +93,7 @@ async function ensureTable(DB: D1Database) {
 }
 
 // POST / — 신청 (from = 본인 에이전시)
-app.post('/', async (c) => {
+app.post('/', rateLimit({ action: 'agency_transfer_create', max: 20, windowSec: 3600 }), async (c) => {
   const agency = c.get('agency');
   const body = await c.req.json<{
     seller_id: number; to_agency_id: number; reason?: string;
@@ -165,7 +166,7 @@ app.get('/', async (c) => {
 });
 
 // POST /:id/respond — B 가 수락/거절
-app.post('/:id/respond', async (c) => {
+app.post('/:id/respond', rateLimit({ action: 'agency_transfer_respond', max: 30, windowSec: 60 }), async (c) => {
   const agency = c.get('agency');
   const id = Number(c.req.param('id'));
   const body = await c.req.json<{ response: 'accept' | 'reject'; reason?: string }>().catch(() => ({} as any));
@@ -238,4 +239,4 @@ export { app as sellerTransferRoutes };
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTable = false
+const _done_ensureTable = new WeakSet<object>()

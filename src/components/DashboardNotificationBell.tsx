@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bell } from 'lucide-react'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 interface Notification {
   id: number
@@ -121,15 +122,13 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
   function handleNotificationClick(n: Notification) {
     if (!n.is_read) markRead(n.id)
     if (n.link) {
-      // 🛡️ 2026-04-22: open redirect 방어 — 내부 경로만 허용
-      // 알림 생성자가 악의적으로 외부 URL 을 넣어도 차단. scheme-relative (//evil.com) 도 차단.
-      const link = String(n.link).trim()
-      const isInternalPath = link.startsWith('/') && !link.startsWith('//') && !link.includes('\n') && !link.includes('\t')
-      if (isInternalPath) {
-        window.location.href = link
-      } else {
-        // dev 환경에서만 경고
-        if (import.meta.env.DEV) console.warn('[Notification] blocked external link:', link)
+      // 🛡️ 2026-05-19: safeInternalPath 통합 — login/auth/oauth blacklist + backslash + 제어문자 차단.
+      //   이전 inline 정규식은 forbidden prefix 누락. 알림 생성자 (어드민) 가 /login 으로 보내면 무한 루프 가능.
+      const safe = safeInternalPath(String(n.link), '')
+      if (safe) {
+        window.location.href = safe
+      } else if (import.meta.env.DEV) {
+        console.warn('[Notification] blocked unsafe link:', n.link)
       }
     }
   }

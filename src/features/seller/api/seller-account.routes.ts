@@ -15,6 +15,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { validateFileMagicBytes } from '@/lib/upload-security'
 import { swallow } from '@/worker/utils/swallow'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 
 type Bindings = {
   DB: D1Database
@@ -78,7 +79,7 @@ sellerAccountRoutes.on(['PUT', 'PATCH'], '/personal-info', async (c) => {
  * POST /api/seller/change-password
  * 셀러 비밀번호 변경
  */
-sellerAccountRoutes.post('/change-password', async (c) => {
+sellerAccountRoutes.post('/change-password', rateLimit({ action: 'seller_change_password', max: 5, windowSec: 3600 }), async (c) => {
   const db = c.env.DB;
   const authorization = c.req.header('Authorization');
   if (!authorization?.startsWith('Bearer ')) {

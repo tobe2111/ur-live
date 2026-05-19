@@ -15,8 +15,8 @@ import { swallow } from './swallow';
 export type UserType = 'user' | 'seller' | 'admin' | 'agency';
 
 async function ensureLockoutTable(DB: D1Database) {
-  if (_done_ensureLockoutTable) return
-  _done_ensureLockoutTable = true
+  if (_done_ensureLockoutTable.has(DB)) return
+  _done_ensureLockoutTable.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS account_lockouts (
       user_type TEXT NOT NULL,
@@ -109,4 +109,4 @@ export async function clearFailures(
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureLockoutTable = false
+const _done_ensureLockoutTable = new WeakSet<object>()

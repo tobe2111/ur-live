@@ -161,8 +161,8 @@ adminStreamsRoutes.delete('/streams/:id', cors(), async (c) => {
 // ─── Alimtalk 관리 ──────────────────────────────────────────────
 
 async function ensureAlimtalkPackagesTable(DB: D1Database) {
-  if (_done_ensureAlimtalkPackagesTable) return
-  _done_ensureAlimtalkPackagesTable = true
+  if (_done_ensureAlimtalkPackagesTable.has(DB)) return
+  _done_ensureAlimtalkPackagesTable.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS alimtalk_packages (
@@ -295,4 +295,4 @@ export default adminStreamsRoutes;
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAlimtalkPackagesTable = false
+const _done_ensureAlimtalkPackagesTable = new WeakSet<object>()

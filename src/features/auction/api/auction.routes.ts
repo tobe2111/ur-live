@@ -26,8 +26,8 @@ function parseNumericId(raw: string | undefined): number | null {
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
-  if (_done_ensureTables) return
-  _done_ensureTables = true
+  if (_done_ensureTables.has(DB)) return
+  _done_ensureTables.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS live_auctions (
@@ -829,4 +829,4 @@ export { auctionRoutes };
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTables = false
+const _done_ensureTables = new WeakSet<object>()

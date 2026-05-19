@@ -17,6 +17,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 
 import { swallow } from '@/worker/utils/swallow';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 const app = new Hono<{ Bindings: Env }>()
 
 // 🛡️ 2026-04-22: 명시적 requireAdmin 적용 (depth-in-defense).
@@ -25,8 +26,8 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
 
 async function ensureAgencyTables(DB: D1Database) {
-  if (_done_ensureAgencyTables) return
-  _done_ensureAgencyTables = true
+  if (_done_ensureAgencyTables.has(DB)) return
+  _done_ensureAgencyTables.add(DB)
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,7 +229,7 @@ app.delete('/:id', async (c) => {
 })
 
 // ── POST /agencies/:id/reset-password ─────────────────────────
-app.post('/:id/reset-password', async (c) => {
+app.post('/:id/reset-password', rateLimit({ action: 'admin_agency_reset_password', max: 10, windowSec: 3600 }), async (c) => {
   const id = Number(c.req.param('id'))
   const { newPassword } = await c.req.json<{ newPassword: string }>()
   if (!newPassword || newPassword.length < 8) {
@@ -303,4 +304,4 @@ export { app as adminAgencyRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureAgencyTables = false
+const _done_ensureAgencyTables = new WeakSet<object>()

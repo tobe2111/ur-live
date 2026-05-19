@@ -17,6 +17,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 type Bindings = {
   DB: D1Database;
@@ -188,7 +189,7 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
  * POST /api/orders/:id/confirm
  * 구매확정: 유저가 직접 배송완료 처리 (배송중 상태에서만 가능)
  */
-ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
+ordersRoutes.post('/:id/confirm', cors(), rateLimit({ action: 'order_confirm', max: 20, windowSec: 60 }), requireAuth(), async (c) => {
   const { DB } = c.env;
   const authUser = getCurrentUser(c);
   if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);

@@ -40,8 +40,8 @@ async function getSellerId(c: { env: Bindings; req: { header: (k: string) => str
 }
 
 async function ensureOwnsProduct(c: { env: Bindings }, productId: number, sellerId: number): Promise<boolean> {
-  if (_done_ensureOwnsProduct) return
-  _done_ensureOwnsProduct = true
+  if (_done_ensureOwnsProduct.has(c)) return
+  _done_ensureOwnsProduct.add(c)
   const row = await c.env.DB.prepare('SELECT seller_id FROM products WHERE id = ?')
     .bind(productId).first<{ seller_id: number }>()
   return row?.seller_id === sellerId
@@ -795,4 +795,4 @@ sellerStaysRoutes.get('/stays-amenities', cors(), async (c) => {
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureOwnsProduct = false
+const _done_ensureOwnsProduct = new WeakSet<object>()

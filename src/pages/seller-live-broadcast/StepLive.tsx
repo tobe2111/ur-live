@@ -171,8 +171,15 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
         const imgEl = pipWin.document.getElementById('pip-product-img') as HTMLElement | null
         const nameEl = pipWin.document.getElementById('pip-product-name')
         const priceEl = pipWin.document.getElementById('pip-product-price')
+        // 🛡️ 2026-05-19: PiP innerHTML XSS 방어 — image_url/name 을 직접 HTML 삽입 대신 DOM 요소로 생성.
+        //   p.image_url 은 CSS url() context, p.name 은 HTML text context 였음 → 셀러 본인이 자기 화면에
+        //   self-XSS 가능 (저위험이지만 영구 방어). image_url scheme 화이트리스트 + textContent 사용.
+        const isSafeImageUrl = (u: unknown): u is string => {
+          if (typeof u !== 'string' || !u) return false
+          return /^https?:\/\//i.test(u) || u.startsWith('/')
+        }
         if (currentP) {
-          if (imgEl) imgEl.style.background = currentP.image_url ? `url(${currentP.image_url}) center/cover` : '#27272a'
+          if (imgEl) imgEl.style.background = isSafeImageUrl(currentP.image_url) ? `url("${encodeURI(currentP.image_url)}") center/cover` : '#27272a'
           if (nameEl) nameEl.textContent = currentP.name
           if (priceEl) priceEl.textContent = `₩${formatNumber(currentP.price)}`
         }
@@ -183,10 +190,14 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
           products.forEach(p => {
             const btn = pipWin.document.createElement('button')
             btn.className = 'pip-btn' + (p.id === stream.current_product_id ? ' active' : '')
-            btn.innerHTML = `
-              <span style="width:20px;height:20px;border-radius:4px;${p.image_url ? `background:url(${p.image_url}) center/cover` : 'background:#27272a'};flex-shrink:0"></span>
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
-            `
+            const thumb = pipWin.document.createElement('span')
+            thumb.style.cssText = 'width:20px;height:20px;border-radius:4px;flex-shrink:0'
+            thumb.style.background = isSafeImageUrl(p.image_url) ? `url("${encodeURI(p.image_url)}") center/cover` : '#27272a'
+            const label = pipWin.document.createElement('span')
+            label.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap'
+            label.textContent = p.name
+            btn.appendChild(thumb)
+            btn.appendChild(label)
             btn.onclick = async () => {
               try {
                 await api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: p.id })

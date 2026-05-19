@@ -15,10 +15,11 @@ import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
 import { hashPassword } from '@/lib/password';
+import { rateLimit } from '../middleware/rate-limit';
 
 const internalAdminToolsRoutes = new Hono<{ Bindings: Env }>();
 
-internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', async (c) => {
+internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', rateLimit({ action: 'bootstrap_reset_password', max: 5, windowSec: 3600 }), async (c) => {
   const expected = (c.env as any).BOOTSTRAP_TOKEN as string | undefined;
   const provided = c.req.header('X-Bootstrap-Token');
 
@@ -64,7 +65,7 @@ internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', async 
   return c.json({ success: true, results, hashLength: hash.length });
 });
 
-internalAdminToolsRoutes.post('/api/_internal/clear-rate-limit', async (c) => {
+internalAdminToolsRoutes.post('/api/_internal/clear-rate-limit', rateLimit({ action: 'internal_clear_ratelimit', max: 20, windowSec: 3600 }), async (c) => {
   const env = c.env as any;
   const opsToken: string | undefined = env.INTERNAL_API_TOKEN;
   const reqToken = c.req.header('X-Internal-Token');
@@ -81,7 +82,7 @@ internalAdminToolsRoutes.post('/api/_internal/clear-rate-limit', async (c) => {
   return c.json({ success: true, message: `Rate limit cleared for action: ${action}` });
 });
 
-internalAdminToolsRoutes.post('/api/_internal/reset-admin-password', async (c) => {
+internalAdminToolsRoutes.post('/api/_internal/reset-admin-password', rateLimit({ action: 'internal_reset_admin_password', max: 5, windowSec: 3600 }), async (c) => {
   const env = c.env as any;
   const opsToken: string | undefined = env.INTERNAL_API_TOKEN;
   const reqToken = c.req.header('X-Internal-Token');

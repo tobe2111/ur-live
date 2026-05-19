@@ -16,8 +16,8 @@ import { requireAdmin } from '@/worker/middleware/auth';
 import { swallow } from '@/shared/utils/swallow';
 
 async function ensureTables(DB: D1Database) {
-  if (_done_ensureTables) return
-  _done_ensureTables = true
+  if (_done_ensureTables.has(DB)) return
+  _done_ensureTables.add(DB)
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS restaurant_suggestions (
@@ -113,4 +113,4 @@ restaurantSuggestionsRoutes.get('/stats', requireAdmin(), async (c) => {
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
-let _done_ensureTables = false
+const _done_ensureTables = new WeakSet<object>()
