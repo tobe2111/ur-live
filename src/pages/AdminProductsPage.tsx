@@ -44,6 +44,21 @@ export default function AdminProductsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkAction, setBulkAction] = useState<'delete' | 'activate' | 'deactivate' | null>(null)
 
+  // 🛡️ 2026-05-19: Coupang WING 스타일 필터/페이지네이션 state.
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'kt_alpha' | 'regular'>('all')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [sortField, setSortField] = useState<'created' | 'price' | 'sold' | 'name'>('created')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [page, setPage] = useState(1)
+  const [pageLimit, setPageLimit] = useState(100)
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [tabCounts, setTabCounts] = useState({ all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 })
+  const [categoryList, setCategoryList] = useState<Array<{ category: string; cnt: number }>>([])
+
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
     if (!token) { navigate('/admin/login'); return }
@@ -59,12 +74,32 @@ export default function AdminProductsPage() {
     setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const response = await api.get('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } })
-      if (response.data.success) setProducts(response.data.data)
+      const params = new URLSearchParams({
+        page: String(page), limit: String(pageLimit),
+        status: statusFilter, source: sourceFilter,
+        sort: sortField, order: sortOrder,
+      })
+      if (search) params.set('q', search)
+      if (categoryFilter) params.set('category', categoryFilter)
+      const response = await api.get(`/api/admin/products?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (response.data.success) {
+        setProducts(response.data.data)
+        setTotalCount(response.data.total ?? 0)
+        setTotalPages(response.data.total_pages ?? 0)
+        if (response.data.tabs) setTabCounts(response.data.tabs)
+        if (response.data.categories) setCategoryList(response.data.categories)
+      }
     } catch {
       setError(t('admin.products.k001', { defaultValue: '상품 목록을 불러올 수 없습니다.' }))
     } finally { setLoading(false) }
   }
+
+  // 🛡️ 2026-05-19: 필터 변경 시 자동 reload.
+  useEffect(() => {
+    if (activeTab !== 'products') return
+    loadProducts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageLimit, statusFilter, sourceFilter, categoryFilter, sortField, sortOrder, search])
 
   async function loadSampleRequests() {
     setSrLoading(true)
@@ -344,6 +379,99 @@ export default function AdminProductsPage() {
       )}
 
       {/* 상품 목록 탭 */}
+      {/* 🛡️ 2026-05-19: Coupang WING 스타일 필터 + 검색 + 탭 + 페이지네이션 */}
+      {activeTab === 'products' && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+          {/* 상단 검색 + 정렬 */}
+          <div className="p-4 border-b border-gray-100 space-y-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex-1 min-w-[240px] flex gap-2">
+                <input
+                  type="text" value={searchInput} placeholder="상품명 / 설명 검색"
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); setSearch(searchInput) } }}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                />
+                <button onClick={() => { setPage(1); setSearch(searchInput) }} className="px-3 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg">검색</button>
+              </div>
+              <select value={`${sortField}-${sortOrder}`} onChange={(e) => {
+                const [f, o] = e.target.value.split('-')
+                setSortField(f as 'created' | 'price' | 'sold' | 'name')
+                setSortOrder(o as 'asc' | 'desc')
+                setPage(1)
+              }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option value="created-desc">최신순</option>
+                <option value="created-asc">오래된순</option>
+                <option value="price-asc">가격 ↑</option>
+                <option value="price-desc">가격 ↓</option>
+                <option value="sold-desc">판매 많은순</option>
+                <option value="name-asc">이름 ↑↓</option>
+              </select>
+              <select value={pageLimit} onChange={(e) => { setPageLimit(Number(e.target.value)); setPage(1) }}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option value={50}>50개/페이지</option>
+                <option value={100}>100개/페이지</option>
+                <option value={200}>200개/페이지</option>
+                <option value={500}>500개/페이지</option>
+              </select>
+            </div>
+
+            {/* 상태 탭 */}
+            <div className="flex flex-wrap gap-1 text-xs">
+              <button onClick={() => { setStatusFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                전체 <span className="opacity-70 ml-1">{tabCounts.all_count.toLocaleString()}</span>
+              </button>
+              <button onClick={() => { setStatusFilter('active'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'active' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                판매중 <span className="opacity-70 ml-1">{tabCounts.active_count.toLocaleString()}</span>
+              </button>
+              <button onClick={() => { setStatusFilter('inactive'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'inactive' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                일시중지 <span className="opacity-70 ml-1">{tabCounts.inactive_count.toLocaleString()}</span>
+              </button>
+              {tabCounts.out_of_stock > 0 && (
+                <button className="px-3 py-1.5 rounded-lg font-semibold bg-amber-100 text-amber-700 cursor-default">
+                  품절 {tabCounts.out_of_stock.toLocaleString()}
+                </button>
+              )}
+              <span className="mx-2 self-center text-gray-300">|</span>
+              <button onClick={() => { setSourceFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${sourceFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                모든 출처
+              </button>
+              <button onClick={() => { setSourceFilter('regular'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${sourceFilter === 'regular' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                일반 상품
+              </button>
+              <button onClick={() => { setSourceFilter('kt_alpha'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${sourceFilter === 'kt_alpha' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                🎁 교환권 <span className="opacity-70 ml-1">{tabCounts.kt_alpha_count.toLocaleString()}</span>
+              </button>
+            </div>
+
+            {/* 카테고리 필터 */}
+            {categoryList.length > 0 && (
+              <div className="flex flex-wrap gap-1 text-xs items-center">
+                <span className="text-gray-500 mr-1">카테고리:</span>
+                <button onClick={() => { setCategoryFilter(''); setPage(1) }}
+                  className={`px-2 py-1 rounded ${!categoryFilter ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                  전체
+                </button>
+                {categoryList.slice(0, 20).map((c) => (
+                  <button key={c.category} onClick={() => { setCategoryFilter(c.category); setPage(1) }}
+                    className={`px-2 py-1 rounded ${categoryFilter === c.category ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                    {c.category} <span className="opacity-60 ml-0.5">{c.cnt}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <p className="text-[11px] text-gray-500">
+              전체 {totalCount.toLocaleString()}건 중 {((page - 1) * pageLimit + 1).toLocaleString()}-{Math.min(page * pageLimit, totalCount).toLocaleString()} 표시
+              {(search || categoryFilter || statusFilter !== 'all' || sourceFilter !== 'all') && (
+                <button onClick={() => { setSearch(''); setSearchInput(''); setCategoryFilter(''); setStatusFilter('all'); setSourceFilter('all'); setPage(1) }}
+                  className="ml-2 text-blue-600 hover:underline">필터 초기화</button>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'products' && (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {products.length === 0 ? (
@@ -514,6 +642,28 @@ export default function AdminProductsPage() {
                   )})}
                 </tbody>
               </table>
+            </div>
+          )}
+          {/* 🛡️ 2026-05-19: 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 p-4 border-t border-gray-100">
+              <button onClick={() => setPage(1)} disabled={page <= 1}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded disabled:opacity-40">« 첫 페이지</button>
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded disabled:opacity-40">‹ 이전</button>
+              <span className="text-sm font-bold text-gray-900">
+                <input type="number" min={1} max={totalPages} value={page}
+                  onChange={(e) => {
+                    const n = Number(e.target.value)
+                    if (n >= 1 && n <= totalPages) setPage(n)
+                  }}
+                  className="w-14 px-2 py-1 border border-gray-200 rounded text-center"
+                /> / {totalPages.toLocaleString()}
+              </span>
+              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded disabled:opacity-40">다음 ›</button>
+              <button onClick={() => setPage(totalPages)} disabled={page >= totalPages}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded disabled:opacity-40">마지막 페이지 »</button>
             </div>
           )}
         </div>
