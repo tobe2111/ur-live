@@ -66,7 +66,10 @@ const DEFAULT_CHANNELS: ChannelSettings = {
   push: true,
 };
 
+// 🛡️ 2026-05-19: per-worker 메모이제이션.
+let _settingsTableEnsured = false
 async function ensureSettingsTable(db: D1Database) {
+  if (_settingsTableEnsured) return
   try {
     await db.prepare(`CREATE TABLE IF NOT EXISTS notification_channel_settings (
       notification_type TEXT PRIMARY KEY,
@@ -78,6 +81,7 @@ async function ensureSettingsTable(db: D1Database) {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`).run();
   } catch { /* exists */ }
+  _settingsTableEnsured = true
 }
 
 export async function getChannelSettings(

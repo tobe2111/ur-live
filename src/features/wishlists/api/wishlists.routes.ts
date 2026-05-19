@@ -38,7 +38,10 @@ export const wishlistRoutes = new Hono<{ Bindings: Bindings; Variables: Variable
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
+// 🛡️ 2026-05-19: per-worker 메모이제이션.
+let _ensureTableDone = false
 async function ensureTable(DB: D1Database) {
+  if (_ensureTableDone) return
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS wishlists (
@@ -53,6 +56,7 @@ async function ensureTable(DB: D1Database) {
   try {
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlists(user_id)`).run();
   } catch { /* 이미 존재 */ }
+  _ensureTableDone = true
 }
 
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────

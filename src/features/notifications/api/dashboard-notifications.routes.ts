@@ -13,7 +13,10 @@ import type { Env } from '@/worker/types/env';
 const dashboardNotificationsRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
+// 🛡️ 2026-05-19: per-worker 메모이제이션 — 매 요청 CREATE TABLE 비용 제거.
+let _ensureTableDone = false
 async function ensureTable(DB: D1Database) {
+  if (_ensureTableDone) return
   try {
     // 🛡️ 2026-04-28: CHECK 제약에 'agency' 추가. 이전엔 'admin'/'seller' 만 허용해
     //   에이전시 측 알림 INSERT 가 실패 → 어드민이 에이전시 신청 알림 못 봄.
@@ -32,6 +35,7 @@ async function ensureTable(DB: D1Database) {
       `CREATE INDEX IF NOT EXISTS idx_dash_notif_recipient ON dashboard_notifications(recipient_type, recipient_id, is_read)`
     ).run();
   } catch { /* already exists */ }
+  _ensureTableDone = true
 }
 
 /**

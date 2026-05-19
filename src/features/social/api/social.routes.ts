@@ -6,9 +6,13 @@ import { swallow } from '@/worker/utils/swallow';
 const socialRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
+// 🛡️ 2026-05-19: per-worker 메모이제이션.
+let _socialTablesEnsured = false
 async function ensureTables(DB: D1Database) {
+  if (_socialTablesEnsured) return
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_follows (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, seller_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, seller_id))`).run() } catch {}
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
+  _socialTablesEnsured = true
 }
 
 // 팔로우 토글

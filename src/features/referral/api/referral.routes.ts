@@ -56,7 +56,10 @@ function getUnlockedTier(tiers: ReferralTier[], currentCount: number): ReferralT
   return unlocked;
 }
 
+// 🛡️ 2026-05-19: per-worker 메모이제이션.
+let _referralTablesEnsured = false
 async function ensureTables(DB: D1Database) {
+  if (_referralTablesEnsured) return
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS referral_groups (
@@ -90,6 +93,7 @@ async function ensureTables(DB: D1Database) {
       )
     `).run();
   } catch {}
+  _referralTablesEnsured = true
 }
 
 // 🛡️ 2026-04-22: Math.random → crypto.getRandomValues (guessable code 방어)

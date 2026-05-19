@@ -18,7 +18,10 @@ const timedealRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
+// 🛡️ 2026-05-19: per-worker 메모이제이션.
+let _timedealTablesEnsured = false
 async function ensureTables(DB: D1Database) {
+  if (_timedealTablesEnsured) return
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS time_deals (
@@ -62,6 +65,7 @@ async function ensureTables(DB: D1Database) {
       )
     `).run();
   } catch {}
+  _timedealTablesEnsured = true
 }
 
 // POST /api/timedeal/create — 셀러가 타임딜 / 라이브 공동구매 트리거
