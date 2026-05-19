@@ -754,6 +754,7 @@ function DealBalanceCard() {
     payouts_count: number; reportable: boolean; threshold: number
   } | null>(null)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
+  const [voucherOpen, setVoucherOpen] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -826,6 +827,16 @@ function DealBalanceCard() {
               className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
             >
               💸 환급 신청
+            </button>
+          )}
+          {/* 🛡️ 2026-05-19: 모든 셀러 (검증/미검증 둘 다) 가 상품권으로 받기 가능 */}
+          {balance.total > 0 && (
+            <button
+              type="button"
+              onClick={() => setVoucherOpen(true)}
+              className="px-3 py-1.5 bg-pink-500 text-white text-xs font-bold rounded-lg hover:bg-pink-600 ml-2"
+            >
+              🎁 상품권으로 받기
             </button>
           )}
         </div>
@@ -914,6 +925,201 @@ function DealBalanceCard() {
           </div>
         </div>
       )}
+
+      {/* 🛡️ 2026-05-19: 상품권으로 받기 모달 */}
+      {voucherOpen && (
+        <VoucherRedeemModal
+          totalBalance={balance.total}
+          onClose={() => setVoucherOpen(false)}
+          onSuccess={() => {
+            setVoucherOpen(false)
+            // 잔액 갱신
+            const token = localStorage.getItem('seller_token')
+            api.get('/api/seller/deal-balance', { headers: { Authorization: `Bearer ${token}` } })
+              .then(rr => { if (rr.data?.success) setBalance(rr.data.data) })
+          }}
+        />
+      )}
     </DashboardCard>
+  )
+}
+
+// 🛡️ 2026-05-19: 상품권 (KT Alpha) 발송 모달 — 비사업자 셀러 핵심 흐름.
+interface CatalogItem {
+  gift_code: string
+  name: string
+  brand_name: string
+  brand_icon_url?: string
+  sale_price: number
+  real_price: number
+  discount_rate: number
+  image_url_small?: string
+  valid_period_type?: string
+  valid_period_days?: number
+  goods_type_detail?: string
+}
+
+function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
+  totalBalance: number; onClose: () => void; onSuccess: () => void
+}) {
+  const [items, setItems] = useState<CatalogItem[]>([])
+  const [markupPct, setMarkupPct] = useState(5)
+  const [loading, setLoading] = useState(true)
+  const [q, setQ] = useState('')
+  const [selected, setSelected] = useState<CatalogItem | null>(null)
+  const [qty, setQty] = useState(1)
+  const [phone, setPhone] = useState(localStorage.getItem('seller_phone') || '')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => { load() }, []) // eslint-disable-line
+
+  async function load() {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('seller_token')
+      const r = await api.get(`/api/seller/voucher-catalog?q=${encodeURIComponent(q)}`,
+        { headers: { Authorization: `Bearer ${token}` } })
+      if (r.data?.success) {
+        setItems(r.data.data.items || [])
+        setMarkupPct(Number(r.data.data.markup_pct) || 5)
+      }
+    } catch { /* fail-soft */ } finally { setLoading(false) }
+  }
+
+  function unitDeduct(item: CatalogItem) {
+    return Math.floor(item.real_price * (1 + markupPct / 100))
+  }
+  const totalDeduct = selected ? unitDeduct(selected) * qty : 0
+  const canSubmit = selected && totalDeduct > 0 && totalDeduct <= totalBalance && /^\d{10,11}$/.test(phone.replace(/\D/g, ''))
+
+  async function submit() {
+    if (!selected) return
+    if (!confirm(`${selected.name} × ${qty} → ${phone}\n차감 예정: ₩${totalDeduct.toLocaleString()}\n발송하시겠습니까?`)) return
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('seller_token')
+      const r = await api.post('/api/seller/voucher-redeem', {
+        gift_code: selected.gift_code,
+        qty,
+        phone: phone.replace(/\D/g, ''),
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      if (r.data?.success) {
+        toast.success(`✅ 발송 완료 (${r.data.data.qty}건, 차감 ₩${r.data.data.total_deduct.toLocaleString()})`)
+        onSuccess()
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '발송 실패')
+    } finally { setSubmitting(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center"
+      onClick={() => !submitting && onClose()}>
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">🎁 상품권으로 받기</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              잔액 ₩{totalBalance.toLocaleString()} 에서 차감 · 발송 후 환불 불가
+            </p>
+          </div>
+          <button onClick={onClose} disabled={submitting} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+
+        {/* 검색 + 카탈로그 */}
+        <div className="px-5 py-3 border-b border-gray-100">
+          <div className="flex gap-2">
+            <input type="text" value={q} onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && load()}
+              placeholder="브랜드명 / 상품명 검색"
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+            <button onClick={load} className="text-xs px-3 py-2 bg-gray-100 rounded-lg">검색</button>
+          </div>
+        </div>
+
+        {/* 카탈로그 그리드 */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {loading ? (
+            <p className="text-xs text-gray-500 text-center py-8">로딩 중...</p>
+          ) : items.length === 0 ? (
+            <p className="text-xs text-gray-500 text-center py-8">
+              카탈로그 비어있음 — 어드민이 sync 후 다시 시도해주세요
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {items.map((item) => {
+                const deduct = unitDeduct(item)
+                const isSel = selected?.gift_code === item.gift_code
+                return (
+                  <button key={item.gift_code} type="button"
+                    onClick={() => setSelected(item)}
+                    className={`border-2 rounded-lg overflow-hidden text-left ${
+                      isSel ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}>
+                    <div className="aspect-square bg-gray-100">
+                      {item.image_url_small && <img src={item.image_url_small} alt={item.name} className="w-full h-full object-cover" loading="lazy" />}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-[10px] text-gray-500 font-semibold">{item.brand_name}</p>
+                      <p className="text-xs font-bold text-gray-900 line-clamp-2">{item.name}</p>
+                      <div className="mt-1.5">
+                        <p className="text-[10px] text-gray-400 line-through">₩{item.sale_price.toLocaleString()}</p>
+                        <p className="text-xs font-extrabold text-pink-600">차감 ₩{deduct.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 선택 요약 + 발송 */}
+        {selected && (
+          <div className="px-5 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">수량</label>
+                <input type="number" min={1} max={10} value={qty}
+                  onChange={(e) => setQty(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">받을 휴대폰</label>
+                <input type="tel" value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="01012345678"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded p-3 text-xs mb-3 space-y-0.5">
+              <p className="flex justify-between"><span className="text-gray-500">선택 상품</span><span className="font-semibold">{selected.name} × {qty}</span></p>
+              <p className="flex justify-between"><span className="text-gray-500">단가 (markup {markupPct}% 포함)</span><span>₩{unitDeduct(selected).toLocaleString()}</span></p>
+              <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">총 차감액</span><span className="text-base font-extrabold text-pink-600">₩{totalDeduct.toLocaleString()}</span></p>
+              {totalDeduct > totalBalance && (
+                <p className="text-red-600 text-[11px] font-bold mt-1">⚠️ 잔액 부족 (보유 ₩{totalBalance.toLocaleString()})</p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={onClose} disabled={submitting}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg disabled:opacity-50">
+                취소
+              </button>
+              <button onClick={submit} disabled={submitting || !canSubmit}
+                className="flex-1 px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting ? '발송 중...' : `🎁 ₩${totalDeduct.toLocaleString()} 차감 후 발송`}
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-2">
+              ⓘ 입력한 휴대폰으로 MMS 쿠폰이 즉시 발송됩니다. 발송 후 취소/환불 불가.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

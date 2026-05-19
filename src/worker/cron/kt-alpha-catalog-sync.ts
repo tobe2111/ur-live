@@ -124,6 +124,24 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
         await env.DB.prepare(
           `UPDATE platform_settings SET value = datetime('now'), updated_at = datetime('now') WHERE key = 'kt_alpha_biz_money_check_at'`
         ).run().catch(() => { /* noop */ })
+
+        // 🛡️ 2026-05-19: 잔액 부족 알림 — 10만 원 이하 시 어드민에게 dashboard 알림.
+        //   중복 방지: 24시간 내 같은 type 발송 안 함.
+        if (balance < 100_000) {
+          const recentAlert = await env.DB.prepare(
+            `SELECT id FROM admin_dashboard_notifications
+              WHERE type = 'kt_alpha_balance_low' AND created_at > datetime('now', '-24 hours') LIMIT 1`
+          ).first().catch(() => null)
+          if (!recentAlert) {
+            await env.DB.prepare(
+              `INSERT INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
+               VALUES ('admin', 'kt_alpha_balance_low', ?, ?, '/admin/kt-alpha', datetime('now'))`
+            ).bind(
+              `⚠️ KT Alpha 비즈머니 잔액 부족 ₩${balance.toLocaleString()}`,
+              `상품권 발송 차단 위험 — 기프티쇼 콘솔에서 충전 필요${balance === 0 ? ' (현재 0원, 즉시 차단됨)' : ''}`,
+            ).run().catch(() => { /* table 없으면 silent */ })
+          }
+        }
       }
     } catch (e) {
       console.error('[kt-alpha balance check]', String(e).slice(0, 200))

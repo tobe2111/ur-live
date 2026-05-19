@@ -434,6 +434,29 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
   }
 })
 
+// 🛡️ 2026-05-19: 셀러 본인 voucher 발송 이력.
+sellerSettlementsRoutes.get('/voucher-orders', async (c) => {
+  const authorization = c.req.header('Authorization')
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const token = authorization.substring(7)
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
+    const sellerId = payload.seller_id
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
+
+    const rows = await c.env.DB.prepare(
+      `SELECT id, goods_code, goods_name, goods_image_url, unit_price, quantity, total_amount,
+              recipient_phone, status, external_order_id, failure_reason,
+              sent_at, created_at
+         FROM voucher_orders WHERE seller_id = ?
+        ORDER BY created_at DESC LIMIT 100`
+    ).bind(sellerId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: rows.results || [] })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 sellerSettlementsRoutes.post('/deal-withdraw', async (c) => {
   const authorization = c.req.header('Authorization');
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
