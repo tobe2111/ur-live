@@ -166,8 +166,24 @@ interface GoodsListResult {
  *   ⚠️ 실제 알고리즘 확정되면 이 함수만 교체.
  */
 async function encryptAuthToken(authCode: string, tokenKeyBase64: string): Promise<string> {
-  // Base64 → Uint8Array (16 bytes 예상).
-  const raw = atob(tokenKeyBase64)
+  // 🛡️ 2026-05-19: TOKEN_KEY 정규화 — Cloudflare Secret / URL 인코딩 과정에서
+  //   '+' 가 공백으로, '/' 가 손상될 수 있음. 안전하게 복원.
+  //   - whitespace 제거
+  //   - URL-safe base64 (-/_) → standard base64 (+//) 변환
+  //   - 공백 → + 복원
+  //   - padding 부족 시 = 추가
+  let normalized = tokenKeyBase64.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/')
+  while (normalized.length % 4 !== 0) normalized += '='
+
+  let raw: string
+  try {
+    raw = atob(normalized)
+  } catch (e) {
+    throw new Error(
+      `KT_ALPHA_TOKEN_KEY base64 디코드 실패 — Cloudflare Secret 에 정확히 ` +
+      `'1DBUFBQ+r+8Wdm+FOjZJmA==' 형식으로 등록되었는지 확인하세요. (입력 길이: ${tokenKeyBase64.length}, 정규화 후: ${normalized.length}) ${(e as Error).message}`
+    )
+  }
   const keyBytes = new Uint8Array(raw.length)
   for (let i = 0; i < raw.length; i++) keyBytes[i] = raw.charCodeAt(i)
   if (keyBytes.length !== 16 && keyBytes.length !== 24 && keyBytes.length !== 32) {
