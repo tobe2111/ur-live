@@ -273,6 +273,96 @@ export async function getBrandDetail(env: KtAlphaEnv, brandCode: string): Promis
   return data.result?.brandDetail ?? null
 }
 
+// ============================================================================
+// 거래 (쿠폰) API — 02xx 그룹
+//
+//   ⚠️ 0201, 0202 는 dev_yn='N' 으로만 설정 가능 (개발 모드 호출 X — 실 거래만).
+//   ⚠️ 0201 응답 형식이 다름 — resCode/resMsg 사용 (다른 API 는 code/message).
+// ============================================================================
+
+export interface GiftishowCouponInfo {
+  goodsCd: string
+  goodsNm: string
+  brandNm?: string
+  mmsBrandThumImg?: string
+  cnsmPriceAmt?: string         // 정상판매단가
+  sellPriceAmt?: string          // 실판매단가
+  senderTelNo?: string
+  recverTelNo?: string
+  validPrdEndDt?: string         // 유효기간만료일 YYYYMMDDHHMMSS
+  sendBasicCd?: string           // 기본번호
+  sendRstCd?: string             // 거래번호
+  sendRstMsg?: string            // 발송상태코드
+  sendStatusCd?: string          // 발송상태명
+  correcDtm?: string             // 변경일자 YYYYMMDD
+}
+
+/**
+ * 0201: 쿠폰 상세 정보 조회.
+ *   - tr_id (거래 ID) 로 발급된 쿠폰 정보 + 발송 상태 조회.
+ *   - 응답 형식: { couponInfoList, resCode, resMsg } — 다른 API 와 다름.
+ *   - dev_yn='N' 으로만 호출 가능.
+ */
+export async function getCouponInfo(
+  env: KtAlphaEnv,
+  trId: string,
+): Promise<{ resCode: string; resMsg: string; couponInfoList: GiftishowCouponInfo[] }> {
+  // dev_yn 강제 N — 다른 호출에서도 안전하게.
+  const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
+  if (!forceProdEnv.KT_ALPHA_AUTH_CODE) {
+    throw new Error('KT_ALPHA_AUTH_CODE env 미설정')
+  }
+  const token = await resolveAuthToken(forceProdEnv)
+
+  const body = new URLSearchParams()
+  body.append('api_code', '0201')
+  body.append('custom_auth_code', forceProdEnv.KT_ALPHA_AUTH_CODE)
+  body.append('custom_auth_token', token)
+  body.append('dev_yn', 'N')
+  body.append('tr_id', trId)
+
+  const res = await fetch(`${KT_ALPHA_BASE}/coupons`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+    body: body.toString(),
+  })
+  const data = await res.json().catch(() => ({})) as {
+    resCode?: string; resMsg?: string; couponInfoList?: GiftishowCouponInfo[]
+  }
+  if (!res.ok) throw new Error(`KT Alpha 0201 HTTP ${res.status}`)
+  if (data.resCode !== '0000') {
+    throw new Error(`KT Alpha 0201 error ${data.resCode}: ${data.resMsg || 'unknown'}`)
+  }
+  return {
+    resCode: data.resCode,
+    resMsg: data.resMsg || '',
+    couponInfoList: data.couponInfoList || [],
+  }
+}
+
+/**
+ * 0202: 쿠폰 취소.
+ *   - tr_id + user_id (회원 ID) 필요.
+ *   - dev_yn='N' 강제.
+ *   - 응답 형식: 표준 (code/message).
+ *
+ *   주의: 발송 후 일정 기간 이내만 취소 가능 (정책 별도 확인).
+ */
+export async function cancelCoupon(
+  env: KtAlphaEnv,
+  params: { trId: string; userId: string },
+): Promise<{ code: string; message: string }> {
+  const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
+  const data = await callKtAlpha<unknown>(forceProdEnv, '0202', '/cancel', {
+    tr_id: params.trId,
+    user_id: params.userId,
+  })
+  return {
+    code: data.code,
+    message: data.message || '',
+  }
+}
+
 /**
  * 전체 페이지 순회 — sync cron 에서 사용.
  *   기본: 페이지당 100개씩, 최대 50 페이지 (5000개 까지). 안전 한도.
