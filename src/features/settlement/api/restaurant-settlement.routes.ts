@@ -17,6 +17,8 @@ import type { Env } from '@/worker/types/env';
 // ── Table setup ────────────────────────────────────────────────────────────
 
 async function ensureSettlementTables(DB: D1Database) {
+  if (_done_ensureSettlementTables) return
+  _done_ensureSettlementTables = true
   await executeRun(DB, `
     CREATE TABLE IF NOT EXISTS restaurant_settlements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -405,3 +407,7 @@ sellerSettlementRoutes.get('/', requireAuth(), async (c) => {
 });
 
 export { restaurantSettlementRoutes, sellerSettlementRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureSettlementTables = false

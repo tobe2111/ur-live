@@ -57,6 +57,8 @@ const initialLanguage = detectInitialLanguage()
 const loaded = new Set<Lang>()
 
 async function ensureLanguageLoaded(lang: string): Promise<void> {
+  if (_done_ensureLanguageLoaded) return
+  _done_ensureLanguageLoaded = true
   const base = lang.split('-')[0] as Lang
   if (!SUPPORTED.includes(base)) return
   if (loaded.has(base)) return
@@ -115,3 +117,7 @@ i18n.changeLanguage = (async (lng?: string, ...rest: unknown[]) => {
 void bootstrap()
 
 export default i18n
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureLanguageLoaded = false

@@ -66,6 +66,8 @@ const ALLOWED_METRICS = ['revenue', 'live_count', 'viewer_peak'] as const;
 type Metric = (typeof ALLOWED_METRICS)[number];
 
 async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agency_self_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -239,3 +241,7 @@ app.get('/:id/leaderboard', async (c) => {
 });
 
 export { app as agencySelfEventsRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTables = false

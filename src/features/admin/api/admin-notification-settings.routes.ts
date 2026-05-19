@@ -25,6 +25,8 @@ interface SettingRow {
 }
 
 async function ensureTable(db: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   await db.prepare(`CREATE TABLE IF NOT EXISTS notification_channel_settings (
     notification_type TEXT PRIMARY KEY,
     dashboard_enabled INTEGER NOT NULL DEFAULT 1,
@@ -172,3 +174,7 @@ app.put('/:type', async (c) => {
 })
 
 export { app as adminNotificationSettingsRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

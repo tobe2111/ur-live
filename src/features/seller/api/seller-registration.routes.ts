@@ -47,6 +47,8 @@ export const sellerRegistrationRoutes = new Hono<{ Bindings: Bindings }>()
 
 let _sellerColumnsEnsured = false
 async function ensureSellerColumns(db: D1Database) {
+  if (_done_ensureSellerColumns) return
+  _done_ensureSellerColumns = true
   if (_sellerColumnsEnsured) return
   try { await db.prepare(`ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER`).run() } catch { /* exists */ }
   try { await db.prepare(`ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'`).run() } catch { /* exists */ }
@@ -564,3 +566,7 @@ sellerRegistrationRoutes.post('/switch-to-user', async (c) => {
     return c.json({ success: false, error: '유저 전환 실패' }, 500);
   }
 });
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureSellerColumns = false

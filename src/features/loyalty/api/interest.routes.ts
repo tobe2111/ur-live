@@ -18,6 +18,8 @@ const interestRoutes = new Hono<{ Bindings: Env }>();
 // ── Ensure table ───────────────────────────────────────────────
 
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS user_interests (
@@ -224,3 +226,7 @@ interestRoutes.get('/check', requireAuth(), async (c) => {
 });
 
 export { interestRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

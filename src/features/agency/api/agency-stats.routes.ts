@@ -26,6 +26,8 @@ app.use('*', requireAgency)
 // 테이블 ensure (agency.routes.ts 와 동일 — 모듈 분리로 인한 코드 중복은 후속 정리)
 let _agencyTablesEnsured = false
 async function ensureAgencyTables(DB: D1Database) {
+  if (_done_ensureAgencyTables) return
+  _done_ensureAgencyTables = true
   if (_agencyTablesEnsured) return
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agencies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)`).run().catch(swallow('agency-stats'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_sellers (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL, UNIQUE(agency_id, seller_id))`).run().catch(swallow('agency-stats'))
@@ -393,3 +395,7 @@ app.get('/stats/kt-alpha', async (c) => {
 })
 
 export { app as agencyStatsRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureAgencyTables = false

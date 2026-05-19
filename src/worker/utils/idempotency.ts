@@ -29,6 +29,8 @@ import type { D1Database } from '@cloudflare/workers-types';
 let tableEnsured = false;
 
 async function ensureTable(DB: D1Database): Promise<void> {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   if (tableEnsured) return;
   try {
     await DB.prepare(`
@@ -159,3 +161,7 @@ export async function idempotentWrite<T>(
     throw err;
   }
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

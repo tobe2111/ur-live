@@ -47,6 +47,8 @@ sellerPublicRoutes.get('/:sellerId/upcoming', async (c) => {
 })
 
 async function ensureFollowsTable(DB: D1Database): Promise<void> {
+  if (_done_ensureFollowsTable) return
+  _done_ensureFollowsTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS seller_follows (
@@ -394,3 +396,7 @@ sellerPublicRoutes.get('/my/follows', requireAuth(), async (c) => {
 })
 
 export { sellerPublicRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureFollowsTable = false

@@ -35,6 +35,8 @@ const referralTreeRoutes = new Hono<{ Bindings: Env }>()
 // ---------------------------------------------------------------------------
 
 async function ensureReferralTreeTables(DB: D1Database) {
+  if (_done_ensureReferralTreeTables) return
+  _done_ensureReferralTreeTables = true
   try {
     await DB.batch([
       DB.prepare(`
@@ -789,3 +791,7 @@ referralTreeRoutes.get('/stats', requireAdmin(), async (c) => {
 })
 
 export { referralTreeRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureReferralTreeTables = false

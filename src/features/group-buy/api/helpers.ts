@@ -63,6 +63,8 @@ export async function getSellerCommissionRate(DB: D1Database, sellerId: number):
  */
 let _ensuredTables = false
 export async function ensureTables(DB: D1Database): Promise<void> {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   if (_ensuredTables) return
   const columns = [
     'restaurant_name TEXT', 'restaurant_address TEXT', 'restaurant_phone TEXT',
@@ -332,3 +334,7 @@ https://live.ur-team.com/my-vouchers
     }).catch(() => {})
   } catch { /* graceful */ }
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTables = false

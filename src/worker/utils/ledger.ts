@@ -32,6 +32,8 @@ interface LedgerEntry {
 let DDL_DONE = false
 
 async function ensureLedgerTable(DB: D1Database): Promise<void> {
+  if (_done_ensureLedgerTable) return
+  _done_ensureLedgerTable = true
   if (DDL_DONE) return
   try {
     await DB.prepare(`
@@ -96,3 +98,7 @@ export async function getAccountBalance(DB: D1Database, account: string): Promis
   `).bind(account, account, account, account).first<{ debit_total: number; credit_total: number }>()
   return Number(row?.credit_total ?? 0) - Number(row?.debit_total ?? 0)
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureLedgerTable = false

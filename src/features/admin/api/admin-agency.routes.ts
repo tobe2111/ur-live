@@ -25,6 +25,8 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
 
 async function ensureAgencyTables(DB: D1Database) {
+  if (_done_ensureAgencyTables) return
+  _done_ensureAgencyTables = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -298,3 +300,7 @@ app.get('/unassigned-sellers', async (c) => {
 })
 
 export { app as adminAgencyRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureAgencyTables = false

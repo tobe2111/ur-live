@@ -28,6 +28,8 @@ app.use('*', requireAgency)
 
 let _agencyTablesEnsured = false
 async function ensureAgencyTables(DB: D1Database) {
+  if (_done_ensureAgencyTables) return
+  _done_ensureAgencyTables = true
   if (_agencyTablesEnsured) return
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agencies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)`).run().catch(swallow('agency-ops'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS agency_sellers (id INTEGER PRIMARY KEY AUTOINCREMENT, agency_id INTEGER NOT NULL, seller_id INTEGER NOT NULL, UNIQUE(agency_id, seller_id))`).run().catch(swallow('agency-ops'))
@@ -351,3 +353,7 @@ app.put('/contracts/:id', async (c: AgencyCtx) => {
   return c.json({ success: true })
 })
 export { app as agencyOpsRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureAgencyTables = false

@@ -24,6 +24,8 @@ function safeAdminError(err: unknown, env: Env): string {
 }
 
 async function ensureSideBannersTable(DB: D1Database) {
+  if (_done_ensureSideBannersTable) return
+  _done_ensureSideBannersTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS side_banners (
@@ -121,3 +123,7 @@ adminSideBannersRoutes.delete('/side-banners/:id', cors(), async (c) => {
 });
 
 export default adminSideBannersRoutes;
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureSideBannersTable = false

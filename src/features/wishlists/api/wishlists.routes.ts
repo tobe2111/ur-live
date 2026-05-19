@@ -41,6 +41,8 @@ export const wishlistRoutes = new Hono<{ Bindings: Bindings; Variables: Variable
 // 🛡️ 2026-05-19: per-worker 메모이제이션.
 let _ensureTableDone = false
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   if (_ensureTableDone) return
   try {
     await DB.prepare(`
@@ -309,3 +311,7 @@ wishlistRoutes.get('/check/:userId/:productId', requireAuth(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

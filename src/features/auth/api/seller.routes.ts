@@ -39,6 +39,8 @@ type Bindings = {
  * admin.routes.ts의 동명 함수와 동일 스키마. 멱등(IF NOT EXISTS).
  */
 async function ensureAuthRefreshTokensTable(DB: D1Database) {
+  if (_done_ensureAuthRefreshTokensTable) return
+  _done_ensureAuthRefreshTokensTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +58,8 @@ async function ensureAuthRefreshTokensTable(DB: D1Database) {
 
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
 async function ensurePasswordResetTable(DB: D1Database) {
+  if (_done_ensurePasswordResetTable) return
+  _done_ensurePasswordResetTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -728,3 +732,8 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
 });
 
 export default sellerRoutes;
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensurePasswordResetTable = false
+let _done_ensureAuthRefreshTokensTable = false

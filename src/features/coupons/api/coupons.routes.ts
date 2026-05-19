@@ -6,6 +6,8 @@ const couponRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupon_uses (id INTEGER PRIMARY KEY AUTOINCREMENT, coupon_id INTEGER NOT NULL, user_id TEXT NOT NULL, order_id INTEGER, discount_amount INTEGER NOT NULL, used_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(coupon_id, user_id))`).run() } catch {}
 }
@@ -264,3 +266,7 @@ couponRoutes.post('/auto-issue/welcome', requireAuth(), async (c) => {
 })
 
 export { couponRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTables = false

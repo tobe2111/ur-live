@@ -42,6 +42,8 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
 
 // ── alimtalk_packages 테이블 자동 생성 ────────────────────────────────────────
 async function ensureAlimtalkPackagesTable(DB: Env['DB']): Promise<void> {
+  if (_done_ensureAlimtalkPackagesTable) return
+  _done_ensureAlimtalkPackagesTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS alimtalk_packages (
@@ -257,3 +259,7 @@ alimtalkRoutes.get('/logs', async (c) => {
 });
 
 export { alimtalkRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureAlimtalkPackagesTable = false

@@ -26,6 +26,8 @@ const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
 // ── 테이블 자동 생성 + 마이그레이션 ───────────────────────────────────
 async function ensureRefundTable(DB: D1Database) {
+  if (_done_ensureRefundTable) return
+  _done_ensureRefundTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS community_group_buy_refunds (
@@ -41,6 +43,8 @@ async function ensureRefundTable(DB: D1Database) {
 }
 
 async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS community_group_buys (
@@ -793,6 +797,8 @@ communityGroupBuyRoutes.get('/popular', async (c) => {
 //     - 공구 생성자 (creator_user_id = current user)
 //     - 식당 (restaurant_seller_id 가 본인이거나, 향후 magic-link token 도 가능)
 async function ensureMessagesTable(DB: D1Database) {
+  if (_done_ensureMessagesTable) return
+  _done_ensureMessagesTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS community_group_buy_messages (
@@ -928,3 +934,9 @@ communityGroupBuyRoutes.post('/:id/messages',
 )
 
 export { communityGroupBuyRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureMessagesTable = false
+let _done_ensureTables = false
+let _done_ensureRefundTable = false

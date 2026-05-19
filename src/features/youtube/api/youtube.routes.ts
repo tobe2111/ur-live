@@ -53,6 +53,8 @@ const app = new Hono<{ Bindings: Bindings }>()
 // 테이블 자동 생성 (마이그레이션 미적용 시 fallback)
 // 🛡️ 2026-04-28: youtube-live.routes.ts 에서 import 가능하도록 export
 export async function ensureYouTubeTables(DB: D1Database) {
+  if (_done_ensureYouTubeTables) return
+  _done_ensureYouTubeTables = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS seller_youtube_oauth (
@@ -581,3 +583,7 @@ app.get('/shorts/sync', async (c) => {
 })
 
 export default app
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureYouTubeTables = false

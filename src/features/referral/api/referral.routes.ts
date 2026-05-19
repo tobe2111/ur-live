@@ -59,6 +59,8 @@ function getUnlockedTier(tiers: ReferralTier[], currentCount: number): ReferralT
 // 🛡️ 2026-05-19: per-worker 메모이제이션.
 let _referralTablesEnsured = false
 async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   if (_referralTablesEnsured) return
   try {
     await DB.prepare(`
@@ -442,3 +444,7 @@ referralRoutes.get('/:code', optionalAuth(), async (c) => {
 });
 
 export { referralRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTables = false

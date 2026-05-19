@@ -42,6 +42,8 @@ function logDev(tag: string, err: unknown): void {
  *   - created_at / updated_at: datetime('now') defaults
  */
 export async function ensureUserPointsTable(DB: D1Database): Promise<void> {
+  if (_done_ensureUserPointsTable) return
+  _done_ensureUserPointsTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS user_points (
@@ -65,6 +67,8 @@ export async function ensureUserPointsTable(DB: D1Database): Promise<void> {
  * Schema mirrors `migrations/0130_add_user_points_system.sql`.
  */
 export async function ensurePointTransactionsTable(DB: D1Database): Promise<void> {
+  if (_done_ensurePointTransactionsTable) return
+  _done_ensurePointTransactionsTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS point_transactions (
@@ -95,6 +99,14 @@ export async function ensurePointTransactionsTable(DB: D1Database): Promise<void
  * a CHECK constraint on `type` and is kept separate for that reason.
  */
 export async function ensurePointsTables(DB: D1Database): Promise<void> {
+  if (_done_ensurePointsTables) return
+  _done_ensurePointsTables = true
   await ensureUserPointsTable(DB)
   await ensurePointTransactionsTable(DB)
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensurePointsTables = false
+let _done_ensurePointTransactionsTable = false
+let _done_ensureUserPointsTable = false

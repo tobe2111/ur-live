@@ -53,6 +53,8 @@ const CHARGE_AMOUNTS = [
 //   per-worker 메모이제이션: 한 번 호출 후 skip.
 let _ensuredTables = false
 async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   if (_ensuredTables) return
   await ensureUserPointsTable(DB);
   try {
@@ -864,3 +866,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 });
 
 export { pointsRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTables = false

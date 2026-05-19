@@ -56,6 +56,8 @@ const ALLOWED_MULTIPLIERS = [1.5, 2.0, 3.0];
 const ALLOWED_DURATIONS = [300, 600, 900];
 
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS donation_boosters (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -187,3 +189,7 @@ export async function applyDonationBooster(
 }
 
 export { app as donationBoosterRoutes, publicApp as donationBoosterPublicRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

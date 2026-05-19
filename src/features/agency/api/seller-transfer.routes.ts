@@ -70,6 +70,8 @@ app.use('*', requireAgency);
 const COOLDOWN_DAYS = 30;
 
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS seller_transfer_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -233,3 +235,7 @@ app.post('/:id/cancel', async (c) => {
 });
 
 export { app as sellerTransferRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

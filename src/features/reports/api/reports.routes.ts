@@ -14,6 +14,8 @@ export const reportsRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS user_reports (
@@ -93,3 +95,7 @@ reportsRoutes.get('/my', requireAuth(), async (c) => {
 
   return c.json({ success: true, data: results ?? [] })
 })
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

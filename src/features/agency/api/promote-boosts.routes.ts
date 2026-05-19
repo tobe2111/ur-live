@@ -78,6 +78,8 @@ const TIER_DURATION: Record<string, number> = {
 };
 
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS promote_boost_coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -239,3 +241,7 @@ export {
   agencyApp as promoteBoostsAgencyRoutes,
   sellerApp as promoteBoostsSellerRoutes,
 };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

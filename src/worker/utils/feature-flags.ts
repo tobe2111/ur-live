@@ -65,6 +65,8 @@ let cached: { flags: FeatureFlags; loadedAt: number } | null = null;
 const CACHE_TTL_MS = 30_000; // 30 seconds
 
 async function ensureFlagsTable(DB: D1Database) {
+  if (_done_ensureFlagsTable) return
+  _done_ensureFlagsTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS feature_flags_kv (
       key TEXT PRIMARY KEY,
@@ -191,3 +193,7 @@ export const EMERGENCY_MODE_FLAGS: FeatureFlags = {
  * Default flag set when Emergency Mode is DISABLED (normal operation).
  */
 export const NORMAL_MODE_FLAGS: FeatureFlags = { ...DEFAULT_FLAGS };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureFlagsTable = false

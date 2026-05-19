@@ -21,6 +21,8 @@ interface CronEnv {
 
 let _cronTableEnsured = false
 async function ensureCronFailuresTable(DB: D1Database) {
+  if (_done_ensureCronFailuresTable) return
+  _done_ensureCronFailuresTable = true
   if (_cronTableEnsured) return
   try {
     await DB.prepare(`
@@ -91,3 +93,7 @@ export async function reportCronFailure(
     console.error(`[cron-reporter] failed to report cron failure:`, innerErr)
   }
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureCronFailuresTable = false

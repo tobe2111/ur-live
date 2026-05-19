@@ -40,6 +40,8 @@ async function requireRole(c: any, roles: string[]): Promise<{ id: number; type:
 }
 
 async function ensureSeeded(DB: D1Database, guideType: GuideType): Promise<void> {
+  if (_done_ensureSeeded) return
+  _done_ensureSeeded = true
   const existing = await DB.prepare(
     'SELECT COUNT(*) as n FROM operation_guides WHERE guide_type = ?'
   ).bind(guideType).first<{ n: number }>()
@@ -163,3 +165,7 @@ guideRoutes.delete('/:type/:sectionKey', async (c) => {
 })
 
 export default guideRoutes
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureSeeded = false

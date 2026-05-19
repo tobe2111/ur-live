@@ -18,6 +18,8 @@
 //   - alimtalk_dispatch_log: 최근 발송 기록 (idempotency + per-user rate limit)
 //   - alimtalk_budget: 일별 발송 건수 누계 (전역 cost cap)
 async function ensureGuardTables(db: D1Database) {
+  if (_done_ensureGuardTables) return
+  _done_ensureGuardTables = true
   try {
     await db.prepare(`CREATE TABLE IF NOT EXISTS alimtalk_dispatch_log (
       phone_hash TEXT NOT NULL,
@@ -171,3 +173,7 @@ export async function sendSystemAlimtalk(
     return { success: false, error: (err as Error).message };
   }
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureGuardTables = false

@@ -16,6 +16,8 @@ export const affiliateRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable) return
+  _done_ensureTable = true
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS affiliate_earnings (
@@ -354,3 +356,7 @@ affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
     data: { url: `https://live.ur-team.com${path}?ref=${user.id}` },
   })
 })
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTable = false

@@ -39,6 +39,8 @@ const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 // ── 테이블 자동 생성 ──────────────────────────────────────────
 let _agencyTablesEnsured = false;
 async function ensureAgencyTables(DB: D1Database) {
+  if (_done_ensureAgencyTables) return
+  _done_ensureAgencyTables = true
   if (_agencyTablesEnsured) return;
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
@@ -81,6 +83,8 @@ async function ensureAgencyTables(DB: D1Database) {
 
 // ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
 async function ensurePasswordResetTable(DB: D1Database) {
+  if (_done_ensurePasswordResetTable) return
+  _done_ensurePasswordResetTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -902,3 +906,8 @@ app.get('/report/csv', async (c: AgencyCtx) => {
 //   src/features/agency/api/agency-kakao-link.routes.ts (worker/index.ts 에서 별도 mount)
 
 export { app as agencyRoutes }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensurePasswordResetTable = false
+let _done_ensureAgencyTables = false

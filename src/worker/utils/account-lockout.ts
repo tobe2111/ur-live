@@ -15,6 +15,8 @@ import { swallow } from './swallow';
 export type UserType = 'user' | 'seller' | 'admin' | 'agency';
 
 async function ensureLockoutTable(DB: D1Database) {
+  if (_done_ensureLockoutTable) return
+  _done_ensureLockoutTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS account_lockouts (
       user_type TEXT NOT NULL,
@@ -104,3 +106,7 @@ export async function clearFailures(
     'DELETE FROM account_lockouts WHERE user_type = ? AND user_id = ?'
   ).bind(userType, userId).run().catch(swallow('worker:utils:account-lockout'));
 }
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureLockoutTable = false

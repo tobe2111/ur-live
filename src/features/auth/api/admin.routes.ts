@@ -22,6 +22,8 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
  * 묶여 있어 숫자 ID를 가진 admin/seller에 쓰기 어렵다. 별도 테이블로 분리.
  */
 async function ensureAuthRefreshTokensTable(DB: D1Database) {
+  if (_done_ensureAuthRefreshTokensTable) return
+  _done_ensureAuthRefreshTokensTable = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -445,3 +447,7 @@ adminRoutes.post('/2fa/validate', cors(), requireAdmin() as any, async (c) => {
 });
 
 export default adminRoutes;
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureAuthRefreshTokensTable = false

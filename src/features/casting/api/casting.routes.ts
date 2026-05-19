@@ -59,6 +59,8 @@ const requireSeller = async (c: any, next: Next) => {
 sellerCastingApp.use('*', requireSeller);
 
 async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables) return
+  _done_ensureTables = true
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS advertisers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,3 +230,7 @@ export {
   adminCastingApp as adminCastingRoutes,
   sellerCastingApp as sellerCastingRoutes,
 };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+let _done_ensureTables = false
