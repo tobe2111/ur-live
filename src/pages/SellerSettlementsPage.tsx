@@ -386,9 +386,9 @@ export default function SellerSettlementsPage() {
                   bizRegStatus === 'rejected' ? 'text-red-900' :
                   bizRegImageUrl ? 'text-amber-900' : 'text-blue-900'
                 }`}>
-                  {bizRegStatus === 'rejected' ? '사업자등록 반려됨 — 재제출 필요' :
-                   bizRegImageUrl ? '사업자등록 검증 대기 중' :
-                   '사업자등록증을 등록하면 현금 정산이 가능합니다'}
+                  {bizRegStatus === 'rejected' ? '사업자등록 반려됨 — 재제출 필요 (현재: 🎁 상품권 정산만 가능)' :
+                   bizRegImageUrl ? '사업자등록 검증 대기 중 (현재: 🎁 상품권 정산만 가능)' :
+                   '비사업자 셀러 → 🎁 KT 상품권으로 정산 가능 / 💰 현금 정산은 사업자등록 필요'}
                 </p>
                 {bizRegStatus === 'rejected' && bizRegRejectReason && (
                   <p className="text-xs text-red-700 mt-1.5 bg-red-100 px-2 py-1 rounded">

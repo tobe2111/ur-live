@@ -916,7 +916,7 @@
       "digitalRequiredFields": "Please enter the content URL for digital products"
     },
     "orders": "订单管理",
-    "revenue": "收入结算",
+    "revenue": "Deal结算",
     "live": "直播",
     "settings": "设置",
     "inventory": "库存管理",
