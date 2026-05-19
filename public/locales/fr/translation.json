@@ -1993,6 +1993,31 @@
       "empty": "Aucun hébergement enregistré",
       "create": "Ajouter Hébergement",
       "createFirst": "Ajouter Premier Hébergement"
+    },
+    "kakaoNotify": {
+      "confirmResend": "[TODO:fr] 이미 발송했습니다. 다시 발송하시겠습니까?",
+      "defaultMessage": "[TODO:fr] 지금 라이브가 시작됐어요! 같이 봐요 🔴",
+      "sentSuccess": "[TODO:fr] ✅ 카카오톡에 메시지가 전송됐어요",
+      "sendFailed": "[TODO:fr] 발송 실패",
+      "reauthRequired": "[TODO:fr] 카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?",
+      "scopeMissing": "[TODO:fr] 카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.",
+      "ariaLabel": "[TODO:fr] 카카오 친구에게 라이브 알림",
+      "sending": "[TODO:fr] 발송 중…",
+      "sentLabel": "[TODO:fr] ✓ 발송됨",
+      "buttonLabel": "[TODO:fr] 카카오 친구 알림"
+    },
+    "kpi": {
+      "followers": "[TODO:fr] 단골",
+      "followersRecent": "[TODO:fr] +{{n}}/7일",
+      "followersNoneRecent": "[TODO:fr] 신규 0",
+      "activeGroups": "[TODO:fr] 진행 공구",
+      "unitCount": "[TODO:fr] 개",
+      "thisMonth": "[TODO:fr] 이번 달",
+      "unitWon": "[TODO:fr] 원",
+      "disputes": "[TODO:fr] 분쟁",
+      "disputesPending": "[TODO:fr] 검토 대기",
+      "disputesNone": "[TODO:fr] 없음",
+      "realtime": "[TODO:fr] 실시간"
     }
   },
   "admin": {
@@ -4366,7 +4391,9 @@
       "seoFallbackTitle": "En direct",
       "seoDescription": "Regardez les lives Yourdeal et achetez en direct",
       "srHeading": "Diffusion en direct"
-    }
+    },
+    "tapForSound": "[TODO:fr] 탭하여 소리 켜기",
+    "reconnecting": "[TODO:fr] 방송 데이터 수신 중..."
   },
   "paymentFail": {
     "title": "Paiement échoué",

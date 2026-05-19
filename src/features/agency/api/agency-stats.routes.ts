@@ -331,4 +331,65 @@ app.get('/stats/batch', async (c) => {
 
   return c.json({ success: true, data: { orders, streams, period } })
 })
+
+// 🛡️ 2026-05-19: KT Alpha (기프티쇼) voucher 발송 통계 — 담당 셀러 단위.
+// ── GET /stats/kt-alpha ───────────────────────────────────────
+app.get('/stats/kt-alpha', async (c) => {
+  await ensureAgencyTables(c.env.DB)
+  const { id: agencyId } = c.get('agency') as { id: number }
+  const period = Math.min(365, Math.max(1, Number(c.req.query('days')) || 30))
+  const since = new Date(Date.now() - period * 86400000).toISOString().slice(0, 19).replace('T', ' ')
+
+  const [totals, perSeller, statusMix] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT COUNT(*) as total,
+             SUM(CASE WHEN v.status='sent' THEN 1 ELSE 0 END) as sent,
+             SUM(CASE WHEN v.status='failed' THEN 1 ELSE 0 END) as failed,
+             SUM(CASE WHEN v.status='used' THEN 1 ELSE 0 END) as used,
+             COALESCE(SUM(CASE WHEN v.status='sent' THEN v.total_amount ELSE 0 END), 0) as total_amount,
+             COALESCE(SUM(CASE WHEN v.status='sent' THEN v.withholding_amount ELSE 0 END), 0) as total_withheld
+        FROM voucher_orders v
+        INNER JOIN agency_sellers ag ON ag.seller_id = v.seller_id
+       WHERE ag.agency_id = ? AND v.created_at >= ?
+    `).bind(agencyId, since).first<{
+      total: number; sent: number; failed: number; used: number;
+      total_amount: number; total_withheld: number;
+    }>().catch(() => null),
+    c.env.DB.prepare(`
+      SELECT v.seller_id, s.name as seller_name,
+             COUNT(*) as count,
+             SUM(CASE WHEN v.status='sent' THEN 1 ELSE 0 END) as sent_count,
+             COALESCE(SUM(CASE WHEN v.status='sent' THEN v.total_amount ELSE 0 END), 0) as amount,
+             COALESCE(SUM(CASE WHEN v.status='sent' THEN v.withholding_amount ELSE 0 END), 0) as withheld
+        FROM voucher_orders v
+        INNER JOIN agency_sellers ag ON ag.seller_id = v.seller_id
+        INNER JOIN sellers s ON s.id = v.seller_id
+       WHERE ag.agency_id = ? AND v.created_at >= ?
+       GROUP BY v.seller_id
+       ORDER BY amount DESC
+       LIMIT 50
+    `).bind(agencyId, since).all<{
+      seller_id: number; seller_name: string; count: number; sent_count: number;
+      amount: number; withheld: number;
+    }>().catch(() => ({ results: [] })),
+    c.env.DB.prepare(`
+      SELECT v.status, COUNT(*) as cnt
+        FROM voucher_orders v
+        INNER JOIN agency_sellers ag ON ag.seller_id = v.seller_id
+       WHERE ag.agency_id = ? AND v.created_at >= ?
+       GROUP BY v.status
+    `).bind(agencyId, since).all<{ status: string; cnt: number }>().catch(() => ({ results: [] })),
+  ])
+
+  return c.json({
+    success: true,
+    data: {
+      period_days: period,
+      totals: totals || { total: 0, sent: 0, failed: 0, used: 0, total_amount: 0, total_withheld: 0 },
+      per_seller: perSeller.results || [],
+      status_mix: statusMix.results || [],
+    },
+  })
+})
+
 export { app as agencyStatsRoutes }

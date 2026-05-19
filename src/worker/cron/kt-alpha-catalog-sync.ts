@@ -157,6 +157,23 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
 
     return { synced, deactivated, balance }
   } catch (err) {
-    return { synced: 0, deactivated: 0, balance: null, error: (err as Error).message }
+    // 🛡️ 2026-05-19: sync 실패 → 어드민 알림 (24h 중복 방지).
+    const errMsg = (err as Error).message.slice(0, 200)
+    try {
+      const recent = await env.DB.prepare(
+        `SELECT id FROM admin_dashboard_notifications
+          WHERE type = 'kt_alpha_sync_failed' AND created_at > datetime('now', '-24 hours') LIMIT 1`
+      ).first().catch(() => null)
+      if (!recent) {
+        await env.DB.prepare(
+          `INSERT INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
+           VALUES ('admin', 'kt_alpha_sync_failed', ?, ?, '/admin/kt-alpha', datetime('now'))`
+        ).bind(
+          '⚠️ KT Alpha 카탈로그 sync 실패',
+          `${errMsg} — 어드민 페이지에서 수동 sync 시도 필요`,
+        ).run().catch(() => { /* noop */ })
+      }
+    } catch { /* noop */ }
+    return { synced: 0, deactivated: 0, balance: null, error: errMsg }
   }
 }

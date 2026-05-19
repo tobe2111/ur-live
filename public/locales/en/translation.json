@@ -2661,6 +2661,31 @@
       "empty": "No stays registered",
       "create": "Add Stay",
       "createFirst": "Add First Stay"
+    },
+    "kakaoNotify": {
+      "confirmResend": "[TODO:en] 이미 발송했습니다. 다시 발송하시겠습니까?",
+      "defaultMessage": "[TODO:en] 지금 라이브가 시작됐어요! 같이 봐요 🔴",
+      "sentSuccess": "[TODO:en] ✅ 카카오톡에 메시지가 전송됐어요",
+      "sendFailed": "[TODO:en] 발송 실패",
+      "reauthRequired": "[TODO:en] 카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?",
+      "scopeMissing": "[TODO:en] 카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.",
+      "ariaLabel": "[TODO:en] 카카오 친구에게 라이브 알림",
+      "sending": "[TODO:en] 발송 중…",
+      "sentLabel": "[TODO:en] ✓ 발송됨",
+      "buttonLabel": "[TODO:en] 카카오 친구 알림"
+    },
+    "kpi": {
+      "followers": "[TODO:en] 단골",
+      "followersRecent": "[TODO:en] +{{n}}/7일",
+      "followersNoneRecent": "[TODO:en] 신규 0",
+      "activeGroups": "[TODO:en] 진행 공구",
+      "unitCount": "[TODO:en] 개",
+      "thisMonth": "[TODO:en] 이번 달",
+      "unitWon": "[TODO:en] 원",
+      "disputes": "[TODO:en] 분쟁",
+      "disputesPending": "[TODO:en] 검토 대기",
+      "disputesNone": "[TODO:en] 없음",
+      "realtime": "[TODO:en] 실시간"
     }
   },
   "admin": {
@@ -4366,7 +4391,9 @@
       "seoFallbackTitle": "Live",
       "seoDescription": "Watch Yourdeal live broadcasts and shop in real time",
       "srHeading": "Live broadcast"
-    }
+    },
+    "tapForSound": "[TODO:en] 탭하여 소리 켜기",
+    "reconnecting": "[TODO:en] 방송 데이터 수신 중..."
   },
   "paymentFail": {
     "title": "Payment Failed",

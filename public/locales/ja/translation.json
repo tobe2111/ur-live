@@ -2661,6 +2661,31 @@
       "empty": "登録された宿泊施設がありません",
       "create": "宿泊登録",
       "createFirst": "最初の宿泊登録"
+    },
+    "kakaoNotify": {
+      "confirmResend": "[TODO:ja] 이미 발송했습니다. 다시 발송하시겠습니까?",
+      "defaultMessage": "[TODO:ja] 지금 라이브가 시작됐어요! 같이 봐요 🔴",
+      "sentSuccess": "[TODO:ja] ✅ 카카오톡에 메시지가 전송됐어요",
+      "sendFailed": "[TODO:ja] 발송 실패",
+      "reauthRequired": "[TODO:ja] 카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?",
+      "scopeMissing": "[TODO:ja] 카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.",
+      "ariaLabel": "[TODO:ja] 카카오 친구에게 라이브 알림",
+      "sending": "[TODO:ja] 발송 중…",
+      "sentLabel": "[TODO:ja] ✓ 발송됨",
+      "buttonLabel": "[TODO:ja] 카카오 친구 알림"
+    },
+    "kpi": {
+      "followers": "[TODO:ja] 단골",
+      "followersRecent": "[TODO:ja] +{{n}}/7일",
+      "followersNoneRecent": "[TODO:ja] 신규 0",
+      "activeGroups": "[TODO:ja] 진행 공구",
+      "unitCount": "[TODO:ja] 개",
+      "thisMonth": "[TODO:ja] 이번 달",
+      "unitWon": "[TODO:ja] 원",
+      "disputes": "[TODO:ja] 분쟁",
+      "disputesPending": "[TODO:ja] 검토 대기",
+      "disputesNone": "[TODO:ja] 없음",
+      "realtime": "[TODO:ja] 실시간"
     }
   },
   "admin": {
@@ -4366,7 +4391,9 @@
       "seoFallbackTitle": "ライブ",
       "seoDescription": "ユアディールのライブを視聴してリアルタイムでショッピング",
       "srHeading": "ライブ配信"
-    }
+    },
+    "tapForSound": "[TODO:ja] 탭하여 소리 켜기",
+    "reconnecting": "[TODO:ja] 방송 데이터 수신 중..."
   },
   "paymentFail": {
     "title": "決済失敗",

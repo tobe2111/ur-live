@@ -2661,6 +2661,31 @@
       "empty": "尚未登记住宿",
       "create": "登记住宿",
       "createFirst": "登记首个住宿"
+    },
+    "kakaoNotify": {
+      "confirmResend": "[TODO:zh] 이미 발송했습니다. 다시 발송하시겠습니까?",
+      "defaultMessage": "[TODO:zh] 지금 라이브가 시작됐어요! 같이 봐요 🔴",
+      "sentSuccess": "[TODO:zh] ✅ 카카오톡에 메시지가 전송됐어요",
+      "sendFailed": "[TODO:zh] 발송 실패",
+      "reauthRequired": "[TODO:zh] 카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?",
+      "scopeMissing": "[TODO:zh] 카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.",
+      "ariaLabel": "[TODO:zh] 카카오 친구에게 라이브 알림",
+      "sending": "[TODO:zh] 발송 중…",
+      "sentLabel": "[TODO:zh] ✓ 발송됨",
+      "buttonLabel": "[TODO:zh] 카카오 친구 알림"
+    },
+    "kpi": {
+      "followers": "[TODO:zh] 단골",
+      "followersRecent": "[TODO:zh] +{{n}}/7일",
+      "followersNoneRecent": "[TODO:zh] 신규 0",
+      "activeGroups": "[TODO:zh] 진행 공구",
+      "unitCount": "[TODO:zh] 개",
+      "thisMonth": "[TODO:zh] 이번 달",
+      "unitWon": "[TODO:zh] 원",
+      "disputes": "[TODO:zh] 분쟁",
+      "disputesPending": "[TODO:zh] 검토 대기",
+      "disputesNone": "[TODO:zh] 없음",
+      "realtime": "[TODO:zh] 실시간"
     }
   },
   "admin": {
@@ -4366,7 +4391,9 @@
       "seoFallbackTitle": "直播",
       "seoDescription": "观看 Yourdeal 直播,实时购物",
       "srHeading": "直播"
-    }
+    },
+    "tapForSound": "[TODO:zh] 탭하여 소리 켜기",
+    "reconnecting": "[TODO:zh] 방송 데이터 수신 중..."
   },
   "paymentFail": {
     "title": "支付失败",

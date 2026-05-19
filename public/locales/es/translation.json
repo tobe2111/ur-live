@@ -1993,6 +1993,31 @@
       "empty": "No hay alojamientos",
       "create": "Añadir Alojamiento",
       "createFirst": "Añadir Primer Alojamiento"
+    },
+    "kakaoNotify": {
+      "confirmResend": "[TODO:es] 이미 발송했습니다. 다시 발송하시겠습니까?",
+      "defaultMessage": "[TODO:es] 지금 라이브가 시작됐어요! 같이 봐요 🔴",
+      "sentSuccess": "[TODO:es] ✅ 카카오톡에 메시지가 전송됐어요",
+      "sendFailed": "[TODO:es] 발송 실패",
+      "reauthRequired": "[TODO:es] 카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?",
+      "scopeMissing": "[TODO:es] 카카오 메시지 권한이 필요합니다. 설정 → 카카오 다시 연결.",
+      "ariaLabel": "[TODO:es] 카카오 친구에게 라이브 알림",
+      "sending": "[TODO:es] 발송 중…",
+      "sentLabel": "[TODO:es] ✓ 발송됨",
+      "buttonLabel": "[TODO:es] 카카오 친구 알림"
+    },
+    "kpi": {
+      "followers": "[TODO:es] 단골",
+      "followersRecent": "[TODO:es] +{{n}}/7일",
+      "followersNoneRecent": "[TODO:es] 신규 0",
+      "activeGroups": "[TODO:es] 진행 공구",
+      "unitCount": "[TODO:es] 개",
+      "thisMonth": "[TODO:es] 이번 달",
+      "unitWon": "[TODO:es] 원",
+      "disputes": "[TODO:es] 분쟁",
+      "disputesPending": "[TODO:es] 검토 대기",
+      "disputesNone": "[TODO:es] 없음",
+      "realtime": "[TODO:es] 실시간"
     }
   },
   "admin": {
@@ -4366,7 +4391,9 @@
       "seoFallbackTitle": "En vivo",
       "seoDescription": "Mira las transmisiones en vivo de Yourdeal y compra en tiempo real",
       "srHeading": "Transmisión en vivo"
-    }
+    },
+    "tapForSound": "[TODO:es] 탭하여 소리 켜기",
+    "reconnecting": "[TODO:es] 방송 데이터 수신 중..."
   },
   "paymentFail": {
     "title": "Pago fallido",
