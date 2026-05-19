@@ -164,7 +164,6 @@ adminKtAlphaRoutes.get('/kt-alpha/debug', cors(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }
 })
-})
 
 // 4. POST /balance — 비즈머니 잔액 즉시 갱신.
 adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
