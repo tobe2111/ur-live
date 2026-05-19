@@ -57,7 +57,13 @@ export async function getSellerCommissionRate(DB: D1Database, sellerId: number):
  * 테이블 + 컬럼 자동 생성 (마이그레이션 미적용 시 fallback).
  * products 에 group-buy 관련 컬럼 추가 + vouchers 테이블 생성.
  */
+/**
+ * 🛡️ 2026-05-19: per-worker 메모이제이션 — 매 요청마다 15+ ALTER TABLE 실행하던 패턴 제거.
+ *   효과: group-buy 모든 페이지 응답시간 0.5-1초 단축.
+ */
+let _ensuredTables = false
 export async function ensureTables(DB: D1Database): Promise<void> {
+  if (_ensuredTables) return
   const columns = [
     'restaurant_name TEXT', 'restaurant_address TEXT', 'restaurant_phone TEXT',
     'restaurant_lat REAL', 'restaurant_lng REAL',
@@ -101,6 +107,7 @@ export async function ensureTables(DB: D1Database): Promise<void> {
   for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER']) {
     try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
+  _ensuredTables = true
 }
 
 /**

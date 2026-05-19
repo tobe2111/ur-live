@@ -172,7 +172,7 @@ productsRoutes.get('/', cors(), async (c) => {
     
     const pagination = {
       page: c.req.query('page') ? Number(c.req.query('page')) : 1,
-      limit: Math.min(c.req.query('limit') ? Number(c.req.query('limit')) : 20, 100),
+      limit: Math.min(c.req.query('limit') ? Number(c.req.query('limit')) : 20, 500),
     };
 
     // 🚀 KV cache (60s) — list 변동은 셀러 신규 등록/삭제 시 invalidate (invalidateProductCache)

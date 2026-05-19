@@ -177,9 +177,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const loadProducts = useCallback(() => {
     setLoading(true)
     setError(null)
+    // 🛡️ 2026-05-19: limit 100→500 (KT Alpha 2260개 등록 대응). 백엔드 max=500.
     const url = category === 'all'
-      ? '/api/products?limit=100'
-      : `/api/products?category=${encodeURIComponent(category)}&limit=100`
+      ? '/api/products?limit=500'
+      : `/api/products?category=${encodeURIComponent(category)}&limit=500`
     api.get(url)
       .then(r => {
         if (r.data.success) {
