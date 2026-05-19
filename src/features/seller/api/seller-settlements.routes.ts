@@ -350,9 +350,9 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
       return c.json({ success: false, error: '판매 중지된 상품' }, 400)
     }
 
-    // 2. markup_pct 가져오기 + 최종 차감액 계산.
+    // 2. markup_pct + 운영 설정 + 카드/배너 ID 가져오기.
     const settings = await c.env.DB.prepare(
-      "SELECT key, value FROM platform_settings WHERE key IN ('kt_alpha_markup_pct', 'kt_alpha_user_id', 'kt_alpha_callback_no')"
+      "SELECT key, value FROM platform_settings WHERE key IN ('kt_alpha_markup_pct', 'kt_alpha_user_id', 'kt_alpha_callback_no', 'kt_alpha_template_id', 'kt_alpha_banner_id')"
     ).all<{ key: string; value: string }>().catch(() => ({ results: [] }))
     const settingsMap: Record<string, string> = {}
     for (const r of (settings.results || [])) settingsMap[r.key] = r.value
@@ -360,6 +360,8 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     const markupPct = Number(settingsMap.kt_alpha_markup_pct) || 5
     const ktUserId = settingsMap.kt_alpha_user_id
     const callbackNo = settingsMap.kt_alpha_callback_no
+    const templateId = settingsMap.kt_alpha_template_id || undefined
+    const bannerId = settingsMap.kt_alpha_banner_id || undefined
     if (!ktUserId || !callbackNo) {
       return c.json({ success: false, error: 'KT Alpha 운영자 설정 미완료 — 어드민 문의' }, 503)
     }
@@ -452,6 +454,8 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
           userId: ktUserId,
           orderNo: `vr-${voucherOrderId}-${i + 1}`,
           gubun: 'N',
+          templateId,
+          bannerId,
         })
         lastOrderNo = result.orderNo
       }

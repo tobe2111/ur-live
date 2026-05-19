@@ -21,6 +21,7 @@ adminKtAlphaRoutes.get('/kt-alpha/settings', cors(), async (c) => {
     const keys = [
       'kt_alpha_api_enabled', 'kt_alpha_dev_mode', 'kt_alpha_markup_pct',
       'kt_alpha_user_id', 'kt_alpha_callback_no',
+      'kt_alpha_template_id', 'kt_alpha_banner_id',
       'kt_alpha_biz_money_balance', 'kt_alpha_biz_money_check_at',
       'kt_alpha_last_sync_at', 'kt_alpha_last_sync_count',
     ]
@@ -69,6 +70,7 @@ adminKtAlphaRoutes.patch('/kt-alpha/settings', cors(), async (c) => {
     const allowed = new Set([
       'kt_alpha_api_enabled', 'kt_alpha_dev_mode',
       'kt_alpha_markup_pct', 'kt_alpha_user_id', 'kt_alpha_callback_no',
+      'kt_alpha_template_id', 'kt_alpha_banner_id',
     ])
 
     let updated = 0

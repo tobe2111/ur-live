@@ -62,6 +62,8 @@ export default function AdminKtAlphaPage() {
     callback_no: '',
     dev_mode: '1',
     api_enabled: '0',
+    template_id: '',
+    banner_id: '',
   })
 
   function h() { return { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -89,6 +91,8 @@ export default function AdminKtAlphaPage() {
           callback_no: s.data.data.settings.kt_alpha_callback_no || '',
           dev_mode: s.data.data.settings.kt_alpha_dev_mode || '1',
           api_enabled: s.data.data.settings.kt_alpha_api_enabled || '0',
+          template_id: s.data.data.settings.kt_alpha_template_id || '',
+          banner_id: s.data.data.settings.kt_alpha_banner_id || '',
         })
       }
       if (c.data?.success) setCatalog(c.data.data || [])
@@ -111,6 +115,8 @@ export default function AdminKtAlphaPage() {
         kt_alpha_callback_no: edit.callback_no,
         kt_alpha_dev_mode: edit.dev_mode,
         kt_alpha_api_enabled: edit.api_enabled,
+        kt_alpha_template_id: edit.template_id,
+        kt_alpha_banner_id: edit.banner_id,
       }, { headers: h() })
       if (r.data?.success) { toast.success('설정 저장됨'); loadAll() }
     } catch (err: unknown) {
@@ -282,6 +288,26 @@ export default function AdminKtAlphaPage() {
                     <option value="0">비활성 (셀러 voucher 옵션 숨김)</option>
                     <option value="1">활성 (셀러가 voucher 선택 가능)</option>
                   </select>
+                </div>
+
+                {/* template_id (카드 ID) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">MMS 카드 ID (template_id)</label>
+                  <input type="text" value={edit.template_id}
+                    onChange={(e) => setEdit({ ...edit, template_id: e.target.value })}
+                    placeholder="예: 202507100302725"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono" />
+                  <p className="text-[10px] text-gray-500 mt-1">KT Alpha 콘솔에서 발급받은 카드 ID (브랜드 디자인)</p>
+                </div>
+
+                {/* banner_id (배너 ID) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">MMS 배너 ID (banner_id)</label>
+                  <input type="text" value={edit.banner_id}
+                    onChange={(e) => setEdit({ ...edit, banner_id: e.target.value })}
+                    placeholder="예: 202507100352984"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono" />
+                  <p className="text-[10px] text-gray-500 mt-1">KT Alpha 콘솔에서 발급받은 배너 ID (브랜드 이미지)</p>
                 </div>
               </div>
 
