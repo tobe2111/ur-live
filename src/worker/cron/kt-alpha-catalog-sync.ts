@@ -129,13 +129,13 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
         //   중복 방지: 24시간 내 같은 type 발송 안 함.
         if (balance < 100_000) {
           const recentAlert = await env.DB.prepare(
-            `SELECT id FROM admin_dashboard_notifications
+            `SELECT id FROM dashboard_notifications
               WHERE type = 'kt_alpha_balance_low' AND created_at > datetime('now', '-24 hours') LIMIT 1`
           ).first().catch(() => null)
           if (!recentAlert) {
             await env.DB.prepare(
-              `INSERT INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
-               VALUES ('admin', 'kt_alpha_balance_low', ?, ?, '/admin/kt-alpha', datetime('now'))`
+              `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+               VALUES ('admin', NULL, 'kt_alpha_balance_low', ?, ?, '/admin/kt-alpha', datetime('now'))`
             ).bind(
               `⚠️ KT Alpha 비즈머니 잔액 부족 ₩${balance.toLocaleString()}`,
               `상품권 발송 차단 위험 — 기프티쇼 콘솔에서 충전 필요${balance === 0 ? ' (현재 0원, 즉시 차단됨)' : ''}`,
@@ -161,13 +161,13 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
     const errMsg = (err as Error).message.slice(0, 200)
     try {
       const recent = await env.DB.prepare(
-        `SELECT id FROM admin_dashboard_notifications
+        `SELECT id FROM dashboard_notifications
           WHERE type = 'kt_alpha_sync_failed' AND created_at > datetime('now', '-24 hours') LIMIT 1`
       ).first().catch(() => null)
       if (!recent) {
         await env.DB.prepare(
-          `INSERT INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
-           VALUES ('admin', 'kt_alpha_sync_failed', ?, ?, '/admin/kt-alpha', datetime('now'))`
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', NULL, 'kt_alpha_sync_failed', ?, ?, '/admin/kt-alpha', datetime('now'))`
         ).bind(
           '⚠️ KT Alpha 카탈로그 sync 실패',
           `${errMsg} — 어드민 페이지에서 수동 sync 시도 필요`,

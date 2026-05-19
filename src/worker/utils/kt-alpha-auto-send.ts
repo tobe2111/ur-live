@@ -124,13 +124,13 @@ export async function autoSendKtAlphaVouchersForOrders(
           totalFailed++
           // 어드민 알림 — 1시간 중복 방지.
           const recent = await env.DB.prepare(
-            `SELECT id FROM admin_dashboard_notifications
+            `SELECT id FROM dashboard_notifications
               WHERE type = 'kt_alpha_send_failed' AND created_at > datetime('now', '-1 hours') LIMIT 1`
           ).first().catch(() => null)
           if (!recent) {
             await env.DB.prepare(
-              `INSERT INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
-               VALUES ('admin', 'kt_alpha_send_failed', ?, ?, '/admin/kt-alpha', datetime('now'))`
+              `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+               VALUES ('admin', NULL, 'kt_alpha_send_failed', ?, ?, '/admin/kt-alpha', datetime('now'))`
             ).bind(
               '⚠️ KT Alpha 자동 발송 실패',
               `주문 #${oid} · ${item.product_name} · ${errMsg.slice(0, 100)}`,

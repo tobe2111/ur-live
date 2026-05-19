@@ -7,8 +7,8 @@
 -- 본 migration 은 INDEX 추가 + 데이터 정합성 검증만 수행.
 
 -- voucher_orders.status 가 화이트리스트 외 값이면 어드민 알림 (수동 처리).
-INSERT OR IGNORE INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
-SELECT 'admin', 'voucher_orders_invalid_status',
+INSERT OR IGNORE INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+SELECT 'admin', NULL, 'voucher_orders_invalid_status',
        '⚠️ voucher_orders 비정상 status 발견',
        'status = ' || status || ' (id: ' || id || ') — 정상값: pending/processing/sent/failed/cancelled/used',
        '/admin/kt-alpha',
@@ -18,8 +18,8 @@ SELECT 'admin', 'voucher_orders_invalid_status',
  LIMIT 5;
 
 -- stay_bookings.status 화이트리스트 검증.
-INSERT OR IGNORE INTO admin_dashboard_notifications (role, type, title, message, link, created_at)
-SELECT 'admin', 'stay_bookings_invalid_status',
+INSERT OR IGNORE INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+SELECT 'admin', NULL, 'stay_bookings_invalid_status',
        '⚠️ stay_bookings 비정상 status 발견',
        'status = ' || status || ' (id: ' || id || ') — 정상값: pending/confirmed/checked_in/checked_out/cancelled/no_show',
        '/admin/stays',
