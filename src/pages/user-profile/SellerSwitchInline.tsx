@@ -14,6 +14,8 @@ interface SellerStatus {
   status?: string
   seller_type?: string
   business_name?: string
+  // 🛡️ 2026-05-19: Kakao 로그인 유저는 "셀러로 활동하기" 버튼 숨김 (별도 셀러 가입 경로 사용).
+  is_kakao_user?: boolean
 }
 
 export default function SellerSwitchInline() {
@@ -60,6 +62,9 @@ export default function SellerSwitchInline() {
   }
 
   if (loading) return null
+
+  // 🛡️ 2026-05-19: Kakao 유저는 has_seller=false 여도 "셀러로 활동하기" 버튼 숨김 (UX 단순화).
+  if (status?.is_kakao_user && !status?.has_seller) return null
 
   if (status?.has_seller && status.status === 'pending') {
     return (

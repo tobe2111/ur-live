@@ -49,7 +49,11 @@ const CHARGE_AMOUNTS = [
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
 // user_points는 shared helper 사용; point_transactions는 이 파일에만 필요한
 // CHECK 제약(type IN ('charge','donate','refund','ad_reward'))이 있어 로컬 유지.
+// 🛡️ 2026-05-19: ensureTables 가 매 요청마다 CREATE TABLE 실행 → 잔액 조회 느림.
+//   per-worker 메모이제이션: 한 번 호출 후 skip.
+let _ensuredTables = false
 async function ensureTables(DB: D1Database) {
+  if (_ensuredTables) return
   await ensureUserPointsTable(DB);
   try {
     await DB.prepare(`
@@ -70,6 +74,7 @@ async function ensureTables(DB: D1Database) {
       )
     `).run();
   } catch { /* 이미 존재 */ }
+  _ensuredTables = true
 }
 
 // ── GET /api/points/balance ──────────────────────────────────────────

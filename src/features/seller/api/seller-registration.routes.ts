@@ -395,9 +395,17 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
       } catch { /* 이메일 매칭 실패 — 정상 has_seller:false 흐름 */ }
     }
 
+    // 🛡️ 2026-05-19: is_kakao_user flag — Kakao 로그인 유저의 경우 "셀러로 활동하기" 버튼 숨김 용도.
+    let isKakaoUser = false
+    try {
+      const userRow = await db.prepare('SELECT kakao_id FROM users WHERE id = ?')
+        .bind(sessionUser.userId).first<{ kakao_id: string | null }>()
+      isKakaoUser = Boolean(userRow?.kakao_id)
+    } catch { /* noop */ }
+
     if (!seller) {
       // 백워드 호환: `has_seller`(구) + `linked`(신) 둘 다 제공
-      return c.json({ success: true, data: { has_seller: false, linked: false } });
+      return c.json({ success: true, data: { has_seller: false, linked: false, is_kakao_user: isKakaoUser } });
     }
 
     return c.json({
