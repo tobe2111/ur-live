@@ -37,6 +37,64 @@
 
 const KT_ALPHA_BASE = 'https://bizapi.giftishow.com/bizApi'
 
+/**
+ * KT Alpha 에러 코드 매핑 — 사용자에게 보여줄 한국어 메시지.
+ *   기프티쇼 API 문서 (v1.04) 기준.
+ */
+export const KT_ALPHA_ERRORS: Record<string, string> = {
+  // HTTP-style
+  '200': 'Success',
+  '204': '요청 처리됐으나 결과 없음',
+  '400': '요청 형식이 틀렸습니다',
+  '401': '권한이 없습니다',
+  '403': '해당 리소스 접근 거부',
+  '405': '허용되지 않는 메서드',
+  '414': '요청 URI 가 너무 깁니다',
+  '500': 'KT Alpha 서버 내부 오류',
+  '503': 'KT Alpha 서비스 일시 중단',
+  // Common
+  '000': '정상 처리',
+  '0000': '정상 처리',
+  'ERR0208': '상품 주문 관련 오류',
+  'ERR0209': '상품 주문 메시지 관련 오류',
+  'ERR0212': 'MMS 재발송 대상 없음',
+  'ERR0213': 'MMS 재발송 대상 없음',
+  'ERR0217': 'MMS 번호 변경 불가',
+  'ERR0300': '회원 정보 조회 실패',
+  'ERR0301': 'API 가입 정보 없음',
+  'ERR0800': '비즈포인트 조회 오류',
+  'ERR0803': '비즈포인트 차감 오류',
+  'E0002': 'API 코드가 존재하지 않습니다',
+  'E0007': 'API 코드가 일치하지 않습니다',
+  'E0008': '유효한 인증 키가 아닙니다',
+  'E0009': '유효한 인증 토큰이 아닙니다',
+  'E0010': '비즈머니 잔액이 부족합니다',  // 🚨 우리 측 충전 필요
+  'E0011': '인증키가 없습니다',
+  'E0012': '토큰키가 없습니다',
+  'E0013': '테스트 YN 값이 없습니다',
+  'E9999': '알 수 없는 오류',
+  // Coupon
+  'COUPON.0001': '유효한 제목이 아닙니다',
+  'COUPON.0002': '유효한 제목이 아닙니다',
+  'COUPON.0003': '거래 아이디 (tr_id) 길이 초과',
+  'COUPON.0004': '유효한 거래 아이디가 아닙니다',
+  'COUPON.0005': '전화번호 (phone_no) 가 없습니다',
+  'COUPON.0006': '취소 불가능한 쿠폰입니다',
+  'COUPON.0007': '교환된 상품 — 취소 불가',
+  'COUPON.0008': '이미 취소된 쿠폰입니다',
+  'COUPON.0009': '쿠폰 재전송 실패',
+  'COUPON.0010': '유효한 발신번호가 없습니다',
+  'COUPON.0011': '유효한 상품 ID 가 없습니다',
+  'COUPON.0012': '예약일자가 올바르지 않습니다 (YYYYMMDD)',
+  'COUPON.0013': '예약시간이 올바르지 않습니다',
+  'COUPON.0014': '예약은 5분 후 ~ 90일까지 가능',
+  'COUPON.0015': '중복된 거래 아이디 (tr_id)',
+}
+
+export function translateKtAlphaError(code: string, fallback?: string): string {
+  return KT_ALPHA_ERRORS[code] || fallback || `KT Alpha 오류 (${code})`
+}
+
 export interface KtAlphaEnv {
   KT_ALPHA_AUTH_CODE?: string
   KT_ALPHA_TOKEN_KEY?: string   // Base64 16바이트 (AES-128 key)
@@ -360,6 +418,140 @@ export async function cancelCoupon(
   return {
     code: data.code,
     message: data.message || '',
+  }
+}
+
+/**
+ * 0203: 쿠폰 재전송.
+ *   - tr_id + user_id 필요.
+ *   - sms_flag: 'Y'=SMS / 'N'=MMS (default N).
+ *   - dev_yn='N' 강제.
+ */
+export async function resendCoupon(
+  env: KtAlphaEnv,
+  params: { trId: string; userId: string; smsFlag?: 'Y' | 'N' },
+): Promise<{ code: string; message: string }> {
+  const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
+  const data = await callKtAlpha<unknown>(forceProdEnv, '0203', '/resend', {
+    tr_id: params.trId,
+    user_id: params.userId,
+    sms_flag: params.smsFlag || 'N',
+  })
+  return { code: data.code, message: data.message || '' }
+}
+
+/**
+ * 0204: 쿠폰 발송 요청 — 가장 중요한 API.
+ *
+ *   결제 완료 → 사용자 핸드폰으로 MMS 쿠폰 발송 (또는 PIN 번호 수신).
+ *
+ *   gubun:
+ *     - 'N' (default) → MMS 발송, 응답에 orderNo
+ *     - 'Y' → PIN 번호 수신 (자체 발송 채널 사용 시), 응답에 pinNo + orderNo
+ *
+ *   tr_id: Unique 거래 ID — 우리가 생성 (예: 'ur-stay-{bookingId}-{timestamp}').
+ *   user_id: KT Alpha 회원 ID — 우리 사업자 계정 ID.
+ *
+ *   주의: dev_yn='N' 강제. 개발 모드 발송 X.
+ *   응답이 nested: result.result.{orderNo, pinNo} 패턴.
+ */
+export async function sendCoupon(
+  env: KtAlphaEnv,
+  params: {
+    goodsCode: string
+    phoneNo: string         // '-' 제외 (예: '01012345678')
+    callbackNo: string      // '-' 제외 발신번호
+    mmsTitle: string        // MMS 제목
+    mmsMsg: string          // MMS 내용
+    trId: string            // Unique 거래 ID
+    userId: string          // KT Alpha 회원 ID
+    orderNo?: string        // 우리 측 주문 번호 (옵션)
+    revInfoYn?: 'Y' | 'N'   // 예약 발송 여부
+    revInfoDate?: string    // 예약일자 YYYYMMDD
+    revInfoTime?: string    // 예약시간 HHmm
+    templateId?: string     // 카드 ID (테스트: 202006010057417)
+    bannerId?: string       // 배너 ID (테스트: 202006010058067)
+    gubun?: 'N' | 'Y'       // 'N'=MMS / 'Y'=PIN수신
+  },
+): Promise<{ code: string; message: string; orderNo?: string; pinNo?: string }> {
+  // 입력 검증.
+  const phone = params.phoneNo.replace(/\D/g, '')
+  if (!/^01\d{8,9}$/.test(phone)) {
+    throw new Error(`phoneNo 형식 오류: ${params.phoneNo}`)
+  }
+  const callback = params.callbackNo.replace(/\D/g, '')
+  if (callback.length < 8) {
+    throw new Error(`callbackNo 형식 오류: ${params.callbackNo}`)
+  }
+
+  const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
+  const body: Record<string, string | number> = {
+    goods_code: params.goodsCode,
+    mms_title: params.mmsTitle.slice(0, 60),  // KT Alpha 표준 60자 제한
+    mms_msg: params.mmsMsg.slice(0, 2000),
+    callback_no: callback,
+    phone_no: phone,
+    tr_id: params.trId,
+    user_id: params.userId,
+    gubun: params.gubun || 'N',
+  }
+  if (params.orderNo) body.order_no = params.orderNo
+  if (params.revInfoYn) body.rev_info_yn = params.revInfoYn
+  if (params.revInfoDate) body.rev_info_date = params.revInfoDate
+  if (params.revInfoTime) body.rev_info_time = params.revInfoTime
+  if (params.templateId) body.template_id = params.templateId
+  if (params.bannerId) body.banner_id = params.bannerId
+
+  // 응답 nested 처리.
+  const data = await callKtAlpha<{
+    code?: string
+    message?: string
+    result?: { orderNo?: string; pinNo?: string }
+  }>(forceProdEnv, '0204', '/send', body)
+
+  // KT Alpha 의 nested result 패턴 — 외부 code='0000' + 내부 code 도 확인.
+  const inner = data.result
+  if (inner?.code && inner.code !== '0000') {
+    throw new Error(`KT Alpha 0204 inner error ${inner.code}: ${inner.message || 'unknown'}`)
+  }
+  const innerResult = inner?.result || {}
+  return {
+    code: data.code,
+    message: data.message || '',
+    orderNo: innerResult.orderNo,
+    pinNo: innerResult.pinNo,
+  }
+}
+
+// ============================================================================
+// 03xx — 계정/비즈머니 그룹
+// ============================================================================
+
+/**
+ * 0301: 비즈머니 잔액 조회.
+ *   - user_id (회원 아이디) 필요.
+ *   - dev_yn='N' 강제.
+ *   - 응답에 balance (string, 단위 KRW).
+ *
+ *   호출 시점:
+ *     - 어드민 대시보드 자동 fetch (잔액 부족 모니터링)
+ *     - 발송 직전 잔액 체크 (옵션)
+ *     - 잔액 임계 (예: 50만 원 이하) cron 으로 알림
+ */
+export async function getBizMoneyBalance(
+  env: KtAlphaEnv,
+  userId: string,
+): Promise<{ code: string; message: string; balance: number }> {
+  const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
+  const data = await callKtAlpha<unknown>(forceProdEnv, '0301', '/bizmoney', {
+    user_id: userId,
+  })
+  // KT Alpha 가 result wrapper 없이 balance 를 root 에 둠 — 다른 구조.
+  const raw = data as unknown as { code?: string; message?: string; balance?: string | number }
+  return {
+    code: raw.code || '0000',
+    message: raw.message || '',
+    balance: Number(raw.balance) || 0,
   }
 }
 
