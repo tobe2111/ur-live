@@ -47,20 +47,90 @@ interface IdRow { id: number; status?: string }
 adminProductsRoutes.get('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    // 페이지네이션 — 기본 100/페이지, 최대 500 (기존 1000 풀로딩 → 80% D1 reads 절감)
+    // 🛡️ 2026-05-19: Coupang WING 스타일 — 검색/필터/정렬/페이지네이션.
     const page = Math.max(1, Number(c.req.query('page') || 1));
     const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') || 100)));
     const offset = (page - 1) * limit;
+    const q = String(c.req.query('q') || '').trim();
+    const category = String(c.req.query('category') || '').trim();
+    const status = String(c.req.query('status') || 'all'); // all | active | inactive
+    const source = String(c.req.query('source') || 'all'); // all | kt_alpha | regular
+    const minPrice = Number(c.req.query('min_price') || 0);
+    const maxPrice = Number(c.req.query('max_price') || 0);
+    const sort = String(c.req.query('sort') || 'created');  // created | price | sold | name
+    const order = String(c.req.query('order') || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (q) { where.push('(p.name LIKE ? OR p.description LIKE ?)'); params.push(`%${q}%`, `%${q}%`); }
+    if (category) { where.push('p.category = ?'); params.push(category); }
+    if (status === 'active') where.push('p.is_active = 1');
+    else if (status === 'inactive') where.push('p.is_active = 0');
+    if (source === 'kt_alpha') where.push('p.kt_alpha_gift_code IS NOT NULL');
+    else if (source === 'regular') where.push('p.kt_alpha_gift_code IS NULL');
+    if (Number.isFinite(minPrice) && minPrice > 0) { where.push('p.price >= ?'); params.push(minPrice); }
+    if (Number.isFinite(maxPrice) && maxPrice > 0) { where.push('p.price <= ?'); params.push(maxPrice); }
+
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const sortCol: Record<string, string> = {
+      created: 'p.created_at', price: 'p.price', sold: 'p.sold_count', name: 'p.name',
+    };
+    const orderBy = `${sortCol[sort] || 'p.created_at'} ${order}`;
+
+    // 전체 개수 (페이지네이션용).
+    const totalRow = await DB.prepare(`SELECT COUNT(*) as cnt FROM products p ${whereClause}`)
+      .bind(...params).first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
+    const total = totalRow?.cnt ?? 0;
+
+    // 상태별 카운트 (탭 표시용 — 필터 q/category 무시, source 만 반영).
+    const tabWhere: string[] = [];
+    const tabParams: unknown[] = [];
+    if (source === 'kt_alpha') tabWhere.push('kt_alpha_gift_code IS NOT NULL');
+    else if (source === 'regular') tabWhere.push('kt_alpha_gift_code IS NULL');
+    const tabClause = tabWhere.length ? `WHERE ${tabWhere.join(' AND ')}` : '';
+    const tabCounts = await DB.prepare(
+      `SELECT
+         COUNT(*) as all_count,
+         SUM(CASE WHEN is_active=1 THEN 1 ELSE 0 END) as active_count,
+         SUM(CASE WHEN is_active=0 THEN 1 ELSE 0 END) as inactive_count,
+         SUM(CASE WHEN stock=0 AND is_active=1 THEN 1 ELSE 0 END) as out_of_stock,
+         SUM(CASE WHEN kt_alpha_gift_code IS NOT NULL THEN 1 ELSE 0 END) as kt_alpha_count
+       FROM products ${tabClause}`
+    ).bind(...tabParams).first<{
+      all_count: number; active_count: number; inactive_count: number; out_of_stock: number; kt_alpha_count: number;
+    }>().catch(() => null);
+
+    // 카테고리별 카운트 (사이드바용).
+    const catCounts = await DB.prepare(
+      `SELECT COALESCE(category, '(미분류)') as category, COUNT(*) as cnt
+         FROM products
+        WHERE is_active = 1 OR is_active = 0
+        GROUP BY category
+        ORDER BY cnt DESC LIMIT 50`
+    ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] }));
+
     const products = await executeQuery<ProductRow>(DB, `
       SELECT p.id, p.name, p.description, p.price, p.stock,
              p.image_url, p.is_active, p.product_type, p.category,
+             p.sold_count, p.kt_alpha_gift_code, p.deal_only,
              COALESCE(p.supply_price, 0) AS supply_price,
              COALESCE(p.is_supply_product, 0) AS is_supply_product,
              p.seller_id, p.created_at, s.business_name as seller_name
       FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
-      ORDER BY p.created_at DESC LIMIT ? OFFSET ?
-    `, [limit, offset]);
-    return c.json({ success: true, data: products, page, limit });
+      ${whereClause}
+      ORDER BY ${orderBy} LIMIT ? OFFSET ?
+    `, [...params, limit, offset]);
+
+    return c.json({
+      success: true,
+      data: products,
+      page, limit, total,
+      total_pages: Math.ceil(total / limit),
+      tabs: tabCounts || { all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 },
+      categories: catCounts.results || [],
+      filters: { q, category, status, source, sort, order, min_price: minPrice, max_price: maxPrice },
+    });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
