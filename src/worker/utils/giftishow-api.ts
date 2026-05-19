@@ -202,11 +202,17 @@ async function encryptAuthToken(authCode: string, tokenKeyBase64: string): Promi
 }
 
 async function resolveAuthToken(env: KtAlphaEnv): Promise<string> {
+  // 🛡️ 2026-05-19: PDF 사양 확인 결과 (v1.04 페이지 9):
+  //   "custom_auth_token : 사이트 내 발급받은 Token Key (user_id 를 인증키로 암호화 하여 셋팅됨)"
+  //   "기프티쇼 비즈에서 암호화하며, 고객사는 암호화 필요 없음"
+  //
+  //   즉 Token Key 자체가 이미 암호화된 값 → 그대로 전송.
+  //   우리가 AES 암호화 시도하면 안 됨.
+  //
+  //   우선순위: KT_ALPHA_AUTH_TOKEN (명시 override) → KT_ALPHA_TOKEN_KEY (KT Alpha 가 준 Token Key)
   if (env.KT_ALPHA_AUTH_TOKEN) return env.KT_ALPHA_AUTH_TOKEN
-  if (!env.KT_ALPHA_AUTH_CODE || !env.KT_ALPHA_TOKEN_KEY) {
-    throw new Error('KT_ALPHA_AUTH_CODE + KT_ALPHA_TOKEN_KEY (또는 KT_ALPHA_AUTH_TOKEN) 필요')
-  }
-  return encryptAuthToken(env.KT_ALPHA_AUTH_CODE, env.KT_ALPHA_TOKEN_KEY)
+  if (env.KT_ALPHA_TOKEN_KEY) return env.KT_ALPHA_TOKEN_KEY
+  throw new Error('KT_ALPHA_TOKEN_KEY (또는 KT_ALPHA_AUTH_TOKEN) 미설정')
 }
 
 /**

@@ -129,6 +129,9 @@ adminKtAlphaRoutes.get('/kt-alpha/debug', cors(), async (c) => {
     const devMode = env.KT_ALPHA_DEV_MODE || ''
     // 실제 사용될 dev_yn 값 (giftishow-api.ts:234 와 동일 로직)
     const devYn = devMode === 'N' ? 'N' : 'Y'
+    // 🛡️ 2026-05-19: 실제 KT Alpha 에 전송될 custom_auth_token 값 (변경 후 PDF 사양 반영).
+    //   PDF v1.04 p.9: "custom_auth_token = Token Key (이미 암호화됨, 고객사는 암호화 필요 없음)"
+    const customAuthToken = authToken || tokenKey || ''
 
     return c.json({
       success: true,
@@ -158,6 +161,13 @@ adminKtAlphaRoutes.get('/kt-alpha/debug', cors(), async (c) => {
           devMode === 'N' ? '상용 모드 (REAL 키 호환)' :
           devMode === '' ? '미설정 → default Y (개발 모드, REAL 키와 호환 안 됨)' :
           `잘못된 값 "${devMode}" → default Y (REAL 키와 호환 안 됨)`,
+        // 실제 custom_auth_token 으로 전송될 값의 메타.
+        custom_auth_token_to_send: {
+          length: customAuthToken.length,
+          prefix4: customAuthToken.slice(0, 4),
+          suffix4: customAuthToken.slice(-4),
+          source: authToken ? 'KT_ALPHA_AUTH_TOKEN (override)' : tokenKey ? 'KT_ALPHA_TOKEN_KEY (default)' : 'NONE',
+        },
       },
     })
   } catch (err) {
