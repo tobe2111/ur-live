@@ -29,6 +29,8 @@ export interface CartItem {
   seller_name?: string
   shipping_fee?: number
   free_shipping_threshold?: number
+  // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시 + 토스 결제 차단.
+  deal_only?: number
 }
 
 /**

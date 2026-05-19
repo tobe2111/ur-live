@@ -27,6 +27,8 @@ interface WishlistItem {
   is_active: number
   seller_name: string
   seller_id: number
+  // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시.
+  deal_only?: number
 }
 
 const WishlistPage: React.FC = () => {
@@ -230,21 +232,24 @@ const WishlistPage: React.FC = () => {
                   </h3>
 
                   <div className="mb-3">
-                    {item.discount_rate > 0 ? (
-                      <>
-                        <p style={{ fontSize: 10, color: tk.tertiary, textDecoration: 'line-through' }}>
-                          {formatNumber(item.original_price)}원
+                    {(() => {
+                      const unit = Number(item.deal_only) === 1 ? ' 딜' : '원'
+                      return item.discount_rate > 0 ? (
+                        <>
+                          <p style={{ fontSize: 10, color: tk.tertiary, textDecoration: 'line-through' }}>
+                            {formatNumber(item.original_price)}{unit}
+                          </p>
+                          <div className="flex items-baseline gap-1">
+                            <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{item.discount_rate}%</span>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>{formatNumber(item.price)}{unit}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <p style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>
+                          {formatNumber(item.price)}{unit}
                         </p>
-                        <div className="flex items-baseline gap-1">
-                          <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{item.discount_rate}%</span>
-                          <span style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>{formatNumber(item.price)}원</span>
-                        </div>
-                      </>
-                    ) : (
-                      <p style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>
-                        {formatNumber(item.price)}원
-                      </p>
-                    )}
+                      )
+                    })()}
                   </div>
 
                   <button

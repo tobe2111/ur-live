@@ -74,7 +74,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
     const { results } = await DB.prepare(`
       SELECT w.id, w.user_id, w.product_id, w.created_at,
              p.name as product_name, p.price, p.original_price,
-             p.discount_rate, p.image_url, p.stock, p.category,
+             p.discount_rate, p.image_url, p.stock, p.category, p.deal_only,
              s.name as seller_name
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
@@ -257,7 +257,7 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
       SELECT
         w.id, w.user_id, w.product_id, w.created_at,
         p.name as product_name, p.price, p.original_price,
-        p.discount_rate, p.image_url, p.stock, p.category, p.is_active,
+        p.discount_rate, p.image_url, p.stock, p.category, p.is_active, p.deal_only,
         s.name as seller_name, s.id as seller_id
       FROM wishlists w
       JOIN products p ON w.product_id = p.id

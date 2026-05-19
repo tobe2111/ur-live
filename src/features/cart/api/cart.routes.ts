@@ -123,6 +123,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.price       AS product_price,
            p.image_url   AS product_image,
            p.stock       AS product_stock,
+           p.deal_only,
            p.seller_id,
            s.business_name AS seller_name,
            COALESCE(s.shipping_fee, 3000)        AS shipping_fee,
@@ -147,6 +148,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         product_price: number;
         product_image: string | null;
         product_stock: number;
+        deal_only: number | null;
         seller_id: number;
         seller_name: string | null;
         shipping_fee: number;

@@ -63,7 +63,35 @@ export function getCurrency(): CurrencyCode {
   return 'USD'
 }
 
-export function formatPrice(krwAmount: number, currency?: CurrencyCode): string {
+/**
+ * 가격 포매팅 — 후위 호환 + deal_only 인지.
+ *
+ *   formatPrice(5000)                              // → "5,000원"  (locale 따라 통화 변환)
+ *   formatPrice(5000, 'USD')                       // → "$3.60"
+ *   formatPrice(240000, { dealOnly: true })        // → "240,000 딜"  (KT Alpha 교환권)
+ *   formatPrice(240000, { dealOnly: 1 })           // → "240,000 딜"  (DB 정수 그대로)
+ *   formatPrice(5000, { dealOnly: 0, currency: 'JPY' }) // → "¥540"
+ *
+ * 🛡️ 2026-05-19: deal_only=1 상품은 locale 과 무관하게 항상 '딜' 단위.
+ *   딜은 플랫폼 내부 포인트라 통화 변환 무의미.
+ */
+export function formatPrice(
+  krwAmount: number,
+  optionsOrCurrency?: CurrencyCode | { dealOnly?: boolean | number; currency?: CurrencyCode },
+): string {
+  let currency: CurrencyCode | undefined
+  let dealOnly: boolean | number | undefined
+  if (typeof optionsOrCurrency === 'string') {
+    currency = optionsOrCurrency
+  } else if (optionsOrCurrency) {
+    currency = optionsOrCurrency.currency
+    dealOnly = optionsOrCurrency.dealOnly
+  }
+
+  if (Number(dealOnly) === 1 || dealOnly === true) {
+    return `${formatNumber(krwAmount)} 딜`
+  }
+
   const cur = currency || getCurrency()
   if (cur === 'KRW') return `${formatNumber(krwAmount)}원`
 
@@ -74,7 +102,10 @@ export function formatPrice(krwAmount: number, currency?: CurrencyCode): string 
   return `${symbol}${converted.toFixed(2)}`
 }
 
-export function formatPriceWithOriginal(krwAmount: number): string {
+export function formatPriceWithOriginal(krwAmount: number, options?: { dealOnly?: boolean | number }): string {
+  if (Number(options?.dealOnly) === 1 || options?.dealOnly === true) {
+    return `${formatNumber(krwAmount)} 딜`
+  }
   const cur = getCurrency()
   if (cur === 'KRW') return `${formatNumber(krwAmount)}원`
 

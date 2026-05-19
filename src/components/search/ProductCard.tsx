@@ -12,6 +12,8 @@ interface Product {
   stock: number
   seller_name: string
   seller_username: string
+  // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시.
+  deal_only?: number
 }
 
 interface ProductCardProps {
@@ -41,6 +43,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
   const discountedPrice = Math.round(product.price * (1 - (product.discount_rate || 0) / 100))
   const discount = product.discount_rate || 0
   const showDiscountBadge = discount >= 30
+  const priceUnit = Number(product.deal_only) === 1 ? '딜' : '원'
 
   return (
     <Link to={`/products/${product.id}`} className="block text-left group">
@@ -96,7 +99,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
         {/* Original price (strikethrough) */}
         {product.price > discountedPrice && (
           <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through">
-            {formatNumber(product.price)}원
+            {formatNumber(product.price)}{priceUnit === '딜' ? ' 딜' : '원'}
           </p>
         )}
 
@@ -106,7 +109,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             <span className="text-[14px] font-extrabold text-red-500">{discount}%</span>
           )}
           <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">
-            {formatNumber(discountedPrice)}원
+            {formatNumber(discountedPrice)}{priceUnit === '딜' ? ' 딜' : '원'}
           </span>
         </div>
 

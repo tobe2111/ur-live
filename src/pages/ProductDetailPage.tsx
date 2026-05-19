@@ -271,7 +271,7 @@ export default function ProductDetailPage() {
   function handleShare() {
     if (!product) return
 
-    const shareText = `${product.name} - ${formatNumber(displayPrice)}원`
+    const shareText = `${product.name} - ${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'}`
     const shareUrl = window.location.href
 
     if (navigator.share) {
@@ -639,7 +639,7 @@ export default function ProductDetailPage() {
           )}
           <KakaoShareButton
             title={product.name}
-            description={`${formatNumber(displayPrice)}원 ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
+            description={`${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'} ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
             imageUrl={product.image_url || undefined}
             link={`/products/${product.id}`}
             buttonText={t('productDetailPage.viewProductCta')}

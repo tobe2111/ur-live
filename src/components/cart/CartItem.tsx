@@ -13,6 +13,8 @@ interface CartItem {
   option_id?: number
   option_value?: string
   product_stock?: number
+  // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시.
+  deal_only?: number
 }
 
 interface CartItemProps {
@@ -106,7 +108,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         {/* Price row */}
         <div className="mt-2">
           <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-            {fmt(item.price_snapshot * item.quantity)}{t('common.won', { defaultValue: '원' })}
+            {fmt(item.price_snapshot * item.quantity)}{Number(item.deal_only) === 1 ? ' 딜' : t('common.won', { defaultValue: '원' })}
           </p>
         </div>
 

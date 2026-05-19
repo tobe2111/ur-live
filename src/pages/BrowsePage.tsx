@@ -162,7 +162,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       const infoWindow = new window.kakao.maps.InfoWindow({
         content: `<div style="padding:8px 12px;min-width:150px">
           <div style="font-weight:700;font-size:13px;color:#111">${p.restaurant_name || p.name}</div>
-          <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${formatNumber(p.price || 0)}원</div>
+          <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${formatNumber(p.price || 0)}${Number(p.deal_only) === 1 ? ' 딜' : '원'}</div>
           <a href="/products/${p.id}" style="display:inline-block;margin-top:6px;padding:4px 10px;background:#111;color:#fff;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none">상세보기</a>
         </div>`
       })
@@ -470,10 +470,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                     <p className="text-[14px] text-gray-900 dark:text-white font-medium mt-0.5 line-clamp-1">{hero.name}</p>
                     <div className="flex items-baseline gap-1.5 mt-1">
                       {hero.original_price && hero.original_price > heroPrice && (
-                        <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatPrice(hero.original_price)}</span>
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatPrice(hero.original_price, { dealOnly: hero.deal_only })}</span>
                       )}
                       {heroDiscount > 0 && <span className="text-[18px] font-extrabold text-red-500">{heroDiscount}%</span>}
-                      <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">{formatPrice(heroPrice)}</span>
+                      <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">{formatPrice(heroPrice, { dealOnly: hero.deal_only })}</span>
                     </div>
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">⭐ {hero.sold_count || 0}명 구매 · 🚚 무료배송</p>
                   </div>
@@ -520,13 +520,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                       {product.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500">@{product.seller_name}</p>}
                       <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2">{product.name}</p>
                       {product.original_price && product.original_price > displayPrice && (
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(product.original_price)}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(product.original_price, { dealOnly: product.deal_only })}</p>
                       )}
                       <div className="flex items-baseline gap-1 mt-0.5">
                         {discountRate > 0 && (
                           <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
                         )}
-                        <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice)}</span>
+                        <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] text-gray-400 dark:text-gray-500">⭐ {product.sold_count || 0}</span>

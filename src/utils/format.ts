@@ -55,3 +55,39 @@ export function safeNum(value: unknown, fallback = 0): number {
 export function formatWon(value: unknown): string {
   return `₩${formatNumber(value)}`
 }
+
+/**
+ * 🛡️ 2026-05-19: 상품 가격 단위 자동 — deal_only=1 이면 '딜', 아니면 '원'.
+ *   KT Alpha 교환권은 딜로만 결제하므로 '원' 표시는 사용자 혼란 유발.
+ *   모든 상품 카드 / 그리드 / 상세 / 메인 페이지가 이 helper 사용.
+ *
+ *   formatProductPrice({ price: 240000, deal_only: 1 })  // → "240,000 딜"
+ *   formatProductPrice({ price: 5000,   deal_only: 0 })  // → "5,000원"
+ *   formatProductPrice(5000)                              // → "5,000원" (legacy: number 만 받는 시그니처)
+ */
+export function formatProductPrice(
+  productOrValue: unknown,
+  legacyDealOnly?: unknown,
+): string {
+  // 두 가지 호출 방식 지원:
+  //   formatProductPrice(product)         — { price, deal_only } 객체
+  //   formatProductPrice(price, deal_only) — 분리된 인자 (기존 호출 호환)
+  let price: unknown
+  let dealOnly: unknown
+  if (productOrValue && typeof productOrValue === 'object' && 'price' in (productOrValue as Record<string, unknown>)) {
+    const obj = productOrValue as Record<string, unknown>
+    price = obj.price
+    dealOnly = obj.deal_only ?? obj.dealOnly
+  } else {
+    price = productOrValue
+    dealOnly = legacyDealOnly
+  }
+  const isDeal = Number(dealOnly) === 1 || dealOnly === true
+  const formatted = formatNumber(price)
+  return isDeal ? `${formatted} 딜` : `${formatted}원`
+}
+
+/** deal_only 상품의 단위 ('딜' / '원') 만 반환 — 가격과 분리 표시 시. */
+export function priceUnitFor(dealOnly: unknown): string {
+  return (Number(dealOnly) === 1 || dealOnly === true) ? '딜' : '원'
+}
