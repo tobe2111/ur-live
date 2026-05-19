@@ -37,59 +37,58 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
     const fetchedCodes = new Set<string>()
     let synced = 0
 
-    for (const item of allItems) {
-      const row = goodsItemToCatalogRow(item)
-      fetchedCodes.add(String(row.gift_code))
-      try {
-        await env.DB.prepare(
-          `INSERT INTO gift_catalog (
-             gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
-             sale_price, discount_price, real_price, discount_rate,
-             image_url_small, image_url_large, desc_image_url,
-             goods_type_name, goods_type_detail, category_seq, affiliate_id, affiliate_name,
-             valid_period_type, valid_period_days, valid_period_until,
-             goods_state, is_active, search_keywords, content, content_add_desc, popular,
-             sync_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    datetime('now'), datetime('now'))
-           ON CONFLICT(gift_code) DO UPDATE SET
-             name = excluded.name,
-             brand_code = excluded.brand_code,
-             brand_name = excluded.brand_name,
-             brand_icon_url = excluded.brand_icon_url,
-             sale_price = excluded.sale_price,
-             discount_price = excluded.discount_price,
-             real_price = excluded.real_price,
-             discount_rate = excluded.discount_rate,
-             image_url_small = excluded.image_url_small,
-             image_url_large = excluded.image_url_large,
-             desc_image_url = excluded.desc_image_url,
-             goods_type_name = excluded.goods_type_name,
-             goods_type_detail = excluded.goods_type_detail,
-             category_seq = excluded.category_seq,
-             affiliate_id = excluded.affiliate_id,
-             affiliate_name = excluded.affiliate_name,
-             valid_period_type = excluded.valid_period_type,
-             valid_period_days = excluded.valid_period_days,
-             valid_period_until = excluded.valid_period_until,
-             goods_state = excluded.goods_state,
-             is_active = excluded.is_active,
-             search_keywords = excluded.search_keywords,
-             content = excluded.content,
-             content_add_desc = excluded.content_add_desc,
-             popular = excluded.popular,
-             sync_at = datetime('now'),
-             updated_at = datetime('now')`
-        ).bind(
+    // 🛡️ 2026-05-19: D1 batch INSERT 로 변경 (24개 페이지/2260개 상품 sync 시 30초 timeout 회피).
+    //   sequential await 5-10ms × 2260 = 11-23초 → batch 50개씩 chunk = 약 2-3초.
+    const upsertSql = `INSERT INTO gift_catalog (
+       gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
+       sale_price, discount_price, real_price, discount_rate,
+       image_url_small, image_url_large, desc_image_url,
+       goods_type_name, goods_type_detail, category_seq, affiliate_id, affiliate_name,
+       valid_period_type, valid_period_days, valid_period_until,
+       goods_state, is_active, search_keywords, content, content_add_desc, popular,
+       sync_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              datetime('now'), datetime('now'))
+     ON CONFLICT(gift_code) DO UPDATE SET
+       name = excluded.name, brand_code = excluded.brand_code, brand_name = excluded.brand_name,
+       brand_icon_url = excluded.brand_icon_url, sale_price = excluded.sale_price,
+       discount_price = excluded.discount_price, real_price = excluded.real_price,
+       discount_rate = excluded.discount_rate, image_url_small = excluded.image_url_small,
+       image_url_large = excluded.image_url_large, desc_image_url = excluded.desc_image_url,
+       goods_type_name = excluded.goods_type_name, goods_type_detail = excluded.goods_type_detail,
+       category_seq = excluded.category_seq, affiliate_id = excluded.affiliate_id,
+       affiliate_name = excluded.affiliate_name, valid_period_type = excluded.valid_period_type,
+       valid_period_days = excluded.valid_period_days, valid_period_until = excluded.valid_period_until,
+       goods_state = excluded.goods_state, is_active = excluded.is_active,
+       search_keywords = excluded.search_keywords, content = excluded.content,
+       content_add_desc = excluded.content_add_desc, popular = excluded.popular,
+       sync_at = datetime('now'), updated_at = datetime('now')`
+
+    const BATCH_SIZE = 50
+    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
+      const chunk = allItems.slice(i, i + BATCH_SIZE)
+      const statements = chunk.map((item) => {
+        const row = goodsItemToCatalogRow(item)
+        fetchedCodes.add(String(row.gift_code))
+        return env.DB.prepare(upsertSql).bind(
           row.gift_code, row.goods_no, row.name, row.brand_code, row.brand_name, row.brand_icon_url,
           row.sale_price, row.discount_price, row.real_price, row.discount_rate,
           row.image_url_small, row.image_url_large, row.desc_image_url,
           row.goods_type_name, row.goods_type_detail, row.category_seq, row.affiliate_id, row.affiliate_name,
           row.valid_period_type, row.valid_period_days, row.valid_period_until,
           row.goods_state, row.is_active, row.search_keywords, row.content, row.content_add_desc, row.popular,
-        ).run()
-        synced++
-      } catch { /* per-item fail-soft */ }
+        )
+      })
+      try {
+        await env.DB.batch(statements)
+        synced += chunk.length
+      } catch (e) {
+        // batch 실패 시 개별 시도 (fail-soft).
+        for (const stmt of statements) {
+          try { await stmt.run(); synced++ } catch { /* skip */ }
+        }
+        console.error('[kt-alpha sync] batch failed, fell back to individual:', String(e).slice(0, 200))
+      }
     }
 
     // 2. fetch 안 된 row 들은 is_active=0 (단종/일시 중지).
