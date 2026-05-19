@@ -964,6 +964,8 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
 }) {
   const [items, setItems] = useState<CatalogItem[]>([])
   const [markupPct, setMarkupPct] = useState(5)
+  const [withholdingRate, setWithholdingRate] = useState(0)
+  const [isBusinessVerified, setIsBusinessVerified] = useState(false)
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<CatalogItem | null>(null)
@@ -973,6 +975,8 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
   // 🛡️ KT Alpha 가이드라인: 발송 전 두 가지 동의 강제.
   const [acceptExpiry, setAcceptExpiry] = useState(false)
   const [acceptB2B, setAcceptB2B] = useState(false)
+  // 🛡️ 원천징수 동의 (비사업자만).
+  const [acceptTax, setAcceptTax] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => { load() }, []) // eslint-disable-line
@@ -987,6 +991,8 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
         setItems(r.data.data.items || [])
         setMarkupPct(Number(r.data.data.markup_pct) || 5)
         setSellerPhone(String(r.data.data.seller_phone || ''))
+        setWithholdingRate(Number(r.data.data.withholding_rate) || 0)
+        setIsBusinessVerified(Boolean(r.data.data.is_business_verified))
       }
     } catch { /* fail-soft */ } finally { setLoading(false) }
   }
@@ -995,9 +1001,15 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
     return Math.floor(item.real_price * (1 + markupPct / 100))
   }
   const totalDeduct = selected ? unitDeduct(selected) * qty : 0
+  // 원천징수 (비사업자만) — 액면가 기준 8.8%.
+  const grossForTax = selected ? selected.real_price * qty : 0
+  const withholdingAmount = !isBusinessVerified ? Math.floor(grossForTax * withholdingRate / 100) : 0
+  const totalDeductWithTax = totalDeduct + withholdingAmount
+
   const hasPhone = /^01\d{8,9}$/.test(sellerPhone)
-  const canSubmit = selected && totalDeduct > 0 && totalDeduct <= totalBalance
-    && hasPhone && acceptExpiry && acceptB2B
+  const needTaxConsent = !isBusinessVerified && withholdingAmount > 0
+  const canSubmit = selected && totalDeductWithTax > 0 && totalDeductWithTax <= totalBalance
+    && hasPhone && acceptExpiry && acceptB2B && (!needTaxConsent || acceptTax)
 
   const phoneMasked = hasPhone
     ? sellerPhone.replace(/(\d{3})(\d{3,4})(\d{4})/, '$1-$2-$3')
@@ -1006,7 +1018,9 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
   async function submit() {
     if (!selected) return
     if (!acceptExpiry || !acceptB2B) { toast.error('약관 동의 필요'); return }
-    if (!confirm(`${selected.name} × ${qty} → ${phoneMasked}\n차감 예정: ₩${totalDeduct.toLocaleString()}\n\n⚠️ 30일 유효기간 / 환불 불가 동의하신 것 맞나요?`)) return
+    if (needTaxConsent && !acceptTax) { toast.error('원천징수 동의 필요'); return }
+    const taxLine = needTaxConsent ? `\n원천징수: ₩${withholdingAmount.toLocaleString()}` : ''
+    if (!confirm(`${selected.name} × ${qty} → ${phoneMasked}\n총 차감: ₩${totalDeductWithTax.toLocaleString()}${taxLine}\n\n⚠️ 30일 유효기간 / 환불 불가 동의하신 것 맞나요?`)) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -1018,7 +1032,9 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
         terms_accepted_b2b: acceptB2B,
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data?.success) {
-        toast.success(`✅ 발송 완료 (${r.data.data.qty}건, 차감 ₩${r.data.data.total_deduct.toLocaleString()})`)
+        const d = r.data.data
+        const totalShown = d.total_deduct_with_tax || d.total_deduct
+        toast.success(`✅ 발송 완료 (${d.qty}건, 차감 ₩${totalShown.toLocaleString()})`)
         onSuccess()
       }
     } catch (err: unknown) {
@@ -1128,8 +1144,15 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
             <div className="bg-white rounded p-3 text-xs mb-3 space-y-0.5">
               <p className="flex justify-between"><span className="text-gray-500">선택 상품</span><span className="font-semibold">{selected.name} × {qty}</span></p>
               <p className="flex justify-between"><span className="text-gray-500">단가 (markup {markupPct}% 포함)</span><span>₩{unitDeduct(selected).toLocaleString()}</span></p>
-              <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">총 차감액</span><span className="text-base font-extrabold text-pink-600">₩{totalDeduct.toLocaleString()}</span></p>
-              {totalDeduct > totalBalance && (
+              <p className="flex justify-between"><span className="text-gray-500">상품권 차감</span><span>₩{totalDeduct.toLocaleString()}</span></p>
+              {needTaxConsent && (
+                <p className="flex justify-between text-amber-700">
+                  <span>+ 원천징수 ({withholdingRate}%, 비사업자)</span>
+                  <span>₩{withholdingAmount.toLocaleString()}</span>
+                </p>
+              )}
+              <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">총 차감액</span><span className="text-base font-extrabold text-pink-600">₩{totalDeductWithTax.toLocaleString()}</span></p>
+              {totalDeductWithTax > totalBalance && (
                 <p className="text-red-600 text-[11px] font-bold mt-1">⚠️ 잔액 부족 (보유 ₩{totalBalance.toLocaleString()})</p>
               )}
             </div>
@@ -1152,6 +1175,17 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
                   최종 소비자 판매 목적이 아님을 확인했습니다. 본인 명의 휴대폰으로만 발송됩니다.
                 </span>
               </label>
+              {needTaxConsent && (
+                <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={acceptTax} onChange={(e) => setAcceptTax(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
+                  <span>
+                    <b className="text-amber-700">[비사업자 필수]</b> 본인은 사업자등록증을 보유하지 않은 개인이며,
+                    소득세법 §21 기타소득에 따라 <b>액면가의 {withholdingRate}% (₩{withholdingAmount.toLocaleString()}) 원천징수</b> 후
+                    상품권을 수령함에 동의합니다. 연 누계 300만원 초과 시 종합소득 합산 신고 의무가 본인에게 있습니다.
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -1168,7 +1202,8 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
               <p className="text-[10px] text-amber-600 mt-2 text-center">
                 {!hasPhone && '· 셀러 본인 휴대폰 등록 필요 '}
                 {(!acceptExpiry || !acceptB2B) && '· 약관 2종 동의 필요 '}
-                {totalDeduct > totalBalance && '· 잔액 부족'}
+                {needTaxConsent && !acceptTax && '· 원천징수 동의 필요 '}
+                {totalDeductWithTax > totalBalance && '· 잔액 부족'}
               </p>
             )}
           </div>

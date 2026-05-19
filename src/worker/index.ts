@@ -48,6 +48,8 @@ import { adminProductsRoutes } from '../features/admin/api/admin-products.routes
 import { adminStaysRoutes } from '../features/admin/api/admin-stays.routes';
 // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 어드민.
 import { adminKtAlphaRoutes } from '../features/admin/api/admin-kt-alpha.routes';
+// 🛡️ 2026-05-19: 원천징수 + 지급조서 어드민.
+import { adminWithholdingRoutes } from '../features/admin/api/admin-withholding.routes';
 import { adminOrdersRoutes } from '../features/admin/api/admin-orders.routes';
 import { adminStreamsRoutes } from '../features/admin/api/admin-streams.routes';
 import { adminAccountsRoutes } from '../features/admin/api/admin-accounts.routes';
@@ -976,6 +978,8 @@ adminApp.route('/', adminProductsRoutes);
 adminApp.route('/', adminStaysRoutes);
 // 🛡️ 2026-05-19: KT Alpha 관리 (catalog sync, markup, biz money 잔액).
 adminApp.route('/', adminKtAlphaRoutes);
+// 🛡️ 2026-05-19: 원천징수 + 지급조서 export (소득세법 §164/165 의무).
+adminApp.route('/', adminWithholdingRoutes);
 // 🛡️ 2026-04-22 배치 149 (TD-006 부분): admin-orders 분리 (~356줄)
 adminApp.route('/', adminOrdersRoutes);
 // 🛡️ 2026-04-22 배치 150 (TD-006 부분): admin-streams + alimtalk 분리

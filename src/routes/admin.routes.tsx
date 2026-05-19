@@ -48,6 +48,8 @@ const AdminStaysPage = lazy(() => import('@/pages/AdminStaysPage'))
 const AdminBusinessVerificationPage = lazy(() => import('@/pages/AdminBusinessVerificationPage'))
 // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 관리.
 const AdminKtAlphaPage = lazy(() => import('@/pages/AdminKtAlphaPage'))
+// 🛡️ 2026-05-19: 원천징수 + 지급조서 — 소득세법 §164/165 의무.
+const AdminWithholdingPage = lazy(() => import('@/pages/AdminWithholdingPage'))
 const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage'))
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
@@ -291,6 +293,11 @@ export function AdminRoutes() {
       <Route path="/admin/kt-alpha" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminKtAlphaPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/withholding" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWithholdingPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/youtube-quota" element={

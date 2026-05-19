@@ -278,9 +278,10 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     const markupPct = Number(settings?.value) || 5
 
     const seller = await c.env.DB.prepare(
-      'SELECT phone FROM sellers WHERE id = ?'
-    ).bind(sellerId).first<{ phone: string | null }>()
+      'SELECT phone, business_registration_status FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ phone: string | null; business_registration_status: string | null }>()
     const sellerPhone = String(seller?.phone || '').replace(/\D/g, '')
+    const verified = seller?.business_registration_status === 'verified' || seller?.business_registration_status === 'exempt'
 
     return c.json({
       success: true,
@@ -288,6 +289,8 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
         items: rows.results || [],
         markup_pct: markupPct,
         seller_phone: sellerPhone,
+        is_business_verified: verified,
+        withholding_rate: verified ? 0 : 8.8,   // % — 비사업자만 적용
         // KT Alpha 가이드라인 — UI 에 표시할 핵심 약관 (frontend hardcode 방지).
         terms: {
           validity_days: 30,
@@ -393,28 +396,39 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     }
     const balCol = verified ? 'redeemable_deal_amount' : 'gated_deal_amount'
 
+    // 🛡️ 2026-05-19: 비사업자 셀러 (미검증) 는 KT Alpha 상품권 발송 시 8.8% 원천징수 추가 차감.
+    //   - 액면가(real_price × qty)의 8.8% 가 세금으로 적립금에서 추가 차감 (기타소득세).
+    //   - tax_withholding_log 에 자동 기록 → 매년 1월 어드민이 지급조서 export.
+    //   - 사업자 검증 셀러는 면제 (세금계산서로 별도 처리).
+    const grossForTax = gift.real_price * qty   // 액면가 기준 (markup 제외)
+    let withholdingAmount = 0
+    if (!verified) {
+      withholdingAmount = Math.floor(grossForTax * 0.088)
+    }
+    const totalDeductWithTax = totalDeduct + withholdingAmount
+
     const bal = await c.env.DB.prepare(
       `SELECT ${balCol} as amount FROM seller_deal_balances WHERE seller_id = ?`
     ).bind(sellerId).first<{ amount: number }>().catch(() => null)
     const available = bal?.amount || 0
-    if (totalDeduct > available) {
+    if (totalDeductWithTax > available) {
       return c.json({
         success: false,
-        error: `잔액 부족 (필요 ${totalDeduct.toLocaleString()}딜, 보유 ${available.toLocaleString()}딜)`,
+        error: `잔액 부족 (필요 ${totalDeductWithTax.toLocaleString()}딜 = 상품권 ${totalDeduct.toLocaleString()} + 원천징수 ${withholdingAmount.toLocaleString()}, 보유 ${available.toLocaleString()}딜)`,
       }, 400)
     }
 
-    // 4. voucher_orders INSERT (status='pending').
+    // 4. voucher_orders INSERT (status='processing').
     const trId = `ur-vr-${sellerId}-${Date.now()}`
     const orderResult = await c.env.DB.prepare(
       `INSERT INTO voucher_orders (
          seller_id, source, goods_code, goods_name, goods_image_url,
          unit_price, quantity, total_amount, recipient_phone,
          withholding_amount, net_amount, status, external_order_id
-       ) VALUES (?, 'kt_alpha', ?, ?, ?, ?, ?, ?, ?, 0, ?, 'processing', ?)`
+       ) VALUES (?, 'kt_alpha', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'processing', ?)`
     ).bind(
       sellerId, gift.gift_code, gift.name, gift.image_url_small,
-      unitDeduct, qty, totalDeduct, phone, totalDeduct, trId,
+      unitDeduct, qty, totalDeduct, phone, withholdingAmount, totalDeduct, trId,
     ).run().catch((e: Error) => { throw new Error(`voucher_orders INSERT 실패: ${e.message}`) })
 
     const voucherOrderId = Number(orderResult.meta.last_row_id)
@@ -442,17 +456,17 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
         lastOrderNo = result.orderNo
       }
 
-      // 6. 성공 — status='sent' + 셀러 잔액 차감.
+      // 6. 성공 — status='sent' + 셀러 잔액 차감 (상품권 + 원천징수).
       await c.env.DB.prepare(
         `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
       ).bind(lastOrderNo || trId, voucherOrderId).run()
 
-      // 잔액 차감.
+      // 잔액 차감 (상품권 + 원천징수 합산).
       await c.env.DB.prepare(
         `UPDATE seller_deal_balances SET ${balCol} = ${balCol} - ?, updated_at = datetime('now') WHERE seller_id = ?`
-      ).bind(totalDeduct, sellerId).run()
+      ).bind(totalDeductWithTax, sellerId).run()
 
-      // 이력 INSERT.
+      // 이력 INSERT — 상품권 차감.
       await c.env.DB.prepare(
         `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, reference_id, memo, created_at)
          VALUES (?, ?, ?, 'voucher_redeem', ?, ?, datetime('now'))`
@@ -461,6 +475,31 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
         String(voucherOrderId),
         `${gift.name} × ${qty} → ${phone}`,
       ).run().catch(() => { /* noop */ })
+
+      // 🛡️ 원천징수 INSERT — 비사업자만.
+      if (!verified && withholdingAmount > 0) {
+        try {
+          const { withholdAndLog } = await import('@/worker/utils/tax-withholding')
+          await withholdAndLog(c.env, {
+            sellerId,
+            grossAmount: grossForTax,
+            sourceType: 'voucher_order',
+            sourceId: String(voucherOrderId),
+          })
+          // 이력 INSERT — 원천징수 차감.
+          await c.env.DB.prepare(
+            `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, reference_id, memo, created_at)
+             VALUES (?, ?, ?, 'withholding_tax', ?, ?, datetime('now'))`
+          ).bind(
+            sellerId, -withholdingAmount, 'gated',
+            String(voucherOrderId),
+            `8.8% 원천징수 (voucher #${voucherOrderId})`,
+          ).run().catch(() => { /* noop */ })
+        } catch (e) {
+          // 원천징수 기록 실패는 silent (이미 voucher 발송 완료, 다음 발송에 ytd 재계산).
+          console.error('[withholding log fail]', String(e).slice(0, 200))
+        }
+      }
 
       return c.json({
         success: true,
@@ -471,6 +510,8 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
           qty,
           unit_deduct: unitDeduct,
           total_deduct: totalDeduct,
+          withholding_amount: withholdingAmount,
+          total_deduct_with_tax: totalDeductWithTax,
           markup_pct: markupPct,
           recipient_phone: phone,
           external_order_no: lastOrderNo,
