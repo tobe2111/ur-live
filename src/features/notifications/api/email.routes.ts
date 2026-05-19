@@ -6,6 +6,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { maskEmail } from '@/lib/mask'
 export const emailRoutes = new Hono<{ Bindings: Env }>()
 
 interface EmailParams {
@@ -21,7 +22,8 @@ async function sendEmail(env: Env, params: EmailParams): Promise<boolean> {
   const domain = (env as any).EMAIL_DOMAIN
 
   if (!apiKey || !domain) {
-    console.log('[Email] No API key configured, skipping:', params.subject, params.to)
+    // 🛡️ 2026-05-19: PII redaction — params.to 평문 노출 금지.
+    if (import.meta.env.DEV) console.log('[Email] No API key configured, skipping:', params.subject, maskEmail(params.to))
     return false
   }
 

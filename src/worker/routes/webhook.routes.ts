@@ -18,6 +18,7 @@ import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
 import { swallow } from '../utils/swallow';
 import { captureException } from '../utils/sentry';
+import { maskPhone } from '../../lib/mask';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
 // ============================================================
@@ -52,7 +53,7 @@ async function sendOrderNotification(
   if (process.env.NODE_ENV !== 'production') console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
     orderNumber,
     userId,
-    contactPhone: contactPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'), // mask middle digits
+    contactPhone: maskPhone(contactPhone),
     ordersCount: orders.length,
   });
 

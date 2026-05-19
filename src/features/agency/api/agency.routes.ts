@@ -26,6 +26,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password'
 import { sendEmail } from '@/services/email'
+import { maskEmail } from '@/lib/mask'
 import type { Env } from '@/worker/types/env'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
@@ -486,10 +487,13 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
           RESEND_FROM
         ).catch((e) => console.error('[Agency ForgotPassword] Email send failed:', e))
       } else {
-        console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl)
+        // 🛡️ 2026-05-19: resetUrl 평문 로그 금지 — 토큰 노출 시 비밀번호 즉시 변경 가능.
+        if (import.meta.env.DEV) console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl)
+        else console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email send.')
       }
     } else {
-      console.info('[Agency ForgotPassword] Unknown email (silent):', email)
+      // 🛡️ 2026-05-19: PII redaction — email 평문 출력 금지.
+      if (import.meta.env.DEV) console.info('[Agency ForgotPassword] Unknown email (silent):', maskEmail(email))
     }
 
     return c.json({
