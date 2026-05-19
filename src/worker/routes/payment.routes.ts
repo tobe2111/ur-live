@@ -488,7 +488,7 @@ paymentsRouter.post('/confirm', async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-19: KT Alpha 상품권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
+    // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
     try {
       const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
       await autoSendKtAlphaVouchersForOrders(

@@ -54,7 +54,7 @@ const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
 const SellerStayNewPage = lazy(() => import('@/pages/SellerStayNewPage'))
 const SellerStayDetailPage = lazy(() => import('@/pages/SellerStayDetailPage'))
 const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPage'))
-// 🛡️ 2026-05-19: 발송된 상품권 (KT Alpha) 이력.
+// 🛡️ 2026-05-19: 발송된 교환권 (KT Alpha) 이력.
 const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))

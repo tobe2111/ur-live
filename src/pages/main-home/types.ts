@@ -14,4 +14,7 @@ export interface Product {
   discount_rate?: number; seller_name?: string; category?: string
   group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
   sold_count?: number; avg_rating?: number; review_count?: number; restaurant_address?: string
+  // 🛡️ 2026-05-19: KT Alpha 등 딜 교환 전용 상품 마커 (메인 페이지에서 '딜' 단위로 표시).
+  deal_only?: number
+  kt_alpha_gift_code?: string | null
 }

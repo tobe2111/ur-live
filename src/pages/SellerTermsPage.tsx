@@ -79,10 +79,10 @@ export default function SellerTermsPage() {
           <li>허위 매출 (자기 결제), voucher 위조, 사용자 신상 유출 등 금지.</li>
         </ul>
 
-        <h2 className="text-lg font-bold mt-6 mb-2">제7조의2 (적립금 → KT Alpha 기프티쇼 상품권 정산 — 비사업자 선택지)</h2>
+        <h2 className="text-lg font-bold mt-6 mb-2">제7조의2 (적립금 → KT Alpha 기프티쇼 교환권 정산 — 비사업자 선택지)</h2>
         <ul className="text-sm list-disc pl-5 space-y-1">
-          <li>사업자등록을 하지 않은 셀러(개인)의 경우, 현금 정산 대신 본인 적립금에서 차감하여 <strong>KT Alpha (기프티쇼) 모바일 상품권</strong> 으로 수령하는 옵션을 선택할 수 있습니다.</li>
-          <li>본 옵션은 <strong>회사(유어딜)가 자사 비즈머니로 셀러에게 지급</strong> 하는 B2B 정산 수단이며, 최종 소비자가 상품권을 직접 구매하는 구조가 아닙니다.</li>
+          <li>사업자등록을 하지 않은 셀러(개인)의 경우, 현금 정산 대신 본인 적립금에서 차감하여 <strong>KT Alpha (기프티쇼) 모바일 교환권</strong> 으로 수령하는 옵션을 선택할 수 있습니다.</li>
+          <li>본 옵션은 <strong>회사(유어딜)가 자사 비즈머니로 셀러에게 지급</strong> 하는 B2B 정산 수단이며, 최종 소비자가 교환권을 직접 구매하는 구조가 아닙니다.</li>
           <li><strong>유효기간 30일 고정</strong> — 발행일로부터 30일이며 연장 / 환불 / 취소가 불가합니다 (KT Alpha B2B 쿠폰 정책).</li>
           <li>발송 대상 휴대폰은 <strong>회원가입 시 등록한 본인 명의 휴대폰으로 한정</strong> 됩니다. 타인 명의 휴대폰 발송은 시스템적으로 차단됩니다.</li>
           <li>차감액 = KT Alpha 공급가 × (1 + 운영 마진율) × 수량. 마진율은 어드민이 5% 기본값으로 운영하며 변경 시 사전 고지합니다.</li>

@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-19: 셀러 본인 — 받은/발송한 상품권 (KT Alpha) 이력.
+ * 🛡️ 2026-05-19: 셀러 본인 — 받은/발송한 교환권 (KT Alpha) 이력.
  *
  *   /seller/voucher-orders 신규 페이지.
  *   여기서 캡처해서 KT Alpha 상용 Key 신청 첨부.
@@ -60,11 +60,11 @@ export default function SellerVoucherOrdersPage() {
   const totalAmount = orders.filter(o => o.status === 'sent').reduce((s, o) => s + o.total_amount, 0)
 
   return (
-    <SellerLayout title="발송 상품권">
+    <SellerLayout title="발송 교환권">
       <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="🎁 발송한 상품권 이력"
-          subtitle="적립금으로 받은 기프티쇼 상품권 — 발송된 휴대폰으로 MMS 도착"
+          title="🎁 발송한 교환권 이력"
+          subtitle="적립금으로 받은 기프티쇼 교환권 — 발송된 휴대폰으로 MMS 도착"
           icon={<Gift className="h-5 w-5" />}
         />
 
@@ -85,10 +85,10 @@ export default function SellerVoucherOrdersPage() {
         {loading ? <DashboardLoading /> : orders.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <Gift className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 mb-4">아직 발송한 상품권이 없습니다</p>
+            <p className="text-sm text-gray-500 mb-4">아직 발송한 교환권이 없습니다</p>
             <button onClick={() => navigate('/seller/settlements')}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg hover:bg-pink-600">
-              🎁 정산 페이지에서 상품권 받기 →
+              🎁 정산 페이지에서 교환권 받기 →
             </button>
           </div>
         ) : (
@@ -157,7 +157,7 @@ export default function SellerVoucherOrdersPage() {
         )}
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-900">
-          ℹ️ 발송된 상품권은 MMS 로 받는 휴대폰에 도착합니다. 발송 후 환불 / 취소는 불가능합니다.
+          ℹ️ 발송된 교환권은 MMS 로 받는 휴대폰에 도착합니다. 발송 후 환불 / 취소는 불가능합니다.
           매장에서 사용 시 코드 또는 바코드를 제시해주세요.
         </div>
       </div>

@@ -807,7 +807,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 
     createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
 
-    // 🛡️ 2026-05-19: KT Alpha 상품권 자동 발송 — 딜 교환 전용 상품 결제 시.
+    // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 — 딜 교환 전용 상품 결제 시.
     try {
       const ktOrders = await DB.prepare(
         `SELECT id, shipping_phone, user_id FROM orders WHERE order_number LIKE ? AND user_id = ? AND status = 'PAID'`

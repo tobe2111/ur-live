@@ -99,7 +99,7 @@ export async function autoSendKtAlphaVouchersForOrders(
             phoneNo: phone,
             callbackNo,
             mmsTitle: `[유어딜] ${item.product_name}`.slice(0, 30),
-            mmsMsg: `${item.product_name} 상품권이 도착했습니다. 30일 이내 사용해주세요.`,
+            mmsMsg: `${item.product_name} 교환권이 도착했습니다. 30일 이내 사용해주세요.`,
             trId,
             userId: ktUserId,
             orderNo: `c-${oid}-${i + 1}`,

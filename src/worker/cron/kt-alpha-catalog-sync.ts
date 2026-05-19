@@ -137,7 +137,7 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
                VALUES ('admin', NULL, 'kt_alpha_balance_low', ?, ?, '/admin/kt-alpha', datetime('now'))`
             ).bind(
               `⚠️ KT Alpha 비즈머니 잔액 부족 ₩${balance.toLocaleString()}`,
-              `상품권 발송 차단 위험 — 기프티쇼 콘솔에서 충전 필요${balance === 0 ? ' (현재 0원, 즉시 차단됨)' : ''}`,
+              `교환권 발송 차단 위험 — 기프티쇼 콘솔에서 충전 필요${balance === 0 ? ' (현재 0원, 즉시 차단됨)' : ''}`,
             ).run().catch(() => { /* table 없으면 silent */ })
           }
         }

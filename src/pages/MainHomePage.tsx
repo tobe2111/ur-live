@@ -66,6 +66,8 @@ export default function MainHomePage() {
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [mealProducts, setMealProducts] = useState<Product[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  // 🛡️ 2026-05-19: 카테고리별 온라인 상품 섹션.
+  const [categorySections, setCategorySections] = useState<Array<{ category: string; count: number; products: Product[] }>>([])
   const [loading, setLoading] = useState(true)
   const [cartCount, setCartCount] = useState(0)
   // 🛡️ 2026-04-22: 알림 unread badge 실시간 동기화 (이전: static red dot)
@@ -162,6 +164,15 @@ export default function MainHomePage() {
           if (Array.isArray(d.latest)) setNewProducts(d.latest)
         })
         .catch(() => { /* swallow — 빈 페이지 fallback */ })
+
+      // 🛡️ 2026-05-19: 카테고리별 온라인 상품 (편의점/카페/도서 등).
+      api.get('/api/home/categories', { timeout: 8000 })
+        .then(res => {
+          if (cancelled || !res.data.success) return
+          const sections = res.data.data?.sections || []
+          if (Array.isArray(sections)) setCategorySections(sections)
+        })
+        .catch(() => { /* swallow */ })
         .finally(() => {
           if (cancelled) return
           if (initial) {
@@ -463,73 +474,59 @@ export default function MainHomePage() {
         </div>
       )}
 
-      {/* ═══ 🛍️ 온라인 — UR특가 (일반 배송 상품) ═══ */}
-      <div className="pt-8 mt-6 bg-gray-50 dark:bg-[#050505] border-t-8 border-gray-100 dark:border-[#0A0A0A]">
-        <div className="px-4 pt-5 pb-3">
-          {/* 🛡️ 2026-05-17: '온라인' 대분류 라벨 명시 — 오프라인 (내 주변 공구) 와 시각 분리. */}
-          <p className="text-[10px] text-blue-600 dark:text-blue-400 font-extrabold tracking-[0.14em]">🛍️ {t('mainHome.onlineTag', { defaultValue: '온라인 — 배송 상품' })}</p>
-          <p className="text-[22px] font-black text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>{t('mainHome.specialTitle')}</p>
+      {/* 🛡️ 2026-05-19: 카테고리별 온라인 상품 (편의점/카페/도서/모바일교환권 등). */}
+      {categorySections.length > 0 && (
+        <div className="pt-8 mt-6 bg-gray-50 dark:bg-[#050505] border-t-8 border-gray-100 dark:border-[#0A0A0A]">
+          <div className="px-4 pt-5 pb-3">
+            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-extrabold tracking-[0.14em]">🛍️ {t('mainHome.onlineTag', { defaultValue: '온라인' })}</p>
+            <p className="text-[22px] font-black text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.04em' }}>카테고리별 상품</p>
+          </div>
+
+          {categorySections.map((section) => (
+            <div key={section.category} className="px-4 pb-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[14px] font-extrabold text-gray-900 dark:text-white">
+                  {section.category}
+                  <span className="ml-2 text-[10px] font-normal text-gray-500 dark:text-gray-400">{section.count}개</span>
+                </p>
+                <button
+                  onClick={() => navigate(`/browse?category=${encodeURIComponent(section.category)}`)}
+                  className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold"
+                >
+                  더보기 →
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4">
+                {section.products.slice(0, 8).map((p) => {
+                  const d = disc(p.price, p.original_price)
+                  // 🛡️ 2026-05-19: deal_only 상품은 '원' 대신 '딜' 단위로 표시.
+                  const isDealOnly = Number(p.deal_only) === 1
+                  const priceUnit = isDealOnly ? '딜' : '원'
+                  const priceLabel = `${formatNumber(p.price)}${priceUnit}`
+                  const origLabel = p.original_price ? `${formatNumber(p.original_price)}${priceUnit}` : ''
+                  return (
+                    <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left w-full block">
+                      <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
+                        {p.image_url && <img src={p.image_url} alt={p.name || ''} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                        {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
+                        {isDealOnly && <span className="absolute top-1.5 right-1.5 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">🎁 딜 교환</span>}
+                      </div>
+                      <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
+                      {p.original_price && p.original_price > p.price && (
+                        <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{origLabel}</p>
+                      )}
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
+                        <span className={`text-[12px] font-extrabold ${isDealOnly ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>{priceLabel}</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-
-        {/* 실시간 랭킹 */}
-        {products.length > 0 && (
-          <div className="px-4 pb-5">
-            <p className="text-[14px] font-extrabold text-gray-900 dark:text-white mb-3">{t('mainHome.rankingTitle')}</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {products.slice(0, 5).map((p, i) => {
-                const d = disc(p.price, p.original_price)
-                return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left relative w-full block">
-                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-                      <span className="absolute top-1.5 left-1.5 rounded flex items-center justify-center w-[22px] h-[22px] bg-[#EF4444] text-[11px] font-black text-white">{i + 1}</span>
-                    </div>
-                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-1.5">{p.name}</p>
-                    <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">
-                      {d > 0 && <span className="text-red-500 dark:text-red-400 mr-1">{d}%</span>}{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.price) })}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 추천 상품 */}
-        {products.length > 4 && (
-          <div className="px-4 pb-5">
-            <p className="text-[14px] font-extrabold text-gray-900 dark:text-white mb-3">{t('mainHome.recommendTitle')}</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
-              {products.slice(5).map(p => {
-                const d = disc(p.price, p.original_price)
-                return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="text-left w-full block">
-                    <div className="relative rounded-lg overflow-hidden aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
-                      {p.image_url && <img src={p.image_url} alt={p.name || t('mainHome.altProduct')} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-                      {d > 0 && <span className="absolute top-1.5 left-1.5 bg-[#EF4444] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">{d}%</span>}
-                    </div>
-                    <p className="text-[11px] text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 mt-2">{p.name}</p>
-                    {p.original_price && p.original_price > p.price && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-600 line-through mt-0.5">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.original_price) })}</p>
-                    )}
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      {d > 0 && <span className="text-[12px] font-extrabold text-red-500">{d}%</span>}
-                      <span className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('mainHome.priceWon', { defaultValue: '{{price}}원', price: formatNumber(p.price) })}</span>
-                    </div>
-                    {(p.avg_rating != null || p.sold_count) && (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        {p.avg_rating != null && `★ ${p.avg_rating.toFixed(1)}`}
-                        {p.avg_rating != null && p.sold_count ? ' · ' : ''}
-                        {p.sold_count ? t('mainHome.soldCount', { n: formatNumber(p.sold_count), defaultValue: '{{n}} 구매' as string }) : ''}
-                      </p>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ═══ Bottom sections ═══ */}
       <RecentlyViewed />

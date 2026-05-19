@@ -95,7 +95,7 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
         error: '사업자등록증 검증이 필요합니다',
         code: 'BUSINESS_REGISTRATION_REQUIRED',
         status: bizRow.business_registration_status,
-        hint: '사업자등록증을 등록하시면 현금 정산이 가능합니다. 또는 상품권/포인트로 수령할 수 있습니다.',
+        hint: '사업자등록증을 등록하시면 현금 정산이 가능합니다. 또는 교환권/포인트로 수령할 수 있습니다.',
       }, 412);
     }
 
@@ -176,7 +176,7 @@ sellerSettlementsRoutes.get('/settlement-options', async (c) => {
           },
           voucher: {
             available: true,
-            label: '모바일 상품권 (기프티쇼)',
+            label: '모바일 교환권 (기프티쇼)',
             description: '즉시 발송 · 사업자 미등록 시 8.8% 원천징수 후 발송',
             withholding_rate: canReceiveCash ? 0 : 8.8,
             note: '추후 KT Alpha 통합 후 활성화',
@@ -236,7 +236,7 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
   }
 });
 
-// 🛡️ 2026-05-19: 비사업자 셀러용 — 적립금을 기프티쇼 상품권으로 받기.
+// 🛡️ 2026-05-19: 비사업자 셀러용 — 적립금을 기프티쇼 교환권으로 받기.
 //   사업자 등록 X 인 셀러가 적립금 (gated_deal_amount) 을 voucher 로 교환.
 //   markup_pct (어드민 설정) 적용 — 우리 마진 확보.
 //
@@ -305,7 +305,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
   }
 })
 
-// 🛡️ 2026-05-19: 상품권 발송 요청 (비사업자 셀러용 voucher redeem).
+// 🛡️ 2026-05-19: 교환권 발송 요청 (비사업자 셀러용 voucher redeem).
 sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
   const authorization = c.req.header('Authorization')
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -398,7 +398,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     }
     const balCol = verified ? 'redeemable_deal_amount' : 'gated_deal_amount'
 
-    // 🛡️ 2026-05-19: 비사업자 셀러 (미검증) 는 KT Alpha 상품권 발송 시 8.8% 원천징수 추가 차감.
+    // 🛡️ 2026-05-19: 비사업자 셀러 (미검증) 는 KT Alpha 교환권 발송 시 8.8% 원천징수 추가 차감.
     //   - 액면가(real_price × qty)의 8.8% 가 세금으로 적립금에서 추가 차감 (기타소득세).
     //   - tax_withholding_log 에 자동 기록 → 매년 1월 어드민이 지급조서 export.
     //   - 사업자 검증 셀러는 면제 (세금계산서로 별도 처리).
@@ -416,7 +416,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     if (totalDeductWithTax > available) {
       return c.json({
         success: false,
-        error: `잔액 부족 (필요 ${totalDeductWithTax.toLocaleString()}딜 = 상품권 ${totalDeduct.toLocaleString()} + 원천징수 ${withholdingAmount.toLocaleString()}, 보유 ${available.toLocaleString()}딜)`,
+        error: `잔액 부족 (필요 ${totalDeductWithTax.toLocaleString()}딜 = 교환권 ${totalDeduct.toLocaleString()} + 원천징수 ${withholdingAmount.toLocaleString()}, 보유 ${available.toLocaleString()}딜)`,
       }, 400)
     }
 
@@ -449,7 +449,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
           phoneNo: phone,
           callbackNo,
           mmsTitle: body?.mms_title?.slice(0, 30) || `[유어딜] ${gift.name}`,
-          mmsMsg: body?.mms_msg?.slice(0, 200) || `${gift.name} 상품권이 도착했습니다. 매장에서 사용해주세요.`,
+          mmsMsg: body?.mms_msg?.slice(0, 200) || `${gift.name} 교환권이 도착했습니다. 매장에서 사용해주세요.`,
           trId: subTrId,
           userId: ktUserId,
           orderNo: `vr-${voucherOrderId}-${i + 1}`,
@@ -460,17 +460,17 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
         lastOrderNo = result.orderNo
       }
 
-      // 6. 성공 — status='sent' + 셀러 잔액 차감 (상품권 + 원천징수).
+      // 6. 성공 — status='sent' + 셀러 잔액 차감 (교환권 + 원천징수).
       await c.env.DB.prepare(
         `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
       ).bind(lastOrderNo || trId, voucherOrderId).run()
 
-      // 잔액 차감 (상품권 + 원천징수 합산).
+      // 잔액 차감 (교환권 + 원천징수 합산).
       await c.env.DB.prepare(
         `UPDATE seller_deal_balances SET ${balCol} = ${balCol} - ?, updated_at = datetime('now') WHERE seller_id = ?`
       ).bind(totalDeductWithTax, sellerId).run()
 
-      // 이력 INSERT — 상품권 차감.
+      // 이력 INSERT — 교환권 차감.
       await c.env.DB.prepare(
         `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, reference_id, memo, created_at)
          VALUES (?, ?, ?, 'voucher_redeem', ?, ?, datetime('now'))`

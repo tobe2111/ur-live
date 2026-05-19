@@ -292,3 +292,38 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
     return c.json({ success: false, error: (e as Error).message }, 500)
   }
 })
+
+// 🛡️ 2026-05-19: 온라인 카테고리별 상품 그룹 — 메인 홈 카테고리 섹션용.
+//   각 카테고리 마다 active 상품 8개씩.
+publicUtilityRoutes.get('/api/home/categories', async (c) => {
+  const DB = c.env.DB
+  try {
+    // 1) 활성 카테고리 + 카운트 (사이드바/탭용).
+    const cats = await DB.prepare(
+      `SELECT COALESCE(category, '(미분류)') as category, COUNT(*) as cnt
+         FROM products
+        WHERE is_active = 1 AND category IS NOT NULL AND category != ''
+        GROUP BY category
+        HAVING cnt > 0
+        ORDER BY cnt DESC LIMIT 12`
+    ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] }))
+
+    // 2) 각 카테고리별 인기 상품 top 8.
+    const sections: Array<{ category: string; count: number; products: Record<string, unknown>[] }> = []
+    for (const c of (cats.results || [])) {
+      const items = await DB.prepare(
+        `SELECT id, name, price, original_price, image_url, category, seller_id,
+                view_count, sold_count, avg_rating, review_count, deal_only
+           FROM products
+          WHERE is_active = 1 AND category = ?
+          ORDER BY sold_count DESC, view_count DESC, created_at DESC
+          LIMIT 8`
+      ).bind(c.category).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+      sections.push({ category: c.category, count: c.cnt, products: items.results || [] })
+    }
+
+    return c.json({ success: true, data: { sections } })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})

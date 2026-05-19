@@ -386,9 +386,9 @@ export default function SellerSettlementsPage() {
                   bizRegStatus === 'rejected' ? 'text-red-900' :
                   bizRegImageUrl ? 'text-amber-900' : 'text-blue-900'
                 }`}>
-                  {bizRegStatus === 'rejected' ? '사업자등록 반려됨 — 재제출 필요 (현재: 🎁 상품권 정산만 가능)' :
-                   bizRegImageUrl ? '사업자등록 검증 대기 중 (현재: 🎁 상품권 정산만 가능)' :
-                   '비사업자 셀러 → 🎁 KT 상품권으로 정산 가능 / 💰 현금 정산은 사업자등록 필요'}
+                  {bizRegStatus === 'rejected' ? '사업자등록 반려됨 — 재제출 필요 (현재: 🎁 교환권 정산만 가능)' :
+                   bizRegImageUrl ? '사업자등록 검증 대기 중 (현재: 🎁 교환권 정산만 가능)' :
+                   '비사업자 셀러 → 🎁 KT 교환권으로 정산 가능 / 💰 현금 정산은 사업자등록 필요'}
                 </p>
                 {bizRegStatus === 'rejected' && bizRegRejectReason && (
                   <p className="text-xs text-red-700 mt-1.5 bg-red-100 px-2 py-1 rounded">
@@ -398,7 +398,7 @@ export default function SellerSettlementsPage() {
                 <p className="text-xs text-gray-600 mt-1.5">
                   {bizRegImageUrl && bizRegStatus === 'pending'
                     ? '어드민 검증 후 알려드립니다 (보통 1-3 영업일)'
-                    : '미등록 상태 — 현재는 딜(포인트) / 상품권으로만 수령 가능 · 딜은 플랫폼 내 사용만 가능 (현금화 불가)'}
+                    : '미등록 상태 — 현재는 딜(포인트) / 교환권으로만 수령 가능 · 딜은 플랫폼 내 사용만 가능 (현금화 불가)'}
                 </p>
                 <div className="mt-3">
                   <button
@@ -829,14 +829,14 @@ function DealBalanceCard() {
               💸 환급 신청
             </button>
           )}
-          {/* 🛡️ 2026-05-19: 모든 셀러 (검증/미검증 둘 다) 가 상품권으로 받기 가능 */}
+          {/* 🛡️ 2026-05-19: 모든 셀러 (검증/미검증 둘 다) 가 교환권으로 받기 가능 */}
           {balance.total > 0 && (
             <button
               type="button"
               onClick={() => setVoucherOpen(true)}
               className="px-3 py-1.5 bg-pink-500 text-white text-xs font-bold rounded-lg hover:bg-pink-600 ml-2"
             >
-              🎁 상품권으로 받기
+              🎁 교환권으로 받기
             </button>
           )}
         </div>
@@ -926,7 +926,7 @@ function DealBalanceCard() {
         </div>
       )}
 
-      {/* 🛡️ 2026-05-19: 상품권으로 받기 모달 */}
+      {/* 🛡️ 2026-05-19: 교환권으로 받기 모달 */}
       {voucherOpen && (
         <VoucherRedeemModal
           totalBalance={balance.total}
@@ -944,7 +944,7 @@ function DealBalanceCard() {
   )
 }
 
-// 🛡️ 2026-05-19: 상품권 (KT Alpha) 발송 모달 — 비사업자 셀러 핵심 흐름.
+// 🛡️ 2026-05-19: 교환권 (KT Alpha) 발송 모달 — 비사업자 셀러 핵심 흐름.
 interface CatalogItem {
   gift_code: string
   name: string
@@ -1050,7 +1050,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
         onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">🎁 상품권으로 받기</h3>
+            <h3 className="text-lg font-bold text-gray-900">🎁 교환권으로 받기</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               잔액 ₩{totalBalance.toLocaleString()} 에서 차감 · KT Alpha (기프티쇼) B2B 정산
             </p>
@@ -1144,7 +1144,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
             <div className="bg-white rounded p-3 text-xs mb-3 space-y-0.5">
               <p className="flex justify-between"><span className="text-gray-500">선택 상품</span><span className="font-semibold">{selected.name} × {qty}</span></p>
               <p className="flex justify-between"><span className="text-gray-500">단가 (markup {markupPct}% 포함)</span><span>₩{unitDeduct(selected).toLocaleString()}</span></p>
-              <p className="flex justify-between"><span className="text-gray-500">상품권 차감</span><span>₩{totalDeduct.toLocaleString()}</span></p>
+              <p className="flex justify-between"><span className="text-gray-500">교환권 차감</span><span>₩{totalDeduct.toLocaleString()}</span></p>
               {needTaxConsent && (
                 <p className="flex justify-between text-amber-700">
                   <span>+ 원천징수 ({withholdingRate}%, 비사업자)</span>
@@ -1163,7 +1163,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
                 <input type="checkbox" checked={acceptExpiry} onChange={(e) => setAcceptExpiry(e.target.checked)}
                   className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
                 <span>
-                  <b className="text-amber-700">[필수]</b> 본 상품권은 <b>발행일로부터 30일 유효</b>하며,
+                  <b className="text-amber-700">[필수]</b> 본 교환권은 <b>발행일로부터 30일 유효</b>하며,
                   발송 후 <b>환불 / 취소 / 유효기간 연장이 불가</b>함을 확인했습니다 (KT Alpha B2B 쿠폰 정책).
                 </span>
               </label>
@@ -1171,7 +1171,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
                 <input type="checkbox" checked={acceptB2B} onChange={(e) => setAcceptB2B(e.target.checked)}
                   className="mt-0.5 w-4 h-4 accent-pink-500 flex-shrink-0" />
                 <span>
-                  <b className="text-amber-700">[필수]</b> 본 상품권은 <b>유어딜이 자사 셀러(본인)에게 지급하는 B2B 정산 수단</b>이며,
+                  <b className="text-amber-700">[필수]</b> 본 교환권은 <b>유어딜이 자사 셀러(본인)에게 지급하는 B2B 정산 수단</b>이며,
                   최종 소비자 판매 목적이 아님을 확인했습니다. 본인 명의 휴대폰으로만 발송됩니다.
                 </span>
               </label>
@@ -1182,7 +1182,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
                   <span>
                     <b className="text-amber-700">[비사업자 필수]</b> 본인은 사업자등록증을 보유하지 않은 개인이며,
                     소득세법 §21 기타소득에 따라 <b>액면가의 {withholdingRate}% (₩{withholdingAmount.toLocaleString()}) 원천징수</b> 후
-                    상품권을 수령함에 동의합니다. 연 누계 300만원 초과 시 종합소득 합산 신고 의무가 본인에게 있습니다.
+                    교환권을 수령함에 동의합니다. 연 누계 300만원 초과 시 종합소득 합산 신고 의무가 본인에게 있습니다.
                   </span>
                 </label>
               )}

@@ -9,7 +9,7 @@
  *
  *   호출처:
  *     - 정산 송금 시점 (admin 승인) — settlement_cash
- *     - 상품권 발송 시점 — voucher_order
+ *     - 교환권 발송 시점 — voucher_order
  *     - 딜 환급 시점 — deal_redeem
  *
  *   동작:
