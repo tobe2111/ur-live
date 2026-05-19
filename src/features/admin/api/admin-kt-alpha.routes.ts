@@ -326,7 +326,9 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
 
     const markupPct = Math.min(100, Math.max(0, Number(sMap.kt_alpha_consumer_markup_pct) || 20))
     const adminSellerId = Number(sMap.kt_alpha_admin_seller_id) || null
-    const category = sMap.kt_alpha_consumer_category || 'voucher'
+    // 🛡️ 2026-05-19: 카테고리 = gift_catalog 의 goods_type_detail (편의점/카페/도서 등) 자동.
+    //   설정 (kt_alpha_consumer_category) 는 fallback 으로만 사용.
+    const fallbackCategory = sMap.kt_alpha_consumer_category || 'voucher'
     const isActive = Number(sMap.kt_alpha_consumer_enabled) || 0   // 노출 ON/OFF 글로벌 flag
 
     // 2. gift_catalog 활성 row 조회.
@@ -391,6 +393,9 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         continue
       }
 
+      // 카테고리 = goods_type_detail (편의점/카페/도서 등) → 없으면 fallback.
+      const itemCategory = r.goods_type_detail || fallbackCategory
+
       if (existingId) {
         updateStatements.push(c.env.DB.prepare(
           `UPDATE products SET
@@ -403,7 +408,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
           r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           r.desc_image_url ? JSON.stringify([r.desc_image_url]) : null,
-          category, isActive, existingId,
+          itemCategory, isActive, existingId,
         ))
         updated++
       } else {
@@ -418,7 +423,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
           r.gift_code, r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           r.desc_image_url ? JSON.stringify([r.desc_image_url]) : null,
-          category, isActive, adminSellerId,
+          itemCategory, isActive, adminSellerId,
         ))
         inserted++
       }
@@ -520,6 +525,83 @@ adminKtAlphaRoutes.get('/kt-alpha/consumer-products/stats', cors(), async (c) =>
         last_import_at: lastImport?.value || null,
       },
     })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// 🛡️ 2026-05-19: 9. 카테고리별 KT Alpha 상품 통계.
+adminKtAlphaRoutes.get('/kt-alpha/categories', cors(), async (c) => {
+  try {
+    const rows = await c.env.DB.prepare(
+      `SELECT COALESCE(category, '(미분류)') as category,
+              COUNT(*) as total,
+              SUM(CASE WHEN is_active=1 THEN 1 ELSE 0 END) as visible,
+              SUM(sold_count) as sold,
+              COALESCE(MIN(price), 0) as min_price,
+              COALESCE(MAX(price), 0) as max_price
+         FROM products
+        WHERE kt_alpha_gift_code IS NOT NULL
+        GROUP BY category
+        ORDER BY total DESC`
+    ).all<{ category: string; total: number; visible: number; sold: number; min_price: number; max_price: number }>()
+      .catch(() => ({ results: [] }))
+    return c.json({ success: true, data: rows.results || [] })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// 🛡️ 2026-05-19: 10. KT Alpha 상품 삭제 (단건 / 카테고리 / 전체).
+//   body: { gift_codes?: string[], category?: string, all?: true }
+adminKtAlphaRoutes.post('/kt-alpha/products/delete', cors(), async (c) => {
+  try {
+    type Body = { gift_codes?: string[]; category?: string; all?: boolean }
+    const body = await c.req.json<Body>().catch(() => ({} as Body))
+
+    if (body?.all === true) {
+      const r = await c.env.DB.prepare(
+        `DELETE FROM products WHERE kt_alpha_gift_code IS NOT NULL`
+      ).run()
+      return c.json({ success: true, data: { deleted: r.meta.changes || 0, scope: 'all' } })
+    }
+
+    if (body?.category) {
+      const r = await c.env.DB.prepare(
+        `DELETE FROM products WHERE kt_alpha_gift_code IS NOT NULL AND category = ?`
+      ).bind(body.category).run()
+      return c.json({ success: true, data: { deleted: r.meta.changes || 0, scope: 'category', category: body.category } })
+    }
+
+    if (Array.isArray(body?.gift_codes) && body.gift_codes.length > 0) {
+      const codes = body.gift_codes.slice(0, 1000)  // 안전 한도
+      const placeholders = codes.map(() => '?').join(',')
+      const r = await c.env.DB.prepare(
+        `DELETE FROM products WHERE kt_alpha_gift_code IN (${placeholders})`
+      ).bind(...codes).run()
+      return c.json({ success: true, data: { deleted: r.meta.changes || 0, scope: 'codes', count: codes.length } })
+    }
+
+    return c.json({ success: false, error: 'gift_codes / category / all 중 하나 필요' }, 400)
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// 🛡️ 2026-05-19: 11. 카테고리 일괄 변경 (rename / merge).
+//   body: { from: string, to: string }
+adminKtAlphaRoutes.post('/kt-alpha/categories/rename', cors(), async (c) => {
+  try {
+    type Body = { from?: string; to?: string }
+    const body = await c.req.json<Body>().catch(() => ({} as Body))
+    if (!body?.from || !body?.to) {
+      return c.json({ success: false, error: 'from + to 필요' }, 400)
+    }
+    const r = await c.env.DB.prepare(
+      `UPDATE products SET category = ?, updated_at = datetime('now')
+        WHERE kt_alpha_gift_code IS NOT NULL AND category = ?`
+    ).bind(body.to, body.from).run()
+    return c.json({ success: true, data: { updated: r.meta.changes || 0, from: body.from, to: body.to } })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }

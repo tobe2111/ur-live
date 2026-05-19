@@ -179,7 +179,63 @@ export default function AdminKtAlphaPage() {
     } catch { /* fail-soft */ }
   }
 
-  useEffect(() => { loadConsumerStats() }, []) // eslint-disable-line
+  // 🛡️ 2026-05-19: 카테고리별 통계.
+  const [categories, setCategories] = useState<Array<{
+    category: string; total: number; visible: number; sold: number; min_price: number; max_price: number;
+  }>>([])
+
+  async function loadCategories() {
+    try {
+      const r = await api.get('/api/admin/kt-alpha/categories', { headers: h() })
+      if (r.data?.success) setCategories(r.data.data || [])
+    } catch { /* fail-soft */ }
+  }
+
+  useEffect(() => { loadConsumerStats(); loadCategories() }, []) // eslint-disable-line
+
+  async function deleteByCategory(category: string, count: number) {
+    if (!confirm(`'${category}' 카테고리의 ${count}개 상품을 모두 삭제합니다.\n복구 불가 — 계속할까요?`)) return
+    try {
+      const r = await api.post('/api/admin/kt-alpha/products/delete', { category }, { headers: h() })
+      if (r.data?.success) {
+        toast.success(`✅ ${r.data.data.deleted}개 삭제됨`)
+        loadCategories(); loadConsumerStats()
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '삭제 실패')
+    }
+  }
+
+  async function deleteAllKtAlpha() {
+    if (!confirm('⚠️ KT Alpha 상품 전체를 삭제합니다.\n복구 불가 — 정말 계속하시겠습니까?')) return
+    if (!confirm('🚨 한 번 더 확인 — 정말 전체 삭제?')) return
+    try {
+      const r = await api.post('/api/admin/kt-alpha/products/delete', { all: true }, { headers: h() })
+      if (r.data?.success) {
+        toast.success(`✅ ${r.data.data.deleted}개 전체 삭제됨`)
+        loadCategories(); loadConsumerStats()
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '삭제 실패')
+    }
+  }
+
+  async function renameCategory(from: string) {
+    const to = prompt(`'${from}' → 새 카테고리명?`, from)
+    if (!to || to === from) return
+    try {
+      const r = await api.post('/api/admin/kt-alpha/categories/rename', { from, to }, { headers: h() })
+      if (r.data?.success) {
+        toast.success(`✅ ${r.data.data.updated}개 카테고리 변경됨`)
+        loadCategories()
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '변경 실패')
+    }
+  }
 
   async function runImport(dryRun: boolean) {
     if (!dryRun && !confirm(
@@ -520,6 +576,70 @@ export default function AdminKtAlphaPage() {
                 {consumerLastImport && <><br/>· 마지막 등록: {consumerLastImport}</>}
               </p>
             </div>
+
+            {/* 🛡️ 2026-05-19: 카테고리 관리 + 상품 삭제 */}
+            {categories.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">🗂️ 카테고리별 관리</h3>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      KT Alpha 상품은 카테고리(편의점/카페/도서 등)로 자동 분류됨. 카테고리별 삭제 가능.
+                    </p>
+                  </div>
+                  <button onClick={deleteAllKtAlpha}
+                    className="px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">
+                    🗑️ 전체 삭제
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-600 text-[11px]">
+                        <th className="px-3 py-2 text-left">카테고리</th>
+                        <th className="px-3 py-2 text-right">전체</th>
+                        <th className="px-3 py-2 text-right">노출 중</th>
+                        <th className="px-3 py-2 text-right">판매</th>
+                        <th className="px-3 py-2 text-right">가격대</th>
+                        <th className="px-3 py-2 text-right">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {categories.map((c) => (
+                        <tr key={c.category} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 font-bold text-gray-900">{c.category}</td>
+                          <td className="px-3 py-2 text-right text-gray-700">{Number(c.total ?? 0).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right text-emerald-700 font-semibold">
+                            {Number(c.visible ?? 0).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 text-right text-pink-600">{Number(c.sold ?? 0).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right text-gray-500 text-[10px]">
+                            ₩{Number(c.min_price ?? 0).toLocaleString()} ~ ₩{Number(c.max_price ?? 0).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="flex gap-1 justify-end">
+                              <button onClick={() => renameCategory(c.category)}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 text-[10px] rounded hover:bg-gray-200">
+                                ✏️ 이름
+                              </button>
+                              <button onClick={() => deleteByCategory(c.category, c.total)}
+                                className="px-2 py-1 bg-red-50 text-red-700 text-[10px] rounded hover:bg-red-100">
+                                🗑️ 삭제
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <p className="text-[10px] text-gray-400 mt-3">
+                  ⓘ 삭제는 복구 불가. 다시 등록하려면 '📦 대량 등록' 다시 실행.
+                </p>
+              </div>
+            )}
 
             {/* 카탈로그 미리보기 */}
             <div className="bg-white rounded-xl shadow-sm p-5">
