@@ -118,6 +118,54 @@ adminKtAlphaRoutes.post('/kt-alpha/sync', cors(), async (c) => {
   }
 })
 
+// 🛡️ 2026-05-19: 디버그용 — KT Alpha env 변수가 worker 에 어떻게 들어와있는지 확인.
+//   값은 노출하지 않고 길이/prefix/dev_mode 만 반환 (어드민만 접근).
+adminKtAlphaRoutes.get('/kt-alpha/debug', cors(), async (c) => {
+  try {
+    const env = c.env as unknown as { KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
+    const auth = env.KT_ALPHA_AUTH_CODE || ''
+    const tokenKey = env.KT_ALPHA_TOKEN_KEY || ''
+    const authToken = env.KT_ALPHA_AUTH_TOKEN || ''
+    const devMode = env.KT_ALPHA_DEV_MODE || ''
+    // 실제 사용될 dev_yn 값 (giftishow-api.ts:234 와 동일 로직)
+    const devYn = devMode === 'N' ? 'N' : 'Y'
+
+    return c.json({
+      success: true,
+      data: {
+        auth_code: {
+          length: auth.length,
+          prefix4: auth.slice(0, 4),
+          suffix4: auth.slice(-4),
+          starts_with_REAL: auth.startsWith('REAL'),
+          starts_with_DEV: auth.startsWith('DEV'),
+          has_whitespace: /\s/.test(auth),
+        },
+        token_key: {
+          length: tokenKey.length,
+          ends_with_eq: tokenKey.endsWith('=='),
+          has_plus: tokenKey.includes('+'),
+          has_space: tokenKey.includes(' '),
+          has_whitespace: /\s/.test(tokenKey),
+        },
+        auth_token_set: authToken.length > 0,
+        dev_mode_raw: devMode,
+        dev_mode_length: devMode.length,
+        dev_mode_charcodes: [...devMode].map(c => c.charCodeAt(0)),
+        // 실제 KT Alpha API 에 전송될 값:
+        will_send_dev_yn: devYn,
+        will_send_dev_yn_explanation:
+          devMode === 'N' ? '상용 모드 (REAL 키 호환)' :
+          devMode === '' ? '미설정 → default Y (개발 모드, REAL 키와 호환 안 됨)' :
+          `잘못된 값 "${devMode}" → default Y (REAL 키와 호환 안 됨)`,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+})
+
 // 4. POST /balance — 비즈머니 잔액 즉시 갱신.
 adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
   try {
