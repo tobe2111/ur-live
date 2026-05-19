@@ -353,6 +353,22 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
     let skipped = 0
     const samples: Array<{ gift_code: string; name: string; price: number; action: string }> = []
 
+    // 🛡️ 2026-05-19: 기존 products 미리 한번에 조회 (2260개 × 개별 SELECT 회피).
+    const existingMap = new Map<string, number>()
+    try {
+      const existing = await c.env.DB.prepare(
+        'SELECT id, kt_alpha_gift_code FROM products WHERE kt_alpha_gift_code IS NOT NULL'
+      ).all<{ id: number; kt_alpha_gift_code: string }>()
+      for (const e of (existing.results || [])) {
+        existingMap.set(e.kt_alpha_gift_code, e.id)
+      }
+    } catch { /* fall back to per-item check */ }
+
+    // 모든 SQL 문 미리 생성 → batch 처리.
+    type Stmt = D1PreparedStatement
+    const updateStatements: Stmt[] = []
+    const insertStatements: Stmt[] = []
+
     for (const r of (rows.results || [])) {
       const price = Math.floor(r.real_price * (1 + markupPct / 100))
       const description = [
@@ -363,22 +379,19 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         '\n⚠️ 본 상품은 본인 명의 휴대폰으로만 발송되며, 발송 후 환불/취소가 불가합니다.',
       ].filter(Boolean).join('\n')
 
-      // 기존 product 있는지 체크.
-      const existing = await c.env.DB.prepare(
-        'SELECT id FROM products WHERE kt_alpha_gift_code = ?'
-      ).bind(r.gift_code).first<{ id: number }>().catch(() => null)
+      const existingId = existingMap.get(r.gift_code)
+      const action: 'update' | 'insert' = existingId ? 'update' : 'insert'
 
       if (dryRun) {
-        samples.push({
-          gift_code: r.gift_code, name: r.name, price,
-          action: existing ? 'update' : 'insert',
-        })
-        if (existing) updated++; else inserted++
+        if (samples.length < 20) {
+          samples.push({ gift_code: r.gift_code, name: r.name, price, action })
+        }
+        if (action === 'update') updated++; else inserted++
         continue
       }
 
-      if (existing) {
-        await c.env.DB.prepare(
+      if (existingId) {
+        updateStatements.push(c.env.DB.prepare(
           `UPDATE products SET
              name = ?, description = ?, price = ?, original_price = ?,
              image_url = ?, detail_images = ?, category = ?,
@@ -389,13 +402,11 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
           r.name, description, price, r.sale_price,
           r.image_url_large || r.image_url_small,
           r.desc_image_url ? JSON.stringify([r.desc_image_url]) : null,
-          category,
-          isActive,
-          existing.id,
-        ).run().catch(() => { /* per-item fail-soft */ })
+          category, isActive, existingId,
+        ))
         updated++
       } else {
-        await c.env.DB.prepare(
+        insertStatements.push(c.env.DB.prepare(
           `INSERT INTO products (
              kt_alpha_gift_code, name, description, price, original_price,
              image_url, detail_images, stock, category,
@@ -407,8 +418,25 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
           r.image_url_large || r.image_url_small,
           r.desc_image_url ? JSON.stringify([r.desc_image_url]) : null,
           category, isActive, adminSellerId,
-        ).run().catch(() => { skipped++ })
+        ))
         inserted++
+      }
+    }
+
+    // batch 실행 (50개 chunk).
+    if (!dryRun) {
+      const BATCH = 50
+      const allStmts = [...insertStatements, ...updateStatements]
+      for (let i = 0; i < allStmts.length; i += BATCH) {
+        const chunk = allStmts.slice(i, i + BATCH)
+        try {
+          await c.env.DB.batch(chunk)
+        } catch {
+          // fail-soft fallback: 개별 시도.
+          for (const stmt of chunk) {
+            try { await stmt.run() } catch { skipped++ }
+          }
+        }
       }
     }
 
