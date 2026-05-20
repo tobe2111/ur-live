@@ -20,7 +20,11 @@ interface Product {
   stock: number
   seller_name: string
   seller_username: string
+  // 🛡️ 2026-05-19: 검색 결과 탭 (전체/교환권/쇼핑) 분리용.
+  deal_only?: number
 }
+
+type TypeTab = 'all' | 'voucher' | 'shop'
 
 interface SearchSuggestion {
   type: 'product' | 'seller'
@@ -75,6 +79,8 @@ export default function SearchPage() {
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
+  // 🛡️ 2026-05-19: 검색 결과 타입 탭 (전체/교환권/쇼핑) — 사용자가 결과 안에서 분류 가능.
+  const [typeTab, setTypeTab] = useState<TypeTab>('all')
 
   useEffect(() => { document.title = t('search.pageTitle', { defaultValue: '검색 - 유어딜' }) }, [t])
 
@@ -116,7 +122,11 @@ export default function SearchPage() {
 
     let filtered = (searchResult.products as Product[]).filter(product => {
       const price = getDiscountedPrice(product.price, product.discount_rate || 0)
-      return price >= priceRange.min && price <= priceRange.max
+      if (price < priceRange.min || price > priceRange.max) return false
+      // 🛡️ 2026-05-19: 타입 탭 필터 (교환권 vs 쇼핑).
+      if (typeTab === 'voucher' && Number(product.deal_only) !== 1) return false
+      if (typeTab === 'shop' && Number(product.deal_only) === 1) return false
+      return true
     })
 
     switch (sortBy) {
@@ -166,6 +176,36 @@ export default function SearchPage() {
         {/* Results Grid */}
         {showResults && (
           <>
+            {/* 🛡️ 2026-05-19: 타입 탭 (전체/교환권/쇼핑) — 결과 안에서 분류. */}
+            {(() => {
+              const all = (searchResult.products as Product[]) || []
+              const voucherCount = all.filter(p => Number(p.deal_only) === 1).length
+              const shopCount = all.length - voucherCount
+              return (
+                <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar">
+                  {[
+                    { key: 'all' as TypeTab, label: '전체', count: all.length },
+                    { key: 'voucher' as TypeTab, label: '🎁 교환권', count: voucherCount },
+                    { key: 'shop' as TypeTab, label: '🛒 쇼핑', count: shopCount },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setTypeTab(tab.key)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                        typeTab === tab.key
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                          : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300'
+                      } ${tab.count === 0 && tab.key !== 'all' ? 'opacity-40' : ''}`}
+                      disabled={tab.count === 0 && tab.key !== 'all'}
+                    >
+                      {tab.label} <span className="text-[10px] opacity-70">({tab.count})</span>
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
+
             {/* Sort and Filter Bar with chips */}
             <SortFilterBar
               totalResults={searchResult.total}

@@ -172,8 +172,8 @@ export default function VouchersPage() {
       </div>
 
       {/* 🛡️ 2026-05-19: 딜 잔액 + 충전/공구 유도 (사용자 요청). */}
-      <div className="px-4 lg:px-8 pt-3">
-        <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-500/10 dark:to-yellow-500/10 border border-amber-200 dark:border-amber-500/30 p-4">
+      <div className="ur-content-wide px-4 lg:px-8 pt-3">
+        <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-500/10 dark:to-yellow-500/10 border border-amber-200 dark:border-amber-500/30 p-4 lg:p-5">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">내 딜 잔액</span>
@@ -221,7 +221,7 @@ export default function VouchersPage() {
 
       {/* 브랜드 칩 그리드 */}
       {!brand && brands.length > 0 && (
-        <div className="px-4 lg:px-8 py-4">
+        <div className="ur-content-wide px-4 lg:px-8 py-4">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">인기 브랜드</h2>
           <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {brands.map(b => (
@@ -248,7 +248,7 @@ export default function VouchersPage() {
 
       {/* 선택된 브랜드 표시 */}
       {brand && (
-        <div className="px-4 lg:px-8 pt-3 pb-1 flex items-center gap-2">
+        <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-1 flex items-center gap-2">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">필터:</span>
           <button
             onClick={() => setBrand('')}
@@ -260,7 +260,7 @@ export default function VouchersPage() {
       )}
 
       {/* 금액권 그리드 */}
-      <div className="px-4 lg:px-8 py-4">
+      <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (

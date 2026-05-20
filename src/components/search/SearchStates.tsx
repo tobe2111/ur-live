@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Package, AlertCircle, Loader2, Clock, X } from 'lucide-react'
+import { Search, Package, AlertCircle, Loader2, Clock, X, TrendingUp } from 'lucide-react'
+import api from '@/lib/api'
 
 interface SearchStatesProps {
   loading: boolean
@@ -37,9 +38,19 @@ export function addRecentSearch(query: string): void {
 export default function SearchStates({ loading, error, query, hasResults }: SearchStatesProps) {
   const navigate = useNavigate()
   const [recent, setRecent] = useState<string[]>([])
+  // 🛡️ 2026-05-19: 인기 검색어 — popular_searches 테이블 기반.
+  const [popular, setPopular] = useState<string[]>([])
 
   useEffect(() => {
-    if (!query) setRecent(loadRecent())
+    if (!query) {
+      setRecent(loadRecent())
+      // 인기 검색어 fetch (캐시됨, 60s)
+      api.get('/api/search/popular').then(r => {
+        if (r.data?.success && Array.isArray(r.data.data)) {
+          setPopular(r.data.data.map((x: { keyword: string }) => x.keyword).slice(0, 10))
+        }
+      }).catch(() => { /* graceful */ })
+    }
   }, [query])
 
   const removeOne = (q: string) => {
@@ -131,10 +142,33 @@ export default function SearchStates({ loading, error, query, hasResults }: Sear
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Search className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
-            <p className="text-[17px] font-semibold text-gray-900 dark:text-white mb-2">검색어를 입력해주세요</p>
-            <p className="text-[15px] text-gray-500 dark:text-gray-400">상품명 또는 판매자명으로 검색할 수 있습니다</p>
+          <div className="flex flex-col items-center justify-center py-12 mb-4">
+            <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+            <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">검색어를 입력해주세요</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400">상품명 또는 판매자명으로 검색할 수 있습니다</p>
+          </div>
+        )}
+
+        {/* 🛡️ 2026-05-19: 인기 검색어 (popular_searches 기반). 사용자 발견성 ↑. */}
+        {popular.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <TrendingUp className="w-4 h-4 text-rose-500" />
+              <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">인기 검색어</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {popular.map((q, i) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+                >
+                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[10px]">#{i + 1}</span>
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
