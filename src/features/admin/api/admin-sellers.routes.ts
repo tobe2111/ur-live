@@ -23,6 +23,7 @@ import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -514,5 +515,152 @@ async function sendBusinessRegistrationAlimtalk(
     )
   } catch { /* silent fail */ }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🛡️ 2026-05-19: POST /sellers/store-owner — 공급자 (가게 사장님) 빠른 등록.
+//
+// 사용 시나리오: D 공동구매 정책 — 셀러(인플루언서) + 가게 + 플랫폼 3자 분배.
+//   가게는 라이브 송출 안 함, 상품만 등록 + 정산 받음.
+//   어드민이 가게 정보 받아서 한 번에 셀러 계정 생성 → 가게에 자격증명 전달.
+//
+// Body: { business_name, contact_name, phone, email?, business_number?, password? }
+//   password 미지정 시 임시 비밀번호 자동 생성 (8자리).
+//   응답에 password 평문 1회 노출 — 어드민이 가게에 전달.
+//
+// 생성된 셀러:
+//   seller_type='store_owner', can_broadcast=0, status='approved', is_active=1
+//   commission_rate = 5% (platform 기본)
+// ─────────────────────────────────────────────────────────────────────────────
+adminSellersRoutes.post('/sellers/store-owner', cors(), rateLimit({ action: 'admin_create_store_owner', max: 30, windowSec: 3600 }), async (c) => {
+  try {
+    const DB = c.env.DB
+    const body = await c.req.json<{
+      business_name?: string
+      contact_name?: string
+      phone?: string
+      email?: string
+      business_number?: string
+      password?: string
+      commission_rate?: number  // 0~100 (%)
+    }>()
+
+    // 입력 검증
+    if (!body.business_name || !body.contact_name || !body.phone) {
+      return c.json({ success: false, error: 'business_name, contact_name, phone 필수' }, 400)
+    }
+    if (typeof body.business_name !== 'string' || body.business_name.length < 1 || body.business_name.length > 100) {
+      return c.json({ success: false, error: '가게명 1~100자' }, 400)
+    }
+    if (typeof body.contact_name !== 'string' || body.contact_name.length < 1 || body.contact_name.length > 50) {
+      return c.json({ success: false, error: '담당자명 1~50자' }, 400)
+    }
+    if (!/^01\d{8,9}$/.test(body.phone.replace(/-/g, ''))) {
+      return c.json({ success: false, error: '휴대폰 번호 형식 오류 (010xxxxxxxx)' }, 400)
+    }
+    if (body.email && (typeof body.email !== 'string' || body.email.length > 255 || !body.email.includes('@'))) {
+      return c.json({ success: false, error: '이메일 형식 오류' }, 400)
+    }
+    if (body.commission_rate != null) {
+      const r = Number(body.commission_rate)
+      if (!Number.isFinite(r) || r < 0 || r > 100) {
+        return c.json({ success: false, error: '수수료율은 0~100 범위' }, 400)
+      }
+    }
+
+    // 이메일 중복 체크 (있을 때만)
+    if (body.email) {
+      const dup = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(body.email).first()
+      if (dup) return c.json({ success: false, error: '이미 사용 중인 이메일' }, 409)
+    }
+
+    // 임시 비밀번호 생성 (지정 안 했을 때)
+    const tempPassword = body.password ?? (
+      // 8자리 — 영문 대소+숫자
+      Array.from(crypto.getRandomValues(new Uint8Array(8)))
+        .map(b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'[b % 54])
+        .join('')
+    )
+    if (typeof tempPassword !== 'string' || tempPassword.length < 6 || tempPassword.length > 128) {
+      return c.json({ success: false, error: '비밀번호 6~128자' }, 400)
+    }
+
+    const { hashPassword } = await import('@/lib/password')
+    const hash = await hashPassword(tempPassword)
+    const phone = body.phone.replace(/-/g, '')
+    const email = body.email ?? `store_${phone}@store.ur-team.com`  // 가짜 이메일 (필수 컬럼)
+    const username = `store_${phone}`
+
+    // username 중복 회피 — 같은 번호로 재등록 시 _1 _2 suffix
+    let finalUsername = username
+    for (let i = 1; i < 100; i++) {
+      const existing = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(finalUsername).first()
+      if (!existing) break
+      finalUsername = `${username}_${i}`
+    }
+
+    const commissionRate = body.commission_rate != null ? Number(body.commission_rate) : 5
+
+    // INSERT — seller_type='store_owner', can_broadcast=0, status='approved'
+    let result
+    try {
+      result = await DB.prepare(`
+        INSERT INTO sellers (
+          username, password_hash, name, email, phone, business_name, business_number,
+          status, is_active, commission_rate, seller_type, can_broadcast,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', 1, ?, 'store_owner', 0, datetime('now'), datetime('now'))
+      `).bind(
+        finalUsername, hash, body.contact_name, email, phone,
+        body.business_name, body.business_number || null,
+        commissionRate,
+      ).run()
+    } catch (err) {
+      // seller_type / can_broadcast 컬럼 미존재 환경 fallback (migration 0272 미적용).
+      if (import.meta.env?.DEV) console.warn('[admin:store-owner] new columns missing, fallback:', err)
+      result = await DB.prepare(`
+        INSERT INTO sellers (
+          username, password_hash, name, email, phone, business_name, business_number,
+          status, is_active, commission_rate, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', 1, ?, datetime('now'), datetime('now'))
+      `).bind(
+        finalUsername, hash, body.contact_name, email, phone,
+        body.business_name, body.business_number || null, commissionRate,
+      ).run()
+    }
+
+    const newId = Number(result.meta?.last_row_id)
+
+    // Audit log — 어드민이 누구 등록했는지 추적.
+    await writeAuditLog(c, {
+      action: 'seller.create_store_owner',
+      targetType: 'seller',
+      targetId: String(newId),
+      after: {
+        business_name: body.business_name,
+        contact_name: body.contact_name,
+        phone: phone.slice(0, 3) + '****' + phone.slice(-4),  // PII masked
+        commission_rate: commissionRate,
+      },
+    })
+
+    return c.json({
+      success: true,
+      data: {
+        id: newId,
+        username: finalUsername,
+        temp_password: tempPassword,  // 어드민이 가게에 1회 전달용 — 응답 후 다신 노출 안 됨
+        business_name: body.business_name,
+        contact_name: body.contact_name,
+        seller_type: 'store_owner',
+        commission_rate: commissionRate,
+        login_url: '/seller/login',
+        note: '가게 사장님께 username + temp_password 안내하세요. 로그인 후 비밀번호 변경 권장.',
+      },
+    })
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('[admin:store-owner] error:', err)
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
+  }
+})
 
 export default adminSellersRoutes;

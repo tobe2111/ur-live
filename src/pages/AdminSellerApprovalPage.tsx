@@ -109,6 +109,54 @@ export default function AdminSellerApprovalPage() {
     } catch { toast.error('거절 실패') } finally { setActingId(null) }
   }
 
+  // 🛡️ 2026-05-19: 공급자 (가게 사장님) 빠른 등록 — D 공동구매 3자 분배 위함.
+  //   가게는 라이브 송출 X. 상품만 등록 + 정산. 인플루언서 셀러가 위탁 판매.
+  //   prompt 기반 가벼운 UX (별도 모달 페이지 안 만듦). 어드민용이라 충분.
+  const handleStoreOwnerQuickAdd = async () => {
+    const business_name = prompt('가게명 (예: 홍대 매운돈까스)')?.trim()
+    if (!business_name) return
+    const contact_name = prompt('담당자명 (예: 김사장)')?.trim()
+    if (!contact_name) return
+    const phoneRaw = prompt('휴대폰 번호 (010-1234-5678 또는 01012345678)')?.trim()
+    if (!phoneRaw) return
+    const phone = phoneRaw.replace(/-/g, '')
+    if (!/^01\d{8,9}$/.test(phone)) { toast.error('휴대폰 번호 형식 오류'); return }
+    const email = prompt('이메일 (선택 — 비워두면 가짜 도메인 자동 생성)')?.trim() || undefined
+    const business_number = prompt('사업자번호 (선택, 예: 123-45-67890)')?.trim() || undefined
+    const commissionInput = prompt('수수료율 (%, 기본 5)', '5')?.trim()
+    const commission_rate = commissionInput ? Number(commissionInput) : 5
+    if (!Number.isFinite(commission_rate) || commission_rate < 0 || commission_rate > 100) {
+      toast.error('수수료율 0~100 범위'); return
+    }
+    try {
+      const res = await api.post(
+        '/api/admin/sellers/store-owner',
+        { business_name, contact_name, phone, email, business_number, commission_rate },
+        h,
+      )
+      if (res.data?.success) {
+        const d = res.data.data
+        // 자격증명을 한번에 노출 — 어드민이 가게에 전달.
+        alert(
+          `✅ 공급자 등록 완료\n\n` +
+          `가게: ${d.business_name}\n담당자: ${d.contact_name}\n수수료율: ${d.commission_rate}%\n\n` +
+          `[로그인 정보 — 가게에 전달]\n` +
+          `URL: https://live.ur-team.com${d.login_url}\n` +
+          `Username: ${d.username}\n` +
+          `Password: ${d.temp_password}\n\n` +
+          `* 가게가 로그인 후 비밀번호 변경 권장.`
+        )
+        toast.success('공급자 등록 완료')
+        load()
+      } else {
+        toast.error(res.data?.error || '등록 실패')
+      }
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '등록 실패')
+    }
+  }
+
   const toggleSuspend = async (s: Seller) => {
     const isActivating = s.status === 'suspended'
     const action = isActivating ? '재활성' : '정지'
@@ -147,6 +195,15 @@ export default function AdminSellerApprovalPage() {
           title="셀러 관리"
           subtitle="가입 승인/거절 + 활성 셀러 정지/재활성 + 검색"
           icon={<UserCheck className="h-5 w-5" />}
+          actions={
+            <button
+              type="button"
+              onClick={handleStoreOwnerQuickAdd}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+            >
+              <span>🏪</span> 공급자 빠른 등록
+            </button>
+          }
         />
 
         {/* 검색 */}

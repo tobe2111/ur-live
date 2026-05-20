@@ -207,7 +207,12 @@ export interface SellersTable {
   business_number: string | null
   bank_account: string | null
   status: string                // 'pending' | 'approved' | 'rejected' | 'suspended'
-  seller_type: string           // 'influencer' | 'store_owner' | 'both' — DEFAULT 'influencer'
+  // migration 0272 (2026-05-19): D 공동구매 3자 분배 위한 구분.
+  //   'influencer' — 본인이 라이브 송출 + 상품 판매 (기본)
+  //   'store_owner' — 라이브 안 함, 상품만 등록 + 정산 받음 (가게 사장님)
+  //   'both' — 라이브 + 공급 둘 다
+  seller_type: string           // DEFAULT 'influencer'
+  can_broadcast: number         // 0=라이브 금지 (store_owner default) / 1=가능 (influencer default)
   is_active: number
   commission_rate: number       // REAL DEFAULT 10.00
   created_at: string
