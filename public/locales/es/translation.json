@@ -1189,7 +1189,10 @@
       "contact": "문의",
       "contactDesc": "인플루언서에게 직접 문의",
       "following": "✓ 팔로잉",
-      "follow": "+ 팔로우"
+      "follow": "+ 팔로우",
+      "shop": "Tienda",
+      "noShopProductsOwner": "No hay productos aún. Añadelos desde el panel de vendedor.",
+      "noShopProducts": "No hay productos aún."
     },
     "storeIntro": "Introduccion de la tienda",
     "shippingInfo": "Info de envio",

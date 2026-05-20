@@ -1858,7 +1858,10 @@
       "contact": "Contact",
       "contactDesc": "Contact the influencer directly",
       "following": "✓ Following",
-      "follow": "+ Follow"
+      "follow": "+ Follow",
+      "shop": "Shop",
+      "noShopProductsOwner": "No products yet. Add some from your seller dashboard.",
+      "noShopProducts": "No products yet."
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",

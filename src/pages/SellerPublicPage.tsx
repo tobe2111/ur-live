@@ -159,26 +159,31 @@ export default function SellerPublicPage() {
     if (!sellerId) return
     setLoading(true)
 
-    // 먼저 셀러 정보 조회 (username/slug 지원)
+    // 🛡️ 2026-05-19 로딩 속도 최적화 (사용자 신고):
+    //   이전: profile → (waited) → products/streams/shorts (sequential, 2 round-trips blank screen)
+    //   이후: profile 도착 즉시 setLoading(false) → 헤더/탭 렌더링 → 데이터는 백그라운드.
+    //   각 탭은 자기 데이터 도착 전까지 빈 상태 + skeleton 으로 graceful 표시.
     api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
       const sellerData = sellerRes.data.data
       if (!sellerData) { setSeller(null); setLoading(false); return }
       setSeller(sellerData)
+      setLoading(false)  // ← 헤더/탭 즉시 노출, 사용자가 빈 화면 안 봄
 
-      // 셀러 ID로 나머지 데이터 조회
+      // 그 다음 데이터는 백그라운드 병렬 fetch (fire-and-forget)
       const numericId = sellerData.id
-      return Promise.all([
-        api.get(`/api/products?seller_id=${numericId}&limit=20`).catch(() => ({ data: { data: [] } })),
-        api.get(`/api/streams?seller_id=${numericId}&limit=20`).catch(() => ({ data: { data: [] } })),
-        api.get(`/api/shorts/feed?limit=20`).catch(() => ({ data: { data: [] } })),
-      ]).then(([productsRes, streamsRes, shortsRes]) => {
-        setProducts(productsRes.data.data || [])
-        setStreams(streamsRes.data.data || [])
-        const allShorts = shortsRes.data.data || []
-        setShorts(allShorts.filter((s: Short & { seller_id?: number }) => String(s.seller_id) === String(numericId)))
-      })
-    }).catch(() => { setSeller(null) })
-      .finally(() => setLoading(false))
+      api.get(`/api/products?seller_id=${numericId}&limit=20`)
+        .then(r => setProducts(r.data.data || []))
+        .catch(() => { /* graceful — empty list */ })
+      api.get(`/api/streams?seller_id=${numericId}&limit=20`)
+        .then(r => setStreams(r.data.data || []))
+        .catch(() => { /* graceful */ })
+      api.get(`/api/shorts/feed?limit=20&seller_id=${numericId}`)
+        .then(r => {
+          const list = r.data.data || []
+          setShorts(list.filter((s: Short & { seller_id?: number }) => String(s.seller_id) === String(numericId)))
+        })
+        .catch(() => { /* graceful */ })
+    }).catch(() => { setSeller(null); setLoading(false) })
   }, [sellerId])
 
   // 실시간 라이브 감지 — 공개 페이지 머물러 있을 때 셀러가 라이브 시작하면 즉시 반영
@@ -234,9 +239,12 @@ export default function SellerPublicPage() {
   const recentStreams = streams.slice(0, 6)
 
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
+  // 🛡️ 2026-05-19: '상품' 탭 — 식사권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
+  const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'home', label: t('seller.tabHome') },
+    { key: 'shop', label: `${t('seller.publicPage.shop', { defaultValue: '상품' })} ${shopProducts.length}` },
     { key: 'vouchers', label: `${t('seller.publicPage.vouchers')} ${mealVouchers.length}` },
     { key: 'shorts', label: `${t('seller.publicPage.videos')} ${shorts.length}` },
     { key: 'live', label: `${t('seller.tabLive')} ${streams.length}` },
@@ -300,6 +308,53 @@ export default function SellerPublicPage() {
             setTab={setTab}
             sellerId={seller?.id ? Number(seller.id) : undefined}
           />
+        )}
+
+        {tab === 'shop' && (
+          shopProducts.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 text-sm">
+              {isOwner
+                ? t('seller.publicPage.noShopProductsOwner', { defaultValue: '등록한 상품이 없습니다. 셀러 대시보드 → 상품 등록에서 추가하세요.' })
+                : t('seller.publicPage.noShopProducts', { defaultValue: '등록된 상품이 없습니다.' })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
+              {shopProducts.map(p => {
+                const discountRate = p.discount_rate || (p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0)
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => navigate(`/products/${p.id}`)}
+                    className="text-left active:scale-[0.98] transition-transform w-full block"
+                  >
+                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
+                      )}
+                      {discountRate > 0 && (
+                        <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">
+                          -{discountRate}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2">
+                      <p className={`text-[12px] ${T.text} leading-tight line-clamp-2`}>{p.name}</p>
+                      {p.original_price && p.original_price > p.price && (
+                        <p className="text-[10px] text-gray-400 line-through mt-1">{p.original_price.toLocaleString('ko-KR')}원</p>
+                      )}
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        {discountRate > 0 && <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>}
+                        <span className={`text-[13px] font-extrabold ${T.text}`}>{p.price.toLocaleString('ko-KR')}원</span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )
         )}
 
         {tab === 'vouchers' && (

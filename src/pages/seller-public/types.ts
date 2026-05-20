@@ -24,6 +24,8 @@ export interface Product {
   image_url?: string; sold_count?: number; category?: string
   restaurant_name?: string; restaurant_address?: string
   group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
+  // 🛡️ 2026-05-19: 교환권 (KT Alpha) 구분.
+  deal_only?: number
 }
 
 export interface Short {
@@ -31,4 +33,5 @@ export interface Short {
   product_id?: number; product_name?: string; product_price?: number
 }
 
-export type Tab = 'home' | 'vouchers' | 'shorts' | 'live' | 'info'
+// 🛡️ 2026-05-19: 'shop' 탭 추가 — 셀러가 등록한 일반 상품 (식사권 외) 공개.
+export type Tab = 'home' | 'shop' | 'vouchers' | 'shorts' | 'live' | 'info'

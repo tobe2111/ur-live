@@ -1888,7 +1888,10 @@
       "contact": "문의",
       "contactDesc": "인플루언서에게 직접 문의",
       "following": "✓ 팔로잉",
-      "follow": "+ 팔로우"
+      "follow": "+ 팔로우",
+      "shop": "상품",
+      "noShopProductsOwner": "등록한 상품이 없습니다. 셀러 대시보드 → 상품 등록에서 추가하세요.",
+      "noShopProducts": "등록된 상품이 없습니다."
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",

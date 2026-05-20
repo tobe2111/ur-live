@@ -1857,7 +1857,10 @@
       "contact": "お問い合わせ",
       "contactDesc": "インフルエンサーに直接お問い合わせ",
       "following": "✓ フォロー中",
-      "follow": "+ フォロー"
+      "follow": "+ フォロー",
+      "shop": "商品",
+      "noShopProductsOwner": "登録された商品がありません。セラーダッシュボードから追加してください。",
+      "noShopProducts": "登録された商品がありません。"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",

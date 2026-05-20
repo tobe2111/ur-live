@@ -1857,7 +1857,10 @@
       "contact": "문의",
       "contactDesc": "인플루언서에게 직접 문의",
       "following": "✓ 팔로잉",
-      "follow": "+ 팔로우"
+      "follow": "+ 팔로우",
+      "shop": "商品",
+      "noShopProductsOwner": "还没有商品。请从卖家后台添加。",
+      "noShopProducts": "还没有商品。"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",
