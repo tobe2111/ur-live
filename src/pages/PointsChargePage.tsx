@@ -56,52 +56,9 @@ export default function PointsChargePage() {
     ]).finally(() => setLoading(false))
   }, [userId, navigate])
 
-  // 🛡️ 2026-05-19 perf: setTimeout(200ms) 제거 + 직렬 await → 병렬 Promise.all.
-  //   React 가 setShowWidget(true) 후 다음 tick 에 DOM 마운트 보장하므로 wait 불필요.
-  //   renderPaymentMethods + renderAgreement 병렬 → 500ms 절감.
-  useEffect(() => {
-    if (!showWidget || !widgetsRef.current) return
-    const widgets = widgetsRef.current as { renderPaymentMethods: Function; renderAgreement: Function; setAmount: Function }
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        // DOM mount 보장 — selector 가 실제로 존재할 때까지 short wait (50ms 한 번만).
-        // setTimeout 0 도 가능하지만 안전 마진 50ms.
-        await new Promise(r => setTimeout(r, 50))
-        if (cancelled) return
-        // 🛡️ 2026-05-19 v5: variantKey 후보 fallback chain — Toss 콘솔 미설정 환경도 동작.
-        //   사용자 신고 — 'DEFAULT' / 'widgetA' 둘 다 404 → SDK 기본 동작까지 fallback.
-        const VARIANTS: Array<string | undefined> = ['DEFAULT', 'widgetA', 'widget1', undefined]
-        const AGREEMENTS: Array<string | undefined> = ['AGREEMENT', 'DEFAULT', undefined]
-        const tryOne = async (fn: (o: { selector: string; variantKey?: string }) => Promise<unknown>, sel: string, list: Array<string | undefined>) => {
-          let last: unknown
-          for (const v of list) {
-            try {
-              const o: { selector: string; variantKey?: string } = { selector: sel }
-              if (v) o.variantKey = v
-              await fn(o)
-              return
-            } catch (e) { last = e }
-          }
-          throw last instanceof Error ? last : new Error('widget variant not found')
-        }
-        await Promise.all([
-          tryOne((o) => widgets.renderPaymentMethods(o), '#charge-payment-method', VARIANTS),
-          tryOne((o) => widgets.renderAgreement(o), '#charge-agreement', AGREEMENTS),
-        ])
-        if (!cancelled) setProcessing(false)
-      } catch (err: unknown) {
-        if (cancelled) return
-        const msg = err instanceof Error ? err.message : '결제창 로드에 실패했습니다.'
-        toast.error(msg)
-        setShowWidget(false)
-        setProcessing(false)
-      }
-    })()
-
-    return () => { cancelled = true }
-  }, [showWidget])
+  // 🛡️ 2026-05-19 v6: 기존 인페이지 widget 렌더 useEffect 제거.
+  //   handleCharge 가 payment() API 로 직접 redirect → 본 useEffect 가 트리거되지 않음.
+  //   widget variant 의존성 ZERO → 더 이상 404 발생 불가.
 
   async function handleCharge() {
     if (!selected || !userId) return

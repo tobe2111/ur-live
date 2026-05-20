@@ -222,6 +222,51 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-19: 교환권 전체 허위 리뷰 대량 생성 (사용자 요청).
+  //   상품당 5-25개 (랜덤) 리뷰, 평점 4.3-4.8 분산, is_generated=1 플래그로 영구 추적.
+  //   ⚠️ 법적: 전자상거래법 / 공정거래법상 허위 후기 책임은 사업주. 운영자 자체 결정 사용.
+  async function generateBulkReviews() {
+    if (!confirm('교환권 전체에 허위 리뷰를 대량 생성합니다.\n상품당 5-25개 (랜덤) · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n⚠️ 운영자 자체 책임. 계속하시겠습니까?')) return
+    const reviewsPerInput = prompt('상품당 평균 리뷰 개수 (5-50, 기본 15)', '15')
+    if (!reviewsPerInput) return
+    const reviewsPerProduct = Number(reviewsPerInput)
+    if (!Number.isFinite(reviewsPerProduct) || reviewsPerProduct < 5 || reviewsPerProduct > 50) {
+      toast.error('5-50 사이 숫자 입력')
+      return
+    }
+    toast.info('생성 중... (시간 소요. 페이지를 닫지 마세요.)')
+    try {
+      const r = await api.post(
+        '/api/admin/reviews/generate-bulk-vouchers',
+        { reviews_per_product: reviewsPerProduct },
+        { headers: h() },
+      )
+      if (r.data?.success) {
+        const d = r.data.data
+        toast.success(`✅ 완료 — ${d.products_processed}개 상품 / ${d.total_reviews_inserted}개 리뷰 / 평균 ${d.avg_reviews_per_product}개${d.errors_count ? ` / 오류 ${d.errors_count}개` : ''}`)
+      } else {
+        toast.error(r.data?.error || '생성 실패')
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '생성 실패')
+    }
+  }
+
+  // 🛡️ 2026-05-19: 교환권 생성 리뷰 일괄 삭제 (롤백용).
+  async function deleteBulkReviews() {
+    if (!confirm('교환권 전체에 생성된 허위 리뷰를 일괄 삭제합니다.\n복구 불가. 계속하시겠습니까?')) return
+    if (!confirm('🚨 한 번 더 확인 — 정말 전체 삭제?')) return
+    try {
+      const r = await api.delete('/api/admin/reviews/generated-bulk-vouchers', { headers: h() })
+      if (r.data?.success) toast.success(`✅ ${r.data.deleted}개 리뷰 삭제됨`)
+      else toast.error(r.data?.error || '삭제 실패')
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '삭제 실패')
+    }
+  }
+
   async function renameCategory(from: string) {
     const to = prompt(`'${from}' → 새 카테고리명?`, from)
     if (!to || to === from) return
@@ -587,10 +632,25 @@ export default function AdminKtAlphaPage() {
                       KT Alpha 상품은 카테고리(편의점/카페/도서 등)로 자동 분류됨. 카테고리별 삭제 가능.
                     </p>
                   </div>
-                  <button onClick={deleteAllKtAlpha}
-                    className="px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">
-                    🗑️ 전체 삭제
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* 🛡️ 2026-05-19: 허위 리뷰 대량 생성 / 삭제 (사용자 요청). */}
+                    <button onClick={generateBulkReviews}
+                      className="px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700"
+                      title="모든 교환권에 상품당 5-25개 리뷰 자동 생성"
+                    >
+                      ⭐ 리뷰 대량 생성
+                    </button>
+                    <button onClick={deleteBulkReviews}
+                      className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700"
+                      title="생성된 리뷰 일괄 삭제 (롤백)"
+                    >
+                      🧹 리뷰 정리
+                    </button>
+                    <button onClick={deleteAllKtAlpha}
+                      className="px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">
+                      🗑️ 상품 전체 삭제
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
