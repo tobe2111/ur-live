@@ -1661,7 +1661,7 @@ app.post('/live/_verify-whip-proxy', async (c) => {
  *   - 셀러 알림 발송
  */
 app.post('/live/:id/admin-force-end', requireAdmin(), async (c) => {
-  const streamId = parseInt(c.req.param('id'))
+  const streamId = parseInt(c.req.param('id') || '')
   if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   const reason = c.req.query('reason') || '어드민 수동 종료'
 

@@ -38,10 +38,16 @@ export async function compressForUpload(
     initialQuality: 0.82,
   })
 
-  // 파일명 확장자도 webp 로 변경 (서버 확장자 검증 통과)
+  // 🛡️ 2026-05-20: 파일명 보장 — camera API blob 은 name 이 비어있을 수 있음 (.webp 만 남으면
+  //   백엔드 `dotIdx > 0` 검증 실패 → "허용되지 않는 파일 확장자". base 이름 없으면 timestamp fallback.
   if (toWebP) {
-    const newName = file.name.replace(/\.[^.]+$/, '') + '.webp'
-    return new File([compressed], newName, { type: targetType })
+    const baseRaw = (file.name || '').replace(/\.[^.]+$/, '').trim()
+    const base = baseRaw || `image_${Date.now()}`
+    return new File([compressed], `${base}.webp`, { type: targetType })
+  }
+  if (!compressed.name || compressed.name === 'blob') {
+    const ext = (file.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '')
+    return new File([compressed], `image_${Date.now()}.${ext}`, { type: compressed.type })
   }
   return compressed
 }

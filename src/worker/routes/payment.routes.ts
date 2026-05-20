@@ -439,8 +439,8 @@ paymentsRouter.post('/confirm', async (c) => {
           const buyer = (order as unknown as { shipping_name?: string }).shipping_name || '구매자'
           const maskedBuyer = buyer.length <= 1 ? buyer : `${buyer[0]}**`
           const productName = firstItem?.product_name || '상품'
-          const doId = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(liveStreamId))
-          const stub = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
+          const doId = (c.env as unknown as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(liveStreamId))
+          const stub = (c.env as unknown as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
 
           // 1) order_proof — 사회적 증명 toast
           c.executionCtx.waitUntil(

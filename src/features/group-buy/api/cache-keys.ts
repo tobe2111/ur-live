@@ -27,5 +27,7 @@ export async function invalidateGroupBuyProductsCache(KV: KVNamespace | undefine
       keys.push(`group_buy_products:${status}:${cat}`)
     }
   }
-  await cacheInvalidate(KV, keys)
+  // 🛡️ 2026-05-20: @cloudflare/workers-types vs Hono types 버전 차이로 KVNamespace 호환 안 됨.
+  //   런타임은 동일 객체 — `as unknown as` 로 안전 캐스팅.
+  await cacheInvalidate(KV as unknown as Parameters<typeof cacheInvalidate>[0], keys)
 }

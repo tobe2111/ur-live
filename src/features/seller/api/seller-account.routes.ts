@@ -170,10 +170,38 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
       }
     }
 
-    const formData = await c.req.formData();
+    // 🛡️ 2026-05-20: formData() 실패 진단성 강화 — Content-Type 미명시 / multipart 가 아닌 경우
+    //   원인 명확히 노출 (이전: 'formdata' 매칭에 걸려 일반 hint 만 표시).
+    const ct = c.req.header('Content-Type') || '';
+    if (!ct.toLowerCase().includes('multipart/form-data')) {
+      return c.json({
+        success: false,
+        error: 'Content-Type 이 multipart/form-data 가 아닙니다. 파일 전송 형식을 확인하세요.',
+        error_code: 'INVALID_CONTENT_TYPE',
+        received_content_type: ct.slice(0, 100),
+      }, 400);
+    }
+
+    let formData: FormData;
+    try {
+      formData = await c.req.formData();
+    } catch (parseErr) {
+      const msg = (parseErr as Error).message || String(parseErr);
+      if (import.meta.env.DEV) console.error('[Seller] formData parse failed:', msg, 'CT:', ct, 'CL:', contentLength);
+      return c.json({
+        success: false,
+        error: 'multipart 본문 파싱 실패 — 파일이 손상되었거나 boundary 헤더가 누락됐을 수 있습니다.',
+        error_code: 'MULTIPART_PARSE_FAILED',
+        detail: import.meta.env.DEV ? msg : undefined,
+      }, 400);
+    }
     const file = formData.get('image') as File | null;
     if (!file) {
-      return c.json({ success: false, error: '이미지 파일이 필요합니다' }, 400);
+      return c.json({
+        success: false,
+        error: '이미지 파일이 필요합니다 (필드명 image)',
+        error_code: 'NO_FILE_FIELD',
+      }, 400);
     }
 
     // ── Size limit ────────────────────────────────────────────────────────────

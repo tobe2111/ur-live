@@ -142,7 +142,7 @@ export default function AdminLiveMonitorPage() {
           // (2) 라이브 사라짐 (종료)
           for (const s of prev) {
             if (!newIds.has(s.id)) {
-              toast(`방송 종료: ${s.seller_name} — ${s.title}`, { duration: 4000 })
+              toast.info(`방송 종료: ${s.seller_name} — ${s.title}`, { duration: 4000 })
               playAlert(440)  // 낮은 음
             }
           }

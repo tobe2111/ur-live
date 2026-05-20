@@ -1125,9 +1125,9 @@ function ReelCardImpl({
               // 🛡️ 2026-05-13: allow 에 fullscreen 포함 → allowFullScreen 속성과 중복 → React 경고. 통합.
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               title={stream.title || 'Live broadcast'}
-              // playsinline (iOS Safari) — DOM attr 둘 다 명시
-              // eslint-disable-next-line react/no-unknown-property
-              playsInline
+              // 🛡️ 2026-05-20: iframe 에는 `playsInline` JSX prop 미지원 (TS2322).
+              //   `playsinline` HTML attr 는 video 전용 → 그대로 두면 React warning.
+              //   대신 lowercase string attr 만 명시 (iOS Safari 호환 — 일부 케이스).
               // eslint-disable-next-line react/no-unknown-property
               webkit-playsinline="true"
             />

@@ -29,6 +29,10 @@ type Bindings = {
   ALIGO_SENDER_PHONE?: string;
   ALIGO_TPL_SHIPPING_START?: string;
   ALIGO_TPL_ORDER_CANCEL?: string;
+  // 🛡️ 2026-05-20: cacheInvalidate / 세션 조회용 KV 들 (전역 wrangler.toml 바인딩).
+  //   미사용 라우트는 optional 로 두어 런타임 검사 가능.
+  SESSION_KV?: KVNamespace;
+  RATE_LIMIT_KV?: KVNamespace;
 };
 
 export const sellerOrdersRoutes = new Hono<{ Bindings: Bindings }>();

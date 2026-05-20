@@ -56,7 +56,7 @@ flagRoutes.get('/', async (c) => {
 })
 
 flagRoutes.get('/:key', async (c) => {
-  const key = c.req.param('key')
+  const key = c.req.param('key') || ''
   if (!VALID_KEY.test(key)) return c.json({ success: false, error: '잘못된 key' }, 400)
   const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
   if (!kv) return c.json({ success: true, data: { enabled: false } })
@@ -72,7 +72,7 @@ flagRoutes.get('/:key', async (c) => {
 })
 
 flagRoutes.post('/:key', requireAdmin(), async (c) => {
-  const key = c.req.param('key')
+  const key = c.req.param('key') || ''
   if (!VALID_KEY.test(key)) return c.json({ success: false, error: '잘못된 key' }, 400)
   const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
   if (!kv) return c.json({ success: false, error: 'KV 미설정' }, 503)
@@ -94,7 +94,7 @@ flagRoutes.post('/:key', requireAdmin(), async (c) => {
 })
 
 flagRoutes.delete('/:key', requireAdmin(), async (c) => {
-  const key = c.req.param('key')
+  const key = c.req.param('key') || ''
   if (!VALID_KEY.test(key)) return c.json({ success: false, error: '잘못된 key' }, 400)
   const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
   if (!kv) return c.json({ success: false, error: 'KV 미설정' }, 503)

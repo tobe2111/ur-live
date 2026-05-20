@@ -776,8 +776,8 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
           FROM products WHERE id = ?
         `).bind(productId).first()
         if (product) {
-          const doId = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(streamId))
-          const stub = (c.env as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
+          const doId = (c.env as unknown as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.idFromName(String(streamId))
+          const stub = (c.env as unknown as { LIVE_STREAM: DurableObjectNamespace }).LIVE_STREAM.get(doId)
           c.executionCtx.waitUntil(
             stub.fetch(new Request('https://internal/broadcast', {
               method: 'POST',

@@ -891,12 +891,14 @@ pointsRoutes.post('/withdraw',
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
-    const body = await c.req.json<{
+    // 🛡️ 2026-05-20: `T | {}` union 회피 — 명시적 타입 단언.
+    type WithdrawBody = {
       amount?: number
       bank_name?: string
       bank_account?: string
       account_holder?: string
-    }>().catch(() => ({}))
+    }
+    const body = await c.req.json<WithdrawBody>().catch(() => ({} as WithdrawBody))
 
     const amount = Number(body.amount)
     if (!Number.isFinite(amount) || amount < 10000 || amount > 10_000_000) {

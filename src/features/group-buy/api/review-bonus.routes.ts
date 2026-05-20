@@ -16,8 +16,10 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 
-const userApp = new Hono<{ Bindings: Env }>()
-const adminApp = new Hono<{ Bindings: Env }>()
+// 🛡️ 2026-05-20: c.get('user') 등 타입 보장 위한 Variables.
+type ReviewBonusVars = { user?: { id: string | number; email?: string } }
+const userApp = new Hono<{ Bindings: Env; Variables: ReviewBonusVars }>()
+const adminApp = new Hono<{ Bindings: Env; Variables: ReviewBonusVars }>()
 
 userApp.use('*', requireAuth())
 

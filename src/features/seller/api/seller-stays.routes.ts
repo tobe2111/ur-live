@@ -40,7 +40,8 @@ async function getSellerId(c: { env: Bindings; req: { header: (k: string) => str
 }
 
 async function ensureOwnsProduct(c: { env: Bindings }, productId: number, sellerId: number): Promise<boolean> {
-  if (_done_ensureOwnsProduct.has(c)) return
+  // 🛡️ 2026-05-20: 멱등 가드 — 이미 검증된 컨텍스트는 통과 (memoize-ensure 패턴).
+  if (_done_ensureOwnsProduct.has(c)) return true
   _done_ensureOwnsProduct.add(c)
   const row = await c.env.DB.prepare('SELECT seller_id FROM products WHERE id = ?')
     .bind(productId).first<{ seller_id: number }>()

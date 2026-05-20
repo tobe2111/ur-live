@@ -18,10 +18,16 @@ import { requireSeller, requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 
-const sellerApp = new Hono<{ Bindings: Env }>()
-const influencerApp = new Hono<{ Bindings: Env }>()
-const adminApp = new Hono<{ Bindings: Env }>()
-const discoverApp = new Hono<{ Bindings: Env }>()
+// 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
+//   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
+type MarketingVars = {
+  user?: { id: string | number; email?: string }
+  seller?: { id: number; email?: string }
+}
+const sellerApp = new Hono<{ Bindings: Env; Variables: MarketingVars }>()
+const influencerApp = new Hono<{ Bindings: Env; Variables: MarketingVars }>()
+const adminApp = new Hono<{ Bindings: Env; Variables: MarketingVars }>()
+const discoverApp = new Hono<{ Bindings: Env; Variables: MarketingVars }>()
 
 sellerApp.use('*', requireSeller())
 influencerApp.use('*', requireAuth())
@@ -241,7 +247,9 @@ influencerApp.get('/my-rank', async (c) => {
 
 influencerApp.put('/me', async (c) => {
   const userId = String((c.get('user') as AuthUser).id)
-  const body = await c.req.json<{
+  // 🛡️ 2026-05-20: `.catch(() => ({}))` 가 T | {} 로 추론되어 모든 필드 접근 시 TS2339.
+  //   해결: `({}) as T` 로 단언 → 호출처에서 그대로 destructure.
+  type MeBody = {
     business_number?: string
     tax_type?: 'business_income' | 'other_income' | 'unreported'
     bank_name?: string
@@ -249,7 +257,8 @@ influencerApp.put('/me', async (c) => {
     account_holder?: string
     payout_method?: 'cash' | 'deal'
     ranking_public?: boolean
-  }>().catch(() => ({}))
+  }
+  const body = await c.req.json<MeBody>().catch(() => ({} as MeBody))
 
   // 사업자번호 형식 (10자리 숫자, 선택)
   if (body.business_number && !/^\d{10}$/.test(body.business_number.replace(/-/g, ''))) {
@@ -464,7 +473,7 @@ influencerApp.get('/my-stores', async (c) => {
 // ───────── 인플 지역 ranking (공개) ─────────
 
 // 🛡️ 2026-05-16: 인플루언서 매장 영입 + commission 매출 ranking — 지역/기간/기준 별
-const rankingApp = new Hono<{ Bindings: Env }>()
+const rankingApp = new Hono<{ Bindings: Env; Variables: MarketingVars }>()
 
 // 공개 endpoint — IP 당 분당 30회 (봇 / 폭증 트래픽 방어)
 rankingApp.use('*', rateLimit({ action: 'influencer_rankings', max: 30, windowSec: 60 }))

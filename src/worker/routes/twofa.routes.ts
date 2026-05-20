@@ -54,8 +54,11 @@ async function generateTOTP(secretBase32: string, timestamp: number = Math.floor
   view.setUint32(4, counter, false)
 
   const keyBytes = base32Decode(secretBase32)
+  // 🛡️ 2026-05-20: Uint8Array → ArrayBuffer 강제 (importKey 의 BufferSource 호환).
   const cryptoKey = await crypto.subtle.importKey(
-    'raw', keyBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+    'raw',
+    keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer,
+    { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
   )
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, counterBytes)
   const sigBytes = new Uint8Array(signature)

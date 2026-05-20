@@ -6,12 +6,18 @@ interface ToastItem {
   type: 'success' | 'error' | 'info'
 }
 
+// 🛡️ 2026-05-20: 일부 호출처가 `{ duration: ms }` 2nd arg 를 넘기던 사고 (TS2554).
+//   현 구현은 기본 ttl 만 쓰지만 시그니처는 받아서 호환 — duration > 0 이면 그 값으로 적용.
+export interface ToastOptions {
+  duration?: number
+}
+
 interface ToastStore {
   toasts: ToastItem[]
-  show: (message: string, type?: 'success' | 'error' | 'info') => void
-  success: (message: string) => void
-  error: (message: string) => void
-  info: (message: string) => void
+  show: (message: string, type?: 'success' | 'error' | 'info', opts?: ToastOptions) => void
+  success: (message: string, opts?: ToastOptions) => void
+  error: (message: string, opts?: ToastOptions) => void
+  info: (message: string, opts?: ToastOptions) => void
   remove: (id: string) => void
 }
 
@@ -43,20 +49,25 @@ function pushToast(
   }, ttl)
 }
 
+const pickTtl = (opts: ToastOptions | undefined, fallback: number): number => {
+  const d = opts?.duration
+  return typeof d === 'number' && d > 0 ? d : fallback
+}
+
 export const useToast = create<ToastStore>((set) => ({
   toasts: [],
-  show: (message, type = 'info') => pushToast(set, message, type, 3500),
-  success: (message) => pushToast(set, message, 'success', 3500),
-  error: (message) => pushToast(set, message, 'error', 4000),
-  info: (message) => pushToast(set, message, 'info', 3500),
+  show: (message, type = 'info', opts) => pushToast(set, message, type, pickTtl(opts, 3500)),
+  success: (message, opts) => pushToast(set, message, 'success', pickTtl(opts, 3500)),
+  error: (message, opts) => pushToast(set, message, 'error', pickTtl(opts, 4000)),
+  info: (message, opts) => pushToast(set, message, 'info', pickTtl(opts, 3500)),
   remove: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }))
 
 // 컴포넌트 외부에서 사용할 수 있는 헬퍼 (non-hook context)
 export const toast = {
-  show: (message: string, type?: 'success' | 'error' | 'info') =>
-    useToast.getState().show(message, type),
-  success: (message: string) => useToast.getState().success(message),
-  error: (message: string) => useToast.getState().error(message),
-  info: (message: string) => useToast.getState().info(message),
+  show: (message: string, type?: 'success' | 'error' | 'info', opts?: ToastOptions) =>
+    useToast.getState().show(message, type, opts),
+  success: (message: string, opts?: ToastOptions) => useToast.getState().success(message, opts),
+  error: (message: string, opts?: ToastOptions) => useToast.getState().error(message, opts),
+  info: (message: string, opts?: ToastOptions) => useToast.getState().info(message, opts),
 }

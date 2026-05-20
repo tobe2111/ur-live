@@ -76,7 +76,7 @@ export async function getCommissionRates(DB: D1Database): Promise<CommissionRate
       const raw = map.get(settingKey)
       if (raw !== undefined) {
         const n = Number(raw)
-        if (Number.isFinite(n) && n >= 0) (out as Record<string, number>)[field] = n
+        if (Number.isFinite(n) && n >= 0) (out as unknown as Record<string, number>)[field] = n
       }
     }
     return out

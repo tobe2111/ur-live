@@ -347,8 +347,8 @@ streamsRouter.get('/:id', async (c) => {
         // 🛡️ 2026-05-13: youtube_video_id 가 비었지만 broadcast_id 가 있으면 자동 회복.
         //   stream 71 같은 dead-stream (status='live' + video_id='') 케이스를 시청자가 즉시 볼 수 있게.
         //   YouTube Live 는 broadcast.id === video_id 이므로 안전한 fallback.
-        const rawVideoId = (row as Record<string, unknown>).youtube_video_id as string | null | undefined;
-        const rawBroadcastId = (row as Record<string, unknown>).youtube_broadcast_id as string | null | undefined;
+        const rawVideoId = (row as unknown as Record<string, unknown>).youtube_video_id as string | null | undefined;
+        const rawBroadcastId = (row as unknown as Record<string, unknown>).youtube_broadcast_id as string | null | undefined;
         const effectiveVideoId = (rawVideoId && String(rawVideoId).trim()) || rawBroadcastId || null;
         return {
           ...row,

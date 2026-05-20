@@ -229,7 +229,8 @@ adminReviewGeneratorRoutes.delete('/reviews/generated/:productId', cors(), async
 adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const body = await c.req.json<{ reviews_per_product?: number }>().catch(() => ({}));
+    type Body = { reviews_per_product?: number }
+    const body = await c.req.json<Body>().catch(() => ({} as Body));
     const minReviews = Math.max(1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) - 5)));
     const maxReviews = Math.max(minReviews + 1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) + 10)));
 

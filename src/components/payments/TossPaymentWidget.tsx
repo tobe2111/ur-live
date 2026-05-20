@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { loadTossPayments, type TossPayments } from '@tosspayments/tosspayments-sdk'
+// 🛡️ 2026-05-20: SDK 2.x 부터 `TossPayments` named export 제거 — 인스턴스 타입은 SDK 반환값에서 추출.
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+type TossPayments = Awaited<ReturnType<typeof loadTossPayments>>
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'

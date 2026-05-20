@@ -39,7 +39,9 @@ export interface CacheApiOptions {
 
 export async function cacheApiGet<T>(key: string): Promise<T | null> {
   if (typeof caches === 'undefined') return null
-  const cache = caches.default
+  // 🛡️ 2026-05-20: `caches.default` 는 Cloudflare Workers 전용 — DOM lib 의 CacheStorage 엔 없음.
+  //   런타임 존재 보장 (위 typeof 가드) — 타입만 단언.
+  const cache = (caches as unknown as { default: Cache }).default
   const cacheKey = CACHE_PREFIX + encodeURIComponent(key)
   try {
     const response = await cache.match(cacheKey)
@@ -56,7 +58,9 @@ export async function cacheApiPut<T>(
 ): Promise<void> {
   if (typeof caches === 'undefined') return
   const { ttl = 60, staleWhileRevalidate = 60 } = options
-  const cache = caches.default
+  // 🛡️ 2026-05-20: `caches.default` 는 Cloudflare Workers 전용 — DOM lib 의 CacheStorage 엔 없음.
+  //   런타임 존재 보장 (위 typeof 가드) — 타입만 단언.
+  const cache = (caches as unknown as { default: Cache }).default
   const cacheKey = CACHE_PREFIX + encodeURIComponent(key)
   try {
     const response = new Response(JSON.stringify(data), {

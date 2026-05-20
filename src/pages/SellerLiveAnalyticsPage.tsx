@@ -201,7 +201,7 @@ function AnalyticsSummary() {
                   onClick={() => setStatusTab(tab.key)}
                   className={`px-2.5 py-1 font-medium rounded-md transition-all ${
                     statusTab === tab.key
-                      ? `bg-white shadow-sm ${tab.color ?? 'text-gray-900'}`
+                      ? `bg-white shadow-sm ${'color' in tab ? tab.color : 'text-gray-900'}`
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
