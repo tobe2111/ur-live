@@ -46,7 +46,7 @@ export default function RecentlyViewedSection() {
             </div>
             <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1.5 truncate">{p.name}</p>
             {p.price != null && (
-              <p className="text-[12px] font-bold text-gray-900 dark:text-white">{formatNumber(p.price)}원</p>
+              <p className="text-[12px] font-bold text-gray-900 dark:text-white">{formatNumber(p.price)}{Number(p.deal_only) === 1 ? ' 딜' : '원'}</p>
             )}
           </button>
         ))}

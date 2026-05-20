@@ -441,49 +441,9 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
           </div>
         ) : (
           <>
-            {/* v4 Hero product (첫 번째 상품 풀폭) */}
-            {displayed.length > 0 && (() => {
-              const hero = displayed[0]
-              const heroDiscount = hero.discount_rate || (hero.original_price ? Math.round((1 - hero.price / hero.original_price) * 100) : 0)
-              const heroPrice = hero.current_price || hero.price
-              return (
-                <button
-                  onClick={() => navigate(`/products/${hero.id}`)}
-                  className="block w-full lg:max-w-md text-left mb-6"
-                >
-                  <div
-                    className="relative rounded-2xl overflow-hidden aspect-[4/3] lg:aspect-square"
-                    style={{ background: '#F9FAFB' }}
-                  >
-                    {hero.image_url && <img src={hero.image_url} alt={hero.name || t('browse.altProduct')} className="w-full h-full object-cover" fetchPriority="high" decoding="async" />}
-                    <div className="absolute top-2 left-2 flex gap-1">
-                      {heroDiscount > 0 && (
-                        <span className="rounded-md px-2 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">-{heroDiscount}%</span>
-                      )}
-                    </div>
-                    <div className="absolute bottom-2 right-2 rounded-full p-2 bg-white dark:bg-[#0A0A0A]/90 backdrop-blur-sm">
-                      <Heart className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
-                    </div>
-                  </div>
-                  <div className="mt-2.5">
-                    {hero.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500">@{hero.seller_name}</p>}
-                    <p className="text-[14px] text-gray-900 dark:text-white font-medium mt-0.5 line-clamp-1">{hero.name}</p>
-                    <div className="flex items-baseline gap-1.5 mt-1">
-                      {hero.original_price && hero.original_price > heroPrice && (
-                        <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatPrice(hero.original_price, { dealOnly: hero.deal_only })}</span>
-                      )}
-                      {heroDiscount > 0 && <span className="text-[18px] font-extrabold text-red-500">{heroDiscount}%</span>}
-                      <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">{formatPrice(heroPrice, { dealOnly: hero.deal_only })}</span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">⭐ {hero.sold_count || 0}명 구매 · 🚚 무료배송</p>
-                  </div>
-                </button>
-              )
-            })()}
-
-            {/* 2열 그리드 (나머지 상품) */}
+            {/* 🛡️ 2026-05-19: 사용자 요청 — hero 제거, 처음부터 2열 그리드 균등 표시. */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
-              {displayed.slice(1).map(product => {
+              {displayed.map(product => {
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price
 

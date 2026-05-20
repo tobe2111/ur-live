@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
     try {
       const raw = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
       const filtered = raw.filter((p: { id: string | number }) => p.id !== product.id)
-      filtered.unshift({ id: product.id, name: product.name, price: product.price, image: product.image_url })
+      filtered.unshift({ id: product.id, name: product.name, price: product.price, image: product.image_url, deal_only: product.deal_only })
       localStorage.setItem('recently_viewed', JSON.stringify(filtered.slice(0, 20)))
     } catch {}
   }, [product])

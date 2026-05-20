@@ -263,7 +263,7 @@ export default function GroupBuyDetailPage() {
       navigate('/login')
       return
     }
-    if (!window.confirm(`${detail.name}\n${quantity}장 × ${unitPrice.toLocaleString('ko-KR')}딜 = ${total.toLocaleString('ko-KR')}딜\n\n${detail.current_discount_pct > 0 ? `🎉 티어 할인 ${detail.current_discount_pct}% 적용\n\n` : ''}딜로 결제하고 바우처를 발급받습니다. 진행할까요?`)) return
+    if (!window.confirm(`${detail.name}\n${quantity}장 × ${unitPrice.toLocaleString('ko-KR')}원 = ${total.toLocaleString('ko-KR')}원\n\n${detail.current_discount_pct > 0 ? `🎉 티어 할인 ${detail.current_discount_pct}% 적용\n\n` : ''}공동구매에 참여합니다. 진행할까요?`)) return
 
     setJoining(true)
     reportFunnel('click', productId)
@@ -362,8 +362,8 @@ export default function GroupBuyDetailPage() {
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
         description={
           detail.current_discount_pct > 0
-            ? `🎉 ${detail.current_discount_pct}% 할인 진행 중! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여, ${unitPrice.toLocaleString('ko-KR')}딜`
-            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여 중, ${detail.price.toLocaleString('ko-KR')}딜부터`
+            ? `🎉 ${detail.current_discount_pct}% 할인 진행 중! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여, ${unitPrice.toLocaleString('ko-KR')}원`
+            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여 중, ${detail.price.toLocaleString('ko-KR')}원부터`
         }
         url={`/group-buy/${productId}`}
         image={detail.image_url || `https://live.ur-team.com/api/og/group-buy/${productId}.png`}
@@ -506,14 +506,14 @@ export default function GroupBuyDetailPage() {
             </a>
           )}
 
-          {/* 가격 */}
+          {/* 가격 — 🛡️ 2026-05-19: 공동구매는 소비자 구매라 '원' 단위. (교환권만 '딜') */}
           <div className="pt-3 border-t border-gray-100">
             <div className="flex items-baseline gap-2">
               {detail.current_discount_pct > 0 && (
-                <span className="text-xs text-gray-400 line-through">{formatNumber(detail.price)}딜</span>
+                <span className="text-xs text-gray-400 line-through">{formatNumber(detail.price)}원</span>
               )}
               <span className="text-2xl font-extrabold text-pink-500">{formatNumber(unitPrice)}</span>
-              <span className="text-sm font-bold text-pink-500">딜</span>
+              <span className="text-sm font-bold text-pink-500">원</span>
               {detail.current_discount_pct > 0 && (
                 <span className="ml-auto bg-pink-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
                   🎉 {detail.current_discount_pct}% OFF
@@ -521,7 +521,7 @@ export default function GroupBuyDetailPage() {
               )}
             </div>
             {detail.original_price && detail.original_price > detail.price && (
-              <p className="text-[11px] text-gray-400 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}딜</p>
+              <p className="text-[11px] text-gray-400 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}원</p>
             )}
           </div>
         </div>
@@ -751,11 +751,11 @@ export default function GroupBuyDetailPage() {
                 ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-95 active:scale-[0.98]'
                 : 'bg-gray-300'
             }`}
-            aria-label={isJoinable ? `${formatNumber(total)}딜로 ${quantity}장 참여하기` : '참여 불가'}
+            aria-label={isJoinable ? `${formatNumber(total)}원으로 ${quantity}장 참여하기` : '참여 불가'}
           >
             {joining ? '처리 중…' :
               !isJoinable ? '참여 불가' :
-              `${formatNumber(total)}딜 참여하기`}
+              `${formatNumber(total)}원 참여하기`}
           </button>
         </div>
       </footer>

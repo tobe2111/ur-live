@@ -7,6 +7,8 @@ export interface RecentProduct {
   name: string
   price?: number
   image?: string
+  // 🛡️ 2026-05-19: 교환권 (KT Alpha) 구분 — 단위 표시용 (1 → '딜', 0/NULL → '원').
+  deal_only?: number
 }
 
 export interface Product {
@@ -24,6 +26,8 @@ export interface Product {
   restaurant_name?: string
   restaurant_lat?: number
   restaurant_lng?: number
+  // 🛡️ 2026-05-19: 교환권 (KT Alpha) 구분 — 단위 표시용.
+  deal_only?: number
 }
 
 export type SortOption = 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'discount'
