@@ -70,11 +70,25 @@ export default function PointsChargePage() {
         // setTimeout 0 도 가능하지만 안전 마진 50ms.
         await new Promise(r => setTimeout(r, 50))
         if (cancelled) return
-        // 🛡️ 2026-05-19 v4: 'widgetA' / 'AGREEMENT' 명시 (이 머천트는 'DEFAULT' 미등록).
-        //   SDK 가 variantKey 생략 시 'DEFAULT' 로 호출 → 404 에러 (사용자 신고).
+        // 🛡️ 2026-05-19 v5: variantKey 후보 fallback chain — Toss 콘솔 미설정 환경도 동작.
+        //   사용자 신고 — 'DEFAULT' / 'widgetA' 둘 다 404 → SDK 기본 동작까지 fallback.
+        const VARIANTS: Array<string | undefined> = ['DEFAULT', 'widgetA', 'widget1', undefined]
+        const AGREEMENTS: Array<string | undefined> = ['AGREEMENT', 'DEFAULT', undefined]
+        const tryOne = async (fn: (o: { selector: string; variantKey?: string }) => Promise<unknown>, sel: string, list: Array<string | undefined>) => {
+          let last: unknown
+          for (const v of list) {
+            try {
+              const o: { selector: string; variantKey?: string } = { selector: sel }
+              if (v) o.variantKey = v
+              await fn(o)
+              return
+            } catch (e) { last = e }
+          }
+          throw last instanceof Error ? last : new Error('widget variant not found')
+        }
         await Promise.all([
-          widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'widgetA' }),
-          widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' }),
+          tryOne((o) => widgets.renderPaymentMethods(o), '#charge-payment-method', VARIANTS),
+          tryOne((o) => widgets.renderAgreement(o), '#charge-agreement', AGREEMENTS),
         ])
         if (!cancelled) setProcessing(false)
       } catch (err: unknown) {
@@ -102,20 +116,28 @@ export default function PointsChargePage() {
       }
 
       const { orderId, amount, orderName, clientKey: serverClientKey } = initRes.data.data
-      // 🛡️ 2026-05-19 perf: 페이지 진입 시 eager-load 한 SDK 재사용 (cache hit).
-      //   tossSdkRef 가 채워져 있으면 즉시 사용 → 1-1.5s 절감.
-      //   serverClientKey 가 다르면 fallback 으로 재로드.
       const tossPayments = (tossSdkRef.current && (serverClientKey === clientKey || !serverClientKey))
         ? tossSdkRef.current
         : await loadTossPayments(serverClientKey || clientKey)
       const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-      const widgets = tossPayments.widgets({ customerKey: `user_${sanitizedUserId}` })
 
-      await widgets.setAmount({ currency: 'KRW', value: amount })
-
-      widgetsRef.current = widgets
-      orderRef.current = { orderId, orderName }
-      setShowWidget(true)
+      // 🛡️ 2026-05-19 v6 (영구 해결 — 사용자 명령):
+      //   Toss widget variant 가 콘솔 미등록 → widgets API 항상 404 → 위젯 렌더 실패.
+      //   해결: tossPayments.payment() (V2 redirect API) 사용 — variant 의존성 ZERO.
+      //   사용자가 Toss 호스팅 페이지로 잠시 redirect → 결제 완료 후 successUrl 복귀.
+      //   장점: 변동성 없음 (Toss 콘솔 설정 변경/누락에도 영구 동작).
+      //   단점: in-page 위젯 대신 redirect — UX 마찰 약간 ↑ (1-2 클릭 추가).
+      //   사용자 우선순위: "더 이상 문제 발생 안 됨" → redirect 채택.
+      const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: amount },
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/points/charge/success`,
+        failUrl: `${window.location.origin}/points/charge?fail=1`,
+      })
+      // requestPayment 가 redirect 트리거 — 아래 라인은 실행 안 됨.
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '결제 준비에 실패했습니다.'
       toast.error(msg)

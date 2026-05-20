@@ -878,6 +878,100 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🛡️ 2026-05-19: 일반 user 의 딜 → 현금 출금 (추천 수익 환급용).
+//
+// 최소 10,000딜 / 8.8% 원천징수 (기타소득 — 사업자 미등록 기본)
+// 어드민이 주 1회 일괄 송금 처리 (`/admin/user-withdrawals` 페이지).
+// ─────────────────────────────────────────────────────────────────────────────
+pointsRoutes.post('/withdraw',
+  rateLimit({ action: 'user_deal_withdraw', max: 5, windowSec: 3600 }),
+  requireAuth(),
+  async (c) => {
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+
+    const body = await c.req.json<{
+      amount?: number
+      bank_name?: string
+      bank_account?: string
+      account_holder?: string
+    }>().catch(() => ({}))
+
+    const amount = Number(body.amount)
+    if (!Number.isFinite(amount) || amount < 10000 || amount > 10_000_000) {
+      return c.json({ success: false, error: '출금 금액은 10,000~10,000,000딜 사이' }, 400)
+    }
+    const bankName = (body.bank_name || '').trim()
+    const bankAccount = (body.bank_account || '').trim().replace(/[^0-9-]/g, '')
+    const holder = (body.account_holder || '').trim()
+    if (!bankName || bankName.length > 30) return c.json({ success: false, error: '은행명 1~30자' }, 400)
+    if (!bankAccount || bankAccount.length < 5 || bankAccount.length > 30) return c.json({ success: false, error: '계좌번호 5~30자' }, 400)
+    if (!holder || holder.length > 30) return c.json({ success: false, error: '예금주명 1~30자' }, 400)
+
+    const { DB } = c.env
+    const userId = String(user.id)
+
+    // 잔액 확인 + 차감 (atomic — UPDATE WHERE balance >= amount).
+    const decResult = await DB.prepare(
+      `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now')
+       WHERE user_id = ? AND balance >= ?`
+    ).bind(amount, userId, amount).run().catch(() => null)
+    if (!decResult || (decResult.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '딜 잔액 부족' }, 400)
+    }
+
+    // 8.8% 원천징수 (소득세 8% + 지방세 0.8%) — 정수 floor.
+    const tax = Math.floor(amount * 0.088)
+    const net = amount - tax
+
+    try {
+      const result = await DB.prepare(`
+        INSERT INTO user_withdrawals
+          (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(userId, amount, tax, net, bankName, bankAccount, holder).run()
+
+      return c.json({
+        success: true,
+        data: {
+          withdrawal_id: result.meta?.last_row_id,
+          amount, withholding_tax: tax, net_amount: net,
+          status: 'requested',
+          eta: '영업일 기준 3-5일 내 입금',
+        },
+      })
+    } catch (err) {
+      // INSERT 실패 시 차감된 잔액 복구.
+      await DB.prepare(
+        `UPDATE user_points SET balance = balance + ? WHERE user_id = ?`
+      ).bind(amount, userId).run().catch(() => null)
+      return c.json({ success: false, error: '출금 요청 저장 실패 — 잔액 자동 복구됨. 잠시 후 다시 시도해주세요.' }, 500)
+    }
+  }
+)
+
+// GET — 내 출금 내역
+pointsRoutes.get('/withdrawals', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const userId = String(user.id)
+  const { DB } = c.env
+
+  const rows = await DB.prepare(`
+    SELECT id, amount, withholding_tax, net_amount,
+           bank_name, account_holder, status, requested_at, processed_at, rejection_reason,
+           -- 계좌번호는 끝 4자리만 노출 (PII 보호).
+           '****' || SUBSTR(bank_account, -4) AS bank_account_masked
+    FROM user_withdrawals
+    WHERE user_id = ?
+    ORDER BY requested_at DESC
+    LIMIT 50
+  `).bind(userId).all().catch(() => ({ results: [] }))
+
+  return c.json({ success: true, data: rows.results || [] })
+})
+
 export { pointsRoutes };
 
 
