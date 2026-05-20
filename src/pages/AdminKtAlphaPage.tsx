@@ -267,6 +267,28 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-19 (사용자 신고: '/vouchers?category=voucher' 만 보임):
+  //   gift_catalog.goods_type_detail + brand_name 키워드로 자동 재분류.
+  //   bulk-import 시 fallback 으로 'voucher' 로 들어간 상품들도 적절한 카테고리로 재분배.
+  async function autoClassifyCategories() {
+    if (!confirm('KT Alpha 상품 전체를 자동 재분류합니다.\n• gift_catalog 의 goods_type_detail 우선\n• 그 다음 브랜드명 키워드 매칭 (스타벅스→카페, GS25→편의점 등)\n계속하시겠습니까?')) return
+    toast.info('재분류 중...')
+    try {
+      const r = await api.post('/api/admin/kt-alpha/categories/auto-classify', {}, { headers: h() })
+      if (r.data?.success) {
+        const d = r.data.data
+        const byCat = Object.entries(d.by_category || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+        toast.success(`✅ ${d.updated}개 재분류 (불변 ${d.unchanged}, 미매칭 ${d.unmatched})${byCat ? '\n' + byCat : ''}`)
+        loadCategories()
+      } else {
+        toast.error(r.data?.error || '재분류 실패')
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '재분류 실패')
+    }
+  }
+
   async function renameCategory(from: string) {
     const to = prompt(`'${from}' → 새 카테고리명?`, from)
     if (!to || to === from) return
@@ -632,7 +654,14 @@ export default function AdminKtAlphaPage() {
                       KT Alpha 상품은 카테고리(편의점/카페/도서 등)로 자동 분류됨. 카테고리별 삭제 가능.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {/* 🛡️ 2026-05-19: KT Alpha 카테고리 자동 재분류 (gift_catalog + brand 키워드). */}
+                    <button onClick={autoClassifyCategories}
+                      className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
+                      title="goods_type_detail + brand 키워드로 자동 재분류"
+                    >
+                      🗂️ 카테고리 자동 재분류
+                    </button>
                     {/* 🛡️ 2026-05-19: 허위 리뷰 대량 생성 / 삭제 (사용자 요청). */}
                     <button onClick={generateBulkReviews}
                       className="px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700"
