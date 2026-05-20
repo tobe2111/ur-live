@@ -132,14 +132,20 @@ export function TossPaymentWidget({
         // 결제 금액 설정 (KRW, 정수)
         await widgets.setAmount({ currency: 'KRW', value: Math.round(finalAmount) })
 
-        // 결제 수단 UI 렌더링 — 🛡️ 2026-05-19: variantKey 제거 (Toss 콘솔 미설정 환경 SDK 에러 방지).
+        // 🛡️ 2026-05-19 v4 (사용자 신고 fix):
+        //   user 신고 — `api.tosspayments.com/.../widget-groups/keys?variantKey=DEFAULT` 404.
+        //   원인: variantKey 생략 시 SDK 가 'DEFAULT' 로 호출 → 이 머천트는 'DEFAULT' 미등록 →
+        //         Toss 콘솔에 'widgetA' / 'AGREEMENT' 만 등록되어 있음 (운영자가 그렇게 만들었음).
+        //   영구 해결: 'widgetA' / 'AGREEMENT' 명시 사용. variantKey fallback 시도 안 함.
+        //   ⚠️ Toss 콘솔에서 'widgetA' / 'AGREEMENT' variant 가 사라지면 다시 깨짐 — variant 보존 필수.
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
+          variantKey: 'widgetA',
         })
 
-        // 이용약관 동의 UI 렌더링
         await widgets.renderAgreement({
           selector: '#agreement',
+          variantKey: 'AGREEMENT',
         })
 
         setIsRendered(true)

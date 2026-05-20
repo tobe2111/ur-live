@@ -29,7 +29,7 @@ function highlightText(text: string, query: string) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === query.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-100 text-gray-900 dark:text-white rounded-sm px-0.5">{part}</mark>
+          <mark key={i} className="bg-yellow-200 text-gray-900 dark:bg-yellow-400/30 dark:text-yellow-200 rounded-sm px-0.5">{part}</mark>
         ) : (
           <span key={i}>{part}</span>
         )

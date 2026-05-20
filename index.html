@@ -25,8 +25,9 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <!-- 🛡️ 2026-05-16: Toss 결제 CDN preconnect — 결제 위젯 첫 로드 latency 단축 -->
+    <!-- 🛡️ 2026-05-19: api.tosspayments.com 도 preconnect 로 격상 (widget config / variant_key 호출 단축). -->
     <link rel="preconnect" href="https://js.tosspayments.com" crossorigin />
-    <link rel="dns-prefetch" href="https://api.tosspayments.com" />
+    <link rel="preconnect" href="https://api.tosspayments.com" crossorigin />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     <link rel="preconnect" href="https://www.youtube.com" crossorigin />
     <link rel="preconnect" href="https://img.youtube.com" crossorigin />

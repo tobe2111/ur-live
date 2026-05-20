@@ -5,7 +5,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useSearchInfinite } from '@/hooks/useSearch'
 import SearchHeader from '@/components/search/SearchHeader'
-import SearchStates from '@/components/search/SearchStates'
+import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
 import ProductCard from '@/components/search/ProductCard'
 import SortFilterBar from '@/components/search/SortFilterBar'
 
@@ -90,6 +90,8 @@ export default function SearchPage() {
   }
 
   const handleSearch = (searchQuery: string) => {
+    // 🛡️ 2026-05-19: 최근 검색어 저장 (사용자 요청).
+    addRecentSearch(searchQuery)
     navigate(`/search?q=${encodeURIComponent(searchQuery)}`)
   }
 
