@@ -749,7 +749,12 @@ app.route('/api/users', usersRouter);
 // ============================================================
 // 🚀 Edge cache + Cache-Control 동시 적용 (1인 운영 D1 부하 감소)
 // edge cache 는 CF edge 에서 응답 캐싱 → D1 쿼리 자체를 우회 → 빠르고 비용 절감
-app.use('/api/products', edgeCache(60), cacheControl(60));     // 1 min
+app.use('/api/products', edgeCache(60), cacheControl(60));     // 1 min — list
+// 🛡️ 2026-05-19 (사용자 신고: /products/:id 로딩 2-3초):
+//   상품 상세 / 옵션 / 리뷰 summary 도 edge cache 로 D1 우회 → ~50ms (cache hit).
+app.use('/api/products/:id', edgeCache(120), cacheControl(120));      // 2 min — detail
+app.use('/api/products/:id/options', edgeCache(300), cacheControl(300));  // 5 min — 거의 안 변함
+app.use('/api/reviews/product/:id/summary', edgeCache(180), cacheControl(180));  // 3 min
 app.use('/api/streams', edgeCache(30), cacheControl(30));      // 30 sec
 app.use('/api/group-buy/products', edgeCache(60), cacheControl(60)); // 1 min
 // 🛡️ 2026-05-15: 공구 detail (개별) 30초 — group_buy_current 자주 바뀌지만 stale-while-revalidate 가 사용성 보존
