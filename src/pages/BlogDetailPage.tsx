@@ -145,7 +145,8 @@ export default function BlogDetailPage() {
       </div>
 
       {/* Article */}
-      <article className="max-w-4xl mx-auto px-6 py-10">
+      {/* 🛡️ 2026-05-20: 블로그 본문 ur-content-medium (1024px) — 읽기 편한 폭. */}
+      <article className="ur-content-medium px-6 lg:px-10 py-10 lg:py-16">
         {/* 태그 */}
         {tags.length > 0 && (
           <div className="flex gap-1.5 mb-4">

@@ -292,25 +292,13 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
                   key={path}
                   to={path}
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors"
-                  style={
+                  // 🛡️ 2026-05-20: inline style + onMouseEnter/Leave 제거 (CSP unsafe-inline).
+                  //   violet gradient 는 index.css .ur-agency-nav-active.
+                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
                     active
-                      ? {
-                          color: '#FFFFFF',
-                          borderLeft: '2.5px solid #8B5CF6',
-                          background: 'linear-gradient(to right, rgba(139,92,246,0.18), transparent)',
-                        }
-                      : {
-                          color: 'rgba(255,255,255,0.55)',
-                          borderLeft: '2.5px solid transparent',
-                        }
-                  }
-                  onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.color = '#FFFFFF'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
-                  }}
+                      ? 'text-white border-violet-500 ur-agency-nav-active'
+                      : 'text-white/55 hover:text-white border-transparent'
+                  }`}
                 >
                   <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
                   <span className="flex-1 truncate">{i18nKey ? t(i18nKey, label) : label}</span>

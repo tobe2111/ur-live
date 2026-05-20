@@ -294,25 +294,46 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
     const msg = (err as Error).message || String(err);
     const stack = (err as Error).stack || '';
     console.error('[Seller] Upload image error:', msg, '\nStack:', stack.slice(0, 500));
-    // 🛡️ 2026-05-13 v3: 사용자에게 어떤 단계에서 실패했는지 명확히 — production 에서도 hint 노출.
-    //   상세 stack 은 DEV 만, 1차 hint 는 항상 (디버깅 가능성).
+
+    // 🛡️ 2026-05-20: 영구 패턴 — HTTP status 를 에러 종류에 따라 분류.
+    //   기존: 항상 500 → 클라이언트가 retry 정책을 잘못 적용 (서버 에러로 오인).
+    //   영구 분류:
+    //     400  — 클라이언트 측 multipart/form 오류
+    //     413  — 파일 크기 한도 초과 (런타임 메모리 / arraybuffer 오류 포함)
+    //     503  — 외부 서비스 (imgbb) 일시 오류 — retry 가능
+    //     504  — 업로드 timeout (network)
+    //     500  — 분류 불가 — 진짜 서버 에러
+    const lcMsg = msg.toLowerCase();
+    let statusCode: 400 | 413 | 500 | 503 | 504 = 500;
+    let errorCode = 'UPLOAD_UNKNOWN_ERROR';
     let userHint = '이미지 업로드에 실패했습니다.';
-    if (msg.toLowerCase().includes('imgbb')) {
-      userHint = 'imgbb 응답 오류 — API 키 유효성 또는 일일 한도를 확인하세요.';
-    } else if (msg.toLowerCase().includes('formdata') || msg.toLowerCase().includes('multipart')) {
+
+    if (lcMsg.includes('imgbb')) {
+      statusCode = 503;
+      errorCode = 'IMGBB_UPSTREAM_ERROR';
+      userHint = 'imgbb 응답 오류 — API 키 유효성 또는 일일 한도를 확인하세요. 잠시 후 재시도해주세요.';
+    } else if (lcMsg.includes('formdata') || lcMsg.includes('multipart') || lcMsg.includes('boundary')) {
+      statusCode = 400;
+      errorCode = 'INVALID_MULTIPART_BODY';
       userHint = '파일 업로드 형식 오류 — 다른 이미지로 재시도해주세요.';
-    } else if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('abort')) {
+    } else if (lcMsg.includes('timeout') || lcMsg.includes('timed out') || lcMsg.includes('abort')) {
+      statusCode = 504;
+      errorCode = 'UPLOAD_TIMEOUT';
       userHint = '업로드 시간 초과 (30초) — 네트워크 확인 후 재시도해주세요.';
-    } else if (msg.toLowerCase().includes('arraybuffer') || msg.toLowerCase().includes('memory')) {
+    } else if (lcMsg.includes('arraybuffer') || lcMsg.includes('memory') || lcMsg.includes('too large') || lcMsg.includes('size')) {
+      statusCode = 413;
+      errorCode = 'PAYLOAD_TOO_LARGE';
       userHint = '파일이 너무 큽니다. 5MB 이하로 줄여주세요.';
     }
+
     const isProd = (c.env as unknown as { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
     return c.json({
       success: false,
       error: userHint,
+      error_code: errorCode,
       error_detail: msg.slice(0, 200),  // 항상 노출 — 셀러가 신고할 때 자세한 단서
       ...(isProd ? {} : { stack: stack.slice(0, 500) })
-    }, 500);
+    }, statusCode);
   }
 });
 

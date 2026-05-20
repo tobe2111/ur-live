@@ -723,6 +723,25 @@ html.dark .mobile-app-container {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 350ms ease-out; }
+/* 🛡️ 2026-05-20: CustomModal 의 inline <style> 제거하면서 글로벌화 (CSP unsafe-inline 제거) */
+.animate-slideUp { animation: slideUp 300ms ease-out; }
+/* ReelCard order-proof toast (CSP unsafe-inline 제거) */
+@keyframes orderProofIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-orderProofIn { animation: orderProofIn 300ms ease-out; }
+
+/* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
+.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 0, 51, 0.15), transparent); }
+.ur-admin-nav-active  { background: linear-gradient(to right, rgba(252, 211, 77, 0.12), transparent); }
+.ur-agency-nav-active { background: linear-gradient(to right, rgba(139, 92, 246, 0.18), transparent); }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  section { page-break-inside: avoid; }
+}
 
 /* Milestone burst — 50/80% 도달 시 progress bar 에 glow */
 @keyframes milestone-pulse {

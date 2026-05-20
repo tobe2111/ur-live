@@ -206,25 +206,13 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
                   key={path}
                   to={path}
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors"
-                  style={
+                  // 🛡️ 2026-05-20: inline style + onMouseEnter/Leave 제거 (CSP unsafe-inline).
+                  //   amber 강조 gradient 는 index.css .ur-admin-nav-active (border 색은 amber-300).
+                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
                     active
-                      ? {
-                          color: '#FFFFFF',
-                          borderLeft: '2.5px solid #FCD34D',
-                          background: 'linear-gradient(to right, rgba(252,211,77,0.12), transparent)',
-                        }
-                      : {
-                          color: 'rgba(255,255,255,0.55)',
-                          borderLeft: '2.5px solid transparent',
-                        }
-                  }
-                  onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.color = '#FFFFFF'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
-                  }}
+                      ? 'text-white border-amber-300 ur-admin-nav-active'
+                      : 'text-white/55 hover:text-white border-transparent'
+                  }`}
                 >
                   <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
                   <span className="flex-1 truncate">{label}</span>

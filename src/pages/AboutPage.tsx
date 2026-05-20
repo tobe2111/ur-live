@@ -528,14 +528,7 @@ export default function AboutPage() {
         </section>
       </div>
 
-      {/* Print 전용 스타일 */}
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; }
-          section { page-break-inside: avoid; }
-        }
-      `}</style>
+      {/* 🛡️ 2026-05-20: print 전용 스타일은 index.css 의 글로벌 @media print 규칙 사용 (CSP unsafe-inline 제거). */}
     </>
   )
 }

@@ -1493,8 +1493,7 @@ function OrderProofToast({ proof }: { proof: { buyer: string; product: string; a
   return (
     <div className="absolute bottom-24 left-3 z-30 max-w-[260px] pointer-events-none">
       <div
-        className="rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 px-3 py-2 shadow-2xl animate-[slideUp_300ms_ease-out]"
-        style={{ animation: 'orderProofIn 300ms ease-out' }}
+        className="rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 px-3 py-2 shadow-2xl animate-orderProofIn"
       >
         <div className="flex items-start gap-2">
           <span className="text-base shrink-0">🛍️</span>
@@ -1506,12 +1505,7 @@ function OrderProofToast({ proof }: { proof: { buyer: string; product: string; a
           </div>
         </div>
       </div>
-      <style>{`
-        @keyframes orderProofIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      {/* 🛡️ 2026-05-20: inline <style> 제거 — orderProofIn keyframes 는 index.css 글로벌화. */}
     </div>
   )
 }

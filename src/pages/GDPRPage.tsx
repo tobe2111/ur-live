@@ -8,7 +8,8 @@ export default function GDPRPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <SEO title="Privacy Policy (GDPR) - YourDeal" description="YourDeal privacy policy and GDPR compliance information." url="/gdpr" />
-      <div className="max-w-3xl mx-auto px-5 py-8">
+      {/* 🛡️ 2026-05-20: 정책 페이지 ur-content-medium (1024px) 으로 PC 가독성 향상. */}
+      <div className="ur-content-medium px-5 lg:px-8 py-8 lg:py-12">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm mb-6">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>

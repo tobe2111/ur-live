@@ -166,29 +166,7 @@ export function CustomModal({
         )}
       </div>
 
-      {/* Animations */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        .animate-slideUp {
-          animation: slideUp 0.3s ease-out;
-        }
-      `}</style>
+      {/* 🛡️ 2026-05-20: inline <style> CSP 위반 제거 — fadeIn/slideUp 은 index.css 의 글로벌 @keyframes 사용. */}
     </div>
   )
 

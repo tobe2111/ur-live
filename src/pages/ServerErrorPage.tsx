@@ -13,7 +13,7 @@ export default function ServerErrorPage() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center px-4">
       <SEO title={t('serverError.title')} description={t('serverError.seoDescription')} url="/500" noindex />
-      <div className="max-w-lg w-full text-center">
+      <div className="max-w-lg w-full text-center px-4 lg:px-8">
         {/* Error Icon */}
         <div className="mb-8 smooth-appear">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#ff3b30]/10 to-[#ff9500]/10">

@@ -146,7 +146,8 @@ export default function CouponClaimPage() {
       <SEO title={t('couponClaim.seoTitle')} description={t('couponClaim.seoDesc')} url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
-      <div className="w-full max-w-sm text-center relative z-10">
+      {/* 🛡️ 2026-05-20: PC 에서 cramped 안 보이도록 form 폭 확장 + 좌우 padding */}
+      <div className="w-full max-w-sm lg:max-w-md text-center px-4 lg:px-8 relative z-10">
         {status === 'loading' && (
           <div className="animate-pulse">
             <div className="w-20 h-20 mx-auto bg-pink-100 dark:bg-pink-900/20 rounded-full flex items-center justify-center mb-4">

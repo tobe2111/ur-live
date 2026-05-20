@@ -290,6 +290,87 @@ export const handlers = [
     });
   }),
 
+  // 🛡️ 2026-05-20: Business registration submit + admin verify/reject (sellers.business_registration_*)
+  http.post('/api/seller/business-registration/submit', async ({ request }) => {
+    const body = (await request.json()) as { image_url?: string; business_number?: string }
+    if (!body?.image_url) {
+      return HttpResponse.json({ success: false, error: 'image_url 누락' }, { status: 400 })
+    }
+    if (!/^https?:\/\//.test(body.image_url)) {
+      return HttpResponse.json({ success: false, error: '잘못된 URL' }, { status: 400 })
+    }
+    return HttpResponse.json({ success: true, status: 'pending' })
+  }),
+
+  http.patch('/api/admin/sellers/:id/business-registration/verify', async ({ request, params }) => {
+    const body = (await request.json()) as { action?: string; reason?: string }
+    const sellerId = String(params.id)
+    if (!/^\d+$/.test(sellerId)) return HttpResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 })
+    if (body.action !== 'verify' && body.action !== 'reject') {
+      return HttpResponse.json({ success: false, error: 'action 은 verify 또는 reject' }, { status: 400 })
+    }
+    if (body.action === 'reject' && !body.reason?.trim()) {
+      return HttpResponse.json({ success: false, error: '거부 사유 필요' }, { status: 400 })
+    }
+    return HttpResponse.json({
+      success: true,
+      message: body.action === 'verify' ? '사업자등록을 승인했습니다' : '사업자등록을 반려했습니다',
+    })
+  }),
+
+  // 🛡️ 2026-05-20: User withdrawal (user_withdrawals migration 0274) — 잔액 확인 + 8.8% 원천징수.
+  http.post('/api/points/withdraw', async ({ request }) => {
+    const body = (await request.json()) as {
+      amount?: number
+      bank_name?: string
+      bank_account?: string
+      account_holder?: string
+    }
+    const amount = Number(body?.amount)
+    if (!Number.isFinite(amount) || amount < 10000 || amount > 10_000_000) {
+      return HttpResponse.json({ success: false, error: '출금 금액은 10,000~10,000,000딜' }, { status: 400 })
+    }
+    if (!body?.bank_name?.trim() || !body?.bank_account?.trim() || !body?.account_holder?.trim()) {
+      return HttpResponse.json({ success: false, error: '계좌 정보 누락' }, { status: 400 })
+    }
+    const withholding = Math.floor(amount * 0.088)
+    return HttpResponse.json({
+      success: true,
+      data: {
+        withdrawal_id: 1,
+        amount,
+        withholding_tax: withholding,
+        net_amount: amount - withholding,
+        status: 'requested',
+      },
+    })
+  }),
+
+  // FTS5 trigram search mock — bm25 ranking 시뮬레이션.
+  http.get('/api/search/fts', ({ request }) => {
+    const url = new URL(request.url)
+    const q = (url.searchParams.get('q') || '').trim()
+    if (!q) return HttpResponse.json({ success: true, data: [], pagination: { total: 0 } })
+    // 부분매칭 (trigram 효과 시뮬레이션) + bm25 가중치 (name>category>description) 시뮬.
+    const score = (p: typeof mockProducts[0]) => {
+      const qq = q.toLowerCase()
+      let s = 0
+      if (p.name.toLowerCase().includes(qq)) s += 3
+      if ((p.category ?? '').toLowerCase().includes(qq)) s += 2
+      return s
+    }
+    const ranked = mockProducts
+      .map(p => ({ p, s: score(p) }))
+      .filter(x => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map(x => x.p)
+    return HttpResponse.json({
+      success: true,
+      data: ranked,
+      pagination: { total: ranked.length, page: 1, limit: 20, totalPages: 1 },
+    })
+  }),
+
   // Error handling example
   http.get('/api/error', () => {
     return new HttpResponse(null, { status: 500 });

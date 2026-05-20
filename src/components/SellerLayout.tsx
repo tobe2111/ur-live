@@ -276,29 +276,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                   key={path}
                   to={path}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors ${
-                    highlight && !active ? 'bg-red-500/20 border-l-2 border-red-500' : ''
-                  }`}
-                  style={
+                  // 🛡️ 2026-05-20: inline style 제거 (CSP unsafe-inline) — 색상/border 전부 Tailwind 클래스.
+                  //   active gradient 는 index.css 의 .ur-seller-nav-active 유틸. hover 는 hover:text-white.
+                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
                     active
-                      ? {
-                          color: '#FFFFFF',
-                          borderLeft: '2.5px solid #FF0033',
-                          background: 'linear-gradient(to right, rgba(255,0,51,0.15), transparent)',
-                        }
-                      : highlight && !active
-                      ? {}
-                      : {
-                          color: 'rgba(255,255,255,0.55)',
-                          borderLeft: '2.5px solid transparent',
-                        }
-                  }
-                  onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.color = '#FFFFFF'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active && !highlight) e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
-                  }}
+                      ? 'text-white border-[#FF0033] ur-seller-nav-active'
+                      : highlight
+                      ? 'bg-red-500/20 border-red-500'
+                      : 'text-white/55 hover:text-white border-transparent'
+                  }`}
                 >
                   <Icon size={14} strokeWidth={2} className={`flex-shrink-0 ${highlight && !active ? 'text-red-400' : ''}`} />
                   <span className={`flex-1 truncate ${highlight && !active ? 'text-red-400' : ''}`}>{label}</span>
