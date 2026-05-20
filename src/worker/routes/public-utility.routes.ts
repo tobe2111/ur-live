@@ -301,46 +301,47 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
 publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
   const DB = c.env.DB
   try {
-    // 🛡️ 2026-05-20: D1 SQLite 는 REGEXP 미지원 → brand_name LIKE 패턴으로 변경.
-    //   8개 분류 모두 LIKE 절. category 가 generic 'voucher' 이거나 NULL 일 때만 brand 기반 reclassify.
+    // 🛡️ 2026-05-20 v2: gift_catalog.goods_type_detail/goods_type_name LEFT JOIN 으로 분류.
+    //   v1 (brand_name LIKE 매칭) 은 products.brand_name 이 ASCII/한자/특수문자 변형으로 매칭 실패 빈발.
+    //   영구 해결: KT Alpha 가 직접 제공하는 goods_type_detail (정확한 분류) 을 우선 사용.
+    //   우선순위: products.category (명시 분류) > gc.goods_type_detail > gc.goods_type_name > brand 매칭 > '기타'.
+    //   gift_code 가 없는 일반 상품은 'voucher' 그대로 → '기타' 로 표시.
     const RUNTIME_CATEGORY_SQL = `
       CASE
-        WHEN COALESCE(category, '') NOT IN ('', 'voucher') THEN category
-        WHEN brand_name LIKE '%스타벅스%' OR brand_name LIKE '%이디야%' OR brand_name LIKE '%투썸%'
-          OR brand_name LIKE '%커피빈%' OR brand_name LIKE '%할리스%' OR brand_name LIKE '%폴바셋%'
-          OR brand_name LIKE '%엔젤리너스%' OR brand_name LIKE '%파스쿠찌%' OR brand_name LIKE '%커피%'
-          OR brand_name LIKE '%파리바게뜨%' OR brand_name LIKE '%뚜레쥬르%' OR brand_name LIKE '%던킨%'
-          OR brand_name LIKE '%크리스피크림%' OR brand_name LIKE '%배스킨라빈스%' THEN '카페/베이커리'
-        WHEN brand_name LIKE '%GS25%' OR brand_name LIKE '%CU%' OR brand_name LIKE '%세븐일레븐%'
-          OR brand_name LIKE '%이마트24%' OR brand_name LIKE '%미니스톱%' OR brand_name LIKE '%이마트%'
-          OR brand_name LIKE '%홈플러스%' OR brand_name LIKE '%롯데마트%' OR brand_name LIKE '%코스트코%' THEN '편의점/마트'
-        WHEN brand_name LIKE '%롯데백화점%' OR brand_name LIKE '%신세계%' OR brand_name LIKE '%현대백화점%'
-          OR brand_name LIKE '%갤러리아%' OR brand_name LIKE '%AK플라자%' THEN '백화점/쇼핑'
-        WHEN brand_name LIKE '%올리브영%' OR brand_name LIKE '%아리따움%' OR brand_name LIKE '%이니스프리%'
-          OR brand_name LIKE '%에뛰드%' OR brand_name LIKE '%ABC마트%' OR brand_name LIKE '%나이키%'
-          OR brand_name LIKE '%아디다스%' THEN '뷰티/패션'
-        WHEN brand_name LIKE '%교보문고%' OR brand_name LIKE '%예스24%' OR brand_name LIKE '%알라딘%'
-          OR brand_name LIKE '%CGV%' OR brand_name LIKE '%롯데시네마%' OR brand_name LIKE '%메가박스%'
-          OR brand_name LIKE '%영화%' THEN '도서/문화'
-        WHEN brand_name LIKE '%도미노%' OR brand_name LIKE '%피자%' OR brand_name LIKE '%BHC%'
-          OR brand_name LIKE '%BBQ%' OR brand_name LIKE '%교촌%' OR brand_name LIKE '%굽네%'
-          OR brand_name LIKE '%네네%' OR brand_name LIKE '%치킨%' OR brand_name LIKE '%맥도날드%'
-          OR brand_name LIKE '%버거킹%' OR brand_name LIKE '%롯데리아%' OR brand_name LIKE '%KFC%'
-          OR brand_name LIKE '%맘스터치%' OR brand_name LIKE '%버거%' OR brand_name LIKE '%김밥%'
-          OR brand_name LIKE '%배민%' OR brand_name LIKE '%쿠팡이츠%' OR brand_name LIKE '%요기요%' THEN '외식/배달'
-        WHEN brand_name LIKE '%SK주유소%' OR brand_name LIKE '%GS칼텍스%' OR brand_name LIKE '%S-OIL%'
-          OR brand_name LIKE '%현대오일뱅크%' OR brand_name LIKE '%주유%' THEN '주유/생활'
-        WHEN brand_name LIKE '%컬쳐랜드%' OR brand_name LIKE '%해피머니%' OR brand_name LIKE '%구글플레이%'
-          OR brand_name LIKE '%넷플릭스%' OR brand_name LIKE '%모바일%' THEN '모바일/디지털'
+        WHEN COALESCE(p.category, '') NOT IN ('', 'voucher') THEN p.category
+        WHEN COALESCE(gc.goods_type_detail, '') != '' THEN gc.goods_type_detail
+        WHEN COALESCE(gc.goods_type_name, '') != ''   THEN gc.goods_type_name
+        WHEN p.brand_name LIKE '%스타벅스%' OR p.brand_name LIKE '%이디야%' OR p.brand_name LIKE '%투썸%'
+          OR p.brand_name LIKE '%커피빈%' OR p.brand_name LIKE '%할리스%' OR p.brand_name LIKE '%폴바셋%'
+          OR p.brand_name LIKE '%엔젤리너스%' OR p.brand_name LIKE '%파스쿠찌%' OR p.brand_name LIKE '%커피%'
+          OR p.brand_name LIKE '%파리바게뜨%' OR p.brand_name LIKE '%뚜레쥬르%' OR p.brand_name LIKE '%던킨%'
+          OR p.brand_name LIKE '%크리스피크림%' OR p.brand_name LIKE '%배스킨라빈스%' THEN '카페/베이커리'
+        WHEN p.brand_name LIKE '%GS25%' OR p.brand_name LIKE '%CU%' OR p.brand_name LIKE '%세븐일레븐%'
+          OR p.brand_name LIKE '%이마트24%' OR p.brand_name LIKE '%미니스톱%' OR p.brand_name LIKE '%이마트%'
+          OR p.brand_name LIKE '%홈플러스%' OR p.brand_name LIKE '%롯데마트%' OR p.brand_name LIKE '%코스트코%' THEN '편의점/마트'
+        WHEN p.brand_name LIKE '%백화점%' OR p.brand_name LIKE '%갤러리아%' THEN '백화점/쇼핑'
+        WHEN p.brand_name LIKE '%올리브영%' OR p.brand_name LIKE '%화장품%' OR p.brand_name LIKE '%뷰티%' THEN '뷰티/패션'
+        WHEN p.brand_name LIKE '%교보문고%' OR p.brand_name LIKE '%예스24%' OR p.brand_name LIKE '%CGV%'
+          OR p.brand_name LIKE '%롯데시네마%' OR p.brand_name LIKE '%메가박스%' OR p.brand_name LIKE '%영화%' THEN '도서/문화'
+        WHEN p.brand_name LIKE '%피자%' OR p.brand_name LIKE '%치킨%' OR p.brand_name LIKE '%버거%'
+          OR p.brand_name LIKE '%김밥%' OR p.brand_name LIKE '%맥도날드%' OR p.brand_name LIKE '%배민%' THEN '외식/배달'
+        WHEN p.brand_name LIKE '%주유%' THEN '주유/생활'
+        WHEN p.brand_name LIKE '%컬쳐랜드%' OR p.brand_name LIKE '%해피머니%' OR p.brand_name LIKE '%모바일%' THEN '모바일/디지털'
         ELSE '기타'
       END
     `
 
+    // 🛡️ 2026-05-20: products LEFT JOIN gift_catalog — kt_alpha_gift_code 로 매칭.
+    //   gift_catalog 없는 일반 상품도 안전 (COALESCE 처리).
     const cats = await DB.prepare(
-      `SELECT ${RUNTIME_CATEGORY_SQL} as category, COUNT(*) as cnt
-         FROM products
-        WHERE is_active = 1 AND deal_only = 1
-        GROUP BY category
+      `SELECT cat as category, COUNT(*) as cnt
+         FROM (
+           SELECT ${RUNTIME_CATEGORY_SQL} as cat
+             FROM products p
+        LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+            WHERE p.is_active = 1 AND p.deal_only = 1
+         )
+        GROUP BY cat
         HAVING cnt > 0
         ORDER BY cnt DESC LIMIT 20`
     ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as Array<{ category: string; cnt: number }> }))
@@ -353,11 +354,12 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
     for (const cat of (cats.results || [])) {
       // brand 칩도 동일 runtime 분류 사용 → "카페/베이커리" 클릭 시 해당 브랜드만 노출.
       const brands = await DB.prepare(
-        `SELECT brand_name, MAX(brand_icon_url) as brand_icon_url, COUNT(*) as cnt
-           FROM products
-          WHERE is_active = 1 AND deal_only = 1 AND brand_name IS NOT NULL
+        `SELECT p.brand_name, MAX(p.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
+           FROM products p
+      LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+          WHERE p.is_active = 1 AND p.deal_only = 1 AND p.brand_name IS NOT NULL
             AND ${RUNTIME_CATEGORY_SQL} = ?
-          GROUP BY brand_name
+          GROUP BY p.brand_name
           ORDER BY cnt DESC LIMIT 12`
       ).bind(cat.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
       sections.push({

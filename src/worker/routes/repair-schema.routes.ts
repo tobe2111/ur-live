@@ -181,6 +181,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },
+    // 🛡️ 2026-05-20: migration 0268 — products → gift_catalog 연결 (categorization JOIN 핵심).
+    { desc: 'products.kt_alpha_gift_code', sql: "ALTER TABLE products ADD COLUMN kt_alpha_gift_code TEXT" },
+    { desc: 'products.brand_name', sql: "ALTER TABLE products ADD COLUMN brand_name TEXT" },
+    { desc: 'products.brand_icon_url', sql: "ALTER TABLE products ADD COLUMN brand_icon_url TEXT" },
+    { desc: 'products.auto_voucher_send', sql: "ALTER TABLE products ADD COLUMN auto_voucher_send INTEGER DEFAULT 0" },
     // 🛡️ 2026-05-20: migration 0271 — 상품별 referral on/off + rate override.
     { desc: 'products.referral_enabled', sql: "ALTER TABLE products ADD COLUMN referral_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_commission_rate', sql: "ALTER TABLE products ADD COLUMN referral_commission_rate REAL" },
