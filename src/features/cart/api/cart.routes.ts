@@ -110,6 +110,11 @@ cartRoutes.get('/', requireAuth(), async (c) => {
 
     const rows = await db
       .prepare(
+        // 🛡️ 2026-05-19 (사용자 신고: 상품 삭제 시 카트 데이터):
+        //   이전: WHERE p.is_active = 1 → 삭제된 상품 카트에서 사라짐 (사용자 데이터 손실 인지).
+        //   이후: is_active 무관 노출 + product_is_active 플래그 반환 →
+        //         프론트가 "판매 종료" 배지 표시 + 선택 불가 + 사용자가 직접 삭제 가능.
+        //   cart_items.price_snapshot 은 그대로 보존 → 분쟁 / 감사 추적 가능.
         `SELECT
            ci.id,
            ci.product_id,
@@ -123,6 +128,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.price       AS product_price,
            p.image_url   AS product_image,
            p.stock       AS product_stock,
+           p.is_active   AS product_is_active,
            p.deal_only,
            p.seller_id,
            s.business_name AS seller_name,
@@ -131,7 +137,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
          FROM cart_items ci
          JOIN products p  ON ci.product_id = p.id
          LEFT JOIN sellers s ON p.seller_id = s.id
-         WHERE ci.user_id = ? AND p.is_active = 1
+         WHERE ci.user_id = ?
          ORDER BY ci.added_at DESC`
       )
       .bind(userId)
@@ -148,6 +154,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         product_price: number;
         product_image: string | null;
         product_stock: number;
+        product_is_active: number;  // 🛡️ 2026-05-19: 판매 종료 (0) 상품도 노출.
         deal_only: number | null;
         seller_id: number;
         seller_name: string | null;

@@ -31,6 +31,9 @@ export interface CartItem {
   free_shipping_threshold?: number
   // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시 + 토스 결제 차단.
   deal_only?: number
+  // 🛡️ 2026-05-19 (사용자 신고): 상품 판매 종료 (is_active=0) 시에도 카트에 표시.
+  //   사용자 데이터 보존 (가격 snapshot + 분쟁 추적). 단, 결제는 불가.
+  product_is_active?: number
 }
 
 /**

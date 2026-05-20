@@ -447,36 +447,9 @@ export default function MainHomePage() {
         </div>
       )}
 
-      {/* ═══ 다시보기 ═══ */}
-      {endedStreams.length > 0 && (
-        <div className="px-4 pt-6">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-[0.14em]">{t('mainHome.replayTag')}</p>
-              <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5">{t('mainHome.replayTitle')}</p>
-            </div>
-            <button onClick={() => navigate('/live')} className="text-[11px] text-gray-500 dark:text-gray-400">{t('mainHome.seeAll')}</button>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 md:overflow-visible md:grid md:grid-cols-3 md:mx-0 md:px-0 lg:grid-cols-4 xl:grid-cols-5">
-            {endedStreams.slice(0, 10).map(s => {
-              const thumb = getThumb(s)
-              return (
-                <button key={s.id} onClick={() => navigate(`/live/${s.id}`)} className="shrink-0 w-[150px] lg:w-auto text-left">
-                  <div className="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={{ aspectRatio: '16/9' }}>
-                    {thumb && <img src={thumb} alt={s.title || t('mainHome.altReplay')} loading="lazy" decoding="async" className="w-full h-full object-cover brightness-[0.85]" />}
-                    <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                      <Play className="h-2.5 w-2.5 text-white" />
-                      <span className="text-[9px] font-bold text-white">{t('mainHome.replayBadge')}</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-gray-700 dark:text-gray-300 line-clamp-1 mt-1.5">{s.title}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">@{s.seller_name || t('mainHome.fallbackSeller')}</p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* ═══ 다시보기 (제거됨, 사용자 요청 2026-05-19) ═══ */}
+      {/* 사용자 신고: 메인페이지에서 다시보기 섹션이 산만함 → 영구 제거.
+          /live 페이지에서 다시보기 탭으로 따로 접근 가능. */}
 
       {/* 🛡️ 2026-05-19: 카테고리별 온라인 상품 (편의점/카페/도서/모바일교환권 등). */}
       {categorySections.length > 0 && (

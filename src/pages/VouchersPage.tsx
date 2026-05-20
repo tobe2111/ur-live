@@ -12,13 +12,14 @@
  *   2. 금액권 그리드 (선택 브랜드 또는 전체) — 무한 스크롤
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, ChevronLeft, Heart } from 'lucide-react'
+import { Search, Gift, ChevronLeft, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
+import { getUserIdSync } from '@/utils/auth'
 
 interface VoucherProduct {
   id: number
@@ -54,6 +55,22 @@ export default function VouchersPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  // 🛡️ 2026-05-19: 딜 잔액 표시 + 충전/공구 유도 (사용자 요청).
+  //   교환권은 딜로만 결제 → 잔액 부족 시 즉시 충전 페이지로 유도.
+  //   부족 시 "친구 추천 / 공구 참여" 로 보너스 딜 획득 경로도 안내.
+  const [dealBalance, setDealBalance] = useState<number | null>(null)
+  const userId = getUserIdSync()
+  useEffect(() => {
+    if (!userId) { setDealBalance(0); return }
+    api.get('/api/points/balance')
+      .then(r => {
+        if (r.data?.success) {
+          setDealBalance(r.data.data?.balance ?? 0)
+        }
+      })
+      .catch(() => setDealBalance(0))
+  }, [userId])
 
   // 브랜드 칩 로드 (한 번만)
   useEffect(() => {
@@ -151,6 +168,54 @@ export default function VouchersPage() {
           <button onClick={() => navigate('/search')} className="shrink-0 p-1">
             <Search className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
+        </div>
+      </div>
+
+      {/* 🛡️ 2026-05-19: 딜 잔액 + 충전/공구 유도 (사용자 요청). */}
+      <div className="px-4 lg:px-8 pt-3">
+        <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-500/10 dark:to-yellow-500/10 border border-amber-200 dark:border-amber-500/30 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">내 딜 잔액</span>
+          </div>
+          <div className="flex items-baseline gap-1.5 mb-3">
+            <span className="text-[24px] font-extrabold text-gray-900 dark:text-white">
+              {dealBalance == null ? '...' : formatNumber(dealBalance)}
+            </span>
+            <span className="text-[14px] font-bold text-amber-600 dark:text-amber-400">딜</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/points/charge')}
+              className="flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[12px] active:scale-95 transition-transform"
+            >
+              <Sparkles className="w-4 h-4" />
+              충전
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/group-buy')}
+              className="flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl bg-white dark:bg-[#1A1A1A] border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 font-bold text-[12px] active:scale-95 transition-transform"
+            >
+              <Users className="w-4 h-4" />
+              공동구매
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/user/profile')}
+              className="flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl bg-white dark:bg-[#1A1A1A] border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 font-bold text-[12px] active:scale-95 transition-transform"
+            >
+              <ArrowRight className="w-4 h-4" />
+              친구 추천
+            </button>
+          </div>
+          {/* 잔액 부족 안내 */}
+          {dealBalance != null && dealBalance < 10000 && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2.5 leading-relaxed">
+              💡 딜이 부족할 땐 <strong>충전</strong> (1원=1딜), <strong>공동구매 참여</strong> (보너스 적립), <strong>친구 추천</strong> (5% 보상) 로 채울 수 있어요.
+            </p>
+          )}
         </div>
       </div>
 
