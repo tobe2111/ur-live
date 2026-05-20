@@ -328,11 +328,11 @@ export default function SellerPublicPage() {
                     onClick={() => navigate(`/products/${p.id}`)}
                     className="text-left active:scale-[0.98] transition-transform w-full block"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
+                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 rounded-xl">
                       {p.image_url ? (
                         <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
+                        <div className="w-full h-full bg-gray-100" />
                       )}
                       {discountRate > 0 && (
                         <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">

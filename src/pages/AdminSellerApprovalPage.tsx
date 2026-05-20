@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
-import { UserCheck, UserX, Loader2, Search, Pause, Play } from 'lucide-react'
+import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 /**
@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
  *  - 이전: 대기 셀러 승인/거절만 가능
  *  - 변경: 전체 셀러 (대기/활성/정지/거부) 조회 + 검색 + 상태 변경 통합
  */
+type BizRegStatus = 'pending' | 'verified' | 'rejected' | null
 type Seller = {
   id: number
   email: string
@@ -22,6 +23,13 @@ type Seller = {
   status: 'pending' | 'active' | 'suspended' | 'rejected' | string
   commission_rate?: number
   created_at: string
+  // 🛡️ 2026-05-20: 정산 계좌 + 사업자등록증 (어드민 검증용)
+  bank_name?: string | null
+  bank_account?: string | null
+  account_holder?: string | null
+  business_registration_image_url?: string | null
+  business_registration_status?: BizRegStatus | string | null
+  business_registration_reject_reason?: string | null
 }
 
 const STATUS_OPTIONS = [
@@ -57,6 +65,8 @@ export default function AdminSellerApprovalPage() {
     (searchParams.get('status') as typeof STATUS_OPTIONS[number]['key']) || 'pending'
   )
   const [search, setSearch] = useState(searchParams.get('q') || '')
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [bizActingId, setBizActingId] = useState<number | null>(null)
   const h = useMemo(() => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
   }), [])
@@ -174,6 +184,31 @@ export default function AdminSellerApprovalPage() {
     } catch { toast.error(`${action} 실패`) } finally { setActingId(null) }
   }
 
+  // 🛡️ 2026-05-20: 사업자등록증 검증/반려 — migration 0257 PATCH /sellers/:id/business-registration/verify
+  const verifyBizReg = async (id: number) => {
+    if (!confirm('사업자등록증을 승인할까요? (현금 정산 가능 상태로 전환)')) return
+    setBizActingId(id)
+    try {
+      await api.patch(`/api/admin/sellers/${id}/business-registration/verify`, { action: 'verify' }, h)
+      toast.success('사업자등록 승인 완료'); load()
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '승인 실패')
+    } finally { setBizActingId(null) }
+  }
+  const rejectBizReg = async (id: number) => {
+    const reason = prompt('반려 사유 (셀러에게 전달됨)')?.trim()
+    if (!reason) return
+    setBizActingId(id)
+    try {
+      await api.patch(`/api/admin/sellers/${id}/business-registration/verify`, { action: 'reject', reason }, h)
+      toast.info('반려 완료'); load()
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '반려 실패')
+    } finally { setBizActingId(null) }
+  }
+
   const onFilterChange = (key: typeof STATUS_OPTIONS[number]['key']) => {
     setFilter(key)
     const next = new URLSearchParams(searchParams)
@@ -247,8 +282,22 @@ export default function AdminSellerApprovalPage() {
           />
         ) : (
           <div className="space-y-2">
-            {filtered.map(s => (
-              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-3">
+            {filtered.map(s => {
+              const isExpanded = expandedId === s.id
+              const bizStatus = (s.business_registration_status || 'none') as 'none' | 'pending' | 'verified' | 'rejected' | string
+              const bizBadge =
+                bizStatus === 'verified' ? 'bg-green-100 text-green-700 border-green-200' :
+                bizStatus === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                bizStatus === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                'bg-gray-100 text-gray-500 border-gray-200'
+              const bizLabel =
+                bizStatus === 'verified' ? '사업자 검증 완료' :
+                bizStatus === 'pending' ? '사업자 검증 대기' :
+                bizStatus === 'rejected' ? '사업자 반려' :
+                '사업자 미제출'
+              return (
+              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="text-sm font-bold text-gray-900 truncate">
@@ -256,6 +305,9 @@ export default function AdminSellerApprovalPage() {
                     </p>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGE[s.status] || 'bg-gray-100 text-gray-600'}`}>
                       {STATUS_LABEL[s.status] || s.status}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
+                      {bizLabel}
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 truncate">{s.email} · {s.phone || '-'} · 사업자 {s.business_number || '-'}</p>
@@ -293,9 +345,119 @@ export default function AdminSellerApprovalPage() {
                       <UserCheck className="w-3 h-3" /> 활성화
                     </button>
                   )}
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-[11px] font-bold flex items-center gap-1"
+                  >
+                    {isExpanded
+                      ? <><ChevronUp className="w-3 h-3" /> 접기</>
+                      : <><ChevronDown className="w-3 h-3" /> 상세</>}
+                  </button>
                 </div>
               </div>
-            ))}
+
+              {/* 🛡️ 2026-05-20: 상세 — 정산 계좌 + 사업자등록증 (어드민 검증) */}
+              {isExpanded && (
+                <div className="mt-4 pt-4 border-t border-gray-100 grid gap-4 md:grid-cols-2">
+                  {/* 정산 계좌 */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-xs font-bold text-gray-700 mb-2">정산 계좌 정보</p>
+                    {s.bank_name || s.bank_account || s.account_holder ? (
+                      <dl className="text-xs text-gray-700 space-y-1">
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">은행</dt>
+                          <dd className="font-medium text-gray-900">{s.bank_name || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">계좌번호</dt>
+                          <dd className="font-mono font-medium text-gray-900 break-all">{s.bank_account || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">예금주</dt>
+                          <dd className="font-medium text-gray-900">{s.account_holder || '-'}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <p className="text-xs text-gray-400">셀러가 아직 정산 계좌를 입력하지 않았습니다.</p>
+                    )}
+                    <p className="mt-2 text-[10px] text-gray-400">
+                      셀러가 /seller/business-info 에서 직접 수정. 어드민은 조회만 가능합니다.
+                    </p>
+                  </div>
+
+                  {/* 사업자등록증 */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-gray-700">사업자등록증</p>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
+                        {bizLabel}
+                      </span>
+                    </div>
+                    {s.business_registration_image_url ? (
+                      <>
+                        <a
+                          href={s.business_registration_image_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block mb-2"
+                        >
+                          <img
+                            src={s.business_registration_image_url}
+                            alt="사업자등록증"
+                            className="w-full max-h-56 object-contain rounded-md border border-gray-200 bg-white"
+                          />
+                          <p className="text-[10px] text-blue-600 mt-1 inline-flex items-center gap-1">
+                            <ExternalLink className="w-3 h-3" /> 원본 보기
+                          </p>
+                        </a>
+                        {bizStatus === 'rejected' && s.business_registration_reject_reason && (
+                          <p className="text-[11px] text-red-600 bg-red-50 border border-red-100 rounded p-2 mb-2">
+                            <strong>반려 사유:</strong> {s.business_registration_reject_reason}
+                          </p>
+                        )}
+                        {(bizStatus === 'pending' || bizStatus === 'rejected') && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => verifyBizReg(s.id)}
+                              disabled={bizActingId === s.id}
+                              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              {bizActingId === s.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <FileCheck className="w-3 h-3" />} 승인
+                            </button>
+                            <button
+                              onClick={() => rejectBizReg(s.id)}
+                              disabled={bizActingId === s.id}
+                              className="flex-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              <FileX className="w-3 h-3" /> 반려
+                            </button>
+                          </div>
+                        )}
+                        {bizStatus === 'verified' && (
+                          <button
+                            onClick={() => rejectBizReg(s.id)}
+                            disabled={bizActingId === s.id}
+                            className="w-full px-3 py-1.5 bg-red-50 text-red-600 rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                          >
+                            <FileX className="w-3 h-3" /> 검증 취소 (반려 사유 입력)
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        셀러가 아직 사업자등록증을 업로드하지 않았습니다.
+                        <br />
+                        <span className="text-[10px]">/seller/business-info 에서 업로드 가능</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              </div>
+              )
+            })}
           </div>
         )}
       </div>

@@ -59,9 +59,20 @@ export default function SellerBusinessInfoPage() {
   })
   const [bankSubmitting, setBankSubmitting] = useState(false)
 
+  // 🛡️ 2026-05-19 (사용자 신고): 사업자등록증 업로드 UI.
+  //   백엔드: POST /api/seller/business-registration/submit (image_url + business_number).
+  //   업로드: POST /api/seller/upload-image (이미지 → imgbb / R2 URL 반환).
+  //   상태: 'pending' / 'verified' / 'rejected' — 어드민 검증 후 정산 + 딜 환급 활성화.
+  const [bizRegImageUrl, setBizRegImageUrl] = useState<string>('')
+  const [bizRegStatus, setBizRegStatus] = useState<'none' | 'pending' | 'verified' | 'rejected'>('none')
+  const [bizRegRejectReason, setBizRegRejectReason] = useState<string>('')
+  const [bizRegUploading, setBizRegUploading] = useState(false)
+  const [bizRegSubmitting, setBizRegSubmitting] = useState(false)
+
   useEffect(() => {
     loadBusinessInfo()
     loadBankInfo()
+    loadBusinessRegistration()
     loadDaumPostcodeScript()
   }, [])
 
@@ -78,6 +89,85 @@ export default function SellerBusinessInfoPage() {
       }
     } catch (err) {
       if (import.meta.env.DEV) console.warn('[BusinessInfo] load bank info failed:', err)
+    }
+  }
+
+  // 🛡️ 2026-05-19: 사업자등록증 현재 상태 로드.
+  async function loadBusinessRegistration() {
+    try {
+      const r = await api.get('/api/seller/profile')
+      if (r.data?.success && r.data.data) {
+        const s = r.data.data
+        setBizRegImageUrl(s.business_registration_image_url || '')
+        setBizRegStatus(
+          s.business_registration_image_url
+            ? (s.business_registration_status || 'pending') as 'pending' | 'verified' | 'rejected'
+            : 'none'
+        )
+        setBizRegRejectReason(s.business_registration_reject_reason || '')
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[BusinessInfo] load biz reg failed:', err)
+    }
+  }
+
+  // 사업자등록증 이미지 업로드 + URL 저장.
+  async function handleBizRegFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // 클라이언트 검증: 5MB 이하, image/* 만.
+    if (!file.type.startsWith('image/')) {
+      toast.error('이미지 파일만 업로드 가능합니다 (JPG / PNG / WebP)')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('5MB 이하 이미지만 가능합니다')
+      return
+    }
+    setBizRegUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const r = await api.post('/api/seller/upload-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const url = r.data?.url || r.data?.data?.url
+      if (!url) throw new Error('업로드 응답에 URL 없음')
+      setBizRegImageUrl(url)
+      toast.success('업로드 완료. "제출" 을 눌러 검증 신청하세요.')
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '업로드 실패')
+    } finally {
+      setBizRegUploading(false)
+      e.target.value = ''  // input reset
+    }
+  }
+
+  // 어드민 검증 신청 — image_url + business_number 제출.
+  async function handleBizRegSubmit() {
+    if (!bizRegImageUrl) {
+      toast.error('먼저 사업자등록증 이미지를 업로드해주세요')
+      return
+    }
+    setBizRegSubmitting(true)
+    try {
+      const r = await api.post('/api/seller/business-registration/submit', {
+        image_url: bizRegImageUrl,
+        business_number: formData.business_number || undefined,
+      })
+      if (r.data?.success) {
+        toast.success('제출 완료. 어드민 검증 후 알림 드립니다.')
+        setBizRegStatus('pending')
+        setBizRegRejectReason('')
+      } else {
+        toast.error(r.data?.error || '제출 실패')
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '제출 실패')
+    } finally {
+      setBizRegSubmitting(false)
     }
   }
 
@@ -649,6 +739,105 @@ export default function SellerBusinessInfoPage() {
               )}
             </Button>
           </form>
+        </DashboardCard>
+
+        {/* 🛡️ 2026-05-19: 사업자등록증 업로드 섹션 (사용자 요청). */}
+        <DashboardCard
+          title="사업자등록증 검증"
+          subtitle="현금 정산 + 8.8% 원천징수 면제를 위해 사업자등록증 등록 + 어드민 검증 필요"
+        >
+          <div className="space-y-4">
+            {/* 현재 상태 배지 */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">현재 상태:</span>
+              {bizRegStatus === 'verified' && (
+                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ 검증 완료</Badge>
+              )}
+              {bizRegStatus === 'pending' && (
+                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">⏳ 검증 대기 중</Badge>
+              )}
+              {bizRegStatus === 'rejected' && (
+                <Badge className="bg-red-100 text-red-800 hover:bg-red-100">❌ 반려 — 재제출 필요</Badge>
+              )}
+              {bizRegStatus === 'none' && (
+                <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">미등록</Badge>
+              )}
+            </div>
+
+            {/* 반려 사유 표시 */}
+            {bizRegStatus === 'rejected' && bizRegRejectReason && (
+              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-800">
+                <strong>반려 사유:</strong> {bizRegRejectReason}
+              </div>
+            )}
+
+            {/* 미리보기 */}
+            {bizRegImageUrl && (
+              <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                <a href={bizRegImageUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <img
+                    src={bizRegImageUrl}
+                    alt="사업자등록증"
+                    className="max-h-64 mx-auto rounded shadow-sm hover:opacity-90 transition-opacity"
+                  />
+                  <p className="text-[11px] text-blue-600 mt-2 text-center hover:underline">
+                    원본 크기로 열기 →
+                  </p>
+                </a>
+              </div>
+            )}
+
+            {/* 파일 선택 — verified 가 아니면 재업로드 가능 */}
+            {bizRegStatus !== 'verified' && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  {bizRegImageUrl ? '다른 이미지로 교체' : '사업자등록증 이미지 업로드'}
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleBizRegFileChange}
+                  disabled={bizRegUploading}
+                  className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                />
+                <p className="text-[11px] text-gray-500">JPG / PNG / WebP, 최대 5MB</p>
+                {bizRegUploading && (
+                  <p className="text-xs text-blue-600 flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> 업로드 중...
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 제출 버튼 — 업로드된 이미지가 있을 때 + verified 가 아닐 때 */}
+            {bizRegStatus !== 'verified' && bizRegImageUrl && (
+              <Button
+                type="button"
+                onClick={handleBizRegSubmit}
+                disabled={bizRegSubmitting}
+                className="w-full rounded-lg bg-emerald-600 py-3 font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {bizRegSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> 제출 중...
+                  </span>
+                ) : (
+                  '🚀 어드민 검증 신청'
+                )}
+              </Button>
+            )}
+
+            {/* 안내 */}
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 space-y-1">
+              <p><strong>왜 사업자등록증이 필요한가요?</strong></p>
+              <ul className="list-disc list-inside space-y-0.5 ml-1">
+                <li>현금 정산 가능 (없으면 딜 환급만)</li>
+                <li>8.8% 원천징수 면제 (사업소득으로 처리)</li>
+                <li>법적 사업자 인증 — 신뢰도 ↑</li>
+              </ul>
+              <p className="mt-2">검증은 영업일 기준 1-2일 소요됩니다.</p>
+            </div>
+          </div>
         </DashboardCard>
       </div>
     </SellerLayout>

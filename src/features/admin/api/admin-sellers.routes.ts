@@ -46,6 +46,12 @@ interface SellerRow {
   can_manipulate_stats?: number;
   linked_user_id?: number;
   linked_user_name?: string;
+  bank_name?: string | null;
+  bank_account?: string | null;
+  account_holder?: string | null;
+  business_registration_image_url?: string | null;
+  business_registration_status?: string | null;
+  business_registration_reject_reason?: string | null;
 }
 
 interface IdRow {
@@ -68,15 +74,30 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
                status, created_at,
                COALESCE(commission_rate, 5) AS commission_rate,
                COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats,
-               linked_user_id
+               linked_user_id,
+               bank_name, bank_account, account_holder,
+               business_registration_image_url, business_registration_status,
+               business_registration_reject_reason
         FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
       `, [limit, offset]);
     } catch {
-      sellers = await executeQuery<SellerRow>(DB, `
-        SELECT id, email, name, phone, business_name, business_number,
-               status, created_at
-        FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
-      `, [limit, offset]);
+      // 🛡️ 2026-05-20: migration 0257 (business_registration_*) / 0128 (bank_name, account_holder)
+      //   가 안 적용된 환경 fallback. 정산/검증 컬럼 빠지면 어드민에서 NULL 로 보임.
+      try {
+        sellers = await executeQuery<SellerRow>(DB, `
+          SELECT id, email, name, phone, business_name, business_number,
+                 status, created_at,
+                 COALESCE(commission_rate, 5) AS commission_rate,
+                 bank_name, bank_account, account_holder
+          FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+        `, [limit, offset]);
+      } catch {
+        sellers = await executeQuery<SellerRow>(DB, `
+          SELECT id, email, name, phone, business_name, business_number,
+                 status, created_at
+          FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+        `, [limit, offset]);
+      }
     }
     const totalRow = await DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>();
     return c.json({
@@ -121,7 +142,10 @@ adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
       SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
              s.status, s.created_at,
              COALESCE(s.commission_rate, 5) AS commission_rate,
-             COALESCE(s.can_manipulate_stats, 0) AS can_manipulate_stats
+             COALESCE(s.can_manipulate_stats, 0) AS can_manipulate_stats,
+             s.bank_name, s.bank_account, s.account_holder,
+             s.business_registration_image_url, s.business_registration_status,
+             s.business_registration_reject_reason
       FROM sellers s WHERE s.id = ?
     `).bind(sellerId).first().catch(() => null);
 
