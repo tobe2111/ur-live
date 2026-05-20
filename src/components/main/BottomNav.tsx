@@ -105,14 +105,16 @@ export default function BottomNav() {
   const isSeller = activeRole === 'seller'
   const isAgency = activeRole === 'agency'
 
-  const leftItems = [
-    { icon: Home, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    { icon: Radio, label: t('nav.live', { defaultValue: '라이브' }), path: '/live' },
-  ]
-
-  const rightItems = [
-    { icon: ShoppingBag, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
-    { icon: User, label: t('nav.my', { defaultValue: '마이' }), path: '/user/profile' },
+  // 🛡️ 2026-05-20: 사용자 요청 — 단순화.
+  //   1) 교환권 중앙 floating 노란 버튼 → 일반 탭으로 변경 (당근식 균등 5탭).
+  //   2) 쇼핑 ↔ 라이브 위치 스왑 (홈 다음에 쇼핑 우선 노출).
+  //   순서: 홈 / 쇼핑 / 교환권 / 라이브 / 마이.
+  const navItems = [
+    { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
+    { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },
+    { icon: Gift,        label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
+    { icon: Radio,       label: t('nav.live',  { defaultValue: '라이브' }), path: '/live' },
+    { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile' },
   ]
 
   const isActivePath = (path: string) => {
@@ -126,7 +128,7 @@ export default function BottomNav() {
     return false
   }
 
-  const renderItem = ({ icon: Icon, label, path }: typeof leftItems[0]) => {
+  const renderItem = ({ icon: Icon, label, path }: typeof navItems[0]) => {
     const active = isActivePath(path)
     const isMyTab = path === '/user/profile'
 
@@ -180,30 +182,10 @@ export default function BottomNav() {
         >
           <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-4">
             <div className="flex items-center h-14">
-              {leftItems.map(renderItem)}
-
-              {/* 🛡️ 2026-05-19: 중앙 버튼 — ➕ (셀러 시트) → 🎁 기프트 (/vouchers 직접 이동).
-                  소비자 99% 가 daily 로 쓰는 액션이 중앙에. 셀러 onboarding / 라이브 시작은
-                  마이페이지 큰 CTA + 셀러 대시보드 + 길게 누르기 sheet 로 보존.
-                  Long press: 0.5초 누르면 기존 시트 열림 (셀러 액션 빠른 접근). */}
-              <div className="flex-1 flex items-center justify-center">
-                <button
-                  onClick={() => navigate('/vouchers')}
-                  onContextMenu={(e) => { e.preventDefault(); setSheetOpen(true) }}
-                  onTouchStart={(e) => {
-                    const target = e.currentTarget
-                    const timer = setTimeout(() => setSheetOpen(true), 500)
-                    target.addEventListener('touchend', () => clearTimeout(timer), { once: true })
-                    target.addEventListener('touchcancel', () => clearTimeout(timer), { once: true })
-                  }}
-                  className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-500/30 active:scale-90 transition-transform"
-                  aria-label={t('bottomNav.giftAria', { defaultValue: '교환권 기프트' })}
-                >
-                  <Gift className="w-6 h-6 text-white" strokeWidth={2.5} />
-                </button>
-              </div>
-
-              {rightItems.map(renderItem)}
+              {/* 🛡️ 2026-05-20: 균등 5탭 (당근식). 중앙 floating 노란 버튼 제거.
+                  셀러 quick access 는 마이페이지 큰 CTA (PrimaryActions) 로 이전.
+                  Long-press 시트는 길게 누르기 의존성 + 발견성 낮아 폐지. */}
+              {navItems.map(renderItem)}
             </div>
           </nav>
         </div>
