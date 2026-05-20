@@ -290,6 +290,23 @@ paymentsRouter.post('/confirm', async (c) => {
       await orderRepo.reduceStock(order.id);
     }
 
+    // 🛡️ 2026-05-20: 에이전시 입점 가게 commission 적립 (Phase 2).
+    //   가게 첫 결제 → ₩30,000 signup_bonus 1회.
+    //   매 결제 → 2% sales_commission (영구).
+    //   fail-soft — 결제 흐름 막지 않음.
+    try {
+      const { creditAgencyStoreIntroCommission } = await import('../utils/agency-store-intro-commission')
+      for (const order of orders) {
+        await creditAgencyStoreIntroCommission(c.env.DB, {
+          id: Number(order.id),
+          seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+          total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
+        })
+      }
+    } catch (e) {
+      logError('payment.agency_intro_commission_failed', { error: String(e).slice(0, 200) })
+    }
+
     // 🛡️ 2026-05-18: 숙소 예약 (orders.stay_booking_id) 가 있으면 stay_bookings status='confirmed'
     //   + 캘린더 available_count 차감 + 인플루언서 commission 지급 affiliate track.
     for (const order of orders) {

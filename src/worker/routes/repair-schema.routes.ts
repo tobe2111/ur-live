@@ -490,6 +490,28 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       BEGIN
         DELETE FROM products_fts WHERE rowid = OLD.id;
       END` },
+    // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
+    //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 공구권 매출 →
+    //   각 주문마다 2% (agencies.store_intro_commission_pct) commission 적립.
+    //   타입: 'signup_bonus' (가게 첫 결제 ₩30k) / 'sales_commission' (매출 2%) / 'growth_bonus' (월 100만 돌파 ₩50k).
+    //   영구 commission — 12개월 제한 없이 입점 가게 평생 매출에 대해 누적.
+    { name: 'agency_store_intro_commissions', sql: `CREATE TABLE IF NOT EXISTS agency_store_intro_commissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agency_id INTEGER NOT NULL,
+      store_seller_id INTEGER NOT NULL,
+      order_id INTEGER,
+      type TEXT NOT NULL CHECK (type IN ('signup_bonus', 'sales_commission', 'growth_bonus')),
+      order_amount INTEGER DEFAULT 0,
+      commission_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'available', 'paid', 'cancelled')),
+      created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+      available_at DATETIME,
+      paid_at DATETIME,
+      note TEXT,
+      UNIQUE(order_id, type)
+    )` },
+    { name: 'idx_agency_intro_comm_agency', sql: `CREATE INDEX IF NOT EXISTS idx_agency_intro_comm_agency ON agency_store_intro_commissions(agency_id, status, created_at DESC)` },
+    { name: 'idx_agency_intro_comm_store', sql: `CREATE INDEX IF NOT EXISTS idx_agency_intro_comm_store ON agency_store_intro_commissions(store_seller_id, type, created_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

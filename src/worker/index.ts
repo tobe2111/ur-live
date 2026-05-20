@@ -137,6 +137,8 @@ import { blogRoutes } from '../features/blog/api/blog.routes';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
+// 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
+import { agencyIntroducedStoresRoutes } from '../features/agency/api/agency-introduced-stores.routes';
 import { agencySettlementsRoutes } from '../features/agency/api/agency-settlements.routes';
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
 import { agencyStaysRoutes } from '../features/agency/api/agency-stays.routes';
@@ -1202,6 +1204,7 @@ app.route('/api/agency', agencyRoutes);
 app.route('/api/agency', agencyKakaoLinkRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /stats, /stats/kpi, /stats/daily, /stats/realtime, /stats/batch
 app.route('/api/agency', agencyStatsRoutes);
+app.route('/api/agency', agencyIntroducedStoresRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /settlements, /settlement-invoices, /settlement-invoices/:id, /settlements/request
 app.route('/api/agency', agencySettlementsRoutes);
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 (PR 1 Foundation).

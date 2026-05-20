@@ -140,6 +140,15 @@ export async function handleCronScheduled(
       }
       // Phase 1-2: 부진 셀러 알림 (매일)
       await handleAgencyInactiveSellers(env).catch(e => logError('[cron] inactive-sellers', { error: String(e) }));
+      // 🛡️ 2026-05-20: 에이전시 입점 가게 월 성장 보너스 — 매일 체크하지만 동월 중복은 내부 가드.
+      //   실질적으로 매월 1일 첫 실행만 의미 있음 (전월 매출 fix 됨).
+      try {
+        const { runAgencyStoreIntroMonthlyBonus } = await import('./cron/agency-store-intro-monthly-bonus')
+        const r = await runAgencyStoreIntroMonthlyBonus(env)
+        if (r.awarded > 0) {
+          logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
+        }
+      } catch (e) { logError('[cron] agency-intro-monthly-bonus', { error: String(e) }) }
       // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일)
       await handleLiveStreamMetrics(env).catch(e => logError('[cron] live-metrics', { error: String(e) }));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)

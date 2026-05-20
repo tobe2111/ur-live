@@ -10,6 +10,7 @@ import {
   Settings, Bell, Target, Calendar, Utensils, FileText, GitCompare,
   TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy, Rocket,
   Building2,
+  Store,
   type LucideIcon
 } from 'lucide-react'
 
@@ -44,6 +45,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/agency',          label: '대시보드',    i18nKey: 'agency.nav.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
       { path: '/agency/sellers',  label: '담당 셀러',   i18nKey: 'agency.nav.sellers', icon: Users, mode: 'common' },
+      // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 (Phase 2). 입점 가게 + commission 관리.
+      { path: '/agency/introduced-stores', label: '내 입점 가게', i18nKey: 'agency.nav.introducedStores', icon: Store, mode: 'common' },
       { path: '/agency/streams',  label: '라이브 현황',  i18nKey: 'agency.nav.streams', icon: Radio, liveBadge: true, mode: 'live' },
       { path: '/agency/schedule', label: '방송 캘린더',  i18nKey: 'agency.nav.schedule', icon: Calendar, mode: 'live' },
     ],
