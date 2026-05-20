@@ -14,6 +14,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
 import { captureError } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
+import { useForceLightTheme } from '@/hooks/useForceLightTheme'
 // 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
 import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
@@ -32,6 +33,9 @@ if (typeof window !== 'undefined') {
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
 export default function CheckoutPage() {
+  // 🛡️ 2026-05-19: 결제 페이지는 라이트 테마 고정 (사용자 요청 + 가독성).
+  //   영수증 / 금액 / 카드 입력 정보의 명료성이 최우선.
+  useForceLightTheme()
   const { t } = useTranslation()
   // ✅ Region 기반 Store 선택
   const isKR = isKorea()

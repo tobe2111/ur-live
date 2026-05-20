@@ -54,8 +54,10 @@ export default function PointsChargePage() {
 
     const timer = setTimeout(async () => {
       try {
-        await widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'widgetA' })
-        await widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' })
+        // 🛡️ 2026-05-19: variantKey 제거 — Toss 콘솔에 사전 등록 안 된 환경에서 SDK 에러.
+        //   default variant 사용 → 별도 설정 불요 + 영구 안정.
+        await widgets.renderPaymentMethods({ selector: '#charge-payment-method' })
+        await widgets.renderAgreement({ selector: '#charge-agreement' })
         setProcessing(false)
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : '결제창 로드에 실패했습니다.'

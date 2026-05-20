@@ -779,8 +779,10 @@ app.use('/api/search/*', edgeCache(30), cacheControl(30));                // 검
 // Rate limits for read/write endpoints
 // Applied per-IP (default key). Auth-sensitive routes fail closed.
 // ============================================================
-// Search: prevent keyword-abuse / scraping
-app.use('/api/search/*', rateLimit({ action: 'search', max: 30, windowSec: 60 }));
+// 🛡️ 2026-05-19 (사용자 신고 fix): 검색 rate limit 상향.
+//   30/min 은 typeahead + infinite scroll 페이지네이션 (페이지당 1 req) 합산 시 빠르게 도달.
+//   120/min 으로 상향 — 정상 사용 충분, scraping 은 여전히 차단.
+app.use('/api/search/*', rateLimit({ action: 'search', max: 120, windowSec: 60 }));
 // 🛡️ 2026-05-13: KV 무료 한도 보호 — Products/Sellers 의 GET 트래픽이 rate-limit KV ops 의 대부분 차지.
 //   이 endpoint 들은 캐시 (5-30s TTL) 가 있고 scraping abuse 위험 낮음 → rate-limit 제거.
 //   필요 시 Cloudflare WAF 또는 turnstile 로 대체.

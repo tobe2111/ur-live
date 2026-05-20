@@ -62,8 +62,9 @@ export default function SellerYoutubeGrowthPage() {
 
     const timer = setTimeout(async () => {
       try {
-        await widgets.renderPaymentMethods({ selector: '#ytg-payment-method', variantKey: 'widgetA' })
-        await widgets.renderAgreement({ selector: '#ytg-agreement', variantKey: 'AGREEMENT' })
+        // 🛡️ 2026-05-19: variantKey 제거 (콘솔 미등록 환경 에러 방지).
+        await widgets.renderPaymentMethods({ selector: '#ytg-payment-method' })
+        await widgets.renderAgreement({ selector: '#ytg-agreement' })
         setProcessing(false)
       } catch (err: unknown) {
         const err_ = err as { message?: string };

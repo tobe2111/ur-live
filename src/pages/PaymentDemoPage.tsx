@@ -73,16 +73,14 @@ export default function PaymentDemoPage() {
         // 금액 설정
         await widgets.setAmount(amount)
         
-        // 결제 수단 렌더링 (variantKey 'DEFAULT' 사용)
+        // 결제 수단 렌더링 — 🛡️ 2026-05-19: variantKey 제거 (콘솔 미등록 환경 에러 방지).
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'widgetA'
         })
-        
+
         // 이용약관 렌더링
         await widgets.renderAgreement({
           selector: '#agreement',
-          variantKey: 'AGREEMENT'
         })
         
         setReady(true)

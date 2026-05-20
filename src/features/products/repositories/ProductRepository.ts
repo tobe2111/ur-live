@@ -266,16 +266,33 @@ export class ProductRepository {
     offset: number = 0,
     limit: number = 20
   ): Promise<Product[]> {
+    // 🛡️ 2026-05-19 (사용자 신고: "검색 정확도 낮음" fix):
+    //   FTS5 MATCH 는 default 가 exact word match → "스타벅스" 입력 시 정확히 "스타벅스" 단어만 매칭.
+    //   "스타벅스1만원권" (붙은 경우) / "스타" (부분) 둘 다 실패.
+    //   해결: 각 토큰에 prefix wildcard (*) 부여 → "스타벅스*" 가 "스타벅스" / "스타벅스카드" 모두 매칭.
+    //   특수 문자 (", *, ^, NEAR 등) 는 FTS 구문이라 escape — 사용자 입력을 그대로 쓰면 syntax error.
+    const sanitizedQuery = query
+      .trim()
+      .replace(/["*^():~+\-]/g, ' ')  // FTS 특수 문자 → 공백
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .filter(t => t.length >= 1)
+      .map(t => `"${t}"*`)  // 각 토큰 prefix match + 따옴표로 phrase 안전
+      .join(' ')
+
+    // 모든 토큰이 빈 문자열로 sanitize 됐으면 (즉 query 가 모두 특수문자) — FTS 패스
+    if (!sanitizedQuery) return []
+
     // FTS5 쿼리 구성
     let ftsQuery = `
-      SELECT p.* 
+      SELECT p.*
       FROM products p
       JOIN products_fts fts ON p.id = fts.product_id
       WHERE products_fts MATCH ?
       AND p.is_active = 1
     `;
-    
-    const params: any[] = [query];
+
+    const params: any[] = [sanitizedQuery];
     
     // 추가 필터 적용
     if (filter.sellerId) {

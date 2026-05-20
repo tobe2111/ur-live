@@ -124,15 +124,28 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
   const userId = String(user.id); // H8: 항상 문자열로 통일
   const orderId = `DEAL-${userId}-${Date.now()}`;
 
-  // ✅ SECURITY FIX (H5): Reject if this user already has a pending charge
-  // within the last hour. Prevents creating many unconfirmed pending rows that
-  // could later be abused for duplicate credit.
+  // 🛡️ 2026-05-19 v2 (사용자 409 신고 fix):
+  //   이전: 1시간 내 pending charge 발견 시 즉시 409 → 사용자가 결제 취소 후 재시도 불가.
+  //   이후: 5분 이상 된 pending row 자동 삭제 (만료 처리) → 그 후 같은 사용자 충전 가능.
+  //   여전히 5분 이내 연속 시도는 차단 (남용 방지). 동시에 같은 amount 의 row 도 정리.
+  //
+  //   payment_key IS NULL = 결제 미완료. confirm 단계에서 payment_key 가 채워지므로
+  //   confirm 이전에 머문 row 만 영향.
   try {
+    // 1) 만료된 pending (5분 초과) 자동 삭제 — 영구 cleanup.
+    await DB.prepare(
+      "DELETE FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at <= datetime('now', '-5 minutes')"
+    ).bind(userId).run();
+    // 2) 그래도 최근 5분 내 pending 이 있으면 409 (남용 방지).
     const existing = await DB.prepare(
-      "SELECT id FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at > datetime('now', '-1 hour')"
+      "SELECT id FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at > datetime('now', '-5 minutes')"
     ).bind(userId).first<{ id: number }>();
     if (existing) {
-      return c.json({ success: false, error: '이미 진행 중인 충전이 있습니다. 잠시 후 다시 시도해주세요.' }, 409);
+      return c.json({
+        success: false,
+        error: '진행 중인 충전이 있습니다. 5분 후 다시 시도해주세요.',
+        code: 'PENDING_CHARGE_EXISTS',
+      }, 409);
     }
   } catch { /* column/shape fallback: skip guard */ }
 

@@ -132,16 +132,14 @@ export function TossPaymentWidget({
         // 결제 금액 설정 (KRW, 정수)
         await widgets.setAmount({ currency: 'KRW', value: Math.round(finalAmount) })
 
-        // 결제 수단 UI 렌더링
+        // 결제 수단 UI 렌더링 — 🛡️ 2026-05-19: variantKey 제거 (Toss 콘솔 미설정 환경 SDK 에러 방지).
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'widgetA'
         })
 
         // 이용약관 동의 UI 렌더링
         await widgets.renderAgreement({
           selector: '#agreement',
-          variantKey: 'AGREEMENT'
         })
 
         setIsRendered(true)
