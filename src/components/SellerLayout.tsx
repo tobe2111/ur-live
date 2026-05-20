@@ -319,25 +319,39 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {/* 🛡️ 2026-04-22 배치 126: '설정' → 셀러 프로필 편집 페이지 (이전엔 공개 프로필로 가던 UX 버그)
                                   '유저로 돌아가기' → 유저 마이페이지 (이전엔 메인 홈 — 모호한 UX) */}
       <div className="px-4 py-3 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* 🛡️ 2026-05-20: 사이드바 하단 버튼은 `preserveScroll: true` 로 스크롤 리셋 skip.
+              사용자 요구: 하단 버튼 누르면 페이지 위로 점프하지 말고 자연스럽게 이동.
+              빈 slug → /profile/ 무한 redirect 방지: 셀러 식별자 없으면 link 자체 비활성. */}
         <Link
-          to="/seller/profile"
+          to="/seller/profile?tab=business"
+          state={{ preserveScroll: true }}
+          onClick={() => setSidebarOpen(false)}
           className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
         >
           <Settings size={13} strokeWidth={2} />
           {t('seller.settings')}
         </Link>
-        <Link
-          to={`/profile/${localStorage.getItem('seller_username') || localStorage.getItem('seller_id') || ''}`}
-          className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
-        >
-          <Globe size={13} strokeWidth={2} />
-          {t('seller.viewPublicProfile', { defaultValue: '공개 프로필 보기' })}
-        </Link>
+        {(() => {
+          const publicSlug = localStorage.getItem('seller_username') || localStorage.getItem('seller_id')
+          if (!publicSlug) return null
+          return (
+            <Link
+              to={`/profile/${publicSlug}`}
+              state={{ preserveScroll: true }}
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
+            >
+              <Globe size={13} strokeWidth={2} />
+              {t('seller.viewPublicProfile', { defaultValue: '공개 프로필 보기' })}
+            </Link>
+          )
+        })()}
         {localStorage.getItem('user_id') && (
           <button
             onClick={() => {
               toast.success(t('seller.layout.backToUser'))
-              navigate('/user/profile')
+              setSidebarOpen(false)
+              navigate('/user/profile', { state: { preserveScroll: true } })
             }}
             className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition-colors"
           >

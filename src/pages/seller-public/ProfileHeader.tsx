@@ -143,7 +143,7 @@ export default function ProfileHeader({
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
               {seller.name || t('seller.publicPage.noName')}
-              {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-60 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity" />}
+              {isOwner && <Pencil className="w-3.5 h-3.5 text-pink-400 inline ml-2 opacity-100" />}
             </h1>
           )}
         </div>
@@ -168,11 +168,18 @@ export default function ProfileHeader({
             </div>
           </div>
         ) : (
-          <div className="group mt-2" onClick={() => startEdit('bio')}>
+          <div
+            className={`group mt-2 ${isOwner ? 'cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-pink-500/10 transition-colors' : ''}`}
+            onClick={() => startEdit('bio')}
+          >
             <p className={`text-sm ${T.textSub} leading-relaxed line-clamp-2`}>
               {seller.bio || (isOwner ? t('seller.publicPage.enterBio') : '')}
             </p>
-            {isOwner && <Pencil className={`w-3 h-3 ${T.textMuted} inline opacity-60 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity`} />}
+            {isOwner && (
+              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-pink-400">
+                <Pencil className="w-3 h-3" /> {t('seller.publicPage.clickToEdit', { defaultValue: '클릭하여 편집' })}
+              </span>
+            )}
           </div>
         )}
 

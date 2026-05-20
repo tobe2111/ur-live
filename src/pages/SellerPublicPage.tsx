@@ -253,6 +253,19 @@ export default function SellerPublicPage() {
 
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
+      {/* 🛡️ 2026-05-20: 사용자 신고 — "지금 편집 가능한지 UI 상 불명확". owner 모드일 때 sticky 안내 배너. */}
+      {isOwner && (
+        <div className="sticky top-0 z-30 bg-pink-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
+          <span>✏️ {t('seller.publicPage.ownerModeNotice', { defaultValue: '내 페이지 — 이름/소개/이미지 클릭해 바로 편집' })}</span>
+          <button
+            type="button"
+            onClick={() => navigate('/seller/profile?tab=business')}
+            className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold whitespace-nowrap"
+          >
+            {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
+          </button>
+        </div>
+      )}
       <SEO
         title={seller.name || t('product.seller')}
         description={seller.bio || `${seller.name || t('product.seller')} - Ur Deal`}

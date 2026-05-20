@@ -12,6 +12,7 @@ import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/se
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { formatNumber } from '@/utils/format'
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 
 interface DbPackage {
   id: number
@@ -39,12 +40,6 @@ interface AlimtalkLog {
   success: number
   error_msg: string | null
   created_at: string
-}
-
-declare global {
-  interface Window {
-    TossPayments?: (clientKey: string) => { requestPayment: (method: string, opts: Record<string, unknown>) => Promise<void> }
-  }
 }
 
 export default function SellerAlimtalkPage() {
@@ -100,16 +95,11 @@ export default function SellerAlimtalkPage() {
     } catch { /* ignore */ } finally { setLogsLoading(false) }
   }
 
-  function loadTossPaymentsSDK(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (window.TossPayments) { resolve(); return }
-      const script = document.createElement('script')
-      script.src = 'https://js.tosspayments.com/v1/payment'
-      script.onload = () => resolve()
-      script.onerror = () => reject(new Error('TossPayments SDK load failed'))
-      document.head.appendChild(script)
-    })
-  }
+  // 🛡️ 2026-05-20: Toss V1 widget API → V2 payment API 마이그레이션.
+  //   기존: window.TossPayments!(key).requestPayment('카드', { amount: number })
+  //         → customerKey 누락 + amount 형식 오류 → apigw 400 (px-payment-parameters).
+  //   변경: PointsChargePage 와 동일한 패턴 — loadTossPayments + payment({customerKey}).requestPayment.
+  //   영구 해결 — variant 콘솔 설정 의존성 ZERO.
 
   async function handleCharge() {
     if (!selectedPkgId) { toast.error(t('seller.selectPackageError')); return }
@@ -128,14 +118,18 @@ export default function SellerAlimtalkPage() {
         return
       }
 
-      await loadTossPaymentsSDK()
-      const toss = window.TossPayments!(clientKey)
-      await toss.requestPayment('카드', {
-        amount,
+      const sellerId = localStorage.getItem('seller_id') || 'unknown'
+      const sanitizedSellerId = String(sellerId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
+
+      const tossPayments = await loadTossPayments(clientKey)
+      const payment = tossPayments.payment({ customerKey: `seller_${sanitizedSellerId}` })
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: amount },
         orderId,
         orderName,
-        successUrl: `${window.location.origin}/seller/brandmessage?charge=success&orderId=${orderId}`,
-        failUrl: `${window.location.origin}/seller/brandmessage?charge=fail`,
+        successUrl: `${window.location.origin}/seller/alimtalk?charge=success&orderId=${orderId}`,
+        failUrl: `${window.location.origin}/seller/alimtalk?charge=fail`,
       })
     } catch (err: unknown) {
       const err_ = err as { message?: string; code?: string }
@@ -154,7 +148,7 @@ export default function SellerAlimtalkPage() {
     const amount = params.get('amount')
 
     if (charge === 'success' && paymentKey && orderId && amount) {
-      window.history.replaceState({}, '', '/seller/brandmessage')
+      window.history.replaceState({}, '', '/seller/alimtalk')
       api.post('/api/seller/alimtalk/credits/confirm',
         { paymentKey, orderId, amount: Number(amount) },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
@@ -167,7 +161,7 @@ export default function SellerAlimtalkPage() {
         }
       }).catch(() => toast.error(t('seller.chargeFailed')))
     } else if (charge === 'fail') {
-      window.history.replaceState({}, '', '/seller/brandmessage')
+      window.history.replaceState({}, '', '/seller/alimtalk')
       toast.error(t('seller.paymentCancelled'))
     }
   }, [])

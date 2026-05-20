@@ -96,20 +96,14 @@ export default function SellerProfileEditPage() {
       return
     }
 
-    // 프로필/소개/SNS 편집은 공개 페이지에서 인라인 편집 가능
-    // URL에 ?tab=business 등이 없으면 공개 페이지로 리다이렉트
+    // 🛡️ 2026-05-20: 사이드바 "설정" 클릭 시 무조건 공개 프로필로 튕기던 redirect 제거.
+    //   사용자 신고: 설정 누르면 메인페이지로 가버림. 의도는 "프로필/SNS 는 공개 페이지에서 인라인 편집"
+    //   이었으나, 설정 페이지 자체가 안 보이는 사고. 이제 본 페이지가 진짜 설정 페이지로 동작.
+    //   기존 ?tab= 쿼리 지원 유지 (deep link 호환).
     const urlParams = new URLSearchParams(window.location.search)
     const tabParam = urlParams.get('tab')
-    if (!tabParam || tabParam === 'profile') {
-      const sellerId = localStorage.getItem('seller_id')
-      if (sellerId) {
-        const sellerSlug = localStorage.getItem('seller_username') || sellerId
-        navigate(`/profile/${sellerSlug}`, { replace: true })
-        return
-      }
-    }
-    if (tabParam === 'business' || tabParam === 'personal' || tabParam === 'password') {
-      setActiveTab(tabParam)
+    if (tabParam === 'business' || tabParam === 'personal' || tabParam === 'password' || tabParam === 'profile') {
+      setActiveTab(tabParam as typeof activeTab)
     }
 
     loadProfile()

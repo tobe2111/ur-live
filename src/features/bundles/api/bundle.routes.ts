@@ -40,9 +40,13 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
   if (!authHeader?.startsWith('Bearer ')) return null
   try {
     const { verify } = await import('hono/jwt')
-    const payload = await verify(authHeader.slice(7), secret, 'HS256') as { id?: number; type?: string }
-    if (payload?.type === 'seller' && payload?.id) return payload.id
-    return null
+    // 🛡️ 2026-05-20: seller JWT 는 { seller_id, type: 'seller' } 형식 (seller.routes.ts:263).
+    //   기존 `payload.id` 체크는 항상 undefined → 모든 /api/seller/bundles 요청이 401.
+    //   fallback 으로 id 도 지원 (구버전 토큰 호환).
+    const payload = await verify(authHeader.slice(7), secret, 'HS256') as { id?: number; seller_id?: number; type?: string }
+    if (payload?.type !== 'seller') return null
+    const id = payload?.seller_id ?? payload?.id
+    return id ? Number(id) : null
   } catch { return null }
 }
 

@@ -87,22 +87,46 @@ sellerAnalyticsRoutes.get('/products/performance', requireAuth(), async (c) => {
 })
 
 // ── 리뷰 관리 (받은 리뷰 + 답글) ──
+// 🛡️ 2026-05-20: 테이블 = product_reviews (migration 0132), 컬럼 = images (image_urls 아님).
+//   seller_reply / seller_reply_at 은 답글 POST 시 ALTER 로 동적 추가 → SELECT 시 IIF/COALESCE 로 안전 조회.
 sellerAnalyticsRoutes.get('/reviews', requireAuth(), async (c) => {
-  const sellerId = await getSellerId(c)
-  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  try {
+    const sellerId = await getSellerId(c)
+    if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
 
-  const { results } = await c.env.DB.prepare(`
-    SELECT r.id, r.product_id, r.rating, r.content, r.image_urls, r.created_at,
-      r.seller_reply, r.seller_reply_at,
-      p.name AS product_name, u.name AS user_name
-    FROM reviews r
-    JOIN products p ON r.product_id = p.id
-    LEFT JOIN users u ON r.user_id = u.id
-    WHERE p.seller_id = ?
-    ORDER BY r.created_at DESC LIMIT 50
-  `).bind(sellerId).all()
+    // seller_reply 컬럼이 없는 환경 (답글 미시도) 도 대비 — 두 단계 fallback.
+    let results: unknown[] = []
+    try {
+      const r = await c.env.DB.prepare(`
+        SELECT r.id, r.product_id, r.rating, r.content, r.images, r.created_at,
+          r.seller_reply, r.seller_reply_at,
+          p.name AS product_name, u.name AS user_name
+        FROM product_reviews r
+        JOIN products p ON r.product_id = p.id
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE p.seller_id = ?
+        ORDER BY r.created_at DESC LIMIT 50
+      `).bind(sellerId).all()
+      results = r.results || []
+    } catch {
+      const r = await c.env.DB.prepare(`
+        SELECT r.id, r.product_id, r.rating, r.content, r.images, r.created_at,
+          NULL AS seller_reply, NULL AS seller_reply_at,
+          p.name AS product_name, u.name AS user_name
+        FROM product_reviews r
+        JOIN products p ON r.product_id = p.id
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE p.seller_id = ?
+        ORDER BY r.created_at DESC LIMIT 50
+      `).bind(sellerId).all()
+      results = r.results || []
+    }
 
-  return c.json({ success: true, data: results || [] })
+    return c.json({ success: true, data: results })
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[seller-analytics] /reviews error:', err)
+    return c.json({ success: false, error: '리뷰 조회 실패' }, 500)
+  }
 })
 
 sellerAnalyticsRoutes.post('/reviews/:id/reply', requireAuth(), async (c) => {
@@ -112,11 +136,12 @@ sellerAnalyticsRoutes.post('/reviews/:id/reply', requireAuth(), async (c) => {
   const { reply } = await c.req.json<{ reply: string }>()
   if (!reply?.trim()) return c.json({ success: false, error: '답글 내용을 입력해주세요' }, 400)
 
-  try { await c.env.DB.prepare("ALTER TABLE reviews ADD COLUMN seller_reply TEXT").run() } catch {}
-  try { await c.env.DB.prepare("ALTER TABLE reviews ADD COLUMN seller_reply_at DATETIME").run() } catch {}
+  // 🛡️ 2026-05-20: 테이블명 product_reviews (migration 0132). 'reviews' 는 존재 안 함.
+  try { await c.env.DB.prepare("ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT").run() } catch { /* exists */ }
+  try { await c.env.DB.prepare("ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME").run() } catch { /* exists */ }
 
   await c.env.DB.prepare(`
-    UPDATE reviews SET seller_reply = ?, seller_reply_at = datetime('now')
+    UPDATE product_reviews SET seller_reply = ?, seller_reply_at = datetime('now')
     WHERE id = ? AND product_id IN (SELECT id FROM products WHERE seller_id = ?)
   `).bind(reply.trim(), reviewId, sellerId).run()
 

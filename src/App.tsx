@@ -333,9 +333,6 @@ function AppContent() {
 
   return (
     <>
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-0 focus:left-0 focus:z-[100] focus:bg-white focus:text-gray-900 focus:px-4 focus:py-2 focus:rounded-br focus:shadow">
-        본문으로 건너뛰기
-      </a>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
           {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
