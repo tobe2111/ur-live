@@ -241,6 +241,39 @@ export default function AdminProductsPage() {
     }
   }
 
+  // 🛡️ 2026-05-19: 상품별 추천 ON/OFF + 보상률 변경 (optimistic update — 즉시 UI 반영, 실패 시 롤백).
+  async function handleToggleReferral(productId: number, current: number) {
+    const next = current === 1 ? 0 : 1
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_enabled: next } : p))
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.patch(`/api/admin/products/${productId}`, { referral_enabled: next }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(next === 1
+        ? t('admin.products.referralOn', { defaultValue: '추천 ON — 사용자가 공유 시 보상 지급' })
+        : t('admin.products.referralOff', { defaultValue: '추천 OFF' }))
+    } catch (err) {
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_enabled: current } : p))
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || '변경 실패')
+    }
+  }
+
+  async function handleSetReferralRate(productId: number, ratePercent: number | null) {
+    const value = ratePercent === null ? null : ratePercent / 100  // % → ratio
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_commission_rate: value } : p))
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.patch(`/api/admin/products/${productId}`, { referral_commission_rate: value }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(value === null
+        ? t('admin.products.referralRateDefault', { defaultValue: '기본 보상률 (5%) 적용' })
+        : t('admin.products.referralRateSet', { rate: ratePercent, defaultValue: `보상률 ${ratePercent}% 적용` }))
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || '변경 실패')
+      loadProducts()
+    }
+  }
+
   function handleEdit(product: Product) {
     setEditingProduct(product)
     let detailImages = ['', '', '', '']
@@ -508,6 +541,7 @@ export default function AdminProductsPage() {
                       t('admin.products.k025', { defaultValue: '재고' }),
                       t('admin.products.k026', { defaultValue: '판매 수' }),
                       t('admin.products.k027', { defaultValue: '상태' }),
+                      t('admin.products.referralCol', { defaultValue: '추천' }),
                       t('admin.products.k028', { defaultValue: '액션' }),
                     ].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
@@ -627,6 +661,46 @@ export default function AdminProductsPage() {
                             </span>
                           )}
                         </button>
+                      </td>
+                      {/* 🛡️ 2026-05-19: 추천 ON/OFF + 보상률 인라인 편집. 5% 기본, 0~50% 가능. */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleToggleReferral(product.id, Number(product.referral_enabled) || 0)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer transition-colors ${
+                              Number(product.referral_enabled) === 1
+                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                            title={Number(product.referral_enabled) === 1 ? '추천 ON — 클릭하면 OFF' : '추천 OFF — 클릭하면 ON'}
+                          >
+                            {Number(product.referral_enabled) === 1 ? '🎁 ON' : 'OFF'}
+                          </button>
+                          {Number(product.referral_enabled) === 1 && (
+                            <input
+                              type="number"
+                              min={0}
+                              max={50}
+                              step={0.5}
+                              defaultValue={
+                                product.referral_commission_rate != null
+                                  ? Math.round(Number(product.referral_commission_rate) * 1000) / 10  // 0.05 → 5
+                                  : 5  // platform default
+                              }
+                              className="w-14 px-1.5 py-0.5 text-xs text-right border border-gray-200 rounded text-gray-900 focus:border-emerald-400 focus:outline-none"
+                              onBlur={(e) => {
+                                const v = e.target.value.trim()
+                                const n = v === '' ? null : Number(v)
+                                if (n !== null && (!Number.isFinite(n) || n < 0 || n > 50)) return
+                                // 5 (default) 와 같으면 NULL 로 (platform default 사용)
+                                handleSetReferralRate(product.id, n === 5 ? null : n)
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                              title="추천 보상률 (%) — 0~50, 빈 값 또는 5 입력 시 기본값 적용"
+                            />
+                          )}
+                          {Number(product.referral_enabled) === 1 && <span className="text-[10px] text-gray-400">%</span>}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">

@@ -2927,7 +2927,12 @@
       "k068": "라이브 방송 전용",
       "k069": "취소",
       "k070": "수정",
-      "k071": "등록"
+      "k071": "등록",
+      "referralCol": "추천",
+      "referralOn": "추천 ON — 사용자가 공유 시 보상 지급",
+      "referralOff": "추천 OFF",
+      "referralRateDefault": "기본 보상률 (5%) 적용",
+      "referralRateSet": "보상률 {{rate}}% 적용"
     },
     "orders": {
       "k001": "주문 접수",

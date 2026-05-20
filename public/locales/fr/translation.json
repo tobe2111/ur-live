@@ -2259,7 +2259,12 @@
       "k068": "라이브 방송 전용",
       "k069": "취소",
       "k070": "수정",
-      "k071": "등록"
+      "k071": "등록",
+      "referralCol": "Parrainage",
+      "referralOn": "Parrainage ON — Récompense au partage",
+      "referralOff": "Parrainage OFF",
+      "referralRateDefault": "Taux par défaut (5%) appliqué",
+      "referralRateSet": "Taux {{rate}}% appliqué"
     },
     "orders": {
       "k001": "주문 접수",

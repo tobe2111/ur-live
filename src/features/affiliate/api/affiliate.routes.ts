@@ -10,7 +10,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 
-const DEFAULT_COMMISSION_RATE = 0.02 // 2%
+const DEFAULT_COMMISSION_RATE = 0.05 // 🛡️ 2026-05-19: 5% (이전 2% 폐기, migration 0271 과 일치)
 
 export const affiliateRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -35,6 +35,35 @@ async function ensureTable(DB: D1Database) {
       )
     `).run()
   } catch {}
+}
+
+/**
+ * 🛡️ 2026-05-19: 상품별 추천 보상률 해석.
+ *   1) products.referral_enabled = 1 이어야 추천 적용 (아니면 null 반환 → 차단)
+ *   2) products.referral_commission_rate NOT NULL 이면 그 값 사용 (상품별 override)
+ *   3) 아니면 platform_settings.affiliate_commission_rate (기본 5%)
+ *   반환값은 ratio (0.05 = 5%).
+ */
+async function resolveCommissionRate(
+  DB: D1Database,
+  productId: number | null | undefined,
+): Promise<number | null> {
+  if (productId) {
+    try {
+      const row = await DB.prepare(
+        'SELECT referral_enabled, referral_commission_rate FROM products WHERE id = ?'
+      ).bind(productId).first<{ referral_enabled: number | null; referral_commission_rate: number | null }>()
+      if (!row) return null
+      if (Number(row.referral_enabled) !== 1) return null  // OFF → 차단
+      if (row.referral_commission_rate != null && Number.isFinite(row.referral_commission_rate)) {
+        return Math.max(0, Math.min(1, Number(row.referral_commission_rate)))
+      }
+    } catch {
+      // 컬럼 미존재 (마이그레이션 0271 미적용) → platform default 로 graceful fallback
+    }
+  }
+  // platform default
+  return getCommissionRate(DB)
 }
 
 async function getCommissionRate(DB: D1Database): Promise<number> {
@@ -128,7 +157,13 @@ affiliateRoutes.post('/track', requireAuth(), async (c) => {
 
   // ✅ Use server-side total_amount (ignore client order_amount)
   const orderAmount = Number(order.total_amount) || 0
-  const rate = await getCommissionRate(DB)
+
+  // 🛡️ 2026-05-19: 상품별 referral_enabled / commission_rate 우선 → platform default fallback.
+  //   product_id 없거나 referral_enabled=0 이면 추천 적용 안 함 (rate=null → 차단).
+  const rate = await resolveCommissionRate(DB, product_id ? Number(product_id) : null)
+  if (rate == null) {
+    return c.json({ success: false, error: '이 상품은 추천 보상 대상이 아닙니다', code: 'REFERRAL_DISABLED' }, 400)
+  }
   const commission = Math.round(orderAmount * rate)
 
   // 수수료 기록

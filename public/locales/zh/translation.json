@@ -2927,7 +2927,12 @@
       "k068": "라이브 방송 전용",
       "k069": "취소",
       "k070": "수정",
-      "k071": "등록"
+      "k071": "등록",
+      "referralCol": "推荐",
+      "referralOn": "推荐 ON — 用户分享时支付",
+      "referralOff": "推荐 OFF",
+      "referralRateDefault": "默认费率 (5%)",
+      "referralRateSet": "费率 {{rate}}% 已应用"
     },
     "orders": {
       "k001": "주문 접수",

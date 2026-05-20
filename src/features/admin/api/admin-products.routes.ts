@@ -110,17 +110,36 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
         ORDER BY cnt DESC LIMIT 50`
     ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] }));
 
-    const products = await executeQuery<ProductRow>(DB, `
-      SELECT p.id, p.name, p.description, p.price, p.stock,
-             p.image_url, p.is_active, p.product_type, p.category,
-             p.sold_count, p.kt_alpha_gift_code, p.deal_only,
-             COALESCE(p.supply_price, 0) AS supply_price,
-             COALESCE(p.is_supply_product, 0) AS is_supply_product,
-             p.seller_id, p.created_at, s.business_name as seller_name
-      FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
-      ${whereClause}
-      ORDER BY ${orderBy} LIMIT ? OFFSET ?
-    `, [...params, limit, offset]);
+    // 🛡️ 2026-05-19: referral_enabled / referral_commission_rate 추가 (migration 0271).
+    //   컬럼 없는 환경에서도 graceful — try/catch fallback.
+    let products: ProductRow[]
+    try {
+      products = await executeQuery<ProductRow>(DB, `
+        SELECT p.id, p.name, p.description, p.price, p.stock,
+               p.image_url, p.is_active, p.product_type, p.category,
+               p.sold_count, p.kt_alpha_gift_code, p.deal_only,
+               p.referral_enabled, p.referral_commission_rate,
+               COALESCE(p.supply_price, 0) AS supply_price,
+               COALESCE(p.is_supply_product, 0) AS is_supply_product,
+               p.seller_id, p.created_at, s.business_name as seller_name
+        FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
+        ${whereClause}
+        ORDER BY ${orderBy} LIMIT ? OFFSET ?
+      `, [...params, limit, offset]);
+    } catch {
+      // 마이그레이션 0271 미적용 환경 fallback (referral_* 컬럼 없음).
+      products = await executeQuery<ProductRow>(DB, `
+        SELECT p.id, p.name, p.description, p.price, p.stock,
+               p.image_url, p.is_active, p.product_type, p.category,
+               p.sold_count, p.kt_alpha_gift_code, p.deal_only,
+               COALESCE(p.supply_price, 0) AS supply_price,
+               COALESCE(p.is_supply_product, 0) AS is_supply_product,
+               p.seller_id, p.created_at, s.business_name as seller_name
+        FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
+        ${whereClause}
+        ORDER BY ${orderBy} LIMIT ? OFFSET ?
+      `, [...params, limit, offset]);
+    }
 
     return c.json({
       success: true,
@@ -276,13 +295,15 @@ adminProductsRoutes.post('/products', cors(), async (c) => {
 
     let result: any;
     try {
+      // 🛡️ 2026-05-19: 어드민 큐레이션 상품은 referral_enabled=1 기본 ON, 5% 보상률 (사용자 정책 B).
+      //   referral_commission_rate=NULL → platform default (5%) 사용. 어드민이 상품별 override 가능.
       result = await executeRun(DB, `
         INSERT INTO products (
           name, description, long_description, price, compare_at_price, supply_price,
           stock, image_url, detail_images, category, product_type,
-          is_supply_product, is_active, created_at, updated_at
+          is_supply_product, referral_enabled, is_active, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, datetime('now'), datetime('now'))
       `, [
         name, description || '', long_description || null, price,
         compare_at_price || null, supply_price || 0,
@@ -373,7 +394,7 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
     const productId = c.req.param('id');
     if (!productId || !/^\d+$/.test(String(productId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json();
-    const { is_active, sold_count, stock } = body;
+    const { is_active, sold_count, stock, referral_enabled, referral_commission_rate } = body;
 
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
@@ -394,6 +415,23 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
       }
       updates.push('stock = ?'); params.push(Math.floor(n));
     }
+    // 🛡️ 2026-05-19: 어드민이 상품별 추천 ON/OFF + 보상률 조정 가능 (이상적·영구적 — 정책 B/C 모두 override 가능).
+    if (referral_enabled !== undefined) {
+      updates.push('referral_enabled = ?');
+      params.push(referral_enabled ? 1 : 0);
+    }
+    if (referral_commission_rate !== undefined) {
+      if (referral_commission_rate === null) {
+        // NULL = platform default 사용 (override 해제)
+        updates.push('referral_commission_rate = NULL');
+      } else {
+        const r = Number(referral_commission_rate);
+        if (!Number.isFinite(r) || r < 0 || r > 0.5) {
+          return c.json({ success: false, error: '보상률은 0~50% (0.0~0.5) 범위여야 합니다' }, 400);
+        }
+        updates.push('referral_commission_rate = ?'); params.push(r);
+      }
+    }
 
     params.push(productId);
     await executeRun(DB, `UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
@@ -405,6 +443,8 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
         ...(is_active !== undefined ? { is_active: is_active ? 1 : 0 } : {}),
         ...(sold_count !== undefined ? { sold_count: Number(sold_count) } : {}),
         ...(stock !== undefined ? { stock: Math.floor(Number(stock)) } : {}),
+        ...(referral_enabled !== undefined ? { referral_enabled: referral_enabled ? 1 : 0 } : {}),
+        ...(referral_commission_rate !== undefined ? { referral_commission_rate } : {}),
       },
     });
   } catch (err) {

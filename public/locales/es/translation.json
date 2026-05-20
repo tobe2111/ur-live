@@ -2259,7 +2259,12 @@
       "k068": "라이브 방송 전용",
       "k069": "취소",
       "k070": "수정",
-      "k071": "등록"
+      "k071": "등록",
+      "referralCol": "Referido",
+      "referralOn": "Referido ON — Paga en compartidos de usuario",
+      "referralOff": "Referido OFF",
+      "referralRateDefault": "Tasa default (5%) aplicada",
+      "referralRateSet": "Tasa {{rate}}% aplicada"
     },
     "orders": {
       "k001": "주문 접수",

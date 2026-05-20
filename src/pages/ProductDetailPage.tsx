@@ -271,8 +271,24 @@ export default function ProductDetailPage() {
   function handleShare() {
     if (!product) return
 
-    const shareText = `${product.name} - ${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'}`
-    const shareUrl = window.location.href
+    // 🛡️ 2026-05-19: 상품이 추천 ON 이고 사용자 로그인 시 → ?ref={my_user_id} 자동 추가.
+    //   친구가 이 링크로 들어와 구매하면 affiliate.routes.ts/track 이 본인에게 보상 적립.
+    //   추천 OFF 상품 또는 비로그인 → 일반 링크 (보상 없음).
+    const myUserId = getUserId()
+    const isReferralEligible = Number(product.referral_enabled) === 1 && !!myUserId
+    let shareUrl = window.location.href.split('?')[0]  // 기존 쿼리 제거
+    if (isReferralEligible) {
+      shareUrl += `?ref=${encodeURIComponent(String(myUserId))}`
+    }
+
+    // 🛡️ 2026-05-19: 추천 보상률 미리 안내 — 사용자가 "공유하면 얼마 적립" 인지 알 수 있게.
+    const rateRatio = product.referral_commission_rate != null
+      ? Number(product.referral_commission_rate)
+      : 0.05  // platform default 5%
+    const rewardPreview = Math.round(displayPrice * rateRatio)
+    const shareText = isReferralEligible
+      ? `${product.name} - ${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'}\n친구가 이 링크로 구매하면 +${formatNumber(rewardPreview)}딜 적립!`
+      : `${product.name} - ${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'}`
 
     if (navigator.share) {
       navigator.share({
@@ -284,7 +300,9 @@ export default function ProductDetailPage() {
       })
     } else {
       navigator.clipboard.writeText(shareUrl).then(() => {
-        showToast(t('productDetailPage.linkCopied'), 'success')
+        showToast(isReferralEligible
+          ? t('productDetailPage.linkCopiedReferral', { reward: formatNumber(rewardPreview), defaultValue: `링크 복사 완료 — 친구 구매 시 +${formatNumber(rewardPreview)}딜 적립` })
+          : t('productDetailPage.linkCopied'), 'success')
       })
     }
   }

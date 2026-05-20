@@ -127,6 +127,12 @@ export interface ProductsTable {
   view_count: number            // INTEGER DEFAULT 0 — 상품 상세 조회 수
   avg_rating: number            // REAL DEFAULT 0 — 리뷰 평균 별점
   review_count: number          // INTEGER DEFAULT 0 — 리뷰 개수
+  // migration 0271 (2026-05-19): 상품 추천 (affiliate) 시스템.
+  //   referral_enabled = 1 인 상품만 사용자가 공유하고 보상 받을 수 있음.
+  //   referral_commission_rate NULL → platform_settings.affiliate_commission_rate (기본 5%)
+  //   정책: 셀러 상품 OFF / 어드민 큐레이션 ON / KT Alpha 교환권 OFF (default).
+  referral_enabled: number | null              // INTEGER DEFAULT 0
+  referral_commission_rate: number | null      // REAL — ratio (0.05 = 5%)
 }
 
 // ============================================================

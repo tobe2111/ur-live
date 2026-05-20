@@ -41,6 +41,9 @@ export interface Product {
   kt_alpha_gift_code?: string | null
   deal_only?: number      // 1 = 딜 교환 전용
   auto_voucher_send?: number
+  // 🛡️ 2026-05-19: 추천 (affiliate) 시스템 — 어드민이 상품별 ON/OFF + 보상률 설정.
+  referral_enabled?: number       // 0=OFF / 1=ON
+  referral_commission_rate?: number | null  // NULL=platform default 5%
 }
 
 export interface ProductOption {

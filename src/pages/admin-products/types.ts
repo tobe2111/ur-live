@@ -21,6 +21,10 @@ export interface Product {
   seller_name?: string
   sold_count?: number
   created_at: string
+  // 🛡️ 2026-05-19: 추천 (affiliate) 시스템 — 상품별 ON/OFF + 보상률 override.
+  referral_enabled?: number              // 0=OFF / 1=ON. 어드민 토글로 변경.
+  referral_commission_rate?: number | null  // NULL=platform default (5%). 0.0~0.5 범위.
+  deal_only?: number                     // KT Alpha 교환권 여부 (1 = 딜 전용)
 }
 
 export interface SupplySalesRow {
