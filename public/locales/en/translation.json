@@ -387,7 +387,8 @@
     "itemAmount": "Item total",
     "shipping": "Shipping",
     "totalAmount": "Total amount",
-    "orderBtn": "Order {{count}} item(s) · ₩{{amount}}"
+    "orderBtn": "Order {{count}} item(s) · ₩{{amount}}",
+    "inactive": "Discontinued"
   },
   "product": {
     "addToCart": "Add to Cart",

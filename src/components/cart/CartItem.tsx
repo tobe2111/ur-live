@@ -15,6 +15,9 @@ interface CartItem {
   product_stock?: number
   // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시.
   deal_only?: number
+  // 🛡️ 2026-05-19: 판매 종료 (is_active=0) 상품도 카트에 표시 (데이터 보존).
+  //   값 = 0/undefined → "판매 종료" 배지 + 선택 차단.
+  product_is_active?: number
 }
 
 interface CartItemProps {
@@ -43,17 +46,20 @@ export const CartItemComponent = React.memo(function CartItemComponent({
   const isOutOfStock = stock !== undefined && stock === 0
   const isAtStockLimit = stock !== undefined && item.quantity >= stock
   const isLowStock = stock !== undefined && stock > 0 && stock <= 5
+  // 🛡️ 2026-05-19: 판매 종료 상품 (is_active=0) — 결제 차단 + 선택 불가.
+  const isInactive = item.product_is_active !== undefined && Number(item.product_is_active) !== 1
+  const isUnavailable = isOutOfStock || isInactive
 
   return (
-    <div className={`flex gap-3 ${isOutOfStock ? 'opacity-50' : ''}`}>
+    <div className={`flex gap-3 ${isUnavailable ? 'opacity-50' : ''}`}>
       {/* v4 pink checkbox */}
       <span
-        onClick={() => !isOutOfStock && onToggleSelect(item.id)}
+        onClick={() => !isUnavailable && onToggleSelect(item.id)}
         className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
           isSelected
             ? 'bg-pink-500 border-pink-500'
             : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A]'
-        } ${isOutOfStock ? 'cursor-not-allowed' : ''}`}
+        } ${isUnavailable ? 'cursor-not-allowed' : ''}`}
       >
         {isSelected && (
           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -118,7 +124,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             <button
               type="button"
               onClick={() => onUpdateQuantity(item.id, -1)}
-              disabled={item.quantity <= 1 || isUpdating || isOutOfStock}
+              disabled={item.quantity <= 1 || isUpdating || isUnavailable}
               aria-label={t('cart.decreaseQty', { defaultValue: '수량 줄이기' })}
               className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
@@ -130,7 +136,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             <button
               type="button"
               onClick={() => onUpdateQuantity(item.id, 1)}
-              disabled={isUpdating || isOutOfStock || isAtStockLimit}
+              disabled={isUpdating || isUnavailable || isAtStockLimit}
               aria-label={t('cart.increaseQty', { defaultValue: '수량 늘리기' })}
               className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:bg-[#121212] transition-colors"
             >
@@ -138,11 +144,12 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             </button>
           </div>
 
-          {/* Stock warnings */}
+          {/* Stock warnings — 🛡️ 2026-05-19: 판매 종료 상품 (is_active=0) 도 별도 표시. */}
           <div className="text-right">
-            {isOutOfStock && <p className="text-[11px] text-red-500 font-medium">{t('cart.soldOut', { defaultValue: '품절' })}</p>}
-            {!isOutOfStock && isAtStockLimit && <p className="text-[11px] text-orange-500">{t('cart.maxQty', { stock, defaultValue: '최대 수량 ({{stock}}개)' })}</p>}
-            {!isOutOfStock && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400">{t('cart.lowStock', { stock, defaultValue: '재고 {{stock}}개' })}</p>}
+            {isInactive && <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">{t('cart.inactive', { defaultValue: '판매 종료' })}</p>}
+            {!isInactive && isOutOfStock && <p className="text-[11px] text-red-500 font-medium">{t('cart.soldOut', { defaultValue: '품절' })}</p>}
+            {!isUnavailable && isAtStockLimit && <p className="text-[11px] text-orange-500">{t('cart.maxQty', { stock, defaultValue: '최대 수량 ({{stock}}개)' })}</p>}
+            {!isUnavailable && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400">{t('cart.lowStock', { stock, defaultValue: '재고 {{stock}}개' })}</p>}
           </div>
         </div>
       </div>

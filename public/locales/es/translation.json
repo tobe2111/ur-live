@@ -3526,7 +3526,8 @@
     "itemAmount": "Total de artículos",
     "shipping": "Envío",
     "totalAmount": "Total a pagar",
-    "orderBtn": "Pedir {{count}} artículo(s) · ₩{{amount}}"
+    "orderBtn": "Pedir {{count}} artículo(s) · ₩{{amount}}",
+    "inactive": "Discontinuado"
   },
   "payment": {
     "agreeToTerms": "I agree to proceed with payment",

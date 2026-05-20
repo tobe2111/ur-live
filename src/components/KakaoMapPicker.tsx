@@ -40,16 +40,30 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
   const [results, setResults] = useState<KakaoPlace[]>([])
   const [mapReady, setMapReady] = useState(false)
 
-  // SDK 로드
+  // 🛡️ 2026-05-19: SDK 로드 — kakaoJsKey 없거나 SDK 로드 실패 시 graceful (페이지 크래시 X).
+  const [sdkError, setSdkError] = useState<string | null>(null)
   useEffect(() => {
+    if (!kakaoJsKey) {
+      setSdkError('카카오 맵 API 키가 설정되지 않았습니다 (운영자 환경변수 확인 필요).')
+      return
+    }
     if (window.kakao?.maps) {
-      initMap()
+      try { initMap() } catch (e) { setSdkError((e as Error).message) }
       return
     }
     const script = document.createElement('script')
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoJsKey}&libraries=services&autoload=false`
     script.async = true
-    script.onload = () => window.kakao.maps.load(initMap)
+    script.onload = () => {
+      try {
+        window.kakao.maps.load(() => {
+          try { initMap() } catch (e) { setSdkError((e as Error).message) }
+        })
+      } catch (e) {
+        setSdkError((e as Error).message)
+      }
+    }
+    script.onerror = () => setSdkError('카카오 맵 SDK 로드 실패 — 네트워크 확인 또는 도메인 허용 설정 확인.')
     document.head.appendChild(script)
   }, [kakaoJsKey])
 
@@ -174,10 +188,17 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
         </button>
       </div>
 
-      {/* 카카오맵 */}
+      {/* 카카오맵 — 🛡️ 2026-05-19: SDK 실패 시 graceful fallback (페이지 크래시 방지). */}
       <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]">
         <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1A1A1A]" />
-        {!mapReady && (
+        {sdkError ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1A1A1A] p-4 text-center">
+            <MapPin className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">지도를 불러올 수 없습니다</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">{sdkError}</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">아래 검색은 그대로 사용 가능합니다.</p>
+          </div>
+        ) : !mapReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1A1A1A]">
             <Loader2 className="w-5 h-5 animate-spin text-gray-400 dark:text-gray-500" />
           </div>

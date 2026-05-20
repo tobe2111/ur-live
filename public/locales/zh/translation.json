@@ -387,7 +387,8 @@
     "itemAmount": "商品金额",
     "shipping": "运费",
     "totalAmount": "总金额",
-    "orderBtn": "订购{{count}}件 · ₩{{amount}}"
+    "orderBtn": "订购{{count}}件 · ₩{{amount}}",
+    "inactive": "已下架"
   },
   "product": {
     "addToCart": "加入购物车",

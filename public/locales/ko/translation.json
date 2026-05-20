@@ -387,7 +387,8 @@
     "itemAmount": "상품 금액",
     "shipping": "배송비",
     "totalAmount": "총 결제금액",
-    "orderBtn": "{{count}}개 주문하기 · {{amount}}원"
+    "orderBtn": "{{count}}개 주문하기 · {{amount}}원",
+    "inactive": "판매 종료"
   },
   "product": {
     "addToCart": "장바구니 담기",

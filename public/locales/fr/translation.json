@@ -3526,7 +3526,8 @@
     "itemAmount": "Total articles",
     "shipping": "Livraison",
     "totalAmount": "Montant total",
-    "orderBtn": "Commander {{count}} article(s) · ₩{{amount}}"
+    "orderBtn": "Commander {{count}} article(s) · ₩{{amount}}",
+    "inactive": "Arrêté"
   },
   "payment": {
     "agreeToTerms": "I agree to proceed with payment",

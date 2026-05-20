@@ -387,7 +387,8 @@
     "itemAmount": "商品金額",
     "shipping": "送料",
     "totalAmount": "合計金額",
-    "orderBtn": "{{count}}点を注文する · ₩{{amount}}"
+    "orderBtn": "{{count}}点を注文する · ₩{{amount}}",
+    "inactive": "販売終了"
   },
   "product": {
     "addToCart": "カートに追加",

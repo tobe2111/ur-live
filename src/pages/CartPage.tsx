@@ -310,8 +310,12 @@ function CartPageContent() {
     let count = 0
     let sum = 0
 
-    // 선택된 상품들
-    const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
+    // 🛡️ 2026-05-19: 판매 종료 (product_is_active=0) 상품은 자동 제외 — 사용자 의도 무관하게
+    //   결제 흐름에서 빠짐 (백엔드도 차단하지만 프론트 calc 도 정합).
+    const isAvailable = (item: CartItem) => item.product_is_active === undefined || Number(item.product_is_active) === 1
+
+    // 선택된 상품들 (판매 종료 자동 제외)
+    const selectedItems = cartItems.filter(item => selectedIds.has(item.id) && isAvailable(item))
 
     // 셀러별로 그룹화
     const selectedSellerGroups = selectedItems.reduce((groups, item) => {
