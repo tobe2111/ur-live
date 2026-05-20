@@ -60,7 +60,7 @@ export default function SampleRequestsTab({
                       value={adminMemoMap[req.id] || ''}
                       onChange={e => setAdminMemoMap(prev => ({ ...prev, [req.id]: e.target.value }))}
                       rows={2}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                      className="w-full px-2 py-1.5 text-xs border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
                     />
                     <div className="flex gap-2">
                       <button

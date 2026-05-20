@@ -78,7 +78,7 @@ function MyStoresAndDeals() {
   }, [])
   return (
     <>
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://live.ur-team.com/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
@@ -87,7 +87,7 @@ function MyStoresAndDeals() {
             {referred.map(s => {
               const remaining = s.referral_bonus_until ? Math.max(0, Math.ceil((new Date(s.referral_bonus_until).getTime() - Date.now()) / (30 * 86400_000))) : 0
               return (
-                <li key={s.id} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                <li key={s.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
                     <p className="text-[10px] text-gray-500">누적 commission {s.total_commission.toLocaleString()}원</p>
@@ -102,14 +102,14 @@ function MyStoresAndDeals() {
         )}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 mb-3">🤝 매장 협업 ({deals.length}건)</h3>
         {deals.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">매장과 우대 commission 협상 가능 (예: 1.5%). 매장 홍보 가서 직접 협의하거나 사이트에서 신청.</p>
         ) : (
           <ul className="space-y-2">
             {deals.map(d => (
-              <li key={d.id} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+              <li key={d.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{d.seller_name || `매장 ${d.seller_id}`}</p>
                   <p className="text-[10px] text-gray-500">우대 {d.commission_pct}% · {d.proposed_by === 'seller' ? '매장 제안' : '내가 신청'}</p>
@@ -202,7 +202,7 @@ export default function InfluencerSettlementPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <SEO title="인플루언서 정산 - 유어딜" description="referral commission 잔액 / 송금 내역 / 세금 정보 관리" url="/influencer/settlement" />
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
         <Wallet className="w-5 h-5 text-pink-500" />
         <h1 className="text-base font-bold text-gray-900 flex-1">인플루언서 정산</h1>
         <button
@@ -263,7 +263,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+        <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900">정산 정보</h3>
 
           <div>
@@ -374,7 +374,7 @@ export default function InfluencerSettlementPage() {
         <MyStoresAndDeals />
 
         {/* 최근 내역 */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
@@ -383,7 +383,7 @@ export default function InfluencerSettlementPage() {
               {recent.map(r => {
                 const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-700' }
                 return (
-                  <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                  <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900">{r.commission_amount.toLocaleString()}원</p>
                       <p className="text-[10px] text-gray-500">상품 #{r.product_id} · {new Date(r.created_at).toLocaleDateString('ko-KR')}</p>

@@ -413,7 +413,7 @@ function CartPageContent() {
               return (
                 <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#0A0A0A]">
                   {/* Seller header with checkbox + badge + name + chevron */}
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50">
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#1A1A1A]">
                     <span
                       onClick={() => {
                         const ids = group.items.map(i => i.id as string | number)

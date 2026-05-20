@@ -107,7 +107,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
         </div>
 
         {/* 카카오 재인증 대안 (카카오 연동된 경우) */}
-        <div className="pt-3 border-t border-gray-100 text-center">
+        <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A] text-center">
           <p className="text-[11px] text-gray-400 mb-2">PIN 대신 카카오로 재인증</p>
           <button
             onClick={async () => {
@@ -199,7 +199,7 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
   if (!showForm) {
     return (
       <button onClick={() => setShowForm(true)}
-        className="w-full py-3 bg-white border border-gray-200 hover:border-blue-300 rounded-xl flex items-center gap-3 px-4 text-left">
+        className="w-full py-3 bg-white border border-gray-200 dark:border-[#2A2A2A] hover:border-blue-300 rounded-xl flex items-center gap-3 px-4 text-left">
         <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-gray-900">{t('sellerPin.setupCta')}</p>
@@ -211,7 +211,7 @@ export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKak
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+    <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 space-y-3">
       <p className="text-sm font-bold text-gray-900">보안 PIN {pinSet ? t('sellerPin.reset') : t('sellerPin.set')}</p>
 
       {!linkedToKakao && (

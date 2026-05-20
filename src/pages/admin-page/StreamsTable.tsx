@@ -20,7 +20,7 @@ export default function StreamsTable({ streams, loading, onDelete }: Props) {
   const { t } = useTranslation()
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A]">
         <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k058', { defaultValue: '라이브 스트림 관리' })}</h2>
       </div>
       <div className="overflow-x-auto">

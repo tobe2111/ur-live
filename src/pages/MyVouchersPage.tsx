@@ -126,7 +126,7 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 mt-5">
-              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700">취소</button>
+              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm font-bold text-gray-700">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
                 className="py-2 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}
@@ -579,14 +579,14 @@ function VoucherMap({ vouchers, onMarkerClick }: { vouchers: Voucher[]; onMarker
 
   if (vouchers.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+      <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-12 text-center">
         <p className="text-sm text-gray-500">지도에 표시할 미사용 식사권이 없어요</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-200" style={{ height: 400 }}>
+    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]" style={{ height: 400 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   )

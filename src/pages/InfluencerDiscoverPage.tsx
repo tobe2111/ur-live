@@ -105,7 +105,7 @@ export default function InfluencerDiscoverPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <SEO title="추천 공구 카탈로그 - 유어딜" description="원하는 공구를 골라 본인 SNS 에 추천 링크 공유. commission 자동 정산." url="/influencer/discover" />
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
         <Link2 className="w-5 h-5 text-pink-500" />
         <h1 className="text-base font-bold text-gray-900 flex-1">추천 공구 카탈로그</h1>
         <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-pink-600 font-bold">내 정산 →</button>
@@ -133,13 +133,13 @@ export default function InfluencerDiscoverPage() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="공구명/매장명 검색"
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-full text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular' | 'deadline')}
-            className="px-3 py-2 border border-gray-200 rounded-full text-xs text-gray-900 font-medium bg-white"
+            className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-xs text-gray-900 font-medium bg-white"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
@@ -156,7 +156,7 @@ export default function InfluencerDiscoverPage() {
             {filtered.map(p => {
               const progress = p.group_buy_target > 0 ? Math.min(100, (p.group_buy_current / p.group_buy_target) * 100) : 0
               return (
-                <li key={p.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <li key={p.id} className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
                   <div className="flex gap-3 p-3">
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="w-20 h-20 object-cover rounded-lg shrink-0" loading="lazy" />
@@ -175,7 +175,7 @@ export default function InfluencerDiscoverPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
                     <button onClick={() => copyLink(p.id)}
-                      className="py-2 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 flex items-center justify-center gap-1">
+                      className="py-2 rounded-lg border border-gray-200 dark:border-[#2A2A2A] text-xs font-bold text-gray-700 flex items-center justify-center gap-1">
                       <Copy className="w-3 h-3" /> 링크 복사
                     </button>
                     <button onClick={() => shareLink(p)}

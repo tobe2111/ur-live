@@ -14,7 +14,7 @@ export default function DashboardLoading({ text = '불러오는 중...', variant
     return (
       <div className="space-y-3">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4">
+          <div key={i} className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white p-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-100" />
               <div className="flex-1 space-y-2">

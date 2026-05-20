@@ -75,7 +75,7 @@ export default function ProductOptionForm({
             {options.map((option, index) => (
               <div
                 key={option.id ?? `${option.option_type}__${option.option_value}__${index}`}
-                className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 dark:border-[#2A2A2A]"
               >
                 <div className="flex-1 grid grid-cols-4 gap-2">
                   <div>
@@ -146,7 +146,7 @@ export default function ProductOptionForm({
         </div>
       )}
 
-      <div className="border-t border-gray-200 pt-4">
+      <div className="border-t border-gray-200 dark:border-[#2A2A2A] pt-4">
         <p className="text-xs font-medium text-gray-700 mb-3">
           {t('productOption.newOptionTitle', { defaultValue: '새 옵션 추가' })}
         </p>

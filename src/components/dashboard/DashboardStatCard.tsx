@@ -33,7 +33,7 @@ export default function DashboardStatCard({
 }: DashboardStatCardProps) {
   const colors = ACCENT_MAP[accent]
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow">
+    <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white p-4 shadow-sm transition-shadow hover:shadow">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[12px] font-medium text-gray-500">{label}</p>

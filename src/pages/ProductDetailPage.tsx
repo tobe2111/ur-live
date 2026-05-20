@@ -392,7 +392,7 @@ export default function ProductDetailPage() {
         })()}
 
         {/* 상세 정보 */}
-        <div className="mx-5 mt-6 divide-y divide-gray-100 border-t border-gray-100">
+        <div className="mx-5 mt-6 divide-y divide-gray-100 border-t border-gray-100 dark:border-[#1A1A1A]">
           <div className="flex justify-between py-4">
             <span className="text-[14px] text-gray-700">유효기간</span>
             <span className="text-[14px] font-bold text-gray-900">30일</span>

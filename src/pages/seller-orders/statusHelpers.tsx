@@ -28,7 +28,7 @@ export function StatusBadge({ status }: { status: string }) {
     case 'PAY_COMPLETE': case 'PAID': case 'DONE':
       return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t('seller.statusDone')}</Badge>
     case 'PENDING': case 'AWAITING_PAYMENT':
-      return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{t('seller.statusPending')}</Badge>
+      return <Badge className="bg-gray-100 text-gray-700 border-gray-200 dark:border-[#2A2A2A]">{t('seller.statusPending')}</Badge>
     case 'PREPARING':
       return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{t('seller.statusPreparing')}</Badge>
     case 'SHIPPING':

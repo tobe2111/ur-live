@@ -161,7 +161,7 @@ export default function ProductReviews({ productId }: { productId: number | stri
       {reviews.length > 0 && (
         <div className="space-y-3 mt-3">
           {reviews.map((r) => (
-            <div key={r.id} className="border border-gray-200/50 rounded-xl p-3">
+            <div key={r.id} className="border border-gray-200 dark:border-[#2A2A2A]/50 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">

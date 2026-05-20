@@ -110,7 +110,7 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+    <div className="bg-white rounded-2xl border border-gray-200 dark:border-[#2A2A2A] p-6 space-y-5">
       <div className="flex items-center gap-2">
         <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />
         <p className="text-sm font-semibold text-gray-900 truncate flex-1">{stream.title}</p>
@@ -162,7 +162,7 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
 
       {/* 🛡️ 로딩 상태 표시 (omeAvailable === null) — 빈 화면 방지 */}
       {omeAvailable === null && (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 flex items-center justify-center gap-3">
+        <div className="bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-6 flex items-center justify-center gap-3">
           <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
           <span className="text-sm text-gray-600">송출 준비 중...</span>
         </div>
@@ -209,7 +209,7 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
         </button>
       )}
 
-      <div className="pt-3 border-t border-gray-100 space-y-3">
+      <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A] space-y-3">
         {/* 🛡️ 2026-05-07: Pre-flight 사전 점검 — 30초 멈춤 사고 미연 방지 */}
         <BroadcastPreflightCheck method={method} />
 

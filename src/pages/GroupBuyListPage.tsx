@@ -737,7 +737,7 @@ export default function GroupBuyListPage() {
             {communityLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="border border-gray-100 rounded-2xl p-4 animate-pulse">
+                  <div key={i} className="border border-gray-100 dark:border-[#1A1A1A] rounded-2xl p-4 animate-pulse">
                     <div className="h-4 bg-gray-100 rounded w-3/4" />
                     <div className="h-3 bg-gray-100 rounded w-1/2 mt-2" />
                     <div className="h-8 bg-gray-100 rounded mt-3" />
@@ -798,7 +798,7 @@ export default function GroupBuyListPage() {
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <button
                             onClick={(e) => toggleInterest(e, g.id, g.restaurant_name)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 active:scale-90 transition-transform"
+                            className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 dark:border-[#2A2A2A] active:scale-90 transition-transform"
                             aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
                           >
                             <Bell

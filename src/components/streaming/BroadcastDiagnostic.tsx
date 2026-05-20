@@ -199,7 +199,7 @@ function RecoveryActions({ streamId }: { streamId: number }) {
   }
 
   return (
-    <div className="space-y-2 border-t border-gray-100 pt-3">
+    <div className="space-y-2 border-t border-gray-100 dark:border-[#1A1A1A] pt-3">
       <div className="text-xs font-semibold text-gray-700 flex items-center gap-1">🛠️ 자동 복구</div>
       <div className="grid grid-cols-2 gap-2">
         <button

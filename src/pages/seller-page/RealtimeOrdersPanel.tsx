@@ -32,7 +32,7 @@ export default function RealtimeOrdersPanel({ recentOrders, newOrderIds, ordersR
 
   return (
     <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-900">{t('seller.realtimeOrders')}</h2>
           {newOrderIds.size > 0 && (

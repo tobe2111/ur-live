@@ -52,7 +52,7 @@ export default function InviteLinkSection() {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 truncate font-mono">
+        <div className="flex-1 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-600 truncate font-mono">
           {inviteUrl}
         </div>
         <button

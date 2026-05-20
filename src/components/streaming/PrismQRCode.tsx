@@ -147,7 +147,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
             <label className="block text-[10px] font-semibold text-gray-500 mb-1">RTMP URL</label>
             <div className="flex gap-2">
               <input type="text" value={rtmpUrl} readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 font-mono" />
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 font-mono" />
               <Button size="sm" variant="outline" onClick={() => copyToClipboard(rtmpUrl, 'url')}>
                 {copied === 'url' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -157,7 +157,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
             <label className="block text-[10px] font-semibold text-gray-500 mb-1">Stream Key</label>
             <div className="flex gap-2">
               <input type="password" value={rtmpKey} readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 font-mono" />
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 font-mono" />
               <Button size="sm" variant="outline" onClick={() => copyToClipboard(rtmpKey, 'key')}>
                 {copied === 'key' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -166,7 +166,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
         </div>
 
         {/* 핸드폰으로 이어하기 QR */}
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+        <div className="bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-3 space-y-2">
           <p className="text-xs font-semibold text-gray-700">📱 핸드폰 카메라로 진행하려면</p>
           <div className="flex justify-center">
             <QRCode value={autoFillUrl} size={120} level="M" includeMargin />
@@ -255,7 +255,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
                 type="text"
                 value={rtmpUrl}
                 readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono"
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono"
               />
               <Button
                 size="sm"
@@ -280,7 +280,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
                 type="password"
                 value={rtmpKey}
                 readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono"
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono"
               />
               <Button
                 size="sm"

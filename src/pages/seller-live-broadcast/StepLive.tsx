@@ -330,7 +330,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
       )}
 
       {/* 상태 바 */}
-      <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-200">
+      <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center gap-2 min-w-0">
           <span className="flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full shrink-0">
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE
@@ -380,14 +380,14 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
 
       {/* 채팅 (영상 미리보기 제거 — YouTube embed는 30초 지연으로 모니터링 무의미)
           🛡️ 2026-05-13: PC 에선 더 큰 영역 (lg+ 60vh). 모바일에선 기존 320. */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ minHeight: 320 }}>
+      <div className="bg-white rounded-2xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden" style={{ minHeight: 320 }}>
         <div className="lg:h-[60vh]">
           <LiveChatPanel streamId={stream.id} />
         </div>
       </div>
 
       {/* 상품 전환 + 경매/타임딜 */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-200 dark:border-[#2A2A2A] p-4 space-y-4">
         {/* 상품 자동 전환 타이머 */}
         <div className="flex items-center gap-2 text-xs">
           <span className="text-gray-500 shrink-0">⏱️ 자동 전환</span>
@@ -413,7 +413,7 @@ export default function StepLive({ stream, products, method, notifyFollowers = t
                 value={productSearch}
                 onChange={e => setProductSearch(e.target.value)}
                 placeholder="상품 검색"
-                className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-24 focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-900"
+                className="text-xs border border-gray-200 dark:border-[#2A2A2A] rounded-lg px-2 py-1 w-24 focus:outline-none focus:ring-1 focus:ring-blue-300 text-gray-900"
               />
             )}
           </div>

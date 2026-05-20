@@ -318,23 +318,23 @@ export default function GroupBuyDetailPage() {
     // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-3 py-2.5 flex items-center justify-between">
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5 flex items-center justify-between">
           <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
           <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
         </div>
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
-          <div className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+          <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
             <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse" />
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
             <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
             <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
             <div className="h-4 w-1/3 bg-gray-100 rounded animate-pulse" />
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
               <div className="h-8 w-32 bg-pink-100 rounded animate-pulse" />
             </div>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
             <div className="flex items-center justify-between">
               <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
               <div className="h-6 w-16 bg-pink-100 rounded animate-pulse" />
@@ -416,7 +416,7 @@ export default function GroupBuyDetailPage() {
       </a>
 
       {/* 상단 chrome */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-3 py-2.5 flex items-center justify-between" role="banner">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5 flex items-center justify-between" role="banner">
         <button
           onClick={() => navigate(-1)}
           className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
@@ -448,7 +448,7 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* 이미지 + 상태 */}
-        <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100">
+        <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
           {detail.image_url ? (
             <img
               src={detail.image_url}
@@ -488,7 +488,7 @@ export default function GroupBuyDetailPage() {
         </div>
 
         {/* 제품 정보 */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
           <h1 className="text-xl font-bold text-gray-900">{detail.name}</h1>
           {detail.restaurant_name && (
             <div className="flex items-start gap-2 text-sm text-gray-600">
@@ -507,7 +507,7 @@ export default function GroupBuyDetailPage() {
           )}
 
           {/* 가격 — 🛡️ 2026-05-19: 공동구매는 소비자 구매라 '원' 단위. (교환권만 '딜') */}
-          <div className="pt-3 border-t border-gray-100">
+          <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
             <div className="flex items-baseline gap-2">
               {detail.current_discount_pct > 0 && (
                 <span className="text-xs text-gray-400 line-through">{formatNumber(detail.price)}원</span>
@@ -538,7 +538,7 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* 진행 현황 + 티어 */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-pink-500" />
@@ -582,7 +582,7 @@ export default function GroupBuyDetailPage() {
 
           {/* 티어 시각화 */}
           {tiers.length > 0 && (
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
               <p className="text-xs font-bold text-gray-700 mb-2">🎯 단계별 할인</p>
               <div className="space-y-1.5">
                 {tiers.map((tier, idx) => {
@@ -605,7 +605,7 @@ export default function GroupBuyDetailPage() {
 
         {/* 참여자 아바타 */}
         {participants.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A]">
             <p className="text-xs font-bold text-gray-700 mb-3">최근 참여자 ({participants.length}명)</p>
             <div className="flex flex-wrap gap-1.5">
               {participants.slice(0, 12).map((p, idx) => (
@@ -645,7 +645,7 @@ export default function GroupBuyDetailPage() {
 
         {/* 🛡️ 2026-05-15: Promo 코드 입력 — 단골/신규 할인 코드 */}
         {isJoinable && !isOwnProduct && (
-          <div className="bg-white rounded-2xl p-4 border border-gray-200">
+          <div className="bg-white rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
             <p className="text-xs font-bold text-gray-900 mb-2 flex items-center gap-1">
               🎁 할인 코드 (선택)
             </p>
@@ -691,7 +691,7 @@ export default function GroupBuyDetailPage() {
         {detail.seller_name && (
           <button
             onClick={() => detail.seller_id && navigate(`/profile/${detail.seller_id}`)}
-            className="w-full bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-3 hover:bg-gray-50"
+            className="w-full bg-white rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A] flex items-center gap-3 hover:bg-gray-50"
           >
             {detail.seller_avatar ? (
               <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
@@ -726,7 +726,7 @@ export default function GroupBuyDetailPage() {
       </main>
 
       {/* sticky 하단 결제 영역 — BottomNav (z-9999) 위로 올림 + BottomNav 높이만큼 ur-content padding 적용됨 */}
-      <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
+      <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
             <button

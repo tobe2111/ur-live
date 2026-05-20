@@ -108,7 +108,7 @@ export default function KVMonitoringPage() {
           {/* Main Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Read Usage */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 dark:border-[#2A2A2A] p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">KV Reads</h3>
                 <div className={`p-2 rounded-lg ${getStatusColor(data.readUsagePercent)}`}>
@@ -142,7 +142,7 @@ export default function KVMonitoringPage() {
             </div>
 
             {/* Write Usage */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 dark:border-[#2A2A2A] p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">KV Writes</h3>
                 <div className={`p-2 rounded-lg ${getStatusColor(data.writeUsagePercent)}`}>
@@ -214,7 +214,7 @@ export default function KVMonitoringPage() {
           </div>
 
           {/* Recommendations */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 dark:border-[#2A2A2A] p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">💡 권장사항</h3>
             <div className="space-y-3">
               {data.writeUsagePercent > 80 && (

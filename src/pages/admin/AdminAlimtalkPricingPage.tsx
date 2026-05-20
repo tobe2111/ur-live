@@ -175,7 +175,7 @@ export default function AdminAlimtalkPricingPage() {
 
       {/* 패키지 관리 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">브랜드메시지 패키지 관리</h2>
           <button
             onClick={() => setShowAdd(v => !v)}
@@ -188,7 +188,7 @@ export default function AdminAlimtalkPricingPage() {
 
         {/* 새 패키지 추가 폼 */}
         {showAdd && (
-          <div className="px-5 py-4 border-b border-gray-100 bg-blue-50">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] bg-blue-50">
             <div className="flex flex-wrap gap-3 items-end">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">표시명</label>
@@ -197,7 +197,7 @@ export default function AdminAlimtalkPricingPage() {
                   placeholder="예) 2,000건"
                   value={newPkg.label}
                   onChange={e => setNewPkg(p => ({ ...p, label: e.target.value }))}
-                  className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-28 px-2 py-1.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -207,7 +207,7 @@ export default function AdminAlimtalkPricingPage() {
                   placeholder="2000"
                   value={newPkg.credits || ''}
                   onChange={e => setNewPkg(p => ({ ...p, credits: Number(e.target.value) }))}
-                  className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-24 px-2 py-1.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -217,7 +217,7 @@ export default function AdminAlimtalkPricingPage() {
                   placeholder="18000"
                   value={newPkg.price || ''}
                   onChange={e => setNewPkg(p => ({ ...p, price: Number(e.target.value) }))}
-                  className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-28 px-2 py-1.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -234,7 +234,7 @@ export default function AdminAlimtalkPricingPage() {
               등록된 패키지가 없습니다. 새 패키지를 추가해주세요.
             </p>
           ) : packages.map(pkg => (
-            <div key={pkg.id} className={`border border-gray-100 rounded-xl p-4 ${pkg.is_active === 0 ? 'opacity-60' : ''}`}>
+            <div key={pkg.id} className={`border border-gray-100 dark:border-[#1A1A1A] rounded-xl p-4 ${pkg.is_active === 0 ? 'opacity-60' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   {editingId === pkg.id ? (
@@ -245,7 +245,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="text"
                           value={editState.label}
                           onChange={e => setEditState(s => ({ ...s, label: e.target.value }))}
-                          className="w-28 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-28 px-2 py-1 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -254,7 +254,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="number"
                           value={editState.credits}
                           onChange={e => setEditState(s => ({ ...s, credits: Number(e.target.value) }))}
-                          className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-24 px-2 py-1 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -263,7 +263,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="number"
                           value={editState.price}
                           onChange={e => setEditState(s => ({ ...s, price: Number(e.target.value) }))}
-                          className="w-28 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-28 px-2 py-1 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -272,7 +272,7 @@ export default function AdminAlimtalkPricingPage() {
                           type="number"
                           value={editState.sort_order}
                           onChange={e => setEditState(s => ({ ...s, sort_order: Number(e.target.value) }))}
-                          className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-16 px-2 py-1 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
                       <div className="flex items-center gap-1.5 mt-4">
@@ -341,7 +341,7 @@ export default function AdminAlimtalkPricingPage() {
 
       {/* 셀러 브랜드메시지 크레딧 현황 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A]">
           <h2 className="text-sm font-semibold text-gray-900">셀러 브랜드메시지 크레딧 현황</h2>
         </div>
         <div className="overflow-x-auto">

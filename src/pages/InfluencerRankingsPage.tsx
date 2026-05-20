@@ -80,19 +80,19 @@ export default function InfluencerRankingsPage() {
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
           <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
           </select>
           <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
           </select>
         </div>
 
         {/* 랭킹 리스트 */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-2xl overflow-hidden">
           {loading ? (
             <p className="text-sm text-gray-500 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (
@@ -103,7 +103,7 @@ export default function InfluencerRankingsPage() {
                 const isTop3 = r.rank <= 3
                 const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : null
                 return (
-                  <li key={r.rank} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-0 ${isTop3 ? 'bg-amber-50' : ''}`}>
+                  <li key={r.rank} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] last:border-0 ${isTop3 ? 'bg-amber-50' : ''}`}>
                     <span className={`w-8 text-center font-extrabold ${isTop3 ? 'text-amber-600' : 'text-gray-400'}`}>
                       {medal || r.rank}
                     </span>

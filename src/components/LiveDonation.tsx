@@ -232,7 +232,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 onChange={e => setMessage(e.target.value)}
                 placeholder={t('live.donationMsgPlaceholder', { defaultValue: '응원 메시지를 남겨보세요 (선택)' })}
                 maxLength={100}
-                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:border-pink-500 focus:outline-none mb-4"
+                className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-[#2A2A2A] rounded-xl focus:border-pink-500 focus:outline-none mb-4"
                 disabled={processing}
               />
 

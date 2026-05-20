@@ -20,7 +20,7 @@ export function KpiMetricsGrid({ kpiData }: { kpiData: KpiData }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {metrics.map((kpi) => (
-          <div key={kpi.labelKey} className="rounded-xl p-3 bg-white border border-gray-200">
+          <div key={kpi.labelKey} className="rounded-xl p-3 bg-white border border-gray-200 dark:border-[#2A2A2A]">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
               {t(kpi.labelKey, { defaultValue: kpi.labelDefault })}
             </p>

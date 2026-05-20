@@ -33,7 +33,7 @@ export default function BusinessLandingPage() {
       />
 
       {/* Nav */}
-      <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-4 lg:px-12 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 lg:px-12 py-4 flex items-center justify-between">
         <Link to="/" className="text-lg font-extrabold tracking-tight text-gray-900">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 hover:text-gray-900">인플루언서</Link>
@@ -65,7 +65,7 @@ export default function BusinessLandingPage() {
               >
                 무료로 시작 <ArrowRight className="w-4 h-4" />
               </button>
-              <a href="tel:0507-0177-0432" className="px-6 py-3.5 border-2 border-gray-200 hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700">
+              <a href="tel:0507-0177-0432" className="px-6 py-3.5 border-2 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700">
                 <Phone className="w-4 h-4" /> 0507-0177-0432
               </a>
             </div>
@@ -113,7 +113,7 @@ export default function BusinessLandingPage() {
               { icon: Shield, title: '자동 환불', desc: '미달성 시 보증금 자동 환불. 분쟁/CS 부담 없음.' },
               { icon: TrendingUp, title: '실시간 통계', desc: '오늘 매출, 사용 voucher, 정산 예정 — 실시간 알림톡.' },
             ].map((f, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100">
+              <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100 dark:border-[#1A1A1A]">
                 <f.icon className="w-8 h-8 text-pink-500 mb-3" />
                 <h3 className="text-base font-bold mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">{f.desc}</p>
@@ -196,7 +196,7 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100">
+      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#1A1A1A]">
         © 2026 리스터코퍼레이션 · 사업자등록번호: 479-09-02930 ·{' '}
         <a href="mailto:jiwon@ur-team.com" className="underline">jiwon@ur-team.com</a>
       </footer>

@@ -130,19 +130,19 @@ export default function OBSWebSocketSetupWizard({ onComplete, onCancel }: Props)
             <div>
               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Host (보통 localhost)</label>
               <input value={host} onChange={e => setHost(e.target.value)}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white" />
+                className="w-full px-2.5 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 bg-white" />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Port (보통 4455)</label>
               <input type="number" value={port} onChange={e => setPort(Number(e.target.value) || 4455)}
-                className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white" />
+                className="w-full px-2.5 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 bg-white" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-gray-700 mb-1">비밀번호</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="OBS 에서 설정한 비밀번호"
-              className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white" />
+              className="w-full px-2.5 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 bg-white" />
           </div>
           <div className="flex gap-2">
             <button onClick={() => setStep(2)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold">← 이전</button>

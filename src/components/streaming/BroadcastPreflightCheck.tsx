@@ -188,7 +188,7 @@ export default function BroadcastPreflightCheck({ method, onAllChecked }: Props)
   const warned = results.filter(r => r.status === 'warn').length
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+    <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
           <Info className="w-4 h-4 text-blue-500" /> 사전 점검

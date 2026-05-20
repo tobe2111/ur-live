@@ -40,9 +40,9 @@ export function ProductListSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-list-sheet-title"
-        className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl"
+        className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 dark:border-[#2A2A2A] animate-sheet-up no-scrollbar shadow-2xl"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100">
+        <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="h-1 w-10 rounded-full bg-gray-300" aria-hidden="true" />
           <button
             type="button"
@@ -54,7 +54,7 @@ export function ProductListSheet({
           </button>
         </div>
 
-        <div className="px-5 pt-4 pb-3 border-b border-gray-100">
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-[#1A1A1A]">
           <h3 id="product-list-sheet-title" className="text-lg font-bold text-gray-900">{t('live.productSheet.title', { defaultValue: '라이브 상품 ({{count}}개)', count: safeProducts.length })}</h3>
           <p className="text-sm text-gray-500 mt-1">{t('live.productSheet.subtitle', { defaultValue: '상품을 선택해서 구매하세요' })}</p>
         </div>

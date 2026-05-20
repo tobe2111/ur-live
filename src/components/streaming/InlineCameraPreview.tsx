@@ -115,7 +115,7 @@ export function InlineCameraPreview() {
     return (
       <>
         <button onClick={() => start()}
-          className="w-full bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-blue-300 text-left">
+          className="w-full bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 flex items-center gap-3 hover:border-blue-300 text-left">
           <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
             <VideoIcon className="w-5 h-5 text-blue-600" />
           </div>

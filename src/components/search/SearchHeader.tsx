@@ -107,7 +107,7 @@ export default function SearchHeader({
                 <button
                   key={`${suggestion.type}-${suggestion.text}-${index}`}
                   onClick={() => handleSuggestionClick(suggestion.text)}
-                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 last:border-b-0"
+                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1A1A1A] flex items-center gap-3 border-b border-gray-50 dark:border-[#1A1A1A] last:border-b-0"
                 >
                   <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-[14px] text-gray-900 dark:text-white flex-1">{suggestion.text}</span>

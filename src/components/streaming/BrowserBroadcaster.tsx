@@ -870,7 +870,7 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
   const isRunning = status === 'live' || status === 'connecting' || status === 'fetching_token' || status === 'requesting_camera'
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+    <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 space-y-3">
       {/* 비디오 미리보기 — 🛡️ 2026-05-14: 송출이 9:16 세로 (모바일 라이브 커머스 표준)
           → 미리보기 컨테이너도 9:16 으로 변경. 모바일은 max-h 로 화면 넘침 방지. */}
       <div className="relative bg-black rounded-xl overflow-hidden mx-auto aspect-[9/16] max-h-[70vh] w-auto">
@@ -915,12 +915,12 @@ export default function BrowserBroadcaster({ streamId, onStreaming, onError, onU
       {status === 'idle' && (
         <div className="grid grid-cols-2 gap-2">
           <select value={selected.camId || ''} onChange={e => setSelected(s => ({ ...s, camId: e.target.value }))}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900">
+            className="px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900">
             <option value="">📷 카메라 자동선택</option>
             {devices.cams.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `카메라 ${d.deviceId.slice(0, 6)}`}</option>)}
           </select>
           <select value={selected.micId || ''} onChange={e => setSelected(s => ({ ...s, micId: e.target.value }))}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900">
+            className="px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900">
             <option value="">🎙️ 마이크 자동선택</option>
             {devices.mics.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `마이크 ${d.deviceId.slice(0, 6)}`}</option>)}
           </select>

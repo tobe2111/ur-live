@@ -226,7 +226,7 @@ export default function AdminSampleRequestsPage() {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-2 rounded-lg bg-white border border-gray-200 disabled:opacity-30"
+              className="p-2 rounded-lg bg-white border border-gray-200 dark:border-[#2A2A2A] disabled:opacity-30"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -234,7 +234,7 @@ export default function AdminSampleRequestsPage() {
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-2 rounded-lg bg-white border border-gray-200 disabled:opacity-30"
+              className="p-2 rounded-lg bg-white border border-gray-200 dark:border-[#2A2A2A] disabled:opacity-30"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -260,7 +260,7 @@ export default function AdminSampleRequestsPage() {
               onChange={e => setAdminMemo(e.target.value)}
               placeholder="관리자 메모 (선택사항)"
               rows={3}
-              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none mb-4"
+              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-200 dark:border-[#2A2A2A] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none mb-4"
             />
             <div className="flex gap-3">
               <button

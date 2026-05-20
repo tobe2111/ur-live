@@ -154,7 +154,7 @@ export default function QuickStartWaiting({ stream }: Props) {
               ) : isCurrent ? (
                 <Loader2 className={`w-4 h-4 animate-spin shrink-0 ${phaseColor[p]}`} />
               ) : (
-                <span className="w-4 h-4 rounded-full border-2 border-gray-200 block shrink-0" />
+                <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] block shrink-0" />
               )}
               <span className={`text-xs ${isCurrent ? 'font-bold ' + phaseColor[p] : isPast ? 'text-gray-500 line-through' : 'text-gray-400'}`}>
                 {phaseLabel[p]}

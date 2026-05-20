@@ -106,7 +106,7 @@ export default function YouTubeChatSyncIndicator({ streamId, onMessage }: Props)
   }, [enabled, streamId])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
+    <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-3 flex items-center gap-3">
       <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
         <Youtube className="w-5 h-5 text-red-600" />
       </div>

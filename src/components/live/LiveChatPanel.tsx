@@ -77,7 +77,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
   return (
     <div className={`flex flex-col bg-white rounded-lg shadow-xl ${className}`}>
       {/* 헤더 */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center gap-2">
           <MessageCircle size={20} className="text-blue-600" />
           <h3 className="font-bold text-gray-900">{t('live.chat.title', { defaultValue: '실시간 채팅' })}</h3>
@@ -135,7 +135,7 @@ export const LiveChatPanel = React.memo(function LiveChatPanel({
       </div>
 
       {/* 입력창 */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex gap-2">
           <input
             ref={inputRef}

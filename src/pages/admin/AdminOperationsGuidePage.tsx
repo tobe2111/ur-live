@@ -30,7 +30,7 @@ export default function AdminOperationsGuidePage() {
         />
 
         {/* 탭 선택 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-2 flex gap-2">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-2 flex gap-2">
           {tabs.map(t => {
             const Icon = t.icon
             const active = tab === t.key

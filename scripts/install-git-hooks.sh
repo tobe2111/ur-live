@@ -104,6 +104,11 @@ node scripts/check-mutation-coverage.mjs || true
 echo "==> Pre-commit: PII 로그 redaction 검사 (warn-only)..."
 node scripts/check-pii-logs.mjs || true
 
+# 🛡️ 2026-05-19: 다크 모드 보더 누락 검사 (warn-only).
+#   border-gray-50/100/200 에 dark:border-[#1A1A1A] 매핑 누락 시 다크 모드 흰 선 노출.
+echo "==> Pre-commit: 다크 모드 보더 매핑 검사 (warn-only)..."
+node scripts/check-dark-border.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

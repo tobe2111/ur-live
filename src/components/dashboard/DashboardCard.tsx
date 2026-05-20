@@ -21,9 +21,9 @@ export default function DashboardCard({
   className = '',
 }: DashboardCardProps) {
   return (
-    <section className={`overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ${className}`}>
+    <section className={`overflow-hidden rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white shadow-sm ${className}`}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#1A1A1A] px-5 py-4">
           <div className="min-w-0">
             {title && <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>}
             {subtitle && <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>}

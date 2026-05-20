@@ -205,7 +205,7 @@ export default function LiveCheckoutSheet({
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
         {/* Drag handle + close */}
-        <div className="sticky top-0 bg-white z-10 px-5 pt-3 pb-2 border-b border-gray-100">
+        <div className="sticky top-0 bg-white z-10 px-5 pt-3 pb-2 border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-gray-900">{t('liveCheckout.title', { defaultValue: '바로 결제' })}</h3>
@@ -256,7 +256,7 @@ export default function LiveCheckoutSheet({
               </div>
 
               {/* 금액 */}
-              <div className="border-t border-gray-100 pt-3 space-y-1.5 text-sm">
+              <div className="border-t border-gray-100 dark:border-[#1A1A1A] pt-3 space-y-1.5 text-sm">
                 <div className="flex justify-between text-gray-600">
                   <span>{t('liveCheckout.subtotal', { defaultValue: '상품 금액' })}</span>
                   <span>{fmt(subtotal)}</span>
@@ -265,7 +265,7 @@ export default function LiveCheckoutSheet({
                   <span>{t('liveCheckout.shipping', { defaultValue: '배송비' })}</span>
                   <span>{fmt(shipping)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-100">
+                <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-100 dark:border-[#1A1A1A]">
                   <span>{t('liveCheckout.total', { defaultValue: '총 결제 금액' })}</span>
                   <span className="text-pink-600">{fmt(total)}</span>
                 </div>

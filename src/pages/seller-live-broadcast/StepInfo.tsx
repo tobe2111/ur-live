@@ -175,7 +175,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
   //   channels 가 fresh fetch 중이면 만료 판단을 보류하고 로딩 표시.
   if (tokenExpired && channelsLoading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center space-y-3">
+      <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-8 text-center space-y-3">
         <Loader2 className="w-8 h-8 mx-auto animate-spin text-gray-400" />
         <p className="text-sm text-gray-600">YouTube 연동 상태 확인 중...</p>
       </div>
@@ -203,7 +203,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-200 dark:border-[#2A2A2A] p-6 space-y-5">
       {/* 🛡️ 2026-05-14: 모바일 너비 부족 → 한 글자씩 세로 깨짐 사고.
           flex-col 으로 헤딩 아래에 버튼 그룹 배치, sm+ 부터 가로 배치. */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -242,10 +242,10 @@ export default function StepInfo({ title, setTitle, description, setDescription,
               📋 {t('seller.liveBroadcast.templates')}
             </button>
             {showTemplates && (
-              <div className="absolute top-6 right-0 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-56 overflow-y-auto">
+              <div className="absolute top-6 right-0 w-56 bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-10 max-h-56 overflow-y-auto">
                 {templates.map(tpl => (
                   <button key={tpl.name} onClick={() => applyTemplate(tpl)}
-                    className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0">
+                    className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 dark:border-[#1A1A1A] last:border-b-0">
                     <p className="text-xs font-semibold text-gray-900 truncate">{tpl.name}</p>
                     <p className="text-[10px] text-gray-500 truncate">{tpl.title}</p>
                   </button>
@@ -281,7 +281,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
               <input type="text" value={productSearch}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProductSearch(e.target.value)}
                 placeholder={t('seller.liveBroadcast.searchProducts')}
-                className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                className="w-full px-3 py-2 mb-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
             )}
             {recentProductIds.length > 0 && !productSearch && (
               <button type="button"
@@ -315,7 +315,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
 
       {/* 🛡️ 2026-05-13: 썸네일 / 공개 설정 / 방송 예약 — YouTube Live 와 직접 동기화되는 핵심 메타.
           기존 고급 설정(접힘) 안에 숨겨져 있어 셀러가 매번 펼쳐야 했음 → 핵심 동선에 노출. */}
-      <div className="border-t border-gray-100 pt-4 space-y-4">
+      <div className="border-t border-gray-100 dark:border-[#1A1A1A] pt-4 space-y-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-700">방송 메타 설정</span>
           <span className="text-[10px] text-gray-400">· YouTube 라이브에도 동기화</span>
@@ -504,7 +504,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
       {/* 🛡️ 2026-05-14: 프레임 레이트 선택 제거 — 무조건 60fps 강제 (자연스러운 움직임, 최고 화질). */}
 
       {/* 🛡️ 2026-05-07: 알림톡 + 연습 모드 토글 */}
-      <div className="border-t border-gray-100 pt-4 space-y-2.5">
+      <div className="border-t border-gray-100 dark:border-[#1A1A1A] pt-4 space-y-2.5">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -542,7 +542,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
 
       {/* 목적지 — 사용 가능 플랫폼 2개 이상일 때만 노출 */}
       {destinations.filter(d => d.status === 'available').length > 1 && (
-        <div className="border-t border-gray-100 pt-4">
+        <div className="border-t border-gray-100 dark:border-[#1A1A1A] pt-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.liveBroadcast.destination')}</label>
           <p className="text-xs text-gray-400 mb-2">{t('seller.liveBroadcast.destinationDesc')}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -575,7 +575,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
 
       {/* 템플릿으로 저장 — 제목+상품 채워졌을 때만 노출 */}
       {title && selectedProducts.length > 0 && (
-        <div className="border-t border-gray-100 pt-3 text-center">
+        <div className="border-t border-gray-100 dark:border-[#1A1A1A] pt-3 text-center">
           <button type="button" onClick={() => setShowSaveTemplate(true)}
             className="text-xs text-blue-600 hover:text-blue-700 underline underline-offset-2 py-1">
             📋 {t('seller.liveBroadcast.saveAsTemplate')}

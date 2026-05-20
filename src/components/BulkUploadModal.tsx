@@ -214,7 +214,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
       <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <Upload className="w-4 h-4" />
             {t('bulkUpload.title', { defaultValue: '상품 대량등록' })}
@@ -261,7 +261,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                   {t('bulkUpload.preview', { total: parsedProducts.length, defaultValue: `미리보기 (총 ${parsedProducts.length}개 상품 중 최대 5개)` })}
                 </label>
               </div>
-              <div className="border border-gray-200 rounded-lg overflow-x-auto">
+              <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-lg overflow-x-auto">
                 <table className="w-full min-w-[500px]">
                   <thead>
                     <tr className="bg-gray-50">

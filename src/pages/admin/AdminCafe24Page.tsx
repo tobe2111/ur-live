@@ -129,7 +129,7 @@ export default function AdminCafe24Page() {
           icon={<Store className="h-5 w-5" />}
         />
         {/* Status Card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
               <Store className="w-5 h-5 text-blue-600" />
@@ -243,7 +243,7 @@ export default function AdminCafe24Page() {
         </div>
 
         {/* Info Card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">연동 안내</h3>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-start gap-2">

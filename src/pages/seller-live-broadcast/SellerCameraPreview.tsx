@@ -60,7 +60,7 @@ export default function SellerCameraPreview({ className = '' }: Props) {
   }, [camOff])
 
   return (
-    <div className={`rounded-2xl bg-gray-900 border border-gray-200 overflow-hidden ${className}`}>
+    <div className={`rounded-2xl bg-gray-900 border border-gray-200 dark:border-[#2A2A2A] overflow-hidden ${className}`}>
       <div className="relative aspect-[9/16] bg-black flex items-center justify-center">
         {status === 'on' && !camOff ? (
           <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />

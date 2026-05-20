@@ -64,7 +64,7 @@ export function SnsLinks({ seller, compact }: SnsLinksProps) {
               target="_blank" rel="noopener noreferrer"
               className="group block"
             >
-              <div className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg transition-all hover:border-gray-900 hover:bg-gray-50">
+              <div className="flex flex-col items-center gap-2 p-4 border border-gray-200 dark:border-[#2A2A2A] rounded-lg transition-all hover:border-gray-900 hover:bg-gray-50">
                 <div className={`w-12 h-12 rounded-full ${link.color} flex items-center justify-center flex-shrink-0`}>
                   <Icon className={`w-6 h-6 ${link.textColor}`} fill={link.fill ? 'currentColor' : 'none'} />
                 </div>

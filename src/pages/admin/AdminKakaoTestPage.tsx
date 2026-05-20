@@ -179,7 +179,7 @@ export default function AdminKakaoTestPage() {
         </div>
 
         {/* Step 1: 로그인 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+        <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-5 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-6 h-6 rounded-full bg-yellow-500 text-white text-xs font-bold flex items-center justify-center">1</span>
             <h2 className="text-sm font-bold text-gray-900">카카오 로그인 (테스트앱)</h2>
@@ -200,7 +200,7 @@ export default function AdminKakaoTestPage() {
                 카카오 로그인 (테스트앱)
               </button>
               <div className="relative">
-                <div className="absolute inset-x-0 top-1/2 border-t border-gray-200" />
+                <div className="absolute inset-x-0 top-1/2 border-t border-gray-200 dark:border-[#2A2A2A]" />
                 <p className="relative bg-white px-3 text-xs text-gray-400 text-center w-fit mx-auto">또는 토큰 직접 입력</p>
               </div>
               <div>
@@ -228,7 +228,7 @@ export default function AdminKakaoTestPage() {
           { num: 4, color: 'orange', title: '친구에게 메시지 전송', desc: '첫 번째 친구에게 테스트 메시지를 보냅니다.', fn: testFriendMessage },
           { num: 5, color: 'purple', title: '카카오 캘린더 테스트', desc: '캘린더에 일정 생성 → 삭제를 테스트합니다.', fn: testCalendar },
         ].map(({ num, color, title, desc, fn }) => (
-          <div key={num} className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+          <div key={num} className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-5 mb-4">
             <div className="flex items-center gap-2 mb-3">
               <span className={`w-6 h-6 rounded-full ${badgeBgMap[color]} text-white text-xs font-bold flex items-center justify-center`}>{num}</span>
               <h2 className="text-sm font-bold text-gray-900">{title}</h2>
@@ -248,7 +248,7 @@ export default function AdminKakaoTestPage() {
 
         {/* 결과 */}
         {results.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-5">
             <h2 className="text-sm font-bold text-gray-900 mb-3">테스트 결과</h2>
             <div className="space-y-2">
               {results.map((r, i) => (

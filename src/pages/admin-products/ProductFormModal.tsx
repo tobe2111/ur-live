@@ -31,7 +31,7 @@ export default function ProductFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">
             {editingProduct ? t('admin.products.k048', { defaultValue: '상품 수정' }) : t('admin.products.k049', { defaultValue: '상품 등록' })}
           </h2>
@@ -46,17 +46,17 @@ export default function ProductFormModal({
             <label className="block text-xs font-medium text-gray-700 mb-1.5">
               {t('admin.products.k022', { defaultValue: '상품명' })} <span className="text-red-500">*</span>
             </label>
-            <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k050', { defaultValue: '짧은 설명' })}</label>
-            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k051', { defaultValue: '상세 설명' })}</label>
-            <textarea value={formData.long_description} onChange={e => setFormData({ ...formData, long_description: e.target.value })} rows={6} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <textarea value={formData.long_description} onChange={e => setFormData({ ...formData, long_description: e.target.value })} rows={6} className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -64,11 +64,11 @@ export default function ProductFormModal({
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
                 {t('admin.products.k052', { defaultValue: '판매가 (Ur 특가 노출)' })} <span className="text-red-500">*</span>
               </label>
-              <input type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required min="0" placeholder="89000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required min="0" placeholder="89000" className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k053', { defaultValue: '정가 (할인 전)' })}</label>
-              <input type="number" value={formData.compare_at_price} onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })} min="0" placeholder="149000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input type="number" value={formData.compare_at_price} onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })} min="0" placeholder="149000" className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
           </div>
 
@@ -104,20 +104,20 @@ export default function ProductFormModal({
             <label className="block text-xs font-medium text-gray-700 mb-1.5">
               {t('admin.products.k056', { defaultValue: '재고 수량' })} <span className="text-red-500">*</span>
             </label>
-            <input type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} required min="0" placeholder="50" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} required min="0" placeholder="50" className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k057', { defaultValue: '대표 이미지' })}</label>
             <ImageUpload value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} label="" maxSizeKB={800} />
-            <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder={t('admin.products.k058', { defaultValue: '또는 이미지 URL 직접 입력' })} className="w-full px-3 py-2 mt-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder={t('admin.products.k058', { defaultValue: '또는 이미지 URL 직접 입력' })} className="w-full px-3 py-2 mt-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k059', { defaultValue: '상세 이미지 (최대 4장)' })}</label>
             <div className="space-y-2">
               {formData.detail_images.map((url, i) => (
-                <input key={i} type="url" value={url} onChange={e => { const imgs = [...formData.detail_images]; imgs[i] = e.target.value; setFormData({ ...formData, detail_images: imgs }) }} placeholder={`${t('admin.products.k059', { defaultValue: '상세 이미지' })} ${i + 1} URL`} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input key={i} type="url" value={url} onChange={e => { const imgs = [...formData.detail_images]; imgs[i] = e.target.value; setFormData({ ...formData, detail_images: imgs }) }} placeholder={`${t('admin.products.k059', { defaultValue: '상세 이미지' })} ${i + 1} URL`} className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               ))}
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function ProductFormModal({
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
                 {t('admin.products.k060', { defaultValue: '카테고리' })} <span className="text-red-500">*</span>
               </label>
-              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 {[
                   ['fashion', t('admin.products.k061', { defaultValue: '패션' })],
                   ['beauty', t('admin.products.k062', { defaultValue: '뷰티' })],
@@ -141,14 +141,14 @@ export default function ProductFormModal({
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
                 {t('admin.products.k066', { defaultValue: '상품 타입' })} <span className="text-red-500">*</span>
               </label>
-              <select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 <option value="featured">{t('admin.products.k067', { defaultValue: 'Ur 특가 (메인 페이지 노출)' })}</option>
                 <option value="live">{t('admin.products.k068', { defaultValue: '라이브 방송 전용' })}</option>
               </select>
             </div>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
             <ProductOptionForm options={productOptions} onChange={setProductOptions} disabled={false} />
           </div>
 
