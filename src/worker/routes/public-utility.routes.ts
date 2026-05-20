@@ -295,6 +295,49 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
 
 // 🛡️ 2026-05-19: 온라인 카테고리별 상품 그룹 — 메인 홈 카테고리 섹션용.
 //   각 카테고리 마다 active 상품 8개씩.
+// 🛡️ 2026-05-19: 교환권 (deal_only=1) 전용 카테고리 + 브랜드 집계.
+//   /vouchers 페이지의 sticky 카테고리 바 + 카테고리별 브랜드 그리드 source.
+//   KT Alpha API 의 goods_type_detail (예: '편의점/마트', '카페/베이커리') 그대로 사용.
+publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
+  const DB = c.env.DB
+  try {
+    // 카테고리별 카운트 — deal_only=1 만.
+    const cats = await DB.prepare(
+      `SELECT COALESCE(category, '(미분류)') as category, COUNT(*) as cnt
+         FROM products
+        WHERE is_active = 1 AND deal_only = 1 AND category IS NOT NULL AND category != ''
+        GROUP BY category
+        HAVING cnt > 0
+        ORDER BY cnt DESC LIMIT 20`
+    ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as Array<{ category: string; cnt: number }> }))
+
+    // 각 카테고리의 brand 칩 (icon 포함) — 사용자가 카테고리 클릭 시 보여줄 인기 브랜드.
+    const sections: Array<{
+      category: string
+      count: number
+      brands: Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }>
+    }> = []
+    for (const cat of (cats.results || [])) {
+      const brands = await DB.prepare(
+        `SELECT brand_name, MAX(brand_icon_url) as brand_icon_url, COUNT(*) as cnt
+           FROM products
+          WHERE is_active = 1 AND deal_only = 1 AND category = ? AND brand_name IS NOT NULL
+          GROUP BY brand_name
+          ORDER BY cnt DESC LIMIT 12`
+      ).bind(cat.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
+      sections.push({
+        category: cat.category,
+        count: cat.cnt,
+        brands: brands.results || [],
+      })
+    }
+
+    return c.json({ success: true, data: sections })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})
+
 publicUtilityRoutes.get('/api/home/categories', async (c) => {
   const DB = c.env.DB
   try {

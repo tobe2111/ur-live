@@ -39,6 +39,56 @@ interface BrandSummary {
   cnt: number
 }
 
+interface CategorySection {
+  category: string
+  count: number
+  brands: BrandSummary[]
+}
+
+// 🛡️ 2026-05-19: KT Alpha 카테고리명 → 사용자 친화 이모지 매핑.
+//   DB의 category 값 (예: '편의점/마트') 을 그대로 키로 사용. 매핑 없으면 🎁 default.
+const CATEGORY_ICONS: Record<string, string> = {
+  '편의점/마트': '🏪',
+  '편의점': '🏪',
+  '마트/슈퍼': '🏪',
+  '카페/베이커리': '☕',
+  '카페': '☕',
+  '베이커리': '🥐',
+  '외식/배달': '🍔',
+  '외식': '🍔',
+  '패스트푸드': '🍟',
+  '한식': '🍚',
+  '양식': '🍝',
+  '치킨/피자': '🍕',
+  '치킨': '🍗',
+  '피자': '🍕',
+  '백화점/쇼핑': '🛍️',
+  '백화점': '🛍️',
+  '쇼핑': '🛍️',
+  '뷰티/패션': '💄',
+  '뷰티': '💄',
+  '패션': '👗',
+  '화장품': '💅',
+  '도서/문화': '📚',
+  '도서': '📚',
+  '문화': '🎭',
+  '영화': '🎬',
+  '공연': '🎭',
+  '모바일/디지털': '📱',
+  '모바일상품권': '📱',
+  '모바일': '📱',
+  '디지털': '💾',
+  '게임': '🎮',
+  '주유/생활': '⛽',
+  '주유': '⛽',
+  '생활': '🏠',
+  '통신': '📡',
+}
+
+function getCategoryIcon(category: string): string {
+  return CATEGORY_ICONS[category] || '🎁'
+}
+
 const PAGE_SIZE = 30
 
 export default function VouchersPage() {
@@ -48,7 +98,10 @@ export default function VouchersPage() {
   const brand = searchParams.get('brand') || ''
   const category = searchParams.get('category') || ''
 
-  const [brands, setBrands] = useState<BrandSummary[]>([])
+  // 🛡️ 2026-05-19: 카테고리 + 브랜드 2단 구조 — 사용자 요청.
+  //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
+  //   첫 로드 시 cnt 가장 많은 카테고리 자동 선택. 카테고리 변경 시 브랜드 list 자동 갱신.
+  const [sections, setSections] = useState<CategorySection[]>([])
   const [products, setProducts] = useState<VoucherProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -72,30 +125,29 @@ export default function VouchersPage() {
       .catch(() => setDealBalance(0))
   }, [userId])
 
-  // 브랜드 칩 로드 (한 번만)
+  // 🛡️ 2026-05-19: 카테고리 + 브랜드 sections 로드 (전용 endpoint, deal_only=1 만).
   useEffect(() => {
     let cancelled = false
-    api.get('/api/home/categories').then(r => {
+    api.get('/api/vouchers/categories').then(r => {
       if (cancelled) return
       if (r.data?.success && Array.isArray(r.data.data)) {
-        // 모든 카테고리의 brands 를 집계.
-        const allBrands: BrandSummary[] = []
-        for (const cat of r.data.data) {
-          if (Array.isArray(cat.brands)) {
-            for (const b of cat.brands) {
-              if (!allBrands.find(x => x.brand_name === b.brand_name)) {
-                allBrands.push(b)
-              }
-            }
-          }
+        const list = r.data.data as CategorySection[]
+        setSections(list)
+        // 카테고리 URL 미지정 시 첫 카테고리 (인기 ↑) 자동 선택.
+        if (!category && !brand && list.length > 0) {
+          const next = new URLSearchParams(searchParams)
+          next.set('category', list[0].category)
+          setSearchParams(next, { replace: true })
         }
-        // 인기순 (cnt DESC) 으로 정렬, 상위 20개.
-        allBrands.sort((a, b) => (b.cnt || 0) - (a.cnt || 0))
-        setBrands(allBrands.slice(0, 20))
       }
     }).catch(() => { /* graceful */ })
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 현재 선택된 카테고리의 브랜드 list.
+  const currentSection = sections.find(s => s.category === category)
+  const currentBrands = currentSection?.brands || []
 
   // 상품 로드 (페이지 변경 / 필터 변경 시)
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
@@ -142,6 +194,14 @@ export default function VouchersPage() {
   const setBrand = (next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
+    setSearchParams(params)
+  }
+
+  // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
+  const setCategory = (next: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (next) params.set('category', next); else params.delete('category')
+    params.delete('brand')
     setSearchParams(params)
   }
 
@@ -219,12 +279,44 @@ export default function VouchersPage() {
         </div>
       </div>
 
-      {/* 브랜드 칩 그리드 */}
-      {!brand && brands.length > 0 && (
+      {/* 🛡️ 2026-05-19: 카테고리 sticky 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로). */}
+      {sections.length > 0 && (
+        <div className="sticky top-[52px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+          <div className="ur-content-wide px-4 lg:px-8 py-2.5">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {sections.map(s => {
+                const active = s.category === category
+                return (
+                  <button
+                    key={s.category}
+                    type="button"
+                    onClick={() => setCategory(s.category)}
+                    className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                      active
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A2A2A]'
+                    }`}
+                  >
+                    <span>{getCategoryIcon(s.category)}</span>
+                    {s.category}
+                    <span className={`text-[10px] ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>({s.count})</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드 (선택된 카테고리만). */}
+      {!brand && currentBrands.length > 0 && (
         <div className="ur-content-wide px-4 lg:px-8 py-4">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">인기 브랜드</h2>
+          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
+            <span>{getCategoryIcon(category)}</span>
+            {category} 인기 브랜드
+          </h2>
           <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {brands.map(b => (
+            {currentBrands.map(b => (
               <button
                 key={b.brand_name}
                 type="button"
