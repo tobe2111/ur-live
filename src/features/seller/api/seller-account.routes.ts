@@ -170,17 +170,12 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-20: formData() 실패 진단성 강화 — Content-Type 미명시 / multipart 가 아닌 경우
-    //   원인 명확히 노출 (이전: 'formdata' 매칭에 걸려 일반 hint 만 표시).
+    // 🛡️ 2026-05-20 v2: Content-Type 미명시는 경고만 — formData() 가 직접 처리하므로 강제 차단 X.
+    //   사용자 신고: 셀러 공개 페이지 이미지 업로드 시 'multipart/form-data' 헤더 누락 400.
+    //   원인: axios default Content-Type: application/json 이 FormData 자동 감지 덮어씀.
+    //   client 수정 (api.ts interceptor) 으로 영구 해결했지만, server 도 관대하게 처리.
     const ct = c.req.header('Content-Type') || '';
-    if (!ct.toLowerCase().includes('multipart/form-data')) {
-      return c.json({
-        success: false,
-        error: 'Content-Type 이 multipart/form-data 가 아닙니다. 파일 전송 형식을 확인하세요.',
-        error_code: 'INVALID_CONTENT_TYPE',
-        received_content_type: ct.slice(0, 100),
-      }, 400);
-    }
+    const ctLooksOk = ct.toLowerCase().includes('multipart/form-data') || ct === '';
 
     let formData: FormData;
     try {
@@ -190,8 +185,11 @@ sellerAccountRoutes.post('/upload-image', cors(), async (c) => {
       if (import.meta.env.DEV) console.error('[Seller] formData parse failed:', msg, 'CT:', ct, 'CL:', contentLength);
       return c.json({
         success: false,
-        error: 'multipart 본문 파싱 실패 — 파일이 손상되었거나 boundary 헤더가 누락됐을 수 있습니다.',
-        error_code: 'MULTIPART_PARSE_FAILED',
+        error: ctLooksOk
+          ? 'multipart 본문 파싱 실패 — 파일이 손상되었을 수 있습니다.'
+          : 'Content-Type 헤더 문제 — 페이지를 새로고침하고 다시 시도해주세요.',
+        error_code: ctLooksOk ? 'MULTIPART_PARSE_FAILED' : 'INVALID_CONTENT_TYPE',
+        received_content_type: ct.slice(0, 100),
         detail: import.meta.env.DEV ? msg : undefined,
       }, 400);
     }

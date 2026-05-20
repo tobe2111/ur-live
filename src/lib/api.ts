@@ -125,6 +125,25 @@ const api = axios.create({
   },
 });
 
+// 🛡️ 2026-05-20: FormData 업로드 시 default Content-Type: application/json 강제 제거.
+//   axios 1.x 가 FormData 자동 감지하지만 default 헤더가 덮어쓰는 케이스 발견 (server 400).
+//   본 interceptor 가 FormData 검출 시 Content-Type 명시적 삭제 → browser 가 multipart/form-data;
+//   boundary=... 를 자동 설정 → server 정상 파싱.
+api.interceptors.request.use((config) => {
+  const body: unknown = config.data
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  if (isFormData && config.headers) {
+    // axios 1.x 의 headers 는 AxiosHeaders 인스턴스 또는 plain object.
+    if (typeof (config.headers as { delete?: (k: string) => void }).delete === 'function') {
+      (config.headers as { delete: (k: string) => void }).delete('Content-Type')
+    } else {
+      delete (config.headers as Record<string, unknown>)['Content-Type']
+      delete (config.headers as Record<string, unknown>)['content-type']
+    }
+  }
+  return config
+})
+
 // ─── 공개 API 경로 ───────────────────────────────────────────────────────────
 // 🛡️ 2026-04-30: 누락된 공개 endpoint 추가 (사용자 신고 — 비로그인 시 예정/다시보기 안 보임).
 //   server-side 는 모두 공개이지만 client 가 인증 토큰 시도 시 401 예외 처리에서 redirect 가능.
