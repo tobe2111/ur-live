@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
+import GroupBuyGuideCard from './GroupBuyGuideCard'
 import type { Product } from './types'
 
 interface FeedProduct extends Product {
@@ -93,6 +94,10 @@ export default function GroupBuyFeed() {
 
   return (
     <>
+      {/* 🛡️ 2026-05-20: 공구 → 딜 적립 가이드 카드 (예전 + 버튼 시절 플로우 복원).
+          dismissible — 한 번 닫으면 영구 숨김 (localStorage). */}
+      <GroupBuyGuideCard />
+
       {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리) */}
       <div className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
