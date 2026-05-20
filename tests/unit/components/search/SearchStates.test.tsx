@@ -64,25 +64,28 @@ describe('SearchStates', () => {
   })
 
   it('renders no results state', () => {
+    // 🛡️ 2026-05-19: 새 디자인 — '검색 결과가 없습니다' → "'{query}' 검색 결과가 없어요"
+    //   + 다른 검색어 시도 안내 + (실제 사용 시) 인기 검색어 / 오타 보정 제안.
     render(
       <BrowserRouter>
         <SearchStates loading={false} error="" query="test query" hasResults={false} />
       </BrowserRouter>
     )
 
-    expect(screen.getByText('검색 결과가 없습니다')).toBeDefined()
+    expect(screen.getByText(/검색 결과가 없어요/)).toBeDefined()
     expect(screen.getByText('다른 검색어를 시도해보세요')).toBeDefined()
   })
 
-  it('renders no results state with home button', () => {
+  it('renders no results state without redundant home button', () => {
+    // 🛡️ 2026-05-19: '홈으로 돌아가기' 버튼 제거 (BottomNav 가 항상 보이므로 불필요).
+    //   대신 인기 검색어 + 오타 보정 제안으로 사용자 액션 유도.
     render(
       <BrowserRouter>
         <SearchStates loading={false} error="" query="test" hasResults={false} />
       </BrowserRouter>
     )
-
-    const homeButton = screen.getByText('홈으로 돌아가기')
-    expect(homeButton).toBeDefined()
+    // 이전 '홈으로 돌아가기' 버튼 — 없어야 함 (BottomNav 와 중복).
+    expect(screen.queryByText('홈으로 돌아가기')).toBeNull()
   })
 
   it('returns null when there are results', () => {

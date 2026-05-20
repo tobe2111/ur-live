@@ -85,13 +85,27 @@ productsRoutes.get('/search/suggestions', cors(), async (c) => {
   if (q.length > 200) return c.json({ success: true, data: [] });
 
   try {
-    const result = await DB.prepare(
-      `SELECT DISTINCT name as suggestion FROM products
-       WHERE name LIKE ? AND is_active = 1
-       ORDER BY name ASC LIMIT 10`
-    ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
+    // 🛡️ 2026-05-19: popular_searches + products.name 통합 자동완성.
+    //   1) popular_searches 의 prefix 매칭 (인기순) — 인기 키워드 우선.
+    //   2) products.name LIKE (전역) — 부족분 채움.
+    //   중복 제거 + 총 10개 cap.
+    const popular = await DB.prepare(
+      `SELECT keyword FROM popular_searches WHERE keyword LIKE ? ORDER BY search_count DESC LIMIT 6`
+    ).bind(`${q}%`).all<{ keyword: string }>().catch(() => ({ results: [] }))
+    const productNames = await DB.prepare(
+      `SELECT DISTINCT name FROM products WHERE name LIKE ? AND is_active = 1 ORDER BY sold_count DESC, name ASC LIMIT 10`
+    ).bind(`%${q}%`).all<{ name: string }>().catch(() => ({ results: [] }))
 
-    return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
+    const seen = new Set<string>()
+    const merged: string[] = []
+    for (const r of (popular.results || [])) {
+      if (r.keyword && !seen.has(r.keyword)) { seen.add(r.keyword); merged.push(r.keyword) }
+    }
+    for (const r of (productNames.results || [])) {
+      if (r.name && !seen.has(r.name)) { seen.add(r.name); merged.push(r.name) }
+      if (merged.length >= 10) break
+    }
+    return c.json({ success: true, data: merged.slice(0, 10) });
   } catch {
     return c.json({ success: true, data: [] });
   }
@@ -188,10 +202,39 @@ productsRoutes.get('/', cors(), async (c) => {
       return await service.getProducts(filter, pagination);
     }, { ttl: 60, staleWhileRevalidate: 30 });
 
+    // 🛡️ 2026-05-19: 검색 로그 + 인기 검색어 자동 갱신 (background, fire-and-forget).
+    //   search_logs INSERT + popular_searches UPSERT.
+    //   API 응답 지연 안 시키려 await 안 함 (best-effort).
+    const resultsCount = Array.isArray(result.data) ? result.data.length : 0
+    if (safeSearch) {
+      try {
+        const { ProductRepository } = await import('../repositories/ProductRepository')
+        const repo = new ProductRepository(DB)
+        // user_id 우선순위: authenticated user > anonymous null
+        void repo.logSearch(null, safeSearch, resultsCount).catch(() => { /* silent */ })
+      } catch { /* graceful */ }
+    }
+
+    // 🛡️ 2026-05-19: 검색 결과 0 건 + 검색어 있음 → 오타 보정 제안.
+    //   popular_searches 와 Levenshtein distance ≤ 2 인 후보 찾아 응답에 동봉.
+    //   "혹시 'X' 를 찾으세요?" UX. 일반 list 조회 시는 호출 안 됨.
+    let suggested_query: string | null = null
+    if (safeSearch && resultsCount === 0) {
+      try {
+        const popular = await DB.prepare(
+          'SELECT keyword FROM popular_searches ORDER BY search_count DESC LIMIT 100'
+        ).all<{ keyword: string }>()
+        const candidates = (popular.results || []).map(r => r.keyword)
+        const { findClosestKeyword } = await import('../../../lib/levenshtein')
+        suggested_query = findClosestKeyword(safeSearch, candidates, 2)
+      } catch { /* graceful */ }
+    }
+
     return c.json({
       success: true,
       data: result.data,
-      pagination: result.pagination
+      pagination: result.pagination,
+      ...(suggested_query ? { suggested_query } : {}),
     });
     
   } catch (error) {

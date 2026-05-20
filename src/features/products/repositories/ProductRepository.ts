@@ -396,13 +396,32 @@ export class ProductRepository {
    * 검색 통계 기록
    */
   async logSearch(userId: number | null, searchQuery: string, resultsCount: number): Promise<void> {
+    // 🛡️ 2026-05-19: search_logs + popular_searches 동시 갱신.
+    //   migration 0273 으로 두 테이블 정식화. UPSERT 패턴으로 search_count 누적.
+    const q = searchQuery.trim()
+    if (!q || q.length < 1 || q.length > 200) return  // 비정상 입력 차단
     try {
       await this.db.prepare(`
         INSERT INTO search_logs (user_id, search_query, results_count, created_at)
         VALUES (?, ?, ?, datetime('now'))
-      `).bind(userId, searchQuery, resultsCount).run();
+      `).bind(userId, q, resultsCount).run();
     } catch (error) {
-      console.error('[ProductRepository] Failed to log search:', error);
+      // 테이블 미존재 환경 graceful (migration 0273 미적용).
+      if (typeof console !== 'undefined') console.warn('[ProductRepository] search_logs insert failed:', error);
+    }
+    // 결과 0건 인 검색은 popular 에 올리지 않음 (오타/노이즈 누적 방지).
+    if (resultsCount > 0) {
+      try {
+        await this.db.prepare(`
+          INSERT INTO popular_searches (keyword, search_count, last_searched_at)
+          VALUES (?, 1, datetime('now'))
+          ON CONFLICT(keyword) DO UPDATE SET
+            search_count = search_count + 1,
+            last_searched_at = datetime('now')
+        `).bind(q).run();
+      } catch (error) {
+        if (typeof console !== 'undefined') console.warn('[ProductRepository] popular_searches upsert failed:', error);
+      }
     }
   }
   

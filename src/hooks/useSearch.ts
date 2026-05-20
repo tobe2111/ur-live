@@ -7,6 +7,8 @@ export interface SearchResult {
   total: number
   page: number
   limit: number
+  // 🛡️ 2026-05-19: 0 건 시 오타 보정 제안 (Levenshtein, 백엔드 자동).
+  suggested_query?: string | null
 }
 
 // 🎯 상품 검색 Hook (디바운싱 + 캐싱)
@@ -48,6 +50,7 @@ export function useSearchInfinite(query: string) {
         total: response.data.pagination?.total ?? (response.data.data?.length || 0),
         page: response.data.pagination?.page ?? 1,
         limit: response.data.pagination?.limit ?? SEARCH_PAGE_SIZE,
+        suggested_query: response.data.suggested_query || null,
       } as SearchResult
     },
     enabled: query.length >= 2,

@@ -171,6 +171,7 @@ export default function SearchPage() {
           error={error}
           query={query}
           hasResults={hasResults}
+          suggestedQuery={infiniteData?.pages?.[0]?.suggested_query ?? null}
         />
 
         {/* Results Grid */}
