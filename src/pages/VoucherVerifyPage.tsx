@@ -106,7 +106,8 @@ export default function VoucherVerifyPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
       <SEO title={t('voucher.verify.seoTitle')} description={t('voucher.verify.seoDescription')} url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
-      <div className="w-full max-w-sm">
+      {/* 🛡️ 2026-05-20: QR 검증 — PC 에선 약간 넓혀 입력란 가독성 향상 */}
+      <div className="w-full max-w-sm lg:max-w-md">
         {/* 로고 */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">

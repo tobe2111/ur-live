@@ -84,7 +84,8 @@ export default function PaymentFailPage() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
       <SEO title={t('paymentFail.title')} description={t('paymentFail.subtitle')} url="/payment/fail" noindex />
-      <div className="max-w-2xl w-full">
+      {/* 🛡️ 2026-05-20: PC 폭 일관 — ur-content-narrow (720px) + lg padding */}
+      <div className="ur-content-narrow w-full">
         <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
           {/* 실패 아이콘 */}
           <div className="text-center mb-8">

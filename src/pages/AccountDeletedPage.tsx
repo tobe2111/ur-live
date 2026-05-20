@@ -20,7 +20,8 @@ export default function AccountDeletedPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center px-4">
       <SEO title={t('accountDeleted.seoTitle', { defaultValue: '계정 삭제 완료' })} description={t('accountDeleted.seoDesc', { defaultValue: '계정이 삭제되었습니다' })} url="/account/deleted" noindex />
-      <div className="max-w-md w-full">
+      {/* 🛡️ 2026-05-20: PC 폭 일관 — max-w-md → max-w-lg + lg padding 확보 */}
+      <div className="max-w-md lg:max-w-lg w-full px-4 lg:px-0">
         <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}
           <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">

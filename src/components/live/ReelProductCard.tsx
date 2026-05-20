@@ -93,38 +93,29 @@ export default function ReelProductCard({
     /* 🛡️ 2026-04-29 v4 Boutique 톤 — 흰 카드 + 라벨 strip + 메인 row + 3분할 액션 row */
     /* 🛡️ 2026-04-30: 사용자 피드백 — 카드 높이 ~16% 축소 (썸네일 72→60, padding/font 조정) */
     <div
-      className="rounded-3xl overflow-hidden w-full"
-      style={{ background: 'rgba(255,255,255,0.97)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
+      className="rounded-3xl overflow-hidden w-full ur-product-card-bg"
       key={currentProduct?.id || 'default'}
     >
       {/* Label strip — NOW · 지금 소개 + 재고 */}
-      <div
-        className="flex items-center justify-between px-3 py-1.5"
-        style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.08), rgba(236,72,153,0.08))' }}
-      >
+      <div className="flex items-center justify-between px-3 py-1.5 ur-product-strip">
         <div className="flex items-center gap-1.5">
-          <span
-            className="rounded-full"
-            style={{ width: 5, height: 5, background: '#EF4444', boxShadow: '0 0 6px #EF4444' }}
-          />
-          <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em' }}>
+          <span className="rounded-full w-[5px] h-[5px] bg-red-500 shadow-[0_0_6px_#EF4444]" />
+          <span className="text-[10px] font-extrabold text-red-500 tracking-[0.08em]">
             {t('live.nowLabel', { defaultValue: 'NOW · 지금 소개' })}
           </span>
           {/* 🛡️ 2026-05-13 (공구 #4): 공구 상품 표시 — 라이브 ↔ 공구 연계 */}
           {currentProduct?.group_buy_target && currentProduct.group_buy_target > 0 && (
             <span
-              className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold"
-              style={{
-                background: currentProduct.group_buy_status === 'achieved' ? '#10B981' : '#EC4899',
-                color: '#fff',
-              }}
+              className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold text-white ${
+                currentProduct.group_buy_status === 'achieved' ? 'bg-emerald-500' : 'bg-pink-500'
+              }`}
             >
               {currentProduct.group_buy_status === 'achieved' ? '✓ 공구 달성' : '🤝 공구 진행 중'}
             </span>
           )}
         </div>
         {typeof stock === 'number' && stock > 0 && (
-          <span style={{ fontSize: 10, color: '#6B7280' }}>
+          <span className="text-[10px] text-gray-500">
             {t('live.stockCount', { count: stock, defaultValue: `재고 ${stock}개` })}
           </span>
         )}
@@ -158,7 +149,7 @@ export default function ReelProductCard({
 
       {/* Main row — 썸네일 60x60 */}
       <div className="flex items-center gap-2.5 px-3 py-2">
-        <div className="relative rounded-2xl overflow-hidden shrink-0" style={{ width: 60, height: 60 }}>
+        <div className="relative rounded-2xl overflow-hidden shrink-0 w-[60px] h-[60px]">
           {(safeProduct.image_url || safeProduct.image) ? (
             <img
               src={safeProduct.image_url || safeProduct.image}
@@ -171,36 +162,30 @@ export default function ReelProductCard({
             <div className="w-full h-full bg-gray-200" />
           )}
           {discountRate > 0 && (
-            <span
-              className="absolute top-1 left-1 px-1.5 py-0.5 rounded"
-              style={{ background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800 }}
-            >
+            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-red-500 text-white text-[9px] font-extrabold">
               -{discountRate}%
             </span>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p
-            style={{ fontSize: 12, fontWeight: 500, color: '#374151', lineHeight: 1.35 }}
-            className="line-clamp-2"
-          >
+          <p className="text-[12px] font-medium text-gray-700 leading-[1.35] line-clamp-2">
             {safeProduct.name}
           </p>
           {originalPrice > safeProduct.price && (
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>
+              <span className="text-[11px] text-gray-400 line-through">
                 {formatNumber(originalPrice)}
               </span>
             </div>
           )}
           <div className="flex items-baseline gap-1">
             {discountRate > 0 && (
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{discountRate}%</span>
+              <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
             )}
-            <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>
+            <span className="text-[16px] font-extrabold text-gray-900">
               {formatNumber(safeProduct.price || 0)}
             </span>
-            <span style={{ fontSize: 11, color: '#6B7280' }}>
+            <span className="text-[11px] text-gray-500">
               {t('ordersTab.won', { defaultValue: '원' })}
             </span>
           </div>
@@ -209,8 +194,8 @@ export default function ReelProductCard({
 
       {/* 품절 배너 */}
       {typeof stock === 'number' && stock === 0 && (
-        <div className="px-3 py-1.5 bg-gray-50 flex items-center justify-between" style={{ borderTop: '1px solid #F3F4F6' }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#EF4444' }}>
+        <div className="px-3 py-1.5 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+          <span className="text-[10px] font-bold text-red-500">
             {t('live.soldOut', { defaultValue: '품절' })}
           </span>
           <button
@@ -222,7 +207,7 @@ export default function ReelProductCard({
               color: restockStatus === 'requested' ? '#6B7280' : '#fff',
             }}
           >
-            <Bell style={{ width: 9, height: 9 }} />
+            <Bell className="w-[9px] h-[9px]" />
             {restockStatus === 'requested' && t('live.restockRequested', { defaultValue: '알림 신청됨' })}
             {restockStatus === 'requesting' && t('live.restockRequesting', { defaultValue: '신청 중...' })}
             {restockStatus === 'error' && t('live.restockRetry', { defaultValue: '재시도' })}
@@ -232,9 +217,9 @@ export default function ReelProductCard({
       )}
 
       {/* Action row — 3분할 (찜 / 장바구니 / 바로구매 or 셀러 변경) */}
-      <div className={`grid grid-cols-3 ${typeof stock === 'number' && stock === 0 ? 'opacity-40 pointer-events-none' : ''}`} style={{ borderTop: '1px solid #F3F4F6' }}>
+      <div className={`grid grid-cols-3 border-t border-gray-100 ${typeof stock === 'number' && stock === 0 ? 'opacity-40 pointer-events-none' : ''}`}>
         {/* 찜하기 */}
-        <div className="py-2.5 flex items-center justify-center" style={{ borderRight: '1px solid #F3F4F6' }}>
+        <div className="py-2.5 flex items-center justify-center border-r border-gray-100">
           <WishlistButton productId={safeProduct.id} size="sm" />
         </div>
 
@@ -242,12 +227,11 @@ export default function ReelProductCard({
         <button
           onClick={onAddToCart}
           disabled={!currentProduct || addingToCart}
-          className="py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-50"
-          style={{ borderRight: '1px solid #F3F4F6' }}
+          className="py-2.5 flex flex-col items-center gap-0.5 border-r border-gray-100 disabled:opacity-50"
           aria-label={t('live.addToCart', { defaultValue: '장바구니에 담기' })}
         >
-          <ShoppingBag style={{ width: 16, height: 16, color: '#6B7280' }} />
-          <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>
+          <ShoppingBag className="w-4 h-4 text-gray-500" />
+          <span className="text-[10px] text-gray-500 font-semibold">
             {addingToCart
               ? t('live.addingToCart', { defaultValue: '담는 중…' })
               : t('live.addToCart', { defaultValue: '장바구니' })}
@@ -267,14 +251,14 @@ export default function ReelProductCard({
                 : t('live.sellerChangeProduct', { defaultValue: '상품 변경' })
             }
           >
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
+            <span className="text-[11px] font-extrabold text-white">
               {changingProduct
                 ? t('live.sellerChanging', { defaultValue: '전환 중…' })
                 : isCurrentProduct
                   ? t('live.sellerIntroducing', { defaultValue: '소개 중' })
                   : t('live.sellerChangeProduct', { defaultValue: '변경' })}
             </span>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>
+            <span className="text-[9px] text-white/85">
               {isCurrentProduct ? '✅' : '🔄'}
             </span>
           </button>
@@ -286,10 +270,10 @@ export default function ReelProductCard({
             style={boutiqueCTA}
             aria-label={t('live.buyNow', { defaultValue: '바로 구매' })}
           >
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
+            <span className="text-[11px] font-extrabold text-white">
               {t('live.buyNow', { defaultValue: '바로구매' })}
             </span>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>
+            <span className="text-[9px] text-white/85">
               {t('live.freeShipping', { defaultValue: '무료배송' })}
             </span>
           </button>

@@ -65,6 +65,13 @@ export default function BusinessLandingPage() {
               >
                 무료로 시작 <ArrowRight className="w-4 h-4" />
               </button>
+              {/* 🛡️ 2026-05-20: 공급자 (가게 사장님) 셀프 가입 CTA — 카카오 로그인 후 진입. */}
+              <button
+                onClick={() => navigate('/seller/register/supplier')}
+                className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-200"
+              >
+                공급자 가입 <ArrowRight className="w-4 h-4" />
+              </button>
               <a href="tel:0507-0177-0432" className="px-6 py-3.5 border-2 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700">
                 <Phone className="w-4 h-4" /> 0507-0177-0432
               </a>

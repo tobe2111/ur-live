@@ -11,6 +11,8 @@ const SellerPage = lazy(() => import('@/pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('@/pages/SellerRegisterPage'))
 const SellerRegisterBusinessPage = lazy(() => import('@/pages/SellerRegisterBusinessPage'))
+// 🛡️ 2026-05-20: 공급자 (가게 사장님) 자체 가입 — 기존 어드민 quick-register 보완.
+const SellerRegisterSupplierPage = lazy(() => import('@/pages/SellerRegisterSupplierPage'))
 const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
 const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
 const SellerForgotPasswordPage = lazy(() => import('@/pages/SellerForgotPasswordPage'))
@@ -78,6 +80,7 @@ export function SellerRoutes() {
       <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
       <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
       <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
+      <Route path="/seller/register/supplier" element={<ErrorBoundary><SellerRegisterSupplierPage /></ErrorBoundary>} />
       <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
       <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
       <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />

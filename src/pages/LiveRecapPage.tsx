@@ -73,7 +73,8 @@ export default function LiveRecapPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white">
+    // 🛡️ 2026-05-20: VOD 재생 페이지 — PC 에선 비디오/메타 가운데 정렬 + ur-content-medium (1024px).
+    <div className="min-h-screen bg-[#020202] text-white ur-content-medium">
       <SEO
         title={t('recap.seoTitle', { defaultValue: '{{title}} 다시보기 - 유어딜', title: stream.title })}
         description={t('recap.seoDesc', { defaultValue: '유어딜 라이브 방송 다시보기' })}
