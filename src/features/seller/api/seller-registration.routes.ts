@@ -266,9 +266,11 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       seller_type: 'influencer' | 'store_owner' | 'both';
       youtube_email?: string;
       description?: string;
+      // 🛡️ 2026-05-20: 에이전시 입점 영업 — 가게 사장님이 추천코드 입력 시 자동 매칭.
+      agency_intro_code?: string;
     }>();
 
-    const { business_name, business_number, phone, seller_type, youtube_email, description } = body;
+    const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
@@ -307,23 +309,46 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const tempPasswordStr = Array.from(tempPassword).map(b => b.toString(16).padStart(2, '0')).join('');
     const passwordHash = await hashPassword(tempPasswordStr);
 
+    // 🛡️ 2026-05-20: 에이전시 추천 코드 → agency_id 매칭.
+    //   가게 사장님 (store_owner) 만 적용 — 인플루언서는 에이전시 매니지먼트 기존 흐름 유지.
+    //   잘못된 코드면 silent (가입은 진행, introduced_by_agency_id 만 null).
+    let introducedAgencyId: number | null = null;
+    if (resolvedSellerType === 'store_owner' && agency_intro_code && agency_intro_code.trim()) {
+      const code = agency_intro_code.trim().toUpperCase().slice(0, 12);
+      const agencyRow = await db.prepare(
+        `SELECT id FROM agencies WHERE UPPER(intro_code) = ? AND status = 'active' LIMIT 1`
+      ).bind(code).first<{ id: number }>().catch(() => null);
+      if (agencyRow?.id) introducedAgencyId = agencyRow.id;
+    }
+
     let result;
     try {
       result = await db.prepare(`
         INSERT INTO sellers (
           username, email, password_hash, name, business_name, business_number,
           phone, description, youtube_email, seller_type, linked_user_id,
+          introduced_by_agency_id, introduced_at, agency_intro_code,
           status, commission_rate, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
       `).bind(
         username, sellerEmail, passwordHash, userName, business_name, business_number,
-        phone, description || null, youtube_email || null, resolvedSellerType, userId
+        phone, description || null, youtube_email || null, resolvedSellerType, userId,
+        introducedAgencyId, introducedAgencyId ? new Date().toISOString() : null,
+        introducedAgencyId ? (agency_intro_code || '').trim().toUpperCase().slice(0, 12) : null
       ).run();
     } catch (insertErr: any) {
       if (insertErr?.message?.includes('UNIQUE') || insertErr?.message?.includes('unique')) {
         return c.json({ success: false, error: '이미 셀러 전환 신청 중입니다' }, 409);
       }
       throw insertErr;
+    }
+
+    // 에이전시 dashboard 알림 — 입점 통보
+    if (introducedAgencyId) {
+      const { createDashboardNotification: notify2 } = await import('../../notifications/api/dashboard-notifications.routes');
+      notify2(db, 'agency', String(introducedAgencyId), 'store_introduced',
+        '새 입점 가게', `${business_name} (${userName}) 이 추천코드로 가입`,
+        '/agency/introduced-stores').catch(swallow('seller:api:agency-intro-notify'));
     }
 
     if (!result.success) {

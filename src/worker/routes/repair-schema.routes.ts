@@ -33,10 +33,15 @@ async function ensureMigrationTrackingTable(DB: D1Database) {
   `).run().catch(swallow('repair-schema:migration-history'));
 }
 
-repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
-  const env = c.env as any;
-  const DB = env.DB as D1Database;
-  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+// 🛡️ 2026-05-20: runSchemaRepair 를 standalone export — cron 에서 직접 호출 가능 (자동화).
+//   기존: HTTP 핸들러 안에 모든 로직 인라인. cron 이 부르려면 어드민 토큰 필요해 불편.
+//   변경: pure async fn 으로 추출 → 핸들러는 thin wrapper, cron 은 직접 invoke.
+export type SchemaRepairResult = {
+  columns: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }>
+  tables: Array<{ name: string; status: 'ok' | 'error'; error?: string }>
+}
+
+export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResult> {
   await ensureMigrationTrackingTable(DB);
 
   const stmts: Array<{ desc: string; sql: string }> = [
@@ -182,6 +187,15 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     // 🛡️ 2026-05-20: migration 0272 — sellers.seller_type / can_broadcast (D 공동구매 3자 분배).
     { desc: 'sellers.can_broadcast', sql: "ALTER TABLE sellers ADD COLUMN can_broadcast INTEGER DEFAULT 1" },
     { desc: 'sellers.contact_name', sql: "ALTER TABLE sellers ADD COLUMN contact_name TEXT" },
+    // 🛡️ 2026-05-20: 역할 분담 명확화 (사용자 요청).
+    //   에이전시 = 업체 입점 영업 (가게 사장님을 발굴/온보딩).
+    //   해당 셀러가 어느 에이전시에 의해 입점됐는지 추적 → 에이전시 입점 commission 산정.
+    { desc: 'sellers.introduced_by_agency_id', sql: "ALTER TABLE sellers ADD COLUMN introduced_by_agency_id INTEGER" },
+    { desc: 'sellers.introduced_at', sql: "ALTER TABLE sellers ADD COLUMN introduced_at DATETIME" },
+    { desc: 'sellers.agency_intro_code', sql: "ALTER TABLE sellers ADD COLUMN agency_intro_code TEXT" },
+    // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
+    { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
+    { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
     { desc: 'table influencer_balances', sql: "CREATE TABLE IF NOT EXISTS influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, total_paid_out INTEGER DEFAULT 0, business_number TEXT, tax_type TEXT DEFAULT 'other_income', bank_name TEXT, bank_account TEXT, account_holder TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'table influencer_attributions', sql: "CREATE TABLE IF NOT EXISTS influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, order_id INTEGER, voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT)" },
     { desc: 'idx_inf_attr_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_inf_attr_influencer ON influencer_attributions(influencer_id, status)" },
@@ -445,6 +459,37 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     )` },
     { name: 'idx_search_logs_query', sql: `CREATE INDEX IF NOT EXISTS idx_search_logs_query ON search_logs(query, created_at DESC)` },
     { name: 'idx_search_logs_created_at', sql: `CREATE INDEX IF NOT EXISTS idx_search_logs_created_at ON search_logs(created_at DESC)` },
+    // 🛡️ 2026-05-20: migration 0275 (FTS5 trigram) — 한국어 부분매칭 검색.
+    //   `CREATE VIRTUAL TABLE IF NOT EXISTS` idempotent — 이미 trigram 으로 있으면 noop,
+    //   없으면 새로 생성. porter unicode61 인 채로 있으면 (0080) 변경 안 됨 → 명시 마이그레이션 필요.
+    //   안전한 접근: VIRTUAL TABLE 존재 여부 체크 후 tokenize 가 'trigram' 인지 확인.
+    //   _migration_history 의 '0275' 마커로 한 번만 실행 보장.
+    { name: 'products_fts_trigram_init', sql: `CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+      name, description, category,
+      content=products,
+      content_rowid=id,
+      tokenize="trigram case_sensitive 0 remove_diacritics 1"
+    )` },
+    { name: 'products_fts_insert_trigger', sql: `CREATE TRIGGER IF NOT EXISTS products_fts_insert
+      AFTER INSERT ON products
+      BEGIN
+        INSERT INTO products_fts(rowid, name, description, category)
+        VALUES (NEW.id, COALESCE(NEW.name,''), COALESCE(NEW.description,''), COALESCE(NEW.category,''));
+      END` },
+    { name: 'products_fts_update_trigger', sql: `CREATE TRIGGER IF NOT EXISTS products_fts_update
+      AFTER UPDATE ON products
+      BEGIN
+        UPDATE products_fts
+        SET name = COALESCE(NEW.name,''),
+            description = COALESCE(NEW.description,''),
+            category = COALESCE(NEW.category,'')
+        WHERE rowid = NEW.id;
+      END` },
+    { name: 'products_fts_delete_trigger', sql: `CREATE TRIGGER IF NOT EXISTS products_fts_delete
+      AFTER DELETE ON products
+      BEGIN
+        DELETE FROM products_fts WHERE rowid = OLD.id;
+      END` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {
@@ -456,7 +501,16 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     }
   }
 
-  return c.json({ success: true, columns: results, tables: tableResults });
+  return { columns: results, tables: tableResults };
+}
+
+// HTTP wrapper — admin auth + JSON response.
+repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
+  const env = c.env as any;
+  const DB = env.DB as D1Database;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const result = await runSchemaRepair(DB);
+  return c.json({ success: true, ...result });
 });
 
 export { repairSchemaRoutes };

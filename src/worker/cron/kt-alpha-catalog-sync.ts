@@ -23,7 +23,7 @@ type Env = {
 }
 
 export async function runKtAlphaCatalogSync(env: Env): Promise<{
-  synced: number; deactivated: number; balance: number | null; error?: string;
+  synced: number; deactivated: number; balance: number | null; recategorized?: number; error?: string;
 }> {
   if (!env.KT_ALPHA_AUTH_CODE) {
     return { synced: 0, deactivated: 0, balance: null, error: 'KT_ALPHA_AUTH_CODE 미설정 — skip' }
@@ -154,7 +154,36 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
       `UPDATE platform_settings SET value = ?, updated_at = datetime('now') WHERE key = 'kt_alpha_last_sync_count'`
     ).bind(String(synced)).run().catch(() => { /* noop */ })
 
-    return { synced, deactivated, balance }
+    // 🛡️ 2026-05-20: gift_catalog → products.category 자동 동기화 (운영자 액션 자동화).
+    //   사용자 요청: "운영자 액션 권장 이거 그냥 너가 해주면 안돼?"
+    //   기존: 어드민이 /admin/kt-alpha "카테고리 자동 재분류" 버튼 수동 클릭 필요.
+    //   변경: cron 매 sync 시 자동 — UPDATE products SET category = gift_catalog.goods_type_detail
+    //         WHERE products.gift_code = gift_catalog.gift_code AND products.category IN ('voucher', '', NULL).
+    //   기존 명시 분류 (category != 'voucher') 는 건드리지 않음.
+    let recategorized = 0
+    try {
+      const r = await env.DB.prepare(
+        `UPDATE products
+            SET category = (
+              SELECT goods_type_detail FROM gift_catalog gc
+              WHERE gc.gift_code = products.gift_code
+                AND gc.goods_type_detail IS NOT NULL
+                AND gc.goods_type_detail != ''
+            ),
+            updated_at = datetime('now')
+          WHERE deal_only = 1
+            AND COALESCE(category, '') IN ('', 'voucher')
+            AND gift_code IS NOT NULL
+            AND gift_code IN (SELECT gift_code FROM gift_catalog WHERE goods_type_detail IS NOT NULL AND goods_type_detail != '')`
+      ).run().catch(() => null)
+      recategorized = (r?.meta?.changes ?? 0) as number
+    } catch { /* noop */ }
+
+    if (recategorized > 0) {
+      console.info(`[kt-alpha sync] auto-recategorized ${recategorized} products from gift_catalog.goods_type_detail`)
+    }
+
+    return { synced, deactivated, balance, recategorized }
   } catch (err) {
     // 🛡️ 2026-05-19: sync 실패 → 어드민 알림 (24h 중복 방지).
     const errMsg = (err as Error).message.slice(0, 200)

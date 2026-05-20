@@ -46,6 +46,9 @@ export default function SellerRegisterSupplierPage() {
     store_category: '',
     address: '',
     description: '',
+    // 🛡️ 2026-05-20: 에이전시 (입점 영업) 가 가게에 추천 코드 전달 → 가입 시 입력.
+    //   서버는 agency_intro_code 로 에이전시 매칭 + sellers.introduced_by_agency_id 자동 채움.
+    agency_intro_code: '',
   })
 
   const formatBusinessNumber = (input: string) => {
@@ -99,6 +102,7 @@ export default function SellerRegisterSupplierPage() {
         phone: form.phone,
         seller_type: 'store_owner',
         description: descWithMeta,
+        agency_intro_code: form.agency_intro_code.trim() || undefined,
       })
       if (res.data?.success) {
         toast.success(t('supplier.applied', {
@@ -245,6 +249,17 @@ export default function SellerRegisterSupplierPage() {
               placeholder="매장 분위기, 대표 메뉴, 운영 시간 등"
               rows={3} maxLength={500}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
+          </Field>
+
+          {/* 🛡️ 2026-05-20: 에이전시 추천 코드 — 입점 영업 에이전시가 가게에 알려준 코드. */}
+          <Field label="에이전시 추천 코드 (선택)">
+            <input value={form.agency_intro_code}
+              onChange={e => setForm(f => ({ ...f, agency_intro_code: e.target.value.toUpperCase().slice(0, 12) }))}
+              placeholder="예: AG-A8K3F1 (없으면 비워두세요)"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono uppercase" />
+            <p className="text-[10px] text-gray-500 mt-1">
+              영업 에이전시가 직접 추천해서 가입하시는 경우만 입력하세요.
+            </p>
           </Field>
         </div>
 

@@ -50,7 +50,7 @@ import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
-import { logError } from './utils/logger';
+import { logError, logInfo } from './utils/logger';
 
 export async function handleCronScheduled(
   event: ScheduledEvent,
@@ -104,6 +104,22 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
     ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
+    // 🛡️ 2026-05-20: 운영자 액션 자동화 (사용자 요청).
+    //   매일 1회 schema-repair 자동 호출 — migrations 0271-0274 의 누락 컬럼/테이블 보장.
+    //   기존: 어드민이 수동으로 POST /api/_internal/repair-schema 호출 필요했음.
+    //   변경: 매일 18 UTC cron 에 자동 통합 → 신규 migration 추가 시 다음날 자동 적용.
+    ctx.waitUntil(safeCron('schema-repair-daily', async () => {
+      const { runSchemaRepair } = await import('./routes/repair-schema.routes')
+      const result = await runSchemaRepair(env.DB)
+      const colErr = result.columns.filter(r => r.status === 'error').length
+      const tabErr = result.tables.filter(r => r.status === 'error').length
+      const colAdded = result.columns.filter(r => r.status === 'added').length
+      if (colErr > 0 || tabErr > 0) {
+        logError('[cron] schema-repair has errors', { colErr, tabErr })
+      } else if (colAdded > 0) {
+        logInfo(`[cron] schema-repair: +${colAdded} columns added (others existed)`)
+      }
+    }));
     // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
     ctx.waitUntil(safeCron('seller-churn-detect', () => handleSellerChurnDetect(env)));
     // 🛡️ 2026-05-15 (TD-G08): ledger 정합성 검증 — Σdebit ≠ Σcredit / 음수 wallet → Discord alert
