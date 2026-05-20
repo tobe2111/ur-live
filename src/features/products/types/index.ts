@@ -34,6 +34,9 @@ export interface ProductFilter {
   search?: string;
   productType?: 'featured' | 'live'; // 'featured': 어드민 등록 ur특가 상품, 'live': 셀러 라이브 전용 상품
   sort?: ProductSort;
+  // 🛡️ 2026-05-19: /browse vs /vouchers 분리 — deal_only 기준 필터링.
+  dealOnly?: boolean;       // true → 교환권만 (deal_only=1). /vouchers 페이지.
+  excludeDealOnly?: boolean; // true → 일반 상품만 (deal_only=0). /browse 페이지.
 }
 
 export interface ProductCreateInput {

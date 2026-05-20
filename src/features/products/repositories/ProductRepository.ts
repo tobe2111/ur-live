@@ -5,6 +5,42 @@
 
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 
+/**
+ * 🛡️ 2026-05-19: 한국어 검색 동의어 사전 — 사용자가 다양한 표현으로 검색해도 매칭.
+ *
+ *   사용 예: 사용자가 "기프티콘" 검색 → expandSynonyms("기프티콘") = ["교환권", "쿠폰", "상품권"]
+ *   → FTS 쿼리에 OR 로 묶임 → 모든 변형 검색 가능.
+ *
+ *   유지 보수: 양방향 동의어 그룹으로 정의. 각 토큰이 같은 그룹의 다른 토큰들과 매칭됨.
+ *   추가 시 그룹에 토큰만 추가하면 자동 양방향.
+ */
+const SYNONYM_GROUPS: ReadonlyArray<ReadonlyArray<string>> = [
+  ['기프티콘', '교환권', '쿠폰', '상품권', '바우처', 'voucher', 'coupon', 'gift'],
+  ['카페', '커피', 'coffee', 'cafe'],
+  ['편의점', 'cu', 'gs25', '세븐일레븐', '이마트24', 'convenience'],
+  ['치킨', 'chicken', 'bhc', 'bbq', '교촌', '굽네'],
+  ['피자', 'pizza', '도미노', '피자헛'],
+  ['배달', 'delivery', '배민', '쿠팡이츠', '요기요'],
+  ['숙박', '호텔', '펜션', '게스트하우스', 'hotel', 'stay'],
+  ['뷰티', '미용', '화장품', '코스메틱', 'beauty', 'cosmetic'],
+  ['도서', '책', 'book', '교보문고', '예스24'],
+  ['스타벅스', 'starbucks', '별다방'],
+  ['이디야', 'ediya'],
+  ['투썸', 'twosome'],
+  ['김밥', '분식', '떡볶이', '라면'],
+  ['삼겹살', '돼지고기', '소고기', '한우'],
+]
+
+function expandSynonyms(token: string): string[] {
+  const lower = token.toLowerCase()
+  for (const group of SYNONYM_GROUPS) {
+    if (group.some(s => s.toLowerCase() === lower)) {
+      return group.filter(s => s.toLowerCase() !== lower)
+    }
+  }
+  return []
+}
+
 export class ProductRepository {
   constructor(private db: D1Database) {}
   
@@ -69,6 +105,13 @@ export class ProductRepository {
     if (filter.productType) {
       query += ` AND product_type = ?`;
       params.push(filter.productType);
+    }
+
+    // 🛡️ 2026-05-19: deal_only 기반 분리 (/browse 는 일반 상품, /vouchers 는 교환권만).
+    if (filter.dealOnly) {
+      query += ` AND deal_only = 1`;
+    } else if (filter.excludeDealOnly) {
+      query += ` AND (deal_only IS NULL OR deal_only = 0)`;
     }
 
     // 정렬: ranking은 "실시간 인기" 가중합 (최근 24h 판매 + 전체 판매 + 평점 + 최신성)
@@ -149,6 +192,13 @@ export class ProductRepository {
     if (filter.productType) {
       query += ` AND product_type = ?`;
       params.push(filter.productType);
+    }
+
+    // 🛡️ 2026-05-19: count 함수도 deal_only 필터 동일 적용.
+    if (filter.dealOnly) {
+      query += ` AND deal_only = 1`;
+    } else if (filter.excludeDealOnly) {
+      query += ` AND (deal_only IS NULL OR deal_only = 0)`;
     }
 
     const result = await this.db.prepare(query).bind(...params).first<{ count: number }>();
@@ -266,22 +316,27 @@ export class ProductRepository {
     offset: number = 0,
     limit: number = 20
   ): Promise<Product[]> {
-    // 🛡️ 2026-05-19 (사용자 신고: "검색 정확도 낮음" fix):
-    //   FTS5 MATCH 는 default 가 exact word match → "스타벅스" 입력 시 정확히 "스타벅스" 단어만 매칭.
-    //   "스타벅스1만원권" (붙은 경우) / "스타" (부분) 둘 다 실패.
-    //   해결: 각 토큰에 prefix wildcard (*) 부여 → "스타벅스*" 가 "스타벅스" / "스타벅스카드" 모두 매칭.
-    //   특수 문자 (", *, ^, NEAR 등) 는 FTS 구문이라 escape — 사용자 입력을 그대로 쓰면 syntax error.
-    const sanitizedQuery = query
+    // 🛡️ 2026-05-19 v2 — 검색 정확도 종합 개선:
+    //   1) prefix wildcard (`"스타벅스"*`) — "스타" → "스타벅스카드" 매칭
+    //   2) FTS 특수문자 escape — syntax-safe
+    //   3) 한국어 동의어 자동 확장 (기프티콘 → 쿠폰/교환권/상품권 등)
+    //   4) bm25 가중치 — name(3) > category(2) > description(1) — 상품명 매치 우선
+    const tokens = query
       .trim()
-      .replace(/["*^():~+\-]/g, ' ')  // FTS 특수 문자 → 공백
+      .replace(/["*^():~+\-]/g, ' ')
       .replace(/\s+/g, ' ')
       .split(' ')
       .filter(t => t.length >= 1)
-      .map(t => `"${t}"*`)  // 각 토큰 prefix match + 따옴표로 phrase 안전
-      .join(' ')
 
-    // 모든 토큰이 빈 문자열로 sanitize 됐으면 (즉 query 가 모두 특수문자) — FTS 패스
-    if (!sanitizedQuery) return []
+    if (tokens.length === 0) return []
+
+    // 동의어 확장 — 각 토큰을 OR 그룹으로. "기프티콘" → ("기프티콘"* OR "교환권"* OR "쿠폰"*)
+    const expandedGroups = tokens.map(t => {
+      const synonyms = expandSynonyms(t)
+      const parts = [t, ...synonyms].map(s => `"${s}"*`)
+      return parts.length > 1 ? `(${parts.join(' OR ')})` : parts[0]
+    })
+    const sanitizedQuery = expandedGroups.join(' ')
 
     // FTS5 쿼리 구성
     let ftsQuery = `
@@ -320,8 +375,11 @@ export class ProductRepository {
       params.push(filter.maxPrice);
     }
     
-    // 관련도 순으로 정렬 (BM25 알고리즘)
-    ftsQuery += ` ORDER BY bm25(products_fts) LIMIT ? OFFSET ?`;
+    // 🛡️ 2026-05-19 v2: bm25 컬럼 가중치 — name(3.0) > category(2.0) > description(1.0).
+    //   products_fts 스키마: (name, description, category) 순.
+    //   상품명 매치 점수가 가장 높음 → "스타벅스" 입력 시 상품명에 "스타벅스" 있는 것이
+    //   description 에만 있는 것보다 우선.
+    ftsQuery += ` ORDER BY bm25(products_fts, 3.0, 1.0, 2.0) LIMIT ? OFFSET ?`;
     params.push(limit, offset);
     
     try {

@@ -181,10 +181,15 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   }
 
   // 🛡️ 2026-05-19: page-based cursor pagination (50개씩 누적 로드).
+  //   /browse 는 일반 상품만 (deal_only=0). 교환권은 /vouchers 신규 페이지에서.
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
     if (reset) setLoading(true); else setLoadingMore(true)
     if (reset) setError(null)
-    const params = new URLSearchParams({ page: String(pageNum), limit: String(PAGE_SIZE) })
+    const params = new URLSearchParams({
+      page: String(pageNum),
+      limit: String(PAGE_SIZE),
+      exclude_deal_only: '1',  // 🛡️ 2026-05-19: /browse = 쇼핑만, 교환권 제외.
+    })
     if (category !== 'all') params.set('category', category)
     api.get(`/api/products?${params.toString()}`)
       .then(r => {

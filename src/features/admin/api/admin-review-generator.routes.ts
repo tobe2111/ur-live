@@ -215,4 +215,135 @@ adminReviewGeneratorRoutes.delete('/reviews/generated/:productId', cors(), async
   }
 });
 
+// 🛡️ 2026-05-19: 교환권 (KT Alpha deal_only=1) 전체에 리뷰 대량 생성.
+//   사용자 요청 — "모든 교환권에 리뷰 최대한 많이 쓰고 싶어".
+//   per-product 5~25개 랜덤 (평균 ~15개), avg_rating 4.3~4.8 랜덤.
+//   is_generated=1 플래그로 영구 추적 → 일괄 삭제 가능 (DELETE /reviews/generated/:productId).
+//
+// Body: { reviews_per_product?: number (5-50, default 15) }
+// 응답: { products_processed, total_reviews_inserted, ... }
+//
+// ⚠️ 법적 고지: 한국 전자상거래법 / 공정거래법상 "허위 후기" 는 사업주 책임 영역.
+//   서비스 운영자가 자기 책임으로 사용. 모든 생성 리뷰는 is_generated=1 으로 표시되어
+//   향후 일괄 삭제 / 감사 추적 가능.
+adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const body = await c.req.json<{ reviews_per_product?: number }>().catch(() => ({}));
+    const minReviews = Math.max(1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) - 5)));
+    const maxReviews = Math.max(minReviews + 1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) + 10)));
+
+    await writeAuditLog(c, {
+      action: 'generate_fake_reviews_bulk_vouchers',
+      targetType: 'products',
+      targetId: 'deal_only=1',
+      after: { reviews_per_product_range: [minReviews, maxReviews] },
+    });
+
+    // 1) 모든 교환권 (deal_only=1, is_active=1) 조회.
+    const products = await DB.prepare(
+      'SELECT id, name FROM products WHERE deal_only = 1 AND is_active = 1'
+    ).all<{ id: number; name: string }>();
+
+    const productList = products.results ?? [];
+    if (productList.length === 0) {
+      return c.json({ success: false, error: '교환권 (deal_only=1) 상품이 없습니다' }, 400);
+    }
+
+    // 2) product_reviews 테이블 멱등 생성.
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id TEXT,
+        user_name TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        content TEXT,
+        selected_option TEXT,
+        is_generated INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run().catch(() => { /* exists */ });
+
+    const now = Date.now();
+    const BATCH_SIZE = 50;
+    let totalInserted = 0;
+    let productsProcessed = 0;
+    const errors: Array<{ product_id: number; error: string }> = [];
+
+    // 3) 각 상품마다 5~25개 (랜덤) 리뷰 생성. 배치 50개 단위로 D1.batch().
+    for (const product of productList) {
+      // 상품별 리뷰 개수 + 평균 별점 랜덤.
+      const reviewCount = Math.floor(minReviews + Math.random() * (maxReviews - minReviews))
+      const targetRating = 4.3 + Math.random() * 0.5  // 4.3 ~ 4.8
+
+      const stmts: D1PreparedStatement[] = [];
+      for (let i = 0; i < reviewCount; i++) {
+        const rating = Math.min(5, Math.max(3, Math.round(targetRating + (Math.random() - 0.5))));
+        const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const maskedName = name[0] + '*' + name[name.length - 1];
+        const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
+        const daysAgo = Math.floor(Math.random() * 180);  // 0-180일 분산
+        const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+
+        stmts.push(
+          DB.prepare(`INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`)
+            .bind(product.id, 'system-generated', maskedName, rating, content, reviewDate)
+        );
+
+        // 50개 단위로 flush.
+        if (stmts.length >= BATCH_SIZE) {
+          try {
+            await DB.batch(stmts);
+            totalInserted += stmts.length;
+          } catch (e) {
+            errors.push({ product_id: product.id, error: (e as Error).message });
+          }
+          stmts.length = 0;
+        }
+      }
+      // 남은 batch flush.
+      if (stmts.length > 0) {
+        try {
+          await DB.batch(stmts);
+          totalInserted += stmts.length;
+        } catch (e) {
+          errors.push({ product_id: product.id, error: (e as Error).message });
+        }
+      }
+      productsProcessed++;
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        products_processed: productsProcessed,
+        total_reviews_inserted: totalInserted,
+        avg_reviews_per_product: productsProcessed > 0 ? Math.round(totalInserted / productsProcessed) : 0,
+        reviews_per_product_range: [minReviews, maxReviews],
+        errors_count: errors.length,
+        errors: errors.slice(0, 10),  // 처음 10개만 (응답 size 제한)
+      },
+    });
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('[admin:reviews:bulk-vouchers]', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🛡️ 2026-05-19: 교환권 전체 생성 리뷰 일괄 삭제 (롤백용).
+adminReviewGeneratorRoutes.delete('/reviews/generated-bulk-vouchers', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const result = await DB.prepare(`
+      DELETE FROM product_reviews
+      WHERE is_generated = 1
+        AND product_id IN (SELECT id FROM products WHERE deal_only = 1)
+    `).run();
+    return c.json({ success: true, deleted: result.meta.changes });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminReviewGeneratorRoutes;

@@ -342,6 +342,10 @@ function CartPageContent() {
 
     // 셀러별 배송비 계산
     const totalShippingFee = Object.values(selectedSellerGroups).reduce((total, group) => {
+      // 🛡️ 2026-05-19 (사용자 신고): 교환권 (deal_only=1) 은 휴대폰 발송 → 배송비 불요.
+      //   그룹의 모든 item 이 deal_only=1 이면 무료.
+      const allVoucher = group.items.length > 0 && group.items.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+      if (allVoucher) return total
       // 무료배송 기준액이 설정되어 있고, 해당 셀러의 소계가 기준액 이상이면 배송비 0원
       if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
         return total
@@ -490,15 +494,22 @@ function CartPageContent() {
                     ))}
                   </div>
 
-                  {/* Seller group shipping info */}
-                  <div className="mx-4 mb-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex justify-between text-[12px]">
-                    <span className="text-gray-400 dark:text-gray-500">{t('cart.shippingFee')}</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-200">
-                      {freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
-                        ? <span className="text-pink-500">{t('cart.free')}</span>
-                        : `${formatNumber(group.shipping_fee)}원`}
-                    </span>
-                  </div>
+                  {/* Seller group shipping info — 🛡️ 2026-05-19: 교환권 그룹은 배송비 unused. */}
+                  {(() => {
+                    const allVoucher = group.items.length > 0 && group.items.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+                    return (
+                      <div className="mx-4 mb-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex justify-between text-[12px]">
+                        <span className="text-gray-400 dark:text-gray-500">{allVoucher ? '발송' : t('cart.shippingFee')}</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-200">
+                          {allVoucher
+                            ? <span className="text-amber-600">🎁 휴대폰 즉시 발송 (무료)</span>
+                            : freeShipThreshold > 0 && group.subtotal >= freeShipThreshold
+                              ? <span className="text-pink-500">{t('cart.free')}</span>
+                              : `${formatNumber(group.shipping_fee)}원`}
+                        </span>
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

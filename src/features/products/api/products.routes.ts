@@ -169,6 +169,9 @@ productsRoutes.get('/', cors(), async (c) => {
       maxPrice: c.req.query('max_price') ? Number(c.req.query('max_price')) : undefined,
       productType: featuredOnly ? 'featured' : undefined,
       sort,
+      // 🛡️ 2026-05-19: /browse 는 exclude_deal_only=1, /vouchers 는 deal_only=1.
+      dealOnly: c.req.query('deal_only') === '1',
+      excludeDealOnly: c.req.query('exclude_deal_only') === '1',
     };
     
     const pagination = {

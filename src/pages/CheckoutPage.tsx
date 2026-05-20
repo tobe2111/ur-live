@@ -135,6 +135,11 @@ export default function CheckoutPage() {
   // 소계 및 배송비 계산
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
   const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
+    // 🛡️ 2026-05-19 (사용자 신고: 교환권 배송비 치명적 버그):
+    //   KT Alpha 교환권 (deal_only=1) 은 휴대폰 MMS 발송이라 배송비 불요.
+    //   그룹의 모든 item 이 deal_only=1 이면 shipping_fee 무시.
+    const allVoucher = group.items.length > 0 && group.items.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+    if (allVoucher) return total
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) return total
     return total + group.shipping_fee
   }, 0)

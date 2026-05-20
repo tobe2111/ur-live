@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils } from 'lucide-react'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Gift } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -182,14 +182,24 @@ export default function BottomNav() {
             <div className="flex items-center h-14">
               {leftItems.map(renderItem)}
 
-              {/* Center + button */}
+              {/* 🛡️ 2026-05-19: 중앙 버튼 — ➕ (셀러 시트) → 🎁 기프트 (/vouchers 직접 이동).
+                  소비자 99% 가 daily 로 쓰는 액션이 중앙에. 셀러 onboarding / 라이브 시작은
+                  마이페이지 큰 CTA + 셀러 대시보드 + 길게 누르기 sheet 로 보존.
+                  Long press: 0.5초 누르면 기존 시트 열림 (셀러 액션 빠른 접근). */}
               <div className="flex-1 flex items-center justify-center">
                 <button
-                  onClick={() => setSheetOpen(true)}
-                  className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 shadow-lg shadow-red-500/30 active:scale-90 transition-transform"
-                  aria-label={t('bottomNav.liveStartAria', { defaultValue: '라이브 시작' })}
+                  onClick={() => navigate('/vouchers')}
+                  onContextMenu={(e) => { e.preventDefault(); setSheetOpen(true) }}
+                  onTouchStart={(e) => {
+                    const target = e.currentTarget
+                    const timer = setTimeout(() => setSheetOpen(true), 500)
+                    target.addEventListener('touchend', () => clearTimeout(timer), { once: true })
+                    target.addEventListener('touchcancel', () => clearTimeout(timer), { once: true })
+                  }}
+                  className="relative -mt-5 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-500/30 active:scale-90 transition-transform"
+                  aria-label={t('bottomNav.giftAria', { defaultValue: '교환권 기프트' })}
                 >
-                  <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
+                  <Gift className="w-6 h-6 text-white" strokeWidth={2.5} />
                 </button>
               </div>
 
