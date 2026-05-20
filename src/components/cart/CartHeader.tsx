@@ -7,16 +7,21 @@ interface CartHeaderProps {
   itemCount: number
   allSelected: boolean
   selectedCount: number
+  // 🛡️ 2026-05-20: 판매종료 (product_is_active === 0) 항목 일괄 삭제. 0 이면 버튼 숨김.
+  inactiveCount?: number
   onToggleSelectAll: () => void
   onDeleteSelected: () => void
+  onDeleteInactive?: () => void
 }
 
 export const CartHeader = React.memo(function CartHeader({
   itemCount,
   allSelected,
   selectedCount,
+  inactiveCount = 0,
   onToggleSelectAll,
-  onDeleteSelected
+  onDeleteSelected,
+  onDeleteInactive,
 }: CartHeaderProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -76,16 +81,28 @@ export const CartHeader = React.memo(function CartHeader({
               </span>
             </button>
 
-            <button
-              onClick={onDeleteSelected}
-              disabled={selectedCount === 0}
-              className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              {t('cart.deleteSelected', { defaultValue: '선택삭제' })}
-              {selectedCount > 0 && (
-                <span className="ml-1 text-gray-400 dark:text-gray-500">({selectedCount})</span>
+            <div className="flex items-center gap-3">
+              {inactiveCount > 0 && onDeleteInactive && (
+                <button
+                  onClick={onDeleteInactive}
+                  className="text-[13px] font-semibold text-orange-500 dark:text-orange-400 hover:text-orange-600 transition-colors whitespace-nowrap"
+                  title={t('cart.deleteInactiveHint', { defaultValue: '판매가 종료된 상품을 한 번에 삭제합니다' })}
+                >
+                  {t('cart.deleteInactive', { defaultValue: '판매종료 삭제' })}
+                  <span className="ml-1 text-orange-400">({inactiveCount})</span>
+                </button>
               )}
-            </button>
+              <button
+                onClick={onDeleteSelected}
+                disabled={selectedCount === 0}
+                className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {t('cart.deleteSelected', { defaultValue: '선택삭제' })}
+                {selectedCount > 0 && (
+                  <span className="ml-1 text-gray-400 dark:text-gray-500">({selectedCount})</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

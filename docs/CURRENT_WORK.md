@@ -1,7 +1,58 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-19 (KT Alpha B2B API 완전 통합 5 PRs)
-**최근 main 머지 커밋**: `e5f66093` (KT Alpha final — 셀러 voucher 모달 + 발송 이력 + 잔액 알림)
+**최종 업데이트**: 2026-05-20 (대규모 안정화 + 영구 패턴 정착)
+**최근 push 커밋**: 브랜치 `claude/check-live-commerce-flow-jgNs8` 다수 — 사용자 보고 이슈 일괄 처리
+
+## 🆕 2026-05-20 세션 — 셀러/사용자 사이드 종합 정리
+
+### 셀러 사이드 (사용자 보고 이슈 영구 fix)
+- `/api/seller/bundles 401` — `bundle.routes.ts:44` 가 `payload.id` 봤지만 토큰은 `seller_id`. 호환 fallback 추가.
+- `/api/seller/analytics/reviews 500` — `FROM reviews` (실제 `product_reviews`) + `r.image_urls` (실제 `images`). 테이블/컬럼 영구 fix.
+- `/seller/alimtalk` Toss 400 — V1 widget API → V2 `payment().requestPayment` (PointsChargePage 와 동일 패턴).
+- 사이드바 "설정" → 메인페이지로 튕김 — `SellerProfileEditPage` 의 `?tab=` 없으면 `/profile/{slug}` redirect 제거.
+- 사이드바 하단 버튼 스크롤 점프 — `ScrollToTop` 에 `state.preserveScroll: true` 옵트아웃 추가.
+- 사업자등록증 업로드 UI (셀러 `/seller/business-info`) + 어드민 검증/반려 (`/admin/sellers` 상세 펼침).
+- 셀러 공개페이지 owner 모드 sticky 안내 배너 + 항상 보이는 Pencil 아이콘.
+- 큰 CTA 카드 그리드 (`PrimaryActions`) — 라이브/주문/상품등록/정산 4개 prominent.
+
+### 사용자 사이드
+- 본문 바로가기 a11y 링크 제거 (사용자 요청).
+- Cart 판매종료 일괄 삭제 버튼 (`product_is_active === 0` 만 batch delete).
+- 추천 수익 카드 코멘트 정정 (이미 항상 노출 중 — 적립 0 도 "시작하기" CTA).
+
+### 어드민
+- KT Alpha 카테고리 자동 분류 endpoint (`/admin/kt-alpha/categories/auto-classify`).
+- 리뷰 대량 생성 / 정리 endpoints.
+- 사업자등록증 검증 + 정산 계좌 정보 어드민 패널.
+
+### 영구 패턴 정착
+- 74개 누적 TS 에러 → 0개.
+  - Hono `c.req.json<T>().catch(() => ({}))` → `T | {}` union 회피: `({} as T)` 명시 + 헬퍼 `src/shared/utils/parse-json-body.ts`.
+  - `c.get('user'/'seller')` ContextVariableMap: `Hono<{ Bindings; Variables }>` 명시.
+  - `caches.default`, `crypto.subtle.importKey(Uint8Array)`, `LIVE_STREAM` cast 등 영구 fix.
+- 업로드 500 진단성 강화 — `INVALID_CONTENT_TYPE` / `MULTIPART_PARSE_FAILED` / `NO_FILE_FIELD` 에러 코드.
+- ToastStore 시그니처 — `success(msg, { duration })` 지원.
+
+### 검색 정확도
+- 신규 migration `0275_fts5_trigram_korean.sql` — 한국어 trigram tokenizer.
+- `ProductRepository.searchByText` 의 `JOIN fts.product_id` 버그 → `JOIN fts.rowid` 로 영구 fix (LIKE fallback 으로만 떨어지던 문제).
+- `ProductService.getProducts` 가 search 있으면 FTS5 + bm25 ranking 자동 사용.
+
+### Schema repair
+- `/api/_internal/repair-schema` 에 0271 (`products.referral_enabled/rate`), 0272 (`sellers.can_broadcast`), 0273 (`search_logs`), 0274 (`user_withdrawals`) 추가. 한 번 호출로 production D1 동기화.
+
+## ⏭️ 다음 작업 후보 (우선순위)
+| 우선 | 항목 | 메모 |
+|---|---|---|
+| 🟡 | 공급자 (가게 사장님) 자체 onboarding UI | 현재 어드민이 `handleStoreOwnerQuickAdd` 로 대신 등록. 셀프 가입 페이지 필요. |
+| 🟡 | KT alpha 자동 분류 production 한 번 실행 | `/admin/kt-alpha` 버튼 클릭. |
+| 🟡 | `/vouchers` 카테고리/브랜드 2축 UI 재검증 | 자동분류 실행 후 표시 확인. |
+| 🟢 | 새 기능 통합 테스트 | 사업자등록증 검증, user_withdrawals, search FTS5. |
+| 🟢 | PC 반응형 검증 (남은 페이지) | 4 viewport. |
+| 🟢 | CSP unsafe-inline 줄이기 | 우리 코드만 (외부 iframe 제외). |
+| 🟢 | YouTube 썸네일 콘솔 404 노이즈 | onError 처리는 됨, 로그는 못 막음. |
+
+
 
 ## 📦 2026-05-19 세션 — KT Alpha (기프티쇼) B2B API 통합
 

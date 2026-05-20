@@ -167,11 +167,13 @@ export default function SellerStreamingSetupPage() {
               </div>
               <p className="text-xs text-gray-500">아래 두 값을 OBS/Prism/Larix 의 RTMP 설정에 복붙하세요. 한 번만 입력하면 다음 방송부터는 자동.</p>
 
-              <div className="space-y-2.5">
+              {/* 🛡️ 2026-05-20: password input 은 form 안에 있어야 브라우저 "[DOM] Password field
+                  not contained in a form" 경고 안 발생 + 패스워드 매니저 호환. submit 없음 (readonly 표시 전용). */}
+              <form className="space-y-2.5" onSubmit={(e) => e.preventDefault()} autoComplete="off">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-500 mb-1">RTMP URL</label>
                   <div className="flex gap-2">
-                    <input type="text" value={data.rtmp_url || ''} readOnly
+                    <input type="text" value={data.rtmp_url || ''} readOnly autoComplete="off"
                       className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono" />
                     <Button size="sm" variant="outline" onClick={() => copy(data.rtmp_url || '', 'url')}>
                       {copied === 'url' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
@@ -181,7 +183,7 @@ export default function SellerStreamingSetupPage() {
                 <div>
                   <label className="block text-[11px] font-bold text-gray-500 mb-1">Stream Key</label>
                   <div className="flex gap-2">
-                    <input type={showKey ? 'text' : 'password'} value={data.rtmp_key || ''} readOnly
+                    <input type={showKey ? 'text' : 'password'} value={data.rtmp_key || ''} readOnly autoComplete="off"
                       className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 font-mono" />
                     <Button size="sm" variant="outline" onClick={() => setShowKey(v => !v)} title={showKey ? '숨기기' : '보기'}>
                       {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -192,7 +194,7 @@ export default function SellerStreamingSetupPage() {
                   </div>
                   <p className="text-[10px] text-gray-400 mt-1">⚠️ 외부에 노출하지 마세요. 노출 시 다른 사람이 내 채널에 송출할 수 있어요.</p>
                 </div>
-              </div>
+              </form>
 
               {/* 키 교체 */}
               {showRotateConfirm ? (

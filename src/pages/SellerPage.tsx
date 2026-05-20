@@ -28,6 +28,7 @@ import MonthlyGoalCard from './seller-page/MonthlyGoalCard'
 import ConversionFunnel from './seller-page/ConversionFunnel'
 import QuickActions from './seller-page/QuickActions'
 import AlertsGrid from './seller-page/AlertsGrid'
+import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
 import type { DashboardStats, DailyStats, TopProduct, Order, LiveStream } from './seller-page/types'
 
@@ -580,6 +581,12 @@ export default function SellerPage() {
               </div>
             ))}
           </div>
+
+          {/* 🛡️ 2026-05-20: 큰 CTA 카드 그리드 (사용자 요청 — 작은 link 보다 명확) */}
+          <PrimaryActions
+            pendingOrders={stats.pendingOrders || 0}
+            isInfluencer={isInfluencer}
+          />
 
           {/* ── Actionable insights callouts ── */}
           {insights.length > 0 && (

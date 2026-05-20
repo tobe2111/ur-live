@@ -277,7 +277,43 @@ function CartPageContent() {
       },
       t('cart.deleteSelected')
     )
-  }, [selectedIds, removeItemMutation])
+  }, [selectedIds, removeItemMutation, showAlert, showConfirm, t])
+
+  // 🛡️ 2026-05-20: 판매종료 (product_is_active === 0) 항목만 일괄 삭제. 사용자 신고:
+  //   "만료된 상품들 하나씩 삭제하기 번거롭다". 자동 제외만으로는 cart 가 깔끔하지 않음.
+  const inactiveIds = useMemo(() => {
+    return cartItems
+      .filter((it: CartItem) => it.product_is_active !== undefined && Number(it.product_is_active) !== 1)
+      .map((it: CartItem) => it.id)
+  }, [cartItems])
+
+  const handleDeleteInactive = useCallback(() => {
+    if (inactiveIds.length === 0) return
+    showConfirm(
+      t('cart.deleteInactiveConfirm', {
+        defaultValue: `판매가 종료된 ${inactiveIds.length}개 상품을 모두 삭제할까요?`,
+        count: inactiveIds.length,
+      }),
+      async () => {
+        setUpdating(true)
+        try {
+          await Promise.all(inactiveIds.map(id => removeItemMutation.mutateAsync(String(id))))
+          showAlert(
+            t('cart.deleteInactiveDone', { defaultValue: '판매종료 상품을 삭제했습니다', count: inactiveIds.length }),
+            'success',
+            t('cart.deleteInactive', { defaultValue: '판매종료 삭제' }),
+          )
+        } catch (error: unknown) {
+          if (import.meta.env.DEV) console.error('Failed to delete inactive:', error)
+          const msg = error instanceof Error ? error.message : t('cart.deleteFailed')
+          showAlert(msg, 'error', t('cart.deleteFailed'))
+        } finally {
+          setUpdating(false)
+        }
+      },
+      t('cart.deleteInactive', { defaultValue: '판매종료 삭제' }),
+    )
+  }, [inactiveIds, removeItemMutation, showAlert, showConfirm, t])
 
   // 셀러별 그룹화 (v4 seller grouped style)
   const sellerGroups = useMemo(() => {
@@ -399,8 +435,10 @@ function CartPageContent() {
         itemCount={cartItems.length}
         allSelected={allSelected}
         selectedCount={selectedIds.size}
+        inactiveCount={inactiveIds.length}
         onToggleSelectAll={toggleSelectAll}
         onDeleteSelected={handleDeleteSelected}
+        onDeleteInactive={handleDeleteInactive}
       />
 
       {/* Empty State or Cart Items */}

@@ -338,11 +338,13 @@ export class ProductRepository {
     })
     const sanitizedQuery = expandedGroups.join(' ')
 
-    // FTS5 쿼리 구성
+    // 🛡️ 2026-05-20: FTS5 외부 콘텐츠 테이블은 rowid 로 join (migration 0080: content_rowid=id).
+    //   기존 `fts.product_id` 컬럼은 존재하지 않아 항상 빈 결과 → LIKE fallback 으로 떨어졌음.
+    //   영구 수정: rowid 명시.
     let ftsQuery = `
       SELECT p.*
-      FROM products p
-      JOIN products_fts fts ON p.id = fts.product_id
+      FROM products_fts fts
+      JOIN products p ON p.id = fts.rowid
       WHERE products_fts MATCH ?
       AND p.is_active = 1
     `;

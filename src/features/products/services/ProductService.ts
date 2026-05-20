@@ -37,13 +37,33 @@ export class ProductService {
    * 상품 목록 조회 (페이지네이션)
    */
   async getProducts(
-    filter: ProductFilter, 
+    filter: ProductFilter,
     pagination: PaginationParams = {}
   ): Promise<PaginatedResponse<Product>> {
     const page = pagination.page || 1;
     const limit = pagination.limit || 20;
     const offset = (page - 1) * limit;
-    
+
+    // 🛡️ 2026-05-20: search 가 있으면 FTS5 + bm25 ranking (한국어 trigram, migration 0275).
+    //   기존: findAll 의 LIKE 만 사용 → 한국어 부분매칭 약함 + ranking 없음.
+    //   영구 패턴: search → searchByText, 일반 list → findAll.
+    //   total count 는 가볍게 추정 (FTS5 는 count 가 비용 큼 → 단일 page 결과 < limit 면 total = offset + len).
+    if (filter.search && filter.search.trim().length >= 1) {
+      const { search: q, ...rest } = filter;
+      const products = await this.repository.searchByText(q, rest, offset, limit);
+      // FTS5 검색은 정확한 count 가 비싸므로 추정. 마지막 페이지 판단만 정확하면 충분.
+      const estimatedTotal = products.length < limit ? offset + products.length : offset + limit + 1;
+      return {
+        data: products,
+        pagination: {
+          page,
+          limit,
+          total: estimatedTotal,
+          totalPages: Math.ceil(estimatedTotal / limit),
+        },
+      };
+    }
+
     const [products, total] = await Promise.all([
       this.repository.findAll(filter, offset, limit),
       this.repository.count(filter)

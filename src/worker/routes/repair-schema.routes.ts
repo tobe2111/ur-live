@@ -176,6 +176,12 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },
+    // 🛡️ 2026-05-20: migration 0271 — 상품별 referral on/off + rate override.
+    { desc: 'products.referral_enabled', sql: "ALTER TABLE products ADD COLUMN referral_enabled INTEGER DEFAULT 1" },
+    { desc: 'products.referral_commission_rate', sql: "ALTER TABLE products ADD COLUMN referral_commission_rate REAL" },
+    // 🛡️ 2026-05-20: migration 0272 — sellers.seller_type / can_broadcast (D 공동구매 3자 분배).
+    { desc: 'sellers.can_broadcast', sql: "ALTER TABLE sellers ADD COLUMN can_broadcast INTEGER DEFAULT 1" },
+    { desc: 'sellers.contact_name', sql: "ALTER TABLE sellers ADD COLUMN contact_name TEXT" },
     { desc: 'table influencer_balances', sql: "CREATE TABLE IF NOT EXISTS influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, total_paid_out INTEGER DEFAULT 0, business_number TEXT, tax_type TEXT DEFAULT 'other_income', bank_name TEXT, bank_account TEXT, account_holder TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'table influencer_attributions', sql: "CREATE TABLE IF NOT EXISTS influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, order_id INTEGER, voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT)" },
     { desc: 'idx_inf_attr_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_inf_attr_influencer ON influencer_attributions(influencer_id, status)" },
@@ -408,6 +414,37 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(guide_type, section_key)
     )` },
+    // 🛡️ 2026-05-20: migration 0274 (user_withdrawals) — 일반 user 현금 출금 신청.
+    //   /api/_internal/repair-schema 한 번 호출로 production 적용 가능.
+    { name: 'user_withdrawals', sql: `CREATE TABLE IF NOT EXISTS user_withdrawals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      amount INTEGER NOT NULL CHECK (amount >= 10000),
+      withholding_tax INTEGER NOT NULL DEFAULT 0,
+      net_amount INTEGER NOT NULL,
+      bank_name TEXT NOT NULL,
+      bank_account TEXT NOT NULL,
+      account_holder TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'requested'
+        CHECK (status IN ('requested','approved','paid','rejected','failed','cancelled')),
+      rejection_reason TEXT,
+      requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      processed_at DATETIME,
+      admin_memo TEXT
+    )` },
+    { name: 'idx_user_withdrawals_user_status', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_status ON user_withdrawals(user_id, status, requested_at DESC)` },
+    { name: 'idx_user_withdrawals_status_requested', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_status_requested ON user_withdrawals(status, requested_at DESC)` },
+    // migration 0273 — 검색 분석 로그.
+    { name: 'search_logs', sql: `CREATE TABLE IF NOT EXISTS search_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT,
+      query TEXT NOT NULL,
+      result_count INTEGER NOT NULL DEFAULT 0,
+      clicked_product_id INTEGER,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_search_logs_query', sql: `CREATE INDEX IF NOT EXISTS idx_search_logs_query ON search_logs(query, created_at DESC)` },
+    { name: 'idx_search_logs_created_at', sql: `CREATE INDEX IF NOT EXISTS idx_search_logs_created_at ON search_logs(created_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

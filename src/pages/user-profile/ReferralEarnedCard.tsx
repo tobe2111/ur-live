@@ -1,7 +1,9 @@
 /**
- * 🛡️ 2026-05-18: 마이페이지 — referral 누적 적립 카드.
- *   /api/affiliate/stats 호출 → 적립 > 0 일 때만 노출 (저맥 사용자에게 노출 안 함).
+ * 🛡️ 2026-05-18 / 2026-05-20: 마이페이지 — referral 누적 적립 카드.
+ *   /api/affiliate/stats 호출 → 적립이 있으면 누적 액수, 없으면 "시작하기" CTA 노출.
  *   클릭 → /influencer 인플 대시보드.
+ *
+ *   2026-05-20 정책 변경 (사용자 요청): 적립 0 도 항상 노출 — 신규 사용자에게 referral 인지/유도.
  */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
