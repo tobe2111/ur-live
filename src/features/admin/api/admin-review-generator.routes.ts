@@ -525,4 +525,61 @@ adminReviewGeneratorRoutes.delete('/reviews/generated-bulk-vouchers', cors(), as
   }
 });
 
+// 🛡️ 2026-05-21: 기존 리뷰의 user_name backfill (사용자 요청 — "이미 생성된 리뷰들 이름도 바꿔줄거야?").
+//   대상: product_reviews.user_name IS NULL AND user_id 가 users 테이블 매칭 가능.
+//   동작: users.name 을 한국어 마스킹 후 UPDATE.
+//     1글자: 그대로 / 2글자: 첫+* / 3+글자: 첫+*+끝.
+//   idempotent — user_name 이미 있으면 skip. 반복 호출 안전.
+//   매일 18 UTC repair-schema cron 에 통합 (사용자가 수동 호출 안 해도 자동 fix).
+adminReviewGeneratorRoutes.post('/reviews/backfill-user-names', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    // user_name 컬럼 ensure (혹시 모를 환경 대비).
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => null);
+
+    // 사전 카운트.
+    const beforeNull = await DB.prepare(
+      `SELECT COUNT(*) as cnt FROM product_reviews WHERE user_name IS NULL OR user_name = ''`
+    ).first<{ cnt: number }>().catch(() => null);
+
+    // 핵심 UPDATE — users 테이블 JOIN 으로 name 가져와서 마스킹.
+    //   D1 SQLite UPDATE FROM 미지원 → subquery 패턴.
+    const result = await DB.prepare(`
+      UPDATE product_reviews
+         SET user_name = (
+           SELECT CASE
+             WHEN name IS NULL OR name = '' THEN NULL
+             WHEN LENGTH(name) = 1 THEN name
+             WHEN LENGTH(name) = 2 THEN SUBSTR(name, 1, 1) || '*'
+             ELSE SUBSTR(name, 1, 1) || '*' || SUBSTR(name, -1, 1)
+           END
+           FROM users WHERE id = product_reviews.user_id
+         )
+       WHERE (user_name IS NULL OR user_name = '')
+         AND EXISTS (
+           SELECT 1 FROM users WHERE id = product_reviews.user_id AND name IS NOT NULL AND name != ''
+         )
+    `).run();
+
+    const afterNull = await DB.prepare(
+      `SELECT COUNT(*) as cnt FROM product_reviews WHERE user_name IS NULL OR user_name = ''`
+    ).first<{ cnt: number }>().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: {
+        before_null: beforeNull?.cnt ?? 0,
+        after_null: afterNull?.cnt ?? 0,
+        updated: result.meta.changes,
+        note: '리뷰 user_name 백필 완료. user_name IS NULL 인 row 는 user_id ↔ users.name 매칭 안 됨 (탈퇴/시스템 등) — 기존 SUBSTR fallback 사용.',
+      },
+    });
+  } catch (err) {
+    return c.json({
+      success: false,
+      error: `backfill 실패: ${(err as Error).message.slice(0, 200)}`,
+    }, 500);
+  }
+});
+
 export default adminReviewGeneratorRoutes;

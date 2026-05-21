@@ -250,6 +250,25 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-21: 기존 리뷰 user_name 백필 — 카카오 이름 masked 적용 (즉시 실행).
+  //   매일 18 UTC cron 도 자동 실행 (영구). 사용자가 바로 보고 싶으면 본 버튼 클릭.
+  async function backfillReviewUserNames() {
+    if (!confirm('user_name IS NULL 인 리뷰들에 users.name 마스킹 적용 (정지원 → 정*원).\n계속하시겠습니까?')) return
+    try {
+      const r = await api.post('/api/admin/reviews/backfill-user-names', {}, { headers: h() })
+      if (r.data?.success) {
+        const d = r.data.data
+        toast.success(`✅ ${d.updated}개 리뷰 갱신 (남은 NULL ${d.after_null}개 — users 매칭 안 됨)`, { duration: 6000 })
+      } else {
+        toast.error(extractErrorMessage(r.data))
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: unknown }; message?: string }
+      console.error('[backfill] threw:', ax)
+      toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
+    }
+  }
+
   // 🛡️ 2026-05-21: 카테고리 분류 종합 진단 (사용자 신고 "분류 안 됨" 추적).
   async function diagnoseClassification() {
     try {
@@ -831,6 +850,13 @@ export default function AdminKtAlphaPage() {
                       title="생성된 리뷰 일괄 삭제 (롤백)"
                     >
                       🧹 리뷰 정리
+                    </button>
+                    {/* 🛡️ 2026-05-21: 기존 리뷰 이름 백필 — users.name 마스킹 일괄 적용. */}
+                    <button onClick={backfillReviewUserNames}
+                      className="px-3 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700"
+                      title="기존 리뷰의 user_name 컬럼을 users.name 마스킹으로 채움"
+                    >
+                      🔄 리뷰 이름 백필
                     </button>
                     <button onClick={deleteAllKtAlpha}
                       className="px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">

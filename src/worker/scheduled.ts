@@ -120,6 +120,30 @@ export async function handleCronScheduled(
         logInfo(`[cron] schema-repair: +${colAdded} columns added (others existed)`)
       }
     }));
+    // 🛡️ 2026-05-21: 리뷰 user_name 백필 — 카카오 이름 masked 자동 적용 (사용자 요청 영구).
+    //   idempotent — user_name IS NULL 인 row 만 처리. 매일 실행해도 안전.
+    ctx.waitUntil(safeCron('review-username-backfill', async () => {
+      try {
+        await env.DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => null);
+        const r = await env.DB.prepare(`
+          UPDATE product_reviews
+             SET user_name = (
+               SELECT CASE
+                 WHEN name IS NULL OR name = '' THEN NULL
+                 WHEN LENGTH(name) = 1 THEN name
+                 WHEN LENGTH(name) = 2 THEN SUBSTR(name, 1, 1) || '*'
+                 ELSE SUBSTR(name, 1, 1) || '*' || SUBSTR(name, -1, 1)
+               END
+               FROM users WHERE id = product_reviews.user_id
+             )
+           WHERE (user_name IS NULL OR user_name = '')
+             AND EXISTS (SELECT 1 FROM users WHERE id = product_reviews.user_id AND name IS NOT NULL AND name != '')
+        `).run().catch(() => null);
+        if (r && r.meta.changes > 0) {
+          logInfo(`[cron] review-username-backfill: +${r.meta.changes} reviews updated`)
+        }
+      } catch (e) { logError('[cron] review-username-backfill', { error: String(e) }) }
+    }));
     // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
     ctx.waitUntil(safeCron('seller-churn-detect', () => handleSellerChurnDetect(env)));
     // 🛡️ 2026-05-15 (TD-G08): ledger 정합성 검증 — Σdebit ≠ Σcredit / 음수 wallet → Discord alert
