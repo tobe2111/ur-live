@@ -50,6 +50,9 @@ async function ensureTable(DB: D1Database) {
       )
     `).run();
   } catch { /* 이미 존재 */ }
+  // 🛡️ 2026-05-21: 누락 컬럼 ALTER — user_name (real user 리뷰 시 카카오 이름 masked 저장).
+  //   기존 0132 마이그레이션엔 없음. ALTER IF NOT EXISTS 미지원 → catch.
+  try { await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run() } catch { /* exists */ }
 }
 
 // GET /api/reviews/product/:productId — 상품 리뷰 목록
@@ -214,12 +217,33 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     }
   }
 
+  // 🛡️ 2026-05-21: 사용자 요청 — 실제 리뷰는 카카오 로그인 이름으로 저장 (영구).
+  //   user.name (Kakao 로그인 시 받은 별명/실명) 을 masked 형식으로 user_name 컬럼에 저장.
+  //   마스킹 규칙: 2글자면 첫+'*' / 3글자 이상이면 첫+'*'+끝 (한국어 패턴).
+  //   user.name 없으면 (드물게 익명) DB users 테이블 fallback → 그것도 없으면 user_id substring.
+  const maskKoreanName = (n: string | null | undefined): string | null => {
+    if (!n || !n.trim()) return null
+    const s = n.trim()
+    if (s.length === 1) return s
+    if (s.length === 2) return s[0] + '*'
+    return s[0] + '*'.repeat(Math.min(s.length - 2, 2)) + s[s.length - 1]
+  }
+  let userNameForReview = maskKoreanName((user as { name?: string }).name)
+  if (!userNameForReview) {
+    // Fallback: users 테이블에서 name 조회 (가입은 했지만 토큰 payload 에 name 없는 경우).
+    try {
+      const u = await DB.prepare(`SELECT name FROM users WHERE id = ? LIMIT 1`)
+        .bind(user.id).first<{ name: string | null }>()
+      userNameForReview = maskKoreanName(u?.name)
+    } catch { /* noop */ }
+  }
+
   await DB.prepare(`
-    INSERT INTO product_reviews (product_id, user_id, order_id, rating, content, images)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO product_reviews (product_id, user_id, user_name, order_id, rating, content, images)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    body.product_id, user.id, body.order_id ?? null,
-    body.rating, body.content ?? '', JSON.stringify(body.images ?? [])
+    body.product_id, user.id, userNameForReview,
+    body.order_id ?? null, body.rating, body.content ?? '', JSON.stringify(body.images ?? [])
   ).run();
 
   // 리뷰 등록 → 셀러 알림
