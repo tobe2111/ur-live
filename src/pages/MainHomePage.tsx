@@ -57,8 +57,8 @@ export default function MainHomePage() {
   return (
     <>
       <SEO
-        title={t('seo.home.title', { defaultValue: '유어딜 — 공동구매로 알뜰한 일상' })}
-        description={t('seo.home.description', { defaultValue: '맛집/숙소/뷰티 공동구매 — 동네에서 함께 모이면 더 싸게.' })}
+        title={t('seo.home.title', { defaultValue: '돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스' })}
+        description={t('seo.home.description', { defaultValue: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.' })}
         url="/"
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />

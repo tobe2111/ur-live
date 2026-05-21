@@ -1407,9 +1407,11 @@ app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
 const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|yeti|naverbot|daumoa|telegram|whatsapp|discord|KakaoTalk-Scrap/i;
 
 const BASE_URL = 'https://live.ur-team.com';
+// 🛡️ 2026-05-21: 사용자 요청 — "돈버는 쇼핑" 키워드 노출 + 오프라인 공동구매 우선.
+//   서버 side rendering 의 OG meta tag 와 크롤러용 fallback HTML (search bot).
 const DEFAULT_OG = {
-  title: '유어딜 - 라이브 커머스 & 맛집 공동구매',
-  desc: '라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑',
+  title: '유어딜 - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스',
+  desc: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.',
   image: `${BASE_URL}/og-image.png`,
 };
 

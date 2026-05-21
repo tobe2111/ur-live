@@ -23,7 +23,8 @@ interface SEOProps {
 }
 
 const SITE_NAME = '유어딜'
-const DEFAULT_DESC = '라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑'
+// 🛡️ 2026-05-21: SEO 타이틀/설명 변경 (사용자 요청) — "돈버는 쇼핑" 강조, 오프라인 공동구매 우선.
+const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.'
 const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.svg'
 const BASE_URL = 'https://live.ur-team.com'
 
@@ -36,7 +37,7 @@ export default function SEO({
   noindex = false,
   jsonLd,
 }: SEOProps) {
-  const fullTitle = title ? `${title} - ${SITE_NAME}` : `${SITE_NAME} - 라이브 커머스 & 맛집 공동구매`
+  const fullTitle = title ? `${title} - ${SITE_NAME}` : `${SITE_NAME} - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스`
   const fullUrl = url ? `${BASE_URL}${url}` : BASE_URL
 
   // v39 FIX: 현재 사용자 언어 기반 og:locale
