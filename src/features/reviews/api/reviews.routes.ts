@@ -63,9 +63,14 @@ reviewsRoutes.get('/product/:productId', async (c) => {
   const limit = Math.min(parseInt(c.req.query('limit') || '20'), 50);
   const offset = (page - 1) * limit;
 
+  // 🛡️ 2026-05-21: 사용자 신고 — 리뷰 이름이 모두 "sys***".
+  //   원인: SUBSTR(user_id, 1, 3) || '***' 가 user_id 첫 3자만 사용했는데
+  //   admin 생성 리뷰는 user_id='system-generated' → "sys***" 항상.
+  //   영구 fix: product_reviews.user_name 컬럼 (생성 시 김*수 등 한국어 masked
+  //   저장됨) 우선 사용, 없으면 기존 SUBSTR fallback (호환성 보존).
   const { results } = await DB.prepare(`
     SELECT r.id, r.rating, r.content, r.images, r.created_at,
-           SUBSTR(r.user_id, 1, 3) || '***' AS user_name
+           COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
     FROM product_reviews r
     WHERE r.product_id = ? AND r.is_visible = 1
     ORDER BY r.created_at DESC

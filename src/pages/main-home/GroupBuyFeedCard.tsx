@@ -30,6 +30,18 @@ interface FeedCardProduct extends Product {
   business_address?: string
   discount_rate?: number
   current_price?: number
+  original_price?: number
+  avg_rating?: number
+  review_count?: number
+  sold_count?: number
+}
+
+// 🛡️ 2026-05-21: 구매 수 사람 친화 포맷 (4 자리 이상 → 만 단위).
+function formatSoldCount(n: number): string {
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`
+  if (n >= 10_000) return `${(n / 10_000).toFixed(1)}만`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}천`
+  return String(n)
 }
 
 function timeRemaining(expiresAt: string | null | undefined): string | null {
@@ -46,25 +58,26 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
 
 export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
   const cat = CATEGORY_META[p.category || 'etc_voucher'] || CATEGORY_META.etc_voucher
+  const price = p.current_price ?? p.price ?? 0
+  const originalPrice = p.original_price ?? 0
+  // 할인율 계산 (있는 값 우선, 없으면 직접 계산).
+  const discount = p.discount_rate ?? (
+    originalPrice > price && originalPrice > 0
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : 0
+  )
+  const rating = p.avg_rating ?? 0
+  const soldCount = p.sold_count ?? 0
   const remaining = timeRemaining(p.expires_at)
   const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
-  const price = p.current_price ?? p.price ?? 0
-  const discount = p.discount_rate ?? 0
-
-  // 🛡️ 2026-05-20: 사용자 명시 — "공구 진행 게이지 필요 없어. 그냥 결제하는 거야."
-  //   → group_buy_current/target/status 의 progress overlay 완전 제거.
-  //   카드는 카테고리 + 할인율 배지 + 가격 + 마감 시간만 노출.
-
-  // 동네명 추출 — business_address 의 첫 2 토큰 (예: "서울 강남구 역삼동 123-45" → "강남구 역삼동")
-  const dong = p.business_address
-    ? p.business_address.split(/\s+/).slice(1, 3).join(' ') || p.business_address.slice(0, 20)
-    : null
 
   return (
     <Link
       to={`/group-buy/${p.id}`}
       className="block group active:opacity-90 transition-opacity"
     >
+      {/* 🛡️ 2026-05-21: 사용자 요청 — 첨부 이미지 (참외 카드) 스타일.
+            구조: [이미지] [원가 strike] [제목] [할인% + 가격] [⭐평점 + 구매수] */}
       <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]">
         {p.image_url ? (
           <img
@@ -80,38 +93,51 @@ export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
           </div>
         )}
 
-        {/* 좌상단 카테고리 배지 */}
-        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/95 dark:bg-black/70 text-[10px] font-bold text-gray-800 dark:text-white backdrop-blur-sm">
-          {cat.emoji} {cat.label}
-        </span>
-
-        {/* 우상단 할인 배지 (있을 때만) */}
-        {discount > 0 && (
-          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-pink-500 text-[10px] font-extrabold text-white">
-            {discount}% OFF
+        {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
+        {isUrgent && (
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm">
+            ⏰ {remaining}
           </span>
         )}
       </div>
 
       <div className="pt-2 px-0.5">
-        <p className="text-[13px] font-semibold text-gray-900 dark:text-white line-clamp-1">
+        {/* 원가 strikethrough (있을 때만) */}
+        {originalPrice > price && originalPrice > 0 && (
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through leading-tight">
+            {formatNumber(originalPrice)}원
+          </p>
+        )}
+
+        {/* 제목 — 2줄 max */}
+        <p className="text-[13px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-tight mt-0.5">
           {p.name}
         </p>
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-          {p.seller_name || '셀러'}
-          {dong && <span className="mx-1 text-gray-300">·</span>}
-          {dong && <span>{dong}</span>}
-        </p>
-        <div className="flex items-baseline gap-1.5 mt-1">
-          <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">
+
+        {/* 할인% + 최종가 — 핵심 강조 */}
+        <p className="flex items-baseline gap-1 mt-1">
+          {discount > 0 && (
+            <span className="text-[15px] font-extrabold text-red-500">{discount}%</span>
+          )}
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(price)}원
           </span>
-          {remaining && (
-            <span className={`ml-auto text-[10px] font-bold ${isUrgent ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
-              ⏰ {remaining}
-            </span>
-          )}
-        </div>
+        </p>
+
+        {/* ⭐ 평점 + 구매수 */}
+        {(rating > 0 || soldCount > 0) && (
+          <p className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+            {rating > 0 && (
+              <span className="flex items-center gap-0.5">
+                <span className="text-yellow-500">★</span>
+                <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+              </span>
+            )}
+            {soldCount > 0 && (
+              <span>구매 {formatSoldCount(soldCount)}</span>
+            )}
+          </p>
+        )}
       </div>
     </Link>
   )

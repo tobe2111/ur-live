@@ -11,6 +11,8 @@ import { reportFunnel } from '@/lib/web-vitals-report'
 import Confetti from '@/components/group-buy/Confetti'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import RestaurantMiniMap from '@/components/RestaurantMiniMap'
+// 🛡️ 2026-05-21: 교환권 리뷰 — 상품 상세와 동일 컴포넌트 (product_reviews 테이블 공통).
+import ProductReviewsSection from '@/pages/product-detail/ProductReviews'
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -721,6 +723,10 @@ export default function GroupBuyDetailPage() {
             바우처 사용 기한: {new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}
           </p>
         )}
+
+        {/* 🛡️ 2026-05-21: 교환권에도 리뷰 작성/조회 가능 (사용자 요청).
+              product_reviews 테이블은 일반 상품과 공통 — 동일 컴포넌트 재사용. */}
+        <ProductReviewsSection productId={String(detail.id)} />
 
         <div style={{ height: 100 }} />
       </main>

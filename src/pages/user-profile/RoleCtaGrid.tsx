@@ -70,20 +70,33 @@ export default function RoleCtaGrid() {
   if (visible.length === 0) return null
 
   return (
-    <div className="mb-3">
-      <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 tracking-wide mb-2 px-1">
-        🚀 추가 역할로 시작하기
+    <div className="mb-4 w-full min-w-0">
+      <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2.5 px-0.5">
+        추가 역할로 시작하기
       </p>
-      <div className="grid grid-cols-2 gap-2">
+      {/* 🛡️ 2026-05-21: 사용자 신고 — UI 디자인 별로 + 화면 튀어나감.
+            영구 fix:
+              - 부모 width 제약 (min-w-0 + w-full)
+              - grid-cols-2 + gap-2.5 (간격 일관)
+              - 카드 텍스트 truncate / line-clamp 적용 (가로 overflow 방지)
+              - 단순화된 디자인 — 작은 아이콘 + 1줄 제목 + 1줄 설명
+              - 색상 단색 border 으로 강조 (gradient 제거 — 시각 노이즈 ↓) */}
+      <div className="grid grid-cols-2 gap-2.5">
         {visible.map(c => (
           <Link
             key={c.to}
             to={c.to}
-            className={`rounded-2xl border p-3 active:scale-[0.98] transition-transform ${c.bg}`}
+            className={`relative rounded-xl border p-3 active:scale-[0.98] transition-transform min-w-0 ${c.bg}`}
           >
-            <p className="text-2xl mb-1.5">{c.icon}</p>
-            <p className="text-[13px] font-extrabold text-gray-900 dark:text-white leading-tight">{c.title}</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">{c.desc}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl shrink-0" aria-hidden="true">{c.icon}</span>
+              <p className="text-[13px] font-extrabold text-gray-900 dark:text-white truncate flex-1 min-w-0">
+                {c.title}
+              </p>
+            </div>
+            <p className="text-[11px] text-gray-600 dark:text-gray-400 line-clamp-1 leading-tight">
+              {c.desc}
+            </p>
           </Link>
         ))}
       </div>
