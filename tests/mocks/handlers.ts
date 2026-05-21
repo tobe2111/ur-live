@@ -318,6 +318,63 @@ export const handlers = [
     })
   }),
 
+  // 🛡️ 2026-05-21: 추천 commission 출금 — 인증 헤더 없으면 401.
+  http.post('/api/referral-tree/withdrawals', async ({ request }) => {
+    if (!request.headers.get('Authorization')) {
+      return HttpResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    const body = (await request.json()) as { bank_name?: string; account_number?: string; account_holder?: string }
+    if (!body?.bank_name?.trim() || !body?.account_number?.trim() || !body?.account_holder?.trim()) {
+      return HttpResponse.json({ success: false, error: '은행명/계좌번호/예금주를 모두 입력하세요.' }, { status: 400 })
+    }
+    if (!/^[\d-]{5,30}$/.test(body.account_number)) {
+      return HttpResponse.json({ success: false, error: '계좌번호 형식이 올바르지 않습니다.' }, { status: 400 })
+    }
+    return HttpResponse.json({ success: true, data: { withdrawal_id: 1, total_amount: 25000, commission_count: 3 } })
+  }),
+
+  http.get('/api/referral-tree/withdrawals', ({ request }) => {
+    if (!request.headers.get('Authorization')) {
+      return HttpResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    return HttpResponse.json({ success: true, data: [] })
+  }),
+
+  http.get('/api/referral-tree/admin/withdrawals', ({ request }) => {
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status') || 'pending'
+    const auth = request.headers.get('Authorization') || ''
+    if (!auth.includes('admin')) {
+      return HttpResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
+    if (!['pending', 'approved', 'rejected', 'all'].includes(status)) {
+      return HttpResponse.json({ success: false, error: 'Invalid status' }, { status: 400 })
+    }
+    return HttpResponse.json({ success: true, data: [] })
+  }),
+
+  http.patch('/api/referral-tree/admin/withdrawals/:id/approve', async ({ request, params }) => {
+    if (!String(request.headers.get('Authorization') || '').includes('admin')) {
+      return HttpResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
+    const id = parseInt(String(params.id), 10)
+    if (!Number.isFinite(id)) return HttpResponse.json({ success: false, error: 'Invalid id' }, { status: 400 })
+    return HttpResponse.json({ success: true })
+  }),
+
+  http.patch('/api/referral-tree/admin/withdrawals/:id/reject', async ({ request, params }) => {
+    if (!String(request.headers.get('Authorization') || '').includes('admin')) {
+      return HttpResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
+    const id = parseInt(String(params.id), 10)
+    if (!Number.isFinite(id)) return HttpResponse.json({ success: false, error: 'Invalid id' }, { status: 400 })
+    const body = (await request.json()) as { rejection_reason?: string }
+    if (!body?.rejection_reason?.trim()) {
+      return HttpResponse.json({ success: false, error: '거절 사유를 입력하세요.' }, { status: 400 })
+    }
+    return HttpResponse.json({ success: true })
+  }),
+
   // 🛡️ 2026-05-20: User withdrawal (user_withdrawals migration 0274) — 잔액 확인 + 8.8% 원천징수.
   http.post('/api/points/withdraw', async ({ request }) => {
     const body = (await request.json()) as {

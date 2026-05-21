@@ -16,6 +16,17 @@ export default function SellerMealVoucherNewPage() {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
 
+  // 🛡️ 2026-05-21: UX 단순화 — 마감 7일 후, 만료 90일 후 기본값.
+  //   기존엔 사용자가 두 날짜를 매번 입력해야 했음.
+  const defaultDeadline = (() => {
+    const d = new Date(Date.now() + 7 * 24 * 3600 * 1000)
+    return d.toISOString().slice(0, 16)
+  })()
+  const defaultExpiry = (() => {
+    const d = new Date(Date.now() + 90 * 24 * 3600 * 1000)
+    return d.toISOString().slice(0, 10)
+  })()
+
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -29,10 +40,10 @@ export default function SellerMealVoucherNewPage() {
     restaurant_phone: '',
     restaurant_lat: '',
     restaurant_lng: '',
-    voucher_expiry: '',
+    voucher_expiry: defaultExpiry,
     voucher_terms: '',
     group_buy_target: 10,
-    group_buy_deadline: '',
+    group_buy_deadline: defaultDeadline,
     store_verify_pin: '',
     stock: 100,
     // 🛡️ 2026-05-15: 티어 할인 — 단계별 더 많이 모이면 더 큰 할인
@@ -43,6 +54,8 @@ export default function SellerMealVoucherNewPage() {
     ] as Array<{ min: number; discount_pct: number }>,
     enable_tiers: false,
   })
+  // 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 티어 할인 + PIN 등 부가 항목 접기.
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [placeSelected, setPlaceSelected] = useState(false)
   const [suggestedImages, setSuggestedImages] = useState<string[]>([])
@@ -604,6 +617,18 @@ export default function SellerMealVoucherNewPage() {
                 </div>
               </div>
 
+              {/* 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 티어 할인 접기 */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(v => !v)}
+                className="w-full flex items-center justify-between py-2 px-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition"
+              >
+                <span>⚙️ 고급 설정 (이용약관 · 단계별 할인)</span>
+                <span className="text-xs text-gray-400">{showAdvanced ? '접기 ▲' : '펼치기 ▼'}</span>
+              </button>
+
+              {showAdvanced && (
+              <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.usageTerms')}</label>
                 <textarea
@@ -671,6 +696,8 @@ export default function SellerMealVoucherNewPage() {
                   </div>
                 )}
               </div>
+              </>
+              )}
             </div>
           </div>
 

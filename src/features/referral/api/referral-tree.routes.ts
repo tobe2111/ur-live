@@ -941,9 +941,9 @@ referralTreeRoutes.patch('/admin/withdrawals/:id/approve', requireAdmin(), async
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const body = await c.req.json<{ admin_memo?: string }>().catch(() => ({} as { admin_memo?: string }))
 
-  const w = await queryFirst<{ status: string; beneficiary_id: string }>(
+  const w = await queryFirst<{ status: string; beneficiary_id: string; beneficiary_type: string; total_amount: number; bank_name: string; account_number: string }>(
     DB,
-    "SELECT status, beneficiary_id FROM commission_withdrawals WHERE id = ?",
+    "SELECT status, beneficiary_id, beneficiary_type, total_amount, bank_name, account_number FROM commission_withdrawals WHERE id = ?",
     [id],
   )
   if (!w) return c.json({ success: false, error: 'Not found' }, 404)
@@ -960,6 +960,9 @@ referralTreeRoutes.patch('/admin/withdrawals/:id/approve', requireAdmin(), async
        SET status = 'paid_out', paid_out_at = datetime('now')
      WHERE withdrawal_request_id = ? AND status = 'withdrawal_requested'`,
   ).bind(id).run()
+
+  // 🛡️ 2026-05-21: 수령자에게 알림톡 발송 — 송금 완료 안내.
+  c.executionCtx?.waitUntil(notifyCommissionWithdrawal(c.env as unknown as Record<string, unknown>, w.beneficiary_id, w.beneficiary_type, w.total_amount, w.bank_name, w.account_number, 'approved'))
 
   return c.json({ success: true })
 })
@@ -993,8 +996,63 @@ referralTreeRoutes.patch('/admin/withdrawals/:id/reject', requireAdmin(), async 
      WHERE withdrawal_request_id = ? AND status = 'withdrawal_requested'`,
   ).bind(id).run()
 
+  // 🛡️ 2026-05-21: 수령자에게 알림톡 — 거절 사유 안내.
+  const wFull = await queryFirst<{ beneficiary_id: string; beneficiary_type: string; total_amount: number; bank_name: string; account_number: string }>(
+    DB, "SELECT beneficiary_id, beneficiary_type, total_amount, bank_name, account_number FROM commission_withdrawals WHERE id = ?", [id],
+  )
+  if (wFull) {
+    c.executionCtx?.waitUntil(notifyCommissionWithdrawal(c.env as unknown as Record<string, unknown>, wFull.beneficiary_id, wFull.beneficiary_type, wFull.total_amount, wFull.bank_name, wFull.account_number, 'rejected', reason))
+  }
+
   return c.json({ success: true })
 })
+
+/**
+ * 🛡️ 2026-05-21: 출금 승인/거절 시 수령자에게 알림톡 발송.
+ *   - users / sellers / agencies 테이블에서 phone 조회 (beneficiary_type 별 분기).
+ *   - 환경변수 미설정 시 silent skip (sendSystemAlimtalk 내부 처리).
+ *   - waitUntil 으로 비동기 실행 — 응답 지연 없음.
+ */
+async function notifyCommissionWithdrawal(
+  env: Record<string, unknown>,
+  beneficiaryId: string,
+  beneficiaryType: string,
+  amount: number,
+  bankName: string,
+  accountNumber: string,
+  status: 'approved' | 'rejected',
+  rejectionReason?: string,
+): Promise<void> {
+  try {
+    const DB = (env as { DB?: D1Database }).DB
+    if (!DB) return
+
+    let phone: string | null = null
+    if (beneficiaryType === 'agency') {
+      const row = await DB.prepare("SELECT contact_phone as phone FROM agencies WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
+      phone = row?.phone || null
+    } else if (beneficiaryType === 'seller') {
+      const row = await DB.prepare("SELECT phone FROM sellers WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
+      phone = row?.phone || null
+    } else {
+      const row = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
+      phone = row?.phone || null
+    }
+    if (!phone) return
+
+    const maskedAccount = accountNumber.length >= 4 ? `****${accountNumber.slice(-4)}` : accountNumber
+    const amountStr = amount.toLocaleString('ko-KR')
+    const message = status === 'approved'
+      ? `[유어딜] 추천 commission ${amountStr}원이 ${bankName} ${maskedAccount} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.`
+      : `[유어딜] 추천 commission 출금 신청 ${amountStr}원이 거절되었습니다.\n사유: ${rejectionReason || '관리자 검토'}\n잔액은 원상 복원되어 다시 신청 가능합니다.`
+    const templateCode = status === 'approved' ? 'commission_withdrawal_approved' : 'commission_withdrawal_rejected'
+
+    const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+    await sendSystemAlimtalk(env, phone, templateCode, message)
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn('[notifyCommissionWithdrawal]', e)
+  }
+}
 
 export { referralTreeRoutes }
 
