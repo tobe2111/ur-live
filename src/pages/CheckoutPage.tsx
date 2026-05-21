@@ -286,11 +286,20 @@ export default function CheckoutPage() {
   })
 
   const handlePayWithDeals = async () => {
-    if (!selectedAddress) { toast.error(t('common.addressRequired')); return }
+    // 🛡️ 2026-05-21: 교환권만 담긴 주문은 휴대폰 MMS 발송 — 배송지 불필요.
+    //   백엔드 KT Alpha 자동 발송이 users.phone 으로 직접 발송. 클라이언트 주소 입력 skip.
+    if (!isAllDealOnly && !selectedAddress) { toast.error(t('common.addressRequired')); return }
     setPayingWithDeals(true)
     try {
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
       if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
+      const shippingPayload = isAllDealOnly
+        ? { name: '', phone: '', postal_code: '', address1: '교환권 — 휴대폰 MMS 발송', address2: '' }
+        : {
+            name: selectedAddress!.recipient_name, phone: selectedAddress!.phone,
+            postal_code: selectedAddress!.postal_code, address1: selectedAddress!.address,
+            address2: selectedAddress!.address_detail || '',
+          }
       const res = await api.post('/api/points/pay', {
         order_number: orderNumber, total_amount: totalAmount,
         items: cartItems.map(item => ({
@@ -298,11 +307,7 @@ export default function CheckoutPage() {
           quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
           seller_id: item.seller_id ? String(item.seller_id) : undefined,
         })),
-        shipping: {
-          name: selectedAddress.recipient_name, phone: selectedAddress.phone,
-          postal_code: selectedAddress.postal_code, address1: selectedAddress.address,
-          address2: selectedAddress.address_detail || '',
-        },
+        shipping: shippingPayload,
       })
       if (res.data.success) {
         if (couponId && couponDiscount > 0) {
@@ -351,69 +356,102 @@ export default function CheckoutPage() {
       }} />
 
       <main className="ur-content-narrow pb-52" style={{ background: '#F4F4F4' }}>
-        <div className="flex flex-col">
-          <div className="flex flex-1 flex-col lg:rounded-3xl">
-            {/* 배송지 + 모달 (TD-018 final pass 추출) */}
-            <CheckoutAddressSection
-              userId={userId}
-              navigateToLogin={() => navigate('/login')}
-              selectedAddress={selectedAddress}
-              onAddressSelected={setSelectedAddress}
-            />
-
-            <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
-
-            {/* 주문 상품 정보 */}
-            <OrderItemsList sellerGroups={sellerGroups} totalItemCount={cartItems.length} />
-
-            {/* 쿠폰 적용 */}
-            <CheckoutCouponSection
-              couponCode={couponCode}
-              setCouponCode={setCouponCode}
-              couponDiscount={couponDiscount}
-              totalAmount={totalAmount}
-              onApplied={(discount, id) => { setCouponDiscount(discount); setCouponId(id) }}
-            />
-
-            <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
-
-            {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal') */}
-            <PaymentSection
-              paymentMethod={paymentMethod}
-              setPaymentMethod={setPaymentMethod}
-              dealOnly={isAllDealOnly}
-              dealBalance={dealBalance}
-              dealToUse={dealToUse}
-              setDealToUse={setDealToUse}
-              totalBeforeDeal={totalBeforeDeal}
-              totalAmount={totalAmount}
-              payingWithDeals={payingWithDeals}
-              onPayWithDeals={handlePayWithDeals}
-              userId={userId || ''}
-              cartItems={cartItems}
-              totalShippingFee={totalShippingFee}
-              clientKey={clientKey}
-              selectedAddressOk={!!selectedAddress}
-              onBeforePayment={handleBeforePayment}
-              onTossPaymentSuccess={(orderId, paymentKey, amount) => {
-                navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
-              }}
-              onStripePaymentSuccess={(orderId, paymentIntentId, amount) => {
-                navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
-              }}
-            />
+        {/* 🛡️ 2026-05-21: cartItems 로드 전엔 결제 섹션 자체 렌더 금지 — race condition 영구 fix.
+              로딩 도중 paymentMethod 가 'toss' 기본값이면 일반 상품 흐름으로 잠깐 보였다가
+              isAllDealOnly 로 전환되며 깜빡임 발생. 로딩 중엔 빈 화면 + 스피너만 노출. */}
+        {cartItems.length === 0 ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col">
+            <div className="flex flex-1 flex-col lg:rounded-3xl">
+              {/* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 배송지/쿠폰 섹션 숨김.
+                    KT Alpha 자동 발송이 users.phone 으로 직접 처리 → 사용자 주소 입력 불요.
+                    쿠폰도 deal_only 상품엔 적용 안 됨 (백엔드 차단). */}
+              {!isAllDealOnly && (
+                <>
+                  <CheckoutAddressSection
+                    userId={userId}
+                    navigateToLogin={() => navigate('/login')}
+                    selectedAddress={selectedAddress}
+                    onAddressSelected={setSelectedAddress}
+                  />
+                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
+                </>
+              )}
 
-        {/* 결제 예정금액 요약 */}
-        <CheckoutOrderSummary
-          subtotal={subtotal}
-          totalShippingFee={totalShippingFee}
-          couponDiscount={couponDiscount}
-          totalGroupBuyDiscount={totalGroupBuyDiscount}
-          dealToUse={dealToUse}
-          totalAmount={totalAmount}
-        />
+              {isAllDealOnly && (
+                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+                  <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
+                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 p-3 flex items-start gap-3">
+                    <span className="text-2xl shrink-0">📱</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-emerald-700 dark:text-emerald-300">휴대폰 MMS 즉시 발송</p>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 leading-relaxed">
+                        결제 완료 즉시 가입하신 휴대폰 번호로 교환권이 발송됩니다. 배송지 입력은 필요 없습니다.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* 주문 상품 정보 */}
+              <OrderItemsList sellerGroups={sellerGroups} totalItemCount={cartItems.length} />
+
+              {/* 쿠폰 — 교환권 전용은 적용 불가 */}
+              {!isAllDealOnly && (
+                <CheckoutCouponSection
+                  couponCode={couponCode}
+                  setCouponCode={setCouponCode}
+                  couponDiscount={couponDiscount}
+                  totalAmount={totalAmount}
+                  onApplied={(discount, id) => { setCouponDiscount(discount); setCouponId(id) }}
+                />
+              )}
+
+              <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
+
+              {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal') */}
+              <PaymentSection
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                dealOnly={isAllDealOnly}
+                dealBalance={dealBalance}
+                dealToUse={dealToUse}
+                setDealToUse={setDealToUse}
+                totalBeforeDeal={totalBeforeDeal}
+                totalAmount={totalAmount}
+                payingWithDeals={payingWithDeals}
+                onPayWithDeals={handlePayWithDeals}
+                userId={userId || ''}
+                cartItems={cartItems}
+                totalShippingFee={totalShippingFee}
+                clientKey={clientKey}
+                selectedAddressOk={isAllDealOnly || !!selectedAddress}
+                onBeforePayment={handleBeforePayment}
+                onTossPaymentSuccess={(orderId, paymentKey, amount) => {
+                  navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
+                }}
+                onStripePaymentSuccess={(orderId, paymentIntentId, amount) => {
+                  navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 결제 예정금액 요약 — 교환권은 배송비/쿠폰 제거된 단순 요약 */}
+        {cartItems.length > 0 && (
+          <CheckoutOrderSummary
+            subtotal={subtotal}
+            totalShippingFee={isAllDealOnly ? 0 : totalShippingFee}
+            couponDiscount={isAllDealOnly ? 0 : couponDiscount}
+            totalGroupBuyDiscount={totalGroupBuyDiscount}
+            dealToUse={dealToUse}
+            totalAmount={totalAmount}
+          />
+        )}
       </main>
     </div>
   )
