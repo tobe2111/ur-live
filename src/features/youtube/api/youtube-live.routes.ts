@@ -2216,16 +2216,20 @@ app.post('/live/:id/refresh-thumbnail', async (c) => {
   if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid id' }, 400)
   try {
     const stream = await c.env.DB.prepare(
-      'SELECT youtube_video_id FROM live_streams WHERE id = ? AND seller_id = ?'
-    ).bind(streamId, sellerId).first<{ youtube_video_id: string }>()
+      'SELECT youtube_video_id, started_at FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<{ youtube_video_id: string; started_at: string | null }>()
 
     if (!stream?.youtube_video_id) {
       return c.json({ success: false, error: 'No YouTube video' }, 404)
     }
 
-    // hqdefault → maxresdefault 폴백 (maxres 가 없는 케이스 대비)
+    // 🛡️ 2026-05-21: 라이브 시작 5분 미만 → hqdefault (콘솔 404 노이즈 제거).
+    //   maxresdefault 는 라이브 시작 후 약 5분 후 생성됨.
+    const startedMs = stream.started_at ? new Date(stream.started_at).getTime() : 0
+    const ageMs = startedMs > 0 ? Date.now() - startedMs : Infinity
+    const variant = ageMs >= 5 * 60 * 1000 ? 'maxresdefault' : 'hqdefault'
     const cacheBust = Date.now()
-    const ytThumb = `https://i.ytimg.com/vi/${stream.youtube_video_id}/maxresdefault.jpg?v=${cacheBust}`
+    const ytThumb = `https://i.ytimg.com/vi/${stream.youtube_video_id}/${variant}.jpg?v=${cacheBust}`
 
     await c.env.DB.prepare(`
       UPDATE live_streams

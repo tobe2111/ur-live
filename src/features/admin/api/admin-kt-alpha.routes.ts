@@ -110,7 +110,7 @@ adminKtAlphaRoutes.patch('/kt-alpha/settings', cors(), async (c) => {
 adminKtAlphaRoutes.post('/kt-alpha/sync', cors(), async (c) => {
   try {
     const env = c.env as unknown as { DB: D1Database; KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
-    const { runKtAlphaCatalogSync } = await import('@/worker/cron/kt-alpha-catalog-sync')
+    const { runKtAlphaCatalogSync } = await import('../../../worker/cron/kt-alpha-catalog-sync')
     const result = await runKtAlphaCatalogSync(env)
     return c.json({ success: true, data: result })
   } catch (err) {
@@ -255,7 +255,7 @@ adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
     if (!userIdRow?.value) {
       return c.json({ success: false, error: 'kt_alpha_user_id 설정 안 됨' }, 400)
     }
-    const { getBizMoneyBalance } = await import('@/worker/utils/giftishow-api')
+    const { getBizMoneyBalance } = await import('../../../worker/utils/giftishow-api')
     const bal = await getBizMoneyBalance(env, userIdRow.value)
     // 🛡️ 2026-05-21: UPSERT — UPDATE 만 쓰면 row 없을 때 silent no-op.
     await c.env.DB.prepare(
@@ -756,77 +756,113 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/auto-classify', cors(), async (c) 
 // 🛡️ 2026-05-21: KT Alpha 전체 재싱크 + 진단 — "교환권이 더 많은데 다 안 불러왔지?".
 //   기본 sync 는 maxPages=50 (5000 cap). 더 많을 경우 maxPages 늘려서 강제 재싱크.
 //   응답: KT API 가 보고한 totalExpected + 실제 fetch 한 개수 + DB 저장 결과.
-adminKtAlphaRoutes.post('/kt-alpha/full-resync', cors(), async (c) => {
+// 🛡️ 2026-05-21: full-resync 영구 fix — Worker timeout 우회 (이전 무응답 버그).
+//   원인: 200 페이지 × 1초 = 200초+ → Worker wallclock 30초 한도 초과 → 클라이언트 응답 못 받음.
+//   영구: 페이지 분할 progressive — 1 호출당 N 페이지만 처리 + next_page 반환.
+//        클라이언트가 next_page null 될 때까지 자동 loop.
+//   장점: Worker timeout 0 가능성. 진행률 toast 노출. 어떤 페이지에서 실패해도 재시작 가능.
+adminKtAlphaRoutes.post('/kt-alpha/sync-page', cors(), async (c) => {
   const env = c.env as unknown as { DB: D1Database; KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
   if (!env.KT_ALPHA_AUTH_CODE) return c.json({ success: false, error: 'KT_ALPHA_AUTH_CODE 미설정' }, 503)
 
+  const startPage = Math.max(1, Number(c.req.query('start_page') || 1))
+  const pageCount = Math.max(1, Math.min(15, Number(c.req.query('page_count') || 10)))
+  const pageSize = 100
+
   try {
-    const { fetchAllGoods, goodsItemToCatalogRow, listGoods } = await import('@/worker/utils/giftishow-api')
+    const { listGoods, goodsItemToCatalogRow } = await import('../../../worker/utils/giftishow-api')
 
-    // 첫 페이지로 listNum (KT API 가 보고한 total) 확인.
-    const first = await listGoods({ ...env, KT_ALPHA_DEV_MODE: 'N' }, { start: 1, size: 100 })
-    const totalReported = first.listNum ?? 0
-
-    // pageSize=100, maxPages=200 (최대 20000 까지).
-    const all = await fetchAllGoods({ ...env, KT_ALPHA_DEV_MODE: 'N' }, { pageSize: 100, maxPages: 200 })
-
-    // DB 저장 — 기존 sync cron 과 동일 로직 (upsert).
-    let synced = 0
-    const statements = []
-    for (const row of all.map(goodsItemToCatalogRow)) {
-      statements.push(env.DB.prepare(`
-        INSERT INTO gift_catalog (
-          gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
-          sale_price, discount_price, real_price, discount_rate,
-          image_url_small, image_url_large, desc_image_url,
-          goods_type_name, goods_type_detail, category_seq,
-          affiliate_id, affiliate_name, valid_period_type, valid_period_days,
-          goods_state, popular, is_active, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NOR', 0, 1, datetime('now'))
-        ON CONFLICT(gift_code) DO UPDATE SET
-          name = excluded.name, brand_code = excluded.brand_code, brand_name = excluded.brand_name,
-          brand_icon_url = excluded.brand_icon_url, sale_price = excluded.sale_price,
-          discount_price = excluded.discount_price, real_price = excluded.real_price,
-          discount_rate = excluded.discount_rate, image_url_small = excluded.image_url_small,
-          image_url_large = excluded.image_url_large, desc_image_url = excluded.desc_image_url,
-          goods_type_name = excluded.goods_type_name, goods_type_detail = excluded.goods_type_detail,
-          category_seq = excluded.category_seq, affiliate_id = excluded.affiliate_id,
-          affiliate_name = excluded.affiliate_name, valid_period_type = excluded.valid_period_type,
-          valid_period_days = excluded.valid_period_days, is_active = 1,
-          updated_at = datetime('now')
-      `).bind(
-        row.gift_code, row.goods_no, row.name, row.brand_code, row.brand_name, row.brand_icon_url,
-        row.sale_price, row.discount_price, row.real_price, row.discount_rate,
-        row.image_url_small, row.image_url_large, row.desc_image_url,
-        row.goods_type_name, row.goods_type_detail, row.category_seq,
-        row.affiliate_id, row.affiliate_name, row.valid_period_type, row.valid_period_days,
-      ))
+    // 1) 페이지 범위 fetch (직렬, KT API 가 rate-limit 있을 수 있음).
+    type Goods = Parameters<typeof goodsItemToCatalogRow>[0]
+    const items: Goods[] = []
+    let totalReported = 0
+    let emptyReached = false
+    for (let p = startPage; p < startPage + pageCount; p++) {
+      const start = (p - 1) * pageSize + 1
+      const res = await listGoods({ ...env, KT_ALPHA_DEV_MODE: 'N' }, { start, size: pageSize })
+      if (p === startPage) totalReported = res.listNum ?? 0
+      if (!res.goodsList || res.goodsList.length === 0) { emptyReached = true; break }
+      items.push(...res.goodsList)
+      if (res.goodsList.length < pageSize) { emptyReached = true; break }
     }
-    // batch 50 단위.
-    for (let i = 0; i < statements.length; i += 50) {
-      const chunk = statements.slice(i, i + 50)
-      try { await env.DB.batch(chunk); synced += chunk.length }
-      catch { /* batch fail 시 개별 retry */
-        for (const s of chunk) { try { await s.run(); synced++ } catch { /* skip */ } }
+
+    // 2) DB upsert (batch 50).
+    let synced = 0
+    if (items.length > 0) {
+      const statements = items.map(item => {
+        const row = goodsItemToCatalogRow(item)
+        return env.DB.prepare(`
+          INSERT INTO gift_catalog (
+            gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
+            sale_price, discount_price, real_price, discount_rate,
+            image_url_small, image_url_large, desc_image_url,
+            goods_type_name, goods_type_detail, category_seq,
+            affiliate_id, affiliate_name, valid_period_type, valid_period_days,
+            goods_state, popular, is_active, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NOR', 0, 1, datetime('now'))
+          ON CONFLICT(gift_code) DO UPDATE SET
+            name = excluded.name, brand_code = excluded.brand_code, brand_name = excluded.brand_name,
+            brand_icon_url = excluded.brand_icon_url, sale_price = excluded.sale_price,
+            discount_price = excluded.discount_price, real_price = excluded.real_price,
+            discount_rate = excluded.discount_rate, image_url_small = excluded.image_url_small,
+            image_url_large = excluded.image_url_large, desc_image_url = excluded.desc_image_url,
+            goods_type_name = excluded.goods_type_name, goods_type_detail = excluded.goods_type_detail,
+            category_seq = excluded.category_seq, affiliate_id = excluded.affiliate_id,
+            affiliate_name = excluded.affiliate_name, valid_period_type = excluded.valid_period_type,
+            valid_period_days = excluded.valid_period_days, is_active = 1,
+            updated_at = datetime('now')
+        `).bind(
+          row.gift_code, row.goods_no, row.name, row.brand_code, row.brand_name, row.brand_icon_url,
+          row.sale_price, row.discount_price, row.real_price, row.discount_rate,
+          row.image_url_small, row.image_url_large, row.desc_image_url,
+          row.goods_type_name, row.goods_type_detail, row.category_seq,
+          row.affiliate_id, row.affiliate_name, row.valid_period_type, row.valid_period_days,
+        )
+      })
+      for (let i = 0; i < statements.length; i += 50) {
+        const chunk = statements.slice(i, i + 50)
+        try { await env.DB.batch(chunk); synced += chunk.length }
+        catch { for (const s of chunk) { try { await s.run(); synced++ } catch { /* skip */ } } }
       }
     }
+
+    // 3) 다음 페이지 — empty 면 종료, 아니면 다음 페이지 반환.
+    const nextPage = emptyReached ? null
+      : totalReported > 0
+        ? (startPage + pageCount > Math.ceil(totalReported / pageSize) ? null : startPage + pageCount)
+        : startPage + pageCount
 
     return c.json({
       success: true,
       data: {
-        total_reported_by_kt: totalReported,
-        actually_fetched: all.length,
+        processed_pages: pageCount,
+        processed_items: items.length,
         db_synced: synced,
-        hint: all.length < totalReported
-          ? `⚠️ KT API 가 ${totalReported}개 있다고 보고했지만 ${all.length}개만 fetch 됨. maxPages 더 늘려야 할 수 있음.`
-          : all.length === totalReported
-          ? `✅ KT API total 과 fetch 일치 — 모든 상품 받음.`
-          : `ℹ️ fetch ${all.length}개 (KT total 미보고).`,
+        next_page: nextPage,
+        total_reported: totalReported,
+        done: nextPage === null,
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: `full-resync 실패: ${(err as Error).message.slice(0, 200)}` }, 500)
+    return c.json({ success: false, error: `sync-page 실패 (page ${startPage}-${startPage + pageCount - 1}): ${(err as Error).message.slice(0, 200)}` }, 500)
   }
+})
+
+// 🛡️ 2026-05-21: legacy alias — 기존 클라이언트 호환. 1 페이지만 처리하고 응답.
+//   클라이언트가 progressive loop 으로 다시 호출하는 패턴.
+adminKtAlphaRoutes.post('/kt-alpha/full-resync', cors(), async (c) => {
+  // start_page=1, page_count=10 로 위 endpoint 호출 (1차 페이지 처리).
+  const url = new URL(c.req.url)
+  url.pathname = '/api/admin/kt-alpha/sync-page'
+  url.searchParams.set('start_page', '1')
+  url.searchParams.set('page_count', '10')
+  return c.json({
+    success: true,
+    data: {
+      message: '⚠️ 이 endpoint 는 deprecated. 어드민 UI 의 "📦 전체 재싱크" 버튼을 사용하세요 (자동 progressive loop).',
+      use_endpoint: 'POST /api/admin/kt-alpha/sync-page?start_page=N&page_count=10',
+    },
+  })
 })
 
 // 🛡️ 2026-05-21: 사용자 요청 — "전체 즉시 실행" mega endpoint.

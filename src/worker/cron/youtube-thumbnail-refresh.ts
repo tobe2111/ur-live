@@ -18,7 +18,13 @@ interface LiveStream {
   id: number
   youtube_video_id: string
   custom_thumbnail_url: string | null
+  started_at: string | null
 }
+
+// 🛡️ 2026-05-21: 라이브 시작 후 maxresdefault 가 생성되기까지 ~5분 소요.
+//   그 사이엔 hqdefault (항상 존재, 480x360) 사용 → 콘솔 404 노이즈 제거.
+//   5분 경과 후 maxresdefault (1280x720) 로 자동 업그레이드.
+const MAXRES_AVAILABLE_AFTER_MS = 5 * 60 * 1000
 
 export async function handleYoutubeThumbnailRefresh(env: Env): Promise<void> {
   const DB = env.DB
@@ -27,7 +33,7 @@ export async function handleYoutubeThumbnailRefresh(env: Env): Promise<void> {
   try {
     // 셀러가 직접 올린 custom thumbnail 이 없는 live stream 만 — YouTube 자동 캡처에 의존
     const rows = await DB.prepare(
-      `SELECT id, youtube_video_id, custom_thumbnail_url
+      `SELECT id, youtube_video_id, custom_thumbnail_url, started_at
          FROM live_streams
         WHERE status = 'live'
           AND youtube_video_id IS NOT NULL
@@ -42,7 +48,11 @@ export async function handleYoutubeThumbnailRefresh(env: Env): Promise<void> {
     const cacheBust = Date.now()
     let updated = 0
     for (const s of list) {
-      const newUrl = `https://i.ytimg.com/vi/${s.youtube_video_id}/maxresdefault.jpg?v=${cacheBust}`
+      // 라이브 시작 5분 미만 → hqdefault (항상 존재), 5분+ → maxresdefault.
+      const startedMs = s.started_at ? new Date(s.started_at).getTime() : 0
+      const ageMs = startedMs > 0 ? Date.now() - startedMs : Infinity
+      const variant = ageMs >= MAXRES_AVAILABLE_AFTER_MS ? 'maxresdefault' : 'hqdefault'
+      const newUrl = `https://i.ytimg.com/vi/${s.youtube_video_id}/${variant}.jpg?v=${cacheBust}`
       try {
         await DB.prepare(
           `UPDATE live_streams SET thumbnail_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,

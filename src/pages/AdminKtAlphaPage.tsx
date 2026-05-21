@@ -269,28 +269,46 @@ export default function AdminKtAlphaPage() {
     }
   }
 
-  // 🛡️ 2026-05-21: KT Alpha 전체 재싱크 — "기프티쇼 더 많은데?" 사용자 질문 답.
-  //   기본 cron 은 maxPages=50 (5000 cap). 강제 maxPages=200 (20000 cap) 로 재호출.
+  // 🛡️ 2026-05-21 v2: KT Alpha 전체 재싱크 — progressive loop (Worker timeout 영구 fix).
+  //   이전 (v1): /full-resync 한 번에 200 페이지 → Worker wallclock 30초 초과 → 무응답.
+  //   영구 (v2): /sync-page?start_page=N&page_count=10 반복 호출. 1 호출 ~10초.
+  //   진행률 toast 실시간 + 페이지 실패해도 재시작 가능.
   async function fullResyncKtAlpha() {
-    if (!confirm('⚠️ KT Alpha 전체 재싱크 (maxPages=200, ~20000개까지).\n시간 오래 걸림 (수분). 계속?')) return
-    toast.info('재싱크 중... (페이지 200까지)')
+    if (!confirm('⚠️ KT Alpha 전체 재싱크 (페이지 분할 progressive).\n시간 ~1-3분. 진행률 실시간 표시. 계속?')) return
+    let page: number | null = 1
+    let totalSynced = 0
+    let totalReported = 0
+    const startTime = Date.now()
+    let iterations = 0
     try {
-      const r = await api.post('/api/admin/kt-alpha/full-resync', {}, { headers: h() })
-      if (r.data?.success) {
+      while (page !== null && iterations < 50) {
+        iterations++
+        toast.info(`재싱크 중... (페이지 ${page}~${page + 9}, 누적 ${totalSynced}개)`)
+        const r: { data?: { success?: boolean; data?: { db_synced: number; total_reported: number; next_page: number | null; done: boolean }; error?: string } }
+          = await api.post(`/api/admin/kt-alpha/sync-page?start_page=${page}&page_count=10`, {}, { headers: h() })
+        if (!r.data?.success || !r.data.data) {
+          toast.error(extractErrorMessage(r.data) + ` (페이지 ${page} 에서 중단)`)
+          return
+        }
         const d = r.data.data
-        alert(
-          `📦 KT Alpha 전체 재싱크 완료\n\n` +
-          `• KT API 보고 total: ${d.total_reported_by_kt}개\n` +
-          `• 실제 fetch: ${d.actually_fetched}개\n` +
-          `• DB 저장: ${d.db_synced}개\n\n` +
-          `${d.hint}`,
-        )
-      } else {
-        toast.error(extractErrorMessage(r.data))
+        totalSynced += d.db_synced
+        totalReported = d.total_reported || totalReported
+        page = d.next_page
+        if (d.done) break
       }
+      const elapsed = Math.floor((Date.now() - startTime) / 1000)
+      alert(
+        `📦 KT Alpha 전체 재싱크 완료\n\n` +
+        `• KT API 보고 total: ${totalReported}개\n` +
+        `• DB 저장: ${totalSynced}개\n` +
+        `• 소요 시간: ${elapsed}초 (${iterations}회 호출)\n\n` +
+        (totalSynced >= totalReported && totalReported > 0
+          ? '✅ 모든 상품 수신 완료'
+          : `ℹ️ ${totalSynced}/${totalReported}개 수신 — 부족하면 다시 실행`),
+      )
     } catch (err: unknown) {
       const ax = err as { response?: { data?: unknown }; message?: string }
-      console.error('[full-resync] threw:', ax)
+      console.error('[full-resync v2] threw:', ax)
       toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
     }
   }

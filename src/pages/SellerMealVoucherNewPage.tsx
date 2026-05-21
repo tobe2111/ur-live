@@ -272,6 +272,25 @@ export default function SellerMealVoucherNewPage() {
           </div>
         </div>
 
+        {/* 🛡️ 2026-05-21: 빠른 등록 / 상세 등록 토글 — 신규 셀러는 빠른 등록 (5필드) 으로 시작. */}
+        <div className="bg-white rounded-xl border border-gray-200 p-3 mb-4 flex items-center gap-2">
+          <span className="text-sm font-bold text-gray-900">등록 방식:</span>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(false)}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold ${!showAdvanced ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500'}`}
+          >
+            🎯 빠른 등록 (5필드)
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(true)}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold ${showAdvanced ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}
+          >
+            📋 상세 등록
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* 🛡️ 2026-04-28: voucher 카테고리 (식사/뷰티/헬스) — 같은 인프라 재활용 */}
