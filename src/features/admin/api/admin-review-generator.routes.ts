@@ -229,26 +229,45 @@ adminReviewGeneratorRoutes.delete('/reviews/generated/:productId', cors(), async
 adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    type Body = { reviews_per_product?: number }
+    // 🛡️ 2026-05-21: scope param 추가 (사용자 요청 — "기프티쇼 교환권 뿐 아니라 어드민이 올리는 상품도").
+    //   'vouchers' (KT Alpha deal_only=1) / 'admin' (deal_only=0) / 'all' (default — 전체 활성 상품).
+    //   각 상품마다 minReviews ~ maxReviews 사이 랜덤 개수.
+    type Body = { reviews_per_product?: number; scope?: 'vouchers' | 'admin' | 'all' }
     const body = await c.req.json<Body>().catch(() => ({} as Body));
     const minReviews = Math.max(1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) - 5)));
     const maxReviews = Math.max(minReviews + 1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) + 10)));
+    const scope: 'vouchers' | 'admin' | 'all' = body.scope === 'vouchers' || body.scope === 'admin' ? body.scope : 'all';
 
     await writeAuditLog(c, {
-      action: 'generate_fake_reviews_bulk_vouchers',
+      action: 'generate_fake_reviews_bulk',
       targetType: 'products',
-      targetId: 'deal_only=1',
-      after: { reviews_per_product_range: [minReviews, maxReviews] },
+      targetId: `scope=${scope}`,
+      after: { reviews_per_product_range: [minReviews, maxReviews], scope },
     });
 
-    // 1) 모든 교환권 (deal_only=1, is_active=1) 조회.
+    // 1) scope 별 상품 조회:
+    //    vouchers: deal_only=1 (KT Alpha 교환권만)
+    //    admin:    deal_only=0 (어드민 등록 일반 상품만)
+    //    all:      deal_only 무관 (활성 전체)
+    const dealOnlyWhere = scope === 'vouchers'
+      ? 'AND deal_only = 1'
+      : scope === 'admin'
+      ? 'AND (deal_only = 0 OR deal_only IS NULL)'
+      : ''
     const products = await DB.prepare(
-      'SELECT id, name FROM products WHERE deal_only = 1 AND is_active = 1'
+      `SELECT id, name FROM products WHERE is_active = 1 ${dealOnlyWhere}`
     ).all<{ id: number; name: string }>();
 
     const productList = products.results ?? [];
     if (productList.length === 0) {
-      return c.json({ success: false, error: '교환권 (deal_only=1) 상품이 없습니다' }, 400);
+      return c.json({
+        success: false,
+        error: scope === 'vouchers'
+          ? '교환권 (deal_only=1) 상품이 없습니다'
+          : scope === 'admin'
+          ? '어드민 등록 상품 (deal_only=0) 이 없습니다'
+          : '활성 상품이 없습니다',
+      }, 400);
     }
 
     // 2) product_reviews 테이블 멱등 생성 + 누락 컬럼 ALTER.
@@ -324,6 +343,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
     return c.json({
       success: true,
       data: {
+        scope,
         products_processed: productsProcessed,
         total_reviews_inserted: totalInserted,
         avg_reviews_per_product: productsProcessed > 0 ? Math.round(totalInserted / productsProcessed) : 0,
@@ -333,7 +353,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
       },
     });
   } catch (err) {
-    if (import.meta.env?.DEV) console.error('[admin:reviews:bulk-vouchers]', err);
+    if (import.meta.env?.DEV) console.error('[admin:reviews:bulk]', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
@@ -437,12 +457,21 @@ adminReviewGeneratorRoutes.post('/reviews/generate-for-product/:productId', cors
 adminReviewGeneratorRoutes.delete('/reviews/generated-bulk-vouchers', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const result = await DB.prepare(`
-      DELETE FROM product_reviews
-      WHERE is_generated = 1
-        AND product_id IN (SELECT id FROM products WHERE deal_only = 1)
-    `).run();
-    return c.json({ success: true, deleted: result.meta.changes });
+    // 🛡️ 2026-05-21: query scope 추가 (생성 endpoint 와 대칭).
+    //   vouchers / admin / all (default all — 모든 is_generated=1 삭제).
+    const scopeRaw = c.req.query('scope') || 'all';
+    const scope = scopeRaw === 'vouchers' || scopeRaw === 'admin' ? scopeRaw : 'all';
+
+    const dealOnlyClause = scope === 'vouchers'
+      ? 'AND product_id IN (SELECT id FROM products WHERE deal_only = 1)'
+      : scope === 'admin'
+      ? 'AND product_id IN (SELECT id FROM products WHERE deal_only = 0 OR deal_only IS NULL)'
+      : '';
+
+    const result = await DB.prepare(
+      `DELETE FROM product_reviews WHERE is_generated = 1 ${dealOnlyClause}`
+    ).run();
+    return c.json({ success: true, scope, deleted: result.meta.changes });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

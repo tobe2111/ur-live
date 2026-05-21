@@ -222,11 +222,25 @@ export default function AdminKtAlphaPage() {
     }
   }
 
-  // 🛡️ 2026-05-19: 교환권 전체 허위 리뷰 대량 생성 (사용자 요청).
-  //   상품당 5-25개 (랜덤) 리뷰, 평점 4.3-4.8 분산, is_generated=1 플래그로 영구 추적.
-  //   ⚠️ 법적: 전자상거래법 / 공정거래법상 허위 후기 책임은 사업주. 운영자 자체 결정 사용.
+  // 🛡️ 2026-05-19 / 2026-05-21: 허위 리뷰 대량 생성 (사용자 요청).
+  //   v2: scope 선택 (교환권만 / 어드민 상품만 / 전체) — 각 상품마다 5-25개 (랜덤) 리뷰.
+  //   평점 4.3-4.8 랜덤 분산, is_generated=1 플래그로 영구 추적 + 일괄 삭제 가능.
+  //   ⚠️ 법적: 전자상거래법 / 공정거래법상 허위 후기 책임은 사업주.
   async function generateBulkReviews() {
-    if (!confirm('교환권 전체에 허위 리뷰를 대량 생성합니다.\n상품당 5-25개 (랜덤) · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n⚠️ 운영자 자체 책임. 계속하시겠습니까?')) return
+    const scopeInput = prompt(
+      '리뷰를 생성할 범위를 선택하세요:\n\n' +
+      '1 = 교환권 (기프티쇼 KT Alpha)\n' +
+      '2 = 어드민 등록 상품\n' +
+      '3 = 전체 활성 상품 (기본)\n\n' +
+      '숫자 입력:', '3')
+    if (!scopeInput) return
+    const scope: 'vouchers' | 'admin' | 'all' =
+      scopeInput.trim() === '1' ? 'vouchers' :
+      scopeInput.trim() === '2' ? 'admin' : 'all'
+    const scopeLabel = { vouchers: '교환권', admin: '어드민 상품', all: '전체 활성 상품' }[scope]
+
+    if (!confirm(`${scopeLabel} 에 허위 리뷰를 대량 생성합니다.\n각 상품마다 5-25개 랜덤 · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n⚠️ 운영자 자체 책임. 계속하시겠습니까?`)) return
+
     const reviewsPerInput = prompt('상품당 평균 리뷰 개수 (5-50, 기본 15)', '15')
     if (!reviewsPerInput) return
     const reviewsPerProduct = Number(reviewsPerInput)
@@ -234,16 +248,16 @@ export default function AdminKtAlphaPage() {
       toast.error('5-50 사이 숫자 입력')
       return
     }
-    toast.info('생성 중... (시간 소요. 페이지를 닫지 마세요.)')
+    toast.info(`생성 중... (${scopeLabel}, 시간 소요)`)
     try {
       const r = await api.post(
         '/api/admin/reviews/generate-bulk-vouchers',
-        { reviews_per_product: reviewsPerProduct },
+        { reviews_per_product: reviewsPerProduct, scope },
         { headers: h() },
       )
       if (r.data?.success) {
         const d = r.data.data
-        toast.success(`✅ 완료 — ${d.products_processed}개 상품 / ${d.total_reviews_inserted}개 리뷰 / 평균 ${d.avg_reviews_per_product}개${d.errors_count ? ` / 오류 ${d.errors_count}개` : ''}`)
+        toast.success(`✅ ${scopeLabel} — ${d.products_processed}개 상품 / ${d.total_reviews_inserted}개 리뷰 / 평균 ${d.avg_reviews_per_product}개${d.errors_count ? ` / 오류 ${d.errors_count}개` : ''}`)
       } else {
         toast.error(r.data?.error || '생성 실패')
       }
@@ -295,13 +309,25 @@ export default function AdminKtAlphaPage() {
     }
   }
 
-  // 🛡️ 2026-05-19: 교환권 생성 리뷰 일괄 삭제 (롤백용).
+  // 🛡️ 2026-05-19 / 2026-05-21: 생성 리뷰 일괄 삭제 (롤백용) — scope 선택 가능.
   async function deleteBulkReviews() {
-    if (!confirm('교환권 전체에 생성된 허위 리뷰를 일괄 삭제합니다.\n복구 불가. 계속하시겠습니까?')) return
+    const scopeInput = prompt(
+      '삭제할 리뷰 범위:\n\n' +
+      '1 = 교환권 리뷰만\n' +
+      '2 = 어드민 상품 리뷰만\n' +
+      '3 = 전체 (기본)\n\n' +
+      '숫자 입력:', '3')
+    if (!scopeInput) return
+    const scope: 'vouchers' | 'admin' | 'all' =
+      scopeInput.trim() === '1' ? 'vouchers' :
+      scopeInput.trim() === '2' ? 'admin' : 'all'
+    const scopeLabel = { vouchers: '교환권 리뷰', admin: '어드민 상품 리뷰', all: '전체 생성 리뷰' }[scope]
+
+    if (!confirm(`${scopeLabel} 일괄 삭제. 복구 불가. 계속하시겠습니까?`)) return
     if (!confirm('🚨 한 번 더 확인 — 정말 전체 삭제?')) return
     try {
-      const r = await api.delete('/api/admin/reviews/generated-bulk-vouchers', { headers: h() })
-      if (r.data?.success) toast.success(`✅ ${r.data.deleted}개 리뷰 삭제됨`)
+      const r = await api.delete(`/api/admin/reviews/generated-bulk-vouchers?scope=${scope}`, { headers: h() })
+      if (r.data?.success) toast.success(`✅ ${scopeLabel} ${r.data.deleted}개 삭제됨`)
       else toast.error(r.data?.error || '삭제 실패')
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } }
