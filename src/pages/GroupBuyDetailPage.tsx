@@ -89,6 +89,10 @@ export default function GroupBuyDetailPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
+  // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (?seller=ID) sessionStorage 저장.
+  useEffect(() => {
+    import('@/lib/seller-tracking').then(m => m.captureTrackingFromUrl())
+  }, [])
   // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
   const refUserId = searchParams.get('ref')
   const isInfluencerLanding = !!refUserId

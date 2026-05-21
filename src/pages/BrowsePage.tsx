@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
+import { captureTrackingFromUrl } from '@/lib/seller-tracking'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
@@ -21,6 +22,8 @@ interface BrowsePageProps {
 export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (URL ?seller=ID) sessionStorage 저장.
+  useEffect(() => { captureTrackingFromUrl() }, [])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼

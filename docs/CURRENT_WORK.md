@@ -1,7 +1,58 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-21 (2건 영구 fix + 방어선 추가)
-**최근 push 커밋**: 브랜치 `claude/check-live-commerce-flow-jgNs8` — CSP nonce 사고 revert + admin token 분기 영구 fix
+**최종 업데이트**: 2026-05-21 (Phase A → D-2 모두 완료)
+**브랜치**: `claude/check-live-commerce-flow-jgNs8`
+
+## 🎯 2026-05-21 세션 — 5 Phase 정산 인프라 + UX 통합
+
+### Phase A: Commission 출금 + 기초 인프라
+- commission_withdrawals + 사용자/어드민 UI + 알림톡 + 회귀 테스트 9개
+- YouTube 썸네일 자동 cron / 셀러 분석 강화 / KT Alpha progressive
+- 교환권 결제 흐름 정상화 (토스 우회)
+
+### Phase B: 자체 예약 캘린더 (뷰티/액티비티/건강/펫)
+- product_booking_slots + appointment_bookings (atomic + UNIQUE INDEX)
+- 9 endpoints + 3 UI (셀러 슬롯 / 셀러 예약 / 유저 내 예약)
+- D-1 reminder cron + 결제 직후 prompt + 취소 자동 환불
+- 회귀 테스트 10개
+
+### Phase C: 통합 정산 인프라 (ledger 중심)
+- ledger_entries 헬퍼 3개 + payouts 테이블 + 4 INDEX
+- 6 admin endpoints + /admin/payouts 페이지 (2 탭)
+- 주 1회 cron (월요일 00 UTC) — pending payouts 자동 생성
+- voucher used → atomic ledger 3 entries (merchant + seller + platform)
+
+### Phase D: AI 통합 (3개 AI 권장 모두 반영)
+- 셀러 트래킹 링크 위젯 + SellerProductsPage / SellerMiniShopPage 노출
+- 에이전시 commission 자동 분배 + 어드민 commission 비율 조정 UI
+- 사장님 매직링크 발송 트리거 (AdminBusinessVerificationPage 버튼)
+- 세금계산서 stub + 연말 정산 CSV 리포트
+- 모든 voucher 카테고리 결제 정상화 (meal_voucher hardcode 제거)
+- AdminPayoutsPage 4 탭 (ledger / payouts / 수수료율 / 연말 리포트)
+
+### Phase D-2: Attribution + 가이드 + Smoke test (이번 commit)
+- 셀러 트래킹 attribution (src/lib/seller-tracking.ts) — sessionStorage 24h
+- BrowsePage / GroupBuyDetailPage / ProductDetailPage capture + ref 전달
+- GET /api/ledger/my — 셀러/에이전시 본인 ledger 조회
+- docs/ALIMTALK_TEMPLATES.md — Aligo 9 템플릿 등록 가이드
+- scripts/smoke-test.sh — 15 endpoint 검증 (확장)
+
+## ⚠️ 운영자 액션 (production 적용 — 코드 X)
+1. **`/api/_internal/repair-schema` GET 호출** — 모든 신규 컬럼/테이블/INDEX 적용
+2. **Aligo 템플릿 9개 등록** — `docs/ALIMTALK_TEMPLATES.md` 참조
+3. **`/admin/payouts` 수수료율 첫 저장** — default 5/10/30 명시 저장
+4. **smoke test 실행** — `ADMIN_TOKEN=xxx ./scripts/smoke-test.sh prod`
+5. **KT Alpha 카테고리 자동 분류** — `/admin/kt-alpha` ⚡ 메가 버튼
+6. **end-to-end 테스트** — voucher 결제 → 매장 QR 스캔 → ledger entry 3개 자동 생성 확인
+
+## 🎯 영구 인프라 (1만~10만 매장 대응)
+- ledger_entries 단일 source of truth (정산 / 환불 / 분쟁 모두 entries 로 추적)
+- payouts 테이블 송금 audit trail (transaction_id 추적)
+- 모든 검색/필터 INDEX 명시 (풀스캔 0)
+- atomic CAS — voucher used + appointment booking race condition 0
+- 멱등 ledger — voucher_id + event_type 중복 entry 0
+- 매장당 1 에이전시 lock-in (admin reassign + 감사 로그)
+- commission 비율 어드민 UI 조정 (즉시 적용)
 
 ## 🚨 2026-05-21 사고 + 영구 fix
 ### Incident 1: CSP style-src nonce → 화면 깨짐

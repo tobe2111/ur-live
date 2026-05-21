@@ -213,7 +213,11 @@ export default function ProductDetailPage() {
       )
       if (!ok) return
       try {
-        const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal' })
+        // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 attribution — sessionStorage 의 ref 전달.
+        //   백엔드 join endpoint 의 기존 'ref' 파라미터 재활용.
+        const { getTrackedSellerId } = await import('@/lib/seller-tracking')
+        const ref = getTrackedSellerId() || undefined
+        const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal', ref })
         if (res.data?.success) {
           showToast(t('groupBuy.joinSuccess', { defaultValue: '공구 참여 완료! 바우처가 발급됐어요.' }), 'success')
           navigate('/my-vouchers')
