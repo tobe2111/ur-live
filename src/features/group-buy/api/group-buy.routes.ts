@@ -26,6 +26,8 @@ import {
   sendBuyerVoucherIssuedAlimtalk,
   sendSellerFirstVoucherAlimtalk,
 } from './helpers'
+// 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 식사권 hardcode 제거 — getVoucherShortLabel 사용.
+import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -75,9 +77,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   }
 
   try {
-    // 상품 확인
+    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 (식사/뷰티/건강/펫/액티비티/숙소/기타).
+    //   이전엔 'meal_voucher' hardcode 였음 → 다른 카테고리 결제 막힘 (404 발생).
+    //   영구 fix: VOUCHER_CATEGORIES 통합 + 헬퍼와 동일 IN 절 사용.
     const product = await DB.prepare(
-      "SELECT * FROM products WHERE id = ? AND category = 'meal_voucher' AND is_active = 1"
+      "SELECT * FROM products WHERE id = ? AND is_active = 1 AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')"
     ).bind(productId).first<GroupBuyProductRow>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
@@ -353,7 +357,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       `).bind(
         product.seller_id, userId,
         totalAmount, commissionAmount, sellerAmount, commissionRate,
-        orderNumber, `식사권 공동구매: ${product.name}`
+        orderNumber, `${getVoucherShortLabel(product.category)} 공동구매: ${product.name}`
       ).run()
     } catch { /* donations 테이블 없으면 무시 */ }
 
@@ -387,7 +391,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             sendBuyerVoucherIssuedAlimtalk(
               c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
               userRow.phone,
-              { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt: lastExpiresAt },
+              { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt: lastExpiresAt, categoryLabel: getVoucherShortLabel(product.category) },
             )
           )
         }
@@ -517,12 +521,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             await DB.prepare(
               `INSERT INTO user_notifications (user_id, type, title, message, link)
                VALUES (?, 'group_buy_achieved', ?, ?, ?)`
-            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 식사권이 발급됩니다`, `/group-buy/${productId}`).run()
+            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`, `/group-buy/${productId}`).run()
           } catch { /* ignore */ }
           try {
             await sendSystemPush(c.env, 'user', p.user_id, {
               title: '🎉 공구 성공!',
-              body: `${product.name} 곧 식사권이 발급됩니다`,
+              body: `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`,
               url: `/group-buy/${productId}`,
               tag: `gb-achieved-${productId}`,
             })

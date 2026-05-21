@@ -680,9 +680,13 @@ sellerOrdersRoutes.post('/products', async (c) => {
           const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
           // fire-and-forget — 알림톡 실패해도 등록은 진행
           c.executionCtx.waitUntil(
-            sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, phone, {
-              restaurantName, productName: name, statsUrl,
-            })
+            (async () => {
+              const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
+              return sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, phone, {
+                restaurantName, productName: name, statsUrl,
+                categoryLabel: getVoucherShortLabel(body.category as string),
+              });
+            })()
           );
         }
       } catch { /* graceful */ }
@@ -966,10 +970,12 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
     }
 
     const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+    const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
     await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
       restaurantName: product.restaurant_name || '사장님',
       productName: product.name,
       statsUrl,
+      categoryLabel: getVoucherShortLabel(product.category as string),
     });
 
     return c.json({ success: true, message: '사장님께 알림톡이 발송되었습니다', stats_url: statsUrl, rotated: rotate });

@@ -182,7 +182,7 @@ export function generateStoreOwnerToken(): string {
 export async function sendStoreOwnerAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { restaurantName: string; productName: string; statsUrl: string }
+  data: { restaurantName: string; productName: string; statsUrl: string; categoryLabel?: string }
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return // 미설정 시 silently skip
   try {
@@ -190,10 +190,12 @@ export async function sendStoreOwnerAlimtalk(
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
 
-    const message = `[유어딜] 식사권 통계 페이지 안내
+    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션 (default '식사권').
+    const label = data.categoryLabel || '식사권'
+    const message = `[유어딜] ${label} 통계 페이지 안내
 
 안녕하세요, ${data.restaurantName} 사장님!
-"${data.productName}" 식사권 공동구매가 등록되었습니다.
+"${data.productName}" ${label} 공동구매가 등록되었습니다.
 
 📊 실시간 발급/사용 현황 확인:
 ${data.statsUrl}
@@ -230,14 +232,16 @@ ${data.statsUrl}
 export async function sendBuyerVoucherIssuedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { productName: string; restaurantName?: string; qty: number; expiresAt: string }
+  data: { productName: string; restaurantName?: string; qty: number; expiresAt: string; categoryLabel?: string }
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
     const expDate = new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-    const message = `[유어딜] 식사권 발급 완료
+    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
+    const label = data.categoryLabel || '식사권'
+    const message = `[유어딜] ${label} 발급 완료
 
 ${data.restaurantName ? data.restaurantName + ' · ' : ''}${data.productName}
 ${data.qty}장 발급되었습니다.
@@ -305,14 +309,16 @@ ${data.restaurantName} 사장님,
 export async function sendBuyerVoucherUsedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { restaurantName: string; productName: string; usedAt?: string }
+  data: { restaurantName: string; productName: string; usedAt?: string; categoryLabel?: string }
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
     const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
-    const message = `[유어딜] ✅ 식사권 사용 완료
+    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
+    const label = data.categoryLabel || '식사권'
+    const message = `[유어딜] ✅ ${label} 사용 완료
 
 ${data.restaurantName}
 "${data.productName}"

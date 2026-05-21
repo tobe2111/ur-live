@@ -18,6 +18,8 @@ import { recordLedger } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { sendBuyerVoucherUsedAlimtalk } from './helpers'
 import { ensureTables } from './helpers'
+// 🛡️ 2026-05-21: 카테고리 라벨 동적 (식사권 hardcode 제거).
+import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /:code/use — voucher 사용 (PIN 검증) ──
@@ -128,12 +130,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       }
       try {
         const meta = await DB.prepare(
-          `SELECT v.id AS voucher_id, v.user_id, u.phone, p.name AS product_name, p.restaurant_name
+          `SELECT v.id AS voucher_id, v.user_id, u.phone, p.name AS product_name, p.restaurant_name, p.category
            FROM vouchers v
            LEFT JOIN users u ON u.id = v.user_id
            LEFT JOIN products p ON p.id = v.product_id
            WHERE v.code = ?`
-        ).bind(code).first<{ voucher_id: number; user_id: string; phone: string | null; product_name: string; restaurant_name: string | null }>()
+        ).bind(code).first<{ voucher_id: number; user_id: string; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null }>()
         if (meta) {
           responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
           // 🛡️ 2026-05-16: 어느 인플이 데려온 손님인지 attribution 조회 (사장님 화면 표시용)
@@ -152,7 +154,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               sendBuyerVoucherUsedAlimtalk(
                 c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
                 meta.phone,
-                { restaurantName: meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+                { restaurantName: meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString(), categoryLabel: getVoucherShortLabel(meta.category) },
               )
             )
           }
@@ -194,10 +196,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // voucher + product seller 검증
       const voucher = await DB.prepare(
-        `SELECT v.id, v.status, v.user_id, v.product_id, p.seller_id, p.name AS product_name, p.restaurant_name
+        `SELECT v.id, v.status, v.user_id, v.product_id, p.seller_id, p.name AS product_name, p.restaurant_name, p.category
          FROM vouchers v LEFT JOIN products p ON p.id = v.product_id
          WHERE v.code = ?`
-      ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; seller_id: number; product_name: string; restaurant_name: string | null }>()
+      ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; seller_id: number; product_name: string; restaurant_name: string | null; category: string | null }>()
       if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
       if (user.type === 'seller' && Number(voucher.seller_id) !== Number(user.id)) {
         return c.json({ success: false, error: '본인 매장의 voucher 가 아닙니다' }, 403)
@@ -231,7 +233,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             sendBuyerVoucherUsedAlimtalk(
               c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
               userPhone.phone,
-              { restaurantName: voucher.restaurant_name || '매장', productName: voucher.product_name, usedAt: new Date().toISOString() },
+              { restaurantName: voucher.restaurant_name || '매장', productName: voucher.product_name, usedAt: new Date().toISOString(), categoryLabel: getVoucherShortLabel(voucher.category) },
             )
           )
         }

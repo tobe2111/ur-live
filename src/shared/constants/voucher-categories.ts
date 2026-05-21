@@ -76,3 +76,12 @@ export const VOUCHER_CATEGORY_LABEL: Record<string, { emoji: string; label: stri
   pet_voucher:      { emoji: '🎯', label: '기타',              short: '기타' },
   activity_voucher: { emoji: '🎯', label: '기타',              short: '기타' },
 }
+
+// 🛡️ 2026-05-21: 카테고리 short 라벨 (알림톡 / push 메시지용).
+//   "식사권" hardcode 가 곳곳에 있었음 — 모든 voucher 카테고리에서 동작하려면 이 헬퍼로 통일.
+//   fallback: '바우처' (알려지지 않은 카테고리도 graceful).
+export function getVoucherShortLabel(category: string | null | undefined): string {
+  if (!category) return '바우처'
+  const m = VOUCHER_CATEGORY_LABEL[category]
+  return m ? `${m.short}권` : '바우처'
+}
