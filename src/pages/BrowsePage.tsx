@@ -447,16 +447,21 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         ) : (
           <>
             {/* 🛡️ 2026-05-19: 사용자 요청 — hero 제거, 처음부터 2열 그리드 균등 표시. */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
+            {/* 🛡️ 2026-05-21: 카드 높이 불일치 (삐뚤어짐) 영구 fix.
+                  원인: original_price/discount 가 조건부 렌더 → 카드마다 높이 다름.
+                  해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
+                  디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8 items-stretch">
               {displayed.map(product => {
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price
+                const hasStrike = !!(product.original_price && product.original_price > displayPrice)
 
                 return (
                   <button
                     key={product.id}
                     onClick={() => navigate(`/products/${product.id}`)}
-                    className="text-left active:scale-[0.98] transition-transform w-full block"
+                    className="text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
@@ -481,18 +486,24 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                       </span>
                     </div>
 
-                    <div className="mt-2">
-                      {product.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500">@{product.seller_name}</p>}
-                      <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2">{product.name}</p>
-                      {product.original_price && product.original_price > displayPrice && (
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(product.original_price, { dealOnly: product.deal_only })}</p>
-                      )}
+                    {/* 정보 섹션 — 고정 슬롯 (모든 카드 동일 높이). */}
+                    <div className="mt-2 flex flex-col flex-1">
+                      {/* 셀러명 (있을 때만) — line 1 */}
+                      {product.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">@{product.seller_name}</p>}
+                      {/* 제목 — 2줄 고정 (min-h 로 reserve) */}
+                      <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.2em]">{product.name}</p>
+                      {/* 원가 strike — 슬롯 reserve (없어도 같은 높이 차지) */}
+                      <p className={`text-[10px] mt-1 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+                        {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
+                      </p>
+                      {/* 할인% + 가격 */}
                       <div className="flex items-baseline gap-1 mt-0.5">
                         {discountRate > 0 && (
                           <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
                         )}
                         <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
                       </div>
+                      {/* ⭐ + 무료 — 항상 표시 */}
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] text-gray-400 dark:text-gray-500">⭐ {product.sold_count || 0}</span>
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 font-semibold">
