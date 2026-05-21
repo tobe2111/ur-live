@@ -725,8 +725,9 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* 🛡️ 2026-05-21: 교환권에도 리뷰 작성/조회 가능 (사용자 요청).
-              product_reviews 테이블은 일반 상품과 공통 — 동일 컴포넌트 재사용. */}
-        <ProductReviewsSection productId={String(detail.id)} />
+              product_reviews 테이블은 일반 상품과 공통 — 동일 컴포넌트 재사용.
+              productId 는 number 로 명시 (ProductReviews 내부 일관성 — POST 시 Number(productId) 호출). */}
+        <ProductReviewsSection productId={Number(detail.id)} />
 
         <div style={{ height: 100 }} />
       </main>

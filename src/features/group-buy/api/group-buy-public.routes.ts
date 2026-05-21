@@ -44,10 +44,17 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       `group_buy_products:${status}:${categories.join(',')}`,
       async () => {
         const placeholders = categories.map(() => '?').join(',')
+        // 🛡️ 2026-05-21: gift_catalog LEFT JOIN — products.brand_name/brand_icon_url 가 NULL 인
+        //   환경에서도 카드에 브랜드 정보 표시 가능. COALESCE 로 둘 중 하나라도 있으면 사용.
         const { results } = await DB.prepare(`
-          SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar
+          SELECT p.*,
+                 s.name as seller_name, s.profile_image as seller_avatar,
+                 COALESCE(p.brand_name, gc.brand_name) as brand_name,
+                 COALESCE(p.brand_icon_url, gc.brand_icon_url) as brand_icon_url,
+                 COALESCE(NULLIF(p.category, 'voucher'), gc.goods_type_detail, p.category) as category
           FROM products p
           LEFT JOIN sellers s ON p.seller_id = s.id
+          LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
           WHERE p.category IN (${placeholders}) AND p.is_active = 1
             AND (p.group_buy_status = ? OR ? = 'all')
           ORDER BY p.created_at DESC

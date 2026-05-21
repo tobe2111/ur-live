@@ -753,6 +753,76 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/auto-classify', cors(), async (c) 
 })
 
 // 🛡️ 2026-05-19: 카테고리 분류 현황 조회 (어드민 UI 에서 목록 표시).
+// 🛡️ 2026-05-21: 사용자 요청 — "전체 즉시 실행" mega endpoint.
+//   1) products.category auto-classify (gift_catalog.goods_type_detail)
+//   2) products.brand_name + brand_icon_url backfill (gift_catalog)
+//   3) product_reviews.user_name backfill (users.name 마스킹)
+//   각 단계 fail-soft — 다른 단계 진행. 결과 카운트 반환.
+adminKtAlphaRoutes.post('/kt-alpha/run-all-backfills', cors(), async (c) => {
+  const DB = c.env.DB
+  const results = {
+    categorized: 0,
+    brand_filled: 0,
+    review_names: 0,
+    errors: [] as string[],
+  }
+
+  // 1. products.category 자동 분류 (gift_catalog.goods_type_detail).
+  try {
+    const r = await DB.prepare(
+      `UPDATE products
+          SET category = (
+            SELECT goods_type_detail FROM gift_catalog gc
+            WHERE gc.gift_code = products.kt_alpha_gift_code
+              AND gc.goods_type_detail IS NOT NULL AND gc.goods_type_detail != ''
+          ),
+          updated_at = datetime('now')
+        WHERE deal_only = 1
+          AND COALESCE(category, '') IN ('', 'voucher')
+          AND kt_alpha_gift_code IS NOT NULL
+          AND kt_alpha_gift_code IN (SELECT gift_code FROM gift_catalog WHERE goods_type_detail IS NOT NULL AND goods_type_detail != '')`
+    ).run()
+    results.categorized = (r.meta?.changes ?? 0) as number
+  } catch (e) { results.errors.push(`categorize: ${(e as Error).message.slice(0, 100)}`) }
+
+  // 2. products.brand_name + brand_icon_url backfill.
+  try {
+    const r = await DB.prepare(
+      `UPDATE products
+          SET brand_name = (SELECT brand_name FROM gift_catalog WHERE gift_code = products.kt_alpha_gift_code),
+              brand_icon_url = (SELECT brand_icon_url FROM gift_catalog WHERE gift_code = products.kt_alpha_gift_code),
+              updated_at = datetime('now')
+        WHERE deal_only = 1
+          AND (brand_name IS NULL OR brand_name = '')
+          AND kt_alpha_gift_code IS NOT NULL
+          AND kt_alpha_gift_code IN (SELECT gift_code FROM gift_catalog WHERE brand_name IS NOT NULL AND brand_name != '')`
+    ).run()
+    results.brand_filled = (r.meta?.changes ?? 0) as number
+  } catch (e) { results.errors.push(`brand: ${(e as Error).message.slice(0, 100)}`) }
+
+  // 3. product_reviews.user_name backfill (users.name 마스킹).
+  try {
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => null)
+    const r = await DB.prepare(`
+      UPDATE product_reviews
+         SET user_name = (
+           SELECT CASE
+             WHEN name IS NULL OR name = '' THEN NULL
+             WHEN LENGTH(name) = 1 THEN name
+             WHEN LENGTH(name) = 2 THEN SUBSTR(name, 1, 1) || '*'
+             ELSE SUBSTR(name, 1, 1) || '*' || SUBSTR(name, -1, 1)
+           END
+           FROM users WHERE id = product_reviews.user_id
+         )
+       WHERE (user_name IS NULL OR user_name = '')
+         AND EXISTS (SELECT 1 FROM users WHERE id = product_reviews.user_id AND name IS NOT NULL AND name != '')
+    `).run()
+    results.review_names = (r.meta?.changes ?? 0) as number
+  } catch (e) { results.errors.push(`reviews: ${(e as Error).message.slice(0, 100)}`) }
+
+  return c.json({ success: true, data: results })
+})
+
 adminKtAlphaRoutes.get('/kt-alpha/categories/distribution', cors(), async (c) => {
   try {
     const rows = await c.env.DB.prepare(`

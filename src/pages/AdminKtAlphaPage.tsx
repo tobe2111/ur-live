@@ -269,6 +269,31 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-21: "전체 즉시 실행" 메가 버튼 — categorize + brand backfill + review backfill 한 번에.
+  //   매일 18 UTC cron 이 자동으로 같은 작업을 하지만, 사용자가 즉시 보고 싶을 때 한 클릭.
+  async function runAllBackfills() {
+    if (!confirm('⚡ 전체 즉시 실행:\n• products.category 자동 분류\n• products.brand_name 채움\n• 리뷰 user_name (카카오 이름) 백필\n\n계속하시겠습니까?')) return
+    try {
+      const r = await api.post('/api/admin/kt-alpha/run-all-backfills', {}, { headers: h() })
+      if (r.data?.success) {
+        const d = r.data.data
+        const summary =
+          `✅ 전체 즉시 실행 완료\n\n` +
+          `• 카테고리 분류: ${d.categorized}개\n` +
+          `• 브랜드 채움: ${d.brand_filled}개\n` +
+          `• 리뷰 이름: ${d.review_names}개` +
+          (d.errors?.length ? `\n\n⚠️ 일부 오류:\n${d.errors.join('\n')}` : '')
+        toast.success(summary, { duration: 10000 })
+      } else {
+        toast.error(extractErrorMessage(r.data))
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: unknown }; message?: string }
+      console.error('[run-all-backfills] threw:', ax)
+      toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
+    }
+  }
+
   // 🛡️ 2026-05-21: 카테고리 분류 종합 진단 (사용자 신고 "분류 안 됨" 추적).
   async function diagnoseClassification() {
     try {
@@ -817,6 +842,13 @@ export default function AdminKtAlphaPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {/* 🛡️ 2026-05-21: 메가 버튼 — 카테고리/브랜드/리뷰 이름 한 번에 즉시 실행. */}
+                    <button onClick={runAllBackfills}
+                      className="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-extrabold rounded-lg hover:opacity-90 shadow-md"
+                      title="categorize + brand backfill + review name backfill 한 번에"
+                    >
+                      ⚡ 전체 즉시 실행
+                    </button>
                     {/* 🛡️ 2026-05-21: 카테고리 분류 종합 진단 — gift_catalog/products 상태 + 매칭율 보기. */}
                     <button onClick={diagnoseClassification}
                       className="px-3 py-2 bg-slate-600 text-white text-xs font-bold rounded-lg hover:bg-slate-700"
