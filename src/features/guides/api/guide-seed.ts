@@ -390,7 +390,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live
 ### 배포 전 체크리스트
 1. \`bash scripts/quality-check.sh\` — 13개 항목 검증
 2. \`npm test\` — 999+ 테스트 통과 확인
-3. \`npx vite build\` + \`node scripts/build-worker.js\` — 빌드 성공
+3. \`npm run build\` — 빌드 성공 (client + worker 통합)
 4. GitHub Actions 녹색 확인 후 main 머지
 
 ### DB 스키마 변경
@@ -701,6 +701,38 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 ### 8.8% 원천징수 (비사업자)
 - 비사업자 셀러 정산 시 자동 차감 (소득세 8% + 지방세 0.8%)
 - 매년 1월 \`/admin/withholding-report\` 에서 지급조서 CSV 다운로드 → 국세청 홈택스 업로드`,
+  },
+  // 🛡️ 2026-05-21: 추천 commission 출금 승인 (2026-05-21 신규)
+  {
+    key: 'commission-withdrawals-admin', icon: '💸', title: '추천 Commission 출금 승인', order: 165,
+    content: `**페이지**: \`/admin/commission-withdrawals\`
+
+3단계 추천 commission 의 출금 신청을 처리하는 어드민 페이지.
+
+### 흐름
+1. 사용자/셀러/에이전시가 \`/my-commissions\` 에서 **출금 신청** 클릭
+2. 계좌 정보 입력 → \`commission_withdrawals\` row 생성 (status=pending)
+3. 연관된 \`referral_commissions\` 의 status: \`granted\` → \`withdrawal_requested\`
+4. 어드민이 이 페이지에서 신청 검토 → **송금완료** OR **거절** 선택
+
+### 송금완료 처리
+1. 어드민이 본인 은행 앱에서 실제 송금 (계좌번호 / 예금주 확인)
+2. 페이지에서 **[송금완료]** 버튼 클릭 + 메모 (선택)
+3. \`commission_withdrawals.status = approved\`
+4. \`referral_commissions.status = paid_out\`, \`paid_out_at\` 기록
+
+### 거절 처리
+- **반드시** 거절 사유 입력 (계좌번호 오류, 본인 인증 실패 등)
+- \`referral_commissions\` status 가 \`granted\` 로 자동 복원 → 사용자가 다시 신청 가능
+
+### 최소 출금 금액
+- **₩10,000** (코드: \`MIN_WITHDRAWAL_AMOUNT\` in referral-tree.routes.ts)
+- 이하 잔액은 출금 버튼 자체가 비활성화
+
+### 관련 API
+- \`GET /api/referral-tree/admin/withdrawals?status=pending|approved|rejected|all\`
+- \`PATCH /api/referral-tree/admin/withdrawals/:id/approve\` (admin_memo 선택)
+- \`PATCH /api/referral-tree/admin/withdrawals/:id/reject\` (rejection_reason 필수)`,
   },
 ]
 const SELLER_SEED: SeedSection[] = [
@@ -1404,6 +1436,59 @@ A. 발송 후 24시간 이내 + 셀러 본인 요청 시 어드민이 \`cancelCo
 **Q. 카탈로그에 원하는 브랜드가 없어요.**
 A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT Alpha 측에서 등록해야 노출.`,
   },
+  // 🛡️ 2026-05-21: 가게 사장님 (store_owner) 타입 + 위탁 셀러 3자 분배 (commit 738c199c)
+  {
+    key: 'consignment-seller', icon: '🤲', title: 'MD 위탁 판매 (3자 분배)', order: 250,
+    content: `다른 셀러의 상품을 위탁받아 본인 라이브에서 판매하는 구조입니다.
+
+### 3자 매출 분배
+- 가게 (store_owner / 원공급자): 판매가의 **60%**
+- 판매 셀러 (위탁받아 라이브 송출): 판매가의 **25%**
+- 유어딜 플랫폼: 판매가의 **15%**
+
+(비율은 어드민 설정 — \`platform_settings.consignment_*_rate\`)
+
+### 사용 흐름
+1. \`/seller/supply\` 페이지에서 등록된 가게 상품 둘러보기
+2. **[위탁 판매 요청]** 클릭 → 가게 사장님 승인
+3. 본인 라이브에서 자유롭게 판매 (별도 가격 협상 가능)
+4. 결제 발생 시 자동으로 3자 분배 — 정산일에 본인 정산 분만 지급
+
+### 가게 사장님이 되는 법
+- 사업자등록증 인증 + admin 승인
+- \`/seller/onboarding\` 에서 type=**store_owner** 선택
+- 자기 가게의 위탁 상품 등록 가능
+
+### 관련 페이지
+- \`/seller/supply\` — 위탁 가능 상품 둘러보기
+- \`/seller/products?type=consignment\` — 내가 위탁받은 상품
+- \`/seller/settlements\` — 위탁 분배 정산 내역`,
+  },
+  // 🛡️ 2026-05-21: 에이전시 소속 가입 시 commission 안내 (agency Phase 2)
+  {
+    key: 'introduction-commission', icon: '🎁', title: '에이전시 소속 셀러 입점 commission', order: 260,
+    content: `에이전시 추천으로 가입한 셀러는 평생 commission 의 일부가 추천 에이전시에게 자동 분배됩니다.
+
+### 매출 commission 분배
+| 단계 | 수령자 | 비율 |
+|---|---|---|
+| 1단계 | 가입 시 추천한 에이전시 | 매출의 **2%** (영구) |
+| 2단계 | 에이전시를 추천한 상위 | 매출의 **1%** |
+| 3단계 | 상위의 상위 | 매출의 **0.5%** |
+
+(어드민 설정: \`platform_settings.tier1/2/3_commission_rate\`)
+
+### 입점 시 보너스
+- 첫 결제 발생 시 추천 에이전시에게 **₩30,000** 가입 보너스
+- 본인 (셀러) 매출의 일정 비율 차감 없음 — 플랫폼이 자체 부담
+
+### 내 commission 조회 (셀러 본인이 추천한 경우)
+- \`/my-commissions\` — 누적 commission + 출금 신청 (10,000원 이상)
+
+### 관련 API
+- \`GET /api/referral-tree/my-commissions\` — 내 commission 내역
+- \`POST /api/referral-tree/withdrawals\` — 출금 신청`,
+  },
 ]
 const AGENCY_SEED: SeedSection[] = [
   {
@@ -1891,6 +1976,32 @@ priority: 100
 - "브랜드 설정 저장" 버튼 → 즉시 공개 페이지 반영 (캐시 없음)
 - 컬러 picker 또는 HEX 직접 입력 모두 지원
 - 색상 지우기 → 기본 gradient 로 복귀`,
+  },
+  // 🛡️ 2026-05-21: 가게 입점 영업 commission flow (Phase 2 — commit 1bd58157)
+  {
+    key: 'store-introduction', icon: '🏪', title: '가게 입점 소개 commission', order: 500,
+    content: `에이전시가 오프라인 가게/식당을 유어딜에 입점시키면 소개 commission 을 받습니다.
+
+### 소개 흐름
+1. \`/agency/introduced-stores\` 페이지에서 **[새 가게 초대]** 클릭
+2. 초대 링크 생성 → 사장님께 카카오톡 발송
+3. 사장님이 링크로 가입 + 사업자등록증 인증
+4. 어드민 승인 후 **소개 관계 자동 등록**
+
+### Commission 정산
+- 가입 보너스: **₩30,000** (사장님 첫 결제 발생 시 자동 지급)
+- 매출 commission: 가게 매출의 **2%** (영구)
+- 가게 등급 (월 ₩1,000,000+ 매출) 도달 시 **₩50,000 보너스**
+
+### 조회 페이지
+- \`/agency/introduced-stores\` — 내가 소개한 가게 목록 + 누적 매출
+- \`/agency/introduced-stores/commissions\` — 소개 commission 내역
+- \`/my-commissions\` — 출금 신청 (10,000원 이상부터)
+
+### 관련 API
+- \`GET /api/agency/introduced-stores\` — 소개 가게 목록
+- \`GET /api/agency/introduced-stores/commissions\` — 소개 commission 내역
+- \`POST /api/referral-tree/withdrawals\` — 출금 신청 (commission_withdrawals row 생성)`,
   },
 ]
 

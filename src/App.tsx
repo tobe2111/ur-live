@@ -93,6 +93,7 @@ const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
 const MyCouponsPage = lazy(() => import('./pages/MyCouponsPage'))
 const MyReviewsPage = lazy(() => import('./pages/MyReviewsPage'))
 const ReferralIndexPage = lazy(() => import('./pages/ReferralIndexPage'))
+const MyCommissionsPage = lazy(() => import('./pages/MyCommissionsPage'))
 const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
@@ -515,6 +516,7 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/referral" element={<ReferralIndexPage />} />
+            <Route path="/my-commissions" element={<MyCommissionsPage />} />
             <Route path="/account/settings" element={
               <ProtectedRoute requireUser>
                 <AccountSettingsPage />

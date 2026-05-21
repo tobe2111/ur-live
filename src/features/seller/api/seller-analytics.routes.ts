@@ -392,3 +392,52 @@ sellerAnalyticsRoutes.post('/products/:id/duplicate', requireAuth(), async (c) =
 
   return c.json({ success: true, data: { id: result.meta.last_row_id }, message: '상품이 복제되었습니다' })
 })
+
+// 🛡️ 2026-05-21: 월별 상품 등록 추이 — 신규 입점 가게/상품 트렌드 (최근 12개월).
+sellerAnalyticsRoutes.get('/products/monthly-trend', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  const { results } = await c.env.DB.prepare(`
+    SELECT strftime('%Y-%m', created_at) AS month,
+           COUNT(*) AS new_products,
+           COUNT(CASE WHEN category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') THEN 1 END) AS new_vouchers
+      FROM products
+     WHERE seller_id = ?
+       AND created_at >= datetime('now', '-12 months')
+     GROUP BY month
+     ORDER BY month ASC
+  `).bind(sellerId).all().catch(() => ({ results: [] }))
+  return c.json({ success: true, data: results || [] })
+})
+
+// 🛡️ 2026-05-21: 내가 받은 추천 commission (셀러 본인이 referrer 인 경우 — 인플루언서 추천).
+sellerAnalyticsRoutes.get('/referral-commissions/summary', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  try {
+    const summary = await c.env.DB.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN status = 'granted' THEN commission_amount ELSE 0 END), 0) AS total_granted,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN commission_amount ELSE 0 END), 0) AS total_pending,
+        COALESCE(SUM(CASE WHEN status = 'paid_out' THEN commission_amount ELSE 0 END), 0) AS total_paid_out,
+        COUNT(DISTINCT source_user_id) AS referred_users_count
+      FROM referral_commissions
+      WHERE beneficiary_id = ?
+    `).bind(String(sellerId)).first<{ total_granted: number; total_pending: number; total_paid_out: number; referred_users_count: number }>().catch(() => null)
+
+    const topReferred = await c.env.DB.prepare(`
+      SELECT source_user_id,
+             COUNT(*) AS order_count,
+             SUM(commission_amount) AS total_commission
+        FROM referral_commissions
+       WHERE beneficiary_id = ?
+       GROUP BY source_user_id
+       ORDER BY total_commission DESC
+       LIMIT 10
+    `).bind(String(sellerId)).all().catch(() => ({ results: [] }))
+
+    return c.json({ success: true, data: { summary: summary || { total_granted: 0, total_pending: 0, total_paid_out: 0, referred_users_count: 0 }, top_referred: topReferred.results || [] } })
+  } catch (e) {
+    return c.json({ success: true, data: { summary: { total_granted: 0, total_pending: 0, total_paid_out: 0, referred_users_count: 0 }, top_referred: [] } })
+  }
+})

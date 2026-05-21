@@ -24,6 +24,15 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
     // 🛡️ 2026-05-15: 공동구매 hub
     { loc: '/group-buy', priority: 0.95, changefreq: 'hourly' },
+    // 🛡️ 2026-05-21: 교환권 (KT Alpha 기프티쇼) 메인 + 주요 카테고리 명시
+    { loc: '/vouchers', priority: 0.9, changefreq: 'daily' },
+    { loc: '/vouchers?category=cafe', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/vouchers?category=convenience', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/vouchers?category=restaurant', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/vouchers?category=beauty', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/vouchers?category=department', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/vouchers?category=mobile', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/restaurant-map', priority: 0.7, changefreq: 'daily' },
   ];
 
   if (DB) {

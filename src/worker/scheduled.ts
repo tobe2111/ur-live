@@ -42,6 +42,7 @@ import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
+import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
@@ -89,6 +90,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
     // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리
     ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
+    // 🛡️ 2026-05-21: 라이브 썸네일 자동 갱신 (셀러 수동 호출 제거 — YouTube 자동 캡처에 의존)
+    ctx.waitUntil(safeCron('yt-thumbnail-refresh', () => handleYoutubeThumbnailRefresh(env)));
     // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지
     ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
     // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)

@@ -62,11 +62,43 @@ async function ensureReferralTreeTables(DB: D1Database) {
           source_user_id TEXT NOT NULL,
           commission_rate REAL NOT NULL,
           commission_amount INTEGER NOT NULL,
-          status TEXT DEFAULT 'pending' CHECK(status IN ('pending','granted','withdrawn')),
+          status TEXT DEFAULT 'pending' CHECK(status IN ('pending','granted','withdrawal_requested','paid_out','withdrawn')),
+          withdrawal_request_id INTEGER,
+          paid_out_at TEXT,
+          withdrawn_at TEXT,
           created_at TEXT DEFAULT (datetime('now'))
         )
       `),
+      DB.prepare(`
+        CREATE TABLE IF NOT EXISTS commission_withdrawals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          beneficiary_id TEXT NOT NULL,
+          beneficiary_type TEXT NOT NULL CHECK(beneficiary_type IN ('user','seller','agency')),
+          total_amount INTEGER NOT NULL,
+          commission_count INTEGER NOT NULL,
+          status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+          bank_name TEXT,
+          account_number TEXT,
+          account_holder TEXT,
+          requested_at TEXT DEFAULT (datetime('now')),
+          processed_at TEXT,
+          processed_by TEXT,
+          admin_memo TEXT,
+          rejection_reason TEXT
+        )
+      `),
     ])
+    // 🛡️ 2026-05-21: 기존 production DB 에 누락된 컬럼 자동 ALTER (idempotent).
+    for (const sql of [
+      "ALTER TABLE referral_commissions ADD COLUMN withdrawn_at TEXT",
+      "ALTER TABLE referral_commissions ADD COLUMN withdrawal_request_id INTEGER",
+      "ALTER TABLE referral_commissions ADD COLUMN paid_out_at TEXT",
+    ]) {
+      try { await DB.prepare(sql).run() } catch { /* column exists */ }
+    }
+    try {
+      await DB.prepare("CREATE INDEX IF NOT EXISTS idx_commission_withdrawals_beneficiary ON commission_withdrawals(beneficiary_id, beneficiary_type, status)").run()
+    } catch { /* ignore */ }
   } catch { /* tables already exist */ }
 }
 
@@ -615,7 +647,7 @@ referralTreeRoutes.get('/my-commissions', requireAuth(), async (c) => {
     conditions.push('tier = ?')
     params.push(parseInt(tierFilter, 10))
   }
-  if (statusFilter && ['pending', 'granted', 'withdrawn'].includes(statusFilter)) {
+  if (statusFilter && ['pending', 'granted', 'withdrawal_requested', 'paid_out', 'withdrawn'].includes(statusFilter)) {
     conditions.push('status = ?')
     params.push(statusFilter)
   }
@@ -788,6 +820,180 @@ referralTreeRoutes.get('/stats', requireAdmin(), async (c) => {
       users_by_type: usersByType,
     },
   })
+})
+
+// ---------------------------------------------------------------------------
+// 🛡️ 2026-05-21: Commission 출금 신청 / 어드민 승인
+// 흐름: status='granted' commissions → POST /withdrawals (사용자) →
+//        status='withdrawal_requested' + commission_withdrawals row 생성 →
+//        admin PATCH approve → status='paid_out' + 송금 (수동) OR reject → 'granted' 로 복원.
+// ---------------------------------------------------------------------------
+
+const MIN_WITHDRAWAL_AMOUNT = 10_000 // 1만원
+
+referralTreeRoutes.post('/withdrawals', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const { DB } = c.env
+  await ensureReferralTreeTables(DB)
+  const userId = String(user.id)
+
+  const body = await c.req.json<{ bank_name?: string; account_number?: string; account_holder?: string }>().catch(() => ({}) as { bank_name?: string; account_number?: string; account_holder?: string })
+  const bankName = (body.bank_name || '').trim()
+  const accountNumber = (body.account_number || '').trim()
+  const accountHolder = (body.account_holder || '').trim()
+
+  if (!bankName || !accountNumber || !accountHolder) {
+    return c.json({ success: false, error: '은행명/계좌번호/예금주를 모두 입력하세요.' }, 400)
+  }
+  if (!/^[\d-]{5,30}$/.test(accountNumber)) {
+    return c.json({ success: false, error: '계좌번호 형식이 올바르지 않습니다.' }, 400)
+  }
+
+  // 출금 가능 commissions 합산 + 잠금 (트랜잭션 대신 status 업데이트로 처리)
+  const granted = await executeQuery<{ id: number; commission_amount: number; beneficiary_type: string }>(
+    DB,
+    "SELECT id, commission_amount, beneficiary_type FROM referral_commissions WHERE beneficiary_id = ? AND status = 'granted'",
+    [userId],
+  )
+  if (granted.length === 0) {
+    return c.json({ success: false, error: '출금 가능한 commission 이 없습니다.' }, 400)
+  }
+  const totalAmount = granted.reduce((sum, r) => sum + (r.commission_amount || 0), 0)
+  if (totalAmount < MIN_WITHDRAWAL_AMOUNT) {
+    return c.json({ success: false, error: `최소 출금 금액은 ${MIN_WITHDRAWAL_AMOUNT.toLocaleString()}원입니다. (현재 ${totalAmount.toLocaleString()}원)` }, 400)
+  }
+  const beneficiaryType = granted[0].beneficiary_type || 'user'
+
+  // 출금 요청 row 생성
+  const insertResult = await DB.prepare(
+    `INSERT INTO commission_withdrawals
+       (beneficiary_id, beneficiary_type, total_amount, commission_count, status, bank_name, account_number, account_holder)
+     VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`,
+  ).bind(userId, beneficiaryType, totalAmount, granted.length, bankName, accountNumber, accountHolder).run()
+  const withdrawalId = insertResult.meta.last_row_id as number
+
+  // commission status 전환
+  await DB.prepare(
+    `UPDATE referral_commissions
+       SET status = 'withdrawal_requested', withdrawal_request_id = ?
+     WHERE beneficiary_id = ? AND status = 'granted'`,
+  ).bind(withdrawalId, userId).run()
+
+  return c.json({
+    success: true,
+    data: { withdrawal_id: withdrawalId, total_amount: totalAmount, commission_count: granted.length },
+  })
+})
+
+referralTreeRoutes.get('/withdrawals', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const { DB } = c.env
+  await ensureReferralTreeTables(DB)
+  const rows = await executeQuery(
+    DB,
+    `SELECT id, total_amount, commission_count, status, bank_name, account_number, account_holder,
+            requested_at, processed_at, admin_memo, rejection_reason
+       FROM commission_withdrawals
+      WHERE beneficiary_id = ?
+      ORDER BY requested_at DESC
+      LIMIT 50`,
+    [String(user.id)],
+  )
+  return c.json({ success: true, data: rows })
+})
+
+// ---- Admin endpoints ----
+
+referralTreeRoutes.get('/admin/withdrawals', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  await ensureReferralTreeTables(DB)
+  const status = c.req.query('status') || 'pending'
+  if (!['pending', 'approved', 'rejected', 'all'].includes(status)) {
+    return c.json({ success: false, error: 'Invalid status' }, 400)
+  }
+  const where = status === 'all' ? '' : 'WHERE w.status = ?'
+  const params: unknown[] = status === 'all' ? [] : [status]
+  const rows = await executeQuery(
+    DB,
+    `SELECT w.id, w.beneficiary_id, w.beneficiary_type, w.total_amount, w.commission_count, w.status,
+            w.bank_name, w.account_number, w.account_holder, w.requested_at, w.processed_at,
+            w.admin_memo, w.rejection_reason,
+            COALESCE(u.name, a.company_name, s.business_name) as beneficiary_name
+       FROM commission_withdrawals w
+       LEFT JOIN users u ON u.id = w.beneficiary_id AND w.beneficiary_type = 'user'
+       LEFT JOIN agencies a ON a.id = w.beneficiary_id AND w.beneficiary_type = 'agency'
+       LEFT JOIN sellers s ON s.id = w.beneficiary_id AND w.beneficiary_type = 'seller'
+       ${where}
+      ORDER BY w.requested_at DESC
+      LIMIT 200`,
+    params,
+  )
+  return c.json({ success: true, data: rows })
+})
+
+referralTreeRoutes.patch('/admin/withdrawals/:id/approve', requireAdmin(), async (c) => {
+  const user = getCurrentUser(c)
+  const { DB } = c.env
+  await ensureReferralTreeTables(DB)
+  const id = parseInt(c.req.param('id') || '', 10)
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
+  const body = await c.req.json<{ admin_memo?: string }>().catch(() => ({} as { admin_memo?: string }))
+
+  const w = await queryFirst<{ status: string; beneficiary_id: string }>(
+    DB,
+    "SELECT status, beneficiary_id FROM commission_withdrawals WHERE id = ?",
+    [id],
+  )
+  if (!w) return c.json({ success: false, error: 'Not found' }, 404)
+  if (w.status !== 'pending') return c.json({ success: false, error: 'Already processed' }, 409)
+
+  await DB.prepare(
+    `UPDATE commission_withdrawals
+       SET status = 'approved', processed_at = datetime('now'), processed_by = ?, admin_memo = ?
+     WHERE id = ?`,
+  ).bind(String(user?.id || 'admin'), body.admin_memo || null, id).run()
+
+  await DB.prepare(
+    `UPDATE referral_commissions
+       SET status = 'paid_out', paid_out_at = datetime('now')
+     WHERE withdrawal_request_id = ? AND status = 'withdrawal_requested'`,
+  ).bind(id).run()
+
+  return c.json({ success: true })
+})
+
+referralTreeRoutes.patch('/admin/withdrawals/:id/reject', requireAdmin(), async (c) => {
+  const user = getCurrentUser(c)
+  const { DB } = c.env
+  await ensureReferralTreeTables(DB)
+  const id = parseInt(c.req.param('id') || '', 10)
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
+  const body = await c.req.json<{ rejection_reason?: string }>().catch(() => ({} as { rejection_reason?: string }))
+  const reason = (body.rejection_reason || '').trim()
+  if (!reason) return c.json({ success: false, error: '거절 사유를 입력하세요.' }, 400)
+
+  const w = await queryFirst<{ status: string }>(
+    DB, "SELECT status FROM commission_withdrawals WHERE id = ?", [id],
+  )
+  if (!w) return c.json({ success: false, error: 'Not found' }, 404)
+  if (w.status !== 'pending') return c.json({ success: false, error: 'Already processed' }, 409)
+
+  await DB.prepare(
+    `UPDATE commission_withdrawals
+       SET status = 'rejected', processed_at = datetime('now'), processed_by = ?, rejection_reason = ?
+     WHERE id = ?`,
+  ).bind(String(user?.id || 'admin'), reason, id).run()
+
+  // commissions 를 다시 granted 로 복원
+  await DB.prepare(
+    `UPDATE referral_commissions
+       SET status = 'granted', withdrawal_request_id = NULL
+     WHERE withdrawal_request_id = ? AND status = 'withdrawal_requested'`,
+  ).bind(id).run()
+
+  return c.json({ success: true })
 })
 
 export { referralTreeRoutes }

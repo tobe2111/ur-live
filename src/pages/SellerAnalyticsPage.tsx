@@ -3,21 +3,24 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardStatCard, DashboardLoading } from '@/components/dashboard'
-import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight } from 'lucide-react'
-import { formatNumber } from '@/utils/format'
+import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight, Gift, Calendar } from 'lucide-react'
+import { formatNumber, formatWon } from '@/utils/format'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
 const SellerAnalyticsChart = lazy(() => import('@/components/charts/SellerAnalyticsChart'))
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<'revenue' | 'customers' | 'products'>('revenue')
+  const [tab, setTab] = useState<'revenue' | 'customers' | 'products' | 'commission' | 'monthly'>('revenue')
   interface RevenueDataPoint { date: string; revenue: number; orders: number }
   interface CustomerData { total_customers: number; repeat_customers: number; top_customers: { name: string; order_count: number; total_spent: number }[] }
   interface ProductPerformanceItem { id: number; name: string; sold_count: number; order_count: number; revenue: number; avg_rating: number; review_count: number; stock: number }
   interface DetailedAnalytics { conversion_rate: number; repeat_purchase_rate: number; repeat_buyers: number; total_buyers: number }
 
-  const [data, setData] = useState<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | null>(null)
+  interface CommissionSummary { summary: { total_granted: number; total_pending: number; total_paid_out: number; referred_users_count: number }; top_referred: { source_user_id: string; order_count: number; total_commission: number }[] }
+  interface MonthlyTrend { month: string; new_products: number; new_vouchers: number }
+
+  const [data, setData] = useState<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | null>(null)
   const [detailedData, setDetailedData] = useState<DetailedAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(30)
@@ -35,7 +38,9 @@ export default function SellerAnalyticsPage() {
     setLoading(true)
     const url = tab === 'revenue' ? `/api/seller/analytics/chart/revenue?days=${days}`
       : tab === 'customers' ? '/api/seller/analytics/customers'
-      : '/api/seller/analytics/products/performance'
+      : tab === 'products' ? '/api/seller/analytics/products/performance'
+      : tab === 'commission' ? '/api/seller/analytics/referral-commissions/summary'
+      : '/api/seller/analytics/products/monthly-trend'
     api.get(url, getAuthHeaders()).then(r => { if (r.data.success) setData(r.data.data) }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }
 
@@ -85,8 +90,10 @@ export default function SellerAnalyticsPage() {
             { key: 'revenue', label: t('seller.revenueChart'), icon: BarChart2 },
             { key: 'customers', label: t('seller.customerAnalysis'), icon: Users },
             { key: 'products', label: t('seller.productPerformance'), icon: Package },
+            { key: 'commission', label: '추천 Commission', icon: Gift },
+            { key: 'monthly', label: '월별 입점 추이', icon: Calendar },
           ].map(tabItem => (
-            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products')}
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly')}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
               <tabItem.icon className="h-4 w-4" />{tabItem.label}
             </button>
@@ -229,6 +236,78 @@ export default function SellerAnalyticsPage() {
                 ))}
               </div>
             )}
+
+            {tab === 'commission' && data && (() => {
+              const cd = data as CommissionSummary
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">출금 가능</p>
+                      <p className="text-xl font-bold text-blue-600">{formatWon(cd.summary.total_granted)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">대기 중</p>
+                      <p className="text-xl font-bold text-amber-600">{formatWon(cd.summary.total_pending)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">누적 출금</p>
+                      <p className="text-xl font-bold text-emerald-600">{formatWon(cd.summary.total_paid_out)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">추천한 고객수</p>
+                      <p className="text-xl font-bold text-gray-900">{cd.summary.referred_users_count}명</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-200">
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-gray-900">상위 추천 고객</h3>
+                      <a href="/my-commissions" className="text-xs text-blue-600 hover:underline">출금 신청 →</a>
+                    </div>
+                    {cd.top_referred.length === 0 ? (
+                      <p className="text-center text-gray-500 text-xs py-6">아직 추천 commission 이 없습니다.</p>
+                    ) : (
+                      cd.top_referred.map((r, i) => (
+                        <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                          <div>
+                            <p className="text-sm font-mono text-gray-700">{r.source_user_id}</p>
+                            <p className="text-xs text-gray-500">주문 {r.order_count}건</p>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900">{formatWon(r.total_commission)}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {tab === 'monthly' && data && (() => {
+              const months = data as MonthlyTrend[]
+              const max = Math.max(1, ...months.map(m => m.new_products))
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4">최근 12개월 신규 등록 상품</h3>
+                  {months.length === 0 ? (
+                    <p className="text-center text-gray-500 text-xs py-8">데이터가 없습니다.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {months.map(m => (
+                        <div key={m.month} className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-gray-700 w-16">{m.month}</span>
+                          <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden relative">
+                            <div className="bg-blue-500 h-full rounded-full" style={{ width: `${(m.new_products / max) * 100}%` }} />
+                            <span className="absolute inset-0 flex items-center px-2 text-xs font-medium text-gray-900">
+                              {m.new_products}개 (공구권 {m.new_vouchers}개)
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </>
         )}
       </div>
