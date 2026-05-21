@@ -243,6 +243,36 @@ appointmentsRoutes.post('/appointments/book', requireAuth(), async (c) => {
 // 🛡️ 2026-05-21: 취소 정책 — 시작 시간 12시간 전까지 무조건 환불, 이후엔 정책 가이드.
 const CANCEL_DEADLINE_HOURS = 12
 
+// 🛡️ 2026-05-21 Phase B-2: 결제 직후 예약 prompt — order 의 booking_required 상품 중
+//   아직 appointment_bookings INSERT 안 된 것 반환.
+//   PaymentSuccessPage 가 이걸 호출해서 "예약 잡기" CTA 노출.
+appointmentsRoutes.get('/orders/:orderId/pending-bookings', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const orderId = c.req.param('orderId') || ''
+  if (!orderId) return c.json({ success: false, error: 'Invalid order id' }, 400)
+  const { DB } = c.env
+
+  // order 소유권 검증
+  const order = await DB.prepare('SELECT id, user_id FROM orders WHERE id = ?').bind(orderId).first<{ id: number; user_id: string }>().catch(() => null)
+  if (!order || String(order.user_id) !== String(user.id)) {
+    return c.json({ success: true, data: { pending: [] } })
+  }
+
+  // booking_required=1 인 order_items 중 아직 예약 안 한 것
+  const rows = await DB.prepare(
+    `SELECT DISTINCT p.id as product_id, p.name as product_name, p.image_url, p.restaurant_name,
+            p.booking_duration_min
+       FROM order_items oi
+       INNER JOIN products p ON p.id = oi.product_id
+       LEFT JOIN appointment_bookings a ON a.product_id = p.id AND a.order_id = ? AND a.status = 'confirmed'
+      WHERE oi.order_id = ? AND COALESCE(p.booking_required, 0) = 1
+        AND a.id IS NULL`,
+  ).bind(orderId, orderId).all().catch(() => ({ results: [] }))
+
+  return c.json({ success: true, data: { pending: rows.results || [] } })
+})
+
 // ─── User: 내 예약 목록 ──────────────────────────────────────────────
 
 appointmentsRoutes.get('/appointments/my', requireAuth(), async (c) => {
@@ -271,8 +301,8 @@ appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) =>
   const { DB } = c.env
 
   const apt = await DB.prepare(
-    'SELECT user_id, status, booking_date, start_time FROM appointment_bookings WHERE id = ?',
-  ).bind(id).first<{ user_id: string; status: string; booking_date: string; start_time: string }>()
+    'SELECT user_id, status, booking_date, start_time, order_id, product_id, refund_status FROM appointment_bookings WHERE id = ?',
+  ).bind(id).first<{ user_id: string; status: string; booking_date: string; start_time: string; order_id: number | null; product_id: number; refund_status: string | null }>()
   if (!apt) return c.json({ success: false, error: 'Not found' }, 404)
   if (String(apt.user_id) !== String(user.id) && user.type !== 'admin') {
     return c.json({ success: false, error: '권한이 없습니다.' }, 403)
@@ -297,7 +327,51 @@ appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) =>
     `UPDATE appointment_bookings SET status = 'cancelled', cancelled_at = datetime('now'), cancel_reason = ? WHERE id = ?`,
   ).bind(body.cancel_reason || '사용자 취소', id).run()
 
-  return c.json({ success: true, data: { refund_eligible: !lateCancel } })
+  // 🛡️ 2026-05-21 Phase B-2: 자동 환불 처리.
+  //   결제 방식별 분기:
+  //     - payment_method='deal': 즉시 딜 환급 (point_transactions INSERT + user_points UPDATE)
+  //     - payment_method='toss': refund_status='pending' 마킹 (어드민이 토스 cancel API 호출)
+  //   영구성: refund_status 컬럼으로 중복 환불 차단 + 처리 상태 추적.
+  let refundResult: { method: 'deal' | 'toss' | 'none'; amount?: number; status: string } = { method: 'none', status: 'no_order' }
+
+  if (!lateCancel && apt.order_id && (apt.refund_status === null || apt.refund_status === '')) {
+    try {
+      const order = await DB.prepare(
+        'SELECT id, payment_method, total_amount, status, user_id FROM orders WHERE id = ?',
+      ).bind(apt.order_id).first<{ id: number; payment_method: string | null; total_amount: number; status: string; user_id: string }>()
+
+      if (order && order.user_id === String(user.id)) {
+        const payMethod = (order.payment_method || '').toLowerCase()
+        if (payMethod === 'deal' || payMethod === 'deal_points') {
+          // 즉시 딜 환급
+          await DB.prepare(
+            `INSERT INTO point_transactions (user_id, amount, type, description, created_at)
+             VALUES (?, ?, 'refund', ?, datetime('now'))`,
+          ).bind(String(user.id), order.total_amount, `예약 취소 환불 (appointment #${id})`).run().catch(() => null)
+          await DB.prepare(
+            `UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?`,
+          ).bind(order.total_amount, String(user.id)).run().catch(() => null)
+          await DB.prepare(
+            `UPDATE appointment_bookings SET refund_status = 'refunded', refund_processed_at = datetime('now') WHERE id = ?`,
+          ).bind(id).run()
+          await DB.prepare(`UPDATE orders SET status = 'CANCELLED' WHERE id = ?`).bind(order.id).run().catch(() => null)
+          refundResult = { method: 'deal', amount: order.total_amount, status: 'refunded' }
+        } else {
+          // 토스 — 어드민 수동 처리 큐 (감사 가능)
+          await DB.prepare(
+            `UPDATE appointment_bookings SET refund_status = 'pending' WHERE id = ?`,
+          ).bind(id).run()
+          refundResult = { method: 'toss', amount: order.total_amount, status: 'pending_admin_action' }
+        }
+      }
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn('[appointment refund]', e)
+      // 환불 실패해도 취소 자체는 성공 — refund_status 마킹으로 admin 가능
+      refundResult = { method: 'none', status: 'failed' }
+    }
+  }
+
+  return c.json({ success: true, data: { refund_eligible: !lateCancel, refund: refundResult } })
 })
 
 // ─── Seller: 받은 예약 목록 ──────────────────────────────────────────

@@ -26,6 +26,9 @@ export default function PaymentSuccessPage() {
     orders?: Array<{ payment_method?: string }>;
     payment?: { method?: string };
   } | null>(null)
+  // 🛡️ 2026-05-21 Phase B-2: 결제 직후 자체 예약 필요한 상품 prompt.
+  //   booking_required=1 + 아직 appointment 미생성 — 사용자가 잊지 않게 CTA 표시.
+  const [pendingBookings, setPendingBookings] = useState<Array<{ product_id: number; product_name: string; image_url: string | null; restaurant_name: string | null }>>([])
   
   // ✅ BUG #4 FIX: Use a ref for the processing flag instead of state.
   // Using state inside a useEffect closure causes a stale-closure bug:
@@ -151,6 +154,14 @@ export default function PaymentSuccessPage() {
       const paymentData = response.data.data
       setOrderInfo(paymentData)
 
+      // 🛡️ 2026-05-21 Phase B-2: 결제 직후 예약 필요한 상품 조회.
+      //   booking_required=1 상품이 있으면 "예약 잡기" CTA 자동 노출 → 사용자 잊지 않게.
+      if (orderId) {
+        api.get(`/api/orders/${orderId}/pending-bookings`)
+          .then(r => { if (r.data?.success) setPendingBookings(r.data.data?.pending || []) })
+          .catch(() => { /* 조회 실패해도 결제 성공 화면은 정상 표시 */ })
+      }
+
       // 전환 추적 (Google Analytics)
       try {
         const method = paymentData?.orders?.[0]?.payment_method || paymentData?.method || 'unknown'
@@ -255,6 +266,38 @@ export default function PaymentSuccessPage() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#1d1d1f] dark:text-white mb-1 sm:mb-2">{t('paymentSuccess.title')}</h1>
             <p className="text-xs sm:text-sm lg:text-base text-[#6e6e73] dark:text-gray-400">{t('paymentSuccess.subtitle')}</p>
           </div>
+
+          {/* 🛡️ 2026-05-21 Phase B-2: 예약 잡기 CTA — booking_required 상품이 있으면 자동 노출.
+                결제 직후 사용자가 예약 잊지 않게 강조 배치. */}
+          {pendingBookings.length > 0 && (
+            <div className="rounded-xl border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 mb-4">
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-2xl">📅</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-purple-900 dark:text-purple-200">예약이 필요한 상품 {pendingBookings.length}개</p>
+                  <p className="text-[11px] text-purple-700 dark:text-purple-300 mt-0.5">아래 상품은 매장 방문 전 시간 예약이 필요합니다. 지금 잡으시면 매장에서 헛걸음하지 않아요.</p>
+                </div>
+              </div>
+              <div className="space-y-1.5 mb-3">
+                {pendingBookings.slice(0, 3).map(p => (
+                  <div key={p.product_id} className="flex items-center gap-2 text-xs text-purple-900 dark:text-purple-200">
+                    <span>•</span>
+                    <span className="font-medium line-clamp-1">{p.product_name}</span>
+                    {p.restaurant_name && <span className="text-purple-600 dark:text-purple-400 text-[10px]">({p.restaurant_name})</span>}
+                  </div>
+                ))}
+                {pendingBookings.length > 3 && (
+                  <div className="text-[10px] text-purple-600 dark:text-purple-400">외 {pendingBookings.length - 3}개</div>
+                )}
+              </div>
+              <button
+                onClick={() => navigate('/my-appointments?from_payment=' + orderId)}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg"
+              >
+                지금 예약 잡기 →
+              </button>
+            </div>
+          )}
 
           {/* 주문 정보 */}
           {orderInfo && (

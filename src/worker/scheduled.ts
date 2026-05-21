@@ -43,6 +43,7 @@ import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
 import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
+import { handleAppointmentReminder } from './cron/appointment-reminder';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
@@ -215,6 +216,8 @@ export async function handleCronScheduled(
       const { runStayReminderCron } = await import('./cron/stay-reminder')
       await runStayReminderCron(env as { DB: D1Database })
     }))
+    // 🛡️ 2026-05-21 Phase B-2: 자체 예약 D-1 reminder (KST 18시).
+    ctx.waitUntil(safeCron('appointment-reminder', () => handleAppointmentReminder(env)))
     // 🛡️ 2026-05-18: voucher 만료 D-30/D-7/D-1 알림.
     ctx.waitUntil(safeCron('stay-voucher-expire', async () => {
       const { runVoucherExpireCron } = await import('./cron/stay-voucher-expire')

@@ -217,6 +217,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   매장은 booking_required=1 설정 시 자체 캘린더 활성화. (external_booking_url 과 mutually exclusive)
     { desc: 'products.booking_required', sql: "ALTER TABLE products ADD COLUMN booking_required INTEGER DEFAULT 0" },
     { desc: 'products.booking_duration_min', sql: "ALTER TABLE products ADD COLUMN booking_duration_min INTEGER DEFAULT 60" },
+    // 🛡️ 2026-05-21 Phase B-2: reminder + refund 추적 (중복 발송 / 중복 환불 방지).
+    { desc: 'appointment_bookings.reminder_sent_at', sql: "ALTER TABLE appointment_bookings ADD COLUMN reminder_sent_at TEXT" },
+    { desc: 'appointment_bookings.refund_processed_at', sql: "ALTER TABLE appointment_bookings ADD COLUMN refund_processed_at TEXT" },
+    { desc: 'appointment_bookings.refund_status', sql: "ALTER TABLE appointment_bookings ADD COLUMN refund_status TEXT" },
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
