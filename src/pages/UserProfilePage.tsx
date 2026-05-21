@@ -11,6 +11,7 @@ import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
+import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ChatNameSetting from './user-profile/ChatNameSetting'
 import CouponVoucherStats from './user-profile/CouponVoucherStats'
 import ShoppingGroup from './user-profile/ShoppingGroup'
@@ -138,6 +139,10 @@ export default function UserProfilePage() {
 
       {/* 🛡️ 2026-05-18: referral 적립 카드 (인플 대시보드 entry point) */}
       <ReferralEarnedCard />
+
+      {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
+            홈은 단순 유지, 가입 entry 는 여기 + footer 에 집중. */}
+      <RoleCtaGrid />
 
       {/* v4 쿠폰 / 바우처 카운트 2분할 */}
       <CouponVoucherStats counts={counts} />
