@@ -359,7 +359,6 @@ export default function VouchersPage() {
                   )}
                 </div>
                 <span className="text-[10px] text-gray-700 dark:text-gray-300 line-clamp-1 max-w-[60px] text-center">{b.brand_name}</span>
-                <span className="text-[9px] text-gray-400 dark:text-gray-500">{b.cnt}종</span>
               </button>
             ))}
           </div>
