@@ -257,12 +257,23 @@ adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
     }
     const { getBizMoneyBalance } = await import('@/worker/utils/giftishow-api')
     const bal = await getBizMoneyBalance(env, userIdRow.value)
+    // 🛡️ 2026-05-21: 사용자 신고 — 잔액 업데이트 해도 변화 X.
+    //   원인: UPDATE 만 사용 → platform_settings 에 해당 key row 가 없으면 silent no-op.
+    //   영구 fix: INSERT ON CONFLICT (UPSERT) 로 row 없어도 새로 생성.
     await c.env.DB.prepare(
-      `UPDATE platform_settings SET value = ?, updated_at = datetime('now') WHERE key = 'kt_alpha_biz_money_balance'`
-    ).bind(String(bal.balance)).run().catch(() => { /* noop */ })
+      `INSERT INTO platform_settings (key, value, updated_at)
+       VALUES ('kt_alpha_biz_money_balance', ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+    ).bind(String(bal.balance)).run().catch((e) => {
+      if (import.meta.env.DEV) console.error('[admin:kt-alpha:balance] balance upsert failed:', e)
+    })
     await c.env.DB.prepare(
-      `UPDATE platform_settings SET value = datetime('now'), updated_at = datetime('now') WHERE key = 'kt_alpha_biz_money_check_at'`
-    ).run().catch(() => { /* noop */ })
+      `INSERT INTO platform_settings (key, value, updated_at)
+       VALUES ('kt_alpha_biz_money_check_at', datetime('now'), datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = datetime('now'), updated_at = datetime('now')`
+    ).run().catch((e) => {
+      if (import.meta.env.DEV) console.error('[admin:kt-alpha:balance] check_at upsert failed:', e)
+    })
     return c.json({ success: true, data: bal })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)
@@ -657,21 +668,25 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/auto-classify', cors(), async (c) 
   }
 
   try {
-    // 1) gift_catalog 와 join 해서 goods_type_detail / goods_type_name / brand_name 일괄 조회.
+    // 🛡️ 2026-05-21: production 에서 kt_alpha_gift_code 미populated 인 voucher 상품 다수 발견 →
+    //   WHERE 절 완화: deal_only=1 인 모든 상품 + brand_name + name 으로도 매칭 가능하게.
+    //   분류 순서: gift_catalog.goods_type_detail → goods_type_name → brand_name keyword → product name keyword.
     const rows = await DB.prepare(`
-      SELECT p.id, p.brand_name, p.category AS current_category,
+      SELECT p.id, p.name AS product_name, p.brand_name, p.category AS current_category,
              gc.goods_type_detail, gc.goods_type_name
       FROM products p
       LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-      WHERE p.kt_alpha_gift_code IS NOT NULL AND p.deal_only = 1
+      WHERE p.deal_only = 1 AND p.is_active = 1
     `).all<{
       id: number
+      product_name: string | null
       brand_name: string | null
       current_category: string | null
       goods_type_detail: string | null
       goods_type_name: string | null
     }>().catch(() => ({ results: [] as Array<{
       id: number
+      product_name: string | null
       brand_name: string | null
       current_category: string | null
       goods_type_detail: string | null
@@ -684,10 +699,12 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/auto-classify', cors(), async (c) 
     let unchanged = 0
 
     for (const it of items) {
-      // 우선순위: goods_type_detail > goods_type_name > brand 키워드.
+      // 🛡️ 2026-05-21: 우선순위 — goods_type_detail > goods_type_name > brand_name > product_name.
+      //   brand_name 도 null 이면 product_name 으로 매칭 시도 (gift_code 없는 voucher 대응).
       const fromCatalog = it.goods_type_detail || it.goods_type_name || null
       const fromBrand = classifyByBrand(it.brand_name)
-      const newCat = fromCatalog || fromBrand
+      const fromName = classifyByBrand(it.product_name)
+      const newCat = fromCatalog || fromBrand || fromName
       if (!newCat) continue  // 매칭 안 됨 — 그대로 유지
       if (newCat === it.current_category) {
         unchanged++

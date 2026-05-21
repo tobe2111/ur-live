@@ -117,11 +117,16 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
       if (userIdRow?.value) {
         const bal = await getBizMoneyBalance(env, userIdRow.value)
         balance = bal.balance
+        // 🛡️ 2026-05-21: UPSERT — UPDATE 만 쓰면 row 없을 때 silent no-op (사용자 신고 원인).
         await env.DB.prepare(
-          `UPDATE platform_settings SET value = ?, updated_at = datetime('now') WHERE key = 'kt_alpha_biz_money_balance'`
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES ('kt_alpha_biz_money_balance', ?, datetime('now'))
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
         ).bind(String(balance)).run().catch(() => { /* noop */ })
         await env.DB.prepare(
-          `UPDATE platform_settings SET value = datetime('now'), updated_at = datetime('now') WHERE key = 'kt_alpha_biz_money_check_at'`
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES ('kt_alpha_biz_money_check_at', datetime('now'), datetime('now'))
+           ON CONFLICT(key) DO UPDATE SET value = datetime('now'), updated_at = datetime('now')`
         ).run().catch(() => { /* noop */ })
 
         // 🛡️ 2026-05-19: 잔액 부족 알림 — 10만 원 이하 시 어드민에게 dashboard 알림.
