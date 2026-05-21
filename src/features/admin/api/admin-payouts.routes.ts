@@ -171,6 +171,49 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), async (c) =>
   return c.json({ success: true })
 })
 
+// 🛡️ 2026-05-21 Phase D: commission rate 어드민 조정 — platform_settings 기반.
+//   - platform_fee_pct: 플랫폼 fee 비율 (default 5)
+//   - seller_commission_pct: 위탁 판매 셀러 commission (default 10)
+//   - agency_share_pct: 에이전시 분배 (default 30, 플랫폼 fee 의 30%)
+adminPayoutsRoutes.get('/admin/payouts/commission-rates', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  const rows = await DB.prepare(
+    "SELECT key, value FROM platform_settings WHERE key IN ('platform_fee_pct','seller_commission_pct','agency_share_pct')",
+  ).all<{ key: string; value: string }>().catch(() => ({ results: [] as Array<{ key: string; value: string }> }))
+  const defaults = { platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30' }
+  const result: Record<string, string> = { ...defaults }
+  for (const r of rows.results || []) result[r.key] = r.value
+  return c.json({ success: true, data: result })
+})
+
+adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdmin(), async (c) => {
+  const body = await c.req.json<{ platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number }>().catch(() => ({} as { platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number }))
+  const { DB } = c.env
+
+  const inputs: Array<[string, number | undefined, number, number]> = [
+    ['platform_fee_pct', body.platform_fee_pct, 0, 30],
+    ['seller_commission_pct', body.seller_commission_pct, 0, 50],
+    ['agency_share_pct', body.agency_share_pct, 0, 100],
+  ]
+  // platform_settings 테이블 보장
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run()
+  } catch { /* exists */ }
+
+  for (const [key, val, min, max] of inputs) {
+    if (val === undefined || val === null) continue
+    const n = Number(val)
+    if (!Number.isFinite(n) || n < min || n > max) {
+      return c.json({ success: false, error: `${key} 는 ${min}-${max} 범위여야 합니다.` }, 400)
+    }
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    ).bind(key, String(n)).run()
+  }
+  return c.json({ success: true })
+})
+
 adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)

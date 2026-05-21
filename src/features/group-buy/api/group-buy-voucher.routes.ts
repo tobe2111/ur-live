@@ -146,16 +146,22 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           //   waitUntil 비동기 — 응답 지연 0.
           c.executionCtx?.waitUntil((async () => {
             try {
-              const { recordVoucherUsedLedger } = await import('../../../worker/utils/ledger')
+              const { recordVoucherUsedLedger, recordAgencyCommissionShare } = await import('../../../worker/utils/ledger')
               const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
               const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
               const amount = meta.applied_price || 0
               if (merchantId && amount > 0) {
-                await recordVoucherUsedLedger(DB, {
+                const result = await recordVoucherUsedLedger(DB, {
                   voucher_id: meta.voucher_id,
                   order_amount: amount,
                   merchant_id: merchantId,
                   seller_id: sellerId,
+                })
+                // 🛡️ Phase D: 에이전시 commission 자동 분배 (introduced_by_agency_id 있을 시).
+                await recordAgencyCommissionShare(DB, {
+                  voucher_id: meta.voucher_id,
+                  merchant_id: merchantId,
+                  platform_fee: result.platform_amount,
                 })
               }
             } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
@@ -240,16 +246,21 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
       c.executionCtx?.waitUntil((async () => {
         try {
-          const { recordVoucherUsedLedger } = await import('../../../worker/utils/ledger')
+          const { recordVoucherUsedLedger, recordAgencyCommissionShare } = await import('../../../worker/utils/ledger')
           const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
           const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
           const amount = voucher.applied_price || 0
           if (merchantId && amount > 0) {
-            await recordVoucherUsedLedger(DB, {
+            const result = await recordVoucherUsedLedger(DB, {
               voucher_id: voucher.id,
               order_amount: amount,
               merchant_id: merchantId,
               seller_id: sellerForCommission,
+            })
+            await recordAgencyCommissionShare(DB, {
+              voucher_id: voucher.id,
+              merchant_id: merchantId,
+              platform_fee: result.platform_amount,
             })
           }
         } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }

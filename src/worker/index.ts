@@ -29,6 +29,7 @@ import { sellersRouter } from './routes/seller.routes';
 import { emailRoutes } from '../features/notifications/api/email.routes';
 import { appointmentsRoutes } from '../features/appointments/api/appointments.routes';
 import { adminPayoutsRoutes } from '../features/admin/api/admin-payouts.routes';
+import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { i18nMiddleware } from './middleware/i18n.middleware';
@@ -1076,6 +1077,8 @@ app.route('/api', uploadRoutes);
 app.route('/api', appointmentsRoutes);
 // 🛡️ 2026-05-21 Phase C: 통합 정산 (payouts 어드민).
 app.route('/api', adminPayoutsRoutes);
+// 🛡️ 2026-05-21 Phase D: 세무 (전자세금계산서 + 연말 리포트).
+app.route('/api', adminTaxRoutes);
 // 🛡️ 2026-05-16: 셀러 마케팅 (인플 차단) + 인플루언서 정산 + 어드민 송금 + 인플 카탈로그
 app.route('/api/seller-marketing', sellerMarketingRoutes);
 app.route('/api/influencer-settlement', influencerSettlementRoutes);

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
+import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
+import { getSellerId } from '@/lib/seller-auth'
 import {
   Package,
   Plus,
@@ -188,6 +190,13 @@ export default function SellerProductsPage() {
             </>
           }
         />
+
+        {/* 🛡️ 2026-05-21 Phase D: 셀러 트래킹 링크 (AI 1 핵심 영업 무기) */}
+        {getSellerId() && (
+          <div className="mb-4 max-w-md">
+            <SellerTrackingLinkCopy sellerId={getSellerId() || ''} />
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (

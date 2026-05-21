@@ -486,6 +486,42 @@ adminSellersRoutes.patch('/sellers/:id/donation-commission', cors(), async (c) =
   }
 });
 
+// 🛡️ 2026-05-21 Phase D: 사장님(store_owner) 매직링크 재발송 — 어드민/에이전시 1-click.
+//   기존 endpoint (seller-orders.routes.ts:961) 는 셀러 본인용. 어드민이 발송 트리거 시 본 endpoint.
+//   인프라 동일 (sendStoreOwnerAlimtalk + token) — 어드민 권한 확장만.
+adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    // 셀러의 첫 product (store_owner type) 또는 명시 productId
+    const body = await c.req.json<{ product_id?: number }>().catch(() => ({} as { product_id?: number }));
+    const product = body.product_id
+      ? await DB.prepare("SELECT id, name, restaurant_name, restaurant_phone, store_owner_token, category FROM products WHERE id = ? AND seller_id = ?").bind(body.product_id, sellerId).first<{ id: number; name: string; restaurant_name: string; restaurant_phone: string; store_owner_token: string | null; category: string | null }>()
+      : await DB.prepare("SELECT id, name, restaurant_name, restaurant_phone, store_owner_token, category FROM products WHERE seller_id = ? AND restaurant_phone IS NOT NULL ORDER BY id DESC LIMIT 1").bind(sellerId).first<{ id: number; name: string; restaurant_name: string; restaurant_phone: string; store_owner_token: string | null; category: string | null }>();
+    if (!product) return c.json({ success: false, error: '발송 대상 상품을 찾을 수 없습니다 (restaurant_phone 필요)' }, 404);
+    if (!product.restaurant_phone) return c.json({ success: false, error: '매장 전화번호가 없습니다' }, 400);
+
+    const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');
+    const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
+    let token: string = product.store_owner_token || '';
+    if (!token) {
+      token = generateStoreOwnerToken();
+      try { await DB.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, product.id).run(); } catch { /* graceful */ }
+    }
+    const statsUrl = `https://live.ur-team.com/store/stats/${product.id}?t=${token}`;
+    await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
+      restaurantName: product.restaurant_name || '사장님',
+      productName: product.name,
+      statsUrl,
+      categoryLabel: getVoucherShortLabel(product.category),
+    });
+    return c.json({ success: true, data: { product_id: product.id, stats_url: statsUrl } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // 🛡️ 2026-05-21: 에이전시 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
 //   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
 //   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).

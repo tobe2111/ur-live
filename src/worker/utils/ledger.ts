@@ -118,13 +118,30 @@ export async function recordVoucherUsedLedger(
     order_amount: number          // 사용자 결제 총액
     merchant_id: number | string  // store_owner seller_id
     seller_id?: number | string | null // 인플루언서 (위탁 판매 시)
-    platform_rate?: number        // 0.05 default (5%)
-    seller_rate?: number          // 0.10 default (10%) — seller_id 있을 때만
+    platform_rate?: number        // 명시 시 override (어드민 캠페인별)
+    seller_rate?: number          // 명시 시 override
   },
 ): Promise<{ merchant_amount: number; seller_amount: number; platform_amount: number }> {
   await ensureLedgerTable(DB)
-  const platformRate = params.platform_rate ?? 0.05
-  const sellerRate = params.seller_id ? (params.seller_rate ?? 0.10) : 0
+  // 🛡️ 2026-05-21 Phase D: platform_settings 에서 비율 조회 — 어드민 조정 가능.
+  let platformRate = params.platform_rate
+  let sellerRate = params.seller_rate
+  if (platformRate === undefined || sellerRate === undefined) {
+    try {
+      const rows = await DB.prepare(
+        "SELECT key, value FROM platform_settings WHERE key IN ('platform_fee_pct','seller_commission_pct')",
+      ).all<{ key: string; value: string }>().catch(() => ({ results: [] as Array<{ key: string; value: string }> }))
+      for (const r of rows.results || []) {
+        const v = parseFloat(r.value)
+        if (!Number.isFinite(v)) continue
+        if (r.key === 'platform_fee_pct' && platformRate === undefined) platformRate = v / 100
+        if (r.key === 'seller_commission_pct' && sellerRate === undefined) sellerRate = v / 100
+      }
+    } catch { /* default fallback */ }
+  }
+  if (platformRate === undefined) platformRate = 0.05
+  if (sellerRate === undefined) sellerRate = 0.10
+  if (!params.seller_id) sellerRate = 0
   const merchantRate = 1 - platformRate - sellerRate
   const platformAmount = Math.floor(params.order_amount * platformRate)
   const sellerAmount = Math.floor(params.order_amount * sellerRate)
@@ -170,6 +187,63 @@ export async function recordVoucherUsedLedger(
   })
 
   return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount }
+}
+
+/**
+ * 🛡️ 2026-05-21 Phase D: voucher 사용 시점에 에이전시 commission 자동 분배.
+ *
+ * 구조: 플랫폼 fee 의 일부(default 30%)를 에이전시에게 자동 분배.
+ *   - sellers.introduced_by_agency_id 가 있는 가게의 voucher 사용 시 발생.
+ *   - 분배 비율은 platform_settings.agency_share_pct (default 30) 에서 조정 (어드민 페이지).
+ *   - ledger: platform:revenue → agency:N (debit/credit) 자동 entry.
+ *
+ * 멱등: voucher_id + agency 조합 1회만.
+ */
+export async function recordAgencyCommissionShare(
+  DB: D1Database,
+  params: {
+    voucher_id: number | string
+    merchant_id: number | string  // sellers.id (introduced_by_agency_id 조회용)
+    platform_fee: number          // recordVoucherUsedLedger 가 반환한 platform 분
+  },
+): Promise<{ agency_id: number | null; amount: number }> {
+  await ensureLedgerTable(DB)
+  const ref = `voucher:${params.voucher_id}:agency`
+  const existing = await DB.prepare(
+    `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
+  ).bind(ref).first().catch(() => null)
+  if (existing) return { agency_id: null, amount: 0 }
+
+  // 가게의 추천 에이전시 조회
+  const seller = await DB.prepare(
+    'SELECT introduced_by_agency_id FROM sellers WHERE id = ?',
+  ).bind(params.merchant_id).first<{ introduced_by_agency_id: number | null }>().catch(() => null)
+  if (!seller?.introduced_by_agency_id) return { agency_id: null, amount: 0 }
+
+  // 분배 비율 (platform_settings)
+  let sharePct = 0.30  // default 30%
+  try {
+    const row = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'agency_share_pct'",
+    ).first<{ value: string }>()
+    const v = parseFloat(row?.value || '0.30')
+    if (v > 0 && v < 1) sharePct = v
+    else if (v >= 1 && v <= 100) sharePct = v / 100
+  } catch { /* settings 없으면 default */ }
+
+  const agencyAmount = Math.floor(params.platform_fee * sharePct)
+  if (agencyAmount <= 0) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
+
+  await recordLedger(DB, {
+    event_type: 'agency_commission',
+    reference_id: ref,
+    amount: agencyAmount,
+    debit_account: 'platform:revenue',
+    credit_account: `agency:${seller.introduced_by_agency_id}`,
+    metadata: { kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct },
+  })
+
+  return { agency_id: seller.introduced_by_agency_id, amount: agencyAmount }
 }
 
 /**
