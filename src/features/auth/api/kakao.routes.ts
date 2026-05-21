@@ -501,6 +501,16 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       if (userWithFlag.isNewUser) {
         stateUrl.searchParams.set('new', '1');
 
+        // 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 자동 적립 (사용자 요청).
+        //   fail-soft — 적립 실패해도 로그인 진행. 프론트에 ?bonus= 부착해 환영 모달에서 노출.
+        try {
+          const { grantSignupBonus } = await import('../../../worker/utils/signup-bonus');
+          const r = await grantSignupBonus(c.env.DB, String(user.id));
+          if (r.granted) {
+            stateUrl.searchParams.set('bonus', String(r.amount));
+          }
+        } catch { /* fail-soft */ }
+
         // 🛡️ 2026-05-01: Option B — 같은 카카오로 재가입이면 복원 동의 안내.
         //   30일 내 탈퇴 기록 있으면 'restorable=1&restored_user_id=X' 부착.
         //   프론트가 복원 동의 모달 표시 → 동의 시 /api/account/restore 호출.

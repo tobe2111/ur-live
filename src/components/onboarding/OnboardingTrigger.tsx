@@ -19,6 +19,8 @@ export default function OnboardingTrigger() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [show, setShow] = useState(false)
   const [userName, setUserName] = useState<string | undefined>()
+  // 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 노출용 (kakao.routes.ts 가 ?bonus= 부착).
+  const [bonusAmount, setBonusAmount] = useState<number>(0)
 
   useEffect(() => {
     if (isOnboardingDone()) return
@@ -27,6 +29,8 @@ export default function OnboardingTrigger() {
     //   useSearchParams 가 못 읽음. 'new' 만 있어도 신규 가입으로 간주 (App 이 이미 처리한 직후 시점).
     if (isNew) {
       setUserName(searchParams.get('userName') || undefined)
+      const bonusRaw = Number(searchParams.get('bonus') || '0')
+      if (Number.isFinite(bonusRaw) && bonusRaw > 0) setBonusAmount(bonusRaw)
       const t = setTimeout(() => setShow(true), 600)
       return () => clearTimeout(t)
     }
@@ -37,6 +41,7 @@ export default function OnboardingTrigger() {
     // URL 정리 — onboarding 관련 params 만 제거. login=success/userId 등은 다른 곳에서 사용 가능하므로 보존.
     const next = new URLSearchParams(searchParams)
     next.delete('new')
+    next.delete('bonus')
     setSearchParams(next, { replace: true })
   }
 
@@ -44,7 +49,7 @@ export default function OnboardingTrigger() {
 
   return (
     <Suspense fallback={null}>
-      <WelcomeOnboardingModal onClose={handleClose} userName={userName} />
+      <WelcomeOnboardingModal onClose={handleClose} userName={userName} bonusAmount={bonusAmount} />
     </Suspense>
   )
 }

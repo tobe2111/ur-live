@@ -23,11 +23,13 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 interface Props {
   onClose: () => void
   userName?: string
+  // 🛡️ 2026-05-20: 신규 가입 보너스 (3000딜) — 있으면 환영 카드에 강조 노출.
+  bonusAmount?: number
 }
 
 const ONBOARDING_DONE_KEY = 'ur_onboarding_done'
 
-export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
+export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount = 0 }: Props) {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
@@ -167,6 +169,26 @@ export default function WelcomeOnboardingModal({ onClose, userName }: Props) {
                 {t('welcomeOnboarding.welcomeDesc1', { defaultValue: '라이브 방송으로 보고 바로 사는' })}<br />
                 <strong className="text-gray-900 dark:text-white">{t('welcomeOnboarding.welcomeDesc2', { defaultValue: '한국 1위 라이브 커머스' })}</strong>
               </p>
+
+              {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
+              {bonusAmount > 0 && (
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shrink-0 shadow-md">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[13px] font-bold text-amber-700">🎉 가입 환영 보너스 — 자동 적립 완료</p>
+                      <p className="text-[24px] font-extrabold text-gray-900 dark:text-white mt-0.5">
+                        {bonusAmount.toLocaleString()}딜 <span className="text-[12px] font-medium text-gray-500">(₩{bonusAmount.toLocaleString()} 가치)</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        공구권 결제 / 후원에 현금처럼 바로 사용 가능
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
