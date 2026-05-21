@@ -43,21 +43,18 @@ supplyRoutes.get('/products', async (c) => {
   const offset = (page - 1) * limit;
   const search = c.req.query('search') || '';
   const category = c.req.query('category') || '';
+  // 🛡️ 2026-05-21: 매장 수만 개 대응 — 지역 + 정렬 필터.
+  //   INDEX (region_si, region_gu, category) + (is_active, category, sold_count DESC) 활용.
+  const regionSi = c.req.query('region_si') || '';
+  const sort = c.req.query('sort') || 'popular';
+  const orderBy = sort === 'newest' ? 'p.created_at DESC'
+    : sort === 'price_low' ? 'p.price ASC'
+    : sort === 'price_high' ? 'p.price DESC'
+    : 'COALESCE(p.sold_count, 0) DESC, p.created_at DESC'; // popular default
 
   try {
     // is_supply_product / supply_price 컬럼이 없는 구버전 스키마 대응
     // 컬럼이 없으면 빈 목록 반환
-    let where = "p.is_active = 1";
-    const params: (string | number)[] = [];
-
-    if (search) {
-      where += " AND p.name LIKE ?";
-      params.push(`%${search}%`);
-    }
-    if (category) {
-      where += " AND p.category = ?";
-      params.push(category);
-    }
 
     // is_supply_product 컬럼 존재 여부를 먼저 확인
     const hasSupplyCol = await DB.prepare(
@@ -69,9 +66,11 @@ supplyRoutes.get('/products', async (c) => {
       return c.json({ success: true, data: { items: [], total: 0, page, limit, has_more: false } });
     }
 
-    where = "p.is_supply_product = 1 AND p.is_active = 1";
-    if (search) { where += " AND p.name LIKE ?"; }
-    if (category) { where += " AND p.category = ?"; }
+    let where = "p.is_supply_product = 1 AND p.is_active = 1";
+    const params: (string | number)[] = [];
+    if (search) { where += " AND p.name LIKE ?"; params.push(`%${search}%`); }
+    if (category) { where += " AND p.category = ?"; params.push(category); }
+    if (regionSi) { where += " AND p.region_si = ?"; params.push(regionSi); }
 
     const rows = await DB.prepare(`
       SELECT
@@ -93,7 +92,7 @@ supplyRoutes.get('/products', async (c) => {
       FROM products p
       LEFT JOIN sample_requests sr ON sr.product_id = p.id AND sr.seller_id = ?
       WHERE ${where}
-      ORDER BY p.created_at DESC
+      ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
     `).bind(sellerId, ...params, limit, offset).all<{
       id: number;

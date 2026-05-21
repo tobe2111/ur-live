@@ -198,6 +198,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.introduced_by_agency_id', sql: "ALTER TABLE sellers ADD COLUMN introduced_by_agency_id INTEGER" },
     { desc: 'sellers.introduced_at', sql: "ALTER TABLE sellers ADD COLUMN introduced_at DATETIME" },
     { desc: 'sellers.agency_intro_code', sql: "ALTER TABLE sellers ADD COLUMN agency_intro_code TEXT" },
+    // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
+    //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
+    //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).
+    { desc: 'idx_sellers_intro_agency', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_intro_agency ON sellers(introduced_by_agency_id) WHERE introduced_by_agency_id IS NOT NULL" },
+    // 🛡️ 2026-05-21: 지역 기반 검색 — restaurant_address LIKE '%서울%' 100배 느림 회피.
+    //   region_si (광역시도) + region_gu (구/군) 정확 매치 INDEX. 가게 등록 시 자동 파싱.
+    { desc: 'products.region_si', sql: "ALTER TABLE products ADD COLUMN region_si TEXT" },
+    { desc: 'products.region_gu', sql: "ALTER TABLE products ADD COLUMN region_gu TEXT" },
+    { desc: 'idx_products_region', sql: "CREATE INDEX IF NOT EXISTS idx_products_region ON products(region_si, region_gu, category) WHERE is_active = 1" },
+    // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
+    //   네이버 예약 / 야놀자 / 카카오톡 채널 URL — 자체 캘린더 안 만들고 위임.
+    { desc: 'products.external_booking_url', sql: "ALTER TABLE products ADD COLUMN external_booking_url TEXT" },
+    // 정렬 / 필터링 성능 — 매장 수만 개 시 sold_count DESC 인덱스 필수.
+    { desc: 'idx_products_sourcing', sql: "CREATE INDEX IF NOT EXISTS idx_products_sourcing ON products(is_active, category, sold_count DESC) WHERE is_active = 1" },
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },

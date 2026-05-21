@@ -62,6 +62,11 @@ export default function SellerSupplyPage() {
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  // 🛡️ 2026-05-21: 매장 수만 개 대응 — 카테고리/지역/정렬 필터 추가.
+  //   INDEX (region_si, region_gu, category) + (is_active, category, sold_count DESC) 활용.
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterRegion, setFilterRegion] = useState('')
+  const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price_low' | 'price_high'>('popular')
 
   // My requests
   const [requests, setRequests] = useState<SampleRequest[]>([])
@@ -82,7 +87,7 @@ export default function SellerSupplyPage() {
   useEffect(() => {
     if (!token()) { navigate('/seller/login'); return }
     loadCatalog()
-  }, [search])
+  }, [search, filterCategory, filterRegion, sortBy])
 
   useEffect(() => {
     if (activeTab === 'my-requests') loadMyRequests()
@@ -93,6 +98,9 @@ export default function SellerSupplyPage() {
     try {
       const params = new URLSearchParams({ limit: '50' })
       if (search) params.set('search', search)
+      if (filterCategory) params.set('category', filterCategory)
+      if (filterRegion) params.set('region_si', filterRegion)
+      if (sortBy) params.set('sort', sortBy)
       const res = await api.get(`/api/supply/products?${params}`, {
         headers: { Authorization: `Bearer ${token()}` }
       })
@@ -186,7 +194,7 @@ export default function SellerSupplyPage() {
         {activeTab === 'catalog' && (
           <>
             {/* Search */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -204,6 +212,58 @@ export default function SellerSupplyPage() {
               >
                 {t('common.search')}
               </button>
+            </div>
+
+            {/* 🛡️ 2026-05-21: 카테고리/지역/정렬 필터 — 매장 수만 개 대응. INDEX 활용. */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <select
+                value={filterCategory}
+                onChange={e => setFilterCategory(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="">전체 카테고리</option>
+                <option value="meal_voucher">🍽️ 식사권</option>
+                <option value="beauty_voucher">💇 뷰티</option>
+                <option value="stay_voucher">🏨 숙박</option>
+                <option value="health_voucher">💪 건강</option>
+                <option value="pet_voucher">🐶 반려</option>
+                <option value="activity_voucher">🎉 액티비티</option>
+                <option value="etc_voucher">🎯 기타</option>
+              </select>
+              <select
+                value={filterRegion}
+                onChange={e => setFilterRegion(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="">전체 지역</option>
+                <option value="서울">서울</option>
+                <option value="경기">경기</option>
+                <option value="인천">인천</option>
+                <option value="부산">부산</option>
+                <option value="대구">대구</option>
+                <option value="대전">대전</option>
+                <option value="광주">광주</option>
+                <option value="울산">울산</option>
+                <option value="세종">세종</option>
+                <option value="강원">강원</option>
+                <option value="충북">충북</option>
+                <option value="충남">충남</option>
+                <option value="전북">전북</option>
+                <option value="전남">전남</option>
+                <option value="경북">경북</option>
+                <option value="경남">경남</option>
+                <option value="제주">제주</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none ml-auto"
+              >
+                <option value="popular">🔥 인기순</option>
+                <option value="newest">🆕 신상품</option>
+                <option value="price_low">💸 낮은 가격순</option>
+                <option value="price_high">💰 높은 가격순</option>
+              </select>
             </div>
 
             {catalogLoading ? (

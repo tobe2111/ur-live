@@ -486,6 +486,58 @@ adminSellersRoutes.patch('/sellers/:id/donation-commission', cors(), async (c) =
   }
 });
 
+// 🛡️ 2026-05-21: 에이전시 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
+//   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
+//   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).
+//   사유: 가게 사장님 분쟁 (영업권 충돌) / 에이전시 무활동 6개월 unlock 등.
+adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ new_agency_id: number | null; reason: string }>().catch(() => ({} as { new_agency_id?: number | null; reason?: string }));
+    const newAgencyId = body.new_agency_id;
+    const reason = (body.reason || '').trim();
+    if (!reason || reason.length < 5) {
+      return c.json({ success: false, error: '재배정 사유를 최소 5자 이상 입력하세요.' }, 400);
+    }
+    if (newAgencyId != null) {
+      // 새 agency 존재 확인
+      const agency = await DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(newAgencyId).first();
+      if (!agency) return c.json({ success: false, error: '대상 에이전시를 찾을 수 없습니다.' }, 404);
+    }
+    // 현재 값 조회 (감사 로그용)
+    const current = await DB.prepare('SELECT introduced_by_agency_id FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null }>();
+    if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
+    const previousAgencyId = current.introduced_by_agency_id;
+
+    // UPDATE — introduced_at 도 갱신 (재배정 시점 기록)
+    await DB.prepare(
+      `UPDATE sellers SET introduced_by_agency_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).bind(newAgencyId, sellerId).run();
+
+    // 감사 로그 (admin_audit_log 자동 생성, 없으면 silent skip)
+    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
+    try {
+      await DB.prepare(
+        `INSERT INTO admin_audit_log (actor_id, actor_email, action, resource_type, resource_id, old_value, new_value, ip, created_at)
+         VALUES (?, ?, 'agency_reassign', 'seller', ?, ?, ?, ?, datetime('now'))`,
+      ).bind(
+        String(actor?.id || 'unknown'),
+        actor?.email || null,
+        sellerId,
+        JSON.stringify({ introduced_by_agency_id: previousAgencyId }),
+        JSON.stringify({ introduced_by_agency_id: newAgencyId, reason }),
+        c.req.header('CF-Connecting-IP') || null,
+      ).run();
+    } catch { /* audit log 없으면 silent skip */ }
+
+    return c.json({ success: true, data: { seller_id: sellerId, previous_agency_id: previousAgencyId, new_agency_id: newAgencyId, reason } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminSellersRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
   try {
     const { DB } = c.env;
@@ -608,7 +660,7 @@ adminSellersRoutes.post('/sellers/store-owner', cors(), rateLimit({ action: 'adm
       return c.json({ success: false, error: '비밀번호 6~128자' }, 400)
     }
 
-    const { hashPassword } = await import('@/lib/password')
+    const { hashPassword } = await import('../../../lib/password')
     const hash = await hashPassword(tempPassword)
     const phone = body.phone.replace(/-/g, '')
     const email = body.email ?? `store_${phone}@store.ur-team.com`  // 가짜 이메일 (필수 컬럼)

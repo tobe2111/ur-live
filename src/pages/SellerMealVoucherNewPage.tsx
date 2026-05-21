@@ -46,6 +46,12 @@ export default function SellerMealVoucherNewPage() {
     group_buy_deadline: defaultDeadline,
     store_verify_pin: '',
     stock: 100,
+    // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
+    //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 식사권은 비워둠 (예약 불요).
+    external_booking_url: '',
+    // 🛡️ 2026-05-21: 지역 (region_si/region_gu) — restaurant_address 에서 자동 파싱.
+    region_si: '',
+    region_gu: '',
     // 🛡️ 2026-05-15: 티어 할인 — 단계별 더 많이 모이면 더 큰 할인
     group_buy_tiers: [
       { min: 5, discount_pct: 5 },
@@ -192,6 +198,10 @@ export default function SellerMealVoucherNewPage() {
         group_buy_target: form.group_buy_target || 0,
         group_buy_deadline: form.group_buy_deadline || null,
         store_verify_pin: form.store_verify_pin || null,
+        external_booking_url: form.external_booking_url || null,
+        // 🛡️ 2026-05-21: 지역 자동 파싱 — restaurant_address 첫 단어 = region_si.
+        region_si: form.region_si || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[0]?.replace(/(특별시|광역시|특별자치시|특별자치도|도)$/, '').slice(0, 4) : null),
+        region_gu: form.region_gu || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[1] || null : null),
         // 🛡️ 2026-05-15: 티어 할인 (활성화 시에만 전송 + min 오름차순 정렬 + 유효성)
         group_buy_tiers: form.enable_tiers
           ? JSON.stringify(
@@ -657,6 +667,23 @@ export default function SellerMealVoucherNewPage() {
                   rows={2}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none resize-none"
                 />
+              </div>
+
+              {/* 🛡️ 2026-05-21: 외부 예약 링크 — 숙소/뷰티 사전 예약 필수 카테고리.
+                    유저가 바우처 발급 후 이 링크로 날짜 예약 (네이버 예약 / 야놀자 / 카카오톡 채널).
+                    식사권은 즉시 방문 가능하므로 비워둘 것. */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  📅 외부 예약 링크 <span className="text-[11px] text-gray-400">(숙소/뷰티 등 예약 필수 카테고리)</span>
+                </label>
+                <input
+                  type="url"
+                  value={form.external_booking_url}
+                  onChange={e => update('external_booking_url', e.target.value)}
+                  placeholder="https://booking.naver.com/... 또는 https://www.yanolja.com/..."
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">바우처 발급 후 사용자에게 노출. 비워두면 매장 전화번호로 안내.</p>
               </div>
 
               {/* 🛡️ 2026-05-15: 티어 할인 — 단계별 할인으로 전환율 부스트 */}
