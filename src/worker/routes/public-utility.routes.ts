@@ -373,15 +373,21 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
       brands: Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }>
     }> = []
     for (const cat of (cats.results || [])) {
-      // brand 칩도 동일 runtime 분류 사용 → "카페/베이커리" 클릭 시 해당 브랜드만 노출.
+      // 🛡️ 2026-05-21: 진단 결과 — production 의 products.brand_name 모두 NULL.
+      //   gift_catalog 에 brand_name 85종 정상 존재. JOIN 으로 gc.brand_name 사용.
+      //   COALESCE(p.brand_name, gc.brand_name) 로 둘 다 안전 처리.
       const tryBrandQuery = async (withJoin: boolean) => {
         const sql = withJoin
-          ? `SELECT p.brand_name, MAX(p.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
+          ? `SELECT COALESCE(p.brand_name, gc.brand_name) as brand_name,
+                    MAX(COALESCE(p.brand_icon_url, gc.brand_icon_url)) as brand_icon_url,
+                    COUNT(*) as cnt
                FROM products p
           LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-              WHERE p.is_active = 1 AND p.deal_only = 1 AND p.brand_name IS NOT NULL
+              WHERE p.is_active = 1 AND p.deal_only = 1
+                AND COALESCE(p.brand_name, gc.brand_name) IS NOT NULL
+                AND COALESCE(p.brand_name, gc.brand_name) != ''
                 AND ${RUNTIME_CATEGORY_SQL} = ?
-              GROUP BY p.brand_name
+              GROUP BY COALESCE(p.brand_name, gc.brand_name)
               ORDER BY cnt DESC LIMIT 12`
           : `SELECT p.brand_name, MAX(p.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
                FROM products p
