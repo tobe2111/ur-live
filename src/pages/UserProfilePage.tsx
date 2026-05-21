@@ -141,8 +141,10 @@ export default function UserProfilePage() {
       <ReferralEarnedCard />
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
-            홈은 단순 유지, 가입 entry 는 여기 + footer 에 집중. */}
-      <RoleCtaGrid />
+            ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
+      <div className="ur-content-medium px-4 lg:px-8 pt-5">
+        <RoleCtaGrid />
+      </div>
 
       {/* v4 쿠폰 / 바우처 카운트 2분할 */}
       <CouponVoucherStats counts={counts} />
