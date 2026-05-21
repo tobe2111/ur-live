@@ -162,12 +162,38 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), async (c) =>
   const txId = (body.transaction_id || '').trim()
   if (!txId) return c.json({ success: false, error: 'transaction_id 필수 (은행/토스 송금 ID)' }, 400)
   const { DB } = c.env
-  const row = await DB.prepare('SELECT status FROM payouts WHERE id = ?').bind(id).first<{ status: string }>()
+  const row = await DB.prepare('SELECT * FROM payouts WHERE id = ?').bind(id).first<{ id: number; status: string; payee_type: string; payee_id: string; amount: number; bank_name: string | null; account_number: string | null }>()
   if (!row) return c.json({ success: false, error: 'Not found' }, 404)
   if (!['pending', 'approved'].includes(row.status)) return c.json({ success: false, error: '이미 처리됨' }, 409)
   await DB.prepare(
     `UPDATE payouts SET status = 'sent', sent_at = datetime('now'), transaction_id = ?, admin_memo = ? WHERE id = ?`,
   ).bind(txId, body.admin_memo || null, id).run()
+
+  // 🛡️ 2026-05-21 Phase D-3: 송금 완료 자동 알림톡 (waitUntil 비동기).
+  //   수령자 type 별 phone 조회 → template 'payout_completed' 발송.
+  //   env 미설정 시 silent skip.
+  c.executionCtx?.waitUntil((async () => {
+    try {
+      let phone: string | null = null
+      let name: string | null = null
+      if (row.payee_type === 'agency') {
+        const r = await DB.prepare("SELECT phone, name FROM agencies WHERE id = ?").bind(row.payee_id).first<{ phone: string | null; name: string | null }>().catch(() => null)
+        phone = r?.phone || null; name = r?.name || null
+      } else if (row.payee_type === 'seller' || row.payee_type === 'store_owner') {
+        const r = await DB.prepare("SELECT phone, business_name FROM sellers WHERE id = ?").bind(row.payee_id).first<{ phone: string | null; business_name: string | null }>().catch(() => null)
+        phone = r?.phone || null; name = r?.business_name || null
+      } else if (row.payee_type === 'user') {
+        const r = await DB.prepare("SELECT phone, name FROM users WHERE id = ?").bind(row.payee_id).first<{ phone: string | null; name: string | null }>().catch(() => null)
+        phone = r?.phone || null; name = r?.name || null
+      }
+      if (!phone) return
+      const masked = row.account_number && row.account_number.length >= 4 ? `****${row.account_number.slice(-4)}` : (row.account_number || '')
+      const message = `[유어딜] 정산 송금 완료\n${name || ''} 님 ${row.amount.toLocaleString('ko-KR')}원이 ${row.bank_name || ''} ${masked} 계좌로 입금되었습니다.\nTX: ${txId}`
+      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+      await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, phone, 'payout_completed', message)
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[payout sent alimtalk]', e) }
+  })())
+
   return c.json({ success: true })
 })
 

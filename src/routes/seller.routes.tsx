@@ -27,6 +27,7 @@ const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
 const SellerProductEditPage = lazy(() => import('@/pages/SellerProductEditPage'))
 const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage'))
 const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
+const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
 const SellerStreamNewPage = lazy(() => import('@/pages/SellerStreamNewPage'))
 const SellerStreamEditPage = lazy(() => import('@/pages/SellerStreamEditPage'))
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
@@ -171,6 +172,11 @@ export function SellerRoutes() {
       <Route path="/seller/appointments" element={
         <ProtectedRoute requireSeller>
           <SellerAppointmentsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/ledger" element={
+        <ProtectedRoute requireSeller>
+          <MyLedgerPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/live" element={<Navigate to="/seller/live-broadcast" replace />} />

@@ -148,6 +148,11 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
     if (!cas.meta?.changes) continue
 
     const amount = v.applied_price || 0
+    // 🛡️ 2026-05-21 Phase D-3: 환불 시 ledger reverse (멱등).
+    try {
+      const { recordRefundLedger } = await import('../../../worker/utils/ledger')
+      if (amount > 0) await recordRefundLedger(DB, { voucher_id: v.id, reason: 'admin bulk refund', amount })
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[admin refund ledger]', e) }
     // 사용자 환불
     if (amount > 0 && v.user_id) {
       try {
@@ -225,6 +230,11 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
         "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
       ).bind(v.id).run()
       if ((cas.meta?.changes ?? 0) === 0) continue
+      // 🛡️ 2026-05-21 Phase D-3: ledger reverse 자동.
+      try {
+        const { recordRefundLedger } = await import('../../../worker/utils/ledger')
+        await recordRefundLedger(DB, { voucher_id: v.id, reason: 'admin product force refund', amount: product.price })
+      } catch (e) { if (import.meta.env?.DEV) console.warn('[admin force refund ledger]', e) }
       if (v.payment_method === 'deal_points' && v.user_id) {
         const amount = product.price
         try {

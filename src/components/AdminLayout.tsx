@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon,
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -58,6 +58,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/kt-alpha',              label: 'KT Alpha (교환권)', icon: Gift },
       { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
+      { path: '/admin/payouts',          label: '💸 통합 정산 (ledger)', icon: Wallet },
+      { path: '/admin/commission-withdrawals', label: '추천 출금 승인', icon: DollarSign },
       { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },

@@ -45,6 +45,7 @@ import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-de
 import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
+import { handleLedgerIntegrityCheck } from './cron/ledger-integrity-check';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
@@ -109,6 +110,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
     ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
+    // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.
+    ctx.waitUntil(safeCron('ledger-integrity-check', () => handleLedgerIntegrityCheck(env)));
     // 🛡️ 2026-05-20: 운영자 액션 자동화 (사용자 요청).
     //   매일 1회 schema-repair 자동 호출 — migrations 0271-0274 의 누락 컬럼/테이블 보장.
     //   기존: 어드민이 수동으로 POST /api/_internal/repair-schema 호출 필요했음.

@@ -70,6 +70,20 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
         ).bind(v.id).run()
         if ((casRes.meta?.changes ?? 0) === 0) continue
 
+        // 🛡️ 2026-05-21 Phase D-3: 환불 시 ledger reverse entry 자동 (멱등).
+        //   기존 voucher_used entry 가 있어도 없어도 OK (미사용 voucher 도 entry 0).
+        //   환불 amount 는 product.price (BUG #45 패턴 — total_amount 아님).
+        c.executionCtx?.waitUntil((async () => {
+          try {
+            const { recordRefundLedger } = await import('../../../worker/utils/ledger')
+            await recordRefundLedger(DB, {
+              voucher_id: v.id,
+              reason: '셀러/어드민 환불 (group-buy cancellation)',
+              amount: product.price,
+            })
+          } catch (e) { if (import.meta.env?.DEV) console.warn('[refund ledger]', e) }
+        })())
+
         // 딜 결제건 1 voucher 당 product.price 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
         if (v.payment_method === 'deal_points' && v.user_id) {
           const amount = product.price
