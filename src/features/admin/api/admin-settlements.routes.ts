@@ -300,6 +300,23 @@ adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: '
       createDashboardNotification(DB, 'seller', String(seller.seller_id), 'settlement_completed', '정산 완료', `정산 금액: ${seller.settlement_amount}원`, '/seller/settlements').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
     }
 
+    // 🛡️ 2026-05-21: 정산 완료 알림톡 발송 (env 미설정 시 silent skip).
+    //   sellers.phone 조회 → sendSystemAlimtalk(commerce_settlement_completed).
+    c.executionCtx?.waitUntil((async () => {
+      try {
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+        for (const seller of result.sellers) {
+          const row = await DB.prepare("SELECT phone, business_name FROM sellers WHERE id = ?").bind(seller.seller_id).first<{ phone: string; business_name: string }>().catch(() => null);
+          if (!row?.phone) continue;
+          const amount = (seller.settlement_amount || 0).toLocaleString('ko-KR');
+          const message = `[유어딜] ${row.business_name || ''} 정산이 완료되었습니다.\n정산 금액: ${amount}원\n자세한 내역: live.ur-team.com/seller/settlements`;
+          await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, row.phone, 'seller_settlement_completed', message);
+        }
+      } catch (e) {
+        if (import.meta.env?.DEV) console.warn('[settlement-alimtalk]', e);
+      }
+    })());
+
     return c.json({ success: true, data: result });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);

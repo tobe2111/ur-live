@@ -1,7 +1,85 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-20 (대규모 안정화 + 영구 패턴 정착)
-**최근 push 커밋**: 브랜치 `claude/check-live-commerce-flow-jgNs8` 다수 — 사용자 보고 이슈 일괄 처리
+**최종 업데이트**: 2026-05-21 (commission 출금 시스템 + 알림톡 + 회귀 테스트)
+**최근 push 커밋**: 브랜치 `claude/check-live-commerce-flow-jgNs8` — commit aa44c269 이후 정산 알림톡 추가
+
+## 🆕 2026-05-21 세션 — Commission 출금 + UX 단순화 + 알림톡
+
+### Commission 출금 시스템 신규 (커밋 `66bfe245`, `aa44c269`)
+- 새 테이블 `commission_withdrawals` (계좌 정보 + status pending/approved/rejected)
+- `referral_commissions` ALTER: `withdrawn_at` / `withdrawal_request_id` / `paid_out_at` 컬럼 추가 (production schema fix)
+- 새 status: `withdrawal_requested` / `paid_out` (기존 pending/granted/withdrawn 외 확장)
+- 신규 endpoints (`src/features/referral/api/referral-tree.routes.ts`):
+  - `POST /api/referral-tree/withdrawals` 사용자 출금 신청 (10,000원 이상)
+  - `GET  /api/referral-tree/withdrawals` 내 이력
+  - `GET  /api/referral-tree/admin/withdrawals?status=pending|approved|rejected|all`
+  - `PATCH /api/referral-tree/admin/withdrawals/:id/approve` (admin_memo 선택)
+  - `PATCH /api/referral-tree/admin/withdrawals/:id/reject` (rejection_reason 필수)
+- 신규 페이지:
+  - `/my-commissions` — 사용자/셀러/에이전시 공통 commission 조회 + 출금 신청
+  - `/admin/commission-withdrawals` — 어드민 송금완료/거절 처리
+- 승인/거절 시 자동 알림톡 (수령자 type 별 phone 조회 + 계좌번호 마스킹)
+  - template code: `commission_withdrawal_approved` / `commission_withdrawal_rejected`
+
+### 셀러 정산 완료 알림톡 신규 (방금 추가)
+- `POST /api/admin/settlement/execute` 대량 정산 직후 sellers.phone 으로 알림톡 발송
+- template code: `seller_settlement_completed`
+- 기존 dashboard notification 과 별개로 추가 — silent skip 보존
+
+### YouTube 라이브 썸네일 자동 갱신 (5분 cron)
+- 새 cron `src/worker/cron/youtube-thumbnail-refresh.ts`
+- live 상태 + custom_thumbnail_url 없는 stream 의 cache-bust URL 매 cron 갱신
+- 셀러 수동 호출 불필요
+
+### 셀러 분석 페이지 2개 탭 추가 (`SellerAnalyticsPage`)
+- 추천 Commission 탭 (granted/pending/paid_out + 상위 추천 고객 + 출금 신청 링크)
+- 월별 입점 추이 탭 (최근 12개월 신규 상품 + 공구권 카운트)
+- 신규 endpoints: `monthly-trend`, `referral-commissions/summary`
+
+### 교환권 페이지 (vouchers) 성능 + UX
+- KV 캐시 5분 + stale-while-revalidate 2분 (chip 로딩 지연 해결)
+- N+1 → 단일 GROUP BY 쿼리
+- 브랜드 아이콘 하단 "N종" 수 표시 제거 (사용자 요청)
+- v3 다크 그라데이션 잔액 카드 + 6개 정렬 옵션
+
+### 홈/브라우즈
+- 공구 카드: gift_catalog 브랜드 fallback (참외 스타일)
+- /browse 카테고리 가로 스크롤 이모지 아이콘 (사용자 선택)
+- /browse 최근 본 상품에서 교환권 제외
+- /cart 뒤로가기 무한 루프 영구 fix
+
+### 리뷰 시스템
+- 구매자 전용 리뷰 작성 (NOT_PURCHASED 403 toast)
+- 리뷰 사진 첨부 (최대 5장, 5MB)
+
+### 공구 개최 페이지 UX 단순화 (`SellerMealVoucherNewPage`)
+- 기본값 자동: 마감 7일 후 / 만료 90일 후
+- "고급 설정" 토글로 약관 + 단계별 할인 접기
+
+### 회귀 테스트 (`tests/integration/commission-withdrawal-flow.test.ts`)
+- 9개 신규 테스트 (인증/검증/권한/거절 사유)
+- 전체 1782 tests 통과 (기존 1773 + 신규 9)
+
+### Sitemap.xml 보강
+- /vouchers + 6개 카테고리 명시
+- /restaurant-map 추가
+
+### 운영 가이드 4개 섹션 신규 (`guide-seed.ts`)
+- admin: commission-withdrawals-admin
+- seller: consignment-seller / introduction-commission
+- agency: store-introduction
+
+### ⚠️ 운영자 액션 필요 (production 적용 전)
+1. **schema repair 호출** (필수)
+   ```bash
+   curl -X POST https://live.ur-team.com/api/_internal/repair-schema \
+     -H "Authorization: Bearer <ADMIN_TOKEN>"
+   ```
+   (commission_withdrawals 테이블 + ALTER 컬럼 적용)
+2. **Aligo 템플릿 등록**
+   - `commission_withdrawal_approved` / `commission_withdrawal_rejected` / `seller_settlement_completed`
+   - 등록 전까지 silent skip (운영 영향 0)
+3. **CF Pages 배포 녹색 확인** → `live.ur-team.com/my-commissions` 401 응답 확인
 
 ## 🆕 2026-05-20 세션 — 셀러/사용자 사이드 종합 정리
 
@@ -44,13 +122,19 @@
 ## ⏭️ 다음 작업 후보 (우선순위)
 | 우선 | 항목 | 메모 |
 |---|---|---|
-| 🟡 | 공급자 (가게 사장님) 자체 onboarding UI | 현재 어드민이 `handleStoreOwnerQuickAdd` 로 대신 등록. 셀프 가입 페이지 필요. |
-| 🟡 | KT alpha 자동 분류 production 한 번 실행 | `/admin/kt-alpha` 버튼 클릭. |
-| 🟡 | `/vouchers` 카테고리/브랜드 2축 UI 재검증 | 자동분류 실행 후 표시 확인. |
-| 🟢 | 새 기능 통합 테스트 | 사업자등록증 검증, user_withdrawals, search FTS5. |
-| 🟢 | PC 반응형 검증 (남은 페이지) | 4 viewport. |
-| 🟢 | CSP unsafe-inline 줄이기 | 우리 코드만 (외부 iframe 제외). |
-| 🟢 | YouTube 썸네일 콘솔 404 노이즈 | onError 처리는 됨, 로그는 못 막음. |
+| 🔴 | production smoke test | `/api/referral-tree/admin/withdrawals` + `/api/vouchers/categories` curl |
+| 🟡 | KT alpha 자동 분류 production 1회 실행 | `/admin/kt-alpha` 메가버튼 |
+| 🟡 | `/vouchers` 카테고리/브랜드 재검증 | 자동분류 실행 후 확인 |
+| 🟡 | 라이브 시작 시 셀러 본인에게 알림톡 | 단골에게는 web push 가나 셀러 본인 미발송 |
+| 🟢 | 공구 개최 페이지 추가 단순화 | 디자인 시안 필요 (현재 고급 설정 토글만 추가됨) |
+| 🟢 | PC 반응형 검증 (남은 페이지) | 4 viewport |
+| 🟢 | CSP unsafe-inline 줄이기 | 우리 코드만 (외부 iframe 제외) |
+| 🟢 | YouTube 썸네일 콘솔 404 노이즈 | onError 처리는 됨, 로그는 못 막음 |
+| 🟢 | PPT 슬라이드 디자인 | 지난 세션 outline → Claude Design 의뢰 |
+
+### ✅ 완료된 항목 (2026-05-21)
+- ~~공급자 (가게 사장님) 자체 onboarding UI~~ → `SellerRegisterSupplierPage.tsx` 이미 존재 (2026-05-20 신규)
+- ~~새 기능 통합 테스트 (commission withdrawal)~~ → 9개 테스트 신규
 
 
 
