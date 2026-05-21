@@ -296,27 +296,41 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         </div>
       </div>
 
-      {/* 카테고리 탭 (v4 Editorial) — PC 에서도 풀너비 가로 스크롤, 콘텐츠 centered */}
+      {/* 🛡️ 2026-05-21: 카테고리 가로 스크롤 아이콘 (당근/쿠팡 패턴 — 옵션 A).
+            기존 칩 → 이모지 아이콘 + 라벨 세로 배치 + 가로 스크롤.
+            한 화면 4-5개씩 표시, 손가락으로 swipe. */}
       <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
-        <div className="ur-content-wide flex px-4 lg:px-8 gap-1.5 pb-2.5">
+        <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
           {[
-            { key: 'all', label: t('browse.categoryAll') },
-            { key: 'meal_voucher', label: t('browse.categoryVoucher') },
-            { key: 'food', label: t('browse.categoryFood') },
-            { key: 'fashion', label: t('browse.categoryFashion') },
-            { key: 'beauty', label: t('browse.categoryBeauty') },
-            { key: 'living', label: t('browse.categoryLiving') },
-            { key: 'digital', label: t('browse.categoryDigital') },
-          ].map(c => (
-            <button key={c.key}
-              onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
-              className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap ${
-                category === c.key || (c.key === 'all' && category === 'all')
-                  ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'
-              }`}>
-              {c.label}
-            </button>
-          ))}
+            { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       emoji: '🛍️' },
+            { key: 'meal_voucher', label: t('browse.categoryVoucher', { defaultValue: '교환권' }), emoji: '🎫' },
+            { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      emoji: '🍱' },
+            { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   emoji: '👗' },
+            { key: 'beauty',       label: t('browse.categoryBeauty', { defaultValue: '뷰티' }),    emoji: '💄' },
+            { key: 'living',       label: t('browse.categoryLiving', { defaultValue: '리빙' }),    emoji: '🛋️' },
+            { key: 'digital',      label: t('browse.categoryDigital', { defaultValue: '디지털' }), emoji: '📱' },
+          ].map(c => {
+            const active = category === c.key || (c.key === 'all' && category === 'all')
+            return (
+              <button key={c.key}
+                onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
+                className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform min-w-[56px]"
+              >
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-colors ${
+                  active
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
+                    : 'bg-gray-100 dark:bg-[#1A1A1A]'
+                }`}>
+                  {c.emoji}
+                </div>
+                <span className={`text-[11px] font-bold ${
+                  active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {c.label}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 

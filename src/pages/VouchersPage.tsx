@@ -253,56 +253,41 @@ export default function VouchersPage() {
         </div>
       </div>
 
-      {/* 🛡️ 2026-05-21 v2: 딜 잔액 카드 디자인 재설계 (사용자 신고 — 별로다).
-            토스/카카오뱅크 잔액 카드 패턴 — 깔끔한 white 카드 + 큰 숫자 + 단일 충전 CTA.
-            나머지 보조 액션 (공구/친구추천) 은 텍스트 링크로 축소 → 시각 노이즈 zero. */}
+      {/* 🛡️ 2026-05-21 v3: 잔액 카드 — 토스 inspired (premium dark card).
+            기존 v2 white 카드 "촌스러워" 피드백 → 검정 카드 + grand 타이포 + 우상단 충전 ›. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
-        <div className="rounded-2xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#1F1F1F] p-5 shadow-sm">
+        <button
+          type="button"
+          onClick={() => navigate('/points/charge')}
+          className="w-full text-left rounded-2xl bg-gradient-to-br from-gray-900 to-black dark:from-[#101010] dark:to-black p-5 active:scale-[0.99] transition-transform"
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1.5">내 딜 잔액</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[32px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight">
-                  {dealBalance == null ? '...' : formatNumber(dealBalance)}
+              <p className="text-[12px] text-gray-400 mb-2 tracking-wide">내 딜 잔액</p>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[36px] font-extrabold text-white leading-none tracking-tight">
+                  {dealBalance == null ? '0' : formatNumber(dealBalance)}
                 </span>
-                <span className="text-[16px] font-bold text-gray-500 dark:text-gray-400">딜</span>
+                <span className="text-[18px] font-bold text-gray-500">딜</span>
               </div>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">1딜 = 1원</p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/points/charge')}
-              className="shrink-0 px-5 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-[13px] active:scale-95 transition-transform"
-            >
-              충전하기
-            </button>
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-gray-400 mt-1">
+              충전 <ArrowRight className="w-3.5 h-3.5" />
+            </span>
           </div>
-
-          {/* 보조 액션 — 텍스트 링크 (시각 노이즈 ↓) */}
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#1F1F1F] flex items-center gap-4 text-[12px]">
-            <button
-              type="button"
-              onClick={() => navigate('/group-buy')}
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-semibold inline-flex items-center gap-1"
-            >
-              <Users className="w-3.5 h-3.5" /> 공구 참여
-            </button>
-            <span className="text-gray-200 dark:text-[#2A2A2A]">·</span>
-            <button
-              type="button"
-              onClick={() => navigate('/influencer')}
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-semibold inline-flex items-center gap-1"
-            >
-              <Sparkles className="w-3.5 h-3.5" /> 친구 추천 5% 적립
-            </button>
-          </div>
-
-          {/* 잔액 부족 안내 — 작은 hint */}
           {dealBalance != null && dealBalance < 10000 && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 leading-relaxed">
-              💡 잔액 부족 — 충전 / 공구 참여 / 친구 추천으로 보너스 적립 가능
-            </p>
+            <p className="text-[11px] text-amber-400 mt-3">잔액 부족 — 1원 = 1딜 즉시 충전</p>
           )}
+        </button>
+        {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}
+        <div className="mt-2 flex items-center gap-3 text-[11px] px-1">
+          <button type="button" onClick={() => navigate('/group-buy')} className="text-gray-500 dark:text-gray-400 hover:underline">
+            공구로 적립
+          </button>
+          <span className="text-gray-300 dark:text-gray-700">·</span>
+          <button type="button" onClick={() => navigate('/influencer')} className="text-gray-500 dark:text-gray-400 hover:underline">
+            친구 추천 5%
+          </button>
         </div>
       </div>
 
