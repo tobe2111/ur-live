@@ -165,27 +165,47 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
     //   변경: cron 매 sync 시 자동 — UPDATE products SET category = gift_catalog.goods_type_detail
     //         WHERE products.gift_code = gift_catalog.gift_code AND products.category IN ('voucher', '', NULL).
     //   기존 명시 분류 (category != 'voucher') 는 건드리지 않음.
+    // 🛡️ 2026-05-21 v2: 진단 발견 — products 컬럼명은 `kt_alpha_gift_code` (gift_code 아님).
+    //   진단 결과: gift_catalog 2260개 + JOIN 100% 매칭이지만 products.category 'voucher' 유지.
+    //   원인: 이전 SQL 의 `gift_code IS NOT NULL` 이 존재하지 않는 컬럼 참조 → catch silent.
+    //   영구 fix: kt_alpha_gift_code 로 정확히 매칭 + brand_name/brand_icon_url 도 함께 backfill.
     let recategorized = 0
+    let brandFilled = 0
     try {
+      // 1. category 자동 분류 (products.category = gift_catalog.goods_type_detail)
       const r = await env.DB.prepare(
         `UPDATE products
             SET category = (
               SELECT goods_type_detail FROM gift_catalog gc
-              WHERE gc.gift_code = products.gift_code
+              WHERE gc.gift_code = products.kt_alpha_gift_code
                 AND gc.goods_type_detail IS NOT NULL
                 AND gc.goods_type_detail != ''
             ),
             updated_at = datetime('now')
           WHERE deal_only = 1
             AND COALESCE(category, '') IN ('', 'voucher')
-            AND gift_code IS NOT NULL
-            AND gift_code IN (SELECT gift_code FROM gift_catalog WHERE goods_type_detail IS NOT NULL AND goods_type_detail != '')`
+            AND kt_alpha_gift_code IS NOT NULL
+            AND kt_alpha_gift_code IN (SELECT gift_code FROM gift_catalog WHERE goods_type_detail IS NOT NULL AND goods_type_detail != '')`
       ).run().catch(() => null)
       recategorized = (r?.meta?.changes ?? 0) as number
+
+      // 2. 진단 발견 — products.brand_name 도 모두 NULL → gift_catalog 에서 backfill (영구).
+      //    brand_icon_url 도 같이 갱신 — UI 에 브랜드 아이콘 표시 가능.
+      const r2 = await env.DB.prepare(
+        `UPDATE products
+            SET brand_name = (SELECT brand_name FROM gift_catalog WHERE gift_code = products.kt_alpha_gift_code),
+                brand_icon_url = (SELECT brand_icon_url FROM gift_catalog WHERE gift_code = products.kt_alpha_gift_code),
+                updated_at = datetime('now')
+          WHERE deal_only = 1
+            AND (brand_name IS NULL OR brand_name = '')
+            AND kt_alpha_gift_code IS NOT NULL
+            AND kt_alpha_gift_code IN (SELECT gift_code FROM gift_catalog WHERE brand_name IS NOT NULL AND brand_name != '')`
+      ).run().catch(() => null)
+      brandFilled = (r2?.meta?.changes ?? 0) as number
     } catch { /* noop */ }
 
-    if (recategorized > 0) {
-      console.info(`[kt-alpha sync] auto-recategorized ${recategorized} products from gift_catalog.goods_type_detail`)
+    if (recategorized > 0 || brandFilled > 0) {
+      console.info(`[kt-alpha sync] auto-recategorized ${recategorized} products / brand_name backfilled ${brandFilled}`)
     }
 
     return { synced, deactivated, balance, recategorized }
