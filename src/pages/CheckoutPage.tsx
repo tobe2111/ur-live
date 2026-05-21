@@ -315,7 +315,7 @@ export default function CheckoutPage() {
         <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800">{error}</p></div>
         <div className="flex gap-2 mt-4">
           <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
-          <Button onClick={() => navigate('/cart')} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
+          <Button onClick={() => navigate('/cart', { replace: true })} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
         </div>
       </div>
     </div>
@@ -324,7 +324,15 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       <SEO title={t('checkoutPage.seoTitle')} description={t('checkoutPage.seoDesc')} url="/checkout" noindex />
-      <CheckoutHeader onBack={() => navigate('/cart')} />
+      {/* 🛡️ 2026-05-21: 뒤로가기 무한 루프 영구 fix.
+            기존: navigate('/cart') → new history entry → [prev, /cart, /checkout, /cart].
+            결과: /cart 에서 뒤로 → /checkout (사용자 의도와 반대).
+            영구: navigate(-1) → browser back → history stack 안 늘어남.
+            예외: 첫 진입 (history.length<=1) 이면 /cart 로 명시 (외부 링크 진입 대응). */}
+      <CheckoutHeader onBack={() => {
+        if (window.history.length > 1) navigate(-1)
+        else navigate('/cart', { replace: true })
+      }} />
 
       <main className="ur-content-narrow pb-52" style={{ background: '#F4F4F4' }}>
         <div className="flex flex-col">
