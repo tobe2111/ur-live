@@ -44,23 +44,41 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       `group_buy_products:${status}:${categories.join(',')}`,
       async () => {
         const placeholders = categories.map(() => '?').join(',')
-        // 🛡️ 2026-05-21: gift_catalog LEFT JOIN — products.brand_name/brand_icon_url 가 NULL 인
-        //   환경에서도 카드에 브랜드 정보 표시 가능. COALESCE 로 둘 중 하나라도 있으면 사용.
-        const { results } = await DB.prepare(`
-          SELECT p.*,
-                 s.name as seller_name, s.profile_image as seller_avatar,
-                 COALESCE(p.brand_name, gc.brand_name) as brand_name,
-                 COALESCE(p.brand_icon_url, gc.brand_icon_url) as brand_icon_url,
-                 COALESCE(NULLIF(p.category, 'voucher'), gc.goods_type_detail, p.category) as category
-          FROM products p
-          LEFT JOIN sellers s ON p.seller_id = s.id
-          LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-          WHERE p.category IN (${placeholders}) AND p.is_active = 1
-            AND (p.group_buy_status = ? OR ? = 'all')
-          ORDER BY p.created_at DESC
-          LIMIT 50
-        `).bind(...categories, status, status).all()
-        return results ?? []
+        // 🛡️ 2026-05-21 v3: SQL 단순화 — p.* + gc.* 컬럼명 충돌 → 500.
+        //   원인: p.* 가 brand_name 반환 + 같은 alias 'brand_name' SELECT → D1 SQLite 충돌.
+        //   영구 fix: 1) 기본 SELECT 단순화 (원래 형태)
+        //             2) gift_catalog 정보는 별칭 prefix 로 추가 (gc_brand_name 등 — 충돌 zero).
+        //             3) 프론트가 두 컬럼 모두 받아 카드에서 COALESCE.
+        let results: unknown[] = []
+        try {
+          const r = await DB.prepare(`
+            SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar,
+                   gc.brand_name AS gc_brand_name,
+                   gc.brand_icon_url AS gc_brand_icon_url,
+                   gc.goods_type_detail AS gc_goods_type_detail
+            FROM products p
+            LEFT JOIN sellers s ON p.seller_id = s.id
+            LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+            WHERE p.category IN (${placeholders}) AND p.is_active = 1
+              AND (p.group_buy_status = ? OR ? = 'all')
+            ORDER BY p.created_at DESC
+            LIMIT 50
+          `).bind(...categories, status, status).all()
+          results = r.results ?? []
+        } catch {
+          // JOIN 실패 → fallback: 원본 simple query (gift_catalog/kt_alpha_gift_code 컬럼 없는 환경).
+          const r = await DB.prepare(`
+            SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar
+            FROM products p
+            LEFT JOIN sellers s ON p.seller_id = s.id
+            WHERE p.category IN (${placeholders}) AND p.is_active = 1
+              AND (p.group_buy_status = ? OR ? = 'all')
+            ORDER BY p.created_at DESC
+            LIMIT 50
+          `).bind(...categories, status, status).all()
+          results = r.results ?? []
+        }
+        return results
       },
       // 🛡️ 2026-05-16: TTL 60→300s + SWR 30→120s — 지도 페이지 콜드 hit latency 완화.
       //   상품 목록 변경 빈도 낮음, 60s 보다 5분 stale 허용해도 UX 영향 미미.
