@@ -26,6 +26,8 @@ interface Props {
   // 결제 수단
   paymentMethod: 'toss' | 'deal'
   setPaymentMethod: (m: 'toss' | 'deal') => void
+  // 🛡️ 2026-05-21: 교환권 (deal_only=1) 만 담긴 주문 — 토스 옵션 숨김, 100% 딜.
+  dealOnly?: boolean
   // 딜 포인트
   dealBalance: number
   dealToUse: number
@@ -48,29 +50,39 @@ interface Props {
 
 export default function PaymentSection({
   paymentMethod, setPaymentMethod,
+  dealOnly = false,
   dealBalance, dealToUse, setDealToUse, totalBeforeDeal, totalAmount,
   payingWithDeals, onPayWithDeals,
   userId, cartItems, totalShippingFee, clientKey, selectedAddressOk,
   onBeforePayment, onTossPaymentSuccess, onStripePaymentSuccess,
 }: Props) {
   const { t } = useTranslation()
+  // 교환권만 담겼으면 결제 수단 선택 탭 자체 숨김 + 딜 잔액 부족 시 충전 유도.
+  const insufficientDeal = dealOnly && dealBalance < totalBeforeDeal
   return (
     <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('payment.section.title', { defaultValue: '결제 수단' })}</h2>
 
-      {/* 결제 방법 탭 */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setPaymentMethod('toss')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
-            paymentMethod === 'toss'
-              ? 'border-gray-900 bg-gray-900 text-white'
-              : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          {t('payment.section.cardOrEasyPay', { defaultValue: '카드/간편결제' })}
-        </button>
-      </div>
+      {dealOnly ? (
+        <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/10 p-3 mb-4">
+          <p className="text-[13px] font-bold text-blue-700 dark:text-blue-300">💎 딜 결제 전용</p>
+          <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1">교환권은 딜 포인트로만 구매할 수 있습니다. 휴대폰 MMS 로 즉시 발송됩니다.</p>
+        </div>
+      ) : (
+        /* 결제 방법 탭 (일반 상품) */
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setPaymentMethod('toss')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
+              paymentMethod === 'toss'
+                ? 'border-gray-900 bg-gray-900 text-white'
+                : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            {t('payment.section.cardOrEasyPay', { defaultValue: '카드/간편결제' })}
+          </button>
+        </div>
+      )}
 
       <DealPointsSection
         dealBalance={dealBalance}
@@ -79,6 +91,15 @@ export default function PaymentSection({
         totalBeforeDeal={totalBeforeDeal}
         totalAmount={totalAmount}
       />
+
+      {dealOnly && insufficientDeal && (
+        <a
+          href={`/points/charge?return=${encodeURIComponent('/checkout')}&amount=${Math.max(0, totalBeforeDeal - dealBalance)}`}
+          className="block w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold text-center mb-3"
+        >
+          딜 잔액 부족 — {(totalBeforeDeal - dealBalance).toLocaleString()}딜 충전하기 →
+        </a>
+      )}
 
       {dealToUse >= totalBeforeDeal ? (
         /* 딜 전액 결제 */
@@ -89,6 +110,9 @@ export default function PaymentSection({
         >
           {payingWithDeals ? t('payment.section.processing', { defaultValue: '처리 중...' }) : t('payment.section.payWithDeals', { defaultValue: '{{amount}}딜로 결제', amount: formatNumber(totalAmount) })}
         </button>
+      ) : dealOnly ? (
+        /* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 토스 위젯 금지. 딜 부족하면 위 충전 CTA 표시. */
+        null
       ) : isKorea() ? (
         /* 한국: Toss Payments */
         <Suspense fallback={

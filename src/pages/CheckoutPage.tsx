@@ -67,6 +67,9 @@ export default function CheckoutPage() {
 
   // 결제 수단 선택
   const [paymentMethod, setPaymentMethod] = useState<'toss' | 'deal'>('toss')
+  // 🛡️ 2026-05-21: 사용자 지적 — 교환권 (deal_only=1) 만 담겼으면 토스 결제 불요.
+  //   모든 item 이 deal_only=1 → 강제 'deal' 모드 + 토스 옵션 숨김 + 결제 수단 선택 단계 생략.
+  //   별도 useState 가 아닌 derived state: cartItems 변경 시 자동 재계산.
   const [couponCode, setCouponCode] = useState('')
   const [couponDiscount, setCouponDiscount] = useState(0)
   const [couponId, setCouponId] = useState<number | null>(null)
@@ -144,6 +147,10 @@ export default function CheckoutPage() {
     return total + group.shipping_fee
   }, 0)
 
+  // 🛡️ 2026-05-21: 교환권만 담긴 주문 — 토스 결제 옵션 자체 숨김 + 'deal' 강제 + dealToUse 자동 채움.
+  const isAllDealOnly = cartItems.length > 0
+    && cartItems.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+
   // 공동구매 할인 계산
   const totalGroupBuyDiscount = cartItems.reduce((sum, item) => {
     const pid = Number(item.product_id)
@@ -155,6 +162,15 @@ export default function CheckoutPage() {
 
   const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount - totalGroupBuyDiscount
   const totalAmount = totalBeforeDeal - dealToUse
+
+  // 🛡️ 2026-05-21: 교환권만 담겼으면 paymentMethod='deal' 강제 + dealToUse 자동 풀충전.
+  //   잔액 부족하면 충전 CTA 가 PaymentSection 에서 별도 노출.
+  useEffect(() => {
+    if (!isAllDealOnly) return
+    if (paymentMethod !== 'deal') setPaymentMethod('deal')
+    const needed = Math.min(dealBalance, totalBeforeDeal)
+    if (needed > 0 && dealToUse !== needed) setDealToUse(needed)
+  }, [isAllDealOnly, paymentMethod, dealBalance, totalBeforeDeal, dealToUse])
 
   useEffect(() => { document.title = t('checkoutPage.docTitle') }, [t])
 
@@ -361,10 +377,11 @@ export default function CheckoutPage() {
 
             <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
 
-            {/* 결제 수단 */}
+            {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal') */}
             <PaymentSection
               paymentMethod={paymentMethod}
               setPaymentMethod={setPaymentMethod}
+              dealOnly={isAllDealOnly}
               dealBalance={dealBalance}
               dealToUse={dealToUse}
               setDealToUse={setDealToUse}
