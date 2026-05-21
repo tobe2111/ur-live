@@ -250,6 +250,42 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-21: 카테고리 분류 종합 진단 (사용자 신고 "분류 안 됨" 추적).
+  async function diagnoseClassification() {
+    try {
+      const r = await api.get('/api/admin/kt-alpha/diagnostic', { headers: h() })
+      if (!r.data?.success) {
+        toast.error(extractErrorMessage(r.data))
+        return
+      }
+      const d = r.data.data
+      console.log('[KT Alpha 진단]', d)
+      const summary =
+        `📊 카테고리 분류 진단\n\n` +
+        `▼ KT Alpha API\n  ${d.kt_alpha_api.provides_classification}\n\n` +
+        `▼ gift_catalog\n` +
+        `  · 전체 ${d.gift_catalog.total_rows} / 활성 ${d.gift_catalog.active_rows}\n` +
+        `  · 브랜드 ${d.gift_catalog.distinct_brands}종\n` +
+        `  · ${d.gift_catalog.note}\n\n` +
+        `▼ products (교환권)\n` +
+        `  · 전체 ${d.products.total_voucher} / 활성 ${d.products.active_voucher}\n` +
+        `  · brand_name 보유 ${d.products.with_brand_name}\n` +
+        `  · 분류 분포 top 5:\n` +
+        (d.products.category_distribution || []).slice(0, 5)
+          .map((r: { category: string; cnt: number }) => `      ${r.category}: ${r.cnt}`).join('\n') + '\n\n' +
+        `▼ JOIN 매칭\n` +
+        `  · 매칭 ${d.join_status.matched_to_catalog} (${d.join_status.match_rate_pct}%)\n` +
+        `  · 미매칭 ${d.join_status.unmatched}\n\n` +
+        `▼ 자동 분류 예상\n  ${d.auto_classify_preview.hint}\n\n` +
+        `(상세는 콘솔 F12 → "[KT Alpha 진단]")`
+      alert(summary)
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number; data?: unknown }; message?: string }
+      console.error('[diagnostic] threw:', ax)
+      toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
+    }
+  }
+
   // 🛡️ 2026-05-19 / 2026-05-21: 허위 리뷰 대량 생성 (사용자 요청).
   //   v2: scope 선택 (교환권만 / 어드민 상품만 / 전체) — 각 상품마다 5-25개 (랜덤) 리뷰.
   //   평점 4.3-4.8 랜덤 분산, is_generated=1 플래그로 영구 추적 + 일괄 삭제 가능.
@@ -762,6 +798,13 @@ export default function AdminKtAlphaPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {/* 🛡️ 2026-05-21: 카테고리 분류 종합 진단 — gift_catalog/products 상태 + 매칭율 보기. */}
+                    <button onClick={diagnoseClassification}
+                      className="px-3 py-2 bg-slate-600 text-white text-xs font-bold rounded-lg hover:bg-slate-700"
+                      title="KT Alpha 카탈로그 / products 분류 상태 종합 진단"
+                    >
+                      🔍 분류 진단
+                    </button>
                     {/* 🛡️ 2026-05-19: KT Alpha 카테고리 자동 재분류 (gift_catalog + brand 키워드). */}
                     <button onClick={autoClassifyCategories}
                       className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
