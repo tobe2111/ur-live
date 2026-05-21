@@ -375,6 +375,41 @@ export const handlers = [
     return HttpResponse.json({ success: true })
   }),
 
+  // 🛡️ 2026-05-21: 자체 예약 캘린더 — 인증 검증 + 입력 검증 mock.
+  http.post('/api/appointments/book', async ({ request }) => {
+    if (!request.headers.get('Authorization')) return HttpResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    const body = (await request.json()) as { product_id?: number; booking_date?: string; start_time?: string; end_time?: string }
+    if (!body?.product_id) return HttpResponse.json({ success: false, error: 'product_id 필수' }, { status: 400 })
+    if (!body?.booking_date || !/^\d{4}-\d{2}-\d{2}$/.test(body.booking_date)) return HttpResponse.json({ success: false, error: '날짜 형식: YYYY-MM-DD' }, { status: 400 })
+    if (!body?.start_time || !body?.end_time) return HttpResponse.json({ success: false, error: '시간 필수' }, { status: 400 })
+    if (body.start_time >= body.end_time) return HttpResponse.json({ success: false, error: '시작 시간이 종료보다 빨라야 합니다.' }, { status: 400 })
+    if (body.booking_date < new Date().toISOString().slice(0, 10)) return HttpResponse.json({ success: false, error: '과거 날짜는 예약할 수 없습니다.' }, { status: 400 })
+    return HttpResponse.json({ success: true, data: { appointment_id: 1 } })
+  }),
+
+  http.get('/api/products/:id/available-slots', ({ request }) => {
+    const url = new URL(request.url)
+    const date = url.searchParams.get('date') || ''
+    if (!date) return HttpResponse.json({ success: false, error: 'date required' }, { status: 400 })
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return HttpResponse.json({ success: false, error: 'Invalid date' }, { status: 400 })
+    return HttpResponse.json({ success: true, data: { date, day_of_week: 0, slots: [] } })
+  }),
+
+  http.patch('/api/appointments/:id/cancel', ({ request }) => {
+    if (!request.headers.get('Authorization')) return HttpResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    return HttpResponse.json({ success: true, data: { refund_eligible: true } })
+  }),
+
+  http.post('/api/seller/products/:id/booking-slots', ({ request }) => {
+    if (!request.headers.get('Authorization')) return HttpResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    return HttpResponse.json({ success: true, data: { inserted: 1 } })
+  }),
+
+  http.get('/api/seller/appointments', ({ request }) => {
+    if (!request.headers.get('Authorization')) return HttpResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    return HttpResponse.json({ success: true, data: [] })
+  }),
+
   // 🛡️ 2026-05-20: User withdrawal (user_withdrawals migration 0274) — 잔액 확인 + 8.8% 원천징수.
   http.post('/api/points/withdraw', async ({ request }) => {
     const body = (await request.json()) as {

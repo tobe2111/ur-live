@@ -52,10 +52,19 @@
 4. 체크인 시 코드 제공 → 사장님 확인
 5. 자동 정산
 
-### 결정 원칙
-- 우리 시스템에 자체 예약 캘린더 구축 ❌ (1인 사업자에게 부담)
-- 외부 예약 (네이버 예약 / 야놀자 / 카카오톡 채널) 위임 OK
-- 바우처 발급만 우리 책임, 예약 일정은 매장과 직접
+### 결정 원칙 (2026-05-21 갱신)
+- 한국에 universal 예약 API 부재 (네이버 예약 폐쇄, 야놀자 B2B만)
+- **시간 슬롯 기반 자체 예약 캘린더 구축** (뷰티/액티비티/건강/펫)
+- 숙소는 기존 `stay_bookings` (날짜 기반) 유지
+- 식사권은 예약 불요
+- `products.external_booking_url` 은 fallback (자체 시스템 미사용 시)
+
+### 자체 예약 시스템
+- 테이블: `product_booking_slots` (요일별 패턴) + `appointment_bookings` (실제 예약)
+- atomic INSERT WHERE — race condition 0
+- UNIQUE constraint — 같은 유저 중복 예약 차단
+- 12시간 이내 취소 시 환불 불가 (admin override 가능)
+- 예약 확정 시 매장 + 유저 양쪽 알림톡 자동
 
 ## 4. 부트스트랩 (초기 3개월)
 

@@ -212,6 +212,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.external_booking_url', sql: "ALTER TABLE products ADD COLUMN external_booking_url TEXT" },
     // 정렬 / 필터링 성능 — 매장 수만 개 시 sold_count DESC 인덱스 필수.
     { desc: 'idx_products_sourcing', sql: "CREATE INDEX IF NOT EXISTS idx_products_sourcing ON products(is_active, category, sold_count DESC) WHERE is_active = 1" },
+    // 🛡️ 2026-05-21: 자체 예약 캘린더 — 뷰티/액티비티 등 sub-1day 예약용.
+    //   숙소는 별도 stay_bookings (날짜 기반) 유지. 본 시스템은 시간 슬롯 기반.
+    //   매장은 booking_required=1 설정 시 자체 캘린더 활성화. (external_booking_url 과 mutually exclusive)
+    { desc: 'products.booking_required', sql: "ALTER TABLE products ADD COLUMN booking_required INTEGER DEFAULT 0" },
+    { desc: 'products.booking_duration_min', sql: "ALTER TABLE products ADD COLUMN booking_duration_min INTEGER DEFAULT 60" },
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
@@ -394,6 +399,46 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
+    // 🛡️ 2026-05-21: 자체 예약 캘린더 — 뷰티/액티비티/건강/펫 sub-1day 예약.
+    //   매장이 가용 시간 슬롯 패턴 등록 → 유저가 결제 후 슬롯 선택 → 예약 확정.
+    //   숙소는 별도 stay_bookings 유지.
+    { name: 'product_booking_slots', sql: `CREATE TABLE IF NOT EXISTS product_booking_slots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      day_of_week INTEGER NOT NULL CHECK(day_of_week BETWEEN 0 AND 6),
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      capacity INTEGER NOT NULL DEFAULT 1 CHECK(capacity >= 1),
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_booking_slots_product', sql: `CREATE INDEX IF NOT EXISTS idx_booking_slots_product ON product_booking_slots(product_id, day_of_week, is_active)` },
+    { name: 'appointment_bookings', sql: `CREATE TABLE IF NOT EXISTS appointment_bookings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER,
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      booking_date TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      status TEXT DEFAULT 'confirmed' CHECK(status IN ('confirmed','cancelled','no_show','completed')),
+      user_phone TEXT,
+      user_name TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      cancelled_at TEXT,
+      cancel_reason TEXT,
+      completed_at TEXT
+    )` },
+    // 충돌 방지 + 매장별 조회 + 유저별 조회.
+    { name: 'idx_appointments_slot', sql: `CREATE INDEX IF NOT EXISTS idx_appointments_slot ON appointment_bookings(product_id, booking_date, start_time, status)` },
+    { name: 'idx_appointments_user', sql: `CREATE INDEX IF NOT EXISTS idx_appointments_user ON appointment_bookings(user_id, booking_date)` },
+    { name: 'idx_appointments_seller', sql: `CREATE INDEX IF NOT EXISTS idx_appointments_seller ON appointment_bookings(seller_id, booking_date, status)` },
+    // 🛡️ 2026-05-21: race condition 영구 차단 — 같은 유저가 같은 슬롯 중복 예약 금지.
+    //   동시 결제 race 는 application 에서 capacity check + INSERT WHERE COUNT, 본 UNIQUE 는 self-duplicate 방지.
+    { name: 'idx_appointments_user_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_user_unique ON appointment_bookings(user_id, product_id, booking_date, start_time) WHERE status = 'confirmed'` },
     // 🚀 인덱스 추가 (2026-04-22 static audit 결과 — 셀러 대시보드 쿼리 500ms → 50ms)
     { name: 'idx_orders_seller_status_v2', sql: `CREATE INDEX IF NOT EXISTS idx_orders_seller_status_v2 ON orders(seller_id, status)` },
     { name: 'idx_donations_seller_payment_status', sql: `CREATE INDEX IF NOT EXISTS idx_donations_seller_payment_status ON donations(seller_id, payment_status)` },
