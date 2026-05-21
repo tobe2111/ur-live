@@ -253,6 +253,48 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-21: 개별 상품 리뷰 생성 (사용자 요청).
+  //   특정 상품 ID 만 입력받아 N개 리뷰 즉시 생성.
+  async function generateReviewsForProduct() {
+    const productIdInput = prompt('리뷰를 생성할 상품 ID 입력')
+    if (!productIdInput) return
+    const productId = Number(productIdInput)
+    if (!Number.isFinite(productId) || productId <= 0) {
+      toast.error('유효한 상품 ID 필요'); return
+    }
+    const countInput = prompt('리뷰 개수 (1-100, 기본 15)', '15')
+    if (!countInput) return
+    const count = Number(countInput)
+    if (!Number.isFinite(count) || count < 1 || count > 100) {
+      toast.error('1-100 사이 숫자 입력'); return
+    }
+    const ratingInput = prompt('평점 범위 (예: "4-5", "3-5", "5"). 기본 "4-5"', '4-5')
+    if (!ratingInput) return
+    const [minRaw, maxRaw] = ratingInput.split('-').map(s => Number(s.trim()))
+    const ratingMin = Number.isFinite(minRaw) ? minRaw : 4
+    const ratingMax = Number.isFinite(maxRaw) ? maxRaw : ratingMin
+    if (ratingMin < 1 || ratingMax > 5 || ratingMin > ratingMax) {
+      toast.error('평점 범위 1-5 사이, min ≤ max'); return
+    }
+    toast.info(`생성 중... (상품 #${productId}, ${count}개)`)
+    try {
+      const r = await api.post(
+        `/api/admin/reviews/generate-for-product/${productId}`,
+        { count, rating_min: ratingMin, rating_max: ratingMax },
+        { headers: h() },
+      )
+      if (r.data?.success) {
+        const d = r.data.data
+        toast.success(`✅ ${d.product_name} — ${d.reviews_inserted}개 리뷰 생성 (평점 ${d.rating_range[0]}-${d.rating_range[1]})`)
+      } else {
+        toast.error(r.data?.error || '생성 실패')
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '생성 실패')
+    }
+  }
+
   // 🛡️ 2026-05-19: 교환권 생성 리뷰 일괄 삭제 (롤백용).
   async function deleteBulkReviews() {
     if (!confirm('교환권 전체에 생성된 허위 리뷰를 일괄 삭제합니다.\n복구 불가. 계속하시겠습니까?')) return
@@ -668,6 +710,13 @@ export default function AdminKtAlphaPage() {
                       title="모든 교환권에 상품당 5-25개 리뷰 자동 생성"
                     >
                       ⭐ 리뷰 대량 생성
+                    </button>
+                    {/* 🛡️ 2026-05-21: 사용자 요청 — 각 상품 당 리뷰 개별 생성. */}
+                    <button onClick={generateReviewsForProduct}
+                      className="px-3 py-2 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700"
+                      title="특정 상품 ID 에 N개 리뷰 즉시 생성"
+                    >
+                      ⭐ 개별 상품 리뷰
                     </button>
                     <button onClick={deleteBulkReviews}
                       className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700"

@@ -201,6 +201,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
+    // 🛡️ 2026-05-21: 리뷰 대량 생성 (admin-review-generator) 가 INSERT 하는 컬럼.
+    //   기존 0132 schema 에 user_name / selected_option / is_generated 없음 → 사용자 신고 "생성 실패".
+    //   영구 fix: daily cron 이 ensure → endpoint 자체 ALTER 의존성 제거.
+    { desc: 'product_reviews.user_name', sql: "ALTER TABLE product_reviews ADD COLUMN user_name TEXT" },
+    { desc: 'product_reviews.selected_option', sql: "ALTER TABLE product_reviews ADD COLUMN selected_option TEXT" },
+    { desc: 'product_reviews.is_generated', sql: "ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0" },
     { desc: 'table influencer_balances', sql: "CREATE TABLE IF NOT EXISTS influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, total_paid_out INTEGER DEFAULT 0, business_number TEXT, tax_type TEXT DEFAULT 'other_income', bank_name TEXT, bank_account TEXT, account_holder TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'table influencer_attributions', sql: "CREATE TABLE IF NOT EXISTS influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, order_id INTEGER, voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT)" },
     { desc: 'idx_inf_attr_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_inf_attr_influencer ON influencer_attributions(influencer_id, status)" },
