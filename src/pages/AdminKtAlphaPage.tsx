@@ -269,6 +269,32 @@ export default function AdminKtAlphaPage() {
     }
   }
 
+  // 🛡️ 2026-05-21: KT Alpha 전체 재싱크 — "기프티쇼 더 많은데?" 사용자 질문 답.
+  //   기본 cron 은 maxPages=50 (5000 cap). 강제 maxPages=200 (20000 cap) 로 재호출.
+  async function fullResyncKtAlpha() {
+    if (!confirm('⚠️ KT Alpha 전체 재싱크 (maxPages=200, ~20000개까지).\n시간 오래 걸림 (수분). 계속?')) return
+    toast.info('재싱크 중... (페이지 200까지)')
+    try {
+      const r = await api.post('/api/admin/kt-alpha/full-resync', {}, { headers: h() })
+      if (r.data?.success) {
+        const d = r.data.data
+        alert(
+          `📦 KT Alpha 전체 재싱크 완료\n\n` +
+          `• KT API 보고 total: ${d.total_reported_by_kt}개\n` +
+          `• 실제 fetch: ${d.actually_fetched}개\n` +
+          `• DB 저장: ${d.db_synced}개\n\n` +
+          `${d.hint}`,
+        )
+      } else {
+        toast.error(extractErrorMessage(r.data))
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: unknown }; message?: string }
+      console.error('[full-resync] threw:', ax)
+      toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
+    }
+  }
+
   // 🛡️ 2026-05-21: "전체 즉시 실행" 메가 버튼 — categorize + brand backfill + review backfill 한 번에.
   //   매일 18 UTC cron 이 자동으로 같은 작업을 하지만, 사용자가 즉시 보고 싶을 때 한 클릭.
   async function runAllBackfills() {
@@ -849,6 +875,13 @@ export default function AdminKtAlphaPage() {
                       title="categorize + brand backfill + review name backfill 한 번에"
                     >
                       ⚡ 전체 즉시 실행
+                    </button>
+                    {/* 🛡️ 2026-05-21: KT Alpha 전체 강제 재싱크 — maxPages=200. */}
+                    <button onClick={fullResyncKtAlpha}
+                      className="px-3 py-2 bg-cyan-600 text-white text-xs font-bold rounded-lg hover:bg-cyan-700"
+                      title="KT API 모든 상품 강제 fetch (maxPages=200)"
+                    >
+                      📦 전체 재싱크
                     </button>
                     {/* 🛡️ 2026-05-21: 카테고리 분류 종합 진단 — gift_catalog/products 상태 + 매칭율 보기. */}
                     <button onClick={diagnoseClassification}

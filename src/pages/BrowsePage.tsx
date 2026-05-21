@@ -456,6 +456,11 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price
                 const hasStrike = !!(product.original_price && product.original_price > displayPrice)
+                const rating = (product as { avg_rating?: number }).avg_rating ?? 0
+                const soldCount = product.sold_count ?? 0
+                const soldLabel = soldCount >= 10000
+                  ? `${(soldCount / 10000).toFixed(1)}만`
+                  : soldCount.toLocaleString('ko-KR')
 
                 return (
                   <button
@@ -469,46 +474,35 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                       ) : (
                         <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}
-                      {discountRate > 0 && (
-                        <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">
-                          -{discountRate}%
-                        </span>
-                      )}
-                      <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
-                        {isMealVoucher ? (
+                      {isMealVoucher && (
+                        <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
                           <Bell
                             onClick={(e: React.MouseEvent) => toggleInterest(e, product.id, product.name)}
                             className={`w-3 h-3 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-300 dark:text-gray-600'}`}
                           />
-                        ) : (
-                          <Heart className="w-3 h-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
-                        )}
-                      </span>
+                        </span>
+                      )}
                     </div>
 
-                    {/* 정보 섹션 — 고정 슬롯 (모든 카드 동일 높이). */}
                     <div className="mt-2 flex flex-col flex-1">
-                      {/* 셀러명 (있을 때만) — line 1 */}
-                      {product.seller_name && <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">@{product.seller_name}</p>}
-                      {/* 제목 — 2줄 고정 (min-h 로 reserve) */}
-                      <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.2em]">{product.name}</p>
-                      {/* 원가 strike — 슬롯 reserve (없어도 같은 높이 차지) */}
-                      <p className={`text-[10px] mt-1 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
-                        {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
+                      <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{product.name}</p>
+                      <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+                        {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
                       </p>
-                      {/* 할인% + 가격 */}
                       <div className="flex items-baseline gap-1 mt-0.5">
                         {discountRate > 0 && (
-                          <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
+                          <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
                         )}
-                        <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
+                        <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
                       </div>
-                      {/* ⭐ + 무료 — 항상 표시 */}
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">⭐ {product.sold_count || 0}</span>
-                        <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 font-semibold">
-                          <Truck className="w-2.5 h-2.5" /> 무료
-                        </span>
+                      <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        {rating > 0 && (
+                          <span className="inline-flex items-center gap-0.5">
+                            <span className="text-yellow-500">★</span>
+                            <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+                          </span>
+                        )}
+                        {soldCount > 0 && <span>구매 {soldLabel}</span>}
                       </div>
                     </div>
                   </button>

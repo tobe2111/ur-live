@@ -192,6 +192,27 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     return c.json({ success: false, error: '이미 리뷰를 작성하셨습니다' }, 409);
   }
 
+  // 🛡️ 2026-05-21: 사용자 요청 — 구매자만 리뷰 작성 가능 (교환권/일반 상품 모두).
+  //   완료/배송 주문이 1건이라도 있으면 OK. admin 은 예외 (테스트/생성 목적).
+  if (user.type !== 'admin') {
+    const purchasedOrder = await DB.prepare(`
+      SELECT o.id FROM orders o
+      INNER JOIN order_items oi ON oi.order_id = o.id
+      WHERE oi.product_id = ?
+        AND o.user_id = ?
+        AND o.status IN ('PAID', 'DONE', 'DELIVERED', 'SHIPPING', 'COMPLETED')
+      LIMIT 1
+    `).bind(body.product_id, user.id).first().catch(() => null);
+
+    if (!purchasedOrder) {
+      return c.json({
+        success: false,
+        error: '리뷰는 해당 상품을 구매한 분만 작성할 수 있습니다.',
+        error_code: 'NOT_PURCHASED',
+      }, 403);
+    }
+  }
+
   // 🛡️ 2026-04-22: 셀러 자기 상품 self-review 차단 — 평점 조작 방어
   // user 가 해당 상품의 셀러 본인이면 차단. admin 은 허용 (테스트 목적).
   if (user.type === 'seller') {

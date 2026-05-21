@@ -753,6 +753,82 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/auto-classify', cors(), async (c) 
 })
 
 // 🛡️ 2026-05-19: 카테고리 분류 현황 조회 (어드민 UI 에서 목록 표시).
+// 🛡️ 2026-05-21: KT Alpha 전체 재싱크 + 진단 — "교환권이 더 많은데 다 안 불러왔지?".
+//   기본 sync 는 maxPages=50 (5000 cap). 더 많을 경우 maxPages 늘려서 강제 재싱크.
+//   응답: KT API 가 보고한 totalExpected + 실제 fetch 한 개수 + DB 저장 결과.
+adminKtAlphaRoutes.post('/kt-alpha/full-resync', cors(), async (c) => {
+  const env = c.env as unknown as { DB: D1Database; KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
+  if (!env.KT_ALPHA_AUTH_CODE) return c.json({ success: false, error: 'KT_ALPHA_AUTH_CODE 미설정' }, 503)
+
+  try {
+    const { fetchAllGoods, goodsItemToCatalogRow, listGoods } = await import('@/worker/utils/giftishow-api')
+
+    // 첫 페이지로 listNum (KT API 가 보고한 total) 확인.
+    const first = await listGoods({ ...env, KT_ALPHA_DEV_MODE: 'N' }, { start: 1, size: 100 })
+    const totalReported = first.listNum ?? 0
+
+    // pageSize=100, maxPages=200 (최대 20000 까지).
+    const all = await fetchAllGoods({ ...env, KT_ALPHA_DEV_MODE: 'N' }, { pageSize: 100, maxPages: 200 })
+
+    // DB 저장 — 기존 sync cron 과 동일 로직 (upsert).
+    let synced = 0
+    const statements = []
+    for (const row of all.map(goodsItemToCatalogRow)) {
+      statements.push(env.DB.prepare(`
+        INSERT INTO gift_catalog (
+          gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
+          sale_price, discount_price, real_price, discount_rate,
+          image_url_small, image_url_large, desc_image_url,
+          goods_type_name, goods_type_detail, category_seq,
+          affiliate_id, affiliate_name, valid_period_type, valid_period_days,
+          goods_state, popular, is_active, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NOR', 0, 1, datetime('now'))
+        ON CONFLICT(gift_code) DO UPDATE SET
+          name = excluded.name, brand_code = excluded.brand_code, brand_name = excluded.brand_name,
+          brand_icon_url = excluded.brand_icon_url, sale_price = excluded.sale_price,
+          discount_price = excluded.discount_price, real_price = excluded.real_price,
+          discount_rate = excluded.discount_rate, image_url_small = excluded.image_url_small,
+          image_url_large = excluded.image_url_large, desc_image_url = excluded.desc_image_url,
+          goods_type_name = excluded.goods_type_name, goods_type_detail = excluded.goods_type_detail,
+          category_seq = excluded.category_seq, affiliate_id = excluded.affiliate_id,
+          affiliate_name = excluded.affiliate_name, valid_period_type = excluded.valid_period_type,
+          valid_period_days = excluded.valid_period_days, is_active = 1,
+          updated_at = datetime('now')
+      `).bind(
+        row.gift_code, row.goods_no, row.name, row.brand_code, row.brand_name, row.brand_icon_url,
+        row.sale_price, row.discount_price, row.real_price, row.discount_rate,
+        row.image_url_small, row.image_url_large, row.desc_image_url,
+        row.goods_type_name, row.goods_type_detail, row.category_seq,
+        row.affiliate_id, row.affiliate_name, row.valid_period_type, row.valid_period_days,
+      ))
+    }
+    // batch 50 단위.
+    for (let i = 0; i < statements.length; i += 50) {
+      const chunk = statements.slice(i, i + 50)
+      try { await env.DB.batch(chunk); synced += chunk.length }
+      catch { /* batch fail 시 개별 retry */
+        for (const s of chunk) { try { await s.run(); synced++ } catch { /* skip */ } }
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        total_reported_by_kt: totalReported,
+        actually_fetched: all.length,
+        db_synced: synced,
+        hint: all.length < totalReported
+          ? `⚠️ KT API 가 ${totalReported}개 있다고 보고했지만 ${all.length}개만 fetch 됨. maxPages 더 늘려야 할 수 있음.`
+          : all.length === totalReported
+          ? `✅ KT API total 과 fetch 일치 — 모든 상품 받음.`
+          : `ℹ️ fetch ${all.length}개 (KT total 미보고).`,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: `full-resync 실패: ${(err as Error).message.slice(0, 200)}` }, 500)
+  }
+})
+
 // 🛡️ 2026-05-21: 사용자 요청 — "전체 즉시 실행" mega endpoint.
 //   1) products.category auto-classify (gift_catalog.goods_type_detail)
 //   2) products.brand_name + brand_icon_url backfill (gift_catalog)
