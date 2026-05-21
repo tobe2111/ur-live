@@ -257,9 +257,7 @@ adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
     }
     const { getBizMoneyBalance } = await import('@/worker/utils/giftishow-api')
     const bal = await getBizMoneyBalance(env, userIdRow.value)
-    // 🛡️ 2026-05-21: 사용자 신고 — 잔액 업데이트 해도 변화 X.
-    //   원인: UPDATE 만 사용 → platform_settings 에 해당 key row 가 없으면 silent no-op.
-    //   영구 fix: INSERT ON CONFLICT (UPSERT) 로 row 없어도 새로 생성.
+    // 🛡️ 2026-05-21: UPSERT — UPDATE 만 쓰면 row 없을 때 silent no-op.
     await c.env.DB.prepare(
       `INSERT INTO platform_settings (key, value, updated_at)
        VALUES ('kt_alpha_biz_money_balance', ?, datetime('now'))
@@ -274,7 +272,14 @@ adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
     ).run().catch((e) => {
       if (import.meta.env.DEV) console.error('[admin:kt-alpha:balance] check_at upsert failed:', e)
     })
-    return c.json({ success: true, data: bal })
+    // bal.raw 가 있으면 응답에 포함 → 어드민이 KT Alpha 실제 응답 구조 디버깅 가능.
+    return c.json({
+      success: true,
+      data: bal,
+      ...(bal.balance === 0 && bal.raw ? {
+        debug_hint: '잔액 0 — KT Alpha 응답 구조 확인 필요. raw 필드 참조.',
+      } : {}),
+    })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }

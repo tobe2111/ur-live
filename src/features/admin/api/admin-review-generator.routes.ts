@@ -16,10 +16,11 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { KOREAN_NAMES, REVIEW_TEMPLATES } from './review-templates';
 export const adminReviewGeneratorRoutes = new Hono<{ Bindings: Env }>();
 
-function safeAdminError(err: unknown, env: Env): string {
-  const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
-  if (isProd) return 'Internal server error';
-  return err instanceof Error ? err.message : String(err);
+function safeAdminError(err: unknown, _env: Env): string {
+  // 🛡️ 2026-05-21: admin endpoint 는 admin auth 통과한 호출만 도달 — production 에서도
+  //   에러 message 노출 안전 (어드민 디버깅 우선). stack 은 미노출.
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.slice(0, 300);
 }
 
 adminReviewGeneratorRoutes.post('/reviews/generate', cors(), async (c) => {
@@ -354,7 +355,14 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
     });
   } catch (err) {
     if (import.meta.env?.DEV) console.error('[admin:reviews:bulk]', err);
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+    // 🛡️ 2026-05-21: stack 일부 + message 노출 — 어드민 디버깅용 (admin auth 통과한 호출만).
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ') : '';
+    return c.json({
+      success: false,
+      error: `bulk-vouchers 실패: ${msg.slice(0, 200)}`,
+      error_detail: stack.slice(0, 300) || undefined,
+    }, 500);
   }
 });
 

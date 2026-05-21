@@ -563,17 +563,51 @@ export async function sendCoupon(
 export async function getBizMoneyBalance(
   env: KtAlphaEnv,
   userId: string,
-): Promise<{ code: string; message: string; balance: number }> {
+): Promise<{ code: string; message: string; balance: number; raw?: unknown }> {
   const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
   const data = await callKtAlpha<unknown>(forceProdEnv, '0301', '/bizmoney', {
     user_id: userId,
   })
-  // KT Alpha 가 result wrapper 없이 balance 를 root 에 둠 — 다른 구조.
-  const raw = data as unknown as { code?: string; message?: string; balance?: string | number }
+  // 🛡️ 2026-05-21: 응답 구조 다중 시도 — 사용자 신고 "잔액 0원" 추적.
+  //   KT Alpha 가 API/문서 버전에 따라 응답 구조 변동:
+  //     (a) root.balance              ← 기존 가정
+  //     (b) result.balance            ← GiftishowResponse 표준
+  //     (c) result.biz_money_amount  ← 변형
+  //     (d) result.currentMoneyAmount ← 변형
+  //   모두 시도. 0 이면 raw 응답 반환해 디버깅 가능.
+  const wrapper = data as unknown as {
+    code?: string
+    message?: string
+    balance?: string | number
+    result?: {
+      balance?: string | number
+      biz_money_amount?: string | number
+      currentMoneyAmount?: string | number
+      bizMoneyAmount?: string | number
+      amount?: string | number
+    }
+  }
+
+  const candidates: Array<string | number | undefined> = [
+    wrapper.balance,
+    wrapper.result?.balance,
+    wrapper.result?.biz_money_amount,
+    wrapper.result?.currentMoneyAmount,
+    wrapper.result?.bizMoneyAmount,
+    wrapper.result?.amount,
+  ]
+  let balance = 0
+  for (const c of candidates) {
+    const n = Number(c)
+    if (Number.isFinite(n) && n > 0) { balance = n; break }
+  }
+
   return {
-    code: raw.code || '0000',
-    message: raw.message || '',
-    balance: Number(raw.balance) || 0,
+    code: wrapper.code || '0000',
+    message: wrapper.message || '',
+    balance,
+    // DEV 환경에서 잔액 0 일 때 raw 노출 — 운영자가 어떤 field 에 들어왔는지 확인.
+    ...(balance === 0 ? { raw: data } : {}),
   }
 }
 
