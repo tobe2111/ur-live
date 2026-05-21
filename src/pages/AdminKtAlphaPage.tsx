@@ -44,6 +44,34 @@ interface CatalogItem {
   valid_period_days: number | null
 }
 
+// 🛡️ 2026-05-21: API 응답의 error 필드가 string / object / nested 모두 가능 — 안전 추출.
+//   1) string → 그대로
+//   2) { message } → message
+//   3) { error: { message } } → message
+//   4) Object → JSON.stringify (최대 200자)
+//   5) null/undefined → '알 수 없는 오류'
+function extractErrorMessage(data: unknown): string {
+  if (!data) return '알 수 없는 오류'
+  if (typeof data === 'string') return data
+  if (typeof data === 'object') {
+    const obj = data as Record<string, unknown>
+    // 우선순위: error (string) > error.message > message > error.error > stringify
+    if (typeof obj.error === 'string') return obj.error
+    if (obj.error && typeof obj.error === 'object') {
+      const e = obj.error as Record<string, unknown>
+      if (typeof e.message === 'string') return e.message
+      if (typeof e.error === 'string') return e.error
+    }
+    if (typeof obj.message === 'string') return obj.message
+    // step + detail 도 같이 노출 (admin diagnostic).
+    const step = typeof obj.error_step === 'string' ? `[${obj.error_step}] ` : ''
+    const detail = typeof obj.error_detail === 'string' ? ` (${obj.error_detail.slice(0, 80)})` : ''
+    if (step || detail) return `${step}오류${detail}`
+    try { return JSON.stringify(obj).slice(0, 200) } catch { return '알 수 없는 오류' }
+  }
+  return String(data).slice(0, 200)
+}
+
 export default function AdminKtAlphaPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -259,11 +287,18 @@ export default function AdminKtAlphaPage() {
         const d = r.data.data
         toast.success(`✅ ${scopeLabel} — ${d.products_processed}개 상품 / ${d.total_reviews_inserted}개 리뷰 / 평균 ${d.avg_reviews_per_product}개${d.errors_count ? ` / 오류 ${d.errors_count}개` : ''}`)
       } else {
-        toast.error(r.data?.error || '생성 실패')
+        // 🛡️ 2026-05-21: error 가 string/object 둘 다 가능 — 안전 추출 + 콘솔 전문 로그.
+        console.error('[bulk reviews] success=false:', r.data)
+        toast.error(extractErrorMessage(r.data))
       }
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || '생성 실패')
+      const ax = err as { response?: { status?: number; data?: unknown }; message?: string }
+      console.error('[bulk reviews] threw:', ax)
+      const status = ax.response?.status
+      const errMsg = ax.response?.data
+        ? extractErrorMessage(ax.response.data)
+        : `네트워크 오류: ${ax.message || '알 수 없음'}`
+      toast.error(status ? `[${status}] ${errMsg}` : errMsg, { duration: 8000 })
     }
   }
 
@@ -301,11 +336,15 @@ export default function AdminKtAlphaPage() {
         const d = r.data.data
         toast.success(`✅ ${d.product_name} — ${d.reviews_inserted}개 리뷰 생성 (평점 ${d.rating_range[0]}-${d.rating_range[1]})`)
       } else {
-        toast.error(r.data?.error || '생성 실패')
+        console.error('[per-product reviews] success=false:', r.data)
+        toast.error(extractErrorMessage(r.data))
       }
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || '생성 실패')
+      const ax = err as { response?: { status?: number; data?: unknown }; message?: string }
+      console.error('[per-product reviews] threw:', ax)
+      const status = ax.response?.status
+      const errMsg = ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`
+      toast.error(status ? `[${status}] ${errMsg}` : errMsg, { duration: 8000 })
     }
   }
 

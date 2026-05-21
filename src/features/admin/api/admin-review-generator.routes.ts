@@ -228,7 +228,12 @@ adminReviewGeneratorRoutes.delete('/reviews/generated/:productId', cors(), async
 //   서비스 운영자가 자기 책임으로 사용. 모든 생성 리뷰는 is_generated=1 으로 표시되어
 //   향후 일괄 삭제 / 감사 추적 가능.
 adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async (c) => {
+  // 🛡️ 2026-05-21: 사용자 신고 — 여전히 "생성 실패" 토스트.
+  //   근본 진단: 각 단계마다 명시적 try/catch + step 라벨 + 항상 JSON 응답.
+  //   배포 후 사용자가 다시 시도하면 정확한 어느 step 에서 실패했는지 알 수 있음.
+  let currentStep = 'init';
   try {
+    currentStep = 'parse_body';
     const DB = c.env.DB;
     // 🛡️ 2026-05-21: scope param 추가 (사용자 요청 — "기프티쇼 교환권 뿐 아니라 어드민이 올리는 상품도").
     //   'vouchers' (KT Alpha deal_only=1) / 'admin' (deal_only=0) / 'all' (default — 전체 활성 상품).
@@ -250,6 +255,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
     //    vouchers: deal_only=1 (KT Alpha 교환권만)
     //    admin:    deal_only=0 (어드민 등록 일반 상품만)
     //    all:      deal_only 무관 (활성 전체)
+    currentStep = 'select_products';
     const dealOnlyWhere = scope === 'vouchers'
       ? 'AND deal_only = 1'
       : scope === 'admin'
@@ -274,6 +280,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
     // 2) product_reviews 테이블 멱등 생성 + 누락 컬럼 ALTER.
     //    기존 0132 마이그레이션은 user_name/selected_option/is_generated 없음 → INSERT 실패 사고.
     //    ALTER 는 idempotent (catch 처리) — 영구 fix.
+    currentStep = 'ensure_table';
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS product_reviews (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -288,9 +295,35 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
       )
     `).run().catch(() => { /* exists */ });
     // 🛡️ 2026-05-21: 기존 0132 schema 에 누락된 컬럼 ALTER 추가.
+    currentStep = 'alter_user_name';
     await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => { /* exists */ });
+    currentStep = 'alter_selected_option';
     await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN selected_option TEXT`).run().catch(() => { /* exists */ });
+    currentStep = 'alter_is_generated';
     await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0`).run().catch(() => { /* exists */ });
+    // 🛡️ 2026-05-21: NOT NULL 제약 있을 수 있음 (구 schema 0132 의 user_id NOT NULL).
+    //   D1 SQLite 는 ALTER COLUMN 미지원 — 우회: NULL 대신 placeholder 사용 (이미 'system-generated').
+    //   하지만 user_id 가 NOT NULL 이고 다른 INSERT 에서 비웠을 가능성 검증.
+    currentStep = 'check_constraints';
+    // 빠른 INSERT smoke test — 한 row 만 test product 로 시도 → 실패하면 명확한 에러.
+    const testProductId = productList[0].id;
+    try {
+      await DB.prepare(
+        `INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`
+      ).bind(testProductId, 'system-generated', 'T*T', 5, '[smoke test]', new Date().toISOString()).run();
+      // smoke test 성공 → 즉시 삭제 (실제 데이터 오염 방지).
+      await DB.prepare(
+        `DELETE FROM product_reviews WHERE product_id = ? AND content = '[smoke test]' AND user_id = 'system-generated'`
+      ).bind(testProductId).run().catch(() => null);
+    } catch (smokeErr) {
+      // smoke test 실패 → 정확한 스키마 에러 즉시 반환.
+      return c.json({
+        success: false,
+        error: `INSERT smoke test 실패 — schema issue: ${(smokeErr as Error).message}`,
+        error_step: currentStep,
+        error_detail: '컬럼 누락 또는 NOT NULL 제약 위반. /api/_internal/repair-schema POST 호출 권장.',
+      }, 500);
+    }
 
     const now = Date.now();
     const BATCH_SIZE = 50;
@@ -298,6 +331,7 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
     let productsProcessed = 0;
     const errors: Array<{ product_id: number; error: string }> = [];
 
+    currentStep = 'generate_loop';
     // 3) 각 상품마다 5~25개 (랜덤) 리뷰 생성. 배치 50개 단위로 D1.batch().
     for (const product of productList) {
       // 상품별 리뷰 개수 + 평균 별점 랜덤.
@@ -354,13 +388,14 @@ adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async
       },
     });
   } catch (err) {
-    if (import.meta.env?.DEV) console.error('[admin:reviews:bulk]', err);
-    // 🛡️ 2026-05-21: stack 일부 + message 노출 — 어드민 디버깅용 (admin auth 통과한 호출만).
+    if (import.meta.env?.DEV) console.error('[admin:reviews:bulk]', err, 'step:', currentStep);
+    // 🛡️ 2026-05-21: stack + step 노출 — 어떤 단계 실패 즉시 식별.
     const msg = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ') : '';
     return c.json({
       success: false,
-      error: `bulk-vouchers 실패: ${msg.slice(0, 200)}`,
+      error: `[${currentStep}] ${msg.slice(0, 200)}`,
+      error_step: currentStep,
       error_detail: stack.slice(0, 300) || undefined,
     }, 500);
   }
@@ -457,7 +492,12 @@ adminReviewGeneratorRoutes.post('/reviews/generate-for-product/:productId', cors
     });
   } catch (err) {
     if (import.meta.env?.DEV) console.error('[admin:reviews:per-product]', err);
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({
+      success: false,
+      error: `per-product 실패: ${msg.slice(0, 200)}`,
+      error_detail: err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ').slice(0, 300) : undefined,
+    }, 500);
   }
 });
 
