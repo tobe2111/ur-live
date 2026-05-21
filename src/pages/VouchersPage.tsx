@@ -21,6 +21,17 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 
+// 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
+type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
+const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
+  { key: 'popular',    label: '🔥 인기순' },
+  { key: 'newest',     label: '🆕 최신순' },
+  { key: 'price_low',  label: '💰 낮은 가격순' },
+  { key: 'price_high', label: '💎 높은 가격순' },
+  { key: 'discount',   label: '🏷️ 할인율순' },
+  { key: 'rating',     label: '⭐ 평점순' },
+]
+
 interface VoucherProduct {
   id: number
   name: string
@@ -109,6 +120,16 @@ export default function VouchersPage() {
   const [hasMore, setHasMore] = useState(true)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
+  // 🛡️ 2026-05-21: 정렬 옵션 — popular/newest/price_low/price_high/discount/rating.
+  //   URL ?sort=... 동기화 — 공유/북마크 가능.
+  const sort = (searchParams.get('sort') as SortKey) || 'popular'
+  const setSort = (next: SortKey) => {
+    const p = new URLSearchParams(searchParams)
+    if (next === 'popular') p.delete('sort')
+    else p.set('sort', next)
+    setSearchParams(p, { replace: true })
+  }
+
   // 🛡️ 2026-05-19: 딜 잔액 표시 + 충전/공구 유도 (사용자 요청).
   //   교환권은 딜로만 결제 → 잔액 부족 시 즉시 충전 페이지로 유도.
   //   부족 시 "친구 추천 / 공구 참여" 로 보너스 딜 획득 경로도 안내.
@@ -156,7 +177,7 @@ export default function VouchersPage() {
       page: String(pageNum),
       limit: String(PAGE_SIZE),
       deal_only: '1',
-      sort: 'popular',
+      sort,
     })
     if (brand) params.set('brand', brand)
     if (category) params.set('category', category)
@@ -171,11 +192,12 @@ export default function VouchersPage() {
       })
       .catch(() => { /* graceful */ })
       .finally(() => { setLoading(false); setLoadingMore(false) })
-  }, [brand, category])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand, category, sort])
 
   useEffect(() => {
     loadProducts(1, true)
-  }, [brand, category, loadProducts])
+  }, [brand, category, sort, loadProducts])
 
   // 무한 스크롤
   useEffect(() => {
@@ -231,49 +253,54 @@ export default function VouchersPage() {
         </div>
       </div>
 
-      {/* 🛡️ 2026-05-19: 딜 잔액 + 충전/공구 유도 (사용자 요청). */}
+      {/* 🛡️ 2026-05-21 v2: 딜 잔액 카드 디자인 재설계 (사용자 신고 — 별로다).
+            토스/카카오뱅크 잔액 카드 패턴 — 깔끔한 white 카드 + 큰 숫자 + 단일 충전 CTA.
+            나머지 보조 액션 (공구/친구추천) 은 텍스트 링크로 축소 → 시각 노이즈 zero. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
-        <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-500/10 dark:to-yellow-500/10 border border-amber-200 dark:border-amber-500/30 p-4 lg:p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">내 딜 잔액</span>
-          </div>
-          <div className="flex items-baseline gap-1.5 mb-3">
-            <span className="text-[24px] font-extrabold text-gray-900 dark:text-white">
-              {dealBalance == null ? '...' : formatNumber(dealBalance)}
-            </span>
-            <span className="text-[14px] font-bold text-amber-600 dark:text-amber-400">딜</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#1F1F1F] p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1.5">내 딜 잔액</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-[32px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight">
+                  {dealBalance == null ? '...' : formatNumber(dealBalance)}
+                </span>
+                <span className="text-[16px] font-bold text-gray-500 dark:text-gray-400">딜</span>
+              </div>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">1딜 = 1원</p>
+            </div>
             <button
               type="button"
               onClick={() => navigate('/points/charge')}
-              className="flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[12px] active:scale-95 transition-transform"
+              className="shrink-0 px-5 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-[13px] active:scale-95 transition-transform"
             >
-              <Sparkles className="w-4 h-4" />
-              충전
+              충전하기
             </button>
+          </div>
+
+          {/* 보조 액션 — 텍스트 링크 (시각 노이즈 ↓) */}
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#1F1F1F] flex items-center gap-4 text-[12px]">
             <button
               type="button"
               onClick={() => navigate('/group-buy')}
-              className="flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl bg-white dark:bg-[#1A1A1A] border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 font-bold text-[12px] active:scale-95 transition-transform"
+              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-semibold inline-flex items-center gap-1"
             >
-              <Users className="w-4 h-4" />
-              공동구매
+              <Users className="w-3.5 h-3.5" /> 공구 참여
             </button>
+            <span className="text-gray-200 dark:text-[#2A2A2A]">·</span>
             <button
               type="button"
-              onClick={() => navigate('/user/profile')}
-              className="flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl bg-white dark:bg-[#1A1A1A] border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 font-bold text-[12px] active:scale-95 transition-transform"
+              onClick={() => navigate('/influencer')}
+              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-semibold inline-flex items-center gap-1"
             >
-              <ArrowRight className="w-4 h-4" />
-              친구 추천
+              <Sparkles className="w-3.5 h-3.5" /> 친구 추천 5% 적립
             </button>
           </div>
-          {/* 잔액 부족 안내 */}
+
+          {/* 잔액 부족 안내 — 작은 hint */}
           {dealBalance != null && dealBalance < 10000 && (
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2.5 leading-relaxed">
-              💡 딜이 부족할 땐 <strong>충전</strong> (1원=1딜), <strong>공동구매 참여</strong> (보너스 적립), <strong>친구 추천</strong> (5% 보상) 로 채울 수 있어요.
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 leading-relaxed">
+              💡 잔액 부족 — 충전 / 공구 참여 / 친구 추천으로 보너스 적립 가능
             </p>
           )}
         </div>
@@ -307,6 +334,22 @@ export default function VouchersPage() {
           </div>
         </div>
       )}
+
+      {/* 🛡️ 2026-05-21: 정렬 옵션 (사용자 요청 — 가격순/인기순 등). */}
+      <div className="ur-content-wide px-4 lg:px-8 pt-3 flex items-center justify-between">
+        <span className="text-[12px] text-gray-500 dark:text-gray-400">
+          {loading ? '불러오는 중...' : `${products.length}개 교환권`}
+        </span>
+        <select
+          value={sort}
+          onChange={e => setSort(e.target.value as SortKey)}
+          className="bg-transparent border border-gray-200 dark:border-[#2A2A2A] rounded-full px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
+        >
+          {SORT_OPTIONS.map(o => (
+            <option key={o.key} value={o.key}>{o.label}</option>
+          ))}
+        </select>
+      </div>
 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드 (선택된 카테고리만). */}
       {!brand && currentBrands.length > 0 && (
