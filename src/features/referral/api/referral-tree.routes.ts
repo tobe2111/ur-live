@@ -920,7 +920,7 @@ referralTreeRoutes.get('/admin/withdrawals', requireAdmin(), async (c) => {
     `SELECT w.id, w.beneficiary_id, w.beneficiary_type, w.total_amount, w.commission_count, w.status,
             w.bank_name, w.account_number, w.account_holder, w.requested_at, w.processed_at,
             w.admin_memo, w.rejection_reason,
-            COALESCE(u.name, a.company_name, s.business_name) as beneficiary_name
+            COALESCE(u.name, a.name, s.business_name) as beneficiary_name
        FROM commission_withdrawals w
        LEFT JOIN users u ON u.id = w.beneficiary_id AND w.beneficiary_type = 'user'
        LEFT JOIN agencies a ON a.id = w.beneficiary_id AND w.beneficiary_type = 'agency'
@@ -1029,7 +1029,7 @@ async function notifyCommissionWithdrawal(
 
     let phone: string | null = null
     if (beneficiaryType === 'agency') {
-      const row = await DB.prepare("SELECT contact_phone as phone FROM agencies WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
+      const row = await DB.prepare("SELECT phone FROM agencies WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
       phone = row?.phone || null
     } else if (beneficiaryType === 'seller') {
       const row = await DB.prepare("SELECT phone FROM sellers WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
