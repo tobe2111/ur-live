@@ -62,6 +62,7 @@ const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
 const Admin2FASetupPage = lazy(() => import('@/pages/Admin2FASetupPage'))
 const AdminCommissionWithdrawalsPage = lazy(() => import('@/pages/AdminCommissionWithdrawalsPage'))
+const AdminPayoutsPage = lazy(() => import('@/pages/AdminPayoutsPage'))
 
 export function AdminRoutes() {
   return (
@@ -87,6 +88,11 @@ export function AdminRoutes() {
       <Route path="/admin/commission-withdrawals" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminCommissionWithdrawalsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/payouts" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPayoutsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/banners" element={

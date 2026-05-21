@@ -221,6 +221,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'appointment_bookings.reminder_sent_at', sql: "ALTER TABLE appointment_bookings ADD COLUMN reminder_sent_at TEXT" },
     { desc: 'appointment_bookings.refund_processed_at', sql: "ALTER TABLE appointment_bookings ADD COLUMN refund_processed_at TEXT" },
     { desc: 'appointment_bookings.refund_status', sql: "ALTER TABLE appointment_bookings ADD COLUMN refund_status TEXT" },
+    // 🛡️ 2026-05-21 Phase C: 통합 정산 시스템 — payouts (실제 송금 기록).
+    //   ledger_entries 는 이미 존재 (worker/utils/ledger.ts). payouts 는 실제 송금 audit trail.
+    //   주체별 (seller/agency/store_owner/user) 송금 사이클 + 토스/은행 transaction_id 추적.
+    { desc: 'orders.escrow_status', sql: "ALTER TABLE orders ADD COLUMN escrow_status TEXT DEFAULT 'held'" },
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
@@ -443,6 +447,32 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-21: race condition 영구 차단 — 같은 유저가 같은 슬롯 중복 예약 금지.
     //   동시 결제 race 는 application 에서 capacity check + INSERT WHERE COUNT, 본 UNIQUE 는 self-duplicate 방지.
     { name: 'idx_appointments_user_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_user_unique ON appointment_bookings(user_id, product_id, booking_date, start_time) WHERE status = 'confirmed'` },
+    // 🛡️ 2026-05-21 Phase C: payouts — 실제 송금 기록 (ledger_entries 와 별개로 송금 audit).
+    //   주 1회 배치 정산 → admin 검토 → "송금 버튼" 클릭 시 INSERT.
+    //   토스/은행 transaction_id 추적 → 분쟁 시 reverse lookup 가능.
+    { name: 'payouts', sql: `CREATE TABLE IF NOT EXISTS payouts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payee_type TEXT NOT NULL CHECK(payee_type IN ('seller','agency','store_owner','user')),
+      payee_id TEXT NOT NULL,
+      amount INTEGER NOT NULL CHECK(amount > 0),
+      period_start TEXT NOT NULL,
+      period_end TEXT NOT NULL,
+      ledger_entry_ids TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','sent','failed','cancelled')),
+      bank_name TEXT,
+      account_number TEXT,
+      account_holder TEXT,
+      transaction_id TEXT,
+      admin_memo TEXT,
+      error_message TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      approved_at TEXT,
+      sent_at TEXT,
+      processed_by TEXT
+    )` },
+    { name: 'idx_payouts_status', sql: `CREATE INDEX IF NOT EXISTS idx_payouts_status ON payouts(status, created_at DESC)` },
+    { name: 'idx_payouts_payee', sql: `CREATE INDEX IF NOT EXISTS idx_payouts_payee ON payouts(payee_type, payee_id, status)` },
+    { name: 'idx_payouts_period', sql: `CREATE INDEX IF NOT EXISTS idx_payouts_period ON payouts(period_start, period_end, payee_type)` },
     // 🚀 인덱스 추가 (2026-04-22 static audit 결과 — 셀러 대시보드 쿼리 500ms → 50ms)
     { name: 'idx_orders_seller_status_v2', sql: `CREATE INDEX IF NOT EXISTS idx_orders_seller_status_v2 ON orders(seller_id, status)` },
     { name: 'idx_donations_seller_payment_status', sql: `CREATE INDEX IF NOT EXISTS idx_donations_seller_payment_status ON donations(seller_id, payment_status)` },

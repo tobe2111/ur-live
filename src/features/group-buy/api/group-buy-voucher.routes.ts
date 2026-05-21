@@ -130,14 +130,36 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       }
       try {
         const meta = await DB.prepare(
-          `SELECT v.id AS voucher_id, v.user_id, u.phone, p.name AS product_name, p.restaurant_name, p.category
+          `SELECT v.id AS voucher_id, v.user_id, v.applied_price, u.phone,
+                  p.name AS product_name, p.restaurant_name, p.category,
+                  p.seller_id, p.consigned_from_seller_id
            FROM vouchers v
            LEFT JOIN users u ON u.id = v.user_id
            LEFT JOIN products p ON p.id = v.product_id
            WHERE v.code = ?`
-        ).bind(code).first<{ voucher_id: number; user_id: string; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null }>()
+        ).bind(code).first<{ voucher_id: number; user_id: string; applied_price: number | null; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null; seller_id: number | null; consigned_from_seller_id: number | null }>()
         if (meta) {
           responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
+          // 🛡️ 2026-05-21 Phase C: voucher 사용 시점 자동 정산 ledger entries 3개 기록.
+          //   merchant (가게) + seller (위탁 판매 셀러, optional) + platform fee 분배.
+          //   멱등 — voucher_id 별 1회만 실행 (내부에서 SELECT 중복 체크).
+          //   waitUntil 비동기 — 응답 지연 0.
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              const { recordVoucherUsedLedger } = await import('../../../worker/utils/ledger')
+              const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
+              const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
+              const amount = meta.applied_price || 0
+              if (merchantId && amount > 0) {
+                await recordVoucherUsedLedger(DB, {
+                  voucher_id: meta.voucher_id,
+                  order_amount: amount,
+                  merchant_id: merchantId,
+                  seller_id: sellerId,
+                })
+              }
+            } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
+          })())
           // 🛡️ 2026-05-16: 어느 인플이 데려온 손님인지 attribution 조회 (사장님 화면 표시용)
           try {
             const attr = await DB.prepare(
@@ -196,10 +218,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // voucher + product seller 검증
       const voucher = await DB.prepare(
-        `SELECT v.id, v.status, v.user_id, v.product_id, p.seller_id, p.name AS product_name, p.restaurant_name, p.category
+        `SELECT v.id, v.status, v.user_id, v.product_id, v.applied_price,
+                p.seller_id, p.consigned_from_seller_id, p.name AS product_name, p.restaurant_name, p.category
          FROM vouchers v LEFT JOIN products p ON p.id = v.product_id
          WHERE v.code = ?`
-      ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; seller_id: number; product_name: string; restaurant_name: string | null; category: string | null }>()
+      ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; applied_price: number | null; seller_id: number; consigned_from_seller_id: number | null; product_name: string; restaurant_name: string | null; category: string | null }>()
       if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
       if (user.type === 'seller' && Number(voucher.seller_id) !== Number(user.id)) {
         return c.json({ success: false, error: '본인 매장의 voucher 가 아닙니다' }, 403)
@@ -213,6 +236,24 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         "UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused'"
       ).bind(voucher.id).run()
       if (!result.meta?.changes) return c.json({ success: false, error: '동시성 충돌 — 다시 시도해주세요' }, 409)
+
+      // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
+      c.executionCtx?.waitUntil((async () => {
+        try {
+          const { recordVoucherUsedLedger } = await import('../../../worker/utils/ledger')
+          const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
+          const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
+          const amount = voucher.applied_price || 0
+          if (merchantId && amount > 0) {
+            await recordVoucherUsedLedger(DB, {
+              voucher_id: voucher.id,
+              order_amount: amount,
+              merchant_id: merchantId,
+              seller_id: sellerForCommission,
+            })
+          }
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
+      })())
 
       // attribution + 사용자 알림톡
       let attribution: { influencer_id?: string; influencer_commission?: number } = {}

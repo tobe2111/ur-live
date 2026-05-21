@@ -44,6 +44,7 @@ import { retryEmailFailures, retryPushFailures } from './cron/retry-notification
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
 import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
+import { handlePayoutsGenerate } from './cron/payouts-generate';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
@@ -237,6 +238,8 @@ export async function handleCronScheduled(
   }
 
   if (cron === '0 0 * * 1') {
+    // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
+    ctx.waitUntil(safeCron('payouts-generate', () => handlePayoutsGenerate(env)));
     ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       const now = new Date();

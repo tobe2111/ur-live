@@ -86,7 +86,7 @@ export async function recordLedger(DB: D1Database, entry: LedgerEntry): Promise<
   }
 }
 
-/** 계정별 잔액 조회 (debit - credit 합) */
+/** 계정별 잔액 조회 (credit - debit 합) — credit 양수, debit 음수 의미. */
 export async function getAccountBalance(DB: D1Database, account: string): Promise<number> {
   await ensureLedgerTable(DB)
   const row = await DB.prepare(`
@@ -97,6 +97,122 @@ export async function getAccountBalance(DB: D1Database, account: string): Promis
     WHERE debit_account = ? OR credit_account = ?
   `).bind(account, account, account, account).first<{ debit_total: number; credit_total: number }>()
   return Number(row?.credit_total ?? 0) - Number(row?.debit_total ?? 0)
+}
+
+/**
+ * 🛡️ 2026-05-21 Phase C: voucher 사용 완료 시점 정산 entries 자동 생성.
+ *
+ * 호출 시점: voucher.status='used' 로 atomic UPDATE 성공 직후.
+ * 결과: ledger_entries 에 3개 row INSERT
+ *   1) escrow → merchant_payable (업체 외상)
+ *   2) escrow → seller_commission (셀러 외상)
+ *   3) escrow → platform_fee (플랫폼 수익 확정)
+ *
+ * 멱등: voucher_id 중복 호출 시 entry 중복 방지 (reference_id + event_type unique check).
+ * 영구성: 환불 시 reverse entry 생성 (recordRefundLedger).
+ */
+export async function recordVoucherUsedLedger(
+  DB: D1Database,
+  params: {
+    voucher_id: number | string
+    order_amount: number          // 사용자 결제 총액
+    merchant_id: number | string  // store_owner seller_id
+    seller_id?: number | string | null // 인플루언서 (위탁 판매 시)
+    platform_rate?: number        // 0.05 default (5%)
+    seller_rate?: number          // 0.10 default (10%) — seller_id 있을 때만
+  },
+): Promise<{ merchant_amount: number; seller_amount: number; platform_amount: number }> {
+  await ensureLedgerTable(DB)
+  const platformRate = params.platform_rate ?? 0.05
+  const sellerRate = params.seller_id ? (params.seller_rate ?? 0.10) : 0
+  const merchantRate = 1 - platformRate - sellerRate
+  const platformAmount = Math.floor(params.order_amount * platformRate)
+  const sellerAmount = Math.floor(params.order_amount * sellerRate)
+  const merchantAmount = params.order_amount - platformAmount - sellerAmount
+  const ref = `voucher:${params.voucher_id}`
+
+  // 멱등 — 이미 처리한 voucher 면 skip
+  const existing = await DB.prepare(
+    `SELECT id FROM ledger_entries WHERE reference_id = ? AND event_type = 'voucher_used' LIMIT 1`,
+  ).bind(ref).first().catch(() => null)
+  if (existing) {
+    return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount }
+  }
+
+  // 1) 업체 receivable
+  await recordLedger(DB, {
+    event_type: 'voucher_used',
+    reference_id: ref,
+    amount: merchantAmount,
+    debit_account: 'platform:escrow',
+    credit_account: `merchant:${params.merchant_id}`,
+    metadata: { kind: 'merchant_payable', voucher_id: params.voucher_id },
+  })
+  // 2) 셀러 commission (위탁 판매 시만)
+  if (params.seller_id && sellerAmount > 0) {
+    await recordLedger(DB, {
+      event_type: 'voucher_used',
+      reference_id: ref,
+      amount: sellerAmount,
+      debit_account: 'platform:escrow',
+      credit_account: `seller:${params.seller_id}`,
+      metadata: { kind: 'seller_commission', voucher_id: params.voucher_id },
+    })
+  }
+  // 3) 플랫폼 fee (수익 인식)
+  await recordLedger(DB, {
+    event_type: 'voucher_used',
+    reference_id: ref,
+    amount: platformAmount,
+    debit_account: 'platform:escrow',
+    credit_account: 'platform:revenue',
+    metadata: { kind: 'platform_fee', voucher_id: params.voucher_id },
+  })
+
+  return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount }
+}
+
+/**
+ * 환불 시 reverse entries (멱등 보장).
+ */
+export async function recordRefundLedger(
+  DB: D1Database,
+  params: {
+    voucher_id: number | string
+    reason: string
+    amount: number
+  },
+): Promise<void> {
+  await ensureLedgerTable(DB)
+  const ref = `voucher:${params.voucher_id}:refund`
+  const existing = await DB.prepare(
+    `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
+  ).bind(ref).first().catch(() => null)
+  if (existing) return
+  await recordLedger(DB, {
+    event_type: 'voucher_refund',
+    reference_id: ref,
+    amount: params.amount,
+    debit_account: 'platform:revenue', // 모든 분배 취소 (단순화 — admin 이 세분화 가능)
+    credit_account: 'platform:escrow',
+    metadata: { reason: params.reason, voucher_id: params.voucher_id },
+  })
+}
+
+/** 정산 가능 잔액 (특정 payee 의 credit 합 - 이미 payout 처리된 amount 합) */
+export async function getPayablePending(
+  DB: D1Database,
+  payeeAccount: string,
+): Promise<number> {
+  await ensureLedgerTable(DB)
+  const credit = await DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total FROM ledger_entries WHERE credit_account = ?`,
+  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  const paid = await DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
+      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')`,
+  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  return Number(credit?.total ?? 0) - Number(paid?.total ?? 0)
 }
 
 
