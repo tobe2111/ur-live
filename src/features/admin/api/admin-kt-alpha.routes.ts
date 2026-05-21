@@ -764,7 +764,27 @@ adminKtAlphaRoutes.post('/kt-alpha/run-all-backfills', cors(), async (c) => {
     categorized: 0,
     brand_filled: 0,
     review_names: 0,
+    columns_added: [] as string[],
     errors: [] as string[],
+  }
+
+  // 🛡️ 2026-05-21 v2: 사용자 신고 "no such column: brand_name".
+  //   원인: production 에 products.brand_name 컬럼 자체가 없음 (repair-schema cron 미실행).
+  //   영구 fix: megabutton 자체가 누락 컬럼 ALTER ADD 한 후 UPDATE 실행.
+  //   각 ALTER 는 idempotent (catch 처리 — already exists 면 noop).
+  const altersToTry: Array<{ desc: string; sql: string }> = [
+    { desc: 'products.brand_name', sql: `ALTER TABLE products ADD COLUMN brand_name TEXT` },
+    { desc: 'products.brand_icon_url', sql: `ALTER TABLE products ADD COLUMN brand_icon_url TEXT` },
+    { desc: 'products.kt_alpha_gift_code', sql: `ALTER TABLE products ADD COLUMN kt_alpha_gift_code TEXT` },
+    { desc: 'product_reviews.user_name', sql: `ALTER TABLE product_reviews ADD COLUMN user_name TEXT` },
+  ]
+  for (const a of altersToTry) {
+    try {
+      await DB.prepare(a.sql).run()
+      results.columns_added.push(a.desc)
+    } catch {
+      // 이미 존재 — 정상 (silent skip).
+    }
   }
 
   // 1. products.category 자동 분류 (gift_catalog.goods_type_detail).

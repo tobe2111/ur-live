@@ -282,6 +282,7 @@ export default function AdminKtAlphaPage() {
           `• 카테고리 분류: ${d.categorized}개\n` +
           `• 브랜드 채움: ${d.brand_filled}개\n` +
           `• 리뷰 이름: ${d.review_names}개` +
+          (d.columns_added?.length ? `\n\n📐 컬럼 추가: ${d.columns_added.join(', ')}` : '') +
           (d.errors?.length ? `\n\n⚠️ 일부 오류:\n${d.errors.join('\n')}` : '')
         toast.success(summary, { duration: 10000 })
       } else {
