@@ -51,11 +51,16 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function AdminPayoutsPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'pending_ledger' | 'payouts'>('pending_ledger')
+  const [tab, setTab] = useState<'pending_ledger' | 'payouts' | 'rates' | 'annual'>('pending_ledger')
   const [pending, setPending] = useState<PendingRow[]>([])
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [filter, setFilter] = useState<'pending' | 'approved' | 'sent' | 'all'>('pending')
   const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-05-21 Phase D: commission rates + 연말 리포트.
+  const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30' })
+  const [savingRates, setSavingRates] = useState(false)
+  const [annualYear, setAnnualYear] = useState(String(new Date().getFullYear() - 1))
+  const [annualType, setAnnualType] = useState<'all' | 'store_owner' | 'seller' | 'agency'>('all')
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
@@ -68,6 +73,11 @@ export default function AdminPayoutsPage() {
       if (tab === 'pending_ledger') {
         const res = await api.get('/api/admin/payouts/pending')
         if (res.data?.success) setPending(res.data.data || [])
+      } else if (tab === 'rates') {
+        const res = await api.get('/api/admin/payouts/commission-rates')
+        if (res.data?.success) setRates(res.data.data)
+      } else if (tab === 'annual') {
+        // 별도 fetch 없음 — UI 에서 download 버튼만
       } else {
         const res = await api.get(`/api/admin/payouts?status=${filter}`)
         if (res.data?.success) setPayouts(res.data.data || [])
@@ -143,11 +153,25 @@ export default function AdminPayoutsPage() {
           💸 payouts 목록
         </button>
         <button
-          onClick={generate}
-          className="ml-auto px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700"
+          onClick={() => setTab('rates')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'rates' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-          + 지난주 정산 생성
+          ⚙️ 수수료율
         </button>
+        <button
+          onClick={() => setTab('annual')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'annual' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          📄 연말 리포트
+        </button>
+        {(tab === 'pending_ledger' || tab === 'payouts') && (
+          <button
+            onClick={generate}
+            className="ml-auto px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700"
+          >
+            + 지난주 정산 생성
+          </button>
+        )}
       </div>
 
       {tab === 'pending_ledger' ? (
@@ -253,6 +277,138 @@ export default function AdminPayoutsPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* ⚙️ 수수료율 조정 (어드민) — 변경 시 다음 voucher 부터 자동 적용 */}
+      {tab === 'rates' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
+          <h2 className="text-sm font-bold text-gray-900 mb-4">⚙️ 수수료율 조정</h2>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            • voucher 사용 시점에 자동으로 ledger entry 생성 시 적용됨<br />
+            • 변경 즉시 다음 voucher 부터 새 비율 사용 (기존 entry 영향 X)<br />
+            • 모든 비율은 % 단위 (0 ~ 100)
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">플랫폼 fee % <span className="text-gray-400">(default 5)</span></label>
+              <input
+                type="number" min={0} max={30} step={0.5}
+                value={rates.platform_fee_pct}
+                onChange={e => setRates(r => ({ ...r, platform_fee_pct: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">전체 매출에서 플랫폼이 가져가는 비율</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">셀러 위탁 판매 commission % <span className="text-gray-400">(default 10)</span></label>
+              <input
+                type="number" min={0} max={50} step={0.5}
+                value={rates.seller_commission_pct}
+                onChange={e => setRates(r => ({ ...r, seller_commission_pct: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">위탁 판매 (consignment) 시 셀러 commission</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">에이전시 분배 % <span className="text-gray-400">(default 30)</span></label>
+              <input
+                type="number" min={0} max={100} step={1}
+                value={rates.agency_share_pct}
+                onChange={e => setRates(r => ({ ...r, agency_share_pct: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">플랫폼 fee 중 에이전시에게 분배 (introduced_by_agency_id 있는 가게만)</p>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm('수수료율을 저장하시겠습니까? (즉시 적용)')) return
+              setSavingRates(true)
+              try {
+                const res = await api.patch('/api/admin/payouts/commission-rates', {
+                  platform_fee_pct: Number(rates.platform_fee_pct),
+                  seller_commission_pct: Number(rates.seller_commission_pct),
+                  agency_share_pct: Number(rates.agency_share_pct),
+                })
+                if (res.data?.success) toast.success('저장됨 — 다음 voucher 부터 적용')
+                else toast.error(res.data?.error || '저장 실패')
+              } catch (e: unknown) {
+                const ax = e as { response?: { data?: { error?: string } } }
+                toast.error(ax.response?.data?.error || '저장 실패')
+              } finally { setSavingRates(false) }
+            }}
+            disabled={savingRates}
+            className="mt-6 w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+          >
+            {savingRates ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      )}
+
+      {/* 📄 연말 정산 리포트 — CSV download */}
+      {tab === 'annual' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
+          <h2 className="text-sm font-bold text-gray-900 mb-4">📄 연말 정산 리포트</h2>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            • payouts.sent + ledger 합산 → payee 별 연간 수입 CSV<br />
+            • 사업자등록번호 / 계좌 / 입금 횟수 / 첫·마지막 입금일 포함<br />
+            • 세무사 제공용 — UTF-8 BOM (Excel 한글 안 깨짐)
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">연도</label>
+              <input
+                type="number" min={2024} max={2100}
+                value={annualYear}
+                onChange={e => setAnnualYear(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">수령자 유형</label>
+              <select
+                value={annualType}
+                onChange={e => setAnnualType(e.target.value as 'all' | 'store_owner' | 'seller' | 'agency')}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+              >
+                <option value="all">전체</option>
+                <option value="store_owner">🏪 사장님 (store_owner)</option>
+                <option value="seller">📺 셀러 (seller)</option>
+                <option value="agency">🤵 에이전시 (agency)</option>
+              </select>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              const token = localStorage.getItem('admin_token')
+              const url = `/api/admin/tax/annual-report?year=${annualYear}&payee_type=${annualType}&format=csv`
+              try {
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+                if (!res.ok) { toast.error(`다운로드 실패 (${res.status})`); return }
+                const blob = await res.blob()
+                const link = document.createElement('a')
+                link.href = URL.createObjectURL(blob)
+                link.download = `urdeal-annual-${annualYear}-${annualType}.csv`
+                link.click()
+                URL.revokeObjectURL(link.href)
+                toast.success('CSV 다운로드 완료')
+              } catch {
+                toast.error('다운로드 실패')
+              }
+            }}
+            className="mt-6 w-full py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold"
+          >
+            CSV 다운로드
+          </button>
+          <a
+            href={`/api/admin/tax/annual-report?year=${annualYear}&payee_type=${annualType}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mt-2 text-center py-2 text-xs text-blue-600 hover:underline"
+          >
+            JSON 미리보기 →
+          </a>
+        </div>
       )}
     </AdminLayout>
   )

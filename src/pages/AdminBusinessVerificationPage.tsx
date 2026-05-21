@@ -180,6 +180,26 @@ export default function AdminBusinessVerificationPage() {
                         <CheckCircle className="w-3.5 h-3.5" /> 승인
                       </button>
                     </div>
+                    {/* 🛡️ 2026-05-21 Phase D: 사장님 매직링크 재발송 (어드민 1-click) */}
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`${s.business_name || s.id} 사장님 매장 매직링크 (QR 스캔 페이지) 카톡 발송?`)) return
+                        try {
+                          const r = await api.post(`/api/admin/sellers/${s.id}/notify-magic-link`, {}, { headers: h() })
+                          if (r.data?.success) {
+                            alert(`✅ 발송 완료\n링크: ${r.data.data?.stats_url || ''}`)
+                          } else {
+                            alert(`❌ ${r.data?.error || '실패'}`)
+                          }
+                        } catch (err: unknown) {
+                          const ax = err as { response?: { data?: { error?: string } } }
+                          alert(`❌ ${ax.response?.data?.error || '실패'}`)
+                        }
+                      }}
+                      className="w-full mt-2 inline-flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100"
+                    >
+                      📱 매장 사장님께 매직링크 카톡 발송
+                    </button>
                   </div>
                 </div>
               </div>
