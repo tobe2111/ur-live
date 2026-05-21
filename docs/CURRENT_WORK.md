@@ -1,7 +1,16 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-21 (commission 출금 시스템 + 알림톡 + 회귀 테스트)
-**최근 push 커밋**: 브랜치 `claude/check-live-commerce-flow-jgNs8` — commit aa44c269 이후 정산 알림톡 추가
+**최종 업데이트**: 2026-05-21 (2건 영구 fix + 방어선 추가)
+**최근 push 커밋**: 브랜치 `claude/check-live-commerce-flow-jgNs8` — CSP nonce 사고 revert + admin token 분기 영구 fix
+
+## 🚨 2026-05-21 사고 + 영구 fix
+### Incident 1: CSP style-src nonce → 화면 깨짐
+- `src/worker/index.ts` 에 `style-src 'nonce-XXX'` 추가 → CSP3 가 unsafe-inline 무력화 → Tailwind/React inline style 전부 차단.
+- **영구 fix**: nonce 제거 + `scripts/check-csp-style-nonce.sh` pre-commit hook + CLAUDE.md 금지 룰 명시 + docs/INCIDENTS.md 기록.
+
+### Incident 2: /api/<feature>/admin/* admin_token 미부착 → 403
+- `src/lib/api.ts` 가 `/api/admin/*` 만 admin_token 분기. `/api/referral-tree/admin/withdrawals` 호출 시 헤더 누락.
+- **영구 fix**: `/^\/api\/[a-z0-9-]+\/admin(\/|$)/` 패턴 추가 + `src/tests/unit/api-admin-token-attach.test.ts` 6 케이스 회귀 테스트.
 
 ## 🆕 2026-05-21 세션 — Commission 출금 + UX 단순화 + 알림톡
 

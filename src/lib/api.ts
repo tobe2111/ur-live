@@ -242,6 +242,15 @@ api.interceptors.request.use(
       return config;
     }
 
+    // 🛡️ 2026-05-21: 어드민 sub-resource (/api/<feature>/admin/*) — admin_token 자동 헤더.
+    //   예: /api/referral-tree/admin/withdrawals (commission 출금 승인) — admin 만 접근.
+    //   /api/admin/* prefix 미사용 (라우트 구조상). 명시 분기로 admin_token 부착.
+    if (/^\/api\/[a-z0-9-]+\/admin(\/|$)/.test(url)) {
+      const token = localStorage.getItem('admin_token');
+      if (token) config.headers['Authorization'] = `Bearer ${token}`;
+      return config;
+    }
+
     // ── Guides: /api/guides/:type — type 으로 token 결정 ────────────────
     // 🛡️ 2026-04-30: GuideViewer 가 명시 헤더로 token 전달하지만, 명시 안 한 caller
     //   대비. admin 은 모든 type 접근 가능 → admin_token fallback.

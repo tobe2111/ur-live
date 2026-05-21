@@ -354,11 +354,11 @@ app.use('*', async (c, next) => {
     `script-src ${scriptSources}; ` +
     `script-src-elem ${scriptSources}; ` +
     "worker-src 'self' blob:; " +
-    // 🛡️ 2026-05-21: style-src 에 nonce 추가 (CSP3 브라우저는 nonce 우선, unsafe-inline 무력화).
-    //   CSP2 fallback 으로 unsafe-inline 유지 — Tailwind / Vite inline style 호환성 필요.
-    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; ` +
-    // 🛡️ 2026-05-21: img-src 에서 'unsafe-inline' 제거 — img-src 에 unsafe-inline 키워드는
-    //   CSP 스펙상 의미 없음 (script/style 에만 적용). 보안 audit 잡음 제거.
+    // 🛡️ 2026-05-21 REVERT: style-src nonce 도입 시도 → CSP3 가 unsafe-inline 무력화 →
+    //   Tailwind/React inline style (수천 곳) nonce 없이 전부 차단 → 화면 깨짐.
+    //   nonce 도입은 큰 리팩토링 필요. 일단 unsafe-inline 유지 (style 은 script 보다 XSS 위험 낮음).
+    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; " +
+    // img-src 'unsafe-inline' 은 CSP 스펙상 의미 없는 키워드 (제거 유지).
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     `connect-src 'self' https: wss: https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com wss://*.firebasedatabase.app wss://${new URL(FIREBASE_RTDB_URL).host}; ` +

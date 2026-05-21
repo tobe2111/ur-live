@@ -49,6 +49,15 @@ if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROUTER_CHECK
   }
 fi
 
+# 🚨 2026-05-21 (CSP style-src nonce 사고 방지): 화면 깨짐 재발 차단
+echo "==> Pre-commit: CSP style-src nonce 검사..."
+if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_CSP_CHECK\]"; then
+  bash scripts/check-csp-style-nonce.sh || {
+    echo "❌ Commit blocked. style-src nonce 추가 — 화면 깨짐 사고 재발 위험."
+    exit 1
+  }
+fi
+
 # 🚨 2026-05-12 (vite build 단독 사고 방지): build:worker 누락 차단
 echo "==> Pre-commit: 빌드 명령 검사..."
 if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_BUILD_CHECK\]"; then

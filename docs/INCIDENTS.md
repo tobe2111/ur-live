@@ -5,6 +5,53 @@
 
 ---
 
+## 2026-05-21 — CSP nonce 도입 시도 → 전체 화면 깨짐 (즉시 revert)
+
+**경위:**
+- `src/worker/index.ts` 의 CSP `style-src` 에 `'nonce-${nonce}'` 추가 시도.
+- 목적: `'unsafe-inline'` 무효화로 XSS 방어 강화.
+- 결과: CSP3 브라우저가 nonce 발견 시 `'unsafe-inline'` 자동 무시 → Tailwind/React inline style
+  수천 곳이 nonce 없어서 전부 차단 → **/admin 페이지 화면 전체 깨짐 (검정 배경, 스타일 0)**.
+
+**즉시 revert:** commit 직후 reproducer 확인 → 다음 commit 으로 nonce 제거.
+
+**근본 원인:**
+- inline style 에 nonce 부여는 React/Tailwind 환경에서 사실상 불가능.
+  React 의 `style={{...}}` prop 은 빌드 시 inline style 로 변환되지만 nonce attribute 부여 메커니즘 없음.
+- nonce 도입은 **inline style 전부 외부 CSS 로 옮기는 큰 리팩토링** 후에만 가능.
+
+**영구 룰:**
+- `style-src` 에 `'nonce-XXX'` **절대 추가 금지** — `'unsafe-inline'` 만 유지.
+- `script-src` 의 nonce 는 OK (HTMLRewriter 가 모든 script 태그에 nonce 자동 부여).
+- 향후 CSP 강화는 별도 PR (모든 inline style 외부화 + nonce 부여 인프라).
+
+**관련 파일:**
+- `src/worker/index.ts` CSP 정의 — 주석으로 룰 명시.
+
+---
+
+## 2026-05-21 — /api/<feature>/admin/* admin_token 헤더 누락 → 403
+
+**경위:**
+- 신규 endpoint `/api/referral-tree/admin/withdrawals` 호출 시 admin_token 헤더 미부착 → 403.
+- 원인: `src/lib/api.ts` 의 axios interceptor 가 `/api/admin/*` prefix 만 admin_token 분기.
+  `/api/<feature>/admin/*` 패턴은 누락.
+
+**영구 fix:**
+```ts
+if (/^\/api\/[a-z0-9-]+\/admin(\/|$)/.test(url)) {
+  const token = localStorage.getItem('admin_token')
+  if (token) config.headers['Authorization'] = `Bearer ${token}`
+  return config
+}
+```
+
+**회귀 방지:** `src/tests/unit/api-admin-token-attach.test.ts` — 패턴 매칭 6개 케이스 검증.
+
+**컨벤션:** 신규 어드민 전용 sub-resource endpoint 는 `/api/<feature>/admin/*` 명명 따를 것.
+
+---
+
 ## 2026-05-12 — `npx vite build` 누락 → `_worker.js` 미갱신 → 405 반복
 
 **증상**: 셀러가 방송 생성 시도 → `POST /api/seller/youtube/live/create` 405 Method Not Allowed.
