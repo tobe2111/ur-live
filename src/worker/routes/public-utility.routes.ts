@@ -301,50 +301,71 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
 publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
   const DB = c.env.DB
   try {
-    // 🛡️ 2026-05-20 v2: gift_catalog.goods_type_detail/goods_type_name LEFT JOIN 으로 분류.
-    //   v1 (brand_name LIKE 매칭) 은 products.brand_name 이 ASCII/한자/특수문자 변형으로 매칭 실패 빈발.
-    //   영구 해결: KT Alpha 가 직접 제공하는 goods_type_detail (정확한 분류) 을 우선 사용.
-    //   우선순위: products.category (명시 분류) > gc.goods_type_detail > gc.goods_type_name > brand 매칭 > '기타'.
-    //   gift_code 가 없는 일반 상품은 'voucher' 그대로 → '기타' 로 표시.
+    // 🛡️ 2026-05-21 v3: 가장 ideal 한 분류 — brand_name + product NAME 모두 매칭.
+    //   문제: production 의 products.brand_name 이 NULL/빈값 다수 → 모두 '기타' 떨어짐.
+    //   해결: 동일 패턴을 product name 에도 적용 (brand_name OR name 둘 중 하나라도 매칭).
+    //   우선순위:
+    //     1) products.category 명시 분류 ('voucher' 제외)
+    //     2) gc.goods_type_detail / gc.goods_type_name (gift_catalog JOIN)
+    //     3) brand_name OR name 키워드 LIKE (8개 카테고리)
+    //     4) '기타'
+    const matchCat = (cat: string, keywords: string[]) =>
+      keywords.map(k => `(p.brand_name LIKE '%${k}%' OR p.name LIKE '%${k}%')`).join(' OR ')
+
     const RUNTIME_CATEGORY_SQL = `
       CASE
         WHEN COALESCE(p.category, '') NOT IN ('', 'voucher') THEN p.category
         WHEN COALESCE(gc.goods_type_detail, '') != '' THEN gc.goods_type_detail
         WHEN COALESCE(gc.goods_type_name, '') != ''   THEN gc.goods_type_name
-        WHEN p.brand_name LIKE '%스타벅스%' OR p.brand_name LIKE '%이디야%' OR p.brand_name LIKE '%투썸%'
-          OR p.brand_name LIKE '%커피빈%' OR p.brand_name LIKE '%할리스%' OR p.brand_name LIKE '%폴바셋%'
-          OR p.brand_name LIKE '%엔젤리너스%' OR p.brand_name LIKE '%파스쿠찌%' OR p.brand_name LIKE '%커피%'
-          OR p.brand_name LIKE '%파리바게뜨%' OR p.brand_name LIKE '%뚜레쥬르%' OR p.brand_name LIKE '%던킨%'
-          OR p.brand_name LIKE '%크리스피크림%' OR p.brand_name LIKE '%배스킨라빈스%' THEN '카페/베이커리'
-        WHEN p.brand_name LIKE '%GS25%' OR p.brand_name LIKE '%CU%' OR p.brand_name LIKE '%세븐일레븐%'
-          OR p.brand_name LIKE '%이마트24%' OR p.brand_name LIKE '%미니스톱%' OR p.brand_name LIKE '%이마트%'
-          OR p.brand_name LIKE '%홈플러스%' OR p.brand_name LIKE '%롯데마트%' OR p.brand_name LIKE '%코스트코%' THEN '편의점/마트'
-        WHEN p.brand_name LIKE '%백화점%' OR p.brand_name LIKE '%갤러리아%' THEN '백화점/쇼핑'
-        WHEN p.brand_name LIKE '%올리브영%' OR p.brand_name LIKE '%화장품%' OR p.brand_name LIKE '%뷰티%' THEN '뷰티/패션'
-        WHEN p.brand_name LIKE '%교보문고%' OR p.brand_name LIKE '%예스24%' OR p.brand_name LIKE '%CGV%'
-          OR p.brand_name LIKE '%롯데시네마%' OR p.brand_name LIKE '%메가박스%' OR p.brand_name LIKE '%영화%' THEN '도서/문화'
-        WHEN p.brand_name LIKE '%피자%' OR p.brand_name LIKE '%치킨%' OR p.brand_name LIKE '%버거%'
-          OR p.brand_name LIKE '%김밥%' OR p.brand_name LIKE '%맥도날드%' OR p.brand_name LIKE '%배민%' THEN '외식/배달'
-        WHEN p.brand_name LIKE '%주유%' THEN '주유/생활'
-        WHEN p.brand_name LIKE '%컬쳐랜드%' OR p.brand_name LIKE '%해피머니%' OR p.brand_name LIKE '%모바일%' THEN '모바일/디지털'
+        WHEN ${matchCat('카페/베이커리', ['스타벅스','이디야','투썸','커피빈','할리스','폴바셋','엔젤리너스','파스쿠찌','커피','카페','파리바게뜨','뚜레쥬르','던킨','크리스피크림','배스킨라빈스','아이스크림','베이커리','케이크'])} THEN '카페/베이커리'
+        WHEN ${matchCat('편의점/마트',  ['GS25','CU','세븐일레븐','이마트24','미니스톱','이마트','홈플러스','롯데마트','코스트코','편의점','마트'])} THEN '편의점/마트'
+        WHEN ${matchCat('백화점/쇼핑',  ['백화점','갤러리아','신세계','롯데몰','AK플라자','현대백화점'])} THEN '백화점/쇼핑'
+        WHEN ${matchCat('뷰티/패션',    ['올리브영','화장품','뷰티','코스메틱','네일','헤어','미용','패션','의류','신발','가방','아디다스','나이키','ABC마트','아리따움','이니스프리','에뛰드'])} THEN '뷰티/패션'
+        WHEN ${matchCat('도서/문화',    ['교보문고','예스24','알라딘','책','도서','CGV','롯데시네마','메가박스','영화','공연','뮤지컬','콘서트'])} THEN '도서/문화'
+        WHEN ${matchCat('외식/배달',    ['피자','치킨','버거','김밥','맥도날드','버거킹','롯데리아','KFC','맘스터치','배민','쿠팡이츠','요기요','BHC','BBQ','교촌','네네','굽네','호식이','도미노','피자헛','회식','외식','한식','중식','일식','분식','족발','보쌈'])} THEN '외식/배달'
+        WHEN ${matchCat('숙박/여행',    ['호텔','펜션','리조트','게스트하우스','민박','풀빌라','숙박','여행','항공','기차'])} THEN '숙박/여행'
+        WHEN ${matchCat('주유/생활',    ['주유','SK주유소','GS칼텍스','S-OIL','현대오일뱅크','세차'])} THEN '주유/생활'
+        WHEN ${matchCat('모바일/디지털', ['컬쳐랜드','해피머니','구글플레이','넷플릭스','쿠팡플레이','웨이브','티빙','모바일','디지털','상품권'])} THEN '모바일/디지털'
         ELSE '기타'
       END
     `
 
     // 🛡️ 2026-05-20: products LEFT JOIN gift_catalog — kt_alpha_gift_code 로 매칭.
     //   gift_catalog 없는 일반 상품도 안전 (COALESCE 처리).
-    const cats = await DB.prepare(
-      `SELECT cat as category, COUNT(*) as cnt
-         FROM (
-           SELECT ${RUNTIME_CATEGORY_SQL} as cat
-             FROM products p
-        LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-            WHERE p.is_active = 1 AND p.deal_only = 1
-         )
-        GROUP BY cat
-        HAVING cnt > 0
-        ORDER BY cnt DESC LIMIT 20`
-    ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as Array<{ category: string; cnt: number }> }))
+    // 🛡️ 2026-05-21: gift_catalog/kt_alpha_gift_code 누락 환경 fallback.
+    //   1차 (with JOIN): goods_type_detail/name 가능
+    //   2차 (no JOIN): brand_name/name 키워드만 — gc.* 참조 SQL 은 null 처리.
+    const RUNTIME_CATEGORY_SQL_NOJOIN = RUNTIME_CATEGORY_SQL
+      .replace(/gc\.goods_type_detail/g, 'NULL')
+      .replace(/gc\.goods_type_name/g, 'NULL')
+
+    const tryQuery = async (withJoin: boolean) => {
+      const sql = withJoin
+        ? `SELECT cat as category, COUNT(*) as cnt
+             FROM (
+               SELECT ${RUNTIME_CATEGORY_SQL} as cat
+                 FROM products p
+            LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+                WHERE p.is_active = 1 AND p.deal_only = 1
+             )
+            GROUP BY cat HAVING cnt > 0 ORDER BY cnt DESC LIMIT 20`
+        : `SELECT cat as category, COUNT(*) as cnt
+             FROM (
+               SELECT ${RUNTIME_CATEGORY_SQL_NOJOIN} as cat
+                 FROM products p
+                WHERE p.is_active = 1 AND p.deal_only = 1
+             )
+            GROUP BY cat HAVING cnt > 0 ORDER BY cnt DESC LIMIT 20`
+      return DB.prepare(sql).all<{ category: string; cnt: number }>()
+    }
+
+    let cats: { results?: Array<{ category: string; cnt: number }> } = { results: [] }
+    try {
+      cats = await tryQuery(true)
+    } catch {
+      // gift_catalog 테이블 / kt_alpha_gift_code 컬럼 누락 → 2차 시도.
+      cats = await tryQuery(false).catch(() => ({ results: [] }))
+    }
 
     const sections: Array<{
       category: string
@@ -353,15 +374,26 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
     }> = []
     for (const cat of (cats.results || [])) {
       // brand 칩도 동일 runtime 분류 사용 → "카페/베이커리" 클릭 시 해당 브랜드만 노출.
-      const brands = await DB.prepare(
-        `SELECT p.brand_name, MAX(p.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
-           FROM products p
-      LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-          WHERE p.is_active = 1 AND p.deal_only = 1 AND p.brand_name IS NOT NULL
-            AND ${RUNTIME_CATEGORY_SQL} = ?
-          GROUP BY p.brand_name
-          ORDER BY cnt DESC LIMIT 12`
-      ).bind(cat.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
+      const tryBrandQuery = async (withJoin: boolean) => {
+        const sql = withJoin
+          ? `SELECT p.brand_name, MAX(p.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
+               FROM products p
+          LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+              WHERE p.is_active = 1 AND p.deal_only = 1 AND p.brand_name IS NOT NULL
+                AND ${RUNTIME_CATEGORY_SQL} = ?
+              GROUP BY p.brand_name
+              ORDER BY cnt DESC LIMIT 12`
+          : `SELECT p.brand_name, MAX(p.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
+               FROM products p
+              WHERE p.is_active = 1 AND p.deal_only = 1 AND p.brand_name IS NOT NULL
+                AND ${RUNTIME_CATEGORY_SQL_NOJOIN} = ?
+              GROUP BY p.brand_name
+              ORDER BY cnt DESC LIMIT 12`
+        return DB.prepare(sql).bind(cat.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>()
+      }
+      let brands: { results?: Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }> } = { results: [] }
+      try { brands = await tryBrandQuery(true) }
+      catch { brands = await tryBrandQuery(false).catch(() => ({ results: [] })) }
       sections.push({
         category: cat.category,
         count: cat.cnt,
