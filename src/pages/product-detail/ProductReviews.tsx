@@ -11,6 +11,9 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showSharePrompt, setShowSharePrompt] = useState(false)
+  // 🛡️ 2026-05-21: 리뷰 사진 첨부 (max 5). compress 후 upload-image → URL 저장.
+  const [images, setImages] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
 
   if (!open) {
     return (
@@ -41,6 +44,64 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         aria-label={t('reviews.contentLabel', { defaultValue: '리뷰 내용' })}
         className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
       />
+
+      {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
+      <div className="mt-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {images.map((url, idx) => (
+            <div key={idx} className="relative w-16 h-16">
+              <img src={url} alt="" className="w-full h-full object-cover rounded-md" />
+              <button
+                type="button"
+                onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 text-white rounded-full text-[10px] font-bold flex items-center justify-center"
+                aria-label="삭제"
+              >×</button>
+            </div>
+          ))}
+          {images.length < 5 && (
+            <label className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-[#2A2A2A] rounded-md flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:border-gray-500 active:scale-95 transition">
+              {uploading ? (
+                <span className="text-[10px]">업로드 중</span>
+              ) : (
+                <>
+                  <span className="text-xl">+</span>
+                  <span className="text-[9px]">{images.length}/5</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만 가능'); return }
+                  setUploading(true)
+                  try {
+                    const { compressForThumbnail } = await import('@/lib/image-compress')
+                    const compressed = await compressForThumbnail(file)
+                    const fd = new FormData()
+                    fd.append('image', compressed)
+                    const res = await api.post('/api/seller/upload-image', fd)
+                    if (res.data?.success && res.data.url) {
+                      setImages(prev => [...prev, res.data.url])
+                    } else {
+                      toast.error(res.data?.error || '업로드 실패')
+                    }
+                  } catch (err: unknown) {
+                    toast.error((err as Error).message || '업로드 실패')
+                  } finally {
+                    setUploading(false)
+                    e.target.value = ''
+                  }
+                }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
       <div className="flex gap-2 mt-3">
         <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         <button
@@ -48,17 +109,26 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
           onClick={async () => {
             setSubmitting(true)
             try {
-              const res = await api.post('/api/reviews', { product_id: Number(productId), rating, content })
+              const res = await api.post('/api/reviews', { product_id: Number(productId), rating, content, images })
               if (res.data.success) {
-                setOpen(false); setContent(''); setRating(5)
+                setOpen(false); setContent(''); setRating(5); setImages([])
                 onSubmitted()
                 if (res.data.reward) setShowSharePrompt(true)
               } else {
                 toast.error(res.data.error || t('reviews.writeFailed', { defaultValue: '리뷰 작성 실패' }))
               }
             } catch (err: unknown) {
-              const msg = err instanceof Error ? err.message : t('reviews.writeError', { defaultValue: '리뷰 작성에 실패했습니다' })
-              toast.error(msg)
+              // 🛡️ 2026-05-21: 백엔드 응답 형식 분기 — 구매자 전용 403 등 상세 메시지 노출.
+              const ax = err as { response?: { status?: number; data?: { error?: string; error_code?: string } } }
+              const status = ax.response?.status
+              const code = ax.response?.data?.error_code
+              const serverMsg = ax.response?.data?.error
+              if (code === 'NOT_PURCHASED' || status === 403) {
+                toast.error(serverMsg || '리뷰는 해당 상품을 구매하신 분만 작성하실 수 있어요', { duration: 5000 })
+              } else {
+                const msg = serverMsg || (err instanceof Error ? err.message : t('reviews.writeError', { defaultValue: '리뷰 작성에 실패했습니다' }))
+                toast.error(msg)
+              }
             } finally { setSubmitting(false) }
           }}
           className="flex-[2] py-2 bg-blue-600 text-white text-sm rounded-lg font-bold disabled:opacity-40"

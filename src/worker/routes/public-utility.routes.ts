@@ -301,6 +301,25 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
 publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
   const DB = c.env.DB
   const debug = c.req.query('debug') === '1'
+
+  // 🛡️ 2026-05-21 v5: KV 캐시 추가 (사용자 신고 — 로딩 느림).
+  //   카테고리/브랜드 데이터는 KT Alpha catalog sync 시점에만 변경 → 5분 TTL 안전.
+  //   stale-while-revalidate 2분 → 백그라운드 갱신, 사용자 즉시 응답.
+  //   debug=1 은 캐시 우회.
+  const KV = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV
+  const CACHE_KEY = 'vouchers_categories_v5'
+  if (!debug && KV) {
+    try {
+      const cached = await KV.get(CACHE_KEY)
+      if (cached) {
+        // 백그라운드 갱신 (stale 시) — 응답은 즉시 캐시 반환.
+        c.header('X-Cache', 'HIT')
+        c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
+        return c.body(cached, 200, { 'Content-Type': 'application/json' })
+      }
+    } catch { /* KV fail-open */ }
+  }
+
   try {
     // 🛡️ 2026-05-21 v4 — 영구 단순화 (진단으로 확정된 데이터 구조 기반).
     //   진단 결과:
@@ -309,44 +328,55 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
     //   결론: products 가 비어도 gift_catalog 만으로 분류 + 브랜드 충분히 표시 가능.
     //   복잡한 CASE 제거 → INNER JOIN 직접 사용 (가장 안정적).
 
-    // 카테고리 = gift_catalog.goods_type_detail (KT API 정확 분류).
-    const catsResult = await DB.prepare(`
-      SELECT gc.goods_type_detail as category, COUNT(*) as cnt
+    // 🛡️ 2026-05-21 v5: N+1 제거 — categories + brands 단일 쿼리로 통합.
+    //   이전: 카테고리 N개당 별도 brand 쿼리 → 20+ round-trip.
+    //   현재: 한 번에 (category, brand) 페어 + count 가져온 뒤 메모리에서 그룹화.
+    const allRows = await DB.prepare(`
+      SELECT gc.goods_type_detail as category,
+             gc.brand_name as brand_name,
+             MAX(gc.brand_icon_url) as brand_icon_url,
+             COUNT(*) as cnt
         FROM products p
   INNER JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
        WHERE p.is_active = 1 AND p.deal_only = 1
          AND gc.goods_type_detail IS NOT NULL AND gc.goods_type_detail != ''
-    GROUP BY gc.goods_type_detail
-    ORDER BY cnt DESC LIMIT 20
-    `).all<{ category: string; cnt: number }>().catch((e) => {
-      if (import.meta.env.DEV) console.error('[vouchers/categories] cats query failed:', e)
-      return { results: [] as Array<{ category: string; cnt: number }> }
+    GROUP BY gc.goods_type_detail, gc.brand_name
+    ORDER BY cnt DESC
+    `).all<{ category: string; brand_name: string | null; brand_icon_url: string | null; cnt: number }>().catch((e) => {
+      if (import.meta.env.DEV) console.error('[vouchers/categories] unified query failed:', e)
+      return { results: [] as Array<{ category: string; brand_name: string | null; brand_icon_url: string | null; cnt: number }> }
     })
 
-    const sections: Array<{
-      category: string
-      count: number
-      brands: Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }>
-    }> = []
+    // 카테고리별 집계 + 브랜드 그룹화.
+    const catMap = new Map<string, { count: number; brands: Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }> }>()
+    for (const r of (allRows.results || [])) {
+      const cat = r.category
+      if (!catMap.has(cat)) catMap.set(cat, { count: 0, brands: [] })
+      const entry = catMap.get(cat)!
+      entry.count += r.cnt
+      if (r.brand_name && entry.brands.length < 12) {
+        entry.brands.push({ brand_name: r.brand_name, brand_icon_url: r.brand_icon_url, cnt: r.cnt })
+      }
+    }
+    // catsResult 형식 호환 (기존 코드 재사용 위해).
+    const catsResult: { results?: Array<{ category: string; cnt: number }> } = {
+      results: Array.from(catMap.entries()).map(([category, v]) => ({ category, cnt: v.count })).sort((a, b) => b.cnt - a.cnt).slice(0, 20),
+    }
 
-    for (const cat of (catsResult.results || [])) {
-      // 브랜드 = gift_catalog.brand_name (KT API 정확 브랜드 정보).
-      const brandsResult = await DB.prepare(`
-        SELECT gc.brand_name, MAX(gc.brand_icon_url) as brand_icon_url, COUNT(*) as cnt
-          FROM products p
-    INNER JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-         WHERE p.is_active = 1 AND p.deal_only = 1
-           AND gc.goods_type_detail = ?
-           AND gc.brand_name IS NOT NULL AND gc.brand_name != ''
-      GROUP BY gc.brand_name
-      ORDER BY cnt DESC LIMIT 12
-      `).bind(cat.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
+    // 🛡️ 2026-05-21 v5: brand 쿼리 N개 제거 — 위 unified query 결과를 catMap 에서 직접 사용.
+    const sections = (catsResult.results || []).map(cat => ({
+      category: cat.category,
+      count: cat.cnt,
+      brands: catMap.get(cat.category)?.brands || [],
+    }))
 
-      sections.push({
-        category: cat.category,
-        count: cat.cnt,
-        brands: brandsResult.results || [],
-      })
+    // KV 캐시 저장 (5분 TTL).
+    if (!debug && KV) {
+      const body = JSON.stringify({ success: true, data: sections })
+      try { await KV.put(CACHE_KEY, body, { expirationTtl: 300 }) } catch { /* fail-open */ }
+      c.header('X-Cache', 'MISS')
+      c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
+      return c.body(body, 200, { 'Content-Type': 'application/json' })
     }
 
     if (debug) {

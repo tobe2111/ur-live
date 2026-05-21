@@ -34,6 +34,12 @@ interface FeedCardProduct extends Product {
   avg_rating?: number
   review_count?: number
   sold_count?: number
+  // 🛡️ 2026-05-21: /api/group-buy/products 의 LEFT JOIN gift_catalog 응답 alias.
+  brand_name?: string | null
+  brand_icon_url?: string | null
+  gc_brand_name?: string | null
+  gc_brand_icon_url?: string | null
+  gc_goods_type_detail?: string | null
 }
 
 // 🛡️ 2026-05-21: 구매 수 사람 친화 포맷 (4 자리 이상 → 만 단위).
@@ -57,7 +63,12 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
 }
 
 export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
-  const cat = CATEGORY_META[p.category || 'etc_voucher'] || CATEGORY_META.etc_voucher
+  // 🛡️ 2026-05-21: brand 정보 — gift_catalog (gc_*) 우선 → products → 없음.
+  const brandName = p.brand_name || p.gc_brand_name || null
+  const brandIcon = p.brand_icon_url || p.gc_brand_icon_url || null
+  // 카테고리도 동일 — voucher 면 gc.goods_type_detail 사용.
+  const rawCategory = p.category && p.category !== 'voucher' ? p.category : (p.gc_goods_type_detail || p.category || 'etc_voucher')
+  const cat = CATEGORY_META[rawCategory] || { emoji: '🎁', label: rawCategory }
   const price = p.current_price ?? p.price ?? 0
   const originalPrice = p.original_price ?? 0
   // 할인율 계산 (있는 값 우선, 없으면 직접 계산).
@@ -102,6 +113,14 @@ export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
       </div>
 
       <div className="pt-2 px-0.5">
+        {/* 🛡️ 2026-05-21: 브랜드 표시 (gift_catalog) — 있을 때만 작은 줄 */}
+        {brandName && (
+          <p className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 leading-none mb-0.5">
+            {brandIcon && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain" loading="lazy" />}
+            <span className="truncate">{brandName}</span>
+          </p>
+        )}
+
         {/* 원가 strikethrough (있을 때만) */}
         {originalPrice > price && originalPrice > 0 && (
           <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through leading-tight">
