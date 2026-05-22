@@ -299,6 +299,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   partial composite index — category + group_buy_status + ORDER BY created_at 한 번에 cover.
     //   IF NOT EXISTS 라 멱등. wrangler d1 execute 수동 적용 없이 daily cron 으로 자동 반영.
     { desc: 'idx_products_groupbuy_feed', sql: "CREATE INDEX IF NOT EXISTS idx_products_groupbuy_feed ON products (category, group_buy_status, created_at DESC) WHERE is_active = 1" },
+    // 🛡️ 2026-05-22 카카오 P0: 셀러-카카오 1:1 매핑 DB-level uniqueness (race condition 방어).
+    //   application-level 체크만으로는 동시 link 시 같은 user_id 에 2개 seller 연동 가능.
+    { desc: 'idx_sellers_linked_user_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_linked_user_unique ON sellers(linked_user_id) WHERE linked_user_id IS NOT NULL" },
+    // 🛡️ 2026-05-22 카카오 P0: kakao_id UNIQUE 보강 (이미 KakaoAuthService 에서 시도하지만 다중 진입점 안전).
+    { desc: 'idx_users_kakao_id_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -658,6 +663,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       PRIMARY KEY (status, category)
     )` },
     { name: 'idx_group_buy_feed_cache_computed', sql: `CREATE INDEX IF NOT EXISTS idx_group_buy_feed_cache_computed ON group_buy_feed_cache (computed_at DESC)` },
+    // 🛡️ 2026-05-22 카카오 P0: 계정 탈퇴 시 30일 grace period (restore 가능). 테이블 부재 production 환경 안전.
+    { name: 'deleted_accounts', sql: `CREATE TABLE IF NOT EXISTS deleted_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT,
+      kakao_id TEXT,
+      email TEXT,
+      name TEXT,
+      deleted_at DATETIME NOT NULL DEFAULT (datetime('now')),
+      restorable_until DATETIME NOT NULL,
+      restored_at DATETIME,
+      purge_after DATETIME
+    )` },
+    { name: 'idx_deleted_accounts_kakao', sql: `CREATE INDEX IF NOT EXISTS idx_deleted_accounts_kakao ON deleted_accounts(kakao_id) WHERE kakao_id IS NOT NULL` },
+    { name: 'idx_deleted_accounts_email', sql: `CREATE INDEX IF NOT EXISTS idx_deleted_accounts_email ON deleted_accounts(email) WHERE email IS NOT NULL` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

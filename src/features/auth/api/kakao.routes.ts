@@ -541,8 +541,14 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
   } catch (error) {
     if (import.meta.env.DEV) console.error('[Kakao Sync] Unexpected error:', error);
-    const errorMsg = encodeURIComponent((error as Error).message || 'unknown');
     c.header('Set-Cookie', clearStateCookieHeader());
+    // 🛡️ 2026-05-22 P0: 이메일 takeover 방어 — 명확한 에러 코드 + 사용자 친화 안내.
+    const code = (error as { code?: string })?.code;
+    if (code === 'EMAIL_ALREADY_LINKED_TO_OTHER_METHOD') {
+      const method = (error as { existingMethod?: string })?.existingMethod || 'other';
+      return c.redirect(`${redirectTarget}?error=email_already_linked&method=${method}`);
+    }
+    const errorMsg = encodeURIComponent((error as Error).message || 'unknown');
     return c.redirect(`${redirectTarget}?error=kakao_sync_failed&detail=${errorMsg}`);
   }
 });

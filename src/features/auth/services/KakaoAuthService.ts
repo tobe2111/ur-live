@@ -300,6 +300,30 @@ export class KakaoAuthService {
         }
 
       } else {
+        // 🛡️ 2026-05-22 P0 보안 fix (이메일 takeover 방어 — Google OAuth 와 동일 패턴):
+        //   기존 사용자가 이메일/비번 또는 다른 OAuth 로 동일 이메일 가입되어 있으면
+        //   신규 kakao_id 로 user row 생성 → 이메일 중복 + 데이터 분리 + impersonation risk.
+        //   해결: 이메일이 이미 다른 method 로 등록되어 있으면 EMAIL_ALREADY_LINKED 에러.
+        //         프론트가 "기존 계정으로 로그인 후 카카오 연동" 안내.
+        if (kakaoUser.email) {
+          try {
+            const emailOwner = await this.db.prepare(
+              `SELECT id, kakao_id, password_hash FROM users
+                WHERE email = ? AND email IS NOT NULL LIMIT 1`
+            ).bind(kakaoUser.email).first<{ id: number; kakao_id: string | null; password_hash: string | null }>();
+            if (emailOwner && (emailOwner.kakao_id !== kakaoUser.kakaoId || emailOwner.password_hash)) {
+              const err = new Error('EMAIL_ALREADY_LINKED_TO_OTHER_METHOD') as Error & { code?: string; existingMethod?: string };
+              err.code = 'EMAIL_ALREADY_LINKED_TO_OTHER_METHOD';
+              err.existingMethod = emailOwner.password_hash ? 'password' : 'other_oauth';
+              throw err;
+            }
+          } catch (e: unknown) {
+            // 우리가 던진 에러 그대로 throw, DB 에러는 graceful continue (테이블 schema 부재 등).
+            if ((e as { code?: string })?.code === 'EMAIL_ALREADY_LINKED_TO_OTHER_METHOD') throw e;
+            if (import.meta.env.DEV) console.warn('[KakaoAuthService] email check skipped:', e);
+          }
+        }
+
         // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음.
         //   kakao_id UNIQUE constraint 도 production 에 없을 가능성 — 보강 시도.
         try {
