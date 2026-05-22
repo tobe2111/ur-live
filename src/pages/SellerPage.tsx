@@ -13,6 +13,9 @@ import {
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useSellerMode } from '@/hooks/useSellerMode'
 import SellerLayout from '@/components/SellerLayout'
+import RoleGate from '@/components/RoleGate'
+import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
+import { getRoleLabel, getRoleMeta, getCurrentSellerRole } from '@/shared/seller-roles'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
 import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
@@ -450,9 +453,34 @@ export default function SellerPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.dashboard')}
-          subtitle={t('seller.dashboardSubtitle', { defaultValue: '셀러 대시보드 — 매출 / 주문 / 라이브 현황' })}
+          subtitle={`${getRoleLabel(getCurrentSellerRole())} — ${getRoleMeta(getCurrentSellerRole()).description}`}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
+
+        {/* 🛡️ 2026-05-21 Phase D-5: role 기반 자동 분기 — 인플루언서/사장님별 전용 위젯. */}
+        <RoleGate showFor="influencer-or-both">
+          {getSellerId() && (
+            <div className="max-w-md">
+              <SellerTrackingLinkCopy sellerId={getSellerId() || ''} />
+            </div>
+          )}
+        </RoleGate>
+
+        <RoleGate showFor="store-or-both">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🏪</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-emerald-900">매장 사장님 — QR 스캔 빠른 안내</p>
+                <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
+                  • 손님이 매장 방문 시 QR / PIN 보여주면 카메라로 스캔하세요<br />
+                  • 매직링크는 카톡으로 받은 링크 클릭 (로그인 불요)<br />
+                  • 매출 정산: <a href="/seller/ledger" className="underline">/seller/ledger</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </RoleGate>
 
         {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
         <SellerOnboardingChecklist />

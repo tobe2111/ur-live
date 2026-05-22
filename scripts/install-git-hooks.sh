@@ -58,6 +58,15 @@ if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_CSP_CHECK\]"
   }
 fi
 
+# 🚨 2026-05-21 Phase D-5 (seller_type 직접 비교 금지 — single source 깨짐 방지)
+echo "==> Pre-commit: 셀러 role helper 사용 검증..."
+if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROLE_CHECK\]"; then
+  bash scripts/check-seller-role-helper.sh || {
+    echo "❌ Commit blocked. seller_type 직접 비교 — helper 사용 필수."
+    exit 1
+  }
+fi
+
 # 🚨 2026-05-12 (vite build 단독 사고 방지): build:worker 누락 차단
 echo "==> Pre-commit: 빌드 명령 검사..."
 if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_BUILD_CHECK\]"; then
