@@ -162,25 +162,42 @@ disputesRoutes.post(
     `).bind(voucher_code, userId, reason_text, evidence_url || null, category, confidence, reasoning, action).run()
 
     // 자동 환불 처리
+    // 🛡️ 2026-05-22: D1 batch() 로 atomic 처리. CAS 가 먼저 통과해야 환불 실행.
     if (action === 'auto_refunded') {
+      const disputeId = insertResult.meta?.last_row_id
       try {
-        // voucher status 변경 + 딜 환불 (deal 결제만)
-        await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'").bind(voucher.id).run()
+        // 1) CAS — voucher refunded 시도 (실패 시 abort, escalated 로 다운그레이드)
+        const casRes = await DB.prepare(
+          "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
+        ).bind(voucher.id).run()
+        if (!casRes.meta?.changes) {
+          throw new Error('voucher CAS failed (already used/refunded)')
+        }
+        // 2) 환불 금액 / 사용자 조회
         const order = await DB.prepare(
           "SELECT o.payment_method, o.total_amount, o.user_id, p.price FROM vouchers v LEFT JOIN orders o ON o.id = v.order_id LEFT JOIN products p ON p.id = v.product_id WHERE v.id = ?"
         ).bind(voucher.id).first<{ payment_method: string; total_amount: number; user_id: string; price: number }>()
+
+        // 3) 환불 + dispute resolved 마킹을 batch() 로 atomic 실행
+        const stmts = []
         if (order && order.payment_method === 'deal_points' && order.user_id) {
           const refundAmount = order.price
-          await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(refundAmount, order.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(order.user_id, refundAmount, refundAmount, order.user_id, `[AI 자동 환불] 분쟁 #${insertResult.meta?.last_row_id}: ${category}`).run()
+          stmts.push(
+            DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
+              .bind(refundAmount, order.user_id),
+            DB.prepare(
+              "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+            ).bind(order.user_id, refundAmount, refundAmount, order.user_id, `[AI 자동 환불] 분쟁 #${disputeId}: ${category}`)
+          )
         }
-        await DB.prepare("UPDATE disputes SET resolved_at = CURRENT_TIMESTAMP WHERE id = ?").bind(insertResult.meta?.last_row_id).run()
+        stmts.push(
+          DB.prepare("UPDATE disputes SET resolved_at = CURRENT_TIMESTAMP WHERE id = ?").bind(disputeId)
+        )
+        await DB.batch(stmts)
       } catch (err) {
         console.error('[disputes/auto-refund]', err)
-        // 자동 환불 실패 시 escalated 로 다운그레이드
-        await DB.prepare("UPDATE disputes SET action = 'escalated' WHERE id = ?").bind(insertResult.meta?.last_row_id).run().catch(() => {})
+        // 자동 환불 실패 시 escalated 로 다운그레이드 (voucher CAS 실패하면 voucher 는 안 건드림 — 안전)
+        await DB.prepare("UPDATE disputes SET action = 'escalated' WHERE id = ?").bind(disputeId).run().catch(() => {})
       }
     }
 
@@ -226,21 +243,27 @@ disputesRoutes.post('/admin/:id/approve', requireAuth(), require2FA(), auditLog(
   if (!voucher) return c.json({ success: false, error: 'voucher 없음' }, 404)
   if (voucher.status !== 'unused') return c.json({ success: false, error: `이미 ${voucher.status} 상태` }, 400)
 
-  // CAS
+  // CAS — voucher refunded 시도 (실패 시 409)
   const casRes = await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'").bind(voucher.id).run()
   if (!casRes.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
 
-  // 딜 환불
+  // 🛡️ 2026-05-22: CAS 성공 후 딜 환불 + dispute resolved 마킹을 batch() 로 atomic 실행.
+  //   부분 실패 시 voucher 만 refunded 로 남고 환불 안 되는 불일치 방지.
+  const stmts = []
   if (voucher.payment_method === 'deal_points' && voucher.user_id) {
-    await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(voucher.price, voucher.user_id).run().catch(() => {})
-    await DB.prepare(
-      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-    ).bind(voucher.user_id, voucher.price, voucher.price, voucher.user_id, `[분쟁 ${id} 환불 승인] ${dispute.ai_category}`).run().catch(() => {})
+    stmts.push(
+      DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
+        .bind(voucher.price, voucher.user_id),
+      DB.prepare(
+        "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+      ).bind(voucher.user_id, voucher.price, voucher.price, voucher.user_id, `[분쟁 ${id} 환불 승인] ${dispute.ai_category}`)
+    )
   }
-
-  // dispute 상태 업데이트
-  await DB.prepare(`UPDATE disputes SET action = 'resolved', admin_notes = ?, admin_user_id = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?`)
-    .bind(notes || null, String(userAsAny.id ?? ''), id).run()
+  stmts.push(
+    DB.prepare(`UPDATE disputes SET action = 'resolved', admin_notes = ?, admin_user_id = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .bind(notes || null, String(userAsAny.id ?? ''), id)
+  )
+  await DB.batch(stmts)
 
   // 유저 푸시
   try {
