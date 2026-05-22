@@ -6,6 +6,7 @@ import {
   Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
+import { getRoleShortLabel } from '@/shared/seller-roles'
 import { toast } from '@/hooks/useToast'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -180,11 +181,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
-  const sellerTypeLabel = sellerType === 'influencer'
-    ? 'Influencer'
-    : sellerType === 'store_owner'
-    ? 'Store Owner'
-    : 'Influencer + Store'
+  // 🛡️ 2026-05-21 Phase D-5: getRoleShortLabel helper 사용 (직접 비교 금지).
+  const sellerTypeLabel = getRoleShortLabel(sellerType)
 
   // 🛡️ 사이드바를 함수 컴포넌트가 아닌 JSX 변수로 정의 — 부모 re-render 시 함수 참조가
   // 매번 새로 만들어져 React 가 unmount/remount → <nav> 의 scroll 위치가 reset 되던 버그.

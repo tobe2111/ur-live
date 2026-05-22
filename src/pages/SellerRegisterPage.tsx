@@ -155,7 +155,7 @@ export default function SellerRegisterPage() {
                 <button type="button"
                   onClick={() => setFormData(f => ({...f, sellerType: 'influencer'}))}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    formData.sellerType === 'influencer'
+                    String(formData.sellerType).toLowerCase() === 'influencer'
                       ? 'border-gray-900 bg-gray-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}>
@@ -166,7 +166,7 @@ export default function SellerRegisterPage() {
                 <button type="button"
                   onClick={() => setFormData(f => ({...f, sellerType: 'store_owner'}))}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    formData.sellerType === 'store_owner'
+                    String(formData.sellerType).toLowerCase() === 'store_owner'
                       ? 'border-gray-900 bg-gray-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}>

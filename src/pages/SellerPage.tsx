@@ -15,7 +15,7 @@ import { useSellerMode } from '@/hooks/useSellerMode'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
 import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
-import { getRoleLabel, getRoleMeta, getCurrentSellerRole } from '@/shared/seller-roles'
+import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
 import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
@@ -50,7 +50,8 @@ export default function SellerPage() {
   const navigate = useNavigate()
 
   const sellerType = localStorage.getItem('seller_type') || 'influencer'
-  const isInfluencer = sellerType === 'influencer' || sellerType === 'both'
+  // 🛡️ 2026-05-21 Phase D-5: helper 사용 (직접 비교 금지).
+  const isInfluencer = checkInfluencer(sellerType)
   // 🛡️ 2026-05-18: Mode-specific 대시보드 — SellerLayout 의 mode 토글과 동기화.
   //   'live' 모드 = 라이브 셀러용 (시청자/방송 KPI 강조)
   //   'store' 모드 = 공구 셀러용 (공구 진행률/매장 voucher 매출 강조)
@@ -486,7 +487,7 @@ export default function SellerPage() {
         <SellerOnboardingChecklist />
 
         {/* 🛡️ 2026-05-18: Mode-specific 헤더 배지 — 어느 모드인지 시각적으로 즉시 인지. */}
-        {sellerType === 'both' && (
+        {sellerType.toLowerCase() === 'both' && (
           <div className={`rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-bold ${
             isLiveMode
               ? 'bg-red-50 text-red-700 border border-red-200'

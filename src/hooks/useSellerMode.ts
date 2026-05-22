@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+// 🛡️ 2026-05-21 Phase D-5: helper 마이그레이션 (직접 비교 금지).
+import { isInfluencer, isStoreOwner } from '@/shared/seller-roles'
 
 export type SellerMode = 'live' | 'store'
 
@@ -37,8 +39,8 @@ function readMode(): SellerMode {
   if (typeof window === 'undefined') return 'live'
   const sellerType = localStorage.getItem('seller_type')
   // 셀러 타입이 단일이면 강제 — toggle UI 도 노출 안 됨.
-  if (sellerType === 'influencer') return 'live'
-  if (sellerType === 'store_owner') return 'store'
+  if (isInfluencer(sellerType) && !isStoreOwner(sellerType)) return 'live'
+  if (isStoreOwner(sellerType) && !isInfluencer(sellerType)) return 'store'
   const saved = localStorage.getItem('seller_dashboard_mode')
   return saved === 'store' ? 'store' : 'live'
 }

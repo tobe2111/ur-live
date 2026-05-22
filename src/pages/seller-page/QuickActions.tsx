@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, Utensils, Gift, Users, Radio } from 'lucide-react'
+import { isStoreOwner as isStoreOwnerRole } from '@/shared/seller-roles'
 
 interface Props {
   hasMealVouchers: boolean
@@ -18,7 +19,8 @@ export default function QuickActions({
   hasMealVouchers, sellerType, activeGroupBuys, isInfluencer, hasLiveHistory
 }: Props) {
   const { t } = useTranslation()
-  const isVoucherFirst = hasMealVouchers || sellerType === 'store_owner'
+  // 🛡️ 2026-05-21 Phase D-5: isStoreOwner helper 사용.
+  const isVoucherFirst = hasMealVouchers || isStoreOwnerRole(sellerType)
 
   return (
     <div>
