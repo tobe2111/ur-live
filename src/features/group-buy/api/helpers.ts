@@ -89,6 +89,23 @@ export async function ensureTables(DB: D1Database): Promise<void> {
   try {
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_products_store_owner_token ON products(store_owner_token)`).run()
   } catch { /* exists */ }
+  // 🛡️ 2026-05-22 perf index 즉시 적용 — schema-repair cron (18 UTC) 기다리지 않고
+  //   ensureTables 첫 호출 시 자동 생성. 멱등 (IF NOT EXISTS).
+  //   migrations/0276 와 동일한 partial composite index.
+  try {
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_products_groupbuy_feed ON products (category, group_buy_status, created_at DESC) WHERE is_active = 1`).run()
+  } catch { /* exists */ }
+  // 🛡️ 2026-05-22: materialized cache table 도 동시 생성 (cron 이 사용).
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS group_buy_feed_cache (
+      status TEXT NOT NULL,
+      category TEXT NOT NULL,
+      product_json TEXT NOT NULL,
+      row_count INTEGER NOT NULL DEFAULT 0,
+      computed_at DATETIME NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (status, category)
+    )`).run()
+  } catch { /* exists */ }
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS vouchers (
