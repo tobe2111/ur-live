@@ -84,6 +84,19 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   if (payment_method !== undefined && payment_method !== 'deal' && payment_method !== 'toss') {
     return c.json({ success: false, error: '잘못된 결제 수단입니다' }, 400)
   }
+
+  // 🛡️ 2026-05-22 보안 패치 (영구):
+  //   이전 코드: payment_method='toss' 가 wallet 검증 0 + 실제 결제 init 0 + orders.status='PAID' 즉시 INSERT
+  //   → 무료 결제 가능 (누구나 'toss' 선택만 하면 공구 참여). 심각.
+  //   현재 fix: 'toss' 차단 (deal 만 허용). 진짜 toss 결제 흐름은 후속 PR (별도 endpoint + Toss SDK).
+  //   사용자가 토스 결제 원하면 dynamic toss-init endpoint 호출 → confirm → 그 시점에 voucher 발급.
+  if (payment_method === 'toss') {
+    return c.json({
+      success: false,
+      error: '공구 토스 결제는 준비 중입니다. 현재는 딜 포인트로만 참여 가능합니다.',
+      code: 'TOSS_NOT_READY',
+    }, 503)
+  }
   // 🛡️ 2026-05-15: promo_code 형식 검증 (실제 검증은 아래 적용 직전)
   const promoCodeNormalized = promo_code ? String(promo_code).trim().toUpperCase() : ''
   if (promoCodeNormalized && !/^[A-Z0-9]{4,20}$/.test(promoCodeNormalized)) {

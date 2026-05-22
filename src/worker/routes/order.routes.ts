@@ -18,6 +18,7 @@ import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
+import { safeError } from '../utils/safe-error';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -360,9 +361,9 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    console.error('[ORDERS] Create error:', errMsg, err);
-    return c.json({ success: false, error: '주문 생성에 실패했습니다' }, 500);
+    // 🛡️ 2026-05-22: safeError 사용 — DEV 모드에선 _debug 필드 노출 → 사용자 신고 원인 파악 가능.
+    //   prod 에선 generic 메시지만. console.error 는 항상 full stack 로깅.
+    return safeError(c, err, '주문 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', '[orders:create]');
   }
 });
 
