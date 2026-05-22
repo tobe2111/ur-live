@@ -6,6 +6,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types'
+import { swallow } from '../../../worker/utils/swallow'
 
 const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
 
@@ -259,7 +260,7 @@ https://live.ur-team.com/my-vouchers
         message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
       }),
       signal: AbortSignal.timeout(10000),
-    }).catch(() => {})
+    }).catch(swallow("helpers:alimtalk:voucher-issued"))
   } catch { /* graceful */ }
 }
 
@@ -299,7 +300,7 @@ ${data.restaurantName} 사장님,
         message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
       }),
       signal: AbortSignal.timeout(10000),
-    }).catch(() => {})
+    }).catch(swallow("helpers:alimtalk:seller-first-voucher"))
   } catch { /* graceful */ }
 }
 
@@ -337,7 +338,7 @@ https://live.ur-team.com/my-vouchers
         message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
       }),
       signal: AbortSignal.timeout(10000),
-    }).catch(() => {})
+    }).catch(swallow("helpers:alimtalk:voucher-used"))
   } catch { /* graceful */ }
 }
 

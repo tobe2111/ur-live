@@ -29,17 +29,34 @@
 2. **배포 후 smoke**: `curl https://live.ur-team.com/api/group-buy/products?status=active&category=all`
    → 응답 크기 측정 (목표 ~5KB 이하, 이전 10KB+)
 
-## 🟡 남은 부채 (의도적 deferred — 별도 PR 권장)
+## ✅ 2026-05-22 — Deferred 항목 청소 (Done)
+
+| 항목 | 상태 | 출처 |
+|---|---|---|
+| `guide-seed.ts` 2012줄 분해 | ✅ Done (5 files: admin/seller/agency/types/barrel) | `commit c4a6f634` |
+| `ReelCard.tsx` 1515줄 부분 분해 | ✅ Done (-82줄, types + OrderProofToast 추출) | `commit 666c09b5` |
+| `youtube-live.routes.ts` 부분 분해 | ✅ Done (-50줄, cache + hmac/OME types 추출) | `commit 666c09b5` |
+| Silent catch 잔여 정리 | ✅ Done (helpers/group-buy-admin/cron 4개/scheduled-cleanup 6곳/seller-public 2곳) | `commit 9999999` |
+| Cafe24 webhook explicit idempotency | ✅ Done (signature dedup table) | `commit c4a6f634` |
+| KakaoMap XSS 하드닝 | ✅ Done (escapeHtml on InfoWindow + shared util) | `commit c4a6f634` |
+| Materialized view skeleton | ✅ Done (migration 0277 + group-buy-feed-cache cron skeleton) | `commit 9999999` |
+| Admin a11y 부분 보강 | ✅ Done (AdminAccountsPage edit/key/delete icons) | `commit 9999999` |
+| `/admin/policy` 정책 시각화 | ✅ Done (read-only SSOT dashboard) | `commit b695c197` |
+
+## ⚠️ 운영자 액션 (production 수동 필요)
+
+1. **`migrations/0276` D1 적용** — 공구 피드 perf index
+2. **`migrations/0277` D1 적용** — group_buy_feed_cache table (skeleton, 비활성 — 100만 명 단계에서 enable)
+3. **wrangler.toml cron** — 100만 명 단계 진입 시 `handleGroupBuyFeedCache` 5분 cron 등록 + 응답 분기 PR
+
+## 🟡 영구 deferred (사유 명시)
 
 | 항목 | 사유 |
 |---|---|
-| `youtube-live.routes.ts` 3417줄 분해 | 너무 큼 — 별도 risk-isolated PR |
-| `ReelCard.tsx` 1515줄 분해 | CLAUDE.md 룰: 500줄+ 전체 덮어쓰기 금지 |
-| `guide-seed.ts` 2012줄 분해 | 데이터 파일 — 분리 lift 낮음 |
-| Silent catch 잔여 ~40곳 | 모두 비금전 (KV cache invalidate, cleanup cron) |
-| Materialized view (공구 캐시) | 1만 명 수준에선 불필요. 100만 명 가시화 시 도입 |
-| XSS — PiP/KakaoMap React 변환 | 별도 보안 PR (DOM purify + React-only path) |
-| 어드민 페이지 a11y 전수 보강 | 어드민은 내부 사용자, 우선순위 낮음 |
+| `youtube-live.routes.ts` 3367줄 전수 분해 | endpoint 핸들러 본체 — 단계적 PR 권장 (라이브 송출 핵심) |
+| `ReelCard.tsx` 1433줄 전수 분해 | ReelCardImpl 본체 — 별도 risk-isolated PR |
+| XSS — PiP innerHTML 전수 React 변환 | 이미 isSafeImageUrl + textContent 로 방어됨 — DOM API 그대로 유지 |
+| 어드민 페이지 a11y 전수 (50+ 파일) | 부분 진행. 내부 사용자, 우선순위 낮음 |
 
 ## 📊 2026-05-18 — 숙소 공구 + 사업자 정산 도입 후 잔여 부채
 

@@ -41,7 +41,7 @@ export async function handleScheduled(env: Env) {
         '12시간+ 라이브 stream (admin 검토 필요)',
         `Stream #${s.id} "${s.title}" — status='live' 인데 12시간 이상 heartbeat 없음. 어드민이 강제 종료 또는 무시 결정.`,
         `stale_live:${s.id}`,
-      ).run().catch(() => {})
+      ).run().catch(swallow('cron:scheduled-cleanup:1'))
     }
     results.stale_streams_alerted = stale.results?.length ?? 0;
   } catch (e) { logError('[Cron] stale_streams alert error:', { error: String(e) }) }
@@ -65,7 +65,7 @@ export async function handleScheduled(env: Env) {
         '웹캠 방송 시작 안 됨 (admin 검토)',
         `Stream #${s.id} "${s.title}" — youtube_video_id 없이 30분+ 경과. 셀러가 YouTube Studio 송출 완료 안 했을 가능성.`,
         `dead_webcam:${s.id}`,
-      ).run().catch(() => {})
+      ).run().catch(swallow('cron:scheduled-cleanup:2'))
     }
     results.dead_webcam_streams_alerted = dead.results?.length ?? 0;
   } catch (e) { logError('[Cron] dead_webcam_streams alert error:', { error: String(e) }) }
@@ -87,7 +87,7 @@ export async function handleScheduled(env: Env) {
         '2시간+ scheduled 좀비 (admin 검토)',
         `Stream #${s.id} "${s.title}" — status='scheduled' 인데 2시간 이상 송출 시작 안 됨.`,
         `zombie_scheduled:${s.id}`,
-      ).run().catch(() => {})
+      ).run().catch(swallow('cron:scheduled-cleanup:3'))
     }
     results.zombie_scheduled_alerted = zomb.results?.length ?? 0;
   } catch (e) { logError('[Cron] zombie_scheduled error:', { error: String(e) }) }
@@ -416,7 +416,7 @@ export async function handleScheduled(env: Env) {
 
       // 알림 일괄 insert (50개씩 batch)
       for (let i = 0; i < allNotifyStmts.length; i += 50) {
-        await DB.batch(allNotifyStmts.slice(i, i + 50)).catch(() => {});
+        await DB.batch(allNotifyStmts.slice(i, i + 50)).catch(swallow('cron:scheduled-cleanup:notify-batch'));
       }
 
       // 발송 완료 표시 (batch)
@@ -425,7 +425,7 @@ export async function handleScheduled(env: Env) {
           DB.prepare("UPDATE live_streams SET pre_notified = 1 WHERE id = ?").bind(id)
         );
         for (let i = 0; i < doneStmts.length; i += 50) {
-          await DB.batch(doneStmts.slice(i, i + 50)).catch(() => {});
+          await DB.batch(doneStmts.slice(i, i + 50)).catch(swallow('cron:scheduled-cleanup:done-batch'));
         }
       }
       results.pre_notifications_sent = capped.length;
@@ -471,7 +471,7 @@ export async function handleScheduled(env: Env) {
       const updateStmts = sIds.map(id =>
         DB.prepare("UPDATE live_streams SET pre_notified_5min = 1 WHERE id = ?").bind(id)
       )
-      for (let i = 0; i < updateStmts.length; i += 50) await DB.batch(updateStmts.slice(i, i + 50)).catch(() => {})
+      for (let i = 0; i < updateStmts.length; i += 50) await DB.batch(updateStmts.slice(i, i + 50)).catch(swallow('cron:scheduled-cleanup:update-batch'))
     }
   } catch (e) { logError('[Cron] 5min_notifications error:', { error: String(e) }) }
 

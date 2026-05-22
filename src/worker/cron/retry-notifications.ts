@@ -10,6 +10,7 @@
 
 import type { Env } from '../types/env'
 import { logInfo } from '../utils/logger'
+import { swallow } from '../utils/swallow'
 import { reportCronFailure } from '../utils/cron-reporter'
 
 interface EmailFailureRow {
@@ -109,7 +110,7 @@ export async function retryEmailFailures(env: Env) {
               error = ?,
               updated_at = datetime('now')
           WHERE id = ?
-        `).bind((sendErr as Error).message?.slice(0, 500) || 'exception', row.id).run().catch(() => {})
+        `).bind((sendErr as Error).message?.slice(0, 500) || 'exception', row.id).run().catch(swallow('cron:retry-notifications:mark-error'))
       }
     }
 
@@ -188,7 +189,7 @@ export async function retryPushFailures(env: Env) {
           UPDATE push_failures
           SET retry_count = retry_count + 1
           WHERE id = ?
-        `).bind(row.id).run().catch(() => {})
+        `).bind(row.id).run().catch(swallow('cron:retry-notifications:dead-letter'))
         void sendErr
       }
     }

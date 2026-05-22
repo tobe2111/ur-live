@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
+import { swallow } from '@/worker/utils/swallow'
 
 const sellerPublicRoutes = new Hono<{ Bindings: Env }>()
 
@@ -196,12 +197,12 @@ sellerPublicRoutes.post('/notify-followers',
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, ?, ?, ?, ?)`
-        ).bind(f.user_id, `seller_${body.reason || 'custom'}`, title, message, url).run().catch(() => {})
+        ).bind(f.user_id, `seller_${body.reason || 'custom'}`, title, message, url).run().catch(swallow('seller-public:follower-notify-insert'))
 
         // web push
         await sendSystemPush(c.env, 'user', f.user_id, {
           title, body: message, url, tag: `seller-${sellerId}-${body.reason || 'custom'}`,
-        }).catch(() => {})
+        }).catch(swallow('seller-public:follower-push'))
         sent++
       } catch { /* skip individual failures */ }
     }

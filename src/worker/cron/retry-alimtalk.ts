@@ -1,4 +1,5 @@
 import { logInfo, logError } from '../utils/logger'
+import { swallow } from '../utils/swallow'
 /**
  * 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 cron.
  *
@@ -87,7 +88,7 @@ export async function handleRetryAlimtalk(env: Env) {
               error = ?,
               updated_at = datetime('now')
           WHERE id = ?
-        `).bind((sendErr as Error).message?.slice(0, 500) || 'exception', row.id).run().catch(() => {})
+        `).bind((sendErr as Error).message?.slice(0, 500) || 'exception', row.id).run().catch(swallow('cron:retry-alimtalk:mark-error'))
       }
     }
 

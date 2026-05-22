@@ -16,6 +16,7 @@ import { auditLog } from '@/worker/middleware/audit-log'
 import { require2FA } from '@/worker/middleware/require-2fa'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
+import { swallow } from '@/worker/utils/swallow'
 
 const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
 
@@ -188,7 +189,7 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
     await DB.prepare("UPDATE products SET is_active = 0, group_buy_status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE seller_id = ?").bind(sellerId).run()
     // 🛡️ 2026-05-17: sellers.status CHECK(IN 'pending','approved','rejected','suspended') —
     //   'closed' 는 허용값 아님 → CHECK 위반 silent fail. '폐업' 의미상 'suspended' (영업 정지) 가 가장 가깝다.
-    await DB.prepare("UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(sellerId).run().catch(() => {})
+    await DB.prepare("UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(sellerId).run().catch(swallow('group-buy-admin:suspend-seller-from-store-close'))
   } catch { /* graceful */ }
 
   return c.json({ success: true, refund_count: refundCount, refund_total: refundTotal })

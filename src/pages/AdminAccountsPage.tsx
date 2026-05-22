@@ -210,9 +210,9 @@ export default function AdminAccountsPage() {
                       <td className="px-4 py-3 text-xs text-gray-400">{formatKST(admin.created_at)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <button onClick={() => openEdit(admin)} className="p-1 rounded hover:bg-gray-100" title={t('common.edit')}><Edit2 className="w-3.5 h-3.5 text-gray-500" /></button>
-                          <button onClick={() => { setShowResetPw(admin); setNewPassword('') }} className="p-1 rounded hover:bg-gray-100" title={t('admin.accounts.changePassword')}><Key className="w-3.5 h-3.5 text-amber-500" /></button>
-                          <button onClick={() => deleteAdmin(admin)} className="p-1 rounded hover:bg-gray-100" title={t('common.delete')}><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                          <button onClick={() => openEdit(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.edit", { defaultValue: "수정" })} title={t("common.edit")}><Edit2 className="w-3.5 h-3.5 text-gray-500" /></button>
+                          <button onClick={() => { setShowResetPw(admin); setNewPassword('') }} className="p-1 rounded hover:bg-gray-100" aria-label={t("admin.accounts.changePassword", { defaultValue: "비밀번호 변경" })} title={t("admin.accounts.changePassword")}><Key className="w-3.5 h-3.5 text-amber-500" /></button>
+                          <button onClick={() => deleteAdmin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.delete", { defaultValue: "삭제" })} title={t("common.delete")}><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                         </div>
                       </td>
                     </tr>
