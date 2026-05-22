@@ -21,6 +21,10 @@ import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, calcTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
 
+// 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
+//   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
+let _giftCatalogJoinable: boolean | null = null
+
 export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── GET /products — 공구 목록 ──
   //   ?status=active|achieved|expired|all  (default: active)
@@ -75,23 +79,31 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
-        try {
-          const r = await DB.prepare(`
-            SELECT ${COLS},
-                   gc.brand_name AS gc_brand_name,
-                   gc.brand_icon_url AS gc_brand_icon_url,
-                   gc.goods_type_detail AS gc_goods_type_detail
-            FROM products p
-            LEFT JOIN sellers s ON p.seller_id = s.id
-            LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-            WHERE p.category IN (${placeholders}) AND p.is_active = 1
-              AND (p.group_buy_status = ? OR ? = 'all')
-            ORDER BY p.created_at DESC
-            LIMIT 50
-          `).bind(...categories, status, status).all()
-          results = r.results ?? []
-        } catch {
-          // JOIN 실패 → fallback: gift_catalog 없는 환경
+        // 🛡️ 2026-05-22 영구 해결: gift_catalog JOIN 가능 여부 module-scope 기억 →
+        //   table 없는 환경에서 매번 try/catch 두 번 query 발생 → 응답 2배 지연 영구 차단.
+        if (_giftCatalogJoinable !== false) {
+          try {
+            const r = await DB.prepare(`
+              SELECT ${COLS},
+                     gc.brand_name AS gc_brand_name,
+                     gc.brand_icon_url AS gc_brand_icon_url,
+                     gc.goods_type_detail AS gc_goods_type_detail
+              FROM products p
+              LEFT JOIN sellers s ON p.seller_id = s.id
+              LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+              WHERE p.category IN (${placeholders}) AND p.is_active = 1
+                AND (p.group_buy_status = ? OR ? = 'all')
+              ORDER BY p.created_at DESC
+              LIMIT 50
+            `).bind(...categories, status, status).all()
+            results = r.results ?? []
+            if (_giftCatalogJoinable === null) _giftCatalogJoinable = true  // 첫 성공 → 다음부터 try 우선
+          } catch {
+            _giftCatalogJoinable = false  // table 부재 영구 기억 → 다음부터 fallback 만
+            // fall through to fallback below
+          }
+        }
+        if (results.length === 0 && _giftCatalogJoinable === false) {
           const r = await DB.prepare(`
             SELECT ${COLS}
             FROM products p

@@ -19,10 +19,10 @@
  *   <SiteFooter />
  */
 
-import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, ShoppingCart, Bell } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import SiteFooter from '@/components/main/SiteFooter'
@@ -34,26 +34,27 @@ import UserOnboardingModal from '@/components/onboarding/UserOnboardingModal'
 export default function MainHomePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [cartCount, setCartCount] = useState(0)
+  const enabled = isLoggedInSync()
 
-  // ── 알림 unread + 장바구니 cart 카운트 ─────────────────────────────────
-  // 로그인된 사용자만. 실패해도 silent.
-  useEffect(() => {
-    if (!isLoggedInSync()) return
-    let cancelled = false
-    api.get('/api/notifications/unread-count')
-      .then(res => { if (!cancelled && res.data?.success) setUnreadCount(Number(res.data.data?.count ?? 0)) })
-      .catch(() => { /* silent */ })
-    api.get('/api/cart')
-      .then(res => {
-        if (cancelled) return
-        const items = Array.isArray(res.data?.data) ? res.data.data : []
-        setCartCount(items.length)
-      })
-      .catch(() => { /* silent */ })
-    return () => { cancelled = true }
-  }, [])
+  // 🛡️ 2026-05-22 영구 해결 — useQuery 로 DesktopTopNav 와 dedup.
+  //   기존: MainHomePage 와 DesktopTopNav 가 같은 API 2개 (unread-count + cart) 각각 호출
+  //         → 메인 진입 시 4 requests fire (PC). 사용자 체감 "느림" 의 한 원인.
+  //   해결: 같은 queryKey 사용 → React Query 가 동일 시점 dedup + 1회만 fetch.
+  //   refetchOnWindowFocus:false — 탭 복귀 시 또 호출 안 함.
+  const { data: unreadCount = 0 } = useQuery<number>({
+    queryKey: ['notifications', 'unread-count'],
+    queryFn: () => api.get('/api/notifications/unread-count').then(r => Number(r.data?.data?.count ?? 0)).catch(() => 0),
+    enabled,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  })
+  const { data: cartCount = 0 } = useQuery<number>({
+    queryKey: ['cart', 'count'],
+    queryFn: () => api.get('/api/cart').then(r => (Array.isArray(r.data?.data) ? r.data.data.length : 0)).catch(() => 0),
+    enabled,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  })
 
   return (
     <>

@@ -6,7 +6,8 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isLoggedInSync } from '@/utils/auth'
@@ -15,38 +16,36 @@ export default function DesktopTopNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [cartCount, setCartCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
 
-  useEffect(() => {
-    if (!loggedIn) { setUnreadCount(0); setCartCount(0); return }
-    let cancelled = false
-    const fetchCounts = async () => {
-      try {
-        const r = await api.get('/api/notifications/unread-count')
-        if (cancelled) return
-        const c = Number(r.data?.count ?? 0)
-        setUnreadCount(Number.isFinite(c) && c >= 0 ? c : 0)
-      } catch { if (!cancelled) setUnreadCount(0) }
-      try {
-        const r2 = await api.get('/api/cart')
-        if (cancelled) return
-        if (r2.data?.success) {
-          const items = r2.data.data?.items || (Array.isArray(r2.data.data) ? r2.data.data : [])
-          const count = items.reduce((s: number, it: { quantity?: number }) => s + (it.quantity || 1), 0)
-          setCartCount(count)
-        }
-      } catch { if (!cancelled) setCartCount(0) }
-    }
-    fetchCounts()
-    const id = setInterval(() => { if (!document.hidden) fetchCounts() }, 60_000)
-    const onVisible = () => { if (!document.hidden) fetchCounts() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => { cancelled = true; clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
-  }, [loggedIn])
+  // 🛡️ 2026-05-22 영구 해결 — MainHomePage 와 같은 queryKey 로 dedup.
+  //   기존: MainHomePage + DesktopTopNav 가 PC 메인 진입 시 동일 API 2번씩 (4 requests).
+  //   해결: 동일 queryKey → React Query 자동 dedup → 1 request 만 fire.
+  //   60s staleTime + 60s 자동 refetch (interval) — 페이지 머무는 동안 1분마다 갱신.
+  const { data: unreadCount = 0 } = useQuery<number>({
+    queryKey: ['notifications', 'unread-count'],
+    queryFn: () => api.get('/api/notifications/unread-count').then(r => {
+      const c = Number(r.data?.data?.count ?? r.data?.count ?? 0)
+      return Number.isFinite(c) && c >= 0 ? c : 0
+    }).catch(() => 0),
+    enabled: loggedIn,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+  })
+  const { data: cartCount = 0 } = useQuery<number>({
+    queryKey: ['cart', 'count'],
+    queryFn: () => api.get('/api/cart').then(r => {
+      const items = r.data?.data?.items || (Array.isArray(r.data?.data) ? r.data.data : [])
+      return items.reduce((s: number, it: { quantity?: number }) => s + (it.quantity || 1), 0)
+    }).catch(() => 0),
+    enabled: loggedIn,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+  })
 
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },

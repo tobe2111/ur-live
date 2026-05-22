@@ -95,6 +95,15 @@ export async function ensureTables(DB: D1Database): Promise<void> {
   try {
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_products_groupbuy_feed ON products (category, group_buy_status, created_at DESC) WHERE is_active = 1`).run()
   } catch { /* exists */ }
+  // 🛡️ 2026-05-22 사용자 신고 "공동구매만 늦음" 영구 해결:
+  //   LEFT JOIN gift_catalog ON gc.gift_code = p.kt_alpha_gift_code 의 인덱스 부재 →
+  //   매 요청마다 full table scan (100ms+). 인덱스 추가로 즉시 lookup.
+  try {
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_products_kt_alpha_gift_code ON products(kt_alpha_gift_code) WHERE kt_alpha_gift_code IS NOT NULL`).run()
+  } catch { /* exists */ }
+  try {
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_gift_catalog_gift_code ON gift_catalog(gift_code)`).run()
+  } catch { /* table missing — OK */ }
   // 🛡️ 2026-05-22: materialized cache table 도 동시 생성 (cron 이 사용).
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS group_buy_feed_cache (
