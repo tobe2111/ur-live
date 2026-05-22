@@ -127,31 +127,51 @@ export default function PointsChargePage() {
     // 🛡️ catch 블록에서 initRes 참조 가능하도록 hoist (TS 스코프 에러 회피).
     let initData: { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid' } | null = null
 
+    // 🛡️ 2026-05-22 영구 해결: handleCharge 진입 시 항상 pending row 선제 cleanup.
+    //   사용자 신고: 여전히 409. 원인 — 이전 시도가 SDK 에러로 종료됐지만 cleanup 안 됐을 수 있음.
+    //   선제 cleanup → init 항상 깨끗한 상태에서 시작.
+    await api.post('/api/points/charge/cancel').catch(() => null)
+
     try {
-      const initRes = await api.post('/api/points/charge/init', { amount: selected.amount })
-      if (!initRes.data.success) {
-        // 409 PENDING_CHARGE_EXISTS 자동 cleanup 후 1회 retry.
-        if (initRes.data.code === 'PENDING_CHARGE_EXISTS') {
-          await api.post('/api/points/charge/cancel').catch(() => null)
-          const retry = await api.post('/api/points/charge/init', { amount: selected.amount }).catch(() => null)
-          if (!retry?.data?.success) {
-            toast.error('이전 충전 시도가 끝나지 않았습니다. 1분 후 다시 시도해주세요.')
-            setProcessing(false)
-            return
+      // 첫 init 시도 + 409 자동 처리 + axios 가 던지는 예외 catch.
+      const tryInit = async () => {
+        try {
+          const r = await api.post('/api/points/charge/init', { amount: selected.amount })
+          return { ok: true as const, data: r.data }
+        } catch (e: unknown) {
+          // axios 가 status 4xx/5xx 를 throw — 우리는 응답 body 가 필요.
+          const ax = e as { response?: { status?: number; data?: { success?: boolean; error?: string; code?: string } } }
+          if (ax?.response?.status === 409) {
+            return { ok: false as const, status: 409, data: ax.response?.data }
           }
-          initRes.data = retry.data
-        } else {
-          toast.error(initRes.data.error || '충전 시작에 실패했습니다.')
-          setProcessing(false)
-          return
+          throw e
         }
+      }
+
+      let initRes = await tryInit()
+      // 409 발생 시: 즉시 cancel + 재시도 (최대 2회).
+      let retryCount = 0
+      while (!initRes.ok || (initRes.data && initRes.data.success === false)) {
+        const code = initRes.ok ? initRes.data?.code : initRes.data?.code
+        if (code === 'PENDING_CHARGE_EXISTS' && retryCount < 2) {
+          retryCount++
+          await api.post('/api/points/charge/cancel').catch(() => null)
+          // 짧은 backoff (DB 일관성 안정화 대기)
+          await new Promise(r => setTimeout(r, 300))
+          initRes = await tryInit()
+          continue
+        }
+        const msg = initRes.data?.error || '충전 시작에 실패했습니다.'
+        toast.error(msg)
+        setProcessing(false)
+        return
       }
 
       // 🛡️ 2026-05-22 영구 해결 — 서버가 결정한 flow 만 신뢰.
       //   이전 문제: 클라이언트가 자기 VITE_TOSS_CLIENT_KEY 로 추측 → 두 env sync 깨지면 깨짐.
       //   해결: 서버가 자기 TOSS_CLIENT_KEY 검증 + flow 반환 → 클라이언트는 단순 dispatch.
       //   클라이언트 VITE_TOSS_CLIENT_KEY 환경변수 없거나 잘못돼도 동작.
-      initData = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid' }
+      initData = initRes.data?.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid' }
       const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initData
 
       if (serverFlow === 'invalid' || !serverClientKey) {
@@ -257,8 +277,9 @@ export default function PointsChargePage() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
       <SEO title={t('pointsCharge.seoTitle', { defaultValue: '딜 충전 - 유어딜' })} description={t('pointsCharge.seoDesc', { defaultValue: '딜 포인트를 충전하세요' })} url="/points/charge" noindex />
 
-      {/* 헤더 */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      {/* 헤더 — 🛡️ 2026-05-22: top-14 (md+) 제거. PC layout 위 빈 공간 깨짐 fix.
+            /points/charge 는 fullScreenPrefixes 라 DesktopTopNav 없음 → top-0 통일. */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
             onClick={() => navigate(-1)}

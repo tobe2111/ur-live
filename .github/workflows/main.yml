@@ -96,6 +96,20 @@ jobs:
 
           echo "✅ Build verification + size budget 통과"
 
+      # 🛡️ 2026-05-22 영구 deploy fix:
+      #   build 가 `sourcemap: 'hidden'` 생성 → 270+ .map 파일 (총 ~590 files).
+      #   Cloudflare Pages Direct Upload 가 96/592 에서 일관되게 500 거부 (rate/size).
+      #   기존: Sentry 업로드 step 안에서만 .map 삭제 → SENTRY_AUTH_TOKEN 없으면 그대로 잔존.
+      #   해결: deploy 직전 무조건 .map 삭제 (Sentry 가 이미 업로드했든 안 했든 무관).
+      #   .map 은 hidden 모드라 JS 에 reference 주석 없음 — 삭제해도 런타임 영향 0.
+      - name: Strip source maps before deploy (CF Pages 파일 수 절감)
+        run: |
+          MAPS_BEFORE=$(find dist/client -name '*.map' 2>/dev/null | wc -l)
+          find dist/client -name '*.map' -delete 2>/dev/null || true
+          MAPS_AFTER=$(find dist/client -name '*.map' 2>/dev/null | wc -l)
+          TOTAL_FILES=$(find dist/client -type f 2>/dev/null | wc -l)
+          echo "✅ Stripped $MAPS_BEFORE source maps ($MAPS_AFTER remaining). Total deploy files: $TOTAL_FILES"
+
       # 🛡️ 2026-04-26 (O1): Sentry 소스맵 업로드
       # vite.config.ts 의 sourcemap: 'hidden' 으로 .map 파일이 dist/client/assets/ 에 생성됨.
       # @sentry/cli 로 release 별 소스맵 업로드 → production 에러 stack trace 가독성 ↑.
