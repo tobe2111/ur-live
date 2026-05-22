@@ -67,24 +67,42 @@ export default function PointsChargePage() {
     try {
       const initRes = await api.post('/api/points/charge/init', { amount: selected.amount })
       if (!initRes.data.success) {
-        toast.error(initRes.data.error || '충전 시작에 실패했습니다.')
+        // 🛡️ 2026-05-22: 409 PENDING_CHARGE_EXISTS 자동 cleanup 후 1회 retry.
+        if (initRes.data.code === 'PENDING_CHARGE_EXISTS') {
+          await api.post('/api/points/charge/cancel').catch(() => null)
+          const retry = await api.post('/api/points/charge/init', { amount: selected.amount }).catch(() => null)
+          if (!retry?.data?.success) {
+            toast.error('이전 충전 시도가 끝나지 않았습니다. 1분 후 다시 시도해주세요.')
+            setProcessing(false)
+            return
+          }
+          initRes.data = retry.data
+        } else {
+          toast.error(initRes.data.error || '충전 시작에 실패했습니다.')
+          setProcessing(false)
+          return
+        }
+      }
+
+      const { orderId, amount, orderName, clientKey: serverClientKey } = initRes.data.data
+      const effectiveKey = serverClientKey || clientKey
+
+      // 🛡️ 2026-05-22 SDK 키 검증 — '결제위젯 연동 키' (_wt_) 는 payment() V2 API 거부.
+      //   서버 환경변수 VITE_TOSS_CLIENT_KEY 가 'live_gck_' / 'test_gck_' (일반 클라이언트 키) 여야 함.
+      //   잘못된 키 type 이면 SDK 에러 메시지 그대로 사용자 노출 → 친절한 안내로 교체.
+      if (typeof effectiveKey === 'string' && /_wt_|_widget_/i.test(effectiveKey)) {
+        toast.error('결제 시스템 설정 오류 — 관리자에게 문의해주세요. (TOSS_CLIENT_KEY 가 "API 개별 연동 키" 이어야 합니다)')
+        await api.post('/api/points/charge/cancel').catch(() => null)
         setProcessing(false)
         return
       }
 
-      const { orderId, amount, orderName, clientKey: serverClientKey } = initRes.data.data
       const tossPayments = (tossSdkRef.current && (serverClientKey === clientKey || !serverClientKey))
         ? tossSdkRef.current
-        : await loadTossPayments(serverClientKey || clientKey)
+        : await loadTossPayments(effectiveKey)
       const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
 
-      // 🛡️ 2026-05-19 v6 (영구 해결 — 사용자 명령):
-      //   Toss widget variant 가 콘솔 미등록 → widgets API 항상 404 → 위젯 렌더 실패.
-      //   해결: tossPayments.payment() (V2 redirect API) 사용 — variant 의존성 ZERO.
-      //   사용자가 Toss 호스팅 페이지로 잠시 redirect → 결제 완료 후 successUrl 복귀.
-      //   장점: 변동성 없음 (Toss 콘솔 설정 변경/누락에도 영구 동작).
-      //   단점: in-page 위젯 대신 redirect — UX 마찰 약간 ↑ (1-2 클릭 추가).
-      //   사용자 우선순위: "더 이상 문제 발생 안 됨" → redirect 채택.
+      // V2 redirect API — Toss 호스팅 페이지로 이동, 결제 후 successUrl 복귀.
       const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
       await payment.requestPayment({
         method: 'CARD',
@@ -96,8 +114,20 @@ export default function PointsChargePage() {
       })
       // requestPayment 가 redirect 트리거 — 아래 라인은 실행 안 됨.
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '결제 준비에 실패했습니다.'
-      toast.error(msg)
+      // 🛡️ 2026-05-22: SDK / 결제 실패 시 pending row 즉시 cleanup → 사용자 갇힘 방지.
+      await api.post('/api/points/charge/cancel').catch(() => null)
+      const code = (err as { code?: string })?.code
+      if (code === 'USER_CANCEL') {
+        setProcessing(false)
+        return  // 사용자 명시 취소는 토스트 X
+      }
+      const rawMsg = err instanceof Error ? err.message : ''
+      // Toss SDK 키 type 에러 패턴 — 친절한 안내로 교체.
+      if (/결제위젯 연동 키|widget.*key|개별 연동 키/i.test(rawMsg)) {
+        toast.error('결제 시스템 설정 오류 — 관리자에게 문의해주세요.')
+      } else {
+        toast.error(rawMsg || '결제 준비에 실패했습니다. 잠시 후 다시 시도해주세요.')
+      }
       setProcessing(false)
     }
   }
@@ -179,35 +209,28 @@ export default function PointsChargePage() {
                 <h2 className="text-[14px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.selectTitle', { defaultValue: '충전 금액' })}</h2>
                 <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('pointsCharge.selectHint', { defaultValue: '원하는 금액을 선택하세요' })}</span>
               </div>
+              {/* 🛡️ 2026-05-22 사용자 요청: 효과 다 제거 — 통일된 단일 스타일.
+                  - 보너스 badge 제거 (실제 지급 안 되던 표시)
+                  - best/recommended 차별 색상 제거
+                  - 선택된 카드만 pink 강조, 나머지는 default 동일.
+                  - JSX 0 렌더 버그 (hasBonus && <span>) 도 자동 해결. */}
               <div className="grid grid-cols-2 gap-2">
                 {options.map(opt => {
                   const isSelected = selected?.amount === opt.amount
-                  const hasBonus = opt.bonus && opt.bonus > 0
-                  const isBest = opt.best
-                  const isRecommended = opt.recommended && !isBest
                   return (
                     <button
                       key={opt.amount}
                       onClick={() => setSelected(opt)}
                       className={`relative flex flex-col items-center justify-center py-5 rounded-2xl border-2 transition-all ${
                         isSelected
-                          ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-200'
-                          : isBest
-                            ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500'
-                            : isRecommended
-                              ? 'border-pink-300 bg-pink-50/40 hover:border-pink-400'
-                              : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300'
+                          ? 'border-pink-500 bg-pink-50 dark:bg-pink-500/10 ring-2 ring-pink-200 dark:ring-pink-500/30'
+                          : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300 dark:hover:border-[#3A3A3A]'
                       }`}
-                      aria-label={`${formatNumber(opt.amount)}원 충전${hasBonus ? ` 보너스 ${opt.bonus}딜 추가` : ''}`}
+                      aria-label={`${formatNumber(opt.amount)}원 충전`}
                     >
                       {isSelected && (
                         <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                        </span>
-                      )}
-                      {hasBonus && (
-                        <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[9px] font-extrabold">
-                          +{opt.bonus?.toLocaleString()}딜
                         </span>
                       )}
                       <p className={`text-[18px] font-extrabold ${isSelected ? 'text-pink-600' : 'text-gray-900 dark:text-white'}`}>
@@ -232,15 +255,12 @@ export default function PointsChargePage() {
                 </div>
                 <div className="flex items-center justify-between text-[13px] mt-2">
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.chargeDeals', { defaultValue: '충전 딜' })}</span>
-                  <span className="font-semibold text-pink-600">
-                    +{formatNumber(pointsPreview)}딜
-                    {bonusPoints > 0 && <span className="text-amber-600 ml-1">(+{formatNumber(bonusPoints)}딜 보너스)</span>}
-                  </span>
+                  <span className="font-semibold text-pink-600">+{formatNumber(pointsPreview)}딜</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
                   <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">
-                    {formatNumber(balance + pointsPreview + bonusPoints)}
+                    {formatNumber(balance + pointsPreview)}
                     <span className="text-[13px] font-bold ml-0.5">딜</span>
                   </span>
                 </div>
@@ -326,7 +346,7 @@ export default function PointsChargePage() {
                   {t('pointsCharge.preparing', { defaultValue: '결제 준비 중…' })}
                 </span>
               ) : (
-                t('pointsCharge.chargeBtn', { deals: formatNumber(pointsPreview + bonusPoints), defaultValue: '{{deals}}딜 충전하기' })
+                t('pointsCharge.chargeBtn', { deals: formatNumber(pointsPreview), defaultValue: '{{deals}}딜 충전하기' })
               )}
             </button>
           )}

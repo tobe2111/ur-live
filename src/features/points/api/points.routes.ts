@@ -37,13 +37,17 @@ async function getDefaultCommissionRate(DB: D1Database): Promise<number> {
 //   PG 수수료 (~2.5%) 가 충전 1건마다 발생 → 1만 충전 시 마진 거의 0.
 //   고액 충전 유도로 결제 횟수 ↓ + bonus 로 사용자 perceived value ↑.
 //   bonus 는 비용이지만 마케팅 acquisition cost 로 간주 (PG 변동비보다 작음).
+// 🛡️ 2026-05-22: bonus 전면 제거 — 표시만 하고 실제 지급 안 됨 (사용자 신뢰 깨짐).
+//   사용자 요청: "효과들 다 없애줘. 맞지도 않네 추가도 해주지 않는데".
+//   1원 = 1딜, 수수료 없음, 보너스 없음 — 단순 명료.
+//   향후 보너스 캠페인 도입 시 ledger 에 실제 지급 기능 추가 후 재활성.
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 5000,   bonus: 0,     label: '5,000원' },
-  { amount: 10000,  points: 10000,  bonus: 0,     label: '10,000원' },
-  { amount: 30000,  points: 30000,  bonus: 600,   label: '30,000원 +2%', recommended: false },
-  { amount: 50000,  points: 50000,  bonus: 1500,  label: '50,000원 +3%', recommended: true },
-  { amount: 100000, points: 100000, bonus: 4000,  label: '100,000원 +4%', recommended: true, best: true },
-  { amount: 200000, points: 200000, bonus: 10000, label: '200,000원 +5%', recommended: false },
+  { amount: 5000,   points: 5000,   bonus: 0, label: '5,000원' },
+  { amount: 10000,  points: 10000,  bonus: 0, label: '10,000원' },
+  { amount: 30000,  points: 30000,  bonus: 0, label: '30,000원' },
+  { amount: 50000,  points: 50000,  bonus: 0, label: '50,000원' },
+  { amount: 100000, points: 100000, bonus: 0, label: '100,000원' },
+  { amount: 200000, points: 200000, bonus: 0, label: '200,000원' },
 ];
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
@@ -132,18 +136,19 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
   //   payment_key IS NULL = 결제 미완료. confirm 단계에서 payment_key 가 채워지므로
   //   confirm 이전에 머문 row 만 영향.
   try {
-    // 1) 만료된 pending (5분 초과) 자동 삭제 — 영구 cleanup.
+    // 🛡️ 2026-05-22 사용자 신고 fix (SDK 에러로 인한 409 폭증):
+    //   결제 SDK 가 잘못된 키 type / 콘솔 미등록 등으로 실패하면 사용자가 갇힘 (5분 대기).
+    //   해결: pending TTL 5분 → 1분 단축 + 즉시 cleanup 호출 가능한 endpoint 별도 제공.
     await DB.prepare(
-      "DELETE FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at <= datetime('now', '-5 minutes')"
+      "DELETE FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at <= datetime('now', '-1 minute')"
     ).bind(userId).run();
-    // 2) 그래도 최근 5분 내 pending 이 있으면 409 (남용 방지).
     const existing = await DB.prepare(
-      "SELECT id FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at > datetime('now', '-5 minutes')"
+      "SELECT id FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL AND created_at > datetime('now', '-1 minute')"
     ).bind(userId).first<{ id: number }>();
     if (existing) {
       return c.json({
         success: false,
-        error: '진행 중인 충전이 있습니다. 5분 후 다시 시도해주세요.',
+        error: '진행 중인 충전이 있습니다. 1분 후 다시 시도해주세요.',
         code: 'PENDING_CHARGE_EXISTS',
       }, 409);
     }
@@ -178,6 +183,23 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
     },
   });
 });
+
+// ── POST /api/points/charge/cancel ───────────────────────────────────
+// 🛡️ 2026-05-22: 사용자가 SDK 에러 / 결제 취소 시 즉시 pending row cleanup.
+//   클라이언트가 결제 실패 catch 에서 호출 → 다음 시도 즉시 가능 (1분 대기 X).
+pointsRoutes.post('/charge/cancel', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const userId = String(user.id)
+  try {
+    const r = await c.env.DB.prepare(
+      "DELETE FROM point_transactions WHERE user_id = ? AND type = 'charge' AND payment_key IS NULL"
+    ).bind(userId).run()
+    return c.json({ success: true, data: { cleared: r.meta?.changes ?? 0 } })
+  } catch {
+    return c.json({ success: true, data: { cleared: 0 } })
+  }
+})
 
 // ── POST /api/points/charge/confirm ──────────────────────────────────
 pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
