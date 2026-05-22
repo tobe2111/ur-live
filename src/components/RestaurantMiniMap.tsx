@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, ExternalLink } from 'lucide-react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
+import { escapeHtml } from '@/shared/utils/html'
 
 declare global {
   interface Window { kakao: any }
@@ -144,6 +145,3 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
   )
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
-}

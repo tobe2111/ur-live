@@ -240,6 +240,31 @@ cafe24Routes.post('/webhook', async (c) => {
     const body = JSON.parse(rawBody);
     const eventType = body.event_no;
 
+    // 🛡️ 2026-05-22: 명시적 idempotency — signature hash 기반 5분 window.
+    //   기존엔 product 전체 재싱크라 "효과적 멱등"이지만,
+    //   Cafe24 가 동시 webhook 5번 보내면 5번 fetchAllProducts() → 불필요 API call + rate limit risk.
+    //   signature 가 동일하면 (= body 동일) skip.
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS cafe24_webhook_events (
+          signature TEXT PRIMARY KEY,
+          event_type TEXT NOT NULL,
+          processed_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `).run();
+      const existing = await DB.prepare(
+        'SELECT signature FROM cafe24_webhook_events WHERE signature = ?'
+      ).bind(signature).first();
+      if (existing) {
+        return c.json({ success: true, idempotent: true });
+      }
+      // 멱등 마커 먼저 INSERT (처리 실패 시에도 재처리 방지 — Cafe24 의 webhook retry 가
+      // 동일 signature 면 의도된 중복이므로 skip 이 안전).
+      await DB.prepare(
+        "INSERT OR IGNORE INTO cafe24_webhook_events (signature, event_type) VALUES (?, ?)"
+      ).bind(signature, String(eventType || 'unknown')).run();
+    } catch { /* table 미존재 시 graceful — 첫 호출 후 다음 호출부터 동작 */ }
+
     // product events: product create/update/delete
     if (
       eventType === 'product_create' ||

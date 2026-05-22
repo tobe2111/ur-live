@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, Search, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { escapeHtml } from '@/shared/utils/html'
 
 declare global {
   interface Window { kakao: any }
@@ -103,10 +104,12 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
     })
 
     window.kakao.maps.event.addListener(marker, 'click', () => {
+      // 🛡️ 2026-05-22: Kakao Maps API 응답값 XSS 방어 — InfoWindow.setContent 는 HTML 그대로 렌더.
+      //   place.place_name / address_name 은 외부 데이터 (Kakao 측 변동성 + 검색어에 따라 reflected risk).
       infoWindowRef.current.setContent(
         `<div style="padding:8px 10px;min-width:160px">
-          <div style="font-weight:700;font-size:13px;color:#111">${place.place_name}</div>
-          <div style="font-size:11px;color:#666;margin-top:2px">${place.road_address_name || place.address_name || ''}</div>
+          <div style="font-weight:700;font-size:13px;color:#111">${escapeHtml(place.place_name || '')}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">${escapeHtml(place.road_address_name || place.address_name || '')}</div>
           <button id="map-select-btn" style="margin-top:6px;padding:4px 10px;background:#111;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer">선택</button>
         </div>`
       )
