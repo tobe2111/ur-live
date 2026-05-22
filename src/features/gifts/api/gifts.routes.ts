@@ -159,33 +159,18 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'Payment configuration error' }, 500)
     }
 
-    let tossRes: Response
-    try {
-      tossRes = await withCircuitBreaker(
-        { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
-        () => fetch('https://api.tosspayments.com/v1/payments/confirm', {
-          method: 'POST',
-          headers: {
-            Authorization: 'Basic ' + btoa(tossSecretKey + ':'),
-            'Content-Type': 'application/json',
-            'Idempotency-Key': body.paymentKey,
-          },
-          body: JSON.stringify({
-            paymentKey: body.paymentKey,
-            orderId: body.orderId,
-            // 🛡️ Defense-in-depth: send DB-verified gift.amount, not client body.amount
-            amount: gift.amount,
-          }),
-          signal: AbortSignal.timeout(15_000),
-        }),
-      )
-    } catch {
-      return c.json({ success: false, error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', code: 'CIRCUIT_OPEN' }, 503)
-    }
-
-    if (!tossRes.ok) {
-      const err = await tossRes.json().catch(() => ({})) as { message?: string }
-      return c.json({ success: false, error: err.message || '결제 승인 실패' }, 400)
+    // 🛡️ 2026-05-22 옵션 B: toss-gateway 헬퍼 사용.
+    //   defense-in-depth — DB-verified gift.amount 사용 (클라 body.amount 신뢰 X).
+    const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
+    const tossResult = await confirmTossPayment({
+      env: { TOSS_SECRET_KEY: tossSecretKey },
+      paymentKey: body.paymentKey,
+      orderId: body.orderId,
+      amount: gift.amount,
+    })
+    if (!tossResult.ok) {
+      return c.json({ success: false, error: tossResult.message, code: tossResult.code },
+        tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400)
     }
 
     // 4) gift status 업데이트 + toss_payment_key 저장 (환불 cron 용)

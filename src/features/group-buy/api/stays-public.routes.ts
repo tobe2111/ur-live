@@ -817,26 +817,22 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
       return c.json({ success: false, error: '결제 금액 불일치 (변조 의심)' }, 400)
     }
 
-    // 4. 토스 결제 confirm API 호출.
-    const secret = (c.env as unknown as { TOSS_SECRET_KEY?: string }).TOSS_SECRET_KEY
-    if (!secret) return c.json({ success: false, error: 'TOSS_SECRET_KEY 미설정' }, 500)
-    const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${secret}:`)}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': `stay-confirm-${orderId}`,
-      },
-      body: JSON.stringify({ paymentKey, orderId: String(orderId), amount: order.total_amount }),
+    // 🛡️ 2026-05-22 옵션 B: toss-gateway 헬퍼 사용 — circuit / idempotency / 에러 표준화.
+    const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
+    const tossResult = await confirmTossPayment({
+      env: c.env as unknown as { TOSS_SECRET_KEY?: string },
+      paymentKey,
+      orderId: String(orderId),
+      amount: order.total_amount,
+      idempotencyKey: `stay-confirm-${orderId}`,
     })
-    const tossData = await tossRes.json().catch(() => ({})) as Record<string, unknown>
 
-    if (!tossRes.ok) {
-      const code = String((tossData as { code?: string }).code || `HTTP_${tossRes.status}`)
-      const message = String((tossData as { message?: string }).message || '결제 승인 실패')
-      // 실패 시 booking status 유지 (pending) — 사용자 재시도 가능.
-      return c.json({ success: false, error: `${code}: ${message}` }, 400)
+    if (!tossResult.ok) {
+      // booking status 유지 (pending) — 사용자 재시도 가능.
+      return c.json({ success: false, error: `${tossResult.code || tossResult.status}: ${tossResult.message}` },
+        tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400)
     }
+    const tossData = tossResult.data as Record<string, unknown>
 
     // 5. 캘린더 available_count 차감 (race condition 가드).
     const nights = Math.round(

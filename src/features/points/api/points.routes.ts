@@ -161,27 +161,11 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
   const bonusPoints = (pkg as { bonus?: number }).bonus ?? 0
   const totalPoints = pkg.points + bonusPoints
 
-  // 🛡️ 2026-05-22 v3 영구 해결 — 키 검증을 INSERT 전에 수행 → 잘못된 키면 pending row 안 만듦.
-  //   Toss 키 prefix:
-  //     '_gck_' / '_ck_' = API 개별 연동 키 → payment() redirect (지원)
-  //     '_wt_' / '_widget_' = 결제위젯 연동 키 → 미지원 (variant 의존성으로 깨짐 사례 많음)
-  //     기타 = invalid
-  //   widget 키 운영자에게: Toss 콘솔에서 'API 개별 연동 키' 재발급 후 TOSS_CLIENT_KEY 갱신.
+  // 🛡️ 2026-05-22 옵션 B: toss-gateway 헬퍼로 키 type 검증 일원화.
+  //   widget 키 면 invalid → INSERT 전에 503. payment() V2 redirect 만 지원.
   const tossKey = c.env.TOSS_CLIENT_KEY || ''
-  let flow: 'redirect' | 'invalid' = 'invalid'
-  let flowReason = ''
-  if (/_wt_|_widget_/i.test(tossKey)) {
-    flow = 'invalid'
-    flowReason = 'TOSS_CLIENT_KEY 가 결제위젯 연동 키. API 개별 연동 키 (live_gck_ / test_gck_) 사용 필요.'
-  } else if (/_gck_|_ck_/i.test(tossKey)) {
-    flow = 'redirect'
-  } else if (tossKey) {
-    flow = 'redirect'  // 알 수 없는 prefix → 일반 키로 가정 (Toss 키 type 추가 대비)
-    flowReason = 'unknown_prefix_fallback_redirect'
-  } else {
-    flow = 'invalid'
-    flowReason = 'TOSS_CLIENT_KEY env missing'
-  }
+  const { decideTossFlow } = await import('../../../worker/utils/toss-gateway')
+  const { flow, flowReason } = decideTossFlow(tossKey)
 
   // 키 invalid 면 INSERT 안 함 — 사용자가 갇히지 않음.
   if (flow === 'invalid') {
@@ -292,35 +276,20 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
     });
   }
 
-  // 토스 결제 승인
-  let tossRes: Response;
-  try {
-    tossRes = await withCircuitBreaker(
-      { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
-      () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': paymentKey,
-        },
-        // 🛡️ Defense-in-depth: send DB-verified pending.amount (equal to client amount above)
-        body: JSON.stringify({ paymentKey, orderId, amount: pending.amount }),
-        signal: AbortSignal.timeout(15_000),
-      }),
-    );
-  } catch {
-    return c.json({ success: false, error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', code: 'CIRCUIT_OPEN' }, 503);
+  // 🛡️ 2026-05-22 옵션 B 마이그: toss-gateway 헬퍼 사용 — 토스 fetch / idempotency / circuit / 에러 표준화 한 곳.
+  //   서버 검증된 pending.amount 사용 (defense-in-depth — 클라이언트 amount 신뢰 X).
+  const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
+  const tossResult = await confirmTossPayment({
+    env: c.env,
+    paymentKey,
+    orderId,
+    amount: pending.amount,
+  })
+  if (!tossResult.ok) {
+    return c.json({ success: false, error: tossResult.message, code: tossResult.code },
+      tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400)
   }
-
-  if (!tossRes.ok) {
-    const err = await tossRes.json<{ message?: string; code?: string }>();
-    if (err.code !== 'ALREADY_PROCESSED_PAYMENT') {
-      return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
-    }
-    // ALREADY_PROCESSED_PAYMENT: double-check CAS didn't already credit
-    // (race between two concurrent confirm calls).
-  }
+  // tossResult.alreadyProcessed === true 인 경우 CAS 로 한 번만 credit (아래 로직 그대로).
 
   // 포인트 적립
   const pointsToAdd = pending.points_amount;

@@ -166,63 +166,40 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: false, error: 'Payment configuration error' }, 500);
     }
 
-    // Idempotency-Key: paymentKey 기반으로 설정 (동일 결제의 중복 승인 요청 방지)
-    // ⚠️ 결제는 critical path — fallback 없이, 회로가 열리면 명확한 사용자 메시지와 함께 거부.
+    // 🛡️ 2026-05-22 옵션 B: toss-gateway 헬퍼 사용 — 토스 fetch/idempotency/circuit/에러 표준화 1곳.
+    //   주문 결제 — DB 검증된 totalAmount 사용 (defense-in-depth).
     logInfo('toss.confirm.start', { orderId: orderNumber, amount: totalAmount, endpoint: '/api/payments/confirm' });
-    let tossResponse: Response;
-    try {
-      tossResponse = await withCircuitBreaker(
-        { name: 'toss-confirm', maxFailures: 10, resetTimeoutMs: 60_000 },
-        () => fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${btoa(tossSecretKey + ':')}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': paymentKey,
-          },
-          body: JSON.stringify({
-            paymentKey,
-            orderId: orderNumber,
-            amount: totalAmount,  // DB 검증된 금액 사용
-          }),
-        }),
-      );
-    } catch (e) {
-      logError('toss.confirm.circuit_open', { orderId: orderNumber, error: (e as Error).message });
-      return c.json({
-        success: false,
-        error: 'Toss 결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.',
-        code: 'CIRCUIT_OPEN',
-      }, 503);
+    const { confirmTossPayment } = await import('../utils/toss-gateway')
+    const tossResult = await confirmTossPayment({
+      env: { TOSS_SECRET_KEY: tossSecretKey },
+      paymentKey,
+      orderId: orderNumber,
+      amount: totalAmount,
+    })
+
+    if (!tossResult.ok) {
+      logError('toss.confirm.failed', { orderId: orderNumber, code: tossResult.code, message: tossResult.message });
+      // Toss 에러 코드 → 사용자 친화 메시지 (TOSS_ERROR_MESSAGES override).
+      const friendly = tossResult.code && TOSS_ERROR_MESSAGES[tossResult.code]
+        ? TOSS_ERROR_MESSAGES[tossResult.code]
+        : tossResult.message
+      return c.json(
+        { success: false, error: friendly, code: tossResult.code },
+        tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400,
+      )
     }
 
-    if (!tossResponse.ok) {
-      const tossError = await tossResponse.json() as { code?: string; message?: string };
-      console.error('[PAYMENTS] Toss confirmation failed:', tossError);
-
-      if (tossError.code === 'ALREADY_PROCESSED_PAYMENT') {
-        // Already confirmed - update order and return success
-        await orderRepo.updateStatus(orderNumber, 'DONE', {
-          toss_payment_key: paymentKey,
-          toss_order_id: orderNumber,
-        });
-        const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
-        return c.json({ success: true, data: { orders: updatedOrders } });
-      }
-
-      // v15-3: 사용자 친화 메시지로 Toss 에러 코드 변환
-      const errorMessage = tossError.code
-        ? (TOSS_ERROR_MESSAGES[tossError.code] || tossError.message || '결제 처리 중 오류가 발생했습니다.')
-        : '결제 처리 중 오류가 발생했습니다.';
-
-      return c.json({
-        success: false,
-        error: errorMessage,
-        code: tossError.code,
-      }, 400);
+    // ALREADY_PROCESSED_PAYMENT — 토스 측 동일 결제 재 confirm. 주문 상태만 동기화 후 반환.
+    if (tossResult.alreadyProcessed) {
+      await orderRepo.updateStatus(orderNumber, 'DONE', {
+        toss_payment_key: paymentKey,
+        toss_order_id: orderNumber,
+      });
+      const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
+      return c.json({ success: true, data: { orders: updatedOrders } });
     }
 
-    const tossData = await tossResponse.json() as {
+    const tossData = tossResult.data as {
       paymentKey: string;
       orderId: string;
       totalAmount: number;
