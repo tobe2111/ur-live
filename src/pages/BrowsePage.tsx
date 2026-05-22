@@ -292,7 +292,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             <span className="text-sm text-gray-400 dark:text-gray-500">상품명, 브랜드명</span>
           </button>
-          <button onClick={() => navigate('/cart')} className="p-1 relative">
+          <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1 relative">
             <ShoppingCart className="w-6 h-6 text-gray-800 dark:text-gray-100" />
           </button>
           </div>

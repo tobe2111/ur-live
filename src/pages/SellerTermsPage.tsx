@@ -15,7 +15,7 @@ export default function SellerTermsPage() {
       <SEO title="매장 약관 - 유어딜" description="유어딜 매장 입점 / 정산 / 인플루언서 협업 약관" url="/terms/seller" />
       <div className="sticky top-0 z-40 bg-white/90/90 backdrop-blur border-b border-gray-100">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900"><ChevronLeft className="w-6 h-6" /></button>
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900"><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="text-[16px] font-bold text-gray-900">매장 약관</h1>
           <div className="w-6" />
         </div>

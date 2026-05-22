@@ -325,7 +325,7 @@ export default function AgencyIncentivesPage() {
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">{t('agency.incentives.addRuleTitle', { defaultValue: '인센티브 규칙 추가' })}</h2>
-              <button onClick={() => setCreating(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              <button onClick={() => setCreating(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="space-y-3">
               <div>

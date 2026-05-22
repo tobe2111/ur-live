@@ -1055,7 +1055,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
               잔액 ₩{totalBalance.toLocaleString()} 에서 차감 · KT Alpha (기프티쇼) B2B 정산
             </p>
           </div>
-          <button onClick={onClose} disabled={submitting} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+          <button onClick={onClose} disabled={submitting} aria-label="모달 닫기" className="text-gray-400 hover:text-gray-600 text-xl">×</button>
         </div>
 
         {/* 🛡️ KT Alpha 가이드라인 — 30일 유효기간 / 환불 불가 / B2B 사전 고지 */}

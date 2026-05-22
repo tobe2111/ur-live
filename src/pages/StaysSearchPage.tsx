@@ -205,7 +205,7 @@ export default function StaysSearchPage() {
           <div className="bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#1A1A1A] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-[#0A0A0A] flex items-center justify-between px-5 py-4 border-b border-[#1A1A1A]">
               <h3 className="text-base font-bold">검색 필터</h3>
-              <button onClick={() => setShowFilters(false)} className="p-1.5 rounded hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-1.5 rounded hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 space-y-4">
               <div>

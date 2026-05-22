@@ -133,7 +133,7 @@ export default function InfluencerDashboardPage() {
 
       <div className="sticky top-0 z-30 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-base font-bold flex-1">{t('influencer.dashTitle', { defaultValue: '💸 인플 대시보드' })}</h1>
         </div>
       </div>

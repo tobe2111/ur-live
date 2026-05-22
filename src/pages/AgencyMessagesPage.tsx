@@ -254,7 +254,7 @@ export default function AgencyMessagesPage() {
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">{t('agency.messages.addTemplateTitle', { defaultValue: '템플릿 추가' })}</h2>
-              <button onClick={() => setCreating(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              <button onClick={() => setCreating(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="space-y-3">
               <div>
@@ -294,7 +294,7 @@ export default function AgencyMessagesPage() {
                 <h2 className="text-lg font-bold text-gray-900">{t('agency.messages.sendTemplateTitle', { defaultValue: '템플릿 발송' })}</h2>
                 <p className="text-xs text-gray-500">{sendingTemplate.name}</p>
               </div>
-              <button onClick={() => setSendingTemplate(null)}><X className="w-5 h-5 text-gray-500" /></button>
+              <button onClick={() => setSendingTemplate(null)} aria-label="닫기"><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 whitespace-pre-wrap font-mono max-h-32 overflow-y-auto">
               {sendingTemplate.body}

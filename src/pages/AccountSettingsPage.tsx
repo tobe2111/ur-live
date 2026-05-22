@@ -311,7 +311,7 @@ export default function AccountSettingsPage() {
           <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile')}</h3>
-              <button onClick={() => setEditModal(false)}><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
+              <button onClick={() => setEditModal(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               <div>

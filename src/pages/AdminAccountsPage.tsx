@@ -231,7 +231,7 @@ export default function AdminAccountsPage() {
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-900">{t('admin.accounts.addNew')}</h3>
-              <button onClick={() => setShowCreate(false)}><X className="w-4 h-4 text-gray-400" /></button>
+              <button onClick={() => setShowCreate(false)} aria-label="닫기"><X className="w-4 h-4 text-gray-400" /></button>
             </div>
             <div className="space-y-3">
               <input type="email" placeholder={t('auth.email')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}

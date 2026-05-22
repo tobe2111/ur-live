@@ -49,7 +49,7 @@ export default function FAQPage() {
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-medium flex items-center px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
             <ChevronLeft size={22} className="text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white ml-2">{t('faq.title', { defaultValue: '자주 묻는 질문' })}</h1>

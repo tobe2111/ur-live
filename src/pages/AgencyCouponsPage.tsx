@@ -180,7 +180,7 @@ export default function AgencyCouponsPage() {
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">{t('agency.coupons.modalTitle', { defaultValue: '쿠폰 배포' })}</h2>
-              <button onClick={() => setCreating(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              <button onClick={() => setCreating(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="space-y-3">
               <div>
@@ -277,7 +277,7 @@ export default function AgencyCouponsPage() {
                 <BarChart3 className="w-5 h-5 text-blue-600" />
                 <h2 className="text-lg font-bold text-gray-900">{t('agency.coupons.statsTitle', { defaultValue: '셀러별 사용 현황' })}</h2>
               </div>
-              <button onClick={() => setStatsParentId(null)}><X className="w-5 h-5 text-gray-500" /></button>
+              <button onClick={() => setStatsParentId(null)} aria-label="닫기"><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             {sellerStats.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">데이터 없음</p>

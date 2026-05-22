@@ -15,7 +15,7 @@ export default function GroupBuyTermsPage() {
       <SEO title="공동구매 약관 - 유어딜" description="유어딜 식사권 공동구매 / voucher 사용 / 환불 약관" url="/terms/group-buy" />
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">공동구매 약관</h1>
           <div className="w-6" />
         </div>
