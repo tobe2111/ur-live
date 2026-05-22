@@ -125,7 +125,7 @@ export default function PointsChargePage() {
     setProcessing(true)
 
     // 🛡️ catch 블록에서 initRes 참조 가능하도록 hoist (TS 스코프 에러 회피).
-    let initData: { orderId: string; amount: number; orderName: string; clientKey?: string } | null = null
+    let initData: { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid' } | null = null
 
     try {
       const initRes = await api.post('/api/points/charge/init', { amount: selected.amount })
@@ -147,37 +147,59 @@ export default function PointsChargePage() {
         }
       }
 
-      initData = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string }
-      const { orderId, amount, orderName, clientKey: serverClientKey } = initData
-      const effectiveKey = serverClientKey || clientKey
-      const keyType = detectKeyType(effectiveKey)
+      // 🛡️ 2026-05-22 영구 해결 — 서버가 결정한 flow 만 신뢰.
+      //   이전 문제: 클라이언트가 자기 VITE_TOSS_CLIENT_KEY 로 추측 → 두 env sync 깨지면 깨짐.
+      //   해결: 서버가 자기 TOSS_CLIENT_KEY 검증 + flow 반환 → 클라이언트는 단순 dispatch.
+      //   클라이언트 VITE_TOSS_CLIENT_KEY 환경변수 없거나 잘못돼도 동작.
+      initData = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid' }
+      const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initData
 
-      // 🛡️ 2026-05-22 영구 해결 분기:
-      //   - widget 키 → in-page 위젯 렌더링 (useEffect 가 처리)
-      //   - general 키 → V2 redirect API (Toss 호스팅 페이지)
-      //   양쪽 다 결제 성공 후 successUrl 로 복귀 동일.
-      if (keyType === 'widget') {
+      if (serverFlow === 'invalid' || !serverClientKey) {
+        toast.error('결제 시스템 설정 오류 — 관리자에게 문의해주세요. (TOSS_CLIENT_KEY 미설정)')
+        await api.post('/api/points/charge/cancel').catch(() => null)
+        setProcessing(false)
+        return
+      }
+
+      // 항상 서버 키로 SDK load (클라이언트 env 무시 — 영구 sync).
+      const sdkKey = serverClientKey
+      const tossPayments = (tossSdkRef.current && sdkKey === clientKey)
+        ? tossSdkRef.current
+        : await loadTossPayments(sdkKey)
+      const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
+
+      if (serverFlow === 'widget') {
+        // in-page widget 렌더 (useEffect 가 처리).
         orderRef.current = { orderId, orderName }
         setShowWidget(true)
         setProcessing(false)
         return
       }
 
-      // general 키 — redirect 흐름.
-      const tossPayments = (tossSdkRef.current && (serverClientKey === clientKey || !serverClientKey))
-        ? tossSdkRef.current
-        : await loadTossPayments(effectiveKey)
-      const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
+      // redirect 흐름 (general 키).
       const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: amount },
-        orderId,
-        orderName,
-        successUrl: `${window.location.origin}/points/charge/success`,
-        failUrl: `${window.location.origin}/points/charge?fail=1`,
-      })
-      // requestPayment 가 redirect 트리거 — 아래 라인은 실행 안 됨.
+      try {
+        await payment.requestPayment({
+          method: 'CARD',
+          amount: { currency: 'KRW', value: amount },
+          orderId,
+          orderName,
+          successUrl: `${window.location.origin}/points/charge/success`,
+          failUrl: `${window.location.origin}/points/charge?fail=1`,
+        })
+        // redirect 트리거 — 아래 라인 실행 안 됨.
+      } catch (innerErr: unknown) {
+        // 🛡️ 영구 안전망: payment() API 가 키 type 으로 거부하면 widget 모드로 자동 전환.
+        const innerMsg = innerErr instanceof Error ? innerErr.message : ''
+        if (/결제위젯 연동 키|widget.*key|개별 연동 키/i.test(innerMsg)) {
+          console.warn('[Toss] payment() rejected, fallback to widgets()', innerMsg)
+          orderRef.current = { orderId, orderName }
+          setShowWidget(true)
+          setProcessing(false)
+          return
+        }
+        throw innerErr  // 다른 에러는 그대로 catch
+      }
     } catch (err: unknown) {
       // SDK / 결제 실패 시 pending row 즉시 cleanup → 사용자 갇힘 방지.
       await api.post('/api/points/charge/cancel').catch(() => null)
@@ -187,9 +209,10 @@ export default function PointsChargePage() {
         return  // 사용자 명시 취소는 토스트 X
       }
       const rawMsg = err instanceof Error ? err.message : ''
-      // Toss SDK 키 type 에러 → 위젯 모드로 자동 전환 시도 (사용자 갇힘 영구 차단).
+      // 영구 안전망 — 키 type 에러는 inner catch 에서 이미 widget fallback 시도.
+      // 여기까지 도달했으면 다른 종류의 에러 → 사용자 안내.
       if (/결제위젯 연동 키|widget.*key|개별 연동 키/i.test(rawMsg) && initData) {
-        toast.error('결제 위젯 모드로 전환합니다…')
+        // inner fallback 도 실패한 경우 (드물게) — widget UI 도 띄워봄.
         orderRef.current = { orderId: initData.orderId, orderName: initData.orderName }
         setShowWidget(true)
       } else {

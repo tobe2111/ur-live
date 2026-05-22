@@ -169,6 +169,31 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
       : `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`, orderId
   ).run();
 
+  // 🛡️ 2026-05-22 영구 해결 (사용자 명령 "이상적이고 영구적"):
+  //   서버가 키 type 검증 + flow 결정 → 클라이언트는 무조건 server 응답 따름.
+  //   이전 문제: 클라이언트 VITE_TOSS_CLIENT_KEY 와 서버 TOSS_CLIENT_KEY 가 다르면 SDK 거부.
+  //   해결: 클라이언트는 자기 env 무시, 항상 server clientKey 로 SDK load.
+  //
+  //   Toss 키 prefix 규칙:
+  //     '_wt_'   = 결제위젯 연동 키 → widgets() API
+  //     '_gck_'  = 일반 클라이언트 키 → payment() API (V2 redirect)
+  //     '_ck_'   = legacy general 키 → payment() API
+  //     기타     = invalid (운영자 설정 오류)
+  const tossKey = c.env.TOSS_CLIENT_KEY || ''
+  let flow: 'widget' | 'redirect' | 'invalid' = 'invalid'
+  let flowReason = ''
+  if (/_wt_|_widget_/i.test(tossKey)) {
+    flow = 'widget'
+  } else if (/_gck_|_ck_/i.test(tossKey)) {
+    flow = 'redirect'
+  } else if (tossKey) {
+    flow = 'redirect'  // 알 수 없는 prefix → 일반 키로 가정
+    flowReason = 'unknown_prefix_fallback_redirect'
+  } else {
+    flow = 'invalid'
+    flowReason = 'TOSS_CLIENT_KEY env missing'
+  }
+
   return c.json({
     success: true,
     data: {
@@ -179,7 +204,9 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
       bonus_points: bonusPoints,
       commission: 0, // 충전은 수수료 없음
       orderName: `딜 ${Number(totalPoints).toLocaleString('ko-KR')}개 충전`,
-      clientKey: c.env.TOSS_CLIENT_KEY,
+      clientKey: tossKey,
+      flow,                // 'widget' | 'redirect' | 'invalid'
+      flow_reason: flowReason,
     },
   });
 });

@@ -128,8 +128,32 @@ jobs:
       # `live.ur-team.com` Custom Domain을 Workers → Pages로 이동 (사용자 Dashboard 작업).
       # 이후 이 Action은 Pages에만 배포하고 production promote도 즉시 수행.
 
+      # 🛡️ 2026-05-22 사고 fix: wrangler@4 (4.84.1) 가 CF API 응답을 malformed 로 받는 known 회귀.
+      #   에러 패턴: "Received a malformed response from the API" + "POST /pages/assets/upload -> 500"
+      #   CLAUDE.md 권장: wrangler@3 (3.x 안정) 사용. 사용자 main deploy 매 commit 실패 영구 해결.
+      #   재시도 로직 추가: transient 실패 시 최대 3회 (exponential backoff).
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@4 pages deploy dist/client --project-name=ur-live --branch=main --commit-message="deploy from ${{ github.sha }}"
+        run: |
+          set -e
+          MAX_RETRY=3
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "=== Deploy attempt $i/$MAX_RETRY ==="
+            if npx wrangler@3 pages deploy dist/client \
+                --project-name=ur-live \
+                --branch=main \
+                --commit-dirty=true \
+                --commit-message="deploy ${{ github.sha }}"; then
+              echo "✅ Deploy succeeded on attempt $i"
+              exit 0
+            fi
+            if [ $i -lt $MAX_RETRY ]; then
+              SLEEP=$((i * 10))
+              echo "⚠️ Attempt $i failed. Sleeping ${SLEEP}s before retry..."
+              sleep $SLEEP
+            fi
+          done
+          echo "❌ All $MAX_RETRY deploy attempts failed."
+          exit 1
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
