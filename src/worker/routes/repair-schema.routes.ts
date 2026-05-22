@@ -206,6 +206,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_sellers_intro_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_intro_influencer ON sellers(introduced_by_influencer_id) WHERE introduced_by_influencer_id IS NOT NULL" },
     // 인플루언서가 본인 추천 코드 받음 (가입 시 자동 생성)
     { desc: 'sellers.intro_code', sql: "ALTER TABLE sellers ADD COLUMN intro_code TEXT" },
+    // 🛡️ 2026-05-21 정정: 사업소득 (3.3%) default — 기타소득 (8.8%) 은 단발성 협업만.
+    { desc: 'sellers.tax_type', sql: "ALTER TABLE sellers ADD COLUMN tax_type TEXT DEFAULT 'business_income'" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).

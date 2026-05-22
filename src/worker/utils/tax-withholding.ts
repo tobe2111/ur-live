@@ -1,11 +1,16 @@
 /**
- * 🛡️ 2026-05-18: 비사업자 셀러 원천징수 + 지급조서 자동 기록.
+ * 🛡️ 2026-05-21 정정: 비사업자 인플루언서 원천징수 — default 3.3% (사업소득).
  *
  *   세무 근거:
- *     - 소득세법 §21 — 기타소득 (사업자 등록 없는 개인에게 보상 지급).
- *     - 원천징수율: 8.8% (소득세 8% + 지방세 0.8%).
- *     - 연 누계 300만원 이하: 분리과세 가능 (셀러 신고 의무 없음).
- *     - 연 누계 300만원 초과: 종합소득 합산 의무 (셀러) + 지급조서 제출 (지급자).
+ *     - 소득세법 §127 — 원천징수 의무
+ *     - 사업소득 (반복적 활동 — 대부분 인플루언서): 3.3% (소득세 3% + 지방세 0.3%)
+ *     - 기타소득 (일시적 협업 — 단발): 8.8% (소득세 8% + 지방세 0.8%)
+ *     - 연 누계 300만원 이하 (기타소득만): 분리과세
+ *     - 연 누계 300만원 초과 (양쪽): 종합소득 합산 + 지급조서 제출
+ *
+ *   sellers.tax_type 컬럼:
+ *     - 'business_income' (default — 사업소득 3.3%)
+ *     - 'other_income' (기타소득 8.8%)
  *
  *   호출처:
  *     - 정산 송금 시점 (admin 승인) — settlement_cash
@@ -13,9 +18,9 @@
  *     - 딜 환급 시점 — deal_redeem
  *
  *   동작:
- *     1. 셀러의 business_registration_status 확인
+ *     1. 셀러의 business_registration_status + tax_type 확인
  *     2. 'verified' or 'exempt' → 원천징수 면제 (사업자가 세금계산서 발행)
- *     3. 그 외 → 8.8% 차감 + tax_withholding_log INSERT + ytd 누계 갱신
+ *     3. 그 외 → tax_type 별 비율 차감 + tax_withholding_log INSERT
  */
 type Env = { DB: D1Database }
 
@@ -23,15 +28,39 @@ export interface WithholdingResult {
   withheld: boolean
   gross_amount: number
   withholding_amount: number
+  withholding_rate: number      // 실제 적용된 비율 (% 단위)
+  tax_type: 'business_income' | 'other_income' | 'none'
   net_amount: number
   ytd_gross_amount: number
-  reportable: boolean         // 누계 300만 초과 → true
+  reportable: boolean
   log_id?: number
   reason?: string
 }
 
-const WITHHOLDING_RATE = 0.088   // 8.8% (8% 소득세 + 0.8% 지방세)
-const ANNUAL_THRESHOLD = 3_000_000  // 300만원 (기타소득 분리과세 한도)
+// 🛡️ 한국 세법 비율 — 절대 hardcode 금지, 본 마스터 상수만 사용.
+export const WITHHOLDING_RATES = {
+  business_income: 0.033,  // 3.3% (소득세 3% + 지방세 0.3%) — 반복적 활동 default
+  other_income: 0.088,     // 8.8% (소득세 8% + 지방세 0.8%) — 단발성 협업
+} as const
+
+const ANNUAL_THRESHOLD = 3_000_000
+
+/**
+ * 셀러 tax_type 조회 (default 'business_income' = 3.3%).
+ * sellers.tax_type 컬럼 없으면 default fallback.
+ */
+async function getSellerTaxType(env: Env, sellerId: number): Promise<'business_income' | 'other_income'> {
+  try {
+    const row = await env.DB.prepare(
+      "SELECT COALESCE(tax_type, 'business_income') as tax_type FROM sellers WHERE id = ?",
+    ).bind(sellerId).first<{ tax_type: string }>()
+    const t = row?.tax_type
+    if (t === 'other_income') return 'other_income'
+    return 'business_income'
+  } catch {
+    return 'business_income'
+  }
+}
 
 /**
  * 원천징수 + 지급조서 row INSERT.
@@ -49,18 +78,18 @@ export async function withholdAndLog(
   const { sellerId, grossAmount, sourceType, sourceId } = params
   const gross = Math.max(0, Math.floor(grossAmount))
 
-  // 1. 셀러 사업자 등록 확인.
   const seller = await env.DB.prepare(
     'SELECT business_registration_status FROM sellers WHERE id = ?'
   ).bind(sellerId).first<{ business_registration_status: string | null }>().catch(() => null)
 
   const status = seller?.business_registration_status || 'pending'
-  // verified or exempt 셀러는 원천징수 면제 (세금계산서로 별도 처리).
   if (status === 'verified' || status === 'exempt') {
     return {
       withheld: false,
       gross_amount: gross,
       withholding_amount: 0,
+      withholding_rate: 0,
+      tax_type: 'none',
       net_amount: gross,
       ytd_gross_amount: 0,
       reportable: false,
@@ -68,7 +97,11 @@ export async function withholdAndLog(
     }
   }
 
-  // 2. 연 누계 조회 (현재 연도 기준).
+  // tax_type 기반 비율 결정
+  const taxType = await getSellerTaxType(env, sellerId)
+  const rate = WITHHOLDING_RATES[taxType]
+
+  // 연 누계 조회 (현재 연도 기준).
   const now = new Date()
   const year = now.getFullYear()
   const ytdRow = await env.DB.prepare(
@@ -79,21 +112,21 @@ export async function withholdAndLog(
 
   const ytdBeforeThis = ytdRow?.total || 0
   const ytdAfterThis = ytdBeforeThis + gross
-  const reportable = ytdAfterThis > ANNUAL_THRESHOLD
+  // 사업소득은 누계 무관, 기타소득은 300만 초과 시 reportable
+  const reportable = taxType === 'business_income' || ytdAfterThis > ANNUAL_THRESHOLD
 
-  // 3. 원천징수 금액 계산.
-  const withholding = Math.floor(gross * WITHHOLDING_RATE)
+  const withholding = Math.floor(gross * rate)
   const net = gross - withholding
 
-  // 4. INSERT.
+  // INSERT — withholding_rate 에 실제 비율 (% 단위) 저장.
   const result = await env.DB.prepare(
     `INSERT INTO tax_withholding_log
        (seller_id, payout_year, payout_month, gross_amount, withholding_rate, withholding_amount,
         net_amount, source_type, source_id, ytd_gross_amount, reportable, created_at)
-     VALUES (?, ?, ?, ?, 8.8, ?, ?, ?, ?, ?, ?, datetime('now'))`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
   ).bind(
     sellerId, year, now.getMonth() + 1,
-    gross, withholding, net, sourceType, sourceId || null,
+    gross, rate * 100, withholding, net, sourceType, sourceId || null,
     ytdAfterThis, reportable ? 1 : 0,
   ).run().catch(() => null)
 
@@ -101,6 +134,8 @@ export async function withholdAndLog(
     withheld: true,
     gross_amount: gross,
     withholding_amount: withholding,
+    withholding_rate: rate * 100,
+    tax_type: taxType,
     net_amount: net,
     ytd_gross_amount: ytdAfterThis,
     reportable,
