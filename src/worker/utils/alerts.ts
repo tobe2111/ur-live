@@ -11,6 +11,8 @@ export interface AlertPayload {
   title: string;
   message: string;
   context?: Record<string, unknown>;
+  /** dedup window in seconds — same (title, severity) within window collapses to first send. 0 = no dedup. */
+  dedupSeconds?: number;
 }
 
 // Keys whose values must never leak into alert webhooks (Discord/Slack).
@@ -56,6 +58,27 @@ function sanitizeContext(obj: unknown, depth = 0): unknown {
 }
 
 /**
+ * 🛡️ 2026-05-22: dedup via RATE_LIMIT_KV. Same (title, severity) within window
+ *   suppressed — prevents 100+ identical alerts during a sustained spike.
+ *   Default window: 5분 (caller can override or set 0 to disable).
+ */
+async function isDedupSuppressed(env: Env, payload: AlertPayload): Promise<boolean> {
+  const window = payload.dedupSeconds ?? 300;
+  if (window <= 0) return false;
+  const kv = env.RATE_LIMIT_KV;
+  if (!kv) return false;  // KV 미설정 시 fail-open (alert 모두 발송)
+  const key = `alert:dedup:${payload.severity}:${payload.title}`.slice(0, 256);
+  try {
+    const existing = await kv.get(key);
+    if (existing) return true;
+    await kv.put(key, '1', { expirationTtl: window });
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/**
  * Send an alert to the configured webhook (Discord or Slack).
  * Uses AbortSignal.timeout(5000) to avoid blocking the worker.
  */
@@ -65,6 +88,9 @@ export async function sendAlert(env: Env, payload: AlertPayload): Promise<void> 
   const slackUrl = e.SLACK_ALERT_WEBHOOK;
 
   if (!discordUrl && !slackUrl) return;
+
+  // dedup — critical 은 항상 발송 (의도적으로 dedup window=0 권장).
+  if (await isDedupSuppressed(env, payload)) return;
 
   // ⚠️  Never send raw payload.context to a third-party webhook. It can contain
   //    tokens, payment keys, cookies, etc. Redact before stringifying.

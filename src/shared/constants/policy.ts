@@ -65,6 +65,33 @@ export const COMMISSION_DEFAULTS = {
   STAYS_COMMISSION_CAP_PCT: 20,
 } as const
 
+/**
+ * 시간 단위 임계값 — 폴링 / dedup window / 알림 threshold.
+ * 모든 값 초(seconds) 단위로 통일. ms 필요 시 * 1000 곱하기.
+ */
+export const TIME_CONSTANTS = {
+  /** Discord/Slack alert dedup window — 같은 (title, severity) 재발송 차단 */
+  ALERT_DEDUP_DEFAULT_SEC: 300,
+
+  /** YouTube 라이브 status 폴링 간격 (cron 보조) */
+  YOUTUBE_LIVE_POLL_SEC: 120,
+
+  /** 라이브 임박 알림 threshold (시작 N초 전) */
+  LIVE_IMMINENT_THRESHOLD_SEC: 60,
+
+  /** PWA 설치 prompt dismiss 만료 */
+  PWA_DISMISS_DAYS: 7,
+
+  /** 추천 attribution sessionStorage TTL */
+  REFERRAL_ATTRIBUTION_HOURS: 24,
+
+  /** rate_limit_attempts window — 1분 */
+  RATE_LIMIT_WINDOW_SEC: 60,
+
+  /** 5xx 스파이크 detection threshold (1분 내 N건) */
+  ERROR_SPIKE_THRESHOLD: 10,
+} as const
+
 export const TAX_POLICY = {
   /** 사업소득 (default — 반복 활동) */
   BUSINESS_INCOME_RATE: 0.033,
