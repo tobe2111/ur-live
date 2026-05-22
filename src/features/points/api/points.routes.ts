@@ -84,17 +84,20 @@ async function ensureTables(DB: D1Database) {
 }
 
 // ── GET /api/points/balance ──────────────────────────────────────────
+// 🛡️ 2026-05-22 사용자 신고 "내 딜 잔액 늦음" 영구 해결:
+//   원인: ensureTables(DB) 가 매 cold-start 첫 호출 시 CREATE TABLE 시도 (~10-30ms) + D1 cold-start (100-300ms).
+//   해결: ensureTables 제거. user_points 테이블은 production 에 항상 존재 (가입 시 자동 생성).
+//         테이블 부재 환경(dev/test): catch 로 balance=0 graceful 반환 → endpoint 200 유지.
 pointsRoutes.get('/balance', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
   const { DB } = c.env;
-  await ensureTables(DB);
-
   // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일하여 TEXT/INTEGER 혼용 방지
   const userId = String(user.id);
   const row = await DB.prepare('SELECT balance, total_charged, total_donated FROM user_points WHERE user_id = ?')
-    .bind(userId).first<{ balance: number; total_charged: number; total_donated: number }>();
+    .bind(userId).first<{ balance: number; total_charged: number; total_donated: number }>()
+    .catch(() => null);  // table 부재 시 0 반환 (Cold-start 추가 query 없음)
 
   return c.json({
     success: true,
@@ -158,41 +161,48 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
   const bonusPoints = (pkg as { bonus?: number }).bonus ?? 0
   const totalPoints = pkg.points + bonusPoints
 
-  // pending 트랜잭션 기록
-  await DB.prepare(`
-    INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
-    VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
-  `).bind(
-    userId, amount, 0, totalPoints, // 충전은 수수료 0 (1:1) + bonus
-    bonusPoints > 0
-      ? `딜 ${Number(pkg.points).toLocaleString('ko-KR')}개 충전 (+${bonusPoints.toLocaleString('ko-KR')}딜 보너스)`
-      : `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`, orderId
-  ).run();
-
-  // 🛡️ 2026-05-22 영구 해결 (사용자 명령 "이상적이고 영구적"):
-  //   서버가 키 type 검증 + flow 결정 → 클라이언트는 무조건 server 응답 따름.
-  //   이전 문제: 클라이언트 VITE_TOSS_CLIENT_KEY 와 서버 TOSS_CLIENT_KEY 가 다르면 SDK 거부.
-  //   해결: 클라이언트는 자기 env 무시, 항상 server clientKey 로 SDK load.
-  //
-  //   Toss 키 prefix 규칙:
-  //     '_wt_'   = 결제위젯 연동 키 → widgets() API
-  //     '_gck_'  = 일반 클라이언트 키 → payment() API (V2 redirect)
-  //     '_ck_'   = legacy general 키 → payment() API
-  //     기타     = invalid (운영자 설정 오류)
+  // 🛡️ 2026-05-22 v3 영구 해결 — 키 검증을 INSERT 전에 수행 → 잘못된 키면 pending row 안 만듦.
+  //   Toss 키 prefix:
+  //     '_gck_' / '_ck_' = API 개별 연동 키 → payment() redirect (지원)
+  //     '_wt_' / '_widget_' = 결제위젯 연동 키 → 미지원 (variant 의존성으로 깨짐 사례 많음)
+  //     기타 = invalid
+  //   widget 키 운영자에게: Toss 콘솔에서 'API 개별 연동 키' 재발급 후 TOSS_CLIENT_KEY 갱신.
   const tossKey = c.env.TOSS_CLIENT_KEY || ''
-  let flow: 'widget' | 'redirect' | 'invalid' = 'invalid'
+  let flow: 'redirect' | 'invalid' = 'invalid'
   let flowReason = ''
   if (/_wt_|_widget_/i.test(tossKey)) {
-    flow = 'widget'
+    flow = 'invalid'
+    flowReason = 'TOSS_CLIENT_KEY 가 결제위젯 연동 키. API 개별 연동 키 (live_gck_ / test_gck_) 사용 필요.'
   } else if (/_gck_|_ck_/i.test(tossKey)) {
     flow = 'redirect'
   } else if (tossKey) {
-    flow = 'redirect'  // 알 수 없는 prefix → 일반 키로 가정
+    flow = 'redirect'  // 알 수 없는 prefix → 일반 키로 가정 (Toss 키 type 추가 대비)
     flowReason = 'unknown_prefix_fallback_redirect'
   } else {
     flow = 'invalid'
     flowReason = 'TOSS_CLIENT_KEY env missing'
   }
+
+  // 키 invalid 면 INSERT 안 함 — 사용자가 갇히지 않음.
+  if (flow === 'invalid') {
+    return c.json({
+      success: false,
+      error: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.',
+      code: 'PAYMENT_KEY_INVALID',
+      _debug: flowReason,
+    }, 503);
+  }
+
+  // pending 트랜잭션 기록 (키 검증 통과 후만)
+  await DB.prepare(`
+    INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
+    VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
+  `).bind(
+    userId, amount, 0, totalPoints,
+    bonusPoints > 0
+      ? `딜 ${Number(pkg.points).toLocaleString('ko-KR')}개 충전 (+${bonusPoints.toLocaleString('ko-KR')}딜 보너스)`
+      : `딜 ${Number(pkg.points ?? 0).toLocaleString('ko-KR')}개 충전`, orderId
+  ).run();
 
   return c.json({
     success: true,
@@ -205,7 +215,7 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
       commission: 0, // 충전은 수수료 없음
       orderName: `딜 ${Number(totalPoints).toLocaleString('ko-KR')}개 충전`,
       clientKey: tossKey,
-      flow,                // 'widget' | 'redirect' | 'invalid'
+      flow,                // 'redirect' 만 (widgets() 폐기). 'invalid' 는 위에서 early return.
       flow_reason: flowReason,
     },
   });

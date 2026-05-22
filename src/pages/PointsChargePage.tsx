@@ -20,31 +20,37 @@ interface ChargeOption {
   best?: boolean
 }
 
-// 🛡️ 2026-05-22 영구 해결: Toss 키 type 자동 감지 → API 자동 분기.
-//   - '_wt_' / '_widget_' prefix = 결제위젯 연동 키 → widgets() API (in-page)
-//   - '_gck_' / '_ck_' / 그 외 = 일반 클라이언트 키 → payment() API (redirect)
-//   운영자가 Toss 콘솔에서 어떤 키 type 발급해도 코드 변경 없이 동작.
-function detectKeyType(key: string | undefined): 'widget' | 'general' {
-  if (!key) return 'general'
-  return /_wt_|_widget_/i.test(key) ? 'widget' : 'general'
+// 🛡️ 2026-05-22 v3 진짜 영구 해결:
+//   - widgets() API 경로 완전 제거 — variantKey 콘솔 등록에 의존해서 404 만들었음.
+//   - payment() (V2 redirect) 만 사용 — variant 의존성 0, SDK 보장 동작.
+//   - 키 type 검증은 서버가 담당. widget key 면 init 단계에서 'invalid' 반환.
+//   - 운영자는 TOSS_CLIENT_KEY 를 'API 개별 연동 키' (live_gck_ / test_gck_) 사용 필수.
+
+// 🛡️ 2026-05-22 영구 해결 (사용자 명령 "딜 잔액 뜨는 것도 늦음"):
+//   localStorage cache → 페이지 진입 즉시 0ms 로 last-known balance 표시.
+//   network response 도착하면 setState 로 갱신 (체감: instant).
+const BALANCE_CACHE_KEY = 'ur_deal_balance_v1'
+function readCachedBalance(): number {
+  try {
+    const raw = localStorage.getItem(BALANCE_CACHE_KEY)
+    if (!raw) return 0
+    const n = Number(JSON.parse(raw))
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  } catch { return 0 }
+}
+function writeCachedBalance(b: number) {
+  try { localStorage.setItem(BALANCE_CACHE_KEY, JSON.stringify(b)) } catch { /* quota */ }
 }
 
 export default function PointsChargePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [balance, setBalance] = useState(0)
+  // 🛡️ 초기값을 localStorage cache 로 — 페이지 진입 즉시 표시. 빈 잔액 카드 깜빡임 차단.
+  const [balance, setBalance] = useState<number>(() => readCachedBalance())
   const [options, setOptions] = useState<ChargeOption[]>([])
   const [selected, setSelected] = useState<ChargeOption | null>(null)
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
-  const [showWidget, setShowWidget] = useState(false)
-  const widgetsRef = useRef<{
-    requestPayment: (p: { orderId: string; orderName: string; successUrl: string; failUrl: string }) => Promise<void>
-    setAmount?: (a: { currency: string; value: number }) => Promise<void>
-    renderPaymentMethods?: (p: { selector: string; variantKey?: string }) => Promise<void>
-    renderAgreement?: (p: { selector: string; variantKey?: string }) => Promise<void>
-  } | null>(null)
-  const orderRef = useRef<{ orderId: string; orderName: string } | null>(null)
   // SDK 사전 로드 — 페이지 진입 즉시 CDN 다운로드 시작.
   const tossSdkRef = useRef<Awaited<ReturnType<typeof loadTossPayments>> | null>(null)
   const userId = getUserIdSync()
@@ -53,7 +59,11 @@ export default function PointsChargePage() {
     if (!userId) { navigate('/login'); return }
     Promise.all([
       api.get('/api/points/balance').then(r => {
-        if (r.data.success) setBalance(r.data.data.balance)
+        if (r.data.success) {
+          const b = Number(r.data.data.balance ?? 0)
+          setBalance(b)
+          writeCachedBalance(b)  // 다음 진입 시 즉시 표시
+        }
       }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }),
       api.get('/api/points/charge-options').then(r => {
         if (r.data.success) {
@@ -66,59 +76,6 @@ export default function PointsChargePage() {
       }).catch((_e) => { if (import.meta.env.DEV) console.warn('[Toss] preload failed', _e) }),
     ]).finally(() => setLoading(false))
   }, [userId, navigate])
-
-  // 🛡️ 2026-05-22 영구 해결 (사용자 명령 "영구적이고 이상적으로"):
-  //   widget 키 + showWidget 상태일 때 widgets() API 로 in-page 결제 위젯 렌더.
-  //   variant 미등록 콘솔도 'DEFAULT' fallback 으로 동작 (Toss V2 SDK 자동 생성).
-  useEffect(() => {
-    if (!showWidget || !selected || !userId || !tossSdkRef.current) return
-    if (!orderRef.current) return
-
-    const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-    let cancelled = false
-
-    ;(async () => {
-      try {
-        // V2 widgets API.
-        const sdk = tossSdkRef.current!
-        const widgets = (sdk as unknown as {
-          widgets: (p: { customerKey: string }) => {
-            setAmount: (a: { currency: string; value: number }) => Promise<void>
-            renderPaymentMethods: (p: { selector: string; variantKey?: string }) => Promise<void>
-            renderAgreement: (p: { selector: string; variantKey?: string }) => Promise<void>
-            requestPayment: (p: { orderId: string; orderName: string; successUrl: string; failUrl: string }) => Promise<void>
-          }
-        }).widgets({ customerKey: `user_${sanitizedUserId}` })
-
-        await widgets.setAmount({ currency: 'KRW', value: selected.amount })
-
-        // variantKey 'DEFAULT' — Toss V2 가 콘솔 미등록 시 자동 생성하는 기본 variant.
-        // 실패 시 variantKey 생략 (legacy fallback).
-        try {
-          await widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'DEFAULT' })
-        } catch {
-          if (cancelled) return
-          await widgets.renderPaymentMethods({ selector: '#charge-payment-method' })
-        }
-        try {
-          await widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' })
-        } catch {
-          if (cancelled) return
-          await widgets.renderAgreement({ selector: '#charge-agreement' })
-        }
-
-        if (!cancelled) widgetsRef.current = widgets
-      } catch (err) {
-        if (cancelled) return
-        console.error('[Toss widgets] render failed', err)
-        toast.error('결제 위젯 로드 실패. 페이지를 새로고침해주세요.')
-        setShowWidget(false)
-        await api.post('/api/points/charge/cancel').catch(() => null)
-      }
-    })()
-
-    return () => { cancelled = true }
-  }, [showWidget, selected, userId])
 
   async function handleCharge() {
     if (!selected || !userId) return
@@ -167,15 +124,23 @@ export default function PointsChargePage() {
         return
       }
 
-      // 🛡️ 2026-05-22 영구 해결 — 서버가 결정한 flow 만 신뢰.
-      //   이전 문제: 클라이언트가 자기 VITE_TOSS_CLIENT_KEY 로 추측 → 두 env sync 깨지면 깨짐.
-      //   해결: 서버가 자기 TOSS_CLIENT_KEY 검증 + flow 반환 → 클라이언트는 단순 dispatch.
-      //   클라이언트 VITE_TOSS_CLIENT_KEY 환경변수 없거나 잘못돼도 동작.
-      initData = initRes.data?.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid' }
+      // 🛡️ 2026-05-22 v3 (진짜 영구 해결 — widgets() 경로 완전 제거):
+      //   이전: 키가 'widget' type 이면 widgets() 호출 → variantKey 콘솔 미등록 시 404.
+      //   문제: 어떤 variantKey 도 보장 X (운영자 콘솔 작업 필요). 사용자가 또 갇힘.
+      //   해결:
+      //     1) payment() (redirect) 만 사용 — variant 의존성 0, SDK 보장 동작.
+      //     2) 서버가 key type 검증 후 redirect 가능 여부 반환.
+      //     3) 'widget' key 면 init 단계에서 'invalid' 반환 → 즉시 명확한 에러.
+      //     4) 사용자는 confusing fallback 없이 1번에 깔끔한 안내.
+      initData = initRes.data?.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid'; flow_reason?: string }
       const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initData
 
-      if (serverFlow === 'invalid' || !serverClientKey) {
-        toast.error('결제 시스템 설정 오류 — 관리자에게 문의해주세요. (TOSS_CLIENT_KEY 미설정)')
+      if (serverFlow !== 'redirect' || !serverClientKey) {
+        // widget 키 또는 invalid → 사용자에게 명확한 안내. 운영자 콘솔 액션 필요.
+        const detail = serverFlow === 'widget'
+          ? '결제 시스템 점검 중입니다. 관리자에게 문의해주세요. (Toss 키 type 불일치)'
+          : '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.'
+        toast.error(detail)
         await api.post('/api/points/charge/cancel').catch(() => null)
         setProcessing(false)
         return
@@ -188,38 +153,17 @@ export default function PointsChargePage() {
         : await loadTossPayments(sdkKey)
       const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
 
-      if (serverFlow === 'widget') {
-        // in-page widget 렌더 (useEffect 가 처리).
-        orderRef.current = { orderId, orderName }
-        setShowWidget(true)
-        setProcessing(false)
-        return
-      }
-
-      // redirect 흐름 (general 키).
+      // 단일 경로 — payment() redirect (variant 의존성 0).
       const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
-      try {
-        await payment.requestPayment({
-          method: 'CARD',
-          amount: { currency: 'KRW', value: amount },
-          orderId,
-          orderName,
-          successUrl: `${window.location.origin}/points/charge/success`,
-          failUrl: `${window.location.origin}/points/charge?fail=1`,
-        })
-        // redirect 트리거 — 아래 라인 실행 안 됨.
-      } catch (innerErr: unknown) {
-        // 🛡️ 영구 안전망: payment() API 가 키 type 으로 거부하면 widget 모드로 자동 전환.
-        const innerMsg = innerErr instanceof Error ? innerErr.message : ''
-        if (/결제위젯 연동 키|widget.*key|개별 연동 키/i.test(innerMsg)) {
-          console.warn('[Toss] payment() rejected, fallback to widgets()', innerMsg)
-          orderRef.current = { orderId, orderName }
-          setShowWidget(true)
-          setProcessing(false)
-          return
-        }
-        throw innerErr  // 다른 에러는 그대로 catch
-      }
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: amount },
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/points/charge/success`,
+        failUrl: `${window.location.origin}/points/charge?fail=1`,
+      })
+      // redirect 트리거 — 아래 라인 실행 안 됨.
     } catch (err: unknown) {
       // SDK / 결제 실패 시 pending row 즉시 cleanup → 사용자 갇힘 방지.
       await api.post('/api/points/charge/cancel').catch(() => null)
@@ -229,12 +173,9 @@ export default function PointsChargePage() {
         return  // 사용자 명시 취소는 토스트 X
       }
       const rawMsg = err instanceof Error ? err.message : ''
-      // 영구 안전망 — 키 type 에러는 inner catch 에서 이미 widget fallback 시도.
-      // 여기까지 도달했으면 다른 종류의 에러 → 사용자 안내.
-      if (/결제위젯 연동 키|widget.*key|개별 연동 키/i.test(rawMsg) && initData) {
-        // inner fallback 도 실패한 경우 (드물게) — widget UI 도 띄워봄.
-        orderRef.current = { orderId: initData.orderId, orderName: initData.orderName }
-        setShowWidget(true)
+      // 키 type 에러 → 운영자 액션 필요. confusing fallback 없이 명확한 안내.
+      if (/결제위젯 연동 키|widget.*key|개별 연동 키|widget-groups\/keys/i.test(rawMsg)) {
+        toast.error('결제 시스템 점검 중입니다. 관리자에게 문의해주세요.')
       } else {
         toast.error(rawMsg || '결제 준비에 실패했습니다. 잠시 후 다시 시도해주세요.')
       }
@@ -242,26 +183,7 @@ export default function PointsChargePage() {
     }
   }
 
-  async function handleConfirmPayment() {
-    const widgets = widgetsRef.current
-    if (!widgets || !orderRef.current) return
-
-    setProcessing(true)
-    try {
-      await widgets.requestPayment({
-        orderId: orderRef.current.orderId,
-        orderName: orderRef.current.orderName,
-        successUrl: `${window.location.origin}/points/charge/success`,
-        failUrl: `${window.location.origin}/points/charge?fail=1`,
-      })
-    } catch (err: unknown) {
-      setProcessing(false)
-      const code = (err as Record<string, string>)?.code
-      if (code === 'USER_CANCEL') return
-      const msg = err instanceof Error ? err.message : '결제 요청에 실패했습니다.'
-      toast.error(msg)
-    }
-  }
+  // 🛡️ handleConfirmPayment 제거 — widgets() in-page 결제 경로 폐기.
 
   if (loading) {
     return (
@@ -311,8 +233,8 @@ export default function PointsChargePage() {
           </div>
         </section>
 
-        {!showWidget && (
-          <>
+        {/* 🛡️ 항상 옵션 카드 표시 — widgets() 경로 제거되어 inline widget UI 불필요. */}
+        <>
             {/* 충전 금액 선택 */}
             <section>
               <div className="flex items-baseline justify-between mb-3 px-1">
@@ -383,35 +305,7 @@ export default function PointsChargePage() {
                 </p>
               </div>
             </section>
-          </>
-        )}
-
-        {/* 결제 위젯 (widget 키 type 일 때만 in-page 렌더) */}
-        {showWidget && (
-          <>
-            <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('pointsCharge.chargeHistory', { defaultValue: '충전 내역' })}</span>
-                <div className="text-right">
-                  <p className="text-[16px] font-extrabold text-gray-900 dark:text-white">
-                    {formatNumber(selected?.amount)}
-                    <span className="text-[12px] font-bold ml-0.5">원</span>
-                  </p>
-                  <p className="text-[11px] font-semibold text-pink-600">
-                    → {formatNumber(selected?.points)}딜
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            <div id="charge-payment-method" className="min-h-[200px] bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-2" />
-            <div id="charge-agreement" className="min-h-[80px] bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-2" />
-
-            <p className="text-[11px] text-center text-amber-700 font-semibold">
-              {t('pointsCharge.paymentNoRefund', { defaultValue: '결제 완료 시 충전된 딜은 환불이 불가합니다.' })}
-            </p>
-          </>
-        )}
+        </>
       </main>
 
       {/* 하단 고정 CTA */}
@@ -420,47 +314,20 @@ export default function PointsChargePage() {
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3">
-          {showWidget ? (
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  setShowWidget(false)
-                  widgetsRef.current = null
-                  orderRef.current = null
-                  await api.post('/api/points/charge/cancel').catch(() => null)
-                }}
-                className="w-24 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 text-[14px] font-bold rounded-full hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors"
-              >
-                {t('pointsCharge.prev', { defaultValue: '이전' })}
-              </button>
-              <button
-                onClick={handleConfirmPayment}
-                disabled={processing}
-                className="flex-1 py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
-              >
-                {processing ? (
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                ) : (
-                  t('pointsCharge.payBtn', { amount: formatNumber(selected?.amount), defaultValue: '{{amount}}원 결제' })
-                )}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleCharge}
-              disabled={!selected || processing}
-              className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
-            >
-              {processing ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('pointsCharge.preparing', { defaultValue: '결제 준비 중…' })}
-                </span>
-              ) : (
-                t('pointsCharge.chargeBtn', { deals: formatNumber(pointsPreview), defaultValue: '{{deals}}딜 충전하기' })
-              )}
-            </button>
-          )}
+          <button
+            onClick={handleCharge}
+            disabled={!selected || processing}
+            className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+          >
+            {processing ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t('pointsCharge.preparing', { defaultValue: '결제 준비 중…' })}
+            </span>
+            ) : (
+              t('pointsCharge.chargeBtn', { deals: formatNumber(pointsPreview), defaultValue: '{{deals}}딜 충전하기' })
+            )}
+          </button>
         </div>
       </div>
     </div>
