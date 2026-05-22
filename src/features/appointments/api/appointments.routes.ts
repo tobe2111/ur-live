@@ -357,11 +357,34 @@ appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) =>
           await DB.prepare(`UPDATE orders SET status = 'CANCELLED' WHERE id = ?`).bind(order.id).run().catch(() => null)
           refundResult = { method: 'deal', amount: order.total_amount, status: 'refunded' }
         } else {
-          // 토스 — 어드민 수동 처리 큐 (감사 가능)
-          await DB.prepare(
-            `UPDATE appointment_bookings SET refund_status = 'pending' WHERE id = ?`,
-          ).bind(id).run()
-          refundResult = { method: 'toss', amount: order.total_amount, status: 'pending_admin_action' }
+          // 🛡️ 2026-05-21 Phase TD-A1: 토스 자동 환불 (기존엔 'pending' 마킹만).
+          const orderRow = await DB.prepare("SELECT payment_key FROM orders WHERE id = ?").bind(order.id).first<{ payment_key: string }>()
+          if (orderRow?.payment_key) {
+            const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
+            const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
+              reason: body.cancel_reason || '예약 취소',
+              amount: order.total_amount,
+              idempotencyKey: `appointment-${id}-refund`,
+            })
+            if (result.ok) {
+              await DB.prepare(
+                `UPDATE appointment_bookings SET refund_status = 'refunded', refund_processed_at = datetime('now') WHERE id = ?`,
+              ).bind(id).run()
+              await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(order.id).run().catch(() => null)
+              refundResult = { method: 'toss', amount: order.total_amount, status: 'refunded' }
+            } else {
+              // 실패 → pending 으로 마킹 + 어드민이 처리
+              await DB.prepare(
+                `UPDATE appointment_bookings SET refund_status = 'failed' WHERE id = ?`,
+              ).bind(id).run()
+              refundResult = { method: 'toss', amount: order.total_amount, status: `failed: ${result.error_message || result.error_code}` }
+            }
+          } else {
+            await DB.prepare(
+              `UPDATE appointment_bookings SET refund_status = 'pending' WHERE id = ?`,
+            ).bind(id).run()
+            refundResult = { method: 'toss', amount: order.total_amount, status: 'pending_admin_action' }
+          }
         }
       }
     } catch (e) {

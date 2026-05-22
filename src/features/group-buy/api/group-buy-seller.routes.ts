@@ -25,6 +25,7 @@ interface RefundVoucherRow {
   user_id: string | null
   total_amount: number
   payment_method: string | null
+  order_id: number | null
 }
 
 export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
@@ -59,7 +60,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
 
       // 미사용 바우처 환불 처리
       const { results: vouchers } = await DB.prepare(
-        "SELECT v.id, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
+        "SELECT v.id, v.order_id, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
       ).bind(productId).all<RefundVoucherRow>()
 
       let refundCount = 0
@@ -105,6 +106,27 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
           await DB.prepare(
             "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
           ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 환불: ${product.name}`).run()
+        }
+        // 🛡️ 2026-05-21 Phase TD-A1: 토스 결제건 자동 환불 (영구 — 기존엔 어드민이 수동 처리).
+        else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id) {
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              const orderRow = await DB.prepare("SELECT payment_key FROM orders WHERE id = ?").bind(v.order_id).first<{ payment_key: string }>()
+              if (!orderRow?.payment_key) return
+              const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
+              const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
+                reason: `공동구매 미달성 환불: ${product.name}`,
+                amount: product.price,
+                idempotencyKey: `voucher-${v.id}-refund`,
+              })
+              if (result.ok) {
+                await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
+              } else {
+                // toss_refund_failures 에 이미 helper 가 기록 (재시도 cron 가능)
+                if (import.meta.env?.DEV) console.warn('[toss refund failed]', result)
+              }
+            } catch (e) { if (import.meta.env?.DEV) console.warn('[toss refund]', e) }
+          })())
         }
         refundCount++
       }
