@@ -44,6 +44,7 @@ import { retryEmailFailures, retryPushFailures } from './cron/retry-notification
 import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
 import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
+import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
 import { handleLedgerIntegrityCheck } from './cron/ledger-integrity-check';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
@@ -99,6 +100,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
     // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
     ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
+    // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
+    ctx.waitUntil(safeCron('appointment-noshow-alert', () => handleAppointmentNoshowAlert(env)));
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
