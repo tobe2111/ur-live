@@ -7,8 +7,9 @@
 
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { queryKeys } from '@/hooks/queries'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import GroupBuyGuideCard from './GroupBuyGuideCard'
 import type { Product } from './types'
@@ -49,13 +50,20 @@ export default function GroupBuyFeed() {
   const [category, setCategory] = useState<CategoryKey>('all')
   const [sort, setSort] = useState<SortKey>('popular')
 
-  // 🛡️ 2026-05-22: React Query 도입 — 탭 복귀 / 카테고리 재선택 시 캐시 hit (~200ms 절감).
-  //   서버 KV cache 300s + 클라이언트 staleTime 5min 으로 이중 캐시.
+  // 🛡️ 2026-05-22 Phase 2 (100% 영구): React Query + hydration.
+  //   목록 fetch 직후 각 product 를 individual detail cache 에 hydrate →
+  //   카드 클릭 시 server hit 0 (placeholderData + cache hit).
+  const qc = useQueryClient()
   const { data: items = [], isLoading: loading } = useQuery<FeedProduct[]>({
-    queryKey: ['group-buy-products', 'active', category],
+    queryKey: queryKeys.groupBuyList('active', category),
     queryFn: async () => {
       const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
-      return Array.isArray(res.data?.data) ? res.data.data : []
+      const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
+      // hydrate individual detail cache (idempotent).
+      for (const p of arr) {
+        if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p)
+      }
+      return arr
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

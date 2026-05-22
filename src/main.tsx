@@ -130,6 +130,18 @@ try {
 // Sentry 초기화 (lazy — 262KB 번들 차단 방지)
 import('./lib/sentry').then(m => m.initSentry()).catch(swallow('main:sentry-init'))
 
+// 🛡️ 2026-05-22 Phase 2: localStorage cache LRU cleanup — 30일+ 안 본 entry 삭제.
+//   앱 진입 시 1회 (idle 시점). quota 초과 방지 + 메모리 효율.
+if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+  (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback?.(() => {
+    import('./hooks/queries/localCache').then(m => m.cleanupExpiredCache()).catch(() => null)
+  }, { timeout: 5000 })
+} else {
+  setTimeout(() => {
+    import('./hooks/queries/localCache').then(m => m.cleanupExpiredCache()).catch(() => null)
+  }, 3000)
+}
+
 // Region 정보 (개발 환경)
 if (import.meta.env.DEV) {
   try { logRegionInfo() } catch { /* ignore */ }

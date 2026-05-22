@@ -8,6 +8,7 @@
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import type { Product } from './types'
 
 const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
@@ -64,6 +65,8 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
 }
 
 export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
+  // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
+  const prefetch = usePrefetchGroupBuyProduct()
   // 🛡️ 2026-05-21: brand 정보 — gift_catalog (gc_*) 우선 → products → 없음.
   const brandName = p.brand_name || p.gc_brand_name || null
   const brandIcon = p.brand_icon_url || p.gc_brand_icon_url || null
@@ -86,6 +89,9 @@ export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
   return (
     <Link
       to={`/group-buy/${p.id}`}
+      onMouseEnter={() => prefetch(p.id)}
+      onTouchStart={() => prefetch(p.id)}
+      onFocus={() => prefetch(p.id)}
       className="block group active:opacity-90 transition-opacity"
     >
       {/* 🛡️ 2026-05-21: 사용자 요청 — 첨부 이미지 (참외 카드) 스타일.

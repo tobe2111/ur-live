@@ -10,11 +10,14 @@
  * 효과:
  *   - 사용자 1명 세션 내 동일 데이터 server hit = 1 (이전: 페이지마다 호출 → N hit)
  *   - localStorage initialData → 페이지 진입 즉시 0ms 표시
+ *   - prefetch on hover/touch → 클릭 시 0ms (목록 → 상세)
+ *   - placeholderData → 목록의 partial 데이터로 상세 즉시 표시
+ *   - 30일 LRU cleanup → localStorage 무한 부풀음 차단
  *   - mutation 후 자동 갱신 → 항상 정확한 값
  */
 
 export { queryKeys } from './queryKeys'
-export { readCache, writeCache, clearCache, clearAllUserCache } from './localCache'
+export { readCache, writeCache, clearCache, clearAllUserCache, cleanupExpiredCache } from './localCache'
 
 // 사용자 자산
 export { useBalance, useSetBalance, useInvalidateBalance } from './useBalance'
@@ -22,4 +25,25 @@ export { useCartCount, useSetCartCount, useInvalidateCart } from './useCartCount
 export { useUnreadCount, useInvalidateUnreadCount } from './useUnreadCount'
 export { useUserProfile, useInvalidateUserProfile } from './useUserProfile'
 
-// (이후 Phase 2-3 에서 추가 — 상품, 공구, 셀러, voucher, orders)
+// 상품 / 공구
+export {
+  useProduct,
+  useProductList,
+  usePrefetchProduct,
+  prefetchProduct,
+  useHydrateProductsCache,
+  type Product,
+} from './useProduct'
+export {
+  useGroupBuyProduct,
+  usePrefetchGroupBuyProduct,
+  prefetchGroupBuyProduct,
+  useHydrateGroupBuyCache,
+  type GroupBuyProduct,
+} from './useGroupBuyProduct'
+
+// 셀러 공개
+export { useSellerPublic } from './useSellerPublic'
+
+// 내 자산
+export { useMyOrders, useMyVouchers, useMyAppointments, useInvalidateMyOrders, useInvalidateMyVouchers } from './useMyData'
