@@ -5128,7 +5128,8 @@
     "sendPlaceholder": "发送消息"
   },
   "search": {
-    "inputPlaceholder": "搜索商品、品牌、卖家"
+    "inputPlaceholder": "搜索商品、品牌、卖家",
+    "related": {}
   },
   "register": {
     "title": "[TODO:zh] 회원가입",
@@ -5403,5 +5404,9 @@
     "voucherUsed": "✅ 已使用",
     "linkFor": "您的推荐链接",
     "convRate": "转化率"
-  }
+  },
+  "cancelOrder": {},
+  "groupBuy": {},
+  "blogDetail": {},
+  "liveWs": {}
 }

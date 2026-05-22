@@ -5176,7 +5176,8 @@
     "sendPlaceholder": "Send message"
   },
   "search": {
-    "inputPlaceholder": "Search products, brands, sellers"
+    "inputPlaceholder": "Search products, brands, sellers",
+    "related": {}
   },
   "register": {
     "title": "[TODO:en] 회원가입",
@@ -5403,5 +5404,9 @@
     "voucherUsed": "✅ Used",
     "linkFor": "Your referral link",
     "convRate": "Conversion"
-  }
+  },
+  "cancelOrder": {},
+  "groupBuy": {},
+  "blogDetail": {},
+  "liveWs": {}
 }

@@ -5128,7 +5128,8 @@
     "sendPlaceholder": "Enviar mensaje"
   },
   "search": {
-    "inputPlaceholder": "Buscar productos, marcas, vendedores"
+    "inputPlaceholder": "Buscar productos, marcas, vendedores",
+    "related": {}
   },
   "register": {
     "title": "[TODO:es] 회원가입",
@@ -5403,5 +5404,9 @@
     "voucherUsed": "✅ Usado",
     "linkFor": "Tu enlace",
     "convRate": "Conversión"
-  }
+  },
+  "cancelOrder": {},
+  "groupBuy": {},
+  "blogDetail": {},
+  "liveWs": {}
 }

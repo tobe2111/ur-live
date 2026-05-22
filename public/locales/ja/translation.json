@@ -5128,7 +5128,8 @@
     "sendPlaceholder": "メッセージを送る"
   },
   "search": {
-    "inputPlaceholder": "商品名・ブランド・セラーを検索"
+    "inputPlaceholder": "商品名・ブランド・セラーを検索",
+    "related": {}
   },
   "register": {
     "title": "[TODO:ja] 회원가입",
@@ -5403,5 +5404,9 @@
     "voucherUsed": "✅ 使用済み",
     "linkFor": "あなたのリファラルリンク",
     "convRate": "転換率"
-  }
+  },
+  "cancelOrder": {},
+  "groupBuy": {},
+  "blogDetail": {},
+  "liveWs": {}
 }
