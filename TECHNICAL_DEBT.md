@@ -8,6 +8,39 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+## ✅ 2026-05-22 — 정책 중앙화 + 부채 정리 라운드 (Done)
+
+| 항목 | 상태 | 출처 |
+|---|---|---|
+| 수수료/세금 정책 hardcode 제거 | ✅ Done | `commits f9d6cb2a, e41fa4a0` (policy.ts SSOT) |
+| 8.8% withholding 호출처 마이그 | ✅ Done | `commit f1f1d809` |
+| Disputes atomic refund (D1 batch) | ✅ Done | `commit f1250be5` |
+| Audit log on admin-payouts 5개 | ✅ Done | `commit f1f1d809` |
+| Discord alert dedup (KV TTL) | ✅ Done | `commit 550f1321` |
+| 공구 목록 SELECT 컬럼 + index | ✅ Done | `commit e41fa4a0` + `migrations/0276` |
+| React Query for GroupBuyFeed | ✅ Done | `commit 55017b2c` |
+| Cloudflare Image Resizing srcset | ✅ Done | `commit 55017b2c` |
+| Silent catch (financial paths) → swallow() | ✅ Done | `commit 10d63d21` |
+| aria-label on icon buttons | ✅ Done | `commit 1582615f` |
+
+## ⚠️ 운영자 액션 (코드 X, production 수동 필요)
+1. **`migrations/0276` D1 적용** — `wrangler d1 execute ur-live --remote --file=migrations/0276_products_groupbuy_perf_index.sql`
+   또는 `/api/_internal/repair-schema` (가능 시)
+2. **배포 후 smoke**: `curl https://live.ur-team.com/api/group-buy/products?status=active&category=all`
+   → 응답 크기 측정 (목표 ~5KB 이하, 이전 10KB+)
+
+## 🟡 남은 부채 (의도적 deferred — 별도 PR 권장)
+
+| 항목 | 사유 |
+|---|---|
+| `youtube-live.routes.ts` 3417줄 분해 | 너무 큼 — 별도 risk-isolated PR |
+| `ReelCard.tsx` 1515줄 분해 | CLAUDE.md 룰: 500줄+ 전체 덮어쓰기 금지 |
+| `guide-seed.ts` 2012줄 분해 | 데이터 파일 — 분리 lift 낮음 |
+| Silent catch 잔여 ~40곳 | 모두 비금전 (KV cache invalidate, cleanup cron) |
+| Materialized view (공구 캐시) | 1만 명 수준에선 불필요. 100만 명 가시화 시 도입 |
+| XSS — PiP/KakaoMap React 변환 | 별도 보안 PR (DOM purify + React-only path) |
+| 어드민 페이지 a11y 전수 보강 | 어드민은 내부 사용자, 우선순위 낮음 |
+
 ## 📊 2026-05-18 — 숙소 공구 + 사업자 정산 도입 후 잔여 부채
 
 ### 🔴 Critical — production DB 적용 미확인

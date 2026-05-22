@@ -1,7 +1,48 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-21 (Phase A → D-2 모두 완료)
+**최종 업데이트**: 2026-05-22 (정책 중앙화 + perf + 부채 청소 모두 완료)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
+
+## ✅ 2026-05-22 세션 — 정책 중앙화 + 성능 + 부채 정리
+
+### 정책 SSOT 1페이지화 (`src/shared/constants/policy.ts`)
+- REFUND_POLICY (9) / COMMISSION_DEFAULTS (10) / TAX_POLICY (3) / TIME_CONSTANTS (7)
+- WITHHOLDING_RATES 재내보내기 — 한 파일에서 모든 정책 접근
+- 8.8% / 0.05 / 0.10 / 0.07 / 0.005 / Math.min(20, …) hardcode 모두 import 전환
+  - `affiliate.routes.ts`, `admin-tools.routes.ts`, `ledger.ts`, `agency.routes.ts`,
+    `group-buy.routes.ts`, `stays-public.routes.ts`, `payouts-generate.ts`
+- 새 상수: `AFFILIATE_COMMISSION_PCT`, `REFERRAL_BONUS_BOTHSIDES_PCT`, `STAYS_COMMISSION_CAP_PCT`
+
+### 정합성 (atomic refund)
+- `disputes.routes.ts` auto-refund + admin approve → CAS + D1 `batch()` 패턴
+  → voucher refunded 인데 user balance 미환불되는 ghost refund 방지
+
+### Audit log 미들웨어
+- `admin-payouts.routes.ts` 5 endpoint (generate / approve / sent / cancel / commission-rates)
+
+### Observability
+- `alerts.ts sendAlert` 옵션 `dedupSeconds` (default 300s) — RATE_LIMIT_KV
+- `discord-alert.ts sendDiscordAlertDedup` — 같은 (title, severity) 5분 내 중복 차단
+- swallow() 래퍼 적용 (financial path): group-buy 추천 보너스, marketing 인플 정산,
+  review-bonus, disputes escalate, influencer-payout cron
+
+### 홈 공구 로딩 perf (live.ur-team.com)
+- `group-buy-public.routes.ts`: `SELECT p.*` → 명시적 16 컬럼 (~56% payload ↓)
+- `migrations/0276`: partial composite index
+  `idx_products_groupbuy_feed (category, group_buy_status, created_at DESC) WHERE is_active=1`
+- `GroupBuyFeed.tsx`: useEffect+state → useQuery (탭 복귀 시 ~200ms ↓)
+- `EmptyStateWithFallback`: 같은 queryKey 로 메인 캐시 hit (중복 fetch 제거)
+- `GroupBuyFeedCard.tsx`: `cfImage` + `cfSrcSet` (200/400/600px WebP/AVIF) — 이미지 50-80% ↓
+
+### A11y
+- aria-label 추가: navigate(-1) back, X close (모달/필터/사이드), ShoppingCart 아이콘
+- 14개 파일
+
+### 8.8% 마이그레이션 (Phase 2 — 사용자 미루기 → 재개)
+- `WITHHOLDING_RATES.other_income` 호출 마이그 (`points.routes.ts withdraw`,
+  `seller-settlements.routes.ts voucher-redeem`)
+
+
 
 ## 🎯 2026-05-21 세션 — 5 Phase 정산 인프라 + UX 통합
 
