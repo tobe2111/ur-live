@@ -393,6 +393,62 @@ sellerAnalyticsRoutes.post('/products/:id/duplicate', requireAuth(), async (c) =
   return c.json({ success: true, data: { id: result.meta.last_row_id }, message: '상품이 복제되었습니다' })
 })
 
+// 🛡️ 2026-05-21 Phase TD-8: 매장 사장님 종합 통계 — 본인 매장 전체 매출/voucher/정산.
+sellerAnalyticsRoutes.get('/store-dashboard/stats', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  try {
+    // 상품 수
+    const products = await c.env.DB.prepare(
+      `SELECT COUNT(*) as total, SUM(CASE WHEN COALESCE(is_active, 1) = 1 THEN 1 ELSE 0 END) as active FROM products WHERE seller_id = ?`,
+    ).bind(sellerId).first<{ total: number; active: number }>().catch(() => ({ total: 0, active: 0 }))
+
+    // Voucher 통계
+    const vouchers = await c.env.DB.prepare(
+      `SELECT
+         COUNT(*) as total,
+         SUM(CASE WHEN status = 'used' THEN 1 ELSE 0 END) as used,
+         SUM(CASE WHEN status = 'unused' THEN 1 ELSE 0 END) as unused,
+         SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) as refunded
+       FROM vouchers v
+       INNER JOIN products p ON p.id = v.product_id
+       WHERE p.seller_id = ?`,
+    ).bind(sellerId).first<{ total: number; used: number; unused: number; refunded: number }>().catch(() => ({ total: 0, used: 0, unused: 0, refunded: 0 }))
+
+    // 매출 합산 (ledger 기준 — merchant credit)
+    const revenue = await c.env.DB.prepare(
+      `SELECT
+         COALESCE(SUM(amount), 0) as total,
+         COALESCE(SUM(CASE WHEN created_at >= datetime('now', 'start of month') THEN amount ELSE 0 END), 0) as this_month
+       FROM ledger_entries
+       WHERE credit_account = ? AND event_type = 'voucher_used'`,
+    ).bind(`merchant:${sellerId}`).first<{ total: number; this_month: number }>().catch(() => ({ total: 0, this_month: 0 }))
+
+    // 미정산 잔액 (credit - paid)
+    const paid = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
+        WHERE payee_id = ? AND payee_type IN ('store_owner','seller') AND status IN ('approved','sent')`,
+    ).bind(String(sellerId)).first<{ total: number }>().catch(() => ({ total: 0 }))
+
+    return c.json({
+      success: true,
+      data: {
+        total_products: Number(products?.total ?? 0),
+        active_products: Number(products?.active ?? 0),
+        total_vouchers_sold: Number(vouchers?.total ?? 0),
+        vouchers_used: Number(vouchers?.used ?? 0),
+        vouchers_unused: Number(vouchers?.unused ?? 0),
+        vouchers_refunded: Number(vouchers?.refunded ?? 0),
+        revenue_total: Number(revenue?.total ?? 0),
+        revenue_this_month: Number(revenue?.this_month ?? 0),
+        pending_payout: Math.max(0, Number(revenue?.total ?? 0) - Number(paid?.total ?? 0)),
+      },
+    })
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500)
+  }
+})
+
 // 🛡️ 2026-05-21: 월별 상품 등록 추이 — 신규 입점 가게/상품 트렌드 (최근 12개월).
 sellerAnalyticsRoutes.get('/products/monthly-trend', requireAuth(), async (c) => {
   const sellerId = await getSellerId(c)
