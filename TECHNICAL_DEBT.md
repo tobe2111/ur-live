@@ -43,12 +43,13 @@
 | Admin a11y 부분 보강 | ✅ Done (AdminAccountsPage edit/key/delete icons) | `commit 9999999` |
 | `/admin/policy` 정책 시각화 | ✅ Done (read-only SSOT dashboard) | `commit b695c197` |
 
-## ⚠️ 운영자 액션 (production 수동 필요)
+## ✅ 운영자 액션 불필요 (자동 적용)
 
-1. **`migrations/0276` D1 적용** — 공구 피드 perf index
-2. **`migrations/0277` D1 적용** — group_buy_feed_cache table
-   * 적용 즉시 자동 활성: 5분 cron 이 `*/5 * * * *` 트리거 시 갱신 + 응답 path 가 cache 우선 lookup
-   * 미적용 환경: graceful no-op (table probe 실패 → 실시간 D1 쿼리 fallback)
+~~`migrations/0276` / `0277` D1 적용~~ → **repair-schema 라우트에 등록 완료** (`commit XXX`).
+매일 18 UTC `schema-repair-daily` cron 이 자동 실행 → 다음날 자동 반영.
+IF NOT EXISTS 라 멱등.
+
+응급 즉시 적용: `POST /api/_internal/repair-schema`.
 
 ## 🟡 영구 deferred (사유 명시)
 

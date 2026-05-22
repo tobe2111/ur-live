@@ -51,7 +51,7 @@ export default function InterestListPage() {
       {/* 헤더 */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} className="text-gray-900 dark:text-white">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('interestList.title')}</h1>

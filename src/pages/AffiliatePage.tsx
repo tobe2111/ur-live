@@ -31,7 +31,7 @@ export default function AffiliatePage() {
       {/* 헤더 */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center gap-3 px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('affiliate.title')}</h1>

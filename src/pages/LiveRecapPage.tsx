@@ -83,7 +83,7 @@ export default function LiveRecapPage() {
 
       {/* 상단 뒤로가기 */}
       <div className="sticky top-0 z-20 bg-[#020202]/90 backdrop-blur-md px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.08]">
+        <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.08]">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <p className="font-bold text-sm truncate flex-1">{stream.title}</p>

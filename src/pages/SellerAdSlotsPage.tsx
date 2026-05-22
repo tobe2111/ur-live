@@ -358,7 +358,7 @@ export default function SellerAdSlotsPage() {
 
       {/* 헤더 */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 h-14 flex items-center gap-3">
-        <button type="button" onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+        <button type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
           <ChevronLeft className="w-4 h-4 text-gray-700" />
         </button>
         <h1 className="text-[15px] font-bold text-gray-900">{t('seller.adSlots.headerTitle', { defaultValue: '광고 슬롯 입찰' })}</h1>

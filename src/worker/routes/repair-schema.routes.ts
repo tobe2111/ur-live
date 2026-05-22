@@ -295,6 +295,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.representative_name', sql: "ALTER TABLE sellers ADD COLUMN representative_name TEXT" },
     { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },
     { desc: 'influencer_balances.payout_method', sql: "ALTER TABLE influencer_balances ADD COLUMN payout_method TEXT DEFAULT 'cash'" },
+    // 🛡️ 2026-05-22: migrations 0276 (공구 피드 perf index) 자동 적용.
+    //   partial composite index — category + group_buy_status + ORDER BY created_at 한 번에 cover.
+    //   IF NOT EXISTS 라 멱등. wrangler d1 execute 수동 적용 없이 daily cron 으로 자동 반영.
+    { desc: 'idx_products_groupbuy_feed', sql: "CREATE INDEX IF NOT EXISTS idx_products_groupbuy_feed ON products (category, group_buy_status, created_at DESC) WHERE is_active = 1" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -642,6 +646,18 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_agency_intro_comm_agency', sql: `CREATE INDEX IF NOT EXISTS idx_agency_intro_comm_agency ON agency_store_intro_commissions(agency_id, status, created_at DESC)` },
     { name: 'idx_agency_intro_comm_store', sql: `CREATE INDEX IF NOT EXISTS idx_agency_intro_comm_store ON agency_store_intro_commissions(store_seller_id, type, created_at DESC)` },
+    // 🛡️ 2026-05-22: migrations 0277 — group-buy 피드 materialized cache.
+    //   (status, category) PK 로 product JSON snapshot 저장. 5분 cron 으로 갱신.
+    //   적용 즉시 group-buy-public.routes.ts 의 cache fallback path 자동 활성.
+    { name: 'group_buy_feed_cache', sql: `CREATE TABLE IF NOT EXISTS group_buy_feed_cache (
+      status TEXT NOT NULL,
+      category TEXT NOT NULL,
+      product_json TEXT NOT NULL,
+      row_count INTEGER NOT NULL DEFAULT 0,
+      computed_at DATETIME NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (status, category)
+    )` },
+    { name: 'idx_group_buy_feed_cache_computed', sql: `CREATE INDEX IF NOT EXISTS idx_group_buy_feed_cache_computed ON group_buy_feed_cache (computed_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

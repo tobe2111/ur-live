@@ -145,7 +145,7 @@ export default function AdminBannersPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">{editingBanner ? t('admin.banners.k012', { defaultValue: '배너 수정' }) : t('admin.banners.k013', { defaultValue: '새 배너 추가' })}</h2>
-            <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+            <button onClick={() => setShowForm(false)} aria-label="닫기" className="p-1.5 rounded-lg hover:bg-gray-100">
               <X className="w-4 h-4 text-gray-400" />
             </button>
           </div>

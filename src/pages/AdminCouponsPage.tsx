@@ -355,7 +355,7 @@ export default function AdminCouponsPage() {
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-900">{t('admin.coupons.k040', { defaultValue: '쿠폰 타겟 발송' })}</h3>
-              <button onClick={() => setSegmentModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setSegmentModalOpen(false)} aria-label="닫기" className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
             </div>

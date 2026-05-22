@@ -149,7 +149,7 @@ export default function StayDetailPage() {
       {/* Hero */}
       <div className="relative aspect-[16/10] sm:aspect-[21/9] bg-[#1A1A1A]">
         {stay.image_url && <img src={stay.image_url} alt={stay.name} className="w-full h-full object-cover" />}
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+        <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
           <ChevronLeft className="w-5 h-5" />
         </button>
       </div>

@@ -80,8 +80,7 @@ export default function UserGroupBuyCreatePage() {
           >
             🎤 인플루언서 활동 시작 (카탈로그)
           </button>
-          <button
-            onClick={() => navigate(-1)}
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기"
             className="w-full py-3 border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm"
           >
             돌아가기

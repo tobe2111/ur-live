@@ -24,6 +24,7 @@ import LiveCheckoutSheet from '@/components/live/LiveCheckoutSheet'
 //   ReelOrderProofToast.tsx — 결제 사회적 증명 토스트
 import { isApiError, type Stream, type Product, type ReelData } from './ReelCard.types'
 import ReelOrderProofToast from './ReelOrderProofToast'
+import { useWakeLock } from './useWakeLock'
 
 // 🛡️ YouTube iframe API 타입은 LiveTypes.ts (SSOT) 에서 import 합니다.
 
@@ -115,7 +116,6 @@ function ReelCardImpl({
 
   // View tracking cleanup (component-local, avoid global collision)
   const viewTrackCleanupRef = useRef<(() => void) | null>(null)
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 
   // ── 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) ──
   
@@ -589,25 +589,8 @@ function ReelCardImpl({
     return () => clearInterval(id)
   }, [activeFlashSale?.ends_at])
 
-  // Wake Lock — 활성 라이브 시청 중 화면 꺼짐 방지 (종료되면 해제, finalStatus 사용)
-  useEffect(() => {
-    if (!isActive || finalStatus === 'ended') return
-    const acquire = async () => {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLockRef.current = await (navigator as Navigator & { wakeLock: { request(t: string): Promise<WakeLockSentinel> } }).wakeLock.request('screen')
-        }
-      } catch { /* 거부 또는 미지원 — 무시 */ }
-    }
-    const onVisible = () => { if (document.visibilityState === 'visible' && !wakeLockRef.current) acquire() }
-    acquire()
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      try { wakeLockRef.current?.release() } catch { /* */ }
-      wakeLockRef.current = null
-    }
-  }, [isActive, finalStatus])
+  // 🛡️ 2026-05-22: WakeLock 로직 → useWakeLock hook 추출.
+  useWakeLock(isActive, finalStatus === 'ended')
 
   // 🛡️ 2026-05-14 (이상적 fix): VOD 상태 — 서버 DB 값 (vod_ready) 우선 사용.
   //   기존: 5분 timeout assumption (실제 YouTube 상태 모름).

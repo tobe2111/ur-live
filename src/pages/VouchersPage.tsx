@@ -238,7 +238,7 @@ export default function VouchersPage() {
       {/* Header */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <button onClick={() => navigate(-1)} className="shrink-0 p-1">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="shrink-0 p-1">
             <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
           <div className="flex-1 flex items-center gap-1.5">

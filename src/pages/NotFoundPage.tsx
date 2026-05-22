@@ -79,8 +79,7 @@ export default function NotFoundPage() {
               {t('notFound.goHome')}
             </Link>
             <button
-              type="button"
-              onClick={() => navigate(-1)}
+              type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기"
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1C1C1E] text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4" />

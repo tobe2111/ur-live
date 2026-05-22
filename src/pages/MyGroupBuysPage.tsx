@@ -295,7 +295,7 @@ export default function MyGroupBuysPage() {
       {/* 헤더 */}
       <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#2A2A2A]">
         <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
-          <button onClick={() => navigate(-1)} className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-base font-semibold text-gray-900 dark:text-white">{t('myGroupBuys.title')}</h1>

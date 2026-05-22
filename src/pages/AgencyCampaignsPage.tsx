@@ -253,7 +253,7 @@ export default function AgencyCampaignsPage() {
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">{t('agency.campaigns.create', { defaultValue: '캠페인 만들기' })}</h2>
-              <button onClick={() => setCreating(false)} className="p-1 hover:bg-gray-100 rounded">
+              <button onClick={() => setCreating(false)} aria-label="닫기" className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
@@ -346,7 +346,7 @@ export default function AgencyCampaignsPage() {
                     {t('agency.campaigns.cancelAction', { defaultValue: '캠페인 취소' })}
                   </button>
                 )}
-                <button onClick={() => setSelectedCampaign(null)} className="p-1 hover:bg-gray-100 rounded">
+                <button onClick={() => setSelectedCampaign(null)} aria-label="닫기" className="p-1 hover:bg-gray-100 rounded">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>

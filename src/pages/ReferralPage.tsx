@@ -186,7 +186,7 @@ export default function ReferralPage() {
       {/* v4 Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">공동구매</h1>
