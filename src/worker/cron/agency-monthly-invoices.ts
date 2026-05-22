@@ -98,7 +98,9 @@ export async function handleAgencyMonthlyInvoices(env: BackupEnvLike): Promise<{
 
       const orders = totals?.total_orders ?? 0
       const amount = totals?.total_amount ?? 0
-      const rate = agency.commission_rate ?? 2.0
+      // 🛡️ 2026-05-21: 정책 중앙화 — COMMISSION_DEFAULTS.AGENCY_OWN_RATE
+      const { COMMISSION_DEFAULTS } = await import('../../shared/constants/policy')
+      const rate = agency.commission_rate ?? COMMISSION_DEFAULTS.AGENCY_OWN_RATE
       const commission = Math.round(amount * rate / 100)
       const tax = Math.round(commission * TAX_RATE)
       const net = commission - tax

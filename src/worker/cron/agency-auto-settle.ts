@@ -74,7 +74,9 @@ export async function handleAgencyAutoSettle(env: Env): Promise<{ processed: num
 
       if (!eligible?.length) continue;
 
-      const rate = agency.commission_rate ?? 2.0;
+      // 🛡️ 2026-05-21: 정책 중앙화
+      const { COMMISSION_DEFAULTS } = await import('../../shared/constants/policy')
+      const rate = agency.commission_rate ?? COMMISSION_DEFAULTS.AGENCY_OWN_RATE;
       const totalAmount = eligible.reduce((s, o) => s + (o.total_amount || 0), 0);
       const commissionAmount = Math.round(totalAmount * rate / 100);
       const taxAmount = Math.round(commissionAmount * TAX_RATE);

@@ -241,7 +241,9 @@ appointmentsRoutes.post('/appointments/book', requireAuth(), async (c) => {
 })
 
 // 🛡️ 2026-05-21: 취소 정책 — 시작 시간 12시간 전까지 무조건 환불, 이후엔 정책 가이드.
-const CANCEL_DEADLINE_HOURS = 12
+//   2026-05-21 정책 중앙화: REFUND_POLICY.APPOINTMENT_CANCEL_DEADLINE_HOURS 사용.
+import { REFUND_POLICY } from '../../../shared/constants/policy'
+const CANCEL_DEADLINE_HOURS = REFUND_POLICY.APPOINTMENT_CANCEL_DEADLINE_HOURS
 
 // 🛡️ 2026-05-21 Phase B-2: 결제 직후 예약 prompt — order 의 booking_required 상품 중
 //   아직 appointment_bookings INSERT 안 된 것 반환.
