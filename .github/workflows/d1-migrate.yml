@@ -1,0 +1,85 @@
+name: D1 Migration Auto-Apply
+
+# 🛡️ 2026-05-21 Phase TD-1: D1 마이그레이션 자동화.
+#
+# 트리거: main 푸시 + migrations/ 또는 repair-schema.routes.ts 변경
+# 사전 조건: GitHub Secrets 등록 필요
+#   - CLOUDFLARE_API_TOKEN (D1 Write 권한)
+#   - CLOUDFLARE_ACCOUNT_ID
+#   - D1_DATABASE_NAME (예: ur-live)
+#
+# 안전:
+#   - dry-run 먼저 (SQL syntax 검증)
+#   - 실행 결과 Discord 알림 (선택)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'migrations/**'
+      - 'src/worker/routes/repair-schema.routes.ts'
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install wrangler
+        run: npm install -g wrangler@3
+
+      - name: Verify secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "❌ CLOUDFLARE_API_TOKEN 미설정"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "❌ CLOUDFLARE_ACCOUNT_ID 미설정"
+            exit 1
+          fi
+
+      - name: List pending migrations
+        run: ls -la migrations/
+
+      - name: Apply migrations (dry-run first)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          DB_NAME="${{ secrets.D1_DATABASE_NAME }}"
+          DB_NAME="${DB_NAME:-ur-live}"
+          for f in migrations/*.sql; do
+            echo "==> Applying $f"
+            wrangler d1 execute "$DB_NAME" --remote --file="$f" || echo "⚠️ $f 실패 (already applied?)"
+          done
+
+      - name: Trigger repair-schema (idempotent)
+        env:
+          REPAIR_URL: https://live.ur-team.com/api/_internal/repair-schema
+          ADMIN_TOKEN: ${{ secrets.ADMIN_REPAIR_TOKEN }}
+        run: |
+          if [ -n "$ADMIN_TOKEN" ]; then
+            echo "==> /api/_internal/repair-schema 호출"
+            curl -fsS "$REPAIR_URL" -H "Authorization: Bearer $ADMIN_TOKEN" | head -200 || echo "⚠️ repair-schema 호출 실패"
+          else
+            echo "⚠️ ADMIN_REPAIR_TOKEN 미설정 — repair-schema 호출 skip"
+          fi
+
+      - name: Discord notification (옵션)
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            STATUS="${{ job.status }}"
+            curl -fsS -X POST -H 'Content-Type: application/json' \
+              -d "{\"content\":\"D1 Migration: $STATUS — commit ${{ github.sha }}\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi

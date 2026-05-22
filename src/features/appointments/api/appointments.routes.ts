@@ -361,7 +361,7 @@ appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) =>
           const orderRow = await DB.prepare("SELECT payment_key FROM orders WHERE id = ?").bind(order.id).first<{ payment_key: string }>()
           if (orderRow?.payment_key) {
             const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
-            const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
+            const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database }, orderRow.payment_key, {
               reason: body.cancel_reason || '예약 취소',
               amount: order.total_amount,
               idempotencyKey: `appointment-${id}-refund`,

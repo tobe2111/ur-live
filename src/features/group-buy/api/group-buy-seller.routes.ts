@@ -114,7 +114,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
               const orderRow = await DB.prepare("SELECT payment_key FROM orders WHERE id = ?").bind(v.order_id).first<{ payment_key: string }>()
               if (!orderRow?.payment_key) return
               const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
-              const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
+              const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database }, orderRow.payment_key, {
                 reason: `공동구매 미달성 환불: ${product.name}`,
                 amount: product.price,
                 idempotencyKey: `voucher-${v.id}-refund`,

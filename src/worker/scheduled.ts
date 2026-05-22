@@ -48,6 +48,7 @@ import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
 import { handleLedgerIntegrityCheck } from './cron/ledger-integrity-check';
 import { handleDisputesEscalation } from './cron/disputes-escalation';
+import { handleTossRefundRetry } from './cron/toss-refund-retry';
 import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
@@ -108,6 +109,8 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
+    ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
   }
 
   if (cron === '0 18 * * *') {

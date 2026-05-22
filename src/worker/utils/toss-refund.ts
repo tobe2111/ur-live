@@ -11,7 +11,7 @@
  *   호출처: stay-bookings cancel / admin refund / 일반 주문 환불.
  *   재시도: 5xx 만 1회 재시도 (2초 후). 4xx 는 즉시 실패 (cardError 등).
  */
-type TossEnv = { TOSS_SECRET_KEY?: string }
+type TossEnv = { TOSS_SECRET_KEY?: string; DB?: D1Database }
 
 export interface RefundResult {
   ok: boolean
@@ -20,6 +20,36 @@ export interface RefundResult {
   error_code?: string
   error_message?: string
   http_status?: number
+}
+
+// 🛡️ 2026-05-21 Phase TD-3: 실패 시 toss_refund_failures 자동 INSERT (재시도 cron 대상).
+async function recordFailure(
+  DB: D1Database,
+  paymentKey: string,
+  amount: number | undefined,
+  reason: string,
+  result: RefundResult,
+): Promise<void> {
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS toss_refund_failures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payment_key TEXT NOT NULL,
+      cancel_amount INTEGER,
+      cancel_reason TEXT,
+      http_status INTEGER,
+      error_code TEXT,
+      error_message TEXT,
+      retry_count INTEGER DEFAULT 0,
+      last_retried_at TEXT,
+      resolved_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_toss_refund_failures_pending ON toss_refund_failures(resolved_at, retry_count, created_at) WHERE resolved_at IS NULL`).run().catch(() => null)
+    await DB.prepare(
+      `INSERT INTO toss_refund_failures (payment_key, cancel_amount, cancel_reason, http_status, error_code, error_message)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).bind(paymentKey, amount || null, reason, result.http_status || null, result.error_code || null, result.error_message || null).run()
+  } catch { /* graceful */ }
 }
 
 export async function tossCancelPayment(
@@ -75,19 +105,25 @@ export async function tossCancelPayment(
         await new Promise((r) => setTimeout(r, 2000))
         continue
       }
-      return {
+      const errResult: RefundResult = {
         ok: false,
         error_code: String((data as { code?: string }).code || `HTTP_${res.status}`),
         error_message: String((data as { message?: string }).message || `토스 환불 실패 (${res.status})`),
         http_status: res.status,
       }
+      if (env.DB) await recordFailure(env.DB, paymentKey, options.amount, options.reason, errResult)
+      return errResult
     } catch (err) {
       if (attempt === 0) {
         await new Promise((r) => setTimeout(r, 2000))
         continue
       }
-      return { ok: false, error_code: 'NETWORK', error_message: (err as Error).message }
+      const result: RefundResult = { ok: false, error_code: 'NETWORK', error_message: (err as Error).message }
+      if (env.DB) await recordFailure(env.DB, paymentKey, options.amount, options.reason, result)
+      return result
     }
   }
-  return { ok: false, error_code: 'EXHAUSTED', error_message: '재시도 한도 초과' }
+  const exhausted: RefundResult = { ok: false, error_code: 'EXHAUSTED', error_message: '재시도 한도 초과' }
+  if (env.DB) await recordFailure(env.DB, paymentKey, options.amount, options.reason, exhausted)
+  return exhausted
 }
