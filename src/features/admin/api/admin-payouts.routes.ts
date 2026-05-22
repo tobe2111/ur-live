@@ -226,18 +226,49 @@ adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdmin(), asyn
     await DB.prepare(`CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run()
   } catch { /* exists */ }
 
+  // 🛡️ 2026-05-21 Phase D-4: 변경 전 기존 값 조회 (audit log 용).
+  const before: Record<string, string> = {}
+  try {
+    const rows = await DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('platform_fee_pct','seller_commission_pct','agency_share_pct')",
+    ).all<{ key: string; value: string }>()
+    for (const r of rows.results || []) before[r.key] = r.value
+  } catch { /* graceful */ }
+
+  const changes: Record<string, { old: string | null; new: string }> = {}
   for (const [key, val, min, max] of inputs) {
     if (val === undefined || val === null) continue
     const n = Number(val)
     if (!Number.isFinite(n) || n < min || n > max) {
       return c.json({ success: false, error: `${key} 는 ${min}-${max} 범위여야 합니다.` }, 400)
     }
+    const newVal = String(n)
+    const oldVal = before[key] ?? null
+    if (oldVal !== newVal) changes[key] = { old: oldVal, new: newVal }
     await DB.prepare(
       `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
-    ).bind(key, String(n)).run()
+    ).bind(key, newVal).run()
   }
-  return c.json({ success: true })
+
+  // 🛡️ 변경 audit log — 누가 언제 어떤 비율 변경했는지 영구 기록.
+  if (Object.keys(changes).length > 0) {
+    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } | undefined }).get('user')
+    try {
+      await DB.prepare(
+        `INSERT INTO admin_audit_log (actor_id, actor_email, action, resource_type, resource_id, old_value, new_value, ip, created_at)
+         VALUES (?, ?, 'commission_rate_change', 'platform_settings', 'rates', ?, ?, ?, datetime('now'))`,
+      ).bind(
+        String(actor?.id || 'unknown'),
+        actor?.email || null,
+        JSON.stringify(Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.old]))),
+        JSON.stringify(Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.new]))),
+        c.req.header('CF-Connecting-IP') || null,
+      ).run()
+    } catch { /* audit log 테이블 없으면 silent */ }
+  }
+
+  return c.json({ success: true, data: { changes } })
 })
 
 adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), async (c) => {

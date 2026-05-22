@@ -34,6 +34,16 @@ export function captureTrackingFromUrl(): void {
     if (ownSellerId && String(ownSellerId) === sellerId) return
     const data: TrackingData = { seller_id: sellerId, saved_at: Date.now() }
     sessionStorage.setItem(KEY, JSON.stringify(data))
+    // 🛡️ 2026-05-21 Phase D-4: 클릭 기록 (funnel 측정용). 실패 silent.
+    //   상품 page 진입이면 product_id 도 함께. /group-buy/45?seller=N → product_id=45.
+    const productMatch = window.location.pathname.match(/^\/(?:group-buy|products|g)\/(\d+)/)
+    const productId = productMatch ? Number(productMatch[1]) : undefined
+    fetch('/api/referral/click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seller_id: sellerId, product_id: productId }),
+      keepalive: true,
+    }).catch(() => { /* 통계 실패 무시 */ })
   } catch { /* graceful */ }
 }
 

@@ -473,6 +473,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_payouts_status', sql: `CREATE INDEX IF NOT EXISTS idx_payouts_status ON payouts(status, created_at DESC)` },
     { name: 'idx_payouts_payee', sql: `CREATE INDEX IF NOT EXISTS idx_payouts_payee ON payouts(payee_type, payee_id, status)` },
     { name: 'idx_payouts_period', sql: `CREATE INDEX IF NOT EXISTS idx_payouts_period ON payouts(period_start, period_end, payee_type)` },
+    // 🛡️ 2026-05-21 Phase D-4: 셀러 트래킹 링크 클릭 카운트 (funnel 측정).
+    //   클릭 → 비결제 단계 측정. 결제 attribution 은 referral_commissions 별도.
+    //   IP 해시 + UA hash 로 일일 unique 클릭 dedup (중복 봇 방지).
+    { name: 'referral_clicks', sql: `CREATE TABLE IF NOT EXISTS referral_clicks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id TEXT NOT NULL,
+      product_id INTEGER,
+      ip_hash TEXT,
+      user_agent_hash TEXT,
+      referer TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_referral_clicks_seller', sql: `CREATE INDEX IF NOT EXISTS idx_referral_clicks_seller ON referral_clicks(seller_id, created_at DESC)` },
+    { name: 'idx_referral_clicks_product', sql: `CREATE INDEX IF NOT EXISTS idx_referral_clicks_product ON referral_clicks(product_id, created_at DESC) WHERE product_id IS NOT NULL` },
     // 🚀 인덱스 추가 (2026-04-22 static audit 결과 — 셀러 대시보드 쿼리 500ms → 50ms)
     { name: 'idx_orders_seller_status_v2', sql: `CREATE INDEX IF NOT EXISTS idx_orders_seller_status_v2 ON orders(seller_id, status)` },
     { name: 'idx_donations_seller_payment_status', sql: `CREATE INDEX IF NOT EXISTS idx_donations_seller_payment_status ON donations(seller_id, payment_status)` },

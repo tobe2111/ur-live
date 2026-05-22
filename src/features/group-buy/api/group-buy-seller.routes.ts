@@ -84,6 +84,19 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
           } catch (e) { if (import.meta.env?.DEV) console.warn('[refund ledger]', e) }
         })())
 
+        // 🛡️ 2026-05-21 Phase D-4: 환불 사용자 알림톡 (waitUntil 비동기).
+        c.executionCtx?.waitUntil((async () => {
+          try {
+            if (!v.user_id) return
+            const user = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(v.user_id).first<{ phone: string }>()
+            if (!user?.phone) return
+            const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+            const amount = product.price.toLocaleString('ko-KR')
+            const msg = `[유어딜] 환불 완료 — ${product.name}\n${amount}원이 환불 처리되었습니다.\n(딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)`
+            await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, user.phone, 'voucher_refunded', msg)
+          } catch (e) { if (import.meta.env?.DEV) console.warn('[refund alimtalk]', e) }
+        })())
+
         // 딜 결제건 1 voucher 당 product.price 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
         if (v.payment_method === 'deal_points' && v.user_id) {
           const amount = product.price

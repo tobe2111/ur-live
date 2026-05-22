@@ -11,7 +11,7 @@ const SellerAnalyticsChart = lazy(() => import('@/components/charts/SellerAnalyt
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<'revenue' | 'customers' | 'products' | 'commission' | 'monthly'>('revenue')
+  const [tab, setTab] = useState<'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel'>('revenue')
   interface RevenueDataPoint { date: string; revenue: number; orders: number }
   interface CustomerData { total_customers: number; repeat_customers: number; top_customers: { name: string; order_count: number; total_spent: number }[] }
   interface ProductPerformanceItem { id: number; name: string; sold_count: number; order_count: number; revenue: number; avg_rating: number; review_count: number; stock: number }
@@ -19,8 +19,9 @@ export default function SellerAnalyticsPage() {
 
   interface CommissionSummary { summary: { total_granted: number; total_pending: number; total_paid_out: number; referred_users_count: number }; top_referred: { source_user_id: string; order_count: number; total_commission: number }[] }
   interface MonthlyTrend { month: string; new_products: number; new_vouchers: number }
+  interface FunnelKpi { days: number; clicks_total: number; unique_visitors: number; orders: number; commission_total: number; conversion_rate: number }
 
-  const [data, setData] = useState<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | null>(null)
+  const [data, setData] = useState<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | FunnelKpi | null>(null)
   const [detailedData, setDetailedData] = useState<DetailedAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(30)
@@ -40,6 +41,7 @@ export default function SellerAnalyticsPage() {
       : tab === 'customers' ? '/api/seller/analytics/customers'
       : tab === 'products' ? '/api/seller/analytics/products/performance'
       : tab === 'commission' ? '/api/seller/analytics/referral-commissions/summary'
+      : tab === 'funnel' ? '/api/seller/funnel-kpi?days=30'
       : '/api/seller/analytics/products/monthly-trend'
     api.get(url, getAuthHeaders()).then(r => { if (r.data.success) setData(r.data.data) }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
   }
@@ -92,8 +94,9 @@ export default function SellerAnalyticsPage() {
             { key: 'products', label: t('seller.productPerformance'), icon: Package },
             { key: 'commission', label: '추천 Commission', icon: Gift },
             { key: 'monthly', label: '월별 입점 추이', icon: Calendar },
+            { key: 'funnel', label: '🔗 트래킹 Funnel', icon: TrendingUp },
           ].map(tabItem => (
-            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly')}
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel')}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
               <tabItem.icon className="h-4 w-4" />{tabItem.label}
             </button>
@@ -305,6 +308,44 @@ export default function SellerAnalyticsPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              )
+            })()}
+
+            {tab === 'funnel' && data && (() => {
+              const k = data as FunnelKpi
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">총 클릭</p>
+                      <p className="text-2xl font-bold text-blue-600">{k.clicks_total.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">최근 {k.days}일</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">고유 방문자</p>
+                      <p className="text-2xl font-bold text-gray-900">{k.unique_visitors.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">IP + UA 기준</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">결제 발생</p>
+                      <p className="text-2xl font-bold text-emerald-600">{k.orders.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">commission 기준</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500">전환율</p>
+                      <p className="text-2xl font-bold text-pink-600">{k.conversion_rate}%</p>
+                      <p className="text-[10px] text-gray-400 mt-1">클릭 → 결제</p>
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <p className="text-sm font-bold text-purple-900">💰 누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
+                    <p className="text-xs text-purple-600 mt-1 leading-relaxed">
+                      • 클릭 → 결제 전환율이 1% 미만이면 콘텐츠/상품 매력 점검<br />
+                      • 클릭 vs 고유 방문자 비율로 같은 사람 재방문 측정 가능<br />
+                      • 실시간 ledger: <a href="/seller/ledger" className="underline">/seller/ledger</a>
+                    </p>
+                  </div>
                 </div>
               )
             })()}
