@@ -834,7 +834,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       ).bind(`${order_number}%`, userId).all<{ id: number; shipping_phone: string | null; user_id: string }>()
         .catch(() => ({ results: [] }))
       if (ktOrders.results && ktOrders.results.length > 0) {
-        const { autoSendKtAlphaVouchersForOrders } = await import('@/worker/utils/kt-alpha-auto-send')
+        const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
         await autoSendKtAlphaVouchersForOrders(
           c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
           ktOrders.results,
@@ -923,8 +923,9 @@ pointsRoutes.post('/withdraw',
       return c.json({ success: false, error: '딜 잔액 부족' }, 400)
     }
 
-    // 8.8% 원천징수 (소득세 8% + 지방세 0.8%) — 정수 floor.
-    const tax = Math.floor(amount * 0.088)
+    // 🛡️ 2026-05-21 정책 중앙화: 딜 환급 = 기타소득 (이벤트성) — WITHHOLDING_RATES.other_income.
+    const { WITHHOLDING_RATES } = await import('../../../worker/utils/tax-withholding')
+    const tax = Math.floor(amount * WITHHOLDING_RATES.other_income)
     const net = amount - tax
 
     try {

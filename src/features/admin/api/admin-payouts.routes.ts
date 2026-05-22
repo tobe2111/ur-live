@@ -11,6 +11,8 @@
  */
 import { Hono } from 'hono'
 import { requireAdmin } from '../../../worker/middleware/auth'
+// 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
+import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
 
 export const adminPayoutsRoutes = new Hono<{ Bindings: Env }>()
@@ -60,7 +62,7 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
 })
 
 // 주기간 정산 일괄 생성 — pending 잔액을 payouts row 로 변환.
-adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), async (c) => {
+adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), auditLog('payouts.generate'), async (c) => {
   const body = await c.req.json<{ period_start?: string; period_end?: string; min_amount?: number }>().catch(() => ({} as { period_start?: string; period_end?: string; min_amount?: number }))
   const periodStart = body.period_start || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
   const periodEnd = body.period_end || new Date().toISOString().slice(0, 10)
@@ -142,7 +144,7 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
   return c.json({ success: true, data: rows.results || [] })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdmin(), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdmin(), auditLog('payouts.approve'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const { DB } = c.env
@@ -155,7 +157,7 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdmin(), async (c)
   return c.json({ success: true })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), auditLog('payouts.sent'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const body = await c.req.json<{ transaction_id?: string; admin_memo?: string }>().catch(() => ({} as { transaction_id?: string; admin_memo?: string }))
@@ -212,7 +214,7 @@ adminPayoutsRoutes.get('/admin/payouts/commission-rates', requireAdmin(), async 
   return c.json({ success: true, data: result })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdmin(), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdmin(), auditLog('payouts.commission_rates'), async (c) => {
   const body = await c.req.json<{ platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number; influencer_intro_share_pct?: number }>().catch(() => ({} as { platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number; influencer_intro_share_pct?: number }))
   const { DB } = c.env
 
@@ -272,7 +274,7 @@ adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdmin(), asyn
   return c.json({ success: true, data: { changes } })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), auditLog('payouts.cancel'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))

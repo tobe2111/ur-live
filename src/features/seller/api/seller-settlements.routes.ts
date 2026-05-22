@@ -406,7 +406,9 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     const grossForTax = gift.real_price * qty   // 액면가 기준 (markup 제외)
     let withholdingAmount = 0
     if (!verified) {
-      withholdingAmount = Math.floor(grossForTax * 0.088)
+      // 🛡️ 2026-05-21 정책 중앙화: KT Alpha 교환권 발송은 기타소득 (단발성) 으로 처리.
+      const { WITHHOLDING_RATES } = await import('../../../worker/utils/tax-withholding')
+      withholdingAmount = Math.floor(grossForTax * WITHHOLDING_RATES.other_income)
     }
     const totalDeductWithTax = totalDeduct + withholdingAmount
 
@@ -438,7 +440,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
 
     // 5. KT Alpha sendCoupon 0204 호출.
     try {
-      const { sendCoupon } = await import('@/worker/utils/giftishow-api')
+      const { sendCoupon } = await import('../../../worker/utils/giftishow-api')
       const env = c.env as unknown as { KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
 
       // qty 만큼 반복 (KT Alpha 는 1건씩 발송).
@@ -484,7 +486,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
       // 🛡️ 원천징수 INSERT — 비사업자만.
       if (!verified && withholdingAmount > 0) {
         try {
-          const { withholdAndLog } = await import('@/worker/utils/tax-withholding')
+          const { withholdAndLog } = await import('../../../worker/utils/tax-withholding')
           await withholdAndLog(c.env, {
             sellerId,
             grossAmount: grossForTax,
@@ -619,7 +621,7 @@ sellerSettlementsRoutes.post('/deal-withdraw', rateLimit({ action: 'seller_deal_
     ).run().catch(() => null);
 
     // 원천징수 + 지급조서.
-    const { withholdAndLog } = await import('@/worker/utils/tax-withholding');
+    const { withholdAndLog } = await import('../../../worker/utils/tax-withholding');
     const wh = await withholdAndLog(c.env as { DB: D1Database }, {
       sellerId,
       grossAmount: amount,
@@ -670,7 +672,7 @@ sellerSettlementsRoutes.get('/tax-summary', async (c) => {
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
 
     const year = Number(c.req.query('year')) || new Date().getFullYear();
-    const { getSellerTaxSummary } = await import('@/worker/utils/tax-withholding');
+    const { getSellerTaxSummary } = await import('../../../worker/utils/tax-withholding');
     const summary = await getSellerTaxSummary(c.env as { DB: D1Database }, sellerId, year);
 
     // 월별 분포 (참고).
