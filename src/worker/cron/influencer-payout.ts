@@ -15,6 +15,7 @@
 
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
+import { swallow } from '../utils/swallow'
 
 interface InfluencerToPayout {
   influencer_id: string
@@ -63,7 +64,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
           available_amount = ?,
           pending_amount = COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0),
           updated_at = datetime('now')
-      `).bind(row.influencer_id, row.amt, row.influencer_id, row.amt, row.influencer_id).run().catch(() => {})
+      `).bind(row.influencer_id, row.amt, row.influencer_id, row.amt, row.influencer_id).run().catch(swallow('cron:influencer-payout:balance-upsert'))
     }
 
     // 2) 송금 대상 인플루언서 추출
@@ -107,7 +108,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
         ).bind(
           `💰 인플 송금 대기: ${inf.influencer_id}`,
           `${inf.available_amount.toLocaleString()}원 (원천징수 ${withholdingPct}% = ${withholding.toLocaleString()}, 실송금 ${netAmount.toLocaleString()})`,
-        ).run().catch(() => {})
+        ).run().catch(swallow('cron:influencer-payout:admin-notify'))
         payoutCount++
         payoutTotal += netAmount
       } catch { /* notification 실패는 무시 */ }
@@ -125,7 +126,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
               content: `⚠️ 인플루언서 ${missingBank.length}명 계좌정보 누락 → 송금 보류:\n${missingBank.slice(0, 10).join(', ')}`,
             }),
             signal: AbortSignal.timeout(5000),
-          }).catch(() => {})
+          }).catch(swallow('cron:influencer-payout:missing-bank-alert'))
         } catch { /* silent */ }
       }
     }

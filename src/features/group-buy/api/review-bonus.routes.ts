@@ -15,6 +15,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
+import { swallow } from '@/worker/utils/swallow'
 
 // 🛡️ 2026-05-20: c.get('user') 등 타입 보장 위한 Variables.
 type ReviewBonusVars = { user?: { id: string | number; email?: string } }
@@ -43,7 +44,7 @@ async function payBonus(DB: D1Database, userId: string, amount: number, voucherI
     await DB.prepare(
       `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
        VALUES (?, 'kakao_review_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-    ).bind(userId, amount, amount, userId, `카카오맵 후기 작성 보너스 (voucher ${voucherId})`).run().catch(() => {})
+    ).bind(userId, amount, amount, userId, `카카오맵 후기 작성 보너스 (voucher ${voucherId})`).run().catch(swallow('review-bonus:kakao-review-tx'))
     return true
   } catch {
     return false

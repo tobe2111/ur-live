@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono'
+import { swallow } from '../../../worker/utils/swallow'
 import type { Env } from '@/worker/types/env'
 import { requireSeller, requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
@@ -672,11 +673,11 @@ adminApp.post('/payouts/process', async (c) => {
     await DB.prepare(
       `INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))
        ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`
-    ).bind(influencerId, dealAmount, dealAmount).run().catch(() => {})
+    ).bind(influencerId, dealAmount, dealAmount).run().catch(swallow('marketing:influencer-payout:balance'))
     await DB.prepare(
       `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
        VALUES (?, 'influencer_payout', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-    ).bind(influencerId, dealAmount, dealAmount, influencerId, `인플 정산 (딜 +${bonusPct}% 보너스)`).run().catch(() => {})
+    ).bind(influencerId, dealAmount, dealAmount, influencerId, `인플 정산 (딜 +${bonusPct}% 보너스)`).run().catch(swallow('marketing:influencer-payout:tx'))
   }
   // 둘 다 — balance 차감 + total_paid_out 누적 + attribution paid 처리
   await c.env.DB.prepare(

@@ -21,6 +21,7 @@ import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { auditLog } from '../middleware/audit-log'
 import { require2FA } from '../middleware/require-2fa'
+import { swallow } from '../utils/swallow'
 
 interface AIEnv {
   AI?: {
@@ -197,7 +198,7 @@ disputesRoutes.post(
       } catch (err) {
         console.error('[disputes/auto-refund]', err)
         // 자동 환불 실패 시 escalated 로 다운그레이드 (voucher CAS 실패하면 voucher 는 안 건드림 — 안전)
-        await DB.prepare("UPDATE disputes SET action = 'escalated' WHERE id = ?").bind(disputeId).run().catch(() => {})
+        await DB.prepare("UPDATE disputes SET action = 'escalated' WHERE id = ?").bind(disputeId).run().catch(swallow('disputes:auto-refund-fallback-escalate'))
       }
     }
 
