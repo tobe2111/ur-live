@@ -19,66 +19,13 @@ import ReelChatSheet from '@/components/live/ReelChatSheet'
 import ReelActionRail from '@/components/live/ReelActionRail'
 import LiveCheckoutSheet from '@/components/live/LiveCheckoutSheet'
 
-interface ApiError {
-  response?: { status?: number; statusText?: string; data?: { error?: string } }
-  message?: string
-}
-
-function isApiError(error: unknown): error is ApiError {
-  return typeof error === 'object' && error !== null && ('response' in error || 'message' in error)
-}
+// 🛡️ 2026-05-22: 타입 + OrderProofToast 분리.
+//   ReelCard.types.ts — Stream / Product / ReelData / ApiError + isApiError
+//   ReelOrderProofToast.tsx — 결제 사회적 증명 토스트
+import { isApiError, type Stream, type Product, type ReelData } from './ReelCard.types'
+import ReelOrderProofToast from './ReelOrderProofToast'
 
 // 🛡️ YouTube iframe API 타입은 LiveTypes.ts (SSOT) 에서 import 합니다.
-// 🛡️ 2026-05-13: YTPlayer / YTPlayerEvent import 제거 — native iframe + postMessage 로 전환.
-
-interface Stream {
-  id: number
-  title: string
-  streamerName: string
-  streamerAvatar?: string
-  videoUrl?: string
-  youtube_video_id?: string
-  thumbnail_url?: string
-  status: 'live' | 'ended' | 'scheduled'
-  viewerCount: number
-  products?: Product[]
-  seller_youtube?: string
-  seller_instagram?: string
-  seller_kakao?: string
-  current_product_id?: number | null
-  seller_id?: number
-  current_product?: Product | null
-  scheduled_at?: string
-  seller_name?: string
-  seller_tiktok?: string
-  seller_shipping_fee?: number
-  donation_goal?: number | null
-  created_at?: string
-  product_display_mode?: 'current_only' | 'all'
-}
-
-interface Product {
-  id: number
-  name: string
-  price: number
-  originalPrice: number
-  original_price?: number
-  image: string
-  image_url?: string
-  description: string
-  rating: number
-  sold: number
-  stock?: number
-  seller_id?: number
-  seller_name?: string
-  colors?: { name: string; hex: string }[]
-  sizes?: string[]
-}
-
-interface ReelData {
-  stream: Stream
-  product: Product | null
-}
 
 // 🛡️ 2026-04-29: LiveChat sub-component → @/components/live/LiveChatStream.tsx 추출 (TD-006)
 //   ReelCard 1447 → 1407줄 (40줄 감소). 외부 import 0건 확인됨.
@@ -89,7 +36,8 @@ import LiveChat from '@/components/live/LiveChatStream'
 import { ProductListSheet } from '@/components/live/ProductListSheet'
 import { formatNumber } from '@/utils/format'
 import { useStreamStore } from '@/shared/stores/useStreamStore'
-export type { Stream, Product, ReelData, ApiError }
+export type { Stream, Product, ReelData } from './ReelCard.types'
+export type { ApiError } from './ReelCard.types'
 
 function ReelCardImpl({
   reel,
@@ -1259,7 +1207,7 @@ function ReelCardImpl({
       {/* 🛡️ 2026-05-13: 결제 사회적 증명 toast (FOMO) — 다른 시청자가 방금 구매 시 노출.
           ChatMessage 시스템 메시지로도 들어가지만 채팅 안 보는 시청자에게도 명확히 노출. */}
       {lastOrderProof && effectiveStatus === 'live' && (
-        <OrderProofToast key={lastOrderProof.ts} proof={lastOrderProof} />
+        <ReelOrderProofToast key={lastOrderProof.ts} proof={lastOrderProof} />
       )}
 
       {/* 🎧 소리 켜기 hint — muted 라이브 시청 중에만 노출.
@@ -1476,36 +1424,6 @@ function ReelCardImpl({
         }}
       />
       {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
-    </div>
-  )
-}
-
-// 🛡️ 2026-05-13: 결제 사회적 증명 toast — TikTok / 라이브 커머스 표준 패턴.
-//   4초 동안 슬라이드 인-아웃, 마스킹된 이름 + 상품명 표시.
-//   chat 시스템 메시지와 중복이지만 채팅 안 보는 시청자에게도 명확.
-function OrderProofToast({ proof }: { proof: { buyer: string; product: string; amount: number; ts: number } }) {
-  const [visible, setVisible] = useState(true)
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(false), 4000)
-    return () => clearTimeout(t)
-  }, [proof.ts])
-  if (!visible) return null
-  return (
-    <div className="absolute bottom-24 left-3 z-30 max-w-[260px] pointer-events-none">
-      <div
-        className="rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 px-3 py-2 shadow-2xl animate-orderProofIn"
-      >
-        <div className="flex items-start gap-2">
-          <span className="text-base shrink-0">🛍️</span>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold text-white truncate">
-              {proof.buyer}님 구매!
-            </p>
-            <p className="text-[10px] text-white/70 truncate">{proof.product}</p>
-          </div>
-        </div>
-      </div>
-      {/* 🛡️ 2026-05-20: inline <style> 제거 — orderProofIn keyframes 는 index.css 글로벌화. */}
     </div>
   )
 }

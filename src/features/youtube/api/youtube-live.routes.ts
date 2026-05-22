@@ -28,28 +28,8 @@ import { cacheInvalidate } from '@/worker/utils/cache'
 const app = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-12: 서브라우터 cors() 제거 — index.ts 전역 cors() 가 처리. 중복 제거.
 
-// YouTube API 상태 조회 서버사이드 캐시 (25s TTL) — API quota 절감
-// 셀러 10명 방송 시: 5s polling → 최대 2 API calls/5s (캐시 미스 시) vs 기존 10 calls/5s
-const statusCache = new Map<string, { data: unknown; ts: number }>()
-const CACHE_TTL: Record<string, number> = {
-  status: 25_000,   // /status 폴링: 25s (라이브 감지 지연 허용)
-  'yt-stats': 60_000, // youtube-stats: 60s (ConnectionQualityGauge 8s → 실제 API 1/8)
-}
-function getCachedStatus(key: string) {
-  const entry = statusCache.get(key)
-  const prefix = key.split(':')[0]
-  const ttl = CACHE_TTL[prefix] ?? 25_000
-  if (entry && Date.now() - entry.ts < ttl) return entry.data
-  return null
-}
-function setCachedStatus(key: string, data: unknown) {
-  statusCache.set(key, { data, ts: Date.now() })
-  // 메모리 누수 방지: 100개 초과 시 오래된 항목 정리
-  if (statusCache.size > 100) {
-    const oldest = [...statusCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0]
-    if (oldest) statusCache.delete(oldest[0])
-  }
-}
+// 🛡️ 2026-05-22 분할 — youtube-live.cache.ts 로 추출.
+import { getCachedStatus, setCachedStatus } from './youtube-live.cache'
 
 // 🛡️ 2026-05-12: handler 를 named export 로 추출 — worker/index.ts 가 top-level 에
 //   직접 등록할 수 있도록. Hono v4 에서 같은 prefix 의 다중 sub-router 마운트 시
@@ -3377,41 +3357,11 @@ export async function omeAdmissionHandler(
   return { allowed: true }
 }
 
-interface OMEAdmissionRequest {
-  client: { address: string; port: number; user_agent?: string }
-  request: {
-    direction: 'incoming' | 'outgoing'
-    protocol: 'webrtc' | 'rtmp' | 'srt' | string
-    status: 'opening' | 'closing'
-    url: string
-    new_url?: string
-    time?: string
-  }
-}
+// 🛡️ 2026-05-22 분할 — youtube-live.hmac.ts 로 추출.
+import type { OMEAdmissionRequest, OMEAdmissionResponse } from './youtube-live.hmac'
+import { hmacHex, hmacBase64Sha1 } from './youtube-live.hmac'
 
-interface OMEAdmissionResponse {
-  allowed: boolean
-  new_url?: string
-  lifetime?: number
-  reason?: string
-}
-
-async function hmacHex(secret: string, message: string): Promise<string> {
-  const enc = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  )
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
-  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-async function hmacBase64Sha1(secret: string, message: string): Promise<string> {
-  const enc = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
-  )
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
-  return btoa(String.fromCharCode(...new Uint8Array(sig)))
-}
+export type { OMEAdmissionRequest, OMEAdmissionResponse }
+export { hmacHex, hmacBase64Sha1 }
 
 export { app as youtubeLiveRoutes }
