@@ -198,6 +198,14 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.introduced_by_agency_id', sql: "ALTER TABLE sellers ADD COLUMN introduced_by_agency_id INTEGER" },
     { desc: 'sellers.introduced_at', sql: "ALTER TABLE sellers ADD COLUMN introduced_at DATETIME" },
     { desc: 'sellers.agency_intro_code', sql: "ALTER TABLE sellers ADD COLUMN agency_intro_code TEXT" },
+    // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 영구 commission lock-in.
+    //   인플루언서가 매장 사장님을 플랫폼에 입점시키면 그 매장 매출의 일정 %를 영구 수령.
+    //   다른 인플루언서가 후속 홍보해도 별개 — 이건 입점 유치 보상.
+    { desc: 'sellers.introduced_by_influencer_id', sql: "ALTER TABLE sellers ADD COLUMN introduced_by_influencer_id INTEGER" },
+    { desc: 'sellers.influencer_intro_code', sql: "ALTER TABLE sellers ADD COLUMN influencer_intro_code TEXT" },
+    { desc: 'idx_sellers_intro_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_intro_influencer ON sellers(introduced_by_influencer_id) WHERE introduced_by_influencer_id IS NOT NULL" },
+    // 인플루언서가 본인 추천 코드 받음 (가입 시 자동 생성)
+    { desc: 'sellers.intro_code', sql: "ALTER TABLE sellers ADD COLUMN intro_code TEXT" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).

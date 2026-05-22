@@ -247,6 +247,64 @@ export async function recordAgencyCommissionShare(
 }
 
 /**
+ * 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 영구 commission.
+ *
+ * 흐름:
+ *   1. 인플루언서가 본인 추천 코드로 매장 사장님 가입 유도
+ *   2. sellers.introduced_by_influencer_id 영구 lock-in
+ *   3. 해당 매장 voucher 사용 시마다 자동 분배 (platform_fee 의 일정 %)
+ *   4. 다른 인플루언서가 후속 홍보로 판매해도 본 commission 은 별개 영구 수령
+ *
+ * 멱등: voucher_id + 'introducing_influencer' 1회만 entry.
+ */
+export async function recordIntroductionCommissionShare(
+  DB: D1Database,
+  params: {
+    voucher_id: number | string
+    merchant_id: number | string
+    platform_fee: number
+  },
+): Promise<{ influencer_id: number | null; amount: number }> {
+  await ensureLedgerTable(DB)
+  const ref = `voucher:${params.voucher_id}:intro-inf`
+  const existing = await DB.prepare(
+    `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
+  ).bind(ref).first().catch(() => null)
+  if (existing) return { influencer_id: null, amount: 0 }
+
+  // 매장의 입점 유치 인플루언서 조회
+  const seller = await DB.prepare(
+    'SELECT introduced_by_influencer_id FROM sellers WHERE id = ?',
+  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null }>().catch(() => null)
+  if (!seller?.introduced_by_influencer_id) return { influencer_id: null, amount: 0 }
+
+  // 분배 비율 (platform_settings.influencer_intro_share_pct, default 20%)
+  let sharePct = 0.20
+  try {
+    const row = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'influencer_intro_share_pct'",
+    ).first<{ value: string }>()
+    const v = parseFloat(row?.value || '20')
+    if (v > 0 && v < 1) sharePct = v
+    else if (v >= 1 && v <= 100) sharePct = v / 100
+  } catch { /* default */ }
+
+  const amount = Math.floor(params.platform_fee * sharePct)
+  if (amount <= 0) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+
+  await recordLedger(DB, {
+    event_type: 'introduction_commission',
+    reference_id: ref,
+    amount,
+    debit_account: 'platform:revenue',
+    credit_account: `seller:${seller.introduced_by_influencer_id}`,
+    metadata: { kind: 'introducing_influencer', voucher_id: params.voucher_id, share_pct: sharePct },
+  })
+
+  return { influencer_id: seller.introduced_by_influencer_id, amount }
+}
+
+/**
  * 환불 시 reverse entries (멱등 보장).
  */
 export async function recordRefundLedger(

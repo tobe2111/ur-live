@@ -268,9 +268,11 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       description?: string;
       // 🛡️ 2026-05-20: 에이전시 입점 영업 — 가게 사장님이 추천코드 입력 시 자동 매칭.
       agency_intro_code?: string;
+      // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
+      influencer_intro_code?: string;
     }>();
 
-    const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code } = body;
+    const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
@@ -321,20 +323,39 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       if (agencyRow?.id) introducedAgencyId = agencyRow.id;
     }
 
+    // 🛡️ Phase D-6: 인플루언서 입점 유치 코드 매칭 (영구 commission lock-in).
+    let introducedInfluencerId: number | null = null;
+    if (resolvedSellerType === 'store_owner' && influencer_intro_code && influencer_intro_code.trim()) {
+      const code = influencer_intro_code.trim().toUpperCase().slice(0, 12);
+      const infRow = await db.prepare(
+        `SELECT id FROM sellers WHERE UPPER(intro_code) = ? AND seller_type IN ('influencer','both') AND status = 'active' LIMIT 1`
+      ).bind(code).first<{ id: number }>().catch(() => null);
+      if (infRow?.id) introducedInfluencerId = infRow.id;
+    }
+
+    // 본인 추천 코드 자동 생성 (인플루언서/both 만)
+    const ownIntroCode = (resolvedSellerType === 'influencer' || resolvedSellerType === 'both')
+      ? `INF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+      : null;
+
     let result;
     try {
       result = await db.prepare(`
         INSERT INTO sellers (
           username, email, password_hash, name, business_name, business_number,
           phone, description, youtube_email, seller_type, linked_user_id,
-          introduced_by_agency_id, introduced_at, agency_intro_code,
+          introduced_by_agency_id, introduced_by_influencer_id, introduced_at,
+          agency_intro_code, influencer_intro_code, intro_code,
           status, commission_rate, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
       `).bind(
         username, sellerEmail, passwordHash, userName, business_name, business_number,
         phone, description || null, youtube_email || null, resolvedSellerType, userId,
-        introducedAgencyId, introducedAgencyId ? new Date().toISOString() : null,
-        introducedAgencyId ? (agency_intro_code || '').trim().toUpperCase().slice(0, 12) : null
+        introducedAgencyId, introducedInfluencerId,
+        (introducedAgencyId || introducedInfluencerId) ? new Date().toISOString() : null,
+        introducedAgencyId ? (agency_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
+        introducedInfluencerId ? (influencer_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
+        ownIntroCode
       ).run();
     } catch (insertErr: any) {
       if (insertErr?.message?.includes('UNIQUE') || insertErr?.message?.includes('unique')) {

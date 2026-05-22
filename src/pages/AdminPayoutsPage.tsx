@@ -57,7 +57,7 @@ export default function AdminPayoutsPage() {
   const [filter, setFilter] = useState<'pending' | 'approved' | 'sent' | 'all'>('pending')
   const [loading, setLoading] = useState(true)
   // 🛡️ 2026-05-21 Phase D: commission rates + 연말 리포트.
-  const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30' })
+  const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30', influencer_intro_share_pct: '20' })
   const [savingRates, setSavingRates] = useState(false)
   const [annualYear, setAnnualYear] = useState(String(new Date().getFullYear() - 1))
   const [annualType, setAnnualType] = useState<'all' | 'store_owner' | 'seller' | 'agency'>('all')
@@ -319,6 +319,19 @@ export default function AdminPayoutsPage() {
               />
               <p className="text-[10px] text-gray-400 mt-1">플랫폼 fee 중 에이전시에게 분배 (introduced_by_agency_id 있는 가게만)</p>
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">🎤 인플루언서 입점 유치 % <span className="text-gray-400">(default 20)</span></label>
+              <input
+                type="number" min={0} max={100} step={1}
+                value={rates.influencer_intro_share_pct}
+                onChange={e => setRates(r => ({ ...r, influencer_intro_share_pct: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                인플루언서가 매장 입점 유치 시 영구 % (introduced_by_influencer_id 있는 가게만).<br />
+                다른 인플루언서가 후속 홍보해도 본 분배는 별개 영구 수령.
+              </p>
+            </div>
           </div>
           <button
             onClick={async () => {
@@ -329,6 +342,7 @@ export default function AdminPayoutsPage() {
                   platform_fee_pct: Number(rates.platform_fee_pct),
                   seller_commission_pct: Number(rates.seller_commission_pct),
                   agency_share_pct: Number(rates.agency_share_pct),
+                  influencer_intro_share_pct: Number(rates.influencer_intro_share_pct),
                 })
                 if (res.data?.success) toast.success('저장됨 — 다음 voucher 부터 적용')
                 else toast.error(res.data?.error || '저장 실패')
