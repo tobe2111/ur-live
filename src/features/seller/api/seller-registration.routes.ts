@@ -314,9 +314,23 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     // 🛡️ 2026-05-20: 에이전시 추천 코드 → agency_id 매칭.
     //   가게 사장님 (store_owner) 만 적용 — 인플루언서는 에이전시 매니지먼트 기존 흐름 유지.
     //   잘못된 코드면 silent (가입은 진행, introduced_by_agency_id 만 null).
+    // 🛡️ 2026-05-21 Phase D-6 영구 정책 (docs/AGENCY_POLICY.md):
+    //   "한 가게 = 1개 lock-in only" — agency_intro_code 와 influencer_intro_code 동시 사용 금지.
+    //   둘 다 입력 시 400 에러 (사장님에게 선택 요구).
+    //   영구성: 양쪽 commission 분배 충돌 / 플랫폼 수익 잠식 방지.
+    const hasAgencyCode = !!(agency_intro_code && agency_intro_code.trim())
+    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())
+    if (hasAgencyCode && hasInfluencerCode) {
+      return c.json({
+        success: false,
+        error: '에이전시 코드와 인플루언서 코드는 동시에 입력할 수 없습니다. 둘 중 하나만 선택하세요.',
+        code: 'CONFLICTING_INTRO_CODES',
+      }, 400)
+    }
+
     let introducedAgencyId: number | null = null;
-    if (resolvedSellerType === 'store_owner' && agency_intro_code && agency_intro_code.trim()) {
-      const code = agency_intro_code.trim().toUpperCase().slice(0, 12);
+    if (resolvedSellerType === 'store_owner' && hasAgencyCode) {
+      const code = agency_intro_code!.trim().toUpperCase().slice(0, 12);
       const agencyRow = await db.prepare(
         `SELECT id FROM agencies WHERE UPPER(intro_code) = ? AND status = 'active' LIMIT 1`
       ).bind(code).first<{ id: number }>().catch(() => null);
@@ -325,8 +339,8 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
 
     // 🛡️ Phase D-6: 인플루언서 입점 유치 코드 매칭 (영구 commission lock-in).
     let introducedInfluencerId: number | null = null;
-    if (resolvedSellerType === 'store_owner' && influencer_intro_code && influencer_intro_code.trim()) {
-      const code = influencer_intro_code.trim().toUpperCase().slice(0, 12);
+    if (resolvedSellerType === 'store_owner' && hasInfluencerCode) {
+      const code = influencer_intro_code!.trim().toUpperCase().slice(0, 12);
       const infRow = await db.prepare(
         `SELECT id FROM sellers WHERE UPPER(intro_code) = ? AND seller_type IN ('influencer','both') AND status = 'active' LIMIT 1`
       ).bind(code).first<{ id: number }>().catch(() => null);

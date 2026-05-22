@@ -543,14 +543,21 @@ adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
       if (!agency) return c.json({ success: false, error: '대상 에이전시를 찾을 수 없습니다.' }, 404);
     }
     // 현재 값 조회 (감사 로그용)
-    const current = await DB.prepare('SELECT introduced_by_agency_id FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null }>();
+    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null }>();
     if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
     const previousAgencyId = current.introduced_by_agency_id;
 
-    // UPDATE — introduced_at 도 갱신 (재배정 시점 기록)
-    await DB.prepare(
-      `UPDATE sellers SET introduced_by_agency_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-    ).bind(newAgencyId, sellerId).run();
+    // 🛡️ 2026-05-21 Phase D-6: "한 가게 = 1 lock-in" 정책 — agency 재배정 시 influencer lock-in 자동 해제.
+    //   동시 lock-in 차단. admin 이 명시적으로 어느 쪽으로 재배정할지 결정.
+    if (newAgencyId != null && current.introduced_by_influencer_id != null) {
+      await DB.prepare(
+        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_by_influencer_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      ).bind(newAgencyId, sellerId).run();
+    } else {
+      await DB.prepare(
+        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      ).bind(newAgencyId, sellerId).run();
+    }
 
     // 감사 로그 (admin_audit_log 자동 생성, 없으면 silent skip)
     const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
@@ -569,6 +576,55 @@ adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
     } catch { /* audit log 없으면 silent skip */ }
 
     return c.json({ success: true, data: { seller_id: sellerId, previous_agency_id: previousAgencyId, new_agency_id: newAgencyId, reason } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 commission lock-in 재배정 (한 가게 = 1 lock-in 영구).
+adminSellersRoutes.patch('/sellers/:id/reassign-influencer', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ new_influencer_id: number | null; reason: string }>().catch(() => ({} as { new_influencer_id?: number | null; reason?: string }));
+    const newInfluencerId = body.new_influencer_id;
+    const reason = (body.reason || '').trim();
+    if (!reason || reason.length < 5) return c.json({ success: false, error: '재배정 사유를 최소 5자 이상 입력하세요.' }, 400);
+
+    if (newInfluencerId != null) {
+      const inf = await DB.prepare("SELECT id FROM sellers WHERE id = ? AND seller_type IN ('influencer','both')").bind(newInfluencerId).first();
+      if (!inf) return c.json({ success: false, error: '대상 인플루언서를 찾을 수 없습니다.' }, 404);
+    }
+    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null }>();
+    if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
+    const previousInfluencerId = current.introduced_by_influencer_id;
+
+    // "한 가게 = 1 lock-in" — influencer 재배정 시 agency lock-in 자동 해제 (admin 명시 의도).
+    if (newInfluencerId != null && current.introduced_by_agency_id != null) {
+      await DB.prepare(
+        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_by_agency_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      ).bind(newInfluencerId, sellerId).run();
+    } else {
+      await DB.prepare(
+        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      ).bind(newInfluencerId, sellerId).run();
+    }
+
+    const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } | undefined }).get('user');
+    try {
+      await DB.prepare(
+        `INSERT INTO admin_audit_log (actor_id, actor_email, action, resource_type, resource_id, old_value, new_value, ip, created_at)
+         VALUES (?, ?, 'influencer_reassign', 'seller', ?, ?, ?, ?, datetime('now'))`,
+      ).bind(
+        String(actor?.id || 'unknown'), actor?.email || null, sellerId,
+        JSON.stringify({ introduced_by_influencer_id: previousInfluencerId }),
+        JSON.stringify({ introduced_by_influencer_id: newInfluencerId, reason }),
+        c.req.header('CF-Connecting-IP') || null,
+      ).run();
+    } catch { /* audit log 없으면 silent */ }
+
+    return c.json({ success: true, data: { seller_id: sellerId, previous_influencer_id: previousInfluencerId, new_influencer_id: newInfluencerId, reason } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

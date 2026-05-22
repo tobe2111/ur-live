@@ -3,12 +3,28 @@
 이 문서는 에이전시 ↔ 가게 ↔ 셀러 ↔ 플랫폼 관계의 운영 규칙을 정의합니다.
 **기술 부채 / 사고를 막기 위한 영구 정책** — 변경 시 INCIDENTS.md 에 사유 기록.
 
-## 1. 에이전시 lock-in (가게 영업권)
+## 1. 입점 commission lock-in (가게 영업권)
 
-### 규칙
-- **한 가게 = 한 에이전시 lock-in**
-- 가게 (store_owner 셀러) 가입 시 `agency_intro_code` 입력 → 영구 commission 수령자 확정
-- `sellers.introduced_by_agency_id` 컬럼이 lock-in 의 single source of truth
+### 핵심 룰: "한 가게 = 1 lock-in only" (2026-05-21 Phase D-6)
+- 가게 사장님 가입 시 **에이전시 코드 OR 인플루언서 코드 중 하나만** 입력 가능
+- 둘 다 입력 시 400 에러 (`CONFLICTING_INTRO_CODES`)
+- 이유: 양쪽 commission 분배 → 플랫폼 수익 잠식 + 가게 사장님 분쟁
+
+### 두 가지 입점 경로
+| 경로 | 입력 코드 | DB 컬럼 | 분배 % (default) |
+|---|---|---|---|
+| 🤵 에이전시 입점 | `agency_intro_code` | `sellers.introduced_by_agency_id` | platform_fee × 30% |
+| 🎤 인플루언서 입점 | `influencer_intro_code` | `sellers.introduced_by_influencer_id` | platform_fee × 20% |
+
+### 역할 분리 (자연스럽게)
+- **에이전시**: 지역 도매 영업 (10+ 가게 매니징, 조직)
+- **인플루언서**: 본인 단골 1-2 곳 영업 + 다른 매장 후속 홍보
+- 후속 홍보 commission 은 입점 lock-in 과 별개 (`referral_commissions`)
+
+### 변경 (admin only)
+- `PATCH /admin/sellers/:id/reassign-agency` → influencer lock-in 자동 해제 후 agency 로 전환
+- `PATCH /admin/sellers/:id/reassign-influencer` → agency lock-in 자동 해제 후 influencer 로 전환
+- 양쪽 모두 감사 로그 (admin_audit_log) 자동 기록
 
 ### 변경 제한
 - 가입 후 `introduced_by_agency_id` **불변 (immutable)**
