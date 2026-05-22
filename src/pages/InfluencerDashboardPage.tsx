@@ -49,19 +49,33 @@ export default function InfluencerDashboardPage() {
     return localStorage.getItem('access_token') || localStorage.getItem('firebase_token') || ''
   }
 
+  // 🛡️ 2026-05-22 무한 redirect 사고 fix:
+  //   원인: KR 카카오 세션 쿠키 사용자는 access_token 없음 (쿠키 인증) → token()=''.
+  //         LoginPage 는 isLoggedIn=true 판정 (user_id 있음) → /influencer 보냄.
+  //         InfluencerDashboardPage 는 token() 빈값 → /login 다시 보냄 → 사이클.
+  //   해결: LoginPage 와 동일 기준 — user_id+user_type 도 인증으로 인정.
+  //         쿠키 사용자는 access_token 없어도 OK. api.get 자체가 쿠키 자동 전송.
+  const hasToken = !!token() ||
+    (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
+
   useEffect(() => {
-    if (!token()) { navigate('/login?returnUrl=/influencer'); return }
+    if (!hasToken) {
+      navigate('/login?returnUrl=/influencer', { replace: true })
+      return
+    }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hasToken])
 
   async function load() {
     setLoading(true)
     try {
+      // 🛡️ 2026-05-22: api.ts 가 withCredentials:true + interceptor 가 Authorization 자동 부착.
+      //   여기서 명시적 Bearer 헤더는 쿠키 사용자에게 빈 토큰 ('Bearer ') 보내 401 유발.
       const [statsRes, funnelRes, topRes] = await Promise.all([
-        api.get('/api/affiliate/stats', { headers: { Authorization: `Bearer ${token()}` } }).catch(() => ({ data: { data: null } })),
-        api.get('/api/affiliate/funnel', { headers: { Authorization: `Bearer ${token()}` } }).catch(() => ({ data: { data: null } })),
-        api.get('/api/affiliate/top-groups', { headers: { Authorization: `Bearer ${token()}` } }).catch(() => ({ data: { data: [] } })),
+        api.get('/api/affiliate/stats').catch(() => ({ data: { data: null } })),
+        api.get('/api/affiliate/funnel').catch(() => ({ data: { data: null } })),
+        api.get('/api/affiliate/top-groups').catch(() => ({ data: { data: [] } })),
       ])
       if (statsRes.data?.data) setStats(statsRes.data.data as Stats)
       if (funnelRes.data?.data) setFunnel(funnelRes.data.data as Funnel)
@@ -71,8 +85,7 @@ export default function InfluencerDashboardPage() {
 
   async function shareViaKakao(item: TopItem) {
     try {
-      const r = await api.get(`/api/affiliate/link/${item.type}/${item.id}`,
-        { headers: { Authorization: `Bearer ${token()}` } })
+      const r = await api.get(`/api/affiliate/link/${item.type}/${item.id}`)
       const url = r.data?.data?.url
       if (!url) { toast.error('링크 생성 실패'); return }
 
@@ -118,14 +131,17 @@ export default function InfluencerDashboardPage() {
 
   async function copyLink(type: string, id: number) {
     try {
-      const r = await api.get(`/api/affiliate/link/${type}/${id}`,
-        { headers: { Authorization: `Bearer ${token()}` } })
+      const r = await api.get(`/api/affiliate/link/${type}/${id}`)
       const url = r.data?.data?.url
       if (!url) { toast.error('링크 생성 실패'); return }
       await navigator.clipboard.writeText(url)
       toast.success('🔗 링크 복사')
     } catch { toast.error('실패') }
   }
+
+  // 🛡️ 2026-05-22: 비로그인 시 빈 화면 (navigate redirect 가 useEffect 에서 실행됨).
+  //   기존엔 '로딩 중...' 표시 상태에서 SideBanner 가 마운트되어 /api/side-banners 호출 → 429 사이클.
+  if (!hasToken) return null
 
   return (
     <div className="min-h-screen bg-[#020202] text-white pb-safe-nav">
