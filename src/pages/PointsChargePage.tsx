@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import SEO from '@/components/SEO'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { ArrowLeft, Zap, Loader2, Info, Check } from 'lucide-react'
@@ -45,8 +46,21 @@ function writeCachedBalance(b: number) {
 export default function PointsChargePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  // 🛡️ 초기값을 localStorage cache 로 — 페이지 진입 즉시 표시. 빈 잔액 카드 깜빡임 차단.
-  const [balance, setBalance] = useState<number>(() => readCachedBalance())
+  // 🛡️ 2026-05-22 v4 (서버 부담 ↓): React Query staleTime 5분 + localStorage initialData.
+  //   효과: 같은 세션 내 충전 페이지 여러 번 진입해도 server hit = 1.
+  //         localStorage 로 페이지 진입 즉시 0ms 표시 + background revalidate.
+  const { data: balance = 0 } = useQuery<number>({
+    queryKey: ['points', 'balance'],
+    queryFn: () => api.get('/api/points/balance').then(r => {
+      const b = Number(r.data?.data?.balance ?? 0)
+      writeCachedBalance(b)
+      return b
+    }).catch(() => readCachedBalance()),
+    initialData: readCachedBalance,
+    staleTime: 5 * 60 * 1000,   // 5분 동안 server hit X
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
   const [options, setOptions] = useState<ChargeOption[]>([])
   const [selected, setSelected] = useState<ChargeOption | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,13 +72,6 @@ export default function PointsChargePage() {
   useEffect(() => {
     if (!userId) { navigate('/login'); return }
     Promise.all([
-      api.get('/api/points/balance').then(r => {
-        if (r.data.success) {
-          const b = Number(r.data.data.balance ?? 0)
-          setBalance(b)
-          writeCachedBalance(b)  // 다음 진입 시 즉시 표시
-        }
-      }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }),
       api.get('/api/points/charge-options').then(r => {
         if (r.data.success) {
           setOptions(r.data.data)

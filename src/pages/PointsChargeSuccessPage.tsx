@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { CheckCircle, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -9,6 +10,7 @@ import { formatNumber } from '@/utils/format'
 export default function PointsChargeSuccessPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -37,6 +39,11 @@ export default function PointsChargeSuccessPage() {
         })
         if (res.data.success) {
           setResult(res.data.data)
+          // 🛡️ 2026-05-22: balance event-based invalidation — 결제 성공 직후 React Query cache + localStorage 갱신.
+          //   효과: 다음 페이지 진입 시 새 잔액 즉시 반영 (서버 추가 호출 X).
+          const newBalance = Number(res.data.data?.balance ?? 0)
+          queryClient.setQueryData(['points', 'balance'], newBalance)
+          try { localStorage.setItem('ur_deal_balance_v1', JSON.stringify(newBalance)) } catch { /* */ }
         } else {
           setError(res.data.error || t('pointsCharge.confirmFailed', { defaultValue: '충전 확인에 실패했습니다.' }))
         }
