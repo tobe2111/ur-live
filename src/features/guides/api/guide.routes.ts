@@ -10,6 +10,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
+import { safeError } from '@/worker/utils/safe-error';
 import { executeQuery } from '@/worker/utils/database'
 // 🛡️ 2026-05-18: GUIDE_SEEDS (87KB) 는 dynamic import — 본 모듈에 정적 포함 X (worker bundle 축소).
 
@@ -87,7 +88,7 @@ guideRoutes.get('/:type', cors(), async (c) => {
     )
     return c.json({ success: true, data: rows })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[guide]')
   }
 })
 
@@ -142,7 +143,7 @@ guideRoutes.patch('/:type/:sectionKey', async (c) => {
     ).bind(...params).run()
     return c.json({ success: true, message: '저장되었습니다' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[guide]')
   }
 })
 
@@ -160,7 +161,7 @@ guideRoutes.delete('/:type/:sectionKey', async (c) => {
     ).bind(type, sectionKey).run()
     return c.json({ success: true, message: '삭제되었습니다' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[guide]')
   }
 })
 

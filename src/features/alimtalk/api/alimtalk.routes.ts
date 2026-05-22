@@ -13,6 +13,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
+import { safeError } from '@/worker/utils/safe-error';
 import {TOSS_PAYMENT_URL } from '@/shared/constants';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
@@ -120,7 +121,7 @@ alimtalkRoutes.get('/credits', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[alimtalk]');
   }
 });
 

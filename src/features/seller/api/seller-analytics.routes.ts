@@ -9,6 +9,7 @@
  */
 import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { safeError } from '@/worker/utils/safe-error';
 import type { Env } from '@/worker/types/env'
 export const sellerAnalyticsRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
@@ -445,7 +446,7 @@ sellerAnalyticsRoutes.get('/store-dashboard/stats', requireAuth(), async (c) => 
       },
     })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[seller-analytics]')
   }
 })
 

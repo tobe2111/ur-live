@@ -12,6 +12,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
+import { safeError } from '@/worker/utils/safe-error';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 // ── Table setup ────────────────────────────────────────────────────────────
@@ -153,7 +154,7 @@ restaurantSettlementRoutes.post('/calculate', async (c) => {
       message: `${created} settlement(s) created`,
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
   }
 });
 
@@ -213,7 +214,7 @@ restaurantSettlementRoutes.get('/list', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
   }
 });
 
@@ -245,7 +246,7 @@ restaurantSettlementRoutes.patch('/:id/complete', async (c) => {
 
     return c.json({ success: true, data: { id, status: 'completed' } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
   }
 });
 
@@ -277,7 +278,7 @@ restaurantSettlementRoutes.patch('/:id/fail', async (c) => {
 
     return c.json({ success: true, data: { id, status: 'failed' } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
   }
 });
 
@@ -321,7 +322,7 @@ restaurantSettlementRoutes.get('/stats', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
   }
 });
 
@@ -402,7 +403,7 @@ sellerSettlementRoutes.get('/', requireAuth(), async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
   }
 });
 

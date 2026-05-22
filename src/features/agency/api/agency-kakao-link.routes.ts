@@ -13,6 +13,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verifyPassword } from '@/lib/password'
 import type { Env } from '@/worker/types/env'
+import { safeError } from '@/worker/utils/safe-error';
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
@@ -113,7 +114,7 @@ app.post('/unlink-kakao', async (c: AgencyCtx) => {
     ).bind(agencyId).run()
     return c.json({ success: true, message: '카카오 연동이 해제되었습니다.' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[agency-kakao-link]')
   }
 })
 
@@ -131,7 +132,7 @@ app.get('/kakao-link-status', async (c: AgencyCtx) => {
         : { linked: false }
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[agency-kakao-link]')
   }
 })
 

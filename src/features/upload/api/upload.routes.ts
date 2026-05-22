@@ -20,6 +20,7 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { safeError } from '../../../worker/utils/safe-error'
 
 type Bindings = {
   DB: D1Database
@@ -139,7 +140,7 @@ uploadRoutes.post('/upload/image', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload]')
   }
 })
 
@@ -159,6 +160,6 @@ uploadRoutes.delete('/upload/image/:key{.+}', cors(), async (c) => {
     await c.env.MEDIA_BUCKET.delete(key)
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload]')
   }
 })

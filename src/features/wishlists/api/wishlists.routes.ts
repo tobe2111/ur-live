@@ -18,6 +18,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { safeError } from '@/worker/utils/safe-error';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 
@@ -87,7 +88,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
       .bind(userId).first<{ count: number }>();
     return c.json({ success: true, data: { items: results, total: countResult?.count || 0 } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -116,7 +117,7 @@ wishlistRoutes.post('/toggle', wishlistRateLimit, requireAuth(), async (c) => {
       return c.json({ success: true, action: 'added', data: { isWishlisted: true, id: result.meta.last_row_id } });
     }
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -131,7 +132,7 @@ wishlistRoutes.delete('/', wishlistRateLimit, requireAuth(), async (c) => {
     await DB.prepare('DELETE FROM wishlists WHERE user_id = ?').bind(userId).run();
     return c.json({ success: true, message: '위시리스트를 모두 비웠습니다.' });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -177,7 +178,7 @@ wishlistRoutes.post('/', wishlistRateLimit, requireAuth(), async (c) => {
     });
   } catch (err) {
     console.error('[Wishlist] Add error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -205,7 +206,7 @@ wishlistRoutes.delete('/:id', wishlistRateLimit, requireAuth(), async (c) => {
     return c.json({ success: true, message: '찜 목록에서 삭제되었습니다.' });
   } catch (err) {
     console.error('[Wishlist] Delete error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -231,7 +232,7 @@ wishlistRoutes.delete('/product/:productId', wishlistRateLimit, requireAuth(), a
     return c.json({ success: true, message: '찜 목록에서 삭제되었습니다.' });
   } catch (err) {
     console.error('[Wishlist] Delete by product error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -277,7 +278,7 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
     });
   } catch (err) {
     console.error('[Wishlist] Get error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 
@@ -308,7 +309,7 @@ wishlistRoutes.get('/check/:userId/:productId', requireAuth(), async (c) => {
     });
   } catch (err) {
     console.error('[Wishlist] Check error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
   }
 });
 

@@ -23,6 +23,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
+import { safeError } from '@/worker/utils/safe-error';
 
 // ── Types ───────────────────────────────────────────────────────────
 interface BundleRow {
@@ -74,7 +75,7 @@ bundlePublicRoutes.get('/', cors(), async (c) => {
     const rows = await executeQuery<BundleRow & { seller_name: string; item_count: number }>(DB, sql, params)
     return c.json({ success: true, data: rows })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 
@@ -110,7 +111,7 @@ bundlePublicRoutes.get('/:id', cors(), async (c) => {
       data: { ...bundle, items, original_total: originalTotal, bundle_price: bundlePrice },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 
@@ -130,7 +131,7 @@ bundleSellerRoutes.get('/', async (c) => {
     )
     return c.json({ success: true, data: rows })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 
@@ -176,7 +177,7 @@ bundleSellerRoutes.post('/', async (c) => {
 
     return c.json({ success: true, data: { id: bundleId }, message: '번들이 생성되었습니다' }, 201)
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 
@@ -219,7 +220,7 @@ bundleSellerRoutes.patch('/:id', async (c) => {
 
     return c.json({ success: true, message: '번들이 수정되었습니다' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 
@@ -238,7 +239,7 @@ bundleSellerRoutes.delete('/:id', async (c) => {
     await c.env.DB.prepare('DELETE FROM product_bundles WHERE id = ?').bind(bundleId).run()
     return c.json({ success: true, message: '번들이 삭제되었습니다' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 
@@ -307,7 +308,7 @@ bundleCartRoutes.post('/:id/add-to-cart', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, "번들 처리 중 오류가 발생했습니다", "[bundles]")
   }
 })
 

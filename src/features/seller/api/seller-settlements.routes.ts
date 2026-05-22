@@ -17,6 +17,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { swallow } from '@/worker/utils/swallow'
+import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
@@ -59,7 +60,7 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
       .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
     return c.json({ success: true, data: rows.results, total: count?.total ?? 0 });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -117,7 +118,7 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
     createDashboardNotification(db, 'admin', null, 'settlement_request', '정산 신청', `셀러 #${sellerId}`, '/admin/settlement').catch(swallow('seller:api:seller-management'));
     return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -195,7 +196,7 @@ sellerSettlementsRoutes.get('/settlement-options', async (c) => {
       },
     });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -233,7 +234,7 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -302,7 +303,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]')
   }
 })
 
@@ -533,7 +534,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
       return c.json({ success: false, error: `발송 실패: ${errMsg}` }, 502)
     }
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]')
   }
 })
 
@@ -556,7 +557,7 @@ sellerSettlementsRoutes.get('/voucher-orders', async (c) => {
     ).bind(sellerId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]')
   }
 })
 
@@ -657,7 +658,7 @@ sellerSettlementsRoutes.post('/deal-withdraw', rateLimit({ action: 'seller_deal_
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -686,7 +687,7 @@ sellerSettlementsRoutes.get('/tax-summary', async (c) => {
 
     return c.json({ success: true, data: { ...summary, monthly: monthly.results || [] } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -732,7 +733,7 @@ sellerSettlementsRoutes.post('/business-registration/submit', async (c) => {
 
     return c.json({ success: true, message: '제출되었습니다. 어드민 검증 후 알려드립니다.' });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -760,7 +761,7 @@ sellerSettlementsRoutes.get('/settlements/stats', async (c) => {
     const defaultStats = { total_settled: 0, pending_amount: 0, approved_amount: 0, paid_amount: 0, total_pending: 0, total_approved: 0, total_paid: 0, total_requests: 0 };
     return c.json({ success: true, data: stats ? { ...defaultStats, ...stats } : defaultStats });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -777,7 +778,7 @@ sellerSettlementsRoutes.get('/settlements/summary', async (c) => {
     const summary = await getSellerSettlementSummary(db, sellerId);
     return c.json({ success: true, data: summary });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -821,7 +822,7 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
       },
     });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });
 
@@ -863,6 +864,6 @@ sellerSettlementsRoutes.get('/settlements/:id/download', async (c) => {
       },
     });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
 });

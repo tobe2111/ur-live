@@ -10,6 +10,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
+import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 import { swallow } from '@/worker/utils/swallow';
@@ -128,7 +129,7 @@ supplyRoutes.get('/products', async (c) => {
     });
   } catch (err) {
     console.error('[Supply] GET /products error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[supply]');
   }
 });
 
@@ -191,7 +192,7 @@ supplyRoutes.post('/sample-requests', async (c) => {
     }, 201);
   } catch (err) {
     console.error('[Supply] POST /sample-requests error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[supply]');
   }
 });
 
@@ -257,7 +258,7 @@ supplyRoutes.get('/sample-requests', async (c) => {
     return c.json({ success: true, data: rows.results ?? [] });
   } catch (err) {
     console.error('[Supply] GET /sample-requests error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[supply]');
   }
 });
 
@@ -355,7 +356,7 @@ supplyRoutes.post('/register', async (c) => {
     }, 201);
   } catch (err) {
     console.error('[Supply] POST /register error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[supply]');
   }
 });
 

@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import { executeQuery } from '@/worker/utils/database'
+import { safeError } from '@/worker/utils/safe-error';
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 export const agencyStaysRoutes = new Hono<{ Bindings: Bindings }>()
@@ -53,7 +54,7 @@ agencyStaysRoutes.get('/stays', cors(), async (c) => {
     ).catch(() => [])
     return c.json({ success: true, data: rows })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[agency-stays]')
   }
 })
 
@@ -90,7 +91,7 @@ agencyStaysRoutes.get('/stays/bookings', cors(), async (c) => {
     const rows = await executeQuery<Record<string, unknown>>(c.env.DB, sql, params).catch(() => [])
     return c.json({ success: true, data: rows })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[agency-stays]')
   }
 })
 
@@ -144,6 +145,6 @@ agencyStaysRoutes.get('/stays/kpi', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[agency-stays]')
   }
 })

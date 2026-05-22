@@ -13,6 +13,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { safeError } from '@/worker/utils/safe-error';
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 import { swallow } from '@/worker/utils/swallow'
 import { broadcastStreamStatus } from '@/worker/utils/broadcast-stream-status'
@@ -2558,7 +2559,7 @@ app.post('/streaming-setup/init', async (c) => {
     })
   } catch (err) {
     console.error('[YouTube streaming-setup/init] Error:', err)
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[youtube-live]')
   }
 })
 
@@ -2715,7 +2716,7 @@ app.delete('/streaming/whip-proxy/:streamId', async (c) => {
     await fetch(resourceUrl, { method: 'DELETE', signal: AbortSignal.timeout(10_000) })
     return c.json({ success: true })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[youtube-live]')
   }
 })
 

@@ -23,6 +23,7 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { safeError } from '@/worker/utils/safe-error';
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 type Vars = { sellerId?: number }
@@ -73,7 +74,7 @@ sellerStaysRoutes.get('/stays', cors(), async (c) => {
     ).bind(sellerId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -103,7 +104,7 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
     }
 
     // 🛡️ 2026-05-18: 셀러 등급별 voucher 한도 검증.
-    const { checkVoucherLimit, canEnableReferral } = await import('@/worker/utils/seller-tier-limits')
+    const { checkVoucherLimit, canEnableReferral } = await import('../../../worker/utils/seller-tier-limits')
     const limit = await checkVoucherLimit(c.env, sellerId)
     if (!limit.ok) {
       return c.json({
@@ -194,7 +195,7 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
     return c.json({ success: true, data: { product_id: productId } })
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Seller Stays] create error:', err)
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -239,7 +240,7 @@ sellerStaysRoutes.get('/stays/:productId', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -295,7 +296,7 @@ sellerStaysRoutes.put('/stays/:productId', cors(), async (c) => {
 
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -349,7 +350,7 @@ sellerStaysRoutes.post('/stays/:productId/rooms', cors(), async (c) => {
 
     return c.json({ success: true, data: { room_id: Number(result.meta.last_row_id) } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -393,7 +394,7 @@ sellerStaysRoutes.put('/stays/:productId/rooms/:roomId', cors(), async (c) => {
     ).bind(...params).run()
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -418,7 +419,7 @@ sellerStaysRoutes.delete('/stays/:productId/rooms/:roomId', cors(), async (c) =>
       .bind(roomId, productId).run()
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -441,7 +442,7 @@ sellerStaysRoutes.get('/stays/:productId/calendar', cors(), async (c) => {
     ).bind(productId, from, to).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -489,7 +490,7 @@ sellerStaysRoutes.put('/stays/:productId/calendar', cors(), async (c) => {
     }
     return c.json({ success: true, data: { updated: dates.length } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -520,7 +521,7 @@ sellerStaysRoutes.get('/stays/:productId/bookings', cors(), async (c) => {
       .all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -535,7 +536,7 @@ async function transitionBooking(
   try {
     // 🛡️ 2026-05-18: CHECK 제약 대체 — 잘못된 status 호출 시 즉시 throw.
     //   dynamic import 라 TS assertion signature 불가 → 직접 호출 (런타임 throw).
-    const stayStatus = await import('@/worker/utils/stay-status')
+    const stayStatus = await import('../../../worker/utils/stay-status')
     if (!(stayStatus.STAY_BOOKING_STATUS as readonly string[]).includes(targetStatus)) {
       throw new Error(`invalid stay_bookings.status: ${targetStatus}`)
     }
@@ -575,7 +576,9 @@ async function transitionBooking(
 
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    // helper 함수 — c 는 부분 mock. safeError 직접 못 씀.
+    console.error('[seller-stays:transition] error:', err)
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500)
   }
 }
 
@@ -632,7 +635,7 @@ sellerStaysRoutes.patch('/stays/bookings/:bookingId/use-voucher', cors(), async 
 
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -649,7 +652,7 @@ sellerStaysRoutes.get('/stays-quota', cors(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
-    const { checkVoucherLimit, canEnableReferral } = await import('@/worker/utils/seller-tier-limits')
+    const { checkVoucherLimit, canEnableReferral } = await import('../../../worker/utils/seller-tier-limits')
     const limit = await checkVoucherLimit(c.env, sellerId)
     const referralAllowed = await canEnableReferral(c.env, sellerId)
     return c.json({
@@ -663,7 +666,7 @@ sellerStaysRoutes.get('/stays-quota', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -748,7 +751,7 @@ sellerStaysRoutes.get('/stays-kpi', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -776,7 +779,7 @@ sellerStaysRoutes.get('/stays-bookings', cors(), async (c) => {
       .all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 
@@ -790,7 +793,7 @@ sellerStaysRoutes.get('/stays-amenities', cors(), async (c) => {
     ).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-stays]')
   }
 })
 

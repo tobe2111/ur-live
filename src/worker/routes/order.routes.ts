@@ -374,10 +374,14 @@ ordersRouter.get('/', async (c) => {
     const { page = '1', limit = '20' } = c.req.query();
     const orderRepo = new OrderRepository(c.env.DB);
 
+    // 🛡️ 2026-05-22: NaN 방어 — parseInt 실패 시 default 사용, 음수 방어.
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(parseInt(limit, 10) || 20, 100));
+
     const { orders, total } = await orderRepo.findByUserId(
       userId,
-      parseInt(page, 10),
-      Math.min(parseInt(limit, 10), 100)
+      pageNum,
+      limitNum
     );
 
     return c.json({

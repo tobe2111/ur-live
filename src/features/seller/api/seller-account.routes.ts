@@ -15,6 +15,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { validateFileMagicBytes } from '@/lib/upload-security'
 import { swallow } from '@/worker/utils/swallow'
+import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
 
 type Bindings = {
@@ -71,7 +72,7 @@ sellerAccountRoutes.on(['PUT', 'PATCH'], '/personal-info', async (c) => {
     `).bind(sellerId).first();
     return c.json({ success: true, data: updatedSeller });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-account]');
   }
 });
 
@@ -114,7 +115,7 @@ sellerAccountRoutes.post('/change-password', rateLimit({ action: 'seller_change_
     await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?").bind(Number(sellerId)).run().catch(swallow('seller:api:seller-management'));
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-account]');
   }
 });
 

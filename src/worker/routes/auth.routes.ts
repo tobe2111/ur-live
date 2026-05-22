@@ -281,7 +281,9 @@ authRouter.patch('/profile', authMiddleware, async (c) => {
     const updated = await db.prepare('SELECT id, email, name, phone, avatar_url FROM users WHERE id = ?').bind(id).first();
     return c.json({ success: true, data: updated });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    // 🛡️ 2026-05-22: production 정보 누출 방지 — 상세 에러는 로그만, 응답은 generic.
+    console.error('[auth/profile] update failed:', err);
+    return c.json({ success: false, error: '프로필 업데이트 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -314,7 +316,9 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
     } catch { /* table may not exist in older environments */ }
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    // 🛡️ 2026-05-22: production 정보 누출 방지 — UNIQUE constraint 등 DB 메시지 노출 X.
+    console.error('[auth/change-password] failed:', err);
+    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다' }, 500);
   }
 });
 

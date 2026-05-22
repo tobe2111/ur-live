@@ -11,6 +11,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
+import { safeError } from '@/worker/utils/safe-error';
 const sellerDonationsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -72,7 +73,7 @@ sellerDonationsRoutes.get('/donations/summary', async (c) => {
       },
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-donations]');
   }
 });
 
@@ -175,7 +176,7 @@ sellerDonationsRoutes.post('/donations/settlements', async (c) => {
       message: `${Number(settlementAmount ?? 0).toLocaleString('ko-KR')}원 정산 신청이 완료되었습니다.`,
     });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-donations]');
   }
 });
 

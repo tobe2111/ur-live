@@ -12,6 +12,7 @@
  */
 
 import { Hono } from 'hono';
+import { safeError } from '../../../worker/utils/safe-error';
 
 type Bindings = {
   DB: D1Database;
@@ -36,6 +37,6 @@ bannerRoutes.get('/', async (c) => {
 
     return c.json({ success: true, data: banners.results });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[banners]');
   }
 });

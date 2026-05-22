@@ -9,6 +9,7 @@
  */
 import { Hono } from 'hono'
 import { calcFundingProgress, type FundingStatus } from '@/lib/live-funding'
+import { safeError } from '../../../worker/utils/safe-error'
 
 type Bindings = { DB: D1Database }
 
@@ -80,7 +81,7 @@ fundingRoutes.get('/', async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: true, data: [] })
     }
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[funding]')
   }
 })
 
@@ -119,7 +120,7 @@ fundingRoutes.get('/:id', async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: false, error: '펀딩 시스템이 아직 활성화되지 않았어요' }, 503)
     }
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[funding]')
   }
 })
 
@@ -148,6 +149,6 @@ fundingRoutes.get('/:id/progress', async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: false, error: 'not available' }, 503)
     }
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[funding]')
   }
 })

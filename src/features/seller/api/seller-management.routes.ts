@@ -19,6 +19,7 @@ import {DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { validateFileMagicBytes } from '@/lib/upload-security';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { safeError } from '@/worker/utils/safe-error';
 
 import { swallow } from '@/worker/utils/swallow';
 type Bindings = {
@@ -426,7 +427,7 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     return c.json({ success: true, data: seller });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-management]');
   }
 });
 
@@ -462,7 +463,7 @@ sellerManagementRoutes.get('/:sellerId/products-public', async (c) => {
       pagination: { page: pageNum, limit: limitNum, total: countRow?.total ?? 0 },
     });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-management]');
   }
 });
 
@@ -494,7 +495,7 @@ sellerManagementRoutes.get('/products/:id/options', async (c) => {
 
     return c.json({ success: true, data: result.results || [] });
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-management]');
   }
 });
 
@@ -543,7 +544,7 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
 
     return c.json({ success: true, data: updated.results || [] }, 201);
   } catch (err: unknown) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-management]');
   }
 });
 

@@ -289,7 +289,7 @@ publicUtilityRoutes.get('/api/home/bundle', async (c) => {
       },
     })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    console.error("[home/bundle] error:", e); return c.json({ success: false, error: "홈 데이터 로드 중 오류가 발생했습니다" }, 500)
   }
 })
 
@@ -394,7 +394,7 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
 
     return c.json({ success: true, data: sections })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    console.error("[vouchers/categories] error:", e); return c.json({ success: false, error: "카테고리 로드 중 오류가 발생했습니다" }, 500)
   }
 })
 
@@ -442,6 +442,6 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
 
     return c.json({ success: true, data: { sections } })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    console.error("[home/categories] error:", e); return c.json({ success: false, error: "카테고리 로드 중 오류가 발생했습니다" }, 500)
   }
 })

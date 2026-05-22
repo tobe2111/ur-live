@@ -16,6 +16,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { safeError } from '@/worker/utils/safe-error';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker'
 import {
   normalizePhone,
@@ -107,7 +108,7 @@ giftsRoutes.post('/', requireAuth(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[gifts]')
   }
 })
 
@@ -224,7 +225,7 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
 
     return c.json({ success: true, data: { id: giftId, status: 'paid', claim_token: gift.claim_token } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[gifts]')
   }
 })
 
@@ -249,7 +250,7 @@ giftsRoutes.get('/sent', requireAuth(), async (c) => {
     return c.json({ success: true, data: results || [] })
   } catch (err) {
     if ((err as Error).message?.includes('no such table')) return c.json({ success: true, data: [] })
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[gifts]')
   }
 })
 
@@ -287,7 +288,7 @@ giftsRoutes.get('/claim/:token', async (c) => {
 
     return c.json({ success: true, data: gift })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[gifts]')
   }
 })
 
@@ -334,6 +335,6 @@ giftsRoutes.post('/claim/:token', async (c) => {
 
     return c.json({ success: true, data: { id: gift.id, status: 'claimed' } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[gifts]')
   }
 })

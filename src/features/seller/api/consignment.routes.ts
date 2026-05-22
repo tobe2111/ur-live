@@ -11,6 +11,7 @@
  */
 import { Hono } from 'hono'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
+import { safeError } from '@/worker/utils/safe-error';
 import { canApprove, canTerminate } from '@/lib/consignment-split'
 import { getConsignmentSettlementsForSeller } from '@/lib/consignment-settlement'
 
@@ -102,7 +103,7 @@ consignmentRoutes.post('/request', requireSeller(), async (c) => {
       data: { id: result.meta?.last_row_id, status: 'pending' },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[consignment]')
   }
 })
 
@@ -143,7 +144,7 @@ consignmentRoutes.post('/:id/approve', requireSeller(), async (c) => {
 
     return c.json({ success: true, data: { id, status: 'active' } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[consignment]')
   }
 })
 
@@ -177,7 +178,7 @@ consignmentRoutes.post('/:id/terminate', requireSeller(), async (c) => {
 
     return c.json({ success: true, data: { id, status: 'ended' } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[consignment]')
   }
 })
 
@@ -227,7 +228,7 @@ consignmentRoutes.get('/', requireSeller(), async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: true, data: [] })
     }
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[consignment]')
   }
 })
 
@@ -249,6 +250,6 @@ consignmentRoutes.get('/settlements', requireSeller(), async (c) => {
     const result = await getConsignmentSettlementsForSeller(c.env.DB, Number(sellerId), from, to)
     return c.json({ success: true, data: { ...result, period: { from, to } } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[consignment]')
   }
 })

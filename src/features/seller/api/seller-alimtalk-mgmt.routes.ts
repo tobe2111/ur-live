@@ -14,6 +14,7 @@
  */
 import { Hono } from 'hono'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
+import { safeError } from '@/worker/utils/safe-error';
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
@@ -48,7 +49,7 @@ sellerAlimtalkMgmtRoutes.get('/alimtalk', requireSeller(), async (c) => {
     return c.json({ success: true, data: { account: account || null, templates: templates.results || [] } })
   } catch (err) {
     if ((err as Error).message?.includes('no such table')) return c.json({ success: true, data: { account: null, templates: [] } })
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })
 
@@ -90,7 +91,7 @@ sellerAlimtalkMgmtRoutes.post('/alimtalk', requireSeller(), async (c) => {
 
     return c.json({ success: true, message: '브랜드메시지 계정이 등록되었습니다. 관리자 승인 후 활성화됩니다.' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })
 
@@ -108,7 +109,7 @@ sellerAlimtalkMgmtRoutes.get('/alimtalk/balance', requireSeller(), async (c) => 
     if (!account) return c.json({ success: true, data: { balance: 0, total_sent: 0, total_failed: 0 } })
     return c.json({ success: true, data: account })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })
 
@@ -152,7 +153,7 @@ sellerAlimtalkMgmtRoutes.post('/alimtalk/test', requireSeller(), async (c) => {
       message: result.success ? '테스트 발송 성공' : `테스트 발송 실패: ${result.error}`,
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })
 
@@ -271,7 +272,7 @@ sellerAlimtalkMgmtRoutes.post('/alimtalk/send', requireSeller(), async (c) => {
       data: { total: recipients.length, success: successCount, failed: failedCount, refunded: failedCount * cost },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })
 
@@ -308,7 +309,7 @@ sellerAlimtalkMgmtRoutes.get('/alimtalk/messages', requireSeller(), async (c) =>
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })
 
@@ -362,6 +363,6 @@ sellerAlimtalkMgmtRoutes.post('/alimtalk/charge', requireSeller(), async (c) => 
       data: { amount, unit_price: unitPrice, total_price: totalPrice, order_id: orderId },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
   }
 })

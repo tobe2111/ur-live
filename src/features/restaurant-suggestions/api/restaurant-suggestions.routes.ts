@@ -11,6 +11,7 @@
  */
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
+import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { swallow } from '@/shared/utils/swallow';
@@ -78,7 +79,7 @@ restaurantSuggestionsRoutes.post('/', rateLimit({ action: 'restaurant_sug', max:
       message: kind === 'notify' ? '출시 시 알림드릴게요!' : '영입 신청이 어드민에 전달됐어요!',
     });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[restaurant-suggestions]');
   }
 });
 
@@ -107,7 +108,7 @@ restaurantSuggestionsRoutes.get('/stats', requireAdmin(), async (c) => {
     `).bind(limit).all<Record<string, unknown>>();
     return c.json({ success: true, data: rows.results || [] });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[restaurant-suggestions]');
   }
 });
 

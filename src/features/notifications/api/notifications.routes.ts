@@ -12,6 +12,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth } from '@/worker/middleware/auth';
+import { safeError } from '@/worker/utils/safe-error';
 import type { AuthUser } from '@/worker/middleware/auth';
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FIREBASE_PROJECT_ID?: string };
@@ -102,7 +103,7 @@ notificationsRoutes.get('/', async (c) => {
     const data = await fetchUnifiedNotifications(DB, userId, userType, { limit, unreadOnly });
     return c.json({ success: true, data });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[notifications]');
   }
 });
 
@@ -146,7 +147,7 @@ notificationsRoutes.put('/:id/read', async (c) => {
     if (updated === 0) return c.json({ success: false, error: 'Notification not found' }, 404);
     return c.json({ success: true });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[notifications]');
   }
 });
 
@@ -166,7 +167,7 @@ notificationsRoutes.put('/read-all', async (c) => {
     } catch {}
     return c.json({ success: true });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[notifications]');
   }
 });
 
@@ -196,6 +197,6 @@ notificationsRoutes.delete('/:id', async (c) => {
     if (deleted === 0) return c.json({ success: false, error: 'Notification not found' }, 404);
     return c.json({ success: true });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[notifications]');
   }
 });

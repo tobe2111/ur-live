@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { requireAdmin } from '@/worker/middleware/auth';
+import { safeError } from '@/worker/utils/safe-error';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
@@ -142,7 +143,7 @@ cafe24Routes.post('/sync', requireAdmin() as any, async (c) => {
     });
   } catch (err) {
     console.error('[Cafe24] Sync error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[cafe24]');
   }
 });
 

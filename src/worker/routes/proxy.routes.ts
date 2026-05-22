@@ -34,7 +34,7 @@ app.get('/kakao/place/search', async (c) => {
     const data = await res.json();
     return c.json({ success: true, data });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    console.error("[proxy/kakao-place] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 
@@ -56,7 +56,7 @@ app.get('/kakao/place/nearby', async (c) => {
     const data = await res.json();
     return c.json({ success: true, data });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    console.error("[proxy/kakao-address] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 
@@ -91,7 +91,7 @@ app.get('/kakao/place/address', async (c) => {
     }
     return c.json({ success: true, data });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    console.error("[proxy/naver-place] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 
@@ -124,7 +124,7 @@ app.get('/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windo
     }
     return c.json({ success: true, data });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    console.error("[proxy/naver-image] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 
@@ -159,7 +159,7 @@ app.get('/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windo
     }
     return c.json({ success: true, data });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    console.error("[proxy/naver-restaurant] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 
@@ -217,7 +217,7 @@ app.get('/naver/restaurant', rateLimit({ action: 'naver_restaurant', max: 30, wi
       data: result,
     });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    console.error("[proxy/other] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 

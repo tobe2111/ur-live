@@ -8,6 +8,7 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { safeError } from '../../../worker/utils/safe-error'
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
@@ -89,7 +90,7 @@ staysPublicRoutes.get('/stays/search', cors(), async (c) => {
       .all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -123,7 +124,7 @@ staysPublicRoutes.get('/stays/:productId', cors(), async (c) => {
       data: { product, rooms: rooms.results || [] },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -236,7 +237,7 @@ staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -485,7 +486,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -759,7 +760,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -890,7 +891,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -998,7 +999,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -1058,7 +1059,7 @@ staysPublicRoutes.post('/stays/bookings/:id/review', cors(), async (c) => {
 
     return c.json({ success: true, message: '리뷰가 등록되었습니다' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -1083,7 +1084,7 @@ staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
     ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
 
@@ -1117,6 +1118,6 @@ staysPublicRoutes.get('/stays/:productId/reviews', cors(), async (c) => {
 
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })

@@ -48,11 +48,16 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
 
   try {
     // replay=true: 다시보기 전체 채팅 (최대 500개 — 무제한 조회 방지)
-    const fromId = c.req.query('from_id') ? Number(c.req.query('from_id')) : 0
+    // 🛡️ 2026-05-22: Number(NaN) > 0 가 false 라 실제 주입은 막혀있지만, 영구 안전:
+    //   1) bind param 으로 변경 — 미래 개발자가 패턴 복사 시 사고 방지
+    //   2) bound: Math.max(0, ...) + Number.isFinite check
+    const fromIdRaw = c.req.query('from_id')
+    const fromId = fromIdRaw && Number.isFinite(Number(fromIdRaw)) ? Math.max(0, Math.floor(Number(fromIdRaw))) : 0
+    const hasFromId = isReplay && fromId > 0
     const query = isReplay
       ? `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
-         WHERE live_stream_id = ? AND is_deleted = 0 ${fromId > 0 ? 'AND id > ' + fromId : ''}
+         WHERE live_stream_id = ? AND is_deleted = 0 ${hasFromId ? 'AND id > ?' : ''}
          ORDER BY id ASC LIMIT 500`
       : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
          FROM chat_messages
@@ -60,7 +65,8 @@ liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
          ORDER BY id DESC
          LIMIT 50`
 
-    const messages = await c.env.DB.prepare(query).bind(liveId).all()
+    const stmt = c.env.DB.prepare(query)
+    const messages = await (hasFromId ? stmt.bind(liveId, fromId) : stmt.bind(liveId)).all()
 
     return c.json({
       success: true,
@@ -169,7 +175,9 @@ liveSseRoutes.post('/:liveId/broadcast', requireSellerOrAdmin(), async (c) => {
   }
 
   const user = getCurrentUser(c)
-  const body = await c.req.json()
+  // 🛡️ 2026-05-22: 잘못된 JSON → 500 (Hono 기본 에러 핸들러) 대신 명시적 400.
+  let body: Record<string, unknown> = {}
+  try { body = await c.req.json() } catch { return c.json({ success: false, error: 'Invalid JSON' }, 400) }
   const doId = c.env.LIVE_STREAM.idFromName(liveId)
   const stub = c.env.LIVE_STREAM.get(doId)
 
@@ -315,7 +323,7 @@ chatRoutes.post('/:liveId/messages', rateLimit({ action: 'chat_post', max: 30, w
     insertedId = result.meta.last_row_id
   } catch (err) {
     console.error('[Chat] D1 insert failed:', err)
-    return c.json({ success: false, error: 'Failed to save message', detail: (err as Error).message }, 500)
+    return c.json({ success: false, error: 'Failed to save message' }, 500)
   }
 
   // Broadcast to DO WebSocket clients (non-fatal if DO unavailable)

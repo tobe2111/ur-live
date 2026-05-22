@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
+import { safeError } from '@/worker/utils/safe-error'
 
 type Bindings = {
   DB: D1Database
@@ -132,7 +133,7 @@ sellerKakaoLinkRoutes.post('/unlink-kakao', async (c) => {
     ).bind(sellerId).run()
     return c.json({ success: true, message: '카카오 연동이 해제되었습니다.' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-kakao-link]')
   }
 })
 
@@ -154,6 +155,6 @@ sellerKakaoLinkRoutes.get('/kakao-link-status', async (c) => {
         : { linked: false }
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-kakao-link]')
   }
 })
