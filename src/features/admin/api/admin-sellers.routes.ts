@@ -542,21 +542,35 @@ adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
       const agency = await DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(newAgencyId).first();
       if (!agency) return c.json({ success: false, error: '대상 에이전시를 찾을 수 없습니다.' }, 404);
     }
-    // 현재 값 조회 (감사 로그용)
-    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null }>();
+    // 현재 값 조회 (감사 로그용 + race detection 용)
+    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id, updated_at FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null; updated_at: string | null }>();
     if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
     const previousAgencyId = current.introduced_by_agency_id;
+    const previousUpdatedAt = current.updated_at;
 
-    // 🛡️ 2026-05-21 Phase D-6: "한 가게 = 1 lock-in" 정책 — agency 재배정 시 influencer lock-in 자동 해제.
-    //   동시 lock-in 차단. admin 이 명시적으로 어느 쪽으로 재배정할지 결정.
+    // 🛡️ 2026-05-22 P0 race condition 방어:
+    //   두 admin 이 같은 셀러를 동시 reassign → second writer wins, audit log 거짓 ("5→10" 인데 실제 "5→20").
+    //   해결: UPDATE WHERE updated_at = previousUpdatedAt (optimistic lock).
+    //         meta.changes === 0 → 409 Conflict 반환 ("다른 어드민이 방금 수정. 새로고침 후 다시 시도.").
+    let casResult
     if (newAgencyId != null && current.introduced_by_influencer_id != null) {
-      await DB.prepare(
-        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_by_influencer_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      ).bind(newAgencyId, sellerId).run();
+      // "한 가게 = 1 lock-in" — agency 재배정 시 influencer lock-in 자동 해제.
+      casResult = await DB.prepare(
+        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_by_influencer_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
+      ).bind(newAgencyId, sellerId, previousUpdatedAt).run();
     } else {
-      await DB.prepare(
-        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      ).bind(newAgencyId, sellerId).run();
+      casResult = await DB.prepare(
+        `UPDATE sellers SET introduced_by_agency_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
+      ).bind(newAgencyId, sellerId, previousUpdatedAt).run();
+    }
+    if (!casResult.meta?.changes) {
+      return c.json({
+        success: false,
+        error: '다른 어드민이 방금 수정했습니다. 새로고침 후 다시 시도하세요.',
+        code: 'CONCURRENT_MODIFICATION',
+      }, 409);
     }
 
     // 감사 로그 (admin_audit_log 자동 생성, 없으면 silent skip)
@@ -596,19 +610,30 @@ adminSellersRoutes.patch('/sellers/:id/reassign-influencer', cors(), async (c) =
       const inf = await DB.prepare("SELECT id FROM sellers WHERE id = ? AND seller_type IN ('influencer','both')").bind(newInfluencerId).first();
       if (!inf) return c.json({ success: false, error: '대상 인플루언서를 찾을 수 없습니다.' }, 404);
     }
-    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null }>();
+    const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id, updated_at FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null; updated_at: string | null }>();
     if (!current) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404);
     const previousInfluencerId = current.introduced_by_influencer_id;
+    const previousUpdatedAt = current.updated_at;
 
-    // "한 가게 = 1 lock-in" — influencer 재배정 시 agency lock-in 자동 해제 (admin 명시 의도).
+    // 🛡️ 2026-05-22 P0 race condition 방어 — optimistic lock (updated_at WHERE 조건).
+    let casResult
     if (newInfluencerId != null && current.introduced_by_agency_id != null) {
-      await DB.prepare(
-        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_by_agency_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      ).bind(newInfluencerId, sellerId).run();
+      casResult = await DB.prepare(
+        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_by_agency_id = NULL, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
+      ).bind(newInfluencerId, sellerId, previousUpdatedAt).run();
     } else {
-      await DB.prepare(
-        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      ).bind(newInfluencerId, sellerId).run();
+      casResult = await DB.prepare(
+        `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
+      ).bind(newInfluencerId, sellerId, previousUpdatedAt).run();
+    }
+    if (!casResult.meta?.changes) {
+      return c.json({
+        success: false,
+        error: '다른 어드민이 방금 수정했습니다. 새로고침 후 다시 시도하세요.',
+        code: 'CONCURRENT_MODIFICATION',
+      }, 409);
     }
 
     const actor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } | undefined }).get('user');

@@ -13,12 +13,16 @@
 
 import { Hono } from 'hono'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 
 const app = new Hono<{ Bindings: Env }>()
 
 app.use('*', requireAdmin())
+
+// 🛡️ 2026-05-22 P0 fix: agency-approvals 의 승인/반려는 sellers.status 변경 = sensitive action.
+//   audit log 누락 → 누가 언제 처리했는지 사후 추적 불가. middleware 적용.
 
 interface ApprovalRow {
   id: number
@@ -79,7 +83,7 @@ app.get('/', async (c) => {
 
 // ── GET /agency-creator-approvals/:id ─────────────────────
 app.get('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'))
+  const id = parseInt(c.req.param('id') || '0', 10)
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
 
   const row = await c.env.DB.prepare(`
@@ -98,8 +102,8 @@ app.get('/:id', async (c) => {
 })
 
 // ── POST /agency-creator-approvals/:id/approve ───────────
-app.post('/:id/approve', async (c) => {
-  const id = parseInt(c.req.param('id'))
+app.post('/:id/approve', auditLog('agency_approval.approve'), async (c) => {
+  const id = parseInt(c.req.param('id') || '0', 10)
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
 
   const adminId = c.get('user' as never) as { id?: number } | undefined
@@ -138,8 +142,8 @@ app.post('/:id/approve', async (c) => {
 })
 
 // ── POST /agency-creator-approvals/:id/reject ────────────
-app.post('/:id/reject', async (c) => {
-  const id = parseInt(c.req.param('id'))
+app.post('/:id/reject', auditLog('agency_approval.reject'), async (c) => {
+  const id = parseInt(c.req.param('id') || '0', 10)
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
 
   const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))

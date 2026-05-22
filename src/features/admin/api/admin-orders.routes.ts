@@ -17,6 +17,7 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { logAudit } from '../../../lib/audit-log';
+import { auditLog } from '@/worker/middleware/audit-log';
 
 export const adminOrdersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -361,7 +362,9 @@ adminOrdersRoutes.put('/orders/:orderNumber/tracking', cors(), async (c) => {
   }
 });
 
-adminOrdersRoutes.patch('/orders/bulk-status', cors(), async (c) => {
+// 🛡️ 2026-05-22 P0: 일괄 상태 변경 — sensitive action. audit log 추가.
+//   race condition 은 SQL WHERE UPPER(status) IN (...) 로 이미 atomic — 부적합 상태면 자동 skip.
+adminOrdersRoutes.patch('/orders/bulk-status', cors(), auditLog('orders.bulk_status'), async (c) => {
   try {
     const { DB } = c.env;
     const { order_numbers, status } = await c.req.json<{ order_numbers: string[]; status: string }>();
