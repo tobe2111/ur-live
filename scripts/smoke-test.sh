@@ -49,6 +49,8 @@ echo "--- Public (200 기대) ---"
 check GET /api/version "200"
 check GET /api/vouchers/categories "200"
 check GET /api/group-buy/products "200"
+check GET "/api/group-buy/products?status=active&category=all" "200"
+check GET "/api/group-buy/products?status=active&category=meal_voucher" "200"
 check GET /sitemap.xml "200"
 
 echo ""
@@ -66,6 +68,8 @@ check GET  /api/referral-tree/admin/withdrawals?status=pending  "200 401 403"
 check GET  /api/admin/payouts/pending                           "200 401 403"
 check GET  /api/admin/payouts                                   "200 401 403"
 check GET  /api/admin/payouts/commission-rates                  "200 401 403"
+# 🛡️ 2026-05-22: 정책 대시보드 (FE 페이지) — endpoint 자체는 admin/payouts 의 commission-rates 가 데이터 소스
+# 🛡️ 2026-05-22: group-buy 캐시 fallback 동작 확인 — 동일 응답 형태 + computed_at age 10분 이내
 check GET  /api/admin/tax/annual-report?year=2024               "200 401 403"
 
 echo ""

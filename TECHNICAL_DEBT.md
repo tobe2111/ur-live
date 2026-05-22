@@ -46,8 +46,9 @@
 ## ⚠️ 운영자 액션 (production 수동 필요)
 
 1. **`migrations/0276` D1 적용** — 공구 피드 perf index
-2. **`migrations/0277` D1 적용** — group_buy_feed_cache table (skeleton, 비활성 — 100만 명 단계에서 enable)
-3. **wrangler.toml cron** — 100만 명 단계 진입 시 `handleGroupBuyFeedCache` 5분 cron 등록 + 응답 분기 PR
+2. **`migrations/0277` D1 적용** — group_buy_feed_cache table
+   * 적용 즉시 자동 활성: 5분 cron 이 `*/5 * * * *` 트리거 시 갱신 + 응답 path 가 cache 우선 lookup
+   * 미적용 환경: graceful no-op (table probe 실패 → 실시간 D1 쿼리 fallback)
 
 ## 🟡 영구 deferred (사유 명시)
 

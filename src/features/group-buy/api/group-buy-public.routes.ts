@@ -43,6 +43,25 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       c.env.SESSION_KV,
       `group_buy_products:${status}:${categories.join(',')}`,
       async () => {
+        // 🛡️ 2026-05-22: KV miss → 1차 fallback: materialized cache table (migration 0277).
+        //   group_buy_feed_cache 가 5분마다 cron 으로 갱신됨. D1 SELECT 보다 100-200ms 빠름.
+        //   table 미존재 / row 없음 시 graceful → 아래 실시간 쿼리 fallback.
+        try {
+          const cached = await DB.prepare(
+            "SELECT product_json, computed_at FROM group_buy_feed_cache WHERE status = ? AND category = ? LIMIT 1"
+          ).bind(status, categoryParam).first<{ product_json: string; computed_at: string }>().catch(() => null)
+          if (cached?.product_json) {
+            // 5분 cron 기준, 10분 이상 stale 이면 무시 (실시간 fallback)
+            const ageMs = Date.now() - new Date(cached.computed_at + 'Z').getTime()
+            if (ageMs < 10 * 60_000) {
+              try {
+                const parsed = JSON.parse(cached.product_json)
+                if (Array.isArray(parsed)) return parsed
+              } catch { /* JSON 깨짐 — 실시간 fallback */ }
+            }
+          }
+        } catch { /* 테이블 미존재 — graceful */ }
+
         const placeholders = categories.map(() => '?').join(',')
         // 🛡️ 2026-05-22 perf: SELECT p.* (30+ 컬럼, ~10KB) → 카드에서 실제 사용하는
         //   16개 컬럼만 (응답 56% 감소). description/product_detail_images/stock/reserved_stock 등 제외.

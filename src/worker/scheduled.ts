@@ -54,6 +54,7 @@ import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleOmeHealthCheck } from './cron/ome-health-check';
+import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
@@ -104,6 +105,10 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
     ctx.waitUntil(safeCron('appointment-noshow-alert', () => handleAppointmentNoshowAlert(env)));
+    // 🛡️ 2026-05-22: group-buy 피드 materialized cache 갱신 (5분).
+    //   migrations/0277 미적용 환경은 graceful skip — table probe 후 no-op.
+    //   응답 path 의 cache fallback 과 함께 동작 (group-buy-public.routes.ts).
+    ctx.waitUntil(safeCron('group-buy-feed-cache', () => handleGroupBuyFeedCache(env)));
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
