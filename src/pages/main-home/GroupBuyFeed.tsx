@@ -5,8 +5,9 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import GroupBuyGuideCard from './GroupBuyGuideCard'
@@ -47,27 +48,19 @@ type CategoryKey = typeof CATEGORIES[number]['key']
 export default function GroupBuyFeed() {
   const [category, setCategory] = useState<CategoryKey>('all')
   const [sort, setSort] = useState<SortKey>('popular')
-  const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState<FeedProduct[]>([])
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    api.get(`/api/group-buy/products?status=active&category=${category}`)
-      .then(res => {
-        if (cancelled) return
-        const data: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
-        setItems(data)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setItems([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [category])
+  // 🛡️ 2026-05-22: React Query 도입 — 탭 복귀 / 카테고리 재선택 시 캐시 hit (~200ms 절감).
+  //   서버 KV cache 300s + 클라이언트 staleTime 5min 으로 이중 캐시.
+  const { data: items = [], isLoading: loading } = useQuery<FeedProduct[]>({
+    queryKey: ['group-buy-products', 'active', category],
+    queryFn: async () => {
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
+      return Array.isArray(res.data?.data) ? res.data.data : []
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
 
   // 클라이언트 사이드 정렬 — 50개 cap 이므로 비용 무시 가능.
   const sorted = useMemo(() => {
@@ -174,25 +167,21 @@ export default function GroupBuyFeed() {
  *   (백엔드 region 필터 미지원 → category 만 'all' 로 폴백. 향후 region 도입 시 동일 패턴 확장.)
  */
 function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; onReset: () => void }) {
-  const [fallback, setFallback] = useState<FeedProduct[] | null>(null)
-  const [fbLoading, setFbLoading] = useState(false)
-
-  useEffect(() => {
-    if (category === 'all') { setFallback([]); return }
-    let cancelled = false
-    setFbLoading(true)
-    api.get('/api/group-buy/products?status=active&category=all')
-      .then(res => {
-        if (cancelled) return
-        const data: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
-        // 인기순 상위 6개만 (인접 공구 추천)
-        const top = [...data].sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0)).slice(0, 6)
-        setFallback(top)
-      })
-      .catch(() => { if (!cancelled) setFallback([]) })
-      .finally(() => { if (!cancelled) setFbLoading(false) })
-    return () => { cancelled = true }
-  }, [category])
+  // 🛡️ 2026-05-22: useQuery — 메인 피드에서 'all' fetch 되면 캐시 hit (중복 호출 X).
+  //   메인 GroupBuyFeed 가 category='all' 이미 fetch 했으면 즉시 사용.
+  const { data: fallback = [], isLoading: fbLoading } = useQuery<FeedProduct[]>({
+    queryKey: ['group-buy-products', 'active', 'all'],
+    queryFn: async () => {
+      const res = await api.get('/api/group-buy/products?status=active&category=all')
+      return Array.isArray(res.data?.data) ? res.data.data : []
+    },
+    enabled: category !== 'all',
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    select: (data) =>
+      [...data].sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0)).slice(0, 6),
+  })
 
   return (
     <div className="px-4 pt-2 pb-8">

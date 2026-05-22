@@ -7,6 +7,7 @@
 
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import type { Product } from './types'
 
 const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
@@ -92,7 +93,11 @@ export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
       <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]">
         {p.image_url ? (
           <img
-            src={p.image_url}
+            // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (200px base, 1x/2x/3x DPI).
+            //   원본 1000px+ 다운로드 → 200-600px WebP/AVIF 자동 변환 (50-80% 트래픽 절감).
+            src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
+            srcSet={cfSrcSet(p.image_url, 200) || undefined}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
             alt={p.name || cat.label}
             loading="lazy"
             decoding="async"
