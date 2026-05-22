@@ -139,8 +139,12 @@ export async function recordVoucherUsedLedger(
       }
     } catch { /* default fallback */ }
   }
-  if (platformRate === undefined) platformRate = 0.05
-  if (sellerRate === undefined) sellerRate = 0.10
+  // 🛡️ 2026-05-22 정책 중앙화 — COMMISSION_DEFAULTS fallback (DB 미설정 시)
+  if (platformRate === undefined || sellerRate === undefined) {
+    const { COMMISSION_DEFAULTS } = await import('../../shared/constants/policy')
+    if (platformRate === undefined) platformRate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT / 100
+    if (sellerRate === undefined) sellerRate = COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT / 100
+  }
   if (!params.seller_id) sellerRate = 0
   const merchantRate = 1 - platformRate - sellerRate
   const platformAmount = Math.floor(params.order_amount * platformRate)

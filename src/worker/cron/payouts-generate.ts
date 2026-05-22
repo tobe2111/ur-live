@@ -25,7 +25,9 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
     lastSunday.setUTCDate(lastMonday.getUTCDate() + 6)
     const periodStart = lastMonday.toISOString().slice(0, 10)
     const periodEnd = lastSunday.toISOString().slice(0, 10)
-    const MIN_AMOUNT = 10000
+    // 🛡️ 2026-05-22 정책 중앙화 — REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL
+    const { REFUND_POLICY } = await import('../../shared/constants/policy')
+    const MIN_AMOUNT = REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL
 
     // 지난주 발생한 credit (외상) 집계
     const credits = await DB.prepare(`

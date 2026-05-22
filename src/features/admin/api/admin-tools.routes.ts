@@ -196,15 +196,18 @@ adminToolsRoutes.post('/notices', async (c) => {
 
 // ── 정산 일괄 처리 ──
 adminToolsRoutes.get('/settlements/pending', async (c) => {
+  // 🛡️ 2026-05-22 정책 중앙화 — COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+  const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
+  const feeRate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT / 100
   const { results } = await c.env.DB.prepare(`
     SELECT s.id AS seller_id, s.name AS seller_name, s.business_name,
       COUNT(DISTINCT o.id) AS order_count,
       COALESCE(SUM(o.total_amount), 0) AS total_amount,
-      COALESCE(SUM(o.total_amount * 0.05), 0) AS commission
+      COALESCE(SUM(o.total_amount * ?), 0) AS commission
     FROM orders o JOIN sellers s ON o.seller_id = s.id
     WHERE o.status IN ('DELIVERED', 'delivered') AND COALESCE(o.settlement_status, 'pending') = 'pending'
     GROUP BY s.id ORDER BY total_amount DESC
-  `).all()
+  `).bind(feeRate).all()
   return c.json({ success: true, data: results || [] })
 })
 

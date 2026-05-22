@@ -573,7 +573,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           ).bind(userId, `from:${refUserId}`).first().catch(() => null)
 
           if (!alreadyRewarded) {
-            const bonus = Math.round(totalAmount * 0.005)  // 0.5% 양쪽 (이전 1% → 절반)
+            // 🛡️ 2026-05-22 정책 중앙화 — COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT
+            const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
+            const bonus = Math.round(totalAmount * COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT / 100)
             if (bonus > 0) {
               // 추천인 보너스
               await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, refUserId).run().catch(() => {})

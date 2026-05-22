@@ -387,7 +387,9 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
           validatedReferrerId = refId
           const discountPct = Math.min(50, Math.max(0, Number(room.influencer_discount_pct) || 0))  // 50% 안전 상한
           discountAmount = Math.floor(subtotal * discountPct / 100)
-          const commissionPct = Math.min(20, Math.max(0, Number(room.influencer_commission_pct) || 0))  // 20% 안전 상한
+          // 🛡️ 2026-05-22 정책 중앙화 — COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT
+          const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
+          const commissionPct = Math.min(COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT, Math.max(0, Number(room.influencer_commission_pct) || 0))
           commissionAmount = Math.floor((subtotal - discountAmount) * commissionPct / 100)
         }
       }
@@ -669,7 +671,9 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
           validatedReferrerId = refId
           const discountPct = Math.min(50, Math.max(0, Number(firstRoom.influencer_discount_pct) || 0))
           discountAmount = Math.floor(grandSubtotal * discountPct / 100)
-          const commissionPct = Math.min(20, Math.max(0, Number(firstRoom.influencer_commission_pct) || 0))
+          // 🛡️ 2026-05-22 정책 중앙화 — COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT
+          const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
+          const commissionPct = Math.min(COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT, Math.max(0, Number(firstRoom.influencer_commission_pct) || 0))
           commissionAmount = Math.floor((grandSubtotal - discountAmount) * commissionPct / 100)
         }
       }
@@ -946,7 +950,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
       ).bind(booking.order_id).first<{ payment_key: string | null }>().catch(() => null)
 
       if (orderRow?.payment_key) {
-        const { tossCancelPayment } = await import('@/worker/utils/toss-refund')
+        const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
         const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
           reason: `예약 취소 (정책 ${policy}, ${(refundRate * 100).toFixed(0)}% 환불) — ${reason || '사용자 요청'}`.slice(0, 200),
           amount: refundRate < 1.0 ? refundAmount : undefined,  // 부분 환불일 때만 amount 명시

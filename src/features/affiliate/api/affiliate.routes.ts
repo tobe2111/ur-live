@@ -9,8 +9,10 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
+import { COMMISSION_DEFAULTS } from '../../../shared/constants/policy'
 
-const DEFAULT_COMMISSION_RATE = 0.05 // 🛡️ 2026-05-19: 5% (이전 2% 폐기, migration 0271 과 일치)
+// 🛡️ 2026-05-22 정책 중앙화 — policy.ts (단일 진실원천)
+const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT / 100
 
 export const affiliateRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.

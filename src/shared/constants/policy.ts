@@ -54,6 +54,15 @@ export const COMMISSION_DEFAULTS = {
 
   /** 셀러 등급별 보너스 */
   TIER_COMMISSION_BONUS: { bronze: 0, silver: 1, gold: 2, platinum: 3 } as Record<string, number>,
+
+  /** 제휴 마케팅 추천인 보상 % (platform_settings.affiliate_commission_rate 미설정 시 fallback) */
+  AFFILIATE_COMMISSION_PCT: 5,
+
+  /** 공구 동시 추천 (양쪽 보너스) — 추천인/피추천인 각각 받는 % */
+  REFERRAL_BONUS_BOTHSIDES_PCT: 0.5,
+
+  /** 숙박 등 외부 카테고리 commission 상한 (%) — exploding rate 방지 */
+  STAYS_COMMISSION_CAP_PCT: 20,
 } as const
 
 export const TAX_POLICY = {

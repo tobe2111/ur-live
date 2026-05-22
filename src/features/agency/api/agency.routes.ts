@@ -878,11 +878,14 @@ app.get('/report/csv', async (c: AgencyCtx) => {
   const period = c.req.query('period') || '30'
   const days = parseInt(period)
 
+  // 🛡️ 2026-05-22 정책 중앙화 — PLATFORM_FEE + AGENCY_OWN_RATE 추정 commission
+  const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
+  const estimatedRate = (COMMISSION_DEFAULTS.PLATFORM_FEE_PCT + COMMISSION_DEFAULTS.AGENCY_OWN_RATE) / 100
   const { results } = await c.env.DB.prepare(`
     SELECT s.name AS seller_name, s.email,
       COUNT(DISTINCT o.id) AS order_count,
       COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue,
-      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END) * 0.07, 0) AS commission
+      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END) * ?, 0) AS commission
     FROM agency_sellers ag
     JOIN sellers s ON ag.seller_id = s.id
     LEFT JOIN orders o ON o.seller_id = s.id AND o.created_at > datetime('now', '-' || ? || ' days')
@@ -890,7 +893,7 @@ app.get('/report/csv', async (c: AgencyCtx) => {
     GROUP BY s.id, s.name, s.email
     ORDER BY revenue DESC
     LIMIT 500
-  `).bind(days, agencyId).all()
+  `).bind(estimatedRate, days, agencyId).all()
 
   const rows = results || []
   const csv = [
