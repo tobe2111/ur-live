@@ -22,9 +22,7 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, ShoppingCart, Bell } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
-import api from '@/lib/api'
-import { isLoggedInSync } from '@/utils/auth'
+import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -34,27 +32,12 @@ import UserOnboardingModal from '@/components/onboarding/UserOnboardingModal'
 export default function MainHomePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const enabled = isLoggedInSync()
 
-  // 🛡️ 2026-05-22 영구 해결 — useQuery 로 DesktopTopNav 와 dedup.
-  //   기존: MainHomePage 와 DesktopTopNav 가 같은 API 2개 (unread-count + cart) 각각 호출
-  //         → 메인 진입 시 4 requests fire (PC). 사용자 체감 "느림" 의 한 원인.
-  //   해결: 같은 queryKey 사용 → React Query 가 동일 시점 dedup + 1회만 fetch.
-  //   refetchOnWindowFocus:false — 탭 복귀 시 또 호출 안 함.
-  const { data: unreadCount = 0 } = useQuery<number>({
-    queryKey: ['notifications', 'unread-count'],
-    queryFn: () => api.get('/api/notifications/unread-count').then(r => Number(r.data?.data?.count ?? 0)).catch(() => 0),
-    enabled,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  })
-  const { data: cartCount = 0 } = useQuery<number>({
-    queryKey: ['cart', 'count'],
-    queryFn: () => api.get('/api/cart').then(r => (Array.isArray(r.data?.data) ? r.data.data.length : 0)).catch(() => 0),
-    enabled,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  })
+  // 🛡️ 2026-05-22 v5 (전체 영구 마이그레이션):
+  //   공통 hook 사용 → DesktopTopNav 와 자동 dedup + localStorage 즉시 표시.
+  //   사용자 1명 세션 내 server hit = 1 (이전: 페이지 진입마다 4 calls).
+  const { data: unreadCount = 0 } = useUnreadCount()
+  const { data: cartCount = 0 } = useCartCount()
 
   return (
     <>

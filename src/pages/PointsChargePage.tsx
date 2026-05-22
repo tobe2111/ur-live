@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
 import SEO from '@/components/SEO'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { ArrowLeft, Zap, Loader2, Info, Check } from 'lucide-react'
@@ -9,6 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
+import { useBalance } from '@/hooks/queries'
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
@@ -27,40 +27,14 @@ interface ChargeOption {
 //   - 키 type 검증은 서버가 담당. widget key 면 init 단계에서 'invalid' 반환.
 //   - 운영자는 TOSS_CLIENT_KEY 를 'API 개별 연동 키' (live_gck_ / test_gck_) 사용 필수.
 
-// 🛡️ 2026-05-22 영구 해결 (사용자 명령 "딜 잔액 뜨는 것도 늦음"):
-//   localStorage cache → 페이지 진입 즉시 0ms 로 last-known balance 표시.
-//   network response 도착하면 setState 로 갱신 (체감: instant).
-const BALANCE_CACHE_KEY = 'ur_deal_balance_v1'
-function readCachedBalance(): number {
-  try {
-    const raw = localStorage.getItem(BALANCE_CACHE_KEY)
-    if (!raw) return 0
-    const n = Number(JSON.parse(raw))
-    return Number.isFinite(n) && n >= 0 ? n : 0
-  } catch { return 0 }
-}
-function writeCachedBalance(b: number) {
-  try { localStorage.setItem(BALANCE_CACHE_KEY, JSON.stringify(b)) } catch { /* quota */ }
-}
+// 🛡️ 2026-05-22 v5: 공통 hook 마이그레이션 — useBalance() 사용.
+//   localStorage cache / queryKey / mutation invalidation 모두 @/hooks/queries 에서 일원화.
 
 export default function PointsChargePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  // 🛡️ 2026-05-22 v4 (서버 부담 ↓): React Query staleTime 5분 + localStorage initialData.
-  //   효과: 같은 세션 내 충전 페이지 여러 번 진입해도 server hit = 1.
-  //         localStorage 로 페이지 진입 즉시 0ms 표시 + background revalidate.
-  const { data: balance = 0 } = useQuery<number>({
-    queryKey: ['points', 'balance'],
-    queryFn: () => api.get('/api/points/balance').then(r => {
-      const b = Number(r.data?.data?.balance ?? 0)
-      writeCachedBalance(b)
-      return b
-    }).catch(() => readCachedBalance()),
-    initialData: readCachedBalance,
-    staleTime: 5 * 60 * 1000,   // 5분 동안 server hit X
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  })
+  // 공통 hook — 5분 stale + localStorage initialData + dedup.
+  const { data: balance = 0 } = useBalance()
   const [options, setOptions] = useState<ChargeOption[]>([])
   const [selected, setSelected] = useState<ChargeOption | null>(null)
   const [loading, setLoading] = useState(true)

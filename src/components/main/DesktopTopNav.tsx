@@ -7,10 +7,9 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap } from 'lucide-react'
 import { useState, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import api from '@/lib/api'
-import UrDealLogo from '@/components/brand/UrDealLogo'
+import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function DesktopTopNav() {
   const navigate = useNavigate()
@@ -20,32 +19,9 @@ export default function DesktopTopNav() {
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
 
-  // 🛡️ 2026-05-22 영구 해결 — MainHomePage 와 같은 queryKey 로 dedup.
-  //   기존: MainHomePage + DesktopTopNav 가 PC 메인 진입 시 동일 API 2번씩 (4 requests).
-  //   해결: 동일 queryKey → React Query 자동 dedup → 1 request 만 fire.
-  //   60s staleTime + 60s 자동 refetch (interval) — 페이지 머무는 동안 1분마다 갱신.
-  const { data: unreadCount = 0 } = useQuery<number>({
-    queryKey: ['notifications', 'unread-count'],
-    queryFn: () => api.get('/api/notifications/unread-count').then(r => {
-      const c = Number(r.data?.data?.count ?? r.data?.count ?? 0)
-      return Number.isFinite(c) && c >= 0 ? c : 0
-    }).catch(() => 0),
-    enabled: loggedIn,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: false,
-  })
-  const { data: cartCount = 0 } = useQuery<number>({
-    queryKey: ['cart', 'count'],
-    queryFn: () => api.get('/api/cart').then(r => {
-      const items = r.data?.data?.items || (Array.isArray(r.data?.data) ? r.data.data : [])
-      return items.reduce((s: number, it: { quantity?: number }) => s + (it.quantity || 1), 0)
-    }).catch(() => 0),
-    enabled: loggedIn,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: false,
-  })
+  // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
+  const { data: unreadCount = 0 } = useUnreadCount()
+  const { data: cartCount = 0 } = useCartCount()
 
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
