@@ -13,6 +13,7 @@ import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { formatNumber } from '@/utils/format'
 import { getTossPayments } from '@/lib/toss-preload'
+import { resolveTossFlow } from '@/lib/toss-key-type'
 
 interface DbPackage {
   id: number
@@ -111,17 +112,22 @@ export default function SellerAlimtalkPage() {
       )
       if (!res.data.success) { toast.error(res.data.error); return }
 
-      const { orderId, amount, orderName, clientKey, flow } = res.data.data as {
+      const { orderId, amount, orderName, clientKey, flow: serverFlow } = res.data.data as {
         orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid'
       }
 
-      if (!clientKey || flow === 'invalid') {
+      if (!clientKey) {
         toast.error(t('seller.paymentSettingError'))
         return
       }
 
-      // 🛡️ 2026-05-23 widget 키 (_ck_/_wck_/_wt_) 지원: in-page 위젯 페이지 navigate.
-      //   server flow 가 결정 — payment() V2 (gck) / widgets() (ck) 환경 모두 호환.
+      // 🛡️ 2026-05-23 belt-and-suspenders: 클라이언트도 키 형식 직접 감지 → server 응답 우회.
+      const flow = resolveTossFlow(serverFlow, clientKey)
+      if (flow === 'invalid') {
+        toast.error(t('seller.paymentSettingError'))
+        return
+      }
+
       if (flow === 'widget') {
         const params = new URLSearchParams({
           orderId,

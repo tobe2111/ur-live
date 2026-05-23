@@ -60,24 +60,34 @@ export default function TossWidgetPayPage() {
     }
     initializedRef.current = true
 
+    // 🛡️ 2026-05-23 영구 fix — 단계별 timeout (silent hang 방어).
+    const STEP_TIMEOUT_MS = 8000
+    const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, rej) =>
+          setTimeout(() => rej(new Error(`[TIMEOUT:${label}] ${STEP_TIMEOUT_MS}ms 초과`)), STEP_TIMEOUT_MS),
+        ),
+      ])
+
     let cancelled = false
     ;(async () => {
       try {
-        const sdk = await getTossPayments(clientKey)
+        const sdk = await withTimeout(getTossPayments(clientKey), 'SDK_LOAD')
         if (cancelled) return
         const sanitized = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
         const widgets = sdk.widgets({ customerKey: `user_${sanitized}`.substring(0, 50) })
         if (!widgets) throw new Error('widgets() returned null')
 
-        await widgets.setAmount({ currency: 'KRW', value: Math.round(amount) })
+        await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(amount) }), 'SET_AMOUNT')
 
         const tryRender = async (
           method: 'renderPaymentMethods' | 'renderAgreement',
           selector: string,
           preferred: string,
         ) => {
-          try { await widgets[method]({ selector, variantKey: preferred }); return } catch { /* */ }
-          try { await widgets[method]({ selector }); return } catch (e) { throw e }
+          try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* */ }
+          await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
         }
 
         await tryRender('renderPaymentMethods', '#toss-widget-pay-method', 'DEFAULT')
@@ -90,7 +100,9 @@ export default function TossWidgetPayPage() {
         if (cancelled) return
         if (import.meta.env.DEV) console.error('[TossWidgetPay] init failed:', err)
         const raw = err instanceof Error ? err.message : ''
-        const msg = /not.*found|404|variant/i.test(raw)
+        const msg = /TIMEOUT/i.test(raw)
+          ? `결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요. (${raw.slice(0, 100)})`
+          : /not.*found|404|variant/i.test(raw)
           ? '결제 위젯 설정 누락 — 관리자에게 문의해주세요.'
           : raw || '결제 초기화 실패'
         setErrorMsg(msg)

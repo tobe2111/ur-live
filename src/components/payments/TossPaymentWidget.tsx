@@ -87,9 +87,23 @@ export function TossPaymentWidget({
     let cancelled = false
     hasInitialized.current = true
 
+    // 🛡️ 2026-05-23 영구 fix — 무한로딩 방어 + 단계별 timeout.
+    //   사용자 신고: "결제 시스템 로딩 중..." 무한 hang.
+    //   원인 (silent fail): renderPaymentMethods 가 await 만 걸리고 promise resolve/reject 안 함
+    //   → loadingState 영원히 'loading' → 사용자 갇힘.
+    //   해결: 각 step 에 timeout race → 명확한 에러 + 페이지 새로고침 안내.
+    const STEP_TIMEOUT_MS = 8000
+    const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, rej) =>
+          setTimeout(() => rej(new Error(`[TIMEOUT:${label}] ${STEP_TIMEOUT_MS}ms 초과`)), STEP_TIMEOUT_MS),
+        ),
+      ])
+
     ;(async () => {
       try {
-        const tossPayments = await getTossPayments(clientKey)
+        const tossPayments = await withTimeout(getTossPayments(clientKey), 'SDK_LOAD')
         if (cancelled) return
 
         const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
@@ -97,7 +111,7 @@ export function TossPaymentWidget({
         const widgets = tossPayments.widgets({ customerKey })
         if (!widgets) throw new Error('widgets() returned null — clientKey 가 결제위젯 키가 아닐 가능성')
 
-        await widgets.setAmount({ currency: 'KRW', value: Math.round(totalAmount) })
+        await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(totalAmount) }), 'SET_AMOUNT')
 
         // variantKey fallback: 'DEFAULT' 시도 → 실패 시 variantKey 생략 (SDK 기본).
         const tryRender = async (
@@ -105,8 +119,8 @@ export function TossPaymentWidget({
           selector: string,
           preferred: string,
         ) => {
-          try { await widgets[method]({ selector, variantKey: preferred }); return } catch { /* fallback */ }
-          await widgets[method]({ selector })
+          try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* fallback */ }
+          await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
         }
         await tryRender('renderPaymentMethods', '#toss-payment-method', VARIANT_PAYMENT)
         await tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT)
@@ -118,8 +132,10 @@ export function TossPaymentWidget({
         if (cancelled) return
         if (import.meta.env.DEV) console.error('[TossPaymentWidget] init/render failed:', err)
         const raw = err instanceof Error ? err.message : ''
-        const msg = /not.*found|404|variant/i.test(raw)
-          ? '결제 위젯 설정 누락 — 관리자에게 문의해주세요. (Toss 콘솔에서 위젯 등록 필요)'
+        const msg = /TIMEOUT/i.test(raw)
+          ? `결제 위젯 로딩이 지연됩니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요. (${raw.slice(0, 100)})`
+          : /not.*found|404|variant/i.test(raw)
+          ? '결제 위젯 설정 누락 — 관리자에게 문의해주세요. (Toss 콘솔 variantKey 등록 필요)'
           : /widget.*key|클라이언트 키|개별 연동 키/i.test(raw)
           ? '결제 시스템 키 type 오류 — 관리자에게 문의해주세요.'
           : raw || t('payment.initError', { defaultValue: '결제 초기화 실패' })

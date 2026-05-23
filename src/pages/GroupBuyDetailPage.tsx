@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
 import { getTossPayments } from '@/lib/toss-preload'
+import { resolveTossFlow } from '@/lib/toss-key-type'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -289,8 +290,16 @@ export default function GroupBuyDetailPage() {
         toast.error(initRes.data?.error || '공구 결제 시작 실패')
         return
       }
-      const { orderId, amount, orderName, clientKey: serverClientKey, flow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid' }
-      if (!serverClientKey || flow === 'invalid') {
+      const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid' }
+      if (!serverClientKey) {
+        toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
+        return
+      }
+      // 🛡️ 2026-05-23 belt-and-suspenders: 클라이언트도 키 형식 직접 감지 →
+      //   server flow 가 캐시/오감지로 widget 키에 'redirect' 반환해도 강제로 widget 으로 보정.
+      //   SDK 의 "결제위젯 연동 키는 지원하지 않습니다" 에러 영구 차단.
+      const flow = resolveTossFlow(serverFlow, serverClientKey)
+      if (flow === 'invalid') {
         toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         return
       }
@@ -300,7 +309,7 @@ export default function GroupBuyDetailPage() {
       const successPath = `/group-buy/confirm-payment?${successQs}`
       const failPath = `/group-buy/${productId}?fail=1&${failQs}`
 
-      // 🛡️ 2026-05-23 widget 키 (_wt_) 지원: in-page 위젯 페이지로 navigate.
+      // widget 키 (_ck_/_wck_/_wt_) → in-page 위젯 페이지로 navigate.
       if (flow === 'widget') {
         const params = new URLSearchParams({
           orderId,

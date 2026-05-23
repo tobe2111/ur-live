@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import type { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
+import { resolveTossFlow } from '@/lib/toss-key-type'
 import { ArrowLeft, Zap, Loader2, Info, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -124,10 +125,11 @@ export default function PointsChargePage() {
         return
       }
 
-      // 🛡️ 2026-05-23 widget 키 (_wt_) 지원: in-page 위젯 페이지로 navigate.
-      //   payment() V2 는 _gck_ 키만 받음. _wt_ 환경에선 widgets() API 필수.
-      //   공용 페이지가 widget 마운트 + requestPayment 처리 → successUrl 로 redirect.
-      if (serverFlow === 'widget') {
+      // 🛡️ 2026-05-23 belt-and-suspenders: 클라이언트도 키 형식 직접 감지.
+      //   server flow 가 캐시/오감지로 widget 키에 'redirect' 반환해도 강제 widget 보정.
+      const flow = resolveTossFlow(serverFlow, serverClientKey)
+
+      if (flow === 'widget') {
         const params = new URLSearchParams({
           orderId,
           amount: String(amount),
@@ -140,7 +142,7 @@ export default function PointsChargePage() {
         return
       }
 
-      if (serverFlow !== 'redirect') {
+      if (flow !== 'redirect') {
         toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         await api.post('/api/points/charge/cancel').catch(() => null)
         setProcessing(false)
