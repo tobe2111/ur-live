@@ -186,10 +186,12 @@ export async function handleScheduled(env: Env) {
   } catch (e) { logError('[Cron] group_buys error:', { error: String(e) }) }
 
   // ── 4. 바우처: 만료일 지난 바우처 자동 만료 ──
+  // 🛡️ 2026-05-23: vouchers 테이블에는 updated_at 컬럼 없음 (created_at 만).
+  //   migration 0146 schema 참조. updated_at SET 제거.
   try {
     const { meta } = await DB.prepare(`
       UPDATE vouchers
-      SET status = 'expired', updated_at = datetime('now')
+      SET status = 'expired'
       WHERE status = 'unused'
         AND expires_at IS NOT NULL
         AND expires_at < datetime('now')

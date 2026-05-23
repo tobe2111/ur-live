@@ -325,19 +325,20 @@ supplyRoutes.post('/register', async (c) => {
     const slug = `${request.name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 40)}-${Date.now()}`;
 
     // 셀러 스토어에 상품 등록
+    // 🛡️ 2026-05-23: stock_quantity 컬럼 제거 — schema SSOT 는 `stock` (CLAUDE.md DB 룰).
+    //   legacy stock_quantity 가 있는 환경은 코드 SELECT 시 fallback 으로 처리.
     const result = await DB.prepare(`
       INSERT INTO products (
-        name, description, price, supply_price, stock, stock_quantity,
+        name, description, price, supply_price, stock,
         image_url, category, product_type, is_active,
         seller_id, supply_source_id, slug,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'live', 1, ?, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 1, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       request.name,
       request.description || '',
       body.seller_price,
       request.supply_price,
-      stockToUse,
       stockToUse,
       request.image_url || '',
       request.category || 'lifestyle',
