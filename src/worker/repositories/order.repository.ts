@@ -59,6 +59,22 @@ export class OrderRepository {
     // 안전 전략: seller_id가 있으면 포함, 없으면 INSERT 컬럼 자체를 제외
     const hasSellerId = !!request.seller_id;
     const hasStreamId = !!(request as any).live_stream_id;
+
+    // 🛡️ 2026-05-22 P1 영구 fix: order 생성 시 seller.commission_rate snapshot 캡처.
+    //   이전: orders.commission_rate 가 DEFAULT 10 으로 INSERT → 변경 시 소급 적용.
+    //   영구 해결: order 생성 시점의 sellers.commission_rate 를 명시적으로 저장.
+    //   settlement 는 이 값을 우선 사용 → admin 이 변경해도 과거 주문에 영향 0.
+    let commissionSnapshot: number | null = null;
+    if (hasSellerId) {
+      try {
+        const sellerRow = await this.qb.queryOne<{ commission_rate: number }>(
+          'SELECT COALESCE(commission_rate, 10) AS commission_rate FROM sellers WHERE id = ?',
+          [request.seller_id],
+        );
+        commissionSnapshot = sellerRow?.commission_rate != null ? Number(sellerRow.commission_rate) : null;
+      } catch { /* graceful — column missing or query failure → DB default 10 */ }
+    }
+
     const columns = [
       'order_number', 'user_id',
       ...(hasSellerId ? ['seller_id'] : []),
@@ -66,6 +82,7 @@ export class OrderRepository {
       'subtotal', 'shipping_fee', 'discount_amount', 'total_amount', 'currency',
       'status', 'shipping_name', 'shipping_phone', 'shipping_address', 'shipping_memo',
       'idempotency_key', 'locale',
+      ...(commissionSnapshot != null ? ['commission_rate'] : []),
     ];
     const placeholders = columns.map(() => '?').join(', ');
     const values: any[] = [
@@ -85,6 +102,7 @@ export class OrderRepository {
       request.shipping_memo ?? null,
       request.idempotency_key,
       'ko',       // locale
+      ...(commissionSnapshot != null ? [commissionSnapshot] : []),
     ];
 
     const orderResult = await this.qb.execute(
