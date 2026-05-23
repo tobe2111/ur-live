@@ -85,7 +85,8 @@ export function TossPaymentWidget({
     hasInitialized.current = true
 
     // 단계별 timeout (silent hang 방어).
-    const STEP_TIMEOUT_MS = 8000
+    // 🛡️ 2026-05-23 v8: 4초 timeout (UI 체감 속도 개선) — 이전 8초 → 너무 느렸음.
+    const STEP_TIMEOUT_MS = 4000
     const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
       Promise.race([
         p,
@@ -117,12 +118,21 @@ export function TossPaymentWidget({
           try { await withTimeout(widgets[method]({ selector, variantKey: preferred }), `${method}:${preferred}`); return } catch { /* fallback */ }
           await withTimeout(widgets[method]({ selector }), `${method}:default`)
         }
+
+        // 🛡️ 2026-05-23 v8 사용자 신고 fix: 결제수단 위젯만 await 으로 기다리고, 약관은 병렬 + non-blocking.
+        //   이전: 두 렌더 모두 await → 약관 hang/fail 시 button 영원히 비활성.
+        //   이후: 결제수단 렌더 끝나면 즉시 ready 상태 → button 활성. 약관은 background 렌더.
+        //   약관 실패 시 requestPayment 단계에서 SDK 가 에러 → 그때 처리.
         await tryRender('renderPaymentMethods', '#toss-payment-method', VARIANT_PAYMENT)
-        await tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT)
 
         if (cancelled) return
         widgetsRef.current = widgets
         setLoadingState('ready')
+
+        // 약관 위젯은 background — button 활성화 차단 안 함.
+        tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT).catch(err => {
+          console.warn('[TossPaymentWidget] renderAgreement failed (non-fatal):', (err as Error).message)
+        })
       } catch (err: unknown) {
         if (cancelled) return
         console.error('[TossPaymentWidget] init/render failed:', err)
