@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -269,52 +270,56 @@ export default function GroupBuyDetailPage() {
       navigate('/login')
       return
     }
-    if (!window.confirm(`${detail.name}\n${quantity}장 × ${unitPrice.toLocaleString('ko-KR')}원 = ${total.toLocaleString('ko-KR')}원\n\n${detail.current_discount_pct > 0 ? `🎉 티어 할인 ${detail.current_discount_pct}% 적용\n\n` : ''}공동구매에 참여합니다. 진행할까요?`)) return
+    // 🛡️ 2026-05-22 사용자 요청:
+    //   ① window.confirm 팝업 제거 — 토스 결제 페이지가 final confirmation 역할.
+    //   ② payment_method='toss' (사용자 명시: '공동구매는 토스페이먼츠로 실제 결제').
+    //   흐름:
+    //     1) /api/group-buy/join (payment_method='toss') → server 가 검증 + Toss init params 반환
+    //     2) loadTossPayments(serverClientKey).payment().requestPayment() → Toss 호스팅 redirect
+    //     3) success URL (/group-buy/confirm-payment) → /api/group-buy/confirm-toss → voucher 발급
 
     setJoining(true)
     reportFunnel('click', productId)
-    // 🛡️ 2026-05-15: Optimistic UI — 즉시 카운터 +N 반영, 실패 시 롤백
-    const prevSnapshot = detail
-    setDetail(d => d ? { ...d, group_buy_current: d.group_buy_current + quantity } : d)
     try {
-      const res = await api.post(`/api/group-buy/join/${productId}`, {
-        quantity, payment_method: 'deal',
+      const initRes = await api.post(`/api/group-buy/join/${productId}`, {
+        quantity, payment_method: 'toss',
         promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
       })
-      if (res.data?.success) {
-        reportFunnel('success', productId)
-        toast.success(res.data.message || '공구 참여 완료!')
-        // 🛡️ 2026-05-15: 참여 후 공유 강조 (3 AI 합의: post-purchase share)
-        // localStorage 에 마지막 참여 productId 기록 → /my-vouchers 진입 시 share modal 표시
-        try {
-          localStorage.setItem('gb_just_joined', JSON.stringify({
-            product_id: productId,
-            name: detail.name,
-            image_url: detail.image_url,
-            timestamp: Date.now(),
-          }))
-        } catch { /* silent */ }
-        navigate('/my-vouchers')
-      } else {
-        setDetail(prevSnapshot)  // 롤백
-        toast.error(res.data?.error || '참여 실패')
-      }
-    } catch (err: unknown) {
-      setDetail(prevSnapshot)  // 롤백
-      const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
-      const code = e?.response?.data?.code
-      if (code === 'INSUFFICIENT_POINTS') {
-        if (window.confirm('딜이 부족합니다. 충전 페이지로 이동할까요?')) {
-          localStorage.setItem('loginReturnUrl', window.location.pathname)
-          navigate('/points/charge')
-        }
+      if (!initRes.data?.success) {
+        toast.error(initRes.data?.error || '공구 결제 시작 실패')
         return
       }
+      const { orderId, amount, orderName, clientKey: serverClientKey, flow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'invalid' }
+      if (flow !== 'redirect' || !serverClientKey) {
+        toast.error('결제 시스템 점검 중입니다. 관리자에게 문의해주세요.')
+        return
+      }
+
+      // 토스 SDK redirect — 결제 페이지가 사용자 confirmation 담당. window.confirm 불필요.
+      const tossPayments = await loadTossPayments(serverClientKey)
+      const userId = String(localStorage.getItem('user_id') || '')
+      const sanitizedUserId = userId.replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
+      const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity) }).toString()
+      const failQs = new URLSearchParams({ productId: String(productId) }).toString()
+      const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: amount },
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/group-buy/confirm-payment?${successQs}`,
+        failUrl: `${window.location.origin}/group-buy/${productId}?fail=1&${failQs}`,
+      })
+      // requestPayment 가 redirect 트리거 — 아래 라인 실행 안 됨.
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { error?: string; code?: string } }; code?: string; message?: string }
+      if (e?.code === 'USER_CANCEL') return  // 사용자 명시 취소
       if (e?.response?.status === 429) {
         toast.error('잠시 후 다시 시도해주세요.')
         return
       }
-      toast.error(e?.response?.data?.error || '참여 실패')
+      const msg = e?.response?.data?.error || e?.message || '참여 실패'
+      toast.error(msg)
     } finally {
       setJoining(false)
     }

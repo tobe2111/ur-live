@@ -661,4 +661,18 @@ paymentsRouter.post('/checkout-session', async (c) => {
   }
 });
 
+// 🛡️ 2026-05-22: 클라이언트에 server-side TOSS_CLIENT_KEY 노출 (build env sync 깨짐 영구 차단).
+//   CheckoutPage / PointsChargePage 등이 이 응답의 clientKey 사용.
+//   server TOSS_CLIENT_KEY 가 진실원천 — 운영자가 환경변수 한 곳만 관리.
+//   인증 불필요 (clientKey 는 본질적으로 public — 브라우저에 노출되는 값).
+paymentsRouter.get('/client-key', async (c) => {
+  const { decideTossFlow } = await import('../utils/toss-gateway');
+  const tossKey = (c.env as { TOSS_CLIENT_KEY?: string }).TOSS_CLIENT_KEY || '';
+  const { flow, flowReason } = decideTossFlow(tossKey);
+  return c.json({
+    success: flow === 'redirect',
+    data: { clientKey: tossKey, flow, flow_reason: flowReason },
+  });
+});
+
 export { paymentsRouter };

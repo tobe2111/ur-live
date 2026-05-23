@@ -73,6 +73,7 @@ const VouchersPage = lazy(() => import('./pages/VouchersPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
+const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
 const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage'))
 const StayDetailPage = lazy(() => import('./pages/StayDetailPage'))
@@ -367,6 +368,8 @@ function AppContent() {
             <Route path="/vouchers" element={<VouchersPage />} />
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
             <Route path="/group-buy" element={<GroupBuyListPage />} />
+            {/* confirm-payment 가 :id 매칭 우선 — 더 구체적인 path 먼저 */}
+            <Route path="/group-buy/confirm-payment" element={<GroupBuyConfirmPaymentPage />} />
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} />

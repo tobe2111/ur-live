@@ -82,6 +82,20 @@ export default function CheckoutPage() {
   // 배송지 — CheckoutAddressSection 이 관리, 부모는 selectedAddress 만 보관
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
 
+  // 🛡️ 2026-05-22 영구 fix: server clientKey 우선 사용 (env sync 깨짐 영구 차단).
+  //   build-time VITE_TOSS_CLIENT_KEY 가 미주입/잘못된 type 이어도 server TOSS_CLIENT_KEY 가 진실원천.
+  //   /api/payments/client-key (간단 GET) 호출 → 서버 키 받기.
+  const [serverClientKey, setServerClientKey] = useState<string>(clientKey || '')
+  useEffect(() => {
+    // 항상 server 응답 우선 (env 와 다르면 server 사용).
+    api.get('/api/payments/client-key')
+      .then(r => {
+        const key = r.data?.data?.clientKey || r.data?.clientKey
+        if (key && typeof key === 'string') setServerClientKey(key)
+      })
+      .catch((err) => { if (import.meta.env.DEV) console.warn('[Checkout] server clientKey 로드 실패, env fallback 사용:', err) })
+  }, [])
+
   useEffect(() => {
     api.get('/api/points/balance')
       .then(r => { if (r.data.success) setDealBalance(r.data.data.balance) })
@@ -427,7 +441,7 @@ export default function CheckoutPage() {
                 userId={userId || ''}
                 cartItems={cartItems}
                 totalShippingFee={totalShippingFee}
-                clientKey={clientKey}
+                clientKey={serverClientKey}
                 selectedAddressOk={isAllDealOnly || !!selectedAddress}
                 onBeforePayment={handleBeforePayment}
                 onTossPaymentSuccess={(orderId, paymentKey, amount) => {
