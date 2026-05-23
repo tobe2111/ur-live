@@ -1,31 +1,31 @@
 /**
- * 🛡️ 2026-05-23 v2 — defensive default 변경 (사용자 신고 "여전히 동일 에러"):
- *   unknown prefix → 'widget' (이전 serverFlow 신뢰 → 회귀 위험)
- *   이제 명시적 _gck_ 만 'redirect'. 그 외 모든 케이스는 widget API 사용.
+ * 🛡️ 2026-05-23 v3 (사용자 진단 + 에러 증거 종합 후 정정):
  *
- * 이유:
- *   payment() V2 는 widget 키 거부 시 SDK 가 명확한 에러.
- *   widgets() API 는 거의 모든 키 type 에서 시도 가능 + 명확한 에러.
- *   기본을 widget 으로 강제 → "결제위젯 연동 키는 지원하지 않습니다" 영구 차단.
+ * 결정적 증거:
+ *   1) PaymentDemoPage 가 'test_gck_docs_*' 로 widgets() API 성공
+ *   2) 사용자 /toss-debug 가 'test_gck_P9B...' 로 widgets() 성공
+ *   3) 사용자 production payment() V2 호출 → "결제위젯 연동 키는 지원하지 않습니다" 에러
+ *
+ * → '_gck_' prefix 는 **결제위젯 (widget) 키**. payment() V2 는 다른 prefix.
+ * → 이전 가정 (_gck_ = API 개별) 거꾸로였음. 정정.
+ *
+ * 안전한 default:
+ *   - 알려진 widget prefix 모두 → 'widget'
+ *   - 그 외 unknown → 'widget' (widgets() 가 더 범용)
+ *   - missing → 'invalid'
  */
-export type TossClientKeyType = 'widget' | 'gck' | 'unknown' | 'missing'
+export type TossClientKeyType = 'widget' | 'unknown' | 'missing'
 
 export function detectTossClientKeyType(key: string | undefined | null): TossClientKeyType {
   if (!key) return 'missing'
-  // gck 먼저 (specific) — _ck_ 보다 우선순위 높음.
-  if (/_gck_/i.test(key)) return 'gck'
-  if (/_ck_|_wck_|_wt_|_widget_/i.test(key)) return 'widget'
+  // _gck_/_ck_/_wck_/_wt_ 모두 widget 키 prefix (Toss 가 widgets API 로 처리)
+  if (/_gck_|_ck_|_wck_|_wt_|_widget_/i.test(key)) return 'widget'
   return 'unknown'
 }
 
 /**
- * 최종 흐름 결정 (defensive — widget 우선):
- *   - missing → 'invalid'
- *   - gck → 'redirect' (payment V2 — gck 만 명시적 지원)
- *   - 그 외 (widget / unknown) → 'widget' (widgets() API)
- *
- * server 의 serverFlow 값은 무시. 키 prefix 만으로 결정 →
- * 캐시 / race condition / server 옛 코드 영향 0.
+ * 모든 키 → widgets() API 강제 (다른 옵션 제거).
+ * payment() V2 경로는 코드에서 완전 폐기. variantKey 'DEFAULT' 가 SDK 기본값.
  */
 export function resolveTossFlow(
   _serverFlow: 'redirect' | 'widget' | 'invalid' | undefined,
@@ -33,6 +33,5 @@ export function resolveTossFlow(
 ): 'redirect' | 'widget' | 'invalid' {
   const t = detectTossClientKeyType(clientKey)
   if (t === 'missing') return 'invalid'
-  if (t === 'gck') return 'redirect'
-  return 'widget'  // widget / unknown — widgets() API 강제.
+  return 'widget'  // 모든 키 widgets() API.
 }

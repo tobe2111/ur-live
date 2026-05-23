@@ -129,44 +129,24 @@ export default function PointsChargePage() {
       //   server flow 가 캐시/오감지로 widget 키에 'redirect' 반환해도 강제 widget 보정.
       const flow = resolveTossFlow(serverFlow, serverClientKey)
 
-      if (flow === 'widget') {
-        const params = new URLSearchParams({
-          orderId,
-          amount: String(amount),
-          orderName,
-          clientKey: serverClientKey,
-          successUrl: '/points/charge/success',
-          failUrl: '/points/charge/fail',
-        })
-        navigate(`/pay/widget?${params.toString()}`)
-        return
-      }
-
-      if (flow !== 'redirect') {
+      if (flow === 'invalid') {
         toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         await api.post('/api/points/charge/cancel').catch(() => null)
         setProcessing(false)
         return
       }
 
-      // 항상 서버 키로 SDK load (클라이언트 env 무시 — 영구 sync).
-      const sdkKey = serverClientKey
-      const tossPayments = (tossSdkRef.current && sdkKey === clientKey)
-        ? tossSdkRef.current
-        : await getTossPayments(sdkKey)
-      const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-
-      // 단일 경로 — payment() redirect (variant 의존성 0).
-      const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: amount },
+      // 🛡️ 2026-05-23 v7: 모든 키 widgets() API 경로 (payment V2 폐기).
+      const params = new URLSearchParams({
         orderId,
+        amount: String(amount),
         orderName,
-        successUrl: `${window.location.origin}/points/charge/success`,
-        failUrl: `${window.location.origin}/points/charge?fail=1`,
+        clientKey: serverClientKey,
+        successUrl: '/points/charge/success',
+        failUrl: '/points/charge/fail',
       })
-      // redirect 트리거 — 아래 라인 실행 안 됨.
+      navigate(`/pay/widget?${params.toString()}`)
+      return
     } catch (err: unknown) {
       // SDK / 결제 실패 시 pending row 즉시 cleanup → 사용자 갇힘 방지.
       await api.post('/api/points/charge/cancel').catch(() => null)

@@ -128,32 +128,17 @@ export default function SellerAlimtalkPage() {
         return
       }
 
-      if (flow === 'widget') {
-        const params = new URLSearchParams({
-          orderId,
-          amount: String(amount),
-          orderName,
-          clientKey,
-          successUrl: `/seller/alimtalk?charge=success&orderId=${orderId}`,
-          failUrl: `/seller/alimtalk?charge=fail`,
-        })
-        window.location.href = `/pay/widget?${params.toString()}`
-        return
-      }
-
-      const sellerId = localStorage.getItem('seller_id') || 'unknown'
-      const sanitizedSellerId = String(sellerId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-
-      const tossPayments = await getTossPayments(clientKey)
-      const payment = tossPayments.payment({ customerKey: `seller_${sanitizedSellerId}` })
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: amount },
+      // 🛡️ 2026-05-23 v7: 모든 키 widgets() API 경로 (payment V2 폐기).
+      const params = new URLSearchParams({
         orderId,
+        amount: String(amount),
         orderName,
-        successUrl: `${window.location.origin}/seller/alimtalk?charge=success&orderId=${orderId}`,
-        failUrl: `${window.location.origin}/seller/alimtalk?charge=fail`,
+        clientKey,
+        successUrl: `/seller/alimtalk?charge=success&orderId=${orderId}`,
+        failUrl: `/seller/alimtalk?charge=fail`,
       })
+      window.location.href = `/pay/widget?${params.toString()}`
+      return
     } catch (err: unknown) {
       const err_ = err as { message?: string; code?: string }
       if (err_.code !== 'USER_CANCEL') {

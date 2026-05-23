@@ -131,38 +131,26 @@ export async function confirmTossPayment(input: TossConfirmInput): Promise<TossC
 }
 
 /**
- * 🛡️ 2026-05-23 영구 fix — Toss 공식 키 네이밍 정정.
+ * 🛡️ 2026-05-23 v3 — 사용자 진단 + 실 에러 증거 종합 정정:
  *
- * 사용자 신고: "결제위젯 연동 키는 지원하지 않습니다" SDK 에러로 공구 결제 막힘.
- * 원인 (영구 분석):
- *   기존 detect 로직이 `_ck_` 를 'general' (legacy 추정) 으로 잘못 분류 →
- *   payment() V2 호출 → SDK 가 widget key 라며 거부.
+ * 결정적 증거:
+ *   1) PaymentDemoPage 'test_gck_docs_*' 로 widgets() API 성공
+ *   2) 사용자 /toss-debug 'test_gck_P9B...' 로 widgets() 성공
+ *   3) 사용자 production: payment() V2 가 _gck_ 키에 "결제위젯 연동 키 미지원" 에러
  *
- * Toss 공식 키 네이밍 (2024+ 현재):
- *   - 'wck' / 'ck' = 결제위젯 (widgets() API) — `test_ck_*` / `live_ck_*` / `test_wck_*`
- *   - 'gck' = API 개별 연동 (payment() V2) — `test_gck_*` / `live_gck_*`
- *   - legacy 'wt' / 'widget_' = 옛 결제위젯 키 패턴 (호환 유지)
- *
- * 검증 출처:
- *   https://docs.tosspayments.com/reference/using-api/api-keys
- *   - 결제위젯 클라이언트 키: live_ck_* / test_ck_*
- *   - API 개별 클라이언트 키: live_gck_* / test_gck_*
+ * → 이전 가정 (_gck_ = API 개별 연동 키) 거꾸로였음.
+ * → _gck_ / _ck_ / _wck_ 모두 widget 키 type (widgets() API 호환).
+ * → payment() V2 경로는 사용자 환경에서 작동 안 함. 사용 폐기.
  */
-export type TossKeyType = 'gck' | 'widget' | 'unknown' | 'missing'
+export type TossKeyType = 'widget' | 'unknown' | 'missing'
 export function detectTossKeyType(key: string | undefined | null): TossKeyType {
   if (!key) return 'missing'
-  // gck 먼저 매칭 (gck 가 ck 보다 specific — 순서 중요).
-  if (/_gck_/i.test(key)) return 'gck'
-  if (/_ck_|_wck_|_wt_|_widget_/i.test(key)) return 'widget'
+  if (/_gck_|_ck_|_wck_|_wt_|_widget_/i.test(key)) return 'widget'
   return 'unknown'
 }
 
 /**
- * Init endpoint 가 반환할 표준 응답 구조 결정.
- * - 'widget' 키 (_ck_/_wck_/_wt_) → 'widget' (widgets() API in-page rendering)
- * - 'gck' 키 → 'redirect' (payment() V2 redirect)
- * - 'unknown' → 'widget' 안전 default (대부분 widget key — payment() V2 보다 widgets() 가 호환성 높음)
- * - missing → 'invalid'
+ * 모든 키 → widgets() API 강제. payment() V2 경로 폐기.
  */
 export function decideTossFlow(key: string | undefined | null): {
   flow: 'redirect' | 'widget' | 'invalid'
@@ -170,9 +158,7 @@ export function decideTossFlow(key: string | undefined | null): {
 } {
   const t = detectTossKeyType(key)
   if (t === 'missing') return { flow: 'invalid', flowReason: 'TOSS_CLIENT_KEY env missing' }
-  if (t === 'gck') return { flow: 'redirect', flowReason: 'general api key (gck)' }
-  if (t === 'widget') return { flow: 'widget', flowReason: 'widget client key (ck/wck/wt)' }
-  // unknown prefix — widget API 가 카드/이체/카카오페이/네이버페이 등 더 많은 결제 수단 지원.
+  if (t === 'widget') return { flow: 'widget', flowReason: 'widget client key' }
   return { flow: 'widget', flowReason: 'unknown key prefix — defaulting to widget' }
 }
 

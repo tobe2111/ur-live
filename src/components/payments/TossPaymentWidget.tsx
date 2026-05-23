@@ -89,10 +89,9 @@ export function TossPaymentWidget({
       return
     }
 
-    // 키 type 판정 + 모드 결정.
-    const keyType = detectTossClientKeyType(clientKey)
-    const selectedMode: Mode = keyType === 'widget' ? 'widget' : 'gck'
-    setMode(selectedMode)
+    // 🛡️ 2026-05-23 v7: 모든 키 widgets() API (사용자 진단 증거 기반).
+    //   payment() V2 경로는 사용자 환경 (_gck_) 에서 작동 안 함 — 폐기.
+    setMode('widget')
 
     let cancelled = false
     hasInitialized.current = true
@@ -115,17 +114,7 @@ export function TossPaymentWidget({
         const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
         const customerKey = `user_${sanitizedUserId}`.substring(0, 50)
 
-        if (selectedMode === 'gck') {
-          // gck 모드: payment() V2 — 결제하기 클릭 시 Toss 호스팅 페이지로 redirect.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const payment = (tossPayments as any).payment({ customerKey })
-          if (!payment) throw new Error('payment() returned null')
-          paymentRef.current = payment
-          setLoadingState('ready')
-          return
-        }
-
-        // widget 모드: widgets() API + in-page 렌더.
+        // widgets() API + in-page 렌더 (단일 경로).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const widgets = (tossPayments as any).widgets({ customerKey })
         if (!widgets) throw new Error('widgets() returned null')
@@ -192,27 +181,14 @@ export function TossPaymentWidget({
         await onBeforePayment(orderId)
       }
 
-      if (mode === 'gck') {
-        // gck: payment() V2 redirect.
-        if (!paymentRef.current) throw new Error('payment 인스턴스 없음')
-        await paymentRef.current.requestPayment({
-          method: 'CARD',
-          amount: { currency: 'KRW', value: Math.round(totalAmount) },
-          orderId,
-          orderName,
-          successUrl: `${window.location.origin}/payment/success`,
-          failUrl: `${window.location.origin}/payment/fail`,
-        })
-      } else {
-        // widget: widgets.requestPayment() — Toss 가 method/amount 자동 (setAmount 이미 호출).
-        if (!widgetsRef.current) throw new Error('widgets 인스턴스 없음')
-        await widgetsRef.current.requestPayment({
-          orderId,
-          orderName,
-          successUrl: `${window.location.origin}/payment/success`,
-          failUrl: `${window.location.origin}/payment/fail`,
-        })
-      }
+      // widgets.requestPayment() — Toss 가 method/amount 자동 (setAmount 이미 호출).
+      if (!widgetsRef.current) throw new Error('widgets 인스턴스 없음')
+      await widgetsRef.current.requestPayment({
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+      })
       // requestPayment 가 redirect — 아래 라인 실행 안 됨.
     } catch (err: unknown) {
       console.error('[TossPaymentWidget] requestPayment failed:', err)

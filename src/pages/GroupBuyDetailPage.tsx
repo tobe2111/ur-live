@@ -309,34 +309,16 @@ export default function GroupBuyDetailPage() {
       const successPath = `/group-buy/confirm-payment?${successQs}`
       const failPath = `/group-buy/${productId}?fail=1&${failQs}`
 
-      // widget 키 (_ck_/_wck_/_wt_) → in-page 위젯 페이지로 navigate.
-      if (flow === 'widget') {
-        const params = new URLSearchParams({
-          orderId,
-          amount: String(amount),
-          orderName,
-          clientKey: serverClientKey,
-          successUrl: successPath,
-          failUrl: failPath,
-        })
-        navigate(`/pay/widget?${params.toString()}`)
-        return
-      }
-
-      // payment() V2 redirect (gck/ck 키 환경).
-      const tossPayments = await getTossPayments(serverClientKey)
-      const userId = String(localStorage.getItem('user_id') || '')
-      const sanitizedUserId = userId.replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-      const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: amount },
+      // 🛡️ 2026-05-23 v7: 모든 키 widgets() API 경로 (payment V2 폐기 — 사용자 환경에서 작동 안 함).
+      const params = new URLSearchParams({
         orderId,
+        amount: String(amount),
         orderName,
-        successUrl: `${window.location.origin}${successPath}`,
-        failUrl: `${window.location.origin}${failPath}`,
+        clientKey: serverClientKey,
+        successUrl: successPath,
+        failUrl: failPath,
       })
-      // requestPayment 가 redirect 트리거 — 아래 라인 실행 안 됨.
+      navigate(`/pay/widget?${params.toString()}`)
     } catch (err: unknown) {
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } }; code?: string; message?: string }
       if (e?.code === 'USER_CANCEL') return  // 사용자 명시 취소
