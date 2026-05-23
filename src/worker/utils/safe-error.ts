@@ -26,17 +26,24 @@ export function safeError(
 ) {
   const msg = (err as Error)?.message || String(err)
   console.error(`${logTag} ${status} error:`, msg)
-  // DEV: 디버깅용 detail. production: generic only.
-  const includeDetail = (() => {
+
+  // 🛡️ 2026-05-22 진단성 강화: production 에서도 짧은 _debug 노출 (200자).
+  //   민감 정보 (SQL 전체 스택) 는 길이 제한으로 차단. error type / code 는 노출 → 사용자가 진단 가능.
+  //   - DEV: 500자 (전체 stack).
+  //   - PROD: 200자 (메시지 시작 부분 — code / table name 정도).
+  const isDev = (() => {
     try {
       const env = (c.env as { ENVIRONMENT?: string; NODE_ENV?: string })
       return env.ENVIRONMENT === 'development' || env.NODE_ENV === 'development'
     } catch { return false }
   })()
   return c.json(
-    includeDetail
-      ? { success: false, error: userMessage, _debug: msg.slice(0, 500) }
-      : { success: false, error: userMessage },
+    {
+      success: false,
+      error: userMessage,
+      _debug: msg.slice(0, isDev ? 500 : 200),
+      _tag: logTag,
+    },
     status,
   )
 }

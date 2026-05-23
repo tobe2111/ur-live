@@ -148,16 +148,20 @@ export function detectTossKeyType(key: string | undefined | null): TossKeyType {
 
 /**
  * Init endpoint 가 반환할 표준 응답 구조 결정.
- * - 키가 'wt' 면 'invalid' (widgets() 경로 미지원).
- * - 그 외 'redirect' (payment() V2 SDK).
+ * - 'wt' 키 → 'widget' (widgets() API in-page rendering)
+ * - 'gck' / 'ck' / unknown → 'redirect' (payment() V2 redirect)
+ * - missing → 'invalid'
+ *
+ * 🛡️ 2026-05-22 v2: widget 키도 지원 (이전 'invalid' 처리 → 운영자 환경 의존성 영구 차단).
+ *   클라이언트는 flow 별로 widgets() / payment() 자동 분기.
  */
 export function decideTossFlow(key: string | undefined | null): {
-  flow: 'redirect' | 'invalid'
+  flow: 'redirect' | 'widget' | 'invalid'
   flowReason?: string
 } {
   const t = detectTossKeyType(key)
   if (t === 'missing') return { flow: 'invalid', flowReason: 'TOSS_CLIENT_KEY env missing' }
-  if (t === 'wt') return { flow: 'invalid', flowReason: 'TOSS_CLIENT_KEY 가 결제위젯 연동 키. API 개별 연동 키 (live_gck_ / test_gck_) 사용 필요.' }
+  if (t === 'wt') return { flow: 'widget', flowReason: 'widget client key' }
   return { flow: 'redirect' }
 }
 
