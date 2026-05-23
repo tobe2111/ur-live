@@ -12,16 +12,20 @@
 // ============================================================
 
 import type { D1Database } from '@cloudflare/workers-types';
+import { and, eq } from 'drizzle-orm';
 import { QueryBuilder } from './query-builder';
+import { getDb, orders as ordersTable, type Db } from '../../db';
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
 import { safeJsonParse } from '../../shared/utils';
 import { statusesThatCanReach } from '../utils/state-machine';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
+  protected db: Db;
 
-  constructor(db: D1Database) {
-    this.qb = new QueryBuilder(db);
+  constructor(d1: D1Database) {
+    this.qb = new QueryBuilder(d1);
+    this.db = getDb(d1);
   }
 
   /**
@@ -569,21 +573,22 @@ export class OrderRepository {
    * colliding on a guessable key. Callers must pass their own user_id.
    */
   async findByIdempotencyKey(key: string, userId: string): Promise<Order | null> {
-    // 🛡️ 2026-05-23: SELECT 컬럼 production 스키마 매칭. 이전 코드가 존재하지 않는
-    //   `address`, `address_detail`, `notes` 참조 → 'no such column: address' 500 에러.
-    //   production OrdersTable (src/shared/db/production-schema.ts) 기준 정합 컬럼만 SELECT.
-    const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT id, order_number, user_id, seller_id, status, payment_status,
-              total_amount, subtotal, shipping_fee, discount_amount, currency,
-              shipping_address, shipping_name, shipping_phone, shipping_memo,
-              toss_payment_key, payment_key, payment_method, idempotency_key,
-              cancel_reason, cancelled_at, paid_at, shipped_at, delivered_at,
-              courier, tracking_number, created_at, updated_at
-       FROM orders WHERE idempotency_key = ? AND user_id = ?`,
-      [key, userId]
-    );
+    // 🛡️ 2026-05-23 Drizzle Phase 2: SQL 문자열 → typed Drizzle query.
+    //   컴파일 시 컬럼명 검증 → 'no such column' 사고 영구 차단.
+    //   기존 동작 / 시그니처 보존 (호출자 영향 0).
+    //
+    // 🛡️ user_id 는 production 에서 INTEGER 지만 호출자가 string 으로 전달 — D1 이
+    //   자동 형변환 처리. eq() 에 그대로 binding (Number 변환 시 NaN risk 회피).
+    const row = await this.db
+      .select()
+      .from(ordersTable)
+      .where(and(
+        eq(ordersTable.idempotency_key, key),
+        eq(ordersTable.user_id, userId as unknown as number),
+      ))
+      .get();
     if (!row) return null;
-    return this.mapOrder(row, []);
+    return this.mapOrder(row as unknown as Record<string, unknown>, []);
   }
 
   /**
