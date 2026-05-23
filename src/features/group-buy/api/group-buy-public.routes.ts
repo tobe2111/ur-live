@@ -135,12 +135,23 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
     const id = idNum
 
+    // 🛡️ 2026-05-23: SSOT product-flow.ts 의 voucher_deal / group_buy_toss flow 와 정합.
+    //   이전: category IN (voucher 7종) 만 → deal_only=1 또는 group_buy_active=1 인
+    //         non-voucher 상품 → 404.
+    //   이후: voucher category OR deal_only=1 OR group_buy_active=1 → /group-buy/:id 가
+    //         redirect 받는 모든 flow 지원.
     const product = await DB.prepare(`
       SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar,
              s.bio as seller_bio, s.sns_instagram as seller_instagram
       FROM products p
       LEFT JOIN sellers s ON p.seller_id = s.id
-      WHERE p.id = ? AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      WHERE p.id = ?
+        AND (
+          p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+          OR p.deal_only = 1
+          OR p.group_buy_active = 1
+          OR p.group_buy_status = 'active'
+        )
     `).bind(id).first<GroupBuyProductRow & { seller_name?: string; seller_avatar?: string; seller_bio?: string; seller_instagram?: string }>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)

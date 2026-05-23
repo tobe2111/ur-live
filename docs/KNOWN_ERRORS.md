@@ -19,6 +19,8 @@
 |---|---|---|---|
 | `no such column: orders.commission_rate` | order.repository createOrder | repair-schema 미적용 / 새 컬럼 ALTER 안 됨 | dual-path INSERT (with/without column) + repair-schema 등록 (commit `f69b5e2c`) |
 | `no such column: address at offset NN` | OrderRepository.findByIdempotencyKey | SELECT 가 존재하지 않는 컬럼 (`address`, `address_detail`, `notes`) 참조 — production 스키마 컬럼은 `shipping_address` (JSON), `shipping_name`, `shipping_phone`, `shipping_memo` | SELECT 컬럼을 production-schema 기준 정합 (commit `cc60adce`) |
+| `GET /api/group-buy/products/<id> 404` (상품을 찾을 수 없습니다) — voucher 인데도 | `/api/group-buy/products/:id` (group-buy-public.routes.ts) | SQL WHERE 가 `category IN (voucher 7종)` 만 매칭 → `deal_only=1` 또는 `group_buy_active=1` 인 non-voucher category 상품 → 404 | SQL WHERE 에 `OR deal_only=1 OR group_buy_active=1 OR group_buy_status='active'` 추가 — SSOT product-flow.ts 와 정합 (commit `TBD`) |
+| 결제 flow 분기 (voucher vs group_buy vs standard) 가 여러 파일에 분산되어 한 곳 수정 시 다른 곳 회귀 | ProductDetailPage / GroupBuyDetailPage / 등 | `VOUCHER_CATEGORY_SET.has()` 직접 사용 — legacy 카테고리 / deal_only / group_buy_active 매칭 누락 | `src/shared/product-flow.ts` SSOT helper 도입: `resolveProductFlow(product)` → `{ flow, config }` (commit `8ccd4d04`) |
 | `UNIQUE constraint failed: users.email` | KakaoAuthService.upsertUser | 같은 이메일로 가입된 다른 인증 방식 존재 | `EMAIL_ALREADY_LINKED_TO_OTHER_METHOD` 코드 + 한국어 메시지 |
 | `wrong number of bindings supplied` | D1 prepare/bind | SQL `?` 개수 ≠ bind 인자 개수 | `check-sql-bind-params.mjs` pre-commit hook |
 | `CHECK constraint failed: status` | orders / streams INSERT | status 값이 enum 밖 (대소문자 / 오타) | orders: 대문자 (`PAID` 등) / payment_status: 소문자 (`approved`) — `docs/SCHEMA.md` |
