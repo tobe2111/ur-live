@@ -65,6 +65,9 @@ export function TossPaymentWidget({
   const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [showPaymentBlocked, setShowPaymentBlocked] = useState(false)
+  // 🛡️ 2026-05-23: 약관 동의 상태 감지 — Toss SDK 의 agreementStatusChange 이벤트.
+  //   미동의 시 결제 버튼 disabled + 명확한 라벨 → 사용자가 모르고 클릭 X.
+  const [agreedRequired, setAgreedRequired] = useState(false)
   const hasInitialized = useRef(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const widgetsRef = useRef<any>(null)
@@ -129,11 +132,19 @@ export function TossPaymentWidget({
         widgetsRef.current = widgets
         setLoadingState('ready')
 
-        // 🛡️ 2026-05-23: 약관 위젯은 호출 시도하되 실패해도 무시.
-        //   업계 표준 — Toss redirect 페이지가 PG 약관 알아서 표시 → 우리 위젯에서 별도 X.
-        //   토스 콘솔에 AGREEMENT variant 등록 안 되면 SDK 에러 → 무시 (background).
-        //   필수 약관 동의는 SDK 가 requestPayment 단계에서 자동 검증.
-        tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT).catch(() => null)
+        // 🛡️ 2026-05-23: 약관 위젯 렌더 + 동의 상태 감지.
+        //   렌더 후 widgets.on('agreementStatusChange') 로 동의 여부 추적.
+        //   사용자가 약관 체크/언체크 할 때마다 React state 업데이트 → 버튼 활성/비활성.
+        tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT)
+          .then(() => {
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              widgets.on('agreementStatusChange', (status: any) => {
+                setAgreedRequired(!!status?.agreedRequiredTerms)
+              })
+            } catch { /* ignore — event listener 미지원 시 */ }
+          })
+          .catch(() => null)
       } catch (err: unknown) {
         if (cancelled) return
         console.error('[TossPaymentWidget] init/render failed:', err)
@@ -228,10 +239,10 @@ export function TossPaymentWidget({
 
       <button
         onClick={handlePayment}
-        disabled={loadingState !== 'ready' || isProcessing}
+        disabled={loadingState !== 'ready' || isProcessing || !agreedRequired}
         className={`
           w-full py-4 rounded-lg font-bold text-white text-lg transition-all
-          ${loadingState !== 'ready' || isProcessing
+          ${(loadingState !== 'ready' || isProcessing || !agreedRequired)
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
           }
@@ -244,7 +255,8 @@ export function TossPaymentWidget({
           </span>
         )}
         {loadingState === 'error' && t('payment.errors.systemError', { defaultValue: '결제 시스템 오류' })}
-        {loadingState === 'ready' && !isProcessing && '결제하기'}
+        {loadingState === 'ready' && !isProcessing && !agreedRequired && '필수 약관에 동의해주세요 ↑'}
+        {loadingState === 'ready' && !isProcessing && agreedRequired && '결제하기'}
         {loadingState === 'ready' && isProcessing && (
           <span className="flex items-center justify-center gap-2">
             <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
