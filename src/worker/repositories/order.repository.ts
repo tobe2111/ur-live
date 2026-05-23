@@ -600,14 +600,18 @@ export class OrderRepository {
     total_amount: number;
     status: string;
   } | null> {
-    return this.qb.queryOne<{
-      toss_payment_key: string | null;
-      total_amount: number;
-      status: string;
-    }>(
-      'SELECT toss_payment_key, total_amount, status FROM orders WHERE id = ?',
-      [orderId]
-    );
+    // 🛡️ 2026-05-23 Drizzle Phase 2: SQL 문자열 → typed Drizzle query.
+    //   기존 동작 / 시그니처 보존. orderId 는 string (production 은 INTEGER) — D1 자동 형변환.
+    const row = await this.db
+      .select({
+        toss_payment_key: ordersTable.toss_payment_key,
+        total_amount: ordersTable.total_amount,
+        status: ordersTable.status,
+      })
+      .from(ordersTable)
+      .where(eq(ordersTable.id, orderId as unknown as number))
+      .get();
+    return row ?? null;
   }
 
   /**
@@ -616,13 +620,17 @@ export class OrderRepository {
    * Fall back to `cancel_reason` (with a "[CANCEL_FAILED]" prefix for auditability).
    */
   async markCancelFailed(orderId: string, reason: string): Promise<void> {
-    await this.qb.execute(
-      `UPDATE orders SET
-         cancel_reason = ?,
-         updated_at = datetime('now')
-       WHERE id = ?`,
-      [`[CANCEL_FAILED] ${reason}`, orderId]
-    );
+    // 🛡️ 2026-05-23 Drizzle Phase 2: SQL 문자열 → typed Drizzle update.
+    //   updated_at 은 ISO string 으로 직접 세팅 (datetime('now') 와 동일 의미).
+    const nowIso = new Date().toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    await this.db
+      .update(ordersTable)
+      .set({
+        cancel_reason: `[CANCEL_FAILED] ${reason}`,
+        updated_at: nowIso,
+      })
+      .where(eq(ordersTable.id, orderId as unknown as number))
+      .run();
   }
 
   private mapOrder(row: Record<string, unknown>, items: Record<string, unknown>[]): Order {
