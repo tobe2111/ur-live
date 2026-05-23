@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import type { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { getTossPayments } from '@/lib/toss-preload'
 type TossPayments = Awaited<ReturnType<typeof loadTossPayments>>
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
@@ -93,7 +94,7 @@ export function TossPaymentWidget({
     let cancelled = false
     ;(async () => {
       try {
-        const sdk = await loadTossPayments(clientKey)
+        const sdk = await getTossPayments(clientKey)
         if (cancelled) return
         setTossPayments(sdk)
         setLoadingState('ready')

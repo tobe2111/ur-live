@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import type { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
 import { ArrowLeft, Zap, Loader2, Info, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -10,7 +11,7 @@ import { getUserIdSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
 import { useBalance } from '@/hooks/queries'
 
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
+const clientKey = getTossClientKey()
 
 interface ChargeOption {
   amount: number
@@ -52,7 +53,7 @@ export default function PointsChargePage() {
           setSelected(r.data.data[1] ?? r.data.data[0])
         }
       }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }),
-      loadTossPayments(clientKey).then(sdk => {
+      getTossPayments(clientKey).then(sdk => {
         tossSdkRef.current = sdk
       }).catch((_e) => { if (import.meta.env.DEV) console.warn('[Toss] preload failed', _e) }),
     ]).finally(() => setLoading(false))
@@ -131,7 +132,7 @@ export default function PointsChargePage() {
       const sdkKey = serverClientKey
       const tossPayments = (tossSdkRef.current && sdkKey === clientKey)
         ? tossSdkRef.current
-        : await loadTossPayments(sdkKey)
+        : await getTossPayments(sdkKey)
       const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
 
       // 단일 경로 — payment() redirect (variant 의존성 0).

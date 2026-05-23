@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { getTossPayments } from '@/lib/toss-preload'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -296,7 +296,7 @@ export default function GroupBuyDetailPage() {
       }
 
       // 토스 SDK redirect — 결제 페이지가 사용자 confirmation 담당. window.confirm 불필요.
-      const tossPayments = await loadTossPayments(serverClientKey)
+      const tossPayments = await getTossPayments(serverClientKey)
       const userId = String(localStorage.getItem('user_id') || '')
       const sanitizedUserId = userId.replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
       const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity) }).toString()

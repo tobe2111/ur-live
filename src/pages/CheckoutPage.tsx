@@ -25,12 +25,11 @@ import PaymentSection from './checkout/PaymentSection'
 import CheckoutAddressSection from './checkout/CheckoutAddressSection'
 import { useBeforePayment } from './checkout/useBeforePayment'
 
-// 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
-if (typeof window !== 'undefined') {
-  import('@tosspayments/tosspayments-sdk').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-}
+// 🛡️ 2026-05-23 토스 SDK preload — 모듈 evaluate 즉시 CDN download 시작.
+//   import 만 해도 startPreload() 자동 실행 (src/lib/toss-preload.ts).
+import { getTossClientKey } from '@/lib/toss-preload'
 
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
+const clientKey = getTossClientKey()
 
 export default function CheckoutPage() {
   // 🛡️ 2026-05-19: 결제 페이지는 라이트 테마 고정 (사용자 요청 + 가독성).
@@ -82,19 +81,11 @@ export default function CheckoutPage() {
   // 배송지 — CheckoutAddressSection 이 관리, 부모는 selectedAddress 만 보관
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
 
-  // 🛡️ 2026-05-22 영구 fix: server clientKey 우선 사용 (env sync 깨짐 영구 차단).
-  //   build-time VITE_TOSS_CLIENT_KEY 가 미주입/잘못된 type 이어도 server TOSS_CLIENT_KEY 가 진실원천.
-  //   /api/payments/client-key (간단 GET) 호출 → 서버 키 받기.
-  const [serverClientKey, setServerClientKey] = useState<string>(clientKey || '')
-  useEffect(() => {
-    // 항상 server 응답 우선 (env 와 다르면 server 사용).
-    api.get('/api/payments/client-key')
-      .then(r => {
-        const key = r.data?.data?.clientKey || r.data?.clientKey
-        if (key && typeof key === 'string') setServerClientKey(key)
-      })
-      .catch((err) => { if (import.meta.env.DEV) console.warn('[Checkout] server clientKey 로드 실패, env fallback 사용:', err) })
-  }, [])
+  // 🛡️ 2026-05-23 영구 fix: 결제 UI 지각 영구 제거.
+  //   이전: /api/payments/client-key 추가 왕복 (200~400ms) — 사용자 체감 지연 주범.
+  //   이후: VITE_TOSS_CLIENT_KEY 빌드 타임 주입 단일 진실원천 (frontend env 표준 룰).
+  //   키 변경 시 재배포 필요 — 일반적인 frontend env 룰. 운영 빈도 낮음.
+  const serverClientKey = clientKey
 
   useEffect(() => {
     api.get('/api/points/balance')
