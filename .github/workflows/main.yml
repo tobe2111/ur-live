@@ -214,12 +214,17 @@ jobs:
           # 결제 healthcheck — 503 (env mismatch) 은 fail 처리 안 함, 별도 curl + 본문 파싱.
           PAY_HEALTH=$(curl -s --max-time 10 "$PROD/api/_healthcheck/payments" || echo '{}')
           if echo "$PAY_HEALTH" | grep -q '"healthy":false'; then
-            echo "[WARN] 결제 healthcheck unhealthy: $PAY_HEALTH"
-            echo "운영자 액션 필요: Cloudflare Pages Variables/Secrets 점검"
+            echo ""
+            echo "::warning::결제 healthcheck unhealthy — 운영자 액션 필요"
+            echo "응답: $PAY_HEALTH"
+            echo ""
+            echo "조치: Cloudflare Dashboard → Pages → ur-live → Settings"
+            echo "      → Environment variables and secrets → Production tab"
+            echo "      → /admin/env-check 에서 정확한 issue 확인 가능"
           elif echo "$PAY_HEALTH" | grep -q '"healthy":true'; then
             echo "OK 결제 healthcheck"
           else
-            echo "[WARN] 결제 healthcheck endpoint 응답 비정상, 무시하고 통과"
+            echo "::warning::결제 healthcheck endpoint 응답 비정상, 통과"
           fi
 
           if [ "$FAIL" -gt 0 ]; then

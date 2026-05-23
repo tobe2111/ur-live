@@ -30,25 +30,34 @@ function detectKeyEnv(key: string | undefined): 'live' | 'test' | 'unknown' {
 }
 
 healthcheckRoutes.get('/api/_healthcheck/payments', async (c) => {
-  const env = c.env as { TOSS_CLIENT_KEY?: string; TOSS_SECRET_KEY?: string }
+  const env = c.env as { TOSS_CLIENT_KEY?: string; TOSS_SECRET_KEY?: string; VITE_TOSS_CLIENT_KEY?: string }
   const clientKey = env.TOSS_CLIENT_KEY || ''
   const secretKey = env.TOSS_SECRET_KEY || ''
+  // VITE 키는 client 가 헤더로 전달 가능 (server 는 build env 직접 못 봄).
+  const viteKey = c.req.header('X-Vite-Toss-Client-Key') || ''
 
   const { detectTossKeyType, decideTossFlow } = await import('../utils/toss-gateway')
   const clientKeyType = detectTossKeyType(clientKey)
   const clientKeyEnv = detectKeyEnv(clientKey)
   const secretKeyEnv = detectKeyEnv(secretKey)
+  const viteKeyType = detectTossKeyType(viteKey)
+  const viteKeyEnv = detectKeyEnv(viteKey)
   const { flow, flowReason } = decideTossFlow(clientKey)
 
   // Live/test mismatch 감지
   const envMatch = clientKeyEnv === secretKeyEnv
+  // VITE/server 키 일치 — 클라이언트가 키 전달 시 비교.
+  const viteServerMatch = viteKey ? clientKey === viteKey : null
   const issues: string[] = []
-  if (!clientKey) issues.push('TOSS_CLIENT_KEY missing')
-  if (!secretKey) issues.push('TOSS_SECRET_KEY missing')
+  if (!clientKey) issues.push('TOSS_CLIENT_KEY (runtime) 누락')
+  if (!secretKey) issues.push('TOSS_SECRET_KEY 누락')
   if (!envMatch && clientKey && secretKey) {
-    issues.push(`env mismatch: client=${clientKeyEnv}, secret=${secretKeyEnv}`)
+    issues.push(`Live/Test 불일치: client=${clientKeyEnv}, secret=${secretKeyEnv}`)
   }
-  if (clientKeyType === 'unknown') issues.push('client key prefix unknown')
+  if (viteKey && clientKey && viteKey !== clientKey) {
+    issues.push(`VITE_TOSS_CLIENT_KEY (build) ≠ TOSS_CLIENT_KEY (runtime) — 환경 prefix: VITE=${viteKeyEnv}, runtime=${clientKeyEnv}`)
+  }
+  if (clientKeyType === 'unknown') issues.push('client key prefix 인식 불가')
 
   const healthy = issues.length === 0
 
@@ -65,7 +74,14 @@ healthcheckRoutes.get('/api/_healthcheck/payments', async (c) => {
         masked: mask(secretKey),
         env: secretKeyEnv,
       },
+      vite_key: {
+        masked: mask(viteKey),
+        type: viteKeyType,
+        env: viteKeyEnv,
+        provided: !!viteKey,
+      },
       env_match: envMatch,
+      vite_server_match: viteServerMatch,
       flow,
       flow_reason: flowReason,
       issues,

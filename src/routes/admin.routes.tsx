@@ -16,6 +16,7 @@ const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkP
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
+const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
 const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
@@ -86,6 +87,12 @@ export function AdminRoutes() {
       <Route path="/admin/errors" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminErrorsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-23: 환경변수 점검 페이지 */}
+      <Route path="/admin/env-check" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminEnvCheckPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/settlement" element={

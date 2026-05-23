@@ -36,6 +36,48 @@ function startPreload(): Promise<TossPayments> | null {
 // CheckoutPage / PointsChargePage / GroupBuyDetailPage 가 import 만 해도 트리거.
 startPreload()
 
+// 🛡️ 2026-05-23 자동 env 미스매치 감지 → /api/_errors/log 자동 보고.
+//   사용자 1명이 결제 시도하면 운영자가 /admin/errors 에서 즉시 인지.
+//   server 가 반환하는 키와 VITE build-time 키 비교.
+let mismatchChecked = false
+async function checkEnvMismatchOnce(): Promise<void> {
+  if (mismatchChecked || typeof window === 'undefined') return
+  if (!CLIENT_KEY) return  // VITE 미설정 시 비교 불가
+  mismatchChecked = true
+  try {
+    const res = await fetch('/api/payments/client-key', { cache: 'no-store' })
+    const json = await res.json() as { data?: { clientKey?: string }; clientKey?: string }
+    const serverKey = json.data?.clientKey || json.clientKey || ''
+    if (!serverKey) return
+    if (serverKey !== CLIENT_KEY) {
+      const mask = (k: string) => k.length > 12 ? `${k.slice(0, 12)}...${k.slice(-4)}` : k
+      const message = `[env_mismatch] VITE_TOSS_CLIENT_KEY (${mask(CLIENT_KEY)}) ≠ TOSS_CLIENT_KEY (${mask(serverKey)})`
+      console.warn(message)
+      // /api/_errors/log 로 자동 보고
+      try {
+        const body = JSON.stringify({
+          message,
+          type: 'env_mismatch',
+          url: window.location.pathname,
+          user_id: localStorage.getItem('user_id'),
+          user_agent: navigator.userAgent.slice(0, 200),
+        })
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: 'application/json' })
+          navigator.sendBeacon('/api/_errors/log', blob)
+        } else {
+          fetch('/api/_errors/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+        }
+      } catch { /* ignore */ }
+    }
+  } catch { /* network 실패 — 무시 */ }
+}
+// 결제 페이지 진입 시 자동 호출되도록 module evaluate 후 호출
+if (typeof window !== 'undefined') {
+  // 다른 초기화 끝나고 호출
+  setTimeout(checkEnvMismatchOnce, 1000)
+}
+
 /**
  * 컴포넌트에서 호출 — 같은 키면 캐시된 Promise 재사용, 다르면 새로 로드.
  * 캐시가 없으면 즉시 생성 (모듈 평가 시 SSR / 키 미주입 케이스 대비).
