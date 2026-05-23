@@ -61,6 +61,17 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 # binding = "SESSION_KV"
 # id = "YOUR_SESSION_KV_ID"
 
+# 🛡️ 2026-05-23 (Task 2): CACHE_KV — public API 응답 second-layer cache (L2).
+#   Edge cache (L1) 는 PoP 별 격리 — 한국 PoP ≠ 일본 PoP 캐시.
+#   KV 는 region 간 공유 → 새 region cold start 시 D1 hit 대신 KV hit.
+#   미바인딩 시 publicCache 는 자동으로 L1 only mode (graceful degradation).
+#
+#   Dashboard 등록: Workers & Pages → ur-live → Settings → Bindings → KV → CACHE_KV
+#
+# [[kv_namespaces]]
+# binding = "CACHE_KV"
+# id = "YOUR_CACHE_KV_ID"
+
 # ============================================================
 # R2 Buckets (D1 백업 + 정산 송장 저장)
 # ============================================================
