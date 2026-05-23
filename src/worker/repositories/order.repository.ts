@@ -569,8 +569,17 @@ export class OrderRepository {
    * colliding on a guessable key. Callers must pass their own user_id.
    */
   async findByIdempotencyKey(key: string, userId: string): Promise<Order | null> {
+    // 🛡️ 2026-05-23: SELECT 컬럼 production 스키마 매칭. 이전 코드가 존재하지 않는
+    //   `address`, `address_detail`, `notes` 참조 → 'no such column: address' 500 에러.
+    //   production OrdersTable (src/shared/db/production-schema.ts) 기준 정합 컬럼만 SELECT.
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      'SELECT id, order_number, user_id, seller_id, status, payment_status, total_amount, shipping_fee, address, address_detail, recipient_name, recipient_phone, notes, toss_payment_key, payment_key, idempotency_key, cancel_reason, created_at, updated_at FROM orders WHERE idempotency_key = ? AND user_id = ?',
+      `SELECT id, order_number, user_id, seller_id, status, payment_status,
+              total_amount, subtotal, shipping_fee, discount_amount, currency,
+              shipping_address, shipping_name, shipping_phone, shipping_memo,
+              toss_payment_key, payment_key, payment_method, idempotency_key,
+              cancel_reason, cancelled_at, paid_at, shipped_at, delivered_at,
+              courier, tracking_number, created_at, updated_at
+       FROM orders WHERE idempotency_key = ? AND user_id = ?`,
       [key, userId]
     );
     if (!row) return null;
