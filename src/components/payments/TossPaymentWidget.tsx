@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getTossPayments } from '@/lib/toss-preload'
-import { detectTossClientKeyType } from '@/lib/toss-key-type'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { isFeatureBlocked } from '@/lib/in-app-warning'
 import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
@@ -51,8 +50,6 @@ interface TossPaymentWidgetProps {
 const VARIANT_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || 'DEFAULT'
 const VARIANT_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || 'AGREEMENT'
 
-type Mode = 'gck' | 'widget'
-
 export function TossPaymentWidget({
   userId,
   clientKey,
@@ -68,14 +65,9 @@ export function TossPaymentWidget({
   const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [showPaymentBlocked, setShowPaymentBlocked] = useState(false)
-  const [mode, setMode] = useState<Mode>('gck')
   const hasInitialized = useRef(false)
-  // widget 모드용 widgets 인스턴스 ref
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const widgetsRef = useRef<any>(null)
-  // gck 모드용 payment 인스턴스 ref
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const paymentRef = useRef<any>(null)
 
   // 1️⃣ SDK 로드 + 키 type 분기 + 위젯 렌더 (필요한 경우).
   useEffect(() => {
@@ -88,10 +80,6 @@ export function TossPaymentWidget({
       onPaymentError(msg)
       return
     }
-
-    // 🛡️ 2026-05-23 v7: 모든 키 widgets() API (사용자 진단 증거 기반).
-    //   payment() V2 경로는 사용자 환경 (_gck_) 에서 작동 안 함 — 폐기.
-    setMode('widget')
 
     let cancelled = false
     hasInitialized.current = true
@@ -160,11 +148,11 @@ export function TossPaymentWidget({
     return () => { hasInitialized.current = false }
   }, [])
 
-  // 2️⃣ widget 모드 — amount 변경 시 반영.
+  // 2️⃣ amount 변경 시 반영.
   useEffect(() => {
-    if (mode !== 'widget' || loadingState !== 'ready' || !widgetsRef.current) return
+    if (loadingState !== 'ready' || !widgetsRef.current) return
     widgetsRef.current.setAmount({ currency: 'KRW', value: Math.round(totalAmount) }).catch(() => null)
-  }, [totalAmount, loadingState, mode])
+  }, [totalAmount, loadingState])
 
   const handlePayment = useCallback(async () => {
     if (loadingState !== 'ready' || isProcessing) return
@@ -207,17 +195,12 @@ export function TossPaymentWidget({
       }
       onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
-  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t, totalAmount, mode])
+  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t, totalAmount])
 
   return (
     <div className="space-y-3">
-      {/* widget 모드 — in-page 결제 위젯 mount point. gck 모드에선 숨김. */}
-      {mode === 'widget' && (
-        <>
-          <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
-          <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
-        </>
-      )}
+      <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+      <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
 
       <button
         onClick={handlePayment}
