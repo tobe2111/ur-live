@@ -143,6 +143,18 @@ alimtalkRoutes.post('/credits/charge', async (c) => {
   // 토스 결제용 주문 ID
   const orderId = `ALT-${sellerId}-pkg${pkg.id}-${Date.now()}`;
 
+  // 🛡️ 2026-05-23: flow 정보 추가 — widget 키 (_ck_) 환경에서 클라이언트가 자동 분기.
+  const { decideTossFlow } = await import('../../../worker/utils/toss-gateway');
+  const { flow, flowReason } = decideTossFlow(c.env.TOSS_CLIENT_KEY);
+  if (flow === 'invalid') {
+    return c.json({
+      success: false,
+      error: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.',
+      code: 'PAYMENT_KEY_INVALID',
+      _debug: flowReason,
+    }, 503);
+  }
+
   return c.json({
     success: true,
     data: {
@@ -151,6 +163,8 @@ alimtalkRoutes.post('/credits/charge', async (c) => {
       orderName: `브랜드메시지 ${pkg.label} 충전`,
       credits: pkg.credits,
       clientKey: c.env.TOSS_CLIENT_KEY,
+      flow,
+      flow_reason: flowReason,
     },
   });
 });

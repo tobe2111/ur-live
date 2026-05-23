@@ -12,7 +12,7 @@ import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/se
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { formatNumber } from '@/utils/format'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { getTossPayments } from '@/lib/toss-preload'
 
 interface DbPackage {
   id: number
@@ -111,17 +111,34 @@ export default function SellerAlimtalkPage() {
       )
       if (!res.data.success) { toast.error(res.data.error); return }
 
-      const { orderId, amount, orderName, clientKey } = res.data.data
+      const { orderId, amount, orderName, clientKey, flow } = res.data.data as {
+        orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid'
+      }
 
-      if (!clientKey) {
+      if (!clientKey || flow === 'invalid') {
         toast.error(t('seller.paymentSettingError'))
+        return
+      }
+
+      // 🛡️ 2026-05-23 widget 키 (_ck_/_wck_/_wt_) 지원: in-page 위젯 페이지 navigate.
+      //   server flow 가 결정 — payment() V2 (gck) / widgets() (ck) 환경 모두 호환.
+      if (flow === 'widget') {
+        const params = new URLSearchParams({
+          orderId,
+          amount: String(amount),
+          orderName,
+          clientKey,
+          successUrl: `/seller/alimtalk?charge=success&orderId=${orderId}`,
+          failUrl: `/seller/alimtalk?charge=fail`,
+        })
+        window.location.href = `/pay/widget?${params.toString()}`
         return
       }
 
       const sellerId = localStorage.getItem('seller_id') || 'unknown'
       const sanitizedSellerId = String(sellerId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
 
-      const tossPayments = await loadTossPayments(clientKey)
+      const tossPayments = await getTossPayments(clientKey)
       const payment = tossPayments.payment({ customerKey: `seller_${sanitizedSellerId}` })
       await payment.requestPayment({
         method: 'CARD',
