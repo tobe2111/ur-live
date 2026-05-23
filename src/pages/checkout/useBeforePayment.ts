@@ -54,32 +54,58 @@ export function useBeforePayment(opts: UseBeforePaymentOptions) {
         const groupShippingFee = (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold)
           ? 0 : group.shipping_fee
         addBreadcrumb('order', 'creating', { orderId, sellerId: group.seller_id, itemCount: group.items.length, total: group.subtotal + groupShippingFee })
-        const response = await api.post('/api/orders', {
-          seller_id: group.seller_id ? String(group.seller_id) : '',
-          order_number: orderId,
-          items: group.items.map((item: CartItem) => ({
-            product_id: String(item.product_id),
-            quantity: item.quantity,
-            ...(item.option_value ? { options: { value: item.option_value } } : {}),
-          })),
-          shipping_address: shippingAddress,
-          shipping_name: isMealVoucher ? t('checkoutPage.voucherRecipient') : selectedAddress!.recipient_name,
-          shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
-          shipping_fee: groupShippingFee,
-          idempotency_key: `${orderId}_${group.seller_id}`,
-          referrer_id: (() => {
-            const ref = localStorage.getItem('affiliate_ref')
-            const expires = localStorage.getItem('affiliate_ref_expires')
-            if (ref && expires && Date.now() < Number(expires)) return ref
-            const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
-            return cookie?.[1] || undefined
-          })(),
-          group_buy_discounts: groupBuyDiscounts,
-          coupon_id: couponId || undefined,
-          coupon_discount: couponDiscount || undefined,
-          discount_amount: (couponDiscount || 0) + (totalGroupBuyDiscount || 0) + (dealToUse || 0),
-          deal_used: dealToUse || undefined,
-        })
+        let response
+        try {
+          response = await api.post('/api/orders', {
+            seller_id: group.seller_id ? String(group.seller_id) : '',
+            order_number: orderId,
+            items: group.items.map((item: CartItem) => ({
+              product_id: String(item.product_id),
+              quantity: item.quantity,
+              ...(item.option_value ? { options: { value: item.option_value } } : {}),
+            })),
+            shipping_address: shippingAddress,
+            shipping_name: isMealVoucher ? t('checkoutPage.voucherRecipient') : selectedAddress!.recipient_name,
+            shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
+            shipping_fee: groupShippingFee,
+            idempotency_key: `${orderId}_${group.seller_id}`,
+            referrer_id: (() => {
+              const ref = localStorage.getItem('affiliate_ref')
+              const expires = localStorage.getItem('affiliate_ref_expires')
+              if (ref && expires && Date.now() < Number(expires)) return ref
+              const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
+              return cookie?.[1] || undefined
+            })(),
+            group_buy_discounts: groupBuyDiscounts,
+            coupon_id: couponId || undefined,
+            coupon_discount: couponDiscount || undefined,
+            discount_amount: (couponDiscount || 0) + (totalGroupBuyDiscount || 0) + (dealToUse || 0),
+            deal_used: dealToUse || undefined,
+          })
+        } catch (apiErr: unknown) {
+          // 🛡️ 2026-05-23: 500 에러 시 server 의 _debug + _tag 필드 surface — stage 즉시 식별.
+          const ax = apiErr as { response?: { status?: number; data?: { error?: string; _debug?: string; _tag?: string; code?: string } } }
+          const status = ax?.response?.status
+          const data = ax?.response?.data
+          const debugInfo = data ? `[${data._tag || '?'}] ${data._debug || data.error || ''}`.slice(0, 300) : ''
+          console.error(`[useBeforePayment] /api/orders ${status} | ${debugInfo}`)
+          // /api/_errors/log 로 자동 보고 (telemetry — /admin/errors 에서 확인)
+          try {
+            const body = JSON.stringify({
+              message: `/api/orders ${status}: ${debugInfo}`,
+              type: 'order_create_error',
+              url: window.location.pathname,
+              user_id: localStorage.getItem('user_id'),
+            })
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon('/api/_errors/log', new Blob([body], { type: 'application/json' }))
+            } else {
+              fetch('/api/_errors/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+            }
+          } catch { /* ignore */ }
+          // 사용자에게 _debug 포함 에러 throw → toast 에 표시됨
+          throw new Error(`${data?.error || t('payment.errors.orderCreateFailed')}\n${debugInfo}`)
+        }
         if (!response.data.success) throw new Error(response.data.error || t('payment.errors.orderCreateFailed'))
         if (couponId && couponDiscount > 0 && response.data.data?.order_id) {
           try {
