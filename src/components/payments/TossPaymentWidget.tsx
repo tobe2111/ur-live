@@ -152,7 +152,17 @@ export function TossPaymentWidget({
     })()
 
     return () => { cancelled = true }
-  }, [userId, clientKey, cartItems, totalAmount, onPaymentError, t])
+    // 🛡️ 2026-05-23 v9 사용자 신고 fix (button 영원히 loading):
+    //   이전 deps [userId, clientKey, cartItems, totalAmount, onPaymentError, t]:
+    //     - totalAmount 변경 (쿠폰/딜 적용) → effect 재실행 → cleanup 가 cancelled=true 설정
+    //     - 첫 IIFE 가 진행 중이면 setLoadingState('ready') 호출이 cancelled 체크에 막힘
+    //     - 새 effect 는 hasInitialized.current==true 라 조기 return → 영원히 loading
+    //     - 콘솔 에러도 안 나옴 (catch 도달 안 함, silent skip)
+    //   해결: clientKey + userId 만 deps. 둘은 mount 후 변경 X (CheckoutPage 가 clientKeyLoaded 가드).
+    //   totalAmount 는 별도 useEffect 에서 widgets.setAmount() 호출로 처리 (이미 있음 ↓).
+    //   cartItems / onPaymentError / t 는 init 단계 한 번만 캡처되면 충분 — refs 없이도 OK.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, clientKey])
 
   useEffect(() => {
     return () => { hasInitialized.current = false }
