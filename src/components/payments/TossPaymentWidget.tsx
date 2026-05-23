@@ -54,8 +54,26 @@ export function TossPaymentWidget({
   const hasInitialized = useRef(false)
 
   // 1️⃣ SDK 로드 (V2, redirect 방식).
+  //   🛡️ 2026-05-22: 키 type 검증 + clientKey 미설정 명확한 에러.
   useEffect(() => {
     if (!userId || cartItems.length === 0 || hasInitialized.current) return
+
+    // clientKey 미설정 — env 미주입 또는 secret 누락.
+    if (!clientKey || typeof clientKey !== 'string') {
+      const msg = '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요. (VITE_TOSS_CLIENT_KEY 누락)'
+      setErrorMessage(msg)
+      setLoadingState('error')
+      onPaymentError(msg)
+      return
+    }
+    // widget 키 type 차단 — payment() API 가 widget 키 거부 → 명확한 안내.
+    if (/_wt_|_widget_/i.test(clientKey)) {
+      const msg = '결제 시스템 설정 오류 — 관리자에게 문의해주세요. (TOSS_CLIENT_KEY 가 "API 개별 연동 키" 이어야 합니다)'
+      setErrorMessage(msg)
+      setLoadingState('error')
+      onPaymentError(msg)
+      return
+    }
 
     let cancelled = false
     ;(async () => {
@@ -73,7 +91,9 @@ export function TossPaymentWidget({
           ? t('payment.errors.networkError')
           : errMsg.includes('auth') || errMsg.includes('400')
             ? t('payment.errors.authError')
-            : t('payment.initError', { defaultValue: '결제 초기화 실패' })
+            : /결제위젯 연동 키|widget.*key|개별 연동 키/i.test(errMsg)
+              ? '결제 시스템 설정 오류 — 관리자에게 문의해주세요.'
+              : t('payment.initError', { defaultValue: '결제 초기화 실패' })
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
