@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useAdminOpsInsights } from '@/hooks/queries'
 import { AlertTriangle, TrendingDown, UserX, Clock, Building2, ExternalLink } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -26,25 +24,18 @@ interface OpsInsight {
 
 export default function AdminOpsInsightsPage() {
   const { t } = useTranslation()
-  const [data, setData] = useState<OpsInsight | null>(null)
-  const [summary, setSummary] = useState<OpsInsightSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token')
-      const r = await api.get('/api/admin/ops-insights', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data.success) {
-        setData(r.data.data)
-        setSummary(r.data.summary)
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '불러오기 실패')
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
+  // 🛡️ 2026-05-22 P1 영구 fix: React Query 마이그.
+  //   서버 KV cache 5분 + 클라이언트 staleTime 5분 → admin 페이지 전환 시 cache hit.
+  //   같은 admin 가 다시 진입해도 서버 호출 0 (5분 내).
+  const { data: insightsData, isLoading: loading } = useAdminOpsInsights()
+  const data: OpsInsight | null = (insightsData as OpsInsight) ?? null
+  const summary: OpsInsightSummary | null = data ? {
+    inactive_agencies: data.inactive_agencies?.length ?? 0,
+    dormant_new_sellers: data.dormant_new_sellers?.length ?? 0,
+    stuck_pending_orders: data.stuck_pending_orders?.length ?? 0,
+    dormant_sellers: data.dormant_sellers?.length ?? 0,
+    failed_webhooks_24h: data.failed_webhooks_24h?.length ?? 0,
+  } : null
 
   return (
     <AdminLayout title={t('admin.opsInsights.title', { defaultValue: '운영 인사이트' })}>

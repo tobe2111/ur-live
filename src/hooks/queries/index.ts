@@ -47,3 +47,21 @@ export { useSellerPublic } from './useSellerPublic'
 
 // 내 자산
 export { useMyOrders, useMyVouchers, useMyAppointments, useInvalidateMyOrders, useInvalidateMyVouchers } from './useMyData'
+
+// 어드민 (2026-05-22 P1 영구 fix)
+export {
+  useAdminOpsInsights,
+  useAdminSellers,
+  useAdminPendingSellers,
+  useAdminAgencies,
+  useAdminAgencyApprovals,
+  useAdminCommissionRates,
+  useAdminCronFailures,
+  useAdminAlimtalkFailures,
+  useAdminDisputes,
+  useInvalidateAdminSellers,
+  useInvalidateAdminAgencies,
+  useInvalidateAdminAgencyApprovals,
+  useInvalidateAdminDisputes,
+  useInvalidateAdminAll,
+} from './useAdmin'
