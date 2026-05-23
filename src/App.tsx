@@ -53,6 +53,7 @@ const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
 const TossWidgetPayPage = lazy(() => import('./pages/TossWidgetPayPage'))
+const TossDebugPage = lazy(() => import('./pages/TossDebugPage'))
 const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
@@ -552,6 +553,8 @@ function AppContent() {
             <Route path="/payment/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: widget 키 (_wt_) 환경에서 충전/공구 결제용 공용 in-page 위젯 페이지. */}
             <Route path="/pay/widget" element={<ProtectedRoute requireUser><TossWidgetPayPage /></ProtectedRoute>} />
+            {/* 🛡️ 2026-05-23: 결제 진단 페이지 (운영자 ground truth 수집용). */}
+            <Route path="/toss-debug" element={<ErrorBoundary><TossDebugPage /></ErrorBoundary>} />
 
             {/* 딜 포인트 충전 */}
             <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />
