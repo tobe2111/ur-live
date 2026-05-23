@@ -90,22 +90,25 @@ export default function TossWidgetPayPage() {
           await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
         }
 
-        await tryRender('renderPaymentMethods', '#toss-widget-pay-method', 'DEFAULT')
-        await tryRender('renderAgreement', '#toss-widget-pay-agreement', 'AGREEMENT')
+        // 🛡️ 2026-05-23: variantKey env 우선 — 콘솔 등록 이름과 match.
+        const VK_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || 'DEFAULT'
+        const VK_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || 'AGREEMENT'
+        await tryRender('renderPaymentMethods', '#toss-widget-pay-method', VK_PAYMENT)
+        await tryRender('renderAgreement', '#toss-widget-pay-agreement', VK_AGREEMENT)
 
         if (cancelled) return
         widgetsRef.current = widgets
         setState('ready')
       } catch (err: unknown) {
         if (cancelled) return
-        if (import.meta.env.DEV) console.error('[TossWidgetPay] init failed:', err)
-        const raw = err instanceof Error ? err.message : ''
-        const msg = /TIMEOUT/i.test(raw)
-          ? `결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요. (${raw.slice(0, 100)})`
+        console.error('[TossWidgetPay] init failed:', err)
+        const raw = err instanceof Error ? err.message : String(err)
+        const baseMsg = /TIMEOUT/i.test(raw)
+          ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
           : /not.*found|404|variant/i.test(raw)
-          ? '결제 위젯 설정 누락 — 관리자에게 문의해주세요.'
-          : raw || '결제 초기화 실패'
-        setErrorMsg(msg)
+          ? '결제 위젯 설정 — variantKey 미일치. 운영자: Toss 콘솔의 실제 variantKey 와 일치하는 VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 설정 필요.'
+          : '결제 초기화 실패'
+        setErrorMsg(`${baseMsg}\n\n[SDK 원본]: ${raw.slice(0, 200)}`)
         setState('error')
       }
     })()

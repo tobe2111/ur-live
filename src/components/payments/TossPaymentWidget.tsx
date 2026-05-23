@@ -51,8 +51,13 @@ interface TossPaymentWidgetProps {
  * 운영자 액션: Toss 콘솔 → 결제위젯 → '내 위젯' 에 variantKey='DEFAULT' / 'AGREEMENT' 등록.
  */
 
-const VARIANT_PAYMENT = 'DEFAULT'
-const VARIANT_AGREEMENT = 'AGREEMENT'
+// 🛡️ 2026-05-23 영구 fix — variantKey 를 env 로 빼서 운영자 콘솔 등록 이름과 match.
+//   사용자 신고: "콘솔에는 등록했는데 결제 위젯 설정 누락 에러"
+//   원인: 하드코딩한 'DEFAULT' / 'AGREEMENT' 가 운영자가 등록한 실제 variantKey 와 불일치.
+//   해결: VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 로 설정 가능.
+//   미설정 시: 1) 'DEFAULT' / 'AGREEMENT' 시도 → 2) variantKey 생략 (SDK 기본 variant).
+const VARIANT_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || 'DEFAULT'
+const VARIANT_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || 'AGREEMENT'
 
 export function TossPaymentWidget({
   userId,
@@ -130,15 +135,17 @@ export function TossPaymentWidget({
         setLoadingState('ready')
       } catch (err: unknown) {
         if (cancelled) return
-        if (import.meta.env.DEV) console.error('[TossPaymentWidget] init/render failed:', err)
-        const raw = err instanceof Error ? err.message : ''
-        const msg = /TIMEOUT/i.test(raw)
-          ? `결제 위젯 로딩이 지연됩니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요. (${raw.slice(0, 100)})`
+        // 🛡️ 2026-05-23: production 에서도 raw 에러 console + UI 노출 — 운영자가 정확한 원인 즉시 파악.
+        console.error('[TossPaymentWidget] init/render failed:', err)
+        const raw = err instanceof Error ? err.message : String(err)
+        const baseMsg = /TIMEOUT/i.test(raw)
+          ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
           : /not.*found|404|variant/i.test(raw)
-          ? '결제 위젯 설정 누락 — 관리자에게 문의해주세요. (Toss 콘솔 variantKey 등록 필요)'
+          ? `결제 위젯 설정 — variantKey 미일치 가능성. 우리 코드는 '${VARIANT_PAYMENT}' / '${VARIANT_AGREEMENT}' 시도. 운영자: Toss 콘솔의 실제 variantKey 와 일치하는지 확인 후 VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 설정.`
           : /widget.*key|클라이언트 키|개별 연동 키/i.test(raw)
-          ? '결제 시스템 키 type 오류 — 관리자에게 문의해주세요.'
-          : raw || t('payment.initError', { defaultValue: '결제 초기화 실패' })
+          ? '결제 시스템 키 type 오류 — TOSS_CLIENT_KEY 가 widget 키 (_ck_/_wt_) 인지 확인.'
+          : t('payment.initError', { defaultValue: '결제 초기화 실패' })
+        const msg = `${baseMsg}\n\n[SDK 원본 메시지]: ${raw.slice(0, 200)}`
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
