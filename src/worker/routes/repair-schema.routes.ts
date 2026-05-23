@@ -283,6 +283,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_kakao_review_seller', sql: "CREATE INDEX IF NOT EXISTS idx_kakao_review_seller ON kakao_review_submissions(seller_id, status)" },
     { desc: 'seed: kakao_review_bonus_amount', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('kakao_review_bonus_amount', '1000', '카카오맵 후기 보너스 (딜)', datetime('now'))" },
     { desc: 'seed: kakao_review_auto_approve', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('kakao_review_auto_approve', '0', '0=수동 검증 / 1=자동 승인', datetime('now'))" },
+    // 🛡️ 2026-05-23: Frontend 에러 telemetry — POST /api/_errors/log 가 INSERT.
+    { desc: 'table frontend_errors', sql: "CREATE TABLE IF NOT EXISTS frontend_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT NOT NULL, stack TEXT, url TEXT, type TEXT, user_id TEXT, user_agent TEXT, ip TEXT, created_at DATETIME DEFAULT (datetime('now')))" },
+    { desc: 'idx_frontend_errors_created', sql: "CREATE INDEX IF NOT EXISTS idx_frontend_errors_created ON frontend_errors(created_at DESC)" },
+    { desc: 'idx_frontend_errors_type', sql: "CREATE INDEX IF NOT EXISTS idx_frontend_errors_type ON frontend_errors(type, created_at DESC)" },
     // 🛡️ 2026-05-16: 인플 ranking 공개 여부 (default 1 = 공개)
     { desc: 'influencer_balances.ranking_public', sql: "ALTER TABLE influencer_balances ADD COLUMN ranking_public INTEGER DEFAULT 1" },
     // 🛡️ 2026-05-16: sellers 신규 컬럼 보강 — production /api/sellers/:id/public 500 fix

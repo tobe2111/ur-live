@@ -64,6 +64,9 @@ import App from './App'
 import ThemeProvider from '@/components/ThemeProvider'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
+// 🛡️ 2026-05-23 Frontend 에러 telemetry — window.onerror + unhandledrejection 캐치 → /api/_errors/log
+import { installErrorTelemetry } from '@/lib/error-telemetry'
+installErrorTelemetry()
 import { logRegionInfo, isKorea } from '@/shared/config/region'
 // ✅ Week 5 Day 2: 런타임 환경 변수 검증
 import { validateEnvForRuntime } from '@/shared/config/env-validator'

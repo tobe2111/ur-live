@@ -14,6 +14,8 @@ import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
 import { smokeTestRoutes } from './routes/smoke-test.routes'; // 2026-04-27 TD-006 Phase D
 import { repairSchemaRoutes } from './routes/repair-schema.routes'; // 2026-04-27 TD-006 Phase E
+import { errorTelemetryRoutes } from './routes/error-telemetry.routes'; // 2026-05-23 frontend 에러 수집
+import { healthcheckRoutes } from './routes/healthcheck.routes'; // 2026-05-23 결제/인증 사전 점검
 
 // ---- Worker-local routes (multi-seller MVP) ----
 import type { Env } from './types/env';
@@ -472,6 +474,8 @@ app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', repairSchemaRoutes);
+app.route('/', errorTelemetryRoutes);
+app.route('/', healthcheckRoutes);
 
 // v32 FIX: PWA manifest MIME type 명시 (Workers asset serving은 _headers 미지원)
 // Chrome "Manifest: Line: 1 Syntax error" 원인 — Worker가 HTML fallback으로 응답하거나

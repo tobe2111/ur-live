@@ -206,6 +206,18 @@ jobs:
           check "/api/seller/login" "Seller login"
           check "/api/admin/login"  "Admin login"
           check "/api/agency/login" "Agency login"
+          # 🛡️ 2026-05-23 추가: 결제 핵심 endpoint smoke (페이지 자체 200 확인)
+          check "/checkout"       "Checkout page"
+          check "/api/payments/client-key" "Payments client-key"
+          check "/api/_healthcheck/payments" "Payments healthcheck"
+          check "/toss-debug"     "Toss debug page"
+
+          # 🛡️ 결제 healthcheck 가 unhealthy 면 경고만 (배포 자체는 통과 — env 운영자 액션 필요)
+          PAY_HEALTH=$(curl -s --max-time 10 "$PROD/api/_healthcheck/payments" || echo '{}')
+          if echo "$PAY_HEALTH" | grep -q '"healthy":false'; then
+            echo "⚠️ 결제 healthcheck unhealthy: $PAY_HEALTH"
+            echo "운영자 액션 필요: Cloudflare → Pages → ur-live → Settings → Variables/Secrets 점검"
+          fi
 
           if [ "$FAIL" -gt 0 ]; then
             echo ""
