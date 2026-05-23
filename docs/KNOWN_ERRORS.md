@@ -18,6 +18,7 @@
 | 에러 메시지 | 발생 위치 | 진짜 원인 | 해결 |
 |---|---|---|---|
 | `no such column: orders.commission_rate` | order.repository createOrder | repair-schema 미적용 / 새 컬럼 ALTER 안 됨 | dual-path INSERT (with/without column) + repair-schema 등록 (commit `f69b5e2c`) |
+| `no such column: address at offset NN` | OrderRepository.findByIdempotencyKey | SELECT 가 존재하지 않는 컬럼 (`address`, `address_detail`, `notes`) 참조 — production 스키마 컬럼은 `shipping_address` (JSON), `shipping_name`, `shipping_phone`, `shipping_memo` | SELECT 컬럼을 production-schema 기준 정합 (commit `cc60adce`) |
 | `UNIQUE constraint failed: users.email` | KakaoAuthService.upsertUser | 같은 이메일로 가입된 다른 인증 방식 존재 | `EMAIL_ALREADY_LINKED_TO_OTHER_METHOD` 코드 + 한국어 메시지 |
 | `wrong number of bindings supplied` | D1 prepare/bind | SQL `?` 개수 ≠ bind 인자 개수 | `check-sql-bind-params.mjs` pre-commit hook |
 | `CHECK constraint failed: status` | orders / streams INSERT | status 값이 enum 밖 (대소문자 / 오타) | orders: 대문자 (`PAID` 등) / payment_status: 소문자 (`approved`) — `docs/SCHEMA.md` |
