@@ -559,11 +559,18 @@ export class OrderRepository {
    * Check if order already processed (idempotency)
    */
   async isAlreadyProcessed(orderNumber: string, status: OrderStatus): Promise<boolean> {
-    const row = await this.qb.queryOne<{ count: number }>(
-      'SELECT COUNT(*) as count FROM orders WHERE order_number = ? AND status = ?',
-      [orderNumber, status]
-    );
-    return (row?.count ?? 0) > 0;
+    // 🛡️ 2026-05-23 Drizzle Phase 2: SQL 문자열 → typed Drizzle query.
+    //   기존 동작 보존: order_number + status 일치하는 row 존재 여부 확인.
+    const row = await this.db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(and(
+        eq(ordersTable.order_number, orderNumber),
+        eq(ordersTable.status, String(status)),
+      ))
+      .limit(1)
+      .get();
+    return row != null;
   }
 
   /**
