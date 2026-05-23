@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 
 interface Product {
   id: number
@@ -49,8 +50,13 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
     <Link to={`/products/${product.id}`} className="block text-left group">
       <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
         {product.image_url ? (
+          /* 🛡️ 2026-05-23 (Task 4): Cloudflare Image Resizing — WebP/AVIF 자동 변환 + DPI별 srcset.
+              원본 URL 그대로 → 50-80% 트래픽 절감, LCP ↓.
+              외부 URL (i.ibb.co 등) 은 helper 가 자동으로 그대로 반환. */
           <img
-            src={product.image_url}
+            src={cfImage(product.image_url, { width: 400, format: 'auto' })}
+            srcSet={cfSrcSet(product.image_url, 400)}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
