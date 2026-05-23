@@ -55,6 +55,7 @@ import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
+import { handleCachePrewarm } from './cron/cache-prewarm';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
@@ -109,6 +110,9 @@ export async function handleCronScheduled(
     //   migrations/0277 미적용 환경은 graceful skip — table probe 후 no-op.
     //   응답 path 의 cache fallback 과 함께 동작 (group-buy-public.routes.ts).
     ctx.waitUntil(safeCron('group-buy-feed-cache', () => handleGroupBuyFeedCache(env)));
+    // 🛡️ 2026-05-23 (Task 3): 5분마다 hot endpoint pre-warm — 배포 후 / cache expire 후
+    //   첫 사용자 cold-start 제거. publicCache 가 edge + KV 양쪽 자동으로 채움.
+    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env)));
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
