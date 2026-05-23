@@ -380,19 +380,19 @@ export default function AddressManagementPage() {
             <label htmlFor="addr-postal-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.postalCode')} <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full min-w-0">
               <input
                 id="addr-postal-code"
                 type="text"
                 value={formData.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
+                className="flex-1 min-w-0 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
                 placeholder={t('address.postalPlaceholder')}
               />
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] transition-all whitespace-nowrap"
+                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>

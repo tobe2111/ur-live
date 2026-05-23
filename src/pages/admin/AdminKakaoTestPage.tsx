@@ -204,9 +204,9 @@ export default function AdminKakaoTestPage() {
                 <p className="relative bg-white px-3 text-xs text-gray-400 text-center w-fit mx-auto">또는 토큰 직접 입력</p>
               </div>
               <div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full min-w-0">
                   <input id="manual-token" placeholder="access_token 붙여넣기"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900" />
+                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900" />
                   <button onClick={() => {
                     const val = (document.getElementById('manual-token') as HTMLInputElement)?.value?.trim()
                     if (val) { setAccessToken(val); localStorage.setItem('kakao_test_token', val); toast.success('토큰 설정 완료!') }

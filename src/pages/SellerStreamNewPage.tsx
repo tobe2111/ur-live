@@ -239,16 +239,16 @@ export default function SellerStreamNewPage() {
                   <label className="block text-sm font-semibold text-green-900 mb-2">
                     {t('seller.watchUrlLabel')}:
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full min-w-0">
                     <input
                       type="text"
                       value={youtubeInfo.watchUrl}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg text-gray-900"
+                      className="flex-1 min-w-0 px-4 py-2 bg-white border border-green-300 rounded-lg text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.watchUrl, t('seller.watchUrlLabel'))}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="shrink-0 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
                       {t('seller.copyBtn')}
                     </button>
@@ -259,16 +259,16 @@ export default function SellerStreamNewPage() {
                   <label className="block text-sm font-semibold text-green-900 mb-2">
                     {t('seller.streamKeyObs')}:
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full min-w-0">
                     <input
                       type="password"
                       value={youtubeInfo.streamKey}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
+                      className="flex-1 min-w-0 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.streamKey, t('seller.streamKeyObs'))}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="shrink-0 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
                       {t('seller.copyBtn')}
                     </button>
@@ -279,16 +279,16 @@ export default function SellerStreamNewPage() {
                   <label className="block text-sm font-semibold text-green-900 mb-2">
                     {t('seller.streamUrlObs')}:
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full min-w-0">
                     <input
                       type="text"
                       value={youtubeInfo.streamUrl}
                       readOnly
-                      className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
+                      className="flex-1 min-w-0 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm text-gray-900"
                     />
                     <button
                       onClick={() => copyToClipboard(youtubeInfo.streamUrl, t('seller.streamUrlObs'))}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="shrink-0 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
                       {t('seller.copyBtn')}
                     </button>

@@ -145,9 +145,9 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
           <p className="text-xs font-semibold text-gray-700">RTMP 접속 정보</p>
           <div>
             <label className="block text-[10px] font-semibold text-gray-500 mb-1">RTMP URL</label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full min-w-0">
               <input type="text" value={rtmpUrl} readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 font-mono" />
+                className="flex-1 min-w-0 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 font-mono" />
               <Button size="sm" variant="outline" onClick={() => copyToClipboard(rtmpUrl, 'url')}>
                 {copied === 'url' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -155,9 +155,9 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-gray-500 mb-1">Stream Key</label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full min-w-0">
               <input type="password" value={rtmpKey} readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 font-mono" />
+                className="flex-1 min-w-0 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs text-gray-900 font-mono" />
               <Button size="sm" variant="outline" onClick={() => copyToClipboard(rtmpKey, 'key')}>
                 {copied === 'key' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -250,12 +250,12 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               RTMP URL
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full min-w-0">
               <input
                 type="text"
                 value={rtmpUrl}
                 readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono"
+                className="flex-1 min-w-0 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono"
               />
               <Button
                 size="sm"
@@ -275,12 +275,12 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               Stream Key
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full min-w-0">
               <input
                 type="password"
                 value={rtmpKey}
                 readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono"
+                className="flex-1 min-w-0 px-3 py-2 bg-gray-50 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 font-mono"
               />
               <Button
                 size="sm"

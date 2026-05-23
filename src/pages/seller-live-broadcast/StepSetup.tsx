@@ -174,18 +174,18 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
           <div className="space-y-1.5 mt-2">
             <div>
               <label className="block text-[10px] font-bold text-amber-700">RTMP URL</label>
-              <div className="flex gap-2">
-                <input readOnly value={stream.rtmp_url} className="flex-1 px-2 py-1.5 bg-white border border-amber-200 rounded text-xs font-mono text-gray-900" />
-                <button onClick={() => onCopy(stream.rtmp_url!, 'url')} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded">
+              <div className="flex gap-2 w-full min-w-0">
+                <input readOnly value={stream.rtmp_url} className="flex-1 min-w-0 px-2 py-1.5 bg-white border border-amber-200 rounded text-xs font-mono text-gray-900" />
+                <button onClick={() => onCopy(stream.rtmp_url!, 'url')} className="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded">
                   {copiedField === 'url' ? '✓' : '복사'}
                 </button>
               </div>
             </div>
             <div>
               <label className="block text-[10px] font-bold text-amber-700">Stream Key</label>
-              <div className="flex gap-2">
-                <input readOnly type="password" value={stream.rtmp_key} className="flex-1 px-2 py-1.5 bg-white border border-amber-200 rounded text-xs font-mono text-gray-900" />
-                <button onClick={() => onCopy(stream.rtmp_key!, 'key')} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded">
+              <div className="flex gap-2 w-full min-w-0">
+                <input readOnly type="password" value={stream.rtmp_key} className="flex-1 min-w-0 px-2 py-1.5 bg-white border border-amber-200 rounded text-xs font-mono text-gray-900" />
+                <button onClick={() => onCopy(stream.rtmp_key!, 'key')} className="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded">
                   {copiedField === 'key' ? '✓' : '복사'}
                 </button>
               </div>
