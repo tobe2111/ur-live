@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
 import { getTossPayments } from '@/lib/toss-preload'
 import { resolveTossFlow } from '@/lib/toss-key-type'
-import { VOUCHER_CATEGORY_SET, isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -277,12 +277,11 @@ export default function GroupBuyDetailPage() {
     //   - meal_voucher / beauty_voucher / stay_voucher / etc_voucher / health_voucher / pet_voucher / activity_voucher → 딜
     //   - 일반 상품 (공구 할인 적용된 의류/잡화/식품 등) → 토스
     //   사용자 정책 (CLAUDE.md): "교환권을 딜로 거래하는 것 외에는 토스페이먼츠 결제"
-    // 🛡️ 2026-05-23 v2: isVoucherCategory 사용 — legacy 카테고리 (health_voucher /
-    //   pet_voucher / activity_voucher) 도 voucher 로 인식 (마이그레이션 사이 graceful).
-    //   VOUCHER_CATEGORY_SET.has() 만 쓰면 legacy 매칭 안 됨 → fall through → /checkout 사고.
-    const isVoucher = isVoucherCategory(detail.category)
+    // 🛡️ 2026-05-23 v3: getProductFlow SSOT (src/shared/product-flow.ts) —
+    //   voucher_deal vs group_buy_toss 단일 helper. legacy 카테고리 graceful + 미래 분류 1곳 수정.
+    const { flow } = resolveProductFlow(detail)
 
-    if (isVoucher) {
+    if (flow === 'voucher_deal') {
       // 딜 결제 흐름 (교환권 전용)
       setJoining(true)
       reportFunnel('click', productId)
