@@ -323,6 +323,26 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'orders.commission_rate', sql: "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 10.00" },
     { desc: 'orders.commission_amount', sql: "ALTER TABLE orders ADD COLUMN commission_amount INTEGER DEFAULT 0" },
     { desc: 'orders.seller_amount', sql: "ALTER TABLE orders ADD COLUMN seller_amount INTEGER DEFAULT 0" },
+    // 🛡️ 2026-05-23: SQL column mismatch 23건 일괄 fix — production-schema 정합.
+    //   - products.long_description: 어드민 상품 상세 마크다운 설명.
+    //   - products.compare_at_price: 할인 전 가격 (정가) — Cafe24 sync / 어드민 상품 등록 시 사용.
+    { desc: 'products.long_description', sql: "ALTER TABLE products ADD COLUMN long_description TEXT" },
+    { desc: 'products.compare_at_price', sql: "ALTER TABLE products ADD COLUMN compare_at_price INTEGER" },
+    //   - donation_settlements.donation_ids: settlement 에 포함된 donation id 들 JSON 배열.
+    { desc: 'donation_settlements.donation_ids', sql: "ALTER TABLE donation_settlements ADD COLUMN donation_ids TEXT" },
+    //   - user_points.total_used: 총 사용 누적 (충전 vs 사용 추적).
+    { desc: 'user_points.total_used', sql: "ALTER TABLE user_points ADD COLUMN total_used INTEGER DEFAULT 0" },
+    //   - settlements: 셀러 정산 신청 / 자동 정산 보고서 양쪽 모두 settlements 테이블 사용.
+    //     amount / bank_name / account_number / account_holder = 셀러 정산 신청 지급 정보.
+    //     total_sales / total_platform_fee / total_settlement / generated_at = 자동 정산 보고서 집계 컬럼.
+    { desc: 'settlements.amount', sql: "ALTER TABLE settlements ADD COLUMN amount INTEGER" },
+    { desc: 'settlements.bank_name', sql: "ALTER TABLE settlements ADD COLUMN bank_name TEXT" },
+    { desc: 'settlements.account_number', sql: "ALTER TABLE settlements ADD COLUMN account_number TEXT" },
+    { desc: 'settlements.account_holder', sql: "ALTER TABLE settlements ADD COLUMN account_holder TEXT" },
+    { desc: 'settlements.total_sales', sql: "ALTER TABLE settlements ADD COLUMN total_sales INTEGER DEFAULT 0" },
+    { desc: 'settlements.total_platform_fee', sql: "ALTER TABLE settlements ADD COLUMN total_platform_fee INTEGER DEFAULT 0" },
+    { desc: 'settlements.total_settlement', sql: "ALTER TABLE settlements ADD COLUMN total_settlement INTEGER DEFAULT 0" },
+    { desc: 'settlements.generated_at', sql: "ALTER TABLE settlements ADD COLUMN generated_at DATETIME" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
