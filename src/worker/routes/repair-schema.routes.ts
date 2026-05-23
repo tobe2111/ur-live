@@ -304,6 +304,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_sellers_linked_user_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_linked_user_unique ON sellers(linked_user_id) WHERE linked_user_id IS NOT NULL" },
     // 🛡️ 2026-05-22 카카오 P0: kakao_id UNIQUE 보강 (이미 KakaoAuthService 에서 시도하지만 다중 진입점 안전).
     { desc: 'idx_users_kakao_id_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL" },
+    // 🛡️ 2026-05-22 P1: 교환권 페이지 로딩 perf — 사용자별 voucher 목록 조회.
+    //   /api/vouchers/my 가 WHERE user_id = ? ORDER BY created_at DESC 매번 실행 →
+    //   인덱스 없으면 vouchers 전체 scan. 사용자 N명 × voucher M개 = N*M row scan.
+    { desc: 'idx_vouchers_user_created', sql: "CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];

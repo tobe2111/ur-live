@@ -245,18 +245,47 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
     const { DB } = c.env
-    await ensureTables(DB)
 
-    // 🛡️ 2026-05-15: lat/lng 추가 — VoucherMap 지도 뷰 용
+    // 🛡️ 2026-05-22 P1 영구 fix (사용자 신고 "교환권 로딩 늦음"):
+    //   - 이전: ensureTables(20+ ALTER/CREATE) cold-start 마다 첫 호출 시 ~50-200ms.
+    //   - 이전: SELECT v.* (모든 컬럼) + LEFT JOIN products + ORDER BY DESC + LIMIT 없음.
+    //   - 영구 해결:
+    //     1) ensureTables 제거 — vouchers 테이블은 production 에 항상 존재.
+    //     2) explicit SELECT (16 컬럼 — 카드 + 지도뷰 + 환불 표시에 필요한 것만).
+    //     3) LIMIT 200 — 사용자가 voucher 1000개여도 응답 폭증 차단.
+    //     4) idx_vouchers_user_created 복합 인덱스 lazy 생성 (멱등).
+    try {
+      await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run()
+    } catch { /* exists or permission */ }
+
     const { results } = await DB.prepare(`
-      SELECT v.*, p.name as product_name, p.restaurant_name, p.restaurant_address,
-             p.restaurant_lat, p.restaurant_lng, p.restaurant_phone,
-             p.image_url as product_image
+      SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
+             v.expires_at, v.used_at, v.created_at, v.refund_status,
+             v.gift_from_user_id, v.delivered_gift_name,
+             p.name AS product_name, p.image_url AS product_image,
+             p.restaurant_name, p.restaurant_address,
+             p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
       FROM vouchers v
       LEFT JOIN products p ON v.product_id = p.id
       WHERE v.user_id = ?
       ORDER BY v.created_at DESC
-    `).bind(String(user.id)).all()
+      LIMIT 200
+    `).bind(String(user.id)).all().catch(async () => {
+      // 일부 컬럼 (refund_status / gift_*) 부재 환경 graceful fallback.
+      const r = await DB.prepare(`
+        SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
+               v.expires_at, v.used_at, v.created_at,
+               p.name AS product_name, p.image_url AS product_image,
+               p.restaurant_name, p.restaurant_address,
+               p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
+        FROM vouchers v
+        LEFT JOIN products p ON v.product_id = p.id
+        WHERE v.user_id = ?
+        ORDER BY v.created_at DESC
+        LIMIT 200
+      `).bind(String(user.id)).all()
+      return r
+    })
 
     return c.json({ success: true, data: results ?? [] })
   })

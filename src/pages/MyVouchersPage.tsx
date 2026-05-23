@@ -5,6 +5,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Gift, Share2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useMyVouchers } from '@/hooks/queries'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
@@ -288,8 +289,10 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
 export default function MyVouchersPage() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
-  const [vouchers, setVouchers] = useState<Voucher[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-05-22 P1 영구 fix: useState+useEffect+직접 fetch → useMyVouchers().
+  //   localStorage initialData (즉시 0ms 표시) + 2분 stale + 페이지 전환 시 dedup.
+  const { data: vouchersRaw, isLoading: loading } = useMyVouchers()
+  const vouchers = (vouchersRaw ?? []) as unknown as Voucher[]
   const [qrVoucher, setQrVoucher] = useState<Voucher | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
@@ -309,12 +312,7 @@ export default function MyVouchersPage() {
     } catch { /* silent */ }
   }, [])
 
-  useEffect(() => {
-    api.get('/api/vouchers/my')
-      .then(r => { if (r.data.success) setVouchers(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
+  // 🛡️ useMyVouchers hook 이 fetch + cache + setState 모두 처리 — 직접 useEffect 불필요.
 
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
 
