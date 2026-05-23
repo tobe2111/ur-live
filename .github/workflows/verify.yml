@@ -142,9 +142,10 @@ jobs:
 
       # 🛡️ 2026-05-17: 존재하지 않는 컬럼 참조 — 'no such column' SqlError 방지.
       #   INSERT/UPDATE 컬럼이 마이그레이션 + 런타임 inline DDL 의 스키마에 있는지 검증.
-      - name: Column existence (warn)
-        run: node scripts/check-sql-column-exists.mjs
-        continue-on-error: true
+      # 🛡️ 2026-05-23: strict mode 활성화 — 23건 일괄 fix 완료 (commit bcdd8990) 후 CI 차단 가능.
+      #   새 SQL 컬럼 mismatch commit 자체 차단 → "no such column" 500 사고 영구 차단.
+      - name: Column existence (strict)
+        run: node scripts/check-sql-column-exists.mjs -s
 
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)

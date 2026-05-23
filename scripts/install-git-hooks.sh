@@ -102,10 +102,14 @@ node scripts/check-sql-bind-params.mjs || true
 echo "==> Pre-commit: NOT NULL INSERT 검사 (warn-only)..."
 node scripts/check-sql-not-null-insert.mjs || true
 
-# 🛡️ 2026-05-17: 존재하지 않는 컬럼 참조 검사 (warn-only).
-#   'no such column' SqlError → silent .catch → 기능 동작 안 함.
-echo "==> Pre-commit: 존재 없는 컬럼 참조 검사 (warn-only)..."
-node scripts/check-sql-column-exists.mjs || true
+# 🛡️ 2026-05-23: 존재하지 않는 컬럼 참조 검사 (strict — 차단).
+#   23건 일괄 fix 완료 (commit bcdd8990) 후 strict 활성. 새 mismatch commit 차단.
+#   'no such column' SqlError → silent .catch → 기능 동작 안 함 사고 영구 차단.
+echo "==> Pre-commit: 존재 없는 컬럼 참조 검사 (strict)..."
+node scripts/check-sql-column-exists.mjs -s || {
+  echo "❌ Commit blocked. SQL 컬럼 mismatch 발견 — production-schema.ts 와 정합 필요."
+  exit 1
+}
 
 # 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
 echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
