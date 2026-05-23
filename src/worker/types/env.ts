@@ -12,6 +12,13 @@ export interface Env {
   // ---- KV Namespaces ----
   RATE_LIMIT_KV?: KVNamespace;
   SESSION_KV?: KVNamespace;
+  /**
+   * 🛡️ 2026-05-23 (Task 2): public API 응답 second-layer cache.
+   *   Edge cache 는 PoP 별 격리 — 한국 PoP cache ≠ 일본 PoP cache. KV 는 전역 공유.
+   *   PoP cold start 시 D1 hit 대신 KV hit → D1 부하 감소 + region 간 일관성.
+   *   미등록 시 publicCache 는 edge cache 만 사용 (기존 동작).
+   */
+  CACHE_KV?: KVNamespace;
 
   // ---- Durable Objects ----
   LIVE_STREAM?: DurableObjectNamespace;
