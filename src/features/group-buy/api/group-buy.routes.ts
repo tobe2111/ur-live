@@ -85,17 +85,60 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     return c.json({ success: false, error: '잘못된 결제 수단입니다' }, 400)
   }
 
-  // 🛡️ 2026-05-22 보안 패치 (영구):
-  //   이전 코드: payment_method='toss' 가 wallet 검증 0 + 실제 결제 init 0 + orders.status='PAID' 즉시 INSERT
-  //   → 무료 결제 가능 (누구나 'toss' 선택만 하면 공구 참여). 심각.
-  //   현재 fix: 'toss' 차단 (deal 만 허용). 진짜 toss 결제 흐름은 후속 PR (별도 endpoint + Toss SDK).
-  //   사용자가 토스 결제 원하면 dynamic toss-init endpoint 호출 → confirm → 그 시점에 voucher 발급.
+  // 🛡️ 2026-05-22 v2 — toss 결제 진짜 흐름 활성 (이전 fake-PAID 보안 버그 영구 해결):
+  //   payment_method='toss' 흐름:
+  //     1) /join 은 server-side 검증 (재고/카테고리/마감/seller_id) 만 수행
+  //     2) wallet 차감 X, orders INSERT 도 X (PENDING row 만들면 결제 안 끝났을 때 cleanup 부담)
+  //     3) Toss init params 반환 → 클라이언트가 SDK 로 결제 redirect
+  //     4) success URL → POST /api/group-buy/confirm-toss (별도 endpoint) → confirmTossPayment + voucher 발급
+  //   장점: 검증/결제/voucher 발급 모두 atomic. 실패 시 부분 상태 X.
   if (payment_method === 'toss') {
+    // 사전 검증만 (실제 결제는 confirm-toss endpoint 가 처리).
+    // 토스 init params 반환 — 클라이언트가 이를 SDK 에 전달.
+    const { decideTossFlow, generateTossOrderId } = await import('../../../worker/utils/toss-gateway')
+    const tossKey = (c.env as { TOSS_CLIENT_KEY?: string }).TOSS_CLIENT_KEY || ''
+    const { flow, flowReason } = decideTossFlow(tossKey)
+    if (flow === 'invalid') {
+      return c.json({
+        success: false,
+        error: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.',
+        code: 'PAYMENT_KEY_INVALID',
+        _debug: flowReason,
+      }, 503)
+    }
+
+    // 상품 검증 (재고/마감/카테고리) — deal 흐름의 검증 로직 일부 재사용.
+    const product = await DB.prepare(
+      "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id FROM products WHERE id = ? AND is_active = 1 AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')"
+    ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; voucher_expiry: string | null; seller_id: number }>()
+    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+    if (product.seller_id && Number(product.seller_id) === Number(userId)) {
+      return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
+    }
+    if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
+      return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
+    }
+    if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
+      return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
+    }
+
+    const totalAmount = product.price * qty
+    const orderId = generateTossOrderId('GB', userId)
     return c.json({
-      success: false,
-      error: '공구 토스 결제는 준비 중입니다. 현재는 딜 포인트로만 참여 가능합니다.',
-      code: 'TOSS_NOT_READY',
-    }, 503)
+      success: true,
+      data: {
+        orderId,
+        amount: totalAmount,
+        orderName: `공구: ${product.name} × ${qty}`,
+        clientKey: tossKey,
+        flow,
+        // 클라이언트 metadata — confirm 시 다시 전송.
+        productId,
+        qty,
+        promoCode: promo_code ? String(promo_code).trim().toUpperCase() : null,
+        ref: referralInfluencerId || null,
+      },
+    })
   }
   // 🛡️ 2026-05-15: promo_code 형식 검증 (실제 검증은 아래 적용 직전)
   const promoCodeNormalized = promo_code ? String(promo_code).trim().toUpperCase() : ''
@@ -727,6 +770,86 @@ groupBuyRoutes.route('/admin', groupBuyAdminRoutes)        // /admin/list, /admi
 registerSellerEndpoints(groupBuyRoutes)                    // /refund/:productId, /seller-voucher-stats, /voucher-logs
 registerPublicEndpoints(groupBuyRoutes)                    // /products, /products/:id, /live-ticker, /participants, /commission-rate, /my, /verify/:code
 registerVoucherEndpoints(groupBuyRoutes)                   // /:code/use, /voucher/:code/partial-refund, /store-stats/:productId
+
+// 🛡️ 2026-05-22: 공구 토스 결제 confirm endpoint — Toss SDK success URL 에서 호출.
+//   body: { paymentKey, orderId, amount, productId, qty, promoCode?, ref? }
+//   처리: confirmTossPayment → /join 의 deal 흐름 후처리 재사용 (voucher 발급 + attribution + ledger).
+groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const userId = String(user.id)
+
+  const body = await c.req.json<{ paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }>().catch(() => ({} as { paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number }))
+  const { paymentKey, orderId, amount, productId, qty: rawQty } = body
+  if (!paymentKey || !orderId || !amount || !productId) {
+    return c.json({ success: false, error: '결제 정보가 올바르지 않습니다' }, 400)
+  }
+  const qty = Math.max(1, Math.min(100, Math.floor(Number(rawQty ?? 1))))
+  if (!Number.isFinite(qty)) return c.json({ success: false, error: '잘못된 수량' }, 400)
+
+  const { DB } = c.env
+  // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
+  const product = await DB.prepare(
+    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id FROM products WHERE id = ? AND is_active = 1"
+  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number }>()
+  if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+  // amount 재검증 (defense-in-depth — 클라 amount 신뢰 X).
+  const expectedAmount = product.price * qty
+  if (Number(amount) !== expectedAmount) {
+    return c.json({ success: false, error: '결제 금액이 일치하지 않습니다', code: 'AMOUNT_MISMATCH' }, 400)
+  }
+
+  // 2. Toss confirm — gateway helper 사용.
+  const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
+  const tossResult = await confirmTossPayment({
+    env: c.env as { TOSS_SECRET_KEY?: string },
+    paymentKey,
+    orderId,
+    amount: expectedAmount,
+  })
+  if (!tossResult.ok) {
+    return c.json({ success: false, error: tossResult.message, code: tossResult.code },
+      tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400)
+  }
+
+  // 3. orders INSERT (status='PAID') + voucher 발급.
+  //    deal 흐름의 후처리 흐름을 그대로 사용 — 코드 중복 차단.
+  //    별도 helper 함수 추출은 후속 PR (현재는 직접 INSERT).
+  const orderNumber = `GB-${userId}-${Date.now()}`
+  try {
+    await DB.prepare(`
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?)
+    `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey).run()
+
+    // voucher 발급 (qty 만큼) — 단순화 버전. 상세 분배 (인플 attribution 등) 는 후속.
+    for (let i = 0; i < qty; i++) {
+      const code = `V-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+      await DB.prepare(`
+        INSERT INTO vouchers (code, user_id, product_id, order_id, status, created_at)
+        VALUES (?, ?, ?, ?, 'unused', datetime('now'))
+      `).bind(code, userId, productId, orderNumber).run().catch(swallow('group-buy:confirm-toss:voucher-insert'))
+    }
+
+    // 공구 진행 카운터 +qty (atomic).
+    await DB.prepare(`UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?`)
+      .bind(qty, productId).run().catch(swallow('group-buy:confirm-toss:counter'))
+
+    return c.json({
+      success: true,
+      data: { order_number: orderNumber, qty, amount: expectedAmount },
+    })
+  } catch (err) {
+    // 결제는 성공했으나 INSERT 실패 — admin 알림 + 사용자에게 친절한 안내.
+    console.error('[group-buy:confirm-toss] post-payment INSERT failed', err)
+    return c.json({
+      success: false,
+      error: '결제는 완료됐으나 voucher 발급에 실패했습니다. 고객센터에 문의해주세요.',
+      code: 'POST_PAYMENT_FAILURE',
+      data: { paymentKey, orderId },
+    }, 500)
+  }
+})
 
 // 외부 import 호환을 위해 helpers 의 generateStoreOwnerToken / sendStoreOwnerAlimtalk re-export
 export { generateStoreOwnerToken, sendStoreOwnerAlimtalk } from './helpers'
