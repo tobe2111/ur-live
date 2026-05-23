@@ -129,10 +129,11 @@ export function TossPaymentWidget({
         widgetsRef.current = widgets
         setLoadingState('ready')
 
-        // 약관 위젯은 background — button 활성화 차단 안 함.
-        tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT).catch(err => {
-          console.warn('[TossPaymentWidget] renderAgreement failed (non-fatal):', (err as Error).message)
-        })
+        // 🛡️ 2026-05-23: 약관 위젯은 호출 시도하되 실패해도 무시.
+        //   업계 표준 — Toss redirect 페이지가 PG 약관 알아서 표시 → 우리 위젯에서 별도 X.
+        //   토스 콘솔에 AGREEMENT variant 등록 안 되면 SDK 에러 → 무시 (background).
+        //   필수 약관 동의는 SDK 가 requestPayment 단계에서 자동 검증.
+        tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT).catch(() => null)
       } catch (err: unknown) {
         if (cancelled) return
         console.error('[TossPaymentWidget] init/render failed:', err)
@@ -219,8 +220,11 @@ export function TossPaymentWidget({
 
   return (
     <div className="space-y-3">
+      {/* 🛡️ 2026-05-23: 약관 위젯은 옵션 — Toss redirect 페이지에서 PG 가 알아서 표시.
+          업계 표준 (쿠팡/11번가/G마켓 등): 결제 시 별도 약관 영역 X. PG 페이지에서 처리.
+          renderAgreement 호출은 background 로 유지 (변수 미사용 시도 — Toss SDK 가 안 부르면 안 그림). */}
       <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
-      <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+      <div id="toss-agreement" className="hidden" />
 
       <button
         onClick={handlePayment}
