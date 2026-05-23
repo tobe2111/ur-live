@@ -768,40 +768,45 @@ app.route('/api/users', usersRouter);
 // ============================================================
 // 🚀 Edge cache + Cache-Control 동시 적용 (1인 운영 D1 부하 감소)
 // edge cache 는 CF edge 에서 응답 캐싱 → D1 쿼리 자체를 우회 → 빠르고 비용 절감
-app.use('/api/products', edgeCache(60), cacheControl(60));     // 1 min — list
+//
+// 🛡️ 2026-05-23 (Task 1): publicCache() 도입 — user-agnostic endpoint 는 인증 헤더 무시 캐싱.
+//   기존 edgeCache 는 Authorization/Cookie session 있으면 우회 → 로그인 사용자는 항상 D1 hit.
+//   publicCache 는 인증 헤더 무시 → 로그인 사용자도 edge hit → D1 부하 추가 감소.
+//   ⚠️ 응답이 user-specific 인 endpoint 에는 절대 사용 금지 (다른 유저 데이터 노출).
+app.use('/api/products', publicCache(60), cacheControl(60));     // 1 min — list (user-agnostic)
 // 🛡️ 2026-05-19 (사용자 신고: /products/:id 로딩 2-3초):
 //   상품 상세 / 옵션 / 리뷰 summary 도 edge cache 로 D1 우회 → ~50ms (cache hit).
-app.use('/api/products/:id', edgeCache(120), cacheControl(120));      // 2 min — detail
-app.use('/api/products/:id/options', edgeCache(300), cacheControl(300));  // 5 min — 거의 안 변함
-app.use('/api/reviews/product/:id/summary', edgeCache(180), cacheControl(180));  // 3 min
-app.use('/api/streams', edgeCache(30), cacheControl(30));      // 30 sec
+app.use('/api/products/:id', publicCache(120), cacheControl(120));      // 2 min — detail (user-agnostic)
+app.use('/api/products/:id/options', publicCache(300), cacheControl(300));  // 5 min — 거의 안 변함
+app.use('/api/reviews/product/:id/summary', publicCache(180), cacheControl(180));  // 3 min
+app.use('/api/streams', publicCache(30), cacheControl(30));      // 30 sec (공개 라이브 목록 — user-agnostic)
 // 🛡️ 2026-05-22 사용자 신고 "메인 공구 상품 로딩 너무 느림" 영구 해결:
 //   edge cache 60s → 300s + SWR 1800s.
 //   stale-while-revalidate 1800s = 5분 fresh + 30분 stale 허용 동안 background revalidate.
 //   → 두 번째 사용자부터는 0ms (edge hit), 첫 사용자만 D1 cold-start (KV cache 도 함께 작동).
-app.use('/api/group-buy/products', edgeCache(300), cacheControl(300, 1800)); // 5min fresh + 30min SWR
+app.use('/api/group-buy/products', publicCache(300), cacheControl(300, 1800)); // 5min fresh + 30min SWR
 // 🛡️ 2026-05-15: 공구 detail (개별) 30초 — group_buy_current 자주 바뀌지만 stale-while-revalidate 가 사용성 보존
-app.use('/api/group-buy/products/*', edgeCache(30), cacheControl(30));
-// 참여자 마스킹 리스트 — 1분 (자주 바뀌지만 prv 정보 X)
-app.use('/api/group-buy/products/*/participants', edgeCache(60), cacheControl(60));
-app.use('/api/group-buy/live-ticker', edgeCache(30), cacheControl(30));
-app.use('/api/og/group-buy/*', edgeCache(3600), cacheControl(3600)); // OG image 1h
-app.use('/api/currency/rates', edgeCache(3600), cacheControl(3600)); // 환율 1h
-app.use('/api/banners', edgeCache(300), cacheControl(300));    // 5 min
+app.use('/api/group-buy/products/*', publicCache(30), cacheControl(30));
+// 참여자 마스킹 리스트 — 1분 (자주 바뀌지만 prv 정보 X — 이름은 이미 마스킹됨)
+app.use('/api/group-buy/products/*/participants', publicCache(60), cacheControl(60));
+app.use('/api/group-buy/live-ticker', publicCache(30), cacheControl(30));
+app.use('/api/og/group-buy/*', publicCache(3600), cacheControl(3600)); // OG image 1h
+app.use('/api/currency/rates', publicCache(3600), cacheControl(3600)); // 환율 1h (전역 데이터)
+app.use('/api/banners', publicCache(300), cacheControl(300));    // 5 min (공개 배너)
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
-app.use('/api/shorts', edgeCache(60), cacheControl(60));                // 쇼츠 피드 1min
-app.use('/api/reviews/product/*', edgeCache(120), cacheControl(120));   // 리뷰 목록 2min (리뷰 쓰기는 POST 라 캐시 무영향)
-app.use('/api/restaurants', edgeCache(300), cacheControl(300));         // 식당 목록 5min
-// 🛡️ 2026-04-28: 메인페이지 통합 endpoint — 1회 호출 + 1분 edge cache
-app.use('/api/home/bundle', edgeCache(60), cacheControl(60));
+app.use('/api/shorts', publicCache(60), cacheControl(60));                // 쇼츠 피드 1min (공개)
+app.use('/api/reviews/product/*', publicCache(120), cacheControl(120));   // 리뷰 목록 2min (리뷰 쓰기는 POST 라 캐시 무영향)
+app.use('/api/restaurants', publicCache(300), cacheControl(300));         // 식당 목록 5min (공개)
+// 🛡️ 2026-04-28: 메인페이지 통합 endpoint — 1회 호출 + 1분 edge cache (공개 — user 무관)
+app.use('/api/home/bundle', publicCache(60), cacheControl(60));
 // 🛡️ 2026-05-19: /api/home/categories — 25+ DB 쿼리 매번 실행되면 느림. 5분 cache.
-app.use('/api/home/categories', edgeCache(300), cacheControl(300));
+app.use('/api/home/categories', publicCache(300), cacheControl(300));
 // 🛡️ 2026-04-30 perf audit: 추가 공개 read-only 엔드포인트 캐싱
-app.use('/api/sellers/*/public', edgeCache(60), cacheControl(60));        // 셀러 공개 프로필 1min
-app.use('/api/sections', edgeCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
-app.use('/api/seller-tiers', edgeCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
-app.use('/api/blog/public/*', edgeCache(180), cacheControl(180));         // 블로그 공개 글 3min
-app.use('/api/search/*', edgeCache(30), cacheControl(30));                // 검색 결과 30s
+app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // 셀러 공개 프로필 1min
+app.use('/api/sections', publicCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
+app.use('/api/seller-tiers', publicCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
+app.use('/api/blog/public/*', publicCache(180), cacheControl(180));         // 블로그 공개 글 3min
+app.use('/api/search/*', publicCache(30), cacheControl(30));                // 검색 결과 30s (query 기반 — user 무관)
 
 // ============================================================
 // Rate limits for read/write endpoints
