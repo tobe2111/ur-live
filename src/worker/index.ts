@@ -40,7 +40,7 @@ import { i18nMiddleware } from './middleware/i18n.middleware';
 import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
 import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 import { errorRateMonitor } from './middleware/error-rate-monitor';
-import { edgeCache } from './middleware/edge-cache';
+import { edgeCache, publicCache } from './middleware/edge-cache';
 
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
