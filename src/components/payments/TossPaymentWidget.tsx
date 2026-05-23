@@ -243,13 +243,6 @@ export function TossPaymentWidget({
         </>
       )}
 
-      {/* gck 모드 — 안내 문구 */}
-      {mode === 'gck' && loadingState === 'ready' && (
-        <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-[12px] text-blue-800">
-          결제하기 버튼을 누르시면 토스페이먼츠 결제 페이지로 이동합니다.
-        </div>
-      )}
-
       <button
         onClick={handlePayment}
         disabled={loadingState !== 'ready' || isProcessing}
