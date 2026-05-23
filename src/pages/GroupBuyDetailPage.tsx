@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
 import { getTossPayments } from '@/lib/toss-preload'
 import { resolveTossFlow } from '@/lib/toss-key-type'
+import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -271,14 +272,47 @@ export default function GroupBuyDetailPage() {
       navigate('/login')
       return
     }
-    // 🛡️ 2026-05-22 사용자 요청:
-    //   ① window.confirm 팝업 제거 — 토스 결제 페이지가 final confirmation 역할.
-    //   ② payment_method='toss' (사용자 명시: '공동구매는 토스페이먼츠로 실제 결제').
-    //   흐름:
-    //     1) /api/group-buy/join (payment_method='toss') → server 가 검증 + Toss init params 반환
-    //     2) loadTossPayments(serverClientKey).payment().requestPayment() → Toss 호스팅 redirect
-    //     3) success URL (/group-buy/confirm-payment) → /api/group-buy/confirm-toss → voucher 발급
 
+    // 🛡️ 2026-05-23: 교환권 (voucher 카테고리) 은 딜 결제, 그 외 (일반 공구 상품) 만 토스 결제.
+    //   - meal_voucher / beauty_voucher / stay_voucher / etc_voucher / health_voucher / pet_voucher / activity_voucher → 딜
+    //   - 일반 상품 (공구 할인 적용된 의류/잡화/식품 등) → 토스
+    //   사용자 정책 (CLAUDE.md): "교환권을 딜로 거래하는 것 외에는 토스페이먼츠 결제"
+    const isVoucher = VOUCHER_CATEGORY_SET.has(detail.category || '')
+
+    if (isVoucher) {
+      // 딜 결제 흐름 (교환권 전용)
+      setJoining(true)
+      reportFunnel('click', productId)
+      try {
+        const res = await api.post(`/api/group-buy/join/${productId}`, {
+          quantity, payment_method: 'deal',
+          promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
+        })
+        if (res.data?.success) {
+          toast.success('🎁 교환권 발급 완료')
+          navigate('/my-vouchers')
+        } else {
+          toast.error(res.data?.error || '교환 실패')
+        }
+      } catch (err: unknown) {
+        const e = err as { response?: { data?: { error?: string; code?: string } } }
+        const code = e?.response?.data?.code
+        if (code === 'INSUFFICIENT_POINTS') {
+          const charge = window.confirm('딜이 부족합니다. 충전 페이지로 이동할까요?')
+          if (charge) {
+            localStorage.setItem('loginReturnUrl', window.location.pathname)
+            navigate('/points/charge')
+          }
+          return
+        }
+        toast.error(e?.response?.data?.error || '교환 실패')
+      } finally {
+        setJoining(false)
+      }
+      return
+    }
+
+    // 일반 공구 상품 (non-voucher) — 토스 결제 흐름
     setJoining(true)
     reportFunnel('click', productId)
     try {
