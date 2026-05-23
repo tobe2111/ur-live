@@ -327,7 +327,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
 })
 
 // 🛡️ 2026-05-19: 교환권 발송 요청 (비사업자 셀러용 voucher redeem).
-sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
+sellerSettlementsRoutes.post('/voucher-redeem', rateLimit({ action: 'seller_voucher_redeem', max: 10, windowSec: 3600 }), async (c) => {
   const authorization = c.req.header('Authorization')
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
@@ -541,8 +541,10 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
             `8.8% 원천징수 (voucher #${voucherOrderId})`,
           ).run().catch(() => { /* noop */ })
         } catch (e) {
-          // 원천징수 기록 실패는 silent (이미 voucher 발송 완료, 다음 발송에 ytd 재계산).
-          console.error('[withholding log fail]', String(e).slice(0, 200))
+          // 🛡️ 2026-05-22: voucher 발송 완료 후 원천징수 log 실패 = 정합성 깨짐 (ytd 재계산 누락).
+          //   향후 영구 fix: 사전 INSERT (status='pending') + 발송 성공 시 'confirmed' UPDATE.
+          //   현재는 명시적 console.error + swallow (silent 차단).
+          console.error('[withholding log fail — ytd 누락 가능]', String(e).slice(0, 200))
         }
       }
 
