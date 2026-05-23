@@ -119,7 +119,7 @@ async function calculateSellerSettlement(
   period: SettlementPeriod
 ): Promise<SellerSettlement | null> {
   try {
-    // 셀러 정보 조회 (수수료율 포함)
+    // 셀러 정보 조회 (수수료율 포함 — fallback 용)
     const seller = await DB.prepare(`
       SELECT id, business_name, COALESCE(commission_rate, 10) AS commission_rate FROM sellers WHERE id = ?
     `).bind(sellerId).first<{ id: number; business_name: string; commission_rate: number }>()
@@ -128,15 +128,19 @@ async function calculateSellerSettlement(
       return null
     }
 
-    // 정산 대상 주문 조회 (배송 완료 또는 구매 확정 주문만)
+    // 🛡️ 2026-05-22 P1 영구 fix (commission 변경 소급 적용 방지):
+    //   이전: settlement 시점에 sellers.commission_rate 현재값 사용 → admin 이 변경하면 과거 주문에도 소급.
+    //   영구 해결: orders.commission_rate (order 생성 시 snapshot — 이미 컬럼 존재) 우선 사용.
+    //   o.commission_rate IS NULL 인 legacy order 만 seller fallback.
     const orders = await DB.prepare(`
-      SELECT 
+      SELECT
         o.id,
         o.order_number,
         o.created_at,
         o.total_amount,
         o.shipping_fee,
         o.status,
+        COALESCE(o.commission_rate, ?) AS effective_commission_rate,
         GROUP_CONCAT(p.name, ', ') as product_names,
         SUM(oi.quantity) as total_quantity
       FROM orders o
@@ -147,7 +151,7 @@ async function calculateSellerSettlement(
         AND o.status IN ('delivered', 'confirmed')
       GROUP BY o.id
       ORDER BY o.created_at DESC
-    `).bind(sellerId, period.startDate, period.endDate).all()
+    `).bind(seller.commission_rate, sellerId, period.startDate, period.endDate).all()
 
     if (!orders.results || orders.results.length === 0) {
       return {
@@ -173,7 +177,9 @@ async function calculateSellerSettlement(
       // CRIT-3: use order.total_amount (includes shipping) as the fee base.
       // Shipping is included in totalSales and flows back to the seller after fee.
       const orderAmount = order.total_amount
-      const platformFee = calculatePlatformFee(orderAmount, seller.commission_rate / 100)
+      // 🛡️ 2026-05-22: order 의 effective_commission_rate (snapshot) 사용 → admin 변경 소급 안 됨.
+      const effectiveRate = Number(order.effective_commission_rate ?? seller.commission_rate)
+      const platformFee = calculatePlatformFee(orderAmount, effectiveRate / 100)
 
       settlementOrders.push({
         order_id: order.id,
