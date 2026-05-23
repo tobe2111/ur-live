@@ -1,10 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getTossPayments } from '@/lib/toss-preload'
+import { detectTossClientKeyType } from '@/lib/toss-key-type'
 import { generateOrderId } from '@/utils/orderIdGenerator'
-
-// SDK 의 widgets() 반환 type — 공식 SDK 타입을 그대로 사용 (impromptu 재정의 X).
-type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
 import { isFeatureBlocked } from '@/lib/in-app-warning'
 import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 
@@ -31,33 +29,29 @@ interface TossPaymentWidgetProps {
 }
 
 /**
- * 🛡️ 2026-05-23 v5 (토스 공식 V2 결제위젯 — 단일 경로):
+ * 🛡️ 2026-05-23 v6 (dual-mode 복원 — 사용자 진단 결과 반영):
  *
- * 사용자 환경:
- *   - 교환권 → 딜 차감 (토스 X)
- *   - 충전 / 상품 / 공구 → 토스 결제위젯 (in-page 카드/계좌이체/카카오페이 선택 UI)
- *   - TOSS_CLIENT_KEY = '_wt_' (결제위젯 연동 키)
+ * /toss-debug 진단으로 확인된 사실:
+ *   - 운영자 키 = `_gck_` (API 개별 연동 키), NOT widget 키
+ *   - widgets() API 는 gck 키에서 silent fail (빈 UI 렌더 → 무한 로딩 증상)
+ *   - payment() V2 가 gck 키 전용 → CheckoutPage 가 이걸 써야 함
  *
- * 영구 해결 — Toss V2 결제위젯 단일 경로 (사용자 명령 "이상적이고 영구적"):
- *   1) tossPayments.widgets({ customerKey }) — widget instance
- *   2) widgets.setAmount({ currency, value })
- *   3) widgets.renderPaymentMethods({ selector, variantKey: 'DEFAULT' })
- *   4) widgets.renderAgreement({ selector, variantKey: 'AGREEMENT' })
- *   5) 결제하기 버튼 클릭 → widgets.requestPayment({ orderId, orderName, successUrl, failUrl })
- *      → 사용자 선택한 결제 수단 (카드/이체/카카오페이/네이버페이/토스페이 등) Toss 처리
- *      → successUrl 로 redirect → confirm endpoint
+ * 키 type 자동 분기:
+ *   - gck 키 → payment() V2 redirect (Toss 호스팅 페이지로 이동)
+ *   - widget 키 (_ck_/_wt_) → widgets() API inline (in-page 결제 수단 선택)
  *
- * payment() V2 redirect 경로 제거 — Toss 공식 가이드 기준 단일 방식 통일.
- * 운영자 액션: Toss 콘솔 → 결제위젯 → '내 위젯' 에 variantKey='DEFAULT' / 'AGREEMENT' 등록.
+ * UI:
+ *   - gck 모드: "결제하기" 버튼만 (인라인 UI 없음 — 클릭 시 Toss redirect)
+ *   - widget 모드: 인라인 위젯 + 결제하기 버튼
+ *
+ * env variantKey (widget 모드 전용):
+ *   - VITE_TOSS_VARIANT_PAYMENT (default 'DEFAULT')
+ *   - VITE_TOSS_VARIANT_AGREEMENT (default 'AGREEMENT')
  */
-
-// 🛡️ 2026-05-23 영구 fix — variantKey 를 env 로 빼서 운영자 콘솔 등록 이름과 match.
-//   사용자 신고: "콘솔에는 등록했는데 결제 위젯 설정 누락 에러"
-//   원인: 하드코딩한 'DEFAULT' / 'AGREEMENT' 가 운영자가 등록한 실제 variantKey 와 불일치.
-//   해결: VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 로 설정 가능.
-//   미설정 시: 1) 'DEFAULT' / 'AGREEMENT' 시도 → 2) variantKey 생략 (SDK 기본 variant).
 const VARIANT_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || 'DEFAULT'
 const VARIANT_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || 'AGREEMENT'
+
+type Mode = 'gck' | 'widget'
 
 export function TossPaymentWidget({
   userId,
@@ -74,10 +68,16 @@ export function TossPaymentWidget({
   const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [showPaymentBlocked, setShowPaymentBlocked] = useState(false)
+  const [mode, setMode] = useState<Mode>('gck')
   const hasInitialized = useRef(false)
-  const widgetsRef = useRef<TossWidgets | null>(null)
+  // widget 모드용 widgets 인스턴스 ref
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const widgetsRef = useRef<any>(null)
+  // gck 모드용 payment 인스턴스 ref
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paymentRef = useRef<any>(null)
 
-  // 1️⃣ SDK 로드 + widgets() 인스턴스 + in-page 위젯 렌더 (한 번에).
+  // 1️⃣ SDK 로드 + 키 type 분기 + 위젯 렌더 (필요한 경우).
   useEffect(() => {
     if (!userId || cartItems.length === 0 || hasInitialized.current) return
 
@@ -89,14 +89,15 @@ export function TossPaymentWidget({
       return
     }
 
+    // 키 type 판정 + 모드 결정.
+    const keyType = detectTossClientKeyType(clientKey)
+    const selectedMode: Mode = keyType === 'widget' ? 'widget' : 'gck'
+    setMode(selectedMode)
+
     let cancelled = false
     hasInitialized.current = true
 
-    // 🛡️ 2026-05-23 영구 fix — 무한로딩 방어 + 단계별 timeout.
-    //   사용자 신고: "결제 시스템 로딩 중..." 무한 hang.
-    //   원인 (silent fail): renderPaymentMethods 가 await 만 걸리고 promise resolve/reject 안 함
-    //   → loadingState 영원히 'loading' → 사용자 갇힘.
-    //   해결: 각 step 에 timeout race → 명확한 에러 + 페이지 새로고침 안내.
+    // 단계별 timeout (silent hang 방어).
     const STEP_TIMEOUT_MS = 8000
     const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
       Promise.race([
@@ -113,19 +114,31 @@ export function TossPaymentWidget({
 
         const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
         const customerKey = `user_${sanitizedUserId}`.substring(0, 50)
-        const widgets = tossPayments.widgets({ customerKey })
-        if (!widgets) throw new Error('widgets() returned null — clientKey 가 결제위젯 키가 아닐 가능성')
+
+        if (selectedMode === 'gck') {
+          // gck 모드: payment() V2 — 결제하기 클릭 시 Toss 호스팅 페이지로 redirect.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const payment = (tossPayments as any).payment({ customerKey })
+          if (!payment) throw new Error('payment() returned null')
+          paymentRef.current = payment
+          setLoadingState('ready')
+          return
+        }
+
+        // widget 모드: widgets() API + in-page 렌더.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const widgets = (tossPayments as any).widgets({ customerKey })
+        if (!widgets) throw new Error('widgets() returned null')
 
         await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(totalAmount) }), 'SET_AMOUNT')
 
-        // variantKey fallback: 'DEFAULT' 시도 → 실패 시 variantKey 생략 (SDK 기본).
         const tryRender = async (
           method: 'renderPaymentMethods' | 'renderAgreement',
           selector: string,
           preferred: string,
         ) => {
-          try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* fallback */ }
-          await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
+          try { await withTimeout(widgets[method]({ selector, variantKey: preferred }), `${method}:${preferred}`); return } catch { /* fallback */ }
+          await withTimeout(widgets[method]({ selector }), `${method}:default`)
         }
         await tryRender('renderPaymentMethods', '#toss-payment-method', VARIANT_PAYMENT)
         await tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT)
@@ -135,17 +148,16 @@ export function TossPaymentWidget({
         setLoadingState('ready')
       } catch (err: unknown) {
         if (cancelled) return
-        // 🛡️ 2026-05-23: production 에서도 raw 에러 console + UI 노출 — 운영자가 정확한 원인 즉시 파악.
         console.error('[TossPaymentWidget] init/render failed:', err)
         const raw = err instanceof Error ? err.message : String(err)
         const baseMsg = /TIMEOUT/i.test(raw)
           ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
           : /not.*found|404|variant/i.test(raw)
-          ? `결제 위젯 설정 — variantKey 미일치 가능성. 우리 코드는 '${VARIANT_PAYMENT}' / '${VARIANT_AGREEMENT}' 시도. 운영자: Toss 콘솔의 실제 variantKey 와 일치하는지 확인 후 VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 설정.`
+          ? `결제 위젯 설정 — variantKey 미일치 가능성. 운영자: Toss 콘솔의 실제 variantKey 와 일치하는 VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 설정 필요.`
           : /widget.*key|클라이언트 키|개별 연동 키/i.test(raw)
-          ? '결제 시스템 키 type 오류 — TOSS_CLIENT_KEY 가 widget 키 (_ck_/_wt_) 인지 확인.'
+          ? '결제 시스템 키 type 오류 — 관리자에게 문의해주세요.'
           : t('payment.initError', { defaultValue: '결제 초기화 실패' })
-        const msg = `${baseMsg}\n\n[SDK 원본 메시지]: ${raw.slice(0, 200)}`
+        const msg = `${baseMsg}\n\n[SDK 원본]: ${raw.slice(0, 200)}`
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
@@ -159,14 +171,14 @@ export function TossPaymentWidget({
     return () => { hasInitialized.current = false }
   }, [])
 
-  // 2️⃣ amount 변경 시 widget 반영 (쿠폰 / 딜 사용 변경 등).
+  // 2️⃣ widget 모드 — amount 변경 시 반영.
   useEffect(() => {
-    if (loadingState !== 'ready' || !widgetsRef.current) return
+    if (mode !== 'widget' || loadingState !== 'ready' || !widgetsRef.current) return
     widgetsRef.current.setAmount({ currency: 'KRW', value: Math.round(totalAmount) }).catch(() => null)
-  }, [totalAmount, loadingState])
+  }, [totalAmount, loadingState, mode])
 
   const handlePayment = useCallback(async () => {
-    if (loadingState !== 'ready' || isProcessing || !widgetsRef.current) return
+    if (loadingState !== 'ready' || isProcessing) return
 
     try {
       setIsProcessing(true)
@@ -180,15 +192,30 @@ export function TossPaymentWidget({
         await onBeforePayment(orderId)
       }
 
-      await widgetsRef.current.requestPayment({
-        orderId,
-        orderName,
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`,
-      })
+      if (mode === 'gck') {
+        // gck: payment() V2 redirect.
+        if (!paymentRef.current) throw new Error('payment 인스턴스 없음')
+        await paymentRef.current.requestPayment({
+          method: 'CARD',
+          amount: { currency: 'KRW', value: Math.round(totalAmount) },
+          orderId,
+          orderName,
+          successUrl: `${window.location.origin}/payment/success`,
+          failUrl: `${window.location.origin}/payment/fail`,
+        })
+      } else {
+        // widget: widgets.requestPayment() — Toss 가 method/amount 자동 (setAmount 이미 호출).
+        if (!widgetsRef.current) throw new Error('widgets 인스턴스 없음')
+        await widgetsRef.current.requestPayment({
+          orderId,
+          orderName,
+          successUrl: `${window.location.origin}/payment/success`,
+          failUrl: `${window.location.origin}/payment/fail`,
+        })
+      }
       // requestPayment 가 redirect — 아래 라인 실행 안 됨.
     } catch (err: unknown) {
-      if (import.meta.env.DEV) console.error('[TossPaymentWidget] requestPayment failed:', err)
+      console.error('[TossPaymentWidget] requestPayment failed:', err)
       setIsProcessing(false)
       const errObj = err as Record<string, unknown> | undefined
       if (errObj?.code === 'USER_CANCEL') return
@@ -204,13 +231,24 @@ export function TossPaymentWidget({
       }
       onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
-  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
+  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t, totalAmount, mode])
 
   return (
     <div className="space-y-3">
-      {/* in-page 결제 위젯 mount point — 카드/계좌이체/카카오페이 등 선택 UI */}
-      <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
-      <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+      {/* widget 모드 — in-page 결제 위젯 mount point. gck 모드에선 숨김. */}
+      {mode === 'widget' && (
+        <>
+          <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+          <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+        </>
+      )}
+
+      {/* gck 모드 — 안내 문구 */}
+      {mode === 'gck' && loadingState === 'ready' && (
+        <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-[12px] text-blue-800">
+          결제하기 버튼을 누르시면 토스페이먼츠 결제 페이지로 이동합니다.
+        </div>
+      )}
 
       <button
         onClick={handlePayment}
@@ -248,7 +286,7 @@ export function TossPaymentWidget({
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+              <p className="text-sm font-medium text-red-800 whitespace-pre-wrap">{errorMessage}</p>
               <button
                 onClick={() => window.location.reload()}
                 className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium underline"
