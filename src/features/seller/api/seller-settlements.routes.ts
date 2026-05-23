@@ -108,6 +108,25 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const periodStart = prevMonth.toISOString().slice(0, 10);
     const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+
+    // 🛡️ 2026-05-22 P0: 중복 신청 / 미래 period 차단 (1 seller, 1 period 가드).
+    //   period_end 가 오늘 이전이어야 함 (미래 month 신청 차단).
+    //   같은 seller + period 의 pending/approved 신청 존재 시 차단.
+    const today = now.toISOString().slice(0, 10);
+    if (periodEnd > today) {
+      return c.json({ success: false, error: '미완료 기간은 정산 신청 불가합니다.' }, 400);
+    }
+    const dupe = await db.prepare(
+      `SELECT id FROM settlements WHERE seller_id = ? AND period_start = ? AND period_end = ? AND status IN ('pending', 'approved', 'paid') LIMIT 1`
+    ).bind(sellerId, periodStart, periodEnd).first<{ id: number }>().catch(() => null);
+    if (dupe) {
+      return c.json({
+        success: false,
+        error: '동일 기간의 정산 신청이 이미 진행 중입니다.',
+        code: 'DUPLICATE_SETTLEMENT_PERIOD',
+      }, 409);
+    }
+
     const result = await db.prepare(`
       INSERT INTO settlements (seller_id, amount, period_start, period_end, bank_name, account_number, account_holder, status, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
@@ -413,6 +432,13 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
     }
     const totalDeductWithTax = totalDeduct + withholdingAmount
 
+    // 🛡️ 2026-05-22 P0 race condition 영구 fix:
+    //   이전: SELECT balance → check → UPDATE balance = balance - X (3 step, race window).
+    //   두 동시 요청: 둘 다 SELECT 100, 둘 다 OK, 각각 UPDATE = balance -160 (음수 가능).
+    //   영구 해결:
+    //   ① SELECT 는 검증/메시지 표시용만 (UX).
+    //   ② 차감은 UPDATE WHERE balance >= ? (atomic CAS). meta.changes === 0 → race conflict.
+    //   ③ KT Alpha 발송 전에 차감 (실패 시 rollback).
     const bal = await c.env.DB.prepare(
       `SELECT ${balCol} as amount FROM seller_deal_balances WHERE seller_id = ?`
     ).bind(sellerId).first<{ amount: number }>().catch(() => null)
@@ -422,6 +448,20 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
         success: false,
         error: `잔액 부족 (필요 ${totalDeductWithTax.toLocaleString()}딜 = 교환권 ${totalDeduct.toLocaleString()} + 원천징수 ${withholdingAmount.toLocaleString()}, 보유 ${available.toLocaleString()}딜)`,
       }, 400)
+    }
+
+    // 🛡️ 선차감 (atomic CAS) — KT Alpha 발송 실패 시 catch 에서 rollback.
+    const preDeductRes = await c.env.DB.prepare(
+      `UPDATE seller_deal_balances SET ${balCol} = ${balCol} - ?, updated_at = datetime('now')
+       WHERE seller_id = ? AND ${balCol} >= ?`
+    ).bind(totalDeductWithTax, sellerId, totalDeductWithTax).run()
+    if (!preDeductRes.meta?.changes) {
+      // 동시 다른 요청이 먼저 차감 → 실제 잔액 부족 상태.
+      return c.json({
+        success: false,
+        error: '동시 결제 충돌. 잠시 후 다시 시도해주세요.',
+        code: 'CONCURRENT_DEDUCTION',
+      }, 409)
     }
 
     // 4. voucher_orders INSERT (status='processing').
@@ -469,10 +509,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
         `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
       ).bind(lastOrderNo || trId, voucherOrderId).run()
 
-      // 잔액 차감 (교환권 + 원천징수 합산).
-      await c.env.DB.prepare(
-        `UPDATE seller_deal_balances SET ${balCol} = ${balCol} - ?, updated_at = datetime('now') WHERE seller_id = ?`
-      ).bind(totalDeductWithTax, sellerId).run()
+      // 🛡️ 2026-05-22: 차감은 선차감 (CAS) 으로 이미 완료 — 여기선 중복 차감 안 함.
 
       // 이력 INSERT — 교환권 차감.
       await c.env.DB.prepare(
@@ -526,11 +563,15 @@ sellerSettlementsRoutes.post('/voucher-redeem', async (c) => {
         },
       })
     } catch (err) {
-      // KT Alpha 호출 실패 — voucher_orders 실패 처리.
+      // KT Alpha 호출 실패 — voucher_orders 실패 처리 + 🛡️ 선차감 balance rollback.
       const errMsg = (err as Error).message.slice(0, 500)
       await c.env.DB.prepare(
         `UPDATE voucher_orders SET status = 'failed', failure_reason = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(errMsg, voucherOrderId).run()
+      // 🛡️ 2026-05-22 P0: 선차감했던 잔액 복구 (race 방어 + 사용자 갇힘 방지).
+      await c.env.DB.prepare(
+        `UPDATE seller_deal_balances SET ${balCol} = ${balCol} + ?, updated_at = datetime('now') WHERE seller_id = ?`
+      ).bind(totalDeductWithTax, sellerId).run().catch(swallow('seller-settlements:voucher-rollback'))
       return c.json({ success: false, error: `발송 실패: ${errMsg}` }, 502)
     }
   } catch (err) {
