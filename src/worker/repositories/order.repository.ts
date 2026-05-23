@@ -190,7 +190,7 @@ export class OrderRepository {
     if (!row) return null;
 
     const items = await this.qb.queryMany<Record<string, unknown>>(
-      'SELECT id, order_id, product_id, product_name, quantity, unit_price, total_price, options FROM order_items WHERE order_id = ? ORDER BY id',
+      'SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options FROM order_items WHERE order_id = ? ORDER BY id',
       [orderId]
     );
 
@@ -213,7 +213,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT id, order_id, product_id, product_name, quantity, unit_price, total_price, options FROM order_items WHERE order_id = ? ORDER BY id',
+          'SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -273,7 +273,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT id, order_id, product_id, product_name, quantity, unit_price, total_price, options FROM order_items WHERE order_id = ? ORDER BY id',
+          'SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
