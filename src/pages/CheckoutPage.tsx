@@ -81,11 +81,29 @@ export default function CheckoutPage() {
   // 배송지 — CheckoutAddressSection 이 관리, 부모는 selectedAddress 만 보관
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
 
-  // 🛡️ 2026-05-23 영구 fix: 결제 UI 지각 영구 제거.
-  //   이전: /api/payments/client-key 추가 왕복 (200~400ms) — 사용자 체감 지연 주범.
-  //   이후: VITE_TOSS_CLIENT_KEY 빌드 타임 주입 단일 진실원천 (frontend env 표준 룰).
-  //   키 변경 시 재배포 필요 — 일반적인 frontend env 룰. 운영 빈도 낮음.
-  const serverClientKey = clientKey
+  // 🛡️ 2026-05-23 v2 (revert + 회귀 방어): server clientKey 다시 fetch — env 미스매치 영구 차단.
+  //   배경: 이전 commit (eb29a060) 에서 VITE env 만 사용으로 바꿨는데, 운영자가 빌드 env 미설정 시
+  //         클라이언트가 빈/잘못된 키로 SDK 호출 → "결제위젯 연동 키는 지원하지 않습니다" 등 에러 회귀.
+  //   복원: server `TOSS_CLIENT_KEY` 단일 진실원천. server env 만 갱신해도 즉시 반영.
+  //   회귀 방어: clientKey 가 비어있으면 TossPaymentWidget 자체를 렌더 안 함 (race condition 차단).
+  //   SDK preload 는 그대로 유지 (toss-preload.ts 가 VITE env 로 미리 로드 — 서버 키와 같으면 cache hit).
+  const [serverClientKey, setServerClientKey] = useState<string>(clientKey || '')
+  const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(!!clientKey)
+  useEffect(() => {
+    api.get('/api/payments/client-key')
+      .then(r => {
+        const key = r.data?.data?.clientKey || r.data?.clientKey
+        if (key && typeof key === 'string') {
+          setServerClientKey(key)
+        }
+        setClientKeyLoaded(true)
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn('[Checkout] server clientKey 로드 실패, env fallback:', err)
+        // fetch 실패 시에도 build env 가 있다면 그대로 진행 (없으면 TossPaymentWidget 이 에러 표시)
+        setClientKeyLoaded(true)
+      })
+  }, [])
 
   useEffect(() => {
     api.get('/api/points/balance')
@@ -417,7 +435,15 @@ export default function CheckoutPage() {
 
               <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
 
-              {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal') */}
+              {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal').
+                  🛡️ 2026-05-23 v2: clientKey 로드 끝나기 전엔 스피너만 — TossPaymentWidget 이
+                  빈/잘못된 키로 init 시도해 에러 토스트 띄우는 회귀 영구 차단. */}
+              {!isAllDealOnly && !clientKeyLoaded ? (
+                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-8 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                  <span className="ml-3 text-sm text-gray-500">결제 시스템 준비 중...</span>
+                </section>
+              ) : (
               <PaymentSection
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -442,6 +468,7 @@ export default function CheckoutPage() {
                   navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
                 }}
               />
+              )}
             </div>
           </div>
         )}
