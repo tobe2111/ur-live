@@ -1,8 +1,10 @@
 # CLAUDE.md — 유어딜 프로젝트 개발 규칙
 
-## 🚨 에러 대처 절대 룰 (사용자 신고 받자마자 — 다른 모든 룰보다 우선)
+## 🚨 개발 + 에러 대처 절대 룰 (모든 다른 룰보다 우선)
 
-**사용자가 에러/버그 신고 시 반드시 `docs/ERROR_DEBUGGING_PLAYBOOK.md` 먼저 읽고 따를 것.**
+**개발/리팩토링 작업 시작 시**: `docs/DEV_IMPLEMENTATION_PLAYBOOK.md` 먼저 스캔.
+**에러/버그 신고 받았을 때**: `docs/ERROR_DEBUGGING_PLAYBOOK.md` 먼저 스캔.
+**처음 보는 에러 메시지**: `docs/KNOWN_ERRORS.md` 에서 grep — 매칭되면 5분 fix.
 
 핵심 (Playbook 요약):
 1. **추측 금지** — "캐시일거다", "env 일거다" 단정 후 코드 변경 X

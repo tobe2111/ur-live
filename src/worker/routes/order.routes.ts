@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
+import { tracedEndpoint } from '../utils/request-tracing';
 import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
@@ -77,7 +78,8 @@ const createOrderSchema = z.object({
 });
 
 // POST /api/orders
-ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 60 }), async (c) => {
+// 🛡️ 2026-05-23: tracedEndpoint — 1% 샘플링 + 500 무조건 보존 (재현 곤란 영구 제거)
+ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 60 }), tracedEndpoint('orders:create'), async (c) => {
   // 🛡️ 2026-05-23: stage 추적 — 500 발생 시 어느 단계에서 실패했는지 _debug 에 노출.
   //   사용자 신고 후 운영 _debug 만 보고 진짜 원인 (auth? schema? stock? insert?) 즉시 식별.
   let stage = 'init';

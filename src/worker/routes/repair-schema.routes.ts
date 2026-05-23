@@ -287,6 +287,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'table frontend_errors', sql: "CREATE TABLE IF NOT EXISTS frontend_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT NOT NULL, stack TEXT, url TEXT, type TEXT, user_id TEXT, user_agent TEXT, ip TEXT, created_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'idx_frontend_errors_created', sql: "CREATE INDEX IF NOT EXISTS idx_frontend_errors_created ON frontend_errors(created_at DESC)" },
     { desc: 'idx_frontend_errors_type', sql: "CREATE INDEX IF NOT EXISTS idx_frontend_errors_type ON frontend_errors(type, created_at DESC)" },
+    // 🛡️ 2026-05-23: Request tracing — 1% 샘플링 + 500 무조건 저장 (재현 곤란 영구 제거)
+    { desc: 'table request_traces', sql: "CREATE TABLE IF NOT EXISTS request_traces (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, method TEXT NOT NULL, path TEXT NOT NULL, status INTEGER NOT NULL, duration_ms INTEGER, body TEXT, user_agent TEXT, ip TEXT, created_at DATETIME DEFAULT (datetime('now')))" },
+    { desc: 'idx_request_traces_status', sql: "CREATE INDEX IF NOT EXISTS idx_request_traces_status ON request_traces(status, created_at DESC)" },
+    { desc: 'idx_request_traces_name', sql: "CREATE INDEX IF NOT EXISTS idx_request_traces_name ON request_traces(name, created_at DESC)" },
     // 🛡️ 2026-05-16: 인플 ranking 공개 여부 (default 1 = 공개)
     { desc: 'influencer_balances.ranking_public', sql: "ALTER TABLE influencer_balances ADD COLUMN ranking_public INTEGER DEFAULT 1" },
     // 🛡️ 2026-05-16: sellers 신규 컬럼 보강 — production /api/sellers/:id/public 500 fix

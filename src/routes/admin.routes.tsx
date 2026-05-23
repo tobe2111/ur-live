@@ -15,6 +15,7 @@ const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
+const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
@@ -79,6 +80,12 @@ export function AdminRoutes() {
       <Route path="/admin" element={
         <ProtectedRoute requireAdmin>
           <AdminPage />
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-23: Frontend 에러 대시보드 */}
+      <Route path="/admin/errors" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminErrorsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/settlement" element={
