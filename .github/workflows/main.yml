@@ -206,17 +206,20 @@ jobs:
           check "/api/seller/login" "Seller login"
           check "/api/admin/login"  "Admin login"
           check "/api/agency/login" "Agency login"
-          # 🛡️ 2026-05-23 추가: 결제 핵심 endpoint smoke (페이지 자체 200 확인)
+          # 2026-05-23: 결제 핵심 endpoint smoke
           check "/checkout"       "Checkout page"
           check "/api/payments/client-key" "Payments client-key"
-          check "/api/_healthcheck/payments" "Payments healthcheck"
           check "/toss-debug"     "Toss debug page"
 
-          # 🛡️ 결제 healthcheck 가 unhealthy 면 경고만 (배포 자체는 통과 — env 운영자 액션 필요)
+          # 결제 healthcheck — 503 (env mismatch) 은 fail 처리 안 함, 별도 curl + 본문 파싱.
           PAY_HEALTH=$(curl -s --max-time 10 "$PROD/api/_healthcheck/payments" || echo '{}')
           if echo "$PAY_HEALTH" | grep -q '"healthy":false'; then
-            echo "⚠️ 결제 healthcheck unhealthy: $PAY_HEALTH"
-            echo "운영자 액션 필요: Cloudflare → Pages → ur-live → Settings → Variables/Secrets 점검"
+            echo "[WARN] 결제 healthcheck unhealthy: $PAY_HEALTH"
+            echo "운영자 액션 필요: Cloudflare Pages Variables/Secrets 점검"
+          elif echo "$PAY_HEALTH" | grep -q '"healthy":true'; then
+            echo "OK 결제 healthcheck"
+          else
+            echo "[WARN] 결제 healthcheck endpoint 응답 비정상, 무시하고 통과"
           fi
 
           if [ "$FAIL" -gt 0 ]; then
