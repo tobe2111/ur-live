@@ -308,6 +308,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   /api/vouchers/my 가 WHERE user_id = ? ORDER BY created_at DESC 매번 실행 →
     //   인덱스 없으면 vouchers 전체 scan. 사용자 N명 × voucher M개 = N*M row scan.
     { desc: 'idx_vouchers_user_created', sql: "CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)" },
+    // 🛡️ 2026-05-22 P0: orders.commission_rate snapshot 컬럼 ensure — commission 변경 소급 적용 영구 방지.
+    //   order.repository.ts createOrder 가 이 컬럼에 seller 의 현재 commission_rate 캡처.
+    //   settlement-automation.ts 가 COALESCE(o.commission_rate, seller.rate) 로 우선 사용.
+    //   production 에 컬럼 부재 환경 안전 — 본 ALTER 가 ensure.
+    { desc: 'orders.commission_rate', sql: "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 10.00" },
+    { desc: 'orders.commission_amount', sql: "ALTER TABLE orders ADD COLUMN commission_amount INTEGER DEFAULT 0" },
+    { desc: 'orders.seller_amount', sql: "ALTER TABLE orders ADD COLUMN seller_amount INTEGER DEFAULT 0" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];

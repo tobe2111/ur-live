@@ -60,12 +60,27 @@ export class OrderRepository {
     const hasSellerId = !!request.seller_id;
     const hasStreamId = !!(request as any).live_stream_id;
 
-    // 🛡️ 2026-05-22 ROLLBACK: commission_rate snapshot 일시 비활성.
-    //   사용자 신고: /api/orders 500. commission snapshot SELECT 추가 후 발생.
-    //   안전한 복구를 위해 원래 INSERT 흐름 (commission_rate 컬럼 미포함 — DB DEFAULT 10) 으로 환원.
-    //   settlement 의 COALESCE(o.commission_rate, ?) fallback 은 그대로 유효 → 정합성 영향 없음.
-    //   commission snapshot 영구 활성은 별도 PR (sellers.commission_rate 컬럼 존재 + 형식 검증 후).
-    const columns = [
+    // 🛡️ 2026-05-22 영구 fix v2 — commission_rate snapshot:
+    //   ① sellers.commission_rate SELECT (try/catch graceful — column 부재 OK).
+    //   ② INSERT 1차: commission_rate 포함 시도.
+    //   ③ 실패 (orders.commission_rate 컬럼 부재 등) → INSERT 2차: 컬럼 제외 fallback.
+    //   ④ 둘 다 실패 시 throw (실제 INSERT 자체 깨짐).
+    //   repair-schema 에서 orders.commission_rate 컬럼 ensure (멱등 ALTER) → 다음 cron 후 1차 성공.
+    let commissionSnapshot: number | null = null;
+    if (hasSellerId) {
+      try {
+        const sellerRow = await this.qb.queryOne<{ commission_rate: number | null }>(
+          'SELECT commission_rate FROM sellers WHERE id = ?',
+          [request.seller_id],
+        );
+        if (sellerRow?.commission_rate != null) {
+          const v = Number(sellerRow.commission_rate);
+          if (Number.isFinite(v) && v >= 0 && v <= 100) commissionSnapshot = v;
+        }
+      } catch { /* graceful — column missing or query failure */ }
+    }
+
+    const baseColumns = [
       'order_number', 'user_id',
       ...(hasSellerId ? ['seller_id'] : []),
       ...(hasStreamId ? ['live_stream_id'] : []),
@@ -73,8 +88,7 @@ export class OrderRepository {
       'status', 'shipping_name', 'shipping_phone', 'shipping_address', 'shipping_memo',
       'idempotency_key', 'locale',
     ];
-    const placeholders = columns.map(() => '?').join(', ');
-    const values: any[] = [
+    const baseValues: any[] = [
       request.order_number,
       userId,
       ...(hasSellerId ? [request.seller_id] : []),
@@ -93,10 +107,33 @@ export class OrderRepository {
       'ko',
     ];
 
-    const orderResult = await this.qb.execute(
-      `INSERT INTO orders (${columns.join(', ')}) VALUES (${placeholders})`,
-      values,
-    );
+    // 1차 시도 — commission_rate 포함 (commission_rate 컬럼 있는 production)
+    let orderResult: { meta: { last_row_id?: number | string }; success: boolean } | null = null;
+    const tryWithCommission = commissionSnapshot != null;
+    if (tryWithCommission) {
+      try {
+        const cols = [...baseColumns, 'commission_rate'];
+        const vals = [...baseValues, commissionSnapshot];
+        const ph = cols.map(() => '?').join(', ');
+        orderResult = await this.qb.execute(
+          `INSERT INTO orders (${cols.join(', ')}) VALUES (${ph})`,
+          vals,
+        );
+      } catch (err) {
+        // 컬럼 부재 / type mismatch → 2차 fallback.
+        if (typeof console !== 'undefined') {
+          console.warn('[OrderRepository] INSERT with commission_rate failed, falling back without it:', (err as Error).message);
+        }
+      }
+    }
+    // 2차 — commission_rate 컬럼 없이 (graceful — DB DEFAULT 10 사용)
+    if (!orderResult) {
+      const ph = baseColumns.map(() => '?').join(', ');
+      orderResult = await this.qb.execute(
+        `INSERT INTO orders (${baseColumns.join(', ')}) VALUES (${ph})`,
+        baseValues,
+      );
+    }
 
     // Step 2: 실제 order id 조회 (TEXT or INTEGER 스키마 모두 호환)
     // meta.last_row_id는 내부 rowid(정수)로, TEXT PRIMARY KEY 스키마에서는 실제 id와 다름
