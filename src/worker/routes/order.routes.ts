@@ -78,9 +78,14 @@ const createOrderSchema = z.object({
 
 // POST /api/orders
 ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 60 }), async (c) => {
+  // 🛡️ 2026-05-23: stage 추적 — 500 발생 시 어느 단계에서 실패했는지 _debug 에 노출.
+  //   사용자 신고 후 운영 _debug 만 보고 진짜 원인 (auth? schema? stock? insert?) 즉시 식별.
+  let stage = 'init';
   try {
+    stage = 'auth';
     const firebaseUid = String(c.get('user').id);
     const userId = await getUserDbId(c.env.DB, firebaseUid);
+    stage = 'parse-body';
     const body = await c.req.json();
 
     // 🛡️ Idempotency-Key 헤더가 있으면 body 의 idempotency_key 보다 우선 적용 (HTTP 표준 호환)
@@ -89,6 +94,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       body.idempotency_key = headerIdempotencyKey;
     }
 
+    stage = 'validate-schema';
     const parsed = createOrderSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({
@@ -104,6 +110,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
 
     // Idempotency check - return existing order if already created
     // ✅ BUG #43 FIX: Scope to current user to prevent cross-user idempotency collisions.
+    stage = 'idempotency-lookup';
     const existingOrder = await orderRepo.findByIdempotencyKey(request.idempotency_key, userId);
     if (existingOrder) {
       if (import.meta.env.DEV) console.log('[ORDERS] Idempotent request, returning existing order:', existingOrder.id);
@@ -114,6 +121,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     // Note: old schema (migration 0003 + 0035) uses 'shipping_fee' column
     //       new schema (001_initial.sql) uses 'base_shipping_fee' column
     //       Try new schema first, fall back to old schema column name
+    stage = 'seller-lookup';
     const qb = new QueryBuilder(c.env.DB);
     type SellerRow = { id: string; name: string; base_shipping_fee: number; free_shipping_threshold: number | null; status: string };
     let seller: SellerRow | null = null;
@@ -175,6 +183,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     }
 
     // Validate and fetch products
+    stage = 'product-lookup';
     const productIds = request.items.map(i => i.product_id);
     const products = await productRepo.findByIds(productIds);
 
@@ -245,6 +254,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     // D1 batch()는 원자적으로 실행됩니다.
     // 각 UPDATE에 `AND stock >= qty` 조건을 포함하여
     // 동시 주문으로 인한 초과 판매를 방지합니다.
+    stage = 'reserve-stock';
     const stockResult = await orderRepo.reserveStock(
       orderItems.map(i => ({
         product_id: i.product_id,
@@ -263,6 +273,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
 
     // Create order (재고 차감 완료 후 주문 생성)
     // Note: repository 내부에서 seller_id 빈 문자열 → null 변환 처리
+    stage = 'create-order';
     let order;
     try {
       order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
@@ -361,9 +372,9 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {
-    // 🛡️ 2026-05-22: safeError 사용 — DEV 모드에선 _debug 필드 노출 → 사용자 신고 원인 파악 가능.
-    //   prod 에선 generic 메시지만. console.error 는 항상 full stack 로깅.
-    return safeError(c, err, '주문 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', '[orders:create]');
+    // 🛡️ 2026-05-23: stage 포함 — _debug 가 어느 단계에서 깨졌는지 즉시 표시.
+    //   prod 에선 generic 메시지만. console.error 는 항상 full stack + stage 로깅.
+    return safeError(c, err, '주문 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', `[orders:create:${stage}]`);
   }
 });
 

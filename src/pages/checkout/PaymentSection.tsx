@@ -49,7 +49,7 @@ interface Props {
 }
 
 export default function PaymentSection({
-  paymentMethod, setPaymentMethod,
+  paymentMethod: _paymentMethod, setPaymentMethod: _setPaymentMethod,
   dealOnly = false,
   dealBalance, dealToUse, setDealToUse, totalBeforeDeal, totalAmount,
   payingWithDeals, onPayWithDeals,
@@ -63,24 +63,13 @@ export default function PaymentSection({
     <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('payment.section.title', { defaultValue: '결제 수단' })}</h2>
 
-      {dealOnly ? (
+      {/* 🛡️ 2026-05-23: 사용자 지적 — redundant "카드/간편결제" 탭 제거.
+          토스 결제위젯 자체가 카드/이체/카카오페이/네이버페이/토스페이 inline 선택 UI 제공.
+          custom tab + Toss widget = 중복 → 위젯만 표시. */}
+      {dealOnly && (
         <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/10 p-3 mb-4">
           <p className="text-[13px] font-bold text-blue-700 dark:text-blue-300">💎 딜 결제 전용</p>
           <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1">교환권은 딜 포인트로만 구매할 수 있습니다. 휴대폰 MMS 로 즉시 발송됩니다.</p>
-        </div>
-      ) : (
-        /* 결제 방법 탭 (일반 상품) */
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setPaymentMethod('toss')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
-              paymentMethod === 'toss'
-                ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            {t('payment.section.cardOrEasyPay', { defaultValue: '카드/간편결제' })}
-          </button>
         </div>
       )}
 

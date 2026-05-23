@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getTossPayments } from '@/lib/toss-preload'
-type TossPayments = Awaited<ReturnType<typeof loadTossPayments>>
 import { generateOrderId } from '@/utils/orderIdGenerator'
-import { getUserEmail, getUserNameSync } from '@/utils/auth'
-import { formatNumber } from '@/utils/format'
+
+// SDK 의 widgets() 반환 type — 공식 SDK 타입을 그대로 사용 (impromptu 재정의 X).
+type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
 import { isFeatureBlocked } from '@/lib/in-app-warning'
 import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 
@@ -25,30 +24,35 @@ interface TossPaymentWidgetProps {
   }>
   totalAmount: number
   shippingFee: number
+  /** Called before requestPayment — DB 에 PENDING 주문 미리 생성 */
   onBeforePayment?: (orderId: string) => Promise<void>
   onPaymentSuccess: (orderId: string, paymentKey: string, amount: number) => void
   onPaymentError: (error: string) => void
 }
 
-type KeyType = 'widget' | 'general'
-
 /**
- * 🛡️ 2026-05-22 v4 영구 — widget 키 + general 키 자동 분기.
+ * 🛡️ 2026-05-23 v5 (토스 공식 V2 결제위젯 — 단일 경로):
  *
- * 사용자 신고: "API 개별 연동 키의 클라이언트 키로 SDK를 연동해주세요. 결제위젯 연동 키는 지원하지 않습니다."
- *   원인: TOSS_CLIENT_KEY = '_wt_' (결제위젯 키) 인데 payment() V2 가 거부.
+ * 사용자 환경:
+ *   - 교환권 → 딜 차감 (토스 X)
+ *   - 충전 / 상품 / 공구 → 토스 결제위젯 (in-page 카드/계좌이체/카카오페이 선택 UI)
+ *   - TOSS_CLIENT_KEY = '_wt_' (결제위젯 연동 키)
  *
- * 해결: 키 type 자동 감지 + API 분기.
- *   - 'wt' → widgets() API + in-page 위젯 렌더 (variantKey 'DEFAULT' / 'AGREEMENT' fallback)
- *   - 'gck' / 'ck' / unknown → payment() V2 redirect
+ * 영구 해결 — Toss V2 결제위젯 단일 경로 (사용자 명령 "이상적이고 영구적"):
+ *   1) tossPayments.widgets({ customerKey }) — widget instance
+ *   2) widgets.setAmount({ currency, value })
+ *   3) widgets.renderPaymentMethods({ selector, variantKey: 'DEFAULT' })
+ *   4) widgets.renderAgreement({ selector, variantKey: 'AGREEMENT' })
+ *   5) 결제하기 버튼 클릭 → widgets.requestPayment({ orderId, orderName, successUrl, failUrl })
+ *      → 사용자 선택한 결제 수단 (카드/이체/카카오페이/네이버페이/토스페이 등) Toss 처리
+ *      → successUrl 로 redirect → confirm endpoint
  *
- * UI: CheckoutOrderSummary 가 이미 결제 정보 표시 — 본 컴포넌트는 결제하기 버튼만 (사용자 요청).
- *   widget 키 → 위젯 mount point + 버튼.
- *   general 키 → 버튼만 (간단한 안내 1줄).
+ * payment() V2 redirect 경로 제거 — Toss 공식 가이드 기준 단일 방식 통일.
+ * 운영자 액션: Toss 콘솔 → 결제위젯 → '내 위젯' 에 variantKey='DEFAULT' / 'AGREEMENT' 등록.
  */
-function detectKeyType(key: string): KeyType {
-  return /_wt_|_widget_/i.test(key) ? 'widget' : 'general'
-}
+
+const VARIANT_PAYMENT = 'DEFAULT'
+const VARIANT_AGREEMENT = 'AGREEMENT'
 
 export function TossPaymentWidget({
   userId,
@@ -58,25 +62,17 @@ export function TossPaymentWidget({
   shippingFee: _shippingFee,
   onBeforePayment,
   onPaymentSuccess: _onPaymentSuccess,
-  onPaymentError
+  onPaymentError,
 }: TossPaymentWidgetProps) {
   const { t } = useTranslation()
-  const [tossPayments, setTossPayments] = useState<TossPayments | null>(null)
-  const [keyType, setKeyType] = useState<KeyType>('general')
-  const [isProcessing, setIsProcessing] = useState(false)
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [showPaymentBlocked, setShowPaymentBlocked] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [showPaymentBlocked, setShowPaymentBlocked] = useState(false)
   const hasInitialized = useRef(false)
-  const widgetsRef = useRef<{
-    setAmount: (a: { currency: string; value: number }) => Promise<void>
-    renderPaymentMethods: (p: { selector: string; variantKey?: string }) => Promise<void>
-    renderAgreement: (p: { selector: string; variantKey?: string }) => Promise<void>
-    requestPayment: (p: { orderId: string; orderName: string; successUrl: string; failUrl: string }) => Promise<void>
-  } | null>(null)
-  const widgetsRendered = useRef(false)
+  const widgetsRef = useRef<TossWidgets | null>(null)
 
-  // 1️⃣ SDK 로드 + 키 type 판별.
+  // 1️⃣ SDK 로드 + widgets() 인스턴스 + in-page 위젯 렌더 (한 번에).
   useEffect(() => {
     if (!userId || cartItems.length === 0 || hasInitialized.current) return
 
@@ -88,78 +84,66 @@ export function TossPaymentWidget({
       return
     }
 
-    const type = detectKeyType(clientKey)
-    setKeyType(type)
-
     let cancelled = false
+    hasInitialized.current = true
+
     ;(async () => {
       try {
-        const sdk = await getTossPayments(clientKey)
+        const tossPayments = await getTossPayments(clientKey)
         if (cancelled) return
-        setTossPayments(sdk)
-        setLoadingState('ready')
-        hasInitialized.current = true
-      } catch (err: unknown) {
-        if (cancelled) return
-        if (import.meta.env.DEV) console.error('[TossPayments] 초기화 실패:', err)
-        const errMsg = err instanceof Error ? err.message : ''
-        const msg = errMsg.includes('network')
-          ? t('payment.errors.networkError')
-          : t('payment.initError', { defaultValue: '결제 초기화 실패' })
-        setErrorMessage(msg)
-        setLoadingState('error')
-        onPaymentError(msg)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [userId, clientKey, cartItems, onPaymentError, t])
 
-  useEffect(() => {
-    return () => { hasInitialized.current = false; widgetsRendered.current = false }
-  }, [])
-
-  // 2️⃣ widget 키 → in-page widgets() 렌더 (variant fallback).
-  useEffect(() => {
-    if (!tossPayments || keyType !== 'widget' || loadingState !== 'ready' || widgetsRendered.current) return
-
-    let cancelled = false
-    ;(async () => {
-      try {
         const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
         const customerKey = `user_${sanitizedUserId}`.substring(0, 50)
-        const sdk = tossPayments as unknown as {
-          widgets: (p: { customerKey: string }) => typeof widgetsRef.current
-        }
-        const widgets = sdk.widgets({ customerKey })
-        if (!widgets) throw new Error('widgets() returned null')
+        const widgets = tossPayments.widgets({ customerKey })
+        if (!widgets) throw new Error('widgets() returned null — clientKey 가 결제위젯 키가 아닐 가능성')
+
         await widgets.setAmount({ currency: 'KRW', value: Math.round(totalAmount) })
 
-        const tryRender = async (method: 'renderPaymentMethods' | 'renderAgreement', selector: string, preferred: string) => {
-          try { await widgets[method]({ selector, variantKey: preferred }); return } catch { /* */ }
-          try { await widgets[method]({ selector }); return } catch { /* */ }
+        // variantKey fallback: 'DEFAULT' 시도 → 실패 시 variantKey 생략 (SDK 기본).
+        const tryRender = async (
+          method: 'renderPaymentMethods' | 'renderAgreement',
+          selector: string,
+          preferred: string,
+        ) => {
+          try { await widgets[method]({ selector, variantKey: preferred }); return } catch { /* fallback */ }
+          await widgets[method]({ selector })
         }
+        await tryRender('renderPaymentMethods', '#toss-payment-method', VARIANT_PAYMENT)
+        await tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT)
 
-        await tryRender('renderPaymentMethods', '#toss-payment-method', 'DEFAULT')
-        await tryRender('renderAgreement', '#toss-agreement', 'AGREEMENT')
-
-        if (!cancelled) {
-          widgetsRef.current = widgets
-          widgetsRendered.current = true
-        }
+        if (cancelled) return
+        widgetsRef.current = widgets
+        setLoadingState('ready')
       } catch (err: unknown) {
         if (cancelled) return
-        if (import.meta.env.DEV) console.error('[TossPayments widgets] 렌더 실패:', err)
-        const msg = '결제 위젯 로드 실패. 페이지를 새로고침해주세요.'
+        if (import.meta.env.DEV) console.error('[TossPaymentWidget] init/render failed:', err)
+        const raw = err instanceof Error ? err.message : ''
+        const msg = /not.*found|404|variant/i.test(raw)
+          ? '결제 위젯 설정 누락 — 관리자에게 문의해주세요. (Toss 콘솔에서 위젯 등록 필요)'
+          : /widget.*key|클라이언트 키|개별 연동 키/i.test(raw)
+          ? '결제 시스템 키 type 오류 — 관리자에게 문의해주세요.'
+          : raw || t('payment.initError', { defaultValue: '결제 초기화 실패' })
         setErrorMessage(msg)
         setLoadingState('error')
         onPaymentError(msg)
       }
     })()
+
     return () => { cancelled = true }
-  }, [tossPayments, keyType, loadingState, userId, totalAmount, onPaymentError])
+  }, [userId, clientKey, cartItems, totalAmount, onPaymentError, t])
+
+  useEffect(() => {
+    return () => { hasInitialized.current = false }
+  }, [])
+
+  // 2️⃣ amount 변경 시 widget 반영 (쿠폰 / 딜 사용 변경 등).
+  useEffect(() => {
+    if (loadingState !== 'ready' || !widgetsRef.current) return
+    widgetsRef.current.setAmount({ currency: 'KRW', value: Math.round(totalAmount) }).catch(() => null)
+  }, [totalAmount, loadingState])
 
   const handlePayment = useCallback(async () => {
-    if (!tossPayments || loadingState !== 'ready' || isProcessing) return
+    if (loadingState !== 'ready' || isProcessing || !widgetsRef.current) return
 
     try {
       setIsProcessing(true)
@@ -173,35 +157,18 @@ export function TossPaymentWidget({
         await onBeforePayment(orderId)
       }
 
-      const successUrl = `${window.location.origin}/payment/success`
-      const failUrl = `${window.location.origin}/payment/fail`
-
-      if (keyType === 'widget' && widgetsRef.current) {
-        await widgetsRef.current.requestPayment({ orderId, orderName, successUrl, failUrl })
-      } else {
-        const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-        const customerKey = `user_${sanitizedUserId}`.substring(0, 50)
-        const payment = tossPayments.payment({ customerKey })
-        await payment.requestPayment({
-          method: 'CARD',
-          amount: { currency: 'KRW', value: Math.round(totalAmount) },
-          orderId,
-          orderName,
-          successUrl,
-          failUrl,
-          customerEmail: getUserEmail() || undefined,
-          customerName: getUserNameSync() || undefined,
-        })
-      }
+      await widgetsRef.current.requestPayment({
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+      })
+      // requestPayment 가 redirect — 아래 라인 실행 안 됨.
     } catch (err: unknown) {
-      if (import.meta.env.DEV) console.error('[TossPayments] 결제 요청 실패:', err)
+      if (import.meta.env.DEV) console.error('[TossPaymentWidget] requestPayment failed:', err)
       setIsProcessing(false)
       const errObj = err as Record<string, unknown> | undefined
       if (errObj?.code === 'USER_CANCEL') return
-      if (errObj?.code === 'INVALID_ORDER_ID') {
-        onPaymentError(t('payment.errors.orderNumberInvalid'))
-        return
-      }
       const errMsg = String(errObj?.message || '')
       const errCode = String(errObj?.code || '')
       const isPopupErr = /popup|window\.open|blocked|차단/i.test(errMsg) || errCode === 'POPUP_BLOCKED'
@@ -214,19 +181,13 @@ export function TossPaymentWidget({
       }
       onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
-  }, [tossPayments, keyType, loadingState, isProcessing, userId, cartItems, totalAmount, onBeforePayment, onPaymentError, t])
+  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
 
   return (
     <div className="space-y-3">
-      {/* 🛡️ 2026-05-22 사용자 요청: CheckoutOrderSummary 가 이미 결제 정보 표시 — 중복 박스 제거.
-            widget 키 → 위젯 mount point + 결제하기 버튼.
-            general 키 → 결제하기 버튼만. */}
-      {keyType === 'widget' && (
-        <>
-          <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200" />
-          <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200" />
-        </>
-      )}
+      {/* in-page 결제 위젯 mount point — 카드/계좌이체/카카오페이 등 선택 UI */}
+      <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
+      <div id="toss-agreement" className="min-h-[60px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
 
       <button
         onClick={handlePayment}
@@ -245,8 +206,8 @@ export function TossPaymentWidget({
             결제 시스템 로딩 중...
           </span>
         )}
-        {loadingState === 'error' && t('payment.errors.systemError')}
-        {loadingState === 'ready' && !isProcessing && `${formatNumber(totalAmount)}원 결제하기`}
+        {loadingState === 'error' && t('payment.errors.systemError', { defaultValue: '결제 시스템 오류' })}
+        {loadingState === 'ready' && !isProcessing && '결제하기'}
         {loadingState === 'ready' && isProcessing && (
           <span className="flex items-center justify-center gap-2">
             <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>

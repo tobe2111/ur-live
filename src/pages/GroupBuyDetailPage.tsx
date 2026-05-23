@@ -289,26 +289,43 @@ export default function GroupBuyDetailPage() {
         toast.error(initRes.data?.error || '공구 결제 시작 실패')
         return
       }
-      const { orderId, amount, orderName, clientKey: serverClientKey, flow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'invalid' }
-      if (flow !== 'redirect' || !serverClientKey) {
-        toast.error('결제 시스템 점검 중입니다. 관리자에게 문의해주세요.')
+      const { orderId, amount, orderName, clientKey: serverClientKey, flow } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid' }
+      if (!serverClientKey || flow === 'invalid') {
+        toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         return
       }
 
-      // 토스 SDK redirect — 결제 페이지가 사용자 confirmation 담당. window.confirm 불필요.
+      const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity) }).toString()
+      const failQs = new URLSearchParams({ productId: String(productId) }).toString()
+      const successPath = `/group-buy/confirm-payment?${successQs}`
+      const failPath = `/group-buy/${productId}?fail=1&${failQs}`
+
+      // 🛡️ 2026-05-23 widget 키 (_wt_) 지원: in-page 위젯 페이지로 navigate.
+      if (flow === 'widget') {
+        const params = new URLSearchParams({
+          orderId,
+          amount: String(amount),
+          orderName,
+          clientKey: serverClientKey,
+          successUrl: successPath,
+          failUrl: failPath,
+        })
+        navigate(`/pay/widget?${params.toString()}`)
+        return
+      }
+
+      // payment() V2 redirect (gck/ck 키 환경).
       const tossPayments = await getTossPayments(serverClientKey)
       const userId = String(localStorage.getItem('user_id') || '')
       const sanitizedUserId = userId.replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
-      const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity) }).toString()
-      const failQs = new URLSearchParams({ productId: String(productId) }).toString()
       const payment = tossPayments.payment({ customerKey: `user_${sanitizedUserId}` })
       await payment.requestPayment({
         method: 'CARD',
         amount: { currency: 'KRW', value: amount },
         orderId,
         orderName,
-        successUrl: `${window.location.origin}/group-buy/confirm-payment?${successQs}`,
-        failUrl: `${window.location.origin}/group-buy/${productId}?fail=1&${failQs}`,
+        successUrl: `${window.location.origin}${successPath}`,
+        failUrl: `${window.location.origin}${failPath}`,
       })
       // requestPayment 가 redirect 트리거 — 아래 라인 실행 안 됨.
     } catch (err: unknown) {

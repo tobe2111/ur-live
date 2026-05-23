@@ -117,12 +117,31 @@ export default function PointsChargePage() {
       initData = initRes.data?.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid'; flow_reason?: string }
       const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow } = initData
 
-      if (serverFlow !== 'redirect' || !serverClientKey) {
-        // widget 키 또는 invalid → 사용자에게 명확한 안내. 운영자 콘솔 액션 필요.
-        const detail = serverFlow === 'widget'
-          ? '결제 시스템 점검 중입니다. 관리자에게 문의해주세요. (Toss 키 type 불일치)'
-          : '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.'
-        toast.error(detail)
+      if (!serverClientKey) {
+        toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
+        await api.post('/api/points/charge/cancel').catch(() => null)
+        setProcessing(false)
+        return
+      }
+
+      // 🛡️ 2026-05-23 widget 키 (_wt_) 지원: in-page 위젯 페이지로 navigate.
+      //   payment() V2 는 _gck_ 키만 받음. _wt_ 환경에선 widgets() API 필수.
+      //   공용 페이지가 widget 마운트 + requestPayment 처리 → successUrl 로 redirect.
+      if (serverFlow === 'widget') {
+        const params = new URLSearchParams({
+          orderId,
+          amount: String(amount),
+          orderName,
+          clientKey: serverClientKey,
+          successUrl: '/points/charge/success',
+          failUrl: '/points/charge/fail',
+        })
+        navigate(`/pay/widget?${params.toString()}`)
+        return
+      }
+
+      if (serverFlow !== 'redirect') {
+        toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
         await api.post('/api/points/charge/cancel').catch(() => null)
         setProcessing(false)
         return
