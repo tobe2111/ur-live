@@ -12,9 +12,9 @@
 // ============================================================
 
 import type { D1Database } from '@cloudflare/workers-types';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { QueryBuilder } from './query-builder';
-import { getDb, orders as ordersTable, type Db } from '../../db';
+import { getDb, orders as ordersTable, order_items as order_items_table, type Db } from '../../db';
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
 import { safeJsonParse } from '../../shared/utils';
 import { statusesThatCanReach } from '../utils/state-machine';
@@ -409,14 +409,25 @@ export class OrderRepository {
    * Restore stock for cancelled order items
    */
   async restoreStock(orderId: string): Promise<void> {
-    const items = await this.qb.queryMany<{ product_id: string; quantity: number }>(
-      'SELECT product_id, quantity FROM order_items WHERE order_id = ? AND status != ?',
-      [orderId, 'CANCELLED']
-    );
+    // 🛡️ 2026-05-23 Drizzle Phase 2: SELECT 부분만 typed Drizzle.
+    //   UPDATE 는 stock 산술 (stock = stock + ?) + atomic batch 가 필요해 qb 유지.
+    //   (D1 batch atomic 보장 = stock 정합성 — sql 템플릿 + drizzle batch 도 가능하나 PR 분리.)
+    const items = await this.db
+      .select({
+        product_id: order_items_table.product_id,
+        quantity: order_items_table.quantity,
+      })
+      .from(order_items_table)
+      .where(and(
+        eq(order_items_table.order_id, orderId as unknown as number),
+        // status != 'CANCELLED' → drizzle 의 ne 사용
+        sql`${order_items_table.status} != 'CANCELLED'`,
+      ))
+      .all();
 
     if (items.length === 0) return;
 
-    const statements = items.map(item => ({
+    const statements: { sql: string; params: unknown[] }[] = items.map(item => ({
       sql: 'UPDATE products SET stock = stock + ? WHERE id = ?',
       params: [item.quantity, item.product_id],
     }));
