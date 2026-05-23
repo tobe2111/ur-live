@@ -133,6 +133,9 @@ export interface ProductsTable {
   //   정책: 셀러 상품 OFF / 어드민 큐레이션 ON / KT Alpha 교환권 OFF (default).
   referral_enabled: number | null              // INTEGER DEFAULT 0
   referral_commission_rate: number | null      // REAL — ratio (0.05 = 5%)
+  // 🛡️ 2026-05-23: repair-schema 배포로 추가된 컬럼 (사고 fix #23 일괄).
+  long_description: string | null              // TEXT — 어드민 상품 상세 마크다운 설명
+  compare_at_price: number | null              // INTEGER — 할인 전 정가 (Cafe24 sync / 어드민 등록 시 사용)
 }
 
 // ============================================================
@@ -458,4 +461,77 @@ export interface TaxWithholdingLogTable {
 // ─── orders 확장 (migration 0258, 2026-05-18) ──────────────────────────
 //   숙소 예약 메타 (빠른 조회용 캐시 컬럼) — OrdersTable 추가:
 //   stay_booking_id / stay_check_in_date / stay_check_out_date / stay_nights
+
+// ============================================================
+// user_points 테이블 (migration 0130 + repair-schema 보강)
+// ⚠️ user_id 는 TEXT (Firebase UID / 카카오 user_id 등 다양한 형태)
+// ============================================================
+export interface UserPointsTable {
+  user_id: string                  // TEXT PRIMARY KEY
+  balance: number                  // INTEGER NOT NULL DEFAULT 0
+  total_charged: number            // INTEGER NOT NULL DEFAULT 0
+  total_donated: number            // INTEGER NOT NULL DEFAULT 0
+  // 🛡️ 2026-05-23: repair-schema 배포로 추가 — 총 사용 누적 (충전 vs 사용 추적).
+  total_used: number               // INTEGER DEFAULT 0
+  created_at: string
+  updated_at: string
+}
+
+// ============================================================
+// settlements 테이블 (셀러 정산 신청 + 자동 정산 보고서 양쪽 모두 사용)
+// 🛡️ 2026-05-23: 신규/자동집계 양쪽 컬럼이 혼재 — repair-schema 로 ALTER 통합.
+// ============================================================
+export interface SettlementsTable {
+  id: number
+  seller_id: number                // INTEGER NOT NULL (0 = 시스템 집계 마커)
+  period_start: string             // 'YYYY-MM-DD'
+  period_end: string               // 'YYYY-MM-DD'
+  status: string                   // 'pending'|'approved'|'paid'|'rejected'
+  // 셀러 정산 신청 입력 (수동 신청 path)
+  amount: number | null            // INTEGER — 신청 금액
+  bank_name: string | null
+  account_number: string | null
+  account_holder: string | null
+  // 자동 정산 보고서 집계 컬럼 (settlement-automation.ts 가 INSERT)
+  total_sales: number              // INTEGER DEFAULT 0
+  total_platform_fee: number       // INTEGER DEFAULT 0
+  total_settlement: number         // INTEGER DEFAULT 0
+  generated_at: string | null      // DATETIME — 보고서 생성 시각
+  created_at: string
+}
+
+// ============================================================
+// donation_settlements 테이블 (후원금 정산 신청)
+// ============================================================
+export interface DonationSettlementsTable {
+  id: number
+  seller_id: number                // INTEGER NOT NULL
+  total_amount: number             // INTEGER NOT NULL
+  commission_amount: number        // INTEGER NOT NULL
+  settlement_amount: number        // INTEGER NOT NULL
+  donation_count: number           // INTEGER NOT NULL
+  status: string                   // 'REQUESTED'|'APPROVED'|'PAID'|'REJECTED'
+  bank_info: string | null         // TEXT (JSON)
+  // 🛡️ 2026-05-23: repair-schema 배포로 추가 — 본 settlement 에 포함된 donation id 들 JSON 배열.
+  donation_ids: string | null      // TEXT (JSON array of donation ids)
+  created_at: string
+  updated_at: string
+}
+
+// ============================================================
+// vouchers 테이블 (migration 0146)
+// ⚠️ updated_at 컬럼 없음! UPDATE 시 SET updated_at 금지.
+// ============================================================
+export interface VouchersTable {
+  id: number
+  order_id: number                 // INTEGER NOT NULL (FK → orders.id)
+  product_id: number               // INTEGER NOT NULL (FK → products.id)
+  user_id: string                  // TEXT NOT NULL
+  code: string                     // TEXT UNIQUE NOT NULL
+  status: string                   // 'unused'|'used'|'expired'|'refunded'
+  used_at: string | null
+  expires_at: string | null
+  created_at: string
+  applied_discount_pct: number | null   // 0258 migration 등 후속 컬럼 — production 에 존재
+}
 
