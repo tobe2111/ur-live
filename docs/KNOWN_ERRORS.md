@@ -45,6 +45,7 @@
 |---|---|---|
 | `VITE_TOSS_CLIENT_KEY` 와 `TOSS_CLIENT_KEY` 불일치 | Production / Preview tab 분리 설정 누락 | `/api/_healthcheck/payments` 로 사전 감지 |
 | Cloudflare Pages deploy 실패 (`Invalid commit message`) | commit message 에 한글 / em-dash / 이모지 | ASCII only 로 변경 |
+| GitHub Actions `actions/checkout@v4` 실패 — `could not read Username for 'https://github.com'` | Workflow permissions 또는 GITHUB_TOKEN 권한 부족 | Settings → Actions → General → Workflow permissions → "Read and write permissions" |
 | `_headers` 2000자 초과 줄 | 한 줄에 너무 많은 CSP directive | 줄 나눔 |
 
 ## 결제 server 측 500 에러
