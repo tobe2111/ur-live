@@ -24,8 +24,7 @@ export interface ProductFlowInput {
   category?: string | null
   /** 1 = voucher-style 강제 (deal 결제만). DB row 의 deal_only 컬럼. */
   deal_only?: number | null
-  /** 1 = 공구 활성 — Toss 결제 흐름. DB row 의 group_buy_active 컬럼 또는 group_buy_status. */
-  group_buy_active?: number | null
+  /** 'active' = 공구 활성 — Toss 결제 흐름. DB row 의 group_buy_status 컬럼. */
   group_buy_status?: string | null
 }
 
@@ -33,17 +32,16 @@ export interface ProductFlowInput {
  * 상품 정보를 받아 결제 흐름 type 반환.
  * 분류 우선순위:
  *   1. voucher category 또는 deal_only=1 → 'voucher_deal'
- *   2. group_buy_active=1 또는 group_buy_status='active' → 'group_buy_toss'
+ *   2. group_buy_status='active' → 'group_buy_toss'
  *   3. 그 외 → 'standard_checkout'
+ *
+ * ⚠️ group_buy_active 컬럼은 production 스키마에 없음 — group_buy_status 만 사용.
  */
 export function getProductFlow(product: ProductFlowInput): ProductFlow {
   if (isVoucherCategory(product.category) || product.deal_only === 1) {
     return 'voucher_deal'
   }
-  if (
-    product.group_buy_active === 1 ||
-    product.group_buy_status === 'active'
-  ) {
+  if (product.group_buy_status === 'active') {
     return 'group_buy_toss'
   }
   return 'standard_checkout'
