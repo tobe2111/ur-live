@@ -1,15 +1,12 @@
 /**
- * 🛡️ 2026-05-23 client-side Toss 키 type 감지 — server 와 동일 룰.
+ * 🛡️ 2026-05-23 v2 — defensive default 변경 (사용자 신고 "여전히 동일 에러"):
+ *   unknown prefix → 'widget' (이전 serverFlow 신뢰 → 회귀 위험)
+ *   이제 명시적 _gck_ 만 'redirect'. 그 외 모든 케이스는 widget API 사용.
  *
- * server (src/worker/utils/toss-gateway.ts) detectTossKeyType 과 1:1 매칭.
- * 클라이언트가 server flow 응답을 못 믿을 때 (캐시/race) belt-and-suspenders 로 사용.
- *
- * Toss 공식 키 네이밍 (2024+):
- *   - 'widget' (결제위젯): live_ck_* / test_ck_* / live_wck_* / test_wck_* / legacy *_wt_* *_widget_*
- *     → widgets() API 전용. payment() 호출 시 SDK 가 "결제위젯 연동 키는 지원하지 않습니다" 에러.
- *   - 'gck' (API 개별 연동): live_gck_* / test_gck_*
- *     → payment() V2 전용.
- *   - 'unknown': 알 수 없음 → widgets() default (더 많은 PG 지원).
+ * 이유:
+ *   payment() V2 는 widget 키 거부 시 SDK 가 명확한 에러.
+ *   widgets() API 는 거의 모든 키 type 에서 시도 가능 + 명확한 에러.
+ *   기본을 widget 으로 강제 → "결제위젯 연동 키는 지원하지 않습니다" 영구 차단.
  */
 export type TossClientKeyType = 'widget' | 'gck' | 'unknown' | 'missing'
 
@@ -22,19 +19,20 @@ export function detectTossClientKeyType(key: string | undefined | null): TossCli
 }
 
 /**
- * server 응답의 flow 와 클라이언트 키 감지를 조합해 최종 흐름 결정.
- * server flow 가 'redirect' 인데 키가 widget 이면 → 'widget' 으로 강제 (cache miss 대비).
- * server flow 가 'widget' 인데 키가 gck 이면 → 'redirect' 로 강제 (역방향 대비).
- * 일치하면 그대로.
+ * 최종 흐름 결정 (defensive — widget 우선):
+ *   - missing → 'invalid'
+ *   - gck → 'redirect' (payment V2 — gck 만 명시적 지원)
+ *   - 그 외 (widget / unknown) → 'widget' (widgets() API)
+ *
+ * server 의 serverFlow 값은 무시. 키 prefix 만으로 결정 →
+ * 캐시 / race condition / server 옛 코드 영향 0.
  */
 export function resolveTossFlow(
-  serverFlow: 'redirect' | 'widget' | 'invalid' | undefined,
+  _serverFlow: 'redirect' | 'widget' | 'invalid' | undefined,
   clientKey: string | undefined | null,
 ): 'redirect' | 'widget' | 'invalid' {
-  if (!serverFlow || serverFlow === 'invalid') return serverFlow || 'invalid'
   const t = detectTossClientKeyType(clientKey)
   if (t === 'missing') return 'invalid'
-  if (t === 'widget') return 'widget'  // widget 키는 무조건 widgets() API.
-  if (t === 'gck') return 'redirect'   // gck 키는 무조건 payment() V2.
-  return serverFlow  // unknown — server 신뢰.
+  if (t === 'gck') return 'redirect'
+  return 'widget'  // widget / unknown — widgets() API 강제.
 }
