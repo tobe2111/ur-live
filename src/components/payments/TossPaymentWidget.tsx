@@ -224,7 +224,7 @@ export function TossPaymentWidget({
           업계 표준 (쿠팡/11번가/G마켓 등): 결제 시 별도 약관 영역 X. PG 페이지에서 처리.
           renderAgreement 호출은 background 로 유지 (변수 미사용 시도 — Toss SDK 가 안 부르면 안 그림). */}
       <div id="toss-payment-method" className="min-h-[180px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
-      <div id="toss-agreement" className="hidden" />
+      <div id="toss-agreement" className="min-h-[40px] bg-white rounded-lg border border-gray-200 overflow-hidden" />
 
       <button
         onClick={handlePayment}
