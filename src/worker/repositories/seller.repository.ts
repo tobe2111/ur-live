@@ -14,7 +14,9 @@
 // as is_verified).
 
 import type { D1Database } from '@cloudflare/workers-types';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { QueryBuilder } from './query-builder';
+import { getDb, sellers as sellersTable, type Db } from '../../db';
 import type { Seller } from '../../shared/types';
 
 // Raw row shape as returned by production SELECTs
