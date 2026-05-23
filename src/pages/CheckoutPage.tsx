@@ -87,20 +87,26 @@ export default function CheckoutPage() {
   //   복원: server `TOSS_CLIENT_KEY` 단일 진실원천. server env 만 갱신해도 즉시 반영.
   //   회귀 방어: clientKey 가 비어있으면 TossPaymentWidget 자체를 렌더 안 함 (race condition 차단).
   //   SDK preload 는 그대로 유지 (toss-preload.ts 가 VITE env 로 미리 로드 — 서버 키와 같으면 cache hit).
-  const [serverClientKey, setServerClientKey] = useState<string>(clientKey || '')
-  const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(!!clientKey)
+  // 🛡️ 2026-05-23 v3 (race condition 영구 fix): server 응답 받기 전엔 PaymentSection 렌더 X.
+  //   v2 버그: VITE 키로 즉시 mount → server key 도착 → key prop 변경 → useEffect cleanup →
+  //   hasInitialized.current==true 라 재초기화 안 됨 → 영원히 loading.
+  //   v3: clientKeyLoaded 초기 false 강제 → server fetch 끝나고 한 번만 mount.
+  const [serverClientKey, setServerClientKey] = useState<string>('')
+  const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(false)
   useEffect(() => {
     api.get('/api/payments/client-key')
       .then(r => {
         const key = r.data?.data?.clientKey || r.data?.clientKey
         if (key && typeof key === 'string') {
           setServerClientKey(key)
+        } else if (clientKey) {
+          setServerClientKey(clientKey)
         }
         setClientKeyLoaded(true)
       })
       .catch((err) => {
         if (import.meta.env.DEV) console.warn('[Checkout] server clientKey 로드 실패, env fallback:', err)
-        // fetch 실패 시에도 build env 가 있다면 그대로 진행 (없으면 TossPaymentWidget 이 에러 표시)
+        if (clientKey) setServerClientKey(clientKey)
         setClientKeyLoaded(true)
       })
   }, [])
