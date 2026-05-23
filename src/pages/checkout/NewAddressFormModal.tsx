@@ -73,7 +73,7 @@ export default function NewAddressFormModal({
           <label htmlFor="checkout-postal-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.postalCode', { defaultValue: '우편번호' })} <span className="text-red-500" aria-hidden="true">*</span>
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full min-w-0">
             <input
               id="checkout-postal-code"
               type="text"
@@ -82,13 +82,13 @@ export default function NewAddressFormModal({
               aria-required="true"
               value={newAddress.postal_code}
               readOnly
-              className="flex-1 px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
+              className="flex-1 min-w-0 px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
               placeholder={t('checkout.newAddress.postalCode', { defaultValue: '우편번호' })}
             />
             <button
               type="button"
               onClick={() => setShowPostcodePopup(true)}
-              className="px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
+              className="shrink-0 px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
             >
               {t('checkout.newAddress.searchAddress', { defaultValue: '주소 검색' })}
             </button>

@@ -24,9 +24,12 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
           {t('checkout.deal.balancePrefix', { defaultValue: '보유' })} <span className="font-bold text-pink-500">{formatNumber(dealBalance)}</span>{t('checkout.summary.dealSuffix', { defaultValue: '딜' })}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      {/* 🛡️ 2026-05-23 영구 fix: flex children min-width:0 (min-w-0) — input 이 content 크기 유지하며
+            shrink-0 '전액' 버튼을 viewport 밖으로 밀어내던 사고 (모바일 narrow 화면). */}
+      <div className="flex items-center gap-2 w-full min-w-0">
         <input
           type="number"
+          inputMode="numeric"
           value={dealToUse || ''}
           onChange={e => {
             const v = Math.min(Math.max(0, Number(e.target.value)), Math.min(dealBalance, totalBeforeDeal))
@@ -34,7 +37,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
           }}
           placeholder={t('checkout.deal.inputPlaceholder', { defaultValue: '사용할 딜 입력' })}
           aria-label={t('checkout.deal.inputAriaLabel', { defaultValue: '사용할 딜 포인트 입력' })}
-          className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm text-gray-900 dark:text-white text-right font-medium placeholder:text-gray-400 dark:text-gray-500"
+          className="flex-1 min-w-0 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm text-gray-900 dark:text-white text-right font-medium placeholder:text-gray-400 dark:text-gray-500"
         />
         <button
           onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
