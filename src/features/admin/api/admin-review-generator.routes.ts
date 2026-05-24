@@ -610,4 +610,25 @@ adminReviewGeneratorRoutes.post('/reviews/backfill-aggregate', cors(), async (c)
   }
 });
 
+// 🛡️ 2026-05-24 (universal auto-seed): 모든 활성 상품 (공구/쇼핑/교환권) review_count=0
+//   인 것 즉시 시드. 정책 B: is_active=1 만. cron 안 기다리고 즉시 백필할 때.
+//   POST /admin/reviews/auto-seed-missing  body: { max_batch?: number, seed_min?, seed_max?, rating_min?, rating_max? }
+adminReviewGeneratorRoutes.post('/reviews/auto-seed-missing', cors(), async (c) => {
+  try {
+    const { autoSeedMissingReviews } = await import('../../../worker/utils/auto-seed-fake-reviews')
+    type Body = { max_batch?: number; seed_min?: number; seed_max?: number; rating_min?: number; rating_max?: number }
+    const body = await c.req.json<Body>().catch(() => ({} as Body))
+    const result = await autoSeedMissingReviews(c.env, {
+      maxBatch: Math.max(1, Math.min(2000, Number(body?.max_batch) || 500)),
+      seedMin: Number(body?.seed_min) || 5,
+      seedMax: Number(body?.seed_max) || 25,
+      seedRatingMin: Number(body?.rating_min) || 4.3,
+      seedRatingMax: Number(body?.rating_max) || 4.8,
+    })
+    return c.json({ success: true, data: result });
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500);
+  }
+});
+
 export default adminReviewGeneratorRoutes;
