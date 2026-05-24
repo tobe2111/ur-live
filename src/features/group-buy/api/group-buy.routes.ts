@@ -281,6 +281,22 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
     // 딜 결제
     if (payment_method === 'deal') {
+      // 🛡️ 2026-05-24: KT Alpha 상품 (kt_alpha_gift_code 보유) 인데 사용자 phone 없으면
+      //   백그라운드 발송이 silent skip → 사용자가 voucher 못 받음 (큰 사고).
+      //   여기서 미리 차단 → 클라이언트가 phone 입력 모달 띄움 → 다시 시도.
+      if ((product as { kt_alpha_gift_code?: string }).kt_alpha_gift_code) {
+        const userRow = await DB.prepare('SELECT phone FROM users WHERE id = ?')
+          .bind(userId).first<{ phone: string | null }>().catch(() => null)
+        const phone = String(userRow?.phone || '').replace(/\D/g, '')
+        if (!/^01\d{8,9}$/.test(phone)) {
+          return c.json({
+            success: false,
+            error: 'KT Alpha 기프티쇼 발송을 위해 전화번호 등록이 필요합니다',
+            code: 'PHONE_REQUIRED',
+          }, 400)
+        }
+      }
+
       const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
         .bind(userId).first<{ balance: number }>()
 

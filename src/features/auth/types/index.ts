@@ -8,6 +8,9 @@ export interface KakaoUser {
   name: string;
   email?: string;
   profileImage?: string;
+  // 🛡️ 2026-05-24: 카카오 phone_number scope 동의 시 받아옴.
+  //   형식: '+82 10-1234-5678' — DB 저장 시 숫자만 정규화.
+  phoneNumber?: string;
 }
 
 export interface KakaoTokenResponse {
@@ -26,6 +29,8 @@ export interface KakaoUserInfoResponse {
   };
   kakao_account?: {
     email?: string;
+    phone_number?: string;       // 🛡️ 2026-05-24: phone_number scope 동의 시.
+    phone_number_needs_agreement?: boolean;
     profile?: {
       nickname?: string;
       profile_image_url?: string;
