@@ -8,6 +8,10 @@ import InAppFeatureBlockedModal from '@/components/InAppFeatureBlockedModal'
 interface TossPaymentWidgetProps {
   userId: string
   clientKey: string
+  /** 🛡️ 2026-05-24: 서버에서 받은 variantKey (TOSS_VARIANT_PAYMENT env).
+   *  미설정 시 빈 문자열 -> Toss SDK 가 내부 default 사용. */
+  variantPayment?: string
+  variantAgreement?: string
   cartItems: Array<{
     id: string | number
     product_id: string | number
@@ -58,6 +62,8 @@ const VARIANT_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string
 export function TossPaymentWidget({
   userId,
   clientKey,
+  variantPayment,
+  variantAgreement,
   cartItems,
   totalAmount,
   shippingFee: _shippingFee,
@@ -122,15 +128,19 @@ export function TossPaymentWidget({
         //   특히 약관 위젯은 .on('agreementStatusChange') 가 인스턴스에서만 작동 (widgets 객체 X).
         // 🛡️ 2026-05-24: env 명시된 variantKey 가 있으면 시도 -> 실패 시 기본 widget.
         //   env 없으면 처음부터 기본 widget (variant 등록 X 환경에서도 동작).
+        // 🛡️ 2026-05-24: 우선순위 — prop (server runtime) > build-time env > undefined.
+        //   서버 env (TOSS_VARIANT_PAYMENT) 변경 시 재빌드 없이 즉시 반영.
+        const effectiveVariantPayment = variantPayment || VARIANT_PAYMENT
+        const effectiveVariantAgreement = variantAgreement || VARIANT_AGREEMENT
         const tryRenderPay = async () => {
-          if (VARIANT_PAYMENT) {
-            try { return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method', variantKey: VARIANT_PAYMENT }), `renderPaymentMethods:${VARIANT_PAYMENT}`) } catch { /* fallback to default */ }
+          if (effectiveVariantPayment) {
+            try { return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method', variantKey: effectiveVariantPayment }), `renderPaymentMethods:${effectiveVariantPayment}`) } catch { /* fallback to default */ }
           }
           return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method' }), 'renderPaymentMethods:default')
         }
         const tryRenderAgreement = async () => {
-          if (VARIANT_AGREEMENT) {
-            try { return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement', variantKey: VARIANT_AGREEMENT }), `renderAgreement:${VARIANT_AGREEMENT}`) } catch { /* fallback */ }
+          if (effectiveVariantAgreement) {
+            try { return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement', variantKey: effectiveVariantAgreement }), `renderAgreement:${effectiveVariantAgreement}`) } catch { /* fallback */ }
           }
           return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement' }), 'renderAgreement:default')
         }

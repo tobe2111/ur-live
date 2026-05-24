@@ -42,6 +42,9 @@ interface Props {
   cartItems: CartItem[]
   totalShippingFee: number
   clientKey: string
+  // 🛡️ 2026-05-24: server-side variantKey (TOSS_VARIANT_PAYMENT/AGREEMENT env)
+  variantPayment?: string
+  variantAgreement?: string
   selectedAddressOk: boolean
   onBeforePayment: (orderId: string) => Promise<void>
   onTossPaymentSuccess: (orderId: string, paymentKey: string, amount: number) => void
@@ -53,7 +56,7 @@ export default function PaymentSection({
   dealOnly = false,
   dealBalance, dealToUse, setDealToUse, totalBeforeDeal, totalAmount,
   payingWithDeals, onPayWithDeals,
-  userId, cartItems, totalShippingFee, clientKey, selectedAddressOk,
+  userId, cartItems, totalShippingFee, clientKey, variantPayment, variantAgreement, selectedAddressOk,
   onBeforePayment, onTossPaymentSuccess, onStripePaymentSuccess,
 }: Props) {
   const { t } = useTranslation()
@@ -113,6 +116,8 @@ export default function PaymentSection({
           <TossPaymentWidget
             userId={userId}
             clientKey={clientKey}
+            variantPayment={variantPayment}
+            variantAgreement={variantAgreement}
             cartItems={cartItems}
             totalAmount={Math.max(0, totalAmount)}
             shippingFee={totalShippingFee}

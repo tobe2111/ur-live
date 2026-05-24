@@ -92,17 +92,21 @@ export default function CheckoutPage() {
   //   hasInitialized.current==true 라 재초기화 안 됨 → 영원히 loading.
   //   v3: clientKeyLoaded 초기 false 강제 → server fetch 끝나고 한 번만 mount.
   const [serverClientKey, setServerClientKey] = useState<string>('')
+  const [serverVariantPayment, setServerVariantPayment] = useState<string>('')
+  const [serverVariantAgreement, setServerVariantAgreement] = useState<string>('')
   const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(false)
   useEffect(() => {
-    // 🛡️ 2026-05-24: server clientKey 가 진실원천 — Cloudflare TOSS_CLIENT_KEY 만 변경하면
-    //   즉시 라이브 키로 전환. build-time VITE_TOSS_CLIENT_KEY 는 fallback (서버 fetch 실패 시만).
-    //   key_type=live 면 라이브, test 면 테스트 모드 (UI 알림용).
+    // 🛡️ 2026-05-24: server clientKey + variantKey 진실원천 — Cloudflare env 변경 시 즉시 반영.
+    //   build-time VITE_TOSS_CLIENT_KEY / VITE_TOSS_VARIANT_PAYMENT 는 fallback.
     api.get('/api/payments/client-key', { params: { _ts: Date.now() } })  // cache-bust
       .then(r => {
-        const key = r.data?.data?.clientKey || r.data?.clientKey
+        const data = r.data?.data || {}
+        const key = data.clientKey || r.data?.clientKey
         if (key && typeof key === 'string') {
           setServerClientKey(key)
-          if (import.meta.env.DEV) console.log('[Checkout] server clientKey:', r.data?.data?.key_type, r.data?.data?.key_prefix)
+          setServerVariantPayment(typeof data.variant_payment === 'string' ? data.variant_payment : '')
+          setServerVariantAgreement(typeof data.variant_agreement === 'string' ? data.variant_agreement : '')
+          if (import.meta.env.DEV) console.log('[Checkout] server config:', { key_type: data.key_type, variant_payment: data.variant_payment, variant_agreement: data.variant_agreement })
         } else if (clientKey) {
           if (import.meta.env.DEV) console.warn('[Checkout] server clientKey empty, falling back to VITE_TOSS_CLIENT_KEY (build-time)')
           setServerClientKey(clientKey)
@@ -470,6 +474,8 @@ export default function CheckoutPage() {
                 cartItems={cartItems}
                 totalShippingFee={totalShippingFee}
                 clientKey={serverClientKey}
+                variantPayment={serverVariantPayment}
+                variantAgreement={serverVariantAgreement}
                 selectedAddressOk={isAllDealOnly || !!selectedAddress}
                 onBeforePayment={handleBeforePayment}
                 onTossPaymentSuccess={(orderId, paymentKey, amount) => {
