@@ -56,6 +56,8 @@ import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
+// 🛡️ 2026-05-24: 모든 신규 활성 상품 (공구/쇼핑/교환권) 에 자동 허위리뷰 시드.
+import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
@@ -170,6 +172,10 @@ export async function handleCronScheduled(
         }
       } catch (e) { logError('[cron] review-username-backfill', { error: String(e) }) }
     }));
+    // 🛡️ 2026-05-24: 신규 활성 상품 (공구/쇼핑/교환권) 자동 허위리뷰 시드 — 1일당 최대 200개.
+    //   정책 B: is_active=1 검수 통과한 상품만. 어떤 경로 (셀러/관리자/카페24/대량업로드/KT Alpha)
+    //   로 생성됐든 1일 안에 카드 별점·리뷰 노출. idempotent.
+    ctx.waitUntil(safeCron('auto-seed-reviews', () => handleAutoSeedReviews(env)));
     // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
     ctx.waitUntil(safeCron('seller-churn-detect', () => handleSellerChurnDetect(env)));
     // 🛡️ 2026-05-15 (TD-G08): ledger 정합성 검증 — Σdebit ≠ Σcredit / 음수 wallet → Discord alert
