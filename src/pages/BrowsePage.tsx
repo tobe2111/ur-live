@@ -513,13 +513,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                         <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        {/* 🛡️ 2026-05-24: 사용자 요청 — '신규' 배지 폐기. 별점만 일관 표시 (리뷰 없으면 0.0). */}
                         <span className="inline-flex items-center gap-0.5">
                           <span className="text-yellow-500">★</span>
-                          {rating > 0 ? (
-                            <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
-                          ) : (
-                            <span className="text-gray-400">신규</span>
-                          )}
+                          <span className={`font-bold ${rating > 0 ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
+                            {rating.toFixed(1)}
+                          </span>
                         </span>
                         {soldCount > 0 && <span>구매 {soldLabel}</span>}
                       </div>
