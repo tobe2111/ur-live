@@ -94,12 +94,17 @@ export default function CheckoutPage() {
   const [serverClientKey, setServerClientKey] = useState<string>('')
   const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(false)
   useEffect(() => {
-    api.get('/api/payments/client-key')
+    // 🛡️ 2026-05-24: server clientKey 가 진실원천 — Cloudflare TOSS_CLIENT_KEY 만 변경하면
+    //   즉시 라이브 키로 전환. build-time VITE_TOSS_CLIENT_KEY 는 fallback (서버 fetch 실패 시만).
+    //   key_type=live 면 라이브, test 면 테스트 모드 (UI 알림용).
+    api.get('/api/payments/client-key', { params: { _ts: Date.now() } })  // cache-bust
       .then(r => {
         const key = r.data?.data?.clientKey || r.data?.clientKey
         if (key && typeof key === 'string') {
           setServerClientKey(key)
+          if (import.meta.env.DEV) console.log('[Checkout] server clientKey:', r.data?.data?.key_type, r.data?.data?.key_prefix)
         } else if (clientKey) {
+          if (import.meta.env.DEV) console.warn('[Checkout] server clientKey empty, falling back to VITE_TOSS_CLIENT_KEY (build-time)')
           setServerClientKey(clientKey)
         }
         setClientKeyLoaded(true)

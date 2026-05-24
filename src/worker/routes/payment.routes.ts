@@ -685,9 +685,28 @@ paymentsRouter.get('/client-key', async (c) => {
   const { decideTossFlow } = await import('../utils/toss-gateway');
   const tossKey = (c.env as { TOSS_CLIENT_KEY?: string }).TOSS_CLIENT_KEY || '';
   const { flow, flowReason } = decideTossFlow(tossKey);
+  // 🛡️ 2026-05-24 critical fix: 이전 'success: flow === redirect' 는 항상 false
+  //   (decideTossFlow 는 'widget' or 'invalid' 만 반환 — 'redirect' 절대 안 옴).
+  //   결과: 프론트가 server clientKey 무시하고 build-time VITE_TOSS_CLIENT_KEY 로 fallback.
+  //   사용자가 Cloudflare 에서 TOSS_CLIENT_KEY 만 라이브로 바꿔도 테스트 모드 표시되던 원인.
+  //   영구 fix: 키만 있으면 success (flow !== 'invalid').
+  // 🛡️ 추가: prefix 검증 — 사용자가 키 종류 한눈에 확인.
+  const isTest = /^test_/.test(tossKey)
+  const isLive = /^live_/.test(tossKey)
+  // 🛡️ CDN/edge cache 차단 — 키 바꾼 직후 즉시 반영되어야 함.
+  c.header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+  c.header('Pragma', 'no-cache')
   return c.json({
-    success: flow === 'redirect',
-    data: { clientKey: tossKey, flow, flow_reason: flowReason },
+    success: flow !== 'invalid',
+    data: {
+      clientKey: tossKey,
+      flow,
+      flow_reason: flowReason,
+      // 디버그 — UI 에 직접 표시 가능 (clientKey 는 public 정보, masked X).
+      key_type: isLive ? 'live' : isTest ? 'test' : 'unknown',
+      key_prefix: tossKey.slice(0, 8),
+      key_length: tossKey.length,
+    },
   });
 });
 
