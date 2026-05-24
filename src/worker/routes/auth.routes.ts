@@ -282,15 +282,42 @@ authRouter.patch('/profile', requireAuth(), async (c) => {
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
     if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone); }
     if (fields.length === 0) return c.json({ success: false, error: '수정할 항목이 없습니다' }, 400);
-    fields.push("updated_at = datetime('now')");
-    values.push(id);
-    await db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+
+    // 🛡️ 2026-05-24: updated_at 컬럼이 옛 DB 에 누락된 경우 graceful — 1차 시도 실패 시 updated_at 빼고 재시도.
+    const sqlWithTs = `UPDATE users SET ${fields.join(', ')}, updated_at = datetime('now') WHERE id = ?`;
+    const sqlNoTs = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+    try {
+      await db.prepare(sqlWithTs).bind(...values, id).run();
+    } catch (e1) {
+      const msg = String((e1 as Error)?.message || '');
+      if (/no such column.*updated_at/i.test(msg)) {
+        console.warn('[auth/profile] users.updated_at missing — retrying without timestamp. Call /api/_internal/repair-schema to add it.');
+        await db.prepare(sqlNoTs).bind(...values, id).run();
+      } else {
+        throw e1;
+      }
+    }
     const updated = await db.prepare('SELECT id, email, name, phone, avatar_url FROM users WHERE id = ?').bind(id).first();
     return c.json({ success: true, data: updated });
   } catch (err: unknown) {
     // 🛡️ 2026-05-22: production 정보 누출 방지 — 상세 에러는 로그만, 응답은 generic.
+    //   2026-05-24: DEV 모드만 _debug 에 actual SQL 에러 노출 (진단 가속).
     console.error('[auth/profile] update failed:', err);
-    return c.json({ success: false, error: '프로필 업데이트 중 오류가 발생했습니다' }, 500);
+    const isDev = c.env.ENVIRONMENT !== 'production';
+    const errMsg = (err as Error)?.message || String(err);
+    // 🛡️ 같은 에러 반복 방지 — phone / 컬럼 누락이면 사용자에게 안내 (운영자 액션 필요).
+    if (/no such column/i.test(errMsg)) {
+      return c.json({
+        success: false,
+        error: '프로필 컬럼이 누락되어 저장할 수 없어요. 관리자에게 문의해주세요. (CODE: SCHEMA_MISSING)',
+        ...(isDev && { _debug: errMsg }),
+      }, 500);
+    }
+    return c.json({
+      success: false,
+      error: '프로필 업데이트 중 오류가 발생했습니다',
+      ...(isDev && { _debug: errMsg }),
+    }, 500);
   }
 });
 
