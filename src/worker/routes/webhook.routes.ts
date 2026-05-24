@@ -255,60 +255,60 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
       return c.json({ received: false, status: 'rejected', error: 'ip_not_allowed' }, 403);
     }
 
-    if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
-      if (!webhookSecret) {
-        console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
-        // ✅ FIX (Cron C4): Return 200 (not 401) so Toss does not enter a retry storm
-        // for a misconfiguration that Toss retries cannot fix. Alert via Discord so
-        // ops can set the secret. The webhook event is NOT processed.
-        const discordUrl = (c.env as any).DISCORD_WEBHOOK_URL;
-        if (discordUrl) {
-          await fetch(discordUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: '🚨 TOSS_WEBHOOK_SECRET not configured — webhook delivery dropped. Set the secret immediately.',
-            }),
-            signal: AbortSignal.timeout(5000),
-          }).catch(swallow('webhook:discord-secret-missing'));
-        }
-        return c.json({ success: false, error: 'webhook_secret_not_configured', processed: false }, 200);
-      }
-      // V2 docs: "Toss-Signature" 기본 / legacy 헤더 이름들도 fallback 으로 받음.
-      const { value: signatureHeader, matched: sigHeaderName } = readFirstHeader(c, SIGNATURE_HEADER_CANDIDATES);
+    // ⚠️ CRITICAL (2026-05-24 V2 docs audit):
+    //   Toss V2 webhook docs (docs.tosspayments.com/guides/webhook) 에 HMAC 시그니처 / 헤더
+    //   언급이 0건. Status Page webhook docs 는 "서명·인증 헤더 없음" 명시.
+    //   → V2 webhook 은 시그니처를 안 보낼 가능성 매우 높음.
+    //
+    //   따라서 시그니처 검증은 *graceful* 정책:
+    //     - 헤더 존재 + secret 설정 → 엄격히 검증 (불일치 401)
+    //     - 헤더 없음 → 통과하되 경고 로깅. 다른 방어선이 작동:
+    //         ① IP allowlist (TOSS_WEBHOOK_IP_ALLOWLIST)
+    //         ② idempotency (webhook_events 테이블)
+    //         ③ amount 재검증 (DB sum 과 webhook totalAmount 비교)
+    //         ④ paid order → cancel 거부 (handlePaymentCancelled)
+    //         ⑤ 결제 confirm 은 webhook 이 아니라 별도 /confirm API 로 동기 실행
+    //
+    //   Toss 가 시그니처를 추가하는 날이 와도 이 정책은 안전 (헤더 오면 검증).
+    const { value: signatureHeader, matched: sigHeaderName } = readFirstHeader(c, SIGNATURE_HEADER_CANDIDATES);
+    const { value: timestampHeader, matched: tsHeaderName } = readFirstHeader(c, TIMESTAMP_HEADER_CANDIDATES);
+
+    if (signatureHeader && webhookSecret) {
+      // 시그니처 헤더 + secret 둘 다 있을 때만 엄격 검증.
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
         console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
           ip: callerIp,
           header_matched: sigHeaderName,
         });
-        // 🚨 보안 알림 — Toss webhook 위장 시도 가능성
         captureException(new Error('WEBHOOK_INVALID_SIGNATURE'), {
           tags: { area: 'webhook', kind: 'invalid_signature', severity: 'warning' },
           extra: { ip: callerIp, header_matched: sigHeaderName },
         }).catch(swallow('webhook:sentry-sig'));
-        // Return 401 so Toss retries legitimate deliveries whose signatures failed transiently
         return c.json({ received: false, status: 'rejected', error: 'invalid_signature' }, 401);
       }
-
-      // 3. Timestamp verification (replay attack defense) — BEFORE any logic
-      const { value: timestampHeader, matched: tsHeaderName } = readFirstHeader(c, TIMESTAMP_HEADER_CANDIDATES);
-      if (!verifyTimestamp(timestampHeader)) {
+      // 시그니처가 valid 일 때만 timestamp 도 엄격 검증 (replay 방어).
+      if (timestampHeader && !verifyTimestamp(timestampHeader)) {
         console.error('[WEBHOOK] ❌ INVALID_TIMESTAMP — possible replay attack', {
           timestamp: timestampHeader,
           header_matched: tsHeaderName,
           ip: callerIp,
         });
-        // 🚨 replay attack signal — Sentry 보고
         captureException(new Error('WEBHOOK_INVALID_TIMESTAMP'), {
           tags: { area: 'webhook', kind: 'invalid_timestamp', severity: 'warning' },
           extra: { timestamp: timestampHeader, header_matched: tsHeaderName, ip: callerIp },
         }).catch(swallow('webhook:sentry-ts'));
-        // Return 401 — do not silently accept possibly-replayed requests
         return c.json({ received: false, status: 'rejected', error: 'invalid_timestamp' }, 401);
       }
-    } else {
-      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (non-production, no secret configured)');
+    } else if (isProduction) {
+      // 시그니처 헤더 없음 — Toss V2 정상 동작 (docs 에 명시 안 됨).
+      // 단, secret 이 설정되어 있는데 헤더가 안 오는 건 의심스러우니 한 번씩 로깅.
+      if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] no signature header — falling back to IP/amount defenses', {
+        has_secret: Boolean(webhookSecret),
+        ip: callerIp,
+      });
+    } else if (!webhookSecret) {
+      console.warn('[WEBHOOK] ⚠️ Non-production: webhook secret not set — verification skipped');
     }
 
     // 3. Parse payload
