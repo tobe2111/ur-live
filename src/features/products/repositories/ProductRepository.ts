@@ -57,11 +57,25 @@ export class ProductRepository {
   
   /**
    * 필터 조건으로 상품 목록 조회
+   * 🛡️ 2026-05-24 (loading P0): SELECT * → 명시 컬럼.
+   *   목록 카드에 안 쓰이는 큰 TEXT 컬럼 제외 — long_description / detail_images /
+   *   voucher_terms / restaurant_address / kakao_chat_link 등.
+   *   페이로드 ~50% 감소 + D1 read 비용 ↓.
+   *   상세 페이지는 findById (SELECT *) 그대로 유지.
    */
   async findAll(filter: ProductFilter, offset: number = 0, limit: number = 20): Promise<Product[]> {
     // 🛡️ 2026-04-22: suspended/inactive seller 상품 숨김 (검색/브라우즈 방어)
     // seller_id NULL (cafe24 등) 은 통과, seller is_active=0 이면 상품 숨김.
-    let query = `SELECT * FROM products WHERE is_active = 1
+    // 목록 카드에 필요한 컬럼만 (BrowsePage/VouchersPage/HomePage 카드 렌더 검증).
+    const LIST_COLUMNS = [
+      'id', 'name', 'price', 'original_price', 'discount_rate', 'image_url',
+      'category', 'brand_name', 'seller_id', 'stock', 'stock_quantity',
+      'sold_count', 'view_count', 'avg_rating', 'review_count',
+      'is_active', 'status', 'product_type', 'deal_only', 'created_at',
+      'group_buy_target', 'group_buy_current', 'group_buy_deadline', 'group_buy_status',
+      'restaurant_name', 'voucher_expiry',
+    ].join(', ');
+    let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
     const params: any[] = [];
     
@@ -142,12 +156,14 @@ export class ProductRepository {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
       return result.results || [];
     } catch (err) {
-      // 누락된 컬럼(view_count, avg_rating, review_count, sold_count) 등으로 ranking/popular/rating 정렬 실패 시
-      // → 안전한 기본 정렬(created_at DESC)로 자동 폴백. 사용자에게는 500 대신 결과를 반환.
+      // 🛡️ 2026-05-24: 컬럼 누락 fallback — 정렬 + SELECT 둘 다 안전 모드로.
+      //   기존: ORDER BY 만 fallback. 신규: SELECT 도 'SELECT *' 로 안전 fallback (legacy DB 호환).
       const errMsg = (err as Error).message || '';
       if (/no such column/i.test(errMsg)) {
-        const fallbackQuery = query.replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
-        const fallback = await this.db.prepare(fallbackQuery).bind(...params).all<Product>();
+        const safeQuery = query
+          .replace(/SELECT[\s\S]*?FROM products/, 'SELECT * FROM products')
+          .replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
+        const fallback = await this.db.prepare(safeQuery).bind(...params).all<Product>();
         return fallback.results || [];
       }
       throw err;

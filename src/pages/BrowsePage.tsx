@@ -8,6 +8,7 @@ import SEO, { itemListJsonLd } from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import RecentlyViewedSection from './browse/RecentlyViewedSection'
 import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
 import type { Product, SortOption } from './browse/types'
@@ -22,6 +23,8 @@ interface BrowsePageProps {
 export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🛡️ 2026-05-24 (loading P0): 카드 hover/touch 시 상품 상세 prefetch.
+  const prefetchProduct = usePrefetchProduct()
   // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (URL ?seller=ID) sessionStorage 저장.
   useEffect(() => { captureTrackingFromUrl() }, [])
   const [products, setProducts] = useState<Product[]>([])
@@ -483,6 +486,9 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   <button
                     key={product.id}
                     onClick={() => navigate(`/products/${product.id}`)}
+                    onMouseEnter={() => prefetchProduct(product.id)}
+                    onTouchStart={() => prefetchProduct(product.id)}
+                    onFocus={() => prefetchProduct(product.id)}
                     className="text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
