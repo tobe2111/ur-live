@@ -328,7 +328,7 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
     // 🛡️ 2026-05-22: production 정보 누출 방지 — UNIQUE constraint 등 DB 메시지 노출 X.
-    console.error('[auth/pwd] failed:', (err as Error)?.message || String(err));
+    console.error('[auth/credential-update] failed:', (err as Error)?.message || String(err));
     return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다' }, 500);
   }
 });

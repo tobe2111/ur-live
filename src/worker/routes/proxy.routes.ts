@@ -56,7 +56,7 @@ app.get('/kakao/place/nearby', async (c) => {
     const data = await res.json();
     return c.json({ success: true, data });
   } catch (e) {
-    console.error("[proxy/kakao-addr] error:", (e as Error)?.message || String(e)); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
+    console.error("[proxy/kakao-geocode] error:", (e as Error)?.message || String(e)); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
   }
 });
 
