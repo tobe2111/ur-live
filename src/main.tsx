@@ -130,8 +130,21 @@ try {
   console.error('[main] env validation failed:', err)
 }
 
-// Sentry 초기화 (lazy — 262KB 번들 차단 방지)
-import('./lib/sentry').then(m => m.initSentry()).catch(swallow('main:sentry-init'))
+// 🛡️ 2026-05-24 (loading P0): Sentry 진짜 lazy — critical path 완전 제외.
+//   이전: import().then() 즉시 시작 → 441KB 다운로드가 main 과 경쟁 → LCP 1~2s 지연.
+//   이후: requestIdleCallback (or 3s setTimeout) → FCP 완료 후 idle 시점에 fetch.
+//   효과: 첫 진입 critical path -441KB. 첫 에러 보고 지연 최대 3s (사용자 영향 0).
+if (typeof window !== 'undefined') {
+  const initSentryDeferred = () => {
+    import('./lib/sentry').then(m => m.initSentry()).catch(swallow('main:sentry-init'))
+  }
+  const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback
+  if (ric) {
+    ric(initSentryDeferred, { timeout: 3000 })
+  } else {
+    setTimeout(initSentryDeferred, 3000)
+  }
+}
 
 // 🛡️ 2026-05-22 Phase 2: localStorage cache LRU cleanup — 30일+ 안 본 entry 삭제.
 //   앱 진입 시 1회 (idle 시점). quota 초과 방지 + 메모리 효율.

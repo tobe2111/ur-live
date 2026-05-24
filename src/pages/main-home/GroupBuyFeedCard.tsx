@@ -64,7 +64,9 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
   return `마감 ${mins}분`
 }
 
-export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
+// 🛡️ 2026-05-24 (loading P0): aboveFold prop — 첫 화면 카드는 eager + fetchpriority=high.
+//   효과: LCP 단축 (첫 진입 시 카드 이미지 우선 로드, lazy 후순위 카드는 nav 중에 로드).
+export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveFold?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
   // 🛡️ 2026-05-21: brand 정보 — gift_catalog (gc_*) 우선 → products → 없음.
@@ -105,7 +107,8 @@ export default function GroupBuyFeedCard({ p }: { p: FeedCardProduct }) {
             srcSet={cfSrcSet(p.image_url, 200) || undefined}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
             alt={p.name || cat.label}
-            loading="lazy"
+            loading={aboveFold ? 'eager' : 'lazy'}
+            fetchPriority={aboveFold ? 'high' : 'auto'}
             decoding="async"
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

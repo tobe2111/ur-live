@@ -403,7 +403,8 @@ export default function VouchersPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6">
-              {products.map(p => {
+              {products.map((p, idx) => {
+                const aboveFold = idx < 4
                 // 🛡️ 2026-05-23: BrowsePage 카드와 동일 디자인 (사용자 요청).
                 //   단위만 "원" → "딜". 원가 strikethrough + 할인% + 별점 + 구매수.
                 const hasStrike = !!p.original_price && p.original_price > p.price
@@ -430,7 +431,7 @@ export default function VouchersPage() {
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                        <img src={p.image_url} alt={p.name} loading={aboveFold ? 'eager' : 'lazy'} fetchPriority={aboveFold ? 'high' : 'auto'} decoding="async" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Gift className="w-10 h-10 text-gray-300 dark:text-gray-600" />
