@@ -58,9 +58,33 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   const productId = productIdNum
   const userId = String(user.id)
   const body = await c.req.json<{
-    quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string
-  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined }))
-  const { quantity, payment_method, promo_code, ref } = body
+    quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string; idempotency_key?: string
+  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined }))
+  const { quantity, payment_method, promo_code, ref, idempotency_key } = body
+
+  // 🛡️ 2026-05-23 idempotency — 중복 클릭 / 네트워크 retry 시 중복 발급 영구 차단.
+  //   client 가 unique idempotency_key 보내고, server 가 같은 key 의 기존 order 있으면 그 결과 반환.
+  //   key 미지정 시 일반 흐름 (rate limit 만 보호).
+  if (idempotency_key && typeof idempotency_key === 'string' && idempotency_key.length > 8 && idempotency_key.length <= 128) {
+    try {
+      const existing = await c.env.DB.prepare(
+        `SELECT id, order_number, total_amount FROM orders WHERE idempotency_key = ? AND user_id = ? LIMIT 1`
+      ).bind(idempotency_key, userId).first<{ id: number; order_number: string; total_amount: number }>()
+      if (existing) {
+        const vouchers = await c.env.DB.prepare(
+          `SELECT code, expires_at FROM vouchers WHERE order_id = ? ORDER BY id`
+        ).bind(existing.id).all<{ code: string; expires_at: string }>()
+        return c.json({
+          success: true,
+          idempotent: true,
+          order_number: existing.order_number,
+          total_amount: existing.total_amount,
+          vouchers: vouchers.results || [],
+          message: '이미 처리된 교환입니다. 같은 교환권이 반환되었습니다.',
+        })
+      }
+    } catch { /* idempotency 검사 실패 — 일반 흐름 진행 */ }
+  }
   // 🛡️ 2026-05-16: ref = 인플루언서 ID (?ref= 진입 또는 본문). 형식 검증.
   // 🛡️ 2026-05-21 Phase D-3: 자기 자신 attribution 차단 (셀러가 본인 링크로 매출 인플레이션).
   const refRaw = ref ? String(ref).trim() : ''
@@ -349,11 +373,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     //   (에이전시 commission 은 셀러 수수료에 이미 포함된 경로로 처리 — agencies 별도 routing)
     const sellerAmount = totalAmount - commissionAmount - influencerAmount - userBonusAmount
 
-    // 주문 생성
+    // 주문 생성 (idempotency_key 저장 — 중복 발급 영구 차단)
     await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?)
-    `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss').run()
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?, ?)
+    `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss', idempotency_key || null).run()
 
     // 🛡️ 2026-05-15: Double-entry ledger 기록 (정합성 검증 가능)
     try {
@@ -442,18 +466,22 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(order.id, productId, product.name, product.price, product.price, qty, totalAmount).run()
 
-      // 바우처 발급 (티어 할인 정보도 함께 기록) — UNIQUE 검증 retry
-      let lastExpiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
+      // 🛡️ 2026-05-23: D1 batch() 로 voucher 일괄 INSERT — 부분 발급 영구 차단.
+      //   이전 for-loop sequential INSERT: 중간 실패 시 일부만 발급 (부정합).
+      //   이후 batch: 모두 성공 or 모두 실패 (Atomic).
+      const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
+      const codes: string[] = []
       for (let i = 0; i < qty; i++) {
-        const code = await generateUniqueVoucherCode(DB)
-        const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
-        lastExpiresAt = expiresAt
-
-        await DB.prepare(`
+        codes.push(await generateUniqueVoucherCode(DB))
+      }
+      const lastExpiresAt = expiresAt
+      const voucherStmts = codes.map(code =>
+        DB.prepare(`
           INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(order.id, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice).run()
-      }
+        `).bind(order.id, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice)
+      )
+      await DB.batch(voucherStmts)
 
       // 🛡️ 2026-05-16: 사용자 phone 으로 voucher 발급 알림톡 (fire-and-forget)
       try {
