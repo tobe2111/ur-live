@@ -63,7 +63,13 @@ export async function autoSendKtAlphaVouchersForOrders(
       kt_alpha_gift_code: string;
     }>().catch(() => ({ results: [] }))
 
-    if (!ktItems.results || ktItems.results.length === 0) continue
+    if (!ktItems.results || ktItems.results.length === 0) {
+      // 🛡️ 2026-05-23: silent skip 영구 제거 — admin 가시성 위해 frontend_errors 에 기록.
+      await env.DB.prepare(
+        `INSERT INTO frontend_errors (message, type, url, user_id, created_at) VALUES (?, 'kt_alpha_skip', ?, ?, datetime('now'))`,
+      ).bind(`KT Alpha skip — order ${oid} 에 kt_alpha_gift_code 보유 상품 없음 (auto_voucher_send=1)`, `/admin/voucher-orders`, String(fallbackUserId)).run().catch(() => null)
+      continue
+    }
 
     // 발송 대상 phone — shipping_phone → users.phone 순서.
     let phone = String(order.shipping_phone || '').replace(/\D/g, '')
@@ -75,6 +81,22 @@ export async function autoSendKtAlphaVouchersForOrders(
     }
     if (!/^01\d{8,9}$/.test(phone)) {
       console.error('[kt-alpha auto-send] no phone for order', oid)
+      // 🛡️ 2026-05-23: phone 없음을 voucher_orders + frontend_errors 둘 다 기록 — admin 즉시 인지.
+      try {
+        await env.DB.prepare(
+          `INSERT INTO voucher_orders (seller_id, source, goods_code, goods_name, unit_price, quantity, total_amount, recipient_phone, withholding_amount, net_amount, status, failure_reason)
+           VALUES (?, 'kt_alpha', ?, ?, ?, ?, ?, '', 0, ?, 'failed', ?)`,
+        ).bind(
+          adminSellerId, ktItems.results[0]?.kt_alpha_gift_code || '?',
+          ktItems.results[0]?.product_name || '?',
+          ktItems.results[0]?.unit_price || 0, 1,
+          ktItems.results[0]?.unit_price || 0, ktItems.results[0]?.unit_price || 0,
+          `users.phone NULL 또는 잘못된 형식 (order ${oid}, user ${order.user_id})`,
+        ).run().catch(() => null)
+        await env.DB.prepare(
+          `INSERT INTO frontend_errors (message, type, url, user_id, created_at) VALUES (?, 'kt_alpha_no_phone', ?, ?, datetime('now'))`,
+        ).bind(`KT Alpha skip — order ${oid} 에 폰 없음 (users.phone 비어있거나 잘못된 형식). 사용자가 마이/내정보 에서 폰 등록 필요.`, '/admin/voucher-orders', String(order.user_id || fallbackUserId)).run().catch(() => null)
+      } catch { /* graceful */ }
       continue
     }
 
