@@ -281,6 +281,194 @@ export async function confirmTossPayment(input: TossConfirmInput): Promise<TossC
   return { ok: false, status: res.status, code, message }
 }
 
+// ============================================================
+// 🛡️ 2026-05-24 V2 docs audit — 결제 취소 SSOT
+//
+// docs ref: https://docs.tosspayments.com/guides/v2/payment-cancel
+//           POST /v1/payments/{paymentKey}/cancel
+//
+// 이전: refund.ts / toss-refund.ts / toss-payments.ts 3곳에서 각각 cancel 호출 →
+//       refundReceiveAccount / taxFreeAmount 누락 / 5xx 재시도 불일치 등 산발 버그.
+// 이제: cancelTossPayment() 가 SSOT. 기존 3 helper 는 wrapper 로 위임.
+//
+// 영구 룰 (CLAUDE.md 에 추가):
+//   신규 Toss 취소 endpoint 는 반드시 cancelTossPayment() 사용. 직접 fetch 금지.
+// ============================================================
+
+export interface TossCancelInput {
+  env: { TOSS_SECRET_KEY?: string; DB?: D1Database }
+  paymentKey: string
+  cancelReason: string
+  /** 부분 취소 금액. 미지정 시 전액 취소. */
+  cancelAmount?: number
+  /** 가상계좌 환불 받을 계좌 — VA 결제 입금 완료 후 취소 시 필수.
+   *  docs: bankCode (숫자 코드, ex: '20'), accountNumber, holderName. */
+  refundReceiveAccount?: { bank?: string; bankCode?: string; accountNumber: string; holderName: string }
+  /** 부분 취소 중 면세 금액 — 복합과세 상점만 사용. docs `cancelTaxFreeAmount`. */
+  taxFreeAmount?: number
+  /** Idempotency-Key. 권장: 호출자가 stable key 제공. */
+  idempotencyKey: string
+  /** request timeout ms. default 15000. */
+  timeoutMs?: number
+  /** circuit breaker name. 기본: 'toss-cancel'. */
+  circuitName?: string
+}
+
+export interface TossCancelSuccess {
+  ok: true
+  /** Payment 객체 (cancels 배열 포함). */
+  data: TossPaymentObject
+  /** 마지막 cancel 항목 (transactionKey + cancelAmount). */
+  lastCancel?: {
+    transactionKey?: string
+    cancelAmount?: number
+    cancelReason?: string
+    canceledAt?: string
+  }
+  http_status: number
+}
+
+export interface TossCancelFailure {
+  ok: false
+  code: string
+  message: string
+  http_status?: number
+  /** caller 가 retry 가능한지 판단. 5xx / 일부 PROVIDER_ERROR 만 true. */
+  retryable?: boolean
+}
+
+export type TossCancelResult = TossCancelSuccess | TossCancelFailure
+
+export async function cancelTossPayment(input: TossCancelInput): Promise<TossCancelResult> {
+  const { env, paymentKey, cancelReason, cancelAmount, refundReceiveAccount, taxFreeAmount, idempotencyKey, timeoutMs = 15_000, circuitName = 'toss-cancel' } = input
+
+  if (!env.TOSS_SECRET_KEY) {
+    return { ok: false, code: 'NO_TOSS_SECRET', message: '결제 시스템이 설정되지 않았습니다.' }
+  }
+  if (!paymentKey || paymentKey.length < 5) {
+    return { ok: false, code: 'INVALID_PAYMENT_KEY', message: '결제 키 형식이 올바르지 않습니다.' }
+  }
+  if (!cancelReason || cancelReason.length === 0) {
+    return { ok: false, code: 'MISSING_CANCEL_REASON', message: '취소 사유는 필수입니다.' }
+  }
+  if (cancelAmount != null && (!Number.isFinite(cancelAmount) || cancelAmount <= 0)) {
+    return { ok: false, code: 'INVALID_CANCEL_AMOUNT', message: '취소 금액이 올바르지 않습니다.' }
+  }
+
+  // UTF-8 BOM 방어 (env 에 BOM 섞여있을 때 base64 손상 → 401).
+  const secretKey = env.TOSS_SECRET_KEY.replace(/^﻿/, '').trim()
+
+  // Idempotency-Key 길이 검증 (docs: 최대 300자).
+  let idemKey = idempotencyKey
+  if (idemKey.length > 300) idemKey = idemKey.slice(0, 300)
+
+  const body: Record<string, unknown> = {
+    cancelReason: String(cancelReason).slice(0, 200),
+  }
+  if (cancelAmount != null && cancelAmount > 0) body.cancelAmount = Math.floor(cancelAmount)
+  if (taxFreeAmount != null && taxFreeAmount >= 0) body.taxFreeAmount = Math.floor(taxFreeAmount)
+  if (refundReceiveAccount) {
+    // docs: V1 cancel API 에서 refundReceiveAccount.bank 는 bankCode 와 동일 (숫자코드).
+    const bank = refundReceiveAccount.bankCode ?? refundReceiveAccount.bank
+    if (!bank || !refundReceiveAccount.accountNumber || !refundReceiveAccount.holderName) {
+      return { ok: false, code: 'INVALID_REFUND_ACCOUNT', message: '환불 계좌 정보가 누락되었습니다.' }
+    }
+    body.refundReceiveAccount = {
+      bank,
+      accountNumber: refundReceiveAccount.accountNumber,
+      holderName: refundReceiveAccount.holderName,
+    }
+  }
+
+  const callFetch = (): Promise<Response> => withCircuitBreaker(
+    { name: circuitName, maxFailures: 10, resetTimeoutMs: 60_000 },
+    () => fetch(`${TOSS_API_BASE}/payments/${encodeURIComponent(paymentKey)}/cancel`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(secretKey + ':')}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idemKey,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    }),
+  )
+
+  // 5xx 1회 자동 재시도 (2초 대기). 4xx 는 즉시 실패.
+  let res: Response | null = null
+  let lastErr: unknown = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await callFetch()
+      if (res.ok || res.status < 500) break
+      // 5xx → retry
+      if (attempt === 0) {
+        await new Promise(r => setTimeout(r, 2000))
+        continue
+      }
+    } catch (e) {
+      lastErr = e
+      const msg = (e as Error)?.message || ''
+      if (/circuit|breaker/i.test(msg)) {
+        return { ok: false, code: 'CIRCUIT_OPEN', message: '결제 시스템이 일시 중단됐습니다. 잠시 후 다시 시도해주세요.', retryable: true }
+      }
+      if (attempt === 0) {
+        await new Promise(r => setTimeout(r, 2000))
+        continue
+      }
+    }
+  }
+
+  if (!res) {
+    const msg = (lastErr as Error)?.message || ''
+    return { ok: false, code: /abort|timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK', message: '취소 요청에 실패했습니다.', retryable: true }
+  }
+
+  let data: Record<string, unknown> = {}
+  try { data = await res.json() as Record<string, unknown> } catch { /* empty */ }
+
+  if (res.ok) {
+    const cancels = Array.isArray((data as { cancels?: unknown[] }).cancels)
+      ? (data as { cancels: Array<{ transactionKey?: string; cancelAmount?: number; cancelReason?: string; canceledAt?: string }> }).cancels
+      : []
+    return {
+      ok: true,
+      data: data as TossPaymentObject,
+      lastCancel: cancels[cancels.length - 1],
+      http_status: res.status,
+    }
+  }
+
+  const code = String((data as { code?: string }).code || `HTTP_${res.status}`)
+  const message = String((data as { message?: string }).message || '취소 요청에 실패했습니다.')
+  const retryable = res.status >= 500 || code === 'PROVIDER_ERROR' || code === 'FAILED_INTERNAL_SYSTEM_PROCESSING'
+
+  // 실패 시 자동 기록 (TD-3 정책 — toss_refund_retry cron 이 처리).
+  if (env.DB && retryable) {
+    try {
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS toss_refund_failures (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        payment_key TEXT NOT NULL,
+        cancel_amount INTEGER,
+        cancel_reason TEXT,
+        http_status INTEGER,
+        error_code TEXT,
+        error_message TEXT,
+        retry_count INTEGER DEFAULT 0,
+        last_retried_at TEXT,
+        resolved_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`).run()
+      await env.DB.prepare(
+        `INSERT INTO toss_refund_failures (payment_key, cancel_amount, cancel_reason, http_status, error_code, error_message)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).bind(paymentKey, cancelAmount ?? null, cancelReason, res.status, code, message).run()
+    } catch { /* graceful */ }
+  }
+
+  return { ok: false, code, message, http_status: res.status, retryable }
+}
+
 /**
  * 🛡️ 2026-05-23 v3 — 사용자 진단 + 실 에러 증거 종합 정정:
  *

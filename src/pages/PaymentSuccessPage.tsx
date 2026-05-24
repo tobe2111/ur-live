@@ -35,6 +35,8 @@ export default function PaymentSuccessPage() {
       receipt?: { url?: string };
       easyPay?: { provider?: string };
       card?: { number?: string; installmentPlanMonths?: number };
+      /** 🛡️ 2026-05-24 docs: 현금영수증 (현금성 결제 시 자동 발급). */
+      cashReceipt?: { receiptUrl?: string; type?: string };
     };
   } | null>(null)
   // 🛡️ 2026-05-24 docs 권장: amount 변조 검증 — URL amount vs server totalAmount 불일치 시 경고.
@@ -408,6 +410,26 @@ export default function PaymentSuccessPage() {
                     <div>
                       <p className="text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white">📄 영수증 보기</p>
                       <p className="text-[10px] sm:text-xs text-[#6e6e73] dark:text-gray-400 mt-0.5">토스페이먼츠 호스팅</p>
+                    </div>
+                    <span className="text-[#007aff] text-xs">→</span>
+                  </div>
+                </a>
+              )}
+
+              {/* 🛡️ 2026-05-24 docs: cashReceipt.receiptUrl — 현금영수증 (가상계좌/계좌이체/현금 결제 시 자동 발급). */}
+              {orderInfo?.payment?.cashReceipt?.receiptUrl && (
+                <a
+                  href={orderInfo.payment.cashReceipt.receiptUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white">🧾 현금영수증 보기</p>
+                      <p className="text-[10px] sm:text-xs text-[#6e6e73] dark:text-gray-400 mt-0.5">
+                        {orderInfo.payment.cashReceipt.type ? `${orderInfo.payment.cashReceipt.type} — ` : ''}국세청 발급 완료 후 홈택스 조회 가능
+                      </p>
                     </div>
                     <span className="text-[#007aff] text-xs">→</span>
                   </div>

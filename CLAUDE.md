@@ -1,5 +1,39 @@
 # CLAUDE.md — 유어딜 프로젝트 개발 규칙
 
+## 🔒 Toss V2 docs audit 잠금 (2026-05-24 — 사용자 명령)
+
+**배경**: 2026-05-24 사용자가 토스페이먼츠 V2 공식 docs 9개를 직접 공유하여 SDK / 결제승인 응답 / 에러코드 (~100) / 결제위젯 어드민 / Webhook / 결제취소 / 간편결제 응답 / 세금처리 / 결제결과안내 / 지급대행 / Status Page / WebView 전 영역 audit + 정합 작업 완료.
+
+**🚫 절대 룰**: 아래 파일/심볼은 **사용자 명시 허가 없이 직접 수정 금지**. 변경 필요할 때는 반드시 사용자에게 먼저 질문할 것 (`AskUserQuestion`).
+
+| 파일 | 잠긴 이유 |
+|---|---|
+| `src/worker/utils/toss-gateway.ts` | confirmTossPayment / cancelTossPayment / detectTossKeyType / decideTossFlow / generateTossOrderId — V2 docs SSOT |
+| `src/worker/utils/toss-error-messages.ts` | ~100개 에러코드 SSOT (docs `/reference/error-codes`) |
+| `src/worker/utils/toss-refund.ts` | gateway wrapper. 직접 수정 X, 변경은 gateway 에서 |
+| `src/worker/utils/toss-payments.ts` | gateway wrapper |
+| `src/worker/utils/refund.ts` | gateway wrapper |
+| `src/worker/routes/payment.routes.ts` | /confirm / amount 검증 / client-key endpoint — docs 준수 |
+| `src/worker/routes/webhook.routes.ts` | V2 이벤트 (PAYMENT_STATUS_CHANGED 등) + graceful 시그니처 |
+| `src/components/payments/TossPaymentWidget.tsx` | V2 SDK widgets() / customerEmail / customerName / orderName 100자 |
+| `src/pages/TossWidgetPayPage.tsx` | 딜 충전용 widgets() flow |
+| `src/pages/PaymentSuccessPage.tsx` | TossPaymentObject 필드 표시 (receipt.url / cashReceipt / easyPay / card) |
+| `src/shared/types/index.ts` | TossEventType / TossWebhookPayload — V2 docs 사양 |
+
+**예외 (수정 OK — 사용자 허가 불필요)**:
+- 새로 추가되는 결제 시나리오에서 SSOT helper (`confirmTossPayment` / `cancelTossPayment`) 를 **호출**하는 코드 — 단, helper 자체는 변경 X
+- 운영 가이드 / 주석 / 비-결제 UI 문자열만의 변경
+
+**수정 절차 (예외 발생 시)**:
+1. `AskUserQuestion` 으로 의도/근거 설명 + 확인 받기
+2. 변경 사유 + docs URL 인용 + commit 메시지 명시
+3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
+
+### 변경 audit log
+- 2026-05-24 초기 잠금 — commit `02be3610`, `c47e7326`, 후속
+
+---
+
 ## 🚨 개발 + 에러 대처 절대 룰 (모든 다른 룰보다 우선)
 
 **개발/리팩토링 작업 시작 시**: `docs/DEV_IMPLEMENTATION_PLAYBOOK.md` 먼저 스캔.

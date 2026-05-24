@@ -209,11 +209,12 @@ async function verifyTossSignature(
   }
 }
 
-// Replay-attack defense: reject webhooks older than 30 minutes.
-// ✅ FIX (H7): Raised from 5min → 30min to accommodate Toss retry delays
-// (Toss retries up to 24h; 30m is the sweet spot between legitimate retries
-// and replay protection).
-const WEBHOOK_TIMESTAMP_TOLERANCE_SEC = 30 * 60;
+// Replay-attack defense.
+// 🛡️ 2026-05-24 V2 docs audit: Toss V2 재전송 정책은 최대 7회 ~ 4096분 (3일 19시간) 후까지.
+//   기존 30분은 너무 짧아 7번째 재전송 webhook 이 legitimate 인데도 replay 로 거부될 위험.
+//   → 96시간 (4일) 안전 마진. 단, V2 docs 가 시그니처/타임스탬프 헤더를 명시하지 않으므로
+//   실질적으로 이 검증은 헤더가 존재할 때만 작동 (graceful 정책 — verifyTossSignature 분기 참조).
+const WEBHOOK_TIMESTAMP_TOLERANCE_SEC = 96 * 60 * 60;
 
 function verifyTimestamp(timestampHeader: string | undefined | null): boolean {
   if (!timestampHeader) return false; // require timestamp in production
