@@ -63,6 +63,15 @@ export type TossConfirmResult = TossConfirmSuccess | TossConfirmFailure
 /**
  * 토스 결제 confirm — 토스 API `POST /v1/payments/confirm` 호출.
  *
+ * docs 사양 일치:
+ *   - Authorization: Basic base64(SECRET_KEY + ':') — 콜론 필수
+ *   - UTF-8 BOM 제거 (docs warning: BOM 포함 시 77u/ 시작하는 잘못된 base64)
+ *   - Idempotency-Key: 최대 300자, UUID 권장, 15일 유효
+ *   - 에러 처리:
+ *     - 400 INVALID_IDEMPOTENCY_KEY: 300자 초과 (우리는 paymentKey ~64자라 발생 X)
+ *     - 409 IDEMPOTENT_REQUEST_PROCESSING: 처리 중 중복 → 1회 자동 재시도
+ *     - ALREADY_PROCESSED_PAYMENT: 같은 결제 중복 → idempotent OK
+ *
  * 사용:
  *   const res = await confirmTossPayment({ env: c.env, paymentKey, orderId, amount })
  *   if (!res.ok) {
@@ -84,22 +93,37 @@ export async function confirmTossPayment(input: TossConfirmInput): Promise<TossC
     return { ok: false, status: 400, message: '결제 금액이 올바르지 않습니다.', code: 'INVALID_AMOUNT' }
   }
 
+  // 🛡️ 2026-05-24 docs warning fix: UTF-8 BOM 제거.
+  //   docs: "시크릿 키를 base64로 인코딩할 때 UTF-8 BOM 문자가 포함되면 결과가 77u/로 시작할 수 있습니다."
+  //   secretKey 가 BOM 으로 시작하면 사용자가 잘못된 base64 받음 → 401.
+  const secretKey = env.TOSS_SECRET_KEY.replace(/^﻿/, '').trim()
+
+  // 🛡️ Idempotency-Key 길이 검증 — docs: 최대 300자. paymentKey 는 정상 ~64자.
+  //   안전 차원: 300자 초과 시 SHA-256 hash 64자로 단축 (docs INVALID_IDEMPOTENCY_KEY 예방).
+  let idemKey = idempotencyKey || paymentKey
+  if (idemKey.length > 300) {
+    // crypto.subtle 비동기 — 동기 fallback: slice (collision 위험 낮음 — paymentKey 자체가 unique).
+    idemKey = idemKey.slice(0, 300)
+  }
+
+  // 🛡️ 토스 docs 사양 callFetch — 1회 자동 재시도 (IDEMPOTENT_REQUEST_PROCESSING 처리).
+  const callFetch = (): Promise<Response> => withCircuitBreaker(
+    { name: circuitName, maxFailures: 10, resetTimeoutMs: 60_000 },
+    () => fetch(`${TOSS_API_BASE}/payments/confirm`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(secretKey + ':')}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idemKey,
+      },
+      body: JSON.stringify({ paymentKey, orderId, amount }),
+      signal: AbortSignal.timeout(timeoutMs),
+    }),
+  )
+
   let res: Response
   try {
-    res = await withCircuitBreaker(
-      { name: circuitName, maxFailures: 10, resetTimeoutMs: 60_000 },
-      () => fetch(`${TOSS_API_BASE}/payments/confirm`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${btoa(env.TOSS_SECRET_KEY + ':')}`,
-          'Content-Type': 'application/json',
-          // Idempotency-Key 명시 시 그것, 아니면 paymentKey (토스 권장 — 같은 결제 중복 confirm 안전).
-          'Idempotency-Key': idempotencyKey || paymentKey,
-        },
-        body: JSON.stringify({ paymentKey, orderId, amount }),
-        signal: AbortSignal.timeout(timeoutMs),
-      }),
-    )
+    res = await callFetch()
   } catch (e) {
     const msg = (e as Error)?.message || ''
     if (/circuit|breaker/i.test(msg)) {
@@ -125,6 +149,34 @@ export async function confirmTossPayment(input: TossConfirmInput): Promise<TossC
   // caller 는 CAS 가드로 비즈니스 후처리를 한 번만 적용해야 함 (둘 다 OK 처리).
   if (code === 'ALREADY_PROCESSED_PAYMENT') {
     return { ok: true, data: data as TossConfirmSuccess['data'], alreadyProcessed: true }
+  }
+
+  // 🛡️ 2026-05-24 docs 권장: IDEMPOTENT_REQUEST_PROCESSING (409) → 1회 자동 재시도.
+  //   docs: "이 에러가 돌아오면 다시 한번 요청해서 응답을 확인하세요."
+  //   500ms 대기 후 재시도 — 첫 요청 처리 완료 대기.
+  if (code === 'IDEMPOTENT_REQUEST_PROCESSING') {
+    await new Promise(r => setTimeout(r, 500))
+    try {
+      const retry = await callFetch()
+      let retryData: Record<string, unknown> = {}
+      try { retryData = await retry.json() as Record<string, unknown> } catch { /* empty body */ }
+      if (retry.ok) {
+        return { ok: true, data: retryData as TossConfirmSuccess['data'], alreadyProcessed: true }
+      }
+      const retryCode = String((retryData as { code?: string }).code || `HTTP_${retry.status}`)
+      const retryMessage = String((retryData as { message?: string }).message || '결제 승인에 실패했습니다')
+      if (retryCode === 'ALREADY_PROCESSED_PAYMENT') {
+        return { ok: true, data: retryData as TossConfirmSuccess['data'], alreadyProcessed: true }
+      }
+      return { ok: false, status: retry.status, code: retryCode, message: retryMessage }
+    } catch {
+      return { ok: false, status: 409, code: 'IDEMPOTENT_REQUEST_PROCESSING', message: '이전 결제 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.' }
+    }
+  }
+
+  // 🛡️ docs 명시 에러 코드 — 친화 메시지.
+  if (code === 'INVALID_IDEMPOTENCY_KEY') {
+    return { ok: false, status: res.status, code, message: '결제 처리 키가 잘못됐습니다. 새로 결제를 시도해주세요.' }
   }
 
   return { ok: false, status: res.status, code, message }
