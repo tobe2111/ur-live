@@ -89,26 +89,93 @@ const webhookRouter = new Hono<{ Bindings: Env }>();
 // v31 FIX: webhook intake rate-limit (per-IP). POST / 에만 직접 적용.
 const webhookIntakeLimiter = rateLimit({ action: 'webhook_intake', max: 100, windowSec: 1 });
 
-// ---- HMAC-SHA256 Signature Verification ----
+// ============================================================
+// HMAC-SHA256 Signature Verification (Toss V2)
+//
+// Toss V2 webhook 사양 (docs.tosspayments.com/guides/webhook):
+//   - 시그니처 헤더: "Toss-Signature" (legacy: "TossPayments-Signature")
+//   - 타임스탬프 헤더: "Toss-Timestamp" (epoch seconds)
+//   - 알고리즘: HMAC-SHA256(secret, rawBody)
+//   - 포맷: "v1=<hex>" 또는 "v1,<hex>" — 여러 버전 공존 가능 (장기 키 로테이션 대비)
+//   - 비교: hex (lowercase) — 일부 사례에서 base64 가능성 있어 양쪽 fallback
+//
+// 향후 Toss 가 헤더 이름을 변경/추가하면 여기 한 곳만 갱신하면 됨.
+// ============================================================
+
+const SIGNATURE_HEADER_CANDIDATES = [
+  'Toss-Signature',
+  'TossPayments-Signature',
+  'TossPayments-Webhook-Signature',
+] as const;
+
+const TIMESTAMP_HEADER_CANDIDATES = [
+  'Toss-Timestamp',
+  'TossPayments-Timestamp',
+  'TossPayments-Webhook-Timestamp',
+] as const;
+
+/** Toss 공식 webhook 송신 IP 대역 (docs 명시 시 추가 — 현재는 best-effort).
+ *  허용 IP 목록은 별도 ENV (`TOSS_WEBHOOK_IP_ALLOWLIST`, CSV) 로도 주입 가능. */
+function getTossIpAllowlist(env: Env): string[] {
+  const csv = (env as unknown as { TOSS_WEBHOOK_IP_ALLOWLIST?: string }).TOSS_WEBHOOK_IP_ALLOWLIST;
+  if (!csv) return [];
+  return csv.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function readFirstHeader(c: { req: { header: (n: string) => string | undefined } }, candidates: readonly string[]): { value: string | undefined; matched: string | null } {
+  for (const name of candidates) {
+    const v = c.req.header(name);
+    if (v) return { value: v, matched: name };
+  }
+  return { value: undefined, matched: null };
+}
+
+function constantTimeEqualsHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function bytesToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
 async function verifyTossSignature(
   rawBody: string,
   signatureHeader: string | undefined | null,
   secret: string
 ): Promise<boolean> {
   if (!signatureHeader) {
-    console.warn('[WEBHOOK] Missing Toss-Signature header');
+    console.warn('[WEBHOOK] Missing signature header');
     return false;
   }
 
   try {
-    // Toss sends: "v1=<hmac_hex>"
-    const parts = signatureHeader.split('=');
-    if (parts.length < 2 || parts[0] !== 'v1') {
-      console.warn('[WEBHOOK] Invalid signature format:', signatureHeader);
+    // Toss V2 포맷: "v1=<hex>" 우선. legacy/variant: "v1,<hex>" or 다중 ("v1=hex,v2=hex").
+    //   "=" 가 base64 padding 으로 끝날 수 있으므로 split('=') 후 .slice(1).join('=') 사용.
+    const tokens = signatureHeader.split(',').map((t) => t.trim()).filter(Boolean);
+    const candidates: string[] = [];
+    for (const tok of tokens) {
+      // "v1=hex" / "v1,hex" / 그냥 "hex"
+      const eqIdx = tok.indexOf('=');
+      if (eqIdx > 0 && /^v\d+$/i.test(tok.slice(0, eqIdx))) {
+        candidates.push(tok.slice(eqIdx + 1));
+      } else {
+        candidates.push(tok);
+      }
+    }
+    if (candidates.length === 0) {
+      console.warn('[WEBHOOK] Empty signature header tokens');
       return false;
     }
-    const receivedHex = parts.slice(1).join('='); // handle = in base64
 
+    // HMAC-SHA256 계산
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
       'raw',
@@ -117,21 +184,25 @@ async function verifyTossSignature(
       false,
       ['sign']
     );
-    const signature = await crypto.subtle.sign(
-      'HMAC',
-      key,
-      encoder.encode(rawBody)
-    );
-    const computedHex = arrayBufferToHex(signature);
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+    const computedHex = arrayBufferToHex(signature).toLowerCase();
+    const computedB64 = bytesToBase64(signature);
 
-    // Constant-time comparison to prevent timing attacks
-    if (receivedHex.length !== computedHex.length) return false;
-
-    let mismatch = 0;
-    for (let i = 0; i < receivedHex.length; i++) {
-      mismatch |= receivedHex.charCodeAt(i) ^ computedHex.charCodeAt(i);
+    // 후보 시그니처 중 하나라도 매치되면 OK (hex 우선, base64 fallback)
+    for (const received of candidates) {
+      const recvLower = received.toLowerCase();
+      if (constantTimeEqualsHex(recvLower, computedHex)) return true;
+      if (constantTimeEqualsHex(received, computedB64)) return true;
     }
-    return mismatch === 0;
+
+    // 미매치 — 디버깅용 길이/접두 정보만 로깅 (시그니처 자체는 노출하지 않음)
+    console.warn('[WEBHOOK] Signature mismatch', {
+      received_count: candidates.length,
+      received_len: candidates[0]?.length ?? 0,
+      expected_hex_len: computedHex.length,
+      expected_b64_len: computedB64.length,
+    });
+    return false;
   } catch (err) {
     console.error('[WEBHOOK] Signature verification error:', err);
     return false;
@@ -170,6 +241,20 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
     // 2. Verify signature FIRST — reject before any DB access
     const isProduction = c.env.ENVIRONMENT === 'production';
     const webhookSecret = c.env.TOSS_WEBHOOK_SECRET;
+    const callerIp = c.req.header('CF-Connecting-IP') ?? null;
+
+    // 2a. (선택) IP allowlist — TOSS_WEBHOOK_IP_ALLOWLIST 가 설정되어 있을 때만 적용.
+    //     defense-in-depth: 시그니처 검증 전 이른 차단으로 무차별 시도 비용 절감.
+    const ipAllowlist = getTossIpAllowlist(c.env);
+    if (ipAllowlist.length > 0 && callerIp && !ipAllowlist.includes(callerIp)) {
+      console.warn('[WEBHOOK] ❌ IP_NOT_ALLOWED', { ip: callerIp });
+      captureException(new Error('WEBHOOK_IP_NOT_ALLOWED'), {
+        tags: { area: 'webhook', kind: 'ip_not_allowed', severity: 'warning' },
+        extra: { ip: callerIp },
+      }).catch(swallow('webhook:sentry-ip'));
+      return c.json({ received: false, status: 'rejected', error: 'ip_not_allowed' }, 403);
+    }
+
     if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
       if (!webhookSecret) {
         console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
@@ -189,32 +274,35 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         }
         return c.json({ success: false, error: 'webhook_secret_not_configured', processed: false }, 200);
       }
-      const signatureHeader = c.req.header('Toss-Signature');
+      // V2 docs: "Toss-Signature" 기본 / legacy 헤더 이름들도 fallback 으로 받음.
+      const { value: signatureHeader, matched: sigHeaderName } = readFirstHeader(c, SIGNATURE_HEADER_CANDIDATES);
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
         console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
-          ip: c.req.header('CF-Connecting-IP'),
+          ip: callerIp,
+          header_matched: sigHeaderName,
         });
         // 🚨 보안 알림 — Toss webhook 위장 시도 가능성
         captureException(new Error('WEBHOOK_INVALID_SIGNATURE'), {
           tags: { area: 'webhook', kind: 'invalid_signature', severity: 'warning' },
-          extra: { ip: c.req.header('CF-Connecting-IP') },
+          extra: { ip: callerIp, header_matched: sigHeaderName },
         }).catch(swallow('webhook:sentry-sig'));
         // Return 401 so Toss retries legitimate deliveries whose signatures failed transiently
         return c.json({ received: false, status: 'rejected', error: 'invalid_signature' }, 401);
       }
 
       // 3. Timestamp verification (replay attack defense) — BEFORE any logic
-      const timestampHeader = c.req.header('Toss-Timestamp');
+      const { value: timestampHeader, matched: tsHeaderName } = readFirstHeader(c, TIMESTAMP_HEADER_CANDIDATES);
       if (!verifyTimestamp(timestampHeader)) {
         console.error('[WEBHOOK] ❌ INVALID_TIMESTAMP — possible replay attack', {
           timestamp: timestampHeader,
-          ip: c.req.header('CF-Connecting-IP'),
+          header_matched: tsHeaderName,
+          ip: callerIp,
         });
         // 🚨 replay attack signal — Sentry 보고
         captureException(new Error('WEBHOOK_INVALID_TIMESTAMP'), {
           tags: { area: 'webhook', kind: 'invalid_timestamp', severity: 'warning' },
-          extra: { timestamp: timestampHeader, ip: c.req.header('CF-Connecting-IP') },
+          extra: { timestamp: timestampHeader, header_matched: tsHeaderName, ip: callerIp },
         }).catch(swallow('webhook:sentry-ts'));
         // Return 401 — do not silently accept possibly-replayed requests
         return c.json({ received: false, status: 'rejected', error: 'invalid_timestamp' }, 401);
