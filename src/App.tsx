@@ -334,7 +334,10 @@ function AppContent() {
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
 
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
+  // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
+  //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
+  //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
