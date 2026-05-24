@@ -50,6 +50,7 @@ export default function VoucherDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [showPhoneModal, setShowPhoneModal] = useState(false)
   const [phoneInput, setPhoneInput] = useState('')
+  const [phoneConsent, setPhoneConsent] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -115,7 +116,12 @@ export default function VoucherDetailPage() {
   }
 
   // 🛡️ 2026-05-24: phone 입력 후 자동 retry — 사용자가 모달 닫고 다시 클릭하지 않아도 됨.
+  //   개인정보보호법: 수집·이용 동의 필수 (체크박스).
   async function savePhoneAndRetry(phoneInput: string) {
+    if (!phoneConsent) {
+      toast.error('개인정보 수집·이용 동의 후 진행 가능합니다')
+      return
+    }
     const clean = phoneInput.replace(/[-\s]/g, '')
     if (!/^01\d{8,9}$/.test(clean)) {
       toast.error('010 으로 시작하는 휴대폰 번호를 입력하세요')
@@ -237,16 +243,36 @@ export default function VoucherDetailPage() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base text-gray-900 mb-3"
               autoFocus
             />
+
+            {/* 🛡️ 2026-05-24: 개인정보보호법 — 수집·이용 동의 + 보유기간 명시. */}
+            <label className="flex items-start gap-2 mb-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={phoneConsent}
+                onChange={(e) => setPhoneConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-pink-500"
+              />
+              <span className="text-[11px] text-gray-700 leading-relaxed">
+                <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
+                <br/>
+                <span className="text-gray-500">
+                  · 수집 항목: 휴대폰 번호<br/>
+                  · 이용 목적: 기프티쇼 교환권 MMS 발송 / 알림톡 발송<br/>
+                  · 보유 기간: 회원 탈퇴 시까지 (탈퇴 후 즉시 파기)
+                </span>
+              </span>
+            </label>
+
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => setShowPhoneModal(false)}
+                onClick={() => { setShowPhoneModal(false); setPhoneConsent(false) }}
                 className="py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
               >
                 취소
               </button>
               <button
                 onClick={() => savePhoneAndRetry(phoneInput)}
-                disabled={!phoneInput}
+                disabled={!phoneInput || !phoneConsent}
                 className="py-2.5 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-40"
               >
                 저장 후 교환

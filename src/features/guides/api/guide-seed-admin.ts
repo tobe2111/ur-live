@@ -710,4 +710,58 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - \`PATCH /api/referral-tree/admin/withdrawals/:id/approve\` (admin_memo 선택)
 - \`PATCH /api/referral-tree/admin/withdrawals/:id/reject\` (rejection_reason 필수)`,
   },
+  {
+    key: 'voucher-transactions-admin', icon: '🔍', title: '교환권 거래 추적 + KT Alpha 진단 (2026-05-24)', order: 170,
+    content: `### 페이지 분리
+- **\`/admin/voucher-transactions\`** — 교환권 구매 내역 (누가/언제/어떤 교환권)
+  - 필터: 상태 / 카테고리 / 시작일 / 종료일 / user_id
+  - 정렬: 시각 desc (기본)
+  - 페이지네이션: 50건/페이지
+  - **진단 버튼**: 각 행 우측 / 상단 input 으로 order_id 입력 → 모달 즉시 표시
+- **\`/admin/voucher-orders\`** — KT Alpha 자동발송 상태 추적 (processing/sent/failed)
+  - 실패 항목: \`failure_reason\` 확인 + 재발송 버튼
+
+### 진단 endpoint
+- \`GET /api/admin/kt-alpha/diagnose-order/:id\`
+- 한 번에 반환: settings_status / order_items / kt_alpha_target_items_count
+  / voucher_orders / vouchers / frontend_errors / diagnosis / recommendations
+- 사용자 신고 "교환권 안 와요" 시 가장 먼저 사용 — 5초 내 원인 파악
+
+### 흔한 진단 결과 + 조치
+| 진단 | 원인 | 조치 |
+|---|---|---|
+| 사용자 phone 없음 | users.phone 미등록 | 사용자에게 마이 페이지 phone 등록 요청 → /admin/voucher-orders 재발송 |
+| KT Alpha 설정 미완료 | user_id / callback_no / **admin_seller_id** | /admin/kt-alpha 에서 입력 |
+| 대상 상품 없음 | kt_alpha_gift_code NULL or auto_voucher_send=0 | 정상 — 일반 voucher (QR) 만 발급 |
+| voucher_orders 기록 없음 | autoSend trigger 안 됨 | server 로그 / frontend_errors 확인 |
+| DEV_MODE 활성 | KT_ALPHA_DEV_MODE != 'N' | Cloudflare Dashboard → N 설정 |
+
+### 영구 차단 (2026-05-24)
+- **결제 시점 phone 강제**: KT Alpha 상품 결제 시 phone 없으면 PHONE_REQUIRED 에러 → 클라이언트 phone 모달 자동 표시 → 동의 후 저장 → 자동 retry
+- **kakao phone 자동 저장**: 카카오 OAuth 시 phone_number scope 받으면 users.phone INSERT (기존값 보존 — COALESCE)
+- **kt_alpha_admin_seller_id 필수화**: /admin/kt-alpha 페이지에 빨간 필수 표시 — 미설정 시 voucher_orders INSERT silent fail`,
+  },
+  {
+    key: 'admin-users-page', icon: '👥', title: '/admin/users 페이지 운영 (2026-05-24)', order: 180,
+    content: `### 검색 (이름 / 이메일 / 전화번호)
+- 입력 4자 이상 숫자만 들어가면 자동으로 전화번호 검색 (하이픈/공백 무관)
+- 예: "1234" → REPLACE(phone, '-', '') LIKE '%1234%'
+- 예: "010-1234" → "0101234" 로 변환 후 검색
+
+### 정렬 옵션
+- 최신가입순 / 오래된순 / 주문 수 / 총 결제액 / 리뷰 수 / 이름순
+- 헤더 컬럼 클릭으로도 정렬 가능 (재클릭 시 asc/desc 토글, ▼/▲ 표시)
+
+### 보이는 정보
+- 모든 사용자 한 화면에: 주문 수, 총 결제액, 리뷰 수 (subquery aggregate)
+- phone 미등록은 빨간 "미등록" — KT Alpha 발송 불가 사용자 즉시 식별
+
+### 페이지네이션
+- 50건/페이지 (LIMIT 환경변수)
+- 50건 넘어도 페이지 1 만 보이던 버그 fix (\`res.data.totalPages\` 응답 키 호환).
+
+### 사용자 상세 (확장)
+- 연결된 셀러 / 에이전시 계정 표시 (linked_user_id)
+- 상태 변경 (active/suspended/banned) — \`PATCH /api/admin/users/:id/status\``,
+  },
 ]

@@ -1,7 +1,40 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-22 (정책 중앙화 + perf + 부채 청소 모두 완료)
+**최종 업데이트**: 2026-05-24 (교환권 flow 영구 fix + KT Alpha 진단 + admin/users 개선)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
+
+## ✅ 2026-05-24 세션 — 교환권 flow 영구 fix + KT Alpha 진단
+
+### Universal 자동 허위리뷰 시드 (공구/쇼핑/교환권 — commit 0cbd50a7)
+- `src/worker/utils/auto-seed-fake-reviews.ts` SSOT util
+- `src/worker/cron/auto-seed-reviews.ts` daily 18 UTC (max 200건)
+- `POST /api/admin/reviews/auto-seed-missing` 즉시 백필
+- 정책 B: `is_active=1` 만. idempotent.
+
+### Q1+Q3+Q4 (commit 8a56bc90)
+- Q3 P0: /my-vouchers 빈 화면 — repair-schema 5컬럼 등록 + 3단 fallback SELECT
+- Q1: `/admin/voucher-transactions` + AdminPage 카드 + `GET /api/admin/vouchers/transactions`
+- Q4 perf 50-150ms: Promise.all rates + RETURNING id + 통합 batch + 병렬 code gen
+
+### KT Alpha 진단 (commit fdd79d8d, 3588f7b2)
+- `GET /api/admin/kt-alpha/diagnose-order/:id`
+- 진단 UI on `/admin/voucher-transactions` (모달 + 상단 input + 각 행 버튼)
+
+### 카카오 phone 자동 저장 + 결제 phone 게이트 (commit 71d31067)
+- KakaoUser.phoneNumber 매핑, normalizeKakaoPhone helper
+- upsertUser INSERT/UPDATE 에 phone (UPDATE 는 COALESCE 보존)
+- /join 딜 흐름: kt_alpha 상품 + phone 없으면 PHONE_REQUIRED → 클라 모달 + 동의 + auto-retry
+
+### /admin/users (commit 3cf61d32)
+- 페이지네이션 버그 fix + 정렬 (created_at/order_count/total_spent/review_count/name)
+- 검색: 이름/이메일/전화번호 (하이픈 무관)
+- 통계 컬럼 표시 + phone 미등록 빨간 표시
+
+### 마지막 round (이번 commit)
+- `kt_alpha_admin_seller_id` 어드민 UI input 추가 (필수 표시 + 설명)
+- VoucherDetailPage phone 모달 — 개인정보보호법 동의 체크박스 + 보유기간
+- MyVouchersPage — phone 미등록 안내 배너 (7일 dismiss)
+- guide-seed-admin.ts — voucher-transactions / admin-users 가이드 2 섹션 추가
 
 ## ✅ 2026-05-22 세션 — 정책 중앙화 + 성능 + 부채 정리
 

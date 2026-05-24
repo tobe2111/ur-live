@@ -297,6 +297,20 @@ export default function MyVouchersPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
   const [justJoined, setJustJoined] = useState<{ product_id: number; name: string; image_url?: string } | null>(null)
+  // 🛡️ 2026-05-24: phone 미등록 사용자 안내 배너 (한 번 dismiss 하면 7일 숨김).
+  const [showPhoneBanner, setShowPhoneBanner] = useState(false)
+  useEffect(() => {
+    const dismissedAt = Number(localStorage.getItem('phone_banner_dismissed_at') || 0)
+    if (Date.now() - dismissedAt < 7 * 86400000) return
+    api.get('/api/auth/me').then(r => {
+      const phone = r.data?.data?.phone || r.data?.user?.phone
+      if (!phone) setShowPhoneBanner(true)
+    }).catch(() => null)
+  }, [])
+  function dismissPhoneBanner() {
+    localStorage.setItem('phone_banner_dismissed_at', String(Date.now()))
+    setShowPhoneBanner(false)
+  }
 
   useEffect(() => {
     try {
@@ -360,6 +374,32 @@ export default function MyVouchersPage() {
 
       {/* Large Title + 메타 */}
       <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
+
+      {/* 🛡️ 2026-05-24: phone 미등록 안내 — KT Alpha 자동 발송 받으려면 phone 필수 */}
+      {showPhoneBanner && (
+        <div className="ur-content-narrow px-4 lg:px-8 mb-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+            <span className="text-xl">📱</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-900">전화번호를 등록하세요</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다. 등록하면 다음 교환권부터 자동 발송돼요.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => navigate('/user/profile')}
+                  className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg">
+                  등록하러 가기
+                </button>
+                <button onClick={dismissPhoneBanner}
+                  className="px-3 py-1.5 text-amber-700 text-xs font-medium">
+                  나중에 (7일)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {vouchers.length > 0 && (
         <div className="ur-content-narrow px-4 lg:px-8 -mt-2 mb-4 flex items-center gap-2 flex-wrap"
           style={{ fontSize: 12, color: tk.secondary, letterSpacing: '-0.01em' }}>
