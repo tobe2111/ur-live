@@ -379,8 +379,8 @@ export default function GroupBuyDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5 flex items-center justify-between">
-          <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
-          <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
+          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
+          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
         </div>
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
           <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
@@ -388,8 +388,8 @@ export default function GroupBuyDetailPage() {
           </div>
           <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
             <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
-            <div className="h-4 w-1/3 bg-gray-100 rounded animate-pulse" />
+            <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
+            <div className="h-4 w-1/3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
             <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
               <div className="h-8 w-32 bg-pink-100 rounded animate-pulse" />
             </div>
@@ -399,7 +399,7 @@ export default function GroupBuyDetailPage() {
               <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
               <div className="h-6 w-16 bg-pink-100 rounded animate-pulse" />
             </div>
-            <div className="h-3 w-full bg-gray-100 rounded animate-pulse" />
+            <div className="h-3 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ export default function GroupBuyDetailPage() {
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white text-gray-900">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] text-gray-900">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
         <button onClick={() => navigate('/group-buy')} className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
@@ -508,7 +508,7 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* 이미지 + 상태 */}
-        <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
+        <div className="relative bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
           {detail.image_url ? (
             <img
               src={detail.image_url}
@@ -552,15 +552,15 @@ export default function GroupBuyDetailPage() {
           <h1 className="text-xl font-bold text-gray-900">{detail.name}</h1>
           {detail.restaurant_name && (
             <div className="flex items-start gap-2 text-sm text-gray-600">
-              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-gray-700">{detail.restaurant_name}</p>
-                {detail.restaurant_address && <p className="text-xs text-gray-500 mt-0.5">{detail.restaurant_address}</p>}
+                {detail.restaurant_address && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{detail.restaurant_address}</p>}
               </div>
             </div>
           )}
           {detail.restaurant_phone && (
-            <a href={`tel:${detail.restaurant_phone}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-pink-500">
+            <a href={`tel:${detail.restaurant_phone}`} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-pink-500">
               <Phone className="w-4 h-4 text-gray-400" />
               <span>{detail.restaurant_phone}</span>
             </a>
@@ -570,7 +570,7 @@ export default function GroupBuyDetailPage() {
           <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
             <div className="flex items-baseline gap-2">
               {detail.current_discount_pct > 0 && (
-                <span className="text-xs text-gray-400 line-through">{formatNumber(detail.price)}원</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(detail.price)}원</span>
               )}
               <span className="text-2xl font-extrabold text-pink-500">{formatNumber(unitPrice)}</span>
               <span className="text-sm font-bold text-pink-500">원</span>
@@ -581,7 +581,7 @@ export default function GroupBuyDetailPage() {
               )}
             </div>
             {detail.original_price && detail.original_price > detail.price && (
-              <p className="text-[11px] text-gray-400 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}원</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}원</p>
             )}
           </div>
         </div>
@@ -608,11 +608,11 @@ export default function GroupBuyDetailPage() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between text-xs text-gray-600 mb-1.5">
+            <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mb-1.5">
               <span><span className="font-bold text-gray-900">{detail.group_buy_current}</span>명 참여</span>
               <span>목표 {detail.group_buy_target}명</span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-3 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   detail.group_buy_status === 'achieved' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
@@ -643,7 +643,7 @@ export default function GroupBuyDetailPage() {
           {/* 티어 시각화 */}
           {tiers.length > 0 && (
             <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
-              <p className="text-xs font-bold text-gray-700 mb-2">🎯 단계별 할인</p>
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-2">🎯 단계별 할인</p>
               <div className="space-y-1.5">
                 {tiers.map((tier, idx) => {
                   const reached = detail.group_buy_current >= tier.min
@@ -666,12 +666,12 @@ export default function GroupBuyDetailPage() {
         {/* 참여자 아바타 */}
         {participants.length > 0 && (
           <div className="bg-white rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A]">
-            <p className="text-xs font-bold text-gray-700 mb-3">최근 참여자 ({participants.length}명)</p>
+            <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-3">최근 참여자 ({participants.length}명)</p>
             <div className="flex flex-wrap gap-1.5">
               {participants.slice(0, 12).map((p, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-full text-[10px] text-gray-600"
+                  className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#121212] rounded-full text-[10px] text-gray-600"
                   title={`${p.masked_name} · ${p.quantity}장`}
                 >
                   {p.avatar ? (
@@ -692,7 +692,7 @@ export default function GroupBuyDetailPage() {
             <Sparkles className="w-5 h-5 text-pink-500 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-pink-700">내 공구</p>
-              <p className="text-[11px] text-gray-600 mt-0.5">대시보드에서 voucher 통계 / 정산 확인</p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">대시보드에서 voucher 통계 / 정산 확인</p>
             </div>
             <button
               onClick={() => navigate('/seller/group-buy')}
@@ -706,7 +706,7 @@ export default function GroupBuyDetailPage() {
         {/* 🛡️ 2026-05-15: Promo 코드 입력 — 단골/신규 할인 코드 */}
         {isJoinable && !isOwnProduct && (
           <div className="bg-white rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
-            <p className="text-xs font-bold text-gray-900 mb-2 flex items-center gap-1">
+            <p className="text-xs font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-1">
               🎁 할인 코드 (선택)
             </p>
             {promoPreview ? (
@@ -717,7 +717,7 @@ export default function GroupBuyDetailPage() {
                 </div>
                 <button
                   onClick={clearPromo}
-                  className="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-700"
+                  className="px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700"
                 >
                   해제
                 </button>
@@ -730,7 +730,7 @@ export default function GroupBuyDetailPage() {
                     value={promoCode}
                     onChange={e => { setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)); setPromoError('') }}
                     placeholder="DANGOL10"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 focus:border-pink-500 focus:outline-none"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 dark:text-white focus:border-pink-500 focus:outline-none"
                     maxLength={20}
                   />
                   <button
@@ -751,7 +751,7 @@ export default function GroupBuyDetailPage() {
         {detail.seller_name && (
           <button
             onClick={() => detail.seller_id && navigate(`/profile/${detail.seller_id}`)}
-            className="w-full bg-white rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A] flex items-center gap-3 hover:bg-gray-50"
+            className="w-full bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A] flex items-center gap-3 hover:bg-gray-50"
           >
             {detail.seller_avatar ? (
               <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
@@ -777,7 +777,7 @@ export default function GroupBuyDetailPage() {
         )}
 
         {detail.voucher_expiry && (
-          <p className="text-[11px] text-gray-500 text-center">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center">
             바우처 사용 기한: {new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}
           </p>
         )}
@@ -791,20 +791,20 @@ export default function GroupBuyDetailPage() {
       </main>
 
       {/* sticky 하단 결제 영역 — BottomNav (z-9999) 위로 올림 + BottomNav 높이만큼 ur-content padding 적용됨 */}
-      <footer className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
+      <footer className="fixed bottom-0 inset-x-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
+          <div className="flex items-center bg-gray-100 dark:bg-[#1A1A1A] rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
             <button
               onClick={() => setQuantity(q => Math.max(1, q - 1))}
               disabled={!isJoinable || quantity <= 1}
-              className="w-9 h-9 flex items-center justify-center text-gray-700 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
+              className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
               aria-label="수량 감소"
             >−</button>
             <span className="w-10 text-center text-sm font-bold text-gray-900" aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
             <button
               onClick={() => setQuantity(q => Math.min(10, q + 1))}
               disabled={!isJoinable || quantity >= 10}
-              className="w-9 h-9 flex items-center justify-center text-gray-700 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
+              className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
               aria-label="수량 증가"
             >+</button>
           </div>

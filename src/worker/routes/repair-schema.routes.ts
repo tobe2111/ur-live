@@ -77,6 +77,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'users.kakao_access_token', sql: "ALTER TABLE users ADD COLUMN kakao_access_token TEXT" },
     { desc: 'users.kakao_refresh_token', sql: "ALTER TABLE users ADD COLUMN kakao_refresh_token TEXT" },
     { desc: 'users.profile_image', sql: "ALTER TABLE users ADD COLUMN profile_image TEXT" },
+    // 🛡️ 2026-05-24: PATCH /api/auth/profile 500 사고 — phone / updated_at 컬럼 누락 가능성.
+    //   미사용 DB 에서 idempotent ALTER (이미 있으면 SQLite 가 에러 throw → repair-schema 가 swallow).
+    { desc: 'users.phone', sql: "ALTER TABLE users ADD COLUMN phone TEXT" },
+    { desc: 'users.updated_at', sql: "ALTER TABLE users ADD COLUMN updated_at TEXT" },
 
     // ── products ───────────────────────────────────
     { desc: 'products.view_count', sql: "ALTER TABLE products ADD COLUMN view_count INTEGER DEFAULT 0" },
