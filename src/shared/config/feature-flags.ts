@@ -50,15 +50,23 @@ export interface FeatureFlags {
 
   /**
    * Enable retry on 401 errors
-   * 
+   *
    * Status: 🟢 Active (with limits)
-   * 
+   *
    * Limits:
    *   - Max 1 retry per request
    *   - 2-second delay between retries
    *   - Redirect to login after retry fails
    */
   authRetryOn401: boolean;
+
+  /**
+   * 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 상담 FAB 표시 여부.
+   *
+   * Status: 🔴 OFF — 사용자가 잠시 숨김 요청. 대신 /user/profile 페이지에 별도 배치.
+   * 복원: `kakaoFab: true` 로 바꾸고 재배포 (< 5분). 다른 코드 변경 불필요.
+   */
+  kakaoFab: boolean;
 }
 
 /**
@@ -79,6 +87,9 @@ export const featureFlags: FeatureFlags = {
 
   // Retry on 401 (always enabled with limits)
   authRetryOn401: true,
+
+  // 🛡️ 2026-05-24: 우하단 카카오 FAB 숨김 (사용자 명령) — 복원 시 true 로.
+  kakaoFab: false,
 };
 
 /**

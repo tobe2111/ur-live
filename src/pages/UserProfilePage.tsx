@@ -216,6 +216,9 @@ export default function UserProfilePage() {
         <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
           {[
             { label: t('userProfile.customerCenter'), sub: '0507-0177-0432', action: () => window.open('tel:0507-0177-0432') },
+            // 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 → 도움말 섹션에 별도 항목으로 이관.
+            //   언제든 복원 가능 (featureFlags.kakaoFab=true 로). 둘 다 켜도 충돌 없음.
+            { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), sub: t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' }), action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
             { label: t('userProfile.faq'), path: '/faq' },
             { label: t('userProfile.terms'), path: '/terms' },
             { label: t('userProfile.privacy'), path: '/privacy' },

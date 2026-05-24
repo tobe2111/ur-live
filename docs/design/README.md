@@ -25,3 +25,4 @@
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ⏳ 미구현 | [home-sidebar.md](./home-sidebar.md) |
+| Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ⏳ 미구현 | [quick-action-fab.md](./quick-action-fab.md) |
