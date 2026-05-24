@@ -21,7 +21,13 @@ interface User {
   phone: string | null
   provider: string | null
   created_at: string
+  // 🛡️ 2026-05-24: backend aggregate columns
+  order_count?: number
+  total_spent?: number
+  review_count?: number
 }
+
+type SortKey = 'created_at' | 'order_count' | 'total_spent' | 'review_count' | 'name'
 
 interface UserDetail {
   order_count: number
@@ -46,6 +52,8 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+  const [sort, setSort] = useState<SortKey>('created_at')
+  const [order, setOrder] = useState<'desc' | 'asc'>('desc')
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [detailLoading, setDetailLoading] = useState<number | null>(null)
   const [details, setDetails] = useState<Record<number, UserDetail>>({})
@@ -56,7 +64,8 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
     loadUsers()
-  }, [page])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, sort, order])
 
   async function loadUsers() {
     setLoading(true)
@@ -64,19 +73,46 @@ export default function AdminUsersPage() {
       const params = new URLSearchParams({
         page: String(page),
         limit: String(LIMIT),
-        search,
+        sort,
+        order,
       })
+      if (search.trim()) params.set('search', search.trim())
       const res = await api.get(`/api/admin/users?${params}`, h)
       if (res.data.success) {
         setUsers(res.data.data || [])
-        setTotalPages(res.data.totalPages || 1)
-        setTotalCount(res.data.total || 0)
+        // 🛡️ 2026-05-24: backend 가 totalPages 와 pagination.totalPages 둘 다 반환 (호환).
+        const tp = res.data.totalPages || res.data.pagination?.totalPages || 1
+        const tc = res.data.total || res.data.pagination?.total || 0
+        setTotalPages(tp)
+        setTotalCount(tc)
       }
     } catch {
       toast.error('유저 목록을 불러오지 못했습니다')
     } finally {
       setLoading(false)
     }
+  }
+
+  // 🛡️ 컬럼 헤더 클릭 시 정렬 — 같은 컬럼 다시 클릭하면 asc/desc 토글.
+  function handleSort(key: SortKey) {
+    if (sort === key) {
+      setOrder(o => (o === 'desc' ? 'asc' : 'desc'))
+    } else {
+      setSort(key)
+      setOrder('desc')
+    }
+    setPage(1)
+  }
+
+  function SortHeader({ k, children }: { k: SortKey; children: React.ReactNode }) {
+    const active = sort === k
+    return (
+      <button onClick={() => handleSort(k)}
+        className={`flex items-center gap-1 font-semibold ${active ? 'text-blue-700' : 'text-gray-700 hover:text-gray-900'}`}>
+        {children}
+        {active && (order === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />)}
+      </button>
+    )
   }
 
   function handleSearch(e: React.FormEvent) {
@@ -124,14 +160,14 @@ export default function AdminUsersPage() {
           icon={<Users className="h-5 w-5" />}
         />
 
-      {/* Search & Filter */}
+      {/* Search & Sort */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row gap-3">
         <form onSubmit={handleSearch} className="flex-1 flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder={t('admin.users.searchPlaceholder', { defaultValue: '이름 또는 이메일로 검색...' })}
+              placeholder={t('admin.users.searchPlaceholder', { defaultValue: '이름 / 이메일 / 전화번호 검색...' })}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -144,6 +180,22 @@ export default function AdminUsersPage() {
             {t('admin.users.searchBtn', { defaultValue: '검색' })}
           </button>
         </form>
+        {/* 🛡️ 2026-05-24: 정렬 드롭다운 — 헤더 클릭과 동일 동작 (둘 다 가능). */}
+        <select
+          value={`${sort}:${order}`}
+          onChange={(e) => {
+            const [k, o] = e.target.value.split(':')
+            setSort(k as SortKey); setOrder(o as 'asc' | 'desc'); setPage(1)
+          }}
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+        >
+          <option value="created_at:desc">최신가입순</option>
+          <option value="created_at:asc">오래된 가입순</option>
+          <option value="order_count:desc">주문 수 많은순</option>
+          <option value="total_spent:desc">총 결제액 많은순</option>
+          <option value="review_count:desc">리뷰 수 많은순</option>
+          <option value="name:asc">이름순 (가나다)</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -163,11 +215,13 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">ID</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thName', { defaultValue: '이름' })}</th>
+                  <th className="text-left px-4 py-3"><SortHeader k="name">{t('admin.users.thName', { defaultValue: '이름' })}</SortHeader></th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thEmail', { defaultValue: '이메일' })}</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thPhone', { defaultValue: '전화번호' })}</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thProvider', { defaultValue: '가입방법' })}</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">{t('admin.users.thJoinDate', { defaultValue: '가입일' })}</th>
+                  <th className="text-right px-4 py-3"><SortHeader k="order_count">주문</SortHeader></th>
+                  <th className="text-right px-4 py-3"><SortHeader k="total_spent">총 결제액</SortHeader></th>
+                  <th className="text-right px-4 py-3"><SortHeader k="review_count">리뷰</SortHeader></th>
+                  <th className="text-left px-4 py-3"><SortHeader k="created_at">{t('admin.users.thJoinDate', { defaultValue: '가입일' })}</SortHeader></th>
                   <th className="text-center px-4 py-3 font-semibold text-gray-700">{t('admin.users.thAction', { defaultValue: '액션' })}</th>
                 </tr>
               </thead>
@@ -182,8 +236,12 @@ export default function AdminUsersPage() {
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs">{user.id}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{user.name || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{user.email || '-'}</td>
-                        <td className="px-4 py-3 text-gray-700">{user.phone || '-'}</td>
-                        <td className="px-4 py-3 text-gray-700">{getProviderLabel(user.provider)}</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {user.phone || <span className="text-red-500 text-xs">미등록</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-900 font-mono">{formatNumber(user.order_count || 0)}</td>
+                        <td className="px-4 py-3 text-right text-gray-900 font-mono">{formatNumber(user.total_spent || 0)}원</td>
+                        <td className="px-4 py-3 text-right text-gray-900 font-mono">{formatNumber(user.review_count || 0)}</td>
                         <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                           {formatKST(user.created_at)}
                         </td>
@@ -201,7 +259,7 @@ export default function AdminUsersPage() {
                       </tr>
                       {isExpanded && (
                         <tr className="bg-blue-50/30">
-                          <td colSpan={7} className="px-4 py-4">
+                          <td colSpan={9} className="px-4 py-4">
                             {isDetailLoading ? (
                               <div className="flex items-center gap-2 text-sm text-gray-500">
                                 <Loader2 className="w-4 h-4 animate-spin" />
