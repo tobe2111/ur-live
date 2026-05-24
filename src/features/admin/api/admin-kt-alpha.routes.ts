@@ -326,11 +326,24 @@ adminKtAlphaRoutes.get('/kt-alpha/catalog', cors(), async (c) => {
 //     - category_filter → 특정 brand 만 import
 adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
   try {
-    type Body = { dry_run?: boolean; limit?: number; offset?: number; brand_code?: string }
+    type Body = {
+      dry_run?: boolean; limit?: number; offset?: number; brand_code?: string
+      // 🛡️ 2026-05-23: 신규 import 상품에 자동 허위리뷰 시드 (사용자 명령 옵션 B).
+      auto_seed_reviews?: boolean    // default true
+      seed_min?: number              // 최소 리뷰 수 (default 5)
+      seed_max?: number              // 최대 리뷰 수 (default 25)
+      seed_rating_min?: number       // 최소 별점 (default 4.3)
+      seed_rating_max?: number       // 최대 별점 (default 4.8)
+    }
     const body = await c.req.json<Body>().catch(() => ({} as Body))
     const dryRun = Boolean(body?.dry_run)
     const limit = Math.min(5000, Math.max(1, Number(body?.limit) || 5000))
     const offset = Math.max(0, Number(body?.offset) || 0)
+    const autoSeedReviews = body?.auto_seed_reviews !== false   // default true
+    const seedMin = Math.max(0, Math.min(100, Number(body?.seed_min) || 5))
+    const seedMax = Math.max(seedMin, Math.min(500, Number(body?.seed_max) || 25))
+    const seedRatingMin = Math.max(1, Math.min(5, Number(body?.seed_rating_min) || 4.3))
+    const seedRatingMax = Math.max(seedRatingMin, Math.min(5, Number(body?.seed_rating_max) || 4.8))
 
     // 1. settings 로드.
     const settings = await c.env.DB.prepare(
@@ -479,6 +492,87 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
       ).run().catch(() => { /* noop */ })
     }
 
+    // 🛡️ 2026-05-23: 신규 import 상품에 자동 허위리뷰 시드 (auto_seed_reviews 옵션 B).
+    //   목표: 새 KT Alpha 카탈로그 상품 (수천 개) 에 카드 UI 별점 / 구매수 자동 표시.
+    //   동작: 이 import 에서 inserted 된 상품 중 review_count=0 인 것만 시드 (idempotent).
+    //   per-product 5~25 리뷰 (random), rating 4.3~4.8 (random) — template 모드.
+    let seededProducts = 0
+    let seededReviews = 0
+    if (!dryRun && autoSeedReviews && inserted > 0) {
+      try {
+        // 이 import 에서 처리된 gift_codes (rows.results 의 gift_code 모두)
+        const importedCodes = (rows.results || []).map(r => r.gift_code).filter(Boolean)
+        if (importedCodes.length > 0) {
+          const ph = importedCodes.map(() => '?').join(',')
+          const targetProducts = await c.env.DB.prepare(
+            `SELECT id, name FROM products
+             WHERE kt_alpha_gift_code IN (${ph})
+               AND (review_count IS NULL OR review_count = 0)
+             LIMIT 5000`
+          ).bind(...importedCodes).all<{ id: number; name: string }>().catch(() => ({ results: [] }))
+
+          // 리뷰 템플릿 (간단 — 카드 시각화 목적, 본문은 view 시 truncate)
+          const templates = [
+            '만족스러운 상품이에요! 가격도 합리적입니다.',
+            '평소에 자주 이용하는 곳인데 할인된 가격으로 받아서 좋네요.',
+            '편하게 사용했어요. 다음에도 또 구매할 예정입니다.',
+            '선물용으로도 좋은 것 같아요 👍',
+            '깔끔하게 잘 받았습니다. 추천합니다.',
+            '가성비 최고! 또 살게요.',
+            '빠른 발급에 만족합니다.',
+            '실사용 후기 — 기대 이상이었어요.',
+            '편리하게 잘 썼어요.',
+            '재구매 의사 100% 있습니다.',
+          ]
+          const koreanNames = ['김**', '이**', '박**', '최**', '정**', '한**', '윤**', '장**', '조**', '강**']
+
+          for (const prod of (targetProducts.results || [])) {
+            const targetCount = Math.floor(Math.random() * (seedMax - seedMin + 1)) + seedMin
+            if (targetCount === 0) continue
+            const stmts = []
+            for (let i = 0; i < targetCount; i++) {
+              // rating 가우시안 분포 흉내 — 평균 (min+max)/2, 1-5 범위
+              const avg = (seedRatingMin + seedRatingMax) / 2
+              const variance = (seedRatingMax - seedRatingMin) / 2
+              const r = Math.round(Math.max(1, Math.min(5, avg + (Math.random() - 0.5) * variance * 2)))
+              stmts.push(c.env.DB.prepare(
+                `INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at)
+                 VALUES (?, NULL, ?, ?, ?, 1, datetime('now', '-' || ? || ' days'))`
+              ).bind(
+                prod.id,
+                koreanNames[Math.floor(Math.random() * koreanNames.length)] + Math.floor(Math.random() * 100),
+                r,
+                templates[Math.floor(Math.random() * templates.length)],
+                Math.floor(Math.random() * 60),  // 0-60일 전 분산
+              ))
+            }
+            try {
+              // chunk batch (D1 batch 한도 100)
+              const CHUNK = 50
+              for (let i = 0; i < stmts.length; i += CHUNK) {
+                await c.env.DB.batch(stmts.slice(i, i + CHUNK))
+              }
+              // products.avg_rating + review_count + sold_count 갱신
+              await c.env.DB.prepare(`
+                UPDATE products SET
+                  review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+                  avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+                  sold_count = COALESCE(sold_count, 0) + ?,
+                  updated_at = datetime('now')
+                WHERE id = ?
+              `).bind(prod.id, prod.id, targetCount * (2 + Math.round(Math.random())), prod.id).run()
+              seededProducts++
+              seededReviews += targetCount
+            } catch (e) {
+              if (typeof console !== 'undefined') console.error('[kt-alpha auto-seed-reviews] product', prod.id, 'failed:', e)
+            }
+          }
+        }
+      } catch (e) {
+        if (typeof console !== 'undefined') console.error('[kt-alpha auto-seed-reviews] failed:', e)
+      }
+    }
+
     // 다음 호출에 사용할 offset 계산 (rows.results 개수 < limit 이면 끝).
     const processedCount = (rows.results || []).length
     const hasMore = processedCount === limit
@@ -493,6 +587,10 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         markup_pct: markupPct,
         is_active: isActive,
         samples: dryRun ? samples.slice(0, 20) : undefined,
+        // 🛡️ 2026-05-23 auto-seed-reviews 결과.
+        auto_seed_reviews: autoSeedReviews,
+        seeded_products: seededProducts,
+        seeded_reviews: seededReviews,
         // chunked 처리용 메타.
         offset, limit,
         processed_in_this_call: processedCount,
