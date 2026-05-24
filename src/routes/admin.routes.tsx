@@ -17,6 +17,7 @@ const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
+const AdminVoucherOrdersPage = lazy(() => import('@/pages/AdminVoucherOrdersPage'))
 const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
@@ -93,6 +94,12 @@ export function AdminRoutes() {
       <Route path="/admin/env-check" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminEnvCheckPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-23: KT Alpha 기프티쇼 발송 추적 페이지 */}
+      <Route path="/admin/voucher-orders" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminVoucherOrdersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/settlement" element={
