@@ -472,7 +472,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
                   디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8 items-stretch">
-              {displayed.map(product => {
+              {displayed.map((product, idx) => {
+                const aboveFold = idx < 4
                 const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
                 const displayPrice = product.current_price || product.price
                 const hasStrike = !!(product.original_price && product.original_price > displayPrice)
@@ -493,7 +494,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                        <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading={aboveFold ? 'eager' : 'lazy'} fetchPriority={aboveFold ? 'high' : 'auto'} decoding="async" />
                       ) : (
                         <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}

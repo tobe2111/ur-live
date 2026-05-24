@@ -230,6 +230,14 @@ productsRoutes.get('/', cors(), async (c) => {
       } catch { /* graceful */ }
     }
 
+    // 🛡️ 2026-05-24 (loading P0): 브라우저 + Cloudflare edge HTTP cache.
+    //   검색 (safeSearch 있음) / 인증 후 응답이 변하는 case 는 캐시 회피 (private).
+    //   일반 목록 (카테고리/페이지) → public 5분.
+    if (safeSearch) {
+      c.header('Cache-Control', 'private, no-cache')
+    } else {
+      c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
+    }
     return c.json({
       success: true,
       data: result.data,

@@ -54,6 +54,8 @@ export default function GroupBuyFeed() {
   //   목록 fetch 직후 각 product 를 individual detail cache 에 hydrate →
   //   카드 클릭 시 server hit 0 (placeholderData + cache hit).
   const qc = useQueryClient()
+  // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
+  //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
   const { data: items = [], isLoading: loading } = useQuery<FeedProduct[]>({
     queryKey: queryKeys.groupBuyList('active', category),
     queryFn: async () => {
@@ -65,8 +67,6 @@ export default function GroupBuyFeed() {
       }
       return arr
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
 
@@ -148,8 +148,10 @@ export default function GroupBuyFeed() {
         <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 pb-8">
-          {sorted.map(p => (
-            <GroupBuyFeedCard key={p.id} p={p} />
+          {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
+              나머지는 lazy 유지 (scroll 시 자연 로드). */}
+          {sorted.map((p, idx) => (
+            <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} />
           ))}
         </div>
       )}
