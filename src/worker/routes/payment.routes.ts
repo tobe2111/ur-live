@@ -23,24 +23,9 @@ import { sendAlert } from '../utils/alerts';
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
 
-// Toss error code → 사용자 친화 메시지 맵 (v15-3)
-// Toss가 반환하는 기술적 에러 코드를 한국어 안내 문구로 변환합니다.
-const TOSS_ERROR_MESSAGES: Record<string, string> = {
-  'REJECT_CARD_COMPANY': '카드사에서 결제를 거부했습니다. 다른 카드로 시도해주세요.',
-  'INVALID_CARD_EXPIRATION': '카드 유효기간이 올바르지 않습니다.',
-  'INVALID_CARD_INSTALLMENT_PLAN': '할부 개월 수가 올바르지 않습니다.',
-  'EXCEED_MAX_DAILY_PAYMENT_COUNT': '일일 결제 한도를 초과했습니다.',
-  'EXCEED_MAX_AUTH_COUNT': '인증 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.',
-  'INSUFFICIENT_BALANCE': '잔액이 부족합니다.',
-  'INVALID_PIN': '비밀번호가 올바르지 않습니다.',
-  'ALREADY_PROCESSED_PAYMENT': '이미 처리된 결제입니다.',
-  'INVALID_PASSWORD': '카드 비밀번호가 올바르지 않습니다.',
-  'NOT_ENOUGH_BALANCE_FOR_INSTALLMENT': '할부에 필요한 잔액이 부족합니다.',
-  'EXPIRED_CARD': '만료된 카드입니다.',
-  'INVALID_CARD_NUMBER': '카드 번호가 올바르지 않습니다.',
-  'CARD_PROCESSING_ERROR': '카드 처리 중 오류가 발생했습니다.',
-  'UNAUTHORIZED_PAYMENT': '인증되지 않은 결제입니다.',
-};
+// 🛡️ 2026-05-24: SSOT — Toss V2 docs 사양 완전 일치 (100+ 코드 cover).
+//   ref: src/worker/utils/toss-error-messages.ts
+import { getTossErrorMessage } from '../utils/toss-error-messages';
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -196,9 +181,7 @@ paymentsRouter.post('/confirm', async (c) => {
     if (!tossResult.ok) {
       logError('toss.confirm.failed', { orderId: orderNumber, code: tossResult.code, message: tossResult.message });
       // Toss 에러 코드 → 사용자 친화 메시지 (TOSS_ERROR_MESSAGES override).
-      const friendly = tossResult.code && TOSS_ERROR_MESSAGES[tossResult.code]
-        ? TOSS_ERROR_MESSAGES[tossResult.code]
-        : tossResult.message
+      const friendly = getTossErrorMessage(tossResult.code) ?? tossResult.message
       return c.json(
         { success: false, error: friendly, code: tossResult.code },
         tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400,

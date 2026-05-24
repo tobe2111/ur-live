@@ -261,42 +261,90 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
       tossOrderId  // order_number equals tossOrderId in Toss flow
     );
 
-    // 6. Process by event type
+    // 6. Process by event type — Toss V2 docs 사양 일치.
+    //    ref: docs.tosspayments.com/guides/webhook (이벤트 타입 8개)
+    //    PAYMENT_STATUS_CHANGED → status 필드로 세분화 분기:
+    //      DONE → confirmed, CANCELED/PARTIAL_CANCELED → cancelled, ABORTED/EXPIRED → failed,
+    //      WAITING_FOR_DEPOSIT → virtual_account_issued, IN_PROGRESS / READY → no-op.
+    //    DEPOSIT_CALLBACK → 가상계좌 입금 완료/취소 (별도 이벤트).
+    //    CANCEL_STATUS_CHANGED → 취소 상태 변경 (전체/부분).
+    //    METHOD_UPDATED / CUSTOMER_STATUS_CHANGED → 브랜드페이 (현재 미사용).
+    //    payout.changed / seller.changed → 지급대행 (현재 미사용).
+    //    ORDER_PAYMENT_STATUS_CHANGED → 링크페이 주문 (현재 미사용).
+    //
+    //    🛡️ legacy 이벤트 (payment.confirmed 등) 도 fallback 유지 — 옛 등록 webhook 호환.
+    const status = String((data as { status?: string }).status || '').toUpperCase();
     switch (eventType as string) {
+      // ─── Toss V2 docs 표준 이벤트 ──────────────────────────────
+      case 'PAYMENT_STATUS_CHANGED':
+        // status 로 세분화 분기.
+        if (status === 'DONE') {
+          await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+        } else if (status === 'CANCELED' || status === 'PARTIAL_CANCELED') {
+          await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
+        } else if (status === 'ABORTED' || status === 'EXPIRED') {
+          await handlePaymentFailed(orderRepo, data, tossOrderId, c.env);
+        } else if (status === 'WAITING_FOR_DEPOSIT') {
+          await handleVirtualAccountIssued(orderRepo, data, tossOrderId);
+        } else {
+          // IN_PROGRESS / READY 등 — audit only.
+          if (process.env.NODE_ENV !== 'production') console.log('[Webhook] PAYMENT_STATUS_CHANGED transient:', { tossOrderId, status });
+          await webhookRepo.markSkipped(webhookEventId, `payment_status_transient:${status}`);
+          return c.json({ received: true, status: 'audited' }, 200);
+        }
+        break;
+
+      case 'DEPOSIT_CALLBACK':
+        // 가상계좌 입금 알림 — docs: 입금 / 입금 취소 둘 다 트리거.
+        //   data.status 'DONE' → 입금 완료, 'CANCELED' → 입금 취소 (반환).
+        if (status === 'DONE') {
+          await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+        } else if (status === 'CANCELED') {
+          await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
+        } else {
+          if (process.env.NODE_ENV !== 'production') console.log('[Webhook] DEPOSIT_CALLBACK other:', { tossOrderId, status });
+          await webhookRepo.markSkipped(webhookEventId, `deposit_callback_other:${status}`);
+          return c.json({ received: true, status: 'audited' }, 200);
+        }
+        break;
+
+      case 'CANCEL_STATUS_CHANGED':
+        // 결제 취소 상태 (전체/부분).
+        await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
+        break;
+
+      case 'METHOD_UPDATED':
+      case 'CUSTOMER_STATUS_CHANGED':
+      case 'payout.changed':
+      case 'seller.changed':
+      case 'ORDER_PAYMENT_STATUS_CHANGED':
+        // 현재 미사용 (브랜드페이 / 지급대행 / 링크페이) — audit only.
+        if (process.env.NODE_ENV !== 'production') console.log('[Webhook] unused event type:', { eventType, tossOrderId });
+        await webhookRepo.markSkipped(webhookEventId, `unused_event:${eventType}`);
+        return c.json({ received: true, status: 'audited' }, 200);
+
+      // ─── Legacy 이벤트 (옛 등록 webhook 호환 — 점진 deprecated) ─
       case 'payment.confirmed':
         await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
         break;
-
       case 'payment.cancelled':
+      case 'payment.partial_canceled':
         await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
         break;
-
       case 'payment.failed':
         await handlePaymentFailed(orderRepo, data, tossOrderId, c.env);
         break;
-
       case 'payment.virtual_account_issued':
         await handleVirtualAccountIssued(orderRepo, data, tossOrderId);
         break;
-
       case 'payment.virtual_account_deposited':
         await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
         break;
-
-      case 'payment.partial_canceled':
-        // Reuse cancel logic for partial cancels. Downstream amount tracking
-        // lives in the refund flow; this webhook only records the event.
-        await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
-        break;
-
       case 'refund_completed':
-        // Main refund is already handled via the /cancel route. Just audit.
         if (process.env.NODE_ENV !== 'production') console.log('[Webhook] refund_completed:', tossOrderId);
         await webhookRepo.markSkipped(webhookEventId, 'refund_completed_already_handled');
         return c.json({ received: true, status: 'audited' }, 200);
-
       case 'dispute_raised':
-        // CRITICAL — alert ops immediately so manual action can be taken.
         await sendAlert(c.env, {
           severity: 'critical',
           title: '결제 분쟁 발생',
