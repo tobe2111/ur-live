@@ -71,15 +71,18 @@ export default function VoucherDetailPage() {
     if (!product) return
     const total = product.price * quantity
     const ok = window.confirm(
-      `${product.name}\n${quantity}장 × ${formatNumber(product.price)}딜 = ${formatNumber(total)}딜\n\n딜로 교환하시겠습니까?`
+      `${product.name}\n${quantity}장 × ${formatNumber(product.price)}딜 = ${formatNumber(total)}딜\n\n⚠️ 교환 후 환불 불가\n진행할까요?`
     )
     if (!ok) return
     setExchanging(true)
     try {
       const { getTrackedSellerId } = await import('@/lib/seller-tracking')
       const ref = getTrackedSellerId() || undefined
+      // 🛡️ 2026-05-23: idempotency_key — 중복 클릭 / 네트워크 retry 시 중복 차감 영구 차단.
+      //   server 가 같은 key 발견하면 기존 voucher 반환 (no double charge).
+      const idempotency_key = `voucher_${product.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
       const res = await api.post(`/api/group-buy/join/${product.id}`, {
-        quantity, payment_method: 'deal', ref,
+        quantity, payment_method: 'deal', ref, idempotency_key,
       })
       if (res.data?.success) {
         toast.success('🎁 교환권 발급 완료')
@@ -128,7 +131,7 @@ export default function VoucherDetailPage() {
   const label = getVoucherShortLabel(product.category)
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-44 lg:pb-32">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={product.description || ''} url={`/vouchers/${product.id}`} noindex />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 px-4 py-3 flex items-center justify-between">
