@@ -228,14 +228,63 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
       linkedAgency = row[0] || null
     } catch { /* agencies.linked_user_id 미적용 DB — skip */ }
 
+    // 🛡️ 2026-05-24 (사용자 요청): 행 상세에 인라인 통계 추가 — 모달 안 열어도 바로 보임.
+    //   딜 잔액 / 최근 거래 5건 / 바우처 수 / 쿠폰 수 / 찜 수.
+    let walletBalance = 0
+    try {
+      const w = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+        .bind(userId).first<{ balance: number }>()
+      if (w?.balance != null) walletBalance = Number(w.balance) || 0
+    } catch { /* user_points 부재 환경 */ }
+
+    let recentTransactions: Array<{ id: number; type: string; amount: number; description: string; created_at: string }> = []
+    try {
+      const r = await DB.prepare(
+        `SELECT id, type, amount, description, created_at
+         FROM point_transactions WHERE user_id = ? ORDER BY id DESC LIMIT 5`
+      ).bind(userId).all<typeof recentTransactions[number]>()
+      recentTransactions = r.results || []
+    } catch { /* point_transactions 부재 */ }
+
+    let voucherCount = 0
+    try {
+      const v = await DB.prepare('SELECT COUNT(*) AS c FROM vouchers WHERE user_id = ?').bind(userId).first<{ c: number }>()
+      voucherCount = Number(v?.c) || 0
+    } catch { /* vouchers 부재 */ }
+
+    let couponCount = 0
+    try {
+      const cp = await DB.prepare('SELECT COUNT(*) AS c FROM user_coupons WHERE user_id = ?').bind(userId).first<{ c: number }>()
+      couponCount = Number(cp?.c) || 0
+    } catch { /* user_coupons 부재 */ }
+
+    let wishlistCount = 0
+    try {
+      const wl = await DB.prepare('SELECT COUNT(*) AS c FROM wishlists WHERE user_id = ?').bind(userId).first<{ c: number }>()
+      wishlistCount = Number(wl?.c) || 0
+    } catch { /* wishlists 부재 */ }
+
     const user = users[0];
-    const detail: UserDetailRow & { linked_seller?: unknown; linked_agency?: unknown } = {
+    const detail: UserDetailRow & {
+      linked_seller?: unknown;
+      linked_agency?: unknown;
+      wallet_balance: number;
+      voucher_count: number;
+      coupon_count: number;
+      wishlist_count: number;
+      recent_transactions: typeof recentTransactions;
+    } = {
       ...user,
       order_count: orderStats[0]?.order_count || 0,
       total_spent: orderStats[0]?.total_spent || 0,
       review_count: reviewStats[0]?.count || 0,
       linked_seller: linkedSeller,
       linked_agency: linkedAgency,
+      wallet_balance: walletBalance,
+      voucher_count: voucherCount,
+      coupon_count: couponCount,
+      wishlist_count: wishlistCount,
+      recent_transactions: recentTransactions,
     };
 
     return c.json({ success: true, data: detail });
