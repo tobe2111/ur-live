@@ -483,6 +483,21 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       )
       await DB.batch(voucherStmts)
 
+      // 🛡️ 2026-05-23: KT Alpha (기프티쇼) 자동 발송 — products.kt_alpha_gift_code +
+      //   auto_voucher_send=1 인 상품만. 딜 결제 흐름에서 사용자 폰으로 실제 MMS 발송.
+      //   fail-soft — 발송 실패해도 voucher INSERT 는 보존 (admin 이 재발송 가능).
+      //   /vouchers/:id (KT Alpha 카탈로그 2260개) 만 실제 트리거 — 일반 공구는 kt_alpha_gift_code 없어 skip.
+      try {
+        const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
+        c.executionCtx.waitUntil(
+          autoSendKtAlphaVouchersForOrders(
+            c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+            [{ id: order.id, user_id: userId, shipping_phone: null }],
+            userId,
+          ).catch(e => console.error('[group-buy/join] kt-alpha auto-send failed:', e))
+        )
+      } catch (e) { console.error('[group-buy/join] kt-alpha import failed:', e) }
+
       // 🛡️ 2026-05-16: 사용자 phone 으로 voucher 발급 알림톡 (fire-and-forget)
       try {
         const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
