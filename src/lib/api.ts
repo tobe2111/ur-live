@@ -14,6 +14,15 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 //   (sentry 청크 252 KB preload). 일반 사용자 첫 페인트 -300ms 추가됨.
 //   지금: captureError 호출 시점에 lazy import — 첫 페인트 영향 0, 에러 발생 시만 fetch.
 
+// 🛡️ 2026-05-24: CSRF 토큰 cookie 읽기 helper — double-submit pattern.
+//   csrf_token cookie 가 SameSite=Strict + non-HttpOnly 라 JS 가 읽을 수 있음.
+//   value 가 없으면 빈 문자열 반환 (호출자가 /api/csrf-token fetch 트리거).
+function readCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
 // ─── Firebase Token 캐시 (55분 TTL) ────────────────────────────────────────
 interface TokenCache {
   token: string;
@@ -207,6 +216,27 @@ api.interceptors.request.use(
         config.headers['X-Affiliate-Ref'] = refRaw;
       }
     } catch { /* silent */ }
+
+    // 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.
+    //   서버 csrfIssue() 가 GET 응답마다 csrf_token cookie 세팅. JS 가 cookie 읽어
+    //   X-CSRF-Token 헤더로 전송. PATCH/POST/DELETE 시 csrfProtection() 가 검증.
+    //   Bearer 토큰 요청은 서버에서 자동 skip 되므로 헤더 첨부해도 무해.
+    //   cookie 없으면 (첫 방문 / 만료) /api/csrf-token 자동 fetch 후 재시도.
+    const method = (config.method || 'get').toUpperCase();
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+      let token = readCookie('csrf_token');
+      if (!token) {
+        try {
+          const r = await fetch('/api/csrf-token', { credentials: 'include' });
+          const json = await r.json() as { token?: string };
+          if (json?.token) token = json.token;
+          else token = readCookie('csrf_token');
+        } catch { /* graceful — server 가 어차피 403 반환 시 사용자 알림 */ }
+      }
+      if (token && !config.headers['X-CSRF-Token']) {
+        config.headers['X-CSRF-Token'] = token;
+      }
+    }
 
     // 공개 API: 토큰 불필요
     if (isPublicAPI(url)) return config;
