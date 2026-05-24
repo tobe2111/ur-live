@@ -33,6 +33,14 @@ function pushToast(
   type: 'success' | 'error' | 'info',
   ttl: number,
 ) {
+  // 🛡️ 2026-05-24: 방어 코드 — server 에러 객체 ({code, message}) / Error 인스턴스 / 기타
+  //   non-string 전달 시 React #31 (object as child) 영구 차단.
+  if (typeof message !== 'string') {
+    const m = message as unknown
+    if (m && typeof (m as { message?: unknown }).message === 'string') message = String((m as { message: string }).message)
+    else if (m instanceof Error) message = m.message
+    else { try { message = JSON.stringify(m).slice(0, 200) } catch { message = String(m).slice(0, 200) } }
+  }
   const key = `${type}:${message}`
   const now = Date.now()
   const last = lastShownMap.get(key)
