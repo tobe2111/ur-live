@@ -618,6 +618,19 @@ adminReviewGeneratorRoutes.post('/reviews/auto-seed-missing', cors(), async (c) 
     const { autoSeedMissingReviews } = await import('../../../worker/utils/auto-seed-fake-reviews')
     type Body = { max_batch?: number; seed_min?: number; seed_max?: number; rating_min?: number; rating_max?: number }
     const body = await c.req.json<Body>().catch(() => ({} as Body))
+    // 🛡️ 2026-05-24: 사전 진단 — review_count=0 + is_active=1 인 상품 수 먼저 카운트.
+    //   0개면 "시드 실패" 가 아닌 "대상 없음" 알림 (사용자 confusion 차단).
+    const targetCount = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND (review_count IS NULL OR review_count = 0)`
+    ).first<{ c: number }>().catch(() => ({ c: 0 }))
+    const tc = Number(targetCount?.c) || 0
+    if (tc === 0) {
+      return c.json({
+        success: true,
+        data: { scanned: 0, seeded_products: 0, seeded_reviews: 0, failed_products: [] },
+        message: '시드 대상 상품 없음 (is_active=1 + review_count=0 인 상품 0개) — 이미 모두 시드됐거나 비활성 상품만 있음.',
+      });
+    }
     const result = await autoSeedMissingReviews(c.env, {
       maxBatch: Math.max(1, Math.min(2000, Number(body?.max_batch) || 500)),
       seedMin: Number(body?.seed_min) || 5,
@@ -625,9 +638,19 @@ adminReviewGeneratorRoutes.post('/reviews/auto-seed-missing', cors(), async (c) 
       seedRatingMin: Number(body?.rating_min) || 4.3,
       seedRatingMax: Number(body?.rating_max) || 4.8,
     })
-    return c.json({ success: true, data: result });
+    return c.json({
+      success: true,
+      data: result,
+      message: `대상 ${tc}개 중 ${result.seeded_products}개 시드 완료 (실패 ${result.failed_products.length}개)`,
+    });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    const errMsg = (e as Error).message || String(e)
+    if (typeof console !== 'undefined') console.error('[auto-seed-missing] failed:', errMsg, (e as Error).stack)
+    return c.json({
+      success: false,
+      error: '시드 실패',
+      _debug: { message: errMsg.slice(0, 300) },
+    }, 500);
   }
 });
 

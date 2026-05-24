@@ -24,6 +24,8 @@ adminKtAlphaRoutes.get('/kt-alpha/settings', cors(), async (c) => {
       'kt_alpha_user_id', 'kt_alpha_callback_no',
       'kt_alpha_template_id', 'kt_alpha_banner_id',
       'kt_alpha_consumer_markup_pct', 'kt_alpha_consumer_category', 'kt_alpha_consumer_enabled',
+      // 🛡️ 2026-05-24: GET 응답에 admin_seller_id 누락 -> frontend reload 시 빈값 -> 저장이 안 된 것처럼 보임. fix.
+      'kt_alpha_admin_seller_id',
       'kt_alpha_biz_money_balance', 'kt_alpha_biz_money_check_at',
       'kt_alpha_last_sync_at', 'kt_alpha_last_sync_count',
     ]
