@@ -47,10 +47,10 @@ function makeTossAuthHeader(secretKey: string): string {
 /**
  * Toss Payments 결제 취소 API 호출
  *
- * @param paymentKey  - Toss paymentKey (결제 완료 시 저장)
- * @param secretKey   - TOSS_SECRET_KEY (env binding)
- * @param cancelReason - 취소 사유 (필수, 200자 이내)
- * @param cancelAmount - 부분 취소 금액 (미입력 시 전액 취소)
+ * 🛡️ 2026-05-24: toss-gateway.cancelTossPayment() 의 thin wrapper.
+ *    실제 구현은 SSOT (toss-gateway). API 호환성 유지 위해 시그니처 유지.
+ *
+ * ⚠️ Toss V2 docs 잠금 (2026-05-24): 이 파일은 직접 수정 금지. 변경 필요 시 사용자에게 문의.
  */
 export async function tossCancelPayment(
   paymentKey: string,
@@ -58,54 +58,28 @@ export async function tossCancelPayment(
   cancelReason: string,
   cancelAmount?: number,
   idempotencyKey?: string,
+  /** 가상계좌 입금 완료 후 환불 시 필수 (V2 docs). */
+  refundReceiveAccount?: { bank?: string; bankCode?: string; accountNumber: string; holderName: string },
+  /** 면세 부분 취소 (복합과세 상점, V2 docs). */
+  taxFreeAmount?: number,
 ): Promise<{ success: true; data: TossPaymentCancelResponse } | { success: false; code: string; message: string }> {
-  const url = `${TOSS_API_BASE}/${encodeURIComponent(paymentKey)}/cancel`;
-
-  const body: TossCancelRequest = { cancelReason };
-  if (cancelAmount !== undefined && cancelAmount > 0) {
-    body.cancelAmount = cancelAmount;
-  }
-
-  // v35 FIX: idempotency key 지원. 제공 안 되면 paymentKey + amount + reason 해시 기반 자동 생성
-  // 이중 호출(네트워크 재시도, 더블클릭) 시 Toss가 중복 취소 방지.
+  const { cancelTossPayment } = await import('./toss-gateway');
   const idemKey = idempotencyKey
     || `cancel-${paymentKey}-${cancelAmount ?? 'full'}-${cancelReason.slice(0, 20).replace(/\s/g, '_')}`;
-
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': makeTossAuthHeader(secretKey),
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idemKey,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10000), // 10s timeout (critical path)
-    });
-  } catch (networkErr) {
-    return {
-      success: false,
-      code: 'NETWORK_ERROR',
-      message: networkErr instanceof Error ? networkErr.message : 'Network error',
-    };
+  const result = await cancelTossPayment({
+    env: { TOSS_SECRET_KEY: secretKey },
+    paymentKey,
+    cancelReason,
+    cancelAmount,
+    refundReceiveAccount,
+    taxFreeAmount,
+    idempotencyKey: idemKey,
+    timeoutMs: 10000,
+  });
+  if (result.ok) {
+    return { success: true, data: result.data as unknown as TossPaymentCancelResponse };
   }
-
-  // HTTP 200 → 성공
-  if (res.ok) {
-    const data = await res.json() as TossPaymentCancelResponse;
-    return { success: true, data };
-  }
-
-  // HTTP 4xx/5xx → Toss 에러 객체 파싱
-  let errBody: TossApiError = { code: 'UNKNOWN', message: 'Unknown Toss error' };
-  try {
-    errBody = await res.json() as TossApiError;
-  } catch {
-    // JSON 파싱 실패 시 기본값 유지
-  }
-
-  return { success: false, code: errBody.code, message: errBody.message };
+  return { success: false, code: result.code, message: result.message };
 }
 
 /**

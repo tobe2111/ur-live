@@ -22,52 +22,41 @@ export interface RefundResult {
 
 /**
  * Toss Payments 환불 요청
+ *
+ * 🛡️ 2026-05-24: toss-gateway.cancelTossPayment() 의 thin wrapper.
+ *    실제 구현은 SSOT (toss-gateway). API 호환성 유지 위해 시그니처 유지.
+ *
+ * ⚠️ Toss V2 docs 잠금 (2026-05-24): 이 파일은 직접 수정 금지. 변경 필요 시 사용자에게 문의.
  */
 export async function requestTossRefund(
   paymentKey: string,
   reason: string,
   secretKey: string,
-  cancelAmount?: number
+  cancelAmount?: number,
+  /** 가상계좌 입금 완료 후 환불 시 필수 (V2 docs). */
+  refundReceiveAccount?: { bank?: string; bankCode?: string; accountNumber: string; holderName: string },
+  /** 면세 부분 취소 (복합과세 상점, V2 docs). */
+  taxFreeAmount?: number,
 ): Promise<{ success: boolean; error?: string; code?: string; retryable?: boolean; status?: number }> {
-  try {
-    const body: Record<string, unknown> = { cancelReason: reason }
-    if (cancelAmount !== undefined && cancelAmount > 0) {
-      body.cancelAmount = cancelAmount
-    }
-
-    const response = await fetch(`${TOSS_PAYMENT_URL}/payments/${encodeURIComponent(paymentKey)}/cancel`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(secretKey + ':')}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': `refund-${paymentKey}-${cancelAmount ?? 'full'}`,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10000),
-    })
-
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({ code: 'UNKNOWN', message: 'Unknown Toss error' })) as { code?: string; message?: string }
-      const code = errBody.code || 'UNKNOWN'
-      const isRetryable = ['PROVIDER_ERROR', 'FAILED_INTERNAL_SYSTEM_PROCESSING'].includes(code)
-      return {
-        success: false,
-        error: errBody.message || `Toss API error: ${response.status}`,
-        code,
-        retryable: isRetryable,
-        status: response.status,
-      }
-    }
-
-    return { success: true }
-  } catch (error) {
-    const isTimeout = error instanceof DOMException && error.name === 'AbortError'
-    return {
-      success: false,
-      error: isTimeout ? '환불 요청 타임아웃 (10초 초과)' : (error instanceof Error ? error.message : '환불 요청 실패'),
-      code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
-      retryable: true,
-    }
+  const { cancelTossPayment } = await import('./toss-gateway')
+  const idemKey = `refund-${paymentKey}-${cancelAmount ?? 'full'}`
+  const result = await cancelTossPayment({
+    env: { TOSS_SECRET_KEY: secretKey },
+    paymentKey,
+    cancelReason: reason,
+    cancelAmount,
+    refundReceiveAccount,
+    taxFreeAmount,
+    idempotencyKey: idemKey,
+    timeoutMs: 10000,
+  })
+  if (result.ok) return { success: true }
+  return {
+    success: false,
+    error: result.message,
+    code: result.code,
+    retryable: result.retryable,
+    status: result.http_status,
   }
 }
 
