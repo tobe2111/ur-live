@@ -165,8 +165,9 @@ export default function VoucherDetailPage() {
         <p>• 교환권은 환불/취소가 제한될 수 있습니다</p>
       </div>
 
+      {/* 🛡️ 2026-05-23: BottomNav (h-14 + safe-area) 위에 표시. z-[10002] = nav (z-9999) 위. */}
       <div
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30"
+        className="fixed bottom-14 left-0 right-0 bg-white border-t border-gray-100 z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3 flex items-center gap-2">

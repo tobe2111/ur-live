@@ -135,15 +135,12 @@ export default function GroupBuyDetailPage() {
     ]).then(([detailRes, partRes]) => {
       if (cancelled) return
       if (detailRes.data?.success) {
-        // 🛡️ 2026-05-23: voucher 상품이 /group-buy/:id 로 들어오면 /vouchers/:id 로 자동 redirect.
-        //   옛 URL (DB / 알림 / 공유 링크) 호환 — 사용자는 자동으로 올바른 페이지 도달.
-        const productData = detailRes.data.data
-        const { flow, config } = resolveProductFlow(productData)
-        if (flow === 'voucher_deal') {
-          navigate(config.detailPath(productData.id), { replace: true })
-          return
-        }
-        setDetail(productData)
+        // 🛡️ 2026-05-23 revert: /group-buy/:id 진입 시 redirect 제거.
+        //   이전 redirect 가 모든 voucher 카테고리 상품을 /vouchers/:id 로 보내서
+        //   공구 페이지 자체가 렌더 안 됐던 사고 (모든 공구 상품이 voucher 카테고리인 환경).
+        //   해결: GroupBuyDetailPage 는 받은 상품 그대로 렌더. 새 링크는 SSOT 가 정확한
+        //   detail URL 로 생성 (홈 공구 → /group-buy, /vouchers 목록 → /vouchers).
+        setDetail(detailRes.data.data)
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {

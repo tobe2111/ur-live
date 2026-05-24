@@ -13,8 +13,6 @@
  * 모든 caller 가 이 helper 만 호출 → 새 카테고리 / flow 추가 시 본 파일 1곳 수정.
  */
 
-import { isVoucherCategory } from './constants/voucher-categories'
-
 export type ProductFlow =
   | 'voucher_deal'         // 교환권 — 딜 결제, 즉시 발급, /my-vouchers 이동
   | 'group_buy_toss'       // 공동구매 (일반 상품) — Toss 결제, 배송, voucher 발급
@@ -30,15 +28,19 @@ export interface ProductFlowInput {
 
 /**
  * 상품 정보를 받아 결제 흐름 type 반환.
- * 분류 우선순위:
- *   1. voucher category 또는 deal_only=1 → 'voucher_deal'
- *   2. group_buy_status='active' → 'group_buy_toss'
- *   3. 그 외 → 'standard_checkout'
  *
- * ⚠️ group_buy_active 컬럼은 production 스키마에 없음 — group_buy_status 만 사용.
+ * 🛡️ 2026-05-23 v3 (사용자 정의 확정):
+ *   - "교환권" = `deal_only=1` (단일 마커). VouchersPage 필터와 정합.
+ *   - voucher category 만으로는 voucher 아님 — 같은 category (meal_voucher 등) 가
+ *     공구 상품의 할인권 형태로 쓰일 수 있음 (예: 김밥천국 할인권 = 공구, Toss 결제).
+ *
+ * 분류:
+ *   1. `deal_only=1` → 'voucher_deal' (딜 결제, /vouchers/:id)
+ *   2. `group_buy_status='active'` → 'group_buy_toss' (Toss, /group-buy/:id)
+ *   3. 그 외 → 'standard_checkout' (Toss, /product/:id)
  */
 export function getProductFlow(product: ProductFlowInput): ProductFlow {
-  if (isVoucherCategory(product.category) || product.deal_only === 1) {
+  if (product.deal_only === 1) {
     return 'voucher_deal'
   }
   if (product.group_buy_status === 'active') {
