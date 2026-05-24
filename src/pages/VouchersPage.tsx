@@ -20,6 +20,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
+import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -108,6 +109,8 @@ const PAGE_SIZE = 30
 export default function VouchersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🛡️ 2026-05-24 (loading P0): 카드 hover/touch 시 상품 상세 prefetch.
+  const prefetchProduct = usePrefetchProduct()
   const [searchParams, setSearchParams] = useSearchParams()
   const brand = searchParams.get('brand') || ''
   const category = searchParams.get('category') || ''
@@ -420,6 +423,9 @@ export default function VouchersPage() {
                     key={p.id}
                     type="button"
                     onClick={() => navigate(`/vouchers/${p.id}`)}
+                    onMouseEnter={() => prefetchProduct(p.id)}
+                    onTouchStart={() => prefetchProduct(p.id)}
+                    onFocus={() => prefetchProduct(p.id)}
                     className="text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
