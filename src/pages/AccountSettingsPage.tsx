@@ -305,10 +305,14 @@ export default function AccountSettingsPage() {
         </div>
       </main>
 
-      {/* 프로필 편집 모달 — stays white for readability */}
+      {/* 프로필 편집 모달
+          🛡️ 2026-05-24 fix:
+            1) z-index 9999 BottomNav 위로 올려 하단 버튼 안 가려지게 (z-[10100])
+            2) input 다크 모드 배경 (이전: 흰 배경 + 흰 글자 → 안 보임).
+            3) 모달 mb-20 — 하단 네비 바 영역 확보. */}
       {editModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditModal(false)} role="presentation">
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
+        <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditModal(false)} role="presentation">
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('accountSettings.modalEditAria')}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile')}</h3>
               <button onClick={() => setEditModal(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
@@ -322,7 +326,7 @@ export default function AccountSettingsPage() {
                   aria-required="true"
                   value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   placeholder={t('accountSettings.editNamePlaceholder')}
                 />
               </div>
@@ -332,7 +336,7 @@ export default function AccountSettingsPage() {
                   id="account-phone"
                   value={editForm.phone}
                   onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   placeholder="010-0000-0000" type="tel"
                 />
               </div>
