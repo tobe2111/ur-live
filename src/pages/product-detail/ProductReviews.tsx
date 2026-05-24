@@ -170,7 +170,7 @@ interface Review {
   created_at: string
 }
 
-export default function ProductReviews({ productId }: { productId: number | string }) {
+export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
   const { t } = useTranslation()
   const [summary, setSummary] = useState<ReviewSummary | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
@@ -178,12 +178,12 @@ export default function ProductReviews({ productId }: { productId: number | stri
   useEffect(() => {
     Promise.all([
       api.get(`/api/reviews/product/${productId}/summary`).catch(() => null),
-      api.get(`/api/reviews/product/${productId}?limit=5`).catch(() => null),
+      api.get(`/api/reviews/product/${productId}?limit=${limit}`).catch(() => null),
     ]).then(([sumRes, listRes]) => {
       if (sumRes?.data?.success) setSummary(sumRes.data.data)
       if (listRes?.data?.success) setReviews(listRes.data.data.reviews)
     })
-  }, [productId])
+  }, [productId, limit])
 
   const avgRating = summary?.avg_rating ?? 0
   const totalCount = summary?.total_count ?? 0
@@ -224,7 +224,7 @@ export default function ProductReviews({ productId }: { productId: number | stri
       )}
 
       <ReviewForm productId={productId} onSubmitted={() => {
-        api.get(`/api/reviews/product/${productId}?limit=5`).then(r => { if (r.data.success) setReviews(r.data.data.reviews) })
+        api.get(`/api/reviews/product/${productId}?limit=${limit}`).then(r => { if (r.data.success) setReviews(r.data.data.reviews) })
         api.get(`/api/reviews/product/${productId}/summary`).then(r => { if (r.data.success) setSummary(r.data.data) })
       }} />
 

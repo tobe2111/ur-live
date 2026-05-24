@@ -69,6 +69,8 @@ export default function ProductDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
   const [quantity, setQuantity] = useState(1)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  // 🛡️ 2026-05-24: 리뷰 전체보기 토글 — 기본 5개, 클릭 시 100 (사실상 전체).
+  const [showAllReviews, setShowAllReviews] = useState(false)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [giftModalOpen, setGiftModalOpen] = useState(false)  // 🛡️ 2026-04-28: 선물하기 모달
   const [wishlistLoading, setWishlistLoading] = useState(false)
@@ -524,6 +526,42 @@ export default function ProductDetailPage() {
 
         {/* v4: description은 상세정보 섹션에서 통합 표시 */}
 
+        {/* 🛡️ 2026-05-24: 사용자 요청 — 옵션 선택을 상세 정보 위로 이동.
+            구매 의도 단계에서 옵션 우선 노출 → 결정 후 상세 정보 확인 패턴. */}
+        {/* v4 옵션 선택 */}
+        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <section className="px-5 py-5">
+          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.optionSelect')}</p>
+          {options.length > 0 ? (
+            <div className="space-y-2">
+              {options.map((opt: ProductOption) => (
+                <button key={opt.id} onClick={() => setSelectedOptions({ option: Number(opt.id) })}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50 dark:bg-[#121212]' : 'border-gray-200 dark:border-[#2A2A2A]'
+                  }`}>
+                  <span className="text-[12px] text-gray-900 dark:text-white">{opt.option_value}</span>
+                  {opt.price_adjustment !== 0 && (
+                    <span className="text-[11px] text-red-500 font-bold">
+                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.optionPlaceholder')}</span>
+              <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+          )}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
+            <span className="text-[11px] font-bold text-pink-500">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
+          </div>
+          {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
+          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
+        </section>
+
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-5">
@@ -613,41 +651,6 @@ export default function ProductDetailPage() {
           </AccordionSection>
         )}
 
-        {/* v4 옵션 선택 */}
-        <div style={{ height: 8, background: '#F9FAFB' }} />
-        <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.optionSelect')}</p>
-          {options.length > 0 ? (
-            <div className="space-y-2">
-              {options.map((opt: ProductOption) => (
-                <button key={opt.id} onClick={() => setSelectedOptions({ option: Number(opt.id) })}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
-                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50 dark:bg-[#121212]' : 'border-gray-200 dark:border-[#2A2A2A]'
-                  }`}>
-                  <span className="text-[12px] text-gray-900 dark:text-white">{opt.option_value}</span>
-                  {opt.price_adjustment !== 0 && (
-                    <span className="text-[11px] text-red-500 font-bold">
-                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
-              <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.optionPlaceholder')}</span>
-              <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
-            </button>
-          )}
-          <div className="flex items-center gap-2 mt-3">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
-            <span className="text-[11px] font-bold text-pink-500">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
-          </div>
-          {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
-          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
-        </section>
-        <div style={{ height: 8, background: '#F9FAFB' }} />
-
         {/* 공유 + 추천 링크 */}
         <div className="px-5 py-3 space-y-2">
           {isLoggedIn && (
@@ -692,17 +695,20 @@ export default function ProductDetailPage() {
         {/* v4: 안내정보는 하단 아코디언으로 이동 */}
 
         {/* v4 리뷰 섹션 (독립) */}
+        {/* 🛡️ 2026-05-24: 전체보기 토글 — 클릭 시 limit 100 으로 재요청 (사실상 전체). */}
         <div style={{ height: 8, background: '#F9FAFB' }} />
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">
               {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
-            <button className="flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-              {t('productDetail.viewAll', { defaultValue: '전체보기' })} <ChevronRight className="w-2.5 h-2.5" />
-            </button>
+            {!showAllReviews && (reviewSummary?.total_count ?? 0) > 5 && (
+              <button onClick={() => setShowAllReviews(true)} className="flex items-center gap-0.5 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 active:opacity-70">
+                {t('productDetail.viewAll', { defaultValue: '전체보기' })} <ChevronRight className="w-2.5 h-2.5" />
+              </button>
+            )}
           </div>
-          <ProductReviews productId={product.id} />
+          <ProductReviews productId={product.id} limit={showAllReviews ? 100 : 5} />
         </section>
 
         {/* v4 아코디언 — 3개 표준 섹션 */}
