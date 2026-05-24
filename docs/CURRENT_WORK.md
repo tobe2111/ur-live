@@ -1,7 +1,15 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-24 (교환권 flow 영구 fix + KT Alpha 진단 + admin/users 개선)
+**최종 업데이트**: 2026-05-24 (Quick Action FAB 시안 + 카카오 FAB 이관)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
+
+## ⏳ 사용자 결정 대기 (꼭 다음 세션에서 다시 물어볼 것)
+
+| 항목 | 보류 사유 / 필요한 결정 |
+|---|---|
+| **Quick Action FAB — 비셀러 '공구 열기' 클릭 처리** | (a) 셀러 가입 안내 모달 / (b) 셀러 가입 페이지 즉시 이동 / (c) 메뉴에서 항목 자체 숨김 / (d) "공구 참여하기" 같은 대체 액션 — 사용자 선택 필요. 결정 안 되면 본격 FAB 구현 진행 불가. 시안: `docs/design/quick-action-fab.md` |
+| **Quick Action FAB — 노출/숨김 페이지 확정** | 후보: 노출 = 홈 / 쇼핑 / 교환권 / 공구. 숨김 = 결제 / 라이브 시청 / 셀러·어드민·에이전시. 사용자 검토 필요. |
+| **카카오 FAB 복원 시점** | 현재 `featureFlags.kakaoFab=false` (commit `116ab58d`). Quick Action FAB 본격 가동 시 영구 삭제 vs 옵션으로 유지 결정. |
 
 ## ✅ 2026-05-24 세션 — 교환권 flow 영구 fix + KT Alpha 진단
 
