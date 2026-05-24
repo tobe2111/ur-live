@@ -476,6 +476,9 @@ export default function CheckoutPage() {
                 clientKey={serverClientKey}
                 variantPayment={serverVariantPayment}
                 variantAgreement={serverVariantAgreement}
+                customerEmail={localStorage.getItem('user_email') || undefined}
+                customerName={selectedAddress?.recipient_name || localStorage.getItem('user_name') || undefined}
+                customerMobilePhone={selectedAddress?.phone || undefined}
                 selectedAddressOk={isAllDealOnly || !!selectedAddress}
                 onBeforePayment={handleBeforePayment}
                 onTossPaymentSuccess={(orderId, paymentKey, amount) => {

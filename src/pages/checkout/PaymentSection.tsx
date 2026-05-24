@@ -45,6 +45,10 @@ interface Props {
   // 🛡️ 2026-05-24: server-side variantKey (TOSS_VARIANT_PAYMENT/AGREEMENT env)
   variantPayment?: string
   variantAgreement?: string
+  // 🛡️ 2026-05-24: Toss V2 SDK 권장 customer 정보 (가상계좌/퀵계좌 호환)
+  customerEmail?: string
+  customerName?: string
+  customerMobilePhone?: string
   selectedAddressOk: boolean
   onBeforePayment: (orderId: string) => Promise<void>
   onTossPaymentSuccess: (orderId: string, paymentKey: string, amount: number) => void
@@ -56,7 +60,8 @@ export default function PaymentSection({
   dealOnly = false,
   dealBalance, dealToUse, setDealToUse, totalBeforeDeal, totalAmount,
   payingWithDeals, onPayWithDeals,
-  userId, cartItems, totalShippingFee, clientKey, variantPayment, variantAgreement, selectedAddressOk,
+  userId, cartItems, totalShippingFee, clientKey, variantPayment, variantAgreement,
+  customerEmail, customerName, customerMobilePhone, selectedAddressOk,
   onBeforePayment, onTossPaymentSuccess, onStripePaymentSuccess,
 }: Props) {
   const { t } = useTranslation()
@@ -118,6 +123,9 @@ export default function PaymentSection({
             clientKey={clientKey}
             variantPayment={variantPayment}
             variantAgreement={variantAgreement}
+            customerEmail={customerEmail}
+            customerName={customerName}
+            customerMobilePhone={customerMobilePhone}
             cartItems={cartItems}
             totalAmount={Math.max(0, totalAmount)}
             shippingFee={totalShippingFee}

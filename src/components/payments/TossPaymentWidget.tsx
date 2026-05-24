@@ -12,6 +12,11 @@ interface TossPaymentWidgetProps {
    *  미설정 시 빈 문자열 -> Toss SDK 가 내부 default 사용. */
   variantPayment?: string
   variantAgreement?: string
+  /** 🛡️ 2026-05-24: Toss V2 SDK docs 권장 — customer 정보 (가상계좌/퀵계좌이체 호환).
+   *  미전달 시 결제 진행 가능하나, 가상계좌 안내・퀵계좌이체 폰 자동완성 불가. */
+  customerEmail?: string
+  customerName?: string
+  customerMobilePhone?: string  // '-' 없이 숫자만, 8-15자
   cartItems: Array<{
     id: string | number
     product_id: string | number
@@ -64,6 +69,9 @@ export function TossPaymentWidget({
   clientKey,
   variantPayment,
   variantAgreement,
+  customerEmail,
+  customerName,
+  customerMobilePhone,
   cartItems,
   totalAmount,
   shippingFee: _shippingFee,
@@ -212,21 +220,34 @@ export function TossPaymentWidget({
       setIsProcessing(true)
 
       const orderId = generateOrderId(userId)
-      const orderName = cartItems.length === 1
+      // 🛡️ 2026-05-24: Toss V2 SDK 사양 — orderName 최대 100자.
+      //   docs: "구매상품입니다. 예를 들면 '생수 외 1건' 같은 형식입니다. 최대 길이는 100자입니다."
+      const rawOrderName = cartItems.length === 1
         ? cartItems[0].product_name
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
+      const orderName = rawOrderName.length > 100 ? rawOrderName.slice(0, 97) + '...' : rawOrderName
 
       if (onBeforePayment) {
         await onBeforePayment(orderId)
       }
 
-      // widgets.requestPayment() — Toss 가 method/amount 자동 (setAmount 이미 호출).
+      // widgets.requestPayment() — Toss V2 SDK 사양:
+      //   필수: orderId, orderName
+      //   옵션: customerEmail (≤100), customerName (≤100), customerMobilePhone (숫자만 8-15)
+      //         successUrl/failUrl (origin 포함 권장)
+      //   docs: https://docs.tosspayments.com/sdk/v2/js#widgetsrequestpayment
       if (!widgetsRef.current) throw new Error('widgets 인스턴스 없음')
+      // customerMobilePhone — '-' 제거 + 8~15 숫자 검증 (Toss 사양).
+      const normalizedPhone = (customerMobilePhone || '').replace(/\D/g, '')
+      const validPhone = /^\d{8,15}$/.test(normalizedPhone) ? normalizedPhone : undefined
       await widgetsRef.current.requestPayment({
         orderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
+        ...(customerEmail && customerEmail.length <= 100 ? { customerEmail } : {}),
+        ...(customerName && customerName.length <= 100 ? { customerName: customerName.slice(0, 100) } : {}),
+        ...(validPhone ? { customerMobilePhone: validPhone } : {}),
       })
       // requestPayment 가 redirect — 아래 라인 실행 안 됨.
     } catch (err: unknown) {
@@ -246,7 +267,7 @@ export function TossPaymentWidget({
       }
       onPaymentError((errObj?.message as string) || t('payment.requestError', { defaultValue: '결제 요청 실패' }))
     }
-  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t, totalAmount])
+  }, [loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t, totalAmount, customerEmail, customerName, customerMobilePhone])
 
   return (
     <div className="space-y-3">
