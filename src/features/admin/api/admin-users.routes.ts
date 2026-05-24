@@ -39,20 +39,40 @@ interface UserDetailRow extends UserRow {
   review_count: number;
 }
 
+// 🛡️ 2026-05-24: 페이지네이션 + 정렬 (created_at / order_count / total_spent / review_count) + 검색 (이름/이메일/전화번호).
 adminUsersRoutes.get('/users', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     const page = Math.max(1, parseInt(c.req.query('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
     const offset = (page - 1) * limit;
-    const search = c.req.query('search');
+    const search = (c.req.query('search') || '').trim();
+    const sortRaw = c.req.query('sort') || 'created_at';
+    const orderRaw = c.req.query('order') || 'desc';
+
+    // 정렬 화이트리스트 — SQL injection 방어.
+    const sortMap: Record<string, string> = {
+      created_at: 'u.created_at',
+      order_count: 'order_count',
+      total_spent: 'total_spent',
+      review_count: 'review_count',
+      name: 'u.name',
+    };
+    const sortCol = sortMap[sortRaw] || 'u.created_at';
+    const orderDir = orderRaw === 'asc' ? 'ASC' : 'DESC';
 
     const conditions: string[] = [];
     const params: unknown[] = [];
-
     if (search) {
-      conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`);
+      // 이름 / 이메일 / 전화번호 — 전화번호는 숫자만 비교 (하이픈 무관).
+      const phoneDigits = search.replace(/[^\d]/g, '');
+      if (phoneDigits.length >= 4) {
+        conditions.push('(u.name LIKE ? OR u.email LIKE ? OR REPLACE(REPLACE(u.phone, \'-\', \'\'), \' \', \'\') LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`, `%${phoneDigits}%`);
+      } else {
+        conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
+      }
     }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -61,11 +81,28 @@ adminUsersRoutes.get('/users', cors(), async (c) => {
     );
     const total = countRows[0]?.count || 0;
 
-    const users = await executeQuery<UserRow>(DB,
-      `SELECT u.id, u.name, u.email, u.phone, u.created_at
+    // 🛡️ 정렬에 order_count / total_spent / review_count 가 포함되면 subquery JOIN 필수.
+    //   기본 created_at 정렬은 subquery 없이도 OK 지만, 일관성 위해 항상 JOIN.
+    //   D1 SQLite — LEFT JOIN + GROUP BY 로 aggregate; CAST(u.id AS TEXT) 매핑은 user_id 가 TEXT 일 수도 있는 환경 대응.
+    const users = await executeQuery<UserRow & { order_count: number; total_spent: number; review_count: number }>(DB,
+      `SELECT u.id, u.name, u.email, u.phone, u.created_at,
+              COALESCE(os.order_count, 0) AS order_count,
+              COALESCE(os.total_spent, 0) AS total_spent,
+              COALESCE(rs.review_count, 0) AS review_count
        FROM users u
+       LEFT JOIN (
+         SELECT user_id, COUNT(*) AS order_count, COALESCE(SUM(total_amount), 0) AS total_spent
+         FROM orders
+         WHERE status IN ('PAID','DONE','SHIPPING','DELIVERED')
+         GROUP BY user_id
+       ) os ON CAST(os.user_id AS TEXT) = CAST(u.id AS TEXT)
+       LEFT JOIN (
+         SELECT user_id, COUNT(*) AS review_count
+         FROM product_reviews
+         GROUP BY user_id
+       ) rs ON CAST(rs.user_id AS TEXT) = CAST(u.id AS TEXT)
        ${where}
-       ORDER BY u.created_at DESC
+       ORDER BY ${sortCol} ${orderDir}
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
@@ -73,7 +110,12 @@ adminUsersRoutes.get('/users', cors(), async (c) => {
     return c.json({
       success: true,
       data: users,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      // 🛡️ 2026-05-24: frontend 호환 — 기존 res.data.totalPages / res.data.total 직접 읽기.
+      totalPages: Math.ceil(total / limit),
+      total,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      sort: sortRaw,
+      order: orderRaw,
     });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] users list error:', err);
