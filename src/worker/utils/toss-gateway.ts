@@ -34,18 +34,117 @@ export interface TossConfirmInput {
 
 export interface TossConfirmSuccess {
   ok: true
-  data: {
-    paymentKey: string
-    orderId: string
-    totalAmount: number
-    method?: string
-    status: string
-    approvedAt?: string
-    receipt?: { url?: string }
-    [k: string]: unknown
-  }
+  data: TossPaymentObject
   /** 'ALREADY_PROCESSED_PAYMENT' 인 경우 idempotent 재시도. caller 가 CAS 로 한 번만 처리해야 함. */
   alreadyProcessed?: boolean
+}
+
+/**
+ * 🛡️ 2026-05-24: Toss V2 결제 승인 응답 객체 (Payment object) — docs 사양.
+ *   ref: https://docs.tosspayments.com/reference#결제-승인
+ *
+ *   상점이 결제 승인 후 받는 모든 필드. 사용한 결제수단에 해당하는 필드만 채워짐
+ *   (예: 카드 결제 → card 채워짐, virtualAccount/transfer/... null).
+ */
+export interface TossPaymentObject {
+  /** 가맹점 ID — 토스가 발급. */
+  mId?: string
+  /** 마지막 트랜잭션 키 — 결제 + 부분취소 등 각 액션마다 갱신. */
+  lastTransactionKey?: string
+  /** 결제 식별 키 — 최대 200자, 결제 승인/조회/취소에 사용. */
+  paymentKey: string
+  /** 주문번호 — 영문/숫자/-/_, 6-64자. 주문마다 고유. */
+  orderId: string
+  /** 구매상품명 — ≤100자. */
+  orderName?: string
+  /** 과세 제외 금액 (컵 보증금 등). */
+  taxExemptionAmount?: number
+  /** READY / IN_PROGRESS / WAITING_FOR_DEPOSIT / DONE / CANCELED / PARTIAL_CANCELED / ABORTED / EXPIRED */
+  status: string
+  /** 결제 요청 시각 — ISO 8601 with timezone. */
+  requestedAt?: string
+  /** 결제 승인 시각 — ISO 8601 with timezone. */
+  approvedAt?: string
+  /** 에스크로 적용 여부. */
+  useEscrow?: boolean
+  /** 문화비 (도서 / 공연 / 박물관) 여부. */
+  cultureExpense?: boolean
+  /** 카드 결제 정보 — 카드 결제 시만. */
+  card?: {
+    issuerCode?: string
+    acquirerCode?: string
+    /** 카드 번호 마스킹 형식 (예: '12345678****000*'). */
+    number?: string
+    installmentPlanMonths?: number
+    isInterestFree?: boolean
+    interestPayer?: string | null
+    approveNo?: string
+    useCardPoint?: boolean
+    /** '신용' / '체크' / '기프트' / '미확인' */
+    cardType?: string
+    /** '개인' / '법인' / '미확인' */
+    ownerType?: string
+    /** READY / REQUESTED / COMPLETED / CANCEL_REQUESTED / CANCELED */
+    acquireStatus?: string
+    amount?: number
+  } | null
+  /** 가상계좌 정보. */
+  virtualAccount?: Record<string, unknown> | null
+  /** 계좌이체 정보. */
+  transfer?: Record<string, unknown> | null
+  /** 휴대폰 결제 정보. */
+  mobilePhone?: Record<string, unknown> | null
+  /** 상품권 정보. */
+  giftCertificate?: Record<string, unknown> | null
+  /** 현금영수증 정보 (단건). */
+  cashReceipt?: Record<string, unknown> | null
+  /** 현금영수증 정보 (다건). */
+  cashReceipts?: Array<Record<string, unknown>> | null
+  /** 즉시 할인 정보. */
+  discount?: { amount: number } | null
+  /** 결제 취소 이력 배열. */
+  cancels?: Array<Record<string, unknown>> | null
+  /** 결제 시크릿 — 가상계좌 webhook 검증 등에 사용. */
+  secret?: string | null
+  /** 결제 타입 — NORMAL / BILLING / BRANDPAY */
+  type?: 'NORMAL' | 'BILLING' | 'BRANDPAY' | string
+  /** 간편결제 정보. */
+  easyPay?: {
+    /** 토스페이 / 네이버페이 / 카카오페이 등 */
+    provider: string
+    amount: number
+    discountAmount: number
+  } | null
+  /** 결제자 위치 국가 — ISO-3166 2자리 (예: 'KR'). */
+  country?: string
+  /** 결제 실패 정보 — status 실패 시. */
+  failure?: { code: string; message: string } | null
+  /** 부분취소 가능 여부 — 일부 결제수단/카드에서는 false. */
+  isPartialCancelable?: boolean
+  /** 영수증 URL — 사용자에게 표시 가능. */
+  receipt?: { url?: string } | null
+  /** 결제창 URL. */
+  checkout?: { url?: string } | null
+  /** 결제 통화 — KRW / USD (해외간편결제). */
+  currency?: string
+  /** 총 결제 금액 — client 가 보낸 amount 와 일치해야 함. */
+  totalAmount: number
+  /** 잔여 금액 — 부분취소 후. 초기엔 totalAmount 와 같음. */
+  balanceAmount?: number
+  /** 공급가액 (totalAmount - vat). */
+  suppliedAmount?: number
+  /** 부가세. */
+  vat?: number
+  /** 면세 금액. */
+  taxFreeAmount?: number
+  /** 결제 시 추가 메타데이터 (최대 5 key, key ≤40자, value ≤2000자). */
+  metadata?: Record<string, string> | null
+  /** 결제수단 — '카드' / '가상계좌' / '계좌이체' / '휴대폰' / '문화상품권' / '도서문화상품권' / '게임문화상품권' / '해외간편결제'. */
+  method?: string
+  /** Toss API 버전 (예: '2024-06-01'). */
+  version?: string
+  /** 미래 확장용 — docs 추가 필드 누락 시도 안전. */
+  [k: string]: unknown
 }
 
 export interface TossConfirmFailure {

@@ -24,8 +24,21 @@ export default function PaymentSuccessPage() {
     method?: string;
     status?: string;
     orders?: Array<{ payment_method?: string }>;
-    payment?: { method?: string };
+    // 🛡️ 2026-05-24 docs 일치 (TossPaymentObject):
+    //   결제 승인 응답의 핵심 필드들 — UI 표시 + 검증용.
+    payment?: {
+      paymentKey?: string;
+      orderId?: string;
+      method?: string;
+      totalAmount?: number;
+      approvedAt?: string;
+      receipt?: { url?: string };
+      easyPay?: { provider?: string };
+      card?: { number?: string; installmentPlanMonths?: number };
+    };
   } | null>(null)
+  // 🛡️ 2026-05-24 docs 권장: amount 변조 검증 — URL amount vs server totalAmount 불일치 시 경고.
+  const [amountMismatch, setAmountMismatch] = useState(false)
   // 🛡️ 2026-05-21 Phase B-2: 결제 직후 자체 예약 필요한 상품 prompt.
   //   booking_required=1 + 아직 appointment 미생성 — 사용자가 잊지 않게 CTA 표시.
   const [pendingBookings, setPendingBookings] = useState<Array<{ product_id: number; product_name: string; image_url: string | null; restaurant_name: string | null }>>([])
@@ -153,6 +166,20 @@ export default function PaymentSuccessPage() {
 
       const paymentData = response.data.data
       setOrderInfo(paymentData)
+
+      // 🛡️ 2026-05-24 docs 권장 검증: 'URL 쿼리 파라미터의 amount 값이 메서드 파라미터로 설정한 amount와 같은지
+      //   반드시 확인하고 결제 승인 API를 호출해서 결제를 완료하세요.'
+      //   server confirm 이 이미 검증 (총액 mismatch 시 400) 했지만 client-side 도 추가 안전망.
+      const serverTotal = Number(paymentData?.payment?.totalAmount)
+      if (Number.isFinite(serverTotal) && serverTotal !== parsedAmount) {
+        captureError(new Error('AMOUNT_MISMATCH_CLIENT'), {
+          flow: 'payment_confirm',
+          orderId,
+          urlAmount: parsedAmount,
+          serverAmount: serverTotal,
+        })
+        setAmountMismatch(true)
+      }
 
       // 🛡️ 2026-05-21 Phase B-2: 결제 직후 예약 필요한 상품 조회.
       //   booking_required=1 상품이 있으면 "예약 잡기" CTA 자동 노출 → 사용자 잊지 않게.
@@ -320,9 +347,36 @@ export default function PaymentSuccessPage() {
                   <div className="flex justify-between items-center gap-3">
                     <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">{t('paymentSuccess.paymentMethod')}</span>
                     <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f] dark:text-white">
-                      {orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
+                      {/* 🛡️ 2026-05-24 docs: '카드' / '가상계좌' / '계좌이체' / '휴대폰' / '문화상품권' / '해외간편결제'
+                          간편결제 (토스페이/네이버페이/카카오페이 등) 면 method='카드' + easyPay.provider 표시. */}
+                      {orderInfo.payment?.easyPay?.provider
+                        ? `${orderInfo.payment.easyPay.provider} (간편결제)`
+                        : orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
                     </span>
                   </div>
+
+                  {/* 🛡️ 2026-05-24 docs: card.number 마스킹 + 할부 표시 (카드 결제 시). */}
+                  {orderInfo.payment?.card?.number && (
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">카드 번호</span>
+                      <span className="text-xs sm:text-sm font-mono text-[#1d1d1f] dark:text-white">
+                        {orderInfo.payment.card.number}
+                        {orderInfo.payment.card.installmentPlanMonths && orderInfo.payment.card.installmentPlanMonths > 0
+                          ? ` · ${orderInfo.payment.card.installmentPlanMonths}개월 할부`
+                          : ' · 일시불'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 🛡️ 2026-05-24 docs: approvedAt (ISO 8601 with TZ) — 사용자 시각으로 변환. */}
+                  {orderInfo.payment?.approvedAt && (
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">승인 시각</span>
+                      <span className="text-xs sm:text-sm text-[#1d1d1f] dark:text-white">
+                        {new Date(orderInfo.payment.approvedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
                     <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
@@ -332,6 +386,33 @@ export default function PaymentSuccessPage() {
                   </div>
                 </div>
               </div>
+
+              {/* 🛡️ 2026-05-24 docs: amount 검증 결과 (이상 시 사용자 알림). */}
+              {amountMismatch && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-red-900 dark:text-red-300 leading-relaxed">
+                    ⚠️ 결제 금액 검증 경고가 있습니다. 고객센터로 문의해주세요.
+                  </p>
+                </div>
+              )}
+
+              {/* 🛡️ 2026-05-24 docs: receipt.url — 영수증 (사용자 ID/금액 등 안내, Toss 호스팅). */}
+              {orderInfo?.payment?.receipt?.url && (
+                <a
+                  href={orderInfo.payment.receipt.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white">📄 영수증 보기</p>
+                      <p className="text-[10px] sm:text-xs text-[#6e6e73] dark:text-gray-400 mt-0.5">토스페이먼츠 호스팅</p>
+                    </div>
+                    <span className="text-[#007aff] text-xs">→</span>
+                  </div>
+                </a>
+              )}
 
               {/* 안내 메시지 */}
               {orderInfo?.status === 'demo' ? (
