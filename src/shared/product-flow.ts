@@ -64,7 +64,7 @@ export const FLOW_CONFIG: Record<ProductFlow, {
   buttonLabel: string
 }> = {
   voucher_deal: {
-    detailPath: id => `/group-buy/${id}`,
+    detailPath: id => `/vouchers/${id}`,
     apiPath: id => `/api/group-buy/join/${id}`,
     paymentMethod: 'deal',
     successPath: '/my-vouchers',

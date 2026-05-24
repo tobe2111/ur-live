@@ -135,7 +135,15 @@ export default function GroupBuyDetailPage() {
     ]).then(([detailRes, partRes]) => {
       if (cancelled) return
       if (detailRes.data?.success) {
-        setDetail(detailRes.data.data)
+        // 🛡️ 2026-05-23: voucher 상품이 /group-buy/:id 로 들어오면 /vouchers/:id 로 자동 redirect.
+        //   옛 URL (DB / 알림 / 공유 링크) 호환 — 사용자는 자동으로 올바른 페이지 도달.
+        const productData = detailRes.data.data
+        const { flow, config } = resolveProductFlow(productData)
+        if (flow === 'voucher_deal') {
+          navigate(config.detailPath(productData.id), { replace: true })
+          return
+        }
+        setDetail(productData)
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {
