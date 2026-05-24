@@ -685,15 +685,13 @@ paymentsRouter.get('/client-key', async (c) => {
   const { decideTossFlow } = await import('../utils/toss-gateway');
   const tossKey = (c.env as { TOSS_CLIENT_KEY?: string }).TOSS_CLIENT_KEY || '';
   const { flow, flowReason } = decideTossFlow(tossKey);
-  // 🛡️ 2026-05-24 critical fix: 이전 'success: flow === redirect' 는 항상 false
-  //   (decideTossFlow 는 'widget' or 'invalid' 만 반환 — 'redirect' 절대 안 옴).
-  //   결과: 프론트가 server clientKey 무시하고 build-time VITE_TOSS_CLIENT_KEY 로 fallback.
-  //   사용자가 Cloudflare 에서 TOSS_CLIENT_KEY 만 라이브로 바꿔도 테스트 모드 표시되던 원인.
-  //   영구 fix: 키만 있으면 success (flow !== 'invalid').
-  // 🛡️ 추가: prefix 검증 — 사용자가 키 종류 한눈에 확인.
   const isTest = /^test_/.test(tossKey)
   const isLive = /^live_/.test(tossKey)
-  // 🛡️ CDN/edge cache 차단 — 키 바꾼 직후 즉시 반영되어야 함.
+  // 🛡️ 2026-05-24 v2: variantKey 도 server-side 진실원천 — Cloudflare env 변경 시 즉시 반영
+  //   (build 재배포 불필요). 콘솔 variant 이름 바뀔 때마다 빌드 안 해도 됨.
+  //   미설정 시 빈 문자열 → 클라이언트가 variantKey 안 보냄 → Toss SDK 가 'DEFAULT' 자동 사용.
+  const variantPayment = (c.env as { TOSS_VARIANT_PAYMENT?: string }).TOSS_VARIANT_PAYMENT || ''
+  const variantAgreement = (c.env as { TOSS_VARIANT_AGREEMENT?: string }).TOSS_VARIANT_AGREEMENT || ''
   c.header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
   c.header('Pragma', 'no-cache')
   return c.json({
@@ -702,10 +700,12 @@ paymentsRouter.get('/client-key', async (c) => {
       clientKey: tossKey,
       flow,
       flow_reason: flowReason,
-      // 디버그 — UI 에 직접 표시 가능 (clientKey 는 public 정보, masked X).
       key_type: isLive ? 'live' : isTest ? 'test' : 'unknown',
       key_prefix: tossKey.slice(0, 8),
       key_length: tossKey.length,
+      // 🛡️ variantKey 진실원천 (server-side).
+      variant_payment: variantPayment,
+      variant_agreement: variantAgreement,
     },
   });
 });
