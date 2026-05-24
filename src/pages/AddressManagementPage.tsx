@@ -235,106 +235,142 @@ export default function AddressManagementPage() {
         </div>
       </div>
 
-      <main className="ur-content-narrow px-4 lg:px-8 py-6">
-        {/* 새 배송지 추가 버튼 */}
-        <button
-          onClick={openAddForm}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 transition-all hover:border-pink-500/50 hover:text-pink-500 mb-5 active:scale-[0.98] touch-manipulation"
-        >
-          <Plus className="w-5 h-5" />
-          <span>{t('address.addNew')}</span>
-        </button>
+      {/* 🛡️ 2026-05-24: UI 개선 — 디자인 시스템 (v4 wallet) 톤 일관 적용.
+            - Hero 카운트 + pink 그라데이션 CTA
+            - 카드: 기본 배송지 좌측 그라데이션 액센트 bar + 큰 뱃지
+            - label emoji (집/회사/기타)
+            - Empty state — 큰 일러스트 + 명확한 CTA */}
+      <main className="ur-content-narrow px-4 lg:px-8 py-5">
+        {/* Hero 카운트 + 추가 CTA */}
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">등록된 배송지</p>
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
+              {addresses.length}<span className="text-[14px] font-semibold text-gray-500 dark:text-gray-400 ml-1">개</span>
+            </p>
+          </div>
+          <button
+            onClick={openAddForm}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('address.addNew')}</span>
+          </button>
+        </div>
 
         {/* 배송지 목록 */}
         {addresses.length === 0 ? (
-          <div className="text-center py-16">
-            <MapPin className="w-14 h-14 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-[15px] text-gray-900 dark:text-white">{t('address.empty')}</p>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">{t('address.emptySub')}</p>
+          <div className="text-center py-14 px-6 rounded-2xl bg-gray-50 dark:bg-[#121212]">
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center">
+              <MapPin className="w-10 h-10 text-pink-400" strokeWidth={1.5} />
+            </div>
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('address.empty')}</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">{t('address.emptySub')}</p>
+            <button
+              onClick={openAddForm}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[13px] font-bold"
+            >
+              <Plus className="w-4 h-4" />
+              {t('address.addNew')}
+            </button>
           </div>
         ) : (
           <div className="space-y-3">
-            {addresses.map((address) => (
-              <div
-                key={address.id}
-                className={`border rounded-2xl p-4 transition-all ${
-                  address.is_default === 1
-                    ? 'border-pink-500/40 bg-pink-50/30'
-                    : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A]'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                      {address.label && (
-                        <span className="rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-bold text-white">
-                          {address.label}
-                        </span>
-                      )}
-                      <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{address.recipient_name}</p>
-                      {address.is_default === 1 && (
-                        <span className="rounded-full bg-pink-50 dark:bg-pink-900/20 px-2 py-0.5 text-[11px] font-semibold text-pink-500 dark:text-pink-400">
-                          기본
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-1">{address.phone}</p>
-                    <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed">
-                      [{address.postal_code}] {address.address}
-                    </p>
-                    {address.address_detail && (
-                      <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed mt-0.5">
-                        {address.address_detail}
-                      </p>
-                    )}
-                    {(address.delivery_note || address.entry_method === 'password' || address.entry_method === 'intercom' || address.entry_method === 'pickup_box') && (
-                      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#1A1A1A] space-y-0.5">
-                        {address.entry_method && address.entry_method !== 'free' && (
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400">
-                            <span className="font-semibold text-gray-700 dark:text-gray-200">출입 · </span>
-                            {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
-                            {address.entry_method === 'password' && address.entry_code && (
-                              <span className="text-gray-400 dark:text-gray-500"> (비번 등록됨)</span>
-                            )}
+            {addresses.map((address) => {
+              const isDefault = address.is_default === 1
+              const labelEmoji = address.label === '집' || address.label === 'home' ? '🏠'
+                : address.label === '회사' || address.label === 'office' ? '🏢'
+                : address.label ? '📍' : ''
+              return (
+                <div
+                  key={address.id}
+                  className={`relative overflow-hidden rounded-2xl transition-all ${
+                    isDefault
+                      ? 'bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/15 dark:to-rose-900/15 border border-pink-200 dark:border-pink-900/40 shadow-sm'
+                      : 'bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]'
+                  }`}
+                >
+                  {/* 기본 배송지 좌측 그라데이션 액센트 bar */}
+                  {isDefault && (
+                    <div aria-hidden className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-pink-500 to-rose-500" />
+                  )}
+                  <div className="p-4 pl-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {/* 라벨 + 이름 + 기본 뱃지 */}
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          {address.label && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2.5 py-0.5 text-[11px] font-bold">
+                              {labelEmoji} {address.label}
+                            </span>
+                          )}
+                          <p className="text-[16px] font-bold text-gray-900 dark:text-white">{address.recipient_name}</p>
+                          {isDefault && (
+                            <span className="rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white px-2.5 py-0.5 text-[10px] font-extrabold tracking-wide">
+                              기본 배송지
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1.5 font-mono">{address.phone}</p>
+                        <p className="text-[14px] text-gray-800 dark:text-gray-100 leading-relaxed">
+                          <span className="text-gray-400 dark:text-gray-500 text-[12px] font-mono mr-1">[{address.postal_code}]</span>
+                          {address.address}
+                        </p>
+                        {address.address_detail && (
+                          <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed mt-0.5">
+                            {address.address_detail}
                           </p>
                         )}
-                        {address.delivery_note && (
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2">
-                            <span className="font-semibold text-gray-700 dark:text-gray-200">메모 · </span>
-                            {address.delivery_note}
-                          </p>
+                        {(address.delivery_note || (address.entry_method && address.entry_method !== 'free')) && (
+                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2A2A2A] space-y-1">
+                            {address.entry_method && address.entry_method !== 'free' && (
+                              <p className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A1A1A] font-semibold">출입</span>
+                                {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
+                                {address.entry_method === 'password' && address.entry_code && (
+                                  <span className="text-gray-400 dark:text-gray-500">· 비번 등록됨</span>
+                                )}
+                              </p>
+                            )}
+                            {address.delivery_note && (
+                              <p className="text-[12px] text-gray-600 dark:text-gray-300 line-clamp-2 flex items-start gap-1.5">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A1A1A] font-semibold flex-shrink-0">메모</span>
+                                <span className="flex-1">{address.delivery_note}</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {!isDefault && (
+                          <button
+                            onClick={() => handleSetDefault(address.id)}
+                            className="mt-3 text-[12px] font-bold text-pink-500 hover:text-pink-600 inline-flex items-center gap-1"
+                          >
+                            ⭐ 기본 배송지로 설정
+                          </button>
                         )}
                       </div>
-                    )}
-                    {address.is_default === 0 && (
-                      <button
-                        onClick={() => handleSetDefault(address.id)}
-                        className="mt-2 text-[13px] font-semibold text-pink-500 hover:text-pink-600 transition-colors"
-                      >
-                        기본으로 설정
-                      </button>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => openEditForm(address)}
-                      aria-label={t('address.ariaEdit')}
-                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-[#121212]"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteAddress(address.id)}
-                      aria-label={t('address.ariaDelete')}
-                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-[#121212]"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => openEditForm(address)}
+                          aria-label={t('address.ariaEdit')}
+                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-xl hover:bg-white/60 dark:hover:bg-white/[0.06]"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAddress(address.id)}
+                          aria-label={t('address.ariaDelete')}
+                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-white/60 dark:hover:bg-white/[0.06]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </main>

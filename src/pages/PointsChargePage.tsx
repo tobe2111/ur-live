@@ -36,7 +36,8 @@ export default function PointsChargePage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   // 공통 hook — 5분 stale + localStorage initialData + dedup.
-  const { data: balance = 0 } = useBalance()
+  // 🛡️ 2026-05-24: 충전 페이지는 잔액 정확성 critical — fresh fetch (0s stale + focus refetch).
+  const { data: balance = 0 } = useBalance({ fresh: true })
   const [options, setOptions] = useState<ChargeOption[]>([])
   const [selected, setSelected] = useState<ChargeOption | null>(null)
   const [loading, setLoading] = useState(true)

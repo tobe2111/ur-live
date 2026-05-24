@@ -122,6 +122,9 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
     // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
     ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
+    // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.
+    //   신규 활성 상품이 들어오면 최대 1시간 안에 ★ 노출. idempotent (review_count>0 skip).
+    ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
   }
 
   if (cron === '0 18 * * *') {

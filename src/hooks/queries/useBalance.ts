@@ -15,7 +15,12 @@ import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'balance'
 
-export function useBalance() {
+// 🛡️ 2026-05-24: 잔액 표시 정확성 영구 fix (사용자 신고 "/points/charge 잔액 안 맞아").
+//   기본 옵션 = 안전한 캐시 (5분 stale). 단 fresh=true 옵션으로 짧은 stale 도 가능.
+//   기본 hook 도 refetchOnMount 활성 → cache stale 일 때 fresh fetch + cache 가 0 이라
+//   초기 잘못된 0 표시 방지.
+export function useBalance(opts?: { fresh?: boolean }) {
+  const fresh = opts?.fresh === true
   return useQuery<number>({
     queryKey: queryKeys.balance(),
     queryFn: () =>
@@ -29,9 +34,12 @@ export function useBalance() {
       }).catch(() => readCache<number>(CACHE_KEY, 0)),
     initialData: () => readCache<number>(CACHE_KEY, 0),
     enabled: isLoggedInSync(),
-    staleTime: 5 * 60 * 1000,
+    // fresh=true (PointsChargePage) — 0초 stale, mount 마다 refetch.
+    // 기본 — 60초 stale (이전 5분 너무 길어 충전 직후 잔액 반영 X 사고).
+    staleTime: fresh ? 0 : 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnMount: fresh ? 'always' : true,
+    refetchOnWindowFocus: fresh ? true : false,
   })
 }
 
