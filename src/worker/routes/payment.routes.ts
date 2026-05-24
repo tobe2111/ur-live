@@ -149,15 +149,31 @@ paymentsRouter.post('/confirm', async (c) => {
     }
 
     // DB에 저장된 금액으로 검증 (금액 변조 방지)
+    // 🛡️ 2026-05-24: 진단 강화 — 실제 mismatch 시 server 가 본 값 / client 가 보낸 값 / 각 order 의
+    //   total_amount 를 응답에 포함 (admin 디버깅용). production 에서는 _debug 표시 무방
+    //   (사용자가 직접 조작할 수 없는 server-side 계산값이므로 보안 영향 X).
     const totalAmount = orders.reduce((sum, o) => sum + o.total_amount, 0);
     if (totalAmount !== amount) {
-      console.error('[PAYMENTS] Amount mismatch — payment amount validation failed');
-      // 🚨 fraud signal — 금액 변조 시도
+      const orderBreakdown = orders.map(o => ({ id: o.id, num: o.order_number, total: o.total_amount, status: o.status }));
+      console.error('[PAYMENTS] Amount mismatch', { expected: totalAmount, received: amount, orderNumber, orders: orderBreakdown });
       captureException(new Error('PAYMENT_AMOUNT_MISMATCH'), {
         tags: { area: 'payment', kind: 'amount_mismatch', severity: 'warning' },
-        extra: { expected: totalAmount, received: amount, orderNumber, userId },
+        extra: { expected: totalAmount, received: amount, orderNumber, userId, orderBreakdown },
       }).catch(swallow('payment:sentry-amount-mismatch'));
-      return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400);
+      return c.json({
+        success: false,
+        error: '결제 금액이 일치하지 않습니다',
+        code: 'AMOUNT_MISMATCH',
+        _debug: {
+          db_total: totalAmount,
+          client_amount: amount,
+          diff: amount - totalAmount,
+          orders: orderBreakdown,
+          hint: orders.length > 1
+            ? '같은 order_number 의 여러 row 가 SUM. seller 별로 order 가 분리됐을 수 있음. CheckoutPage 가 각 seller 마다 같은 discount 를 전송 → 각 order 의 total_amount 가 클라이언트 SUM 과 불일치.'
+            : '단일 order 의 total_amount 와 client amount 가 다름. 쿠폰/딜 차감이 server-side 에서 다르게 적용됐을 가능성. /api/orders POST 시 discount_amount 가 정확한지 확인.',
+        },
+      }, 400);
     }
 
     // Call Toss Payments API to confirm
