@@ -52,7 +52,7 @@ export async function sendEmail(
   const { to, subject, html } = params
 
   if (!apiKey) {
-    console.warn('[Email] RESEND_API_KEY not configured, skipping email')
+    console.warn('[Email/config] RESEND_API_KEY not configured, skipping send')
     return { success: false, error: 'API key not configured' }
   }
 

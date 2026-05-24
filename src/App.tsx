@@ -52,6 +52,8 @@ const SellerOverlayPage = lazy(() => import('./pages/SellerOverlayPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
+// 🛡️ 2026-05-24: 딜 사용 내역 페이지 (사용자 요청 — 충전/사용/적립/환불 히스토리)
+const MyDealHistoryPage = lazy(() => import('./pages/MyDealHistoryPage'))
 const TossWidgetPayPage = lazy(() => import('./pages/TossWidgetPayPage'))
 const TossDebugPage = lazy(() => import('./pages/TossDebugPage'))
 const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
@@ -562,6 +564,7 @@ function AppContent() {
             {/* 딜 포인트 충전 */}
             <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />
             <Route path="/points/charge/success" element={<ErrorBoundary><PointsChargeSuccessPage /></ErrorBoundary>} />
+            <Route path="/my-deal-history" element={<ProtectedRoute requireUser><MyDealHistoryPage /></ProtectedRoute>} />
             <Route path="/points/charge/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
             <Route path="/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
 

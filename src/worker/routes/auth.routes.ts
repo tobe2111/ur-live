@@ -163,10 +163,10 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
            WHERE id = ?`,
           [newHash, user.id]
         );
-        console.info('[AUTH] Migrated password hash to PBKDF2:', { userId: user.id });
+        console.info('[AUTH] hash migrated to PBKDF2 for user:', user.id);
       } catch (migrateErr) {
         // 마이그레이션 실패는 로그인 자체를 막지 않음 (다음 로그인에 재시도)
-        console.error('[AUTH] Password migration failed (non-fatal):', migrateErr);
+        console.error('[AUTH] hash migration failed (non-fatal):', (migrateErr as Error)?.message || String(migrateErr));
       }
     }
 
@@ -295,8 +295,12 @@ authRouter.patch('/profile', requireAuth(), async (c) => {
 });
 
 // POST /api/auth/change-password — 비밀번호 변경
-authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 5, windowSec: 3600 }), authMiddleware, async (c) => {
-  const { id } = c.get('user');
+// 🛡️ 2026-05-24: requireAuth() — Bearer + 세션 쿠키 둘 다 허용 (카카오 사용자 호환).
+//   password 없는 사용자는 안에서 별도 처리됨 (current_password 검증 실패).
+authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 5, windowSec: 3600 }), requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const id = user.id;
   const db = c.env.DB;
   try {
     const body = await c.req.json<{ current_password: string; new_password: string }>();
@@ -324,14 +328,14 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
     // 🛡️ 2026-05-22: production 정보 누출 방지 — UNIQUE constraint 등 DB 메시지 노출 X.
-    console.error('[auth/change-password] failed:', err);
+    console.error('[auth/pwd] failed:', (err as Error)?.message || String(err));
     return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다' }, 500);
   }
 });
 
 // GET /api/auth/validate — 세션 유효성 검증 (useSessionValidation.ts에서 호출)
 // Authorization: Bearer <token> 헤더가 유효하면 200, 없거나 만료되면 401 반환
-authRouter.get('/validate', authMiddleware, async (c) => {
+authRouter.get('/validate', requireAuth(), async (c) => {
   const user = c.get('user');
   return c.json({ success: true, data: { valid: true, user } });
 });

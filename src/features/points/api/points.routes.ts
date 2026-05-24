@@ -494,7 +494,9 @@ async function executeDonate(
   };
 }
 
-// ── GET /api/points/history ──────────────────────────────────────────
+// ── GET /api/points/history?limit=&offset=&type= ─────────────────────
+// 🛡️ 2026-05-24: 페이지네이션 + 타입 필터 추가 (이전: LIMIT 50 fixed, 필터 X).
+//   사용자 요청 — /my-deal-history 페이지에서 전체 히스토리 탐색.
 pointsRoutes.get('/history', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -502,13 +504,35 @@ pointsRoutes.get('/history', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
   const userId = String(user.id);
-  const { results } = await DB.prepare(
-    'SELECT id, type, amount, points_amount, balance_after, description, created_at FROM point_transactions WHERE user_id = ? ORDER BY id DESC LIMIT 50'
-  ).bind(userId).all();
+  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 50));
+  const offset = Math.max(0, Number(c.req.query('offset')) || 0);
+  const type = c.req.query('type') || ''; // 'charge'|'donate'|'refund'|'referral_bonus' 등
 
-  return c.json({ success: true, data: results ?? [] });
+  const conditions: string[] = ['user_id = ?'];
+  const params: unknown[] = [userId];
+  if (type && /^[a-z_]+$/.test(type)) {
+    conditions.push('type = ?');
+    params.push(type);
+  }
+
+  const countRow = await DB.prepare(
+    `SELECT COUNT(*) AS c FROM point_transactions WHERE ${conditions.join(' AND ')}`
+  ).bind(...params).first<{ c: number }>().catch(() => ({ c: 0 }));
+  const total = Number(countRow?.c) || 0;
+
+  const { results } = await DB.prepare(
+    `SELECT id, type, amount, points_amount, balance_after, description, order_id, created_at
+     FROM point_transactions
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY id DESC LIMIT ? OFFSET ?`
+  ).bind(...params, limit, offset).all();
+
+  return c.json({
+    success: true,
+    data: results ?? [],
+    pagination: { total, limit, offset, has_more: offset + (results?.length || 0) < total },
+  });
 });
 
 // ── GET /api/points/charge-options ───────────────────────────────────

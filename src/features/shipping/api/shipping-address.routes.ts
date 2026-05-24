@@ -130,7 +130,7 @@ shippingAddressRoutes.get('/', requireAuth(), async (c) => {
     return c.json(successResponse(addresses));
 
   } catch (error: any) {
-    console.error('[Shipping] Get addresses error:', error);
+    console.error('[Shipping/GET] error:', (error as Error)?.message || String(error));
     return c.json(internalServerErrorResponse('Failed to get shipping addresses'), 500);
   }
 });
@@ -211,7 +211,7 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
     return c.json(createdResponse(newAddress, 'Shipping address added'), 201);
 
   } catch (error: any) {
-    console.error('[Shipping] Add address error:', error);
+    console.error('[Shipping/POST] error:', (error as Error)?.message || String(error));
     
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
@@ -309,7 +309,7 @@ shippingAddressRoutes.put('/:id', requireAuth(), async (c) => {
     return c.json(successResponse(updatedAddress, 'Shipping address updated'));
 
   } catch (error: any) {
-    console.error('[Shipping] Update address error:', error);
+    console.error('[Shipping/PATCH] error:', (error as Error)?.message || String(error));
     
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
@@ -356,7 +356,7 @@ shippingAddressRoutes.delete('/:id', requireAuth(), async (c) => {
     return c.json(successResponse(null, 'Shipping address deleted'));
 
   } catch (error: any) {
-    console.error('[Shipping] Delete address error:', error);
+    console.error('[Shipping/DELETE] error:', (error as Error)?.message || String(error));
     return c.json(internalServerErrorResponse('Failed to delete shipping address'), 500);
   }
 });

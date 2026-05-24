@@ -185,7 +185,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     
     await sendResetFn(auth, email);
   } catch (error) {
-    console.error('[Firebase Auth] ❌ Password reset email failed:', error);
+    console.error('[Firebase Auth] reset failed:', (error as Error)?.message || String(error));
     throw error;
   }
 }
