@@ -37,11 +37,14 @@ interface VoucherProduct {
   name: string
   price: number
   original_price?: number
+  discount_rate?: number
   image_url?: string
   brand_name?: string | null
   brand_icon_url?: string | null
   category?: string | null
   sold_count?: number
+  avg_rating?: number
+  review_count?: number
 }
 
 interface BrandSummary {
@@ -397,40 +400,65 @@ export default function VouchersPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6">
-              {products.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => navigate(`/vouchers/${p.id}`)}
-                  className="text-left active:scale-[0.98] transition-transform w-full block"
-                >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-500/10 dark:to-yellow-500/10 rounded-xl border border-amber-100 dark:border-amber-500/20">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Gift className="w-10 h-10 text-amber-300 dark:text-amber-500/50" />
-                      </div>
-                    )}
-                    <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 bg-amber-500 text-white text-[9px] font-extrabold">
-                      🎁 교환권
-                    </span>
-                    <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
-                      <Heart className="w-3 h-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    {p.brand_name && (
-                      <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">{p.brand_name}</p>
-                    )}
-                    <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2">{p.name}</p>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}</span>
-                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">딜</span>
+              {products.map(p => {
+                // 🛡️ 2026-05-23: BrowsePage 카드와 동일 디자인 (사용자 요청).
+                //   단위만 "원" → "딜". 원가 strikethrough + 할인% + 별점 + 구매수.
+                const hasStrike = !!p.original_price && p.original_price > p.price
+                const discountRate = hasStrike
+                  ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
+                  : (p.discount_rate || 0)
+                const rating = Number(p.avg_rating || 0)
+                const reviewCount = Number(p.review_count || 0)
+                const soldCount = Number(p.sold_count || 0)
+                const soldLabel = soldCount >= 10000
+                  ? `${(soldCount / 10000).toFixed(1).replace(/\.0$/, '')}만`
+                  : soldCount >= 1000
+                  ? `${(soldCount / 1000).toFixed(1).replace(/\.0$/, '')}천`
+                  : String(soldCount)
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => navigate(`/vouchers/${p.id}`)}
+                    className="text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
+                  >
+                    <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Gift className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </button>
-              ))}
+                    <div className="mt-2 flex flex-col flex-1">
+                      {p.brand_name && (
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold leading-none mb-1">[{p.brand_name}]</p>
+                      )}
+                      <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{p.name}</p>
+                      <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+                        {hasStrike ? `${formatNumber(p.original_price!)}딜` : ' '}
+                      </p>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        {discountRate > 0 && (
+                          <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
+                        )}
+                        <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}딜</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        {rating > 0 && (
+                          <span className="inline-flex items-center gap-0.5">
+                            <span className="text-yellow-500">★</span>
+                            <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+                            {reviewCount > 0 && <span className="text-gray-400">({reviewCount})</span>}
+                          </span>
+                        )}
+                        {soldCount > 0 && <span>구매 {soldLabel}</span>}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
             {/* 무한 스크롤 sentinel */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
