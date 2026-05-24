@@ -22,12 +22,28 @@ export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'DELETED';
 export type WebhookStatus = 'RECEIVED' | 'PROCESSED' | 'FAILED' | 'SKIPPED';
 
 // ---- Toss Payments ----
+// V2 공식 이벤트 (docs.tosspayments.com/guides/webhook).
+// legacy V1 이벤트도 fallback 으로 받음 (옛 등록 webhook 호환).
 export type TossEventType =
+  // V2 표준 (UPPER_SNAKE_CASE)
+  | 'PAYMENT_STATUS_CHANGED'        // 결제 상태 변경 (DONE/CANCELED/PARTIAL_CANCELED/ABORTED/EXPIRED/WAITING_FOR_DEPOSIT 등)
+  | 'DEPOSIT_CALLBACK'              // 가상계좌 입금/환불
+  | 'CANCEL_STATUS_CHANGED'         // 결제 취소 상태 변경
+  | 'METHOD_UPDATED'                // 브랜드페이 결제수단 변경
+  | 'CUSTOMER_STATUS_CHANGED'       // 브랜드페이 고객 상태 변경
+  | 'ORDER_PAYMENT_STATUS_CHANGED'  // 링크페이 주문 상태 변경
+  // 지급대행 (lowercase.dotted)
+  | 'payout.changed'
+  | 'seller.changed'
+  // Legacy V1 (이전 등록 webhook 호환)
   | 'payment.confirmed'
   | 'payment.cancelled'
+  | 'payment.partial_canceled'
   | 'payment.failed'
   | 'payment.virtual_account_issued'
-  | 'payment.virtual_account_deposited';
+  | 'payment.virtual_account_deposited'
+  | 'refund_completed'
+  | 'dispute_raised';
 
 export type TossPaymentMethod =
   | 'CARD'
@@ -38,22 +54,68 @@ export type TossPaymentMethod =
   | 'CULTURE_GIFT_CERTIFICATE'
   | 'FOREIGN_EASY_PAY';
 
+/**
+ * V2 webhook 페이로드.
+ * data 필드는 docs 의 Payment object (28+ 필드) 와 동일 — 이벤트 종류에 따라 일부 필드만 채워진다.
+ * 신규 필드는 worker 코드에서 안전하게 optional 로 접근. (index signature 로 forward-compat)
+ */
 export interface TossWebhookPayload {
   eventType: TossEventType;
-  createdAt: string;
+  createdAt?: string;
   data: {
+    // ── 식별/공통 ─────────────────────────────────
     paymentKey: string;
-    orderId: string;          // our order_number
-    orderName: string;
-    status: string;
+    orderId: string;          // 우리 order_number
+    orderName?: string;
+    mId?: string;
+    version?: string;
+    type?: 'NORMAL' | 'BILLING' | 'BRANDPAY' | string;
+    lastTransactionKey?: string;
+    // ── 상태 ─────────────────────────────────────
+    status: string;           // READY/IN_PROGRESS/WAITING_FOR_DEPOSIT/DONE/CANCELED/PARTIAL_CANCELED/ABORTED/EXPIRED
+    isPartialCancelable?: boolean;
+    // ── 금액 ─────────────────────────────────────
     totalAmount: number;
-    currency: string;
-    method?: TossPaymentMethod;
+    balanceAmount?: number;
+    suppliedAmount?: number;
+    vat?: number;
+    taxFreeAmount?: number;
+    taxExemptionAmount?: number;
+    currency?: string;
+    // ── 결제수단 ─────────────────────────────────
+    method?: TossPaymentMethod | string;
+    card?: Record<string, unknown> | null;
+    virtualAccount?: Record<string, unknown> | null;
+    transfer?: Record<string, unknown> | null;
+    mobilePhone?: Record<string, unknown> | null;
+    giftCertificate?: Record<string, unknown> | null;
+    easyPay?: Record<string, unknown> | null;
+    discount?: { amount: number } | null;
+    // ── 영수증/체크아웃 ───────────────────────────
+    receipt?: { url?: string } | null;
+    checkout?: { url?: string } | null;
+    cashReceipt?: Record<string, unknown> | null;
+    cashReceipts?: Array<Record<string, unknown>> | null;
+    // ── 시간 ─────────────────────────────────────
     requestedAt?: string;
     approvedAt?: string;
     cancelledAt?: string;
+    // ── 실패 ─────────────────────────────────────
+    failure?: { code: string; message: string } | null;
+    /** @deprecated V1 호환 — V2 는 failure.code / failure.message */
     failureCode?: string;
+    /** @deprecated V1 호환 — V2 는 failure.code / failure.message */
     failureMessage?: string;
+    // ── 취소 ─────────────────────────────────────
+    cancels?: Array<Record<string, unknown>> | null;
+    // ── 부가 ─────────────────────────────────────
+    useEscrow?: boolean;
+    cultureExpense?: boolean;
+    country?: string;
+    secret?: string | null;   // 가상계좌 secret (매핑 검증용)
+    metadata?: Record<string, string> | null;
+    // forward-compat (신규 필드 자동 수용)
+    [k: string]: unknown;
   };
 }
 
