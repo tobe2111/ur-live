@@ -1,4 +1,14 @@
 import type { D1Database } from '@cloudflare/workers-types';
+
+// 🛡️ 2026-05-24: 카카오 phone_number 정규화 — '+82 10-1234-5678' → '01012345678'.
+//   미동의/잘못된 형식이면 null 반환 (NULL safe — 기존 phone 보존 책임은 호출자).
+function normalizeKakaoPhone(raw: string | undefined): string | null {
+  if (!raw) return null
+  let p = raw.replace(/[^\d]/g, '')
+  if (p.startsWith('82')) p = '0' + p.slice(2)
+  return /^01\d{8,9}$/.test(p) ? p : null
+}
+
 /**
  * Kakao OAuth 2.0 인증 서비스
  * 
@@ -143,7 +153,6 @@ export class KakaoAuthService {
           email: data.kakao_account?.email,
           // @ts-expect-error — name 필드는 type 정의에 없을 수 있음
           name: data.kakao_account?.name,
-          // @ts-expect-error — phone_number 필드도
           phone_number: data.kakao_account?.phone_number,
           profile: data.kakao_account?.profile,
         },
@@ -156,15 +165,18 @@ export class KakaoAuthService {
     
     const kakaoUser: KakaoUser = {
       kakaoId: data.id.toString(),
-      name: data.properties?.nickname || 
-            data.kakao_account?.profile?.nickname || 
+      name: data.properties?.nickname ||
+            data.kakao_account?.profile?.nickname ||
             'Kakao User',
       email: data.kakao_account?.email,
       profileImage: (data.properties?.profile_image ||
                     data.kakao_account?.profile?.profile_image_url || '')
                     .replace(/^http:\/\//, 'https://'),
+      // 🛡️ 2026-05-24: 카카오 phone_number — scope 동의 시만 받음 (비즈 인증 앱).
+      //   미동의 시 undefined → users.phone 변경 없이 NULL 유지 (기존 데이터 안 덮어씀).
+      phoneNumber: data.kakao_account?.phone_number,
     };
-    
+
     return kakaoUser;
   }
   
@@ -258,12 +270,17 @@ export class KakaoAuthService {
         userId = existingUser.id;
         // 🛡️ 2026-05-01: last_login_at / profile_image 컬럼이 production 에 없을 수 있음.
         //   첫 시도 → 컬럼 없으면 catch → 핵심 컬럼만 UPDATE.
+        // 🛡️ 2026-05-24: phone 동기화 — 카카오에서 새로 받았고 기존이 비어있으면 채움.
+        //   기존 phone 이 있으면 덮어쓰지 않음 (사용자가 직접 수정한 값 보존).
+        //   COALESCE(?, phone) 패턴 — kakao phone NULL 이면 기존 phone 유지.
+        const validPhone = normalizeKakaoPhone(kakaoUser.phoneNumber)
         try {
           await this.db.prepare(`
             UPDATE users
             SET name = ?,
                 email = ?,
                 profile_image = ?,
+                phone = COALESCE(phone, ?),
                 updated_at = datetime('now'),
                 last_login_at = datetime('now')
             WHERE id = ?
@@ -271,6 +288,7 @@ export class KakaoAuthService {
             kakaoUser.name,
             kakaoUser.email || null,
             kakaoUser.profileImage || null,
+            validPhone,
             userId
           ).run();
         } catch (e) {
@@ -334,6 +352,9 @@ export class KakaoAuthService {
         //   "다른 카카오 계정 신규 가입자도 유어팀(정지원) 으로 표시" 가능성:
         //   D1 의 last_row_id 가 항상 새 row 의 ID 를 반환한다고 보장 X.
         //   해결: INSERT 후 kakao_id 로 다시 SELECT — 100% 새 사용자 row 보장.
+        // 🛡️ 2026-05-24: 신규 사용자 INSERT 시 카카오에서 받은 phone 동시 저장.
+        //   비즈 미인증 앱 → phone_number 안 받아짐 → NULL 로 INSERT (기존 동작 유지).
+        const validPhone = normalizeKakaoPhone(kakaoUser.phoneNumber)
         try {
           await this.db.prepare(`
             INSERT INTO users (
@@ -341,15 +362,17 @@ export class KakaoAuthService {
               name,
               email,
               profile_image,
+              phone,
               created_at,
               last_login_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+            ) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
           `).bind(
             kakaoUser.kakaoId,
             kakaoUser.name,
             kakaoUser.email || null,
-            kakaoUser.profileImage || null
+            kakaoUser.profileImage || null,
+            validPhone
           ).run();
         } catch (insertErr) {
           // INSERT 실패 — UNIQUE constraint 위반 (race condition) 가능. 무시 후 아래 SELECT.

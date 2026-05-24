@@ -75,6 +75,8 @@ adminKtAlphaRoutes.patch('/kt-alpha/settings', cors(), async (c) => {
       'kt_alpha_template_id', 'kt_alpha_banner_id',
       // 🛡️ 2026-05-19: 소비자 직판 마진 (kt_alpha_consumer_markup_pct).
       'kt_alpha_consumer_markup_pct', 'kt_alpha_consumer_category',
+      // 🛡️ 2026-05-24: voucher_orders.seller_id 충족용 — 미설정 시 INSERT 실패 silent skip.
+      'kt_alpha_admin_seller_id',
     ])
 
     let updated = 0

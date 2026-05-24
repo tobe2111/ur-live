@@ -48,6 +48,8 @@ export default function VoucherDetailPage() {
   const [error, setError] = useState('')
   const [exchanging, setExchanging] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [showPhoneModal, setShowPhoneModal] = useState(false)
+  const [phoneInput, setPhoneInput] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -101,9 +103,37 @@ export default function VoucherDetailPage() {
         }
         return
       }
+      // 🛡️ 2026-05-24: KT Alpha 상품 phone 미등록 → 즉시 입력 모달.
+      if (code === 'PHONE_REQUIRED') {
+        setShowPhoneModal(true)
+        return
+      }
       toast.error(e?.response?.data?.error || '교환 실패')
     } finally {
       setExchanging(false)
+    }
+  }
+
+  // 🛡️ 2026-05-24: phone 입력 후 자동 retry — 사용자가 모달 닫고 다시 클릭하지 않아도 됨.
+  async function savePhoneAndRetry(phoneInput: string) {
+    const clean = phoneInput.replace(/[-\s]/g, '')
+    if (!/^01\d{8,9}$/.test(clean)) {
+      toast.error('010 으로 시작하는 휴대폰 번호를 입력하세요')
+      return
+    }
+    try {
+      const res = await api.patch('/api/auth/profile', { phone: clean })
+      if (!res.data?.success) {
+        toast.error(res.data?.error || '전화번호 저장 실패')
+        return
+      }
+      toast.success('전화번호 저장 완료')
+      setShowPhoneModal(false)
+      // 자동 retry
+      handleExchange()
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '전화번호 저장 실패')
     }
   }
 
@@ -188,6 +218,43 @@ export default function VoucherDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* 🛡️ 2026-05-24: KT Alpha 상품 phone 미등록 시 입력 모달 */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowPhoneModal(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-2">📱 휴대폰 번호 등록</h3>
+            <p className="text-xs text-gray-600 mb-4">
+              기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>
+              발송 받을 번호를 입력해주세요.
+            </p>
+            <input
+              type="tel"
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') savePhoneAndRetry(phoneInput) }}
+              placeholder="010-1234-5678"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base text-gray-900 mb-3"
+              autoFocus
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setShowPhoneModal(false)}
+                className="py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => savePhoneAndRetry(phoneInput)}
+                disabled={!phoneInput}
+                className="py-2.5 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-40"
+              >
+                저장 후 교환
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
