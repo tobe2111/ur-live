@@ -266,10 +266,16 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run()
     } catch { /* exists or permission */ }
 
+    // 🛡️ 2026-05-24 P0 (사용자 신고 "내 교환권 안 보임"):
+    //   - 원인: refund_status/gift_from_user_id/delivered_gift_name/applied_price 컬럼이 일부 환경에 없음.
+    //   - 이전: 첫 SELECT 실패 → catch fallback (applied_price 누락) → 금액 미표시 + 컬럼 일치 X.
+    //   - 영구 fix: repair-schema 에 컬럼 등록 (daily cron 자동 ADD) + 본 SELECT 도 fallback 에 applied_price 포함.
+    //     컬럼이 곧 모두 존재할 거지만, fallback 도 같이 강화해 라이브 환경 즉시 복구.
     const { results } = await DB.prepare(`
       SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
              v.expires_at, v.used_at, v.created_at, v.refund_status,
              v.gift_from_user_id, v.delivered_gift_name,
+             v.applied_price, v.applied_discount_pct,
              p.name AS product_name, p.image_url AS product_image,
              p.restaurant_name, p.restaurant_address,
              p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
@@ -278,11 +284,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       WHERE v.user_id = ?
       ORDER BY v.created_at DESC
       LIMIT 200
-    `).bind(String(user.id)).all().catch(async () => {
-      // 일부 컬럼 (refund_status / gift_*) 부재 환경 graceful fallback.
+    `).bind(String(user.id)).all().catch(async (err) => {
+      if (typeof console !== 'undefined') console.warn('[/vouchers/my] full SELECT failed, fallback:', String(err))
+      // 컬럼 누락 환경 graceful fallback — applied_price 도 포함.
       const r = await DB.prepare(`
         SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
                v.expires_at, v.used_at, v.created_at,
+               v.applied_price,
                p.name AS product_name, p.image_url AS product_image,
                p.restaurant_name, p.restaurant_address,
                p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
@@ -291,7 +299,22 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         WHERE v.user_id = ?
         ORDER BY v.created_at DESC
         LIMIT 200
-      `).bind(String(user.id)).all()
+      `).bind(String(user.id)).all().catch(async (err2) => {
+        // 한 번 더 fallback — applied_price 도 없는 극단 환경 (구 DB).
+        if (typeof console !== 'undefined') console.warn('[/vouchers/my] applied_price SELECT failed, fallback again:', String(err2))
+        return await DB.prepare(`
+          SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
+                 v.expires_at, v.used_at, v.created_at,
+                 p.name AS product_name, p.image_url AS product_image,
+                 p.restaurant_name, p.restaurant_address,
+                 p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
+          FROM vouchers v
+          LEFT JOIN products p ON v.product_id = p.id
+          WHERE v.user_id = ?
+          ORDER BY v.created_at DESC
+          LIMIT 200
+        `).bind(String(user.id)).all()
+      })
       return r
     })
 

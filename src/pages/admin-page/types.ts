@@ -59,6 +59,8 @@ export interface DashboardStats {
   todayOrders: number
   currentVisitors: number
   liveStreams: number
+  todayVouchers?: number          // 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시
+  todayVouchersAmount?: number    // applied_price 합 (원)
 }
 
 export interface Alert {

@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
   Users, Play, Package, TrendingUp, CheckCircle,
-  DollarSign, Eye, X
+  DollarSign, Eye, X, Ticket
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -446,6 +446,39 @@ export default function AdminPage() {
             <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시 카드 (클릭 → /admin/voucher-transactions) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <button
+          onClick={() => navigate('/admin/voucher-transactions')}
+          className="bg-white rounded-xl p-3 sm:p-4 shadow-sm text-left active:opacity-80 transition-opacity hover:shadow-md col-span-2"
+        >
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <span className="text-[10px] sm:text-xs font-medium text-gray-500">오늘 교환권 거래</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+              <Ticket className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-lg sm:text-xl font-bold text-gray-900">{formatNumber(dashboardStats.todayVouchers || 0)}건</p>
+            <p className="text-sm text-gray-600">· {fmtPrice(dashboardStats.todayVouchersAmount || 0)}</p>
+          </div>
+          <p className="text-[10px] sm:text-xs text-pink-600 mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
+        </button>
+        <button
+          onClick={() => navigate('/admin/voucher-orders')}
+          className="bg-white rounded-xl p-3 sm:p-4 shadow-sm text-left active:opacity-80 transition-opacity hover:shadow-md col-span-2"
+        >
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <span className="text-[10px] sm:text-xs font-medium text-gray-500">KT Alpha 자동발송 상태</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Package className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-sm text-gray-700">processing / sent / failed 추적</p>
+          <p className="text-[10px] sm:text-xs text-amber-600 mt-0.5">→ 발송 추적 + 재발송</p>
+        </button>
       </div>
 
       {/* ── 매출 차트 + 활동 피드 (스크롤 진입 시 로드) ── */}
