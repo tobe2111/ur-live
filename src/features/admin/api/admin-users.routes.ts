@@ -245,4 +245,133 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
   }
 });
 
+// 🛡️ 2026-05-24 (사용자 우려): "정지원 유저의 딜 잔액 / 쿠폰 / 바우처 / 찜이 사라졌어"
+//   진단용 endpoint — 특정 user_id 또는 이름/이메일/전화번호로 검색해
+//   전체 상태 한 번에 확인. data loss 여부 vs 다른 user_id 매칭 issue 즉시 판별.
+//
+//   GET /api/admin/users/:id/full-state
+//   응답:
+//     - user (id/name/email/phone/kakao_id/created_at)
+//     - duplicate_users (같은 이름 또는 같은 kakao_id 의 row 들 — 가장 흔한 원인)
+//     - balance (user_points)
+//     - point_transactions (최근 10건)
+//     - vouchers (count + 최근 5)
+//     - coupons (count + 최근 5)
+//     - wishlists (count + 최근 5)
+//     - orders (count + 최근 5)
+//     - diagnosis (한국어 진단 메시지)
+adminUsersRoutes.get('/users/:id/full-state', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const userId = c.req.param('id');
+    if (!userId || userId.trim().length === 0) {
+      return c.json({ success: false, error: 'Invalid user ID' }, 400);
+    }
+    const idStr = String(userId);
+
+    // 1. 사용자 본인
+    const user = await DB.prepare(
+      `SELECT id, name, email, phone, kakao_id, created_at, updated_at, last_login_at
+       FROM users WHERE id = ?`
+    ).bind(idStr).first<{ id: number; name: string; email: string | null; phone: string | null; kakao_id: string | null; created_at: string; updated_at: string | null; last_login_at: string | null }>().catch(() => null);
+    if (!user) return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+
+    // 2. 중복 의심 — 같은 이름 / 같은 이메일 / 같은 kakao_id / 같은 phone 의 다른 row.
+    //    유저 데이터가 "사라진" 가장 흔한 원인 — 카카오 콜백이 신규 row 생성.
+    const dupConditions: string[] = []
+    const dupParams: unknown[] = []
+    if (user.name) { dupConditions.push('name = ?'); dupParams.push(user.name) }
+    if (user.email) { dupConditions.push('email = ?'); dupParams.push(user.email) }
+    if (user.kakao_id) { dupConditions.push('kakao_id = ?'); dupParams.push(user.kakao_id) }
+    if (user.phone) { dupConditions.push('phone = ?'); dupParams.push(user.phone) }
+    let duplicates: Array<{ id: number; name: string | null; email: string | null; phone: string | null; kakao_id: string | null; created_at: string }> = []
+    if (dupConditions.length > 0) {
+      const dupQuery = `SELECT id, name, email, phone, kakao_id, created_at
+                        FROM users
+                        WHERE (${dupConditions.join(' OR ')}) AND id != ?
+                        ORDER BY id`
+      const r = await DB.prepare(dupQuery).bind(...dupParams, idStr).all<typeof duplicates[number]>().catch(() => ({ results: [] as typeof duplicates }))
+      duplicates = r.results || []
+    }
+
+    // 3. 딜 잔액
+    const wallet = await DB.prepare('SELECT balance, updated_at FROM user_points WHERE user_id = ?')
+      .bind(idStr).first<{ balance: number; updated_at: string }>().catch(() => null);
+
+    // 4. point_transactions 최근 10
+    const ptx = await DB.prepare(
+      `SELECT id, type, amount, balance_after, description, order_id, created_at
+       FROM point_transactions WHERE user_id = ? ORDER BY id DESC LIMIT 10`
+    ).bind(idStr).all().catch(() => ({ results: [] }));
+
+    // 5. vouchers
+    const vouchersCount = (await DB.prepare('SELECT COUNT(*) AS c FROM vouchers WHERE user_id = ?').bind(idStr).first<{ c: number }>().catch(() => ({ c: 0 }))) || { c: 0 };
+    const vouchersRecent = await DB.prepare(
+      `SELECT v.id, v.code, v.status, v.created_at, p.name AS product_name
+       FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
+       WHERE v.user_id = ? ORDER BY v.id DESC LIMIT 5`
+    ).bind(idStr).all().catch(() => ({ results: [] }));
+
+    // 6. coupons (user_coupons 또는 비슷)
+    let couponsCount: { c: number } = { c: 0 };
+    let couponsRecent: { results: unknown[] } = { results: [] };
+    try {
+      couponsCount = await DB.prepare('SELECT COUNT(*) AS c FROM user_coupons WHERE user_id = ?').bind(idStr).first<{ c: number }>() || { c: 0 };
+      couponsRecent = await DB.prepare(
+        `SELECT id, coupon_code, status, created_at FROM user_coupons WHERE user_id = ? ORDER BY id DESC LIMIT 5`
+      ).bind(idStr).all();
+    } catch { /* table missing */ }
+
+    // 7. wishlists
+    let wishlistCount: { c: number } = { c: 0 };
+    let wishlistRecent: { results: unknown[] } = { results: [] };
+    try {
+      wishlistCount = await DB.prepare('SELECT COUNT(*) AS c FROM wishlists WHERE user_id = ?').bind(idStr).first<{ c: number }>() || { c: 0 };
+      wishlistRecent = await DB.prepare(
+        `SELECT w.id, w.product_id, w.created_at, p.name AS product_name
+         FROM wishlists w LEFT JOIN products p ON w.product_id = p.id
+         WHERE w.user_id = ? ORDER BY w.id DESC LIMIT 5`
+      ).bind(idStr).all();
+    } catch { /* table missing */ }
+
+    // 8. orders
+    const ordersCount = (await DB.prepare('SELECT COUNT(*) AS c FROM orders WHERE user_id = ?').bind(idStr).first<{ c: number }>().catch(() => ({ c: 0 }))) || { c: 0 };
+    const ordersRecent = await DB.prepare(
+      `SELECT id, order_number, status, total_amount, created_at FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 5`
+    ).bind(idStr).all().catch(() => ({ results: [] }));
+
+    // 9. 진단 메시지
+    const diagnosis: string[] = []
+    if (duplicates.length > 0) {
+      diagnosis.push(`⚠️ 같은 정보 (이름/이메일/kakao_id/phone) 의 다른 user row ${duplicates.length}개 발견 — 데이터가 "사라진" 게 아니라 다른 ID 에 있을 가능성 큼.`)
+      duplicates.forEach(d => {
+        diagnosis.push(`   → 중복 id=${d.id} (name=${d.name}, email=${d.email}, kakao=${d.kakao_id}, created=${d.created_at})`)
+      })
+    } else {
+      diagnosis.push('✅ 중복 user row 없음 (같은 이름/이메일/kakao_id/phone 의 다른 row 없음).')
+    }
+    if (!wallet) diagnosis.push('⚠️ user_points row 없음 — 첫 충전/적립 전 상태.')
+    else diagnosis.push(`💰 딜 잔액: ${wallet.balance} (마지막 갱신: ${wallet.updated_at})`)
+    diagnosis.push(`🎫 vouchers: ${vouchersCount.c}건 / 🎟 coupons: ${couponsCount.c}건 / ❤️ wishlists: ${wishlistCount.c}건 / 📦 orders: ${ordersCount.c}건`)
+
+    return c.json({
+      success: true,
+      data: {
+        user,
+        duplicates,
+        wallet,
+        point_transactions: ptx.results || [],
+        vouchers: { count: vouchersCount.c, recent: vouchersRecent.results || [] },
+        coupons: { count: couponsCount.c, recent: couponsRecent.results || [] },
+        wishlists: { count: wishlistCount.c, recent: wishlistRecent.results || [] },
+        orders: { count: ordersCount.c, recent: ordersRecent.results || [] },
+        diagnosis,
+      },
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] users full-state error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminUsersRoutes;

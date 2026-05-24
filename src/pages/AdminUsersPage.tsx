@@ -55,6 +55,8 @@ export default function AdminUsersPage() {
   const [sort, setSort] = useState<SortKey>('created_at')
   const [order, setOrder] = useState<'desc' | 'asc'>('desc')
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  // 🛡️ 2026-05-24: 데이터 사라짐 진단 모달 — 잔액 / 쿠폰 / 바우처 / 중복 row.
+  const [fullStateUserId, setFullStateUserId] = useState<number | null>(null)
   const [detailLoading, setDetailLoading] = useState<number | null>(null)
   const [details, setDetails] = useState<Record<number, UserDetail>>({})
 
@@ -267,7 +269,7 @@ export default function AdminUsersPage() {
                               </div>
                             ) : detail ? (
                               <div className="space-y-3 text-sm">
-                                <div className="flex gap-8">
+                                <div className="flex gap-8 items-center">
                                   <div>
                                     <span className="text-gray-500">{t('admin.users.orderCount', { defaultValue: '주문 수' })}:</span>{' '}
                                     <span className="font-semibold text-gray-900">{formatNumber(detail.order_count)}건</span>
@@ -280,6 +282,13 @@ export default function AdminUsersPage() {
                                     <span className="text-gray-500">{t('admin.users.reviewCount', { defaultValue: '리뷰 수' })}:</span>{' '}
                                     <span className="font-semibold text-gray-900">{formatNumber(detail.review_count)}건</span>
                                   </div>
+                                  {/* 🛡️ 2026-05-24: 데이터 사라짐 / 잔액 안 보임 진단 */}
+                                  <button
+                                    onClick={() => setFullStateUserId(user.id)}
+                                    className="ml-auto px-3 py-1.5 bg-red-100 text-red-700 text-xs font-bold rounded hover:bg-red-200"
+                                  >
+                                    🔍 전체 상태 진단 (잔액/쿠폰/바우처/중복)
+                                  </button>
                                 </div>
 
                                 {/* 연결된 셀러 / 에이전시 */}
@@ -362,7 +371,124 @@ export default function AdminUsersPage() {
         )}
       </div>
       </div>
+
+      {/* 🛡️ 2026-05-24: 전체 상태 진단 모달 */}
+      {fullStateUserId && <FullStateModal userId={fullStateUserId} onClose={() => setFullStateUserId(null)} />}
     </AdminLayout>
+  )
+}
+
+// ─── 전체 상태 진단 모달 (잔액/쿠폰/바우처/중복) ───
+function FullStateModal({ userId, onClose }: { userId: number; onClose: () => void }) {
+  const [data, setData] = useState<{
+    user: { id: number; name: string; email: string | null; phone: string | null; kakao_id: string | null; created_at: string }
+    duplicates: Array<{ id: number; name: string | null; email: string | null; phone: string | null; kakao_id: string | null; created_at: string }>
+    wallet: { balance: number; updated_at: string } | null
+    point_transactions: Array<{ id: number; type: string; amount: number; balance_after: number; description: string; created_at: string }>
+    vouchers: { count: number; recent: Array<{ id: number; code: string; status: string; product_name: string | null }> }
+    coupons: { count: number; recent: Array<{ id: number; coupon_code: string; status: string }> }
+    wishlists: { count: number; recent: Array<{ id: number; product_id: number; product_name: string | null }> }
+    orders: { count: number; recent: Array<{ id: number; order_number: string; status: string; total_amount: number }> }
+    diagnosis: string[]
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+    api.get(`/api/admin/users/${userId}/full-state`, h)
+      .then(r => { if (r.data.success) setData(r.data.data); else setError(r.data.error || '조회 실패') })
+      .catch(e => setError((e as Error).message))
+      .finally(() => setLoading(false))
+  }, [userId])
+
+  return (
+    <div className="fixed inset-0 z-[10100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">🔍 user #{userId} 전체 상태 진단</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
+        </div>
+        {loading ? <p className="text-center py-8 text-gray-500">로딩 중...</p>
+        : error ? <p className="text-center py-8 text-red-600">{error}</p>
+        : data ? (
+          <div className="space-y-3 text-sm">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="font-bold mb-2">📋 진단</p>
+              {data.diagnosis.map((d, i) => <p key={i} className="text-gray-800 mb-1 whitespace-pre">{d}</p>)}
+            </div>
+
+            {data.duplicates.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="font-bold text-red-900 mb-2">⚠️ 중복 의심 user row {data.duplicates.length}개</p>
+                {data.duplicates.map(d => (
+                  <div key={d.id} className="text-xs text-red-800 mb-1">
+                    <b>id={d.id}</b> · {d.name || '(no name)'} · {d.email || '-'} · kakao={d.kakao_id || '-'} · phone={d.phone || '-'} · {d.created_at}
+                  </div>
+                ))}
+                <p className="text-[11px] text-red-600 mt-2">→ 이 ID 들이 정지원님의 다른 row 입니다. 잔액/쿠폰/바우처는 이 중 어디에 있을지 확인하세요.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-[10px] text-gray-500">user</p>
+                <p className="font-mono text-xs">id={data.user.id} · kakao={data.user.kakao_id}</p>
+                <p className="font-mono text-xs">phone={data.user.phone || '없음'}</p>
+              </div>
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-[10px] text-gray-500">딜 잔액</p>
+                <p className="font-bold text-lg">{data.wallet ? data.wallet.balance.toLocaleString() : '없음'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              <div className="bg-blue-50 rounded p-2 text-center">
+                <p className="text-[10px] text-gray-600">바우처</p>
+                <p className="font-bold">{data.vouchers.count}</p>
+              </div>
+              <div className="bg-pink-50 rounded p-2 text-center">
+                <p className="text-[10px] text-gray-600">쿠폰</p>
+                <p className="font-bold">{data.coupons.count}</p>
+              </div>
+              <div className="bg-rose-50 rounded p-2 text-center">
+                <p className="text-[10px] text-gray-600">찜</p>
+                <p className="font-bold">{data.wishlists.count}</p>
+              </div>
+              <div className="bg-emerald-50 rounded p-2 text-center">
+                <p className="text-[10px] text-gray-600">주문</p>
+                <p className="font-bold">{data.orders.count}</p>
+              </div>
+            </div>
+
+            {data.point_transactions.length > 0 && (
+              <div>
+                <p className="font-bold mb-1">최근 딜 거래 (10건)</p>
+                {data.point_transactions.map(p => (
+                  <div key={p.id} className="text-xs text-gray-700 border-b border-gray-100 py-1">
+                    <span className={p.amount > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                      {p.amount > 0 ? '+' : ''}{p.amount.toLocaleString()}
+                    </span>
+                    {' '}· {p.type} · {p.description} · <span className="text-gray-400">{p.created_at}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {data.vouchers.recent.length > 0 && (
+              <div>
+                <p className="font-bold mb-1">최근 바우처 (5건)</p>
+                {data.vouchers.recent.map(v => (
+                  <div key={v.id} className="text-xs text-gray-700">
+                    #{v.id} · {v.code} · {v.status} · {v.product_name || '(deleted product)'}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
