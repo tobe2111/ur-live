@@ -215,14 +215,9 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: true, data: { orders: updatedOrders } });
     }
 
-    const tossData = tossResult.data as {
-      paymentKey: string;
-      orderId: string;
-      totalAmount: number;
-      method: string;
-      approvedAt: string;
-      status: string;
-    };
+    // 🛡️ 2026-05-24 docs 일치: TossPaymentObject (response 전체 필드 type 안전).
+    //   특히 method 는 한국어 문자열 ('카드', '가상계좌' 등) — orders.payment_method 에 그대로 저장.
+    const tossData = tossResult.data;
 
     // 토스 응답의 금액도 한 번 더 검증
     if (tossData.totalAmount !== totalAmount) {
