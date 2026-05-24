@@ -79,7 +79,12 @@ export async function tossCancelPayment(
   if (result.ok) {
     return { success: true, data: result.data as unknown as TossPaymentCancelResponse };
   }
-  return { success: false, code: result.code, message: result.message };
+  // 🛡️ legacy API 호환: gateway 코드 → 기존 코드 매핑.
+  //   기존 호출 코드 + 테스트가 'NETWORK_ERROR' / 'UNKNOWN' 을 기대함.
+  let code = result.code;
+  if (code === 'NETWORK') code = 'NETWORK_ERROR';
+  else if (/^HTTP_\d+$/.test(code)) code = 'UNKNOWN';
+  return { success: false, code, message: result.message };
 }
 
 /**
