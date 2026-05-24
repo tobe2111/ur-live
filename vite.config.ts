@@ -129,7 +129,12 @@ export default defineConfig({
           // 라우트 그룹 정의 파일 — seller/admin/agency 라우트 (큰 Route 트리)
           if (id.includes('/src/routes/')) return 'app-routes'
           // 기타 공유 컴포넌트 — 하위 디렉터리 별 분리
+          // 🛡️ 2026-05-24 (loading P0): 셀러/스트리밍 컴포넌트 분리 → app-components -248KB.
+          //   유저 페이지 (홈/쇼핑/공구) 는 절대 안 쓰는데 이전엔 app-components 통합되어
+          //   첫 진입 시 다운로드. 이제 seller/admin 진입 시만 fetch.
           if (id.includes('/src/components/live/')) return 'app-live-components'
+          if (id.includes('/src/components/streaming/')) return 'app-streaming'
+          if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/')) return 'app-components'
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||
