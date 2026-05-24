@@ -210,7 +210,7 @@ export async function handleAgencyMonthlyReport(env: Env): Promise<void> {
             console.warn(`[cron:monthly-report] Resend ${fetchRes.status} for agency ${a.id}`);
           }
         } catch (e) {
-          console.warn(`[cron:monthly-report] mail send failed for ${a.id}:`, e);
+          console.warn(`[cron:monthly-report] notify failed for ${a.id}:`, (e as Error)?.message || String(e));
         }
       }
 

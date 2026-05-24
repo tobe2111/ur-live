@@ -80,7 +80,7 @@ export async function autoSendKtAlphaVouchersForOrders(
       phone = String(userRow?.phone || '').replace(/\D/g, '')
     }
     if (!/^01\d{8,9}$/.test(phone)) {
-      console.error('[kt-alpha auto-send] no phone for order', oid)
+      console.error('[kt-alpha auto-send] missing recipient for order', oid)
       // 🛡️ 2026-05-23: phone 없음을 voucher_orders + frontend_errors 둘 다 기록 — admin 즉시 인지.
       try {
         await env.DB.prepare(
