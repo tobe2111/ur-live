@@ -345,7 +345,7 @@ export async function cancelTossPayment(input: TossCancelInput): Promise<TossCan
   if (!env.TOSS_SECRET_KEY) {
     return { ok: false, code: 'NO_TOSS_SECRET', message: '결제 시스템이 설정되지 않았습니다.' }
   }
-  if (!paymentKey || paymentKey.length < 5) {
+  if (!paymentKey) {
     return { ok: false, code: 'INVALID_PAYMENT_KEY', message: '결제 키 형식이 올바르지 않습니다.' }
   }
   if (!cancelReason || cancelReason.length === 0) {
@@ -421,7 +421,14 @@ export async function cancelTossPayment(input: TossCancelInput): Promise<TossCan
 
   if (!res) {
     const msg = (lastErr as Error)?.message || ''
-    return { ok: false, code: /abort|timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK', message: '취소 요청에 실패했습니다.', retryable: true }
+    const isTimeout = /abort|timeout/i.test(msg)
+    return {
+      ok: false,
+      code: isTimeout ? 'TIMEOUT' : 'NETWORK',
+      // 원본 에러 메시지 보존 (DNS / connect refused 등 진단 가능).
+      message: msg || (isTimeout ? '취소 요청 타임아웃' : '취소 요청에 실패했습니다.'),
+      retryable: true,
+    }
   }
 
   let data: Record<string, unknown> = {}
