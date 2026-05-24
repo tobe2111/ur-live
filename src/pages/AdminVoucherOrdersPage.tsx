@@ -28,12 +28,35 @@ interface VoucherOrderRow {
   updated_at: string
 }
 
+interface KtAlphaStatus {
+  dev_mode: boolean
+  api_enabled: boolean
+  has_user_id: boolean
+  has_callback_no: boolean
+}
+
 export default function AdminVoucherOrdersPage() {
   const [hours, setHours] = useState(24)
   const [statusFilter, setStatusFilter] = useState<'all' | 'processing' | 'sent' | 'failed'>('all')
   const [rows, setRows] = useState<VoucherOrderRow[]>([])
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState<{ processing: number; sent: number; failed: number }>({ processing: 0, sent: 0, failed: 0 })
+  const [ktStatus, setKtStatus] = useState<KtAlphaStatus | null>(null)
+
+  // 운영 상태 (dev_mode / settings) 로드
+  useEffect(() => {
+    api.get('/api/admin/kt-alpha/settings').then(r => {
+      if (r.data?.success) {
+        const s = r.data.data || {}
+        setKtStatus({
+          dev_mode: s.dev_mode === 1 || s.dev_mode === '1' || s.dev_mode === 'Y',
+          api_enabled: s.api_enabled === 1 || s.api_enabled === '1',
+          has_user_id: !!s.user_id,
+          has_callback_no: !!s.callback_no,
+        })
+      }
+    }).catch(() => null)
+  }, [])
 
   async function load() {
     setLoading(true)
@@ -75,6 +98,30 @@ export default function AdminVoucherOrdersPage() {
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow p-4 mb-4">
           <h1 className="text-xl font-bold text-gray-900 mb-3">KT Alpha 기프티쇼 발송 추적</h1>
+
+          {ktStatus && (
+            <div className={`mb-3 px-4 py-3 rounded border ${ktStatus.dev_mode ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-300'}`}>
+              <div className="flex items-center gap-2 text-sm font-bold">
+                {ktStatus.dev_mode ? (
+                  <>
+                    <span className="text-amber-700">⚠️ DEV 모드 — 실제 발송 안 됨 (기프티쇼 구매관리에 안 보임)</span>
+                  </>
+                ) : (
+                  <span className="text-green-700">✅ LIVE 모드 — 실제 발송 + 기프티쇼 구매관리 반영</span>
+                )}
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                api_enabled: {ktStatus.api_enabled ? '✅' : '❌'} ·
+                user_id: {ktStatus.has_user_id ? '✅' : '❌'} ·
+                callback_no: {ktStatus.has_callback_no ? '✅' : '❌'}
+              </div>
+              {ktStatus.dev_mode && (
+                <p className="text-xs text-amber-700 mt-2">
+                  해결: <code>/admin/kt-alpha/settings</code> 에서 dev_mode = 0 (또는 Cloudflare env KT_ALPHA_DEV_MODE=N)
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex gap-2 mb-3">
             {([1, 6, 24, 168] as const).map(h => (
               <button key={h} onClick={() => setHours(h)} className={`px-3 py-1.5 text-sm rounded ${hours === h ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
