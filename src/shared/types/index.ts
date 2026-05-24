@@ -31,6 +31,7 @@ export type TossEventType =
   | 'CANCEL_STATUS_CHANGED'         // 결제 취소 상태 변경
   | 'METHOD_UPDATED'                // 브랜드페이 결제수단 변경
   | 'CUSTOMER_STATUS_CHANGED'       // 브랜드페이 고객 상태 변경
+  | 'BILLING_DELETED'               // 빌링키 삭제 (자동결제)
   | 'ORDER_PAYMENT_STATUS_CHANGED'  // 링크페이 주문 상태 변경
   // 지급대행 (lowercase.dotted)
   | 'payout.changed'
