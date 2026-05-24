@@ -446,13 +446,17 @@ export default function VouchersPage() {
                         <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}딜</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                        {rating > 0 && (
-                          <span className="inline-flex items-center gap-0.5">
-                            <span className="text-yellow-500">★</span>
-                            <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
-                            {reviewCount > 0 && <span className="text-gray-400">({reviewCount})</span>}
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-0.5">
+                          <span className="text-yellow-500">★</span>
+                          {rating > 0 ? (
+                            <>
+                              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+                              {reviewCount > 0 && <span className="text-gray-400">({reviewCount})</span>}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">신규</span>
+                          )}
+                        </span>
                         {soldCount > 0 && <span>구매 {soldLabel}</span>}
                       </div>
                     </div>
