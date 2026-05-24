@@ -17,6 +17,7 @@ import {
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { formatPhone } from '@/utils/format-phone'
 
 const APP_VERSION = '1.0.0'
 const BUILD_HASH = (import.meta.env.VITE_APP_VERSION || '').slice(0, 7)
@@ -213,8 +214,14 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
         toast.success(t('accountSettings.profileUpdated', { defaultValue: '프로필이 업데이트되었습니다' }))
       }
     } catch (e: unknown) {
-      const ax = e as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || t('accountSettings.updateFailed', { defaultValue: '업데이트 실패' }))
+      // 🛡️ 2026-05-24 React #31 fix: server 가 { error: { code, message } } 객체 반환 시
+      //   string 으로 안전 추출 (이전: object 그대로 toast → React render 폭주).
+      const ax = e as { response?: { data?: { error?: string | { code?: string; message?: string } } } }
+      const errRaw = ax.response?.data?.error
+      const errMsg = typeof errRaw === 'string' ? errRaw
+        : (errRaw && typeof errRaw === 'object' && typeof errRaw.message === 'string') ? errRaw.message
+        : t('accountSettings.updateFailed', { defaultValue: '업데이트 실패' })
+      toast.error(errMsg)
     } finally { setLoading(false) }
   }
 
@@ -242,8 +249,9 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
               {t('accountSettings.editPhone', { defaultValue: '전화번호' })}
             </label>
             <input
-              id="account-phone" type="tel" value={form.phone}
-              onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+              id="account-phone" type="tel" inputMode="numeric" value={form.phone}
+              onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
+              maxLength={13}
               className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />

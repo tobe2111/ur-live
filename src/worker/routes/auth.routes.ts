@@ -13,6 +13,9 @@ import { rateLimit } from '../middleware/rate-limit';
 import type { Env } from '../types/env';
 import { QueryBuilder } from '../repositories/query-builder';
 import { authMiddleware, createJwt, type AuthVariables } from '../middleware/auth.middleware';
+// 🛡️ 2026-05-24: 카카오 사용자 (httpOnly 세션 쿠키 인증) 도 /profile PATCH 가능하게 —
+//   기존 authMiddleware (Bearer JWT only) 는 403. requireAuth() 는 Bearer + 쿠키 둘 다 지원.
+import { requireAuth, getCurrentUser } from '../middleware/auth';
 import { generateId } from '../../shared/utils';
 import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/constants';
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
@@ -248,8 +251,12 @@ authRouter.get('/me', async (c) => {
 });
 
 // PATCH /api/auth/profile — 프로필(이름, 전화번호) 수정
-authRouter.patch('/profile', authMiddleware, async (c) => {
-  const { id } = c.get('user');
+// 🛡️ 2026-05-24: requireAuth() 사용 — Bearer JWT + httpOnly 세션 쿠키 둘 다 허용.
+//   카카오 로그인 사용자는 쿠키 인증 → 기존 authMiddleware (Bearer only) 로는 403 발생.
+authRouter.patch('/profile', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const id = user.id;
   const db = c.env.DB;
   try {
     const body = await c.req.json<{ name?: string; phone?: string }>();
@@ -271,7 +278,7 @@ authRouter.patch('/profile', authMiddleware, async (c) => {
     }
 
     const fields: string[] = [];
-    const values: (string | null)[] = [];
+    const values: (string | number | null)[] = [];
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
     if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone); }
     if (fields.length === 0) return c.json({ success: false, error: '수정할 항목이 없습니다' }, 400);

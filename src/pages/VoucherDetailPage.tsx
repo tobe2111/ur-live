@@ -6,6 +6,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
+import { formatPhone } from '@/utils/format-phone'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -138,8 +139,13 @@ export default function VoucherDetailPage() {
       // 자동 retry
       handleExchange()
     } catch (err) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || '전화번호 저장 실패')
+      // 🛡️ React #31 — server 가 { error: { code, message } } 반환 시 string 만 추출.
+      const e = err as { response?: { data?: { error?: string | { message?: string } } } }
+      const errRaw = e?.response?.data?.error
+      const errMsg = typeof errRaw === 'string' ? errRaw
+        : (errRaw && typeof errRaw === 'object' && typeof errRaw.message === 'string') ? errRaw.message
+        : '전화번호 저장 실패'
+      toast.error(errMsg)
     }
   }
 
@@ -235,9 +241,9 @@ export default function VoucherDetailPage() {
               발송 받을 번호를 입력해주세요.
             </p>
             <input
-              type="tel"
+              type="tel" inputMode="numeric" maxLength={13}
               value={phoneInput}
-              onChange={(e) => setPhoneInput(e.target.value)}
+              onChange={(e) => setPhoneInput(formatPhone(e.target.value))}
               onKeyDown={(e) => { if (e.key === 'Enter') savePhoneAndRetry(phoneInput) }}
               placeholder="010-1234-5678"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base text-gray-900 mb-3"
