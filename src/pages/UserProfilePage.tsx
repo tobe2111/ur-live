@@ -19,6 +19,14 @@ import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import { useMyCounts } from './user-profile/useMyCounts'
 import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
+// 🛡️ 2026-05-24: /account/settings 와 통합 — unique 섹션들 import.
+import {
+  NotificationToggleSection,
+  AppVersionSection,
+  DeleteAccountLink,
+  ProfileEditModal,
+} from './user-profile/AccountControlsSection'
+import api from '@/lib/api'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -39,6 +47,17 @@ export default function UserProfilePage() {
   const [userName, setUserName] = useState('')
   const [profileImage, setProfileImage] = useState<string | undefined>(undefined)
   const hasProcessedToken = useRef(false)
+  // 🛡️ 2026-05-24: 프로필 편집 모달 — /account/settings 에서 흡수.
+  const [editOpen, setEditOpen] = useState(false)
+  const [profileForm, setProfileForm] = useState({ name: '', phone: '' })
+  useEffect(() => {
+    // 모달 열릴 때 최신 phone 가져오기 (initial 으로 전달).
+    if (!editOpen) return
+    api.get('/api/auth/me').then(r => {
+      const phone = r.data?.data?.phone || ''
+      setProfileForm({ name: userName, phone })
+    }).catch(() => setProfileForm({ name: userName, phone: '' }))
+  }, [editOpen, userName])
 
   useEffect(() => { document.title = t('userProfile.docTitle') }, [t])
 
@@ -118,7 +137,7 @@ export default function UserProfilePage() {
               <SellerSwitchInline />
             </div>
             <p className="text-[11px] text-gray-900 dark:text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
-            <button onClick={() => navigate('/account/settings')} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
+            <button onClick={() => setEditOpen(true)} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
               프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </div>
@@ -127,7 +146,7 @@ export default function UserProfilePage() {
             <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
               <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             </button>
-            <button onClick={() => navigate('/account/settings')} aria-label={t('userProfile.ariaSettings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
+            <button onClick={() => setEditOpen(true)} aria-label={t('userProfile.ariaSettings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
               <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
           </div>
@@ -218,6 +237,11 @@ export default function UserProfilePage() {
         </div>
       </div>
 
+      {/* 🛡️ 2026-05-24: /account/settings 흡수 — 알림 / 앱 버전 / 탈퇴 */}
+      <NotificationToggleSection />
+      <AppVersionSection />
+      <DeleteAccountLink />
+
       {/* v4 로그아웃 + 계정 전환 + 버전 */}
       <div className="ur-content-medium px-4 lg:px-8 py-6 space-y-2">
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
@@ -254,6 +278,17 @@ export default function UserProfilePage() {
           )}
         </p>
       </div>
+
+      {/* 🛡️ 2026-05-24: 프로필 편집 모달 (/account/settings 에서 흡수). */}
+      <ProfileEditModal
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        initial={profileForm}
+        onSaved={({ name }) => {
+          setUserName(name)
+          localStorage.setItem('user_name', name)
+        }}
+      />
     </div>
   )
 }

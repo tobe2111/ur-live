@@ -328,7 +328,7 @@ export default function AccountDeleteWarningPage() {
             )}
           </button>
           <Link
-            to="/account/settings"
+            to="/user/profile"
             className="w-full h-[44px] flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white/70 text-[13px] font-medium hover:bg-gray-200 dark:hover:bg-white/[0.08] transition-colors"
           >
             {t('accountDeleteWarning.cancel')}
