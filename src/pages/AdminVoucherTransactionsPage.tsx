@@ -45,6 +45,152 @@ interface VoucherTxRow {
   seller_name: string | null
 }
 
+interface DiagnoseResponse {
+  order: { id: number; order_number: string; status: string; payment_method: string; total_amount: number; created_at: string; user_id: string; user_name: string | null; user_phone: string | null; phone_ok: boolean; masked_user_phone: string | null }
+  settings_status: Record<string, boolean>
+  order_items: Array<{ product_id: number; product_name: string; quantity: number; unit_price: number; kt_alpha_gift_code: string | null; auto_voucher_send: number | null }>
+  kt_alpha_target_items_count: number
+  voucher_orders: Array<{ id: number; goods_name: string; status: string; failure_reason: string | null; recipient_phone: string; sent_at: string | null; external_order_id: string }>
+  vouchers: Array<{ id: number; code: string; status: string; created_at: string }>
+  frontend_errors: Array<{ type: string; message: string; created_at: string }>
+  diagnosis: string[]
+  recommendations: string[]
+}
+
+function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => void }) {
+  const [data, setData] = useState<DiagnoseResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.get(`/api/admin/kt-alpha/diagnose-order/${orderId}`)
+      .then(r => {
+        if (r.data?.success) setData(r.data.data)
+        else setError(r.data?.error || '조회 실패')
+      })
+      .catch(e => setError((e as Error).message))
+      .finally(() => setLoading(false))
+  }, [orderId])
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-gray-900">KT Alpha 진단 — Order #{orderId}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
+        </div>
+
+        {loading ? (
+          <p className="text-center py-8 text-gray-500">진단 중...</p>
+        ) : error ? (
+          <p className="text-center py-8 text-red-600">{error}</p>
+        ) : data ? (
+          <div className="space-y-4 text-sm">
+            {/* 진단 결과 */}
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="font-bold text-gray-900 mb-2">📋 진단</p>
+              {data.diagnosis.length === 0 ? <p className="text-gray-500">진단 항목 없음</p>
+                : data.diagnosis.map((d, i) => (
+                  <p key={i} className="text-gray-800 mb-1">{d}</p>
+                ))
+              }
+            </div>
+
+            {/* 권장 액션 */}
+            {data.recommendations.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="font-bold text-amber-900 mb-2">💡 권장 액션</p>
+                {data.recommendations.map((r, i) => (
+                  <p key={i} className="text-amber-800 mb-1">• {r}</p>
+                ))}
+              </div>
+            )}
+
+            {/* 주문 + 사용자 */}
+            <div>
+              <p className="font-bold text-gray-900 mb-1">주문</p>
+              <p className="text-xs text-gray-600">order_number: {data.order.order_number}</p>
+              <p className="text-xs text-gray-600">총액: {formatWon(data.order.total_amount)} · 결제: {data.order.payment_method}</p>
+              <p className="text-xs text-gray-600">사용자: {data.order.user_name || '-'} (id {data.order.user_id})</p>
+              <p className="text-xs text-gray-600">phone: {data.order.masked_user_phone || '없음'} {data.order.phone_ok ? '✅' : '❌'}</p>
+            </div>
+
+            {/* 설정 */}
+            <div>
+              <p className="font-bold text-gray-900 mb-1">KT Alpha 설정</p>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                {Object.entries(data.settings_status).map(([k, v]) => (
+                  <p key={k} className={v ? 'text-emerald-600' : 'text-red-600'}>
+                    {v ? '✅' : '❌'} {k}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            {/* 주문 상품 */}
+            <div>
+              <p className="font-bold text-gray-900 mb-1">상품 ({data.order_items.length})</p>
+              {data.order_items.map((it, i) => (
+                <div key={i} className="text-xs bg-gray-50 rounded p-2 mb-1">
+                  <p className="text-gray-900 font-medium">{it.product_name}</p>
+                  <p className="text-gray-500">
+                    수량 {it.quantity} · 단가 {formatWon(it.unit_price)}
+                  </p>
+                  <p className="text-gray-500">
+                    kt_alpha_gift_code: <span className={it.kt_alpha_gift_code ? 'text-emerald-600' : 'text-red-600'}>{it.kt_alpha_gift_code || '없음'}</span>
+                  </p>
+                  <p className="text-gray-500">
+                    auto_voucher_send: <span className={it.auto_voucher_send === 1 ? 'text-emerald-600' : 'text-red-600'}>{it.auto_voucher_send === 1 ? '1 (ON)' : '0 (OFF)'}</span>
+                  </p>
+                </div>
+              ))}
+              <p className="text-xs text-gray-600 mt-1">KT Alpha 발송 대상: <b>{data.kt_alpha_target_items_count}</b>개</p>
+            </div>
+
+            {/* KT Alpha voucher_orders */}
+            <div>
+              <p className="font-bold text-gray-900 mb-1">KT Alpha 발송 기록 ({data.voucher_orders.length})</p>
+              {data.voucher_orders.length === 0 ? (
+                <p className="text-xs text-red-600">기록 없음 — autoSendKtAlphaVouchersForOrders 미실행</p>
+              ) : data.voucher_orders.map(vo => (
+                <div key={vo.id} className="text-xs bg-gray-50 rounded p-2 mb-1">
+                  <p className={
+                    vo.status === 'sent' ? 'text-emerald-600 font-bold'
+                    : vo.status === 'failed' ? 'text-red-600 font-bold'
+                    : 'text-gray-600 font-bold'
+                  }>
+                    {vo.status === 'sent' ? '✅ sent' : vo.status === 'failed' ? '❌ failed' : '⏳ processing'} · {vo.goods_name}
+                  </p>
+                  {vo.failure_reason && <p className="text-red-600 text-[10px]">{vo.failure_reason}</p>}
+                  <p className="text-gray-500 text-[10px]">→ {vo.recipient_phone || '(no phone)'}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* 내부 QR vouchers */}
+            <div>
+              <p className="font-bold text-gray-900 mb-1">내부 QR voucher ({data.vouchers.length})</p>
+              {data.vouchers.map(v => (
+                <p key={v.id} className="text-xs text-gray-600">{v.code} · {v.status}</p>
+              ))}
+            </div>
+
+            {/* frontend_errors */}
+            {data.frontend_errors.length > 0 && (
+              <div>
+                <p className="font-bold text-gray-900 mb-1">관련 에러 로그</p>
+                {data.frontend_errors.map((e, i) => (
+                  <p key={i} className="text-xs text-gray-600">[{e.type}] {e.message}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   unused:   { label: '미사용', cls: 'bg-emerald-100 text-emerald-700' },
   used:     { label: '사용됨', cls: 'bg-gray-100 text-gray-600' },
@@ -65,6 +211,8 @@ export default function AdminVoucherTransactionsPage() {
   const [dateTo, setDateTo] = useState('')
   const [category, setCategory] = useState('')
   const [todayStats, setTodayStats] = useState<{ count: number; amount: number }>({ count: 0, amount: 0 })
+  const [diagOrderId, setDiagOrderId] = useState<number | null>(null)
+  const [diagInputValue, setDiagInputValue] = useState('')
 
   useEffect(() => {
     api.get('/api/admin/dashboard/stats')
@@ -118,7 +266,34 @@ export default function AdminVoucherTransactionsPage() {
             <h1 className="text-xl font-bold text-gray-900">교환권 거래</h1>
             <Link to="/admin/voucher-orders" className="text-xs text-pink-600 hover:underline">KT Alpha 발송 추적 →</Link>
           </div>
-          <p className="text-xs text-gray-500">사용자 voucher 구매 내역. KT Alpha 자동발송 status 는 별도 추적 페이지에서 확인.</p>
+          <p className="text-xs text-gray-500 mb-3">사용자 voucher 구매 내역. KT Alpha 자동발송 status 는 별도 추적 페이지에서 확인.</p>
+
+          {/* 🛡️ 2026-05-24 사용자 명령: order_id 직접 입력해 KT Alpha 연동 진단 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs font-bold text-blue-900 mb-2">🔍 order_id 로 KT Alpha 연동 진단</p>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={diagInputValue}
+                onChange={(e) => setDiagInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && diagInputValue) {
+                    setDiagOrderId(Number(diagInputValue))
+                  }
+                }}
+                placeholder="예: 12345"
+                className="flex-1 px-3 py-1.5 text-sm border border-blue-300 rounded text-gray-900"
+              />
+              <button
+                onClick={() => { if (diagInputValue) setDiagOrderId(Number(diagInputValue)) }}
+                disabled={!diagInputValue}
+                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded disabled:opacity-40"
+              >
+                진단
+              </button>
+            </div>
+            <p className="text-[10px] text-blue-700 mt-1">아래 테이블의 "주문" 컬럼에서 order_id 확인 가능. 행의 "진단" 버튼으로도 동일.</p>
+          </div>
         </div>
 
         {/* 오늘 합계 카드 */}
@@ -195,13 +370,14 @@ export default function AdminVoucherTransactionsPage() {
                 <th className="py-2 px-3 text-center">상태</th>
                 <th className="py-2 px-3 text-left">코드</th>
                 <th className="py-2 px-3 text-left">주문</th>
+                <th className="py-2 px-3 text-center">진단</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="py-8 text-center text-gray-500">로딩 중...</td></tr>
+                <tr><td colSpan={10} className="py-8 text-center text-gray-500">로딩 중...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="py-8 text-center text-gray-500">거래 없음</td></tr>
+                <tr><td colSpan={10} className="py-8 text-center text-gray-500">거래 없음</td></tr>
               ) : rows.map(r => (
                 <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-2 px-3 text-gray-900 whitespace-nowrap">
@@ -229,11 +405,22 @@ export default function AdminVoucherTransactionsPage() {
                   </td>
                   <td className="py-2 px-3 text-gray-600 font-mono text-[10px]">{r.code}</td>
                   <td className="py-2 px-3 text-gray-500 text-[10px]">{r.order_number || `#${r.order_id}`}</td>
+                  <td className="py-2 px-3 text-center">
+                    <button
+                      onClick={() => setDiagOrderId(r.order_id)}
+                      className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded hover:bg-blue-200"
+                    >
+                      진단
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {/* 진단 모달 */}
+        {diagOrderId && <DiagnoseModal orderId={diagOrderId} onClose={() => setDiagOrderId(null)} />}
 
         {/* 페이지네이션 */}
         {total > PAGE_SIZE && (
