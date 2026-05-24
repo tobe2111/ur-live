@@ -108,8 +108,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     }
 
     // 상품 검증 (재고/마감/카테고리) — deal 흐름의 검증 로직 일부 재사용.
+    // 🛡️ 2026-05-23: deal_only=1 도 매칭 (VouchersPage 필터 정합) — voucher category 없어도 deal-only 면 교환 가능.
     const product = await DB.prepare(
-      "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id FROM products WHERE id = ? AND is_active = 1 AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')"
+      "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)"
     ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; voucher_expiry: string | null; seller_id: number }>()
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     if (product.seller_id && Number(product.seller_id) === Number(userId)) {
@@ -150,8 +151,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 (식사/뷰티/건강/펫/액티비티/숙소/기타).
     //   이전엔 'meal_voucher' hardcode 였음 → 다른 카테고리 결제 막힘 (404 발생).
     //   영구 fix: VOUCHER_CATEGORIES 통합 + 헬퍼와 동일 IN 절 사용.
+    // 🛡️ 2026-05-23: deal_only=1 도 매칭 (위 query 와 동일 룰).
     const product = await DB.prepare(
-      "SELECT * FROM products WHERE id = ? AND is_active = 1 AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')"
+      "SELECT * FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)"
     ).bind(productId).first<GroupBuyProductRow>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
