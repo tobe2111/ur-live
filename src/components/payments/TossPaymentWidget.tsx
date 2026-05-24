@@ -47,8 +47,13 @@ interface TossPaymentWidgetProps {
  *   - VITE_TOSS_VARIANT_PAYMENT (default 'DEFAULT')
  *   - VITE_TOSS_VARIANT_AGREEMENT (default 'AGREEMENT')
  */
-const VARIANT_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || 'DEFAULT'
-const VARIANT_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || 'AGREEMENT'
+// 🛡️ 2026-05-24 영구 fix: variantKey 는 명시 env 가 있을 때만 사용.
+//   이전: default 'DEFAULT' / 'AGREEMENT' 강제 -> Toss 콘솔에 해당 variant 없으면 'variantKey 에 해당하는 위젯을 찾을 수 없습니다' 에러
+//     (특히 라이브 키 신규 발급 직후 — 콘솔에 variant 등록 X 상태).
+//   이후: env 비어있으면 undefined -> Toss SDK 가 default config 자동 사용 -> 에러 X.
+//   사용자가 멀티 variant 운영 필요 시만 env 명시.
+const VARIANT_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || undefined
+const VARIANT_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || undefined
 
 export function TossPaymentWidget({
   userId,
@@ -115,12 +120,18 @@ export function TossPaymentWidget({
 
         // 🛡️ 2026-05-23 v2: renderPaymentMethods + renderAgreement 의 반환값은 widget 인스턴스.
         //   특히 약관 위젯은 .on('agreementStatusChange') 가 인스턴스에서만 작동 (widgets 객체 X).
+        // 🛡️ 2026-05-24: env 명시된 variantKey 가 있으면 시도 -> 실패 시 기본 widget.
+        //   env 없으면 처음부터 기본 widget (variant 등록 X 환경에서도 동작).
         const tryRenderPay = async () => {
-          try { return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method', variantKey: VARIANT_PAYMENT }), `renderPaymentMethods:${VARIANT_PAYMENT}`) } catch { /* fallback */ }
+          if (VARIANT_PAYMENT) {
+            try { return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method', variantKey: VARIANT_PAYMENT }), `renderPaymentMethods:${VARIANT_PAYMENT}`) } catch { /* fallback to default */ }
+          }
           return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method' }), 'renderPaymentMethods:default')
         }
         const tryRenderAgreement = async () => {
-          try { return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement', variantKey: VARIANT_AGREEMENT }), `renderAgreement:${VARIANT_AGREEMENT}`) } catch { /* fallback */ }
+          if (VARIANT_AGREEMENT) {
+            try { return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement', variantKey: VARIANT_AGREEMENT }), `renderAgreement:${VARIANT_AGREEMENT}`) } catch { /* fallback */ }
+          }
           return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement' }), 'renderAgreement:default')
         }
 
@@ -150,7 +161,7 @@ export function TossPaymentWidget({
         const baseMsg = /TIMEOUT/i.test(raw)
           ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
           : /not.*found|404|variant/i.test(raw)
-          ? `결제 위젯 설정 — variantKey 미일치 가능성. 운영자: Toss 콘솔의 실제 variantKey 와 일치하는 VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 설정 필요.`
+          ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다. Toss 콘솔 → 결제 → 결제수단 → "결제수단 활성화" 후 다시 시도해주세요.'
           : /widget.*key|클라이언트 키|개별 연동 키/i.test(raw)
           ? '결제 시스템 키 type 오류 — 관리자에게 문의해주세요.'
           : t('payment.initError', { defaultValue: '결제 초기화 실패' })
