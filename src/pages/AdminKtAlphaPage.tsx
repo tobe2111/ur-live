@@ -93,6 +93,7 @@ export default function AdminKtAlphaPage() {
     api_enabled: '0',
     template_id: '',
     banner_id: '',
+    admin_seller_id: '',
   })
 
   function h() { return { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -123,6 +124,7 @@ export default function AdminKtAlphaPage() {
           api_enabled: s.data.data.settings.kt_alpha_api_enabled || '0',
           template_id: s.data.data.settings.kt_alpha_template_id || '',
           banner_id: s.data.data.settings.kt_alpha_banner_id || '',
+          admin_seller_id: s.data.data.settings.kt_alpha_admin_seller_id || '',
         })
       }
       if (c.data?.success) setCatalog(c.data.data || [])
@@ -148,6 +150,7 @@ export default function AdminKtAlphaPage() {
         kt_alpha_api_enabled: edit.api_enabled,
         kt_alpha_template_id: edit.template_id,
         kt_alpha_banner_id: edit.banner_id,
+        kt_alpha_admin_seller_id: edit.admin_seller_id,
       }, { headers: h() })
       if (r.data?.success) { toast.success('설정 저장됨'); loadAll() }
     } catch (err: unknown) {
@@ -746,6 +749,22 @@ export default function AdminKtAlphaPage() {
                     placeholder="기프티쇼 비즈 회원 ID"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono" />
                   <p className="text-[10px] text-gray-500 mt-1">0204 발송 / 0301 잔액 조회 시 필수</p>
+                </div>
+
+                {/* 🛡️ 2026-05-24: admin_seller_id — voucher_orders.seller_id 충족.
+                    미설정 시 voucher_orders INSERT 가 NOT NULL 위반으로 silent fail → 발송 기록 X. */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    관리자 셀러 ID <span className="text-red-600">*</span>
+                  </label>
+                  <input type="number" value={edit.admin_seller_id}
+                    onChange={(e) => setEdit({ ...edit, admin_seller_id: e.target.value })}
+                    placeholder="예: 1 (관리자 sellers.id)"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono" />
+                  <p className="text-[10px] text-red-600 mt-1">
+                    필수 — voucher_orders.seller_id 충족용. 미설정 시 KT Alpha 발송 silent fail.
+                    sellers 테이블의 관리자 계정 ID (대개 1) 입력.
+                  </p>
                 </div>
 
                 {/* callback_no */}
