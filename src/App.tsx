@@ -15,6 +15,7 @@ import BottomNav from '@/components/main/BottomNav'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
+import { featureFlags } from '@/shared/config/feature-flags'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
@@ -615,8 +616,9 @@ function AppContent() {
           </div>
           {!hideBottomNav && <BottomNav />}
           {!fullScreen && <Suspense fallback={null}><SideBanner /></Suspense>}
-          {/* 🛡️ 2026-04-22 배치 124: 카카오 상담 플로팅 버튼 (대시보드 외 모든 페이지) */}
-          {!fullScreen && <KakaoConsultButton />}
+          {/* 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 (featureFlags.kakaoFab=false).
+              복원: src/shared/config/feature-flags.ts 의 kakaoFab 을 true 로. 대신 /user/profile 페이지에 별도 배치. */}
+          {!fullScreen && featureFlags.kakaoFab && <KakaoConsultButton />}
           </div>
         </Suspense>
       </FrameWrapper>
