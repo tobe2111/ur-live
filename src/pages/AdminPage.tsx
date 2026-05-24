@@ -495,13 +495,17 @@ export default function AdminPage() {
               const res = await api.post('/api/admin/reviews/auto-seed-missing', { max_batch: 500 })
               if (res.data?.success) {
                 const r = res.data.data
-                toast.success(`✅ ${r.seeded_products}개 상품에 ${r.seeded_reviews}개 리뷰 시드 완료`)
+                const msg = res.data.message || `✅ ${r.seeded_products}개 상품에 ${r.seeded_reviews}개 리뷰 시드 완료`
+                if (r.seeded_products === 0) toast.info(msg)
+                else toast.success(msg)
               } else {
-                toast.error(res.data?.error || '시드 실패')
+                const debug = res.data?._debug?.message ? ` (${res.data._debug.message})` : ''
+                toast.error((res.data?.error || '시드 실패') + debug)
               }
             } catch (e) {
-              const ax = e as { response?: { data?: { error?: string } } }
-              toast.error(ax.response?.data?.error || '시드 실패')
+              const ax = e as { response?: { data?: { error?: string; _debug?: { message?: string } } } }
+              const debug = ax.response?.data?._debug?.message ? ` (${ax.response.data._debug.message})` : ''
+              toast.error((ax.response?.data?.error || '시드 실패') + debug)
             }
           }}
           className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg"
