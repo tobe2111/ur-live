@@ -344,10 +344,18 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     } // end else (no existingProductReward)
   } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
 
-  // 실제 유저 리뷰 → sold_count 2~3 증가
+  // 실제 유저 리뷰 → sold_count 2~3 증가 + avg_rating / review_count 갱신
+  // 🛡️ 2026-05-23: avg_rating / review_count 안 갱신하면 /api/products 카드 UI 에 별점 안 보임.
   try {
     const inc = 2 + Math.round(Math.random());
-    await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(inc, body.product_id).run();
+    await DB.prepare(`
+      UPDATE products SET
+        sold_count = COALESCE(sold_count, 0) + ?,
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+        avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(inc, body.product_id, body.product_id, body.product_id).run();
   } catch {}
 
   return c.json({

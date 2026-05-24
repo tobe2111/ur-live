@@ -154,7 +154,17 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
       }
 
       const soldIncrement = generated * (2 + Math.round(Math.random()));
-      try { await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(soldIncrement, product_id).run() } catch {}
+      // 🛡️ 2026-05-23: avg_rating + review_count 도 함께 갱신 — 안 하면 카드 UI 에 별점 표시 X.
+      try {
+        await DB.prepare(`
+          UPDATE products SET
+            sold_count = COALESCE(sold_count, 0) + ?,
+            review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+            avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+            updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(soldIncrement, product_id, product_id, product_id).run()
+      } catch {}
 
       return c.json({ success: true, data: { generated }, message: `AI로 ${generated}개 리뷰가 생성되었습니다` });
     }
@@ -579,6 +589,24 @@ adminReviewGeneratorRoutes.post('/reviews/backfill-user-names', cors(), async (c
       success: false,
       error: `backfill 실패: ${(err as Error).message.slice(0, 200)}`,
     }, 500);
+  }
+});
+
+// 🛡️ 2026-05-23: 기존 (이미 쌓인) 리뷰들의 products.avg_rating / review_count 일괄 backfill.
+//   admin only. POST /admin/reviews/backfill-aggregate
+//   product_reviews 가 이전엔 products 테이블에 sync 안 됐던 케이스 일회 보정.
+adminReviewGeneratorRoutes.post('/reviews/backfill-aggregate', cors(), async (c) => {
+  try {
+    const r = await c.env.DB.prepare(`
+      UPDATE products SET
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id), 0),
+        avg_rating   = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0),
+        updated_at = datetime('now')
+      WHERE EXISTS (SELECT 1 FROM product_reviews WHERE product_id = products.id)
+    `).run();
+    return c.json({ success: true, data: { updated: r.meta?.changes ?? 0 } });
+  } catch (e) {
+    return c.json({ success: false, error: (e as Error).message }, 500);
   }
 });
 
