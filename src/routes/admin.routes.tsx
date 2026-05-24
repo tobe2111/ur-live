@@ -18,6 +18,8 @@ const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitori
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
 const AdminVoucherOrdersPage = lazy(() => import('@/pages/AdminVoucherOrdersPage'))
+// 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시 (누가 / 언제 / 어떤 교환권)
+const AdminVoucherTransactionsPage = lazy(() => import('@/pages/AdminVoucherTransactionsPage'))
 const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
@@ -100,6 +102,12 @@ export function AdminRoutes() {
       <Route path="/admin/voucher-orders" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminVoucherOrdersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시 (voucher 구매 내역) */}
+      <Route path="/admin/voucher-transactions" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminVoucherTransactionsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/settlement" element={

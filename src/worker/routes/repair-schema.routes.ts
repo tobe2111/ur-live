@@ -246,6 +246,14 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'product_reviews.user_name', sql: "ALTER TABLE product_reviews ADD COLUMN user_name TEXT" },
     { desc: 'product_reviews.selected_option', sql: "ALTER TABLE product_reviews ADD COLUMN selected_option TEXT" },
     { desc: 'product_reviews.is_generated', sql: "ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0" },
+    // 🛡️ 2026-05-24: /api/vouchers/my SELECT 가 참조하는 컬럼 — 미존재 시 첫 SELECT crash → fallback 만 동작 (applied_price 누락).
+    //   영구 fix: repair-schema 에 등록 → 매일 18 UTC cron 이 자동 ADD COLUMN (멱등).
+    //   gift_* 컬럼은 선물하기 기능 (voucher 양도) 용. refund_status 는 환불 추적용.
+    { desc: 'vouchers.refund_status', sql: "ALTER TABLE vouchers ADD COLUMN refund_status TEXT" },
+    { desc: 'vouchers.gift_from_user_id', sql: "ALTER TABLE vouchers ADD COLUMN gift_from_user_id TEXT" },
+    { desc: 'vouchers.delivered_gift_name', sql: "ALTER TABLE vouchers ADD COLUMN delivered_gift_name TEXT" },
+    { desc: 'vouchers.applied_discount_pct', sql: "ALTER TABLE vouchers ADD COLUMN applied_discount_pct INTEGER DEFAULT 0" },
+    { desc: 'vouchers.applied_price', sql: "ALTER TABLE vouchers ADD COLUMN applied_price INTEGER" },
     { desc: 'table influencer_balances', sql: "CREATE TABLE IF NOT EXISTS influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, total_paid_out INTEGER DEFAULT 0, business_number TEXT, tax_type TEXT DEFAULT 'other_income', bank_name TEXT, bank_account TEXT, account_holder TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'table influencer_attributions', sql: "CREATE TABLE IF NOT EXISTS influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, order_id INTEGER, voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT)" },
     { desc: 'idx_inf_attr_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_inf_attr_influencer ON influencer_attributions(influencer_id, status)" },

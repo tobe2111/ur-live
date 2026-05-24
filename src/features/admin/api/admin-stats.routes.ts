@@ -131,10 +131,13 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
     try { return await executeQuery<T>(DB, q, p); } catch { return []; }
   };
 
-  const [sales, orders, live] = await Promise.all([
+  const [sales, orders, live, voucherToday, voucherTodayAmount] = await Promise.all([
     safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at, '+9 hours')=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM orders WHERE DATE(created_at, '+9 hours')=?", [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
+    // 🛡️ 2026-05-24 Q1: 어드민 대시보드에 교환권 거래 분리 표시 (사용자 요청).
+    safe<CountRow>(`SELECT COUNT(*) as count FROM vouchers WHERE DATE(created_at, '+9 hours')=?`, [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(applied_price),0) as total FROM vouchers WHERE DATE(created_at, '+9 hours')=?`, [today]),
   ]);
 
   return c.json({ success: true, data: {
@@ -142,7 +145,80 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
     todayOrders: (orders[0] as CountRow)?.count || 0,
     currentVisitors: 0,
     liveStreams: (live[0] as CountRow)?.count || 0,
+    todayVouchers: (voucherToday[0] as CountRow)?.count || 0,
+    todayVouchersAmount: (voucherTodayAmount[0] as SalesRow)?.total || 0,
   }});
+});
+
+// 🛡️ 2026-05-24 Q1 (사용자 요청): 교환권 거래 분리 페이지/패널용 endpoint.
+//   누가 / 언제 / 어떤 교환권 — 일반 voucher 구매 (KT Alpha 발송 추적과 별개).
+//   /admin/voucher-orders 는 KT Alpha 자동발송 status 추적, 본 endpoint 는 voucher 구매 자체.
+//
+//   params:
+//     limit (default 50, max 500)
+//     offset (default 0)
+//     status (unused/used/expired/refunded, optional)
+//     user_id (optional)
+//     date_from / date_to (YYYY-MM-DD, optional)
+//     category (optional, e.g. 'meal_voucher')
+adminStatsRoutes.get('/vouchers/transactions', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const limit = Math.min(500, Math.max(1, Number(c.req.query('limit')) || 50));
+    const offset = Math.max(0, Number(c.req.query('offset')) || 0);
+    const status = c.req.query('status') || '';
+    const userId = c.req.query('user_id') || '';
+    const dateFrom = c.req.query('date_from') || '';
+    const dateTo = c.req.query('date_to') || '';
+    const category = c.req.query('category') || '';
+
+    const where: string[] = ['1=1'];
+    const params: unknown[] = [];
+    if (status && ['unused','used','expired','refunded'].includes(status)) { where.push('v.status = ?'); params.push(status); }
+    if (userId) { where.push('v.user_id = ?'); params.push(String(userId)); }
+    if (dateFrom) { where.push(`DATE(v.created_at, '+9 hours') >= ?`); params.push(dateFrom); }
+    if (dateTo) { where.push(`DATE(v.created_at, '+9 hours') <= ?`); params.push(dateTo); }
+    if (category) { where.push('p.category = ?'); params.push(category); }
+
+    const rowsQuery = `
+      SELECT v.id, v.code, v.status, v.created_at, v.used_at, v.expires_at,
+             v.applied_price, v.applied_discount_pct,
+             v.user_id, u.name AS user_name, u.email AS user_email, u.phone AS user_phone,
+             v.order_id, o.order_number, o.total_amount AS order_total, o.payment_method,
+             v.product_id, p.name AS product_name, p.image_url AS product_image, p.category,
+             p.restaurant_name, p.seller_id, s.name AS seller_name
+      FROM vouchers v
+      LEFT JOIN users u ON CAST(v.user_id AS TEXT) = CAST(u.id AS TEXT)
+      LEFT JOIN orders o ON v.order_id = o.id
+      LEFT JOIN products p ON v.product_id = p.id
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE ${where.join(' AND ')}
+      ORDER BY v.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    const countQuery = `
+      SELECT COUNT(*) as count FROM vouchers v
+      LEFT JOIN products p ON v.product_id = p.id
+      WHERE ${where.join(' AND ')}
+    `;
+
+    const [rows, total] = await Promise.all([
+      DB.prepare(rowsQuery).bind(...params, limit, offset).all().catch(() => ({ results: [] })),
+      DB.prepare(countQuery).bind(...params).first<{ count: number }>().catch(() => ({ count: 0 })),
+    ]);
+
+    return c.json({
+      success: true,
+      data: {
+        rows: rows.results ?? [],
+        total: total?.count ?? 0,
+        limit, offset,
+      },
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] GET /vouchers/transactions error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
 });
 
 export default adminStatsRoutes;

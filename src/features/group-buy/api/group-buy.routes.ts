@@ -325,7 +325,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     try {
 
     // 🛡️ 2026-05-15: 셀러 차등 수수료 — GMV 기반 자동 (1천만+ 4%, 1억+ 3%) / 어드민 override 우선
-    const commissionRate = await getSellerCommissionRate(DB, Number(product.seller_id))
+    // 🛡️ 2026-05-24 Q4 perf: getSellerCommissionRate + getCommissionRates 병렬 (이전: 직렬 2 awaits ~30-60ms 절약).
+    const [commissionRate, rates] = await Promise.all([
+      getSellerCommissionRate(DB, Number(product.seller_id)),
+      getCommissionRates(DB),
+    ])
     const commissionAmount = Math.round(totalAmount * commissionRate)
 
     // 🛡️ 2026-05-16: 인플루언서 referral 정산 4-account split.
@@ -333,7 +337,6 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     //   2) seller_blocked_influencers 에 매핑 있음 → 동일
     //   3) products.referral_disabled = 1 → 동일
     //   4) 모두 통과 → 정상 인플 + 사용자 보너스 지급
-    const rates = await getCommissionRates(DB)
     let hasInfluencer = false
     let influencerActive = false
     let effectiveInfluencerPct = 0  // 영입 보너스 + deal 적용 후 최종 %
@@ -374,10 +377,13 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const sellerAmount = totalAmount - commissionAmount - influencerAmount - userBonusAmount
 
     // 주문 생성 (idempotency_key 저장 — 중복 발급 영구 차단)
-    await DB.prepare(`
+    // 🛡️ 2026-05-24 Q4 perf: INSERT ... RETURNING id 로 즉시 id 획득 (이전: INSERT 후 SELECT 별도 — 1 await 절약 ~20-50ms).
+    const orderInsert = await DB.prepare(`
       INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, idempotency_key)
       VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?, ?)
-    `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss', idempotency_key || null).run()
+      RETURNING id
+    `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss', idempotency_key || null).first<{ id: number }>()
+    const newOrderId = orderInsert?.id ?? null
 
     // 🛡️ 2026-05-15: Double-entry ledger 기록 (정합성 검증 가능)
     try {
@@ -457,31 +463,32 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       ).run()
     } catch { /* donations 테이블 없으면 무시 */ }
 
-    const order = await DB.prepare('SELECT id FROM orders WHERE order_number = ? ORDER BY id DESC LIMIT 1')
-      .bind(orderNumber).first<{ id: number }>()
-
-    if (order) {
-      await DB.prepare(`
-        INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(order.id, productId, product.name, product.price, product.price, qty, totalAmount).run()
-
+    // 🛡️ 2026-05-24 Q4 perf: newOrderId 직접 사용 (INSERT RETURNING 으로 위에서 받음).
+    //   이전: 별도 SELECT — 1 await 추가 (~20-50ms 절약).
+    if (newOrderId) {
       // 🛡️ 2026-05-23: D1 batch() 로 voucher 일괄 INSERT — 부분 발급 영구 차단.
       //   이전 for-loop sequential INSERT: 중간 실패 시 일부만 발급 (부정합).
       //   이후 batch: 모두 성공 or 모두 실패 (Atomic).
+      // 🛡️ 2026-05-24 Q4 perf:
+      //   1) 코드 생성을 Promise.all 병렬 (이전: sequential await SELECT — qty=N 일 때 N awaits).
+      //   2) order_items + vouchers INSERT 를 단일 DB.batch() 로 통합 (이전: 2 awaits).
       const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
-      const codes: string[] = []
-      for (let i = 0; i < qty; i++) {
-        codes.push(await generateUniqueVoucherCode(DB))
-      }
+      const codes = await Promise.all(
+        Array.from({ length: qty }, () => generateUniqueVoucherCode(DB))
+      )
       const lastExpiresAt = expiresAt
+      const orderItemStmt = DB.prepare(`
+        INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(newOrderId, productId, product.name, product.price, product.price, qty, totalAmount)
       const voucherStmts = codes.map(code =>
         DB.prepare(`
           INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(order.id, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice)
+        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice)
       )
-      await DB.batch(voucherStmts)
+      // order_items + vouchers 같은 batch — atomic + 1 round-trip.
+      await DB.batch([orderItemStmt, ...voucherStmts])
 
       // 🛡️ 2026-05-23: KT Alpha (기프티쇼) 자동 발송 — products.kt_alpha_gift_code +
       //   auto_voucher_send=1 인 상품만. 딜 결제 흐름에서 사용자 폰으로 실제 MMS 발송.
@@ -492,7 +499,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         c.executionCtx.waitUntil(
           autoSendKtAlphaVouchersForOrders(
             c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-            [{ id: order.id, user_id: userId, shipping_phone: null }],
+            [{ id: newOrderId, user_id: userId, shipping_phone: null }],
             userId,
           ).catch(e => console.error('[group-buy/join] kt-alpha auto-send failed:', e))
         )
@@ -653,7 +660,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 바우처 코드 조회
     const vouchers = await DB.prepare(
       'SELECT code, expires_at FROM vouchers WHERE order_id = ? AND user_id = ?'
-    ).bind(order?.id, userId).all<{ code: string; expires_at: string }>()
+    ).bind(newOrderId, userId).all<{ code: string; expires_at: string }>()
 
     // 🛡️ 2026-05-15: Referral 추적 — affiliate_ref 헤더로 추천인 식별 시
     //   양쪽 0.5% 보너스 딜 (네트워크 효과 vs 마진 보호 균형).

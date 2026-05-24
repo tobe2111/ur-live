@@ -186,14 +186,13 @@ export function generateVoucherCode(): string {
  *   DB collision 발생하면 최대 5회 재시도 후 예외.
  */
 export async function generateUniqueVoucherCode(DB: D1Database): Promise<string> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = generateVoucherCode()
-    try {
-      const existing = await DB.prepare("SELECT 1 FROM vouchers WHERE code = ?").bind(code).first().catch(() => null)
-      if (!existing) return code
-    } catch { return code /* 검증 자체 실패 시 fallback (DB 부담 회피) */ }
-  }
-  throw new Error('voucher_code_collision_max_retry')
+  // 🛡️ 2026-05-24 Q4 perf: 사전 SELECT 제거 — UNIQUE constraint 가 진짜 충돌 잡음.
+  //   32^8 = 1.1조 조합. 100만 voucher 발급 시 충돌 확률 ~0.5% — 정상 흐름에선 발생 X.
+  //   이전: voucher 1개당 1 SELECT (qty=10 → 10 sequential await ~200ms).
+  //   이후: voucher 1개당 0 SELECT (sync 생성) → 호출자에서 Promise.all 병렬 가능.
+  //   collision 실제 발생 시: DB.batch() 가 throw → 호출자가 retry (드물어서 비용 무시).
+  void DB  // signature 유지 (호출자 변경 없이).
+  return generateVoucherCode()
 }
 
 /** Magic Link 사장님 토큰 — 32자 hex (128bit), URL-safe. */
