@@ -1090,3 +1090,97 @@ adminKtAlphaRoutes.get('/kt-alpha/diagnostic', cors(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500)
   }
 })
+
+// 🛡️ 2026-05-23: KT Alpha 발송 추적 페이지용 API
+// GET /admin/voucher-orders?hours=24&status=failed&limit=500
+adminKtAlphaRoutes.get('/voucher-orders', cors(), async (c) => {
+  const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '24')), 168)
+  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '500')), 1000)
+  const status = c.req.query('status')
+  try {
+    const statusFilter = status && ['processing', 'sent', 'failed'].includes(status)
+      ? `AND status = '${status}'` : ''
+    const rows = await c.env.DB.prepare(
+      `SELECT id, goods_name, recipient_phone, unit_price, quantity, status,
+              external_order_id, sent_at, failure_reason, created_at, updated_at
+         FROM voucher_orders
+        WHERE source = 'kt_alpha'
+          AND created_at >= datetime('now', '-${hours} hours')
+          ${statusFilter}
+        ORDER BY created_at DESC LIMIT ?`
+    ).bind(limit).all().catch(() => ({ results: [] }))
+
+    const stats = await c.env.DB.prepare(
+      `SELECT
+         SUM(CASE WHEN status='processing' THEN 1 ELSE 0 END) AS processing,
+         SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END) AS sent,
+         SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed
+       FROM voucher_orders
+      WHERE source = 'kt_alpha' AND created_at >= datetime('now', '-${hours} hours')`
+    ).first<{ processing: number; sent: number; failed: number }>().catch(() => null)
+
+    return c.json({
+      success: true,
+      data: rows.results || [],
+      stats: stats || { processing: 0, sent: 0, failed: 0 },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
+// POST /admin/voucher-orders/:id/resend — failed voucher 재발송
+adminKtAlphaRoutes.post('/voucher-orders/:id/resend', cors(), async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  try {
+    const vo = await c.env.DB.prepare(
+      "SELECT id, goods_code, goods_name, recipient_phone, unit_price, status FROM voucher_orders WHERE id = ?"
+    ).bind(id).first<{ id: number; goods_code: string; goods_name: string; recipient_phone: string; unit_price: number; status: string }>()
+    if (!vo) return c.json({ success: false, error: 'voucher_order 없음' }, 404)
+    if (vo.status === 'sent') return c.json({ success: false, error: '이미 발송됨' }, 400)
+
+    const settings = await c.env.DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('kt_alpha_user_id','kt_alpha_callback_no','kt_alpha_template_id','kt_alpha_banner_id')"
+    ).all<{ key: string; value: string }>().catch(() => ({ results: [] }))
+    const sMap: Record<string, string> = {}
+    for (const r of (settings.results || [])) sMap[r.key] = r.value
+    if (!sMap.kt_alpha_user_id || !sMap.kt_alpha_callback_no) {
+      return c.json({ success: false, error: 'kt_alpha_user_id/callback_no 설정 누락' }, 503)
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE voucher_orders SET status = 'processing', failure_reason = NULL, updated_at = datetime('now') WHERE id = ?"
+    ).bind(id).run()
+
+    const { sendCoupon } = await import('../../../worker/utils/giftishow-api')
+    const trId = `ur-resend-${id}-${Date.now()}`
+    try {
+      const res = await sendCoupon(c.env as unknown as Parameters<typeof sendCoupon>[0], {
+        goodsCode: vo.goods_code,
+        phoneNo: vo.recipient_phone,
+        callbackNo: sMap.kt_alpha_callback_no,
+        mmsTitle: `[유어딜] ${vo.goods_name}`.slice(0, 30),
+        mmsMsg: `${vo.goods_name} 교환권이 도착했습니다. 30일 이내 사용해주세요.`,
+        trId,
+        userId: sMap.kt_alpha_user_id,
+        orderNo: `r-${id}`,
+        gubun: 'N',
+        templateId: sMap.kt_alpha_template_id || undefined,
+        bannerId: sMap.kt_alpha_banner_id || undefined,
+      })
+      await c.env.DB.prepare(
+        "UPDATE voucher_orders SET status = 'sent', external_order_id = ?, sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
+      ).bind(res.orderNo || trId, id).run()
+      return c.json({ success: true, data: { external_order_id: res.orderNo || trId } })
+    } catch (sendErr) {
+      const msg = (sendErr as Error).message.slice(0, 500)
+      await c.env.DB.prepare(
+        "UPDATE voucher_orders SET status = 'failed', failure_reason = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(msg, id).run()
+      return c.json({ success: false, error: msg }, 500)
+    }
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
