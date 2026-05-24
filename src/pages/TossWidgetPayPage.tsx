@@ -81,18 +81,32 @@ export default function TossWidgetPayPage() {
 
         await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(amount) }), 'SET_AMOUNT')
 
+        // 🛡️ 2026-05-24: server-side variantKey 우선 (TOSS_VARIANT_PAYMENT/AGREEMENT env).
+        //   /api/payments/client-key 가 variant_payment/agreement 반환 — 재빌드 없이 Cloudflare env 변경으로 즉시 반영.
+        //   server 응답 실패 시 build-time VITE_TOSS_VARIANT_* fallback.
+        let svPayment = ''
+        let svAgreement = ''
+        try {
+          const r = await fetch('/api/payments/client-key', { cache: 'no-store' })
+          const j = await r.json() as { data?: { variant_payment?: string; variant_agreement?: string } }
+          svPayment = String(j?.data?.variant_payment || '')
+          svAgreement = String(j?.data?.variant_agreement || '')
+        } catch { /* server fetch 실패 — build-time fallback 사용 */ }
+        const VK_PAYMENT = svPayment || ((import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || '')
+        const VK_AGREEMENT = svAgreement || ((import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || '')
+
+        // Toss V2 SDK: variantKey 옵션 — 미설정 시 SDK 내부 default ('DEFAULT') 사용.
+        //   콘솔에 해당 variantKey 등록 안 됐으면 404 → 사용자가 콘솔에서 직접 추가 필요.
         const tryRender = async (
           method: 'renderPaymentMethods' | 'renderAgreement',
           selector: string,
           preferred: string,
         ) => {
-          try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* */ }
+          if (preferred) {
+            try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* fallback to default */ }
+          }
           await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
         }
-
-        // 🛡️ 2026-05-23: variantKey env 우선 — 콘솔 등록 이름과 match.
-        const VK_PAYMENT = (import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || 'DEFAULT'
-        const VK_AGREEMENT = (import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || 'AGREEMENT'
         await tryRender('renderPaymentMethods', '#toss-widget-pay-method', VK_PAYMENT)
         await tryRender('renderAgreement', '#toss-widget-pay-agreement', VK_AGREEMENT)
 
@@ -106,7 +120,7 @@ export default function TossWidgetPayPage() {
         const baseMsg = /TIMEOUT/i.test(raw)
           ? '결제 위젯 로딩이 지연됩니다. 페이지를 새로고침해주세요.'
           : /not.*found|404|variant/i.test(raw)
-          ? '결제 위젯 설정 — variantKey 미일치. 운영자: Toss 콘솔의 실제 variantKey 와 일치하는 VITE_TOSS_VARIANT_PAYMENT / VITE_TOSS_VARIANT_AGREEMENT env 설정 필요.'
+          ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다. Toss 콘솔 → 결제 → 결제수단 → "결제수단 활성화" 후 다시 시도해주세요.'
           : '결제 초기화 실패'
         setErrorMsg(`${baseMsg}\n\n[SDK 원본]: ${raw.slice(0, 200)}`)
         setState('error')
@@ -120,11 +134,22 @@ export default function TossWidgetPayPage() {
     if (!widgetsRef.current || state !== 'ready') return
     setState('processing')
     try {
+      // 🛡️ 2026-05-24: Toss V2 SDK 권장 — customer 정보 (가상계좌 안내 / 퀵계좌이체 자동완성).
+      //   localStorage 에서 안전하게 추출 (XSS 방어 위해 길이 제한).
+      const customerEmail = (localStorage.getItem('user_email') || '').slice(0, 100) || undefined
+      const customerName = (localStorage.getItem('user_name') || '').slice(0, 100) || undefined
+      // phone — '-' 제거 + 8-15 숫자만 (Toss V2 SDK 사양).
+      const phoneRaw = (localStorage.getItem('user_phone') || '').replace(/\D/g, '')
+      const customerMobilePhone = /^\d{8,15}$/.test(phoneRaw) ? phoneRaw : undefined
+
       await widgetsRef.current.requestPayment({
         orderId,
-        orderName,
+        orderName: orderName.length > 100 ? orderName.slice(0, 97) + '...' : orderName,
         successUrl,
         failUrl,
+        ...(customerEmail ? { customerEmail } : {}),
+        ...(customerName ? { customerName } : {}),
+        ...(customerMobilePhone ? { customerMobilePhone } : {}),
       })
       // redirect — 아래 라인 실행 안 됨.
     } catch (err: unknown) {
