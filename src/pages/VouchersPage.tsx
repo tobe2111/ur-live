@@ -401,7 +401,7 @@ export default function VouchersPage() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => navigate(`/products/${p.id}`)}
+                  onClick={() => navigate(`/vouchers/${p.id}`)}
                   className="text-left active:scale-[0.98] transition-transform w-full block"
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-500/10 dark:to-yellow-500/10 rounded-xl border border-amber-100 dark:border-amber-500/20">

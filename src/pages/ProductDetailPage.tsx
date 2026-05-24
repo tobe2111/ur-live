@@ -101,12 +101,14 @@ export default function ProductDetailPage() {
     }
   }, [product])
 
-  // 🛡️ 2026-05-23: getProductFlow SSOT — voucher / group_buy / standard 분류 단일 helper.
-  //   voucher_deal 또는 group_buy_toss → 전용 detail 페이지로 redirect.
+  // 🛡️ 2026-05-23: voucher 만 자동 redirect (/vouchers/:id). 사용자 정의:
+  //   - /browse 카드 → /product/:id 그대로 (Toss 결제)
+  //   - / 홈 공구 카드 → 홈 페이지가 직접 /group-buy/:id 링크 생성 (redirect 불요)
+  //   - voucher → /vouchers/:id 강제 (UI 완전 분리)
   useEffect(() => {
     if (!product) return
     const { flow, config } = resolveProductFlow(product)
-    if (flow !== 'standard_checkout') {
+    if (flow === 'voucher_deal') {
       navigate(config.detailPath(product.id), { replace: true })
     }
   }, [product, navigate])
