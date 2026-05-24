@@ -113,33 +113,31 @@ export function TossPaymentWidget({
 
         await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(totalAmount) }), 'SET_AMOUNT')
 
-        const tryRender = async (
-          method: 'renderPaymentMethods' | 'renderAgreement',
-          selector: string,
-          preferred: string,
-        ) => {
-          try { await withTimeout(widgets[method]({ selector, variantKey: preferred }), `${method}:${preferred}`); return } catch { /* fallback */ }
-          await withTimeout(widgets[method]({ selector }), `${method}:default`)
+        // 🛡️ 2026-05-23 v2: renderPaymentMethods + renderAgreement 의 반환값은 widget 인스턴스.
+        //   특히 약관 위젯은 .on('agreementStatusChange') 가 인스턴스에서만 작동 (widgets 객체 X).
+        const tryRenderPay = async () => {
+          try { return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method', variantKey: VARIANT_PAYMENT }), `renderPaymentMethods:${VARIANT_PAYMENT}`) } catch { /* fallback */ }
+          return await withTimeout(widgets.renderPaymentMethods({ selector: '#toss-payment-method' }), 'renderPaymentMethods:default')
+        }
+        const tryRenderAgreement = async () => {
+          try { return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement', variantKey: VARIANT_AGREEMENT }), `renderAgreement:${VARIANT_AGREEMENT}`) } catch { /* fallback */ }
+          return await withTimeout(widgets.renderAgreement({ selector: '#toss-agreement' }), 'renderAgreement:default')
         }
 
-        // 🛡️ 2026-05-23 v8 사용자 신고 fix: 결제수단 위젯만 await 으로 기다리고, 약관은 병렬 + non-blocking.
-        //   이전: 두 렌더 모두 await → 약관 hang/fail 시 button 영원히 비활성.
-        //   이후: 결제수단 렌더 끝나면 즉시 ready 상태 → button 활성. 약관은 background 렌더.
-        //   약관 실패 시 requestPayment 단계에서 SDK 가 에러 → 그때 처리.
-        await tryRender('renderPaymentMethods', '#toss-payment-method', VARIANT_PAYMENT)
+        // 결제수단 위젯만 await → button 즉시 활성. 약관은 background.
+        await tryRenderPay()
 
         if (cancelled) return
         widgetsRef.current = widgets
         setLoadingState('ready')
 
-        // 🛡️ 2026-05-23: 약관 위젯 렌더 + 동의 상태 감지.
-        //   렌더 후 widgets.on('agreementStatusChange') 로 동의 여부 추적.
-        //   사용자가 약관 체크/언체크 할 때마다 React state 업데이트 → 버튼 활성/비활성.
-        tryRender('renderAgreement', '#toss-agreement', VARIANT_AGREEMENT)
-          .then(() => {
+        // 약관 위젯 렌더 후 인스턴스의 on() 으로 동의 상태 감지.
+        // SDK 사양: agreementWidget.on('agreementStatusChange', cb) — widgets 객체에서는 작동 안 함.
+        tryRenderAgreement()
+          .then((agreementWidget) => {
             try {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              widgets.on('agreementStatusChange', (status: any) => {
+              (agreementWidget as any)?.on?.('agreementStatusChange', (status: any) => {
                 setAgreedRequired(!!status?.agreedRequiredTerms)
               })
             } catch { /* ignore — event listener 미지원 시 */ }
