@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { XCircle, Home, RotateCcw } from 'lucide-react'
+import { XCircle, Home, RotateCcw, Info } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 export default function PaymentFailPage() {
@@ -81,32 +81,48 @@ export default function PaymentFailPage() {
     return solutions[code] || t('paymentFail.fallbackSolution')
   }
 
+  // 🛡️ 2026-05-24: 사용자 취소 (PAY_PROCESS_CANCELED) 는 "실패" 가 아니라 "취소" — UX 톤 분리.
+  //   - 큰 빨간 X 는 진짜 카드 거절 / 잔액 부족 등 진짜 에러에만
+  //   - 취소는 부드러운 파란 ⓘ 아이콘 + "취소했어요" + 자연스러운 재시도 CTA
+  const isUserCancel = code === 'PAY_PROCESS_CANCELED'
+  const heroIconBg = isUserCancel
+    ? 'bg-blue-100 dark:bg-blue-900/30'
+    : 'bg-red-100 dark:bg-red-900/30'
+  const heroIconColor = isUserCancel
+    ? 'text-blue-600 dark:text-blue-400'
+    : 'text-red-600 dark:text-red-400'
+  const HeroIcon = isUserCancel ? Info : XCircle
+  const heroTitle = isUserCancel ? '결제를 취소하셨어요' : t('paymentFail.title')
+  const heroSub = isUserCancel ? '다시 진행하시려면 아래 버튼을 눌러주세요' : t('paymentFail.subtitle')
+
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
-      <SEO title={t('paymentFail.title')} description={t('paymentFail.subtitle')} url="/payment/fail" noindex />
-      {/* 🛡️ 2026-05-20: PC 폭 일관 — ur-content-narrow (720px) + lg padding */}
+      <SEO title={isUserCancel ? '결제 취소' : t('paymentFail.title')} description={heroSub} url="/payment/fail" noindex />
       <div className="ur-content-narrow w-full">
         <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
-          {/* 실패 아이콘 */}
+          {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
-              <XCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${heroIconBg} mb-4`}>
+              <HeroIcon className={`h-12 w-12 ${heroIconColor}`} />
             </div>
-            <h1 className="text-3xl font-bold text-[#1d1d1f] dark:text-white mb-2">{t('paymentFail.title')}</h1>
-            <p className="text-[#6e6e73] dark:text-gray-400">{t('paymentFail.subtitle')}</p>
+            <h1 className="text-3xl font-bold text-[#1d1d1f] dark:text-white mb-2">{heroTitle}</h1>
+            <p className="text-[#6e6e73] dark:text-gray-400">{heroSub}</p>
           </div>
 
-          {/* 오류 정보 */}
+          {/* 오류 정보 — 사용자 취소 시에는 큰 빨간 에러 박스 숨김 (UX noise 차단) */}
           <div className="space-y-4 mb-8">
-            {/* 에러 메시지 */}
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
-              <p className="text-sm text-red-800 dark:text-red-400">{getErrorMessage()}</p>
-            </div>
+            {!isUserCancel && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
+                <p className="text-sm text-red-800 dark:text-red-400">{getErrorMessage()}</p>
+              </div>
+            )}
 
-            {/* 해결 방법 */}
+            {/* 해결 방법 — 취소도 노출 (재시도 안내) */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">{t('paymentFail.solutionLabel')}</h3>
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                {isUserCancel ? '다음 단계' : t('paymentFail.solutionLabel')}
+              </h3>
               <p className="text-sm text-blue-800 dark:text-blue-400">{getSolution()}</p>
             </div>
 

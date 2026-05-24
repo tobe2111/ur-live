@@ -481,6 +481,35 @@ export default function AdminPage() {
         </button>
       </div>
 
+      {/* 🛡️ 2026-05-24: 별점 "신규" 즉시 백필 — cron 기다리지 않고 바로 시드 트리거. */}
+      <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm flex items-center gap-3">
+        <span className="text-2xl">⭐</span>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-gray-900">신규 상품 별점 자동 시드</p>
+          <p className="text-[11px] text-gray-500">review_count=0 + is_active=1 인 상품에 ★4.3~4.8 즉시 시드 (cron 기다리지 않음, 매시간 자동도 동작)</p>
+        </div>
+        <button
+          onClick={async () => {
+            if (!confirm('신규 상품 (별점 없음) 전체에 허위리뷰 즉시 시드할까요? max 500개.')) return
+            try {
+              const res = await api.post('/api/admin/reviews/auto-seed-missing', { max_batch: 500 })
+              if (res.data?.success) {
+                const r = res.data.data
+                toast.success(`✅ ${r.seeded_products}개 상품에 ${r.seeded_reviews}개 리뷰 시드 완료`)
+              } else {
+                toast.error(res.data?.error || '시드 실패')
+              }
+            } catch (e) {
+              const ax = e as { response?: { data?: { error?: string } } }
+              toast.error(ax.response?.data?.error || '시드 실패')
+            }
+          }}
+          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg"
+        >
+          즉시 시드
+        </button>
+      </div>
+
       {/* ── 매출 차트 + 활동 피드 (스크롤 진입 시 로드) ── */}
       <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
         <DeferUntilVisible fallback={<ChartSkeleton title={t('admin.dashboard.k025', { defaultValue: "매출 추이" })} />}>
