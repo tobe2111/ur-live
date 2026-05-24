@@ -33,6 +33,14 @@ interface UserDetail {
   order_count: number
   total_spent: number
   review_count: number
+  // 🛡️ 2026-05-24: 인라인 통계 (모달 안 열어도 바로 보임)
+  wallet_balance?: number
+  voucher_count?: number
+  coupon_count?: number
+  wishlist_count?: number
+  recent_transactions?: Array<{
+    id: number; type: string; amount: number; description: string; created_at: string
+  }>
   linked_seller?: {
     id: number; business_name: string; seller_type: string; status: string
     commission_rate?: number; created_at: string
@@ -269,27 +277,65 @@ export default function AdminUsersPage() {
                               </div>
                             ) : detail ? (
                               <div className="space-y-3 text-sm">
-                                <div className="flex gap-8 items-center">
-                                  <div>
-                                    <span className="text-gray-500">{t('admin.users.orderCount', { defaultValue: '주문 수' })}:</span>{' '}
-                                    <span className="font-semibold text-gray-900">{formatNumber(detail.order_count)}건</span>
+                                {/* 🛡️ 2026-05-24: 인라인 통계 6칸 grid — 한눈에 사용자 자산 보임. */}
+                                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                                  <div className="bg-emerald-50 rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">💰 딜 잔액</p>
+                                    <p className="font-bold text-emerald-700 text-sm">{formatNumber(detail.wallet_balance || 0)}딜</p>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">{t('admin.users.totalSpent', { defaultValue: '총 결제액' })}:</span>{' '}
-                                    <span className="font-semibold text-gray-900">{formatNumber(detail.total_spent)}원</span>
+                                  <div className="bg-blue-50 rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">🎫 바우처</p>
+                                    <p className="font-bold text-blue-700 text-sm">{formatNumber(detail.voucher_count || 0)}</p>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">{t('admin.users.reviewCount', { defaultValue: '리뷰 수' })}:</span>{' '}
-                                    <span className="font-semibold text-gray-900">{formatNumber(detail.review_count)}건</span>
+                                  <div className="bg-pink-50 rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">🎟 쿠폰</p>
+                                    <p className="font-bold text-pink-700 text-sm">{formatNumber(detail.coupon_count || 0)}</p>
                                   </div>
-                                  {/* 🛡️ 2026-05-24: 데이터 사라짐 / 잔액 안 보임 진단 */}
+                                  <div className="bg-rose-50 rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">❤️ 찜</p>
+                                    <p className="font-bold text-rose-700 text-sm">{formatNumber(detail.wishlist_count || 0)}</p>
+                                  </div>
+                                  <div className="bg-amber-50 rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">📦 주문</p>
+                                    <p className="font-bold text-amber-700 text-sm">{formatNumber(detail.order_count)}</p>
+                                  </div>
+                                  <div className="bg-gray-100 rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">📝 리뷰</p>
+                                    <p className="font-bold text-gray-700 text-sm">{formatNumber(detail.review_count)}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                  <p className="text-xs text-gray-600">총 결제액: <span className="font-bold text-gray-900">{formatNumber(detail.total_spent)}원</span></p>
                                   <button
                                     onClick={() => setFullStateUserId(user.id)}
                                     className="ml-auto px-3 py-1.5 bg-red-100 text-red-700 text-xs font-bold rounded hover:bg-red-200"
                                   >
-                                    🔍 전체 상태 진단 (잔액/쿠폰/바우처/중복)
+                                    🔍 전체 상태 진단 (중복 row 확인)
                                   </button>
                                 </div>
+
+                                {/* 최근 딜 거래 5건 */}
+                                {detail.recent_transactions && detail.recent_transactions.length > 0 && (
+                                  <div className="bg-white border border-gray-200 rounded p-3">
+                                    <p className="text-xs font-bold text-gray-700 mb-2">최근 딜 거래 (5건)</p>
+                                    <div className="space-y-1">
+                                      {detail.recent_transactions.map(tx => (
+                                        <div key={tx.id} className="flex items-center justify-between text-xs">
+                                          <div className="flex-1 min-w-0">
+                                            <span className="text-gray-600 truncate">{tx.description || tx.type}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                            <span className={tx.amount > 0 ? 'font-bold text-emerald-600' : 'font-bold text-red-600'}>
+                                              {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}딜
+                                            </span>
+                                            <span className="text-gray-400 text-[10px]">{new Date(tx.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
 
                                 {/* 연결된 셀러 / 에이전시 */}
                                 {(detail.linked_seller || detail.linked_agency) && (
