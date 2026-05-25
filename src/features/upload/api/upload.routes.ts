@@ -121,8 +121,14 @@ uploadRoutes.post('/upload/image', cors(), async (c) => {
     const yyyymm = new Date().toISOString().slice(0, 7)
     const key = `uploads/${auth.role}/${auth.id}/${yyyymm}/${randomKey()}.${ext}`
 
+    // 🛡️ 2026-05-24 (loading P0): 업로드된 이미지는 변경 안 됨 (key 가 random) → immutable + 1년.
+    //   효과: 같은 image_url 두번째 요청부터 browser/edge cache hit → 0ms.
+    //   R2 가 응답 헤더에 자동 부여 → CF edge + 사용자 브라우저 모두 적용.
     await c.env.MEDIA_BUCKET.put(key, buffer, {
-      httpMetadata: { contentType: detected },
+      httpMetadata: {
+        contentType: detected,
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
       customMetadata: { uploader: `${auth.role}:${auth.id}`, uploaded_at: new Date().toISOString() },
     })
 

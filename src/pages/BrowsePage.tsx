@@ -8,6 +8,7 @@ import SEO, { itemListJsonLd } from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import RecentlyViewedSection from './browse/RecentlyViewedSection'
 import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
@@ -49,10 +50,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   // 🛡️ 2026-05-19: 진짜 cursor-based 무한스크롤 (이전: client-side slice 만).
   //   2260+ 개 상품에서도 메모리 효율 + 백엔드 1페이지씩 가져옴.
+  // 🛡️ 2026-05-24 (loading P0): PAGE_SIZE 50 → 20.
+  //   첫 화면 이미지 다운로드 -60% (50개 카드 평균 200~500KB 이미지 = 10-25MB → 4-10MB).
+  //   IntersectionObserver 가 sentinel 도달 시 자동으로 다음 페이지 fetch — UX 동일.
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const PAGE_SIZE = 50
+  const PAGE_SIZE = 20
   const [showCount, setShowCount] = useState(ITEMS_PER_PAGE)
   const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
   const [freeShipOnly, setFreeShipOnly] = useState(false)
@@ -494,7 +498,16 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name || t('browse.altProduct')} className="w-full h-full object-cover" loading={aboveFold ? 'eager' : 'lazy'} fetchPriority={aboveFold ? 'high' : 'auto'} decoding="async" />
+                        <img
+                          src={cfImage(product.image_url, { width: 200, format: 'auto' }) || product.image_url}
+                          srcSet={cfSrcSet(product.image_url, 200) || undefined}
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                          alt={product.name || t('browse.altProduct')}
+                          className="w-full h-full object-cover"
+                          loading={aboveFold ? 'eager' : 'lazy'}
+                          fetchPriority={aboveFold ? 'high' : 'auto'}
+                          decoding="async"
+                        />
                       ) : (
                         <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}

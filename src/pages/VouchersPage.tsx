@@ -21,6 +21,7 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -431,7 +432,16 @@ export default function VouchersPage() {
                   >
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} loading={aboveFold ? 'eager' : 'lazy'} fetchPriority={aboveFold ? 'high' : 'auto'} decoding="async" className="w-full h-full object-cover" />
+                        <img
+                          src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
+                          srcSet={cfSrcSet(p.image_url, 200) || undefined}
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                          alt={p.name}
+                          loading={aboveFold ? 'eager' : 'lazy'}
+                          fetchPriority={aboveFold ? 'high' : 'auto'}
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Gift className="w-10 h-10 text-gray-300 dark:text-gray-600" />
