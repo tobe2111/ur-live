@@ -1,15 +1,66 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-24 (Quick Action FAB 시안 + 카카오 FAB 이관)
+**최종 업데이트**: 2026-05-25 (비즈니스 pivot 컨셉 docs + 배송 재설계 docs)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
 
-## ⏳ 사용자 결정 대기 (꼭 다음 세션에서 다시 물어볼 것)
+## 🚀 2026-05-25 — 비즈니스 모델 Pivot 컨셉 단계 진입
 
-| 항목 | 보류 사유 / 필요한 결정 |
+**사용자 결정 (2026-05-25 채팅)**: 라이브커머스 → "어드민 SSOT 카탈로그 + 모든 유저 큐레이터(링크샵) + 공구 호스팅 + 어필리에이트" trinity 로 전환.
+
+- **컨셉 docs**: `docs/design/linkshop-pivot.md`
+- **배송 재설계 docs**: `docs/design/shipping-redesign.md`
+
+### 진행 순서
+```
+Phase 0 — MD/sourcing 사업 준비 (코드 외)
+Phase 1 — 링크샵 + 큐레이터 핀 (코드 시작점)
+Phase 2 — 배송 재설계 (별도 docs, A/B 결정 후 진행)
+Phase 3 — 공구 호스팅 (정의 A/B 결정 필요)
+Phase 4 — 어필리에이트 정산 (현행 0.5% 양방향 확장)
+Phase 5 — 셀러 흡수 (Migration)
+Phase 6 — 마케팅/UX 강화
+```
+
+### 옛 작업 처리
+- Quick Action FAB: 신모델에서 "공구 호스팅 / 큐레이터 시작" 으로 재정의 — 옛 시안 (`quick-action-fab.md`) 은 신모델 흡수 예정
+- 카카오 FAB: 그대로 보류 (`featureFlags.kakaoFab=false`)
+
+## ⏳ 사용자 결정 대기 (Phase 1 시작 전 확정 필요)
+
+### 🚨 가장 큰 분기 — 공구 모델 (linkshop §3 + shipping §0 연동)
+- 현 공구 = 100% voucher (QR/교환권) 모델, 카테고리 7종 전부 `*_voucher`
+- **(A) voucher only 유지 (권장)** — 누구나 voucher 공구 호스팅, 실물 배송 영역 분리. shipping-redesign §6 (group_orders) 삭제
+- **(B) 실물 공구 신설** — 어드민 카탈로그 실물 상품도 공구 모집 가능. shipping-redesign §6 유지
+
+### linkshop-pivot.md 정책 (요약)
+| 항목 | 권장 default |
 |---|---|
-| **Quick Action FAB — 비셀러 '공구 열기' 클릭 처리** | (a) 셀러 가입 안내 모달 / (b) 셀러 가입 페이지 즉시 이동 / (c) 메뉴에서 항목 자체 숨김 / (d) "공구 참여하기" 같은 대체 액션 — 사용자 선택 필요. 결정 안 되면 본격 FAB 구현 진행 불가. 시안: `docs/design/quick-action-fab.md` |
-| **Quick Action FAB — 노출/숨김 페이지 확정** | 후보: 노출 = 홈 / 쇼핑 / 교환권 / 공구. 숨김 = 결제 / 라이브 시청 / 셀러·어드민·에이전시. 사용자 검토 필요. |
-| **카카오 FAB 복원 시점** | 현재 `featureFlags.kakaoFab=false` (commit `116ab58d`). Quick Action FAB 본격 가동 시 영구 삭제 vs 옵션으로 유지 결정. |
+| 공구 호스팅 정의 (Phase 3) | A vs B (위) |
+| 어필리에이트 비율 | 현행 0.5% 양방향 유지 (큐레이터 단독 비율 별도?) |
+| 공구 호스트 인센티브 | 마감 성공 시 거래액 1% 추가 |
+| 큐레이터 → 셀러 승급 threshold | 누적 정산 50만원 (사업자등록 안내) |
+| 자기 ref 자기 구매 | 정산 제외 + 적립 회수 |
+| 기존 셀러 retention | 라이브권 + 큐레이터 흡수 + 기존 commission 유지 |
+| 카탈로그 노출 정책 | 메인=어드민 큐레이션 / 검색=인기순 |
+| 상품 등록 권한 | 100% 어드민 |
+
+### shipping-redesign.md 정책 (요약, A 채택 시 §6 자동 삭제)
+| 항목 | 권장 default |
+|---|---|
+| 제주 추가비 | +3,000원 |
+| 도서산간 추가비 | +5,000원 |
+| 공구 모집 미달 배송비 부담 (B 가설) | 플랫폼 |
+| 공구 결제 시점 (B 가설) | 참여 시 즉시 결제 (현행) |
+| 공구 일괄 발송 SLA (B 가설) | 마감 후 3영업일 |
+| 택배사 추적 API | Phase 2 외부링크만 / Phase 6 스마트택배 |
+| 합배송 도입 시점 | Phase 2-E (옵션) vs Phase 6 |
+
+## 옛 보류 항목 (신모델로 흡수)
+| 항목 | 처리 |
+|---|---|
+| Quick Action FAB — 비셀러 클릭 처리 | 신모델에서 모든 유저가 호스팅 가능 → 자연 해소. 옛 (a)(b)(c)(d) 분기 무의미 |
+| Quick Action FAB — 노출/숨김 페이지 | Phase 6 에서 재정의 |
+| 카카오 FAB 복원 시점 | Phase 6 |
 
 ## ✅ 2026-05-24 세션 — 교환권 flow 영구 fix + KT Alpha 진단
 
