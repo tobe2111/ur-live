@@ -54,21 +54,45 @@
 - [ ] **공급사 파트너십 계약** — 도매가 / MOQ / 합배송 가능 여부
 
 ### Phase 1 — 링크샵 + 큐레이션 (코드)
+
+#### 1-A. 기본 인프라
 - [ ] `/u/:handle` 링크샵 페이지 (모든 유저)
 - [ ] 큐레이터 핸들 (`users.handle` UNIQUE)
-- [ ] 상품 "핀" 모델 (`product_pins` 테이블: user_id, product_id, position, note)
-- [ ] 어필리에이트 링크 (`/u/:handle/p/:product_id` → ref=user_id 쿠키)
-- [ ] 핀 추가/제거/순서 변경 UI
-- [ ] 큐레이터 페이지 SEO (OG image, 상품 메타)
+- [ ] 상품 "핀" 모델 (`product_pins` 테이블: user_id, product_id, position, note, created_at)
+- [ ] 어필리에이트 링크 (`/u/:handle/p/:product_id` → ref=user_id 쿠키 30일)
+- [ ] 큐레이터 페이지 SEO (OG image — 큐레이터 이름 + 상품 이미지, 동적 생성)
+
+#### 1-B. 🚨 핵심 UX — "핀 추가가 1탭" (사용자 강조 요구사항)
+- [ ] **모든 상품 카드에 "+ 내 링크샵에 핀" 버튼** (홈/쇼핑/검색/상품상세 어디서나)
+- [ ] 비로그인 사용자 → 카카오 로그인 1탭 후 자동 핀
+- [ ] 핀 추가 시 즉시 toast: "₩{상품가}원짜리 상품 핀됨. 친구에게 공유하면 0.5% 적립!" + 공유 버튼
+- [ ] 핸들 없는 유저 → 첫 핀 시 자동 핸들 생성 (kakao nickname 기반, 충돌 시 숫자 suffix)
+- [ ] 인기 / 최근 본 / 카테고리별 "추천 핀 후보" 섹션 — 큐레이터 페이지 빈 상태 방지
+- [ ] 핀 순서 드래그앤드롭 (모바일 long-press)
+- [ ] 핀 카드에 큐레이터 한 줄 노트 (옵션, "왜 추천?")
+
+#### 1-C. 🚨 핵심 UX — "수익 가시화" (사용자 강조 요구사항)
+- [ ] **큐레이터 페이지 상단 dashboard**: 이번 달 적립 ₩X / 클릭 N / 구매 M / 인기 핀 top 3
+- [ ] **각 핀 옆 stats**: "7일 클릭 N · 구매 M · 적립 ₩X" (큐레이터 본인만 보임)
+- [ ] **구매 발생 즉시 push 알림**: "🎉 당신의 핀으로 ₩X 적립" (`sendSystemPush`)
+- [ ] **공유 simulator**: "이 상품 5명 공유 시 예상 적립 ₩X" — 핀 추가 toast 에 박기
+- [ ] `/u/me/earnings` 큐레이터 정산 대시보드 (일별 차트 + 출금 가능 잔액)
+
+#### 1-D. 공유 마찰 0
+- [ ] 핀 카드 / 큐레이터 페이지 / 상품 상세 모두에 **카톡 / 인스타 스토리 / 링크복사 1탭 공유 버튼**
+- [ ] 카톡 공유는 카카오 sharing API (이미 SDK 있음) — OG image 동적
+- [ ] 인스타 스토리: 상품 이미지 + 가격 + 큐레이터 핸들 sticker 자동 합성
+- [ ] 공유 시 ref=user_id 자동 쿠키 (현 `affiliate_ref` 헤더 시스템 재활용)
 
 ### Phase 2 — 배송 재설계 🚨
 **별도 docs**: [shipping-redesign.md](./shipping-redesign.md)
 
-### Phase 3 — 공구 호스팅
-- [ ] 누구나 공구 개설 가능 (현재는 셀러만)
-- [ ] `group_buys.host_user_id` 추가
+### Phase 3 — 공구 호스팅 (✅ A 채택: voucher 공구만)
+- [ ] 누구나 voucher 공구 개설 가능 (현재는 셀러만)
+- [ ] `group_buys.host_user_id` 추가 (어드민 상품을 호스트가 "발견" + 공구 모집)
 - [ ] 호스트 인센티브 (마감 시 1-2% 추가 적립)
 - [ ] 공구 진행 dashboard (모집 인원 / 남은 시간 / 공유 링크)
+- [ ] 실물 공구는 도입 X (B 옵션 거부) — 실물은 일반 쇼핑 (1인 주문) only
 
 ### Phase 4 — 어필리에이트 정산
 - [ ] `referral_earnings` 테이블 (referrer_id, order_id, amount, status)

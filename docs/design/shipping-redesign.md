@@ -1,7 +1,7 @@
 # 배송 시스템 재설계
 
 **제안 날짜**: 2026-05-25
-**현 상태**: ⏳ 컨셉 / 🚨 **사용자 A/B 결정 대기** (아래 0번 섹션)
+**현 상태**: ✅ **A 확정 (2026-05-25)** — voucher only, §4-1 `group_orders` / §6 (공구 배송) / §11 Phase 2-B / §12 공구 정책 행은 **deprecated** (다음 정리 commit 에서 제거)
 **연계 docs**: [linkshop-pivot.md](./linkshop-pivot.md)
 **audit 출처**: 2026-05-25 채팅 history (배송 구현 상태 thorough audit)
 
@@ -34,6 +34,12 @@
 | **B. 실물 공구 신규 도입** | 어드민 실물 상품도 공구 모집 가능 (올웨이즈식). | 본 docs §6 유지 + `group_orders` 신규 + 카테고리 확장. |
 
 **결정 전까지 §6 (공구 배송 모델) 은 "B 가설 plan" 으로 유지**. A 채택 시 본 섹션 + §6 + §4-1 `group_orders` 삭제.
+
+### ✅ 2026-05-25 사용자 결정: **A 채택**
+- 공구 = voucher only 유지 (기존 모델 그대로)
+- 실물 배송 영역은 일반 쇼핑 (1인 주문) 만 해당
+- 본 docs 의 공구 관련 모든 섹션 (§4-1 `group_orders`, §6 전체, §11 Phase 2-B, §12 공구 정책 4행) 은 **deprecated** — 다음 정리 commit 에서 제거 예정
+- **남는 배송 작업**: §4-1 `shipping_logs`+`regional_shipping_fees`, §4-2 컬럼 확장, §5 배송비 함수, §7 CSV 일괄, §8 외부링크, §9 합배송, §10 알림
 
 ---
 
