@@ -27,10 +27,13 @@ Phase 6 — 마케팅/UX 강화
 
 ## ⏳ 사용자 결정 대기 (Phase 1 시작 전 확정 필요)
 
-### 🚨 가장 큰 분기 — 공구 모델 (linkshop §3 + shipping §0 연동)
-- 현 공구 = 100% voucher (QR/교환권) 모델, 카테고리 7종 전부 `*_voucher`
-- **(A) voucher only 유지 (권장)** — 누구나 voucher 공구 호스팅, 실물 배송 영역 분리. shipping-redesign §6 (group_orders) 삭제
-- **(B) 실물 공구 신설** — 어드민 카탈로그 실물 상품도 공구 모집 가능. shipping-redesign §6 유지
+### ✅ 2026-05-25 결정: A 채택 — voucher 공구 only
+- 누구나 voucher 공구 호스팅 가능 (Phase 3)
+- 실물 배송은 일반 쇼핑 (1인 주문) only — shipping-redesign §6 deprecated
+- **추가 강조 요구사항** (사용자 명시):
+  - 유저가 공개 페이지 (링크샵) 에 **상품 핀이 매우 쉬워야** — 모든 상품 카드에 1탭 핀 버튼
+  - **수익이 즉시 보여야** — 큐레이터 대시보드 + 핀별 stats + 구매 즉시 push + 공유 simulator
+  - linkshop-pivot.md Phase 1-B / 1-C / 1-D 신설
 
 ### linkshop-pivot.md 정책 (요약)
 | 항목 | 권장 default |
