@@ -25,4 +25,6 @@
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ⏳ 미구현 | [home-sidebar.md](./home-sidebar.md) |
-| Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ⏳ 미구현 | [quick-action-fab.md](./quick-action-fab.md) |
+| Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ⏳ 미구현 (신모델로 컨셉 변경 가능) | [quick-action-fab.md](./quick-action-fab.md) |
+| **🚀 비즈니스 pivot — 링크샵·공구·어필리에이트** | 2026-05-25 | ⏳ 컨셉 / 정책 결정 대기 | [linkshop-pivot.md](./linkshop-pivot.md) |
+| **🚢 배송 시스템 재설계** | 2026-05-25 | ⏳ 컨셉 / 정책 결정 대기 | [shipping-redesign.md](./shipping-redesign.md) |
