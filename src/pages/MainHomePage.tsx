@@ -27,7 +27,6 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import GroupBuyFeed from './main-home/GroupBuyFeed'
-import UserOnboardingModal from '@/components/onboarding/UserOnboardingModal'
 
 export default function MainHomePage() {
   const navigate = useNavigate()
@@ -90,7 +89,6 @@ export default function MainHomePage() {
       </div>
 
       <SiteFooter />
-      <UserOnboardingModal />
     </>
   )
 }
