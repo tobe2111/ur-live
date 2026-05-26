@@ -21,14 +21,16 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireUserType } from '../middleware/auth'
+import { requireAuth } from '../middleware/auth'
 import { safeError } from '../utils/safe-error'
 import { HOSTING_DEFAULTS } from '../../shared/constants/policy'
 
 const hostingRoutes = new Hono<{ Bindings: Env }>()
 
 function getAuthUserId(c: any): number | null {
-  const raw = c.get?.('userId') ?? c.get?.('userIdNumber')
+  // 🛡️ 2026-05-25 fix: auth middleware 는 c.set('user', { id, ... }) 패턴
+  const user = c.get?.('user')
+  const raw = user?.id ?? c.get?.('userId') ?? c.get?.('userIdNumber')
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : null
 }
@@ -51,7 +53,7 @@ async function generateInviteCode(DB: D1Database): Promise<string> {
 // GET /api/hosting/catalog (requireUser)
 // 어드민 voucher 카탈로그 — 호스팅 가능한 상품 목록.
 // ============================================================
-hostingRoutes.get('/catalog', requireUserType('user'), async (c) => {
+hostingRoutes.get('/catalog', requireAuth(), async (c) => {
   try {
     const limit = Math.max(10, Math.min(100, Number(c.req.query('limit')) || 30))
     const category = String(c.req.query('category') || '').trim()
@@ -87,7 +89,7 @@ hostingRoutes.get('/catalog', requireUserType('user'), async (c) => {
 // POST /api/hosting/me (requireUser) — 호스팅 시작 (1탭)
 // Body: { product_id, target_quantity?, note?, deadline_at? }
 // ============================================================
-hostingRoutes.post('/me', requireUserType('user'), async (c) => {
+hostingRoutes.post('/me', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -165,7 +167,7 @@ hostingRoutes.post('/me', requireUserType('user'), async (c) => {
 // ============================================================
 // GET /api/hosting/me (requireUser) — 본인 호스팅 목록 + 통계
 // ============================================================
-hostingRoutes.get('/me', requireUserType('user'), async (c) => {
+hostingRoutes.get('/me', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -202,7 +204,7 @@ hostingRoutes.get('/me', requireUserType('user'), async (c) => {
 // ============================================================
 // GET /api/hosting/me/:id (requireUser) — 본인 호스팅 상세 + 참여자
 // ============================================================
-hostingRoutes.get('/me/:id', requireUserType('user'), async (c) => {
+hostingRoutes.get('/me/:id', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -236,7 +238,7 @@ hostingRoutes.get('/me/:id', requireUserType('user'), async (c) => {
 // ============================================================
 // PATCH /api/hosting/me/:id/cancel (requireUser)
 // ============================================================
-hostingRoutes.patch('/me/:id/cancel', requireUserType('user'), async (c) => {
+hostingRoutes.patch('/me/:id/cancel', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)

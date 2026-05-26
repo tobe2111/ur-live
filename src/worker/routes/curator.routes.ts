@@ -7,7 +7,7 @@
  *
  * 영구 룰:
  *   - 알리아스(@/) import 금지 → 상대경로
- *   - 모든 mutation 은 requireAuth() / requireUserType('user') 검증
+ *   - 모든 mutation 은 requireAuth() / requireAuth() 검증
  *   - safeError() 로 에러 reply (DB 메시지 누출 X)
  *   - rate limit 은 KV 미구성 시 fail-open (CLAUDE.md 룰)
  *   - 핸들 정책은 policy.ts CURATOR_DEFAULTS SSOT
@@ -15,7 +15,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAuth, requireUserType } from '../middleware/auth'
+import { requireAuth } from '../middleware/auth'
 import { safeError } from '../utils/safe-error'
 import {
   generateUniqueHandle,
@@ -28,8 +28,11 @@ import { getPolicy } from '../utils/dynamic-policy'
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
 // ── 유틸: 인증된 user_id (number) 추출 ──
+// 🛡️ 2026-05-25 fix: auth middleware 는 c.set('user', { id, ... }) 패턴.
+//   이전 c.get('userId') 는 항상 null → 401. 'user' 객체에서 id 추출.
 function getAuthUserId(c: any): number | null {
-  const raw = c.get?.('userId') ?? c.get?.('userIdNumber')
+  const user = c.get?.('user')
+  const raw = user?.id ?? c.get?.('userId') ?? c.get?.('userIdNumber')
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : null
 }
@@ -196,7 +199,7 @@ curatorRoutes.get('/handle/check', async (c) => {
 // 핀 추가 — 첫 핀이면 handle 자동 생성.
 // Body: { product_id: number, note?: string }
 // ============================================================
-curatorRoutes.post('/me/pins', requireUserType('user'), async (c) => {
+curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -282,7 +285,7 @@ curatorRoutes.post('/me/pins', requireUserType('user'), async (c) => {
 // ============================================================
 // DELETE /api/curator/me/pins/:id  (requireUser)
 // ============================================================
-curatorRoutes.delete('/me/pins/:id', requireUserType('user'), async (c) => {
+curatorRoutes.delete('/me/pins/:id', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -304,7 +307,7 @@ curatorRoutes.delete('/me/pins/:id', requireUserType('user'), async (c) => {
 // PATCH /api/curator/me/pins/reorder  (requireUser)
 // Body: { pin_ids: number[] } — 순서대로 position 부여
 // ============================================================
-curatorRoutes.patch('/me/pins/reorder', requireUserType('user'), async (c) => {
+curatorRoutes.patch('/me/pins/reorder', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -340,7 +343,7 @@ curatorRoutes.patch('/me/pins/reorder', requireUserType('user'), async (c) => {
 // ============================================================
 // PATCH /api/curator/me/pins/:id  (requireUser) — note 수정
 // ============================================================
-curatorRoutes.patch('/me/pins/:id', requireUserType('user'), async (c) => {
+curatorRoutes.patch('/me/pins/:id', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -366,7 +369,7 @@ curatorRoutes.patch('/me/pins/:id', requireUserType('user'), async (c) => {
 // Body: { handle: string }
 // 30일 cooldown (CURATOR_DEFAULTS.HANDLE_CHANGE_COOLDOWN_DAYS)
 // ============================================================
-curatorRoutes.patch('/me/handle', requireUserType('user'), async (c) => {
+curatorRoutes.patch('/me/handle', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -411,7 +414,7 @@ curatorRoutes.patch('/me/handle', requireUserType('user'), async (c) => {
 // GET /api/curator/me/dashboard  (requireUser)
 // 큐레이터 대시보드: 30일 적립 / 클릭 / 구매 / top pins / 일별 차트
 // ============================================================
-curatorRoutes.get('/me/dashboard', requireUserType('user'), async (c) => {
+curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -476,7 +479,7 @@ curatorRoutes.get('/me/dashboard', requireUserType('user'), async (c) => {
 // GET /api/curator/me/pins/stats?range=7  (requireUser)
 // 각 핀별 N일 클릭/구매/적립
 // ============================================================
-curatorRoutes.get('/me/pins/stats', requireUserType('user'), async (c) => {
+curatorRoutes.get('/me/pins/stats', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -545,7 +548,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
 // Body: { amount, bank_name, bank_account, account_holder }
 // 기존 user_withdrawals 테이블 재활용 (mig 0274) — 검증 + 원천징수 계산만 SSOT.
 // ============================================================
-curatorRoutes.post('/me/withdrawal', requireUserType('user'), async (c) => {
+curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -620,7 +623,7 @@ curatorRoutes.post('/me/withdrawal', requireUserType('user'), async (c) => {
 // ============================================================
 // GET /api/curator/me/withdrawal (requireUser) — 출금 가능 잔액 + 이력
 // ============================================================
-curatorRoutes.get('/me/withdrawal', requireUserType('user'), async (c) => {
+curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -689,7 +692,7 @@ curatorRoutes.get('/me/withdrawal', requireUserType('user'), async (c) => {
 // POST /api/curator/me/seller-upgrade-acknowledge (requireUser)
 // 사용자가 셀러 승급 안내를 봤다고 mark — 30일 동안 재안내 X
 // ============================================================
-curatorRoutes.post('/me/seller-upgrade-acknowledge', requireUserType('user'), async (c) => {
+curatorRoutes.post('/me/seller-upgrade-acknowledge', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)

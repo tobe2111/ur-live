@@ -37,7 +37,9 @@ const shippingRoutes = new Hono<{ Bindings: Env }>()
 
 // ── 인증된 user_id 추출 ──
 function getAuthUserId(c: any): number | null {
-  const raw = c.get?.('userId') ?? c.get?.('userIdNumber')
+  // 🛡️ 2026-05-25 fix: auth middleware 는 c.set('user', { id, ... }) 패턴
+  const user = c.get?.('user')
+  const raw = user?.id ?? c.get?.('userId') ?? c.get?.('userIdNumber')
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : null
 }
