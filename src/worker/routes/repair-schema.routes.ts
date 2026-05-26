@@ -91,6 +91,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'orders.last_tracking_sync_at', sql: "ALTER TABLE orders ADD COLUMN last_tracking_sync_at DATETIME" },
     { desc: 'orders.tracking_status', sql: "ALTER TABLE orders ADD COLUMN tracking_status TEXT" },
     { desc: 'orders.tracking_carrier_code', sql: "ALTER TABLE orders ADD COLUMN tracking_carrier_code TEXT" },
+    // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
+    { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
+    { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },
 
     // ── products ───────────────────────────────────
     { desc: 'products.view_count', sql: "ALTER TABLE products ADD COLUMN view_count INTEGER DEFAULT 0" },
@@ -804,6 +807,43 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       FOREIGN KEY (order_id) REFERENCES orders(id)
     )` },
     { name: 'idx_shipping_events_order', sql: `CREATE INDEX IF NOT EXISTS idx_shipping_events_order ON shipping_tracking_events(order_id, created_at DESC)` },
+
+    // ── 호스팅 (migration 0280, 2026-05-25) ──────────────
+    { name: 'group_buy_hosts', sql: `CREATE TABLE IF NOT EXISTS group_buy_hosts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      host_user_id INTEGER NOT NULL,
+      invite_code TEXT NOT NULL,
+      target_quantity INTEGER NOT NULL DEFAULT 5,
+      current_quantity INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      deadline_at DATETIME,
+      note TEXT,
+      total_earnings INTEGER NOT NULL DEFAULT 0,
+      achieved_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(host_user_id, product_id),
+      FOREIGN KEY (product_id) REFERENCES products(id),
+      FOREIGN KEY (host_user_id) REFERENCES users(id)
+    )` },
+    { name: 'idx_gbh_invite_code', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_gbh_invite_code ON group_buy_hosts(invite_code)` },
+    { name: 'idx_gbh_host_status', sql: `CREATE INDEX IF NOT EXISTS idx_gbh_host_status ON group_buy_hosts(host_user_id, status)` },
+    { name: 'idx_gbh_product_status', sql: `CREATE INDEX IF NOT EXISTS idx_gbh_product_status ON group_buy_hosts(product_id, status)` },
+
+    { name: 'group_buy_host_participants', sql: `CREATE TABLE IF NOT EXISTS group_buy_host_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      host_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      order_id INTEGER,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      earnings INTEGER NOT NULL DEFAULT 0,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(host_id, user_id),
+      FOREIGN KEY (host_id) REFERENCES group_buy_hosts(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )` },
+    { name: 'idx_gbhp_host', sql: `CREATE INDEX IF NOT EXISTS idx_gbhp_host ON group_buy_host_participants(host_id, joined_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

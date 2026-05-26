@@ -5443,5 +5443,12 @@
     "notShipped": "Not shipped yet",
     "noEvents": "No tracking events yet",
     "externalSite": "View on carrier site"
+  },
+  "hosting": {
+    "title": "My Hosted Group Buys",
+    "newTitle": "Open Group Buy",
+    "startNew": "Open",
+    "empty": "No hosted group buys yet. Find products to buy with friends!",
+    "emptyCatalog": "Catalog is empty"
   }
 }

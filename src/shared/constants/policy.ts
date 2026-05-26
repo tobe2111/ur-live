@@ -83,6 +83,34 @@ export const COMMISSION_DEFAULTS = {
   STAYS_COMMISSION_CAP_PCT: 20,
 } as const
 
+// ── ⑪ 호스팅 + 정산 (migration 0280, 2026-05-25) ────────────────
+//   Phase 3 — 누구나 voucher 공구 호스팅. host_user_id 별 모집.
+//   Phase 4 — 큐레이터 → 셀러 자동 승급 안내 (누적 평생 정산액 기반).
+export const HOSTING_DEFAULTS = {
+  /** 호스트 인센티브 % — 친구가 본 호스트의 공구 참여 시 호스트 적립. */
+  HOST_INCENTIVE_PCT: 1.0,
+  /** 호스트당 모집 가능 동시 공구 수 — 스팸 방지 */
+  MAX_ACTIVE_HOSTINGS: 10,
+  /** 호스트 모집 기본 기간 (일) */
+  DEFAULT_DEADLINE_DAYS: 7,
+  /** 호스트 본인 목표 최소 / 최대 인원 */
+  MIN_TARGET: 2,
+  MAX_TARGET: 100,
+  /** 호스트 노트 최대 길이 */
+  NOTE_MAX_LEN: 200,
+  /** invite_code 길이 (hex) */
+  INVITE_CODE_LEN: 8,
+} as const
+
+export const WITHDRAWAL_DEFAULTS = {
+  /** 출금 최소 금액 (KRW) — 재정의 (기존 COMMISSION_MIN_WITHDRAWAL=10000 과 동일, 명시 SSOT) */
+  MIN_AMOUNT: 10_000,
+  /** 큐레이터 → 셀러 승급 권유 threshold (누적 평생 정산) */
+  SELLER_UPGRADE_THRESHOLD: 500_000,
+  /** 승급 안내 cooldown (일) — 거절 후 N일 재안내 */
+  UPGRADE_REOFFER_DAYS: 30,
+} as const
+
 // ── ⑩ 배송 재설계 (migration 0279, 2026-05-25) ──────────────────
 //   기존 calculateShippingFee (subtotal, baseFee, freeThreshold) 는 V1 — deprecated 안 함.
 //   신규 calculateShippingFeeV2 가 본 정책 + regional_shipping_fees 테이블 사용.

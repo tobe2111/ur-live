@@ -5438,5 +5438,12 @@
     "notShipped": "아직 발송되지 않았습니다",
     "noEvents": "추적 정보가 아직 없습니다",
     "externalSite": "택배사 페이지에서 보기"
+  },
+  "hosting": {
+    "title": "내 공구 호스팅",
+    "newTitle": "공구 열기",
+    "startNew": "공구 열기",
+    "empty": "아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!",
+    "emptyCatalog": "아직 카탈로그가 비어있어요"
   }
 }

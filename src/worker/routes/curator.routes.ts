@@ -22,7 +22,7 @@ import {
   isHandleAvailable,
   isValidHandleFormat,
 } from '../utils/handle-generator'
-import { CURATOR_DEFAULTS } from '../../shared/constants/policy'
+import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY } from '../../shared/constants/policy'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -536,6 +536,160 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
     return c.json({ success: true, recommendations: results ?? [] })
   } catch (err) {
     return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
+  }
+})
+
+// ============================================================
+// POST /api/curator/me/withdrawal (requireUser) — Phase 4 출금
+// Body: { amount, bank_name, bank_account, account_holder }
+// 기존 user_withdrawals 테이블 재활용 (mig 0274) — 검증 + 원천징수 계산만 SSOT.
+// ============================================================
+curatorRoutes.post('/me/withdrawal', requireUserType('user'), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{ amount?: number; bank_name?: string; bank_account?: string; account_holder?: string }>().catch(() => ({} as any))
+    const amount = Number(body.amount)
+    const bankName = String(body.bank_name || '').trim()
+    const bankAccount = String(body.bank_account || '').trim()
+    const accountHolder = String(body.account_holder || '').trim()
+
+    if (!Number.isFinite(amount) || amount < WITHDRAWAL_DEFAULTS.MIN_AMOUNT) {
+      return c.json({
+        success: false,
+        error: `최소 출금 금액은 ${WITHDRAWAL_DEFAULTS.MIN_AMOUNT.toLocaleString()}원입니다`,
+      }, 400)
+    }
+    if (!bankName || !bankAccount || !accountHolder) {
+      return c.json({ success: false, error: '은행/계좌/예금주 모두 필요합니다' }, 400)
+    }
+    if (bankAccount.length < 8 || bankAccount.length > 30) {
+      return c.json({ success: false, error: '계좌번호가 유효하지 않습니다' }, 400)
+    }
+
+    const DB = c.env.DB
+
+    // 잔액 검증 — affiliate_earnings SUM - 이미 출금 신청한 금액
+    const balance = await DB.prepare(
+      `SELECT
+         COALESCE((SELECT SUM(commission_amount) FROM affiliate_earnings WHERE referrer_id = ?), 0)
+         - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
+         AS available`,
+    ).bind(String(userId), String(userId)).first<{ available: number }>()
+    const available = balance?.available ?? 0
+    if (amount > available) {
+      return c.json({
+        success: false,
+        error: `출금 가능 금액 초과 (가능: ${available.toLocaleString()}원)`,
+        available,
+      }, 400)
+    }
+
+    // 원천징수 — TAX_POLICY.BUSINESS_INCOME_RATE (기본 3.3%)
+    const withholdingTax = Math.floor(amount * TAX_POLICY.BUSINESS_INCOME_RATE)
+    const netAmount = amount - withholdingTax
+
+    try {
+      const result = await DB.prepare(
+        `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'requested')`,
+      ).bind(String(userId), amount, withholdingTax, netAmount, bankName, bankAccount, accountHolder).run()
+
+      return c.json({
+        success: true,
+        withdrawal: {
+          id: result.meta.last_row_id,
+          amount,
+          withholding_tax: withholdingTax,
+          net_amount: netAmount,
+          status: 'requested',
+        },
+      })
+    } catch (e: any) {
+      return safeError(c, e, '출금 신청 중 오류가 발생했습니다', '[curator:withdrawal]')
+    }
+  } catch (err) {
+    return safeError(c, err, '출금 신청 중 오류가 발생했습니다', '[curator:withdrawal]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/me/withdrawal (requireUser) — 출금 가능 잔액 + 이력
+// ============================================================
+curatorRoutes.get('/me/withdrawal', requireUserType('user'), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const DB = c.env.DB
+
+    const earnings = await DB.prepare(
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total FROM affiliate_earnings WHERE referrer_id = ?`,
+    ).bind(String(userId)).first<{ total: number }>()
+
+    const withdrawn = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM user_withdrawals
+       WHERE user_id = ? AND status IN ('requested','approved','paid')`,
+    ).bind(String(userId)).first<{ total: number }>()
+
+    const lifetimeEarnings = earnings?.total ?? 0
+    const totalWithdrawn = withdrawn?.total ?? 0
+    const available = Math.max(0, lifetimeEarnings - totalWithdrawn)
+
+    const { results: history } = await DB.prepare(
+      `SELECT id, amount, withholding_tax, net_amount, bank_name, status, requested_at
+       FROM user_withdrawals WHERE user_id = ?
+       ORDER BY requested_at DESC LIMIT 20`,
+    ).bind(String(userId)).all().catch(() => ({ results: [] as any[] }))
+
+    // 셀러 승급 안내 여부
+    let upgradeOffered = false
+    let upgradeEligible = false
+    try {
+      const u = await DB.prepare(
+        `SELECT seller_upgrade_offered_at, user_type FROM users WHERE id = ? LIMIT 1`,
+      ).bind(userId).first<{ seller_upgrade_offered_at: string | null; user_type: string }>()
+      upgradeOffered = !!u?.seller_upgrade_offered_at
+      if (u?.user_type === 'user' && lifetimeEarnings >= WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD) {
+        // cooldown 검사
+        const cooldownMs = WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS * 86400_000
+        const lastMs = u?.seller_upgrade_offered_at ? Date.parse(u.seller_upgrade_offered_at) : 0
+        upgradeEligible = !lastMs || (Date.now() - lastMs > cooldownMs)
+      }
+    } catch { /* ignore */ }
+
+    return c.json({
+      success: true,
+      lifetime_earnings: lifetimeEarnings,
+      total_withdrawn: totalWithdrawn,
+      available,
+      min_withdrawal: WITHDRAWAL_DEFAULTS.MIN_AMOUNT,
+      withholding_rate: TAX_POLICY.BUSINESS_INCOME_RATE,
+      history: history ?? [],
+      seller_upgrade: {
+        threshold: WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD,
+        eligible: upgradeEligible,
+        offered: upgradeOffered,
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '출금 정보 조회 중 오류가 발생했습니다', '[curator:withdrawal-info]')
+  }
+})
+
+// ============================================================
+// POST /api/curator/me/seller-upgrade-acknowledge (requireUser)
+// 사용자가 셀러 승급 안내를 봤다고 mark — 30일 동안 재안내 X
+// ============================================================
+curatorRoutes.post('/me/seller-upgrade-acknowledge', requireUserType('user'), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    await c.env.DB.prepare(
+      `UPDATE users SET seller_upgrade_offered_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).bind(userId).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '확인 처리 중 오류가 발생했습니다', '[curator:upgrade-ack]')
   }
 })
 

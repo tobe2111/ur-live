@@ -196,6 +196,7 @@ import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group
 import { ogRoutes } from './routes/og-image.routes';
 import { curatorRoutes } from './routes/curator.routes'; // 2026-05-25 큐레이터 링크샵
 import { shippingRoutes } from './routes/shipping.routes'; // 2026-05-25 배송 재설계 (migration 0279)
+import { hostingRoutes } from './routes/hosting.routes'; // 2026-05-25 호스팅 (migration 0280)
 import { analyticsRoutes } from './routes/analytics.routes';
 import { flagRoutes } from './routes/feature-flag.routes';
 import { currencyRoutes } from './routes/currency.routes';
@@ -1133,6 +1134,12 @@ app.route('/api/curator', curatorRoutes);
 //   - /api/shipping/admin/bulk-tracking (requireAdmin, CSV)
 //   - /api/shipping/admin/sync (requireAdmin, 수동 cron trigger)
 app.route('/api/shipping', shippingRoutes);
+
+// 🛡️ 2026-05-25 (migration 0280): 호스팅 (누구나 voucher 공구 모집)
+//   - /api/hosting/catalog (requireUser)
+//   - /api/hosting/me (CRUD)
+//   - /api/hosting/g/:invite_code (public)
+app.route('/api/hosting', hostingRoutes);
 
 // 🛡️ 2026-05-15: Web Vitals + funnel 수집 (1% sampling, KV 카운터, 0원 운영)
 app.route('/api/analytics', analyticsRoutes);

@@ -862,4 +862,77 @@ SHIPPING_DEFAULTS.ISLAND_EXTRA_FEE            // 5000원
 - \`POST /api/shipping/admin/sync\` (requireAdmin)
 - \`GET /api/shipping/couriers\` (public, 드롭다운)`,
   },
+  // 🛡️ 2026-05-25 (migration 0280): 호스팅 + 정산
+  {
+    key: 'hosting-and-curator-payout', icon: '🎉', title: '호스팅 + 큐레이터 정산 (migration 0280)', order: 820,
+    content: `### 신모델 — Phase 3 (호스팅) + Phase 4 (정산)
+
+**Phase 3 — 누구나 voucher 공구 호스팅**:
+- 어드민 등록 voucher 상품 → 일반 user 가 본인 명의로 모집 시작
+- \`group_buy_hosts\` 테이블: invite_code UNIQUE + UNIQUE(host_user_id, product_id)
+- 호스트 인센티브: HOSTING_DEFAULTS.HOST_INCENTIVE_PCT (1%)
+- 동시 active 상한 10개 / 모집 기간 기본 7일
+
+**Phase 4 — 큐레이터 정산 + 출금**:
+- 정산 = \`affiliate_earnings.commission_amount\` SUM (referrer_id 기준)
+- 출금 = \`user_withdrawals\` 재활용 (mig 0274)
+  * 최소 10,000원 / 원천징수 3.3% (TAX_POLICY.BUSINESS_INCOME_RATE)
+- 셀러 자동 승급 안내: 누적 평생 50만원+ (\`WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD\`)
+
+### 어드민 모니터링
+
+#### 호스팅 사기 탐지
+\`\`\`sql
+-- 같은 host_user_id 가 짧은 시간에 다수 invite_code 생성
+SELECT host_user_id, COUNT(*) AS cnt
+FROM group_buy_hosts
+WHERE created_at > datetime('now', '-1 day')
+GROUP BY host_user_id HAVING cnt > 5;
+
+-- 같은 user_id 가 다수 호스트의 참여자로 등록
+SELECT user_id, COUNT(DISTINCT host_id) AS hosts
+FROM group_buy_host_participants
+WHERE joined_at > datetime('now', '-7 days')
+GROUP BY user_id HAVING hosts > 10;
+\`\`\`
+
+#### 출금 검수
+- \`/admin/user-withdrawals\` (기존 페이지)
+- 신규: \`user_withdrawals.user_id\` 가 string ('123') 일 수 있음 — 호환성
+
+#### 셀러 승급 모니터링
+\`\`\`sql
+SELECT id, name, handle, curator_total_lifetime_earnings, seller_upgrade_offered_at
+FROM users
+WHERE curator_total_lifetime_earnings >= 500000
+ORDER BY curator_total_lifetime_earnings DESC LIMIT 50;
+\`\`\`
+
+### 정책 변경 (\`policy.ts\` SSOT)
+\`\`\`ts
+HOSTING_DEFAULTS.HOST_INCENTIVE_PCT       // 1.0%
+HOSTING_DEFAULTS.MAX_ACTIVE_HOSTINGS      // 10
+HOSTING_DEFAULTS.DEFAULT_DEADLINE_DAYS    // 7
+WITHDRAWAL_DEFAULTS.MIN_AMOUNT             // 10000
+WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD // 500000
+WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
+\`\`\`
+
+### 관련 페이지
+- \`/host\` — 본인 호스팅 (라이트 테마)
+- \`/host/new\` — 카탈로그 + 1탭 모집 시작
+- \`/g/:invite_code\` — 친구 초대 (다크 테마, public)
+- \`/u/me/earnings\` — 출금 UI + 승급 안내
+
+### 관련 API
+- \`GET /api/hosting/catalog\` (requireUser)
+- \`POST /api/hosting/me\` (requireUser, 1탭 시작)
+- \`GET /api/hosting/me\` (목록 + summary)
+- \`GET /api/hosting/me/:id\` (상세 + 참여자)
+- \`PATCH /api/hosting/me/:id/cancel\` (취소)
+- \`GET /api/hosting/g/:invite_code\` (public 초대 view)
+- \`POST /api/curator/me/withdrawal\` (출금 신청)
+- \`GET /api/curator/me/withdrawal\` (잔액 + 이력 + 승급 안내)
+- \`POST /api/curator/me/seller-upgrade-acknowledge\` (안내 dismiss)`,
+  },
 ]

@@ -3,6 +3,21 @@
 **최종 업데이트**: 2026-05-25 (Phase 1 링크샵 구현 완료 — 5 commits)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
 
+## ✅ 2026-05-25 — Phase 3+4 (호스팅 + 정산 + 셀러 승급) 완료
+
+migration 0280 — 누구나 voucher 공구 호스팅 + 큐레이터 출금 UI.
+
+| Commit | 영역 | hash |
+|---|---|---|
+| 1/5 | DB + 정책 SSOT (HOSTING/WITHDRAWAL) | `04ce0a3b` |
+| 2/5 | Worker API (hosting + 출금) | `236e1673` |
+| 3/5 | Frontend 호스팅 페이지 3개 | `(Commit 3)` |
+| 4/5 | 출금 UI + 셀러 승급 안내 | `23ffa387` |
+| 5/5 | 가이드 + docs | (이 commit) |
+
+**Phase 3**: /host (목록) / /host/new (카탈로그) / /g/:invite_code (친구) — 1탭 호스팅
+**Phase 4**: /u/me/earnings 출금 모달 + 원천징수 3.3% + 누적 50만원+ 셀러 승급 안내
+
 ## ✅ 2026-05-25 — Phase 2 (배송 재설계) 완료
 
 migration 0279 + tracker.delivery 무료 API + 외부 URL fallback + cron sync + CSV 일괄.
