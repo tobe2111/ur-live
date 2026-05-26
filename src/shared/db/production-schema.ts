@@ -625,3 +625,45 @@ export interface ShippingTrackingEventsTable {
   created_at: string
 }
 
+// ============================================================
+// group_buy_hosts (migration 0280) — 호스트별 공구 모집 세션
+// 어드민 product 를 host_user_id 별로 본인 모집. UNIQUE(host_user_id, product_id).
+// ============================================================
+export interface GroupBuyHostsTable {
+  id: number
+  product_id: number                  // FK products.id
+  host_user_id: number                // FK users.id
+  invite_code: string                 // URL-safe, UNIQUE
+  target_quantity: number             // 호스트 설정 본인 목표
+  current_quantity: number            // denormalized counter
+  status: string                      // 'active' | 'achieved' | 'expired' | 'cancelled'
+  deadline_at: string | null
+  note: string | null                 // 호스트 한 줄
+  total_earnings: number              // 누적 인센티브 (denorm)
+  achieved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ============================================================
+// group_buy_host_participants (migration 0280) — 참여자 audit
+// 같은 친구 1회만 카운트 (UNIQUE host_id + user_id).
+// ============================================================
+export interface GroupBuyHostParticipantsTable {
+  id: number
+  host_id: number
+  user_id: number
+  order_id: number | null
+  quantity: number
+  earnings: number                    // 본 참여로 호스트가 적립받은 금액
+  joined_at: string
+}
+
+// ============================================================
+// users 추가 컬럼 (migration 0280) — 셀러 승급 트래킹 (Phase 4)
+// ============================================================
+export interface UsersUpgradeColumns {
+  curator_total_lifetime_earnings: number  // 누적 평생 정산 (denorm)
+  seller_upgrade_offered_at: string | null // 승급 안내 띄운 시각 (중복 안내 방지)
+}
+
