@@ -218,6 +218,12 @@ export interface SellersTable {
   can_broadcast: number         // 0=라이브 금지 (store_owner default) / 1=가능 (influencer default)
   is_active: number
   commission_rate: number       // REAL DEFAULT 10.00
+  // 🛡️ TD-005 (2026-05-25 soft deprecate): shipping_fee 컬럼은 DB 에 유지 (백업 안전망)
+  //   그러나 코드는 base_shipping_fee 만 사용 (SSOT).
+  //   TD-001 (D1 CI 권한) 해결 후 운영자가 별도 PR 로 DROP migration 가능.
+  // shipping_fee: number       // DEPRECATED — base_shipping_fee 사용
+  base_shipping_fee: number     // SSOT — 셀러 기본 배송비 (KRW)
+  free_shipping_threshold: number | null
   created_at: string
   updated_at: string
 }

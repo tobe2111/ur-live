@@ -135,7 +135,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.seller_id,
            p.bundling_key,
            s.business_name AS seller_name,
-           COALESCE(s.shipping_fee, 3000)        AS shipping_fee,
+           COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS shipping_fee,
            COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
          FROM cart_items ci
          JOIN products p  ON ci.product_id = p.id
@@ -173,7 +173,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
                     p.image_url AS product_image, p.stock AS product_stock, p.is_active AS product_is_active,
                     p.deal_only, p.seller_id, NULL AS bundling_key,
                     s.business_name AS seller_name,
-                    COALESCE(s.shipping_fee, 3000) AS shipping_fee,
+                    COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS shipping_fee,
                     COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
              FROM cart_items ci
              JOIN products p ON ci.product_id = p.id
