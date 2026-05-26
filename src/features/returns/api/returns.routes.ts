@@ -261,6 +261,53 @@ returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 3
 /**
  * GET /seller — 셀러 반품 목록
  */
+// ============================================================
+// 🛡️ 2026-05-25: 어드민 반품 검수 — GET /api/returns/admin
+// status / 사용자 / 셀러 필터. 최근 200건.
+// ============================================================
+returnsRoutes.get('/admin', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+  // 어드민 권한 검사 — user.type='admin' 또는 admin_token
+  if (user.type !== 'admin') {
+    return c.json({ success: false, error: '어드민만 접근 가능합니다' }, 403);
+  }
+  const { DB } = c.env;
+  await ensureTable(DB);
+
+  const status = String(c.req.query('status') || '').trim();
+  const limit = Math.max(10, Math.min(200, Number(c.req.query('limit')) || 50));
+  const statusFilter = ['requested','approved','rejected','shipped','received','inspected','refunded','cancelled'].includes(status)
+    ? ' AND r.status = ?'
+    : '';
+  const params: any[] = [];
+  if (statusFilter) params.push(status);
+  params.push(limit);
+
+  const result = await DB.prepare(`
+    SELECT r.*,
+           o.order_number, o.total_amount AS order_total, o.status AS order_status,
+           u.name AS user_name, u.email AS user_email, u.phone AS user_phone,
+           s.business_name AS seller_name
+    FROM returns r
+    LEFT JOIN orders o ON r.order_id = o.id
+    LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN sellers s ON r.seller_id = s.id
+    WHERE 1=1 ${statusFilter}
+    ORDER BY r.requested_at DESC
+    LIMIT ?
+  `).bind(...params).all().catch(() => ({ results: [] as any[] }));
+
+  // status 별 카운트 — 어드민 대시보드용
+  const counts = await DB.prepare(`
+    SELECT status, COUNT(*) AS cnt FROM returns GROUP BY status
+  `).all<{ status: string; cnt: number }>().catch(() => ({ results: [] as any[] }));
+  const countsMap: Record<string, number> = {};
+  for (const row of (counts.results || [])) countsMap[row.status] = row.cnt;
+
+  return c.json({ success: true, data: result.results ?? [], counts: countsMap });
+});
+
 returnsRoutes.get('/seller', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);

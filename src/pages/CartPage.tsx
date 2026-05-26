@@ -490,6 +490,20 @@ function CartPageContent() {
                       <span className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
                         {group.seller_name}
                       </span>
+                      {/* 🛡️ 2026-05-25 (Phase 6 합배송): 같은 bundling_key 2+ 아이템 묶음 표시 */}
+                      {(() => {
+                        const bundlingMap = new Map<string, number>()
+                        for (const it of group.items) {
+                          const k = (it as CartItem).bundling_key
+                          if (k) bundlingMap.set(k, (bundlingMap.get(k) || 0) + 1)
+                        }
+                        const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
+                        return hasBundle ? (
+                          <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
+                            📦 합배송
+                          </span>
+                        ) : null
+                      })()}
                     </div>
                     <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                   </div>

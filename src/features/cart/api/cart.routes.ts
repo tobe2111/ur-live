@@ -115,6 +115,8 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         //   이후: is_active 무관 노출 + product_is_active 플래그 반환 →
         //         프론트가 "판매 종료" 배지 표시 + 선택 불가 + 사용자가 직접 삭제 가능.
         //   cart_items.price_snapshot 은 그대로 보존 → 분쟁 / 감사 추적 가능.
+        // 🛡️ 2026-05-25 (Phase 6 합배송): p.bundling_key 추가 — 같은 key 끼리 묶음 표시.
+        //   migration 0281 — 컬럼 없는 환경 대응은 catch fallback (아래) 으로.
         `SELECT
            ci.id,
            ci.product_id,
@@ -131,6 +133,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.is_active   AS product_is_active,
            p.deal_only,
            p.seller_id,
+           p.bundling_key,
            s.business_name AS seller_name,
            COALESCE(s.shipping_fee, 3000)        AS shipping_fee,
            COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
@@ -157,12 +160,31 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         product_is_active: number;  // 🛡️ 2026-05-19: 판매 종료 (0) 상품도 노출.
         deal_only: number | null;
         seller_id: number;
+        bundling_key: string | null;
         seller_name: string | null;
         shipping_fee: number;
         free_shipping_threshold: number;
-      }>();
+      }>().catch(async () => {
+        // 🛡️ 2026-05-25: bundling_key 컬럼 미존재 환경 (migration 0281 미적용) graceful fallback.
+        return await c.env.DB
+          .prepare(
+            `SELECT ci.id, ci.product_id, ci.quantity, ci.price_snapshot, ci.option_id, ci.live_stream_id, ci.added_at,
+                    p.name AS product_name, p.description AS product_description, p.price AS product_price,
+                    p.image_url AS product_image, p.stock AS product_stock, p.is_active AS product_is_active,
+                    p.deal_only, p.seller_id, NULL AS bundling_key,
+                    s.business_name AS seller_name,
+                    COALESCE(s.shipping_fee, 3000) AS shipping_fee,
+                    COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
+             FROM cart_items ci
+             JOIN products p ON ci.product_id = p.id
+             LEFT JOIN sellers s ON p.seller_id = s.id
+             WHERE ci.user_id = ?
+             ORDER BY ci.added_at DESC`,
+          )
+          .bind(userId).all() as any
+      });
 
-    const items = (rows.results ?? []).map((item) => ({
+    const items = (rows.results ?? []).map((item: any) => ({
       ...item,
       // CheckoutPage / CartPage 에서 사용하는 필드 모두 포함
       price: item.price_snapshot ?? item.product_price,
@@ -170,7 +192,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
     }));
 
     const summary = items.reduce(
-      (acc, item) => ({
+      (acc: any, item: any) => ({
         total_items: acc.total_items + item.quantity,
         total_amount: acc.total_amount + item.item_total,
       }),

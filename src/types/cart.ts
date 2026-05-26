@@ -29,6 +29,8 @@ export interface CartItem {
   seller_name?: string
   shipping_fee?: number
   free_shipping_threshold?: number
+  // 🛡️ 2026-05-25 (migration 0281, Phase 6): 합배송 그룹 key — 같은 key 끼리 배송비 1회.
+  bundling_key?: string | null
   // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시 + 토스 결제 차단.
   deal_only?: number
   // 🛡️ 2026-05-19 (사용자 신고): 상품 판매 종료 (is_active=0) 시에도 카트에 표시.
