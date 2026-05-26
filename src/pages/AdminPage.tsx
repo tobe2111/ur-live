@@ -140,9 +140,10 @@ export default function AdminPage() {
     if (firstAuthErr && firstAuthErr.status === 'rejected') {
       const apiErr = firstAuthErr.reason as ApiError
       if (apiErr?.response?.status === 401) {
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('user_type')
-        navigate('/admin/login')
+        // 🛡️ 2026-05-25 자동 로그아웃 fix: axios interceptor 가 refresh 시도 중인데
+        //   페이지 catch 가 즉시 token 삭제 → race condition.
+        //   interceptor 가 refresh 실패 시 자체 clearAuthData + redirect 처리 (lib/api.ts:470-485).
+        //   페이지에서는 단순히 로딩만 멈춤 — interceptor 처리 신뢰.
         setLoading(false)
         return
       }
