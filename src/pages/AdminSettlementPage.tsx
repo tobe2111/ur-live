@@ -79,9 +79,8 @@ export default function AdminSettlementPage() {
       setLoading(false)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } }
-      if (axiosErr.response?.status === 401) {
-        localStorage.removeItem('admin_token'); localStorage.removeItem('user_type'); navigate('/admin/login')
-      }
+      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리. 페이지는 noop.
+      if (axiosErr.response?.status === 401) { /* lib/api.ts interceptor 처리 */ }
       setLoading(false)
     }
   }

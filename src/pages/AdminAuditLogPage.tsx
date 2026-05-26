@@ -84,10 +84,8 @@ export default function AdminAuditLogPage() {
       }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } }
-      if (axiosErr.response?.status === 401) {
-        localStorage.removeItem('admin_token')
-        navigate('/admin/login')
-      } else {
+      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리.
+      if (axiosErr.response?.status !== 401) {
         toast.error('감사 로그를 불러오지 못했습니다')
       }
     } finally {

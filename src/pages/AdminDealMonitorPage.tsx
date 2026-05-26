@@ -91,10 +91,8 @@ export default function AdminDealMonitorPage() {
       if (res.data.success) setStats(res.data.data)
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      if (err_.response?.status === 401) {
-        localStorage.removeItem('admin_token')
-        navigate('/admin/login')
-      }
+      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리. 페이지는 noop.
+      if (err_.response?.status === 401) { /* lib/api.ts interceptor */ }
     }
   }
 
