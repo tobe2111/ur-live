@@ -63,6 +63,10 @@ const SearchPage = lazy(() => import('./pages/SearchPage'))
 // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵
 const CuratorPage = lazy(() => import('./pages/CuratorPage'))
 const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
+// 🛡️ 2026-05-25 (migration 0280): 호스팅 (Phase 3)
+const HostingPage = lazy(() => import('./pages/HostingPage'))
+const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
+const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
@@ -462,6 +466,19 @@ function AppContent() {
             <Route path="/u/:handle" element={<ErrorBoundary><CuratorPage /></ErrorBoundary>} />
             {/* SPA fallback: /u/:handle/p/:productId 클릭 시 서버 302 가 작동 안 할 때 ref 부여 후 navigate. */}
             <Route path="/u/:handle/p/:productId" element={<CuratorPinClientRedirect />} />
+
+            {/* 🛡️ 2026-05-25 호스팅 (migration 0280) */}
+            <Route path="/host" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><HostingPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/host/new" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><HostingNewPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/g/:invite_code" element={<ErrorBoundary><HostInvitePage /></ErrorBoundary>} />
 
             {/* Public Auth 페이지들 */}
             <Route path="/login" element={
