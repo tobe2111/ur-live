@@ -580,3 +580,48 @@ export interface PinClickLogsTable {
   created_at: string
 }
 
+// ============================================================
+// orders 추가 컬럼 (migration 0279, Phase 2 배송 재설계)
+// 기존 OrdersTable 에 병합 — 실제 DB 컬럼은 동일 테이블.
+// 별도 인터페이스로 명시해서 검색 가능.
+// ============================================================
+export interface OrdersShippingColumns {
+  region_code: string | null            // 'normal' | 'jeju' | 'island' | 'mountain' | 'unsupported'
+  extra_shipping_fee: number            // INTEGER NOT NULL DEFAULT 0
+  last_tracking_sync_at: string | null  // DATETIME
+  tracking_status: string | null        // 'pending'|'in_transit'|'out_for_delivery'|'delivered'|'returned'
+  tracking_carrier_code: string | null  // tracker.delivery 표준 코드 (예: 'kr.cjlogistics')
+}
+
+// ============================================================
+// regional_shipping_fees (migration 0279) — 지역 추가비 매트릭스
+// SSOT — calculateShippingFeeV2() 가 본 테이블 조회
+// ============================================================
+export interface RegionalShippingFeesTable {
+  id: number
+  region_code: string                  // 'jeju' | 'island' | 'mountain'
+  postal_code_pattern: string          // '63%' (LIKE) 또는 '40200-40240' (range)
+  extra_fee: number                    // INTEGER NOT NULL (KRW)
+  description: string | null
+  is_active: number                    // INTEGER 1/0
+  created_at: string
+}
+
+// ============================================================
+// shipping_tracking_events (migration 0279) — 추적 이벤트 audit
+// tracker.delivery / 수동 / cron 의 모든 상태 변경 기록
+// ============================================================
+export interface ShippingTrackingEventsTable {
+  id: number
+  order_id: number
+  carrier_code: string | null          // tracker.delivery code
+  tracking_number: string | null
+  status: string                       // 'pending'|'in_transit'|'out_for_delivery'|'delivered'|'returned'|'error'
+  status_text: string | null           // 택배사 raw 텍스트
+  location: string | null
+  occurred_at: string | null           // 택배사 이벤트 발생 시각
+  source: string                       // 'tracker_delivery' | 'manual' | 'cron'
+  raw_response: string | null
+  created_at: string
+}
+
