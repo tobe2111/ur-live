@@ -42,7 +42,38 @@ async function getPinCount(DB: D1Database, userId: number): Promise<number> {
   const row = await DB.prepare('SELECT COUNT(*) as cnt FROM product_pins WHERE user_id = ?')
     .bind(userId)
     .first<{ cnt: number }>()
+    .catch(() => null)
   return row?.cnt ?? 0
+}
+
+/**
+ * 🛡️ 2026-05-25: 큐레이터 테이블 lazy CREATE — D1 migration 미적용 환경 graceful.
+ *   TD-001 (D1 CI 권한 부재) 로 migration 0278 자동 적용 안 될 때 첫 호출 시 보장.
+ */
+async function ensureCuratorTables(DB: D1Database): Promise<void> {
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS product_pins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      click_count INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, product_id)
+    )`).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_product_pins_user_pos ON product_pins(user_id, position)`).run().catch(() => null)
+    // users.handle / bio / linkshop_theme 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
+    for (const sql of [
+      "ALTER TABLE users ADD COLUMN handle TEXT",
+      "ALTER TABLE users ADD COLUMN bio TEXT",
+      "ALTER TABLE users ADD COLUMN linkshop_theme TEXT DEFAULT 'dark'",
+    ]) {
+      await DB.prepare(sql).run().catch(() => null)
+    }
+    await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL`).run().catch(() => null)
+  } catch { /* graceful */ }
 }
 
 // ============================================================
@@ -56,6 +87,7 @@ curatorRoutes.get('/:handle', async (c) => {
       return c.json({ success: false, error: '잘못된 핸들 형식입니다' }, 400)
     }
     const DB = c.env.DB
+    await ensureCuratorTables(DB)
 
     const user = await DB.prepare(
       `SELECT id, handle, name, bio, profile_image, linkshop_theme
@@ -217,6 +249,7 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    await ensureCuratorTables(c.env.DB)
 
     const body = await c.req.json<{ product_id?: number; note?: string }>().catch(() => ({} as any))
     const productId = Number(body.product_id)
@@ -433,6 +466,7 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
     const DB = c.env.DB
+    await ensureCuratorTables(DB)
 
     // 🛡️ 2026-05-25: handle 반환 — /u/me redirect / 마이페이지 카드용
     const meRow = await DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
