@@ -72,8 +72,10 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
     try {
       const r = await api.post(`/api/admin/kt-alpha/trigger-order/${orderId}`, {})
       if (r.data?.success) {
-        setTriggerResult(r.data.message || '재발송 trigger 완료')
-        // 진단 데이터 다시 로드
+        // 🛡️ 2026-05-25: errors 배열 노출 — 실패 시 정확한 사유 표시
+        const errs = (r.data.errors as string[]) || []
+        const msg = r.data.message || '재발송 trigger 완료'
+        setTriggerResult(errs.length > 0 ? `${msg}\n\n에러:\n• ${errs.join('\n• ')}` : msg)
         const refresh = await api.get(`/api/admin/kt-alpha/diagnose-order/${orderId}`)
         if (refresh.data?.success) setData(refresh.data.data)
       } else {
@@ -119,9 +121,9 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
             {triggering ? '발송 중...' : '🚀 KT Alpha 재발송 trigger'}
           </button>
           {triggerResult && (
-            <p className={`mt-2 text-xs font-bold ${triggerResult.startsWith('실패') ? 'text-red-600' : 'text-emerald-600'}`}>
+            <pre className={`mt-2 text-xs font-bold whitespace-pre-wrap break-words ${triggerResult.startsWith('실패') || triggerResult.includes('에러:') ? 'text-red-600' : 'text-emerald-600'}`}>
               {triggerResult}
-            </p>
+            </pre>
           )}
         </div>
 
