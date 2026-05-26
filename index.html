@@ -64,11 +64,23 @@
       }],
       "prefetch": [{
         "source": "document",
-        "where": { "href_matches": "/seller/*" },
+        "where": {
+          "or": [
+            { "href_matches": "/seller/*" },
+            { "href_matches": "/u/*" },
+            { "href_matches": "/host*" },
+            { "href_matches": "/g/*" },
+            { "href_matches": "/browse" },
+            { "href_matches": "/vouchers" }
+          ]
+        },
         "eagerness": "conservative"
       }]
     }
     </script>
+    <!-- 🛡️ 2026-05-25 (loading P1): 메인 페이지 첫 API call preload — DNS + TCP + early start.
+         /api/group-buy/products 는 메인 콘텐츠. publicCache 5분 + SWR 30분 적용 (edge cache hit) -->
+    <link rel="preload" as="fetch" href="/api/group-buy/products?status=active&category=all" crossorigin="anonymous" />
     <!-- 🛡️ 2026-05-07: 카카오맵 SDK preconnect — RestaurantMapPage 진입 시 핸드셰이크 절감 -->
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />
