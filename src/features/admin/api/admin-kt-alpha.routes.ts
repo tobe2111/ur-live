@@ -1201,7 +1201,8 @@ adminKtAlphaRoutes.post('/voucher-orders/:id/resend', cors(), async (c) => {
     ).bind(id).run()
 
     const { sendCoupon } = await import('../../../worker/utils/giftishow-api')
-    const trId = `ur-resend-${id}-${Date.now()}`
+    // 🛡️ 2026-05-25: KT Alpha TRID 20자 제한 (ERR0807). base36 단축.
+    const trId = `r${id}-${Date.now().toString(36)}`
     try {
       const res = await sendCoupon(c.env as unknown as Parameters<typeof sendCoupon>[0], {
         goodsCode: vo.goods_code,
