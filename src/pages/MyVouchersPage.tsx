@@ -9,11 +9,12 @@ import { useMyVouchers } from '@/hooks/queries'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
+import { formatNumber } from '@/utils/format'
 
 interface Voucher {
-  id: number
+  id: number | string  // KT Alpha 는 'kt-{voId}' 형식
   code: string
-  status: 'unused' | 'used' | 'expired' | 'refunded'
+  status: 'unused' | 'used' | 'expired' | 'refunded' | 'processing'
   product_name: string
   restaurant_name?: string
   restaurant_address?: string
@@ -26,6 +27,12 @@ interface Voucher {
   applied_price?: number  // 🛡️ 2026-05-16: voucher 액면가 (차감 금액 안내용)
   product_price?: number
   usage_guide?: string    // 매장이 등록한 사용 가이드 (예: "평일 점심만")
+  // 🛡️ 2026-05-25 (A 옵션): KT Alpha 통합 표시
+  source?: 'internal' | 'kt_alpha'
+  kt_alpha_voucher_order_id?: number
+  kt_recipient_phone?: string
+  kt_status?: string  // 'sent' | 'processing'
+  order_id?: number
 }
 
 type ViewMode = 'list' | 'map'
@@ -672,6 +679,11 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
     )
   })()
 
+  // 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰은 별도 카드 형식 (재발송 버튼 포함)
+  if (v.source === 'kt_alpha') {
+    return <KtAlphaVoucherCard v={v} muted={muted} t={t} />
+  }
+
   return (
     <div
       className="relative flex rounded-xl overflow-hidden bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F]"
@@ -806,4 +818,79 @@ function deriveCategoryLabel(productName: string, restaurantName?: string): stri
   if (/카페|coffee|디저트|dessert|cafe/.test(text)) return 'CAFE'
   if (/술|와인|맥주|bar|pub/.test(text)) return 'BAR'
   return 'MEAL'
+}
+
+// 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰 카드 — MMS 발송된 기프티쇼 표시.
+function KtAlphaVoucherCard({ v, muted, t }: {
+  v: Voucher
+  muted: boolean
+  t: (key: string, opts?: any) => string
+}) {
+  const [resending, setResending] = useState(false)
+
+  async function resend() {
+    if (!v.order_id) return
+    if (!confirm("MMS 를 휴대폰으로 다시 발송할까요?")) return
+    setResending(true)
+    try {
+      const { default: api } = await import("@/lib/api")
+      const r = await api.post(`/api/admin/kt-alpha/trigger-order/${v.order_id}`, {})
+      if (r.data?.success && r.data.result?.sent > 0) {
+        const { toast } = await import("@/hooks/useToast")
+        toast.success("재발송 완료 — 휴대폰을 확인해주세요")
+      } else {
+        const { toast } = await import("@/hooks/useToast")
+        toast.error("재발송 실패 — 어드민에게 문의")
+      }
+    } catch {
+      const { toast } = await import("@/hooks/useToast")
+      toast.error("재발송 실패")
+    } finally {
+      setResending(false)
+    }
+  }
+
+  const maskedPhone = v.kt_recipient_phone
+    ? v.kt_recipient_phone.replace(/(\d{3})\d{4}(\d{4})/, "$1-****-$2")
+    : ""
+
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800"
+      style={{ opacity: muted ? 0.55 : 1 }}
+    >
+      <div className="flex-1 p-4 min-w-0">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block", flexShrink: 0 }} />
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em" }} className="text-amber-700 dark:text-amber-400">
+            📱 KT ALPHA · 기프티쇼
+          </span>
+        </div>
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{v.product_name}</p>
+        {v.applied_price && (
+          <p className="text-sm text-amber-600 dark:text-amber-400 font-bold mt-0.5">{formatNumber(v.applied_price)}원</p>
+        )}
+        {maskedPhone && (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+            📞 {maskedPhone} 로 발송됨
+          </p>
+        )}
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+          휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.
+        </p>
+        <button
+          onClick={resend}
+          disabled={resending}
+          className="mt-3 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+        >
+          {resending ? "재발송 중..." : "📱 MMS 다시 받기"}
+        </button>
+      </div>
+      {v.product_image && (
+        <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white shrink-0">
+          <img src={v.product_image} alt={v.product_name} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      )}
+    </div>
+  )
 }
