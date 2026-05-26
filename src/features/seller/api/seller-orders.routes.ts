@@ -295,11 +295,34 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
 
     const db = c.env.DB;
 
+    // 🛡️ 2026-05-25 (migration 0279): tracking_carrier_code 도 동시 저장.
+    //   tracker.delivery cron sync 가 본 컬럼으로 carrier 식별.
+    const { normalizeCourierKey } = await import('../../../worker/utils/courier-codes')
+    const carrierKey = normalizeCourierKey(courier)
+    const cleanedTracking = String(tracking_number || '').replace(/\s+/g, '')
+
     const result = await db.prepare(
       `UPDATE orders
-       SET tracking_number = ?, courier = ?, status = 'SHIPPING', updated_at = datetime('now')
+       SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
+           shipped_at = COALESCE(shipped_at, datetime('now')),
+           status = 'SHIPPING', updated_at = datetime('now')
        WHERE (id = ? OR order_number = ?) AND seller_id = ?`
-    ).bind(tracking_number, courier || null, orderId, orderId, sellerId).run();
+    ).bind(cleanedTracking, courier || null, carrierKey || null, orderId, orderId, sellerId).run();
+
+    // shipping_tracking_events audit (best-effort)
+    if (result.meta.changes) {
+      try {
+        const orderRow = await db.prepare(
+          `SELECT id FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`,
+        ).bind(orderId, orderId, sellerId).first<{ id: number }>()
+        if (orderRow?.id) {
+          await db.prepare(
+            `INSERT INTO shipping_tracking_events (order_id, carrier_code, tracking_number, status, status_text, source)
+             VALUES (?, ?, ?, 'pending', '셀러 송장 등록', 'manual')`,
+          ).bind(orderRow.id, carrierKey, cleanedTracking).run().catch(() => {})
+        }
+      } catch { /* audit 실패 무시 */ }
+    }
 
     if (!result.meta.changes) {
       const exists = await db.prepare(

@@ -245,12 +245,31 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       });
     }
 
-    // Calculate shipping fee (default 3000원 if seller not found)
-    const shippingFee = calculateShippingFee(
+    // 🛡️ 2026-05-25 (migration 0279): 배송비 V2 — 지역별 추가비 적용.
+    //   기존 V1 (base+threshold) 결과 + regional_shipping_fees 테이블 조회 → 제주/도서산간 가산.
+    //   tracker.delivery 시스템과는 별개 — 결제 단계 비용 계산.
+    const { calculateShippingFeeV2 } = await import('../../shared/utils/shipping')
+    let regionRules: Array<{ region_code: string; postal_code_pattern: string; extra_fee: number }> = []
+    try {
+      const { results } = await c.env.DB.prepare(
+        `SELECT region_code, postal_code_pattern, extra_fee FROM regional_shipping_fees WHERE is_active = 1`,
+      ).all<any>()
+      regionRules = results ?? []
+    } catch { /* fallback to hardcoded — calculateShippingFeeV2 가 처리 */ }
+
+    const feeCalc = calculateShippingFeeV2({
       subtotal,
-      seller?.base_shipping_fee ?? 3000,
-      seller?.free_shipping_threshold ?? undefined
-    );
+      baseFee: seller?.base_shipping_fee ?? 3000,
+      freeShippingThreshold: seller?.free_shipping_threshold ?? null,
+      postalCode: body.shipping_address?.postal_code ?? null,
+      regionRules,
+    })
+    const shippingFee = feeCalc.totalFee
+    const regionCode = feeCalc.region
+    const extraShippingFee = feeCalc.regionFee
+
+    // V1 호환 — 기존 호출 시그니처 확인용 (deprecated 안 함, 향후 검증 테스트가 V1 참조 가능)
+    void calculateShippingFee
 
     // ── 동시성 안전 재고 차감 (Optimistic Lock) ─────────────────
     // D1 batch()는 원자적으로 실행됩니다.
@@ -279,6 +298,13 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     let order;
     try {
       order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
+      // 🛡️ 2026-05-25 (migration 0279): region_code + extra_shipping_fee 부착 (best-effort).
+      //   createOrder 시그니처는 V1 호환 유지. 후속 UPDATE 로 신규 컬럼만 채움.
+      if (order?.id && (regionCode !== 'normal' || extraShippingFee > 0)) {
+        await c.env.DB.prepare(
+          `UPDATE orders SET region_code = ?, extra_shipping_fee = ? WHERE id = ?`,
+        ).bind(regionCode, extraShippingFee, order.id).run().catch(() => {})
+      }
     } catch (createErr) {
       // 주문 생성 실패 시 이미 차감한 재고를 복구 (보상 트랜잭션)
       console.error('[ORDERS] createOrder failed, restoring stock:', createErr);
