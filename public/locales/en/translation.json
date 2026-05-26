@@ -5436,5 +5436,12 @@
       "noData": "No data yet. Share your pins with friends!"
     },
     "dashboardError": "Failed to load dashboard"
+  },
+  "shipping": {
+    "trackingTitle": "Shipping Tracking",
+    "fetchError": "Failed to load tracking info",
+    "notShipped": "Not shipped yet",
+    "noEvents": "No tracking events yet",
+    "externalSite": "View on carrier site"
   }
 }

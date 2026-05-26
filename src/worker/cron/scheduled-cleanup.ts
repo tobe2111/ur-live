@@ -351,17 +351,31 @@ export async function handleScheduled(env: Env) {
   // settlement_status는 'completed' 사용 (정산 자동화 스크립트와 일치).
   // ✅ FIX (Cron C3): settlement_status가 이미 completed/paid인 행은 건너뛰어
   // 이미 정산된 주문을 재처리하지 않도록 필터링.
+  // 🛡️ 2026-05-25 (migration 0279): 14일 → SHIPPING_DEFAULTS.AUTO_DELIVERED_AFTER_DAYS (7일).
+  //   tracker.delivery sync 가 매 6시간 동작 — 평소엔 자동 delivered 가 더 빨리 잡힘.
+  //   본 cron 은 추적 미지원 택배사 / API 실패 케이스 fallback.
   try {
+    const { SHIPPING_DEFAULTS } = await import('../../shared/constants/policy')
+    const days = SHIPPING_DEFAULTS.AUTO_DELIVERED_AFTER_DAYS
     const { meta } = await DB.prepare(`
       UPDATE orders
       SET status = 'DELIVERED', delivered_at = datetime('now'),
           settlement_status = 'completed', updated_at = datetime('now')
       WHERE status = 'SHIPPING'
-        AND shipped_at < datetime('now', '-14 days')
+        AND shipped_at < datetime('now', ?)
         AND (settlement_status IS NULL OR settlement_status = 'pending')
-    `).run();
+    `).bind(`-${days} days`).run();
     results.auto_confirmed = meta.changes ?? 0;
   } catch (e) { logError('[Cron] auto_confirm error:', { error: String(e) }) }
+
+  // 🛡️ 2026-05-25 (migration 0279): tracker.delivery 자동 sync — 무료 외부 API.
+  //   매 cron 마다 50개 batch — 6시간 cron 이면 하루 4회 × 50 = 200건 / day.
+  //   더 자주 sync 필요 시 별도 cron schedule 추가.
+  try {
+    const { syncShippingStatusBatch } = await import('./shipping-sync')
+    const r = await syncShippingStatusBatch(env)
+    ;(results as any).shipping_sync = r
+  } catch (e) { logError('[Cron] shipping-sync error:', { error: String(e) }) }
 
   // ── 11. 예정 방송 30분 전 알림 발송 ──
   // 🛡️ 2026-04-22: LIMIT 100 추가 — 1000+ scheduled streams 시 OOM 방어

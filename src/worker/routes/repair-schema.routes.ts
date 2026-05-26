@@ -85,6 +85,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
     { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },
     { desc: 'users.linkshop_theme', sql: "ALTER TABLE users ADD COLUMN linkshop_theme TEXT DEFAULT 'dark'" },
+    // 🛡️ 2026-05-25 (migration 0279): 배송 재설계 — 지역 / 추적
+    { desc: 'orders.region_code', sql: "ALTER TABLE orders ADD COLUMN region_code TEXT" },
+    { desc: 'orders.extra_shipping_fee', sql: "ALTER TABLE orders ADD COLUMN extra_shipping_fee INTEGER NOT NULL DEFAULT 0" },
+    { desc: 'orders.last_tracking_sync_at', sql: "ALTER TABLE orders ADD COLUMN last_tracking_sync_at DATETIME" },
+    { desc: 'orders.tracking_status', sql: "ALTER TABLE orders ADD COLUMN tracking_status TEXT" },
+    { desc: 'orders.tracking_carrier_code', sql: "ALTER TABLE orders ADD COLUMN tracking_carrier_code TEXT" },
 
     // ── products ───────────────────────────────────
     { desc: 'products.view_count', sql: "ALTER TABLE products ADD COLUMN view_count INTEGER DEFAULT 0" },
@@ -764,6 +770,40 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_pin_clicks_pin_time', sql: `CREATE INDEX IF NOT EXISTS idx_pin_clicks_pin_time ON pin_click_logs(pin_id, created_at)` },
     { name: 'idx_pin_clicks_curator_time', sql: `CREATE INDEX IF NOT EXISTS idx_pin_clicks_curator_time ON pin_click_logs(curator_user_id, created_at)` },
+
+    // ── 배송 재설계 (migration 0279, 2026-05-25) ──────────
+    { name: 'regional_shipping_fees', sql: `CREATE TABLE IF NOT EXISTS regional_shipping_fees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      region_code TEXT NOT NULL,
+      postal_code_pattern TEXT NOT NULL,
+      extra_fee INTEGER NOT NULL,
+      description TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_regional_shipping_active', sql: `CREATE INDEX IF NOT EXISTS idx_regional_shipping_active ON regional_shipping_fees(is_active, region_code)` },
+    // seed: 제주 / 도서산간 (idempotent)
+    { name: 'regional_shipping_fees_seed_jeju', sql: `INSERT OR IGNORE INTO regional_shipping_fees (id, region_code, postal_code_pattern, extra_fee, description) VALUES (1, 'jeju', '63%', 3000, '제주특별자치도')` },
+    { name: 'regional_shipping_fees_seed_ulleung', sql: `INSERT OR IGNORE INTO regional_shipping_fees (id, region_code, postal_code_pattern, extra_fee, description) VALUES (2, 'island', '40200-40240', 5000, '울릉도')` },
+    { name: 'regional_shipping_fees_seed_baekryeong', sql: `INSERT OR IGNORE INTO regional_shipping_fees (id, region_code, postal_code_pattern, extra_fee, description) VALUES (3, 'island', '23004-23010', 5000, '백령도')` },
+    { name: 'regional_shipping_fees_seed_yeonpyeong', sql: `INSERT OR IGNORE INTO regional_shipping_fees (id, region_code, postal_code_pattern, extra_fee, description) VALUES (4, 'island', '23100-23129', 5000, '연평도')` },
+    { name: 'regional_shipping_fees_seed_geoje', sql: `INSERT OR IGNORE INTO regional_shipping_fees (id, region_code, postal_code_pattern, extra_fee, description) VALUES (5, 'island', '46900-46999', 5000, '거제 일부 도서')` },
+
+    { name: 'shipping_tracking_events', sql: `CREATE TABLE IF NOT EXISTS shipping_tracking_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      carrier_code TEXT,
+      tracking_number TEXT,
+      status TEXT NOT NULL,
+      status_text TEXT,
+      location TEXT,
+      occurred_at DATETIME,
+      source TEXT NOT NULL DEFAULT 'tracker_delivery',
+      raw_response TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(id)
+    )` },
+    { name: 'idx_shipping_events_order', sql: `CREATE INDEX IF NOT EXISTS idx_shipping_events_order ON shipping_tracking_events(order_id, created_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

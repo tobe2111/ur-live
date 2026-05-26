@@ -391,3 +391,48 @@ const COURIER_TRACK_URLS = {
 ## ⏳ 구현 todo
 
 Phase 2-A → 2-F 순차 진행. 각 phase 완료 시 본 docs 하단에 `## ✅ Phase 2-X 구현 완료` 섹션 + commit hash 추가.
+
+---
+
+## ✅ Phase 2 구현 완료 (2026-05-25)
+
+A 채택 (voucher 공구 only) — 실물 배송 영역만 재설계.
+
+| Commit | 영역 | hash |
+|---|---|---|
+| 1/5 | DB (mig 0279) + 정책 SSOT + calculateShippingFeeV2 | `9d913840` |
+| 2/5 | tracker.delivery 무료 API + courier-codes SSOT + 5 endpoints | `060e0249→` |
+| 3/5 | order.routes V2 통합 + seller 송장 carrier_code | `bb45dae6` |
+| 4/5 | 인앱 추적 모달 + OrderDetailModal 통합 | `74d945ba` |
+| 5/5 | 어드민 CSV UI + 가이드 + docs | (이 commit) |
+
+### 핵심 구현
+
+**3중 안전망 (배송 추적)**:
+1. tracker.delivery GraphQL (무료 공개) — 한국 택배사 20+ 자동 sync
+2. 외부 URL fallback — 12개 매핑 (CJ/한진/롯데/우체국/로젠/CU/GS/대신/일양/경동/천일/CWAY)
+3. cron 6시간 + 7일 추정 fallback
+
+**지역별 배송비**:
+- `regional_shipping_fees` 테이블 SSOT
+- 제주(63xxx): +3000원
+- 도서산간 (울릉/백령/연평/거제): +5000원
+
+**일괄 송장 CSV**:
+- `/admin/shipping/bulk-tracking` 페이지
+- 1000행 batch + dry_run 사전 검증
+- 중복 자동 skip
+
+### 새 라우트
+- `/admin/shipping/bulk-tracking` (requireAdmin)
+- `GET  /api/shipping/track/:carrier/:trackingNumber` (public, 60s cache)
+- `GET  /api/shipping/order/:orderId/track` (requireAuth)
+- `GET  /api/shipping/couriers` (public)
+- `POST /api/shipping/admin/bulk-tracking` (requireAdmin)
+- `POST /api/shipping/admin/sync` (requireAdmin)
+
+### 알려진 한계 (후속 PR)
+- 합배송 (`ENABLE_BUNDLING=false`) — Phase 6
+- 해외 배송 — 미지원
+- 인스타 스토리 공유 (canvas 합성)
+- 셀러용 CSV 업로드 (현재 어드민만)

@@ -269,6 +269,10 @@ export default function AdminOrdersPage() {
           <button onClick={exportOrders} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
             <Download className="w-3.5 h-3.5" /> 엑셀
           </button>
+          {/* 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 */}
+          <a href="/admin/shipping/bulk-tracking" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-pink-500 rounded-lg hover:bg-pink-600">
+            📦 CSV 일괄 송장
+          </a>
         </>
       }
     >

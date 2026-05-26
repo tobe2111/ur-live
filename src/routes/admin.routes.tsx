@@ -11,6 +11,8 @@ const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
 const AdminSettlementPage = lazy(() => import('@/pages/AdminSettlementPage'))
 const AdminBannersPage = lazy(() => import('@/pages/AdminBannersPage'))
 const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage'))
+// 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 업로드
+const AdminBulkTrackingPage = lazy(() => import('@/pages/AdminBulkTrackingPage'))
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
@@ -138,6 +140,12 @@ export function AdminRoutes() {
       <Route path="/admin/orders" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminOrdersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 업로드 */}
+      <Route path="/admin/shipping/bulk-tracking" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminBulkTrackingPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/products" element={

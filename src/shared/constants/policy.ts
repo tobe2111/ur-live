@@ -83,6 +83,33 @@ export const COMMISSION_DEFAULTS = {
   STAYS_COMMISSION_CAP_PCT: 20,
 } as const
 
+// ── ⑩ 배송 재설계 (migration 0279, 2026-05-25) ──────────────────
+//   기존 calculateShippingFee (subtotal, baseFee, freeThreshold) 는 V1 — deprecated 안 함.
+//   신규 calculateShippingFeeV2 가 본 정책 + regional_shipping_fees 테이블 사용.
+//
+//   배송 추적 3중 안전망:
+//     1. tracker.delivery GraphQL (무료, https://apis.tracker.delivery/graphql)
+//     2. 외부 페이지 URL fallback (택배사별 매핑)
+//     3. cron sync 6시간 + 14일→7일 추정 fallback
+export const SHIPPING_DEFAULTS = {
+  /** 제주 추가 배송비 (KRW) — 기본값. regional_shipping_fees 가 SSOT. */
+  JEJU_EXTRA_FEE: 3000,
+  /** 도서산간 추가 배송비 (KRW) — 기본값. */
+  ISLAND_EXTRA_FEE: 5000,
+  /** 배송 후 자동 DELIVERED 추정 일수 — 추적 시스템이 동작하면 무시. */
+  AUTO_DELIVERED_AFTER_DAYS: 7,
+  /** tracker.delivery sync 주기 (시간) — cron 에서 사용. */
+  TRACKER_SYNC_INTERVAL_HOURS: 6,
+  /** tracker.delivery API endpoint */
+  TRACKER_DELIVERY_API: 'https://apis.tracker.delivery/graphql',
+  /** tracker.delivery sync 최대 동시 호출 수 (rate limit 보호) */
+  TRACKER_SYNC_BATCH_SIZE: 50,
+  /** SHIPPING 상태 orders 가 sync 대상 — 마지막 sync 후 N분 지나야 재시도. */
+  TRACKER_SYNC_MIN_INTERVAL_MIN: 60,
+  /** 합배송 도입 — Phase 6 까지 false. 활성화 시 products.bundling_key 필요. */
+  ENABLE_BUNDLING: false,
+} as const
+
 // ── ⑨ 큐레이터 링크샵 (migration 0278, 2026-05-25) ──────────────
 //   handle 정책 / 핀 상한 / 충돌 suffix 정책 SSOT.
 //   변경 시 본 상수만 수정 → 백엔드 + 클라이언트 자동 반영.

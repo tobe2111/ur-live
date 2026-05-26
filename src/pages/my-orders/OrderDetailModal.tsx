@@ -2,6 +2,7 @@
  * 🛡️ 2026-05-02: TD-018 분할 — MyOrdersPage 주문 상세 모달 (사용자 시점).
  *   배송 타임라인 + 결제 정보 + 판매자 문의 + 리뷰/취소 액션 포함.
  */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Truck, ChevronRight } from 'lucide-react'
@@ -10,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { getTrackingUrl } from '@/components/mypage/OrdersTab'
+import TrackingModal from '@/components/shipping/TrackingModal'
 import type { Order } from '@/types/order'
 
 interface Props {
@@ -20,6 +22,7 @@ interface Props {
 
 export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
   const { t } = useTranslation()
+  const [showTracking, setShowTracking] = useState(false)
   const navigate = useNavigate()
 
   return (
@@ -172,16 +175,25 @@ export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
                           <span className="font-medium text-gray-900 dark:text-white">{order.tracking_number}</span>
                         </div>
                       </div>
-                      {getTrackingUrl(order.courier, order.tracking_number) && (
-                        <a
-                          href={getTrackingUrl(order.courier, order.tracking_number)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="text-[13px] text-blue-600 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                      <div className="flex items-center gap-2">
+                        {/* 🛡️ 2026-05-25 (migration 0279): 인앱 추적 모달 — tracker.delivery 무료 API */}
+                        <button
+                          onClick={() => setShowTracking(true)}
+                          className="text-[13px] text-pink-600 dark:text-pink-400 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
                         >
-                          {t('orderDetail.trackingLink', { defaultValue: '배송조회' })}
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </a>
-                      )}
+                          📦 {t('orderDetail.trackingDetail', { defaultValue: '상세 추적' })}
+                        </button>
+                        {getTrackingUrl(order.courier, order.tracking_number) && (
+                          <a
+                            href={getTrackingUrl(order.courier, order.tracking_number)}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-[13px] text-blue-600 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                          >
+                            {t('orderDetail.trackingLink', { defaultValue: '배송조회' })}
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
@@ -263,6 +275,8 @@ export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
           )}
         </div>
       </div>
+      {/* 🛡️ 2026-05-25 (migration 0279): 인앱 추적 timeline (tracker.delivery) */}
+      {showTracking && <TrackingModal orderId={order.id} onClose={() => setShowTracking(false)} />}
     </div>
   )
 }
