@@ -465,7 +465,8 @@ sellerSettlementsRoutes.post('/voucher-redeem', rateLimit({ action: 'seller_vouc
     }
 
     // 4. voucher_orders INSERT (status='processing').
-    const trId = `ur-vr-${sellerId}-${Date.now()}`
+    // 🛡️ 2026-05-25: KT Alpha TRID 20자 제한 (ERR0807). base36 단축.
+    const trId = `s${sellerId}-${Date.now().toString(36)}`
     const orderResult = await c.env.DB.prepare(
       `INSERT INTO voucher_orders (
          seller_id, source, goods_code, goods_name, goods_image_url,

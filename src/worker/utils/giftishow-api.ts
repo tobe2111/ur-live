@@ -513,7 +513,7 @@ export async function sendCoupon(
     mms_msg: params.mmsMsg.slice(0, 2000),
     callback_no: callback,
     phone_no: phone,
-    tr_id: params.trId,
+    tr_id: params.trId.slice(0, 20),  // 🛡️ 2026-05-25: KT Alpha 20자 제한 (ERR0807). 모든 호출자 defense.
     user_id: params.userId,
     gubun: params.gubun || 'N',
   }

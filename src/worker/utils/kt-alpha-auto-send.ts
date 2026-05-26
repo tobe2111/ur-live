@@ -161,7 +161,9 @@ export async function autoSendKtAlphaVouchersForOrders(
 
     for (const item of ktItems.results) {
       for (let i = 0; i < item.quantity; i++) {
-        const trId = `ur-cons-${oid}-${item.product_id}-${i + 1}-${Date.now()}`
+        // 🛡️ 2026-05-25: KT Alpha TRID 20자 제한 (ERR0807). base36 timestamp + short suffix.
+        // 형식: u{oid}-{ts36}{i} — 예: 'u85-m4abc1z3' = 12자 (oid 자릿수에 따라 ~14-16자, 20자 이내).
+        const trId = `u${oid}-${Date.now().toString(36)}${i}`
         // 🛡️ 2026-05-25: INSERT 실패 사유 capture (이전 silent .catch(() => null)).
         let voInsertErr: string | null = null
         const vo = await env.DB.prepare(
