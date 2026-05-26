@@ -1354,12 +1354,13 @@ adminKtAlphaRoutes.get('/kt-alpha/diagnose-order/:order_id', cors(), async (c) =
     ).length
 
     // 4. voucher_orders 발송 기록 (KT Alpha)
+    // 🛡️ 2026-05-25: trId 형식 2가지 매칭 — 옛 'ur-cons-{oid}-...' + 신 'u{oid}-...' (TRID 20자 fix 후).
     const voucherOrders = await DB.prepare(
       `SELECT id, goods_code, goods_name, status, failure_reason, recipient_phone, sent_at, external_order_id, created_at
        FROM voucher_orders
-       WHERE external_order_id LIKE ?
+       WHERE external_order_id LIKE ? OR external_order_id LIKE ?
        ORDER BY id DESC`
-    ).bind(`ur-cons-${orderId}-%`).all().catch(() => ({ results: [] }))
+    ).bind(`ur-cons-${orderId}-%`, `u${orderId}-%`).all().catch(() => ({ results: [] }))
 
     // 5. vouchers (내부 QR) 발급 기록
     const vouchers = await DB.prepare(
