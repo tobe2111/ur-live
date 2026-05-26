@@ -30,9 +30,36 @@ export async function autoSendKtAlphaVouchersForOrders(
   env: Env,
   orders: OrderRow[],
   fallbackUserId: string | number,
-): Promise<{ sent: number; failed: number }> {
+): Promise<{ sent: number; failed: number; errors: string[] }> {
   let totalSent = 0
   let totalFailed = 0
+  const errors: string[] = []
+
+  // 🛡️ 2026-05-25: voucher_orders 테이블 lazy CREATE (production 미적용 환경 graceful).
+  //   migration 0257 미적용 시 INSERT throw → silent fail. 사용자 신고 (Order #85).
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS voucher_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      goods_code TEXT NOT NULL,
+      goods_name TEXT NOT NULL,
+      goods_image_url TEXT,
+      unit_price INTEGER NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      total_amount INTEGER NOT NULL,
+      recipient_phone TEXT NOT NULL,
+      withholding_amount INTEGER NOT NULL DEFAULT 0,
+      net_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      external_order_id TEXT,
+      coupon_code TEXT,
+      failure_reason TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      sent_at DATETIME,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+  } catch { /* graceful */ }
 
   // 운영 설정 — 1회만 로드.
   const settings = await env.DB.prepare(
@@ -45,7 +72,10 @@ export async function autoSendKtAlphaVouchersForOrders(
   const templateId = sMap.kt_alpha_template_id || undefined
   const bannerId = sMap.kt_alpha_banner_id || undefined
   const adminSellerId = Number(sMap.kt_alpha_admin_seller_id) || 0
-  if (!ktUserId || !callbackNo) return { sent: 0, failed: 0 }
+  if (!ktUserId || !callbackNo) {
+    errors.push(`platform_settings 누락: kt_alpha_user_id=${!!ktUserId}, kt_alpha_callback_no=${!!callbackNo}`)
+    return { sent: 0, failed: 0, errors }
+  }
 
   const { sendCoupon } = await import('./giftishow-api')
 
@@ -103,6 +133,8 @@ export async function autoSendKtAlphaVouchersForOrders(
     for (const item of ktItems.results) {
       for (let i = 0; i < item.quantity; i++) {
         const trId = `ur-cons-${oid}-${item.product_id}-${i + 1}-${Date.now()}`
+        // 🛡️ 2026-05-25: INSERT 실패 사유 capture (이전 silent .catch(() => null)).
+        let voInsertErr: string | null = null
         const vo = await env.DB.prepare(
           `INSERT INTO voucher_orders (
              seller_id, source, goods_code, goods_name,
@@ -112,8 +144,14 @@ export async function autoSendKtAlphaVouchersForOrders(
         ).bind(
           adminSellerId, item.kt_alpha_gift_code, item.product_name,
           item.unit_price, item.unit_price, phone, item.unit_price, trId,
-        ).run().catch(() => null)
+        ).run().catch((err: Error) => {
+          voInsertErr = err?.message?.slice(0, 200) || String(err)
+          return null
+        })
         const voId = vo ? Number(vo.meta.last_row_id) : 0
+        if (voInsertErr) {
+          errors.push(`voucher_orders INSERT 실패 (order ${oid}, code ${item.kt_alpha_gift_code}): ${voInsertErr}`)
+        }
 
         try {
           const res = await sendCoupon(env, {
@@ -137,6 +175,13 @@ export async function autoSendKtAlphaVouchersForOrders(
           totalSent++
         } catch (sendErr) {
           const errMsg = (sendErr as Error).message.slice(0, 300)
+          // 🛡️ 2026-05-25: sendCoupon 에러 errors 배열 + frontend_errors 둘 다 기록
+          errors.push(`sendCoupon 실패 (order ${oid}, code ${item.kt_alpha_gift_code}): ${errMsg}`)
+          await env.DB.prepare(
+            `INSERT INTO frontend_errors (message, type, url, user_id, created_at)
+             VALUES (?, 'kt_alpha_send_throw', '/api/admin/kt-alpha/trigger-order', ?, datetime('now'))`
+          ).bind(`sendCoupon throw (order ${oid}, code ${item.kt_alpha_gift_code}): ${errMsg}`, String(order.user_id || fallbackUserId))
+            .run().catch(() => null)
           if (voId) {
             await env.DB.prepare(
               `UPDATE voucher_orders SET status = 'failed', failure_reason = ?, updated_at = datetime('now') WHERE id = ?`
@@ -163,5 +208,5 @@ export async function autoSendKtAlphaVouchersForOrders(
     }
   }
 
-  return { sent: totalSent, failed: totalFailed }
+  return { sent: totalSent, failed: totalFailed, errors }
 }

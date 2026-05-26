@@ -1277,11 +1277,13 @@ adminKtAlphaRoutes.post('/kt-alpha/trigger-order/:order_id', cors(), async (c) =
       success: true,
       result,
       voucher_orders: voucherOrders.results || [],
+      // 🛡️ 2026-05-25: 실패 사유 노출 (이전: voucher_orders.failure_reason 만 — 실패 시 row 자체 없으면 확인 불가)
+      errors: result.errors || [],
       message: result.sent > 0
         ? `${result.sent}건 발송 성공`
         : result.failed > 0
-          ? `${result.failed}건 발송 실패 — voucher_orders.failure_reason 확인`
-          : 'KT Alpha 상품 없음 또는 phone 누락 (frontend_errors 확인)',
+          ? `${result.failed}건 실패 — ${result.errors?.[0] || '사유 미상'}`
+          : (result.errors?.[0] || 'KT Alpha 상품 없음 또는 phone 누락'),
     })
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message?.slice(0, 200) || 'unknown' }, 500)
