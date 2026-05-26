@@ -61,6 +61,30 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
   const [data, setData] = useState<DiagnoseResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // 🛡️ 2026-05-25: 재발송 trigger state
+  const [triggering, setTriggering] = useState(false)
+  const [triggerResult, setTriggerResult] = useState<string | null>(null)
+
+  async function triggerResend() {
+    if (!confirm(`Order #${orderId} 에 KT Alpha 자동발송을 수동 trigger 합니다. 진행하시겠습니까?`)) return
+    setTriggering(true)
+    setTriggerResult(null)
+    try {
+      const r = await api.post(`/api/admin/kt-alpha/trigger-order/${orderId}`, {})
+      if (r.data?.success) {
+        setTriggerResult(r.data.message || '재발송 trigger 완료')
+        // 진단 데이터 다시 로드
+        const refresh = await api.get(`/api/admin/kt-alpha/diagnose-order/${orderId}`)
+        if (refresh.data?.success) setData(refresh.data.data)
+      } else {
+        setTriggerResult(`실패: ${r.data?.error || 'unknown'}`)
+      }
+    } catch (err: any) {
+      setTriggerResult(`실패: ${err?.response?.data?.error || err?.message || 'unknown'}`)
+    } finally {
+      setTriggering(false)
+    }
+  }
 
   useEffect(() => {
     api.get(`/api/admin/kt-alpha/diagnose-order/${orderId}`)
@@ -78,6 +102,27 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-gray-900">KT Alpha 진단 — Order #{orderId}</h3>
           <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
+        </div>
+
+        {/* 🛡️ 2026-05-25: 재발송 trigger — autoSendKtAlphaVouchersForOrders 수동 호출 */}
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-xs font-bold text-amber-900 mb-2">🚀 KT Alpha 재발송 trigger</p>
+          <p className="text-[11px] text-amber-700 mb-2">
+            voucher_orders 기록 없음 (autoSendKtAlphaVouchersForOrders 미실행) 케이스 → 수동 발송.
+            동기 호출 (응답 ~1-3초). 이미 성공 status 인 voucher_orders 는 영향 없음.
+          </p>
+          <button
+            onClick={triggerResend}
+            disabled={triggering}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+          >
+            {triggering ? '발송 중...' : '🚀 KT Alpha 재발송 trigger'}
+          </button>
+          {triggerResult && (
+            <p className={`mt-2 text-xs font-bold ${triggerResult.startsWith('실패') ? 'text-red-600' : 'text-emerald-600'}`}>
+              {triggerResult}
+            </p>
+          )}
         </div>
 
         {loading ? (
