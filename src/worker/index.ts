@@ -432,14 +432,46 @@ app.use('*', async (c, next) => {
   // 🛡️ 2026-04-22 배치 121: HTML 응답에 nonce 주입 — 모든 <script> (inline & external src).
   //   strict-dynamic + nonce 조합: 신뢰된 script 가 dynamic 하게 로드하는 하위 script 는
   //   브라우저가 자동으로 nonce propagation (createElement('script') 케이스).
+  // 🛡️ 2026-05-25 (loading P0): 메인 페이지 SSR inline — KV cache 에서 group-buy/products
+  //   조회 + <head> 에 type="application/json" 으로 inject. 클라이언트는 inline 우선 사용.
+  //   효과: 모바일 메인 LCP -0.3~0.5s (첫 API fetch waterfall 제거).
+  //   부하: KV read 1회 + 정적 inject. 매 메인 요청 1회 (publicCache 5분 HIT 보장).
   const ct = c.res.headers.get('Content-Type') || '';
   if (ct.includes('text/html') && c.res.body) {
+    const url = new URL(c.req.url);
+    const isMainPage = url.pathname === '/' || url.pathname === '/index.html';
+
+    // 메인 페이지 SSR data 사전 fetch (best-effort, KV miss 면 inject skip)
+    let ssrPayload: string | null = null;
+    if (isMainPage) {
+      try {
+        const { readKvCacheForSSR } = await import('./middleware/edge-cache');
+        const cached = await readKvCacheForSSR(c.env as unknown as Record<string, unknown>, '/api/group-buy/products?status=active&category=all');
+        if (cached && cached.status >= 200 && cached.status < 300) {
+          // body 에서 응답 자체만 추출 (publicCache envelope 의 body 가 JSON 응답 string)
+          // 안전 escape: </script 만 회피 — JSON 안에 </script 가 나오면 inline script 종료됨
+          ssrPayload = cached.body.replace(/<\/script/gi, '<\\/script');
+        }
+      } catch { /* fallback: 클라이언트 fetch */ }
+    }
+
     const rewritten = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })
-            .on('meta[name="csp-nonce"]', {
+      .on('meta[name="csp-nonce"]', {
         element(el) { el.setAttribute('content', nonce); },
+      })
+      .on('head', {
+        element(el) {
+          // 🛡️ SSR inline — 메인 페이지에만, 그리고 KV cache 있을 때만
+          if (ssrPayload) {
+            el.append(
+              `<script id="__SSR_INITIAL_MAIN__" type="application/json">${ssrPayload}</script>`,
+              { html: true },
+            );
+          }
+        },
       })
       .transform(c.res);
     c.res = new Response(rewritten.body, rewritten);

@@ -41,6 +41,8 @@ interface KvCacheEnvelope {
 /**
  * KV second-layer cache 조회.
  * env.CACHE_KV 없거나 에러 시 null 반환 (graceful degradation).
+ *
+ * 🛡️ 2026-05-25: SSR inline 용도로 외부 export (`readKvCacheForSSR`).
  */
 async function readKvCache(env: Record<string, unknown>, kvKey: string): Promise<KvCacheEnvelope | null> {
   const kv = env.CACHE_KV as KVNamespace | undefined;
@@ -52,6 +54,19 @@ async function readKvCache(env: Record<string, unknown>, kvKey: string): Promise
   } catch {
     return null;
   }
+}
+
+/**
+ * 🛡️ 2026-05-25 (SSR): 외부 호출용 — HTMLRewriter 에서 메인 페이지 critical data inline.
+ *   path + query 만 key (publicCache 와 동일 정규화). null = miss → 클라이언트 fetch fallback.
+ */
+export async function readKvCacheForSSR(
+  env: Record<string, unknown>,
+  pathAndQuery: string,
+): Promise<{ body: string; contentType: string; status: number } | null> {
+  const envelope = await readKvCache(env, `apicache:${pathAndQuery}`);
+  if (!envelope) return null;
+  return { body: envelope.body, contentType: envelope.contentType, status: envelope.status };
 }
 
 /**

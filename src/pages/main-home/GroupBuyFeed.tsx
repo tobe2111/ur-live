@@ -54,6 +54,23 @@ export default function GroupBuyFeed() {
   //   목록 fetch 직후 각 product 를 individual detail cache 에 hydrate →
   //   카드 클릭 시 server hit 0 (placeholderData + cache hit).
   const qc = useQueryClient()
+
+  // 🛡️ 2026-05-25 (loading P0): SSR inline — worker HTMLRewriter 가 KV cache 에서
+  //   메인 페이지 데이터를 <script id="__SSR_INITIAL_MAIN__"> 로 inject.
+  //   category='all' 첫 mount 시 즉시 사용 → 첫 API fetch waterfall 제거.
+  //   miss/만료 시 useQuery 가 정상 fetch (fallback 안전).
+  const ssrInitial = useMemo<FeedProduct[] | undefined>(() => {
+    if (category !== 'all') return undefined
+    try {
+      if (typeof document === 'undefined') return undefined
+      const el = document.getElementById('__SSR_INITIAL_MAIN__')
+      if (!el?.textContent) return undefined
+      const parsed = JSON.parse(el.textContent)
+      const arr = Array.isArray(parsed?.data) ? parsed.data : null
+      return arr || undefined
+    } catch { return undefined }
+  }, [category])
+
   // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
   //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
   const { data: items = [], isLoading: loading } = useQuery<FeedProduct[]>({
@@ -67,6 +84,8 @@ export default function GroupBuyFeed() {
       }
       return arr
     },
+    initialData: ssrInitial,
+    initialDataUpdatedAt: ssrInitial ? Date.now() - 60_000 : 0,  // SSR 데이터를 1분 stale 로 표시 → useQuery 가 background refetch
     refetchOnWindowFocus: false,
   })
 
