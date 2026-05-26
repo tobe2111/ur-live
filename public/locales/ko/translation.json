@@ -2359,6 +2359,7 @@
       "sales": "판매",
       "revenue": "수익",
       "settings": "설정",
+      "curator": "내 링크샵",
       "backToMain": "메인으로 돌아갑니다",
       "backToUser": "유저로 돌아가기"
     },
@@ -2379,6 +2380,8 @@
       "pinNotSet": "보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요."
     },
     "nav": {
+      "hosting": "공구 호스팅",
+      "curatorEarnings": "큐레이터 수익",
       "products": "상품 관리",
       "bundles": "번들 상품",
       "mealVoucher": "식사권·공구",
