@@ -807,4 +807,59 @@ CURATOR_DEFAULTS.HANDLE_PATTERN            // 핸들 정규식
 - \`/u/:handle\` — 공개 큐레이터 페이지 (다크 테마)
 - \`/u/me/earnings\` — 큐레이터 수익 대시보드`,
   },
+  // 🛡️ 2026-05-25 (migration 0279): 배송 재설계
+  {
+    key: 'shipping-redesign', icon: '📦', title: '배송 시스템 (migration 0279)', order: 810,
+    content: `### 배송 추적 3중 안전망
+
+| 계층 | 방식 | 비용 | 비고 |
+|---|---|---|---|
+| 1차 | tracker.delivery GraphQL (무료) | 0원 | 한국 택배사 20+ |
+| 2차 | 외부 페이지 URL fallback | 0원 | 12개 매핑 (\`courier-codes.ts\`) |
+| 3차 | cron 6시간 sync + 7일 추정 | 0원 | API 실패 시 fallback |
+
+### 어드민 주요 작업
+
+#### CSV 일괄 송장 업로드 (\`/admin/shipping/bulk-tracking\`)
+1. CSV 포맷: \`order_id,courier,tracking_number,shipped_at\`
+2. 사전 검증 (dry-run) → 실제 업로드 2단계
+3. 최대 1000행 / batch
+4. 중복 송장은 자동 skip (재실행 안전)
+
+#### 수동 sync (\`POST /api/shipping/admin/sync\`)
+- cron 외 응급 상황에 50개 batch 즉시 sync
+- 응답: { scanned, synced, delivered, errors, skipped }
+
+### 지역별 배송비 정책
+- \`regional_shipping_fees\` 테이블 SSOT
+- 제주 (63xxx): +3000원
+- 도서산간 (울릉/백령/연평/거제): +5000원
+- 변경: 어드민이 직접 INSERT/UPDATE 또는 \`policy.ts\` SHIPPING_DEFAULTS 수정
+
+### 정책 변경 (\`policy.ts\` SSOT)
+\`\`\`ts
+SHIPPING_DEFAULTS.AUTO_DELIVERED_AFTER_DAYS   // 7일 → 변경 가능
+SHIPPING_DEFAULTS.TRACKER_SYNC_INTERVAL_HOURS // 6시간
+SHIPPING_DEFAULTS.TRACKER_SYNC_BATCH_SIZE     // 50개
+SHIPPING_DEFAULTS.JEJU_EXTRA_FEE              // 3000원
+SHIPPING_DEFAULTS.ISLAND_EXTRA_FEE            // 5000원
+\`\`\`
+
+### 모니터링 / 디버깅
+- \`shipping_tracking_events\` 테이블: 모든 sync 이벤트 audit
+- 같은 order 의 events 시간순 조회 → 사기/지연 분석
+- tracker.delivery 실패 빈도 추적 — error 컬럼 (\`source='cron' AND status='error'\`)
+
+### 알려진 한계
+- 합배송 (bundling): Phase 6 까지 비활성 (\`ENABLE_BUNDLING=false\`)
+- 인스타 스토리 공유: client-side canvas 미구현
+- 해외 배송: 미지원
+
+### 관련 API
+- \`GET /api/shipping/track/:carrier/:trackingNumber\` (public, 60s cache)
+- \`GET /api/shipping/order/:orderId/track\` (requireAuth)
+- \`POST /api/shipping/admin/bulk-tracking\` (requireAdmin)
+- \`POST /api/shipping/admin/sync\` (requireAdmin)
+- \`GET /api/shipping/couriers\` (public, 드롭다운)`,
+  },
 ]

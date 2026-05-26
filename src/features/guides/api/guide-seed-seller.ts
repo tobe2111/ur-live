@@ -787,4 +787,33 @@ A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT A
 - 수익 대시보드: \`/u/me/earnings\`
 - API: \`POST /api/curator/me/pins\`, \`GET /api/curator/me/dashboard\``,
   },
+  // 🛡️ 2026-05-25 (migration 0279): 배송 추적
+  {
+    key: 'shipping-tracking', icon: '📦', title: '배송 추적 자동화 (migration 0279)', order: 710,
+    content: `### 배송 추적 시스템 (2026-05-25 도입)
+
+송장 등록 후 별도 작업 없이 자동으로 배송완료까지 감지됩니다.
+
+#### 어떻게 동작하나요?
+
+1. 셀러가 송장번호 등록 → \`PUT /api/seller/orders/:id/tracking\`
+2. 시스템이 자동으로 택배사 코드 정규화 (한글 "한진" / 영문 "hanjin" 모두 OK)
+3. 6시간마다 cron 이 무료 외부 API (tracker.delivery) 호출 → 상태 자동 갱신
+4. 배송 완료 감지 시 → 주문 상태 자동 'DELIVERED' + 사용자에게 push 알림
+
+#### 지원 택배사 (12개)
+CJ대한통운 / 한진 / 롯데 / 우체국 / 로젠 / CU편의점 / GS편의점 /
+대신 / 일양 / 경동 / 천일 / CWAY
+
+새 택배사가 필요하면 어드민에게 요청 (\`courier-codes.ts\` 1줄 추가로 끝).
+
+#### 사용자가 보는 것
+- 주문 상세 모달에 "📦 상세 추적" 버튼 → 인앱 timeline
+- "배송조회" 버튼 → 택배사 페이지 새 탭
+- 배송 완료 시 push 알림 자동
+
+#### 셀러는 추가 작업 없음
+- 송장 등록만 하면 끝 — 추적/완료 처리는 자동
+- 만약 자동 sync 가 실패하면 7일 후 자동 'DELIVERED' (기존 14일에서 단축)`,
+  },
 ]

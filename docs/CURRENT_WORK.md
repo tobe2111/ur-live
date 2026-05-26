@@ -3,6 +3,22 @@
 **최종 업데이트**: 2026-05-25 (Phase 1 링크샵 구현 완료 — 5 commits)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
 
+## ✅ 2026-05-25 — Phase 2 (배송 재설계) 완료
+
+migration 0279 + tracker.delivery 무료 API + 외부 URL fallback + cron sync + CSV 일괄.
+
+| Commit | 영역 | hash |
+|---|---|---|
+| 1/5 | DB + 정책 SSOT + V2 배송비 함수 | `9d913840` |
+| 2/5 | tracker.delivery + courier-codes + 5 endpoints | `(commit 2)` |
+| 3/5 | order.routes V2 + 셀러 송장 carrier_code | `bb45dae6` |
+| 4/5 | 인앱 추적 모달 + MyOrders 통합 | `74d945ba` |
+| 5/5 | 어드민 CSV UI + 가이드 + docs | (이 commit) |
+
+**3중 안전망**: tracker.delivery (무료) → 외부 URL fallback → cron 7일 추정
+**지역별 배송비**: 제주 +3000, 도서산간 +5000 (`regional_shipping_fees` SSOT)
+**12개 택배사**: CJ/한진/롯데/우체국/로젠/CU/GS/대신/일양/경동/천일/CWAY
+
 ## ✅ 2026-05-25 — Phase 1 (링크샵 + 큐레이터 + 1탭 핀) 완료
 
 migration 0278 + worker API 13개 + 큐레이터 페이지 2개 + 핀 1탭 UX + 가이드 동기화.
