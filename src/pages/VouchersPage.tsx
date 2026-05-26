@@ -15,7 +15,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, ChevronLeft, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
+import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -242,12 +242,10 @@ export default function VouchersPage() {
         url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
       />
 
-      {/* Header */}
+      {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
+          BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지. */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="shrink-0 p-1">
-            <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
-          </button>
           <div className="flex-1 flex items-center gap-1.5">
             <Gift className="w-5 h-5 text-amber-500" />
             <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
