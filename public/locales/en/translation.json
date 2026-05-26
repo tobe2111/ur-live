@@ -3874,7 +3874,9 @@
     "search": "Search",
     "restaurants": "Restaurants",
     "groupBuy": "Group Buy",
-    "my": "My"
+    "my": "My",
+    "linkshop": "Linkshop",
+    "vouchers": "Vouchers"
   },
   "bulkUpload": {
     "title": "Bulk Product Upload",
@@ -5450,5 +5452,12 @@
     "startNew": "Open",
     "empty": "No hosted group buys yet. Find products to buy with friends!",
     "emptyCatalog": "Catalog is empty"
+  },
+  "returns": {
+    "title": "My Returns",
+    "backToOrders": "Orders",
+    "empty": "No return history",
+    "trackingTitle": "Return Pickup Tracking",
+    "submitShipping": "Register Pickup Waybill"
   }
 }
