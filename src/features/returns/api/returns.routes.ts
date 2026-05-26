@@ -213,8 +213,8 @@ returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 3
 
   // 반품 조회 + 소유자 확인
   const returnRecord = await DB.prepare(
-    'SELECT id, user_id, status FROM returns WHERE id = ?'
-  ).bind(returnId).first<{ id: number; user_id: string; status: string }>();
+    'SELECT id, user_id, status, order_id FROM returns WHERE id = ?'
+  ).bind(returnId).first<{ id: number; user_id: string; status: string; order_id: number | null }>();
 
   if (!returnRecord) {
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
@@ -228,11 +228,28 @@ returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 3
     return c.json({ success: false, error: '승인된 반품만 배송 정보를 등록할 수 있습니다' }, 400);
   }
 
+  // 🛡️ 2026-05-25 (migration 0279): 택배사 표준화 + tracker.delivery 자동 추적 가능하도록 정규화
+  const { normalizeCourierKey } = await import('../../../worker/utils/courier-codes')
+  const cleanedTracking = String(body.tracking_number || '').replace(/\s+/g, '')
+  const carrierKey = normalizeCourierKey(body.shipping_company)
+  // return_shipping_company 에는 원본 (or 정규화 키) 저장. 향후 schema 확장 시 별도 carrier_code 컬럼 분리.
+  const shippingCompany = carrierKey || String(body.shipping_company || '').trim()
+
   await DB.prepare(`
     UPDATE returns
     SET return_shipping_company = ?, return_tracking_number = ?, status = 'shipped', shipped_at = datetime('now')
     WHERE id = ?
-  `).bind(body.shipping_company, body.tracking_number, returnId).run();
+  `).bind(shippingCompany, cleanedTracking, returnId).run();
+
+  // shipping_tracking_events audit (best-effort) — 반품 회수 송장도 추적 가능하도록.
+  if (carrierKey) {
+    try {
+      await DB.prepare(
+        `INSERT INTO shipping_tracking_events (order_id, carrier_code, tracking_number, status, status_text, source)
+         VALUES (?, ?, ?, 'pending', '반품 회수 송장 등록', 'manual')`,
+      ).bind(returnRecord.order_id ?? 0, carrierKey, cleanedTracking, ).run().catch(() => {})
+    } catch { /* ignore */ }
+  }
 
   return c.json({ success: true, message: '반품 배송 정보가 등록되었습니다' });
 });

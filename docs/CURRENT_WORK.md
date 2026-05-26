@@ -52,11 +52,17 @@ migration 0278 + worker API 13개 + 큐레이터 페이지 2개 + 핀 1탭 UX + 
 - `/u/:handle/p/:productId` (redirect)
 - 13 worker endpoints under `/api/curator/*`
 
-### 다음 phase 우선순위
-1. **Phase 2 (배송 재설계)** — shipping-redesign.md §0 A 채택 반영
-2. **Phase 3 (공구 호스팅)** — voucher 공구 누구나 호스팅
-3. **Phase 4 (출금 UI + 셀러 승급 안내)**
-4. **Phase 5 (셀러 흡수 마이그레이션)**
+### ✅ 전체 신모델 인프라 완료 (2026-05-25)
+- Phase 1 ~ 5 모두 완료
+- Phase 6 (합배송) 인프라만 (`ENABLE_BUNDLING=false`)
+- 정책 동적화 — 어드민이 9개 정책 코드 변경 없이 조정 가능 (`/admin/platform-settings`)
+- 반품 carrier 정규화 + audit 통합
+
+### 후속 PR 가능
+- 합배송 UI 활성화 (Phase 6)
+- 인스타 스토리 canvas 합성 (마케팅 UX)
+- ja/zh/es/fr i18n 번역 (현재 한국어 stub)
+- 반품 회수 송장 추적 UI
 
 
 ## 🚀 2026-05-25 — 비즈니스 모델 Pivot 컨셉 단계 진입
