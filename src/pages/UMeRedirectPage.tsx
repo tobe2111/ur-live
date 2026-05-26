@@ -17,10 +17,18 @@ export default function UMeRedirectPage() {
     let alive = true
     ;(async () => {
       try {
-        // getDashboard 응답에 handle 포함 — 본인 공개페이지로 redirect
+        // 🛡️ 2026-05-25 (loading P0): getDashboard 응답에 handle + linked_seller 동봉.
+        //   linked_seller 있으면 바로 /profile/{username} (셀러 공개페이지) 직행.
+        //   → 이전 3-step 직렬 (/u/me → /u/{handle} → /profile/...) 1-step 단축.
         const res = await curatorApi.getDashboard() as any
         if (!alive) return
         const handle: string | null = res?.handle ?? null
+        const linkedSeller = res?.linked_seller as { id: number; username: string } | null | undefined
+
+        if (linkedSeller?.username) {
+          navigate(`/profile/${linkedSeller.username}`, { replace: true })
+          return
+        }
         if (handle) {
           try { localStorage.setItem('user_handle', handle) } catch {}
           navigate(`/u/${handle}`, { replace: true })

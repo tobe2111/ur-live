@@ -472,6 +472,12 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     const meRow = await DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
       .bind(userId).first<{ handle: string | null }>().catch(() => null)
 
+    // 🛡️ 2026-05-25 (loading P0): linked seller 도 같이 반환 → /u/me 가 한 번에 redirect target 결정.
+    //   이전: /u/me → /u/{handle} → /profile/{username} (3-step 직렬). 이후: /u/me → /profile/{username} 직행.
+    const linkedSeller = await DB.prepare(
+      `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+    ).bind(userId).first<{ id: number; username: string }>().catch(() => null)
+
     // 30일 어필리에이트 적립 (affiliate_earnings 가 기존 SSOT)
     const earnings30 = await DB.prepare(
       `SELECT COALESCE(SUM(commission_amount), 0) AS total
@@ -515,6 +521,8 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     return c.json({
       success: true,
       handle: meRow?.handle ?? null,
+      // 🛡️ 2026-05-25: linked_seller 동봉 → /u/me 가 직접 /profile/{username} navigate
+      linked_seller: linkedSeller ? { id: linkedSeller.id, username: linkedSeller.username } : null,
       stats: {
         month_earnings: earnings30?.total ?? 0,
         clicks_30d: clicks30?.cnt ?? 0,
