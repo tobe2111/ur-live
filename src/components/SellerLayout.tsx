@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag, Sparkles
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { getRoleShortLabel } from '@/shared/seller-roles'
@@ -83,6 +83,14 @@ const NAV_GROUPS: {
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
       { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
       { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
+    ],
+  },
+  // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 링크샵 통합 — 셀러도 본인 user 계정 큐레이터 가능
+  {
+    labelKey: 'seller.layout.curator',
+    items: [
+      { path: '/host', labelKey: 'seller.nav.hosting', icon: Sparkles, mode: 'common' },
+      { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' },
     ],
   },
   {

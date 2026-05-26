@@ -94,6 +94,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
     { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
     { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },
+    // 🛡️ 2026-05-25 (migration 0281): 합배송 인프라 (Phase 6 deferred — ENABLE_BUNDLING=false)
+    { desc: 'products.bundling_key', sql: "ALTER TABLE products ADD COLUMN bundling_key TEXT" },
+    { desc: 'orders.consolidated_with', sql: "ALTER TABLE orders ADD COLUMN consolidated_with TEXT" },
 
     // ── products ───────────────────────────────────
     { desc: 'products.view_count', sql: "ALTER TABLE products ADD COLUMN view_count INTEGER DEFAULT 0" },

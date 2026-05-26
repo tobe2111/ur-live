@@ -1,14 +1,18 @@
 import { ChevronLeft, Share2, ShoppingBag } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import PinButton from '@/components/curator/PinButton'
 
 interface MobileHeaderProps {
   onShare: () => void;
   isWishlisted?: boolean;
   onToggleWishlist?: () => void;
+  // 🛡️ 2026-05-25 (mig 0278): 큐레이터 핀 — 상세에서 1탭 핀
+  productId?: number;
+  productPrice?: number;
 }
 
-export function MobileHeader({ onShare }: MobileHeaderProps) {
+export function MobileHeader({ onShare, productId, productPrice }: MobileHeaderProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
@@ -30,6 +34,9 @@ export function MobileHeader({ onShare }: MobileHeaderProps) {
         <ChevronLeft className="h-[18px] w-[18px] text-gray-900 dark:text-white" />
       </button>
       <div className="flex items-center gap-1.5">
+        {productId && (
+          <PinButton productId={productId} price={productPrice} variant="detail-floating" />
+        )}
         <button aria-label={t('productDetail.header.share', { defaultValue: '공유' })} className={btnClass} onClick={onShare}>
           <Share2 className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>

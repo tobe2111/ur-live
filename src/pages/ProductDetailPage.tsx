@@ -478,6 +478,8 @@ export default function ProductDetailPage() {
         onShare={handleShare}
         isWishlisted={isWishlisted}
         onToggleWishlist={handleToggleWishlist}
+        productId={product?.id ? Number(product.id) : undefined}
+        productPrice={product?.price ? Number(product.price) : undefined}
       />
 
       <main className="pb-20 ur-content-wide lg:px-8">

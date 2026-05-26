@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { boutiqueCTA } from '@/components/glass/glassTokens'
 import WishlistButton from '@/components/WishlistButton'
+import PinButton from '@/components/curator/PinButton'
 import { formatNumber } from '@/utils/format'
 import api from '@/lib/api'
 
@@ -166,6 +167,8 @@ export default function ReelProductCard({
               -{discountRate}%
             </span>
           )}
+          {/* 🛡️ 2026-05-25 (mig 0278): 큐레이터 핀 — 라이브 시청 중 즉시 핀 */}
+          <PinButton productId={safeProduct.id} price={safeProduct.price} variant="card-overlay" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-gray-700 leading-[1.35] line-clamp-2">

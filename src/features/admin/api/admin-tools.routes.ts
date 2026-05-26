@@ -293,5 +293,10 @@ adminToolsRoutes.put('/settings', async (c) => {
     await c.env.DB.prepare('INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime(\'now\')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime(\'now\')')
       .bind(key, String(value)).run()
   }
+  // 🛡️ 2026-05-25: dynamic-policy cache 무효화 — 어드민 변경 즉시 반영 (60s TTL 대기 X).
+  try {
+    const { invalidatePolicyCache } = await import('../../../worker/utils/dynamic-policy')
+    invalidatePolicyCache()
+  } catch { /* ignore — cache 만료 자연 처리 */ }
   return c.json({ success: true })
 })

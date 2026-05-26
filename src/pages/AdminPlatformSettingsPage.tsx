@@ -25,6 +25,16 @@ const SETTINGS_FIELDS = [
   { key: 'review_reward_image', label: '이미지 리뷰 보상 (딜)', default: '300' },
   { key: 'review_reward_video', label: '영상 리뷰 보상 (딜)', default: '500' },
   { key: 'affiliate_commission_rate', label: '제휴 마케팅 수수료율 (%)', default: '2' },
+  // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 / 호스팅 / 출금 정책 동적화
+  { key: 'curator_affiliate_pct', label: '큐레이터 어필리에이트 (%)', default: '1' },
+  { key: 'host_incentive_pct', label: '호스팅 인센티브 (%)', default: '1' },
+  { key: 'curator_min_withdrawal', label: '큐레이터 최소 출금 (원)', default: '10000' },
+  { key: 'curator_withholding_rate', label: '큐레이터 원천징수율 (%)', default: '3.3' },
+  { key: 'seller_upgrade_threshold', label: '셀러 승급 안내 누적 정산 (원)', default: '500000' },
+  { key: 'pin_max_per_user', label: '유저당 핀 상한 (개)', default: '200' },
+  { key: 'hosting_max_active', label: '호스팅 동시 active 상한 (개)', default: '10' },
+  { key: 'jeju_extra_fee', label: '제주 추가 배송비 (원)', default: '3000' },
+  { key: 'island_extra_fee', label: '도서산간 추가 배송비 (원)', default: '5000' },
 ]
 
 export default function AdminPlatformSettingsPage() {

@@ -22,7 +22,8 @@ import {
   isHandleAvailable,
   isValidHandleFormat,
 } from '../utils/handle-generator'
-import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY } from '../../shared/constants/policy'
+import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { getPolicy } from '../utils/dynamic-policy'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -554,10 +555,12 @@ curatorRoutes.post('/me/withdrawal', requireUserType('user'), async (c) => {
     const bankAccount = String(body.bank_account || '').trim()
     const accountHolder = String(body.account_holder || '').trim()
 
-    if (!Number.isFinite(amount) || amount < WITHDRAWAL_DEFAULTS.MIN_AMOUNT) {
+    // 🛡️ 2026-05-25: 동적 정책 — 어드민이 platform_settings 로 조정 가능 (fallback=policy.ts 상수)
+    const minAmount = await getPolicy(c.env.DB, 'curator_min_withdrawal', WITHDRAWAL_DEFAULTS.MIN_AMOUNT)
+    if (!Number.isFinite(amount) || amount < minAmount) {
       return c.json({
         success: false,
-        error: `최소 출금 금액은 ${WITHDRAWAL_DEFAULTS.MIN_AMOUNT.toLocaleString()}원입니다`,
+        error: `최소 출금 금액은 ${minAmount.toLocaleString()}원입니다`,
       }, 400)
     }
     if (!bankName || !bankAccount || !accountHolder) {
@@ -585,8 +588,9 @@ curatorRoutes.post('/me/withdrawal', requireUserType('user'), async (c) => {
       }, 400)
     }
 
-    // 원천징수 — TAX_POLICY.BUSINESS_INCOME_RATE (기본 3.3%)
-    const withholdingTax = Math.floor(amount * TAX_POLICY.BUSINESS_INCOME_RATE)
+    // 원천징수 — 동적 정책 (curator_withholding_rate, 백분율). fallback=TAX_POLICY.BUSINESS_INCOME_RATE (3.3%).
+    const withholdingPct = await getPolicy(c.env.DB, 'curator_withholding_rate', TAX_POLICY.BUSINESS_INCOME_RATE * 100)
+    const withholdingTax = Math.floor(amount * withholdingPct / 100)
     const netAmount = amount - withholdingTax
 
     try {
@@ -641,6 +645,11 @@ curatorRoutes.get('/me/withdrawal', requireUserType('user'), async (c) => {
        ORDER BY requested_at DESC LIMIT 20`,
     ).bind(String(userId)).all().catch(() => ({ results: [] as any[] }))
 
+    // 🛡️ 동적 정책 — platform_settings 우선, fallback=policy.ts
+    const upgradeThreshold = await getPolicy(c.env.DB, 'seller_upgrade_threshold', WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD)
+    const minWithdrawal = await getPolicy(c.env.DB, 'curator_min_withdrawal', WITHDRAWAL_DEFAULTS.MIN_AMOUNT)
+    const withholdingPct = await getPolicy(c.env.DB, 'curator_withholding_rate', TAX_POLICY.BUSINESS_INCOME_RATE * 100)
+
     // 셀러 승급 안내 여부
     let upgradeOffered = false
     let upgradeEligible = false
@@ -649,7 +658,7 @@ curatorRoutes.get('/me/withdrawal', requireUserType('user'), async (c) => {
         `SELECT seller_upgrade_offered_at, user_type FROM users WHERE id = ? LIMIT 1`,
       ).bind(userId).first<{ seller_upgrade_offered_at: string | null; user_type: string }>()
       upgradeOffered = !!u?.seller_upgrade_offered_at
-      if (u?.user_type === 'user' && lifetimeEarnings >= WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD) {
+      if (u?.user_type === 'user' && lifetimeEarnings >= upgradeThreshold) {
         // cooldown 검사
         const cooldownMs = WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS * 86400_000
         const lastMs = u?.seller_upgrade_offered_at ? Date.parse(u.seller_upgrade_offered_at) : 0
@@ -662,11 +671,11 @@ curatorRoutes.get('/me/withdrawal', requireUserType('user'), async (c) => {
       lifetime_earnings: lifetimeEarnings,
       total_withdrawn: totalWithdrawn,
       available,
-      min_withdrawal: WITHDRAWAL_DEFAULTS.MIN_AMOUNT,
-      withholding_rate: TAX_POLICY.BUSINESS_INCOME_RATE,
+      min_withdrawal: minWithdrawal,
+      withholding_rate: withholdingPct / 100,
       history: history ?? [],
       seller_upgrade: {
-        threshold: WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD,
+        threshold: upgradeThreshold,
         eligible: upgradeEligible,
         offered: upgradeOffered,
       },

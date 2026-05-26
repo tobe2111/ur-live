@@ -935,4 +935,45 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 - \`GET /api/curator/me/withdrawal\` (잔액 + 이력 + 승급 안내)
 - \`POST /api/curator/me/seller-upgrade-acknowledge\` (안내 dismiss)`,
   },
+  // 🛡️ 2026-05-25: 정책 동적화 + 합배송 인프라
+  {
+    key: 'dynamic-policy-bundling', icon: '⚙️', title: '정책 동적화 + 합배송 인프라', order: 830,
+    content: `### 정책 동적화 (\`/admin/platform-settings\`)
+
+코드 변경 없이 어드민이 9개 신규 정책 조정 가능:
+
+| 정책 | 키 | 기본값 |
+|---|---|---|
+| 큐레이터 어필리에이트 | \`curator_affiliate_pct\` | 1.0% |
+| 호스팅 인센티브 | \`host_incentive_pct\` | 1.0% |
+| 최소 출금 | \`curator_min_withdrawal\` | 10,000원 |
+| 큐레이터 원천징수 | \`curator_withholding_rate\` | 3.3% |
+| 셀러 승급 threshold | \`seller_upgrade_threshold\` | 500,000원 |
+| 핀 상한 | \`pin_max_per_user\` | 200개 |
+| 호스팅 동시 active 상한 | \`hosting_max_active\` | 10개 |
+| 제주 배송비 | \`jeju_extra_fee\` | 3,000원 |
+| 도서산간 배송비 | \`island_extra_fee\` | 5,000원 |
+
+#### 작동 방식
+1. \`/admin/platform-settings\` 에서 값 변경 → 저장
+2. 서버: 60s in-memory cache 무효화 (PUT 즉시) → 다음 요청부터 새 값
+3. fallback: 키 없거나 파싱 실패 시 \`policy.ts\` 정적 상수 사용
+
+#### 코드 통합 위치
+- \`src/worker/utils/dynamic-policy.ts\` — \`getPolicy(DB, key, fallback)\` SSOT
+- 현재 통합: \`curator.routes.ts\` 의 withdrawal endpoint
+- 후속: \`affiliate.routes.ts\` (CURATOR_AFFILIATE_PCT 통합)
+
+### 합배송 인프라 (migration 0281, Phase 6 deferred)
+- \`products.bundling_key\` — 같은 key 끼리 묶음
+- \`orders.consolidated_with\` — 합배송 그룹 ID
+- 현재 \`ENABLE_BUNDLING=false\` — UI 비활성. 후속 PR 활성 시:
+  * 체크아웃 자동 그룹핑
+  * 어드민 발송 UI 에 묶음 표시
+  * 배송비 = MAX(bundling_key 별 baseFee)
+
+### 반품 추적 통합 (Phase 2 잔여)
+- \`returns.routes.ts\` 의 \`PUT /request/:id/shipping\` 에서 \`normalizeCourierKey()\` 자동
+- \`shipping_tracking_events\` audit 추가 → 반품 회수 송장도 tracker.delivery 추적 가능 (인프라 완성, UI 후속)`,
+  },
 ]
