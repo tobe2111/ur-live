@@ -1232,6 +1232,62 @@ adminKtAlphaRoutes.post('/voucher-orders/:id/resend', cors(), async (c) => {
   }
 })
 
+// 🛡️ 2026-05-25 사용자 명령: 특정 order_id 에 KT Alpha 자동발송 수동 trigger.
+//   진단 결과 "voucher_orders 기록 없음 = autoSendKtAlphaVouchersForOrders 미실행" 케이스
+//   → 어드민이 수동으로 trigger. 동기 호출 (응답 ~1-3초) — 발송 보장.
+//   POST /api/admin/kt-alpha/trigger-order/:order_id
+adminKtAlphaRoutes.post('/kt-alpha/trigger-order/:order_id', cors(), async (c) => {
+  try {
+    const orderId = Number(c.req.param('order_id'))
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+      return c.json({ success: false, error: '잘못된 order_id' }, 400)
+    }
+
+    const { DB } = c.env
+    // 주문 + user 정보 조회
+    const order = await DB.prepare(
+      `SELECT o.id, o.user_id, o.order_number, o.shipping_phone, o.status, u.phone AS user_phone
+       FROM orders o LEFT JOIN users u ON u.id = o.user_id
+       WHERE o.id = ? LIMIT 1`,
+    ).bind(orderId).first<{
+      id: number; user_id: number; order_number: string; shipping_phone: string | null; status: string; user_phone: string | null
+    }>().catch(() => null)
+
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+
+    // autoSendKtAlphaVouchersForOrders 동기 호출 (수동 trigger 라 await 안전)
+    const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
+    const result = await autoSendKtAlphaVouchersForOrders(
+      c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+      [{
+        id: order.id,
+        user_id: order.user_id,
+        shipping_phone: order.shipping_phone || order.user_phone,
+      }],
+      order.user_id,
+    )
+
+    // 결과 확인 — voucher_orders 생성 여부
+    const voucherOrders = await DB.prepare(
+      `SELECT id, status, failure_reason, created_at FROM voucher_orders
+       WHERE external_order_id LIKE ? ORDER BY id DESC LIMIT 10`,
+    ).bind(`%-${orderId}-%`).all().catch(() => ({ results: [] as any[] }))
+
+    return c.json({
+      success: true,
+      result,
+      voucher_orders: voucherOrders.results || [],
+      message: result.sent > 0
+        ? `${result.sent}건 발송 성공`
+        : result.failed > 0
+          ? `${result.failed}건 발송 실패 — voucher_orders.failure_reason 확인`
+          : 'KT Alpha 상품 없음 또는 phone 누락 (frontend_errors 확인)',
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message?.slice(0, 200) || 'unknown' }, 500)
+  }
+})
+
 // 🛡️ 2026-05-24 사용자 명령: "voucher 샀어도 기프티쇼 연계 맞아?" 진단 endpoint.
 //   특정 order_id 의 KT Alpha 연동 상태를 한 번에 보여줌.
 //   - settings 완비 여부
