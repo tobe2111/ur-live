@@ -634,7 +634,7 @@ PR #286 머지 후 후속 작업 (이번 commit). 새 브랜치/PR 으로 진행
 | TD-002 | 시크릿 노출 | ✅ 해결 (4종 회전 + Toss 재발급) |
 | TD-003 | 유령 CF 프로젝트 | 🔴 사용자 액션 (Dashboard 정리) |
 | TD-004 | 이중 라우팅 | ✅ 해결 (dead /rollback 제거) |
-| TD-005 | 스키마 이중화 | 🟡 prep 완료 (migration 0233 — TD-001 대기) |
+| TD-005 | 스키마 이중화 | 🟢 코드 측 soft deprecate 완료 (2026-05-25, commit XX). cart.routes.ts `base_shipping_fee` 우선. DB DROP 은 TD-001 해결 후 운영자가 별도 PR. |
 | TD-006 | 거대 파일 worker/index.ts | ✅ 해결 (54.8% 감소, 6개 파일 분산) |
 | TD-007 | Auction 결제 reservation | ✅ 해결 (auction_holds escrow + forfeit + promote-runner-up + winner-paid + 알림) |
 | TD-008 | INTERNAL_CRON_TOKEN | 🟢 사용자 액션 (Pages Variables) |
