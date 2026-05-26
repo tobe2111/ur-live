@@ -23,6 +23,10 @@ interface WithdrawalInfo {
   withholding_rate: number
   history: Array<{ id: number; amount: number; withholding_tax: number; net_amount: number; bank_name: string; status: string; requested_at: string }>
   seller_upgrade: { threshold: number; eligible: boolean; offered: boolean }
+  // 🛡️ 2026-05-25 신모델: 정산 분기
+  payout_mode: 'cash' | 'deal'
+  is_business_seller: boolean
+  deal_balance: number
 }
 
 export default function CuratorEarningsPage() {
@@ -108,8 +112,8 @@ export default function CuratorEarningsPage() {
           )}
         </div>
 
-        {/* 출금 모달 */}
-        {showWithdraw && wdInfo && (
+        {/* 출금 모달 — 사업자 셀러만 (payout_mode='cash') */}
+        {showWithdraw && wdInfo && wdInfo.payout_mode === 'cash' && (
           <WithdrawModal
             info={wdInfo}
             onClose={() => setShowWithdraw(false)}
@@ -122,25 +126,43 @@ export default function CuratorEarningsPage() {
 }
 
 function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalInfo; onWithdraw: () => void; onAckUpgrade: () => Promise<void> }) {
+  // 🛡️ 2026-05-25 신모델: 사업자 셀러는 실제 돈 출금, 일반 user 는 딜 잔액 표시.
+  const isCash = info.payout_mode === 'cash'
   return (
     <section className="mb-6">
-      <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-5 text-white">
-        <p className="text-xs opacity-80 mb-1">💰 출금 가능 잔액</p>
-        <p className="text-3xl font-bold mb-3">{formatWon(info.available)}</p>
-        <div className="flex justify-between text-xs opacity-90 mb-4">
-          <span>누적 적립 {formatWon(info.lifetime_earnings)}</span>
-          <span>출금 {formatWon(info.total_withdrawn)}</span>
+      {isCash ? (
+        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-5 text-white">
+          <p className="text-xs opacity-80 mb-1">💰 출금 가능 잔액 (현금)</p>
+          <p className="text-3xl font-bold mb-3">{formatWon(info.available)}</p>
+          <div className="flex justify-between text-xs opacity-90 mb-4">
+            <span>누적 적립 {formatWon(info.lifetime_earnings)}</span>
+            <span>출금 {formatWon(info.total_withdrawn)}</span>
+          </div>
+          <button
+            onClick={onWithdraw}
+            disabled={info.available < info.min_withdrawal}
+            className="w-full py-2.5 bg-white text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {info.available < info.min_withdrawal
+              ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
+              : '출금 신청'}
+          </button>
         </div>
-        <button
-          onClick={onWithdraw}
-          disabled={info.available < info.min_withdrawal}
-          className="w-full py-2.5 bg-white text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {info.available < info.min_withdrawal
-            ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
-            : '출금 신청'}
-        </button>
-      </div>
+      ) : (
+        <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl p-5 text-white">
+          <p className="text-xs opacity-80 mb-1">🟡 내 딜 잔액</p>
+          <p className="text-3xl font-bold mb-3">{formatNumber(info.deal_balance)}딜</p>
+          <p className="text-xs opacity-90 mb-3">
+            누적 적립 {formatNumber(info.lifetime_earnings)}딜 — 1딜 = 1원으로 쇼핑/공구에 사용
+          </p>
+          <Link
+            to="/browse"
+            className="block w-full py-2.5 bg-white text-orange-600 font-bold rounded-lg text-center"
+          >
+            🛍️ 쇼핑 둘러보기
+          </Link>
+        </div>
+      )}
 
       {/* 셀러 승급 안내 */}
       {info.seller_upgrade.eligible && !info.seller_upgrade.offered && (

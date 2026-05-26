@@ -569,6 +569,20 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
     if (!bankName || !bankAccount || !accountHolder) {
       return c.json({ success: false, error: '은행/계좌/예금주 모두 필요합니다' }, 400)
     }
+
+    // 🛡️ 2026-05-25 신모델 정산 분기:
+    //   사업자 셀러 (sellers.linked_user_id = userId) — 실제 돈 출금 (user_withdrawals)
+    //   일반 user — 딜로만 적립 (user_points). 출금 거부.
+    const sellerRow = await c.env.DB.prepare(
+      `SELECT id FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+    ).bind(userId).first<{ id: number }>().catch(() => null)
+    if (!sellerRow) {
+      return c.json({
+        success: false,
+        error: '실제 돈 출금은 사업자 셀러만 가능합니다. 일반 회원은 딜로 적립되어 쇼핑/공구에 사용 가능합니다.',
+        code: 'NOT_SELLER',
+      }, 403)
+    }
     if (bankAccount.length < 8 || bankAccount.length > 30) {
       return c.json({ success: false, error: '계좌번호가 유효하지 않습니다' }, 400)
     }
@@ -629,14 +643,15 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
     const DB = c.env.DB
 
+    // 🛡️ 2026-05-25: 테이블 미존재 시 graceful — 0 fallback.
     const earnings = await DB.prepare(
       `SELECT COALESCE(SUM(commission_amount), 0) AS total FROM affiliate_earnings WHERE referrer_id = ?`,
-    ).bind(String(userId)).first<{ total: number }>()
+    ).bind(String(userId)).first<{ total: number }>().catch(() => null)
 
     const withdrawn = await DB.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM user_withdrawals
        WHERE user_id = ? AND status IN ('requested','approved','paid')`,
-    ).bind(String(userId)).first<{ total: number }>()
+    ).bind(String(userId)).first<{ total: number }>().catch(() => null)
 
     const lifetimeEarnings = earnings?.total ?? 0
     const totalWithdrawn = withdrawn?.total ?? 0
@@ -669,6 +684,17 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
       }
     } catch { /* ignore */ }
 
+    // 🛡️ 2026-05-25 신모델: 사업자 셀러 여부 — 출금 UI 분기
+    const sellerRow = await DB.prepare(
+      `SELECT id FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+    ).bind(userId).first<{ id: number }>().catch(() => null)
+    const isBusinessSeller = !!sellerRow
+
+    // user_points 의 현재 딜 잔액 (일반 user 용 표시)
+    const pointsBalance = await DB.prepare(
+      `SELECT COALESCE(balance, 0) AS balance FROM user_points WHERE user_id = ? LIMIT 1`,
+    ).bind(String(userId)).first<{ balance: number }>().catch(() => null)
+
     return c.json({
       success: true,
       lifetime_earnings: lifetimeEarnings,
@@ -677,6 +703,10 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
       min_withdrawal: minWithdrawal,
       withholding_rate: withholdingPct / 100,
       history: history ?? [],
+      // 신모델: 정산 분기 정보
+      payout_mode: isBusinessSeller ? 'cash' : 'deal',
+      is_business_seller: isBusinessSeller,
+      deal_balance: pointsBalance?.balance ?? 0,
       seller_upgrade: {
         threshold: upgradeThreshold,
         eligible: upgradeEligible,
