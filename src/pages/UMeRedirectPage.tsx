@@ -25,12 +25,18 @@ export default function UMeRedirectPage() {
         const handle: string | null = res?.handle ?? null
         const linkedSeller = res?.linked_seller as { id: number; username: string } | null | undefined
 
+        // 🛡️ 2026-05-25: localStorage cache — 다음 클릭부터 BottomNav 가 직접 navigate (UMeRedirect 거치지 X)
+        try {
+          if (linkedSeller?.username) localStorage.setItem('linked_seller_username', linkedSeller.username)
+          else localStorage.removeItem('linked_seller_username')
+          if (handle) localStorage.setItem('user_handle', handle)
+        } catch { /* ignore */ }
+
         if (linkedSeller?.username) {
           navigate(`/profile/${linkedSeller.username}`, { replace: true })
           return
         }
         if (handle) {
-          try { localStorage.setItem('user_handle', handle) } catch {}
           navigate(`/u/${handle}`, { replace: true })
           return
         }

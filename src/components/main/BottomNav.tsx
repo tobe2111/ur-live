@@ -108,9 +108,21 @@ export default function BottomNav() {
   // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 링크샵.
   //   사용자 결정: 링크샵 탭은 본인 공개페이지 (/u/{handle}).
   //   수익은 마이페이지 (/user/profile) 에 인라인 카드 — 링크샵 페이지에는 노출 X.
-  //   /u/me → UMeRedirectPage 가 handle 조회 후 /u/{handle} 로 자동 navigate.
-  //   미로그인 시 /host/new (카탈로그 — 첫 핀 시 자동 handle 생성).
-  const linkshopPath = isLoggedIn ? '/u/me' : '/host/new'
+  // 🛡️ 2026-05-25 (loading P0): localStorage cache 우선 — UMeRedirectPage chunk + getDashboard API 0 round-trip.
+  //   - linked_seller_username 캐시 있으면 /profile/{username} 직행 (셀러 공개페이지)
+  //   - user_handle 캐시 있으면 /u/{handle} 직행 (큐레이터 공개페이지)
+  //   - 캐시 없으면 /u/me (UMeRedirectPage 가 1회 API 호출 후 캐시 저장)
+  //   - 미로그인이면 /host/new (카탈로그 — 첫 핀 시 자동 handle 생성)
+  const linkshopPath = (() => {
+    if (!isLoggedIn) return '/host/new'
+    try {
+      const cachedSeller = localStorage.getItem('linked_seller_username')
+      if (cachedSeller) return `/profile/${cachedSeller}`
+      const cachedHandle = localStorage.getItem('user_handle')
+      if (cachedHandle) return `/u/${cachedHandle}`
+    } catch { /* ignore */ }
+    return '/u/me'
+  })()
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },
