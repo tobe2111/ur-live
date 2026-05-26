@@ -1,21 +1,25 @@
 /**
- * 🛡️ 2026-05-25 (migration 0278): 큐레이터 공개 페이지 (/u/:handle).
+ * 🛡️ 2026-05-25 (migration 0278 + C 옵션): 큐레이터 공개 페이지 (/u/:handle).
  *
- * 모든 유저가 본인 링크샵 보유. 다크 테마 고정 (라이브와 톤 통일).
- * 본인이면 dashboard mini card + 수익 stats 표시.
+ * 모든 유저가 본인 공개 페이지 보유. 다크 테마 고정.
  *
- * Phase 1-A 인프라: 핀 grid + 큐레이터 헤더 + 공유 버튼 + SEO + OG.
- * Phase 1-C/D 의 dashboard / 공유 sheet 는 추후 commit 에서 확장.
+ * 구조:
+ *   - linked_seller 있으면 → /profile/{username} 으로 navigate (셀러 페이지 활용)
+ *   - 일반 user → 풍부한 헤더 + 탭 (핀 / 정보)
+ *
+ * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import KakaoShareButton from '@/components/KakaoShareButton'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
-import { formatWon } from '@/utils/format'
+import { formatWon, formatNumber } from '@/utils/format'
+import { toast } from '@/hooks/useToast'
+import CuratorHeader from './curator-page/CuratorHeader'
+import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
 
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
@@ -24,6 +28,7 @@ export default function CuratorPage() {
   const [data, setData] = useState<CuratorPageResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<CuratorTab>('pins')
   const currentUser = useAuthStore((s: any) => s.user)
   const isOwner = Boolean(currentUser && data?.curator && Number(currentUser.id) === data.curator.id)
 
@@ -41,7 +46,6 @@ export default function CuratorPage() {
           return
         }
         // 🛡️ 2026-05-25 (C 옵션 통합): linked seller 있으면 풍부한 셀러 공개페이지로 navigate.
-        //   일반 user (linked seller 없음) — 단순 핀 그리드 (현 페이지 유지).
         if (res.linked_seller && res.linked_seller.username) {
           navigate(`/profile/${res.linked_seller.username}`, { replace: true })
           return
@@ -52,6 +56,19 @@ export default function CuratorPage() {
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [handle, navigate, t])
+
+  const totalClicks = useMemo(() => {
+    if (!data?.pins) return 0
+    return data.pins.reduce((sum, p) => sum + (p.click_count || 0), 0)
+  }, [data])
+
+  async function copyLink() {
+    const fullUrl = `${window.location.origin}/u/${handle}`
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      toast.success('링크가 복사되었어요')
+    } catch { /* ignore */ }
+  }
 
   if (loading) {
     return (
@@ -82,75 +99,23 @@ export default function CuratorPage() {
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
       <div className="min-h-screen bg-[#020202] text-white pb-24">
-        <CuratorHeader curator={curator} pinCount={pins.length} isOwner={isOwner} />
+        <CuratorHeader
+          curator={curator}
+          pinCount={pins.length}
+          totalClicks={totalClicks}
+          isOwner={isOwner}
+          onCopyLink={copyLink}
+        />
+        <CuratorTabs tab={tab} onChange={setTab} pinCount={pins.length} />
 
-        {pins.length === 0 ? (
-          <EmptyLinkshop handle={curator.handle} isOwner={isOwner} />
-        ) : (
-          <PinGrid pins={pins} handle={curator.handle} isOwner={isOwner} />
+        {tab === 'pins' && (
+          pins.length === 0
+            ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} />
+            : <PinGrid pins={pins} handle={curator.handle} isOwner={isOwner} />
         )}
+        {tab === 'info' && <InfoTab curator={curator} pinCount={pins.length} totalClicks={totalClicks} />}
       </div>
     </>
-  )
-}
-
-function CuratorHeader({ curator, pinCount, isOwner }: { curator: CuratorPageResponse['curator']; pinCount: number; isOwner: boolean }) {
-  const { t } = useTranslation()
-  const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}/u/${curator.handle}` : `/u/${curator.handle}`
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(fullUrl)
-      alert(t('curator.linkCopied', { defaultValue: '링크가 복사되었어요' }))
-    } catch { /* ignore */ }
-  }
-
-  return (
-    <header className="pt-8 pb-6 px-4 border-b border-[#1A1A1A]">
-      <div className="max-w-3xl mx-auto flex items-start gap-4">
-        {curator.profile_image ? (
-          <img src={curator.profile_image} alt={curator.name} className="w-20 h-20 rounded-full object-cover bg-[#121212]" />
-        ) : (
-          <div className="w-20 h-20 rounded-full bg-[#1A1A1A] flex items-center justify-center text-3xl font-bold text-pink-400">
-            {(curator.name || '?').slice(0, 1)}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold truncate">{curator.name}</h1>
-          <p className="text-sm text-gray-400">@{curator.handle}</p>
-          {curator.bio && <p className="text-sm text-gray-300 mt-2 line-clamp-2">{curator.bio}</p>}
-          <p className="text-xs text-gray-500 mt-2">{t('curator.pinCount', { count: pinCount, defaultValue: '{{count}}개 상품 추천 중' })}</p>
-        </div>
-      </div>
-      <div className="max-w-3xl mx-auto flex gap-2 mt-4">
-        <div className="flex-1">
-          <KakaoShareButton
-            title={`${curator.name} 의 링크샵`}
-            description={curator.bio || `${pinCount}개 상품 추천 중`}
-            imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
-            link={`/u/${curator.handle}`}
-            className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-sm font-bold transition-colors"
-            buttonText="링크샵 둘러보기"
-          />
-        </div>
-        <button
-          onClick={copyLink}
-          className="px-4 py-2.5 bg-[#121212] hover:bg-[#1A1A1A] rounded-xl text-sm font-bold transition-colors"
-          aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
-        >
-          🔗
-        </button>
-        {isOwner && (
-          <Link
-            to="/u/me/earnings"
-            className="px-4 py-2.5 bg-pink-500 hover:bg-pink-600 rounded-xl text-sm font-bold text-center transition-colors"
-            aria-label={t('curator.viewEarnings', { defaultValue: '내 적립 보기' })}
-          >
-            💰
-          </Link>
-        )}
-      </div>
-    </header>
   )
 }
 
@@ -167,7 +132,6 @@ function PinGrid({ pins, handle, isOwner }: { pins: CuratorPin[]; handle: string
 function PinCard({ pin, handle, isOwner }: { pin: CuratorPin; handle: string; isOwner: boolean }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
-  // 외부 공유 URL — 큐레이터 ref 자동 부여
   const redirectUrl = `/u/${handle}/p/${pin.product_id}/redirect`
 
   return (
@@ -190,6 +154,50 @@ function PinCard({ pin, handle, isOwner }: { pin: CuratorPin; handle: string; is
         )}
       </div>
     </a>
+  )
+}
+
+function InfoTab({ curator, pinCount, totalClicks }: { curator: CuratorPageResponse['curator']; pinCount: number; totalClicks: number }) {
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+      <section className="bg-[#0A0A0A] rounded-xl p-5 border border-[#1A1A1A]">
+        <h3 className="text-sm font-bold text-white mb-3">📋 활동 정보</h3>
+        <dl className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-gray-400">핸들</dt>
+            <dd className="text-white font-mono">@{curator.handle}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-400">추천 상품</dt>
+            <dd className="text-white">{formatNumber(pinCount)}개</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-400">누적 클릭</dt>
+            <dd className="text-white">{formatNumber(totalClicks)}회</dd>
+          </div>
+        </dl>
+      </section>
+
+      {curator.bio && (
+        <section className="bg-[#0A0A0A] rounded-xl p-5 border border-[#1A1A1A]">
+          <h3 className="text-sm font-bold text-white mb-3">💬 한 줄 소개</h3>
+          <p className="text-sm text-gray-300 leading-relaxed">{curator.bio}</p>
+        </section>
+      )}
+
+      <section className="bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-xl p-5 border border-pink-500/30">
+        <h3 className="text-sm font-bold text-white mb-2">🔗 친구에게 추천</h3>
+        <p className="text-xs text-gray-300 mb-3">
+          이 페이지에서 친구가 상품을 구매하면 큐레이터에게 적립이 돌아갑니다.
+        </p>
+        <Link
+          to="/host/new"
+          className="block text-center py-2 bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold rounded-lg"
+        >
+          나도 링크샵 만들기
+        </Link>
+      </section>
+    </div>
   )
 }
 
