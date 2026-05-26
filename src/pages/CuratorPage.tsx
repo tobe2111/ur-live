@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -19,6 +19,7 @@ import { formatWon } from '@/utils/format'
 
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const [data, setData] = useState<CuratorPageResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -35,13 +36,22 @@ export default function CuratorPage() {
       .getPage(handle)
       .then((res) => {
         if (!alive) return
-        if (!res.success) setError(res.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
-        else setData(res)
+        if (!res.success) {
+          setError(res.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
+          return
+        }
+        // 🛡️ 2026-05-25 (C 옵션 통합): linked seller 있으면 풍부한 셀러 공개페이지로 navigate.
+        //   일반 user (linked seller 없음) — 단순 핀 그리드 (현 페이지 유지).
+        if (res.linked_seller && res.linked_seller.username) {
+          navigate(`/profile/${res.linked_seller.username}`, { replace: true })
+          return
+        }
+        setData(res)
       })
       .catch(() => alive && setError(t('curator.fetchError', { defaultValue: '불러오기 실패' })))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [handle, t])
+  }, [handle, navigate, t])
 
   if (loading) {
     return (
