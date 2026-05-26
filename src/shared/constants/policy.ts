@@ -74,8 +74,45 @@ export const COMMISSION_DEFAULTS = {
   /** 공구 양쪽 보너스 (추천인 + 피추천인 각각 %) */
   REFERRAL_BONUS_BOTHSIDES_PCT: 0.5,
 
+  /** 큐레이터 핀 어필리에이트 % — 큐레이터에게만 적립 (피구매자 X).
+   *  BOTHSIDES 0.5 와 별도. products.referral_commission_rate 가 있으면 그쪽 우선.
+   *  2026-05-25 도입: 사용자 결정 — 링크샵 핀 단독 비율. */
+  CURATOR_AFFILIATE_PCT: 1.0,
+
   /** 숙박 등 외부 카테고리 commission 상한 — exploding rate 방지 */
   STAYS_COMMISSION_CAP_PCT: 20,
+} as const
+
+// ── ⑨ 큐레이터 링크샵 (migration 0278, 2026-05-25) ──────────────
+//   handle 정책 / 핀 상한 / 충돌 suffix 정책 SSOT.
+//   변경 시 본 상수만 수정 → 백엔드 + 클라이언트 자동 반영.
+export const CURATOR_DEFAULTS = {
+  /** 핸들 최소 길이 — UX/SEO 최소치 */
+  HANDLE_MIN_LEN: 3,
+  /** 핸들 최대 길이 — URL/공유 가독성 */
+  HANDLE_MAX_LEN: 30,
+  /** 핸들 정규식 — 소문자 영숫자 + underscore. 한글/하이픈/대문자 금지 (URL 안전 + 변별성). */
+  HANDLE_PATTERN: /^[a-z0-9_]{3,30}$/,
+  /** 핸들 예약어 — 시스템 라우트와 충돌 방지. URL `/u/admin` 같은 case 차단. */
+  HANDLE_RESERVED: [
+    'admin', 'api', 'auth', 'me', 'login', 'logout', 'signup', 'help', 'support',
+    'seller', 'agency', 'staff', 'official', 'urteam', 'urdeal', 'live',
+    'shop', 'browse', 'cart', 'checkout', 'order', 'orders', 'product', 'products',
+    'curator', 'pin', 'pins', 'earnings', 'wallet', 'points', 'voucher', 'vouchers',
+    'about', 'terms', 'privacy', 'contact', 'faq', 'guide',
+  ] as readonly string[],
+  /** 1 큐레이터당 최대 핀 개수 — DB 비대 방지 + UI 페이지네이션 회피. */
+  PIN_MAX_PER_USER: 200,
+  /** 핀 노트 (큐레이터 한 줄) 최대 길이 */
+  PIN_NOTE_MAX_LEN: 200,
+  /** 핸들 변경 cooldown (일) — 어뷰징 + SEO 안정 */
+  HANDLE_CHANGE_COOLDOWN_DAYS: 30,
+  /** Bio 최대 길이 */
+  BIO_MAX_LEN: 160,
+  /** 핀 stats 기본 조회 기간 (일) */
+  STATS_DEFAULT_RANGE_DAYS: 7,
+  /** ref 쿠키 TTL (시간) — 기존 affiliate_ref 24h 와 동일. */
+  REF_COOKIE_TTL_HOURS: 24,
 } as const
 
 // ── ③ 원천징수율 + 세무 임계값 ──────────────────────────────────

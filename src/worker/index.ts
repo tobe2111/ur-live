@@ -194,6 +194,7 @@ import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, i
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
 import { ogRoutes } from './routes/og-image.routes';
+import { curatorRoutes } from './routes/curator.routes'; // 2026-05-25 큐레이터 링크샵
 import { analyticsRoutes } from './routes/analytics.routes';
 import { flagRoutes } from './routes/feature-flag.routes';
 import { currencyRoutes } from './routes/currency.routes';
@@ -1121,6 +1122,9 @@ app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
 
 // 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
 app.route('/api/og', ogRoutes);
+
+// 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 (모든 유저가 /u/:handle 공개 페이지)
+app.route('/api/curator', curatorRoutes);
 
 // 🛡️ 2026-05-15: Web Vitals + funnel 수집 (1% sampling, KV 카운터, 0원 운영)
 app.route('/api/analytics', analyticsRoutes);

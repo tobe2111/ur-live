@@ -191,13 +191,27 @@ affiliateRoutes.post('/track', requireAuth(), async (c) => {
     if (import.meta.env?.DEV) console.warn('[affiliate] user_points grant failed', e)
   }
 
-  // 알림
+  // 알림 — DB notification + Push (큐레이터 수익 가시화, 2026-05-25)
   try {
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
-      VALUES (?, 'affiliate_earning', ?, ?, '/user/affiliate', datetime('now'))
-    `).bind(String(referrer_id), '💰 추천 수수료 적립!', `${commission}딜이 적립되었습니다`).run()
+      VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
+    `).bind(String(referrer_id), '💰 핀으로 적립!', `${commission}딜이 적립되었습니다`).run()
   } catch {}
+
+  // 🛡️ 2026-05-25: 즉시 push — 큐레이터에게 수익 발생 알림 (UX 핵심)
+  //   기존 affiliate 시스템 (셀러 추천) + 신규 큐레이터 핀 둘 다 동일 referrer_id 흐름.
+  try {
+    const { sendSystemPush } = await import('../../../lib/system-push')
+    c.executionCtx.waitUntil(
+      sendSystemPush(c.env, 'user', String(referrer_id), {
+        title: '🎉 핀으로 적립!',
+        body: `+${commission}딜 — 친구가 추천 링크로 구매했어요`,
+        url: '/u/me/earnings',
+        tag: `aff-earn-${referrer_id}-${Date.now()}`,
+      }).catch(() => {}),
+    )
+  } catch { /* push 실패는 무시 — 적립은 이미 완료 */ }
 
   return c.json({ success: true, data: { commission } })
 })

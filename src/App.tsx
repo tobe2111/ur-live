@@ -60,6 +60,9 @@ const TossDebugPage = lazy(() => import('./pages/TossDebugPage'))
 const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
+// 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵
+const CuratorPage = lazy(() => import('./pages/CuratorPage'))
+const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
@@ -139,6 +142,20 @@ const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
 function ProductRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/products/${id}`} replace />;
+}
+
+// 🛡️ 2026-05-25 (migration 0278): 큐레이터 핀 SPA fallback
+//   서버 /api/curator/:handle/p/:productId/redirect 가 302 안 될 때 (SPA pushState 라우팅)
+//   client 에서 localStorage.affiliate_ref 직접 세팅 + 클릭 로그 호출 후 상품 페이지로 navigate.
+function CuratorPinClientRedirect() {
+  const { handle = '', productId = '' } = useParams<{ handle: string; productId: string }>()
+  // best-effort: 서버에 클릭 추적 + ref 부여 redirect 위임 → 그래도 SPA 가 가로채면 fallback 으로 직접 navigate.
+  // 가장 단순한 영구 방어: window.location.replace 로 서버 302 흐름 강제.
+  if (typeof window !== 'undefined' && handle && productId) {
+    window.location.replace(`/api/curator/${encodeURIComponent(handle)}/p/${encodeURIComponent(productId)}/redirect`)
+    return null
+  }
+  return <Navigate to={`/products/${productId}`} replace />
 }
 
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
@@ -335,6 +352,43 @@ function AppContent() {
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
 
+  // 🛡️ 2026-05-25 (migration 0278): 큐레이터 자동 핀 (Phase 1-B).
+  //   비로그인 → PinButton 클릭 → localStorage 'pending_pin_product_id' + 카카오 로그인.
+  //   로그인 후 App.tsx mount 시 pending 검사 → 자동 핀 추가 + toast.
+  //   1탭 UX 의 핵심 — 로그인 후 사용자가 따로 클릭하지 않아도 의도 보존.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (cancelled) return
+        const raw = localStorage.getItem('pending_pin_product_id')
+        if (!raw) return
+        const pid = Number(raw)
+        if (!Number.isFinite(pid) || pid <= 0) {
+          localStorage.removeItem('pending_pin_product_id')
+          return
+        }
+        const { useAuthStore } = await import('@/client/stores/auth.store')
+        const state = useAuthStore.getState() as any
+        if (!state?.isAuthenticated || !state?.user) return // 아직 미인증 → 다음 mount 까지 보존
+        localStorage.removeItem('pending_pin_product_id')
+        const { curatorApi } = await import('@/features/curator/api/curator-api')
+        const { toast } = await import('@/hooks/useToast')
+        const res = await curatorApi.addPin(pid)
+        if (res.success) {
+          if (res.handle_just_created && res.handle) {
+            toast.success(`🎉 내 링크샵 생성! /u/${res.handle} — 첫 핀이 추가됐어요`)
+          } else {
+            toast.success('📌 핀이 추가되었어요')
+          }
+        } else if (res.code === 'ALREADY_PINNED') {
+          toast.info('이미 핀에 있는 상품이에요')
+        }
+      } catch { /* silent — UX 방해 X */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
@@ -398,6 +452,16 @@ function AppContent() {
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
             <Route path="/search" element={<SearchPage />} />
+
+            {/* 🛡️ 2026-05-25 큐레이터 링크샵 (migration 0278) */}
+            <Route path="/u/me/earnings" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/u/:handle" element={<ErrorBoundary><CuratorPage /></ErrorBoundary>} />
+            {/* SPA fallback: /u/:handle/p/:productId 클릭 시 서버 302 가 작동 안 할 때 ref 부여 후 navigate. */}
+            <Route path="/u/:handle/p/:productId" element={<CuratorPinClientRedirect />} />
 
             {/* Public Auth 페이지들 */}
             <Route path="/login" element={

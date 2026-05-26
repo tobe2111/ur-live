@@ -2,6 +2,7 @@ import React from 'react'
 import { ShoppingBag, Star } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
+import PinButton from '@/components/curator/PinButton'
 
 interface Product {
   id: number
@@ -47,6 +48,8 @@ export const LiveProductCard = React.memo(function LiveProductCard({
           src={product.image}
           alt={product.name}
           className="w-full h-full object-cover" loading="lazy" decoding="async" />
+        {/* 🛡️ 2026-05-25 큐레이터 핀 (Phase 1-B) */}
+        <PinButton productId={product.id} price={product.price} variant="card-overlay" />
         
         {/* 할인 배지 */}
         {discountRate > 0 && (

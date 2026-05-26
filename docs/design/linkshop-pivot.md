@@ -162,3 +162,34 @@ Phase 6 (마케팅 UX)
 ## ⏳ 구현 todo
 
 전체 구현은 위 Phase 별로 별도 commit. 각 Phase 완료 시 본 docs 하단에 `## ✅ 구현 완료` 섹션 추가.
+
+---
+
+## ✅ Phase 1 구현 완료 (2026-05-25)
+
+| Commit | 영역 | hash |
+|---|---|---|
+| 1/5 | DB schema + 정책 SSOT | `97cd54b2` |
+| 2/5 | Worker API (13 endpoints) + push 알림 + OG image | `060e0249` |
+| 3/5 | Frontend 1-A 인프라 (CuratorPage / EarningsPage / 라우팅 / i18n 6언어) | `82ddc4a9` |
+| 4/5 | Phase 1-B 핀 1탭 UX (PinButton + 자동 핸들 + 자동 핀) | `0f4824cd` |
+| 5/5 | Phase 1-C+D 공유 (KakaoShareButton 통합) + 가이드 동기화 | (이 commit) |
+
+### 새 라우트
+- `GET /u/:handle` (public, 다크 테마)
+- `GET /u/me/earnings` (requireUser, 라이트/다크 toggle)
+- `GET /u/:handle/p/:productId` (SPA fallback → 서버 302)
+- 13 worker endpoints under `/api/curator/*`
+
+### 다음 phase
+- **Phase 2 (배송 재설계)** — shipping-redesign.md §0 A 채택 반영. 공구 voucher 모델 유지, 일반 쇼핑 배송만 재설계.
+- **Phase 3 (공구 호스팅 확장)** — voucher 공구를 누구나 호스팅 (`group_buys.host_user_id` 추가).
+- **Phase 4 (어필리에이트 정산 확장)** — 큐레이터 출금 UI + 큐레이터 → 셀러 자동 승급 안내.
+- **Phase 5 (셀러 흡수)** — 기존 셀러 → 큐레이터 + 라이브권 자동 변환.
+
+### 알려진 한계 (후속 PR)
+- ReelProductCard / ProductDetailPage 의 PinButton inject (좁은 UI 영역 정교화 필요)
+- 인스타 스토리 공유 (canvas 합성 필요 — Cloudflare Workers 미지원 클라이언트 단)
+- ja/zh/es/fr i18n 번역 (현재 한국어 stub)
+- 핀 stats client cache (현재 매 페이지 fetch — react-query 도입 후 최적화)
+- 동적 OG image 의 한글 폰트 (현재 system font — 카카오 크롤러 환경 따라 fallback)

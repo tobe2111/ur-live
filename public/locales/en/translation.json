@@ -5410,5 +5410,31 @@
   "cancelOrder": {},
   "groupBuy": {},
   "blogDetail": {},
-  "liveWs": {}
+  "liveWs": {},
+  "curator": {
+    "notFound": "Curator not found",
+    "notFoundTitle": "😢 Linkshop not found",
+    "fetchError": "Failed to load",
+    "goHome": "Go home",
+    "pinCount": "Recommending {{count}} products",
+    "copyLink": "Copy link",
+    "viewEarnings": "My earnings",
+    "linkCopied": "Link copied",
+    "clicks": "clicks",
+    "emptyTitle": "No pins yet",
+    "emptyOwner": "Browse products and add your first pin with the + button",
+    "emptyOther": "Waiting for @{{handle}}'s first recommendation",
+    "startBrowse": "Browse products",
+    "exploreShop": "Explore shop",
+    "earnings": {
+      "title": "My Linkshop Earnings",
+      "monthEarning": "30-day earnings",
+      "clicks30d": "30-day clicks",
+      "purchases30d": "30-day purchases",
+      "topPins": "Top 3 pins",
+      "dailyChart": "Daily earnings (30d)",
+      "noData": "No data yet. Share your pins with friends!"
+    },
+    "dashboardError": "Failed to load dashboard"
+  }
 }

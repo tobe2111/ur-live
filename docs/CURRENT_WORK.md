@@ -1,7 +1,32 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-25 (비즈니스 pivot 컨셉 docs + 배송 재설계 docs)
+**최종 업데이트**: 2026-05-25 (Phase 1 링크샵 구현 완료 — 5 commits)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
+
+## ✅ 2026-05-25 — Phase 1 (링크샵 + 큐레이터 + 1탭 핀) 완료
+
+migration 0278 + worker API 13개 + 큐레이터 페이지 2개 + 핀 1탭 UX + 가이드 동기화.
+
+| Commit | 영역 | hash |
+|---|---|---|
+| 1/5 | DB schema + 정책 SSOT | `97cd54b2` |
+| 2/5 | Worker API + push + OG image | `060e0249` |
+| 3/5 | Frontend 1-A 인프라 | `82ddc4a9` |
+| 4/5 | Phase 1-B 핀 1탭 UX | `0f4824cd` |
+| 5/5 | Phase 1-C+D 공유 + 가이드 | (이 commit) |
+
+### 새 라우트
+- `/u/:handle` (public, 다크 테마)
+- `/u/me/earnings` (requireUser)
+- `/u/:handle/p/:productId` (redirect)
+- 13 worker endpoints under `/api/curator/*`
+
+### 다음 phase 우선순위
+1. **Phase 2 (배송 재설계)** — shipping-redesign.md §0 A 채택 반영
+2. **Phase 3 (공구 호스팅)** — voucher 공구 누구나 호스팅
+3. **Phase 4 (출금 UI + 셀러 승급 안내)**
+4. **Phase 5 (셀러 흡수 마이그레이션)**
+
 
 ## 🚀 2026-05-25 — 비즈니스 모델 Pivot 컨셉 단계 진입
 

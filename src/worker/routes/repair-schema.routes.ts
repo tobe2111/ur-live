@@ -81,6 +81,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   미사용 DB 에서 idempotent ALTER (이미 있으면 SQLite 가 에러 throw → repair-schema 가 swallow).
     { desc: 'users.phone', sql: "ALTER TABLE users ADD COLUMN phone TEXT" },
     { desc: 'users.updated_at', sql: "ALTER TABLE users ADD COLUMN updated_at TEXT" },
+    // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 — handle / bio / theme
+    { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
+    { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },
+    { desc: 'users.linkshop_theme', sql: "ALTER TABLE users ADD COLUMN linkshop_theme TEXT DEFAULT 'dark'" },
 
     // ── products ───────────────────────────────────
     { desc: 'products.view_count', sql: "ALTER TABLE products ADD COLUMN view_count INTEGER DEFAULT 0" },
@@ -728,6 +732,38 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_deleted_accounts_kakao', sql: `CREATE INDEX IF NOT EXISTS idx_deleted_accounts_kakao ON deleted_accounts(kakao_id) WHERE kakao_id IS NOT NULL` },
     { name: 'idx_deleted_accounts_email', sql: `CREATE INDEX IF NOT EXISTS idx_deleted_accounts_email ON deleted_accounts(email) WHERE email IS NOT NULL` },
+
+    // ── 큐레이터 링크샵 (migration 0278, 2026-05-25) ─────────
+    { name: 'idx_users_handle_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL` },
+    { name: 'product_pins', sql: `CREATE TABLE IF NOT EXISTS product_pins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      click_count INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, product_id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    )` },
+    { name: 'idx_product_pins_user_pos', sql: `CREATE INDEX IF NOT EXISTS idx_product_pins_user_pos ON product_pins(user_id, position)` },
+    { name: 'idx_product_pins_product', sql: `CREATE INDEX IF NOT EXISTS idx_product_pins_product ON product_pins(product_id)` },
+    { name: 'pin_click_logs', sql: `CREATE TABLE IF NOT EXISTS pin_click_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pin_id INTEGER NOT NULL,
+      curator_user_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      visitor_user_id INTEGER,
+      ip_hash TEXT,
+      user_agent_hash TEXT,
+      referer TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (pin_id) REFERENCES product_pins(id)
+    )` },
+    { name: 'idx_pin_clicks_pin_time', sql: `CREATE INDEX IF NOT EXISTS idx_pin_clicks_pin_time ON pin_click_logs(pin_id, created_at)` },
+    { name: 'idx_pin_clicks_curator_time', sql: `CREATE INDEX IF NOT EXISTS idx_pin_clicks_curator_time ON pin_click_logs(curator_user_id, created_at)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

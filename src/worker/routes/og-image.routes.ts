@@ -115,6 +115,96 @@ function generateSVG(p: ProductForOG): string {
 </svg>`
 }
 
+// ============================================================
+// 큐레이터 OG image (migration 0278, 2026-05-25)
+// 1200×630 SVG — 큐레이터 핸들 + 닉네임 + bio + 핀 thumbnail grid (top 4)
+// ============================================================
+interface CuratorForOG {
+  id: number
+  handle: string
+  name: string
+  bio: string | null
+  profile_image: string | null
+}
+
+function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string {
+  const safeName = escapeXml(curator.name || curator.handle)
+  const safeHandle = escapeXml(curator.handle)
+  const safeBio = escapeXml((curator.bio || `${curator.name} 의 큐레이션 링크샵`).slice(0, 80))
+  const profile = curator.profile_image
+    ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
+    : `<circle cx="160" cy="160" r="80" fill="#1A1A1A"/>
+       <text x="160" y="180" font-size="60" font-family="sans-serif" font-weight="800" fill="#EC4899" text-anchor="middle">${escapeXml((curator.name || '?').slice(0, 1))}</text>`
+
+  // 핀 thumbnail grid — 우측 4칸 (2x2)
+  const tiles = [0, 1, 2, 3].map(i => {
+    const url = pinThumbs[i]
+    const col = i % 2
+    const row = Math.floor(i / 2)
+    const x = 720 + col * 240
+    const y = 80 + row * 240
+    return url
+      ? `<image href="${escapeXml(url)}" x="${x}" y="${y}" width="220" height="220" preserveAspectRatio="xMidYMid slice"/>`
+      : `<rect x="${x}" y="${y}" width="220" height="220" fill="#121212" rx="12"/>`
+  }).join('\n  ')
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <clipPath id="cprofile"><circle cx="160" cy="160" r="80"/></clipPath>
+  </defs>
+  <rect width="1200" height="630" fill="#020202"/>
+  <rect x="40" y="40" width="1120" height="550" fill="#0A0A0A" rx="24" stroke="#1A1A1A" stroke-width="2"/>
+
+  ${profile}
+
+  <text x="280" y="140" font-size="44" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#FFFFFF">${safeName}</text>
+  <text x="280" y="180" font-size="24" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF">@${safeHandle}</text>
+  <text x="280" y="240" font-size="20" font-family="-apple-system,system-ui,sans-serif" fill="#D1D5DB">${safeBio}</text>
+
+  ${tiles}
+
+  <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#EC4899">유어딜 링크샵</text>
+  <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">live.ur-team.com/u/${safeHandle}</text>
+</svg>`
+}
+
+ogRoutes.get('/curator/:handle', async (c) => {
+  const { DB } = c.env
+  const handleRaw = c.req.param('handle').replace(/\.(png|jpg|svg)$/, '').toLowerCase()
+
+  try {
+    const curator = await DB.prepare(
+      `SELECT id, handle, name, bio, profile_image FROM users WHERE handle = ? LIMIT 1`,
+    ).bind(handleRaw).first<CuratorForOG>()
+
+    if (!curator) {
+      return new Response(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#020202"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#9CA3AF" text-anchor="middle">큐레이터를 찾을 수 없어요</text></svg>',
+        { status: 404, headers: { 'Content-Type': 'image/svg+xml' } },
+      )
+    }
+
+    const { results: pins } = await DB.prepare(
+      `SELECT COALESCE(p.thumbnail, p.image_url) AS thumb
+       FROM product_pins pp JOIN products p ON p.id = pp.product_id
+       WHERE pp.user_id = ? AND p.is_active = 1
+       ORDER BY pp.position ASC LIMIT 4`,
+    ).bind(curator.id).all<{ thumb: string | null }>()
+    const thumbs = (pins ?? []).map(r => r.thumb || '').filter(Boolean)
+
+    const svg = generateCuratorSVG(curator, thumbs)
+    return new Response(svg, {
+      headers: {
+        'Content-Type': 'image/svg+xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=1800, s-maxage=1800',
+      },
+    })
+  } catch (err) {
+    console.error('[og-image curator]', err)
+    return c.text('error', 500)
+  }
+})
+
 ogRoutes.get('/group-buy/:id', async (c) => {
   const { DB } = c.env
   const idRaw = c.req.param('id').replace(/\.(png|jpg|svg)$/, '')
