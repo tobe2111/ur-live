@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
+import { CRITICAL_I18N } from './i18n-critical'
 
 // 🛡️ 2026-05-07: locales 청크 분할 — 6개 언어를 한 번에 로드하던 것을
 //   기본 언어만 eagerly load + 나머지는 lazy load 로 변경.
@@ -76,10 +77,22 @@ async function ensureLanguageLoaded(lang: string): Promise<void> {
   }
 }
 
+// 🛡️ 2026-05-25 (loading P0): critical i18n inline — main bundle 에 ~5KB 포함.
+//   첫 paint 부터 한국어 표시 (locale chunk fetch 대기 X).
+//   bootstrap 의 await 가 React mount 안 차단 (fire-and-forget) 이지만,
+//   critical 키들은 init resources 에 즉시 포함되어 t() 호출 즉시 동작.
+function buildInitialResources() {
+  const resources: Record<string, { translation: any }> = {}
+  for (const [lang, ns] of Object.entries(CRITICAL_I18N)) {
+    resources[lang] = { translation: ns }
+  }
+  return resources
+}
+
 // 초기 언어 (사용자 감지 결과) 와 fallback 언어 (보통 ko) 를 동기적으로 미리 로드.
 // init() 전에 resources 에 채워 두면 첫 렌더 깜박임 없음.
 async function bootstrap() {
-  // 우선 i18next init - 빈 resources 로 시작
+  // 우선 i18next init - critical resources 로 시작 (background 에 full translation 추가)
   await i18n
     .use(LanguageDetector)
     .use(initReactI18next)
@@ -88,7 +101,7 @@ async function bootstrap() {
       fallbackLng: defaultLanguage,
       debug: false,
       interpolation: { escapeValue: false },
-      resources: {},
+      resources: buildInitialResources(),
       detection: {
         order: ['localStorage', 'navigator'],
         caches: ['localStorage'],
