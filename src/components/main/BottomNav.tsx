@@ -106,10 +106,11 @@ export default function BottomNav() {
   const isAgency = activeRole === 'agency'
 
   // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 링크샵.
-  //   신모델 핵심 — 모든 유저가 큐레이터 + voucher 공구 호스팅 + 어필리에이트.
-  //   라이브는 셀러 도구 (홈 콘텐츠 + /seller/* + /live 직접 URL 로 보존).
-  //   링크샵 탭 클릭: 본인 핸들 있으면 /u/me/earnings, 미가입이면 /host/new 카탈로그.
-  const linkshopPath = isLoggedIn ? '/u/me/earnings' : '/host/new'
+  //   사용자 결정: 링크샵 탭은 본인 공개페이지 (/u/{handle}).
+  //   수익은 마이페이지 (/user/profile) 에 인라인 카드 — 링크샵 페이지에는 노출 X.
+  //   /u/me → UMeRedirectPage 가 handle 조회 후 /u/{handle} 로 자동 navigate.
+  //   미로그인 시 /host/new (카탈로그 — 첫 핀 시 자동 handle 생성).
+  const linkshopPath = isLoggedIn ? '/u/me' : '/host/new'
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },

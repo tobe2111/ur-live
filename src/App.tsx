@@ -69,6 +69,8 @@ const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 // 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
+// 🛡️ 2026-05-25: /u/me → 본인 공개페이지 redirect
+const UMeRedirectPage = lazy(() => import('./pages/UMeRedirectPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
@@ -463,6 +465,12 @@ function AppContent() {
             <Route path="/u/me/earnings" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            {/* 🛡️ 2026-05-25: /u/me → 본인 공개페이지 자동 redirect */}
+            <Route path="/u/me" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><UMeRedirectPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/u/:handle" element={<ErrorBoundary><CuratorPage /></ErrorBoundary>} />
