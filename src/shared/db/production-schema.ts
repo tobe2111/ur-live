@@ -535,3 +535,48 @@ export interface VouchersTable {
   applied_discount_pct: number | null   // 0258 migration 등 후속 컬럼 — production 에 존재
 }
 
+// ============================================================
+// users 테이블 (curator linkshop — migration 0278)
+// 기존 users 컬럼 + handle/bio/linkshop_theme 추가.
+// ⚠️ users.id = INTEGER PRIMARY KEY AUTOINCREMENT (TEXT 아님!)
+//    그러나 vouchers/notifications 등 일부 코드는 user_id 를 TEXT 로 다룸 — 호환성 유지.
+// ============================================================
+export interface UsersCuratorColumns {
+  handle: string | null            // TEXT UNIQUE (partial idx: WHERE NOT NULL)
+                                   //   regex: /^[a-z0-9_]{3,30}$/ — slugify + suffix
+  bio: string | null               // TEXT — 큐레이터 한 줄 소개
+  linkshop_theme: string           // TEXT DEFAULT 'dark' — 'dark' | 'light' (forward-compat)
+}
+
+// ============================================================
+// product_pins 테이블 (migration 0278) — 큐레이터 핀
+// 모든 유저가 본인 링크샵에 상품 핀 가능. ref 어필리에이트 정산 단위.
+// ⚠️ UNIQUE(user_id, product_id) — 중복 핀 불가 (toggle 동작).
+// ============================================================
+export interface ProductPinsTable {
+  id: number                       // INTEGER PRIMARY KEY AUTOINCREMENT
+  user_id: number                  // INTEGER NOT NULL (FK → users.id)
+  product_id: number               // INTEGER NOT NULL (FK → products.id)
+  position: number                 // INTEGER NOT NULL DEFAULT 0 — 큐레이터 페이지 순서
+  note: string | null              // TEXT — "왜 추천?" (큐레이터 한 줄)
+  click_count: number              // INTEGER NOT NULL DEFAULT 0 — denormalized counter
+  created_at: string               // DATETIME DEFAULT CURRENT_TIMESTAMP
+  updated_at: string               // DATETIME DEFAULT CURRENT_TIMESTAMP
+}
+
+// ============================================================
+// pin_click_logs 테이블 (migration 0278) — 클릭 추적 + 봇 탐지
+// IP 직접 저장 X — SHA256(ip + daily_salt) hash 만.
+// ============================================================
+export interface PinClickLogsTable {
+  id: number
+  pin_id: number                   // INTEGER NOT NULL (FK → product_pins.id)
+  curator_user_id: number          // INTEGER NOT NULL — 정산 추적용 denorm
+  product_id: number               // INTEGER NOT NULL — denorm (pin 삭제 후에도 stats 유지)
+  visitor_user_id: number | null   // INTEGER nullable — 로그인 방문자
+  ip_hash: string | null           // TEXT — SHA256(ip + daily_salt)
+  user_agent_hash: string | null
+  referer: string | null
+  created_at: string
+}
+
