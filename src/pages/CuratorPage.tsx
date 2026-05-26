@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import KakaoShareButton from '@/components/KakaoShareButton'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon } from '@/utils/format'
@@ -112,18 +113,30 @@ function CuratorHeader({ curator, pinCount, isOwner }: { curator: CuratorPageRes
         </div>
       </div>
       <div className="max-w-3xl mx-auto flex gap-2 mt-4">
+        <div className="flex-1">
+          <KakaoShareButton
+            title={`${curator.name} 의 링크샵`}
+            description={curator.bio || `${pinCount}개 상품 추천 중`}
+            imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
+            link={`/u/${curator.handle}`}
+            className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-sm font-bold transition-colors"
+            buttonText="링크샵 둘러보기"
+          />
+        </div>
         <button
           onClick={copyLink}
-          className="flex-1 py-2.5 bg-[#121212] hover:bg-[#1A1A1A] rounded-xl text-sm font-bold transition-colors"
+          className="px-4 py-2.5 bg-[#121212] hover:bg-[#1A1A1A] rounded-xl text-sm font-bold transition-colors"
+          aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
         >
-          🔗 {t('curator.copyLink', { defaultValue: '링크 복사' })}
+          🔗
         </button>
         {isOwner && (
           <Link
             to="/u/me/earnings"
-            className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 rounded-xl text-sm font-bold text-center transition-colors"
+            className="px-4 py-2.5 bg-pink-500 hover:bg-pink-600 rounded-xl text-sm font-bold text-center transition-colors"
+            aria-label={t('curator.viewEarnings', { defaultValue: '내 적립 보기' })}
           >
-            💰 {t('curator.viewEarnings', { defaultValue: '내 적립 보기' })}
+            💰
           </Link>
         )}
       </div>

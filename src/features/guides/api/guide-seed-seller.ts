@@ -758,4 +758,33 @@ A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT A
 - \`GET /api/referral-tree/my-commissions\` — 내 commission 내역
 - \`POST /api/referral-tree/withdrawals\` — 출금 신청`,
   },
+  // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵
+  {
+    key: 'curator-linkshop', icon: '📌', title: '큐레이터 링크샵 (모든 셀러 기본 보유)', order: 700,
+    content: `### 큐레이터 링크샵이란?
+
+모든 유어딜 유저는 본인 **공개 큐레이션 페이지** 를 가집니다.
+\`/u/{handle}\` (예: \`/u/myshop\`) 에서 본인이 추천하는 상품을 핀합니다.
+
+셀러는 본인 셀러 페이지와 별도로 큐레이터 페이지도 보유 — 다른 셀러 상품도 핀해서
+**어필리에이트 1% 적립** (\`policy.ts\` \`CURATOR_AFFILIATE_PCT\` SSOT) 받을 수 있어요.
+
+### 시작하는 법
+1. **상품 카드의 + 버튼 클릭** — 홈/쇼핑/검색 어디서나 핀 추가 가능
+2. **첫 핀 시 핸들 자동 생성** — 변경하려면 \`/u/me/earnings\` 에서 가능
+3. **링크 공유** — 카톡/인스타/링크복사
+4. **수익 확인** — \`/u/me/earnings\` 일별 차트 + 인기 핀 + 출금
+
+### 정책
+- 핀 최대 200개 (DB 비대 방지)
+- 핸들: 3-30자, 소문자/숫자/_
+- 어필리에이트 비율: 1% (피구매자 X, 큐레이터 단독)
+- 자기 ref 자기 구매 X (탐지 시 적립 회수)
+- 첫 핀 시 \`linkshop_theme=dark\` 기본
+
+### 관련 페이지 / API
+- 공개 페이지: \`/u/:handle\`
+- 수익 대시보드: \`/u/me/earnings\`
+- API: \`POST /api/curator/me/pins\`, \`GET /api/curator/me/dashboard\``,
+  },
 ]

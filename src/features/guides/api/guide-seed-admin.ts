@@ -764,4 +764,47 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - 연결된 셀러 / 에이전시 계정 표시 (linked_user_id)
 - 상태 변경 (active/suspended/banned) — \`PATCH /api/admin/users/:id/status\``,
   },
+  // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 관리
+  {
+    key: 'curator-linkshop-admin', icon: '📌', title: '큐레이터 링크샵 관리', order: 800,
+    content: `### 큐레이터 시스템 개요 (migration 0278, 2026-05-25)
+
+모든 유저가 본인 공개 페이지 \`/u/:handle\` 보유. 상품 핀 → 어필리에이트 적립.
+신모델 (라이브커머스 → 어드민 SSOT + 큐레이션) 전환의 핵심 인프라.
+
+### 모니터링
+
+| 영역 | 검사 항목 | 도구 |
+|---|---|---|
+| 사기 탐지 | 같은 ip_hash 반복 핀 클릭 | \`pin_click_logs\` 조회 |
+| 자기 ref 자기 구매 | \`affiliate_earnings.referrer_id == buyer\` | affiliate 시스템 dedup 자동 |
+| 핸들 어뷰징 | \`users.handle\` 도배 / 욕설 | 어드민 검토 |
+| 핀 상한 | 200개 (\`PIN_MAX_PER_USER\`) | DB 비대 방지 |
+
+### 정산 검수
+- 큐레이터 정산액 = \`SUM(affiliate_earnings.commission_amount) WHERE referrer_id = userId\`
+- 출금 시스템: 기존 \`user_withdrawals\` 재활용 (mig 0274)
+
+### 핸들 정책
+- 정규식: \`/^[a-z0-9_]{3,30}$/\`
+- 예약어 50개 (\`CURATOR_DEFAULTS.HANDLE_RESERVED\`) — admin / api / me / login 등
+- 변경 cooldown: 30일 (\`HANDLE_CHANGE_COOLDOWN_DAYS\`)
+
+### 정책 변경 (\`policy.ts\` SSOT)
+\`\`\`ts
+COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT  // 큐레이터 단독 비율
+CURATOR_DEFAULTS.PIN_MAX_PER_USER          // 핀 상한
+CURATOR_DEFAULTS.HANDLE_PATTERN            // 핸들 정규식
+\`\`\`
+
+### 관련 API
+- \`GET /api/curator/:handle\` — 공개 페이지 데이터
+- \`POST /api/curator/me/pins\` — 핀 추가 (자동 핸들)
+- \`GET /api/curator/me/dashboard\` — 큐레이터 본인 대시보드
+- \`GET /api/og/curator/:handle\` — 동적 OG image (SVG)
+
+### 관련 페이지
+- \`/u/:handle\` — 공개 큐레이터 페이지 (다크 테마)
+- \`/u/me/earnings\` — 큐레이터 수익 대시보드`,
+  },
 ]
