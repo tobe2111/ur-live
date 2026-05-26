@@ -42,7 +42,18 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   unknown: { label: '확인 중', color: 'text-gray-400' },
 }
 
-export default function TrackingModal({ orderId, onClose }: { orderId: string | number; onClose: () => void }) {
+interface TrackingModalProps {
+  /** 본인 주문 ID — orderId 또는 (carrier+trackingNumber) 둘 중 하나 필수 */
+  orderId?: string | number
+  /** 반품 회수 송장 / 호스트 추적 등 임의 송장 — 인증 불필요 (public endpoint) */
+  carrier?: string
+  trackingNumber?: string
+  /** 모달 제목 커스터마이즈 (예: 반품 추적) */
+  title?: string
+  onClose: () => void
+}
+
+export default function TrackingModal({ orderId, carrier, trackingNumber, title, onClose }: TrackingModalProps) {
   const { t } = useTranslation()
   const [data, setData] = useState<TrackingData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,11 +62,39 @@ export default function TrackingModal({ orderId, onClose }: { orderId: string | 
   useEffect(() => {
     let alive = true
     setLoading(true)
+    // 🛡️ 2026-05-25: orderId 우선 — 본인 주문 인증된 추적. 없으면 carrier+number public 추적.
+    const url = orderId
+      ? `/api/shipping/order/${encodeURIComponent(String(orderId))}/track`
+      : (carrier && trackingNumber)
+        ? `/api/shipping/track/${encodeURIComponent(carrier)}/${encodeURIComponent(trackingNumber)}`
+        : null
+
+    if (!url) {
+      setError(t('shipping.fetchError', { defaultValue: '추적 정보를 불러올 수 없습니다' }))
+      setLoading(false)
+      return
+    }
+
     api
-      .get(`/api/shipping/order/${encodeURIComponent(String(orderId))}/track`)
+      .get(url)
       .then((res) => {
         if (!alive) return
-        if (res.data?.success) setData(res.data)
+        if (res.data?.success) {
+          // /track/:carrier/:number 응답은 { tracker: {...}, external_url, courier } 형식 — 통일
+          if (!orderId && res.data.tracker) {
+            setData({
+              has_tracking: true,
+              courier: res.data.courier,
+              tracking_number: res.data.tracking_number,
+              status: res.data.tracker.status,
+              events: res.data.tracker.progresses ?? [],
+              external_url: res.data.external_url,
+              error: res.data.tracker.error,
+            })
+          } else {
+            setData(res.data)
+          }
+        }
         else setError(res.data?.error || t('shipping.fetchError', { defaultValue: '추적 정보를 불러올 수 없습니다' }))
       })
       .catch((err) => {
@@ -64,7 +103,7 @@ export default function TrackingModal({ orderId, onClose }: { orderId: string | 
       })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [orderId, t])
+  }, [orderId, carrier, trackingNumber, t])
 
   function getEventTime(ev: TrackingEvent): string {
     return ev.time || ev.occurred_at || ''

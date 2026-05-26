@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Gift } from 'lucide-react'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Gift, Sparkles } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -105,15 +105,16 @@ export default function BottomNav() {
   const isSeller = activeRole === 'seller'
   const isAgency = activeRole === 'agency'
 
-  // 🛡️ 2026-05-20: 사용자 요청 — 단순화.
-  //   1) 교환권 중앙 floating 노란 버튼 → 일반 탭으로 변경 (당근식 균등 5탭).
-  //   2) 쇼핑 ↔ 라이브 위치 스왑 (홈 다음에 쇼핑 우선 노출).
-  //   순서: 홈 / 쇼핑 / 교환권 / 라이브 / 마이.
+  // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 링크샵.
+  //   신모델 핵심 — 모든 유저가 큐레이터 + voucher 공구 호스팅 + 어필리에이트.
+  //   라이브는 셀러 도구 (홈 콘텐츠 + /seller/* + /live 직접 URL 로 보존).
+  //   링크샵 탭 클릭: 본인 핸들 있으면 /u/me/earnings, 미가입이면 /host/new 카탈로그.
+  const linkshopPath = isLoggedIn ? '/u/me/earnings' : '/host/new'
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },
     { icon: Gift,        label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
-    { icon: Radio,       label: t('nav.live',  { defaultValue: '라이브' }), path: '/live' },
+    { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
     { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile' },
   ]
 
@@ -122,8 +123,12 @@ export default function BottomNav() {
     if (cur === path) return true
     if (path !== '/' && cur.startsWith(path)) return true
     // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
-    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage)(\/|$)/.test(cur)) {
+    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true
+    }
+    // 🛡️ 2026-05-25: 링크샵 탭 active — /u/, /host/, /g/ 모두 포함
+    if (path.startsWith('/u/') || path.startsWith('/host')) {
+      if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/')) return true
     }
     return false
   }

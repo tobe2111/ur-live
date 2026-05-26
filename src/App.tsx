@@ -67,6 +67,8 @@ const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
 const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
+// 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
+const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
@@ -479,6 +481,13 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/g/:invite_code" element={<ErrorBoundary><HostInvitePage /></ErrorBoundary>} />
+
+            {/* 🛡️ 2026-05-25 반품 회수 송장 추적 */}
+            <Route path="/my-returns" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><MyReturnsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
 
             {/* Public Auth 페이지들 */}
             <Route path="/login" element={
