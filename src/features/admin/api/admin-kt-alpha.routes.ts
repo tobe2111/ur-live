@@ -1233,6 +1233,75 @@ adminKtAlphaRoutes.post('/voucher-orders/:id/resend', cors(), async (c) => {
   }
 })
 
+// 🛡️ 2026-05-25 사용자 명령 (B 옵션): "유어딜 공식" 운영 seller 자동 생성 + platform_settings 자동 set.
+//   기존 fallback (첫 approved seller) → system 명의로 분리.
+//   idempotent — 이미 username='system-kt-alpha' 있으면 그 id 반환.
+//   POST /api/admin/kt-alpha/init-system-seller
+adminKtAlphaRoutes.post('/kt-alpha/init-system-seller', cors(), async (c) => {
+  try {
+    const { DB } = c.env
+
+    let existing = await DB.prepare(
+      `SELECT id, business_name FROM sellers WHERE username = 'system-kt-alpha' LIMIT 1`,
+    ).first<{ id: number; business_name: string }>().catch(() => null)
+
+    let created = false
+    if (!existing) {
+      try {
+        await DB.prepare(`
+          INSERT INTO sellers (
+            username, password_hash, name, email, phone,
+            business_name, business_number, bank_account,
+            status, seller_type, can_broadcast, is_active,
+            commission_rate, base_shipping_fee
+          ) VALUES (
+            'system-kt-alpha', 'no-login-system', '유어딜 공식 운영', 'system@ur-team.com', NULL,
+            '유어딜 운영', NULL, NULL,
+            'approved', 'store_owner', 0, 1,
+            0, 0
+          )
+        `).run()
+        existing = await DB.prepare(
+          `SELECT id, business_name FROM sellers WHERE username = 'system-kt-alpha' LIMIT 1`,
+        ).first<{ id: number; business_name: string }>()
+        created = true
+      } catch (insertErr) {
+        return c.json({
+          success: false,
+          error: `sellers INSERT 실패: ${(insertErr as Error).message?.slice(0, 200) || 'unknown'}`,
+        }, 500)
+      }
+    }
+
+    if (!existing) {
+      return c.json({ success: false, error: 'sellers 생성 후에도 조회 실패' }, 500)
+    }
+
+    // platform_settings.kt_alpha_admin_seller_id 자동 set
+    await DB.prepare(`
+      INSERT INTO platform_settings (key, value, updated_at)
+      VALUES ('kt_alpha_admin_seller_id', ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+    `).bind(String(existing.id)).run()
+
+    try {
+      const { invalidatePolicyCache } = await import('../../../worker/utils/dynamic-policy')
+      invalidatePolicyCache()
+    } catch { /* graceful */ }
+
+    return c.json({
+      success: true,
+      created,
+      seller: { id: existing.id, business_name: existing.business_name },
+      message: created
+        ? `'유어딜 공식 운영' seller 생성됨 (id=${existing.id}) + platform_settings 자동 set`
+        : `기존 system seller 발견 (id=${existing.id}) + platform_settings 자동 set`,
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message?.slice(0, 200) || 'unknown' }, 500)
+  }
+})
+
 // 🛡️ 2026-05-25 사용자 명령: 특정 order_id 에 KT Alpha 자동발송 수동 trigger.
 //   진단 결과 "voucher_orders 기록 없음 = autoSendKtAlphaVouchersForOrders 미실행" 케이스
 //   → 어드민이 수동으로 trigger. 동기 호출 (응답 ~1-3초) — 발송 보장.

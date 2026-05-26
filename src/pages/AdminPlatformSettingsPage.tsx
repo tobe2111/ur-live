@@ -105,6 +105,10 @@ export default function AdminPlatformSettingsPage() {
             </button>
           }
         />
+
+        {/* 🛡️ 2026-05-25: KT Alpha 운영 seller 자동 생성 + admin_seller_id 자동 set */}
+        <KtAlphaSystemSellerSection />
+
         {loading ? <DashboardLoading /> : (
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {SETTINGS_FIELDS.map(f => (
@@ -124,5 +128,52 @@ export default function AdminPlatformSettingsPage() {
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+// 🛡️ 2026-05-25: KT Alpha 운영 seller 자동 생성 + admin_seller_id 자동 set.
+function KtAlphaSystemSellerSection() {
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function init() {
+    if (!confirm("'유어딜 공식 운영' system seller 자동 생성 + kt_alpha_admin_seller_id 자동 set. 진행하시겠습니까?")) return
+    setLoading(true)
+    setError(null)
+    try {
+      const r = await api.post("/api/admin/kt-alpha/init-system-seller", {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("admin_token")}` },
+      })
+      if (r.data?.success) {
+        setResult(r.data.message || "완료")
+        toast.success(r.data.message || "system seller 설정 완료")
+      } else {
+        setError(r.data?.error || "실패")
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || "실패")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <h3 className="text-sm font-bold text-amber-900 mb-1">🤖 KT Alpha 운영 seller 자동 설정</h3>
+      <p className="text-xs text-amber-800 mb-3">
+        KT Alpha 자동발송 voucher_orders 가 누구 명의로 기록될지 결정. 기존 fallback (첫 approved seller) → '유어딜 공식 운영' 명의로 분리.<br/>
+        클릭 1번 → sellers 신규 row 생성 (idempotent) + platform_settings.kt_alpha_admin_seller_id 자동 set.
+      </p>
+      <button
+        onClick={init}
+        disabled={loading}
+        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+      >
+        {loading ? "처리 중..." : "🤖 자동 설정"}
+      </button>
+      {result && <p className="mt-2 text-xs text-emerald-700 font-bold">✅ {result}</p>}
+      {error && <p className="mt-2 text-xs text-red-600 font-bold">❌ {error}</p>}
+    </div>
   )
 }
