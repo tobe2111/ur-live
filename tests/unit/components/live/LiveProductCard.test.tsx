@@ -65,8 +65,9 @@ describe('LiveProductCard', () => {
   it('disables button when out of stock', () => {
     const outOfStockProduct = { ...mockProduct, stock: 0 };
     render(<LiveProductCard product={outOfStockProduct} onAddToCart={mockOnAddToCart} />);
-    
-    const button = screen.getByRole('button');
+
+    // 🛡️ 2026-05-25 (mig 0280): PinButton 추가로 button 2개 — AddToCart 만 select.
+    const button = screen.getByRole('button', { name: /품절/i });
     expect(button).toBeDisabled();
   });
 
@@ -89,7 +90,8 @@ describe('LiveProductCard', () => {
     );
     
     expect(screen.getByText('추가 중...')).toBeInTheDocument();
-    const button = screen.getByRole('button');
+    // 🛡️ 2026-05-25 (mig 0280): PinButton (aria-label='내 링크샵에 핀 추가') 와 구분 — 정확 매칭.
+    const button = screen.getByRole('button', { name: '추가 중...' });
     expect(button).toBeDisabled();
   });
 
