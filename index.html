@@ -78,9 +78,22 @@
       }]
     }
     </script>
-    <!-- 🛡️ 2026-05-25 (loading P1): 메인 페이지 첫 API call preload — DNS + TCP + early start.
-         /api/group-buy/products 는 메인 콘텐츠. publicCache 5분 + SWR 30분 적용 (edge cache hit) -->
-    <link rel="preload" as="fetch" href="/api/group-buy/products?status=active&category=all" crossorigin="anonymous" />
+    <!-- 🛡️ 2026-05-25 (loading P1): 메인 페이지 첫 API call preload — 메인 페이지만 trigger.
+         non-main 페이지에서는 warning 발생 ("preloaded but not used") → JS 가 동적 inject.
+         아래 inline script 가 location.pathname='/' 일 때만 preload 추가 (브라우저 warning 회피). -->
+    <script>
+      (function(){
+        try {
+          if (location.pathname === '/' || location.pathname === '/index.html') {
+            var l = document.createElement('link');
+            l.rel = 'preload'; l.as = 'fetch';
+            l.href = '/api/group-buy/products?status=active&category=all';
+            l.crossOrigin = 'anonymous';
+            document.head.appendChild(l);
+          }
+        } catch(_) {}
+      })();
+    </script>
     <!-- 🛡️ 2026-05-07: 카카오맵 SDK preconnect — RestaurantMapPage 진입 시 핸드셰이크 절감 -->
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />
