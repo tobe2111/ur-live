@@ -129,6 +129,10 @@ export const curatorApi = {
     withholding_rate: number
     history: Array<{ id: number; amount: number; withholding_tax: number; net_amount: number; bank_name: string; status: string; requested_at: string }>
     seller_upgrade: { threshold: number; eligible: boolean; offered: boolean }
+    // 🛡️ 2026-05-25 신모델: 정산 모드 분기
+    payout_mode: 'cash' | 'deal'
+    is_business_seller: boolean
+    deal_balance: number
   }> {
     const res = await api.get('/api/curator/me/withdrawal')
     return res.data
