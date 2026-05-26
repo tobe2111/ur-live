@@ -352,6 +352,43 @@ function AppContent() {
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
 
+  // 🛡️ 2026-05-25 (migration 0278): 큐레이터 자동 핀 (Phase 1-B).
+  //   비로그인 → PinButton 클릭 → localStorage 'pending_pin_product_id' + 카카오 로그인.
+  //   로그인 후 App.tsx mount 시 pending 검사 → 자동 핀 추가 + toast.
+  //   1탭 UX 의 핵심 — 로그인 후 사용자가 따로 클릭하지 않아도 의도 보존.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (cancelled) return
+        const raw = localStorage.getItem('pending_pin_product_id')
+        if (!raw) return
+        const pid = Number(raw)
+        if (!Number.isFinite(pid) || pid <= 0) {
+          localStorage.removeItem('pending_pin_product_id')
+          return
+        }
+        const { useAuthStore } = await import('@/client/stores/auth.store')
+        const state = useAuthStore.getState() as any
+        if (!state?.isAuthenticated || !state?.user) return // 아직 미인증 → 다음 mount 까지 보존
+        localStorage.removeItem('pending_pin_product_id')
+        const { curatorApi } = await import('@/features/curator/api/curator-api')
+        const { toast } = await import('@/hooks/useToast')
+        const res = await curatorApi.addPin(pid)
+        if (res.success) {
+          if (res.handle_just_created && res.handle) {
+            toast.success(`🎉 내 링크샵 생성! /u/${res.handle} — 첫 핀이 추가됐어요`)
+          } else {
+            toast.success('📌 핀이 추가되었어요')
+          }
+        } else if (res.code === 'ALREADY_PINNED') {
+          toast.info('이미 핀에 있는 상품이에요')
+        }
+      } catch { /* silent — UX 방해 X */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).

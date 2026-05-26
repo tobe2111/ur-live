@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import PinButton from '@/components/curator/PinButton'
 
 interface Product {
   id: number
@@ -89,6 +90,9 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
         >
           <Heart className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         </button>
+
+        {/* 🛡️ 2026-05-25 큐레이터 핀 — 1탭 핀 추가 (Phase 1-B 핵심 UX) */}
+        <PinButton productId={product.id} price={product.price} variant="card-overlay" />
       </div>
 
       <div className="mt-2.5 px-0.5">
