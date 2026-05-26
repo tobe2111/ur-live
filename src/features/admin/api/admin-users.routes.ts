@@ -161,6 +161,104 @@ adminUsersRoutes.patch('/users/:id/status', cors(), async (c) => {
   }
 });
 
+// ============================================================
+// 🛡️ 2026-05-25: 어드민 딜 선물 — POST /api/admin/users/:id/gift-deal
+// body: { amount: number, reason?: string }
+// 동작:
+//   1. user_points balance += amount (upsert)
+//   2. point_transactions INSERT (type='admin_gift')
+//   3. user_notifications INSERT (선물 알림)
+//   4. push 알림 fire-and-forget
+//   5. audit log
+// ============================================================
+adminUsersRoutes.post('/users/:id/gift-deal', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const userId = c.req.param('id');
+    if (!userId || userId.trim().length === 0) {
+      return c.json({ success: false, error: 'Invalid user ID' }, 400);
+    }
+    const body = await c.req.json<{ amount?: number; reason?: string }>().catch(() => ({} as any));
+    const amount = Number(body.amount);
+    const reason = String(body.reason || '').slice(0, 200) || '어드민 딜 선물';
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return c.json({ success: false, error: '금액은 1 이상의 숫자여야 합니다' }, 400);
+    }
+    if (amount > 10_000_000) {
+      return c.json({ success: false, error: '한 번에 최대 1000만 딜까지 선물 가능합니다 (오타 방지)' }, 400);
+    }
+
+    // 사용자 존재 확인
+    const userRow = await DB.prepare('SELECT id, name FROM users WHERE id = ? LIMIT 1')
+      .bind(userId).first<{ id: string; name: string }>().catch(() => null);
+    if (!userRow) return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+
+    // user_points 테이블 보장 (idempotent)
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_points (
+      user_id TEXT PRIMARY KEY,
+      balance INTEGER NOT NULL DEFAULT 0,
+      total_charged INTEGER NOT NULL DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run().catch(() => null);
+
+    // 1. 잔액 적립 (upsert)
+    await DB.prepare(`
+      INSERT INTO user_points (user_id, balance, total_charged)
+      VALUES (?, ?, 0)
+      ON CONFLICT(user_id) DO UPDATE SET
+        balance = balance + excluded.balance,
+        updated_at = datetime('now')
+    `).bind(String(userId), amount).run();
+
+    // 2. 거래 이력
+    const balanceAfterRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(String(userId)).first<{ balance: number }>().catch(() => null);
+    const balanceAfter = balanceAfterRow?.balance ?? amount;
+
+    await DB.prepare(`
+      INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, created_at)
+      VALUES (?, 'admin_gift', ?, ?, ?, ?, datetime('now'))
+    `).bind(String(userId), amount, amount, balanceAfter, reason).run().catch(() => null);
+
+    // 3. 사용자 알림 (DB)
+    await DB.prepare(`
+      INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
+      VALUES (?, 'admin_gift', ?, ?, '/user/profile', datetime('now'))
+    `).bind(String(userId), '🎁 딜 선물 도착!', `${amount.toLocaleString()}딜을 선물받으셨어요. (${reason})`).run().catch(() => null);
+
+    // 4. push 알림 (best-effort)
+    try {
+      const { sendSystemPush } = await import('../../../lib/system-push');
+      c.executionCtx.waitUntil(
+        sendSystemPush(c.env as any, 'user', String(userId), {
+          title: '🎁 딜 선물 도착!',
+          body: `${amount.toLocaleString()}딜이 선물 적립되었어요`,
+          url: '/user/profile',
+          tag: `gift-${userId}-${Date.now()}`,
+        }).catch(() => {}),
+      );
+    } catch { /* graceful */ }
+
+    // 5. audit log
+    await writeAuditLog(c, {
+      action: 'admin_gift_deal',
+      targetType: 'user',
+      targetId: String(userId),
+      after: { amount, reason, balance_after: balanceAfter },
+    });
+
+    return c.json({
+      success: true,
+      message: `${userRow.name}님에게 ${amount.toLocaleString()}딜을 선물했습니다`,
+      data: { user_id: userId, amount, balance_after: balanceAfter },
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] gift deal error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminUsersRoutes.get('/users/:id', cors(), async (c) => {
   try {
     const DB = c.env.DB;

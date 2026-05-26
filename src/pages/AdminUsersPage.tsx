@@ -65,6 +65,8 @@ export default function AdminUsersPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   // 🛡️ 2026-05-24: 데이터 사라짐 진단 모달 — 잔액 / 쿠폰 / 바우처 / 중복 row.
   const [fullStateUserId, setFullStateUserId] = useState<number | null>(null)
+  // 🛡️ 2026-05-25: 어드민 딜 선물 모달 target
+  const [giftTarget, setGiftTarget] = useState<{ id: number; name: string } | null>(null)
   const [detailLoading, setDetailLoading] = useState<number | null>(null)
   const [details, setDetails] = useState<Record<number, UserDetail>>({})
 
@@ -264,6 +266,14 @@ export default function AdminUsersPage() {
                               {t('admin.users.detailBtn', { defaultValue: '상세' })}
                               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
+                            {/* 🛡️ 2026-05-25: 어드민 딜 선물 */}
+                            <button
+                              onClick={() => setGiftTarget({ id: user.id, name: user.name || user.email || `#${user.id}` })}
+                              className="px-2.5 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                              title="딜 선물"
+                            >
+                              🎁 선물
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -420,6 +430,14 @@ export default function AdminUsersPage() {
 
       {/* 🛡️ 2026-05-24: 전체 상태 진단 모달 */}
       {fullStateUserId && <FullStateModal userId={fullStateUserId} onClose={() => setFullStateUserId(null)} />}
+      {/* 🛡️ 2026-05-25: 어드민 딜 선물 모달 */}
+      {giftTarget && (
+        <GiftDealModal
+          target={giftTarget}
+          onClose={() => setGiftTarget(null)}
+          onSuccess={() => { setGiftTarget(null); loadUsers() }}
+        />
+      )}
     </AdminLayout>
   )
 }
@@ -538,3 +556,87 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
   )
 }
 
+
+// 🛡️ 2026-05-25: 어드민 딜 선물 모달 — POST /api/admin/users/:id/gift-deal
+function GiftDealModal({ target, onClose, onSuccess }: { target: { id: number; name: string }; onClose: () => void; onSuccess: () => void }) {
+  const [amount, setAmount] = useState<number>(1000)
+  const [reason, setReason] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submit() {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("금액을 입력하세요")
+      return
+    }
+    if (!confirm(`${target.name} 님에게 ${amount.toLocaleString()}딜을 선물할까요?`)) return
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem("admin_token")
+      const res = await api.post(`/api/admin/users/${target.id}/gift-deal`,
+        { amount, reason: reason.trim() || undefined },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      if (res.data?.success) {
+        toast.success(res.data.message || "딜 선물 완료")
+        onSuccess()
+      } else {
+        toast.error(res.data?.error || "선물 실패")
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "선물 실패")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[10001] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-base font-bold text-gray-900 mb-1">🎁 딜 선물</h2>
+        <p className="text-sm text-gray-600 mb-4">받는 사람: <strong>{target.name}</strong> (id #{target.id})</p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">금액 (딜)</label>
+            <input
+              type="number"
+              min={1}
+              max={10000000}
+              value={amount}
+              onChange={(e) => setAmount(Math.max(0, Math.min(10000000, Number(e.target.value) || 0)))}
+              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 text-gray-900 rounded-lg"
+            />
+            <div className="flex gap-1 mt-1.5">
+              {[1000, 5000, 10000, 50000, 100000].map(v => (
+                <button key={v} onClick={() => setAmount(v)} className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">
+                  +{v.toLocaleString()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">사유 (선택, 사용자 알림에 표시)</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value.slice(0, 200))}
+              placeholder="예: 이벤트 당첨, 보상, 사과"
+              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 text-gray-900 rounded-lg"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 bg-amber-50 rounded-lg p-3 text-xs text-amber-800">
+          ⚠️ 어드민 딜 선물은 audit log + point_transactions 에 기록됩니다 (type=admin_gift). 취소 불가.
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg">취소</button>
+          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg">
+            {submitting ? "선물 중..." : "🎁 선물하기"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
