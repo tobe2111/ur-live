@@ -377,6 +377,17 @@ export async function handleScheduled(env: Env) {
     ;(results as any).shipping_sync = r
   } catch (e) { logError('[Cron] shipping-sync error:', { error: String(e) }) }
 
+  // 🛡️ 2026-05-25 (loading P0): 메인 페이지 KV cache warming.
+  //   첫 사용자 cold-start (skeleton 길게 표시) 영구 해소.
+  //   5분 cron 안에서 self-fetch → publicCache middleware 자동 KV write.
+  //   비용: 1회/5분 fetch (무료 한도 안전, KV write 100K/day << 일 288회).
+  try {
+    const { warmMainPageCache } = await import('./cache-warming')
+    const baseUrl = (env as { BASE_URL?: string }).BASE_URL || 'https://live.ur-team.com'
+    const r = await warmMainPageCache(env as any, baseUrl)
+    ;(results as any).cache_warming = r
+  } catch (e) { logError('[Cron] cache-warming error:', { error: String(e) }) }
+
   // ── 11. 예정 방송 30분 전 알림 발송 ──
   // 🛡️ 2026-04-22: LIMIT 100 추가 — 1000+ scheduled streams 시 OOM 방어
   try {
