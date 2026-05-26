@@ -118,4 +118,27 @@ export const curatorApi = {
     const res = await api.get(`/api/curator/recommendations?limit=${limit}`)
     return res.data
   },
+
+  // ── Phase 4: 출금 ──
+  async getWithdrawalInfo(): Promise<{
+    success: boolean
+    lifetime_earnings: number
+    total_withdrawn: number
+    available: number
+    min_withdrawal: number
+    withholding_rate: number
+    history: Array<{ id: number; amount: number; withholding_tax: number; net_amount: number; bank_name: string; status: string; requested_at: string }>
+    seller_upgrade: { threshold: number; eligible: boolean; offered: boolean }
+  }> {
+    const res = await api.get('/api/curator/me/withdrawal')
+    return res.data
+  },
+  async requestWithdrawal(input: { amount: number; bank_name: string; bank_account: string; account_holder: string }) {
+    const res = await api.post('/api/curator/me/withdrawal', input)
+    return res.data as { success: boolean; withdrawal?: { id: number; amount: number; net_amount: number; status: string }; error?: string; available?: number }
+  },
+  async acknowledgeUpgradeOffer() {
+    const res = await api.post('/api/curator/me/seller-upgrade-acknowledge', {})
+    return res.data
+  },
 }
