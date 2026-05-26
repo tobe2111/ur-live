@@ -38,6 +38,8 @@ export interface CuratorPageResponse {
   success: boolean
   curator: CuratorProfile
   pins: CuratorPin[]
+  // 🛡️ 2026-05-25: linked seller — 있으면 셀러 공개페이지로 navigate (풍부 UI)
+  linked_seller?: { id: number; username: string; name: string } | null
   error?: string
 }
 

@@ -73,6 +73,14 @@ curatorRoutes.get('/:handle', async (c) => {
 
     if (!user) return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
 
+    // 🛡️ 2026-05-25 (C 옵션): linked seller 매칭 시 셀러 공개페이지 정보 동봉.
+    //   CuratorPage 가 seller 있으면 풍부한 UI (탭 / 라이브 / 상품) 표시.
+    //   일반 user (seller 없음) — 단순 핀 그리드만.
+    const linkedSeller = await DB.prepare(
+      `SELECT id, username, name, status FROM sellers
+       WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+    ).bind(user.id).first<{ id: number; username: string; name: string; status: string }>().catch(() => null)
+
     const { results: pins } = await DB.prepare(
       `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
               p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price,
@@ -98,6 +106,12 @@ curatorRoutes.get('/:handle', async (c) => {
         theme: user.linkshop_theme || 'dark',
       },
       pins: pins ?? [],
+      // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
+      linked_seller: linkedSeller ? {
+        id: linkedSeller.id,
+        username: linkedSeller.username,
+        name: linkedSeller.name,
+      } : null,
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
