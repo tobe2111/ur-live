@@ -10,8 +10,8 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
@@ -21,9 +21,12 @@ import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
 
+// 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
+//   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
+const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
+
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const [data, setData] = useState<CuratorPageResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,17 +48,15 @@ export default function CuratorPage() {
           setError(res.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
           return
         }
-        // 🛡️ 2026-05-25 (C 옵션 통합): linked seller 있으면 풍부한 셀러 공개페이지로 navigate.
-        if (res.linked_seller && res.linked_seller.username) {
-          navigate(`/profile/${res.linked_seller.username}`, { replace: true })
-          return
-        }
+        // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있어도 redirect X.
+        //   대신 본 페이지에서 SellerPublicPage 컴포넌트 직접 render (URL 그대로 유지).
+        //   아래 if 분기 — data 만 set, render 시 SellerPublicPage 사용.
         setData(res)
       })
       .catch(() => alive && setError(t('curator.fetchError', { defaultValue: '불러오기 실패' })))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [handle, navigate, t])
+  }, [handle, t])
 
   const totalClicks = useMemo(() => {
     if (!data?.pins) return 0
@@ -88,7 +89,21 @@ export default function CuratorPage() {
     )
   }
 
-  const { curator, pins } = data
+  const { curator, pins, linked_seller } = data
+
+  // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 매칭 시 SellerPublicPage 컴포넌트 inline render.
+  //   URL 변경 X (/u/:handle 그대로). 일반 user 는 핀 그리드.
+  if (linked_seller?.username) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">
+          <div className="text-gray-400">{t('common.loading')}</div>
+        </div>
+      }>
+        <SellerPublicPage sellerIdOverride={linked_seller.username} />
+      </Suspense>
+    )
+  }
 
   return (
     <>

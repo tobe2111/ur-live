@@ -22,9 +22,17 @@ import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/ty
 //   ./seller-public/ 디렉토리로 추출.
 // 🛡️ 2026-05-07: TD-018 추가 분할 — ProfileHeader / InfoTab / theme 추출 (632→<350 lines).
 
-export default function SellerPublicPage() {
+interface SellerPublicPageProps {
+  /** 🛡️ 2026-05-25 (C 옵션 URL 통합): 외부 호출 시 sellerId 직접 전달 가능.
+   *  CuratorPage 가 /u/:handle 진입 후 linked_seller 매칭되면 본 페이지를 직접 render
+   *  (redirect 없이) → URL 통합. 미지정 시 useParams 사용 (legacy /profile/:sellerId 호환). */
+  sellerIdOverride?: string
+}
+
+export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
-  const { sellerId: rawParam } = useParams<{ sellerId: string }>()
+  const params = useParams<{ sellerId: string }>()
+  const rawParam = sellerIdOverride ?? params.sellerId
   const navigate = useNavigate()
   // sellerId는 숫자 ID 또는 slug/username
   const sellerId = rawParam
