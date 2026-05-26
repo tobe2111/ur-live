@@ -420,6 +420,10 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
     const DB = c.env.DB
 
+    // 🛡️ 2026-05-25: handle 반환 — /u/me redirect / 마이페이지 카드용
+    const meRow = await DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+      .bind(userId).first<{ handle: string | null }>().catch(() => null)
+
     // 30일 어필리에이트 적립 (affiliate_earnings 가 기존 SSOT)
     const earnings30 = await DB.prepare(
       `SELECT COALESCE(SUM(commission_amount), 0) AS total
@@ -462,6 +466,7 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
 
     return c.json({
       success: true,
+      handle: meRow?.handle ?? null,
       stats: {
         month_earnings: earnings30?.total ?? 0,
         clicks_30d: clicks30?.cnt ?? 0,
