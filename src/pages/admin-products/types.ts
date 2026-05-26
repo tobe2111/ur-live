@@ -71,5 +71,8 @@ export const EMPTY_FORM = {
   name: '', description: '', long_description: '', price: '', compare_at_price: '',
   supply_price: '', stock: '', image_url: '', detail_images: ['', '', '', ''] as string[],
   category: 'lifestyle', product_type: 'featured' as 'live' | 'featured',
-  is_supply_product: false
+  is_supply_product: false,
+  // 🛡️ 2026-05-25 (Phase 6 migration 0281): 합배송 key — 같은 key 끼리 배송비 1회.
+  //   예: 같은 셀러 같은 창고 = 'seller_42_warehouse_A'. 비워두면 단독 배송.
+  bundling_key: '',
 }
