@@ -181,11 +181,21 @@ Phase 6 (마케팅 UX)
 - `GET /u/:handle/p/:productId` (SPA fallback → 서버 302)
 - 13 worker endpoints under `/api/curator/*`
 
-### 다음 phase
-- **Phase 2 (배송 재설계)** — shipping-redesign.md §0 A 채택 반영. 공구 voucher 모델 유지, 일반 쇼핑 배송만 재설계.
-- **Phase 3 (공구 호스팅 확장)** — voucher 공구를 누구나 호스팅 (`group_buys.host_user_id` 추가).
-- **Phase 4 (어필리에이트 정산 확장)** — 큐레이터 출금 UI + 큐레이터 → 셀러 자동 승급 안내.
-- **Phase 5 (셀러 흡수)** — 기존 셀러 → 큐레이터 + 라이브권 자동 변환.
+### ✅ Phase 2 (배송 재설계) 완료 — 2026-05-25
+shipping-redesign.md 참조. tracker.delivery 무료 API + 외부 URL + cron 7일 추정 3중 안전망.
+
+### ✅ Phase 3 (공구 호스팅) 완료 — 2026-05-25
+누구나 voucher 공구 호스팅. `group_buy_hosts` + `group_buy_host_participants` (migration 0280).
+- /host (본인 목록) / /host/new (카탈로그) / /g/:invite_code (친구 초대)
+- 1탭 시작 + invite_code 자동 + 동시 10개 상한 + 7일 기본
+
+### ✅ Phase 4 (정산 + 셀러 승급) 완료 — 2026-05-25
+- 큐레이터 정산 = affiliate_earnings SUM (재활용)
+- 출금 UI: /u/me/earnings (모달 + 원천징수 3.3% + 이력)
+- 셀러 자동 승급 안내: 누적 50만원+ → 30일 cooldown
+
+### 진행 예정
+- **Phase 5 (셀러 흡수)** — 기존 셀러 → 큐레이터 + 라이브권 자동 변환 (대부분 마이그레이션 코드 없이 호환 — 셀러는 user 와 별도 테이블).
 
 ### 알려진 한계 (후속 PR)
 - ReelProductCard / ProductDetailPage 의 PinButton inject (좁은 UI 영역 정교화 필요)
