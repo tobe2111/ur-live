@@ -5436,5 +5436,12 @@
       "noData": "아직 데이터가 없어요. 친구에게 핀을 공유해보세요!"
     },
     "dashboardError": "대시보드 로딩 실패"
+  },
+  "shipping": {
+    "trackingTitle": "배송 추적",
+    "fetchError": "추적 정보를 불러올 수 없습니다",
+    "notShipped": "아직 발송되지 않았습니다",
+    "noEvents": "추적 정보가 아직 없습니다",
+    "externalSite": "택배사 페이지에서 보기"
   }
 }
