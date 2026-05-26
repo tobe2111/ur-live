@@ -323,7 +323,59 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return r
     })
 
-    return c.json({ success: true, data: results ?? [] })
+    // 🛡️ 2026-05-25 사용자 결정 (A 옵션): KT Alpha 발송된 쿠폰도 통합 표시.
+    //   voucher_orders 의 status='sent' row 를 source='kt_alpha' 로 변환해서 vouchers 배열에 merge.
+    //   사용자가 한 화면에서 모든 쿠폰 확인.
+    let ktAlphaItems: any[] = []
+    try {
+      const ktRes = await DB.prepare(`
+        SELECT vo.id, vo.goods_code, vo.goods_name, vo.goods_image_url,
+               vo.recipient_phone, vo.unit_price, vo.coupon_code, vo.external_order_id,
+               vo.status, vo.sent_at, vo.created_at,
+               o.id AS order_id, o.order_number, o.user_id AS order_user_id
+        FROM voucher_orders vo
+        JOIN orders o ON (
+          vo.external_order_id LIKE 'u' || o.id || '-%' OR
+          vo.external_order_id LIKE 'ur-cons-' || o.id || '-%'
+        )
+        WHERE o.user_id = ? AND vo.status IN ('sent', 'processing')
+        ORDER BY vo.created_at DESC
+        LIMIT 100
+      `).bind(Number(user.id)).all().catch(() => ({ results: [] as any[] }))
+      ktAlphaItems = (ktRes.results || []).map((vo: any) => ({
+        source: 'kt_alpha',
+        id: `kt-${vo.id}`,
+        kt_alpha_voucher_order_id: vo.id,
+        code: vo.coupon_code || vo.external_order_id || `KT-${vo.id}`,
+        user_id: String(user.id),
+        product_id: null,
+        order_id: vo.order_id,
+        status: vo.status === 'sent' ? 'unused' : 'processing',
+        expires_at: null,
+        used_at: null,
+        created_at: vo.sent_at || vo.created_at,
+        applied_price: vo.unit_price,
+        product_name: vo.goods_name,
+        product_image: vo.goods_image_url,
+        restaurant_name: null,
+        restaurant_address: null,
+        restaurant_lat: null,
+        restaurant_lng: null,
+        restaurant_phone: null,
+        kt_recipient_phone: vo.recipient_phone,
+        kt_status: vo.status,
+      }))
+    } catch { /* graceful — vouchers 만 반환 */ }
+
+    // 우리 voucher 에 source='internal' 마킹 + 통합
+    const internalItems = (results ?? []).map((v: any) => ({ ...v, source: 'internal' }))
+    const merged = [...internalItems, ...ktAlphaItems].sort((a, b) => {
+      const at = a.created_at ? Date.parse(a.created_at) : 0
+      const bt = b.created_at ? Date.parse(b.created_at) : 0
+      return bt - at
+    })
+
+    return c.json({ success: true, data: merged })
   })
 
   // ── GET /verify/:code — voucher 정보 조회 (PIN 입력 전, 마스킹) ──
