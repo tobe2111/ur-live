@@ -3874,7 +3874,9 @@
     "seller": "Seller",
     "restaurants": "レストラン",
     "groupBuy": "共同購入",
-    "my": "マイ"
+    "my": "マイ",
+    "linkshop": "リンクショップ",
+    "vouchers": "クーポン"
   },
   "bulkUpload": {
     "title": "商品一括登録",
@@ -5412,43 +5414,50 @@
   "blogDetail": {},
   "liveWs": {},
   "curator": {
-    "notFound": "큐레이터를 찾을 수 없어요",
-    "notFoundTitle": "😢 링크샵을 찾을 수 없어요",
-    "fetchError": "불러오기 실패",
-    "goHome": "홈으로",
-    "pinCount": "{{count}}개 상품 추천 중",
-    "copyLink": "링크 복사",
-    "viewEarnings": "내 적립 보기",
-    "linkCopied": "링크가 복사되었어요",
-    "clicks": "클릭",
-    "emptyTitle": "아직 핀이 없어요",
-    "emptyOwner": "상품을 둘러보고 + 버튼으로 첫 핀을 추가해보세요",
-    "emptyOther": "@{{handle}} 의 첫 추천을 기다리는 중",
-    "startBrowse": "상품 둘러보기",
-    "exploreShop": "쇼핑 둘러보기",
+    "notFound": "キュレーターが見つかりません",
+    "notFoundTitle": "😢 リンクショップが見つかりません",
+    "fetchError": "読み込みに失敗しました",
+    "goHome": "ホームへ",
+    "pinCount": "{{count}}個の商品を推薦中",
+    "copyLink": "リンクをコピー",
+    "viewEarnings": "収益を見る",
+    "linkCopied": "リンクをコピーしました",
+    "clicks": "クリック",
+    "emptyTitle": "まだピンがありません",
+    "emptyOwner": "商品を見て + ボタンで最初のピンを追加してください",
+    "emptyOther": "@{{handle}} の最初のおすすめを待っています",
+    "startBrowse": "商品を見る",
+    "exploreShop": "ショップへ",
     "earnings": {
-      "title": "내 링크샵 수익",
-      "monthEarning": "30일 적립",
-      "clicks30d": "30일 클릭",
-      "purchases30d": "30일 구매",
-      "topPins": "인기 핀 TOP 3",
-      "dailyChart": "일별 적립 (30일)",
-      "noData": "아직 데이터가 없어요. 친구에게 핀을 공유해보세요!"
+      "title": "マイ リンクショップ収益",
+      "monthEarning": "30日間の収益",
+      "clicks30d": "30日間のクリック",
+      "purchases30d": "30日間の購入",
+      "topPins": "トップ3ピン",
+      "dailyChart": "日別収益 (30日)",
+      "noData": "まだデータがありません。友達にピンをシェアしましょう!"
     },
-    "dashboardError": "대시보드 로딩 실패"
+    "dashboardError": "ダッシュボード読み込み失敗"
   },
   "shipping": {
-    "trackingTitle": "배송 추적",
-    "fetchError": "추적 정보를 불러올 수 없습니다",
-    "notShipped": "아직 발송되지 않았습니다",
-    "noEvents": "추적 정보가 아직 없습니다",
-    "externalSite": "택배사 페이지에서 보기"
+    "trackingTitle": "配送追跡",
+    "fetchError": "追跡情報を読み込めません",
+    "notShipped": "まだ発送されていません",
+    "noEvents": "まだ追跡情報がありません",
+    "externalSite": "配送会社ページで見る"
   },
   "hosting": {
-    "title": "내 공구 호스팅",
-    "newTitle": "공구 열기",
-    "startNew": "공구 열기",
-    "empty": "아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!",
-    "emptyCatalog": "아직 카탈로그가 비어있어요"
+    "title": "マイ共同購入ホスティング",
+    "newTitle": "共同購入を開く",
+    "startNew": "開く",
+    "empty": "まだホスティングがありません。友達と一緒に買う商品を探してみましょう!",
+    "emptyCatalog": "カタログが空です"
+  },
+  "returns": {
+    "title": "マイ返品",
+    "backToOrders": "注文一覧",
+    "empty": "返品履歴がありません",
+    "trackingTitle": "返品回収追跡",
+    "submitShipping": "回収伝票を登録"
   }
 }

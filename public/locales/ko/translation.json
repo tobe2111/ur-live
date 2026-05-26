@@ -3874,6 +3874,9 @@
     "seller": "셀러",
     "admin": "관리자",
     "live": "라이브",
+    "linkshop": "링크샵",
+    "vouchers": "교환권",
+    "my": "마이",
     "search": "검색",
     "restaurants": "맛집",
     "groupBuy": "공구",
@@ -5448,5 +5451,12 @@
     "startNew": "공구 열기",
     "empty": "아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!",
     "emptyCatalog": "아직 카탈로그가 비어있어요"
+  },
+  "returns": {
+    "title": "내 반품",
+    "backToOrders": "주문 목록",
+    "empty": "반품 내역이 없습니다",
+    "trackingTitle": "반품 회수 추적",
+    "submitShipping": "회수 송장 등록"
   }
 }

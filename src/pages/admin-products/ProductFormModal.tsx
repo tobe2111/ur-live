@@ -107,6 +107,20 @@ export default function ProductFormModal({
             <input type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} required min="0" placeholder="50" className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
 
+          {/* 🛡️ 2026-05-25 (Phase 6, mig 0281): 합배송 key — 같은 key 끼리 배송비 1회 청구 */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              합배송 그룹 (선택) <span className="text-gray-400 text-[10px]">— 같은 값 = 함께 배송</span>
+            </label>
+            <input
+              type="text"
+              value={formData.bundling_key}
+              onChange={e => setFormData({ ...formData, bundling_key: e.target.value })}
+              placeholder="예: seller_42_warehouse_A (비워두면 단독)"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.products.k057', { defaultValue: '대표 이미지' })}</label>
             <ImageUpload value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} label="" maxSizeKB={800} />

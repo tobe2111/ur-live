@@ -134,8 +134,10 @@ export const SHIPPING_DEFAULTS = {
   TRACKER_SYNC_BATCH_SIZE: 50,
   /** SHIPPING 상태 orders 가 sync 대상 — 마지막 sync 후 N분 지나야 재시도. */
   TRACKER_SYNC_MIN_INTERVAL_MIN: 60,
-  /** 합배송 도입 — Phase 6 까지 false. 활성화 시 products.bundling_key 필요. */
-  ENABLE_BUNDLING: false,
+  /** 합배송 도입 — Phase 6, 2026-05-25 활성화.
+   *  products.bundling_key 있는 아이템들끼리 baseFee 중복 청구 X (calculateBundledShipping 사용).
+   *  비활성화 시 칸트/체크아웃이 calculateShippingFeeV2 fallback 사용 (단일 묶음). */
+  ENABLE_BUNDLING: true,
 } as const
 
 // ── ⑨ 큐레이터 링크샵 (migration 0278, 2026-05-25) ──────────────

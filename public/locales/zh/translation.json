@@ -3874,7 +3874,9 @@
     "seller": "Seller",
     "restaurants": "餐厅",
     "groupBuy": "团购",
-    "my": "我的"
+    "my": "我的",
+    "linkshop": "链接店",
+    "vouchers": "券"
   },
   "bulkUpload": {
     "title": "批量上传商品",
@@ -5412,43 +5414,50 @@
   "blogDetail": {},
   "liveWs": {},
   "curator": {
-    "notFound": "큐레이터를 찾을 수 없어요",
-    "notFoundTitle": "😢 링크샵을 찾을 수 없어요",
-    "fetchError": "불러오기 실패",
-    "goHome": "홈으로",
-    "pinCount": "{{count}}개 상품 추천 중",
-    "copyLink": "링크 복사",
-    "viewEarnings": "내 적립 보기",
-    "linkCopied": "링크가 복사되었어요",
-    "clicks": "클릭",
-    "emptyTitle": "아직 핀이 없어요",
-    "emptyOwner": "상품을 둘러보고 + 버튼으로 첫 핀을 추가해보세요",
-    "emptyOther": "@{{handle}} 의 첫 추천을 기다리는 중",
-    "startBrowse": "상품 둘러보기",
-    "exploreShop": "쇼핑 둘러보기",
+    "notFound": "找不到策展人",
+    "notFoundTitle": "😢 找不到链接店",
+    "fetchError": "加载失败",
+    "goHome": "回主页",
+    "pinCount": "正在推荐 {{count}} 个商品",
+    "copyLink": "复制链接",
+    "viewEarnings": "我的收益",
+    "linkCopied": "链接已复制",
+    "clicks": "点击",
+    "emptyTitle": "还没有 Pin",
+    "emptyOwner": "浏览商品并通过 + 按钮添加你的第一个 Pin",
+    "emptyOther": "等待 @{{handle}} 的第一次推荐",
+    "startBrowse": "浏览商品",
+    "exploreShop": "探索商店",
     "earnings": {
-      "title": "내 링크샵 수익",
-      "monthEarning": "30일 적립",
-      "clicks30d": "30일 클릭",
-      "purchases30d": "30일 구매",
-      "topPins": "인기 핀 TOP 3",
-      "dailyChart": "일별 적립 (30일)",
-      "noData": "아직 데이터가 없어요. 친구에게 핀을 공유해보세요!"
+      "title": "我的链接店收益",
+      "monthEarning": "30天收益",
+      "clicks30d": "30天点击",
+      "purchases30d": "30天购买",
+      "topPins": "热门Pin TOP 3",
+      "dailyChart": "每日收益 (30天)",
+      "noData": "暂无数据。和朋友分享你的Pin!"
     },
-    "dashboardError": "대시보드 로딩 실패"
+    "dashboardError": "仪表板加载失败"
   },
   "shipping": {
-    "trackingTitle": "배송 추적",
-    "fetchError": "추적 정보를 불러올 수 없습니다",
-    "notShipped": "아직 발송되지 않았습니다",
-    "noEvents": "추적 정보가 아직 없습니다",
-    "externalSite": "택배사 페이지에서 보기"
+    "trackingTitle": "配送追踪",
+    "fetchError": "无法加载追踪信息",
+    "notShipped": "尚未发货",
+    "noEvents": "尚无追踪信息",
+    "externalSite": "在快递公司页面查看"
   },
   "hosting": {
-    "title": "내 공구 호스팅",
-    "newTitle": "공구 열기",
-    "startNew": "공구 열기",
-    "empty": "아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!",
-    "emptyCatalog": "아직 카탈로그가 비어있어요"
+    "title": "我的团购主持",
+    "newTitle": "开团",
+    "startNew": "开团",
+    "empty": "还没有主持的团购。找些和朋友一起买的商品吧!",
+    "emptyCatalog": "目录为空"
+  },
+  "returns": {
+    "title": "我的退货",
+    "backToOrders": "订单",
+    "empty": "没有退货记录",
+    "trackingTitle": "退货回收追踪",
+    "submitShipping": "登记回收运单"
   }
 }

@@ -155,7 +155,9 @@ export default function AdminProductsPage() {
         is_supply_product: formData.is_supply_product ? 1 : 0,
         stock: Number(formData.stock), image_url: formData.image_url,
         detail_images: JSON.stringify(formData.detail_images.filter(u => u.trim())),
-        category: formData.category, product_type: formData.product_type, is_active: 1
+        category: formData.category, product_type: formData.product_type, is_active: 1,
+        // 🛡️ 2026-05-25 (Phase 6, migration 0281): 합배송 key — 같은 key 끼리 baseFee 1회
+        bundling_key: formData.bundling_key?.trim() || null
       }
       if (editingProduct) {
         await api.put(`/api/admin/products/${editingProduct.id}`, payload, { headers: { Authorization: `Bearer ${token}` } })
@@ -290,7 +292,8 @@ export default function AdminProductsPage() {
       supply_price: product.supply_price?.toString() || '',
       stock: product.stock.toString(), image_url: product.image_url,
       detail_images: detailImages, category: product.category, product_type: product.product_type,
-      is_supply_product: !!product.is_supply_product
+      is_supply_product: !!product.is_supply_product,
+      bundling_key: (product as any).bundling_key || '',
     })
     setShowModal(true)
   }

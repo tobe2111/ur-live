@@ -24,6 +24,75 @@ export interface ShippingFeeCalcInput {
   regionRules?: ReadonlyArray<{ region_code: string; postal_code_pattern: string; extra_fee: number }>
   /** 상품에 ships_to_jeju=0 같은 플래그가 있는 경우 (옵션). */
   productFlags?: { shipsToJeju?: boolean; shipsToIsland?: boolean }
+  /** 🛡️ 2026-05-25 (Phase 6): 합배송. 같은 bundling_key 끼리 baseFee 중복 청구 X.
+   *   호출자가 묶음 단위로 호출 — 본 함수는 단일 묶음의 fee 만 계산. */
+}
+
+/**
+ * 🛡️ 2026-05-25 (Phase 6): 합배송 그룹 단위 배송비 계산.
+ *
+ * 입력: 카트의 모든 아이템 — 각 { bundling_key, base_fee, subtotal, free_threshold }
+ * 묶음 규칙:
+ *   - bundling_key 가 같은 아이템 = 1 묶음 (baseFee 1회만)
+ *   - NULL bundling_key = 각각 별도 묶음 (단독 배송)
+ *   - 묶음 별 baseFee = MAX(아이템 base_fee)
+ *   - 묶음 별 무료배송 threshold = MIN(아이템 free_threshold) — 가장 낮은 threshold 사용
+ * 지역 추가비는 묶음과 무관 — 한 주문 전체에 1회.
+ */
+export function calculateBundledShipping(input: {
+  items: Array<{ bundling_key: string | null; base_fee: number; subtotal: number; free_threshold: number | null }>
+  postalCode?: string | null
+  regionRules?: ReadonlyArray<{ region_code: string; postal_code_pattern: string; extra_fee: number }>
+}): { groups: Array<{ bundling_key: string | null; itemCount: number; baseFee: number; subtotal: number; effectiveBase: number }>; totalBaseFee: number; regionFee: number; region: ShippingRegion; totalFee: number } {
+  // 그룹핑
+  const groupMap = new Map<string, { items: typeof input.items; baseFee: number; subtotal: number; freeThreshold: number | null }>()
+  for (const item of input.items) {
+    // null bundling_key 는 고유 그룹 (단독 배송) — symbol 키 대신 unique string
+    const key = item.bundling_key || `__solo_${groupMap.size}`
+    const existing = groupMap.get(key)
+    if (existing) {
+      existing.items.push(item)
+      existing.baseFee = Math.max(existing.baseFee, item.base_fee)
+      existing.subtotal += item.subtotal
+      // 가장 낮은 threshold (가장 관대) — null 우선순위
+      if (item.free_threshold !== null) {
+        existing.freeThreshold = existing.freeThreshold === null ? item.free_threshold : Math.min(existing.freeThreshold, item.free_threshold)
+      }
+    } else {
+      groupMap.set(key, {
+        items: [item],
+        baseFee: item.base_fee,
+        subtotal: item.subtotal,
+        freeThreshold: item.free_threshold,
+      })
+    }
+  }
+
+  const groups: Array<{ bundling_key: string | null; itemCount: number; baseFee: number; subtotal: number; effectiveBase: number }> = []
+  let totalBaseFee = 0
+  for (const [key, g] of groupMap.entries()) {
+    const isFreeShipping = g.freeThreshold !== null && g.subtotal >= g.freeThreshold
+    const effectiveBase = isFreeShipping ? 0 : g.baseFee
+    groups.push({
+      bundling_key: key.startsWith('__solo_') ? null : key,
+      itemCount: g.items.length,
+      baseFee: g.baseFee,
+      subtotal: g.subtotal,
+      effectiveBase,
+    })
+    totalBaseFee += effectiveBase
+  }
+
+  const region = detectShippingRegion(input.postalCode, input.regionRules)
+  const regionFee = getRegionExtraFee(region, input.regionRules)
+
+  return {
+    groups,
+    totalBaseFee,
+    regionFee,
+    region,
+    totalFee: totalBaseFee + regionFee,
+  }
 }
 
 export interface ShippingFeeCalcResult {
