@@ -509,7 +509,7 @@ export async function sendCoupon(
   const forceProdEnv = { ...env, KT_ALPHA_DEV_MODE: 'N' }
   const body: Record<string, string | number> = {
     goods_code: params.goodsCode,
-    mms_title: params.mmsTitle.slice(0, 60),  // KT Alpha 표준 60자 제한
+    mms_title: params.mmsTitle.slice(0, 10),  // 🛡️ 2026-05-25: KT Alpha API 실제 제한 10자 (ERR0806 사고). docs 의 60자 정보 부정확.
     mms_msg: params.mmsMsg.slice(0, 2000),
     callback_no: callback,
     phone_no: phone,

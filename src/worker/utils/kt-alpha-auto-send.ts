@@ -71,10 +71,39 @@ export async function autoSendKtAlphaVouchersForOrders(
   const callbackNo = sMap.kt_alpha_callback_no
   const templateId = sMap.kt_alpha_template_id || undefined
   const bannerId = sMap.kt_alpha_banner_id || undefined
-  const adminSellerId = Number(sMap.kt_alpha_admin_seller_id) || 0
+  const adminSellerIdRaw = Number(sMap.kt_alpha_admin_seller_id) || 0
   if (!ktUserId || !callbackNo) {
     errors.push(`platform_settings 누락: kt_alpha_user_id=${!!ktUserId}, kt_alpha_callback_no=${!!callbackNo}`)
     return { sent: 0, failed: 0, errors }
+  }
+
+  // 🛡️ 2026-05-25 사용자 진단 fix: kt_alpha_admin_seller_id 가 sellers 에 없으면 첫 approved seller fallback.
+  //   FK constraint: voucher_orders.seller_id REFERENCES sellers(id).
+  //   잘못된 admin_seller_id 설정 시 INSERT 영구 fail → 첫 approved seller 자동 사용 (Order #85 사고).
+  let adminSellerId = adminSellerIdRaw
+  if (adminSellerId) {
+    const exists = await env.DB.prepare('SELECT id FROM sellers WHERE id = ? LIMIT 1')
+      .bind(adminSellerId).first<{ id: number }>().catch(() => null)
+    if (!exists) {
+      const fallback = await env.DB.prepare(`SELECT id FROM sellers WHERE status = 'approved' ORDER BY id ASC LIMIT 1`)
+        .first<{ id: number }>().catch(() => null)
+      if (fallback?.id) {
+        errors.push(`kt_alpha_admin_seller_id=${adminSellerIdRaw} 가 sellers 에 없음 → 첫 approved seller(id=${fallback.id}) fallback`)
+        adminSellerId = fallback.id
+      } else {
+        errors.push(`kt_alpha_admin_seller_id=${adminSellerIdRaw} invalid + sellers 에 approved 셀러 0건 → INSERT 불가`)
+        return { sent: 0, failed: 0, errors }
+      }
+    }
+  } else {
+    const fallback = await env.DB.prepare(`SELECT id FROM sellers WHERE status = 'approved' ORDER BY id ASC LIMIT 1`)
+      .first<{ id: number }>().catch(() => null)
+    if (fallback?.id) {
+      adminSellerId = fallback.id
+    } else {
+      errors.push(`kt_alpha_admin_seller_id 미설정 + sellers 에 approved 셀러 0건 → INSERT 불가`)
+      return { sent: 0, failed: 0, errors }
+    }
   }
 
   const { sendCoupon } = await import('./giftishow-api')
@@ -158,7 +187,8 @@ export async function autoSendKtAlphaVouchersForOrders(
             goodsCode: item.kt_alpha_gift_code,
             phoneNo: phone,
             callbackNo,
-            mmsTitle: `[유어딜] ${item.product_name}`.slice(0, 30),
+            // 🛡️ 2026-05-25: KT Alpha API title 10자 제한 (ERR0806). 기존 30자 → 10자.
+            mmsTitle: '유어딜 교환권',
             mmsMsg: `${item.product_name} 교환권이 도착했습니다. 30일 이내 사용해주세요.`,
             trId,
             userId: ktUserId,
