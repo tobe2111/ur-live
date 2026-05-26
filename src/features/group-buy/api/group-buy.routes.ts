@@ -509,17 +509,65 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       // 🛡️ 2026-05-23: KT Alpha (기프티쇼) 자동 발송 — products.kt_alpha_gift_code +
       //   auto_voucher_send=1 인 상품만. 딜 결제 흐름에서 사용자 폰으로 실제 MMS 발송.
       //   fail-soft — 발송 실패해도 voucher INSERT 는 보존 (admin 이 재발송 가능).
-      //   /vouchers/:id (KT Alpha 카탈로그 2260개) 만 실제 트리거 — 일반 공구는 kt_alpha_gift_code 없어 skip.
+      //
+      // 🛡️ 2026-05-25 영구 fix: 사용자 신고 (Order #85 (HOT)아메리카노) — frontend_errors 0건,
+      //   voucher_orders 0건 = waitUntil 측 silent fail.
+      //   해결: trigger 시점 frontend_errors 기록 + waitUntil 실패도 잡기 + fallback await.
       try {
+        // trigger 진입 기록 (autoSend 함수 안 실행돼도 여기는 기록됨)
+        await DB.prepare(
+          `INSERT INTO frontend_errors (message, type, url, user_id, created_at)
+           VALUES (?, 'kt_alpha_trigger', '/api/group-buy/join', ?, datetime('now'))`,
+        ).bind(`KT Alpha auto-send trigger — order ${newOrderId}, user ${userId}`, String(userId))
+          .run().catch(() => null)
+
         const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
-        c.executionCtx.waitUntil(
-          autoSendKtAlphaVouchersForOrders(
-            c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-            [{ id: newOrderId, user_id: userId, shipping_phone: null }],
-            userId,
-          ).catch(e => console.error('[group-buy/join] kt-alpha auto-send failed:', e))
-        )
-      } catch (e) { console.error('[group-buy/join] kt-alpha import failed:', e) }
+
+        // 🛡️ shipping_phone null 하드코딩 제거 — autoSend 안에서 users.phone fallback 동작하지만
+        //    명시적 보완: 여기서도 phone 사전 조회해서 전달 (race condition 회피).
+        const ph = await DB.prepare("SELECT phone FROM users WHERE id = ? LIMIT 1")
+          .bind(userId).first<{ phone: string | null }>().catch(() => null)
+        const phoneArg = ph?.phone || null
+
+        // c.executionCtx.waitUntil — production worker 에서 정상 동작. 없으면 (test/edge) await fallback.
+        const runAutoSend = autoSendKtAlphaVouchersForOrders(
+          c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+          [{ id: newOrderId, user_id: userId, shipping_phone: phoneArg }],
+          userId,
+        ).catch(async (e) => {
+          const msg = (e as Error)?.message?.slice(0, 300) || String(e)
+          console.error('[group-buy/join] kt-alpha auto-send failed:', msg)
+          await DB.prepare(
+            `INSERT INTO frontend_errors (message, type, url, user_id, created_at)
+             VALUES (?, 'kt_alpha_send_throw', '/api/group-buy/join', ?, datetime('now'))`,
+          ).bind(`KT Alpha auto-send throw (order ${newOrderId}): ${msg}`, String(userId))
+            .run().catch(() => null)
+        })
+
+        // waitUntil 시도 — 실패 시 await fallback (응답 +1-2s 이지만 발급 보장).
+        const ctxRef = (c as { executionCtx?: { waitUntil?: (p: Promise<unknown>) => void } }).executionCtx
+        if (ctxRef && typeof ctxRef.waitUntil === 'function') {
+          try { ctxRef.waitUntil(runAutoSend) } catch (waitErr) {
+            await DB.prepare(
+              `INSERT INTO frontend_errors (message, type, url, user_id, created_at)
+               VALUES (?, 'kt_alpha_waituntil_fail', '/api/group-buy/join', ?, datetime('now'))`,
+            ).bind(`waitUntil threw (order ${newOrderId}): ${(waitErr as Error)?.message?.slice(0, 200)}`, String(userId))
+              .run().catch(() => null)
+            await runAutoSend  // fallback 동기 await
+          }
+        } else {
+          // executionCtx 미존재 — 동기 await (test/edge)
+          await runAutoSend
+        }
+      } catch (e) {
+        const msg = (e as Error)?.message?.slice(0, 300) || String(e)
+        console.error('[group-buy/join] kt-alpha trigger setup failed:', msg)
+        await DB.prepare(
+          `INSERT INTO frontend_errors (message, type, url, user_id, created_at)
+           VALUES (?, 'kt_alpha_setup_fail', '/api/group-buy/join', ?, datetime('now'))`,
+        ).bind(`KT Alpha trigger setup failed (order ${newOrderId}): ${msg}`, String(userId))
+          .run().catch(() => null)
+      }
 
       // 🛡️ 2026-05-16: 사용자 phone 으로 voucher 발급 알림톡 (fire-and-forget)
       try {
