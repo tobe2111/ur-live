@@ -35,6 +35,42 @@ function getAuthUserId(c: any): number | null {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+/**
+ * 🛡️ 2026-05-25: hosting 관련 테이블 보장 — D1 migration 미적용 환경 대응.
+ *   첫 호출 시 lazy CREATE. idempotent (IF NOT EXISTS).
+ */
+async function ensureHostingTables(DB: D1Database): Promise<void> {
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS group_buy_hosts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      host_user_id INTEGER NOT NULL,
+      invite_code TEXT NOT NULL,
+      target_quantity INTEGER NOT NULL DEFAULT 5,
+      current_quantity INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      deadline_at DATETIME,
+      note TEXT,
+      total_earnings INTEGER NOT NULL DEFAULT 0,
+      achieved_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(host_user_id, product_id)
+    )`).run()
+    await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gbh_invite_code ON group_buy_hosts(invite_code)`).run().catch(() => null)
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS group_buy_host_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      host_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      order_id INTEGER,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      earnings INTEGER NOT NULL DEFAULT 0,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(host_id, user_id)
+    )`).run().catch(() => null)
+  } catch { /* graceful */ }
+}
+
 async function generateInviteCode(DB: D1Database): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     // 8자 hex
@@ -59,6 +95,9 @@ hostingRoutes.get('/catalog', requireAuth(), async (c) => {
     const category = String(c.req.query('category') || '').trim()
     const userId = getAuthUserId(c)
 
+    // 🛡️ 2026-05-25: 테이블 lazy CREATE (D1 migration 미적용 환경 graceful)
+    await ensureHostingTables(c.env.DB)
+
     // voucher 카테고리만 (`marketing.routes.ts:698` 의 validCats 와 일치)
     const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
     const catFilter = validCats.includes(category) ? ' AND p.category = ?' : ''
@@ -66,6 +105,7 @@ hostingRoutes.get('/catalog', requireAuth(), async (c) => {
     if (catFilter) params.push(category)
     params.push(limit)
 
+    // 🛡️ subquery 가 fail 해도 catalog 자체는 응답 — graceful 2-step.
     const { results } = await c.env.DB.prepare(
       `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
               p.group_buy_target, p.group_buy_current, p.group_buy_status,
@@ -77,7 +117,17 @@ hostingRoutes.get('/catalog', requireAuth(), async (c) => {
          ${catFilter}
        ORDER BY p.created_at DESC
        LIMIT ?`,
-    ).bind(userId, ...params).all()
+    ).bind(userId, ...params).all().catch(async () => {
+      // subquery 실패 fallback — my_host_id 없이 응답
+      return await c.env.DB.prepare(
+        `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
+                p.group_buy_target, p.group_buy_current, p.group_buy_status, p.restaurant_name,
+                NULL AS my_host_id
+         FROM products p
+         WHERE p.is_active = 1 AND p.category LIKE '%_voucher' ${catFilter}
+         ORDER BY p.created_at DESC LIMIT ?`,
+      ).bind(...params).all()
+    })
 
     return c.json({ success: true, catalog: results ?? [] })
   } catch (err) {
@@ -93,6 +143,7 @@ hostingRoutes.post('/me', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    await ensureHostingTables(c.env.DB)
 
     const body = await c.req.json<{ product_id?: number; target_quantity?: number; note?: string; deadline_at?: string }>().catch(() => ({} as any))
     const productId = Number(body.product_id)
