@@ -180,13 +180,26 @@ adminStatsRoutes.get('/vouchers/transactions', cors(), async (c) => {
     if (dateTo) { where.push(`DATE(v.created_at, '+9 hours') <= ?`); params.push(dateTo); }
     if (category) { where.push('p.category = ?'); params.push(category); }
 
+    // 🛡️ 2026-05-25 사용자 명령: 표 자체에서 KT Alpha 발송 상태 한눈에 확인.
+    //   product.kt_alpha_gift_code 있는 voucher 만 KT 대상. voucher_orders.status 최신 1건.
+    //   미발송 (NULL) / processing / sent / failed 분류.
     const rowsQuery = `
       SELECT v.id, v.code, v.status, v.created_at, v.used_at, v.expires_at,
              v.applied_price, v.applied_discount_pct,
              v.user_id, u.name AS user_name, u.email AS user_email, u.phone AS user_phone,
              v.order_id, o.order_number, o.total_amount AS order_total, o.payment_method,
              v.product_id, p.name AS product_name, p.image_url AS product_image, p.category,
-             p.restaurant_name, p.seller_id, s.name AS seller_name
+             p.restaurant_name, p.seller_id, s.name AS seller_name,
+             p.kt_alpha_gift_code,
+             p.auto_voucher_send,
+             (SELECT vo.status FROM voucher_orders vo
+              WHERE vo.external_order_id LIKE 'u' || v.order_id || '-%'
+                 OR vo.external_order_id LIKE 'ur-cons-' || v.order_id || '-%'
+              ORDER BY vo.id DESC LIMIT 1) AS kt_alpha_status,
+             (SELECT vo.failure_reason FROM voucher_orders vo
+              WHERE vo.external_order_id LIKE 'u' || v.order_id || '-%'
+                 OR vo.external_order_id LIKE 'ur-cons-' || v.order_id || '-%'
+              ORDER BY vo.id DESC LIMIT 1) AS kt_alpha_failure_reason
       FROM vouchers v
       LEFT JOIN users u ON CAST(v.user_id AS TEXT) = CAST(u.id AS TEXT)
       LEFT JOIN orders o ON v.order_id = o.id

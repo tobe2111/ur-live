@@ -43,6 +43,11 @@ interface VoucherTxRow {
   restaurant_name: string | null
   seller_id: number | null
   seller_name: string | null
+  // 🛡️ 2026-05-25: KT Alpha 발송 상태 — 표 자체에서 확인 가능
+  kt_alpha_gift_code?: string | null
+  auto_voucher_send?: number | null
+  kt_alpha_status?: string | null  // null/'processing'/'sent'/'failed'
+  kt_alpha_failure_reason?: string | null
 }
 
 interface DiagnoseResponse {
@@ -415,6 +420,7 @@ export default function AdminVoucherTransactionsPage() {
                 <th className="py-2 px-3 text-right">applied_price</th>
                 <th className="py-2 px-3 text-center">결제</th>
                 <th className="py-2 px-3 text-center">상태</th>
+                <th className="py-2 px-3 text-center">📱 KT 발송</th>
                 <th className="py-2 px-3 text-left">코드</th>
                 <th className="py-2 px-3 text-left">주문</th>
                 <th className="py-2 px-3 text-center">진단</th>
@@ -450,6 +456,10 @@ export default function AdminVoucherTransactionsPage() {
                       {STATUS_LABEL[r.status]?.label || r.status}
                     </span>
                   </td>
+                  {/* 🛡️ 2026-05-25: KT Alpha 발송 상태 컬럼 + inline 재발송 */}
+                  <td className="py-2 px-3 text-center">
+                    <KtAlphaStatusCell row={r} onChange={() => load()} />
+                  </td>
                   <td className="py-2 px-3 text-gray-600 font-mono text-[10px]">{r.code}</td>
                   <td className="py-2 px-3 text-gray-500 text-[10px]">{r.order_number || `#${r.order_id}`}</td>
                   <td className="py-2 px-3 text-center">
@@ -482,6 +492,66 @@ export default function AdminVoucherTransactionsPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-25: KT Alpha 발송 상태 셀 — 한눈에 + inline 재발송
+function KtAlphaStatusCell({ row, onChange }: { row: VoucherTxRow; onChange: () => void }) {
+  const [triggering, setTriggering] = useState(false)
+
+  // KT Alpha 대상 아니면 N/A
+  if (!row.kt_alpha_gift_code || !row.auto_voucher_send) {
+    return <span className="text-[10px] text-gray-300">—</span>
+  }
+
+  async function resend() {
+    if (!confirm(`Order #${row.order_id} 재발송할까요?`)) return
+    setTriggering(true)
+    try {
+      const r = await api.post(`/api/admin/kt-alpha/trigger-order/${row.order_id}`, {})
+      if (r.data?.success) {
+        const errs = (r.data.errors as string[]) || []
+        if (r.data.result?.sent > 0) {
+          toast.success(r.data.message || "재발송 성공")
+        } else {
+          toast.error(errs[0] || r.data.message || "재발송 실패")
+        }
+        onChange()
+      } else {
+        toast.error(r.data?.error || "재발송 실패")
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "재발송 실패")
+    } finally {
+      setTriggering(false)
+    }
+  }
+
+  const status = row.kt_alpha_status
+  if (status === "sent") {
+    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ 발송</span>
+  }
+  if (status === "processing") {
+    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">중...</span>
+  }
+  if (status === "failed") {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700" title={row.kt_alpha_failure_reason || ""}>✕ 실패</span>
+        <button onClick={resend} disabled={triggering} className="px-2 py-0.5 text-[10px] bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded">
+          {triggering ? "..." : "🚀 재발송"}
+        </button>
+      </div>
+    )
+  }
+  // null (미발송)
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">미발송</span>
+      <button onClick={resend} disabled={triggering} className="px-2 py-0.5 text-[10px] bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded">
+        {triggering ? "..." : "🚀 발송"}
+      </button>
     </div>
   )
 }
