@@ -7,14 +7,27 @@
  * - maxSizeMB: 0.5 (500KB) — 상품 이미지 권장
  * - maxWidthOrHeight: 1280 — 웹 디스플레이 충분
  * - WebP 변환 — JPEG 대비 25-35% 추가 절감, 모든 모던 브라우저 지원
+ *
+ * 🛡️ 2026-05-27 (loading P1): browser-image-compression (~51KB) 함수 내 dynamic import.
+ *   이전: module-level eager import → image-compress.ts 가 ImageUpload / SellerProfileEdit /
+ *   SellerPublicPage 등에서 import 되는 순간 critical path 51KB ↑.
+ *   일반 사용자 (셀러 아님) 도 SellerPublicPage 가 lazy 라도 prefetch / hover 시 다운로드.
+ *   변경: compressForUpload / compressForThumbnail 첫 호출 시점에만 fetch.
  */
-
-import imageCompression from 'browser-image-compression'
 
 export interface CompressOptions {
   maxSizeMB?: number
   maxWidthOrHeight?: number
   toWebP?: boolean
+}
+
+type ImageCompressionFn = (file: File, opts: Record<string, unknown>) => Promise<File>
+let _imageCompressionPromise: Promise<ImageCompressionFn> | null = null
+function loadImageCompression(): Promise<ImageCompressionFn> {
+  if (!_imageCompressionPromise) {
+    _imageCompressionPromise = import('browser-image-compression').then(m => m.default as ImageCompressionFn)
+  }
+  return _imageCompressionPromise
 }
 
 export async function compressForUpload(
@@ -23,12 +36,13 @@ export async function compressForUpload(
 ): Promise<File> {
   const { maxSizeMB = 0.5, maxWidthOrHeight = 1280, toWebP = true } = opts
 
-  // 이미 충분히 작으면 스킵
+  // 이미 충분히 작으면 스킵 (chunk 다운로드도 회피)
   if (file.size < maxSizeMB * 1024 * 1024 && file.type.startsWith('image/')) {
     return file
   }
 
   const targetType = toWebP ? 'image/webp' : file.type
+  const imageCompression = await loadImageCompression()
 
   const compressed = await imageCompression(file, {
     maxSizeMB,

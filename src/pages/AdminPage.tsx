@@ -128,11 +128,13 @@ export default function AdminPage() {
 
   async function loadData() {
     // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
+    // 🛡️ 2026-05-27 (사용자 증가 대비): 무제한 fetch → limit 추가. 응답 size + JS 처리 ↓.
+    //   현재 base 작아도 미래 안전망. 일반 어드민 dashboard 는 최근 N개로 충분.
     const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.allSettled([
-      api.get('/api/admin/sellers'),
-      api.get('/api/admin/sellers/pending'),
-      api.get('/api/streams'),
-      api.get('/api/streams?status=live'),
+      api.get('/api/admin/sellers?limit=200'),
+      api.get('/api/admin/sellers/pending?limit=100'),
+      api.get('/api/streams?limit=100'),
+      api.get('/api/streams?status=live&limit=50'),
     ])
 
     // 401 체크: 첫 번째 auth 호출 실패 시 로그인으로
