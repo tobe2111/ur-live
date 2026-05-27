@@ -48,7 +48,29 @@ export default function SellerProspectsPage() {
     contact_email: '',
     business_address: '',
     notes: '',
+    proof_image_url: '',  // 🛡️ 2026-05-27 (영업 검증 Layer 3): 매장 방문 증빙 (간판/명함 사진)
   })
+  const [uploadingProof, setUploadingProof] = useState(false)
+
+  async function uploadProof(file: File) {
+    if (uploadingProof) return
+    setUploadingProof(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const r = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      if (r.data?.success && r.data?.url) {
+        setForm(f => ({ ...f, proof_image_url: r.data.url }))
+        toast.success('증빙 사진 업로드됨')
+      } else {
+        toast.error('업로드 실패')
+      }
+    } catch {
+      toast.error('업로드 실패')
+    } finally {
+      setUploadingProof(false)
+    }
+  }
 
   async function load() {
     setLoading(true)
@@ -81,7 +103,7 @@ export default function SellerProspectsPage() {
       if (r.data?.success) {
         toast.success('매장 사전 등록 완료')
         setShowAdd(false)
-        setForm({ store_name: '', contact_name: '', contact_phone: '', contact_email: '', business_address: '', notes: '' })
+        setForm({ store_name: '', contact_name: '', contact_phone: '', contact_email: '', business_address: '', notes: '', proof_image_url: '' })
         load()
       }
     } catch (err: any) {
@@ -249,6 +271,21 @@ export default function SellerProspectsPage() {
                   placeholder="만남 일시 / 미팅 내용 등"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 resize-none"
                 />
+              </div>
+              {/* 🛡️ 2026-05-27 (영업 검증 Layer 3): 매장 방문 증빙 — 간판 / 명함 사진. */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">매장 방문 증빙 (권장)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f) }}
+                  className="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-pink-100 file:text-pink-700 hover:file:bg-pink-200"
+                />
+                {form.proof_image_url && (
+                  <img src={form.proof_image_url} alt="증빙" className="mt-2 w-full h-32 object-cover rounded-lg" />
+                )}
+                {uploadingProof && <p className="text-[11px] text-gray-400 mt-1">⏳ 업로드 중...</p>}
+                <p className="text-[11px] text-gray-500 mt-1">매장 간판 또는 명함 사진 — admin 검증 시 commission lock-in 가속</p>
               </div>
               <div className="flex gap-2 pt-2">
                 <button
