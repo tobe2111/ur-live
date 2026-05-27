@@ -338,6 +338,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-22 카카오 P0: 셀러-카카오 1:1 매핑 DB-level uniqueness (race condition 방어).
     //   application-level 체크만으로는 동시 link 시 같은 user_id 에 2개 seller 연동 가능.
     { desc: 'idx_sellers_linked_user_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_linked_user_unique ON sellers(linked_user_id) WHERE linked_user_id IS NOT NULL" },
+    // 🛡️ 2026-05-27 (영구 fix): same-email seller auto-link backfill.
+    //   문제: 시드 데이터의 sellers.linked_user_id 가 NULL → 카카오 user 로그인 시 curator dashboard
+    //         가 linked_seller 못 찾음 → BottomNav 가 /host/new fall through (사용자 보고).
+    //   해결: email 매칭되는 seller-user 쌍 일괄 매핑. idempotent.
+    //   KakaoAuthService.upsertUser 도 동적으로 매핑 → 다음 로그인 시 자동, 이건 일괄 backfill.
+    { desc: 'backfill: sellers.linked_user_id (same-email)', sql: `UPDATE sellers SET linked_user_id = (SELECT id FROM users u WHERE u.email = sellers.email LIMIT 1), updated_at = datetime('now') WHERE (linked_user_id IS NULL OR linked_user_id = 0) AND email IS NOT NULL AND email != '' AND EXISTS (SELECT 1 FROM users u2 WHERE u2.email = sellers.email)` },
     // 🛡️ 2026-05-22 카카오 P0: kakao_id UNIQUE 보강 (이미 KakaoAuthService 에서 시도하지만 다중 진입점 안전).
     { desc: 'idx_users_kakao_id_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL" },
     // 🛡️ 2026-05-22 P1: 교환권 페이지 로딩 perf — 사용자별 voucher 목록 조회.
