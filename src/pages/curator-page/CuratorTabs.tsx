@@ -1,21 +1,27 @@
 /**
- * 🛡️ 2026-05-25 (C 옵션): 큐레이터 페이지 탭 nav — 핀 / 정보 / (확장 가능)
+ * 🛡️ 2026-05-25 (C 옵션): 큐레이터 페이지 탭 nav.
+ * 🛡️ 2026-05-27 (사용자 결정): 셀러 페이지 탭과 통일 — 홈/상품/식사권/정보.
+ *   라이브/영상은 제외 (큐레이터는 본인 콘텐츠 X, 핀만).
  */
 
 import { useTranslation } from 'react-i18next'
 
-export type CuratorTab = 'pins' | 'info'
+export type CuratorTab = 'home' | 'shop' | 'vouchers' | 'info'
 
 interface Props {
   tab: CuratorTab
   onChange: (tab: CuratorTab) => void
   pinCount: number
+  shopCount?: number
+  voucherCount?: number
 }
 
-export default function CuratorTabs({ tab, onChange, pinCount }: Props) {
+export default function CuratorTabs({ tab, onChange, pinCount, shopCount = 0, voucherCount = 0 }: Props) {
   const { t } = useTranslation()
   const tabs: Array<{ key: CuratorTab; label: string; badge?: string }> = [
-    { key: 'pins', label: t('curator.tabs.pins', { defaultValue: '핀' }), badge: String(pinCount) },
+    { key: 'home', label: t('curator.tabs.home', { defaultValue: '홈' }), badge: pinCount > 0 ? String(pinCount) : undefined },
+    { key: 'shop', label: t('curator.tabs.shop', { defaultValue: '상품' }), badge: shopCount > 0 ? String(shopCount) : undefined },
+    { key: 'vouchers', label: t('curator.tabs.vouchers', { defaultValue: '식사권' }), badge: voucherCount > 0 ? String(voucherCount) : undefined },
     { key: 'info', label: t('curator.tabs.info', { defaultValue: '정보' }) },
   ]
 
