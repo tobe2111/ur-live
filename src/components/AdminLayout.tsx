@@ -42,6 +42,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/users',           label: '유저 관리',     icon: Users },
       { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
+      // 🛡️ 2026-05-27 (사용자 결정): 매장 검수 통합 + 영업 prospects 모니터링
+      { path: '/admin/pending-sellers', label: '매장 검수',     icon: UserCheck },
+      { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
       { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
     ],
   },

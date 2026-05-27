@@ -91,6 +91,8 @@ const NAV_GROUPS: {
     items: [
       { path: '/host', labelKey: 'seller.nav.hosting', icon: Sparkles, mode: 'common' },
       { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' },
+      // 🛡️ 2026-05-27: 매장 영입 prospects (인플루언서 only)
+      { path: '/seller/prospects', labelKey: 'seller.nav.prospects', icon: Sparkles, mode: 'common' },
     ],
   },
   {

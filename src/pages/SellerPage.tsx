@@ -18,6 +18,7 @@ import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
+import SellerReferralInfoCard from '@/components/seller/SellerReferralInfoCard'
 import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
 import SellerKpiDashboard from '@/components/seller/SellerKpiDashboard'
 import TierBadge from '@/components/seller/TierBadge'
@@ -494,6 +495,8 @@ export default function SellerPage() {
 
         {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
         <SellerOnboardingChecklist />
+        {/* 🛡️ 2026-05-27: 영입자 + commission 분배 가시화 (영입자 있을 때만 표시) */}
+        <SellerReferralInfoCard />
 
         {/* 🛡️ 2026-05-18: Mode-specific 헤더 배지 — 어느 모드인지 시각적으로 즉시 인지. */}
         {sellerType.toLowerCase() === 'both' && (
