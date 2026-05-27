@@ -139,9 +139,13 @@ export default function BottomNav() {
     if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true
     }
-    // 🛡️ 2026-05-25: 링크샵 탭 active — /u/, /host/, /g/ 모두 포함
-    if (path.startsWith('/u/') || path.startsWith('/host')) {
-      if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/')) return true
+    // 🛡️ 2026-05-25: 링크샵 탭 active — /u/, /host/, /g/, /profile/ 모두 포함
+    // 🛡️ 2026-05-27: linkshopPath 가 localStorage cache 따라 /profile/{username} 도 가능 →
+    //   현재 location 이 /profile/ 또는 /s/ (셀러 공개) 면 링크샵 탭 활성화 (사용자가 직접 본인 페이지로 진입한 경우 포함).
+    const isLinkshopTab = path.startsWith('/u/') || path.startsWith('/host') || path.startsWith('/profile/')
+    if (isLinkshopTab) {
+      if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/') ||
+          cur.startsWith('/profile/') || cur.startsWith('/s/')) return true
     }
     return false
   }
