@@ -126,6 +126,11 @@ export default defineConfig({
           if (id.includes('/src/components/main/')) return 'app-layout'
           // 인증 컴포넌트: RouteGuards, KakaoLinkButton 등
           if (id.includes('/src/components/auth/')) return 'app-auth'
+          // 🛡️ 2026-05-27 (loading P1 phase 4): utils/hooks/lib 중 페이지 전용 파일 별도 chunk.
+          //   라이브 페이지만 사용하는 hook 은 app-live-components 로 묶음.
+          if (id.includes('/src/hooks/useLiveStream')) return 'app-live-components'
+          // 셀러/어드민 페이지만 사용하는 utils.
+          if (id.includes('/src/utils/product-template')) return 'app-seller-components'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
