@@ -143,9 +143,11 @@ if (typeof window !== 'undefined') {
   }
   const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback
   if (ric) {
-    ric(initSentryDeferred, { timeout: 3000 })
+    // 🛡️ 2026-05-27 v2 (Lighthouse TBT 910ms): idle timeout 3s → 5s.
+    //   Sentry chunk (140KB) 가 FCP/LCP 후 5초 이후 fetch → 첫 paint 영향 더 감소.
+    ric(initSentryDeferred, { timeout: 5000 })
   } else {
-    setTimeout(initSentryDeferred, 3000)
+    setTimeout(initSentryDeferred, 5000)
   }
 }
 
