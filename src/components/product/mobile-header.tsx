@@ -1,18 +1,18 @@
 import { ChevronLeft, Share2, ShoppingBag } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import PinButton from '@/components/curator/PinButton'
 
 interface MobileHeaderProps {
   onShare: () => void;
   isWishlisted?: boolean;
   onToggleWishlist?: () => void;
-  // 🛡️ 2026-05-25 (mig 0278): 큐레이터 핀 — 상세에서 1탭 핀
+  // 🛡️ 2026-05-27 사용자 요청: 상단 + 핀 버튼 제거 → 우하단 선물 버튼 아래로 이동 (ProductDetailPage FAB).
+  //   사용자 의도 — 핀 아이콘만 있으면 의미 모름. 가운데 상단보단 우하단 floating + 명확 라벨이 발견성 ↑.
   productId?: number;
   productPrice?: number;
 }
 
-export function MobileHeader({ onShare, productId, productPrice }: MobileHeaderProps) {
+export function MobileHeader({ onShare }: MobileHeaderProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
@@ -34,9 +34,6 @@ export function MobileHeader({ onShare, productId, productPrice }: MobileHeaderP
         <ChevronLeft className="h-[18px] w-[18px] text-gray-900 dark:text-white" />
       </button>
       <div className="flex items-center gap-1.5">
-        {productId && (
-          <PinButton productId={productId} price={productPrice} variant="detail-floating" />
-        )}
         <button aria-label={t('productDetail.header.share', { defaultValue: '공유' })} className={btnClass} onClick={onShare}>
           <Share2 className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
