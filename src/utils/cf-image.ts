@@ -58,6 +58,11 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'img1.daumcdn.net',
   'img2.daumcdn.net',
   'cf.daumcdn.net',
+  // 🛡️ 2026-05-27 (Lighthouse 진단): img1.kakaocdn.net 등 — LCP 이미지가 934KB 그대로 다운로드되던 사고.
+  //   카카오 계정/스토어 이미지가 이 호스트에 호스팅 — proxy 누락으로 WebP/AVIF 변환 회피되고 있었음.
+  'img1.kakaocdn.net',
+  'img2.kakaocdn.net',
+  'k.kakaocdn.net',  // 이미 있을 수도 — Set 이라 중복 무관
   // 🛡️ 2026-05-27 (교환권 audit): KT Alpha / giftishow 카탈로그 image 호스트.
   //   goodsImgS / goodsImgB / brandIconImg 가 외부 호스트 반환 → cfImage 변환 안 되면 원본 다운로드.
   'image.giftishow.com',
