@@ -45,6 +45,20 @@ export default function LiveListPage() {
     document.title = t('liveList.docTitle')
     let cancelled = false
 
+    // 🛡️ 2026-05-27 (Step P1-2): SSR inject 즉시 사용 — worker HTMLRewriter __SSR_INITIAL_LIVE__.
+    try {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('__SSR_INITIAL_LIVE__')
+        if (el?.textContent) {
+          const parsed = JSON.parse(el.textContent)
+          if (parsed?.success && Array.isArray(parsed?.data)) {
+            setLiveStreams(parsed.data)
+            setLoading(false)
+          }
+        }
+      }
+    } catch { /* fallback */ }
+
     const fetchAll = (initial: boolean) => {
       Promise.allSettled([
         api.get('/api/streams?status=live'),

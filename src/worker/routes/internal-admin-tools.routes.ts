@@ -811,6 +811,67 @@ internalAdminToolsRoutes.get('/api/admin/optimize-db', requireAdmin(), async (c)
   });
 });
 
+// 🛡️ 2026-05-27 Step P1-1: 정산 흐름 e2e audit endpoint.
+//   매장 정산이 정확히 동작하는지 admin 이 한 번에 확인:
+//   - 사용된 바우처 (status='used') 중 settlement_id 미연결 (정산 대기)
+//   - pending settlements 수 + 총 금액
+//   - 최근 paid settlements + 누적 송금
+//   - 사업자 검증 안 된 셀러 중 정산 신청 가능 매장 (블로커)
+internalAdminToolsRoutes.get('/api/admin/settlement-audit', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+
+    // 정산 대기 바우처 (사용됐는데 settlement 연결 안 됨, 7일 경과)
+    const pendingVouchers = await DB.prepare(`
+      SELECT COUNT(*) AS n, COALESCE(SUM(v.applied_price), 0) AS total
+        FROM vouchers v
+        JOIN products p ON p.id = v.product_id
+       WHERE v.status = 'used'
+         AND v.settlement_id IS NULL
+         AND v.used_at <= datetime('now', '-7 days')
+    `).first<{ n: number; total: number }>().catch(() => null)
+
+    // pending settlements (어드민 검토 대기)
+    const pendingSettlements = await DB.prepare(`
+      SELECT COUNT(*) AS n, COALESCE(SUM(settlement_amount), 0) AS total
+        FROM restaurant_settlements
+       WHERE status = 'pending'
+    `).first<{ n: number; total: number }>().catch(() => null)
+
+    // 최근 30일 paid settlements
+    const recentPaid = await DB.prepare(`
+      SELECT COUNT(*) AS n, COALESCE(SUM(settlement_amount), 0) AS total
+        FROM restaurant_settlements
+       WHERE status = 'paid'
+         AND updated_at >= datetime('now', '-30 days')
+    `).first<{ n: number; total: number }>().catch(() => null)
+
+    // 사업자 미검증 매장 — 정산 신청 가능한지 확인
+    const unverifiedSellers = await DB.prepare(`
+      SELECT COUNT(*) AS n FROM sellers
+       WHERE status IN ('active', 'approved')
+         AND (business_registration_status IS NULL OR business_registration_status != 'verified')
+    `).first<{ n: number }>().catch(() => null)
+
+    return c.json({
+      success: true,
+      data: {
+        pending_vouchers: pendingVouchers ?? { n: 0, total: 0 },
+        pending_settlements: pendingSettlements ?? { n: 0, total: 0 },
+        recent_paid_30d: recentPaid ?? { n: 0, total: 0 },
+        unverified_sellers: unverifiedSellers?.n ?? 0,
+        notes: [
+          'pending_vouchers — 사용 후 7일 경과 + settlement_id 없음 = cron 미실행 가능성',
+          'pending_settlements — 어드민이 검토 후 송금 처리 필요',
+          'unverified_sellers — 사업자등록증 미검증 매장 (정산 신청 시 deal/KT Alpha 옵션 만)',
+        ],
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: 'settlement-audit 조회 실패' }, 500)
+  }
+})
+
 // 🛡️ 2026-05-27 Step G (e2e 검증): 매장 입점 전체 흐름 상태 점검 endpoint.
 //   admin 이 한 번에 production 상태 확인:
 //   - NTS_API_KEY env 등록 여부

@@ -43,6 +43,8 @@ const HOT_PATHS: readonly string[] = [
   '/api/products?limit=20',
   '/api/streams',
   '/api/streams?status=live&limit=10',
+  // 🛡️ 2026-05-27 (Step P1-2): LiveListPage SSR key 와 정확히 일치.
+  '/api/streams?status=live&limit=20',
   '/api/banners',
   '/api/group-buy/products',
   // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
