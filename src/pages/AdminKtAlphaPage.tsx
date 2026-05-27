@@ -159,6 +159,23 @@ export default function AdminKtAlphaPage() {
     } finally { setSavingSettings(false) }
   }
 
+  // 🛡️ 2026-05-27 (사용자 요청 — 가장 이상적): 마진 % 변경 후 기존 상품 가격 일괄 재계산.
+  //   default off — 변경 의도 명확히 확인 후 trigger.
+  async function recalcPrices() {
+    if (!confirm(`현재 마진 (${edit.consumer_markup_pct}%) 으로 기존 KT Alpha 상품 가격 모두 재계산?\n\n공식: price = real_price × (1 + 마진/100)\n이미 등록된 상품의 표시 가격이 즉시 바뀝니다.`)) return
+    try {
+      const r = await api.post('/api/admin/kt-alpha/recalc-prices', {}, { headers: h() })
+      if (r.data?.success) {
+        toast.success(`${r.data.updated_count}개 상품 가격 재계산 완료 (${r.data.formula})`)
+      } else {
+        toast.error(r.data?.error || '재계산 실패')
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '재계산 실패')
+    }
+  }
+
   async function runSync() {
     if (!confirm('카탈로그 sync 시작? (전체 페이지 fetch, 1-2분 소요)')) return
     setSyncing(true)
@@ -808,10 +825,20 @@ export default function AdminKtAlphaPage() {
                 </div>
               </div>
 
-              <button onClick={saveSettings} disabled={savingSettings}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {savingSettings ? '저장 중...' : '설정 저장'}
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={saveSettings} disabled={savingSettings}
+                  className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {savingSettings ? '저장 중...' : '설정 저장'}
+                </button>
+                {/* 🛡️ 2026-05-27 (사용자 요청): 마진 % 변경 후 기존 상품 가격 즉시 재계산 */}
+                <button onClick={recalcPrices}
+                  className="px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600">
+                  📊 기존 상품 가격 일괄 재계산
+                </button>
+              </div>
+              <p className="text-[10px] text-amber-700 mt-2">
+                ⚠️ "설정 저장" 만으로는 신규 import 상품에만 새 마진 적용. 기존 상품도 적용하려면 "일괄 재계산" 클릭.
+              </p>
 
               <p className="text-[10px] text-gray-400 mt-3">
                 ⓘ 마지막 sync: {settings.kt_alpha_last_sync_at || '없음'} · {settings.kt_alpha_last_sync_count || 0}건
