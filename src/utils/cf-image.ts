@@ -81,10 +81,11 @@ function detectSaveData(): boolean {
     return !!conn?.saveData
   } catch { return false }
 }
-const _saveDataCached: boolean | null = null
+let _saveDataCached: boolean | null = null
 function getSaveData(): boolean {
   if (_saveDataCached !== null) return _saveDataCached
-  return detectSaveData()
+  _saveDataCached = detectSaveData()
+  return _saveDataCached
 }
 
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {
