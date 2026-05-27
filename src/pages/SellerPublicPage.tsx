@@ -166,6 +166,22 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
     if (!sellerId) return
     setLoading(true)
 
+    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
+    //   효과: 셀러 헤더 첫 paint 부터 표시 (axios fetch waterfall ~200-500ms 제거).
+    //   miss 시 axios fetch (fallback 안전).
+    try {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('__SSR_INITIAL_SELLER__')
+        if (el?.textContent) {
+          const parsed = JSON.parse(el.textContent)
+          if (parsed?.success && parsed?.data) {
+            setSeller(parsed.data)
+            setLoading(false)
+          }
+        }
+      }
+    } catch { /* SSR inject 누락 / 손상 — fallback */ }
+
     // 🛡️ 2026-05-19 로딩 속도 최적화 (사용자 신고):
     //   이전: profile → (waited) → products/streams/shorts (sequential, 2 round-trips blank screen)
     //   이후: profile 도착 즉시 setLoading(false) → 헤더/탭 렌더링 → 데이터는 백그라운드.

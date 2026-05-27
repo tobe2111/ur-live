@@ -129,6 +129,22 @@ export default function GroupBuyDetailPage() {
       return
     }
     let cancelled = false
+
+    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
+    //   효과: 첫 paint 부터 상세 표시 (axios fetch waterfall ~200-500ms 제거).
+    //   miss 시 useEffect 가 정상 axios fetch (fallback 안전).
+    try {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('__SSR_INITIAL_DETAIL__')
+        if (el?.textContent) {
+          const parsed = JSON.parse(el.textContent)
+          if (parsed?.success && parsed?.data?.id === productId) {
+            setDetail(parsed.data)
+          }
+        }
+      }
+    } catch { /* SSR inject 누락 / 손상 — fallback */ }
+
     Promise.all([
       api.get(`/api/group-buy/products/${productId}`),
       api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
