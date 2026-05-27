@@ -138,7 +138,7 @@ export default function AdminOrdersPage() {
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
       setError(t('admin.orders.k027', { defaultValue: '주문 목록을 불러올 수 없습니다.' }))
-      if (err_.response?.status === 401) navigate('/admin/login')
+      if (err_.response?.status === 401) { /* lib/api.ts interceptor 처리 — refresh 시도 후 실패 시만 redirect. page 가 먼저 navigate 하면 race condition */ }
     } finally { setLoading(false) }
   }, [navigate])
 

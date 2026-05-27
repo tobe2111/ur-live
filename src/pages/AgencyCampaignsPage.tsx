@@ -95,7 +95,7 @@ export default function AgencyCampaignsPage() {
     api.get(`/api/agency/campaigns?status=${tab}`, { headers })
       .then(r => { if (r.data?.success) setCampaigns(r.data.data || []) })
       .catch((e: any) => {
-        if (e?.response?.status === 401) { navigate('/agency/login', { replace: true }); return }
+        if (e?.response?.status === 401) { /* lib/api.ts interceptor 처리 */ return }
         toast.error(t('agency.campaigns.loadFailed', { defaultValue: '캠페인 조회 실패' }))
       })
       .finally(() => setLoading(false))
