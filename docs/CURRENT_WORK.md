@@ -1,7 +1,81 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-25 (Phase 1 링크샵 구현 완료 — 5 commits)
+**최종 업데이트**: 2026-05-27 (로딩 최적화 + 큐레이터 모델 + 리뷰 시스템 + 운영 통합)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8`
+
+---
+
+## ✅ 2026-05-27 세션 — 로딩/큐레이터/리뷰/운영 영구 fix (~50 commits)
+
+### 1. 로딩 최적화 ($0 한도 도달) — CLAUDE.md "🔒 로딩 최적화 잠금" 추가
+- KV write 일 3,744 → **0** (월 $2-5 → $0)
+- `publicCache useKv: false` + CDN-Cache-Control 분리
+- SSR inject **5페이지** (메인 / 공구상세 / 셀러 / vouchers / browse / curator)
+- cron prewarm 5분 + 인기 셀러/상품/큐레이터 top 10 dynamic warm
+- D1 partial composite index (10만 상품 O(log N))
+- 이미지 변환 27+ 호스트 (firebase / pstatic / daumcdn / giftishow / kt) + Save-Data
+- prefetch 4단계 (hover/touch/focus + viewport + speculation prerender)
+- MainHomePage eager + idle prefetch 5탭
+- preload mode mismatch 영구 제거
+- `X-SSR-Status` + `Server-Timing` 헤더 (production 측정)
+- `RestaurantMiniMap` IntersectionObserver lazy
+- 공구 카드 shimmer skeleton
+
+### 2. 큐레이터 모델 — 핵심 흐름 완성
+- 일반 user 도 공개 페이지 (`/u/{handle}` — handle 자동 생성)
+- KakaoAuthService same-email seller auto-link + repair-schema backfill
+- BottomNav 4중 안전망 (seller_username / linked_seller / handle / seller_token JWT decode) + App.tsx idle warming
+- 큐레이터 페이지 셀러 수준 (banner 업로드 / 인라인 편집 / grid-3 통계 / grid-2 CTA / 탭 4개 (홈/상품/식사권/정보) / sticky owner 배너 / 라이트-다크)
+- PATCH `/api/curator/me/profile` (name / bio / profile_image / banner_url)
+- 추천 링크 복사 → 자동 핀 추가 (idempotent)
+- 핀 삭제 본인 view (group-hover ✕)
+- 우하단 📌 담기 FAB (선물 버튼 아래, 1판매당 적립액 표시)
+
+### 3. 자동 로그아웃 영구 fix
+- `RouteGuards.isAdminLoggedIn / isUserLoggedIn` 토큰 존재만 검사
+- KakaoCallback `user_type` 보존 (admin/agency 토큰 있을 때)
+- `isLoggedInSync` 토큰만 검사 → `/my-vouchers` 빈 화면 영구 fix
+
+### 4. 리뷰 시스템 영구 fix
+- D1 트리거 v2: INSERT 즉시 `review_count` + `avg_rating` + **`sold_count = MAX(현재, review × 3)`**
+- `autoSeedFakeReviews` soldMultiplier 3-5 random
+- repair-schema backfill: `sold_count < review × 3` 자동 정정
+- cron `maxBatch 200 → 1000` (시드 처리량 5배)
+- BrowsePage / VouchersPage 카드 review=0 시 "신규" 표시
+
+### 5. KT Alpha 마진 재계산
+- `POST /api/admin/kt-alpha/recalc-prices` (사용자 결정)
+- AdminKtAlphaPage "📊 일괄 재계산" 버튼
+
+### 6. UI / UX
+- PWA 팝업 분홍 네모 제거 + "🎁 앱 설치하면 환영 쿠폰!" (6언어)
+- 교환권 default sort = `price_low`
+- 카드 image fade-in + 카테고리 dominant color
+- 셀러 placeholder name fallback (username)
+- 공구 상세 SNS 버튼 4개 (인스타/유튜브/틱톡/페북) — 채팅/매너온도 X
+- 큐레이터 라이트 테마 토글 지원
+- 장바구니 썸네일 fix
+
+### 7. 운영 통합
+- `/api/admin/ops-status` — schema-repair / 활성 상품 / 24h 주문 / errors / KT Alpha 24h
+- `/api/admin/csp-violations` — CSP 위반 패턴 분석
+- `docs/OPS_RUNBOOK.md` — D1 Migration CI / Secret 회전 (다음 2026-10-27) / KV 모니터링 / 카카오 OAuth 체크리스트
+
+### 8. 사고 영구 fix
+- 공구 detail 500 (sns_tiktok 누락) → 3단계 graceful fallback SQL
+- 링크샵 → /host/new fall through → email fallback + handle 자동 생성 + idle warming
+- 핀 redirect 404 → URL suffix 제거
+- 셀러 ↔ 큐레이터 self-affiliate 차단 검증 (이미 적용)
+
+### 새 세션 진입 시 액션
+1. `CLAUDE.md` 의 "🔒 로딩 최적화 잠금" 27개 항목 절대 변경 X
+2. `docs/OPS_RUNBOOK.md` 사용자 액션 안내 (CI / Secret)
+3. production 즉시 적용 안내:
+   - `POST /api/_internal/repair-schema` — D1 트리거 + backfill
+   - `POST /api/admin/reviews/auto-seed-missing {max_batch:1000}` — 별점 즉시 시드
+   - `curl -sI https://live.ur-team.com/ | grep x-ssr-status` — SSR 검증
+
+---
 
 ## ✅ 2026-05-25 — Phase 3+4 (호스팅 + 정산 + 셀러 승급) 완료
 
