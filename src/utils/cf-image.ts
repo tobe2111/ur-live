@@ -69,6 +69,11 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'gift-img.kt.com',
   'image.kt.com',
   'static.kt.com',
+  // 🛡️ 2026-05-27 (셀러 업로드): ImgBB — 셀러가 상품 이미지를 api.imgbb.com 으로 업로드 후 i.ibb.co 에 호스팅.
+  //   메인/공구/상세 카드에서 자주 노출 → WebP/AVIF 변환 + 1년 immutable cache 효과 큼.
+  'i.ibb.co',
+  // Google 프로필 이미지 (OAuth/Gravatar fallback).
+  'lh3.googleusercontent.com',
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.

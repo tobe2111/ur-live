@@ -1539,6 +1539,8 @@ app.get('/api/image/resize', async (c) => {
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등
     'giftishow.com', // KT Alpha (image / imghub / bizapi / mall / gift / static)
     'kt.com',        // gift-img.kt / image.kt / static.kt
+    'ibb.co',        // ImgBB — 셀러가 api.imgbb.com 으로 업로드한 이미지 (i.ibb.co)
+    'googleusercontent.com', // Google 프로필 (lh3.googleusercontent.com)
   ]
   try {
     const parsed = new URL(url)
