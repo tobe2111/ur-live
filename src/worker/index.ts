@@ -1541,6 +1541,8 @@ app.get('/api/image/resize', async (c) => {
     'kt.com',        // gift-img.kt / image.kt / static.kt
     'ibb.co',        // ImgBB — 셀러가 api.imgbb.com 으로 업로드한 이미지 (i.ibb.co)
     'googleusercontent.com', // Google 프로필 (lh3.googleusercontent.com)
+    'kakaocdn.net',  // 🛡️ 2026-05-27 (메인 페이지 카드 이미지 403 사고): img1/img2/k.kakaocdn.net 카카오 이미지 호스트.
+                     //   cf-image.ts EXTERNAL_PROXY_HOSTS 에 추가했는데 worker ALLOWED_HOSTS 미추가 → /api/image/resize 403 → 카드 이미지 안 보임.
   ]
   try {
     const parsed = new URL(url)
