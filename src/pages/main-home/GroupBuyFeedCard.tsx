@@ -92,7 +92,9 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
           }
         }
       },
-      { rootMargin: '200px' }  // viewport 200px 이전부터 prefetch
+      // 🛡️ 2026-05-27 (트래픽 절감): 200px → 100px. 익명/짧은 체류 사용자가 안 본 카드 prefetch 회피.
+      //   100px = 모바일 약 화면 1/6, 일반 스크롤 속도에서 충분히 미리 받음.
+      { rootMargin: '100px' }
     )
     obs.observe(el)
     return () => obs.disconnect()

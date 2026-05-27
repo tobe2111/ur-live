@@ -1,5 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+// 🛡️ 2026-05-27 (loading P1): VoucherMap (Kakao Maps SDK ~150KB) 별도 chunk lazy.
+//   사용자가 '지도 보기' 토글 시만 로드 → 초기 paint 영향 0.
+const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Gift, Share2 } from 'lucide-react'
@@ -446,10 +450,12 @@ export default function MyVouchersPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {viewMode === 'map' && !loading ? (
-          <VoucherMap
-            vouchers={vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)}
-            onMarkerClick={(v) => setQrVoucher(v)}
-          />
+          <Suspense fallback={<div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-sm text-gray-500" style={{ height: 400 }}>지도 불러오는 중...</div>}>
+            <VoucherMap
+              vouchers={vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)}
+              onMarkerClick={(v) => setQrVoucher(v)}
+            />
+          </Suspense>
         ) : loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />
@@ -545,94 +551,6 @@ function PostJoinShareModal({ data, onClose }: { data: { product_id: number; nam
           나중에
         </button>
       </div>
-    </div>
-  )
-}
-
-/**
- * 🛡️ 2026-05-15: 미사용 voucher 매장들을 카카오 지도에 멀티 마커로 표시.
- * 각 마커 클릭 시 onMarkerClick(voucher) 호출 → QR 모달 오픈.
- *
- * Kakao Maps SDK 가 이미 다른 페이지에서 로드되어 있을 가능성이 높음 (e.g. /restaurant-map).
- * window.kakao 미존재 시 동적 로드.
- */
-function VoucherMap({ vouchers, onMarkerClick }: { vouchers: Voucher[]; onMarkerClick: (v: Voucher) => void }) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<any>(null)
-
-  // useEffect 로 카카오 SDK 로드 + 마커 추가
-  useEffect(() => {
-    if (!containerRef.current || vouchers.length === 0) return
-    const KAKAO_KEY = (import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '') as string
-    if (!KAKAO_KEY) {
-      if (import.meta.env.DEV) console.warn('[VoucherMap] Kakao JS key missing')
-      return
-    }
-
-    function ensureSdkLoaded(): Promise<void> {
-      return new Promise((resolve, reject) => {
-        const w = window as any
-        if (w.kakao && w.kakao.maps) { resolve(); return }
-        const existingScript = document.querySelector(`script[src*="dapi.kakao.com"]`)
-        if (existingScript) {
-          existingScript.addEventListener('load', () => w.kakao?.maps?.load(() => resolve()))
-          existingScript.addEventListener('error', () => reject(new Error('kakao sdk load failed')))
-          return
-        }
-        const s = document.createElement('script')
-        s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&autoload=false`
-        s.async = true
-        s.onload = () => w.kakao.maps.load(() => resolve())
-        s.onerror = () => reject(new Error('kakao sdk load failed'))
-        document.head.appendChild(s)
-      })
-    }
-
-    let cancelled = false
-    ensureSdkLoaded().then(() => {
-      if (cancelled || !containerRef.current) return
-      const w = window as any
-      const lats = vouchers.map(v => Number(v.restaurant_lat))
-      const lngs = vouchers.map(v => Number(v.restaurant_lng))
-      const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length
-      const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length
-      const map = new w.kakao.maps.Map(containerRef.current, {
-        center: new w.kakao.maps.LatLng(centerLat, centerLng),
-        level: 7,
-      })
-      mapRef.current = map
-
-      const bounds = new w.kakao.maps.LatLngBounds()
-      vouchers.forEach((v) => {
-        if (!v.restaurant_lat || !v.restaurant_lng) return
-        const pos = new w.kakao.maps.LatLng(v.restaurant_lat, v.restaurant_lng)
-        bounds.extend(pos)
-        const marker = new w.kakao.maps.Marker({ position: pos, map })
-        const iw = new w.kakao.maps.InfoWindow({
-          content: `<div style="padding:8px 12px;font-size:12px;font-weight:700;color:#111;">${(v.restaurant_name || v.product_name).replace(/</g, '&lt;')}</div>`,
-        })
-        w.kakao.maps.event.addListener(marker, 'mouseover', () => iw.open(map, marker))
-        w.kakao.maps.event.addListener(marker, 'mouseout', () => iw.close())
-        w.kakao.maps.event.addListener(marker, 'click', () => onMarkerClick(v))
-      })
-      if (vouchers.length > 1) map.setBounds(bounds, 40, 40, 40, 40)
-    }).catch((err) => {
-      if (import.meta.env.DEV) console.error('[VoucherMap]', err)
-    })
-    return () => { cancelled = true }
-  }, [vouchers, onMarkerClick])
-
-  if (vouchers.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-12 text-center">
-        <p className="text-sm text-gray-500">지도에 표시할 미사용 식사권이 없어요</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]" style={{ height: 400 }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   )
 }
