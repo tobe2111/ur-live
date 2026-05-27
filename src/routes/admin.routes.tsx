@@ -13,6 +13,7 @@ const AdminBannersPage = lazy(() => import('@/pages/AdminBannersPage'))
 const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage'))
 // 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지
 const AdminPendingSellersPage = lazy(() => import('@/pages/AdminPendingSellersPage'))
+const AdminProspectsPage = lazy(() => import('@/pages/AdminProspectsPage'))
 // 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 업로드
 const AdminBulkTrackingPage = lazy(() => import('@/pages/AdminBulkTrackingPage'))
 // 🛡️ 2026-05-25: 어드민 반품 검수 페이지
@@ -96,6 +97,11 @@ export function AdminRoutes() {
       <Route path="/admin/pending-sellers" element={
         <ProtectedRoute requireAdmin>
           <AdminPendingSellersPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/prospects" element={
+        <ProtectedRoute requireAdmin>
+          <AdminProspectsPage />
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-23: Frontend 에러 대시보드 */}
