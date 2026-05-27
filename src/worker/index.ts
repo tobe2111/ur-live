@@ -509,11 +509,11 @@ app.use('*', async (c, next) => {
       timings.push(`edge;dur=${Date.now() - edgeStart}`);
 
       if (!ssrPayload) {
-        // 🛡️ 2026-05-27: slot 별 self-fetch timeout 분리.
-        //   MAIN / VOUCHERS / BROWSE: 150ms (cron prewarm 으로 cache 거의 hit)
-        //   DETAIL / SELLER: 250ms (dynamic key, prewarm 불가, cache miss 빈도 높음 — D1 응답 기다림)
-        //   링크샵/상세 페이지 로딩 ↑ (cache miss 시 inject 보장 → fetch waterfall 제거).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER') ? 250 : 150;
+        // 🛡️ 2026-05-27 v2: timeout 증가 — cold start 시 fresh inject 보장.
+        //   이전: MAIN 150ms / DETAIL 250ms — cold 시 self-fetch-timeout → 클라가 직접 fetch → 10초+ timeout
+        //   변경: MAIN 1500ms / DETAIL/SELLER 2000ms — wait 후 fresh data inject 보장.
+        //   trade-off: cold 첫 사용자 1-2초 wait. warm 사용자 (99%+) 영향 0 (edge-hit 가 먼저 응답).
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER') ? 2000 : 1500;
         const ctlr = new AbortController();
         const timer = setTimeout(() => ctlr.abort(), timeoutMs);
         const selfStart = Date.now();
