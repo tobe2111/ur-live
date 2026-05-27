@@ -79,7 +79,7 @@ export default function AgencyMembersPage() {
     api.get('/api/agency/members', { headers })
       .then(r => { if (r.data?.success) setMembers(r.data.data || []) })
       .catch((e: any) => {
-        if (e?.response?.status === 401) navigate('/agency/login', { replace: true })
+        if (e?.response?.status === 401) { /* lib/api.ts interceptor 처리 — refresh 시도 후 실패 시만 redirect */ }
         else toast.error(t('agency.members.loadFailed', { defaultValue: '멤버 조회 실패' }))
       })
       .finally(() => setLoading(false))

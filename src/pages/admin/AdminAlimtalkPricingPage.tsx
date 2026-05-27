@@ -76,7 +76,7 @@ export default function AdminAlimtalkPricingPage() {
       setStats(statsRes.data.data ?? null)
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      if (err_.response?.status === 401) navigate('/admin/login')
+      if (err_.response?.status === 401) { /* lib/api.ts interceptor 처리 */ }
       else toast.error('데이터를 불러오지 못했습니다')
     } finally {
       setLoading(false)
