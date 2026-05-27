@@ -492,8 +492,13 @@ app.use('*', async (c, next) => {
       } catch { /* edge cache unavailable */ }
 
       if (!ssrPayload) {
+        // 🛡️ 2026-05-27: slot 별 self-fetch timeout 분리.
+        //   MAIN / VOUCHERS / BROWSE: 150ms (cron prewarm 으로 cache 거의 hit)
+        //   DETAIL / SELLER: 250ms (dynamic key, prewarm 불가, cache miss 빈도 높음 — D1 응답 기다림)
+        //   링크샵/상세 페이지 로딩 ↑ (cache miss 시 inject 보장 → fetch waterfall 제거).
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER') ? 250 : 150;
         const ctlr = new AbortController();
-        const timer = setTimeout(() => ctlr.abort(), 150);
+        const timer = setTimeout(() => ctlr.abort(), timeoutMs);
         try {
           const origin = new URL(c.req.url).origin;
           const r = await fetch(`${origin}${ssrTarget.path}`, {

@@ -166,15 +166,18 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
     if (!sellerId) return
     setLoading(true)
 
-    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
-    //   효과: 셀러 헤더 첫 paint 부터 표시 (axios fetch waterfall ~200-500ms 제거).
-    //   miss 시 axios fetch (fallback 안전).
+    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 + 중복 fetch 제거 (영구).
+    //   기존: SSR setSeller 후에도 sellers API axios fetch 재호출 → 중복 RTT 200-500ms
+    //   수정: SSR data 있으면 메인 fetch skip, products/streams/shorts 만 background fetch.
+    //   효과: 링크샵 페이지 첫 paint + 메인 fetch 0 (SSR hit 시).
+    let initialSellerData: any = null
     try {
       if (typeof document !== 'undefined') {
         const el = document.getElementById('__SSR_INITIAL_SELLER__')
         if (el?.textContent) {
           const parsed = JSON.parse(el.textContent)
           if (parsed?.success && parsed?.data) {
+            initialSellerData = parsed.data
             setSeller(parsed.data)
             setLoading(false)
           }
@@ -182,21 +185,11 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       }
     } catch { /* SSR inject 누락 / 손상 — fallback */ }
 
-    // 🛡️ 2026-05-19 로딩 속도 최적화 (사용자 신고):
-    //   이전: profile → (waited) → products/streams/shorts (sequential, 2 round-trips blank screen)
-    //   이후: profile 도착 즉시 setLoading(false) → 헤더/탭 렌더링 → 데이터는 백그라운드.
-    //   각 탭은 자기 데이터 도착 전까지 빈 상태 + skeleton 으로 graceful 표시.
-    api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
-      const sellerData = sellerRes.data.data
-      if (!sellerData) { setSeller(null); setLoading(false); return }
-      setSeller(sellerData)
-      setLoading(false)  // ← 헤더/탭 즉시 노출, 사용자가 빈 화면 안 봄
-
-      // 그 다음 데이터는 백그라운드 병렬 fetch (fire-and-forget)
-      const numericId = sellerData.id
+    // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch helper.
+    const fetchSubData = (numericId: number) => {
       api.get(`/api/products?seller_id=${numericId}&limit=20`)
         .then(r => setProducts(r.data.data || []))
-        .catch(() => { /* graceful — empty list */ })
+        .catch(() => { /* graceful */ })
       api.get(`/api/streams?seller_id=${numericId}&limit=20`)
         .then(r => setStreams(r.data.data || []))
         .catch(() => { /* graceful */ })
@@ -206,6 +199,21 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           setShorts(list.filter((s: Short & { seller_id?: number }) => String(s.seller_id) === String(numericId)))
         })
         .catch(() => { /* graceful */ })
+    }
+
+    if (initialSellerData?.id) {
+      // SSR hit → 메인 fetch 스킵, sub-data 만 background
+      fetchSubData(initialSellerData.id)
+      return
+    }
+
+    // SSR miss → 메인 fetch 후 sub-data
+    api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
+      const sellerData = sellerRes.data.data
+      if (!sellerData) { setSeller(null); setLoading(false); return }
+      setSeller(sellerData)
+      setLoading(false)
+      fetchSubData(sellerData.id)
     }).catch(() => { setSeller(null); setLoading(false) })
   }, [sellerId])
 
