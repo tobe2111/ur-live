@@ -157,8 +157,14 @@ export default function GroupBuyFeed() {
       {/* 피드 — 2열 그리드 (당근식) */}
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 pb-8">
+          {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
+            <div key={i} className="flex flex-col gap-1.5">
+              <div className="aspect-square rounded-xl skeleton-shimmer" />
+              <div className="h-3 w-3/4 rounded skeleton-shimmer mt-1" />
+              <div className="h-4 w-1/2 rounded skeleton-shimmer" />
+              <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
+            </div>
           ))}
         </div>
       ) : sorted.length === 0 ? (

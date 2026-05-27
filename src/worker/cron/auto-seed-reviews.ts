@@ -16,8 +16,12 @@ import { logError, logInfo } from '../utils/logger'
 
 export async function handleAutoSeedReviews(env: Env): Promise<void> {
   try {
+    // 🛡️ 2026-05-27 (사용자 보고 — 카드 별점 미적용): maxBatch 200 → 1000.
+    //   기존 일 200 한도라 신규 상품 + 기존 미처리 상품 적용 지연.
+    //   1000 으로 늘려 1회 호출에 1000개 처리 (hourly 24회 × 1000 = 일 24,000 처리 가능).
+    //   상품 수 적은 환경 (< 1000) 은 1회 호출로 전체 시드 완료.
     const result = await autoSeedMissingReviews(env, {
-      maxBatch: 200,
+      maxBatch: 1000,
       seedMin: 5,
       seedMax: 25,
       seedRatingMin: 4.3,

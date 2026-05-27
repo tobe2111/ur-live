@@ -68,17 +68,24 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         )}
       </span>
 
-      {/* v4: 72x72 rounded-lg image */}
-      {item.image_url ? (
-        <img
-          src={item.image_url}
-          alt={item.product_name}
-          className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A1A1A] shrink-0" loading="lazy" decoding="async" />
-      ) : (
-        <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] shrink-0 flex items-center justify-center">
-          <span className="text-gray-300 dark:text-gray-600 text-[10px]">No img</span>
-        </div>
-      )}
+      {/* 🛡️ 2026-05-27 (사용자 보고): 썸네일 안 보이는 사고 fix.
+            API 응답은 product_image alias, 컴포넌트는 image_url 사용 → fallback 둘 다 검사. */}
+      {(() => {
+        const thumbnail = item.image_url || (item as { product_image?: string }).product_image
+        return thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={item.product_name}
+            className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A1A1A] shrink-0"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] shrink-0 flex items-center justify-center">
+            <span className="text-gray-300 dark:text-gray-600 text-[10px]">No img</span>
+          </div>
+        )
+      })()}
 
       {/* Product info */}
       <div className="flex-1 min-w-0">
