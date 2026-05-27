@@ -138,7 +138,12 @@ export default function CuratorPage() {
         {tab === 'pins' && (
           pins.length === 0
             ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} />
-            : <PinGrid pins={pins} handle={curator.handle} isOwner={isOwner} />
+            : <PinGrid
+                pins={pins}
+                handle={curator.handle}
+                isOwner={isOwner}
+                onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
+              />
         )}
         {tab === 'info' && <InfoTab curator={curator} pinCount={pins.length} totalClicks={totalClicks} />}
       </div>
@@ -146,52 +151,88 @@ export default function CuratorPage() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner }: { pins: CuratorPin[]; handle: string; isOwner: boolean }) {
+function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void }) {
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} />
+        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
       ))}
     </div>
   )
 }
 
-function PinCard({ pin, handle, isOwner, aboveFold }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean }) {
+function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
   const redirectUrl = `/u/${handle}/p/${pin.product_id}/redirect`
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (deleting) return
+    const ok = window.confirm('내 링크샵에서 이 핀을 삭제할까요?')
+    if (!ok) return
+    setDeleting(true)
+    try {
+      const res = await curatorApi.removePin(pin.id)
+      if (res?.success) {
+        onDeleted(pin.id)
+        toast.success('핀 삭제됨')
+      } else {
+        toast.error('삭제 실패')
+      }
+    } catch {
+      toast.error('삭제 실패')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
-    <a href={redirectUrl} className="block bg-[#0A0A0A] rounded-xl overflow-hidden border border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
-      <div className="aspect-square bg-[#121212] relative">
-        {productImg ? (
-          <img
-            src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}
-            srcSet={cfSrcSet(productImg, 200) || undefined}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
-            alt={pin.product_name}
-            loading={aboveFold ? 'eager' : 'lazy'}
-            fetchPriority={aboveFold ? 'high' : 'auto'}
-            decoding="async"
-            onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
-            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">no image</div>
-        )}
-      </div>
-      <div className="p-2.5">
-        <p className="text-xs text-white line-clamp-2 leading-tight">{pin.product_name}</p>
-        <p className="text-sm font-bold text-pink-400 mt-1">{formatWon(pin.price)}</p>
-        {pin.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">💬 {pin.note}</p>}
-        {isOwner && (
-          <p className="text-[10px] text-gray-500 mt-1">
-            👆 {pin.click_count.toLocaleString()} {t('curator.clicks', { defaultValue: '클릭' })}
-          </p>
-        )}
-      </div>
-    </a>
+    <div className="relative group">
+      <a href={redirectUrl} className="block bg-[#0A0A0A] rounded-xl overflow-hidden border border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
+        <div className="aspect-square bg-[#121212] relative">
+          {productImg ? (
+            <img
+              src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}
+              srcSet={cfSrcSet(productImg, 200) || undefined}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+              alt={pin.product_name}
+              loading={aboveFold ? 'eager' : 'lazy'}
+              fetchPriority={aboveFold ? 'high' : 'auto'}
+              decoding="async"
+              onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
+              style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">no image</div>
+          )}
+        </div>
+        <div className="p-2.5">
+          <p className="text-xs text-white line-clamp-2 leading-tight">{pin.product_name}</p>
+          <p className="text-sm font-bold text-pink-400 mt-1">{formatWon(pin.price)}</p>
+          {pin.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">💬 {pin.note}</p>}
+          {isOwner && (
+            <p className="text-[10px] text-gray-500 mt-1">
+              👆 {pin.click_count.toLocaleString()} {t('curator.clicks', { defaultValue: '클릭' })}
+            </p>
+          )}
+        </div>
+      </a>
+      {/* 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼. */}
+      {isOwner && (
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          aria-label="핀 삭제"
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
+        >
+          ✕
+        </button>
+      )}
+    </div>
   )
 }
 
