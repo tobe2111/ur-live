@@ -811,4 +811,84 @@ internalAdminToolsRoutes.get('/api/admin/optimize-db', requireAdmin(), async (c)
   });
 });
 
+// 🛡️ 2026-05-27: 운영 대시보드 통합 status — 한 endpoint 에 SSR/cron/D1/cache 상태.
+//   사용자 요청 — 운영 상태 점검 위해 분산된 정보 통합.
+internalAdminToolsRoutes.get('/api/admin/ops-status', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+    const now = Date.now()
+
+    // 1) 최근 cron 실행 (frontend_errors / cron 로그가 없으면 schema-repair 만)
+    //    schema_repair_history 가 있으면 마지막 실행 시각
+    const lastRepair = await DB.prepare(
+      `SELECT MAX(applied_at) AS at FROM schema_repair_history`
+    ).first<{ at: string | null }>().catch(() => null)
+
+    // 2) D1 row count — 빠른 indicator
+    const productCount = await DB.prepare(`SELECT COUNT(*) AS n FROM products WHERE is_active = 1`)
+      .first<{ n: number }>().catch(() => null)
+    const orderCount = await DB.prepare(`SELECT COUNT(*) AS n FROM orders WHERE created_at >= datetime('now', '-1 day')`)
+      .first<{ n: number }>().catch(() => null)
+
+    // 3) 최근 frontend_errors 5건
+    const errors = await DB.prepare(
+      `SELECT type, message, COUNT(*) AS count, MAX(created_at) AS last_at
+         FROM frontend_errors
+        WHERE created_at >= datetime('now', '-1 day')
+        GROUP BY type, message
+        ORDER BY count DESC
+        LIMIT 5`
+    ).all<{ type: string; message: string; count: number; last_at: string }>()
+      .catch(() => ({ results: [] as any[] }))
+
+    // 4) KT Alpha 발송 최근 24h 통계
+    const ktStats = await DB.prepare(
+      `SELECT status, COUNT(*) AS n FROM voucher_orders
+        WHERE created_at >= datetime('now', '-1 day')
+        GROUP BY status`
+    ).all<{ status: string; n: number }>().catch(() => ({ results: [] as any[] }))
+
+    return c.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      data: {
+        last_schema_repair: lastRepair?.at ?? null,
+        active_products: productCount?.n ?? 0,
+        orders_24h: orderCount?.n ?? 0,
+        recent_errors: errors.results ?? [],
+        kt_alpha_24h: (ktStats.results ?? []).reduce(
+          (acc: Record<string, number>, r) => ({ ...acc, [r.status]: r.n }),
+          {},
+        ),
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: 'ops-status 조회 실패' }, 500)
+  }
+})
+
+// 🛡️ 2026-05-27: CSP violation 누적 분석 — admin endpoint.
+//   /api/csp-report 가 INSERT 만 → admin 이 패턴 보지 못함.
+//   집계: violated_directive + blocked_uri 별 카운트, 최근 24h / 7d.
+internalAdminToolsRoutes.get('/api/admin/csp-violations', requireAdmin(), async (c) => {
+  try {
+    const range = c.req.query('range') === '7d' ? '-7 days' : '-1 day'
+    const { results } = await c.env.DB.prepare(
+      `SELECT violated_directive, blocked_uri, document_uri,
+              COUNT(*) AS count, MAX(created_at) AS last_at
+         FROM csp_violations
+        WHERE created_at >= datetime('now', ?)
+        GROUP BY violated_directive, blocked_uri
+        ORDER BY count DESC
+        LIMIT 50`,
+    ).bind(range).all<{
+      violated_directive: string; blocked_uri: string; document_uri: string;
+      count: number; last_at: string
+    }>().catch(() => ({ results: [] as any[] }))
+    return c.json({ success: true, range, data: results })
+  } catch (err) {
+    return c.json({ success: false, error: 'csp violations 조회 실패' }, 500)
+  }
+})
+
 export { internalAdminToolsRoutes };

@@ -142,7 +142,13 @@ export default function ProfileHeader({
             </div>
           ) : (
             <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
-              {seller.name || t('seller.publicPage.noName')}
+              {/* 🛡️ 2026-05-27: placeholder name ('메인 판매자' 등) 은 다른 사용자에게 username 으로 fallback. */}
+              {(() => {
+                const PLACEHOLDERS = ['메인 판매자', '셀러', '인플루언서', '매장']
+                if (seller.name && !PLACEHOLDERS.includes(seller.name)) return seller.name
+                if (isOwner) return seller.name || t('seller.publicPage.noName')
+                return seller.username || t('seller.publicPage.noName')
+              })()}
               {isOwner && <Pencil className="w-3.5 h-3.5 text-pink-400 inline ml-2 opacity-100" />}
             </h1>
           )}
