@@ -811,6 +811,89 @@ internalAdminToolsRoutes.get('/api/admin/optimize-db', requireAdmin(), async (c)
   });
 });
 
+// 🛡️ 2026-05-27 (사용자 결정): 매장 검수 통합 페이지 endpoint.
+//   pending sellers + NTS 결과 + 영업 증빙 한 번에.
+internalAdminToolsRoutes.get('/api/admin/pending-sellers', requireAdmin(), async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT s.id, s.username, s.business_name, s.business_number, s.representative_name,
+              s.business_start_date, s.phone, s.email, s.store_category, s.seller_type, s.status,
+              s.nts_verified_at, s.nts_verify_result,
+              s.introduced_by_agency_id, s.introduced_by_influencer_id, s.created_at,
+              p.proof_image_url AS prospect_proof_url,
+              p.notes AS prospect_notes
+         FROM sellers s
+         LEFT JOIN seller_prospects p ON p.converted_seller_id = s.id
+        WHERE s.status = 'pending'
+        ORDER BY s.created_at DESC
+        LIMIT 100`
+    ).all().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: results })
+  } catch (err) {
+    return c.json({ success: false, error: 'pending sellers 조회 실패' }, 500)
+  }
+})
+
+// admin NTS 재검증 (수동 trigger)
+internalAdminToolsRoutes.post('/api/admin/sellers/:id/recheck-nts', requireAdmin(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+
+    const seller = await c.env.DB.prepare(
+      `SELECT business_number, representative_name, business_start_date FROM sellers WHERE id = ?`
+    ).bind(id).first<{ business_number: string; representative_name: string | null; business_start_date: string | null }>()
+    if (!seller) return c.json({ success: false, error: 'seller 없음' }, 404)
+    if (!seller.representative_name || !seller.business_start_date) {
+      return c.json({ success: false, error: '대표자명 / 개업일 누락 — 재검증 불가' }, 400)
+    }
+
+    const { ntsValidateBusiness } = await import('../utils/nts-business-verify')
+    const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
+    const r = await ntsValidateBusiness(ntsKey, {
+      businessNumber: seller.business_number,
+      startDate: seller.business_start_date,
+      representative: seller.representative_name,
+    })
+    const resultJson = JSON.stringify({ valid: r.valid, status: r.status, message: r.message })
+
+    if (r.autoApprovable) {
+      await c.env.DB.prepare(
+        `UPDATE sellers SET status = 'approved', nts_verified_at = datetime('now'), nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(resultJson, id).run()
+    } else {
+      await c.env.DB.prepare(
+        `UPDATE sellers SET nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(resultJson, id).run()
+    }
+
+    return c.json({ success: true, message: r.message, autoApproved: r.autoApprovable })
+  } catch (err) {
+    return c.json({ success: false, error: 'NTS 재검증 실패' }, 500)
+  }
+})
+
+// admin prospects 전체 검토 페이지 endpoint
+internalAdminToolsRoutes.get('/api/admin/prospects', requireAdmin(), async (c) => {
+  try {
+    const status = c.req.query('status') || 'visiting'
+    const { results } = await c.env.DB.prepare(
+      `SELECT p.id, p.introducer_type, p.introducer_id,
+              p.store_name, p.contact_name, p.contact_phone, p.contact_email,
+              p.business_address, p.notes, p.proof_image_url,
+              p.status, p.converted_seller_id, p.first_sale_at, p.commission_locked_at,
+              p.expires_at, p.created_at
+         FROM seller_prospects p
+        WHERE p.status = ?
+        ORDER BY p.created_at DESC
+        LIMIT 200`
+    ).bind(status).all().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: results })
+  } catch (err) {
+    return c.json({ success: false, error: 'prospects 조회 실패' }, 500)
+  }
+})
+
 // 🛡️ 2026-05-27: 운영 대시보드 통합 status — 한 endpoint 에 SSR/cron/D1/cache 상태.
 //   사용자 요청 — 운영 상태 점검 위해 분산된 정보 통합.
 internalAdminToolsRoutes.get('/api/admin/ops-status', requireAdmin(), async (c) => {
