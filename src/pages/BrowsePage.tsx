@@ -222,6 +222,23 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
   useEffect(() => {
     setProducts([])
+    // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — category=all 초기 진입 즉시 표시.
+    if (category === 'all') {
+      try {
+        if (typeof document !== 'undefined') {
+          const el = document.getElementById('__SSR_INITIAL_BROWSE__')
+          if (el?.textContent) {
+            const parsed = JSON.parse(el.textContent)
+            if (parsed?.success && Array.isArray(parsed?.data)) {
+              setProducts(parsed.data)
+              setHasMore(parsed.data.length === PAGE_SIZE)
+              setLoading(false)
+              return
+            }
+          }
+        }
+      } catch { /* SSR 누락 — fallback */ }
+    }
     loadProducts(1, true)
   }, [category, loadProducts])
 

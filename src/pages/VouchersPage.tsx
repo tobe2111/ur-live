@@ -205,6 +205,25 @@ export default function VouchersPage() {
   }, [brand, category, sort])
 
   useEffect(() => {
+    // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — no-query 초기 진입 시 즉시 표시.
+    //   worker HTMLRewriter 가 /vouchers (no query) 일 때 __SSR_INITIAL_VOUCHERS__ inject.
+    //   카테고리/브랜드/sort 변경 시 loadProducts 가 다시 axios fetch (fallback).
+    if (!brand && !category && sort === 'price_low' && page === 1) {
+      try {
+        if (typeof document !== 'undefined') {
+          const el = document.getElementById('__SSR_INITIAL_VOUCHERS__')
+          if (el?.textContent) {
+            const parsed = JSON.parse(el.textContent)
+            if (parsed?.success && Array.isArray(parsed?.data)) {
+              setProducts(parsed.data)
+              setHasMore(parsed.data.length === PAGE_SIZE)
+              setLoading(false)
+              return
+            }
+          }
+        }
+      } catch { /* SSR 누락 — fallback */ }
+    }
     loadProducts(1, true)
   }, [brand, category, sort, loadProducts])
 

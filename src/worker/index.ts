@@ -441,18 +441,41 @@ app.use('*', async (c, next) => {
     const url = new URL(c.req.url);
     const isMainPage = url.pathname === '/' || url.pathname === '/index.html';
 
-    // 🛡️ 2026-05-27 (loading P0): SSR data 사전 fetch — robust.
-    //   1차: KV cache read (~50ms). cron prewarm 이 채워 둠 → 보통 hit.
-    //   2차: KV miss 시 self-fetch (150ms timeout) → publicCache middleware 가 자동 KV write.
-    //   결과: cron 안 돌아도, 첫 사용자도, 새 배포 후 첫 요청도 inject 보장.
-    //   timeout 150ms — 메인 응답 지연 캡 (D1 보통 80-200ms).
+    // 🛡️ 2026-05-27 (loading P0): SSR data 사전 fetch — multi-page robust.
+    //   페이지별 critical endpoint 1개를 KV → self-fetch (150ms) 순서로 inject.
+    //   클라이언트는 __SSR_INITIAL_${slot}__ 읽어 useQuery initialData 로 즉시 render.
+    //   - main: /api/group-buy/products?status=active&category=all
+    //   - detail (/group-buy/:id): /api/group-buy/products/:id
+    //   - seller (/profile/:username): /api/sellers/:username/public
+    type SsrTarget = { slot: string; path: string };
+    let ssrTarget: SsrTarget | null = null;
+
+    if (isMainPage) {
+      ssrTarget = { slot: 'MAIN', path: '/api/group-buy/products?status=active&category=all' };
+    } else if (url.pathname === '/vouchers' && !url.search) {
+      // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
+      //   클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.
+      ssrTarget = { slot: 'VOUCHERS', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
+    } else if (url.pathname === '/browse' && !url.search) {
+      ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
+    } else {
+      const detailMatch = url.pathname.match(/^\/group-buy\/(\d+)(?:[/?#]|$)/);
+      if (detailMatch) {
+        ssrTarget = { slot: 'DETAIL', path: `/api/group-buy/products/${detailMatch[1]}` };
+      } else {
+        const profileMatch = url.pathname.match(/^\/profile\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
+        if (profileMatch) {
+          ssrTarget = { slot: 'SELLER', path: `/api/sellers/${profileMatch[1]}/public` };
+        }
+      }
+    }
+
     let ssrPayload: string | null = null;
     let ssrStatus = 'skip';
-    if (isMainPage) {
-      const SSR_PATH = '/api/group-buy/products?status=active&category=all';
+    if (ssrTarget) {
       try {
         const { readKvCacheForSSR } = await import('./middleware/edge-cache');
-        const cached = await readKvCacheForSSR(c.env as unknown as Record<string, unknown>, SSR_PATH);
+        const cached = await readKvCacheForSSR(c.env as unknown as Record<string, unknown>, ssrTarget.path);
         if (cached && cached.status >= 200 && cached.status < 300) {
           ssrPayload = cached.body.replace(/<\/script/gi, '<\\/script');
           ssrStatus = 'kv-hit';
@@ -460,12 +483,11 @@ app.use('*', async (c, next) => {
       } catch { /* KV unavailable */ }
 
       if (!ssrPayload) {
-        // KV miss → self-fetch fallback. publicCache middleware 가 자동 KV write.
         const ctlr = new AbortController();
         const timer = setTimeout(() => ctlr.abort(), 150);
         try {
           const origin = new URL(c.req.url).origin;
-          const r = await fetch(`${origin}${SSR_PATH}`, {
+          const r = await fetch(`${origin}${ssrTarget.path}`, {
             signal: ctlr.signal,
             headers: { 'x-ssr-prefetch': '1', 'User-Agent': 'ur-live-ssr-prefetch/1.0' },
           });
@@ -482,9 +504,10 @@ app.use('*', async (c, next) => {
           clearTimeout(timer);
         }
       }
-      c.res.headers.set('X-SSR-Status', ssrStatus);
+      c.res.headers.set('X-SSR-Status', `${ssrTarget.slot}:${ssrStatus}`);
     }
 
+    const ssrSlot = ssrTarget?.slot ?? 'MAIN';
     const rewritten = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
@@ -494,10 +517,12 @@ app.use('*', async (c, next) => {
       })
       .on('head', {
         element(el) {
-          // 🛡️ SSR inline — 메인 페이지에만, 그리고 KV cache 있을 때만
           if (ssrPayload) {
+            // 🛡️ 2026-05-27: slot-prefixed script id — 클라이언트가 페이지별 inject 구별.
+            //   기존 __SSR_INITIAL_MAIN__ 호환 유지 (main slot 은 같은 id).
+            const scriptId = ssrSlot === 'MAIN' ? '__SSR_INITIAL_MAIN__' : `__SSR_INITIAL_${ssrSlot}__`;
             el.append(
-              `<script id="__SSR_INITIAL_MAIN__" type="application/json">${ssrPayload}</script>`,
+              `<script id="${scriptId}" type="application/json">${ssrPayload}</script>`,
               { html: true },
             );
           }
