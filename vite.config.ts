@@ -131,6 +131,11 @@ export default defineConfig({
           if (id.includes('/src/hooks/useLiveStream')) return 'app-live-components'
           // 셀러/어드민 페이지만 사용하는 utils.
           if (id.includes('/src/utils/product-template')) return 'app-seller-components'
+          // 🛡️ phase 5: 페이지별 hook 분리 (사용처 1곳).
+          if (id.includes('/src/hooks/useCart')) return 'app-cart'
+          if (id.includes('/src/hooks/useSearch')) return 'app-search'
+          // 셀러/어드민/에이전시 Layout 의 토큰 자동 갱신 — Layout 진입 시만 필요.
+          if (id.includes('/src/hooks/useTokenAutoRefresh')) return 'app-auth'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
