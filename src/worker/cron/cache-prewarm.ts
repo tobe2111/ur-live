@@ -26,6 +26,7 @@ import { logInfo, logError } from '../utils/logger';
 
 interface PrewarmEnv {
   FRONTEND_URL?: string;
+  DB?: D1Database;
 }
 
 /**
@@ -106,5 +107,52 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
     logError(`[cron:cache-prewarm] partial failure`, { success, failed, total: HOT_PATHS.length });
   } else {
     logInfo(`[cron:cache-prewarm] warmed ${success}/${HOT_PATHS.length} paths`);
+  }
+
+  // 🛡️ 2026-05-27 (loading P0): 인기 셀러 + 인기 상품 detail dynamic prewarm.
+  //   메인/카테고리 페이지에서 가장 많이 클릭되는 detail / 셀러 페이지 미리 채움.
+  //   첫 사용자도 SSR inject hit 보장 → 0 RTT first paint.
+  //   sub-request 한도 50/invocation 안전 (HOT 13 + dynamic 20 = 33).
+  if (env.DB) {
+    try {
+      // Top 10 인기 셀러 (recent 30일 매출 기준 — 없으면 sellers.id 최신순 fallback)
+      const sellersResult = await env.DB.prepare(
+        `SELECT username FROM sellers
+          WHERE status = 'approved' AND username IS NOT NULL AND username != ''
+          ORDER BY id DESC LIMIT 10`
+      ).all<{ username: string }>().catch(() => ({ results: [] as { username: string }[] }))
+      // Top 10 활성 공구 (group_buy_status='active' + sold_count DESC)
+      const productsResult = await env.DB.prepare(
+        `SELECT id FROM products
+          WHERE is_active = 1 AND (group_buy_status = 'active' OR deal_only = 1)
+          ORDER BY COALESCE(sold_count, 0) DESC, created_at DESC LIMIT 10`
+      ).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }))
+
+      const dynamicPaths: string[] = []
+      for (const s of sellersResult.results ?? []) {
+        if (s.username) dynamicPaths.push(`/api/sellers/${s.username}/public`)
+      }
+      for (const p of productsResult.results ?? []) {
+        if (Number.isFinite(p.id)) dynamicPaths.push(`/api/group-buy/products/${p.id}`)
+      }
+
+      let dynSuccess = 0, dynFailed = 0
+      await Promise.all(
+        dynamicPaths.map(async (path) => {
+          try {
+            const r = await fetch(`${baseUrl}${path}`, {
+              method: 'GET',
+              headers: { 'User-Agent': 'ur-live-cache-prewarm/1.0', 'x-prewarm': '1' },
+            })
+            if (r.ok) dynSuccess++; else dynFailed++
+          } catch { dynFailed++ }
+        })
+      )
+      if (dynamicPaths.length > 0) {
+        logInfo(`[cron:cache-prewarm] dynamic warmed ${dynSuccess}/${dynamicPaths.length} (sellers + products detail)`)
+      }
+    } catch (e) {
+      logError('[cron:cache-prewarm] dynamic prewarm failed', { error: String(e) })
+    }
   }
 }
