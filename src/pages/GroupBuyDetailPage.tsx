@@ -73,9 +73,20 @@ function CategoryEmoji({ cat }: { cat: string }) {
 function CountdownRing({ deadline }: { deadline?: string }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
+    if (!deadline) return
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const tick = () => {
+      const ts = Date.now()
+      setNow(ts)
+      const remain = Math.max(0, new Date(deadline).getTime() - ts)
+      if (remain === 0) return
+      // 1일+ 남으면 60초 단위 (분 표시), 1시간+ 5초 단위, 마감 임박 1초 단위.
+      const next = remain > 86400000 ? 60000 : remain > 3600000 ? 5000 : 1000
+      timer = setTimeout(tick, next)
+    }
+    tick()
+    return () => { if (timer) clearTimeout(timer) }
+  }, [deadline])
   if (!deadline) return null
   const end = new Date(deadline).getTime()
   const diff = Math.max(0, end - now)
@@ -223,8 +234,13 @@ export default function GroupBuyDetailPage() {
         }
       } catch { /* silent */ }
     }
-    // 🛡️ 2026-05-15 (TD-G07): jitter ±2초 — 동시 사용자 많을 때 D1 thundering herd 방어
-    const jitter = () => 5000 + Math.floor((Math.random() - 0.5) * 4000)  // 3-7초
+    // 🛡️ 2026-05-15 (TD-G07): jitter — 동시 사용자 많을 때 D1 thundering herd 방어
+    //   2026-05-27: 마감까지 거리 기반 adaptive — 멀면 길게, 가까우면 짧게 (서버 부하 ↓, UX 유지).
+    const jitter = () => {
+      const deadlineMs = detail.group_buy_deadline ? new Date(detail.group_buy_deadline).getTime() - Date.now() : Infinity
+      const base = deadlineMs > 86400000 ? 20000 : deadlineMs > 3600000 ? 10000 : 5000
+      return base + Math.floor((Math.random() - 0.5) * base * 0.4)
+    }
     const scheduleNext = () => {
       if (cancelled) return
       timer = setTimeout(async () => {
