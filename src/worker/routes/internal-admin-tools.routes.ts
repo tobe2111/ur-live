@@ -811,6 +811,69 @@ internalAdminToolsRoutes.get('/api/admin/optimize-db', requireAdmin(), async (c)
   });
 });
 
+// 🛡️ 2026-05-27 Step G (e2e 검증): 매장 입점 전체 흐름 상태 점검 endpoint.
+//   admin 이 한 번에 production 상태 확인:
+//   - NTS_API_KEY env 등록 여부
+//   - NAVER_CLIENT_ID env 등록 여부
+//   - AI binding 등록 여부
+//   - prospects 테이블 존재 + 컬럼 존재
+//   - 트리거 존재
+//   - cron 활성
+internalAdminToolsRoutes.get('/api/admin/seller-onboarding-status', requireAdmin(), async (c) => {
+  try {
+    const env = c.env as { NTS_API_KEY?: string; NAVER_CLIENT_ID?: string; NAVER_CLIENT_SECRET?: string; AI?: unknown }
+    const checks: Array<{ name: string; ok: boolean; note?: string }> = []
+
+    // env 체크
+    checks.push({ name: 'NTS_API_KEY (자동 진위확인)', ok: !!env.NTS_API_KEY, note: env.NTS_API_KEY ? '활성' : 'data.go.kr 신청 + env 등록 필요' })
+    checks.push({ name: 'NAVER_CLIENT_ID (매장 진위 추가 검증)', ok: !!env.NAVER_CLIENT_ID, note: env.NAVER_CLIENT_ID ? '활성' : '선택 — developers.naver.com' })
+    checks.push({ name: 'AI binding (사업자등록증 OCR)', ok: !!env.AI, note: env.AI ? '활성' : '선택 — wrangler.toml [[ai]] 추가' })
+
+    // DB 컬럼 체크
+    const colCheck = async (col: string) => {
+      try {
+        await c.env.DB.prepare(`SELECT ${col} FROM sellers LIMIT 1`).first()
+        return true
+      } catch { return false }
+    }
+    checks.push({ name: 'sellers.business_start_date 컬럼', ok: await colCheck('business_start_date') })
+    checks.push({ name: 'sellers.nts_verified_at 컬럼', ok: await colCheck('nts_verified_at') })
+    checks.push({ name: 'sellers.nts_verify_result 컬럼', ok: await colCheck('nts_verify_result') })
+
+    // prospects 테이블 체크
+    const prospectTable = await c.env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='seller_prospects'"
+    ).first().catch(() => null)
+    checks.push({ name: 'seller_prospects 테이블', ok: !!prospectTable, note: prospectTable ? '활성' : 'POST /api/_internal/repair-schema 호출 필요' })
+
+    // 트리거 체크
+    const trigger = await c.env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='trigger' AND name='trg_product_reviews_aggregate_insert'"
+    ).first().catch(() => null)
+    checks.push({ name: '리뷰 aggregate 트리거', ok: !!trigger })
+
+    // 통계
+    const pendingCount = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM sellers WHERE status='pending'`)
+      .first<{ n: number }>().catch(() => ({ n: 0 }))
+    const prospectsCount = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM seller_prospects WHERE status='visiting'`)
+      .first<{ n: number }>().catch(() => ({ n: 0 }))
+
+    const okCount = checks.filter(c => c.ok).length
+    return c.json({
+      success: true,
+      health: `${okCount}/${checks.length}`,
+      ready: okCount === checks.length,
+      checks,
+      stats: {
+        pending_sellers: pendingCount?.n ?? 0,
+        visiting_prospects: prospectsCount?.n ?? 0,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: 'onboarding-status 조회 실패' }, 500)
+  }
+})
+
 // 🛡️ 2026-05-27 (사용자 결정): 매장 검수 통합 페이지 endpoint.
 //   pending sellers + NTS 결과 + 영업 증빙 한 번에.
 internalAdminToolsRoutes.get('/api/admin/pending-sellers', requireAdmin(), async (c) => {

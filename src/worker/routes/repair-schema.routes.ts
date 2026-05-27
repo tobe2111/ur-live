@@ -432,6 +432,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       "CREATE INDEX IF NOT EXISTS idx_seller_prospects_phone ON seller_prospects(contact_phone) WHERE status = 'visiting'" },
     { desc: 'idx_seller_prospects_email', sql:
       "CREATE INDEX IF NOT EXISTS idx_seller_prospects_email ON seller_prospects(contact_email) WHERE status = 'visiting'" },
+    // 🛡️ 2026-05-27 Step G: D-3 만료 임박 알림 dedup (1일 1회 발송)
+    { desc: 'seller_prospects.last_expiry_notified_at', sql: "ALTER TABLE seller_prospects ADD COLUMN last_expiry_notified_at DATETIME" },
     { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },
     { desc: 'influencer_balances.payout_method', sql: "ALTER TABLE influencer_balances ADD COLUMN payout_method TEXT DEFAULT 'cash'" },
     // 🛡️ 2026-05-22: migrations 0276 (공구 피드 perf index) 자동 적용.

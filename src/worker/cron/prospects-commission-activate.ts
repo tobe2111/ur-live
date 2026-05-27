@@ -66,6 +66,36 @@ export async function handleProspectsCommissionActivate(env: Env): Promise<void>
       logInfo(`[cron] prospects-commission-activate: ${activated} activated`)
     }
 
+    // 🛡️ 2026-05-27 (Step G): D-3 만료 임박 prospects → 영업자에게 admin 알림 (push 대체).
+    //   영업자가 사장님에게 다시 연락 / 회수 결정 가능.
+    //   admin_notifications 테이블 INSERT (영업자가 본인 dashboard 에서 확인).
+    const { results: expiringSoon } = await env.DB.prepare(
+      `SELECT id, introducer_type, introducer_id, store_name, contact_phone, expires_at
+         FROM seller_prospects
+        WHERE status = 'visiting'
+          AND expires_at IS NOT NULL
+          AND expires_at > datetime('now')
+          AND expires_at <= datetime('now', '+3 days')
+          AND (last_expiry_notified_at IS NULL OR last_expiry_notified_at <= datetime('now', '-1 day'))
+        LIMIT 100`
+    ).all<{ id: number; introducer_type: string; introducer_id: string; store_name: string | null; contact_phone: string | null; expires_at: string }>().catch(() => ({ results: [] as any[] }))
+
+    for (const p of expiringSoon ?? []) {
+      try {
+        const daysLeft = Math.max(0, Math.ceil((new Date(p.expires_at).getTime() - Date.now()) / (24 * 60 * 60_000)))
+        await env.DB.prepare(
+          `INSERT INTO admin_notifications (type, title, body, link, created_at)
+           VALUES ('prospect_expiring', '영업 prospect 만료 임박', ?, '/admin/prospects', datetime('now'))`
+        ).bind(
+          `${p.introducer_type} #${p.introducer_id} 의 prospect (${p.store_name || p.contact_phone}) D-${daysLeft}`
+        ).run().catch(() => null)
+        // 알림 발송 시각 기록 (1일 1회 dedup)
+        await env.DB.prepare(
+          `UPDATE seller_prospects SET last_expiry_notified_at = datetime('now') WHERE id = ?`
+        ).bind(p.id).run().catch(() => null)
+      } catch { /* graceful */ }
+    }
+
     // 만료 처리 — expires_at 지난 visiting prospect status='expired'
     await env.DB.prepare(
       `UPDATE seller_prospects SET status = 'expired', updated_at = datetime('now')
