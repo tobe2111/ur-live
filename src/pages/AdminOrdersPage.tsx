@@ -133,7 +133,8 @@ export default function AdminOrdersPage() {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       if (!token) { navigate('/admin/login'); return }
-      const response = await api.get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
+      // 🛡️ 2026-05-27 (사용자 증가 대비): 무제한 → limit=500. 미래 서버 페이지네이션 도입 시 제거.
+      const response = await api.get('/api/admin/orders?limit=500', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) setOrders(response.data.data)
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };

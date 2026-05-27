@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { lazy, Suspense, useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -15,8 +15,9 @@ import DeferUntilVisible from './admin-page/DeferUntilVisible'
 import ChartSkeleton from './admin-page/ChartSkeleton'
 import AdminRevenueChart from './admin-page/AdminRevenueChart'
 import AdminActivityFeed from './admin-page/AdminActivityFeed'
-import RejectionModal from './admin-page/RejectionModal'
-import BizInfoModal from './admin-page/BizInfoModal'
+// 🛡️ 2026-05-27 (loading P1): 모달 lazy — 사용자가 액션 클릭 시만 fetch.
+const RejectionModal = lazy(() => import('./admin-page/RejectionModal'))
+const BizInfoModal = lazy(() => import('./admin-page/BizInfoModal'))
 import SellersTable from './admin-page/SellersTable'
 import StreamsTable from './admin-page/StreamsTable'
 import PendingSellersTable from './admin-page/PendingSellersTable'
@@ -401,13 +402,15 @@ export default function AdminPage() {
         </div>
       {/* Rejection Modal */}
       {rejectModalOpen && selectedSeller && (
-        <RejectionModal
-          seller={selectedSeller}
-          reason={rejectionReason}
-          onReasonChange={setRejectionReason}
-          onCancel={() => { setRejectModalOpen(false); setSelectedSeller(null); setRejectionReason('') }}
-          onConfirm={rejectSeller}
-        />
+        <Suspense fallback={null}>
+          <RejectionModal
+            seller={selectedSeller}
+            reason={rejectionReason}
+            onReasonChange={setRejectionReason}
+            onCancel={() => { setRejectModalOpen(false); setSelectedSeller(null); setRejectionReason('') }}
+            onConfirm={rejectSeller}
+          />
+        </Suspense>
       )}
 
       {/* ── 실시간 알림 ── */}
@@ -654,12 +657,14 @@ export default function AdminPage() {
       />
       {/* ── 사업자 정보 상세 모달 ── */}
       {bizInfoSeller && (
-        <BizInfoModal
-          seller={bizInfoSeller}
-          onClose={() => setBizInfoSeller(null)}
-          onApprove={approveBizInfo}
-          onReject={rejectBizInfo}
-        />
+        <Suspense fallback={null}>
+          <BizInfoModal
+            seller={bizInfoSeller}
+            onClose={() => setBizInfoSeller(null)}
+            onApprove={approveBizInfo}
+            onReject={rejectBizInfo}
+          />
+        </Suspense>
       )}
       </div>
     </AdminLayout>

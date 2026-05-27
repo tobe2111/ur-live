@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -29,7 +29,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import OrderDetailModal from './seller-orders/OrderDetailModal'
+// 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
+const OrderDetailModal = lazy(() => import('./seller-orders/OrderDetailModal'))
 import { StatusBadge, useStatusText, nextStatusOf } from './seller-orders/statusHelpers'
 import type { Order } from './seller-orders/types'
 
@@ -569,15 +570,17 @@ export default function SellerOrdersPage() {
 
       {/* Order Detail Modal — extracted to ./seller-orders/OrderDetailModal */}
       {showDetail && selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          updating={updating}
-          trackingForm={trackingForm}
-          onTrackingFormChange={setTrackingForm}
-          onClose={() => setShowDetail(false)}
-          onStatusChange={handleStatusChange}
-          onTrackingSubmit={handleTrackingSubmit}
-        />
+        <Suspense fallback={null}>
+          <OrderDetailModal
+            order={selectedOrder}
+            updating={updating}
+            trackingForm={trackingForm}
+            onTrackingFormChange={setTrackingForm}
+            onClose={() => setShowDetail(false)}
+            onStatusChange={handleStatusChange}
+            onTrackingSubmit={handleTrackingSubmit}
+          />
+        </Suspense>
       )}
     </SellerLayout>
   )
