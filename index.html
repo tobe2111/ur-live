@@ -26,6 +26,9 @@
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <!-- 🛡️ 2026-05-24 (loading P0): R2 image host preconnect — 메인페이지 상품 카드 50개 이미지 DNS+TLS 미리 (-100~200ms 첫 이미지). -->
     <link rel="preconnect" href="https://media.ur-team.com" crossorigin />
+    <!-- 🛡️ 2026-05-27 (loading P0): Firebase Storage (상품 이미지 주 호스트) — DNS+TLS resolve 미리. -->
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
     <!-- 🛡️ 2026-05-16: Toss 결제 CDN preconnect — 결제 위젯 첫 로드 latency 단축 -->
     <!-- 🛡️ 2026-05-19: api.tosspayments.com 도 preconnect 로 격상 (widget config / variant_key 호출 단축). -->
     <link rel="preconnect" href="https://js.tosspayments.com" crossorigin />
@@ -59,7 +62,13 @@
     {
       "prerender": [{
         "source": "document",
-        "where": { "href_matches": "/live/*" },
+        "where": {
+          "or": [
+            { "href_matches": "/live/*" },
+            { "href_matches": "/group-buy/*" },
+            { "href_matches": "/products/*" }
+          ]
+        },
         "eagerness": "moderate"
       }],
       "prefetch": [{
