@@ -5,6 +5,7 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -69,6 +70,32 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
 export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveFold?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
+
+  // 🛡️ 2026-05-27 (loading P0): 모바일 viewport prefetch — touch 보다 1-2초 빠름.
+  //   IntersectionObserver 로 카드가 viewport 에 들어오면 자동 prefetch.
+  //   효과: 사용자가 스크롤로 카드를 보기만 해도 detail 데이터 미리 받아두기 → 클릭 시 0ms.
+  //   aboveFold 카드는 즉시 prefetch (observer 없이) — 메인 페이지 진입 시 즉시.
+  const linkRef = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    if (aboveFold) { prefetch(p.id); return }
+    const el = linkRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            prefetch(p.id)
+            obs.disconnect()
+            break
+          }
+        }
+      },
+      { rootMargin: '200px' }  // viewport 200px 이전부터 prefetch
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [aboveFold, p.id, prefetch])
+
   // 🛡️ 2026-05-21: brand 정보 — gift_catalog (gc_*) 우선 → products → 없음.
   const brandName = p.brand_name || p.gc_brand_name || null
   const brandIcon = p.brand_icon_url || p.gc_brand_icon_url || null
@@ -90,6 +117,7 @@ export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCard
 
   return (
     <Link
+      ref={linkRef}
       to={`/group-buy/${p.id}`}
       onMouseEnter={() => prefetch(p.id)}
       onTouchStart={() => prefetch(p.id)}
