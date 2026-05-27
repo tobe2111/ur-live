@@ -87,9 +87,10 @@
       }]
     }
     </script>
-    <!-- 🛡️ 2026-05-25 (loading P1): 메인 페이지 첫 API call preload — 메인 페이지만 trigger.
-         non-main 페이지에서는 warning 발생 ("preloaded but not used") → JS 가 동적 inject.
-         아래 inline script 가 location.pathname='/' 일 때만 preload 추가 (브라우저 warning 회피). -->
+    <!-- 🛡️ 2026-05-27 (loading P0 critical fix): 메인 페이지 첫 API call preload.
+         이전 버그: crossOrigin='anonymous' → axios same-origin credentials mode 와 불일치 →
+                   preload 무효 ("preload but not used") → axios 가 별도 RTT 새 요청 (200-500ms 손해).
+         수정: crossOrigin 속성 제거 — same-origin 요청은 default credentials match. -->
     <script>
       (function(){
         try {
@@ -97,7 +98,7 @@
             var l = document.createElement('link');
             l.rel = 'preload'; l.as = 'fetch';
             l.href = '/api/group-buy/products?status=active&category=all';
-            l.crossOrigin = 'anonymous';
+            // crossOrigin 안 지정 — same-origin 요청 (axios 도 same-origin default) 매칭.
             document.head.appendChild(l);
           }
         } catch(_) {}

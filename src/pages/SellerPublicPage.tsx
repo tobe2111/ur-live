@@ -14,7 +14,6 @@ import HomeTab from './seller-public/HomeTab'
 import ProfileHeader from './seller-public/ProfileHeader'
 import InfoTab from './seller-public/InfoTab'
 import TabsNav from './seller-public/TabsNav'
-import OwnerDashboardFab from './seller-public/OwnerDashboardFab'
 import { getThemeTokens } from './seller-public/theme'
 import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
 
@@ -421,8 +420,8 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         )}
       </div>
 
-      {/* 셀러 본인: 플로팅 대시보드 버튼 */}
-      {isOwner && <OwnerDashboardFab />}
+      {/* 🛡️ 2026-05-27: OwnerDashboardFab 제거 — ProfileHeader 의 grid-2 inline 버튼 (프로필 수정 | 대시보드) 으로 통합.
+          기존 floating FAB 가 상품 카드 가림 → 인라인으로 변경. */}
     </div>
   )
 }

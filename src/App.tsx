@@ -33,7 +33,11 @@ import { AgencyRoutes } from './routes/agency.routes'
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
 // ✅ Public / User 페이지들 lazy loading (초기 번들 크기 최소화)
-const MainHomePage = lazy(() => import('./pages/MainHomePage'))
+// 🛡️ 2026-05-27 (loading P0 critical): MainHomePage eager import — default route 라 lazy 의미 없음.
+//   기존 waterfall: HTML → main chunk → MainHomePage chunk fetch (~50-100ms) → render → axios fetch
+//   변경 waterfall: HTML → main chunk (MainHomePage 포함) → render → axios fetch
+//   → 메인 페이지 첫 paint 50-100ms 단축. 다른 페이지 진입 시는 main bundle 약간 커짐 (trade-off OK — 메인 진입 70%+).
+import MainHomePage from './pages/MainHomePage'
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))

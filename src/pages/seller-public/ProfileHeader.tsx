@@ -4,7 +4,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, Star, MessageCircle, Heart } from 'lucide-react'
+import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, Star, MessageCircle, Heart, Settings } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import FollowButton from './FollowButton'
 import RegularBadge from './RegularBadge'
@@ -168,19 +168,22 @@ export default function ProfileHeader({
             </div>
           </div>
         ) : (
-          <div
-            className={`group mt-2 ${isOwner ? 'cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-pink-500/10 transition-colors' : ''}`}
-            onClick={() => startEdit('bio')}
-          >
-            <p className={`text-sm ${T.textSub} leading-relaxed line-clamp-2`}>
-              {seller.bio || (isOwner ? t('seller.publicPage.enterBio') : '')}
-            </p>
-            {isOwner && (
-              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-pink-400">
-                <Pencil className="w-3 h-3" /> {t('seller.publicPage.clickToEdit', { defaultValue: '클릭하여 편집' })}
-              </span>
-            )}
-          </div>
+          // 🛡️ 2026-05-27: 다른 사용자 view 에서 bio 비어있으면 영역 자체 hide (빈 mt-2 space 제거).
+          (seller.bio || isOwner) && (
+            <div
+              className={`group mt-2 ${isOwner ? 'cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-pink-500/10 transition-colors' : ''}`}
+              onClick={() => startEdit('bio')}
+            >
+              <p className={`text-sm ${T.textSub} leading-relaxed line-clamp-2`}>
+                {seller.bio || (isOwner ? t('seller.publicPage.enterBio') : '')}
+              </p>
+              {isOwner && !seller.bio && (
+                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-pink-400">
+                  <Pencil className="w-3 h-3" /> {t('seller.publicPage.clickToEdit', { defaultValue: '클릭하여 편집' })}
+                </span>
+              )}
+            </div>
+          )
         )}
 
         {/* 통계 */}
@@ -206,14 +209,27 @@ export default function ProfileHeader({
 
         {/* CTA */}
         {isOwner ? (
-          <button
-            type="button"
-            onClick={() => navigate('/seller/profile')}
-            className={`w-full mt-2 py-3 rounded-2xl ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-900'} active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2`}
-          >
-            <Pencil className="w-4 h-4" aria-hidden="true" />
-            {t('seller.publicPage.editProfile', { defaultValue: '프로필 수정' })}
-          </button>
+          // 🛡️ 2026-05-27: 본인 view — 프로필 수정 + 대시보드 inline 2-column.
+          //   기존: 프로필 수정 full-width + OwnerDashboardFab (카드 가림 floating button) → UX 어색
+          //   변경: 둘 다 헤더 안 grid-2 → floating button 제거.
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => navigate('/seller/profile')}
+              className={`py-3 rounded-2xl ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-900'} active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2`}
+            >
+              <Pencil className="w-4 h-4" aria-hidden="true" />
+              {t('seller.publicPage.editProfile', { defaultValue: '프로필 수정' })}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/seller')}
+              className="py-3 rounded-2xl bg-blue-600 text-white active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
+            >
+              <Settings className="w-4 h-4" aria-hidden="true" />
+              {t('seller.dashboard', { defaultValue: '대시보드' })}
+            </button>
+          </div>
         ) : (
           <>
             {/* 🛡️ 2026-05-15: liveNow 일 때 외부 플랫폼 (TikTok/Instagram) 라이브 배지 */}
