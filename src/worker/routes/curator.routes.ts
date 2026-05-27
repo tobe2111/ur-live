@@ -458,6 +458,48 @@ curatorRoutes.patch('/me/handle', requireAuth(), async (c) => {
 })
 
 // ============================================================
+// PATCH /api/curator/me/profile  (requireUser)
+// 🛡️ 2026-05-27 (옵션 C): 큐레이터 인라인 편집 — name / bio / profile_image.
+// 다른 컬럼 (handle) 은 별도 endpoint (cooldown 룰 분리).
+// ============================================================
+curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{ name?: string; bio?: string; profile_image?: string }>().catch(() => ({} as { name?: string; bio?: string; profile_image?: string }))
+
+    const updates: string[] = []
+    const binds: (string | number)[] = []
+    if (typeof body.name === 'string') {
+      const v = body.name.trim().slice(0, 40)
+      if (!v) return c.json({ success: false, error: '이름은 최소 1자 필요' }, 400)
+      updates.push('name = ?')
+      binds.push(v)
+    }
+    if (typeof body.bio === 'string') {
+      updates.push('bio = ?')
+      binds.push(body.bio.trim().slice(0, 500))
+    }
+    if (typeof body.profile_image === 'string') {
+      const v = body.profile_image.trim()
+      if (v && !/^https?:\/\//i.test(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      updates.push('profile_image = ?')
+      binds.push(v)
+    }
+    if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
+
+    binds.push(userId)
+    await c.env.DB.prepare(
+      `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(...binds).run()
+
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '프로필 변경 중 오류가 발생했습니다', '[curator:profile-patch]')
+  }
+})
+
+// ============================================================
 // GET /api/curator/me/dashboard  (requireUser)
 // 큐레이터 대시보드: 30일 적립 / 클릭 / 구매 / top pins / 일별 차트
 // ============================================================
