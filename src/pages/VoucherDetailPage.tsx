@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -56,6 +57,23 @@ export default function VoucherDetailPage() {
   useEffect(() => {
     if (!id) return
     let cancelled = false
+
+    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
+    //   /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint → 같은 __SSR_INITIAL_DETAIL__ slot.
+    //   효과: 첫 paint 부터 상품 표시 (axios fetch waterfall ~200-500ms 제거).
+    try {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('__SSR_INITIAL_DETAIL__')
+        if (el?.textContent) {
+          const parsed = JSON.parse(el.textContent)
+          if (parsed?.success && String(parsed?.data?.id) === String(id)) {
+            setProduct(parsed.data)
+            setLoading(false)
+          }
+        }
+      }
+    } catch { /* SSR 누락 — fallback */ }
+
     api.get(`/api/group-buy/products/${id}`)
       .then(r => {
         if (cancelled) return
@@ -184,7 +202,18 @@ export default function VoucherDetailPage() {
 
       {product.image_url && (
         <div className="w-full aspect-square bg-gray-50">
-          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+          {/* 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP 80KB.
+                LCP 우선 이미지 → eager + fetchPriority=high. */}
+          <img
+            src={cfImage(product.image_url, { width: 800, format: 'auto' }) || product.image_url}
+            srcSet={cfSrcSet(product.image_url, 800) || undefined}
+            sizes="(max-width: 640px) 100vw, 800px"
+            alt={product.name}
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
         </div>
       )}
 
