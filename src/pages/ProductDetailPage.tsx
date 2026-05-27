@@ -653,39 +653,58 @@ export default function ProductDetailPage() {
           </AccordionSection>
         )}
 
-        {/* 공유 + 추천 링크 */}
+        {/* 🛡️ 2026-05-27 (사용자 idea): 큐레이터 CTA — 1판매당 적립액 명확 표시.
+              로그인 사용자: "📌 담기 + 추천 링크 복사" 통합 버튼 + 적립액 부제
+              비로그인: 회원가입 유도 (적립액 미리 표시 — 가입 동기 ↑) */}
         <div className="px-5 py-3 space-y-2">
-          {isLoggedIn && (
-            <button
-              onClick={async () => {
-                const userId = getUserId()
-                const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
-                // 1) clipboard 복사 (즉시)
-                try { await navigator.clipboard.writeText(url) } catch { /* fallback 무시 */ }
-                // 2) 🛡️ 2026-05-27 (사용자 idea): 추천 링크 복사 = 큐레이터 의도 →
-                //    자동으로 본인 링크샵에 핀 추가 (idempotent — 이미 핀이면 ALREADY_PINNED graceful).
-                //    효과: 친구가 링크로 구매 시 큐레이터 적립 + 본인 링크샵에서 영구 노출.
-                let pinAdded = false
-                try {
-                  const res = await api.post('/api/curator/me/pins', { product_id: product.id })
-                  if (res.data?.success) pinAdded = true
-                } catch (err: any) {
-                  if (err?.response?.data?.code !== 'ALREADY_PINNED') {
-                    // 핀 실패는 silent — clipboard 복사는 성공
-                  }
-                }
-                showToast(
-                  pinAdded
-                    ? '🔗 링크 복사 + 내 링크샵에 자동 추가됨'
-                    : t('productDetailPage.shareLinkCopied'),
-                  'success'
-                )
-              }}
-              className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98]"
-            >
-              {t('productDetail.referralCopy', { defaultValue: '🔗 추천 링크 복사 (판매 당 2% 무한 적립)' })}
-            </button>
-          )}
+          {(() => {
+            // 1판매당 큐레이터 적립액 = 가격 × 2% (platform_settings.curator_affiliate_pct default).
+            // 🛡️ 추후 dynamic-policy 동기화 가능 (현재 default 2% — referralCopy 기존 라벨과 일관).
+            const commissionPct = 2
+            const commissionAmount = Math.floor(displayPrice * commissionPct / 100)
+            const isDeal = Number(product.deal_only) === 1
+            const unit = isDeal ? '딜' : '원'
+            const amountStr = `${formatNumber(commissionAmount)}${unit}`
+
+            if (isLoggedIn) {
+              return (
+                <button
+                  onClick={async () => {
+                    const userId = getUserId()
+                    const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
+                    // 1) clipboard 복사 (즉시)
+                    try { await navigator.clipboard.writeText(url) } catch { /* fallback 무시 */ }
+                    // 2) 자동 핀 추가 (idempotent — ALREADY_PINNED graceful)
+                    let pinAdded = false
+                    try {
+                      const res = await api.post('/api/curator/me/pins', { product_id: product.id })
+                      if (res.data?.success) pinAdded = true
+                    } catch { /* silent */ }
+                    showToast(
+                      pinAdded
+                        ? '🔗 링크 복사 + 내 링크샵에 추가됨'
+                        : t('productDetailPage.shareLinkCopied'),
+                      'success'
+                    )
+                  }}
+                  className="w-full py-3.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
+                >
+                  <span className="text-[15px] font-bold">📌 내 링크샵에 담기 + 추천 링크 복사</span>
+                  <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립 — 친구 공유 가능</span>
+                </button>
+              )
+            }
+            // 비로그인 — 회원가입 유도 (적립액 미리 보여서 동기 ↑)
+            return (
+              <button
+                onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
+                className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
+              >
+                <span className="text-[15px] font-bold">🎁 회원가입하고 1판매당 {amountStr} 적립받기</span>
+                <span className="text-[11px] opacity-90">내 링크샵에 담아 친구에게 추천만 해도 수익</span>
+              </button>
+            )
+          })()}
           <KakaoShareButton
             title={product.name}
             description={`${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'} ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
@@ -767,7 +786,10 @@ export default function ProductDetailPage() {
 
       {/* 🛡️ 2026-04-28: 선물하기 버튼 — KakaoConsultButton 와 같은 우하단 영역.
            KakaoConsultButton 이 bottom-20 (80px) 에 위치하므로 그 위 (bottom-36 = 144px) 로
-           배치해 겹침 방지. max-w-[430px] mx-auto 컨테이너로 모바일 정렬도 보존. */}
+           배치해 겹침 방지. max-w-[430px] mx-auto 컨테이너로 모바일 정렬도 보존.
+         🛡️ 2026-05-27 사용자 요청: 선물 버튼 + 그 아래 핀 버튼 (담기) — 우하단 stack.
+           선물: bottom-36 (144px), 핀: bottom-24 (96px), KakaoConsult: bottom-20 (80px).
+           로그인 사용자만 핀 버튼 표시 — 비로그인은 의미 없음. */}
       <div className="fixed bottom-36 left-0 right-0 z-30 px-4 pr-5 pointer-events-none">
         <div className="ur-content-wide mx-auto flex justify-end">
           <button
@@ -779,6 +801,33 @@ export default function ProductDetailPage() {
           </button>
         </div>
       </div>
+      {/* 🛡️ 2026-05-27: 핀 버튼 (담기) — 선물 아래. 로그인 사용자만. 라벨로 명확 표시. */}
+      {isLoggedIn && (
+        <div className="fixed bottom-24 left-0 right-0 z-30 px-4 pr-5 pointer-events-none">
+          <div className="ur-content-wide mx-auto flex justify-end">
+            <button
+              onClick={async () => {
+                try {
+                  const res = await api.post('/api/curator/me/pins', { product_id: product.id })
+                  if (res.data?.success) {
+                    showToast('📌 내 링크샵에 담겼어요', 'success')
+                  }
+                } catch (err: any) {
+                  if (err?.response?.data?.code === 'ALREADY_PINNED') {
+                    showToast('이미 내 링크샵에 있어요', 'success')
+                  } else {
+                    showToast('담기 실패', 'error')
+                  }
+                }
+              }}
+              className="pointer-events-auto inline-flex items-center gap-1.5 h-12 px-4 rounded-full bg-violet-600 text-white shadow-lg active:scale-95 transition-transform text-[13px] font-bold"
+              aria-label="내 링크샵에 담기"
+            >
+              📌 담기
+            </button>
+          </div>
+        </div>
+      )}
 
       {giftModalOpen && (
         <Suspense fallback={null}>
