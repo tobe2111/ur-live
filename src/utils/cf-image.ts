@@ -43,6 +43,21 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'img.youtube.com',
   'k.kakaocdn.net',
   'images.unsplash.com',
+  // 🛡️ 2026-05-27 (사용자 지적): 네이버 image search 결과는 다양한 외부 호스트.
+  //   pstatic / blogfiles / postfiles / search.pstatic — 모두 원본 미변환 시 큰 트래픽.
+  //   worker proxy 경유 → cf.image WebP transform + 1년 immutable cache.
+  'search.pstatic.net',
+  'shop-phinf.pstatic.net',
+  'blogfiles.pstatic.net',
+  'postfiles.pstatic.net',
+  'phinf.pstatic.net',
+  'mblogthumb-phinf.pstatic.net',
+  // 카카오 image 호스트
+  't1.daumcdn.net',
+  'i1.daumcdn.net',
+  'img1.daumcdn.net',
+  'img2.daumcdn.net',
+  'cf.daumcdn.net',
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.

@@ -32,6 +32,7 @@ interface Props {
 }
 
 export default function RestaurantMiniMap({ name, address, lat, lng, height = 220 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
   const [resolvedCoord, setResolvedCoord] = useState<{ lat: number; lng: number } | null>(
@@ -39,9 +40,38 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
   )
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+  // 🛡️ 2026-05-27 (loading P0): IntersectionObserver lazy load — 지도 영역이 viewport
+  //   진입할 때만 Kakao Maps SDK fetch (~100-300KB). 페이지 mount 시 즉시 안 부름.
+  //   사용자가 스크롤로 지도까지 안 오면 SDK 0 fetch.
+  //   효과: 공구 상세 페이지 첫 paint 부터 다른 chunk 와 SDK 경쟁 제거 (LCP 50-150ms ↓).
+  const [shouldLoadSdk, setShouldLoadSdk] = useState(false)
 
-  // SDK 로드 + 좌표 변환 (필요 시)
+  // IntersectionObserver — viewport 진입 시 shouldLoadSdk=true
   useEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setShouldLoadSdk(true)  // 미지원 환경 fallback — 즉시 load
+      return
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setShouldLoadSdk(true)
+            obs.disconnect()
+            break
+          }
+        }
+      },
+      { rootMargin: '300px' },  // viewport 300px 이전부터 load
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  // SDK 로드 + 좌표 변환 (필요 시) — viewport 진입 후만 동작
+  useEffect(() => {
+    if (!shouldLoadSdk) return
     let cancelled = false
     ensureKakaoMaps()
       .then(() => {
@@ -69,7 +99,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
         setError('지도 로드 실패')
       })
     return () => { cancelled = true }
-  }, [address, resolvedCoord])
+  }, [shouldLoadSdk, address, resolvedCoord])
 
   // 좌표 확정 후 지도 렌더
   useEffect(() => {
@@ -106,7 +136,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
   if (!address && !resolvedCoord) return null
 
   return (
-    <div className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] overflow-hidden">
+    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] overflow-hidden">
       <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-start gap-2 min-w-0">
           <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />

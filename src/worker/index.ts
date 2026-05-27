@@ -1501,7 +1501,14 @@ app.get('/api/image/resize', async (c) => {
   if (!url) return c.json({ success: false, error: 'url required' }, 400);
 
   // SSRF 방어: 허용된 도메인만 프록시
-  const ALLOWED_HOSTS = ['firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com', 'live.ur-team.com', 'ur-live.pages.dev']
+  // 🛡️ 2026-05-27 (사용자 지적): naver image search / 카카오 daumcdn 호스트 추가.
+  //   셀러 등록 시 naver 이미지 선택 → 다양한 외부 호스트 image_url 저장 → 변환 없으면 큰 트래픽.
+  const ALLOWED_HOSTS = [
+    'firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com',
+    'live.ur-team.com', 'ur-live.pages.dev',
+    'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
+    'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등
+  ]
   try {
     const parsed = new URL(url)
     if (!ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
