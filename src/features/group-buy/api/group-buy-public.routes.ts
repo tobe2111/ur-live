@@ -143,9 +143,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     // 🛡️ 2026-05-23 v2: SSOT product-flow.ts 와 정합 + 존재하는 컬럼만 사용.
     //   v1 fix 가 존재하지 않는 group_buy_active 컬럼 참조 → 500.
     //   v2: deal_only + group_buy_status='active' (둘 다 production 스키마에 존재).
+    // 🛡️ 2026-05-27 (사용자 요청): 공구 상세에 셀러 SNS 버튼 — 전체 SNS 컬럼 노출.
     const product = await DB.prepare(`
-      SELECT p.*, s.name as seller_name, s.profile_image as seller_avatar,
-             s.bio as seller_bio, s.sns_instagram as seller_instagram
+      SELECT p.*, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
+             s.bio as seller_bio,
+             s.sns_instagram as seller_instagram, s.sns_youtube as seller_youtube,
+             s.sns_tiktok as seller_tiktok, s.sns_facebook as seller_facebook
       FROM products p
       LEFT JOIN sellers s ON p.seller_id = s.id
       WHERE p.id = ?
@@ -154,7 +157,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           OR p.deal_only = 1
           OR p.group_buy_status = 'active'
         )
-    `).bind(id).first<GroupBuyProductRow & { seller_name?: string; seller_avatar?: string; seller_bio?: string; seller_instagram?: string }>()
+    `).bind(id).first<GroupBuyProductRow & {
+      seller_name?: string; seller_username?: string; seller_avatar?: string; seller_bio?: string;
+      seller_instagram?: string; seller_youtube?: string; seller_tiktok?: string; seller_facebook?: string;
+    }>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 

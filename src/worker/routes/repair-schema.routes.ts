@@ -327,6 +327,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.external_live_tiktok', sql: "ALTER TABLE sellers ADD COLUMN external_live_tiktok TEXT" },
     { desc: 'sellers.external_live_instagram', sql: "ALTER TABLE sellers ADD COLUMN external_live_instagram TEXT" },
     { desc: 'sellers.external_live_facebook', sql: "ALTER TABLE sellers ADD COLUMN external_live_facebook TEXT" },
+    // 🛡️ 2026-05-27 (사용자 결정): 공구 상세에 셀러 SNS 버튼 노출 — 채팅/매너온도 X.
+    //   기존 4개 (sns_instagram/youtube/facebook/twitter) 외 sns_tiktok 추가.
+    { desc: 'sellers.sns_tiktok', sql: "ALTER TABLE sellers ADD COLUMN sns_tiktok TEXT" },
     { desc: 'sellers.kakao_chat_url', sql: "ALTER TABLE sellers ADD COLUMN kakao_chat_url TEXT" },
     { desc: 'sellers.representative_name', sql: "ALTER TABLE sellers ADD COLUMN representative_name TEXT" },
     { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },
