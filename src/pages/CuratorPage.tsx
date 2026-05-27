@@ -164,7 +164,9 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
 function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
-  const redirectUrl = `/u/${handle}/p/${pin.product_id}/redirect`
+  // 🛡️ 2026-05-27 (404 fix — 사용자 보고): SPA route 는 /u/:handle/p/:productId (no /redirect suffix).
+  //   /redirect suffix 는 worker /api/curator/... endpoint 용. SPA fallback 은 CuratorPinClientRedirect 가 자동 호출.
+  const redirectUrl = `/u/${handle}/p/${pin.product_id}`
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete(e: React.MouseEvent) {
