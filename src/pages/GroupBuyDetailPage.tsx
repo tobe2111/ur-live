@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2, Instagram, Youtube, Facebook, Music2 } from 'lucide-react'
-import { getTossPayments } from '@/lib/toss-preload'
+import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2 } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
@@ -11,12 +10,16 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { reportFunnel } from '@/lib/web-vitals-report'
-import Confetti from '@/components/group-buy/Confetti'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
-import RestaurantMiniMap from '@/components/RestaurantMiniMap'
-// 🛡️ 2026-05-21: 교환권 리뷰 — 상품 상세와 동일 컴포넌트 (product_reviews 테이블 공통).
-import ProductReviewsSection from '@/pages/product-detail/ProductReviews'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
+
+// 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
+//   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
+//   - RestaurantMiniMap: 매장 정보 아래 (fold 직후, Kakao Maps SDK 포함)
+//   - ProductReviewsSection: 페이지 맨 아래
+const Confetti = lazy(() => import('@/components/group-buy/Confetti'))
+const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
+const ProductReviewsSection = lazy(() => import('@/pages/product-detail/ProductReviews'))
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -462,7 +465,11 @@ export default function GroupBuyDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
+      {showConfetti && (
+        <Suspense fallback={null}>
+          <Confetti onDone={() => setShowConfetti(false)} />
+        </Suspense>
+      )}
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
@@ -635,12 +642,14 @@ export default function GroupBuyDetailPage() {
         {/* 🛡️ 2026-05-17: 매장 위치 미니 지도 — 매장 기반 voucher 의 위치 발견성 향상.
               restaurant_lat/lng 우선 사용, 없으면 address 로 geocoding. */}
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
-          <RestaurantMiniMap
-            name={detail.restaurant_name}
-            address={detail.restaurant_address}
-            lat={detail.restaurant_lat}
-            lng={detail.restaurant_lng}
-          />
+          <Suspense fallback={<div className="bg-white rounded-2xl border border-gray-100 dark:border-[#1A1A1A]" style={{ height: 200 }} />}>
+            <RestaurantMiniMap
+              name={detail.restaurant_name}
+              address={detail.restaurant_address}
+              lat={detail.restaurant_lat}
+              lng={detail.restaurant_lng}
+            />
+          </Suspense>
         )}
 
         {/* 진행 현황 + 티어 */}
@@ -862,7 +871,9 @@ export default function GroupBuyDetailPage() {
         {/* 🛡️ 2026-05-21: 교환권에도 리뷰 작성/조회 가능 (사용자 요청).
               product_reviews 테이블은 일반 상품과 공통 — 동일 컴포넌트 재사용.
               productId 는 number 로 명시 (ProductReviews 내부 일관성 — POST 시 Number(productId) 호출). */}
-        <ProductReviewsSection productId={Number(detail.id)} />
+        <Suspense fallback={null}>
+          <ProductReviewsSection productId={Number(detail.id)} />
+        </Suspense>
 
         <div style={{ height: 100 }} />
       </main>
