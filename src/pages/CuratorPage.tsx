@@ -29,13 +29,36 @@ const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
   const { t } = useTranslation()
-  const [data, setData] = useState<CuratorPageResponse | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<CuratorPageResponse | null>(() => {
+    // 🛡️ 2026-05-27 (로딩 영구 fix): worker HTMLRewriter __SSR_INITIAL_CURATOR__ 즉시 사용.
+    //   첫 paint 부터 표시 (axios fetch waterfall 200-500ms 제거).
+    try {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('__SSR_INITIAL_CURATOR__')
+        if (el?.textContent) {
+          const parsed = JSON.parse(el.textContent)
+          if (parsed?.success && parsed?.curator?.handle === handle) return parsed
+        }
+      }
+    } catch { /* SSR 누락 — fallback */ }
+    return null
+  })
+  const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<CuratorTab>('pins')
   const [monthEarnings, setMonthEarnings] = useState(0)
   const currentUser = useAuthStore((s: any) => s.user)
-  const isOwner = Boolean(currentUser && data?.curator && Number(currentUser.id) === data.curator.id)
+  // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
+  //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
+  const isOwner = (() => {
+    if (!data?.curator) return false
+    if (currentUser && Number(currentUser.id) === data.curator.id) return true
+    try {
+      const localUserId = localStorage.getItem('user_id')
+      if (localUserId && Number(localUserId) === data.curator.id) return true
+    } catch { /* localStorage unavailable */ }
+    return false
+  })()
 
   // 🛡️ 2026-05-27 (옵션 C): 본인 view 에서만 dashboard 추가 fetch — 30일 적립 노출.
   useEffect(() => {
