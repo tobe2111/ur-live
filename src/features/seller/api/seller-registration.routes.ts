@@ -138,29 +138,13 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const validSellerTypes = ['influencer', 'store_owner', 'both'] as const;
     const resolvedSellerType = seller_type && validSellerTypes.includes(seller_type) ? seller_type : 'influencer';
 
-    // 🛡️ 2026-05-27 (사용자 결정): 국세청 사업자등록정보 진위확인 → 자동 승인.
-    //   대표자명 + 개업일 제공 시 NTS API 호출 → 진위 일치 + 계속사업자면 status='approved' 자동.
-    //   미제공 또는 API 키 없으면 기존 동작 (status='pending' 수동 검수).
-    //   graceful: API 호출 실패도 가입 흐름 차단 X.
-    let autoStatus: 'pending' | 'approved' = 'pending'
-    let ntsResultJson: string | null = null
-    let ntsVerifiedAt: string | null = null
-    if (representative_name && business_start_date) {
-      try {
-        const { ntsValidateBusiness } = await import('../../../worker/utils/nts-business-verify')
-        const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
-        const r = await ntsValidateBusiness(ntsKey, {
-          businessNumber: business_number,
-          startDate: business_start_date,
-          representative: representative_name,
-        })
-        ntsResultJson = JSON.stringify({ valid: r.valid, status: r.status, message: r.message })
-        if (r.autoApprovable) {
-          autoStatus = 'approved'
-          ntsVerifiedAt = new Date().toISOString()
-        }
-      } catch { /* graceful — 가입 진행 */ }
-    }
+    // 🛡️ 2026-05-27 v2 (UX 영구 fix): NTS API 호출 비동기 처리 — 가입 응답 즉시 (5초 차단 X).
+    //   기존: 동기 호출 → 가입 응답 5초 대기 → 모바일 UX 나쁨
+    //   변경: status='pending' 으로 INSERT → waitUntil 비동기 검증 → 진위 일치 시 status='approved' UPDATE.
+    //   대표자/개업일 미제공 또는 NTS_API_KEY 없으면 비동기 호출 skip (기존 pending 유지).
+    const autoStatus: 'pending' | 'approved' = 'pending'  // 초기 pending — 비동기 검증 후 update
+    const ntsResultJson: string | null = null
+    const ntsVerifiedAt: string | null = null
 
     // 셀러 등록 (자동 승인 또는 pending)
     const result = await db.prepare(`
@@ -207,6 +191,41 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
           ).bind(matched.introducerId, Number(result.meta.last_row_id)).run().catch(() => null)
         }
       } catch { /* graceful */ }
+    }
+
+    // 🛡️ 2026-05-27 v2 (UX 영구 fix): NTS 진위확인 비동기 — 가입 응답 즉시, 검증은 background.
+    //   진위 일치 + 계속사업자 → status='approved' UPDATE (사용자가 가입 직후 reload 시 활성)
+    //   미일치 → 어드민 수동 (status='pending' 유지)
+    //   사용 가능한 ctx — Hono 에서는 c.executionCtx
+    if (representative_name && business_start_date && result.meta.last_row_id) {
+      const sellerId = Number(result.meta.last_row_id)
+      const verifyAsync = async () => {
+        try {
+          const { ntsValidateBusiness } = await import('../../../worker/utils/nts-business-verify')
+          const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
+          const r = await ntsValidateBusiness(ntsKey, {
+            businessNumber: business_number,
+            startDate: business_start_date,
+            representative: representative_name,
+          })
+          const resultJson = JSON.stringify({ valid: r.valid, status: r.status, message: r.message })
+          if (r.autoApprovable) {
+            await db.prepare(
+              `UPDATE sellers SET status = 'approved', nts_verified_at = datetime('now'), nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
+            ).bind(resultJson, sellerId).run().catch(() => null)
+          } else {
+            await db.prepare(
+              `UPDATE sellers SET nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
+            ).bind(resultJson, sellerId).run().catch(() => null)
+          }
+        } catch { /* graceful — pending 유지 */ }
+      }
+      try {
+        c.executionCtx.waitUntil(verifyAsync())
+      } catch {
+        // executionCtx 미가용 — 동기 호출 fallback (최후 수단)
+        verifyAsync().catch(() => null)
+      }
     }
 
     // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑

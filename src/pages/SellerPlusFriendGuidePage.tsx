@@ -11,8 +11,10 @@ import { useState } from 'react'
 import SEO from '@/components/SEO'
 
 const PLUS_FRIEND_KEY = 'seller_plus_friend_added_v1'
-const KAKAO_CHANNEL_URL = 'https://pf.kakao.com/_xXXxXxXx'  // 실제 유어딜 카카오 채널 URL (사용자 설정 필요)
-const KAKAO_CHANNEL_ID = '@유어딜'
+// 🛡️ 2026-05-27: 카카오 채널 URL — env 우선, fallback default.
+//   Vite 빌드 시 import.meta.env.VITE_KAKAO_CHANNEL_URL 치환 (Cloudflare Pages env 등록).
+const KAKAO_CHANNEL_URL = (import.meta.env.VITE_KAKAO_CHANNEL_URL as string | undefined) || 'https://pf.kakao.com/'
+const KAKAO_CHANNEL_ID = (import.meta.env.VITE_KAKAO_CHANNEL_ID as string | undefined) || '@유어딜'
 
 export default function SellerPlusFriendGuidePage() {
   const [confirmed, setConfirmed] = useState(false)
