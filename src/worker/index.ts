@@ -465,7 +465,8 @@ app.use('*', async (c, next) => {
       if (detailMatch) {
         ssrTarget = { slot: 'DETAIL', path: `/api/group-buy/products/${detailMatch[1]}` };
       } else {
-        const profileMatch = url.pathname.match(/^\/profile\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
+        // 🛡️ 2026-05-27: /profile/:sellerId 외 /s/:sellerId 도 동일 SellerPublicPage — SSR inject 확장.
+        const profileMatch = url.pathname.match(/^\/(?:profile|s)\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
         if (profileMatch) {
           ssrTarget = { slot: 'SELLER', path: `/api/sellers/${profileMatch[1]}/public` };
         } else {

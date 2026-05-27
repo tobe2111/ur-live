@@ -232,11 +232,14 @@ productsRoutes.get('/', cors(), async (c) => {
 
     // 🛡️ 2026-05-24 (loading P0): 브라우저 + Cloudflare edge HTTP cache.
     //   검색 (safeSearch 있음) / 인증 후 응답이 변하는 case 는 캐시 회피 (private).
-    //   일반 목록 (카테고리/페이지) → public 5분.
+    //   일반 목록 (카테고리/페이지) → public.
+    // 🛡️ 2026-05-27 (loading P1): Cache-Control / CDN-Cache-Control 분리 — publicCache middleware 동일 패턴.
+    //   브라우저 60s (신선도) + CF edge 900s (worker invocation 그대로, 비용 0).
     if (safeSearch) {
       c.header('Cache-Control', 'private, no-cache')
     } else {
-      c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
+      c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+      c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
     }
     return c.json({
       success: true,

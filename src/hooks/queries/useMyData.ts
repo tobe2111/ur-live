@@ -56,6 +56,8 @@ export function useMyOrders(filters?: { status?: string; limit?: number }) {
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+    // 🛡️ 2026-05-27: voucher 와 동일 안전망 — invalidate 누락 시에도 페이지 진입 시 fresh.
+    refetchOnMount: 'always',
   })
 }
 
@@ -93,6 +95,7 @@ export function useMyAppointments() {
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
   })
 }
 
@@ -105,4 +108,9 @@ export function useInvalidateMyOrders() {
 export function useInvalidateMyVouchers() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries({ queryKey: queryKeys.myVouchers() })
+}
+
+export function useInvalidateMyAppointments() {
+  const qc = useQueryClient()
+  return () => qc.invalidateQueries({ queryKey: queryKeys.myAppointments() })
 }

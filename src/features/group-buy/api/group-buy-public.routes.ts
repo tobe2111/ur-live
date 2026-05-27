@@ -198,10 +198,22 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     // 🛡️ 2026-05-15: 티어 정보 + 다음 tier 까지 남은 인원 함께 반환
     const tierInfo = calcTierDiscount(product.group_buy_tiers, Number(product.group_buy_current ?? 0))
 
+    // 🛡️ 2026-05-27 (loading P1): tiers JSON 을 서버에서 미리 parse — 클라이언트 JSON.parse 제거 + 응답 이스케이프 절감.
+    let parsedTiers: Array<{ min: number; discount_pct: number }> | null = null
+    try {
+      if (product.group_buy_tiers) {
+        const arr = JSON.parse(product.group_buy_tiers as unknown as string) as unknown
+        if (Array.isArray(arr)) {
+          parsedTiers = (arr as Array<{ min: number; discount_pct: number }>).sort((a, b) => a.min - b.min)
+        }
+      }
+    } catch { /* invalid JSON — null */ }
+
     return c.json({
       success: true,
       data: {
         ...product,
+        group_buy_tiers: parsedTiers,  // string → array (호환: 클라이언트 useMemo 가 둘 다 handle)
         current_discount_pct: tierInfo.discount_pct,
         next_tier: tierInfo.next_tier,
         next_tier_remaining: tierInfo.next_tier ? Math.max(0, tierInfo.next_tier.min - Number(product.group_buy_current ?? 0)) : null,
