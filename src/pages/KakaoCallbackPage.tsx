@@ -46,7 +46,13 @@ export default function KakaoCallbackPage() {
         const { user, seller_token, agency_token, seller, agency } = res.data.data
 
         // ── localStorage 설정 (공통) ──
-        localStorage.setItem('user_type', 'user')
+        // 🛡️ 2026-05-27 (이중 로그인 보호): admin/agency 토큰 있으면 user_type/active_role 덮어쓰지 않음.
+        //   user_type 은 DISPLAY 컨텍스트 — 마지막 로그인 컨텍스트 우선. RouteGuards 는 이미 token-based.
+        const hasOtherRoleToken = !!(localStorage.getItem('admin_token') || localStorage.getItem('agency_token'))
+        if (!hasOtherRoleToken) {
+          localStorage.setItem('user_type', 'user')
+          localStorage.setItem('active_role', 'user')
+        }
         localStorage.setItem('user_id', String(user.id))
         localStorage.setItem('user_name', user.name || '')
         localStorage.setItem('session_login', 'true')

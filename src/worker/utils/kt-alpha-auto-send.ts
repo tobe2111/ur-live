@@ -240,5 +240,21 @@ export async function autoSendKtAlphaVouchersForOrders(
     }
   }
 
+  // 🛡️ 2026-05-27: 발송 실패 / 오류 발생 시 Discord 즉시 알림 (DISCORD_WEBHOOK_URL 있을 때만).
+  //   기존: errors 배열 반환 — admin 이 voucher-transactions 페이지 보러 가야 인지.
+  //   변경: 실패 / errors 있으면 즉시 webhook → 운영자 즉시 대응.
+  //   비용: 0 (Discord webhook 무료). silent fail 시 best-effort skip.
+  if (totalFailed > 0 || errors.length > 0) {
+    const webhook = (env as { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL
+    if (webhook) {
+      try {
+        const { sendDiscordAlert } = await import('./discord-alert')
+        const summary = `발송 ${totalSent}건 / 실패 ${totalFailed}건${errors.length > 0 ? ` / 오류 ${errors.length}건` : ''}`
+        const detail = errors.slice(0, 5).join('\n').slice(0, 1500)
+        await sendDiscordAlert(webhook, `🟡 KT Alpha 발송 이슈`, `${summary}\n\n${detail}`, totalFailed > 0 ? 'error' : 'warn')
+      } catch { /* webhook 자체 실패는 무시 */ }
+    }
+  }
+
   return { sent: totalSent, failed: totalFailed, errors }
 }
