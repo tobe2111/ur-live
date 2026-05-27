@@ -57,8 +57,13 @@ async function ensureSellerColumns(db: D1Database) {
 
 sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register', max: 5, windowSec: 3600 }), async (c) => {
   try {
-    const body = await c.req.json<SellerRegisterRequest>();
+    const body = await c.req.json<SellerRegisterRequest & {
+      representative_name?: string
+      business_start_date?: string
+    }>();
     const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email, seller_type } = body;
+    const representative_name = body.representative_name?.trim()
+    const business_start_date = body.business_start_date?.trim()
 
     // 필수 필드 검증
     if (!username || !email || !password || !name || !business_name || !business_number || !phone || !youtube_email) {
@@ -133,12 +138,38 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const validSellerTypes = ['influencer', 'store_owner', 'both'] as const;
     const resolvedSellerType = seller_type && validSellerTypes.includes(seller_type) ? seller_type : 'influencer';
 
-    // 셀러 등록 (pending 상태로)
+    // 🛡️ 2026-05-27 (사용자 결정): 국세청 사업자등록정보 진위확인 → 자동 승인.
+    //   대표자명 + 개업일 제공 시 NTS API 호출 → 진위 일치 + 계속사업자면 status='approved' 자동.
+    //   미제공 또는 API 키 없으면 기존 동작 (status='pending' 수동 검수).
+    //   graceful: API 호출 실패도 가입 흐름 차단 X.
+    let autoStatus: 'pending' | 'approved' = 'pending'
+    let ntsResultJson: string | null = null
+    let ntsVerifiedAt: string | null = null
+    if (representative_name && business_start_date) {
+      try {
+        const { ntsValidateBusiness } = await import('../../../worker/utils/nts-business-verify')
+        const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
+        const r = await ntsValidateBusiness(ntsKey, {
+          businessNumber: business_number,
+          startDate: business_start_date,
+          representative: representative_name,
+        })
+        ntsResultJson = JSON.stringify({ valid: r.valid, status: r.status, message: r.message })
+        if (r.autoApprovable) {
+          autoStatus = 'approved'
+          ntsVerifiedAt = new Date().toISOString()
+        }
+      } catch { /* graceful — 가입 진행 */ }
+    }
+
+    // 셀러 등록 (자동 승인 또는 pending)
     const result = await db.prepare(`
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
-        phone, address, description, youtube_email, seller_type, status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+        phone, address, description, youtube_email, seller_type,
+        representative_name, business_start_date, nts_verified_at, nts_verify_result,
+        status, commission_rate, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,
@@ -150,11 +181,32 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       address || null,
       description || null,
       youtube_email,
-      resolvedSellerType
+      resolvedSellerType,
+      representative_name || null,
+      business_start_date || null,
+      ntsVerifiedAt,
+      ntsResultJson,
+      autoStatus
     ).run();
 
     if (!result.success) {
       throw new Error('Failed to create seller account');
+    }
+
+    // 🛡️ 2026-05-27 (영업 검증 Layer 2): prospects 사전 등록 매칭.
+    //   영업자가 prospects 에 사전 등록한 사장님이면 자동 introduced_by_X_id 매핑.
+    //   매장 코드 입력 안 했어도 phone/email 매칭으로 영업자 자동 추적.
+    if (result.meta.last_row_id) {
+      try {
+        const { matchProspectOnSignup } = await import('../../seller-prospects/api/seller-prospects.routes')
+        const matched = await matchProspectOnSignup(db, Number(result.meta.last_row_id), phone, email)
+        if (matched) {
+          const col = matched.introducerType === 'agency' ? 'introduced_by_agency_id' : 'introduced_by_influencer_id'
+          await db.prepare(
+            `UPDATE sellers SET ${col} = ?, introduced_at = datetime('now') WHERE id = ?`
+          ).bind(matched.introducerId, Number(result.meta.last_row_id)).run().catch(() => null)
+        }
+      } catch { /* graceful */ }
     }
 
     // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑

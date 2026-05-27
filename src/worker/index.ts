@@ -159,6 +159,8 @@ import { agencyCouponsRoutes } from '../features/agency/api/agency-coupons.route
 import { agencyMembersRoutes } from '../features/agency/api/agency-members.routes';
 import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.routes';
 import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes';
+// 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
+import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
@@ -1403,6 +1405,7 @@ app.route('/api/agency/calendar', agencyCalendarRoutes);
 // 🛡️ 2026-04-27 Phase 1-3: QR/링크 영입 코드
 app.route('/api/agency/invites', agencyInvitesRoutes);
 app.route('/api/invite', inviteCodePublicRoutes);
+app.route('/api/prospects', prospectsRoutes);
 // 🛡️ 2026-04-27 Phase 1-4: 6대 KPI 대시보드 API
 app.route('/api/agency/kpi', agencyKpiRoutes);
 // 🛡️ 2026-04-27 Phase 1-7: 에이전시 공개 브랜딩 페이지
