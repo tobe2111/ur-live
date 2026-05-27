@@ -107,7 +107,7 @@ export default function CuratorHeader({
         <div className="flex items-end gap-3">
           <div className="relative shrink-0">
             <div
-              className={`w-20 h-20 rounded-full border-4 border-[#020202] bg-[#121212] overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
+              className={`w-20 h-20 rounded-full border-4 border-white dark:border-[#020202] bg-gray-100 dark:bg-[#121212] overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && fileInputRef.current?.click()}
             >
               {curator.profile_image ? (
@@ -152,7 +152,7 @@ export default function CuratorHeader({
                 autoFocus
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="text-xl font-extrabold text-white bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1"
+                className="text-xl font-extrabold text-gray-900 dark:text-white bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1"
                 onKeyDown={(e) => e.key === 'Enter' && saveField('name', editName)}
                 maxLength={40}
               />
@@ -161,7 +161,7 @@ export default function CuratorHeader({
             </div>
           ) : (
             <h1
-              className={`text-xl font-extrabold text-white group ${isOwner ? 'cursor-pointer' : ''}`}
+              className={`text-xl font-extrabold text-gray-900 dark:text-white group ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && setEditingField('name')}
             >
               {curator.name}
@@ -180,11 +180,11 @@ export default function CuratorHeader({
               onChange={(e) => setEditBio(e.target.value)}
               rows={3}
               maxLength={200}
-              className="w-full text-sm text-white bg-[#0A0A0A] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none"
+              className="w-full text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0A0A0A] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none"
             />
             <div className="flex gap-2 mt-1">
               <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
-              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-400 text-xs rounded-lg">취소</button>
+              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
             </div>
           </div>
         ) : (curator.bio || isOwner) && (
@@ -192,7 +192,7 @@ export default function CuratorHeader({
             className={`group mt-2 ${isOwner ? 'cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-pink-500/10 transition-colors' : ''}`}
             onClick={() => isOwner && setEditingField('bio')}
           >
-            <p className="text-sm text-gray-300 leading-relaxed line-clamp-3">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
               {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요' : '')}
             </p>
             {isOwner && !curator.bio && (
@@ -205,16 +205,16 @@ export default function CuratorHeader({
 
         {/* 통계 grid-3 — 셀러 페이지 동일 */}
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
-            <p className="text-[10px] text-gray-400">추천 핀</p>
-            <p className="text-[15px] font-extrabold text-white mt-0.5" style={{ letterSpacing: '-0.02em' }}>{formatNumber(pinCount)}</p>
+          <div className="rounded-2xl px-3 py-2.5 bg-gray-100 dark:bg-white/[0.04]">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">추천 핀</p>
+            <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.02em' }}>{formatNumber(pinCount)}</p>
           </div>
-          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
-            <p className="text-[10px] text-gray-400">누적 클릭</p>
-            <p className="text-[15px] font-extrabold text-white mt-0.5" style={{ letterSpacing: '-0.02em' }}>{formatNumber(totalClicks)}</p>
+          <div className="rounded-2xl px-3 py-2.5 bg-gray-100 dark:bg-white/[0.04]">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">누적 클릭</p>
+            <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.02em' }}>{formatNumber(totalClicks)}</p>
           </div>
-          <div className="rounded-2xl px-3 py-2.5 bg-white/[0.04]">
-            <p className="text-[10px] text-gray-400">30일 적립</p>
+          <div className="rounded-2xl px-3 py-2.5 bg-gray-100 dark:bg-white/[0.04]">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">30일 적립</p>
             <p className="text-[15px] font-extrabold text-pink-400 mt-0.5" style={{ letterSpacing: '-0.02em' }}>
               {isOwner ? formatNumber(monthEarnings) : '—'}
             </p>
@@ -227,7 +227,7 @@ export default function CuratorHeader({
             <button
               type="button"
               onClick={() => setEditingField('name')}
-              className="py-3 rounded-2xl bg-white/[0.08] text-white active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
+              className="py-3 rounded-2xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
             >
               <Pencil className="w-4 h-4" />
               프로필 수정
@@ -254,14 +254,14 @@ export default function CuratorHeader({
             </div>
             <button
               onClick={onCopyLink}
-              className="px-4 py-2.5 bg-[#121212] hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-white transition-colors"
+              className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
               aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
               title="링크 복사"
             >
               <Share2 className="w-4 h-4" />
             </button>
             <button
-              className="px-4 py-2.5 bg-[#121212] hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-white transition-colors"
+              className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
               aria-label="좋아요"
               title="좋아요"
             >
