@@ -126,7 +126,21 @@ export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCard
     >
       {/* 🛡️ 2026-05-21: 사용자 요청 — 첨부 이미지 (참외 카드) 스타일.
             구조: [이미지] [원가 strike] [제목] [할인% + 가격] [⭐평점 + 구매수] */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]">
+      <div
+        className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]"
+        // 🛡️ 2026-05-27 (LQIP 경량 버전): 카테고리별 dominant color placeholder.
+        //   load 전 회색 → 카테고리 색감 (식사 amber / 뷰티 pink 등) → 시각적 단절 ↓.
+        //   이미지 픽셀 분석 없이 카테고리 → 색 매핑 (서버 비용 0).
+        style={{
+          backgroundColor: rawCategory === 'meal_voucher' ? '#fef3c7'
+            : rawCategory === 'beauty_voucher' ? '#fce7f3'
+            : rawCategory === 'stay_voucher' ? '#dbeafe'
+            : rawCategory === 'health_voucher' ? '#d1fae5'
+            : rawCategory === 'pet_voucher' ? '#fed7aa'
+            : rawCategory === 'activity_voucher' ? '#e9d5ff'
+            : undefined,  // etc/default: bg-gray-100 유지
+        }}
+      >
         {p.image_url ? (
           <img
             // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (200px base, 1x/2x/3x DPI).
