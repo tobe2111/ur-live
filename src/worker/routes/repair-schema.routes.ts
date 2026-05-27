@@ -398,6 +398,40 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     ` },
     { desc: 'sellers.kakao_chat_url', sql: "ALTER TABLE sellers ADD COLUMN kakao_chat_url TEXT" },
     { desc: 'sellers.representative_name', sql: "ALTER TABLE sellers ADD COLUMN representative_name TEXT" },
+    // 🛡️ 2026-05-27 (사용자 결정): 국세청 사업자등록정보 진위확인 + 자동 승인 — 개업일/검증 결과 컬럼.
+    { desc: 'sellers.business_start_date', sql: "ALTER TABLE sellers ADD COLUMN business_start_date TEXT" },
+    { desc: 'sellers.nts_verified_at', sql: "ALTER TABLE sellers ADD COLUMN nts_verified_at DATETIME" },
+    { desc: 'sellers.nts_verify_result', sql: "ALTER TABLE sellers ADD COLUMN nts_verify_result TEXT" },
+    // 🛡️ 2026-05-27 (영업 검증 Layer 2 — 사용자 결정): 사장님 사전 등록 (prospects).
+    //   영업자 (agency/influencer) 가 매장 영입 전에 사장님 정보 등록 → 사장님 가입 시 자동 매칭 + commission lock-in.
+    //   부정 방지: prospects.status='converted' 시 영업 commission 활성 (첫 매출 발생 시 — Layer 4).
+    { desc: 'table seller_prospects', sql: `
+      CREATE TABLE IF NOT EXISTS seller_prospects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        introducer_type TEXT NOT NULL,
+        introducer_id TEXT NOT NULL,
+        store_name TEXT,
+        contact_name TEXT,
+        contact_phone TEXT,
+        contact_email TEXT,
+        business_address TEXT,
+        notes TEXT,
+        proof_image_url TEXT,
+        status TEXT NOT NULL DEFAULT 'visiting',
+        converted_seller_id INTEGER,
+        first_sale_at DATETIME,
+        commission_locked_at DATETIME,
+        expires_at DATETIME,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )
+    ` },
+    { desc: 'idx_seller_prospects_introducer', sql:
+      "CREATE INDEX IF NOT EXISTS idx_seller_prospects_introducer ON seller_prospects(introducer_type, introducer_id, status)" },
+    { desc: 'idx_seller_prospects_phone', sql:
+      "CREATE INDEX IF NOT EXISTS idx_seller_prospects_phone ON seller_prospects(contact_phone) WHERE status = 'visiting'" },
+    { desc: 'idx_seller_prospects_email', sql:
+      "CREATE INDEX IF NOT EXISTS idx_seller_prospects_email ON seller_prospects(contact_email) WHERE status = 'visiting'" },
     { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },
     { desc: 'influencer_balances.payout_method', sql: "ALTER TABLE influencer_balances ADD COLUMN payout_method TEXT DEFAULT 'cash'" },
     // 🛡️ 2026-05-22: migrations 0276 (공구 피드 perf index) 자동 적용.
