@@ -89,19 +89,32 @@ curatorRoutes.get('/:handle', async (c) => {
     const DB = c.env.DB
     await ensureCuratorTables(DB)
 
-    const user = await DB.prepare(
-      `SELECT id, handle, name, bio, profile_image, linkshop_theme
+    // 🛡️ 2026-05-27 (사용자 요청): banner_url 도 반환 — 큐레이터 배경 사진.
+    //   banner_url 신규 컬럼 (repair-schema 적용 전 환경 graceful fallback).
+    let user: {
+      id: number; handle: string; name: string; bio: string | null;
+      profile_image: string | null; linkshop_theme: string; banner_url?: string | null
+    } | null = await DB.prepare(
+      `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url
        FROM users WHERE handle = ? LIMIT 1`,
     )
       .bind(handle)
       .first<{
-        id: number
-        handle: string
-        name: string
-        bio: string | null
-        profile_image: string | null
-        linkshop_theme: string
-      }>()
+        id: number; handle: string; name: string; bio: string | null;
+        profile_image: string | null; linkshop_theme: string; banner_url: string | null
+      }>().catch(() => null)
+    if (!user) {
+      // banner_url 컬럼 없는 환경 — fallback
+      user = await DB.prepare(
+        `SELECT id, handle, name, bio, profile_image, linkshop_theme
+         FROM users WHERE handle = ? LIMIT 1`,
+      )
+        .bind(handle)
+        .first<{
+          id: number; handle: string; name: string; bio: string | null;
+          profile_image: string | null; linkshop_theme: string
+        }>()
+    }
 
     if (!user) return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
 
@@ -466,7 +479,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    const body = await c.req.json<{ name?: string; bio?: string; profile_image?: string }>().catch(() => ({} as { name?: string; bio?: string; profile_image?: string }))
+    const body = await c.req.json<{ name?: string; bio?: string; profile_image?: string; banner_url?: string }>().catch(() => ({} as { name?: string; bio?: string; profile_image?: string; banner_url?: string }))
 
     const updates: string[] = []
     const binds: (string | number)[] = []
@@ -484,6 +497,12 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       const v = body.profile_image.trim()
       if (v && !/^https?:\/\//i.test(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
       updates.push('profile_image = ?')
+      binds.push(v)
+    }
+    if (typeof body.banner_url === 'string') {
+      const v = body.banner_url.trim()
+      if (v && !/^https?:\/\//i.test(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      updates.push('banner_url = ?')
       binds.push(v)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
