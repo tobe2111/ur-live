@@ -474,9 +474,27 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
 
     // 🛡️ 2026-05-25 (loading P0): linked seller 도 같이 반환 → /u/me 가 한 번에 redirect target 결정.
     //   이전: /u/me → /u/{handle} → /profile/{username} (3-step 직렬). 이후: /u/me → /profile/{username} 직행.
-    const linkedSeller = await DB.prepare(
+    // 🛡️ 2026-05-27 (영구 fix — 사용자 보고): linked_user_id 매핑 없으면 email 매칭 fallback + 즉시 backfill.
+    //   사용자 보고: 카카오 로그인 (linked_user_id NULL 상태) → dashboard 가 linked_seller 못 찾아
+    //   /host/new fall through. backfill cron / KakaoAuthService auto-link 가 production 에서 아직 실행 안 된 환경 graceful.
+    let linkedSeller = await DB.prepare(
       `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
     ).bind(userId).first<{ id: number; username: string }>().catch(() => null)
+
+    if (!linkedSeller) {
+      // Email 매칭 fallback — auto-link 가 아직 안 된 사용자
+      const u = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string }>().catch(() => null)
+      if (u?.email) {
+        linkedSeller = await DB.prepare(
+          `SELECT id, username FROM sellers WHERE email = ? AND status = 'approved' AND (linked_user_id IS NULL OR linked_user_id = ?) LIMIT 1`
+        ).bind(u.email, userId).first<{ id: number; username: string }>().catch(() => null)
+        // 발견 시 즉시 backfill — 다음 호출은 1차 query 에서 hit
+        if (linkedSeller) {
+          await DB.prepare(`UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(userId, linkedSeller.id).run().catch(() => null)
+        }
+      }
+    }
 
     // 30일 어필리에이트 적립 (affiliate_earnings 가 기존 SSOT)
     const earnings30 = await DB.prepare(

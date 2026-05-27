@@ -474,11 +474,15 @@ app.use('*', async (c, next) => {
 
     let ssrPayload: string | null = null;
     let ssrStatus = 'skip';
+    // 🛡️ 2026-05-27 (production 측정): Server-Timing 헤더 — Chrome DevTools 에서 직접 확인.
+    //   edge-read / self-fetch 각각 시간 기록 → 어디서 시간 쓰는지 즉시 파악.
+    const timings: string[] = [];
     if (ssrTarget) {
       // 🛡️ 2026-05-27 (비용 최적화 + 속도): edge cache (`caches.default`) 직접 read.
       //   기존: KV second-layer read (~50ms) → KV write 한도 초과 → 비용 발생.
       //   변경: edge cache 직접 read (~5ms). KV 의존성 0, 비용 $0, 속도 더 빠름.
       //   miss 시 self-fetch fallback (publicCache middleware 가 edge cache 자동 write).
+      const edgeStart = Date.now();
       try {
         const origin = new URL(c.req.url).origin;
         const cacheKey = new Request(`${origin}${ssrTarget.path}`, { method: 'GET' });
@@ -490,6 +494,7 @@ app.use('*', async (c, next) => {
           ssrStatus = 'edge-hit';
         }
       } catch { /* edge cache unavailable */ }
+      timings.push(`edge;dur=${Date.now() - edgeStart}`);
 
       if (!ssrPayload) {
         // 🛡️ 2026-05-27: slot 별 self-fetch timeout 분리.
@@ -499,6 +504,7 @@ app.use('*', async (c, next) => {
         const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER') ? 250 : 150;
         const ctlr = new AbortController();
         const timer = setTimeout(() => ctlr.abort(), timeoutMs);
+        const selfStart = Date.now();
         try {
           const origin = new URL(c.req.url).origin;
           const r = await fetch(`${origin}${ssrTarget.path}`, {
@@ -517,8 +523,10 @@ app.use('*', async (c, next) => {
         } finally {
           clearTimeout(timer);
         }
+        timings.push(`self;dur=${Date.now() - selfStart}`);
       }
       c.res.headers.set('X-SSR-Status', `${ssrTarget.slot}:${ssrStatus}`);
+      if (timings.length > 0) c.res.headers.set('Server-Timing', timings.join(', '));
     }
 
     const ssrSlot = ssrTarget?.slot ?? 'MAIN';
