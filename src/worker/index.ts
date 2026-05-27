@@ -441,18 +441,48 @@ app.use('*', async (c, next) => {
     const url = new URL(c.req.url);
     const isMainPage = url.pathname === '/' || url.pathname === '/index.html';
 
-    // 메인 페이지 SSR data 사전 fetch (best-effort, KV miss 면 inject skip)
+    // 🛡️ 2026-05-27 (loading P0): SSR data 사전 fetch — robust.
+    //   1차: KV cache read (~50ms). cron prewarm 이 채워 둠 → 보통 hit.
+    //   2차: KV miss 시 self-fetch (150ms timeout) → publicCache middleware 가 자동 KV write.
+    //   결과: cron 안 돌아도, 첫 사용자도, 새 배포 후 첫 요청도 inject 보장.
+    //   timeout 150ms — 메인 응답 지연 캡 (D1 보통 80-200ms).
     let ssrPayload: string | null = null;
+    let ssrStatus = 'skip';
     if (isMainPage) {
+      const SSR_PATH = '/api/group-buy/products?status=active&category=all';
       try {
         const { readKvCacheForSSR } = await import('./middleware/edge-cache');
-        const cached = await readKvCacheForSSR(c.env as unknown as Record<string, unknown>, '/api/group-buy/products?status=active&category=all');
+        const cached = await readKvCacheForSSR(c.env as unknown as Record<string, unknown>, SSR_PATH);
         if (cached && cached.status >= 200 && cached.status < 300) {
-          // body 에서 응답 자체만 추출 (publicCache envelope 의 body 가 JSON 응답 string)
-          // 안전 escape: </script 만 회피 — JSON 안에 </script 가 나오면 inline script 종료됨
           ssrPayload = cached.body.replace(/<\/script/gi, '<\\/script');
+          ssrStatus = 'kv-hit';
         }
-      } catch { /* fallback: 클라이언트 fetch */ }
+      } catch { /* KV unavailable */ }
+
+      if (!ssrPayload) {
+        // KV miss → self-fetch fallback. publicCache middleware 가 자동 KV write.
+        const ctlr = new AbortController();
+        const timer = setTimeout(() => ctlr.abort(), 150);
+        try {
+          const origin = new URL(c.req.url).origin;
+          const r = await fetch(`${origin}${SSR_PATH}`, {
+            signal: ctlr.signal,
+            headers: { 'x-ssr-prefetch': '1', 'User-Agent': 'ur-live-ssr-prefetch/1.0' },
+          });
+          if (r.ok) {
+            const body = await r.text();
+            ssrPayload = body.replace(/<\/script/gi, '<\\/script');
+            ssrStatus = 'self-fetch-hit';
+          } else {
+            ssrStatus = `self-fetch-${r.status}`;
+          }
+        } catch {
+          ssrStatus = 'self-fetch-timeout';
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      c.res.headers.set('X-SSR-Status', ssrStatus);
     }
 
     const rewritten = new HTMLRewriter()
