@@ -93,27 +93,25 @@
          이전 preload + onload="..." swap 패턴은 CSP 'strict-dynamic' 환경에서
          inline event handler 차단되어 폰트 적용 실패 → 디자인 망가짐.
          CDN 폰트라 critical render path 약간 늦지만 (~50ms) 안전성 우선. -->
-    <!-- 🛡️ 2026-05-27 (Lighthouse 잠금 해제): dynamic-subset → static subset single woff2.
-         이전: dynamic-subset CSS 가 글리프별로 86개 woff2 chunks 시리얼 fetch.
-              Lighthouse 측정 결과 PC LCP 22초 (woff2 chunks 각 14초 대기), 모바일 LCP 5.4초.
-         변경: 한국어 subset (single woff2 ~200KB) preload + inline @font-face → 1번 fetch 로 LCP -6초.
-         크기 trade-off: dynamic 100KB (글자별) vs static 200KB (한국어 전체) — 한국 사용자 위주라 OK.
-         font-display: swap → FOIT 회피. -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2-subset/PretendardVariable.subset.woff2" />
+    <!-- 🛡️ 2026-05-27 (rollback — 404 사고): static subset URL 추측 틀림 (woff2-subset 경로 존재 X).
+         dynamic-subset CSS 로 복귀. Lighthouse 14초 wait 다시 발생하지만 폰트 정상 표시 우선.
+         향후 R2 self-host 또는 정확한 npm 패키지 path 확인 후 다시 시도. -->
+    <link
+      rel="stylesheet"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <noscript>
+      <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+    </noscript>
 
     <!-- 🛡️ 2026-05-15 (Lighthouse): 첫 paint 최적화 — 핵심 CSS inline.
          Tailwind preflight + 페이지 진입 시 깜빡임 방지. -->
     <style>
-      /* 🛡️ 2026-05-27: Pretendard static subset @font-face (preload 와 매칭).
-         size-adjust / ascent-override / descent-override:
-         fallback 폰트 (system-ui) 와 metric 매칭 → font swap 시 layout shift 0 (CLS 0.188 → ~0.01 예상). */
+      /* 🛡️ 2026-05-27 size-adjust — dynamic-subset CSS 의 @font-face 와 매칭 (CLS 보호). */
       @font-face {
         font-family: 'Pretendard Variable';
-        font-weight: 45 920;
-        font-style: normal;
         font-display: swap;
-        src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2-subset/PretendardVariable.subset.woff2') format('woff2-variations');
         size-adjust: 100%;
         ascent-override: 92%;
         descent-override: 23%;
