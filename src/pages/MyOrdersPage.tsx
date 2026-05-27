@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -19,7 +19,8 @@ import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
 import type { CartItem } from '@/types/cart'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
-import OrderDetailModal from './my-orders/OrderDetailModal'
+// 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
+const OrderDetailModal = lazy(() => import('./my-orders/OrderDetailModal'))
 import CancelOrderModal from './my-orders/CancelOrderModal'
 
 // 🛡️ 2026-05-02: TD-018 분할 — Order/Cancel 모달을 ./my-orders/ 디렉토리로 추출.
@@ -333,11 +334,13 @@ export default function MyOrdersPage() {
 
       {/* Order Detail Modal — extracted to ./my-orders/OrderDetailModal */}
       {selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onCancel={handleCancelOrder}
-        />
+        <Suspense fallback={null}>
+          <OrderDetailModal
+            order={selectedOrder}
+            onClose={() => setSelectedOrder(null)}
+            onCancel={handleCancelOrder}
+          />
+        </Suspense>
       )}
 
       {/* Cancel Order Modal — extracted to ./my-orders/CancelOrderModal */}

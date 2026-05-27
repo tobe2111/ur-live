@@ -68,8 +68,9 @@ import './i18n' // ✅ i18n 초기화
 import { installErrorTelemetry } from '@/lib/error-telemetry'
 installErrorTelemetry()
 import { logRegionInfo, isKorea } from '@/shared/config/region'
-// ✅ Week 5 Day 2: 런타임 환경 변수 검증
-import { validateEnvForRuntime } from '@/shared/config/env-validator'
+// 🛡️ 2026-05-27 (loading P1): env-validator (zod ~52KB) dynamic import — critical path 제거.
+//   이전: eager import → validation chunk preload (52KB).
+//   변경: idle 시점 비동기 검증. production 에서 env 정상이면 사용자 영향 0.
 import { initNativeFeatures, isNative } from '@/lib/native'
 import { swallow } from '@/shared/utils/swallow'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
@@ -123,12 +124,14 @@ window.addEventListener('unhandledrejection', (e) => {
 // 카카오 외부브라우저 redirect 시도했으면 React 마운트 skip (이미 외부 브라우저로 이동 중)
 if (!_kakaoRedirected) {
 
-// ✅ 런타임 환경 변수 검증 — throw 해도 React 마운트는 진행 (흰화면 방지)
-try {
-  validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
-} catch (err) {
-  console.error('[main] env validation failed:', err)
-}
+// ✅ 런타임 환경 변수 검증 — 비동기 (zod chunk lazy). throw 해도 React 마운트는 진행.
+import('@/shared/config/env-validator').then(m => {
+  try {
+    m.validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
+  } catch (err) {
+    console.error('[main] env validation failed:', err)
+  }
+}).catch(swallow('main:env-validator-load'))
 
 // 🛡️ 2026-05-24 (loading P0): Sentry 진짜 lazy — critical path 완전 제외.
 //   이전: import().then() 즉시 시작 → 441KB 다운로드가 main 과 경쟁 → LCP 1~2s 지연.

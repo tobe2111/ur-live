@@ -81,12 +81,13 @@ export default function AgencyPage() {
       .catch(swallow('agency:fetch-monthly-tasks'))
 
     // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
+    // 🛡️ 2026-05-27 (사용자 증가 대비): sellers / streams 에 limit 추가. 미래 안전망.
     Promise.allSettled([
       api.get('/api/agency/stats', { headers }),
-      api.get('/api/agency/sellers', { headers }),
+      api.get('/api/agency/sellers?limit=200', { headers }),
       api.get('/api/agency/orders?limit=8', { headers }),
       api.get('/api/agency/stats/daily?days=14', { headers }),
-      api.get('/api/agency/streams?status=live', { headers }),
+      api.get('/api/agency/streams?status=live&limit=50', { headers }),
       api.get('/api/agency/profile', { headers }),
     ])
       .then(([statsRes, sellersRes, ordersRes, dailyRes, streamsRes, profileRes]) => {
