@@ -498,3 +498,55 @@ sellerProfileRoutes.get("/referral-info", async (c) => {
   }
 });
 
+
+// 🛡️ 2026-05-27 (사용자 결정 — 무료 marginal): 사업자등록증 OCR 자동 검증.
+//   Cloudflare Workers AI Vision (무료 일 10K Neurons) 호출 → 추출 + DB 비교 → 자동 verified.
+//   사용자 액션: wrangler.toml 에 AI binding 추가 (사용자 결정 시 수동).
+//   graceful: env.AI 없으면 skip (기존 admin 수동 검토).
+sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+    const formData = await c.req.formData().catch(() => null);
+    const file = formData?.get('file') as File | null;
+    if (!file) return c.json({ success: false, error: 'file 필수' }, 400);
+
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    // OCR 호출 (graceful)
+    const { ocrBusinessRegistration, compareOcrWithDb } = await import('../../../worker/utils/ocr-business-registration');
+    const ai = (c.env as { AI?: { run: (m: string, i: Record<string, unknown>) => Promise<unknown> } }).AI;
+    const ocrResult = await ocrBusinessRegistration(ai, bytes);
+
+    // DB 값 조회
+    const seller = await c.env.DB.prepare(
+      'SELECT business_number, representative_name, business_start_date FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_number: string; representative_name: string | null; business_start_date: string | null }>();
+    if (!seller) return c.json({ success: false, error: 'seller 없음' }, 404);
+
+    const cmp = compareOcrWithDb(ocrResult, {
+      businessNumber: seller.business_number,
+      representativeName: seller.representative_name,
+      businessStartDate: seller.business_start_date,
+    });
+
+    // 자동 verified 시 UPDATE
+    if (cmp.autoVerified) {
+      await c.env.DB.prepare(
+        `UPDATE sellers SET business_registration_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+      ).bind(sellerId).run().catch(() => null);
+    }
+
+    return c.json({
+      success: true,
+      ocr: ocrResult,
+      mismatch: cmp.mismatch,
+      autoVerified: cmp.autoVerified,
+      message: cmp.autoVerified ? '사업자등록증 자동 검증 완료' : 'admin 수동 검토 필요',
+    });
+  } catch (err) {
+    return c.json({ success: false, error: 'OCR 처리 실패' }, 500);
+  }
+});
