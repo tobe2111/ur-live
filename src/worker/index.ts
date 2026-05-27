@@ -455,6 +455,7 @@ app.use('*', async (c, next) => {
     } else if (url.pathname === '/vouchers' && !url.search) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
       //   클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.
+      //   /api/vouchers/categories 는 cron warming + publicCache 5분 → edge cache 항상 hit.
       ssrTarget = { slot: 'VOUCHERS', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
     } else if (url.pathname === '/browse' && !url.search) {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
@@ -1515,6 +1516,8 @@ app.get('/api/image/resize', async (c) => {
     'live.ur-team.com', 'ur-live.pages.dev',
     'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등
+    'giftishow.com', // KT Alpha (image / imghub / bizapi / mall / gift / static)
+    'kt.com',        // gift-img.kt / image.kt / static.kt
   ]
   try {
     const parsed = new URL(url)

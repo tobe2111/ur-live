@@ -58,6 +58,17 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'img1.daumcdn.net',
   'img2.daumcdn.net',
   'cf.daumcdn.net',
+  // 🛡️ 2026-05-27 (교환권 audit): KT Alpha / giftishow 카탈로그 image 호스트.
+  //   goodsImgS / goodsImgB / brandIconImg 가 외부 호스트 반환 → cfImage 변환 안 되면 원본 다운로드.
+  'image.giftishow.com',
+  'imghub.giftishow.com',
+  'bizapi.giftishow.com',
+  'mall.giftishow.com',
+  'gift.giftishow.com',
+  'static.giftishow.com',
+  'gift-img.kt.com',
+  'image.kt.com',
+  'static.kt.com',
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.
