@@ -5050,7 +5050,7 @@
   "pwa": {
     "install": {
       "closeAria": "Fermer",
-      "title": "🎁 Installez et obtenez un coupon de bienvenue!",
+      "title": "🎁 Installez l'app et obtenez un coupon de bienvenue!",
       "desc": "Installez sur l'écran d'accueil et obtenez un coupon de 5 000 ₩",
       "installBtn": "Installer",
       "later": "Plus tard",
