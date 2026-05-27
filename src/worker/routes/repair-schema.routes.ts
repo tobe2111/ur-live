@@ -332,6 +332,52 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.sns_tiktok', sql: "ALTER TABLE sellers ADD COLUMN sns_tiktok TEXT" },
     // 🛡️ 2026-05-27 (큐레이터 banner 편집): users.banner_url — 큐레이터 공개 페이지 배경.
     { desc: 'users.banner_url', sql: "ALTER TABLE users ADD COLUMN banner_url TEXT" },
+    // 🛡️ 2026-05-27 (리뷰 집계 영구 fix — 사용자 보고):
+    //   product_reviews INSERT 경로 7곳 (사용자/시드/admin) 마다 products UPDATE 누락 위험.
+    //   D1 트리거로 모든 INSERT/UPDATE/DELETE 자동 처리 → review_count + avg_rating 영구 동기화.
+    //   효과: BrowsePage/VouchersPage 카드 별점 즉시 반영 (상세 페이지 리뷰와 정합).
+    { desc: 'trigger: product_reviews_aggregate_insert', sql: `
+      CREATE TRIGGER IF NOT EXISTS trg_product_reviews_aggregate_insert
+      AFTER INSERT ON product_reviews
+      BEGIN
+        UPDATE products SET
+          review_count = (SELECT COUNT(*) FROM product_reviews WHERE product_id = NEW.product_id),
+          avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = NEW.product_id), 0),
+          updated_at = datetime('now')
+        WHERE id = NEW.product_id;
+      END
+    ` },
+    { desc: 'trigger: product_reviews_aggregate_update', sql: `
+      CREATE TRIGGER IF NOT EXISTS trg_product_reviews_aggregate_update
+      AFTER UPDATE OF rating ON product_reviews
+      BEGIN
+        UPDATE products SET
+          avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = NEW.product_id), 0),
+          updated_at = datetime('now')
+        WHERE id = NEW.product_id;
+      END
+    ` },
+    { desc: 'trigger: product_reviews_aggregate_delete', sql: `
+      CREATE TRIGGER IF NOT EXISTS trg_product_reviews_aggregate_delete
+      AFTER DELETE ON product_reviews
+      BEGIN
+        UPDATE products SET
+          review_count = (SELECT COUNT(*) FROM product_reviews WHERE product_id = OLD.product_id),
+          avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = OLD.product_id), 0),
+          updated_at = datetime('now')
+        WHERE id = OLD.product_id;
+      END
+    ` },
+    // 🛡️ backfill — 트리거 적용 이전에 INSERT 된 reviews 일괄 정합화.
+    //   idempotent — 매번 실행해도 같은 결과. schema-repair daily cron 으로 안전 반복.
+    { desc: 'backfill: products review aggregate from product_reviews', sql: `
+      UPDATE products SET
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id), 0),
+        avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0)
+      WHERE EXISTS (SELECT 1 FROM product_reviews WHERE product_id = products.id)
+        AND (COALESCE(review_count, 0) != (SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id)
+             OR COALESCE(avg_rating, 0) != COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0))
+    ` },
     { desc: 'sellers.kakao_chat_url', sql: "ALTER TABLE sellers ADD COLUMN kakao_chat_url TEXT" },
     { desc: 'sellers.representative_name', sql: "ALTER TABLE sellers ADD COLUMN representative_name TEXT" },
     { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },
