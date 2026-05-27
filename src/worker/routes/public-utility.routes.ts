@@ -314,7 +314,8 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
       if (cached) {
         // 백그라운드 갱신 (stale 시) — 응답은 즉시 캐시 반환.
         c.header('X-Cache', 'HIT')
-        c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
+        c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+        c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
         return c.body(cached, 200, { 'Content-Type': 'application/json' })
       }
     } catch { /* KV fail-open */ }

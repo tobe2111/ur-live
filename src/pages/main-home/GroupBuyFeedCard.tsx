@@ -5,7 +5,7 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -67,7 +67,9 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
 
 // 🛡️ 2026-05-24 (loading P0): aboveFold prop — 첫 화면 카드는 eager + fetchpriority=high.
 //   효과: LCP 단축 (첫 진입 시 카드 이미지 우선 로드, lazy 후순위 카드는 nav 중에 로드).
-export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveFold?: boolean }) {
+// 🛡️ 2026-05-27 (loading P1): React.memo — 정렬/카테고리 칩 클릭 시 50카드 reconcile 비용 ↓.
+//   sorted array 는 같은 element references 유지 → shallow compare 로 충분.
+function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveFold?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -221,3 +223,5 @@ export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCard
     </Link>
   )
 }
+
+export default memo(GroupBuyFeedCard)

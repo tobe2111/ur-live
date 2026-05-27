@@ -41,7 +41,8 @@ interface GroupBuyDetail {
   group_buy_current: number
   group_buy_deadline?: string
   group_buy_status: 'active' | 'achieved' | 'expired' | 'cancelled' | string
-  group_buy_tiers?: string | null
+  // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
+  group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
   next_tier?: { min: number; discount_pct: number } | null
   next_tier_remaining?: number | null
@@ -255,9 +256,13 @@ export default function GroupBuyDetailPage() {
   }, [detail?.group_buy_status, productId])
 
   const tiers = useMemo(() => {
-    if (!detail?.group_buy_tiers) return []
+    const raw = detail?.group_buy_tiers
+    if (!raw) return []
+    // 🛡️ 2026-05-27: 서버가 미리 parse 한 array 면 그대로 (정렬도 서버에서 완료).
+    //   구 응답 (stale edge cache) 은 string — JSON.parse fallback.
+    if (Array.isArray(raw)) return raw
     try {
-      const arr = JSON.parse(detail.group_buy_tiers) as Array<{ min: number; discount_pct: number }>
+      const arr = JSON.parse(raw) as Array<{ min: number; discount_pct: number }>
       return Array.isArray(arr) ? arr.sort((a, b) => a.min - b.min) : []
     } catch { return [] }
   }, [detail?.group_buy_tiers])

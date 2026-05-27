@@ -46,7 +46,7 @@ export {
 export { useSellerPublic } from './useSellerPublic'
 
 // 내 자산
-export { useMyOrders, useMyVouchers, useMyAppointments, useInvalidateMyOrders, useInvalidateMyVouchers } from './useMyData'
+export { useMyOrders, useMyVouchers, useMyAppointments, useInvalidateMyOrders, useInvalidateMyVouchers, useInvalidateMyAppointments } from './useMyData'
 
 // 어드민 (2026-05-22 P1 영구 fix)
 export {
