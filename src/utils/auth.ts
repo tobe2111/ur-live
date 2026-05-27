@@ -243,16 +243,19 @@ export function getUserNameSync(): string | null {
  * 'firebase_token' 키가 없어도 'user_id' + 'user_type=user' 조합으로 로그인 상태 판단
  */
 export function isLoggedInSync(): boolean {
-  // Seller/Admin은 JWT 토큰으로 명확히 판단
+  // 🛡️ 2026-05-27: 토큰/세션 존재만으로 판단 — RouteGuards 와 일관.
+  //   기존 버그: user_type 추가 검사 → admin/seller 로그인 (user_type='admin'/'seller') + 카카오 user
+  //   동시에 있을 때 user_id 있어도 false. /my-vouchers `enabled` false → 빈 화면.
+  //   수정: user_id 만 있으면 user 로그인 인정 (user_type 무관). DISPLAY 컨텍스트 분리.
   if (localStorage.getItem('seller_token')) return true
   if (localStorage.getItem('admin_token')) return true
+  if (localStorage.getItem('agency_token')) return true
 
-  // Firebase User: user_id가 있고 user_type이 'user' (또는 미설정)이면 로그인 상태로 간주
-  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
-  const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID)
-  if (userId && (userType === 'user' || !userType)) return true
+  // Firebase / 카카오 user: user_id 또는 session_login 있으면 로그인 인정 (user_type 검사 X)
+  if (localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID)) return true
+  if (localStorage.getItem('session_login')) return true
 
-  // 레거시: firebase_token이 localStorage에 있는 경우 (구버전 호환)
+  // 레거시: firebase_token 호환
   if (localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN)) return true
 
   return false
