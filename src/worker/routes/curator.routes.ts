@@ -469,8 +469,19 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     await ensureCuratorTables(DB)
 
     // 🛡️ 2026-05-25: handle 반환 — /u/me redirect / 마이페이지 카드용
-    const meRow = await DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
-      .bind(userId).first<{ handle: string | null }>().catch(() => null)
+    // 🛡️ 2026-05-27 (영구 fix — 큐레이터 모델): 모든 user 가 공개 페이지 보유.
+    //   handle NULL 인 사용자도 자동 생성 → /host/new fall through 영구 차단.
+    //   user.name 기반 slug → 충돌 시 user2/3..99 → random hex.
+    let meRow = await DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
+      .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null)
+    if (meRow && !meRow.handle) {
+      try {
+        const newHandle = await generateUniqueHandle(DB, meRow.name || `user${userId}`, userId)
+        await DB.prepare('UPDATE users SET handle = ? WHERE id = ?')
+          .bind(newHandle, userId).run()
+        meRow = { ...meRow, handle: newHandle }
+      } catch { /* generation 실패 — graceful, 다음 호출 재시도 */ }
+    }
 
     // 🛡️ 2026-05-25 (loading P0): linked seller 도 같이 반환 → /u/me 가 한 번에 redirect target 결정.
     //   이전: /u/me → /u/{handle} → /profile/{username} (3-step 직렬). 이후: /u/me → /profile/{username} 직행.
