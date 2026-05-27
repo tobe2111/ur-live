@@ -114,7 +114,11 @@ export default defineConfig({
           // 🛡️ 2026-05-06: 소스 코드 분할 — index entry 추가 분리.
           // 인증 스토어: App.tsx 에서 eagerly import 되지만 별도 청크로 캐싱 분리.
           if (id.includes('/src/shared/stores/')) return 'app-stores'
-          // 공유 설정/유틸: region, env-validator, feature-flags 등 — 변경 빈도 낮음
+          // 🛡️ 2026-05-27 (loading P1): env-validator + env-schema 별도 chunk —
+          //   main.tsx dynamic import + zod 의존 → 둘 다 critical path 에서 lazy.
+          //   이전: app-shared (critical path) 에 묶여있어 zod (validation 52KB) 도 같이 preload.
+          if (id.includes('/shared/config/env-schema') || id.includes('/shared/config/env-validator')) return 'env-validator'
+          // 공유 설정/유틸: region, feature-flags 등 — 변경 빈도 낮음
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
