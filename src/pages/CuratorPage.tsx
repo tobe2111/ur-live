@@ -45,7 +45,7 @@ export default function CuratorPage() {
   })
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<CuratorTab>('pins')
+  const [tab, setTab] = useState<CuratorTab>('home')
   const [monthEarnings, setMonthEarnings] = useState(0)
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
@@ -94,6 +94,20 @@ export default function CuratorPage() {
   const totalClicks = useMemo(() => {
     if (!data?.pins) return 0
     return data.pins.reduce((sum, p) => sum + (p.click_count || 0), 0)
+  }, [data])
+
+  // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/식사권 분류 (deal_only / voucher 카테고리).
+  const { shopPins, voucherPins } = useMemo(() => {
+    if (!data?.pins) return { shopPins: [] as CuratorPin[], voucherPins: [] as CuratorPin[] }
+    const isVoucher = (p: CuratorPin) => {
+      const cat = (p as { category?: string }).category || ''
+      const dealOnly = (p as { deal_only?: number }).deal_only === 1
+      return dealOnly || /voucher/i.test(cat)
+    }
+    return {
+      shopPins: data.pins.filter(p => !isVoucher(p)),
+      voucherPins: data.pins.filter(p => isVoucher(p)),
+    }
   }, [data])
 
   async function copyLink() {
@@ -146,7 +160,19 @@ export default function CuratorPage() {
         url={`/u/${curator.handle}`}
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
-      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-24">
+      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
+        {/* 🛡️ 2026-05-27 (셀러 페이지 통일): owner sticky 안내 배너 — 셀러 페이지와 같은 패턴. */}
+        {isOwner && (
+          <div className="sticky top-0 z-30 bg-pink-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
+            <span>✏️ 내 링크샵 — 이름/소개/이미지/배경 클릭해 바로 편집</span>
+            <Link
+              to="/u/me/earnings"
+              className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold whitespace-nowrap"
+            >
+              수익 보기
+            </Link>
+          </div>
+        )}
         <CuratorHeader
           curator={curator}
           pinCount={pins.length}
@@ -156,13 +182,39 @@ export default function CuratorPage() {
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
-        <CuratorTabs tab={tab} onChange={setTab} pinCount={pins.length} />
+        <CuratorTabs
+          tab={tab}
+          onChange={setTab}
+          pinCount={pins.length}
+          shopCount={shopPins.length}
+          voucherCount={voucherPins.length}
+        />
 
-        {tab === 'pins' && (
+        {tab === 'home' && (
           pins.length === 0
             ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} />
             : <PinGrid
                 pins={pins}
+                handle={curator.handle}
+                isOwner={isOwner}
+                onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
+              />
+        )}
+        {tab === 'shop' && (
+          shopPins.length === 0
+            ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType="shop" />
+            : <PinGrid
+                pins={shopPins}
+                handle={curator.handle}
+                isOwner={isOwner}
+                onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
+              />
+        )}
+        {tab === 'vouchers' && (
+          voucherPins.length === 0
+            ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType="voucher" />
+            : <PinGrid
+                pins={voucherPins}
                 handle={curator.handle}
                 isOwner={isOwner}
                 onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
@@ -305,22 +357,28 @@ function InfoTab({ curator, pinCount, totalClicks }: { curator: CuratorPageRespo
   )
 }
 
-function EmptyLinkshop({ handle, isOwner }: { handle: string; isOwner: boolean }) {
+function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher' }) {
   const { t } = useTranslation()
+  const browseLink = emptyType === 'voucher' ? '/vouchers' : '/browse'
+  const browseLabel = emptyType === 'voucher' ? '교환권 둘러보기' : '상품 둘러보기'
+  const emoji = emptyType === 'voucher' ? '🎁' : '📌'
+  const emptyMessage = emptyType === 'shop' ? '아직 담은 상품이 없어요'
+    : emptyType === 'voucher' ? '아직 담은 교환권이 없어요'
+    : t('curator.emptyTitle', { defaultValue: '아직 핀이 없어요' })
   return (
     <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-      <p className="text-5xl mb-4">📌</p>
-      <h2 className="text-lg font-bold mb-2">{t('curator.emptyTitle', { defaultValue: '아직 핀이 없어요' })}</h2>
-      <p className="text-sm text-gray-400 mb-6">
+      <p className="text-5xl mb-4">{emoji}</p>
+      <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">{emptyMessage}</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
         {isOwner
-          ? t('curator.emptyOwner', { defaultValue: '상품을 둘러보고 + 버튼으로 첫 핀을 추가해보세요' })
+          ? t('curator.emptyOwner', { defaultValue: '상품을 둘러보고 추천 링크 복사하면 자동 담아져요' })
           : t('curator.emptyOther', { defaultValue: `@${handle} 의 첫 추천을 기다리는 중`, handle })}
       </p>
       <Link
-        to="/browse"
-        className="inline-block px-6 py-3 bg-pink-500 hover:bg-pink-600 rounded-xl font-bold transition-colors"
+        to={browseLink}
+        className="inline-block px-6 py-3 bg-pink-500 hover:bg-pink-600 rounded-xl font-bold text-white transition-colors"
       >
-        {isOwner ? t('curator.startBrowse', { defaultValue: '상품 둘러보기' }) : t('curator.exploreShop', { defaultValue: '쇼핑 둘러보기' })}
+        {isOwner ? browseLabel : t('curator.exploreShop', { defaultValue: '쇼핑 둘러보기' })}
       </Link>
     </div>
   )

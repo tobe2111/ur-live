@@ -21,6 +21,7 @@ export interface CuratorPin {
   price: number
   original_price: number | null
   category: string
+  deal_only?: number
   is_active: number
   commission_rate: number
 }
