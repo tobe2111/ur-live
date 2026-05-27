@@ -37,8 +37,6 @@ interface BusinessInfoUpdate {
 }
 
 export const sellerProfileRoutes = new Hono<{ Bindings: Bindings }>()
-// 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
-//   서브라우터 wildcard 미들웨어가 같은 prefix 의 다른 라우터 경로 가로채는 버그 (Hono v4) 방지.
 sellerProfileRoutes.get('/profile', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
@@ -441,3 +439,62 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
     return c.json({ success: false, error: `저장 실패: ${errMsg}` }, 500);
   }
 });
+
+
+// 🛡️ 2026-05-27 (사용자 결정 — 투명성): 셀러 본인 영입자 + commission 분배 정보.
+//   sellers.introduced_by_X_id 가 있으면 영입자 정보 + commission % 반환.
+//   매장 dashboard 의 SellerReferralInfoCard 에서 사용.
+sellerProfileRoutes.get("/referral-info", async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header("Authorization"), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: "로그인 필요" }, 401);
+
+    const seller = await c.env.DB.prepare(
+      "SELECT introduced_by_agency_id, introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?"
+    ).bind(sellerId).first<{
+      introduced_by_agency_id: string | null;
+      introduced_by_influencer_id: string | null;
+      introduced_at: string | null;
+      referral_bonus_until: string | null;
+    }>().catch(() => null);
+
+    if (!seller || (!seller.introduced_by_agency_id && !seller.introduced_by_influencer_id)) {
+      return c.json({ success: true, data: null });
+    }
+
+    // 영입자 정보 추가 조회
+    let agency_name: string | undefined;
+    let influencer_handle: string | undefined;
+    if (seller.introduced_by_agency_id) {
+      const a = await c.env.DB.prepare("SELECT name FROM agencies WHERE id = ?")
+        .bind(seller.introduced_by_agency_id).first<{ name: string }>().catch(() => null);
+      agency_name = a?.name;
+    } else if (seller.introduced_by_influencer_id) {
+      const i = await c.env.DB.prepare("SELECT handle FROM users WHERE id = ?")
+        .bind(seller.introduced_by_influencer_id).first<{ handle: string | null }>().catch(() => null);
+      influencer_handle = i?.handle || undefined;
+    }
+
+    // platform_settings 에서 commission % 조회 (default)
+    const { results: settings } = await c.env.DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)"
+    ).bind("agency_commission_pct", "influencer_commission_pct", "seller_referral_bonus_pct").all<{ key: string; value: string }>()
+      .catch(() => ({ results: [] as { key: string; value: string }[] }));
+    const sMap = (settings || []).reduce((acc: Record<string, string>, r) => ({ ...acc, [r.key]: r.value }), {});
+
+    return c.json({
+      success: true,
+      data: {
+        ...seller,
+        agency_name,
+        influencer_handle,
+        agency_commission_pct: Number(sMap.agency_commission_pct) || 2,
+        influencer_commission_pct: Number(sMap.influencer_commission_pct) || 0.5,
+        bonus_pct: Number(sMap.seller_referral_bonus_pct) || 1,
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: "referral-info 조회 실패" }, 500);
+  }
+});
+
