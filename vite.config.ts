@@ -138,7 +138,28 @@ export default defineConfig({
           //   첫 진입 시 다운로드. 이제 seller/admin 진입 시만 fetch.
           if (id.includes('/src/components/live/')) return 'app-live-components'
           if (id.includes('/src/components/streaming/')) return 'app-streaming'
+          // 🛡️ 2026-05-27 (loading P1): app-components 305KB 추가 분할.
+          //   기존 'seller' 폴더 외에 SellerLayout / BulkUploadModal / ProductOptionForm /
+          //   seller-public 폴더도 셀러 전용 → app-seller-components 로 묶음.
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
+          if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'
+          if (id.includes('/src/components/seller-public/')) return 'app-seller-components'
+          if (id.includes('/src/components/BulkUploadModal')) return 'app-seller-components'
+          if (id.includes('/src/components/ProductOptionForm')) return 'app-seller-components'
+          // 어드민 전용
+          if (id.includes('/src/components/AdminLayout')) return 'app-admin-components'
+          // 에이전시 전용
+          if (id.includes('/src/components/AgencyLayout')) return 'app-agency-components'
+          if (id.includes('/src/components/agency/')) return 'app-agency-components'
+          // 대시보드 카드 (셀러/어드민/에이전시 공통)
+          if (id.includes('/src/components/dashboard/')) return 'app-dashboard'
+          // 결제 페이지 전용
+          if (id.includes('/src/components/payments/')) return 'app-payments'
+          // 장바구니 / 검색 / 마이페이지 — 페이지별 lazy
+          if (id.includes('/src/components/cart/')) return 'app-cart'
+          if (id.includes('/src/components/search/')) return 'app-search'
+          if (id.includes('/src/components/mypage/') || id.includes('/src/components/my-page/')) return 'app-mypage'
+          if (id.includes('/src/components/wallet/')) return 'app-wallet'
           if (id.includes('/src/components/')) return 'app-components'
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||
