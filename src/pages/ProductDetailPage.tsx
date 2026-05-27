@@ -11,6 +11,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
 // ✅ React Query Hook (Product, ProductOption 타입도 여기서 가져옴)
 import { useProduct, useProductOptions } from '@/hooks/useProduct'
+import { useInvalidateMyVouchers } from '@/hooks/queries'
 import type { ProductOption } from '@/hooks/useProduct'
 
 // Import KREAM-style components
@@ -41,6 +42,7 @@ export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const invalidateVouchers = useInvalidateMyVouchers()
   const [searchParams] = useSearchParams()
 
   // 추천 링크 ref 파라미터 저장 (24시간 유효)
@@ -226,6 +228,7 @@ export default function ProductDetailPage() {
         const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal', ref })
         if (res.data?.success) {
           showToast(t('groupBuy.joinSuccess', { defaultValue: '공구 참여 완료! 바우처가 발급됐어요.' }), 'success')
+          invalidateVouchers()
           navigate('/my-vouchers')
         } else {
           showToast(res.data?.error || t('common.error'), 'error')

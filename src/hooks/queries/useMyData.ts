@@ -73,6 +73,9 @@ export function useMyVouchers() {
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+    // 🛡️ 2026-05-27: 페이지 진입 시 항상 fresh — invalidate 누락된 발급 경로에 대한 안전망.
+    //   사고: voucher 발급 후 /user/profile (직접 fetch) 은 fresh = 1 인데 /my-vouchers (RQ cache stale = 빈 array) 가 empty 표시.
+    refetchOnMount: 'always',
   })
 }
 
