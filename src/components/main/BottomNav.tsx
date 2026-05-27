@@ -113,21 +113,39 @@ export default function BottomNav() {
   //   - user_handle 캐시 있으면 /u/{handle} 직행 (큐레이터 공개페이지)
   //   - 캐시 없으면 /u/me (UMeRedirectPage 가 1회 API 호출 후 캐시 저장)
   //   - 미로그인이면 /host/new (카탈로그 — 첫 핀 시 자동 handle 생성)
+  // 🛡️ 2026-05-27 (영구 fix): seller_token JWT payload 에서 username 추출.
+  //   문제: seller_username localStorage cache 가 없을 때 (KakaoCallback fix 이전 로그인 등)
+  //   /u/me 로 fallback → curator dashboard API → linked_user_id 매핑 없으면 /host/new fall through.
+  //   해결: seller_token 의 JWT payload (signed by server) 에 이미 username 포함 → 즉시 추출.
+  //   localStorage 도 update → 다음부터 직접 cache 사용.
   const linkshopPath = (() => {
     if (!isLoggedIn) return '/host/new'
     try {
-      // 🛡️ 2026-05-27: 셀러 직접 로그인 (seller_token) 도 검사 — seller_username 우선.
-      //   기존 버그: seller 토큰만 있는 사용자는 linked_seller_username 캐시 없음 (카카오 user 안 거침)
-      //   → /u/me 로 가서 dashboard API 호출 → linked_user_id 매핑 없으면 /host/new 로 fall through.
-      //   수정: seller_token 있고 seller_username 캐시 있으면 즉시 /profile/{username} 직행.
-      if (hasSellerToken) {
-        const sellerUsername = localStorage.getItem('seller_username')
-        if (sellerUsername) return `/profile/${sellerUsername}`
-      }
+      // 1차: localStorage cache
+      const sellerUsername = localStorage.getItem('seller_username')
+      if (sellerUsername) return `/profile/${sellerUsername}`
       const cachedSeller = localStorage.getItem('linked_seller_username')
       if (cachedSeller) return `/profile/${cachedSeller}`
       const cachedHandle = localStorage.getItem('user_handle')
       if (cachedHandle) return `/u/${cachedHandle}`
+
+      // 2차: seller_token payload 에서 username 추출 (영구 fallback)
+      if (hasSellerToken) {
+        const token = localStorage.getItem('seller_token')
+        if (token) {
+          const parts = token.split('.')
+          if (parts.length === 3) {
+            try {
+              const padded = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+              const payload = JSON.parse(atob(padded + '==='.slice((padded.length + 3) % 4)))
+              if (payload?.username && typeof payload.username === 'string') {
+                localStorage.setItem('seller_username', payload.username)
+                return `/profile/${payload.username}`
+              }
+            } catch { /* JWT 손상 / 이전 토큰 — fall through */ }
+          }
+        }
+      }
     } catch { /* ignore */ }
     return '/u/me'
   })()
