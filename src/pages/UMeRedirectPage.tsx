@@ -40,7 +40,8 @@ export default function UMeRedirectPage() {
           navigate(`/u/${handle}`, { replace: true })
           return
         }
-        // 핸들 없음 → 첫 핀 추가 (카탈로그) — 첫 핀 시 자동 handle 생성
+        // 🛡️ 2026-05-27 (큐레이터 모델 영구): dashboard endpoint 가 handle 자동 생성 → 여기 도달 거의 X.
+        //   극히 드문 generation 실패 case 만 fallback → /host/new (재시도 / 첫 핀 추가 안내).
         navigate('/host/new', { replace: true })
       } catch (err: any) {
         if (err?.response?.status === 401) {
