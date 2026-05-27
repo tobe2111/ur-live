@@ -111,6 +111,42 @@ adminKtAlphaRoutes.patch('/kt-alpha/settings', cors(), async (c) => {
   }
 })
 
+// 🛡️ 2026-05-27 (사용자 요청 — 가장 이상적): 마진 % 변경 후 기존 상품 가격 일괄 재계산.
+//   marker: kt_alpha_gift_code 가 있는 products (catalog 와 link 된 row).
+//   가격 = gift_catalog.real_price × (1 + kt_alpha_consumer_markup_pct/100)
+//   별도 endpoint — 어드민이 명시 trigger (마진 변경 직후 의도적으로).
+adminKtAlphaRoutes.post('/kt-alpha/recalc-prices', cors(), async (c) => {
+  try {
+    const DB = (c.env as { DB: D1Database }).DB
+    const settingsRow = await DB.prepare(
+      `SELECT value FROM platform_settings WHERE key = 'kt_alpha_consumer_markup_pct'`
+    ).first<{ value: string }>().catch(() => null)
+    const markupPct = Math.min(100, Math.max(0, Number(settingsRow?.value) || 20))
+    const multiplier = 1 + markupPct / 100
+
+    // products.kt_alpha_gift_code = gift_catalog.gift_code 매칭 → real_price × multiplier
+    const updateResult = await DB.prepare(`
+      UPDATE products
+      SET price = CAST(
+        (SELECT real_price FROM gift_catalog gc WHERE gc.gift_code = products.kt_alpha_gift_code LIMIT 1) * ?
+        AS INTEGER
+      ),
+      updated_at = datetime('now')
+      WHERE kt_alpha_gift_code IS NOT NULL
+        AND EXISTS (SELECT 1 FROM gift_catalog gc WHERE gc.gift_code = products.kt_alpha_gift_code)
+    `).bind(multiplier).run()
+
+    return c.json({
+      success: true,
+      updated_count: updateResult.meta?.changes ?? 0,
+      markup_pct: markupPct,
+      formula: `price = real_price × ${multiplier.toFixed(2)}`,
+    })
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500)
+  }
+})
+
 // 3. POST /sync — 수동 trigger.
 adminKtAlphaRoutes.post('/kt-alpha/sync', cors(), async (c) => {
   try {
