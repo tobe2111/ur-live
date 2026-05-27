@@ -146,6 +146,7 @@ export default function GroupBuyFeed() {
         <select
           value={sort}
           onChange={e => setSort(e.target.value as SortKey)}
+          aria-label="공구 정렬 기준"
           className="bg-transparent border-0 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
         >
           {SORTS.map(s => (
