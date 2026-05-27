@@ -321,6 +321,14 @@ function AppContent() {
     if (typeof window === 'undefined') return
     const preload = () => {
       import('@tosspayments/tosspayments-sdk').catch(() => { /* silent — checkout 진입 시 재시도 */ })
+      // 🛡️ 2026-05-27 (loading P0): BottomNav 5탭 페이지 chunk idle prefetch.
+      //   main bundle 키우지 않고 idle 시 background download → 탭 클릭 시 즉시 navigation.
+      //   각 import().catch — chunk 404 / network 실패 graceful.
+      import('./pages/BrowsePage').catch(() => {})
+      import('./pages/VouchersPage').catch(() => {})
+      import('./pages/UserProfilePage').catch(() => {})
+      import('./pages/MyVouchersPage').catch(() => {})
+      import('./pages/SellerPublicPage').catch(() => {})
     }
     const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback
     if (ric) {

@@ -413,6 +413,19 @@ export class KakaoAuthService {
         throw new Error('Failed to retrieve user after upsert');
       }
 
+      // 🛡️ 2026-05-27 (영구 fix): same-email seller auto-link.
+      //   문제: 시드 데이터 또는 셀러 가입 시 sellers.linked_user_id 가 NULL 인 경우
+      //   카카오 user 로그인 → curator dashboard 가 linked_seller 못 찾음 → BottomNav 가
+      //   /host/new 로 fall through (사용자 보고).
+      //   해결: 같은 email 의 seller 가 있고 linked_user_id IS NULL 이면 자동 매핑.
+      //   idempotent — linked_user_id 이미 있으면 skip.
+      if (user.email) {
+        await this.db.prepare(
+          `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
+           WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`
+        ).bind(user.id, user.email).run().catch(() => null);
+      }
+
       return { ...user, isNewUser };
       
     } catch (error) {
