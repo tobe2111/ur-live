@@ -50,6 +50,8 @@ const HOT_PATHS: readonly string[] = [
   // VouchersPage / BrowsePage SSR inject 대응 — first-paint warm 유지.
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',
   '/api/products?page=1&limit=20&exclude_deal_only=1',
+  // 🛡️ 2026-05-27: VouchersPage 카테고리 칩 — 2번째 endpoint warm 유지.
+  '/api/vouchers/categories',
   '/api/group-buy/live-ticker',
   '/api/sections',
   '/api/shorts',

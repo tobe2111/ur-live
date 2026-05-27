@@ -158,11 +158,31 @@ export default function VouchersPage() {
   // 🛡️ 2026-05-19: 카테고리 + 브랜드 sections 로드 (전용 endpoint, deal_only=1 만).
   useEffect(() => {
     let cancelled = false
+
+    // 🛡️ 2026-05-27 (재진입 perf): localStorage cache 우선 — 재진입 시 0 RTT.
+    //   카테고리/브랜드 list 는 KT Alpha sync (일 1회) 시점에만 변경 → 1시간 cache 안전.
+    //   network fetch 는 background 에서 진행 (cache 비교 후 변경 시 update).
+    try {
+      const raw = localStorage.getItem('vouchers_categories_v1')
+      if (raw) {
+        const cached = JSON.parse(raw) as { ts: number; data: CategorySection[] }
+        if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) {
+          setSections(cached.data)
+          if (!category && !brand && cached.data.length > 0) {
+            const next = new URLSearchParams(searchParams)
+            next.set('category', cached.data[0].category)
+            setSearchParams(next, { replace: true })
+          }
+        }
+      }
+    } catch { /* localStorage 손상 — 무시 */ }
+
     api.get('/api/vouchers/categories').then(r => {
       if (cancelled) return
       if (r.data?.success && Array.isArray(r.data.data)) {
         const list = r.data.data as CategorySection[]
         setSections(list)
+        try { localStorage.setItem('vouchers_categories_v1', JSON.stringify({ ts: Date.now(), data: list })) } catch { /* quota */ }
         // 카테고리 URL 미지정 시 첫 카테고리 (인기 ↑) 자동 선택.
         if (!category && !brand && list.length > 0) {
           const next = new URLSearchParams(searchParams)
