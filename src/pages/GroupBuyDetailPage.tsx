@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Share2, Instagram, Youtube, Facebook, Music2 } from 'lucide-react'
 import { getTossPayments } from '@/lib/toss-preload'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
@@ -46,7 +46,13 @@ interface GroupBuyDetail {
   next_tier_remaining?: number | null
   seller_id?: number
   seller_name?: string
+  seller_username?: string
   seller_avatar?: string
+  // 🛡️ 2026-05-27: 셀러 SNS 버튼 — 채팅/매너온도 X, SNS 만.
+  seller_instagram?: string | null
+  seller_youtube?: string | null
+  seller_tiktok?: string | null
+  seller_facebook?: string | null
 }
 
 interface Participant {
@@ -763,24 +769,55 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        {/* 셀러 정보 */}
-        {detail.seller_name && (
-          <button
-            onClick={() => detail.seller_id && navigate(`/profile/${detail.seller_id}`)}
-            className="w-full bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A] flex items-center gap-3 hover:bg-gray-50"
-          >
-            {detail.seller_avatar ? (
-              <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-300 to-rose-400" />
-            )}
-            <div className="flex-1 text-left">
-              <p className="text-xs text-gray-500">판매자</p>
-              <p className="text-sm font-bold text-gray-900">{detail.seller_name}</p>
+        {/* 셀러 정보 + SNS — 🛡️ 2026-05-27 사용자 요청: 채팅/매너온도 X, SNS 만 */}
+        {detail.seller_name && (() => {
+          const snsLinks = [
+            detail.seller_instagram && { icon: Instagram, url: detail.seller_instagram, label: 'Instagram', color: 'text-pink-500' },
+            detail.seller_youtube && { icon: Youtube, url: detail.seller_youtube, label: 'YouTube', color: 'text-red-500' },
+            detail.seller_tiktok && { icon: Music2, url: detail.seller_tiktok, label: 'TikTok', color: 'text-gray-900' },
+            detail.seller_facebook && { icon: Facebook, url: detail.seller_facebook, label: 'Facebook', color: 'text-blue-600' },
+          ].filter(Boolean) as { icon: typeof Instagram; url: string; label: string; color: string }[]
+          // 외부 URL 정규화 — http:// 없으면 자동 추가
+          const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
+          return (
+            <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden">
+              <button
+                onClick={() => {
+                  const target = detail.seller_username || detail.seller_id
+                  if (target) navigate(`/profile/${target}`)
+                }}
+                className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-[#111] transition-colors"
+              >
+                {detail.seller_avatar ? (
+                  <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-300 to-rose-400" />
+                )}
+                <div className="flex-1 text-left">
+                  <p className="text-xs text-gray-500">판매자</p>
+                  <p className="text-sm font-bold text-gray-900">{detail.seller_name}</p>
+                </div>
+                <span className="text-xs text-gray-400">프로필 →</span>
+              </button>
+              {snsLinks.length > 0 && (
+                <div className="flex items-center gap-2 px-4 pb-3 -mt-1">
+                  {snsLinks.map(({ icon: Icon, url, label, color }) => (
+                    <a
+                      key={label}
+                      href={normalizeUrl(url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      className={`w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1A1A1A] flex items-center justify-center ${color} hover:bg-gray-100 dark:hover:bg-[#222] transition-colors`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
-            <span className="text-xs text-gray-400">프로필 →</span>
-          </button>
-        )}
+          )
+        })()}
 
         {/* 사용 안내 */}
         {detail.voucher_terms && (
