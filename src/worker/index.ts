@@ -468,6 +468,12 @@ app.use('*', async (c, next) => {
         const profileMatch = url.pathname.match(/^\/profile\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
         if (profileMatch) {
           ssrTarget = { slot: 'SELLER', path: `/api/sellers/${profileMatch[1]}/public` };
+        } else {
+          // 🛡️ 2026-05-27 (큐레이터 SSR): /u/:handle 도 inject — 큐레이터 페이지 로딩 ↓.
+          const curatorMatch = url.pathname.match(/^\/u\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
+          if (curatorMatch && curatorMatch[1] !== 'me') {
+            ssrTarget = { slot: 'CURATOR', path: `/api/curator/${curatorMatch[1]}` };
+          }
         }
       }
     }

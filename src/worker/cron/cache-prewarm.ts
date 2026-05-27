@@ -121,6 +121,13 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
           WHERE status = 'approved' AND username IS NOT NULL AND username != ''
           ORDER BY id DESC LIMIT 10`
       ).all<{ username: string }>().catch(() => ({ results: [] as { username: string }[] }))
+      // 🛡️ 2026-05-27: Top 10 큐레이터 (핀 가진 user) — /u/:handle 페이지 warm.
+      const curatorsResult = await env.DB.prepare(
+        `SELECT u.handle FROM users u
+          WHERE u.handle IS NOT NULL AND u.handle != ''
+            AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+          ORDER BY u.id DESC LIMIT 10`
+      ).all<{ handle: string }>().catch(() => ({ results: [] as { handle: string }[] }))
       // Top 10 활성 공구 (group_buy_status='active' + sold_count DESC)
       const productsResult = await env.DB.prepare(
         `SELECT id FROM products
@@ -134,6 +141,9 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
       }
       for (const p of productsResult.results ?? []) {
         if (Number.isFinite(p.id)) dynamicPaths.push(`/api/group-buy/products/${p.id}`)
+      }
+      for (const c of curatorsResult.results ?? []) {
+        if (c.handle) dynamicPaths.push(`/api/curator/${c.handle}`)
       }
 
       let dynSuccess = 0, dynFailed = 0
