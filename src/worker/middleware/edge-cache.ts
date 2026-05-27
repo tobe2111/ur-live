@@ -152,7 +152,14 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
       // 🛡️ 2026-04-28: stale-while-revalidate 추가 (browser cache 활용)
       //  - max-age 동안 즉시 사용 (서버 호출 0)
       //  - 그 후 swr 동안 stale 사용 + 백그라운드 refresh → 체감 속도 ↑
-      response.headers.set('Cache-Control', `public, max-age=${ttlSeconds}, stale-while-revalidate=${swr}`);
+      // 🛡️ 2026-05-27 (속도 + 비용): CDN-Cache-Control 분리.
+      //  - 브라우저 Cache-Control: max-age=60s (데이터 fresh 우선)
+      //  - CF edge CDN-Cache-Control: max-age=ttlSeconds × 3 (server 부하 ↓)
+      //  - 브라우저는 항상 비교적 최신 데이터, edge 는 길게 유지 (worker invocation ↓ → 비용 ↓)
+      const browserMaxAge = Math.min(60, ttlSeconds);
+      const cdnMaxAge = ttlSeconds * 3;
+      response.headers.set('Cache-Control', `public, max-age=${browserMaxAge}, stale-while-revalidate=${swr}`);
+      response.headers.set('CDN-Cache-Control', `public, max-age=${cdnMaxAge}, stale-while-revalidate=${swr}`);
       response.headers.set('X-Cache-Status', `${tag}-MISS`);
 
       // L1 (Edge) backfill — 응답 블로킹 안 함
@@ -203,5 +210,18 @@ export function edgeCache(ttlSeconds: number) {
  *   - L1+L2 miss:    D1 hit (~200-500ms) — 신선도 진짜 필요한 첫 호출만
  */
 export function publicCache(ttlSeconds: number) {
-  return makeCacheMiddleware(ttlSeconds, { bypassIfAuthed: false, tag: 'public', useKv: true });
+  // 🛡️ 2026-05-27 (비용 최적화): KV second-layer 기본 비활성.
+  //   기존: 5분 cron × 13 endpoint = 일 3,744 KV write → 무료 한도 1,000 초과 (비용 발생)
+  //   변경: edge cache (`caches.default`) 만 — 한도 무한, 비용 $0.
+  //   한국 (ICN PoP) 사용자 99%+ → cron warming 이 한국 PoP 채워서 hit 동일.
+  //   글로벌 사용자 (1%) 는 첫 사용자만 D1 hit, 이후 같은 PoP edge cache.
+  //   region 간 share 필요한 endpoint 만 publicCacheWithKv 사용.
+  return makeCacheMiddleware(ttlSeconds, { bypassIfAuthed: false, tag: 'public', useKv: false });
+}
+
+/**
+ * 🛡️ 2026-05-27: KV second-layer 명시적 옵트인 — 글로벌 region share 필요할 때만.
+ */
+export function publicCacheWithKv(ttlSeconds: number) {
+  return makeCacheMiddleware(ttlSeconds, { bypassIfAuthed: false, tag: 'public-kv', useKv: true });
 }

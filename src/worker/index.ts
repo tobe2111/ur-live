@@ -473,14 +473,21 @@ app.use('*', async (c, next) => {
     let ssrPayload: string | null = null;
     let ssrStatus = 'skip';
     if (ssrTarget) {
+      // 🛡️ 2026-05-27 (비용 최적화 + 속도): edge cache (`caches.default`) 직접 read.
+      //   기존: KV second-layer read (~50ms) → KV write 한도 초과 → 비용 발생.
+      //   변경: edge cache 직접 read (~5ms). KV 의존성 0, 비용 $0, 속도 더 빠름.
+      //   miss 시 self-fetch fallback (publicCache middleware 가 edge cache 자동 write).
       try {
-        const { readKvCacheForSSR } = await import('./middleware/edge-cache');
-        const cached = await readKvCacheForSSR(c.env as unknown as Record<string, unknown>, ssrTarget.path);
+        const origin = new URL(c.req.url).origin;
+        const cacheKey = new Request(`${origin}${ssrTarget.path}`, { method: 'GET' });
+        // @ts-expect-error — Cloudflare Workers 전역 caches
+        const cached = await caches.default.match(cacheKey);
         if (cached && cached.status >= 200 && cached.status < 300) {
-          ssrPayload = cached.body.replace(/<\/script/gi, '<\\/script');
-          ssrStatus = 'kv-hit';
+          const body = await cached.text();
+          ssrPayload = body.replace(/<\/script/gi, '<\\/script');
+          ssrStatus = 'edge-hit';
         }
-      } catch { /* KV unavailable */ }
+      } catch { /* edge cache unavailable */ }
 
       if (!ssrPayload) {
         const ctlr = new AbortController();
