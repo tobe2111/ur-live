@@ -45,6 +45,8 @@ export default function SellerRegisterSupplierPage() {
   const [form, setForm] = useState({
     business_name: '',
     business_number: '',
+    representative_name: '',     // 🛡️ 2026-05-27 (사용자 결정): 국세청 진위확인용
+    business_start_date: '',     // 🛡️ 2026-05-27 (사용자 결정): YYYY-MM-DD
     phone: '',
     store_category: '',
     address: '',
@@ -88,7 +90,7 @@ export default function SellerRegisterSupplierPage() {
   }, [])
 
   async function submit() {
-    if (!form.business_name.trim() || !form.business_number.trim() || !form.phone.trim()) {
+    if (!form.business_name.trim() || !form.business_number.trim() || !form.phone.trim() || !form.representative_name.trim() || !form.business_start_date) {
       toast.error(t('seller.register.requiredFields', { defaultValue: '필수 항목을 입력해주세요' }))
       return
     }
@@ -110,6 +112,8 @@ export default function SellerRegisterSupplierPage() {
       const res = await api.post('/api/seller/register-from-user', {
         business_name: form.business_name,
         business_number: form.business_number,
+        representative_name: form.representative_name || undefined,
+        business_start_date: form.business_start_date || undefined,
         phone: form.phone,
         seller_type: 'store_owner',
         description: descWithMeta,
@@ -225,6 +229,24 @@ export default function SellerRegisterSupplierPage() {
               maxLength={12}
               placeholder="000-00-00000"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono" />
+          </Field>
+
+          {/* 🛡️ 2026-05-27 (사용자 결정): 국세청 진위확인 — 대표자 + 개업일 함께 입력 시 자동 승인 */}
+          <Field label="대표자명" required>
+            <input value={form.representative_name}
+              onChange={e => setForm(f => ({ ...f, representative_name: e.target.value }))}
+              maxLength={20}
+              placeholder="예: 홍길동"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
+            <p className="text-[11px] text-gray-500 mt-1">사업자등록증 기재 명의자</p>
+          </Field>
+
+          <Field label="개업일" required>
+            <input type="date" value={form.business_start_date}
+              onChange={e => setForm(f => ({ ...f, business_start_date: e.target.value }))}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
+            <p className="text-[11px] text-gray-500 mt-1">국세청 등록 정보와 일치 시 자동 승인</p>
           </Field>
 
           <Field label="연락처 (담당자 휴대폰)" required>

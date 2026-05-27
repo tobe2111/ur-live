@@ -115,6 +115,12 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-23 (Task 3): 5분마다 hot endpoint pre-warm — 배포 후 / cache expire 후
     //   첫 사용자 cold-start 제거. publicCache 가 edge + KV 양쪽 자동으로 채움.
     ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env)));
+    // 🛡️ 2026-05-27 (영업 검증 Layer 4): prospects 첫 매출 발생 시 commission 활성.
+    //   단순 가입 X — 매장이 실제 매출 내야 영업 commission lock-in. 부정 방지.
+    ctx.waitUntil(safeCron('prospects-commission-activate', async () => {
+      const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
+      return handleProspectsCommissionActivate(env)
+    }));
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
