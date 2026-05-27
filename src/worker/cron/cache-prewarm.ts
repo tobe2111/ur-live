@@ -48,6 +48,12 @@ const HOT_PATHS: readonly string[] = [
   // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
   //   이 key 를 cron 이 warm 하지 않으면 readKvCacheForSSR miss → 첫 사용자 skeleton.
   '/api/group-buy/products?status=active&category=all',
+  // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
+  //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
+  '/api/group-buy/products?status=active&category=meal_voucher',
+  '/api/group-buy/products?status=active&category=stay_voucher',
+  '/api/group-buy/products?status=active&category=beauty_voucher',
+  '/api/group-buy/products?status=active&category=etc_voucher',
   // VouchersPage / BrowsePage SSR inject 대응 — first-paint warm 유지.
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',
   '/api/products?page=1&limit=20&exclude_deal_only=1',

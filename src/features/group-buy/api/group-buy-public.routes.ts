@@ -123,10 +123,15 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     )
 
     // 🛡️ 2026-05-24 (loading P0): 브라우저 + Cloudflare edge HTTP cache.
-    //   public, max-age=300 (5분) + stale-while-revalidate=120s.
+    //   stale-while-revalidate=120s.
     //   효과: 동일 사용자 5분 내 재요청 → 304 / 캐시 적중 → 0 워커 호출 / 0 D1 read.
     //   CF edge 가 다른 사용자 요청에도 캐시 공유 (region 단위) — 전체 latency ↓.
-    c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
+    // 🛡️ 2026-05-27 (loading P1): Cache-Control / CDN-Cache-Control 분리.
+    //   - 브라우저 60s: 새 공구 신선도 (이전 300s → 1분으로 단축)
+    //   - CF edge 900s: edge hit rate 유지 (D1 worker 비용 ↑ 없음)
+    //   publicCache middleware (edge-cache.ts:155-162) 와 동일 패턴.
+    c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+    c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
     return c.json({ success: true, data: results })
   })
 
