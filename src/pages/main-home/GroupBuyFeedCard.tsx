@@ -131,6 +131,8 @@ export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCard
           <img
             // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (200px base, 1x/2x/3x DPI).
             //   원본 1000px+ 다운로드 → 200-600px WebP/AVIF 자동 변환 (50-80% 트래픽 절감).
+            // 🛡️ 2026-05-27 (perceived perf): fade-in transition — load 전 skeleton(bg-gray-100)
+            //   → load 시 opacity 0→1 부드럽게. onLoad 시 opacity 100 클래스 toggle.
             src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
             srcSet={cfSrcSet(p.image_url, 200) || undefined}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
@@ -138,6 +140,8 @@ export default function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCard
             loading={aboveFold ? 'eager' : 'lazy'}
             fetchPriority={aboveFold ? 'high' : 'auto'}
             decoding="async"
+            onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
+            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

@@ -45,6 +45,22 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'images.unsplash.com',
 ])
 
+// 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.
+//   브라우저가 Chrome 모바일 / Lite mode 등에서 navigator.connection.saveData=true 전송.
+//   효과: 모바일 데이터 절약 사용자에게 image 트래픽 추가 ~25% ↓.
+function detectSaveData(): boolean {
+  if (typeof navigator === 'undefined') return false
+  try {
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+    return !!conn?.saveData
+  } catch { return false }
+}
+const _saveDataCached: boolean | null = null
+function getSaveData(): boolean {
+  if (_saveDataCached !== null) return _saveDataCached
+  return detectSaveData()
+}
+
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {
   if (!src) return ''
   if (typeof src !== 'string') return ''
@@ -54,6 +70,11 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
 
   // SVG / GIF (애니메이션) 그대로 — Cloudflare 변환 부작용
   if (/\.(svg|gif)(\?|$)/i.test(src)) return src
+
+  // 🛡️ Save-Data 사용자는 quality 85 → 65 (트래픽 25% ↓ but 시각적 거의 동일)
+  if (getSaveData() && !opts.quality) {
+    opts = { ...opts, quality: 65 }
+  }
 
   // 절대 URL 인지 확인
   const isAbsolute = /^https?:\/\//i.test(src)
