@@ -195,6 +195,10 @@ export default defineConfig({
     //   배포 후 Sentry CLI 가 dist/client/assets/*.map 업로드 → 그 다음 삭제 또는 .gitignore.
     //   sourcemap: false 면 production 에러가 minified — Sentry 디버깅 어려움.
     sourcemap: 'hidden',
+    // 🛡️ 2026-05-27 (Lighthouse): es2020 → esnext. modern browser only.
+    //   효과: Array.from/Object.assign 등 polyfill 제거 (-24KB) + parse 시간 ↓ + TBT ↓.
+    //   대상: Chrome 85+, Firefox 79+, Safari 14+ (2020 이후 — Cloudflare Workers 환경과 일관).
+    target: 'esnext',
     minify: 'terser',
     terserOptions: {
       compress: {

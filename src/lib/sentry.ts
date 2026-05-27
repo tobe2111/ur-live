@@ -33,26 +33,17 @@ export async function initSentry() {
       release: `ur-live@${import.meta.env.VITE_APP_VERSION || 'unknown'}`,
 
       // 성능 추적 통합
+      // 🛡️ 2026-05-27 (Lighthouse 진단): replayIntegration 영구 제거.
+      //   원인: replay 가 DOM 측정 (offsetWidth 등) 으로 forced reflow 4.6s 발생 → LCP 직접 차단.
+      //   replaysSessionSampleRate=0 이라도 integration 자체가 항상 init → reflow 발생.
+      //   영구 fix: replay 완전 제거. 에러는 browserTracing + Sentry 기본 capture 로 충분.
       integrations: [
         Sentry.browserTracingIntegration(),
-        // 🛡️ 2026-04-22: PII 마스킹 — 결제/주소/전화/카드번호 유출 방어
-        // replay 세션에 모든 사용자 텍스트를 숨김. input 은 Sentry 기본 마스킹 유지.
-        Sentry.replayIntegration({
-          maskAllText: true,
-          blockAllMedia: true,
-          maskAllInputs: true,
-          // 네트워크 상세 URL 화이트리스트 — 외부 결제/인증 URL 제외
-          networkDetailAllowUrls: [window.location.origin],
-        }),
       ],
 
       // 🛡️ 2026-05-01: Sentry 429 (quota 초과) 신고 — 샘플링 대폭 축소.
       //   tracesSampleRate: 10% → 1% (트랜잭션은 운영 monitoring 용 — 적은 표본도 충분)
-      //   replaysSessionSampleRate: 10% → 0% (일반 세션 replay 안 함)
-      //   replaysOnErrorSampleRate: 100% → 10% (에러 시도 10%만)
       tracesSampleRate: 0.01,
-      replaysSessionSampleRate: 0,     // 일반 세션 replay 0 (quota 초과 방어)
-      replaysOnErrorSampleRate: 0.1,   // 에러 발생 시 10% 기록
 
       // 에러 필터링
       beforeSend(event, hint) {
