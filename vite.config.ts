@@ -160,6 +160,19 @@ export default defineConfig({
           if (id.includes('/src/components/search/')) return 'app-search'
           if (id.includes('/src/components/mypage/') || id.includes('/src/components/my-page/')) return 'app-mypage'
           if (id.includes('/src/components/wallet/')) return 'app-wallet'
+          // 🛡️ 2026-05-27 (loading P1 phase 3): 페이지별 폴더 추가 분리.
+          //   각 폴더가 1-3 개 페이지에서만 사용 → 일반 사용자 critical path 진입 회피.
+          if (id.includes('/src/components/group-buy/')) return 'app-group-buy'
+          if (id.includes('/src/components/product/')) return 'app-product-components'
+          if (id.includes('/src/components/guide/')) return 'app-guide'
+          if (id.includes('/src/components/shipping/')) return 'app-shipping'
+          if (id.includes('/src/components/upload/')) return 'app-upload'
+          if (id.includes('/src/components/glass/')) return 'app-glass'
+          if (id.includes('/src/components/settings/')) return 'app-settings'
+          // 라이브 전용 — components/ 직속이지만 라이브 컴포넌트가 import → app-live-components 로 묶음.
+          if (id.includes('/src/components/LiveDonation') ||
+              id.includes('/src/components/GripFrameLayout') ||
+              id.includes('/src/components/FrameWrapper')) return 'app-live-components'
           if (id.includes('/src/components/')) return 'app-components'
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||
