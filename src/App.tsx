@@ -103,6 +103,7 @@ const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
 const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'))
+const SellerProspectsPage = lazy(() => import('./pages/SellerProspectsPage'))
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage'))
 const AgencyPartnerLandingPage = lazy(() => import('./pages/AgencyPartnerLandingPage'))
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
@@ -487,6 +488,9 @@ function AppContent() {
             <Route path="/business" element={<BusinessLandingPage />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} />
             <Route path="/agency-partner" element={<AgencyPartnerLandingPage />} />
+            {/* 🛡️ 2026-05-27 (영업 검증 Layer 2): 영업자 prospects dashboard. */}
+            <Route path="/agency/prospects" element={<SellerProspectsPage />} />
+            <Route path="/seller/prospects" element={<SellerProspectsPage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/recap/:id" element={<LiveRecapPage />} />
             <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
