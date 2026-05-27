@@ -329,6 +329,28 @@ function AppContent() {
       import('./pages/UserProfilePage').catch(() => {})
       import('./pages/MyVouchersPage').catch(() => {})
       import('./pages/SellerPublicPage').catch(() => {})
+
+      // 🛡️ 2026-05-27 (영구 fix — /host/new fall through 사용자 보고):
+      //   로그인 사용자가 BottomNav 의 링크샵 클릭 시 cache 없으면 /u/me → dashboard → /host/new.
+      //   idle 시 background 로 dashboard 호출 → linked_seller_username / user_handle localStorage 채움.
+      //   다음 링크샵 클릭 즉시 /profile/{username} 또는 /u/{handle} 직행 (0 RTT).
+      //   5분 이내 이미 cache 있으면 skip — 불필요한 API 호출 방지.
+      const isLoggedIn = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login') ||
+                            localStorage.getItem('seller_token') || localStorage.getItem('admin_token'))
+      if (isLoggedIn) {
+        const lastWarm = Number(localStorage.getItem('linkshop_dashboard_warm_ts') || 0)
+        if (Date.now() - lastWarm > 5 * 60_000) {
+          import('@/lib/api').then(m => {
+            m.default.get('/api/curator/me/dashboard').then((r: { data: { linked_seller?: { username?: string }; handle?: string | null } }) => {
+              try {
+                if (r.data?.linked_seller?.username) localStorage.setItem('linked_seller_username', r.data.linked_seller.username)
+                if (r.data?.handle) localStorage.setItem('user_handle', r.data.handle)
+                localStorage.setItem('linkshop_dashboard_warm_ts', String(Date.now()))
+              } catch { /* quota / storage 손상 */ }
+            }).catch(() => { /* 401 / 네트워크 — silent */ })
+          }).catch(() => {})
+        }
+      }
     }
     const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback
     if (ric) {
