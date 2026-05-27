@@ -41,8 +41,12 @@ const HOT_PATHS: readonly string[] = [
   '/api/home/categories',
   '/api/products?limit=20',
   '/api/streams',
+  '/api/streams?status=live&limit=10',
   '/api/banners',
   '/api/group-buy/products',
+  // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
+  //   이 key 를 cron 이 warm 하지 않으면 readKvCacheForSSR miss → 첫 사용자 skeleton.
+  '/api/group-buy/products?status=active&category=all',
   '/api/group-buy/live-ticker',
   '/api/sections',
   '/api/shorts',
