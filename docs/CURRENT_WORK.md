@@ -1,7 +1,44 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-27 (로딩 최적화 2차 — critical path -31%)
+**최종 업데이트**: 2026-05-28 (SSR 마이그레이션 Phase 1+2 시작 — LCP 0.5-1.5s 목표)
 **브랜치**: `claude/vibrant-feynman-m3X3m`
+
+## 🚧 진행 중: SSR 마이그레이션 (LCP 10.7s → 0.5-1.5s)
+
+**가이드**: `docs/SSR_MIGRATION.md` 필독. Phase 1-5 자세한 계획 + audit checklist.
+
+**완료**:
+- Phase 1 인프라 (`74a0625`): entry-server/client placeholder, vite build:ssr script, prerender-main 스켈레톤
+- Phase 2 첫 fix (`c113f1b`): BottomNav 8/15곳 SSR-safe (useState + useEffect)
+
+**다음 세션 진행 순서 (4-5일 작업)**:
+1. Phase 2 Step 2-1: BottomNav 나머지 7곳 (linkshopPath/cachedSeller/cachedHandle/JWT decode)
+2. Phase 2 Step 2-2: main.tsx SSR-safe (window 직접 사용)
+3. Phase 2 Step 2-3: DesktopLiveSidebar / RouteGuards / hooks audit
+4. Phase 3 Step 3-1: App.tsx BrowserRouter 분리 → entry-client ⚠️ 가장 위험
+5. Phase 3 Step 3-2: entry-server.tsx 진짜 구현 (renderToString + StaticRouter + dehydrate)
+6. Phase 3 Step 3-3: prerender-main.mjs 진짜 구현
+7. Phase 3 Step 3-4: package.json build 에 prerender step 추가
+8. Phase 4: `_routes.json` (메인 페이지만 정적)
+9. Phase 5: Lighthouse 재측정 + 카카오 OAuth 검증
+
+**위험 영역**:
+- App.tsx BrowserRouter 분리 (Step 3-1) = 모든 라우팅 영향
+- 결제(Toss V2 잠금) / 카카오 OAuth / 라이브 = 풀 audit 필요
+
+**현재 Lighthouse 측정값** (이번 세션 마지막):
+- Performance 44-66 (측정 변동 큼)
+- LCP 8-11s (메인 페이지)
+- TBT 300-1000ms
+- CLS 0-0.188
+
+**SSR 적용 후 목표**:
+- Performance 85-92
+- LCP 0.5-1.5s
+- TBT/CLS 유지
+
+---
+
 
 ## ✅ 2026-05-27 — 로딩 최적화 2차 (critical path -31%, 14 commits)
 
