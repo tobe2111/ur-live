@@ -115,7 +115,7 @@ export default function AdminOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -123,25 +123,44 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [sellerFilter, setSellerFilter] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' })
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
   const [sellers, setSellers] = useState<Array<{ id: number; name: string }>>([])
+
+  // 🛡️ 2026-05-27 (loading P1 — audit A): 검색 debounce 300ms (서버 fetch trigger).
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  // 🛡️ filter 변경 시 page 1 reset.
+  useEffect(() => { setCurrentPage(1) }, [statusFilter, sellerFilter, debouncedSearch, dateFilter.start, dateFilter.end])
 
   const loadOrders = useCallback(async () => {
     setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       if (!token) { navigate('/admin/login'); return }
-      // 🛡️ 2026-05-27 (사용자 증가 대비): 무제한 → limit=500. 미래 서버 페이지네이션 도입 시 제거.
-      const response = await api.get('/api/admin/orders?limit=500', { headers: { Authorization: `Bearer ${token}` } })
-      if (response.data.success) setOrders(response.data.data)
+      // 🛡️ 2026-05-27 (audit A): 서버 페이지네이션 + 검색/필터 서버 측.
+      const params = new URLSearchParams({ page: String(currentPage), limit: String(itemsPerPage) })
+      if (statusFilter !== 'ALL') params.set('status', statusFilter)
+      if (sellerFilter !== 'ALL') params.set('seller_id', sellerFilter)
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (dateFilter.start) params.set('start_date', dateFilter.start)
+      if (dateFilter.end) params.set('end_date', dateFilter.end)
+      const response = await api.get(`/api/admin/orders?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (response.data.success) {
+        setOrders(response.data.data)
+        setTotalCount(Number(response.data.pagination?.total ?? response.data.data.length))
+      }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
       setError(t('admin.orders.k027', { defaultValue: '주문 목록을 불러올 수 없습니다.' }))
-      if (err_.response?.status === 401) { /* lib/api.ts interceptor 처리 — refresh 시도 후 실패 시만 redirect. page 가 먼저 navigate 하면 race condition */ }
+      if (err_.response?.status === 401) { /* interceptor 처리 */ }
     } finally { setLoading(false) }
-  }, [navigate])
+  }, [navigate, currentPage, statusFilter, sellerFilter, debouncedSearch, dateFilter.start, dateFilter.end, t])
 
   const loadSellers = useCallback(async () => {
     try {
@@ -156,32 +175,13 @@ export default function AdminOrdersPage() {
     }
   }, [])
 
-  useEffect(() => { loadOrders(); loadSellers() }, [loadOrders, loadSellers])
+  // 🛡️ filter / page 변경 시 자동 재fetch (loadOrders 의 useCallback deps).
+  useEffect(() => { loadOrders() }, [loadOrders])
+  useEffect(() => { loadSellers() }, [loadSellers])
 
-  function filterOrders() {
-    let result = [...orders]
-    if (statusFilter !== 'ALL') result = result.filter(o => o.status === statusFilter)
-    if (sellerFilter !== 'ALL') result = result.filter(o => o.seller_id === parseInt(sellerFilter))
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(o =>
-        o.order_number.toLowerCase().includes(q) ||
-        o.shipping_name.toLowerCase().includes(q) ||
-        o.shipping_phone.includes(q) ||
-        o.user_email?.toLowerCase().includes(q)
-      )
-    }
-    if (dateFilter.start) result = result.filter(o => new Date(o.created_at) >= new Date(dateFilter.start))
-    if (dateFilter.end) {
-      const end = new Date(dateFilter.end); end.setHours(23, 59, 59, 999)
-      result = result.filter(o => new Date(o.created_at) <= end)
-    }
-    setFilteredOrders(result); setCurrentPage(1)
-  }
-
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const currentOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage)
+  // 서버 페이지네이션 — orders 가 이미 한 page. 클라 측 slice 불필요.
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage))
+  const currentOrders = orders
 
   async function viewOrderDetail(orderNumber: string) {
     try {
@@ -240,12 +240,12 @@ export default function AdminOrdersPage() {
   }
 
   const orderStats = {
-    total: filteredOrders.length,
-    pending: filteredOrders.filter(o => o.status?.toUpperCase() === 'PENDING').length,
-    shipped: filteredOrders.filter(o => o.status?.toUpperCase() === 'SHIPPING').length,
-    delivered: filteredOrders.filter(o => o.status?.toUpperCase() === 'DELIVERED').length,
-    cancelled: filteredOrders.filter(o => o.status?.toUpperCase() === 'CANCELLED').length,
-    totalAmount: filteredOrders.reduce((s, o) => s + o.total_amount, 0),
+    total: totalCount,
+    pending: orders.filter(o => o.status?.toUpperCase() === 'PENDING').length,
+    shipped: orders.filter(o => o.status?.toUpperCase() === 'SHIPPING').length,
+    delivered: orders.filter(o => o.status?.toUpperCase() === 'DELIVERED').length,
+    cancelled: orders.filter(o => o.status?.toUpperCase() === 'CANCELLED').length,
+    totalAmount: orders.reduce((s, o) => s + o.total_amount, 0),
   }
 
   if (loading) {
@@ -387,7 +387,7 @@ export default function AdminOrdersPage() {
         {totalPages > 1 && (
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
             <p className="text-xs text-gray-500">
-              전체 <span className="font-medium">{filteredOrders.length}</span>{t('admin.orders.k053', { defaultValue: '개 중' })} <span className="font-medium">{startIndex + 1}</span>-<span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredOrders.length)}</span>개
+              전체 <span className="font-medium">{totalCount}</span>{t('admin.orders.k053', { defaultValue: '개 중' })} <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span>-<span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + itemsPerPage, totalCount)}</span>개
             </p>
             <div className="flex items-center gap-1">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">

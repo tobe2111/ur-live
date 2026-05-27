@@ -68,19 +68,43 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     if (sellerId && !/^\d+$/.test(sellerId)) return c.json({ success: false, error: 'Invalid seller_id' }, 400);
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
+    const search = c.req.query('search')?.trim();
+    // 🛡️ 2026-05-27 (loading P1 — audit A): 서버 페이지네이션 + 검색.
+    //   이전: LIMIT 1000 hard cap + 클라 측 slice + 클라 측 검색 → 주문 10000+ 시 timeout/OOM.
+    //   변경: page/limit + 서버 검색 (order_number / shipping_name / shipping_phone) + total count.
+    const page = Math.max(1, Number.parseInt(c.req.query('page') || '1', 10) || 1);
+    const rawLimit = Number.parseInt(c.req.query('limit') || '50', 10) || 50;
+    const limit = Math.min(500, Math.max(10, rawLimit));
+    const offset = (page - 1) * limit;
 
-    const buildWhere = (base: string) => {
+    const buildWhere = (base: string, withPaging: boolean) => {
       const params: (string | number | null)[] = [];
       let q = base;
       if (status) { q += ' AND COALESCE(o.status,\'pending\') = ?'; params.push(status); }
       if (sellerId) { q += ' AND o.seller_id = ?'; params.push(sellerId); }
       if (startDate) { q += " AND DATE(o.created_at, '+9 hours') >= ?"; params.push(startDate); }
       if (endDate) { q += " AND DATE(o.created_at, '+9 hours') <= ?"; params.push(endDate); }
-      q += ' ORDER BY o.created_at DESC LIMIT 1000';
+      if (search) {
+        // sanitize LIKE wildcards
+        const like = `%${search.replace(/[%_]/g, '\\$&')}%`;
+        q += ` AND (
+          o.order_number LIKE ? ESCAPE '\\'
+          OR COALESCE(o.shipping_name,'') LIKE ? ESCAPE '\\'
+          OR COALESCE(o.shipping_phone,'') LIKE ? ESCAPE '\\'
+        )`;
+        params.push(like, like, like);
+      }
+      if (withPaging) {
+        q += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+      } else {
+        q += ' ORDER BY o.created_at DESC';
+      }
       return { q, params };
     };
 
     let orders: OrderRow[];
+    let total = 0;
     try {
       const { q, params } = buildWhere(`
         SELECT o.id, o.order_number, o.user_id, o.seller_id,
@@ -102,8 +126,14 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         LEFT JOIN sellers s ON o.seller_id = s.id
-        WHERE 1=1`);
-      orders = await executeQuery<OrderRow>(DB, q, params);
+        WHERE 1=1`, true);
+      const countQ = buildWhere(`SELECT COUNT(*) as cnt FROM orders o WHERE 1=1`, false);
+      const [ordersRes, countRes] = await Promise.all([
+        executeQuery<OrderRow>(DB, q, params),
+        executeQuery<{ cnt: number }>(DB, countQ.q, countQ.params),
+      ]);
+      orders = ordersRes;
+      total = Number(countRes[0]?.cnt ?? 0);
     } catch (primaryErr) {
       if (import.meta.env.DEV) console.warn('[Admin] orders primary query failed, trying fallback:', (primaryErr as Error).message);
       try {
@@ -118,15 +148,17 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
                  o.created_at, o.updated_at,
                  '' as user_name, '' as user_email, '' as seller_name
           FROM orders o
-          WHERE 1=1`);
+          WHERE 1=1`, true);
         orders = await executeQuery<OrderRow>(DB, q, params);
+        total = orders.length; // fallback: 정확한 total 없음
       } catch (fallbackErr) {
         if (import.meta.env.DEV) console.error('[Admin] orders fallback also failed:', (fallbackErr as Error).message);
-        return c.json({ success: true, data: [] });
+        return c.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0 } });
       }
     }
 
-    return c.json({ success: true, data: orders });
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return c.json({ success: true, data: orders, pagination: { page, limit, total, totalPages } });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] orders error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
