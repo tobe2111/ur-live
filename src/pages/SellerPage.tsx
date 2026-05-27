@@ -44,6 +44,15 @@ const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
 
+// 🛡️ 2026-05-27 (memory): 새 주문 알림 사운드 — module-scope 1회 생성 → GC 압력 ↓.
+//   이전: 매 폴링마다 new Audio(data:...) → 인스턴스 누적.
+const newOrderAudio = typeof Audio !== 'undefined'
+  ? Object.assign(
+      new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1'),
+      { volume: 0.3 },
+    )
+  : ({ play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement)
+
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function SellerPage() {
   const { t, i18n } = useTranslation()
@@ -158,9 +167,9 @@ export default function SellerPage() {
               } else if (Notification.permission === 'default') {
                 Notification.requestPermission()
               }
-              const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1')
-              audio.volume = 0.3
-              audio.play().catch(swallow('seller:new-order-audio'))
+              // 🛡️ 2026-05-27 (memory): module-scope 1회 생성 — 매 알림마다 새 Audio 인스턴스 회피.
+              newOrderAudio.currentTime = 0
+              newOrderAudio.play().catch(swallow('seller:new-order-audio'))
             } catch { /* non-critical */ }
           }
           lastMaxIdRef.current = maxId
