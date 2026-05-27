@@ -24,17 +24,24 @@ interface AuthWorldState {
 const DEBUG = import.meta.env.DEV
 
 // ─── 순수 동기 체크 함수 ─────────────────────────────────────────────────────
+// 🛡️ 2026-05-27 (이중 로그인 race fix): 토큰 존재만으로 인증 판단.
+//   기존: `user_type === 'admin'` 등 user_type 도 같이 검사 → user_type 은 단일 키라
+//         어드민/유저 둘 다 로그인 시 마지막 로그인 한 쪽 user_type 만 살아남음 →
+//         반대 역할 페이지 진입 시 ProtectedRoute false → 자동 로그아웃.
+//   수정: 각 토큰 (admin_token / seller_token / user_id) 의 존재만 검사.
+//         user_type 은 BottomNav active_role 처럼 DISPLAY 용으로만 사용.
+//         seller 는 이미 `!!seller_token` 만 검사 (RouteGuards.tsx requireSeller 블록) — 일관성 통일.
 
 function isUserLoggedIn(): boolean {
-  return localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  return !!localStorage.getItem('user_id') || !!localStorage.getItem('session_login')
 }
 
 function isSellerLoggedIn(): boolean {
-  return !!localStorage.getItem('seller_token') && localStorage.getItem('user_type') === 'seller'
+  return !!localStorage.getItem('seller_token')
 }
 
 function isAdminLoggedIn(): boolean {
-  return !!localStorage.getItem('admin_token') && localStorage.getItem('user_type') === 'admin'
+  return !!localStorage.getItem('admin_token')
 }
 
 function makeLoginUrl(pathname: string, search: string): string {
