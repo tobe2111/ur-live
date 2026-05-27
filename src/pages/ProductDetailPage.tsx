@@ -657,11 +657,29 @@ export default function ProductDetailPage() {
         <div className="px-5 py-3 space-y-2">
           {isLoggedIn && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 const userId = getUserId()
                 const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
-                navigator.clipboard.writeText(url)
-                showToast(t('productDetailPage.shareLinkCopied'), 'success')
+                // 1) clipboard 복사 (즉시)
+                try { await navigator.clipboard.writeText(url) } catch { /* fallback 무시 */ }
+                // 2) 🛡️ 2026-05-27 (사용자 idea): 추천 링크 복사 = 큐레이터 의도 →
+                //    자동으로 본인 링크샵에 핀 추가 (idempotent — 이미 핀이면 ALREADY_PINNED graceful).
+                //    효과: 친구가 링크로 구매 시 큐레이터 적립 + 본인 링크샵에서 영구 노출.
+                let pinAdded = false
+                try {
+                  const res = await api.post('/api/curator/me/pins', { product_id: product.id })
+                  if (res.data?.success) pinAdded = true
+                } catch (err: any) {
+                  if (err?.response?.data?.code !== 'ALREADY_PINNED') {
+                    // 핀 실패는 silent — clipboard 복사는 성공
+                  }
+                }
+                showToast(
+                  pinAdded
+                    ? '🔗 링크 복사 + 내 링크샵에 자동 추가됨'
+                    : t('productDetailPage.shareLinkCopied'),
+                  'success'
+                )
               }}
               className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98]"
             >
