@@ -79,7 +79,7 @@ export default function GroupBuyGuideCard() {
         </Link>
         <span className="text-gray-300 dark:text-gray-600">·</span>
         <Link to="/help/deal-guide" className="font-medium text-gray-600 dark:text-gray-400 hover:underline">
-          자세히
+          딜 가이드 자세히 보기
         </Link>
       </div>
     </div>
