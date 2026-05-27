@@ -169,10 +169,10 @@ export default defineConfig({
           if (id.includes('/src/components/upload/')) return 'app-upload'
           if (id.includes('/src/components/glass/')) return 'app-glass'
           if (id.includes('/src/components/settings/')) return 'app-settings'
-          // 라이브 전용 — components/ 직속이지만 라이브 컴포넌트가 import → app-live-components 로 묶음.
-          if (id.includes('/src/components/LiveDonation') ||
-              id.includes('/src/components/GripFrameLayout') ||
-              id.includes('/src/components/FrameWrapper')) return 'app-live-components'
+          // 라이브 전용 — components/ 직속이지만 라이브 페이지만 사용.
+          //   ⚠️ FrameWrapper / GripFrameLayout 은 App.tsx 에서 import → critical path 유지 필수.
+          //     (app-live-components 로 옮기면 app-live-components chunk 가 critical path 진입 → 손해)
+          if (id.includes('/src/components/LiveDonation')) return 'app-live-components'
           if (id.includes('/src/components/')) return 'app-components'
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||
