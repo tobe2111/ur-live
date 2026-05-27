@@ -72,48 +72,41 @@ export default function AgencyPage() {
       }
     } catch { /* 파싱 실패 무시 */ }
 
-    // 🛡️ 2026-04-26 L2: KPI 6 + 의무 작업 추가 fetch (실패해도 기존 화면 유지)
-    api.get('/api/agency/stats/kpi', { headers })
-      .then(r => { if (r.data?.success) setKpiData(r.data.data) })
-      .catch(swallow('agency:fetch-kpi'))
-    api.get('/api/agency/monthly-tasks', { headers })
-      .then(r => { if (r.data?.success) setMonthlyTasks(r.data.data || []) })
-      .catch(swallow('agency:fetch-monthly-tasks'))
-
-    // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
-    // 🛡️ 2026-05-27 (사용자 증가 대비): sellers / streams 에 limit 추가. 미래 안전망.
-    Promise.allSettled([
-      api.get('/api/agency/stats', { headers }),
-      api.get('/api/agency/sellers?limit=200', { headers }),
-      api.get('/api/agency/orders?limit=8', { headers }),
-      api.get('/api/agency/stats/daily?days=14', { headers }),
-      api.get('/api/agency/streams?status=live&limit=50', { headers }),
-      api.get('/api/agency/profile', { headers }),
-    ])
-      .then(([statsRes, sellersRes, ordersRes, dailyRes, streamsRes, profileRes]) => {
-        // 통계 호출이 401로 실패하면 세션 만료 처리
-        const authFailed = [statsRes, sellersRes].some(r =>
-          r.status === 'rejected' && (r.reason as { response?: { status?: number } })?.response?.status === 401
-        )
-        if (authFailed) {
+    // 🛡️ 2026-05-27 (loading P1 — audit D): 8 endpoint → 1 bundle fetch.
+    //   서버 self-fetch 로 8 sub-request 병렬 처리 후 통합 응답.
+    //   Worker invocation 8 → 1 (비용 ↓). 부분 실패 graceful.
+    api.get('/api/agency/dashboard/bundle', { headers })
+      .then((res) => {
+        if (!res.data?.success) {
           toast.error(t('agency.sessionExpired'))
           navigate('/agency/login', { replace: true })
           return
         }
+        const b = res.data.data as {
+          stats?: { data?: Stats }
+          kpi?: { data?: unknown }
+          daily?: { data?: unknown[] }
+          sellers?: { data?: unknown[] }
+          orders?: { data?: unknown[] }
+          streams?: { data?: unknown[] }
+          profile?: { success?: boolean; data?: unknown }
+          monthlyTasks?: { data?: unknown[] }
+        }
+        const nextStats = b.stats?.data ?? null
+        const nextSellers = b.sellers?.data ?? []
+        const nextOrders = b.orders?.data ?? []
+        const nextDaily = b.daily?.data ?? []
+        const nextStreams = b.streams?.data ?? []
+        const nextProfile = b.profile?.success ? b.profile.data : null
 
-        const nextStats = statsRes.status === 'fulfilled' ? (statsRes.value.data.data as Stats | null) : null
-        const nextSellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
-        const nextOrders = ordersRes.status === 'fulfilled' ? (ordersRes.value.data.data || []) : []
-        const nextDaily = dailyRes.status === 'fulfilled' ? (dailyRes.value.data.data || []) : []
-        const nextStreams = streamsRes.status === 'fulfilled' ? (streamsRes.value.data.data || []) : []
-        const nextProfile = profileRes.status === 'fulfilled' && profileRes.value.data.success ? profileRes.value.data.data : null
-
+        if (b.kpi?.data) setKpiData(b.kpi.data as Parameters<typeof setKpiData>[0])
+        if (b.monthlyTasks?.data) setMonthlyTasks(b.monthlyTasks.data as Parameters<typeof setMonthlyTasks>[0])
         if (nextStats) setStats(nextStats)
-        setSellers(nextSellers)
-        setOrders(nextOrders)
-        setDaily(nextDaily)
-        setStreams(nextStreams)
-        if (nextProfile) setAgencyProfile(nextProfile)
+        setSellers(nextSellers as Parameters<typeof setSellers>[0])
+        setOrders(nextOrders as Parameters<typeof setOrders>[0])
+        setDaily(nextDaily as Parameters<typeof setDaily>[0])
+        setStreams(nextStreams as Parameters<typeof setStreams>[0])
+        if (nextProfile) setAgencyProfile(nextProfile as Parameters<typeof setAgencyProfile>[0])
 
         // sessionStorage 캐시 (5분 TTL)
         try {

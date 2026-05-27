@@ -595,6 +595,44 @@ app.get('/profile', async (c) => {
   return c.json({ success: true, data: agency })
 })
 
+// ── GET /dashboard/bundle ─────────────────────────────────────
+// 🛡️ 2026-05-27 (loading P1 — audit D): 8 endpoint self-fetch 통합 응답.
+//   이전: AgencyPage 진입 시 8개 HTTP request (HTTP/2 parallel) + 8 Worker invocation.
+//   변경: 1 request + 1 invocation. self-fetch 는 같은 PoP latency ~5ms.
+//   효과: Worker invocation 87%↓ (비용 절감 — 에이전시 100명+ 시점 효과 큼).
+//   부분 실패 graceful: Promise.allSettled 로 한 endpoint 실패해도 나머지 표시.
+app.get('/dashboard/bundle', async (c) => {
+  const auth = c.req.header('Authorization') || ''
+  const origin = new URL(c.req.url).origin
+  const headers = { Authorization: auth }
+
+  // sub-request 8개 — Cloudflare Workers 한도 50 안전.
+  const endpoints = [
+    '/api/agency/stats',
+    '/api/agency/stats/kpi',
+    '/api/agency/stats/daily?days=14',
+    '/api/agency/sellers?limit=200',
+    '/api/agency/orders?limit=8',
+    '/api/agency/streams?status=live&limit=50',
+    '/api/agency/profile',
+    '/api/agency/monthly-tasks',
+  ] as const
+
+  const results = await Promise.allSettled(
+    endpoints.map(p => fetch(`${origin}${p}`, { headers, signal: AbortSignal.timeout(10000) })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null))
+  )
+
+  const [stats, kpi, daily, sellers, orders, streams, profile, monthlyTasks] =
+    results.map(r => r.status === 'fulfilled' ? r.value : null)
+
+  return c.json({
+    success: true,
+    data: { stats, kpi, daily, sellers, orders, streams, profile, monthlyTasks },
+  })
+})
+
 // ── GET /sellers ──────────────────────────────────────────────
 // 🛡️ 2026-04-28 TD-006 (split): /sellers, /sellers/:id/stats, /orders, /streams,
 //   /sellers/:id/products, /sellers/:id/inventory, /ranking, /schedule, /returns →
