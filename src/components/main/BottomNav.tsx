@@ -8,8 +8,14 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-05-01: 이미 셀러로 등록된 user 면 "전환" UX, 아니면 "등록" UX.
-  const hasSellerToken = !!localStorage.getItem('seller_token')
-  const hasAgencyToken = !!localStorage.getItem('agency_token')
+  // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR 마이그레이션 Phase 2): localStorage 직접 호출 → useState + useEffect.
+  //   SSR 시 typeof window === 'undefined' → ReferenceError 방어.
+  const [hasSellerToken, setHasSellerToken] = useState(false)
+  const [hasAgencyToken, setHasAgencyToken] = useState(false)
+  useEffect(() => {
+    setHasSellerToken(!!localStorage.getItem('seller_token'))
+    setHasAgencyToken(!!localStorage.getItem('agency_token'))
+  }, [])
 
   if (hasSellerToken) {
     return (
@@ -90,16 +96,28 @@ export default function BottomNav() {
   }, [location.pathname])
 
   // 🛡️ 2026-05-01: ACCESS 와 DISPLAY 분리 (사용자 신고 — 사업자 자동 표시 버그).
-  //   - ACCESS (라우트/API): seller_token / agency_token 존재로 판단 (CLAUDE.md duality 의도)
-  //   - DISPLAY (BottomNav UI): active_role 로 판단 → 사용자가 명시 전환해야 셀러 UI 표시
-  //   기본 active_role='user' — Kakao 콜백에서 set. 사용자가 마이페이지에서 '셀러
-  //   대시보드로 전환' 클릭 시 active_role='seller' 로 변경.
-  const userType = localStorage.getItem('user_type')
-  const activeRole = localStorage.getItem('active_role') || userType || 'user'
-  const hasSessionLogin = !!localStorage.getItem('session_login')
-  const hasAccessToken = !!localStorage.getItem('access_token')
-  const hasSellerToken = !!localStorage.getItem('seller_token')
-  const hasAgencyToken = !!localStorage.getItem('agency_token')
+  // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR Phase 2): localStorage 직접 호출 → useState + useEffect.
+  //   server render = 모두 false/'user' (안전). client mount 후 진짜 값 반영.
+  const [authState, setAuthState] = useState({
+    userType: '',
+    activeRole: 'user',
+    hasSessionLogin: false,
+    hasAccessToken: false,
+    hasSellerToken: false,
+    hasAgencyToken: false,
+  })
+  useEffect(() => {
+    const userType = localStorage.getItem('user_type') || ''
+    setAuthState({
+      userType,
+      activeRole: localStorage.getItem('active_role') || userType || 'user',
+      hasSessionLogin: !!localStorage.getItem('session_login'),
+      hasAccessToken: !!localStorage.getItem('access_token'),
+      hasSellerToken: !!localStorage.getItem('seller_token'),
+      hasAgencyToken: !!localStorage.getItem('agency_token'),
+    })
+  }, [location.pathname])
+  const { activeRole, hasSessionLogin, hasAccessToken, hasSellerToken, hasAgencyToken } = authState
   const isLoggedIn = hasAccessToken || hasSessionLogin || hasSellerToken || hasAgencyToken
   // DISPLAY 는 active_role 로만 판단 — seller_token 자동 발급 이 user UI 를 변형하지 않음
   const isSeller = activeRole === 'seller'
