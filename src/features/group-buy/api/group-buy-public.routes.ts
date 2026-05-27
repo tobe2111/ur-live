@@ -132,6 +132,29 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   publicCache middleware (edge-cache.ts:155-162) 와 동일 패턴.
     c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
     c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
+
+    // 🛡️ 2026-05-27 (사용자 보고 — 별점 신규 영구 fix):
+    //   공구 list 응답의 review_count=0 상품 → background lazy seed.
+    //   /api/products list 와 동일 패턴 (autoSeedFakeReviews 가 idempotent).
+    try {
+      const seedTargetIds = (results as Array<{ id?: number; review_count?: number }>)
+        .filter(p => Number(p?.review_count || 0) === 0)
+        .map(p => Number(p?.id))
+        .filter(id => Number.isFinite(id) && id > 0)
+      if (seedTargetIds.length > 0 && c.executionCtx) {
+        c.executionCtx.waitUntil(
+          (async () => {
+            try {
+              const { autoSeedFakeReviews } = await import('../../../worker/utils/auto-seed-fake-reviews')
+              await autoSeedFakeReviews(c.env, seedTargetIds, { seedMin: 5, seedMax: 15 })
+            } catch (err) {
+              if (typeof console !== 'undefined') console.warn('[gb list] lazy seed failed:', String(err))
+            }
+          })(),
+        )
+      }
+    } catch { /* graceful */ }
+
     return c.json({ success: true, data: results })
   })
 

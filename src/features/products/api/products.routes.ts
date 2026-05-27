@@ -215,6 +215,32 @@ productsRoutes.get('/', cors(), async (c) => {
       } catch { /* graceful */ }
     }
 
+    // 🛡️ 2026-05-27 (사용자 보고 — 별점 신규 영구 fix):
+    //   list 응답의 review_count=0 상품 → background lazy seed.
+    //   이전: daily cron 1회 → 신규 상품 24시간 동안 "신규" 표시.
+    //   변경: list fetch 시 즉시 seed trigger. 다음 fetch (60s TTL 후) 부터 별점 반영.
+    //   autoSeedFakeReviews 가 idempotent (review_count > 0 면 skip) — 부담 미미.
+    //   waitUntil 로 응답 지연 0.
+    try {
+      const productsData = Array.isArray(result.data) ? (result.data as Array<{ id?: number; review_count?: number }>) : []
+      const seedTargetIds = productsData
+        .filter(p => Number(p?.review_count || 0) === 0)
+        .map(p => Number(p?.id))
+        .filter(id => Number.isFinite(id) && id > 0)
+      if (seedTargetIds.length > 0 && c.executionCtx) {
+        c.executionCtx.waitUntil(
+          (async () => {
+            try {
+              const { autoSeedFakeReviews } = await import('../../../worker/utils/auto-seed-fake-reviews')
+              await autoSeedFakeReviews(c.env, seedTargetIds, { seedMin: 5, seedMax: 15 })
+            } catch (err) {
+              if (typeof console !== 'undefined') console.warn('[products list] lazy seed failed:', String(err))
+            }
+          })(),
+        )
+      }
+    } catch { /* graceful */ }
+
     // 🛡️ 2026-05-19: 검색 결과 0 건 + 검색어 있음 → 오타 보정 제안.
     //   popular_searches 와 Levenshtein distance ≤ 2 인 후보 찾아 응답에 동봉.
     //   "혹시 'X' 를 찾으세요?" UX. 일반 list 조회 시는 호출 안 됨.
