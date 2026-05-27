@@ -378,6 +378,15 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         AND (COALESCE(review_count, 0) != (SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id)
              OR COALESCE(avg_rating, 0) != COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0))
     ` },
+    // 🛡️ 2026-05-27 (사용자 요청): sold_count >= review_count × 3 보장.
+    //   기존 데이터에 review_count > sold_count 인 상품 발견 시 sold_count 자동 보정.
+    //   idempotent — daily cron 으로 안전 반복.
+    { desc: 'backfill: products.sold_count ≥ review_count × 3', sql: `
+      UPDATE products SET
+        sold_count = COALESCE(review_count, 0) * 3
+      WHERE COALESCE(review_count, 0) > 0
+        AND COALESCE(sold_count, 0) < COALESCE(review_count, 0) * 3
+    ` },
     { desc: 'sellers.kakao_chat_url', sql: "ALTER TABLE sellers ADD COLUMN kakao_chat_url TEXT" },
     { desc: 'sellers.representative_name', sql: "ALTER TABLE sellers ADD COLUMN representative_name TEXT" },
     { desc: 'sellers.first_voucher_notified', sql: "ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0" },

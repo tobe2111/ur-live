@@ -104,16 +104,22 @@ export async function autoSeedFakeReviews(
       for (let i = 0; i < stmts.length; i += CHUNK) {
         await env.DB.batch(stmts.slice(i, i + CHUNK))
       }
-      // 통계 컬럼 갱신 — sold_count 는 리뷰 수의 2-3 배 가산 (사실감).
-      const soldBoost = targetCount * (opts.soldMultiplier ?? (2 + Math.round(Math.random())))
+      // 🛡️ 2026-05-27 (사용자 요청): sold_count 는 review_count × 최소 3배 (랜덤 3-5배) 보장.
+      //   소비자 신뢰성 — "리뷰 수 > 구매 수" 어색. 항상 review×3 ≤ sold.
+      //   기존 sold_count 가 더 크면 그대로 유지 (단조 증가).
+      const soldMultiplier = opts.soldMultiplier ?? (3 + Math.floor(Math.random() * 3)) // 3-5 random
+      const targetReviewSold = targetCount * soldMultiplier
       await env.DB.prepare(`
         UPDATE products SET
           review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
           avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
-          sold_count = COALESCE(sold_count, 0) + ?,
+          sold_count = MAX(
+            COALESCE(sold_count, 0) + ?,
+            (SELECT COUNT(*) FROM product_reviews WHERE product_id = ?) * 3
+          ),
           updated_at = datetime('now')
         WHERE id = ?
-      `).bind(prod.id, prod.id, soldBoost, prod.id).run()
+      `).bind(prod.id, prod.id, targetReviewSold, prod.id, prod.id).run()
       result.seeded_products++
       result.seeded_reviews += targetCount
     } catch (e) {
