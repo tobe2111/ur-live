@@ -336,13 +336,22 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   product_reviews INSERT 경로 7곳 (사용자/시드/admin) 마다 products UPDATE 누락 위험.
     //   D1 트리거로 모든 INSERT/UPDATE/DELETE 자동 처리 → review_count + avg_rating 영구 동기화.
     //   효과: BrowsePage/VouchersPage 카드 별점 즉시 반영 (상세 페이지 리뷰와 정합).
-    { desc: 'trigger: product_reviews_aggregate_insert', sql: `
+    // 🛡️ 2026-05-27 v2 (영구 + 사용자 요청): sold_count >= review_count × 3 도 자동 보장.
+    //   모든 INSERT 경로 (사용자 / admin / fake seed) 트리거 단일 SSOT → sold_count 자동 정정.
+    //   DROP 후 CREATE — 기존 v1 트리거 (sold_count 누락) 가 있으면 교체.
+    { desc: 'drop legacy trigger: product_reviews_aggregate_insert', sql:
+      "DROP TRIGGER IF EXISTS trg_product_reviews_aggregate_insert" },
+    { desc: 'trigger: product_reviews_aggregate_insert v2', sql: `
       CREATE TRIGGER IF NOT EXISTS trg_product_reviews_aggregate_insert
       AFTER INSERT ON product_reviews
       BEGIN
         UPDATE products SET
           review_count = (SELECT COUNT(*) FROM product_reviews WHERE product_id = NEW.product_id),
           avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = NEW.product_id), 0),
+          sold_count = MAX(
+            COALESCE(sold_count, 0),
+            (SELECT COUNT(*) FROM product_reviews WHERE product_id = NEW.product_id) * 3
+          ),
           updated_at = datetime('now')
         WHERE id = NEW.product_id;
       END
