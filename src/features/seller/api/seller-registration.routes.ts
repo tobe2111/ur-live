@@ -341,8 +341,11 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     let introducedInfluencerId: number | null = null;
     if (resolvedSellerType === 'store_owner' && hasInfluencerCode) {
       const code = influencer_intro_code!.trim().toUpperCase().slice(0, 12);
+      // 🛡️ 2026-05-27 (신모델 audit): sellers.status SSOT 는 'approved' (대부분 코드).
+      //   기존: 'active' 만 매칭 → 대부분 셀러 approved → 매칭 0 → 인플루언서 영입 보너스 누락.
+      //   레거시 호환: 둘 다 검사 (lib/api.ts kakao refresh 패턴과 일관).
       const infRow = await db.prepare(
-        `SELECT id FROM sellers WHERE UPPER(intro_code) = ? AND seller_type IN ('influencer','both') AND status = 'active' LIMIT 1`
+        `SELECT id FROM sellers WHERE UPPER(intro_code) = ? AND seller_type IN ('influencer','both') AND status IN ('active','approved') LIMIT 1`
       ).bind(code).first<{ id: number }>().catch(() => null);
       if (infRow?.id) introducedInfluencerId = infRow.id;
     }

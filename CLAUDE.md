@@ -34,6 +34,59 @@
 
 ---
 
+## 🔒 로딩 최적화 잠금 (2026-05-27 — 사용자 명령)
+
+**배경**: 2026-05-27 사용자가 메인/공구/쇼핑/교환권/링크샵 페이지 로딩 속도 + KV 비용 + 상품 수 확장성 동시에 이상적으로 최적화 완료. 이 영역의 회귀는 즉시 사용자 체감 + Cloudflare 비용 발생.
+
+**🚫 절대 룰**: 아래 파일/심볼은 **사용자 명시 허가 없이 변경/제거 금지**. 추가는 OK (예: 이미지 host 화이트리스트 확장), 제거/약화는 금지.
+
+| 파일 | 잠긴 항목 | 회귀 시 발생 |
+|---|---|---|
+| `src/worker/middleware/edge-cache.ts` | `publicCache` 의 `useKv: false` 기본 | KV write 한도 초과 → 월 $2-5 비용 |
+| `src/worker/middleware/edge-cache.ts` | `CDN-Cache-Control` 분리 헤더 | 브라우저/edge TTL trade-off 깨짐 |
+| `src/worker/index.ts` | HTMLRewriter SSR inject 블록 (4페이지) + `caches.default.match` 직접 read | SSR 0 RTT 회귀 → 메인 페이지 200-500ms ↑ |
+| `src/worker/cron/cache-prewarm.ts` | `HOT_PATHS` 의 SSR key 정확 매칭 | SSR cache miss → 첫 사용자 skeleton |
+| `src/utils/cf-image.ts` | `SUPPORTED_HOSTS` / `EXTERNAL_PROXY_HOSTS` | 추가 OK, **제거 금지** (LCP 회귀, 트래픽 ↑) |
+| `src/utils/cf-image.ts` | Save-Data 감지 quality 자동 조절 | 모바일 데이터 절약 사용자 트래픽 ↑ |
+| `src/worker/index.ts` `/api/image/resize` | `ALLOWED_HOSTS` | 같음 |
+| `src/components/RestaurantMiniMap.tsx` | IntersectionObserver lazy load (`shouldLoadSdk`) | 모든 공구 상세 페이지 SDK 즉시 로드 회귀 |
+| `src/components/auth/RouteGuards.tsx` | `isAdminLoggedIn` / `isUserLoggedIn` / `isSellerLoggedIn` 토큰 존재 검사 | admin↔user 이중 로그인 자동 로그아웃 회귀 (`user_type` 추가 검사 X) |
+| `src/components/main/BottomNav.tsx` | `linkshopPath` localStorage cache 우선 (seller_username → linked_seller_username → user_handle) | 매번 API 호출, `/host/new` fall through |
+| `src/components/main/BottomNav.tsx` | `isActivePath` 가 `/profile/`, `/s/` 도 링크샵 활성 | 링크샵 탭 비활성 표시 |
+| `src/pages/main-home/GroupBuyFeedCard.tsx` | hover/touch/focus prefetch + IntersectionObserver viewport prefetch | 카드 클릭 시 fetch waterfall |
+| `src/pages/main-home/GroupBuyFeedCard.tsx` | image fade-in (`opacity` transition) + aboveFold eager | UX 깜빡임 |
+| `src/pages/GroupBuyDetailPage.tsx` | `__SSR_INITIAL_DETAIL__` 즉시 사용 | 상세 페이지 fetch waterfall |
+| `src/pages/SellerPublicPage.tsx` | `__SSR_INITIAL_SELLER__` 즉시 사용 | 셀러 페이지 fetch waterfall |
+| `src/pages/VouchersPage.tsx` | `__SSR_INITIAL_VOUCHERS__` 즉시 사용 + default sort `price_low` | first paint 회귀 |
+| `src/pages/BrowsePage.tsx` | `__SSR_INITIAL_BROWSE__` 즉시 사용 | first paint 회귀 |
+| `src/features/auth/services/KakaoAuthService.ts` | `upsertUser` 의 same-email seller auto-link | `/host/new` fall through 사고 회귀 |
+| `src/features/auth/api/kakao.routes.ts` | `linkUserExtraRoles` 응답에 `seller.username` 포함 | localStorage `seller_username` 누락 |
+| `src/pages/KakaoCallbackPage.tsx` | `seller_username` localStorage 저장 + admin/agency 토큰 있을 때 user_type 보존 | 이중 로그인 race |
+| `src/worker/routes/repair-schema.routes.ts` | `backfill: sellers.linked_user_id (same-email)` UPDATE | 시드 데이터 정정 못 함 |
+| `index.html` | preload `crossOrigin` 속성 없음 (same-origin) | preload mismatch → 200-500ms 손해 |
+| `index.html` | Speculation Rules prerender 대상 (`/group-buy/*`, `/products/*`, `/live/*`) | 카드 클릭 후 prerender 효과 X |
+| `index.html` | preconnect (`firebasestorage.googleapis.com` 등) | DNS+TLS 100-200ms 손해 |
+| `src/App.tsx` | `MainHomePage` eager `import` (lazy X) | chunk fetch waterfall 50-100ms |
+| `src/App.tsx` | idle prefetch (BrowsePage / VouchersPage / UserProfilePage / MyVouchersPage / SellerPublicPage) | 탭 클릭 시 chunk fetch 대기 |
+| Migration `0276_products_groupbuy_perf_index` | `idx_products_groupbuy_feed` partial composite index | 풀스캔 회귀 → 상품 늘면 선형 느려짐 |
+| Migration `0080` FTS5 | `products_fts` virtual table | 검색 풀스캔 회귀 |
+
+**예외 (수정 OK — 사용자 허가 불필요)**:
+- 새 페이지 / 새 SSR slot 추가 (기존 4 페이지 inject 패턴 따라)
+- `EXTERNAL_PROXY_HOSTS` / `ALLOWED_HOSTS` **추가** (제거 X)
+- 새 BottomNav 탭 추가 (기존 5탭 active path 패턴 보존)
+- 새 cron HOT_PATHS 추가 (제거 X)
+
+**수정 절차 (예외 발생 시)**:
+1. `AskUserQuestion` 으로 의도/근거 + 회귀 영향 설명
+2. 변경 사유 + commit 메시지에 잠금 해제 명시 (`[UNLOCK_LOADING]`)
+3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
+
+### 변경 audit log
+- 2026-05-27 초기 잠금 — commit `cf837926` 외 누적 (`0d6217fe` 이후 모든 perf commit)
+
+---
+
 ## 🚨 개발 + 에러 대처 절대 룰 (모든 다른 룰보다 우선)
 
 **개발/리팩토링 작업 시작 시**: `docs/DEV_IMPLEMENTATION_PLAYBOOK.md` 먼저 스캔.
