@@ -28,6 +28,7 @@ interface CuratorHeaderProps {
     name: string
     bio: string | null
     profile_image: string | null
+    banner_url?: string | null
   }
   pinCount: number
   totalClicks: number
@@ -52,7 +53,9 @@ export default function CuratorHeader({
   const [editBio, setEditBio] = useState(curator.bio || '')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
 
   async function saveField(field: 'name' | 'bio', value: string) {
     if (saving) return
@@ -95,11 +98,77 @@ export default function CuratorHeader({
     }
   }
 
+  // 🛡️ 2026-05-27 (사용자 요청): 큐레이터 배경 사진 업로드.
+  async function uploadBannerImage(file: File) {
+    if (uploadingBanner) return
+    setUploadingBanner(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      if (res.data?.success && res.data?.url) {
+        await api.patch('/api/curator/me/profile', { banner_url: res.data.url })
+        onCuratorUpdate?.({ banner_url: res.data.url })
+        toast.success('배경 사진 변경됨')
+      } else {
+        toast.error('업로드 실패')
+      }
+    } catch {
+      toast.error('업로드 실패')
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
   return (
     <header>
-      {/* 🛡️ 2026-05-27: banner gradient — 셀러 페이지 h-44 동일. */}
-      <div className="h-44 bg-gradient-to-br from-pink-400 via-rose-400 to-purple-400 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+      {/* 🛡️ 2026-05-27 (사용자 요청): banner_url 있으면 사진, 없으면 gradient. 본인 view 시 클릭 업로드. */}
+      <div
+        className={`h-44 relative overflow-hidden ${isOwner ? 'cursor-pointer group' : ''}`}
+        onClick={() => isOwner && bannerInputRef.current?.click()}
+      >
+        {curator.banner_url ? (
+          <>
+            <img
+              src={cfImage(curator.banner_url, { width: 1280, format: 'auto' }) || curator.banner_url}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-pink-400 via-rose-400 to-purple-400">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        )}
+        {isOwner && (
+          <>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold flex items-center gap-1 bg-black/60 px-3 py-1.5 rounded-full">
+                <Camera className="w-3.5 h-3.5" />
+                배경 사진 {curator.banner_url ? '변경' : '추가'}
+              </span>
+            </div>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) uploadBannerImage(f)
+              }}
+            />
+            {uploadingBanner && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xs font-bold">
+                ⏳ 업로드 중...
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div className="max-w-3xl mx-auto px-4 -mt-12 pb-4">

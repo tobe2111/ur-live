@@ -31,6 +31,7 @@ export interface CuratorProfile {
   name: string
   bio: string | null
   profile_image: string | null
+  banner_url?: string | null
   theme: 'dark' | 'light' | string
 }
 
