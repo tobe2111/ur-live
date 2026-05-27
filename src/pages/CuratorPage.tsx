@@ -17,6 +17,7 @@ import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber } from '@/utils/format'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
@@ -32,8 +33,17 @@ export default function CuratorPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<CuratorTab>('pins')
+  const [monthEarnings, setMonthEarnings] = useState(0)
   const currentUser = useAuthStore((s: any) => s.user)
   const isOwner = Boolean(currentUser && data?.curator && Number(currentUser.id) === data.curator.id)
+
+  // 🛡️ 2026-05-27 (옵션 C): 본인 view 에서만 dashboard 추가 fetch — 30일 적립 노출.
+  useEffect(() => {
+    if (!isOwner) return
+    curatorApi.getDashboard()
+      .then((r: any) => setMonthEarnings(r?.stats?.month_earnings ?? 0))
+      .catch(() => { /* graceful */ })
+  }, [isOwner])
 
   useEffect(() => {
     if (!handle) return
@@ -118,8 +128,10 @@ export default function CuratorPage() {
           curator={curator}
           pinCount={pins.length}
           totalClicks={totalClicks}
+          monthEarnings={monthEarnings}
           isOwner={isOwner}
           onCopyLink={copyLink}
+          onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
         <CuratorTabs tab={tab} onChange={setTab} pinCount={pins.length} />
 
@@ -137,14 +149,14 @@ export default function CuratorPage() {
 function PinGrid({ pins, handle, isOwner }: { pins: CuratorPin[]; handle: string; isOwner: boolean }) {
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {pins.map((pin) => (
-        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} />
+      {pins.map((pin, idx) => (
+        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} />
       ))}
     </div>
   )
 }
 
-function PinCard({ pin, handle, isOwner }: { pin: CuratorPin; handle: string; isOwner: boolean }) {
+function PinCard({ pin, handle, isOwner, aboveFold }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
   const redirectUrl = `/u/${handle}/p/${pin.product_id}/redirect`
@@ -153,7 +165,18 @@ function PinCard({ pin, handle, isOwner }: { pin: CuratorPin; handle: string; is
     <a href={redirectUrl} className="block bg-[#0A0A0A] rounded-xl overflow-hidden border border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
       <div className="aspect-square bg-[#121212] relative">
         {productImg ? (
-          <img src={productImg} alt={pin.product_name} className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}
+            srcSet={cfSrcSet(productImg, 200) || undefined}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+            alt={pin.product_name}
+            loading={aboveFold ? 'eager' : 'lazy'}
+            fetchPriority={aboveFold ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
+            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">no image</div>
         )}
