@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,9 +41,33 @@ import type { Order } from './seller-orders/types'
 export default function SellerOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [orders, setOrders] = useState<Order[]>([])
+  const queryClient = useQueryClient()
+
+  // 🛡️ 2026-05-27 (loading P1): React Query 도입.
+  //   이전: useState + useEffect 매번 직접 fetch. 페이지 왕복 시 0 RTT 효과 0.
+  //   변경: useQuery + 2분 staleTime + 페이지 진입 시 fresh refetch + mutation 후 invalidate.
+  const { data: ordersRaw, isLoading: loading, error: queryError, refetch } = useQuery<Order[]>({
+    queryKey: ['seller', 'orders'],
+    queryFn: async () => {
+      if (!localStorage.getItem('seller_token')) {
+        navigate('/seller/login')
+        return []
+      }
+      const response = await api.get('/api/seller/orders')
+      if (response.data.success) {
+        return (response.data.data || response.data.orders || []) as Order[]
+      }
+      return []
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+  })
+  const orders = ordersRaw ?? []
+  const invalidateOrders = () => queryClient.invalidateQueries({ queryKey: ['seller', 'orders'] })
+
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showDetail, setShowDetail] = useState(false)
@@ -70,37 +95,14 @@ export default function SellerOrdersPage() {
   const [bulkStatus, setBulkStatus] = useState('')
   const [bulkLoading, setBulkLoading] = useState(false)
 
+  // 🛡️ 2026-05-27: orders fetch 는 useQuery 가 처리. queryError 도 사용자 친화 메시지로 변환.
   useEffect(() => {
-    loadOrders()
-  }, [])
+    if (queryError) setError(t('seller.orderListLoadFailed'))
+  }, [queryError, t])
 
   useEffect(() => {
     filterOrders()
   }, [orders, statusFilter, searchQuery, dateFilter])
-
-  async function loadOrders() {
-    setLoading(true)
-    setError('')
-
-    try {
-      if (!localStorage.getItem('seller_token')) {
-        navigate('/seller/login')
-        return
-      }
-
-      const response = await api.get('/api/seller/orders')
-
-      if (response.data.success) {
-        // API는 data 또는 orders 키로 응답할 수 있음
-        setOrders(response.data.data || response.data.orders || [])
-      }
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error('Failed to load orders:', error)
-      setError(t('seller.orderListLoadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function filterOrders() {
     let result = [...orders]
@@ -197,7 +199,7 @@ export default function SellerOrdersPage() {
 
       if (response.data.success) {
         toast.success(t('seller.statusChanged'))
-        loadOrders()
+        invalidateOrders()
         if (selectedOrder && selectedOrder.order_number === orderNumber) {
           setShowDetail(false)
           setSelectedOrder(null)
@@ -226,7 +228,7 @@ export default function SellerOrdersPage() {
       if (response.data.success) {
         toast.success(t('seller.trackingRegistered'))
         setTrackingForm({ courier: '', tracking_number: '' })
-        loadOrders()
+        invalidateOrders()
         if (selectedOrder && selectedOrder.order_number === orderNumber) {
           setShowDetail(false)
           setSelectedOrder(null)
@@ -268,7 +270,7 @@ export default function SellerOrdersPage() {
         toast.success(response.data.message || t('seller.bulkChangeDone', { count: ids.length }))
         setSelectedIds(new Set())
         setBulkStatus('')
-        loadOrders()
+        invalidateOrders()
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } }
