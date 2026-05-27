@@ -98,12 +98,15 @@ export default function AdminLiveMonitorPage() {
 
   useEffect(() => {
     if (autoRefresh) {
+      // 🛡️ 2026-05-27 (loading P1): 10s → 30s. 라이브 stream 상태 변경 빈도 ↓.
+      //   visibilitychange 시 즉시 refresh → 사용자 복귀 시 fresh 데이터.
+      //   어드민 5명+ 동시 사용 시 D1 query 분당 50 → 17 (66%↓).
       intervalRef.current = setInterval(() => {
         if (!document.hidden) {
           loadLive()
           loadAlerts()  // 🛡️ 2026-05-13 (#3): OME health alerts 도 같은 주기로 폴링
         }
-      }, 10000)
+      }, 30000)
       const onVisible = () => { if (!document.hidden && autoRefresh) { loadLive(); loadAlerts() } }
       document.addEventListener('visibilitychange', onVisible)
       return () => {
