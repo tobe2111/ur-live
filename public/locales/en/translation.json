@@ -5098,7 +5098,7 @@
   "pwa": {
     "install": {
       "closeAria": "Close",
-      "title": "🎁 Install for a welcome coupon!",
+      "title": "🎁 Install the app for a welcome coupon!",
       "desc": "Install on home screen and get a ₩5,000 coupon",
       "installBtn": "Install",
       "later": "Later",

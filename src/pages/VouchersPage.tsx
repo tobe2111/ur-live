@@ -479,6 +479,8 @@ export default function VouchersPage() {
                           loading={aboveFold ? 'eager' : 'lazy'}
                           fetchPriority={aboveFold ? 'high' : 'auto'}
                           decoding="async"
+                          onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
+                          style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
                           className="w-full h-full object-cover"
                         />
                       ) : (

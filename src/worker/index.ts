@@ -460,7 +460,8 @@ app.use('*', async (c, next) => {
     } else if (url.pathname === '/browse' && !url.search) {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
     } else {
-      const detailMatch = url.pathname.match(/^\/group-buy\/(\d+)(?:[/?#]|$)/);
+      // 🛡️ 2026-05-27: /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint 사용 → 같은 SSR slot.
+      const detailMatch = url.pathname.match(/^\/(?:group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
       if (detailMatch) {
         ssrTarget = { slot: 'DETAIL', path: `/api/group-buy/products/${detailMatch[1]}` };
       } else {
