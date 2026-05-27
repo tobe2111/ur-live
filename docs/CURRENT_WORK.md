@@ -1,7 +1,48 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-27 (로딩 최적화 + 큐레이터 모델 + 리뷰 시스템 + 운영 통합)
-**브랜치**: `claude/check-live-commerce-flow-jgNs8`
+**최종 업데이트**: 2026-05-27 (로딩 최적화 2차 — critical path -31% — `claude/vibrant-feynman-m3X3m`)
+**이전 세션**: 로딩 최적화 1차 + 큐레이터 모델 + 리뷰 시스템 + 운영 통합 (`claude/check-live-commerce-flow-jgNs8`)
+
+## ✅ 2026-05-27 — 로딩 최적화 2차 (critical path -31%, 14 commits)
+
+### 사용자 보고 → 처리
+1. "전반적 로딩 길다, 공구 느림" → 폴링 / countdown / SSR 카테고리 prewarm
+2. "/user/profile 1개 → /my-vouchers 0개" → voucher cache invalidation 영구 fix
+3. "트래픽 절감 + 속도 가장 이상적으로" → chunk Phase 1-5 + image proxy 확장
+4. "비용 0 원칙" → 모든 변경 무료 (D1/cf-image/KV write 한도 안)
+
+### Critical path 변화
+| 단계 | path | gzip |
+|---|---|---|
+| 초기 | ~1100 KB | ~330 KB |
+| 최종 (`74bb925`) | **759 KB** | **228 KB** |
+| **절감** | **-341 KB (-31%)** | **-102 KB (-31%)** |
+
+### 14 commits
+| # | hash | 효과 |
+|---|---|---|
+| 1 | `c4925af` | 공구 detail 폴링 + countdown adaptive |
+| 2 | `daeb2c8` | voucher cache invalidation (사용자 보고 #2) |
+| 3 | `cb8d0a5` | 카테고리 prewarm + Cache-Control 분리 + cf-image cache |
+| 4 | `9de2840` | useMyCounts 통합 + Card.memo + SSR/cache 확장 |
+| 5 | `21ab0fb` | 공구 detail below-fold lazy + unused import |
+| 6 | `b8bd41d` | cf-image host 확장 + lazy rootMargin + VoucherMap lazy |
+| 7 | `5583eed` | img-utils critical path -51KB + admin limits + audio singleton |
+| 8 | `cbb08c8` | env-validator dynamic + admin/agency limits + 4 모달 lazy |
+| 9 | `5e556a4` | env-validator chunk 분리 → validation -52KB lazy |
+| 10 | `dfb11df` | Phase 1+2 chunk 분할 |
+| 11 | `374ea9c`→`336a988` | Phase 3 FrameWrapper 사고 + rollback |
+| 12 | `c1a42d7` | Phase 4 live hooks |
+| 13 | `74bb925` | Phase 5 useCart/useSearch/useTokenAutoRefresh hoisted |
+
+### 다음 우선순위
+1. 사용자 액션 — Lighthouse 실측 (cloud 환경 403 차단)
+2. 자동 main 머지 + 배포 확인 (Actions 탭)
+3. 사용자 증가 대비:
+   - C: SellerOrdersPage React Query (작업 중)
+   - A: AdminOrdersPage 서버 페이지네이션 (큰 작업)
+   - B: AdminPage SSE 마이그레이션 (인프라)
+   - D: AgencyPage bundle endpoint
 
 ---
 

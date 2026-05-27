@@ -84,6 +84,40 @@
 
 ### 변경 audit log
 - 2026-05-27 초기 잠금 — commit `cf837926` 외 누적 (`0d6217fe` 이후 모든 perf commit)
+- 2026-05-27 2차 확장 — commit `c4925af`~`74bb925` (이번 세션 총 14 commits, critical path -341 KB / -31%)
+  - 폴링/Countdown adaptive (`c4925af`)
+  - voucher cache invalidation (`daeb2c8`)
+  - 카테고리 prewarm + Cache-Control 분리 (`cb8d0a5`)
+  - useMyCounts 통합 + Card.memo + SSR 확장 (`9de2840`)
+  - GroupBuyDetail below-fold lazy + unused import (`21ab0fb`)
+  - cf-image host 확장 + VoucherMap lazy (`b8bd41d`)
+  - img-utils critical path -51KB + admin limits + audio singleton (`5583eed`)
+  - env-validator dynamic + admin/agency limits + 4 모달 lazy (`cbb08c8`)
+  - env-validator chunk 분리 → validation -52KB lazy (`5e556a4`)
+  - Phase 1+2 chunk 분할 (`dfb11df`)
+  - Phase 3 FrameWrapper 사고 + rollback (`374ea9c`/`336a988`)
+  - Phase 4 live hooks (`c1a42d7`)
+  - Phase 5 single-page hooks (`74bb925`)
+
+### 2차 확장 — 추가 잠금 항목 (회귀 시 critical path 30%+ 증가 위험)
+
+| 파일 | 잠긴 항목 | 회귀 시 발생 |
+|---|---|---|
+| `src/hooks/queries/useMyData.ts` | `useMyVouchers / useMyOrders / useMyAppointments` 의 `refetchOnMount: 'always'` | voucher/주문 발급 후 페이지 진입 시 빈 화면 (2026-05-27 사고) |
+| `src/pages/user-profile/useMyCounts.ts` | `useMyVouchers` 재사용 (별도 fetch 금지) | /user/profile 카운트 ↔ /my-vouchers 목록 불일치 재발 |
+| voucher 발급 4곳 (`GroupBuyDetailPage`, `GroupBuyConfirmPaymentPage`, `VoucherDetailPage`, `ProductDetailPage`) | `useInvalidateMyVouchers()` 호출 — voucher 발급 후 navigate 직전 | RQ stale cache 영구 표시 |
+| `src/main.tsx` | `validateEnvForRuntime` dynamic import — eager 금지 | zod 52KB chunk critical path 진입 |
+| `vite.config.ts` `manualChunks` | env-validator/AdminLayout/AgencyLayout/SellerLayout 등 별도 chunk + seller-public/agency/dashboard/payments/cart/search/mypage/wallet/group-buy/product/guide/shipping/upload/glass/settings 폴더별 chunk + useLiveStream/product-template/useCart/useSearch/useTokenAutoRefresh hoisted | critical path -341 KB 회귀 |
+| `src/utils/cf-image.ts` `SUPPORTED_HOSTS` / `EXTERNAL_PROXY_HOSTS` + worker `ALLOWED_HOSTS` | ImgBB (i.ibb.co), googleusercontent 추가 — 제거 금지 | 셀러 업로드 이미지 변환 회피 → 트래픽 폭증 |
+| `src/worker/cron/cache-prewarm.ts` | 카테고리 칩 4종 prewarm (meal/stay/beauty/etc) — 제거 금지 | 칩 클릭 시 cold D1 (~200-500ms) |
+| `src/features/group-buy/api/group-buy-public.routes.ts` | `Cache-Control: max-age=60` + `CDN-Cache-Control: max-age=900` 분리 + `group_buy_tiers` 서버 parse → array 반환 | 브라우저 5분 stale (신선도 회귀) + 클라이언트 JSON.parse 부담 |
+| `src/features/products/api/products.routes.ts`, `src/worker/routes/public-utility.routes.ts` | 동일 Cache-Control / CDN-Cache-Control 분리 | 동일 |
+| `src/worker/index.ts` SSR inject regex | `/(?:profile\|s)/:slug` 둘 다 매칭 — 제거 금지 | `/s/:id` SSR cache miss 회귀 |
+| `src/pages/GroupBuyDetailPage.tsx` | CountdownRing adaptive interval + polling adaptive jitter + below-fold lazy (Confetti/RestaurantMiniMap/ProductReviewsSection) | 매초 리렌더 회귀 + 폴링 부하 ↑ + 초기 chunk 30-50KB ↑ |
+| `src/pages/main-home/GroupBuyFeedCard.tsx` | `React.memo` + `rootMargin: '100px'` (200px 금지 — 트래픽 ↑) | 카드 reconcile + 익명 사용자 트래픽 ↑ |
+| `src/pages/MyVouchersPage.tsx` | VoucherMap lazy chunk (Kakao Maps SDK) | 진입 시 ~150KB 즉시 로드 |
+| `src/lib/image-compress.ts` | `browser-image-compression` 함수 내 dynamic import (module-level eager 금지) | critical path +51KB |
+| 발급/주문/모달 lazy (`SellerOrdersPage`, `MyOrdersPage`, `AdminPage`) | OrderDetailModal / BizInfoModal / RejectionModal lazy + Suspense | 페이지 chunk 10-30KB ↑ |
 
 ---
 
