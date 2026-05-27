@@ -83,17 +83,17 @@ export default function CuratorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">
-        <div className="text-gray-400">{t('common.loading')}</div>
+      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex items-center justify-center">
+        <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
       </div>
     )
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '😢 링크샵을 찾을 수 없어요' })}</h1>
-        <p className="text-gray-400 mb-6">@{handle}</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-pink-500 rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
     )
@@ -106,8 +106,8 @@ export default function CuratorPage() {
   if (linked_seller?.username) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">
-          <div className="text-gray-400">{t('common.loading')}</div>
+        <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex items-center justify-center">
+          <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
         </div>
       }>
         <SellerPublicPage sellerIdOverride={linked_seller.username} />
@@ -123,7 +123,7 @@ export default function CuratorPage() {
         url={`/u/${curator.handle}`}
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
-      <div className="min-h-screen bg-[#020202] text-white pb-24">
+      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-24">
         <CuratorHeader
           curator={curator}
           pinCount={pins.length}
@@ -191,8 +191,8 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
 
   return (
     <div className="relative group">
-      <a href={redirectUrl} className="block bg-[#0A0A0A] rounded-xl overflow-hidden border border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
-        <div className="aspect-square bg-[#121212] relative">
+      <a href={redirectUrl} className="block bg-white dark:bg-[#0A0A0A] rounded-xl overflow-hidden border border-gray-200 dark:border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
+        <div className="aspect-square bg-gray-100 dark:bg-[#121212] relative">
           {productImg ? (
             <img
               src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}
@@ -211,7 +211,7 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
           )}
         </div>
         <div className="p-2.5">
-          <p className="text-xs text-white line-clamp-2 leading-tight">{pin.product_name}</p>
+          <p className="text-xs text-gray-900 dark:text-white line-clamp-2 leading-tight">{pin.product_name}</p>
           <p className="text-sm font-bold text-pink-400 mt-1">{formatWon(pin.price)}</p>
           {pin.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">💬 {pin.note}</p>}
           {isOwner && (
@@ -239,8 +239,8 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
 function InfoTab({ curator, pinCount, totalClicks }: { curator: CuratorPageResponse['curator']; pinCount: number; totalClicks: number }) {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-      <section className="bg-[#0A0A0A] rounded-xl p-5 border border-[#1A1A1A]">
-        <h3 className="text-sm font-bold text-white mb-3">📋 활동 정보</h3>
+      <section className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#1A1A1A]">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">📋 활동 정보</h3>
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
             <dt className="text-gray-400">핸들</dt>
@@ -258,14 +258,14 @@ function InfoTab({ curator, pinCount, totalClicks }: { curator: CuratorPageRespo
       </section>
 
       {curator.bio && (
-        <section className="bg-[#0A0A0A] rounded-xl p-5 border border-[#1A1A1A]">
-          <h3 className="text-sm font-bold text-white mb-3">💬 한 줄 소개</h3>
-          <p className="text-sm text-gray-300 leading-relaxed">{curator.bio}</p>
+        <section className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#1A1A1A]">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">💬 한 줄 소개</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{curator.bio}</p>
         </section>
       )}
 
       <section className="bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-xl p-5 border border-pink-500/30">
-        <h3 className="text-sm font-bold text-white mb-2">🔗 친구에게 추천</h3>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">🔗 친구에게 추천</h3>
         <p className="text-xs text-gray-300 mb-3">
           이 페이지에서 친구가 상품을 구매하면 큐레이터에게 적립이 돌아갑니다.
         </p>

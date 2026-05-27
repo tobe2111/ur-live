@@ -20,7 +20,7 @@ export default function CuratorTabs({ tab, onChange, pinCount }: Props) {
   ]
 
   return (
-    <nav className="sticky top-0 z-20 bg-[#020202]/95 backdrop-blur border-b border-[#1A1A1A]">
+    <nav className="sticky top-0 z-20 bg-white/95 dark:bg-[#020202]/95 backdrop-blur border-b border-gray-200 dark:border-[#1A1A1A]">
       <div className="max-w-3xl mx-auto flex">
         {tabs.map((tInfo) => {
           const active = tab === tInfo.key
@@ -29,11 +29,11 @@ export default function CuratorTabs({ tab, onChange, pinCount }: Props) {
               key={tInfo.key}
               onClick={() => onChange(tInfo.key)}
               className={`flex-1 py-3 text-sm font-bold transition-colors relative ${
-                active ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+                active ? 'text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               {tInfo.label}
-              {tInfo.badge && <span className="ml-1 text-xs text-gray-400">({tInfo.badge})</span>}
+              {tInfo.badge && <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({tInfo.badge})</span>}
               {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-pink-500" />}
             </button>
           )
