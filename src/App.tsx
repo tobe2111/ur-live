@@ -316,13 +316,12 @@ function AppContent() {
 
   const location = useLocation()
 
-  // 🛡️ 2026-05-16: Toss SDK 초기 idle preload — 결제 페이지 진입 전에 SDK 캐시.
-  //   기존엔 CheckoutPage 모듈 진입 시 import → 첫 결제 시도 시 SDK 다운로드 대기.
-  //   이제 App 마운트 후 1초 또는 idle 시점에 백그라운드 fetch → checkout 진입 시 즉시 사용.
+  // 🛡️ 2026-05-27 v4 (Lighthouse 100점 시도): Toss SDK preload 제거.
+  //   이전: idle 시 메인 페이지에서 Toss SDK (92KB) preload → Lighthouse 메인 페이지 점수 ↓.
+  //   변경: CheckoutPage 진입 시만 load. 첫 결제 ~100-300ms 지연 (cf-image proxy 와 동일 trade-off).
   useEffect(() => {
     if (typeof window === 'undefined') return
     const preload = () => {
-      import('@tosspayments/tosspayments-sdk').catch(() => { /* silent — checkout 진입 시 재시도 */ })
       // 🛡️ 2026-05-27 (loading P0): BottomNav 5탭 페이지 chunk idle prefetch.
       //   main bundle 키우지 않고 idle 시 background download → 탭 클릭 시 즉시 navigation.
       //   각 import().catch — chunk 404 / network 실패 graceful.

@@ -215,9 +215,10 @@ if (import.meta.env.PROD) {
     document.head.appendChild(s)
   }
   if ('requestIdleCallback' in window) {
-    requestIdleCallback(loadGTM, { timeout: 4000 })
+    // 🛡️ 2026-05-27 v2: 4s → 10s. GTM (153KB) 첫 paint/LCP 후 충분히 늦게 fetch.
+    requestIdleCallback(loadGTM, { timeout: 10000 })
   } else {
-    setTimeout(loadGTM, 2500)
+    setTimeout(loadGTM, 8000)
   }
 }
 
