@@ -65,6 +65,8 @@ export default function KakaoCallbackPage() {
           localStorage.setItem('seller_token', seller_token)
           if (seller?.id) localStorage.setItem('seller_id', String(seller.id))
           if (seller?.business_name) localStorage.setItem('seller_name', seller.business_name)
+          // 🛡️ 2026-05-27: seller_username 저장 → BottomNav 가 즉시 /profile/{username} navigate.
+          if (seller?.username) localStorage.setItem('seller_username', seller.username)
         }
         if (agency_token) {
           localStorage.setItem('agency_token', agency_token)

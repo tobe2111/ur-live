@@ -27,14 +27,26 @@ async function issueLinkedRoleTokens(
   DB: D1Database,
   jwtSecret: string,
   userId: number
-): Promise<{ seller_token?: string; agency_token?: string; seller?: { id: number; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
+): Promise<{ seller_token?: string; agency_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
   const out: { seller_token?: string; agency_token?: string; seller?: any; agency?: any } = {}
   try {
+    // 🛡️ 2026-05-27: username 도 SELECT — KakaoCallback 이 seller_username localStorage 저장 → BottomNav 직접 /profile/{username} navigate.
     const seller = await DB.prepare(
-      'SELECT id, status, business_name, email, name, seller_type FROM sellers WHERE linked_user_id = ?'
-    ).bind(userId).first<{ id: number; status: string; business_name: string; email: string; name: string; seller_type: string }>()
+      'SELECT id, username, status, business_name, email, name, seller_type FROM sellers WHERE linked_user_id = ?'
+    ).bind(userId).first<{ id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string }>()
     if (seller) {
-      out.seller = { id: seller.id, status: seller.status, business_name: seller.business_name }
+      // 🛡️ 2026-05-27: 시드 default 이름 ('메인 판매자', '셀러') 면 카카오 nickname 으로 1회 sync.
+      //   idempotent — 사용자가 직접 이름 변경한 후엔 sync 안 함 (placeholder 매칭 X).
+      const DEFAULT_PLACEHOLDERS = ['메인 판매자', '셀러', '인플루언서', '매장']
+      if (DEFAULT_PLACEHOLDERS.includes(seller.name)) {
+        const u = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(userId).first<{ name: string }>().catch(() => null)
+        if (u?.name && u.name.trim() && !DEFAULT_PLACEHOLDERS.includes(u.name.trim())) {
+          await DB.prepare('UPDATE sellers SET name = ?, updated_at = datetime(\'now\') WHERE id = ?')
+            .bind(u.name.trim(), seller.id).run().catch(() => null)
+          seller.name = u.name.trim()
+        }
+      }
+      out.seller = { id: seller.id, username: seller.username, status: seller.status, business_name: seller.business_name }
       // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)
       if (seller.status === 'active' || seller.status === 'approved') {
         const payload = {

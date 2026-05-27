@@ -116,6 +116,14 @@ export default function BottomNav() {
   const linkshopPath = (() => {
     if (!isLoggedIn) return '/host/new'
     try {
+      // 🛡️ 2026-05-27: 셀러 직접 로그인 (seller_token) 도 검사 — seller_username 우선.
+      //   기존 버그: seller 토큰만 있는 사용자는 linked_seller_username 캐시 없음 (카카오 user 안 거침)
+      //   → /u/me 로 가서 dashboard API 호출 → linked_user_id 매핑 없으면 /host/new 로 fall through.
+      //   수정: seller_token 있고 seller_username 캐시 있으면 즉시 /profile/{username} 직행.
+      if (hasSellerToken) {
+        const sellerUsername = localStorage.getItem('seller_username')
+        if (sellerUsername) return `/profile/${sellerUsername}`
+      }
       const cachedSeller = localStorage.getItem('linked_seller_username')
       if (cachedSeller) return `/profile/${cachedSeller}`
       const cachedHandle = localStorage.getItem('user_handle')
