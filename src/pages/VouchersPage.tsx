@@ -129,10 +129,12 @@ export default function VouchersPage() {
 
   // 🛡️ 2026-05-21: 정렬 옵션 — popular/newest/price_low/price_high/discount/rating.
   //   URL ?sort=... 동기화 — 공유/북마크 가능.
-  const sort = (searchParams.get('sort') as SortKey) || 'popular'
+  // 🛡️ 2026-05-27: 사용자 결정 — 교환권 페이지 default sort = price_low (낮은 가격순).
+  //   교환권은 동일 상품/브랜드의 가격 비교 UX → 최저가 우선 노출.
+  const sort = (searchParams.get('sort') as SortKey) || 'price_low'
   const setSort = (next: SortKey) => {
     const p = new URLSearchParams(searchParams)
-    if (next === 'popular') p.delete('sort')
+    if (next === 'price_low') p.delete('sort')  // default 와 같으면 URL 깔끔하게
     else p.set('sort', next)
     setSearchParams(p, { replace: true })
   }
