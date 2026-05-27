@@ -87,23 +87,16 @@
       }]
     }
     </script>
-    <!-- 🛡️ 2026-05-27 (loading P0 critical fix): 메인 페이지 첫 API call preload.
-         이전 버그: crossOrigin='anonymous' → axios same-origin credentials mode 와 불일치 →
-                   preload 무효 ("preload but not used") → axios 가 별도 RTT 새 요청 (200-500ms 손해).
-         수정: crossOrigin 속성 제거 — same-origin 요청은 default credentials match. -->
-    <script>
-      (function(){
-        try {
-          if (location.pathname === '/' || location.pathname === '/index.html') {
-            var l = document.createElement('link');
-            l.rel = 'preload'; l.as = 'fetch';
-            l.href = '/api/group-buy/products?status=active&category=all';
-            // crossOrigin 안 지정 — same-origin 요청 (axios 도 same-origin default) 매칭.
-            document.head.appendChild(l);
-          }
-        } catch(_) {}
-      })();
-    </script>
+    <!-- 🛡️ 2026-05-27 (preload 영구 제거): mode mismatch 영구 차단.
+         - preload (no crossOrigin) → no-cors / credentials=include
+         - preload (crossOrigin=anonymous) → cors / credentials=omit
+         - axios (default) → cors / credentials=same-origin
+         → 어느 조합도 정확히 match 안 됨 → 항상 mismatch 경고 + preload 무효.
+         → 그리고 worker HTMLRewriter 가 SSR inject 로 첫 paint 데이터를 head 에 inline.
+            preload 자체가 의미 없음. 제거하는 게 가장 영구적.
+         + 524 (worker timeout) 발생 시 preload + axios fetch 둘 다 hang → 사용자 체감 더 나쁨.
+            preload 없으면 axios 만 hang → React Query retry / fallback 동작 정상. -->
+
     <!-- 🛡️ 2026-05-07: 카카오맵 SDK preconnect — RestaurantMapPage 진입 시 핸드셰이크 절감 -->
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
     <link rel="dns-prefetch" href="https://map.daumcdn.net" />
