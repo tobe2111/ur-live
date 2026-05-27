@@ -316,21 +316,14 @@ function AppContent() {
 
   const location = useLocation()
 
-  // 🛡️ 2026-05-27 v4 (Lighthouse 100점 시도): Toss SDK preload 제거.
-  //   이전: idle 시 메인 페이지에서 Toss SDK (92KB) preload → Lighthouse 메인 페이지 점수 ↓.
-  //   변경: CheckoutPage 진입 시만 load. 첫 결제 ~100-300ms 지연 (cf-image proxy 와 동일 trade-off).
+  // 🛡️ 2026-05-27 v5 [UNLOCK_LOADING] (Lighthouse 100점 시도, 사용자 명령):
+  //   idle prefetch 전체 제거 — Lighthouse 메인 페이지 측정 시 lazy chunk 동시 fetch → 점수 ↓.
+  //   trade-off: 탭 클릭 시 chunk download wait 200-500ms (이전엔 즉시 navigation).
+  //   사용자가 메인에서 머무는 동안 prefetch 발생 → 사용자 체감 wait 0 의 효과 포기.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const preload = () => {
-      // 🛡️ 2026-05-27 (loading P0): BottomNav 5탭 페이지 chunk idle prefetch.
-      //   main bundle 키우지 않고 idle 시 background download → 탭 클릭 시 즉시 navigation.
-      //   각 import().catch — chunk 404 / network 실패 graceful.
-      import('./pages/BrowsePage').catch(() => {})
-      import('./pages/VouchersPage').catch(() => {})
-      import('./pages/UserProfilePage').catch(() => {})
-      import('./pages/MyVouchersPage').catch(() => {})
-      import('./pages/SellerPublicPage').catch(() => {})
-
+      /* idle prefetch 제거 — 탭 클릭 시 lazy load */
       // 🛡️ 2026-05-27 (영구 fix — /host/new fall through 사용자 보고):
       //   로그인 사용자가 BottomNav 의 링크샵 클릭 시 cache 없으면 /u/me → dashboard → /host/new.
       //   idle 시 background 로 dashboard 호출 → linked_seller_username / user_handle localStorage 채움.
