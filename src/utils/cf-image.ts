@@ -31,7 +31,18 @@ interface ResizeOptions {
 
 const SUPPORTED_HOSTS = new Set([
   'live.ur-team.com',
-  // 외부 CDN 도 origin 등록 시 동작하나 보수적으로 같은 도메인만
+  'ur-live.pages.dev',
+])
+
+// 🛡️ 2026-05-27 (loading P0): 외부 origin (Firebase Storage 등) 도 변환.
+//   기존: same-zone 이미지만 변환 → 대부분의 상품 이미지 (Firebase Storage) 가 원본 1MB+ 그대로 → LCP 1-3s
+//   변경: 외부 도메인은 worker proxy (/api/image/resize) 경유 — cf.image transform + 1년 immutable cache.
+//         첫 요청만 worker, edge cache hit 이후 worker 호출 0 (무료 한도 안전).
+const EXTERNAL_PROXY_HOSTS = new Set([
+  'firebasestorage.googleapis.com',
+  'img.youtube.com',
+  'k.kakaocdn.net',
+  'images.unsplash.com',
 ])
 
 export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}): string {
@@ -53,8 +64,17 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
     host = 'live.ur-team.com'  // 상대 경로는 같은 도메인 가정
   }
 
-  // 지원 호스트만 변환 (외부 이미지는 그대로 — CF 가 변환 못 함)
-  if (!SUPPORTED_HOSTS.has(host)) return src
+  // 외부 도메인 (Firebase Storage 등) → worker proxy 경유
+  if (isAbsolute) {
+    const isSupported = [...SUPPORTED_HOSTS].some(h => host === h)
+    const isExternalProxyable = [...EXTERNAL_PROXY_HOSTS].some(h => host === h || host.endsWith('.' + h))
+    if (!isSupported && isExternalProxyable) {
+      const w = opts.width || 400
+      const q = opts.quality || 85
+      return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
+    }
+    if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본
+  }
 
   const params: string[] = []
   if (opts.width) params.push(`width=${opts.width}`)
@@ -81,6 +101,15 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
  */
 export function cfSrcSet(src: string | undefined | null, baseWidth: number): string {
   if (!src) return ''
+  // 🛡️ 2026-05-27: 외부 도메인은 worker proxy 1회만 (DPI별 변환은 cf.image 가 처리).
+  //   1x/2x/3x 모두 별도 fetch 시 proxy 3회 → 비효율. 단일 high-res 만 반환.
+  if (/^https?:\/\//i.test(src)) {
+    const host = (() => { try { return new URL(src).hostname } catch { return '' } })()
+    const isExternalProxy = [...EXTERNAL_PROXY_HOSTS].some(h => host === h || host.endsWith('.' + h))
+    if (isExternalProxy) {
+      return `${cfImage(src, { width: baseWidth * 2 })} 2x`
+    }
+  }
   return [1, 2, 3]
     .map(dpi => `${cfImage(src, { width: baseWidth * dpi })} ${dpi}x`)
     .join(', ')
