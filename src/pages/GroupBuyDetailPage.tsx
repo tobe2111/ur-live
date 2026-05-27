@@ -16,6 +16,7 @@ import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip
 import RestaurantMiniMap from '@/components/RestaurantMiniMap'
 // 🛡️ 2026-05-21: 교환권 리뷰 — 상품 상세와 동일 컴포넌트 (product_reviews 테이블 공통).
 import ProductReviewsSection from '@/pages/product-detail/ProductReviews'
+import { useInvalidateMyVouchers } from '@/hooks/queries'
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -107,6 +108,7 @@ function CountdownRing({ deadline }: { deadline?: string }) {
 export default function GroupBuyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const invalidateVouchers = useInvalidateMyVouchers()
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (?seller=ID) sessionStorage 저장.
@@ -335,6 +337,7 @@ export default function GroupBuyDetailPage() {
         })
         if (res.data?.success) {
           toast.success('🎁 교환권 발급 완료')
+          invalidateVouchers()
           navigate('/my-vouchers')
         } else {
           toast.error(res.data?.error || '교환 실패')

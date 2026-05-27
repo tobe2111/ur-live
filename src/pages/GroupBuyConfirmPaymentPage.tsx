@@ -12,9 +12,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { useInvalidateMyVouchers } from '@/hooks/queries'
 
 export default function GroupBuyConfirmPaymentPage() {
   const navigate = useNavigate()
+  const invalidateVouchers = useInvalidateMyVouchers()
   const [params] = useSearchParams()
   const [state, setState] = useState<'processing' | 'success' | 'error'>('processing')
   const [errorMsg, setErrorMsg] = useState<string>('')
@@ -39,6 +41,7 @@ export default function GroupBuyConfirmPaymentPage() {
       .then((r) => {
         if (r.data?.success) {
           setState('success')
+          invalidateVouchers()
           try {
             localStorage.setItem('gb_just_joined', JSON.stringify({
               product_id: productId,

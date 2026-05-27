@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { formatPhone } from '@/utils/format-phone'
+import { useInvalidateMyVouchers } from '@/hooks/queries'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -45,6 +46,7 @@ interface VoucherProduct {
 export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const invalidateVouchers = useInvalidateMyVouchers()
   const [product, setProduct] = useState<VoucherProduct | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -108,6 +110,7 @@ export default function VoucherDetailPage() {
       })
       if (res.data?.success) {
         toast.success('🎁 교환권 발급 완료')
+        invalidateVouchers()
         navigate('/my-vouchers')
       } else {
         toast.error(res.data?.error || '교환 실패')
