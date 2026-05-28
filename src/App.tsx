@@ -45,6 +45,7 @@ const AboutPage = lazy(() => import('./pages/AboutPage'))
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const JoinChoicePage = lazy(() => import('./pages/JoinChoicePage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallbackPage'))
 const KakaoLinkCallbackPage = lazy(() => import('./pages/KakaoLinkCallbackPage'))
@@ -561,6 +562,7 @@ function AppContent() {
                 <RegisterPage />
               </PublicRoute>
             } />
+            <Route path="/join" element={<JoinChoicePage />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
             <Route path="/auth/kakao/consent/callback" element={<KakaoConsentCallbackPage />} />
