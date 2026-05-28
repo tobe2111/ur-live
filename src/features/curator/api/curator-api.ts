@@ -165,4 +165,12 @@ export const curatorApi = {
     const res = await api.post('/api/curator/me/business', input)
     return res.data
   },
+  async getIntroducedStores(): Promise<{ success: boolean; total_commission: number; stores: Array<{
+    id: number; business_name: string | null; status: string | null;
+    introduced_at: string | null; referral_bonus_until: string | null;
+    total_orders: number; total_sales: number;
+  }> }> {
+    const res = await api.get('/api/curator/me/introduced-stores')
+    return res.data
+  },
 }

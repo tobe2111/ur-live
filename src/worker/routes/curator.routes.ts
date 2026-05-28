@@ -975,4 +975,41 @@ curatorRoutes.post('/me/business', requireAuth(), async (c) => {
   }
 })
 
+// ============================================================
+// GET /me/introduced-stores — 내가 영입한 매장 + commission (Creator 대칭).
+//   에이전시 AgencyIntroducedStoresPage 의 유저 버전. introduced_by_influencer_id = 본인 users.id.
+// ============================================================
+curatorRoutes.get('/me/introduced-stores', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const DB = c.env.DB
+
+    const stores = await DB.prepare(
+      `SELECT s.id, s.business_name, s.status, s.introduced_at, s.referral_bonus_until,
+              COALESCE((SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) AS total_orders,
+              COALESCE((SELECT SUM(o.total_amount) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) AS total_sales
+         FROM sellers s
+        WHERE s.introduced_by_influencer_id = ?
+        ORDER BY s.introduced_at DESC, s.id DESC
+        LIMIT 200`
+    ).bind(userId).all<{ id: number; business_name: string | null; status: string | null; introduced_at: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }>().catch(() => ({ results: [] as any[] }))
+
+    // 영입 commission 누적 (point_transactions intro_commission*)
+    const commission = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total
+         FROM point_transactions
+        WHERE user_id = ? AND type IN ('intro_commission', 'intro_commission_backfill')`
+    ).bind(String(userId)).first<{ total: number }>().catch(() => ({ total: 0 }))
+
+    return c.json({
+      success: true,
+      total_commission: commission?.total || 0,
+      stores: stores.results || [],
+    })
+  } catch (err) {
+    return safeError(c, err, '영입 매장 조회 중 오류가 발생했습니다', '[curator:introduced-stores]')
+  }
+})
+
 export { curatorRoutes }

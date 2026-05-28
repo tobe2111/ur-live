@@ -106,6 +106,7 @@ export default function CuratorEarningsPage() {
                   }}
                 />
               )}
+              <IntroducedStoresSection />
               <BusinessSection />
               <TopPinsSection stats={stats} />
               <DailyChart stats={stats} />
@@ -123,6 +124,44 @@ export default function CuratorEarningsPage() {
         )}
       </div>
     </>
+  )
+}
+
+function IntroducedStoresSection() {
+  const [data, setData] = useState<{ total_commission: number; stores: Array<{ id: number; business_name: string | null; status: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }> } | null>(null)
+
+  useEffect(() => {
+    curatorApi.getIntroducedStores().then((r) => { if (r.success) setData(r) }).catch(() => {})
+  }, [])
+
+  if (!data || data.stores.length === 0) return null
+
+  return (
+    <section className="mb-6 bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
+        <span className="text-xs text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
+      </div>
+      <div className="space-y-2">
+        {data.stores.map((s) => {
+          const expired = s.referral_bonus_until && new Date(s.referral_bonus_until) < new Date()
+          return (
+            <div key={s.id} className="flex items-center justify-between text-xs border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0">
+              <div>
+                <span className="font-bold text-gray-900 dark:text-white">{s.business_name || `매장 #${s.id}`}</span>
+                <span className="ml-2 text-gray-400 dark:text-gray-500">{s.total_orders}건 · {formatWon(s.total_sales)}</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                expired ? 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-500'
+                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+              }`}>
+                {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
