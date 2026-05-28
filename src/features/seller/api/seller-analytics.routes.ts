@@ -498,3 +498,45 @@ sellerAnalyticsRoutes.get('/referral-commissions/summary', requireAuth(), async 
     return c.json({ success: true, data: { summary: { total_granted: 0, total_pending: 0, total_paid_out: 0, referred_users_count: 0 }, top_referred: [] } })
   }
 })
+
+// ── 대행 등록 승인 (docs/SERVICE_MODEL.md §6) ──
+//   Creator/Agency 가 대신 등록한 공구 (registration_approved=0, is_active=0) 를 매장이 검토/승인.
+sellerAnalyticsRoutes.get('/proxy-products', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  const { results } = await c.env.DB.prepare(
+    `SELECT p.id, p.name, p.price, p.stock, p.category, p.image_url, p.created_at,
+            p.registered_by_user_id, u.handle AS registrar_handle
+       FROM products p
+       LEFT JOIN users u ON u.id = p.registered_by_user_id
+      WHERE p.seller_id = ? AND p.registration_approved = 0
+      ORDER BY p.created_at DESC LIMIT 100`,
+  ).bind(sellerId).all().catch(() => ({ results: [] }))
+  return c.json({ success: true, data: results || [] })
+})
+
+sellerAnalyticsRoutes.post('/proxy-products/:id/approve', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  const pid = Number(c.req.param('id'))
+  if (!Number.isFinite(pid)) return c.json({ success: false, error: 'invalid id' }, 400)
+  const r = await c.env.DB.prepare(
+    `UPDATE products SET registration_approved = 1, is_active = 1, updated_at = datetime('now')
+      WHERE id = ? AND seller_id = ? AND registration_approved = 0`,
+  ).bind(pid, sellerId).run().catch(() => ({ meta: { changes: 0 } }))
+  if (!r.meta?.changes) return c.json({ success: false, error: '대상 없음' }, 404)
+  return c.json({ success: true })
+})
+
+sellerAnalyticsRoutes.post('/proxy-products/:id/reject', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  const pid = Number(c.req.param('id'))
+  if (!Number.isFinite(pid)) return c.json({ success: false, error: 'invalid id' }, 400)
+  // 미승인 대행 상품만 삭제 (주문 없음 보장).
+  const r = await c.env.DB.prepare(
+    `DELETE FROM products WHERE id = ? AND seller_id = ? AND registration_approved = 0`,
+  ).bind(pid, sellerId).run().catch(() => ({ meta: { changes: 0 } }))
+  if (!r.meta?.changes) return c.json({ success: false, error: '대상 없음' }, 404)
+  return c.json({ success: true })
+})
