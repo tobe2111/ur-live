@@ -106,6 +106,7 @@ export default function CuratorEarningsPage() {
                   }}
                 />
               )}
+              <BusinessSection />
               <TopPinsSection stats={stats} />
               <DailyChart stats={stats} />
             </>
@@ -122,6 +123,102 @@ export default function CuratorEarningsPage() {
         )}
       </div>
     </>
+  )
+}
+
+function BusinessSection() {
+  const [biz, setBiz] = useState<{ business_status?: string; business_name?: string | null; business_number?: string | null } | null>(null)
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ business_number: '', business_name: '', representative: '', start_date: '', tax_type: 'business_income', bank_name: '', bank_account: '', account_holder: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    curatorApi.getBusiness().then((r) => { if (r.success) setBiz(r.data) }).catch(() => {})
+  }, [])
+
+  const status = biz?.business_status || 'none'
+  if (status === 'verified') {
+    return (
+      <section className="mb-6 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
+        <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">✅ 사업자 인증 완료</p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+          {biz?.business_name} — 영입/추천 수익이 현금으로 정산됩니다 (주 1회).
+        </p>
+      </section>
+    )
+  }
+
+  async function submit() {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      const r = await curatorApi.registerBusiness(form as any)
+      if (r.success) {
+        toast.success(r.message || '등록되었습니다')
+        setBiz({ business_status: r.data?.business_status || 'pending' })
+        setOpen(false)
+      } else {
+        toast.error(r.error || '등록 실패')
+      }
+    } catch {
+      toast.error('등록 중 오류가 발생했습니다')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+      <p className="text-sm font-bold text-gray-900 dark:text-white">🧾 사업자세요? 현금으로 정산받기</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
+        {status === 'pending'
+          ? '등록 접수됨 — 관리자 검수 중입니다. 승인되면 현금 정산이 활성화돼요.'
+          : '사업자 등록을 하면 영입/추천 수익을 딜이 아닌 현금으로 받을 수 있어요 (원천징수 적용).'}
+      </p>
+      {status !== 'pending' && (
+        <>
+          {!open ? (
+            <button onClick={() => setOpen(true)} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg">
+              사업자 등록하기
+            </button>
+          ) : (
+            <div className="space-y-2">
+              {([
+                ['business_number', '사업자등록번호 (10자리)'],
+                ['business_name', '상호명'],
+                ['representative', '대표자명'],
+                ['start_date', '개업일 (YYYYMMDD)'],
+                ['bank_name', '은행'],
+                ['bank_account', '계좌번호'],
+                ['account_holder', '예금주'],
+              ] as const).map(([k, label]) => (
+                <input
+                  key={k}
+                  value={(form as any)[k]}
+                  onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                  placeholder={label}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+                />
+              ))}
+              <select
+                value={form.tax_type}
+                onChange={(e) => setForm({ ...form, tax_type: e.target.value })}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+              >
+                <option value="business_income">사업소득 (원천징수 3.3%)</option>
+                <option value="other_income">기타소득 (원천징수 8.8%)</option>
+              </select>
+              <div className="flex gap-2 pt-1">
+                <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+                  {submitting ? '확인 중…' : '등록 + 진위확인'}
+                </button>
+                <button onClick={() => setOpen(false)} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">취소</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   )
 }
 

@@ -149,4 +149,20 @@ export const curatorApi = {
     const res = await api.post('/api/curator/me/seller-upgrade-acknowledge', {})
     return res.data
   },
+  async getBusiness(): Promise<{ success: boolean; data: {
+    business_number?: string | null; business_name?: string | null;
+    business_status?: string; tax_type?: string | null;
+    bank_name?: string | null; bank_account?: string | null; account_holder?: string | null;
+  } }> {
+    const res = await api.get('/api/curator/me/business')
+    return res.data
+  },
+  async registerBusiness(input: {
+    business_number: string; business_name: string; representative: string;
+    start_date?: string; tax_type?: 'business_income' | 'other_income';
+    bank_name: string; bank_account: string; account_holder: string;
+  }): Promise<{ success: boolean; data?: { business_status: string }; message?: string; error?: string; code?: string }> {
+    const res = await api.post('/api/curator/me/business', input)
+    return res.data
+  },
 }

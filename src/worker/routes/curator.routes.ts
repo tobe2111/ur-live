@@ -886,4 +886,93 @@ curatorRoutes.post('/me/seller-upgrade-acknowledge', requireAuth(), async (c) =>
   }
 })
 
+// ============================================================
+// 유저 사업자 등록 — 영입/추천 commission 현금 정산 분기 (docs/SERVICE_MODEL.md §4).
+//   사업자(verified) → user: ledger 현금 정산 + 원천징수 / 비사업자 → 딜.
+//   인플루언서=유저 모델 유지 (셀러 계정 안 만듦).
+// ============================================================
+
+// GET — 내 사업자 등록 상태 조회
+curatorRoutes.get('/me/business', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const row = await c.env.DB.prepare(
+      `SELECT business_number, business_name, business_status, business_verified_at,
+              tax_type, bank_name, bank_account, account_holder
+         FROM users WHERE id = ?`,
+    ).bind(userId).first<Record<string, unknown>>().catch(() => null)
+    return c.json({
+      success: true,
+      data: row || { business_status: 'none' },
+    })
+  } catch (err) {
+    return safeError(c, err, '사업자 정보 조회 중 오류가 발생했습니다', '[curator:business:get]')
+  }
+})
+
+// POST — 사업자 등록 / 갱신 (국세청 진위확인 자동)
+curatorRoutes.post('/me/business', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{
+      business_number?: string; business_name?: string; representative?: string;
+      start_date?: string; tax_type?: string;
+      bank_name?: string; bank_account?: string; account_holder?: string;
+    }>().catch(() => ({} as Record<string, string>))
+
+    const bizNo = String(body.business_number || '').replace(/-/g, '').trim()
+    const bizName = String(body.business_name || '').trim()
+    const representative = String(body.representative || '').trim()
+    const startDate = String(body.start_date || '').replace(/-/g, '').trim()
+    const taxType = body.tax_type === 'other_income' ? 'other_income' : 'business_income'
+    const bankName = String(body.bank_name || '').trim()
+    const bankAccount = String(body.bank_account || '').trim()
+    const accountHolder = String(body.account_holder || '').trim()
+
+    if (!/^\d{10}$/.test(bizNo)) {
+      return c.json({ success: false, error: '사업자번호는 10자리 숫자입니다' }, 400)
+    }
+    if (!bizName || !representative) {
+      return c.json({ success: false, error: '상호명/대표자명이 필요합니다' }, 400)
+    }
+    if (!bankName || bankAccount.length < 8 || bankAccount.length > 30 || !accountHolder) {
+      return c.json({ success: false, error: '은행/계좌(8~30자)/예금주가 필요합니다' }, 400)
+    }
+
+    // 국세청 진위확인 (key 없으면 pending — 어드민 수동 검수).
+    let status = 'pending'
+    let verifiedAt: string | null = null
+    const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
+    if (ntsKey && startDate) {
+      const { ntsValidateBusiness } = await import('../utils/nts-business-verify')
+      const r = await ntsValidateBusiness(ntsKey, { businessNumber: bizNo, startDate, representative })
+      if (r.ok && r.valid === '02') {
+        return c.json({ success: false, error: '사업자번호·대표자명·개업일이 일치하지 않습니다', code: 'NTS_MISMATCH' }, 400)
+      }
+      if (r.autoApprovable) { status = 'verified'; verifiedAt = new Date().toISOString() }
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE users SET
+         business_number = ?, business_name = ?, business_status = ?,
+         business_verified_at = ?, tax_type = ?,
+         bank_name = ?, bank_account = ?, account_holder = ?,
+         updated_at = datetime('now')
+       WHERE id = ?`,
+    ).bind(bizNo, bizName, status, verifiedAt, taxType, bankName, bankAccount, accountHolder, userId).run()
+
+    return c.json({
+      success: true,
+      data: { business_status: status },
+      message: status === 'verified'
+        ? '사업자 인증 완료 — 이후 영입/추천 수익은 현금으로 정산됩니다'
+        : '등록 접수 — 관리자 검수 후 현금 정산이 활성화됩니다',
+    })
+  } catch (err) {
+    return safeError(c, err, '사업자 등록 중 오류가 발생했습니다', '[curator:business:post]')
+  }
+})
+
 export { curatorRoutes }

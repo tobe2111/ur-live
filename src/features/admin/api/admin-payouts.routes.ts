@@ -36,6 +36,7 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
          WHERE credit_account LIKE 'merchant:%'
             OR credit_account LIKE 'seller:%'
             OR credit_account LIKE 'agency:%'
+            OR credit_account LIKE 'user:%'
          GROUP BY credit_account
       ),
       paid AS (
@@ -82,7 +83,7 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), auditLog('pay
     WITH credits AS (
       SELECT credit_account, SUM(amount) as total
         FROM ledger_entries
-       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%')
+       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
          AND created_at BETWEEN ? AND ?
        GROUP BY credit_account
     ),

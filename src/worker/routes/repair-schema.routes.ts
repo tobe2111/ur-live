@@ -94,6 +94,22 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
     { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
     { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },
+    // 🛡️ 2026-05-28: 유저 사업자 등록 (영입/추천 commission 현금 정산 분기용).
+    //   사업자 → 현금 + 원천징수 / 비사업자 → 딜/상품권 (docs/SERVICE_MODEL.md §4).
+    { desc: 'users.business_number', sql: "ALTER TABLE users ADD COLUMN business_number TEXT" },
+    { desc: 'users.business_name', sql: "ALTER TABLE users ADD COLUMN business_name TEXT" },
+    { desc: 'users.business_status', sql: "ALTER TABLE users ADD COLUMN business_status TEXT DEFAULT 'none'" }, // 'none'|'pending'|'verified'|'rejected'
+    { desc: 'users.business_verified_at', sql: "ALTER TABLE users ADD COLUMN business_verified_at DATETIME" },
+    { desc: 'users.tax_type', sql: "ALTER TABLE users ADD COLUMN tax_type TEXT DEFAULT 'business_income'" }, // 'business_income'(3.3%)|'other_income'(8.8%)
+    { desc: 'users.bank_name', sql: "ALTER TABLE users ADD COLUMN bank_name TEXT" },
+    { desc: 'users.bank_account', sql: "ALTER TABLE users ADD COLUMN bank_account TEXT" },
+    { desc: 'users.account_holder', sql: "ALTER TABLE users ADD COLUMN account_holder TEXT" },
+    { desc: 'idx_users_business_number', sql: "CREATE INDEX IF NOT EXISTS idx_users_business_number ON users(business_number) WHERE business_number IS NOT NULL" },
+    // 🛡️ 2026-05-28: 공구 대행 등록 (products.seller_id 는 항상 매장, 등록자만 별도 기록).
+    //   docs/SERVICE_MODEL.md §6 — 정산/QR 충돌 방지.
+    { desc: 'products.registered_by_user_id', sql: "ALTER TABLE products ADD COLUMN registered_by_user_id INTEGER" },
+    { desc: 'products.registered_by_agency_id', sql: "ALTER TABLE products ADD COLUMN registered_by_agency_id INTEGER" },
+    { desc: 'products.registration_approved', sql: "ALTER TABLE products ADD COLUMN registration_approved INTEGER DEFAULT 1" }, // 대행 등록 시 0, 매장 승인 시 1
     // 🛡️ 2026-05-25 (migration 0281): 합배송 인프라 (Phase 6 deferred — ENABLE_BUNDLING=false)
     { desc: 'products.bundling_key', sql: "ALTER TABLE products ADD COLUMN bundling_key TEXT" },
     { desc: 'orders.consolidated_with', sql: "ALTER TABLE orders ADD COLUMN consolidated_with TEXT" },
