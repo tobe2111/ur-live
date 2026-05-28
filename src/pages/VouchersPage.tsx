@@ -472,9 +472,9 @@ export default function VouchersPage() {
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
                       {p.image_url ? (
                         <img
-                          src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
-                          srcSet={cfSrcSet(p.image_url, 200) || undefined}
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                          src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
+                          srcSet={cfSrcSet(p.image_url, 300) || undefined}
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
                           alt={p.name}
                           loading={aboveFold ? 'eager' : 'lazy'}
                           fetchPriority={aboveFold ? 'high' : 'auto'}

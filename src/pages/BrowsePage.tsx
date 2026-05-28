@@ -516,9 +516,9 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                     <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
                       {product.image_url ? (
                         <img
-                          src={cfImage(product.image_url, { width: 200, format: 'auto' }) || product.image_url}
-                          srcSet={cfSrcSet(product.image_url, 200) || undefined}
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                          src={cfImage(product.image_url, { width: 300, format: 'auto' }) || product.image_url}
+                          srcSet={cfSrcSet(product.image_url, 300) || undefined}
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
                           alt={product.name || t('browse.altProduct')}
                           className="w-full h-full object-cover"
                           loading={aboveFold ? 'eager' : 'lazy'}

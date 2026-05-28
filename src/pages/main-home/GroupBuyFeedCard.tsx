@@ -147,13 +147,15 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
       >
         {p.image_url ? (
           <img
-            // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (200px base, 1x/2x/3x DPI).
-            //   원본 1000px+ 다운로드 → 200-600px WebP/AVIF 자동 변환 (50-80% 트래픽 절감).
-            // 🛡️ 2026-05-27 (perceived perf): fade-in transition — load 전 skeleton(bg-gray-100)
-            //   → load 시 opacity 0→1 부드럽게. onLoad 시 opacity 100 클래스 toggle.
-            src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
-            srcSet={cfSrcSet(p.image_url, 200) || undefined}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+            // 🛡️ 2026-05-22 perf: Cloudflare Image Resizing (300px base, 1x/2x DPI).
+            //   원본 1000px+ 다운로드 → 300-600px WebP/AVIF 자동 변환 (50-80% 트래픽 절감).
+            // 🛡️ 2026-05-28 (사용자 보고 — 흐림): 200 → 300px.
+            //   이전: 카드 영역 PC 320-400px 인데 src 200px → 1.5x stretched (흐림).
+            //   변경: 300px → PC 정확 매칭, 모바일 50vw (207px) 도 약간 high-res.
+            //   트래픽: 200→300 = 약 +50KB/카드. 단 cf-image WebP 변환으로 net 영향 작음.
+            src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
+            srcSet={cfSrcSet(p.image_url, 300) || undefined}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
             alt={p.name || cat.label}
             loading={aboveFold ? 'eager' : 'lazy'}
             fetchPriority={aboveFold ? 'high' : 'auto'}
