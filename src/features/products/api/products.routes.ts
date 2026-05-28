@@ -267,7 +267,7 @@ productsRoutes.get('/', cors(), async (c) => {
           (async () => {
             try {
               const { autoSeedFakeReviews } = await import('../../../worker/utils/auto-seed-fake-reviews')
-              await autoSeedFakeReviews(c.env, seedTargetIds, { seedMin: 5, seedMax: 15 })
+              await autoSeedFakeReviews(c.env as unknown as Parameters<typeof autoSeedFakeReviews>[0], seedTargetIds, { seedMin: 5, seedMax: 15 })
             } catch (err) {
               if (typeof console !== 'undefined') console.warn('[products list] lazy seed failed:', String(err))
             }

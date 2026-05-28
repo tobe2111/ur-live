@@ -780,6 +780,7 @@ function AppContent() {
 //   타입: ComponentType 추상화 (BrowserRouter 와 StaticRouter prop 인터페이스 다름).
 import type { ComponentType, ReactNode } from 'react'
 type RouterLike = ComponentType<{ children?: ReactNode; [key: string]: unknown }>
+export type { RouterLike }
 
 interface AppProps {
   Router?: RouterLike

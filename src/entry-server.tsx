@@ -16,7 +16,7 @@
 
 import { renderToString } from 'react-dom/server'
 import { StaticRouter } from 'react-router-dom/server'
-import App from './App'
+import App, { type RouterLike } from './App'
 
 export interface RenderResult {
   html: string
@@ -38,7 +38,7 @@ export async function renderApp(url: string, _initialData?: unknown): Promise<Re
   //   App 컴포넌트가 Router prop 받음 (Phase 3 Step 3-1 에서 추가).
   const html = renderToString(
     <App
-      Router={StaticRouter}
+      Router={StaticRouter as unknown as RouterLike}
       routerProps={{ location: url }}
     />,
   )

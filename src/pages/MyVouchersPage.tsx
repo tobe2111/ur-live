@@ -453,7 +453,7 @@ export default function MyVouchersPage() {
           <Suspense fallback={<div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-sm text-gray-500" style={{ height: 400 }}>지도 불러오는 중...</div>}>
             <VoucherMap
               vouchers={vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)}
-              onMarkerClick={(v) => setQrVoucher(v)}
+              onMarkerClick={(v) => setQrVoucher(vouchers.find(x => x.id === v.id) ?? null)}
             />
           </Suspense>
         ) : loading ? (
