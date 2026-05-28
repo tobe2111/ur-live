@@ -1,23 +1,14 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import MobileFooter from '@/components/MobileFooter'
-import { CartTab } from '@/components/mypage/CartTab'
-import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
-import { walletTokens } from '@/components/wallet/walletTokens'
 import { OrdersTab } from '@/components/mypage/OrdersTab'
-import {
-  ArrowLeft,
-  Package,
-  ShoppingCart,
-  AlertCircle,
-} from 'lucide-react'
+import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
-import type { CartItem } from '@/types/cart'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 // 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
 const OrderDetailModal = lazy(() => import('./my-orders/OrderDetailModal'))
@@ -27,21 +18,16 @@ import CancelOrderModal from './my-orders/CancelOrderModal'
 //   미사용 import (Badge, X, Truck, ChevronRight, formatKST, formatNumber,
 //   getTrackingUrl, OrderItem) 정리.
 
-type TabType = 'cart' | 'orders'
-
 export default function MyOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🛡️ 2026-05-28 (사용자 보고): /my-orders 는 주문내역이 기본. 이전 'cart' default →
-  //   주문내역 버튼 눌러도 장바구니가 떠서 혼란. 장바구니는 /cart (CartPage) 전용.
-  const [activeTab, setActiveTab] = useState<TabType>('orders')
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  // 🛡️ 2026-05-28 (사용자 요청 A): /my-orders 는 주문내역 전용. 장바구니는 /cart (CartPage) 하나로 일원화
+  //   (이전엔 cart/orders 탭 — /cart 와 중복 + 디자인 불일치). 헤더는 쇼핑 페이지 표준 스타일.
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   useEscapeKey(() => { if (selectedOrder) setSelectedOrder(null) })
-  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [cancelModal, setCancelModal] = useState<{
     isOpen: boolean
     orderId: number | string | null
@@ -77,12 +63,12 @@ export default function MyOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ✅ UX C5 FIX: 데이터 로드는 activeTab 변경 시. 401 시 리다이렉트 대신 에러 표시.
+  // ✅ UX C5 FIX: 401 시 리다이렉트 대신 에러 표시.
   useEffect(() => {
     if (!isLoggedInSync() || !userId) return
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, userId])
+  }, [userId])
 
   async function loadData() {
     // ✅ BUG #25 FIX: Guard against concurrent calls
@@ -100,18 +86,10 @@ export default function MyOrdersPage() {
         return
       }
 
-      if (activeTab === 'cart') {
-        const response = await api.get('/api/cart')
-        if (response.data.success) {
-          const d = response.data.data
-          setCartItems(Array.isArray(d) ? d : (d?.items || []))
-        }
-      } else if (activeTab === 'orders') {
-        const response = await api.get('/api/orders')
-        if (response.data.success) {
-          const d = response.data.data
-          setOrders(Array.isArray(d) ? d : (d?.items || d?.orders || []))
-        }
+      const response = await api.get('/api/orders')
+      if (response.data.success) {
+        const d = response.data.data
+        setOrders(Array.isArray(d) ? d : (d?.items || d?.orders || []))
       }
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('Failed to load data:', err)
@@ -119,46 +97,12 @@ export default function MyOrdersPage() {
       if (e?.response?.status === 401) {
         setError(t('myOrders.sessionExpired'))
       } else {
-        setError(activeTab === 'cart' ? t('myOrders.errorCart') : t('myOrders.errorOrders'))
+        setError(t('myOrders.errorOrders'))
       }
     } finally {
       setLoading(false)
       isLoadingRef.current = false
     }
-  }
-
-  async function handleUpdateQuantity(itemId: number, newQuantity: number) {
-    if (newQuantity < 1) return
-    try {
-      const response = await api.put(`/api/cart/${itemId}`, { quantity: newQuantity })
-      if (response.data.success) {
-        loadData()
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to update quantity:', error)
-      toast.error(t('myOrders.errorQty'))
-    }
-  }
-
-  async function handleRemoveItem(itemId: number) {
-    if (!confirm(t('myOrders.confirmCartDelete'))) return
-    try {
-      const response = await api.delete(`/api/cart/${itemId}`)
-      if (response.data.success) {
-        loadData()
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to remove item:', error)
-      toast.error(t('myOrders.errorDelete'))
-    }
-  }
-
-  function handleCheckout() {
-    if (cartItems.length === 0) {
-      toast.info(t('myOrders.cartEmpty'))
-      return
-    }
-    navigate('/checkout')
   }
 
   async function handleConfirmOrder(orderId: number | string, orderNumber: string) {
@@ -224,71 +168,25 @@ export default function MyOrdersPage() {
   }
 
 
-  // 🛡️ 2026-04-30: CLAUDE.md 규칙 — /my-orders 는 화이트 테마 (쇼핑/결제 플로우)
-  // 이전엔 dark Wallet wrapper 였는데 내부 CartTab/OrdersTab 는 모두 화이트라 시각적 충돌.
-  const theme = 'light' as const
-  const tk = walletTokens[theme]
-
+  // 🛡️ 2026-05-28 (사용자 요청 A): 헤더/레이아웃을 CartPage(/cart) 와 동일한 쇼핑 페이지 표준
+  //   스타일로 통일 — 화이트 테마 + 스티키 헤더(뒤로가기 + 가운데 제목). Wallet/LargeTitle chrome 제거.
   return (
-    <WalletPageWrapper theme={theme}>
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
       <SEO title={t('myOrders.docTitle')} description={t('myOrders.seoDesc')} url="/my-orders" noindex />
-      {/* 상단 chrome — 뒤로가기 */}
-      <div className="sticky top-0 md:top-14 z-30 px-2 pt-3 pb-2 flex items-center"
-        style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 flex items-center justify-center rounded-full"
-          style={{ background: tk.fillSoft, color: tk.label }}
-          aria-label={t('common.back')}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-      </div>
 
-      <LargeTitle theme={theme} title={t('myOrders.title')} />
-
-      {/* Tab Navigation — underline 탭 */}
-      <div className="px-4 mb-4">
-        <div className="flex relative" style={{ borderBottom: `1px solid ${tk.separator}` }}>
-          <button
-            onClick={() => setActiveTab('cart')}
-            className="flex-1 py-3 px-4 transition-colors relative flex items-center justify-center gap-2"
-            style={{
-              fontSize: 15,
-              fontWeight: activeTab === 'cart' ? 800 : 600,
-              color: activeTab === 'cart' ? tk.label : tk.tertiary,
-              letterSpacing: '-0.01em',
-            }}
-            aria-pressed={activeTab === 'cart'}
-          >
-            <ShoppingCart className="h-4 w-4" />
-            {t('myOrders.tabCart')}
-            {activeTab === 'cart' && (
-              <div className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: tk.label }} />
-            )}
+      {/* 헤더 — /cart 와 동일 패턴 (스티키 화이트 + 뒤로가기 + 가운데 제목) */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="ur-content-medium flex items-center justify-between px-4 py-3">
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
+            <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <button
-            onClick={() => setActiveTab('orders')}
-            className="flex-1 py-3 px-4 transition-colors relative flex items-center justify-center gap-2"
-            style={{
-              fontSize: 15,
-              fontWeight: activeTab === 'orders' ? 800 : 600,
-              color: activeTab === 'orders' ? tk.label : tk.tertiary,
-              letterSpacing: '-0.01em',
-            }}
-            aria-pressed={activeTab === 'orders'}
-          >
-            <Package className="h-4 w-4" />
-            {t('myOrders.tabOrders')}
-            {activeTab === 'orders' && (
-              <div className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: tk.label }} />
-            )}
-          </button>
+          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
+          <div className="w-9" />
         </div>
       </div>
 
       {/* Content */}
-      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -311,26 +209,12 @@ export default function MyOrdersPage() {
             </div>
           </div>
         ) : (
-          <>
-            {activeTab === 'cart' && (
-              <CartTab 
-                cartItems={cartItems as unknown as { id: number; product_id: number; product_name: string; quantity: number; price_snapshot: number; option_value?: string }[]}
-                onUpdateQuantity={handleUpdateQuantity}
-                onRemoveItem={handleRemoveItem}
-                onCheckout={handleCheckout}
-              />
-            )}
-            
-            {activeTab === 'orders' && (
-              <OrdersTab
-                orders={orders}
-                onCancelOrder={handleCancelOrder}
-                onSelectOrder={(order) => setSelectedOrder(order)}
-                onConfirmOrder={handleConfirmOrder}
-              />
-            )}
-            
-          </>
+          <OrdersTab
+            orders={orders}
+            onCancelOrder={handleCancelOrder}
+            onSelectOrder={(order) => setSelectedOrder(order)}
+            onConfirmOrder={handleConfirmOrder}
+          />
         )}
       </main>
 
@@ -363,6 +247,6 @@ export default function MyOrdersPage() {
 
       {/* Mobile Footer */}
       <MobileFooter />
-    </WalletPageWrapper>
+    </div>
   )
 }
