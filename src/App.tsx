@@ -272,6 +272,19 @@ function AppContent() {
     try { sessionStorage.removeItem('ur_kakao_login_welcome') } catch { /* */ }
   }, [])
 
+  // 🛡️ 2026-05-27 (P2 referral): URL ?invite={inviterUserId} 감지 → localStorage 저장.
+  //   친구가 초대 링크로 진입 → 가입 (KakaoCallback) 시 referral_tree 등록.
+  //   24시간 유효 (timestamp). self-invite 는 KakaoCallback 에서 차단.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const inviter = params.get('invite')
+      if (inviter && /^\d+$/.test(inviter)) {
+        localStorage.setItem('pending_referral_inviter', JSON.stringify({ id: inviter, ts: Date.now() }))
+      }
+    } catch { /* ignore */ }
+  }, [])
+
   // ✅ Auth 초기화 — KR 은 Firebase 미사용, 글로벌만 Firebase 초기화.
   useEffect(() => {
     if (authInitialized.current) return
