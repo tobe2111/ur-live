@@ -1012,4 +1012,56 @@ curatorRoutes.get('/me/introduced-stores', requireAuth(), async (c) => {
   }
 })
 
+// ============================================================
+// 대행 등록 (docs/SERVICE_MODEL.md §6) — Creator/Agency 가 영입한 매장 공구를 대신 등록.
+//   원칙: products.seller_id = 항상 매장. 등록자만 registered_by_*. is_active=0 (매장 승인 전 비노출).
+//   IDOR: 호출자가 그 매장의 introduced_by_influencer_id 여야 함.
+// ============================================================
+curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{
+      merchant_seller_id?: number; name?: string; description?: string;
+      price?: number; stock?: number; category?: string; image_url?: string;
+    }>().catch(() => ({} as Record<string, unknown>))
+
+    const merchantId = Number(body.merchant_seller_id)
+    const name = String(body.name || '').trim()
+    const price = Number(body.price)
+    const stock = Number.isFinite(Number(body.stock)) ? Number(body.stock) : 0
+    if (!Number.isFinite(merchantId) || merchantId <= 0) return c.json({ success: false, error: '매장 id 필요' }, 400)
+    if (!name || name.length > 200) return c.json({ success: false, error: '상품명(1~200자) 필요' }, 400)
+    if (!Number.isFinite(price) || price < 0) return c.json({ success: false, error: '가격 오류' }, 400)
+
+    // IDOR: 호출자가 이 매장의 영입자여야 대행 가능.
+    const seller = await c.env.DB.prepare(
+      'SELECT introduced_by_influencer_id FROM sellers WHERE id = ?',
+    ).bind(merchantId).first<{ introduced_by_influencer_id: number | null }>().catch(() => null)
+    if (!seller) return c.json({ success: false, error: '매장 없음' }, 404)
+    if (Number(seller.introduced_by_influencer_id) !== userId) {
+      return c.json({ success: false, error: '본인이 영입한 매장만 대행 등록할 수 있습니다', code: 'NOT_INTRODUCER' }, 403)
+    }
+
+    const images = body.image_url ? JSON.stringify([String(body.image_url)]) : null
+    const res = await c.env.DB.prepare(
+      `INSERT INTO products
+         (seller_id, name, description, price, stock, category, images, image_url,
+          is_active, registered_by_user_id, registration_approved, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, datetime('now'), datetime('now'))`,
+    ).bind(
+      merchantId, name, String(body.description || '') || null, Math.floor(price), stock,
+      String(body.category || '') || null, images, body.image_url ? String(body.image_url) : null, userId,
+    ).run()
+
+    return c.json({
+      success: true,
+      product_id: res.meta?.last_row_id,
+      message: '대행 등록 완료 — 매장 승인 후 공개됩니다',
+    })
+  } catch (err) {
+    return safeError(c, err, '대행 등록 중 오류가 발생했습니다', '[curator:proxy-product]')
+  }
+})
+
 export { curatorRoutes }
