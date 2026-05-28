@@ -12,6 +12,7 @@ import { ChevronRight } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
+import MyReferralCard from '@/components/MyReferralCard'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ChatNameSetting from './user-profile/ChatNameSetting'
 import CouponVoucherStats from './user-profile/CouponVoucherStats'
@@ -163,6 +164,9 @@ export default function UserProfilePage() {
       {/* 🛡️ 2026-05-25 (신모델): 큐레이터 수익 — 누적 적립 있을 때만 표시.
             클릭 시 /u/me/earnings 상세 페이지. 사업자 셀러는 현금, user 는 딜. */}
       <CuratorEarningsCard />
+
+      {/* 🛡️ 2026-05-27 (P2 referral 완성): 친구 가입 초대 카드 (invite_rewards — 상품 추천과 별개) */}
+      <MyReferralCard />
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
