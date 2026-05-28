@@ -129,6 +129,7 @@ export default function CuratorEarningsPage() {
 
 function IntroducedStoresSection() {
   const [data, setData] = useState<{ total_commission: number; stores: Array<{ id: number; business_name: string | null; status: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }> } | null>(null)
+  const [proxyFor, setProxyFor] = useState<{ id: number; name: string } | null>(null)
 
   useEffect(() => {
     curatorApi.getIntroducedStores().then((r) => { if (r.success) setData(r) }).catch(() => {})
@@ -151,17 +152,93 @@ function IntroducedStoresSection() {
                 <span className="font-bold text-gray-900 dark:text-white">{s.business_name || `매장 #${s.id}`}</span>
                 <span className="ml-2 text-gray-400 dark:text-gray-500">{s.total_orders}건 · {formatWon(s.total_sales)}</span>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                expired ? 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-500'
-                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-              }`}>
-                {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  expired ? 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-500'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                }`}>
+                  {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
+                </span>
+                <button
+                  onClick={() => setProxyFor({ id: s.id, name: s.business_name || `매장 #${s.id}` })}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-500 text-white"
+                >
+                  공구 대행 등록
+                </button>
+              </div>
             </div>
           )
         })}
       </div>
+      {proxyFor && <ProxyProductModal merchant={proxyFor} onClose={() => setProxyFor(null)} />}
     </section>
+  )
+}
+
+function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name: string }; onClose: () => void }) {
+  const [form, setForm] = useState({ name: '', description: '', price: '', stock: '', category: '', image_url: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submit() {
+    if (submitting) return
+    if (!form.name.trim() || !form.price) { toast.error('상품명/가격을 입력하세요'); return }
+    setSubmitting(true)
+    try {
+      const r = await curatorApi.createProxyProduct({
+        merchant_seller_id: merchant.id,
+        name: form.name.trim(),
+        description: form.description || undefined,
+        price: Number(form.price),
+        stock: form.stock ? Number(form.stock) : undefined,
+        category: form.category || undefined,
+        image_url: form.image_url || undefined,
+      })
+      if (r.success) { toast.success(r.message || '대행 등록 완료'); onClose() }
+      else toast.error(r.error || '등록 실패')
+    } catch {
+      toast.error('등록 중 오류가 발생했습니다')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-md bg-white dark:bg-[#121212] rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
+        <div className="space-y-2">
+          {([
+            ['name', '상품명'],
+            ['price', '가격 (원)'],
+            ['stock', '재고 (선택)'],
+            ['category', '카테고리 (선택)'],
+            ['image_url', '대표 이미지 URL (선택)'],
+          ] as const).map(([k, label]) => (
+            <input
+              key={k}
+              value={(form as any)[k]}
+              onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+              placeholder={label}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+            />
+          ))}
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="설명 (선택)"
+            rows={2}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+          />
+          <div className="flex gap-2 pt-1">
+            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+              {submitting ? '등록 중…' : '대행 등록'}
+            </button>
+            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">취소</button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

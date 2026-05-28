@@ -173,4 +173,11 @@ export const curatorApi = {
     const res = await api.get('/api/curator/me/introduced-stores')
     return res.data
   },
+  async createProxyProduct(input: {
+    merchant_seller_id: number; name: string; description?: string;
+    price: number; stock?: number; category?: string; image_url?: string;
+  }): Promise<{ success: boolean; product_id?: number; message?: string; error?: string; code?: string }> {
+    const res = await api.post('/api/curator/me/proxy-product', input)
+    return res.data
+  },
 }
