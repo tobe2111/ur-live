@@ -136,16 +136,20 @@ export default function BottomNav() {
   //   /u/me 로 fallback → curator dashboard API → linked_user_id 매핑 없으면 /host/new fall through.
   //   해결: seller_token 의 JWT payload (signed by server) 에 이미 username 포함 → 즉시 추출.
   //   localStorage 도 update → 다음부터 직접 cache 사용.
-  const linkshopPath = (() => {
-    if (!isLoggedIn) return '/host/new'
+  // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR Phase 2 잔여): linkshopPath → useState + useEffect.
+  //   render 함수 안 localStorage 직접 호출 제거 (SSR-safe). 동작 동일.
+  const [linkshopPath, setLinkshopPath] = useState('/host/new')
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!isLoggedIn) { setLinkshopPath('/host/new'); return }
     try {
       // 1차: localStorage cache
       const sellerUsername = localStorage.getItem('seller_username')
-      if (sellerUsername) return `/profile/${sellerUsername}`
+      if (sellerUsername) { setLinkshopPath(`/profile/${sellerUsername}`); return }
       const cachedSeller = localStorage.getItem('linked_seller_username')
-      if (cachedSeller) return `/profile/${cachedSeller}`
+      if (cachedSeller) { setLinkshopPath(`/profile/${cachedSeller}`); return }
       const cachedHandle = localStorage.getItem('user_handle')
-      if (cachedHandle) return `/u/${cachedHandle}`
+      if (cachedHandle) { setLinkshopPath(`/u/${cachedHandle}`); return }
 
       // 2차: seller_token payload 에서 username 추출 (영구 fallback)
       if (hasSellerToken) {
@@ -158,15 +162,16 @@ export default function BottomNav() {
               const payload = JSON.parse(atob(padded + '==='.slice((padded.length + 3) % 4)))
               if (payload?.username && typeof payload.username === 'string') {
                 localStorage.setItem('seller_username', payload.username)
-                return `/profile/${payload.username}`
+                setLinkshopPath(`/profile/${payload.username}`)
+                return
               }
             } catch { /* JWT 손상 / 이전 토큰 — fall through */ }
           }
         }
       }
     } catch { /* ignore */ }
-    return '/u/me'
-  })()
+    setLinkshopPath('/u/me')
+  }, [isLoggedIn, hasSellerToken])
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },
