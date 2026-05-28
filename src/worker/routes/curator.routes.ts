@@ -995,12 +995,14 @@ curatorRoutes.get('/me/introduced-stores', requireAuth(), async (c) => {
         LIMIT 200`
     ).bind(userId).all<{ id: number; business_name: string | null; status: string | null; introduced_at: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }>().catch(() => ({ results: [] as any[] }))
 
-    // 영입 commission 누적 (point_transactions intro_commission*)
+    // 영입 commission 누적 — ledger 기준 (user:N 현금 + userdeal:N 딜 모두 포함).
+    //   point_transactions 만 보면 사업자(현금) 케이스가 0 으로 누락됨.
     const commission = await DB.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total
-         FROM point_transactions
-        WHERE user_id = ? AND type IN ('intro_commission', 'intro_commission_backfill')`
-    ).bind(String(userId)).first<{ total: number }>().catch(() => ({ total: 0 }))
+         FROM ledger_entries
+        WHERE event_type IN ('introduction_commission', 'introduction_commission_reconcile')
+          AND credit_account IN (?, ?)`
+    ).bind(`user:${userId}`, `userdeal:${userId}`).first<{ total: number }>().catch(() => ({ total: 0 }))
 
     return c.json({
       success: true,

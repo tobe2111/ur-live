@@ -1181,10 +1181,6 @@ internalAdminToolsRoutes.get('/api/admin/intro-commission-audit', requireAdmin()
          FROM ledger_entries le
         WHERE le.event_type = 'introduction_commission'
           AND le.credit_account LIKE 'seller:%'
-          AND NOT EXISTS (
-            SELECT 1 FROM ledger_entries r
-             WHERE r.reference_id = le.reference_id || ':reconciled'
-          )
         GROUP BY le.credit_account
         ORDER BY total_amount DESC
         LIMIT 500`
@@ -1231,7 +1227,6 @@ internalAdminToolsRoutes.post('/api/admin/intro-commission-backfill', requireAdm
          FROM ledger_entries
         WHERE event_type = 'introduction_commission'
           AND credit_account LIKE 'seller:%' ${filter}
-          AND NOT EXISTS (SELECT 1 FROM ledger_entries r WHERE r.reference_id = ledger_entries.reference_id || ':reconciled')
         LIMIT 1000`
     ).all<{ id: number; reference_id: string; amount: number; credit_account: string }>().catch(() => ({ results: [] as any[] }))
 
@@ -1250,11 +1245,12 @@ internalAdminToolsRoutes.post('/api/admin/intro-commission-backfill', requireAdm
         `INSERT INTO point_transactions (user_id, type, amount, description)
          VALUES (?, 'intro_commission_backfill', ?, ?)`
       ).bind(String(uid), e.amount, `영입 commission 보정 (ref ${e.reference_id})`).run().catch(() => null)
-      // 멱등 마커 ledger entry
+      // 🛡️ 이중지급 방지: 원본 엔트리를 현금 파이프라인(seller:%)에서 제거 →
+      //   userdeal:N 으로 재지정 (payouts-generate/admin-payouts 미대상). 딜로 이미 지급됨.
+      //   재지정으로 다음 audit/backfill 의 seller:% 필터에서 자연 제외 (idempotent).
       await DB.prepare(
-        `INSERT INTO ledger_entries (event_type, reference_id, amount, debit_account, credit_account, metadata, created_at)
-         VALUES ('introduction_commission_reconcile', ?, ?, 'platform:escrow', ?, ?, datetime('now'))`
-      ).bind(`${e.reference_id}:reconciled`, e.amount, `userdeal:${uid}`, JSON.stringify({ kind: 'backfill', original_id: e.id })).run().catch(() => null)
+        `UPDATE ledger_entries SET credit_account = ?, metadata = ? WHERE id = ?`
+      ).bind(`userdeal:${uid}`, JSON.stringify({ kind: 'backfill_reconciled', was: e.credit_account }), e.id).run().catch(() => null)
       reconciled++; totalCredited += e.amount
     }
     return c.json({ success: true, reconciled, total_credited: totalCredited })
