@@ -1,7 +1,14 @@
-# 유어딜 서비스 모델 (SSOT)
+# 유어딜 서비스 모델 (SSOT) — v2
 
-> 2026-05-28 정리. 역할·커미션·정산 구조의 단일 진실원천.
+> 2026-05-28 정리 (v2: 외부 리뷰 반영 — Creator 명칭 / 기간 차등 / backfill 안전절차).
+> 역할·커미션·정산 구조의 단일 진실원천.
 > 캐치프레이즈: **"동네 핫플, 친구랑 공동구매"**
+
+## 역할 정의 (용어 SSOT)
+- **Store Owner (매장)**: 매장 운영자. `seller_type='store_owner'`. 셀러 대시보드. 현금 정산.
+- **Creator (크리에이터)**: 추천·영입·방송을 하는 유저. 기존 `seller_type='influencer'` (값 유지, 라벨만 '크리에이터'). 큐레이터의 활동 많은 형태.
+- **Agency (에이전시)**: 조직 단위 관리자. `agencies`. 여러 매장/사람 관리.
+- ※ "큐레이터" = 모든 일반 유저(추천 가능). Creator 는 큐레이터 + 영입/방송 능력 강화판.
 
 이 문서는 여러 세션에 걸친 역할 모델 논의의 결론을 고정한다. 역할/커미션 관련
 변경 전 반드시 이 문서를 먼저 읽고, 변경 시 함께 갱신한다.
@@ -56,7 +63,8 @@
 | 분배율 | `platform_settings.influencer_intro_share_pct`(20%) / `agency_share_pct`(30%) | affiliate 설정 |
 | 저장 (유저) | `user:N` ledger + **딜 즉시 적립** | `influencer_attributions` / `product_pins` |
 | 저장 (에이전시) | `agency:N` ledger + `agency_store_intro_commissions` | — |
-| 기간 제한 | `sellers.referral_bonus_until` (매장별, 어드민 설정. NULL=무기한) | group-buy.routes.ts:375 |
+| 기간 제한 | `sellers.referral_bonus_until` (매장별, 어드민 설정) | group-buy.routes.ts:375 |
+| 기본 기간 (영입) | **에이전시 12개월 / 크리에이터(유저) 6개월** (가입 매칭 시 자동, 어드민 재설정 가능) | seller-registration.routes.ts:188 |
 
 ---
 
@@ -96,11 +104,12 @@ user_points UPSERT (balance += amount) + point_transactions INSERT (type, amount
 2. 영입 commission 을 **딜로 즉시 적립** (user_points + point_transactions, 비사업자 정책)
 3. 매장별 기간 체크(`referral_bonus_until`) 유지
 
-### ⚠️ 미처리 (확인 필요)
-- **과거 데이터**: 이미 `seller:{user.id}` 로 적립된 `introduction_commission` ledger
-  엔트리 + 잘못 생성된 payouts 가 있을 수 있음. 프로덕션 D1 조회 후 idempotent
-  backfill (해당 유저에게 딜 재적립) 필요 여부 판단. 자동 금전 변경은 위험하므로
-  데이터 양 확인 후 어드민 트리거로 처리 권장.
+### 과거 데이터 보정 (✅ 안전 절차 구현)
+- **GET `/api/admin/intro-commission-audit`** — 읽기 전용. 영향받은 유저 목록 +
+  금액 합계 + 오송금(seller payout) 여부 조회. **자동 변경 없음.**
+- **POST `/api/admin/intro-commission-backfill`** — `confirm=true` 필수. 선택적
+  `user_id`. idempotent (멱등 마커 `{ref}:reconciled`). 유저 없으면 skip.
+- 절차: 먼저 audit 조회 → 금액 확인 → 필요 시 user_id 별로 backfill 트리거.
 
 ---
 
@@ -113,8 +122,14 @@ user_points UPSERT (balance += amount) + point_transactions INSERT (type, amount
 
 ### 공구 등록 2경로
 1. 매장 직접 (store_owner)
-2. 영업자 대행 — ⚠️ **충돌 주의**: `products.seller_id` 는 **항상 매장**이어야 함
-   (정산·QR 기준). 대행 시 `registered_by_*` 별도 기록 (미구현).
+2. 영업자 대행 — `products.seller_id` 는 **항상 매장** (정산·QR 기준). 등록자만 별도 기록.
+
+**대행 등록 설계** (컬럼 ✅ 추가, 플로우 UI 미구현):
+- `products.registered_by_user_id` / `registered_by_agency_id` — 누가 대신 올렸나
+- `products.registration_approved` — 0(대행, 매장 승인 대기) / 1(매장 직접 or 승인됨)
+- 규칙: 대행 등록 시 `seller_id`=대상 매장 강제, `registered_by_*`=호출자,
+  `registration_approved=0`. 매장이 승인하면 1 → 노출. 승인 전 비노출.
+- 권한: 호출자가 그 매장의 introducer(`introduced_by_*`)여야 대행 가능 (IDOR 방지).
 
 ---
 
@@ -127,14 +142,21 @@ user_points UPSERT (balance += amount) + point_transactions INSERT (type, amount
 
 ---
 
-## 8. 미정/향후 (우선순위)
+## 8. 진행 상태 (2026-05-28)
 
-1. **(P0) 과거 ledger 데이터 backfill** — §5 미처리 참조
-2. **(P1) 유저 사업자 등록** — `users` 에 business_number/status 추가 → 영입 commission 현금+원천징수 분기
-3. **(P1) 어드민 UI** — commission-settings 엔드포인트용 화면 (매장별 기간 + 영입자 표시)
-4. **(P2) 셀러 대시보드 "내가 영입한 매장" 화면** — 에이전시(`AgencyIntroducedStoresPage`) 대칭. 단 영입자=유저 모델이면 마이페이지에 둘지 재검토
-5. **(P2) 가입 진입 분기** — "🏪 매장 / 🎤 방송·홍보" 2갈래
-6. **(P3) 명칭 정리** — `seller-roles.ts` `인플루언서` → `크리에이터` (큐레이터와 구분)
-7. **(P3) 대행 등록** — `products.registered_by_*` + 매장 승인
+### ✅ 완료
+- 과거 ledger backfill **안전 절차** (audit GET + 수동 backfill POST) — §5
+- 유저 사업자 등록 (스키마 + ledger 분기 + curator `/me/business` + CuratorEarningsPage UI) — §4
+- 영입 commission 기간 차등 기본값 (에이전시 12개월 / 크리에이터 6개월) — §3
+- 명칭 정리 (`seller-roles.ts` 라벨 `인플루언서` → `크리에이터`)
+- 어드민 commission-settings 엔드포인트 (GET/PATCH) — §7
+- 대행 등록 스키마 (`products.registered_by_*`) — §6
+
+### ⬜ 남음 (우선순위)
+1. **(P1) 어드민 UI** — commission-settings 화면 (매장별 기간 슬라이더 + 영입자 표시) + intro-commission-audit 화면
+2. **(P2) "내가 영입한 매장" 화면** — Creator 는 마이페이지, 에이전시는 기존 `AgencyIntroducedStoresPage`
+3. **(P2) 가입 진입 분기** — "🏪 매장 / 🎤 크리에이터" 2갈래 랜딩
+4. **(P2) 대행 등록 플로우 UI** — 스키마 위에 엔드포인트 + 매장 승인 화면 (§6 설계)
+5. **(P3) 유저 사업자 NTS 미설정 시 어드민 수동 승인 화면**
 
 > 모든 항목은 무료($0) 제약 유지.

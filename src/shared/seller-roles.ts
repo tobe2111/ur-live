@@ -30,15 +30,17 @@ interface RoleMeta {
 }
 
 export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
+  // 🛡️ 2026-05-28: seller_type 값은 'influencer' 유지 (DB 마이그레이션 회피).
+  //   사용자 대면 라벨만 '크리에이터'로 — 큐레이터(추천 유저)와 구분, 방송/영입/홍보 주체.
   influencer: {
-    label: '🎤 인플루언서',
+    label: '🎤 크리에이터',
     emoji: '🎤',
-    shortLabel: '인플루언서',
+    shortLabel: '크리에이터',
     defaultPayout: 'deal',
     canBroadcast: true,
     canRegisterStore: false,
     canPromote: true,
-    description: '라이브 / 인스타 / 카톡으로 매장 공구 홍보 → commission (딜) 적립',
+    description: '라이브 / 인스타 / 카톡으로 매장 공구 홍보·영입 → commission 적립',
   },
   store_owner: {
     label: '🏪 매장 사장님',
@@ -51,7 +53,7 @@ export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
     description: '본인 매장 voucher 등록 + QR 스캔으로 사용 확인 → 현금 정산',
   },
   both: {
-    label: '🎤🏪 인플루언서 + 매장',
+    label: '🎤🏪 크리에이터 + 매장',
     emoji: '🎤🏪',
     shortLabel: '겸업',
     defaultPayout: 'deal+cash',

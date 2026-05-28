@@ -186,9 +186,14 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
         const matched = await matchProspectOnSignup(db, Number(result.meta.last_row_id), phone, email)
         if (matched) {
           const col = matched.introducerType === 'agency' ? 'introduced_by_agency_id' : 'introduced_by_influencer_id'
+          // 🛡️ 2026-05-28: 영입 commission 기본 기간 차등 (docs/SERVICE_MODEL.md §3).
+          //   에이전시 = 장기(12개월), 크리에이터(유저) = 6개월 → 과도한 영입 경쟁 완화.
+          //   어드민이 매장별로 referral_bonus_until 재설정 가능 (commission-settings).
+          const months = matched.introducerType === 'agency' ? 12 : 6
           await db.prepare(
-            `UPDATE sellers SET ${col} = ?, introduced_at = datetime('now') WHERE id = ?`
-          ).bind(matched.introducerId, Number(result.meta.last_row_id)).run().catch(() => null)
+            `UPDATE sellers SET ${col} = ?, introduced_at = datetime('now'),
+                    referral_bonus_until = datetime('now', '+' || ? || ' months') WHERE id = ?`
+          ).bind(matched.introducerId, months, Number(result.meta.last_row_id)).run().catch(() => null)
         }
       } catch { /* graceful */ }
     }
