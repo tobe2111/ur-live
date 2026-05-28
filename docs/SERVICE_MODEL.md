@@ -4,6 +4,11 @@
 > 역할·커미션·정산 구조의 단일 진실원천.
 > 캐치프레이즈: **"동네 핫플, 친구랑 공동구매"**
 
+## 🎯 주력 = 공동구매 (2026-05-28 전략 결정)
+- **공동구매(group-buy)가 주력 서비스.** 라이브커머스(방송)는 보조 수단(크리에이터 홍보 채널).
+- 모든 설계·우선순위는 공동구매 플로우(매장 공구 등록 → 추천/영입 → 구매 → QR 사용 → 정산)를 1순위로.
+- 방송 관련 기능은 유지하되 신규 투자/복잡도는 공동구매에 집중.
+
 ## 역할 정의 (용어 SSOT)
 - **Store Owner (매장)**: 매장 운영자. `seller_type='store_owner'`. 셀러 대시보드. 현금 정산.
 - **Creator (크리에이터)**: 추천·영입·방송을 하는 유저. 기존 `seller_type='influencer'` (값 유지, 라벨만 '크리에이터'). 큐레이터의 활동 많은 형태.
@@ -168,5 +173,32 @@ user_points UPSERT (balance += amount) + point_transactions INSERT (type, amount
 | 추천 commission | 공구 링크 추천 (건별) | `affiliate_earnings` | `/me/withdrawal` (pull) |
 - 단일화는 마이그레이션 위험 大 + 1인 운영 부담. 대신 **CuratorEarningsPage 가 양쪽을 함께 노출** (추천 잔액 + 영입 매장/커미션) → 사용자 체감 통합.
 - 향후 진짜 필요 시점(거래량 증가)에 재검토.
+
+---
+
+## 9. 정산 통합 (forward-only) — 목표 + 진행
+
+### 목표 (가장 심플한 모델)
+> **"누가 매출을 만들었나 → 그 사람 잔액에 +. 사업자면 현금, 아니면 딜."**
+
+장부 1개(`ledger_entries`) + 잔액 1개 + 지급방식 1플래그(`payout_method` = cash|deal).
+운영자가 신경 쓸 건 하나: 각 payee 의 잔액, 사업자 여부.
+
+### 현재 산재한 시스템 (통합 대상)
+| 시스템 | 상태 |
+|---|---|
+| `ledger_entries` (user:/userdeal:/seller:/agency:/merchant:) | ✅ 통합 목표 장부 |
+| `affiliate_earnings` → `user_withdrawals` (추천) | 🔒 payment.routes.ts(Toss 잠금)에서 적립 — 통합 시 잠금 해제 필요 |
+| `influencer_balances` / `influencer_attributions` | 레거시 (group-buy.routes.ts) |
+| `agency_store_intro_commissions` | 레거시 (월배치) |
+| `user_points` (딜) | 비사업자 지급 수단 (유지) |
+
+### 진행 (forward-only — 위험 0)
+- ✅ **통합 크레딧 SSOT `creditUserCommission()`** (ledger.ts) — 현금/딜 분기를 단 한 함수로.
+  영입 commission 이 이를 통해 적립. 신규 유저 commission 은 전부 이 helper 경유.
+- ⬜ 추천(affiliate) 통합 → `creditUserCommission` 호출로 전환. **단 payment.routes.ts 잠금**
+  이라 사용자 명시 승인(`[UNLOCK]`) 후 진행. 그때까지 affiliate_earnings 는 레거시로 read 유지.
+- ⬜ 레거시 잔액 소진 후 `influencer_balances` / `agency_store_intro_commissions` 코드 제거.
+- 원칙: **기존 데이터 마이그레이션 금지. 신규만 통합 경로. 레거시는 자연 소진.**
 
 > 모든 항목은 무료($0) 제약 유지.

@@ -1,8 +1,7 @@
 # 🚧 진행 중 작업
 
-**최종 업데이트**: 2026-05-28 (SSR 마이그레이션 Phase 1+2 시작 — LCP 0.5-1.5s 목표)
-**브랜치**: `claude/vibrant-feynman-m3X3m`
-**이전 세션**: 로딩 최적화 1차/2차 + 큐레이터/리뷰/운영 (`claude/check-live-commerce-flow-jgNs8`)
+**최종 업데이트**: 2026-05-28 (서비스 모델/정산 통합 + SSR 마이그레이션)
+**브랜치**: `claude/check-live-commerce-flow-jgNs8` (서비스모델/정산) · `claude/vibrant-feynman-m3X3m` (SSR)
 
 ## 🚧 진행 중: SSR 마이그레이션 (LCP 10.7s → 0.5-1.5s)
 
@@ -89,6 +88,10 @@
    - A: AdminOrdersPage 서버 페이지네이션 (큰 작업)
    - B: AdminPage SSE 마이그레이션 (인프라)
    - D: AgencyPage bundle endpoint
+
+## 🎯 전략 (2026-05-28): 공동구매가 주력, 라이브커머스는 보조
+- 우선순위·신규 투자는 **공동구매 플로우** 1순위. 역할/커미션/정산 SSOT = `docs/SERVICE_MODEL.md`.
+- 정산 통합(§9): `creditUserCommission()` SSOT 추가됨 (현금/딜 1결정점). 추천 rail 통합은 payment.routes.ts 잠금 해제 후.
 
 ---
 
