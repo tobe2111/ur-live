@@ -11,20 +11,28 @@
 **완료**:
 - Phase 1 인프라 (`74a0625`): entry-server/client placeholder, vite build:ssr script, prerender-main 스켈레톤
 - Phase 2 첫 fix (`c113f1b`): BottomNav 8/15곳 SSR-safe (useState + useEffect)
+- Phase 3 Step 3-1 (`e3a3a7e`): App.tsx Router prop 받기 (default = BrowserRouter, 기존 동작 100% 보존)
+- 추가: 카드 이미지 흐림 fix (`1d22ee0`) — cf-image width 200→300
 
-**다음 세션 진행 순서 (4-5일 작업)**:
-1. Phase 2 Step 2-1: BottomNav 나머지 7곳 (linkshopPath/cachedSeller/cachedHandle/JWT decode)
-2. Phase 2 Step 2-2: main.tsx SSR-safe (window 직접 사용)
-3. Phase 2 Step 2-3: DesktopLiveSidebar / RouteGuards / hooks audit
-4. Phase 3 Step 3-1: App.tsx BrowserRouter 분리 → entry-client ⚠️ 가장 위험
-5. Phase 3 Step 3-2: entry-server.tsx 진짜 구현 (renderToString + StaticRouter + dehydrate)
-6. Phase 3 Step 3-3: prerender-main.mjs 진짜 구현
-7. Phase 3 Step 3-4: package.json build 에 prerender step 추가
-8. Phase 4: `_routes.json` (메인 페이지만 정적)
-9. Phase 5: Lighthouse 재측정 + 카카오 OAuth 검증
+**다음 세션 진행 순서 (이상적 path)**:
+1. **Step 2-1 잔여**: BottomNav 나머지 7곳 (linkshopPath/cachedSeller/cachedHandle/JWT decode)
+2. **Step 2-3**: 메인 페이지 의존 lazy import 페이지들 SSR-safe 검증
+3. **Step 3-2**: entry-server.tsx 진짜 구현
+   - `renderToString(<App Router={StaticRouter} routerProps={{ location: url }} />)`
+   - HelmetProvider SSR mode
+   - React Query dehydrate
+4. **Step 3-3**: prerender-main.mjs 진짜 구현
+   - API fetch (`/api/group-buy/products?status=active&category=all`)
+   - import('./dist/server/entry-server.js')
+   - renderApp('/', initialData)
+   - dist/client/index.html 의 `<div id="root">` 안에 HTML inject
+5. **Step 3-4**: package.json build script 확장
+6. **Step 4**: `_routes.json` (메인 페이지만 정적)
+7. **Step 5**: Lighthouse 재측정 + 카카오 OAuth 검증
 
 **위험 영역**:
-- App.tsx BrowserRouter 분리 (Step 3-1) = 모든 라우팅 영향
+- entry-server 가 import 하는 모든 모듈 SSR-safe 필수 (한 곳 throw → 빌드 실패)
+- BottomNav 잔여 7곳 + lazy import 페이지들 module 평가 시점 audit
 - 결제(Toss V2 잠금) / 카카오 OAuth / 라이브 = 풀 audit 필요
 
 **현재 Lighthouse 측정값** (이번 세션 마지막):
