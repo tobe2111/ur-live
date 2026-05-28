@@ -112,6 +112,7 @@ export interface ProductsTable {
   original_price: number | null
   discount_rate: number         // INTEGER DEFAULT 0
   image_url: string | null
+  dominant_color: string | null // TEXT — 카드 placeholder hex (클라이언트 canvas lazy 백필)
   stock: number                 // INTEGER DEFAULT 0 (⚠️ NOT stock_quantity!)
   category: string | null
   live_stream_id: number | null

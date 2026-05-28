@@ -467,6 +467,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   - products.compare_at_price: 할인 전 가격 (정가) — Cafe24 sync / 어드민 상품 등록 시 사용.
     { desc: 'products.long_description', sql: "ALTER TABLE products ADD COLUMN long_description TEXT" },
     { desc: 'products.compare_at_price', sql: "ALTER TABLE products ADD COLUMN compare_at_price INTEGER" },
+    //   - products.dominant_color: 카드 이미지 placeholder hex 색 (클라이언트 canvas 1x1 lazy 백필).
+    { desc: 'products.dominant_color', sql: "ALTER TABLE products ADD COLUMN dominant_color TEXT" },
     //   - donation_settlements.donation_ids: settlement 에 포함된 donation id 들 JSON 배열.
     { desc: 'donation_settlements.donation_ids', sql: "ALTER TABLE donation_settlements ADD COLUMN donation_ids TEXT" },
     //   - user_points.total_used: 총 사용 누적 (충전 vs 사용 추적).

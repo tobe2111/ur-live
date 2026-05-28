@@ -9,6 +9,7 @@ import { memo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import type { Product } from './types'
 
@@ -132,17 +133,18 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
             구조: [이미지] [원가 strike] [제목] [할인% + 가격] [⭐평점 + 구매수] */}
       <div
         className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]"
-        // 🛡️ 2026-05-27 (LQIP 경량 버전): 카테고리별 dominant color placeholder.
-        //   load 전 회색 → 카테고리 색감 (식사 amber / 뷰티 pink 등) → 시각적 단절 ↓.
-        //   이미지 픽셀 분석 없이 카테고리 → 색 매핑 (서버 비용 0).
+        // 🛡️ 2026-05-28: 이미지별 dominant color placeholder (DB 백필) > 카테고리 색 fallback.
+        //   p.dominant_color 있으면 정확한 색, 없으면 카테고리 색감 (식사 amber / 뷰티 pink 등).
+        //   load 전 단색 → 이미지 fade-in → 시각적 단절 ↓.
         style={{
-          backgroundColor: rawCategory === 'meal_voucher' ? '#fef3c7'
+          backgroundColor: p.dominant_color
+            || (rawCategory === 'meal_voucher' ? '#fef3c7'
             : rawCategory === 'beauty_voucher' ? '#fce7f3'
             : rawCategory === 'stay_voucher' ? '#dbeafe'
             : rawCategory === 'health_voucher' ? '#d1fae5'
             : rawCategory === 'pet_voucher' ? '#fed7aa'
             : rawCategory === 'activity_voucher' ? '#e9d5ff'
-            : undefined,  // etc/default: bg-gray-100 유지
+            : undefined),  // etc/default: bg-gray-100 유지
         }}
       >
         {p.image_url ? (
@@ -160,7 +162,14 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
             loading={aboveFold ? 'eager' : 'lazy'}
             fetchPriority={aboveFold ? 'high' : 'auto'}
             decoding="async"
-            onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
+            onLoad={(e) => {
+              const el = e.currentTarget as HTMLImageElement
+              el.style.opacity = '1'
+              if (!p.dominant_color) {
+                const color = extractDominantColor(el)
+                if (color) reportDominantColor(p.id, color)
+              }
+            }}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

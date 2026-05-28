@@ -39,6 +39,36 @@ type Bindings = {
 export const productsRoutes = new Hono<{ Bindings: Bindings }>();
 
 /**
+ * POST /api/products/dominant-color
+ * 카드 이미지 도미넌트 컬러 lazy 백필 — 클라이언트가 canvas 1x1 로 추출한 색을 보고.
+ *
+ * 보안:
+ *   - hex "#RRGGBB" 형식만 허용 (정규식 검증)
+ *   - dominant_color IS NULL 일 때만 UPDATE (first-write-wins — 변조 영향 = 1회 placeholder 색뿐)
+ *   - rate limit (IP 당 분당 30회)
+ *   - 최대 50개 batch
+ * 인증 불필요 (cosmetic placeholder, 비민감). cf-image/서버 이미지 처리 0.
+ */
+productsRoutes.post('/dominant-color', rateLimit({ action: 'dominant_color', max: 30, windowSec: 60 }), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json<{ items?: { id: number; color: string }[] }>().catch(() => ({ items: [] }));
+    const hexRe = /^#[0-9a-fA-F]{6}$/;
+    const valid = (Array.isArray(body.items) ? body.items : [])
+      .slice(0, 50)
+      .filter((it) => it && Number.isInteger(it.id) && it.id > 0 && typeof it.color === 'string' && hexRe.test(it.color));
+    if (valid.length === 0) return c.json({ success: true, updated: 0 });
+    const stmts = valid.map((it) =>
+      DB.prepare('UPDATE products SET dominant_color = ? WHERE id = ? AND dominant_color IS NULL').bind(it.color, it.id),
+    );
+    await DB.batch(stmts);
+    return c.json({ success: true, updated: valid.length });
+  } catch {
+    return c.json({ success: false, error: '색상 저장 실패' }, 500);
+  }
+});
+
+/**
  * GET /api/products/search/popular
  * 인기 검색어 목록 (/api/search/popular 는 worker/index.ts에서 이 경로로 alias 등록됨)
  */

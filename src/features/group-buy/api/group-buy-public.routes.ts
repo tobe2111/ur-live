@@ -77,6 +77,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.group_buy_deadline AS expires_at, p.group_buy_tiers,
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
+          p.dominant_color,
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
         // 🛡️ 2026-05-22 영구 해결: gift_catalog JOIN 가능 여부 module-scope 기억 →

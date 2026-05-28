@@ -39,6 +39,7 @@ export interface GroupBuyProductRow {
   voucher_terms: string | null
   store_verify_pin: string | null
   store_owner_token: string | null
+  dominant_color: string | null
 
   created_at: string
   updated_at: string

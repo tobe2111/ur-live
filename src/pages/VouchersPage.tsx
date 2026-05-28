@@ -22,6 +22,7 @@ import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -47,6 +48,7 @@ interface VoucherProduct {
   sold_count?: number
   avg_rating?: number
   review_count?: number
+  dominant_color?: string | null
 }
 
 interface BrandSummary {
@@ -469,7 +471,10 @@ export default function VouchersPage() {
                     onFocus={() => prefetchProduct(p.id)}
                     className="text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
+                    <div
+                      className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
+                      style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
+                    >
                       {p.image_url ? (
                         <img
                           src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
@@ -479,7 +484,14 @@ export default function VouchersPage() {
                           loading={aboveFold ? 'eager' : 'lazy'}
                           fetchPriority={aboveFold ? 'high' : 'auto'}
                           decoding="async"
-                          onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
+                          onLoad={(e) => {
+                            const el = e.currentTarget as HTMLImageElement
+                            el.style.opacity = '1'
+                            if (!p.dominant_color) {
+                              const color = extractDominantColor(el)
+                              if (color) reportDominantColor(p.id, color)
+                            }
+                          }}
                           style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
                           className="w-full h-full object-cover"
                         />

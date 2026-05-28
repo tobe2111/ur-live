@@ -73,7 +73,7 @@ export class ProductRepository {
       'sold_count', 'view_count', 'avg_rating', 'review_count',
       'is_active', 'status', 'product_type', 'deal_only', 'created_at',
       'group_buy_target', 'group_buy_current', 'group_buy_deadline', 'group_buy_status',
-      'restaurant_name', 'voucher_expiry',
+      'restaurant_name', 'voucher_expiry', 'dominant_color',
     ].join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;

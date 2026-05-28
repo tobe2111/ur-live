@@ -9,6 +9,7 @@ import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import RecentlyViewedSection from './browse/RecentlyViewedSection'
 import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
@@ -513,7 +514,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                     onFocus={() => prefetchProduct(product.id)}
                     className="text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl">
+                    <div
+                      className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl"
+                      style={product.dominant_color ? { backgroundColor: product.dominant_color } : undefined}
+                    >
                       {product.image_url ? (
                         <img
                           src={cfImage(product.image_url, { width: 300, format: 'auto' }) || product.image_url}
@@ -524,6 +528,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                           loading={aboveFold ? 'eager' : 'lazy'}
                           fetchPriority={aboveFold ? 'high' : 'auto'}
                           decoding="async"
+                          onLoad={(e) => {
+                            if (!product.dominant_color) {
+                              const color = extractDominantColor(e.currentTarget as HTMLImageElement)
+                              if (color) reportDominantColor(product.id, color)
+                            }
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />

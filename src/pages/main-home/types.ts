@@ -17,4 +17,5 @@ export interface Product {
   // 🛡️ 2026-05-19: KT Alpha 등 딜 교환 전용 상품 마커 (메인 페이지에서 '딜' 단위로 표시).
   deal_only?: number
   kt_alpha_gift_code?: string | null
+  dominant_color?: string | null
 }

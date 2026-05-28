@@ -28,6 +28,7 @@ export interface Product {
   restaurant_lng?: number
   // 🛡️ 2026-05-19: 교환권 (KT Alpha) 구분 — 단위 표시용.
   deal_only?: number
+  dominant_color?: string | null
 }
 
 export type SortOption = 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'discount'

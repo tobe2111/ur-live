@@ -98,6 +98,11 @@
   - Phase 3 FrameWrapper 사고 + rollback (`374ea9c`/`336a988`)
   - Phase 4 live hooks (`c1a42d7`)
   - Phase 5 single-page hooks (`74bb925`)
+- 2026-05-28 `[UNLOCK_LOADING]` 이미지별 dominant_color placeholder (사용자 허가) — 카드 이미지 깜빡임 0.
+  - products.dominant_color 컬럼 (migration 0282 + repair-schema) + 클라이언트 canvas 1x1 lazy 백필 (`src/utils/dominant-color.ts`)
+  - 잠금 라우트 SELECT 에 dominant_color 추가 (group-buy-public.routes / ProductRepository LIST_COLUMNS) — 추가만, Cache-Control 등 기존 잠금 동작 불변
+  - GroupBuyFeedCard / VouchersPage / BrowsePage 카드: `p.dominant_color || 카테고리 색` fallback + onLoad 백필
+  - 신규 public endpoint `POST /api/products/dominant-color` (hex 검증 + NULL 일 때만 UPDATE + rate limit)
 
 ### 2차 확장 — 추가 잠금 항목 (회귀 시 critical path 30%+ 증가 위험)
 
