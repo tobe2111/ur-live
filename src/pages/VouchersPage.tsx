@@ -339,7 +339,7 @@ export default function VouchersPage() {
 
       {/* 🛡️ 2026-05-19: 카테고리 sticky 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로). */}
       {sections.length > 0 && (
-        <div className="sticky top-[52px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
               {sections.map(s => {
