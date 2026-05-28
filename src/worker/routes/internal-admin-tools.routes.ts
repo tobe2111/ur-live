@@ -1161,4 +1161,106 @@ internalAdminToolsRoutes.get('/api/admin/csp-violations', requireAdmin(), async 
   }
 })
 
+// ============================================================
+// 영입 commission ledger 불일치 진단 + 수동 backfill (2026-05-28).
+//   과거 seller:${userId} 로 잘못 적립된 introduction_commission 엔트리 조회/보정.
+//   ⚠️ 자동 금전 변경 금지 — GET 은 조회만, POST 는 명시적 confirm 필요.
+// ============================================================
+
+// GET — 영향받은 유저 목록 + 금액 합계 (읽기 전용)
+internalAdminToolsRoutes.get('/api/admin/intro-commission-audit', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+    // 버그 엔트리: event_type=introduction_commission AND credit_account=seller:N (N=users.id)
+    const rows = await DB.prepare(
+      `SELECT le.credit_account,
+              CAST(SUBSTR(le.credit_account, 8) AS INTEGER) AS user_id,
+              COUNT(*) AS entry_count,
+              SUM(le.amount) AS total_amount,
+              MAX(le.reference_id) AS sample_ref
+         FROM ledger_entries le
+        WHERE le.event_type = 'introduction_commission'
+          AND le.credit_account LIKE 'seller:%'
+          AND NOT EXISTS (
+            SELECT 1 FROM ledger_entries r
+             WHERE r.reference_id = le.reference_id || ':reconciled'
+          )
+        GROUP BY le.credit_account
+        ORDER BY total_amount DESC
+        LIMIT 500`
+    ).all<{ credit_account: string; user_id: number; entry_count: number; total_amount: number; sample_ref: string }>().catch(() => ({ results: [] as any[] }))
+
+    // 각 user_id 의 handle + 우연 오송금된 payout 여부
+    const enriched = []
+    let grandTotal = 0
+    for (const r of rows.results || []) {
+      grandTotal += r.total_amount || 0
+      const u = await DB.prepare('SELECT handle, name, business_status FROM users WHERE id = ?').bind(r.user_id).first<{ handle: string | null; name: string | null; business_status: string | null }>().catch(() => null)
+      const wrongPayout = await DB.prepare(
+        `SELECT COALESCE(SUM(amount),0) AS amt FROM payouts WHERE payee_type='seller' AND payee_id = ? AND status IN ('approved','sent')`
+      ).bind(r.user_id).first<{ amt: number }>().catch(() => ({ amt: 0 }))
+      enriched.push({
+        user_id: r.user_id,
+        handle: u?.handle || null,
+        name: u?.name || null,
+        user_exists: !!u,
+        business_status: u?.business_status || 'none',
+        entry_count: r.entry_count,
+        total_amount: r.total_amount,
+        possibly_mispaid_to_seller: (wrongPayout?.amt || 0) > 0 ? wrongPayout?.amt : 0,
+      })
+    }
+    return c.json({ success: true, affected_users: enriched.length, grand_total: grandTotal, data: enriched })
+  } catch (err) {
+    return c.json({ success: false, error: 'audit 조회 실패' }, 500)
+  }
+})
+
+// POST — 특정/전체 유저 수동 backfill (딜 재적립, idempotent). 반드시 confirm=true.
+internalAdminToolsRoutes.post('/api/admin/intro-commission-backfill', requireAdmin(), async (c) => {
+  try {
+    const body = await c.req.json<{ confirm?: boolean; user_id?: number }>().catch(() => ({} as { confirm?: boolean; user_id?: number }))
+    if (body.confirm !== true) {
+      return c.json({ success: false, error: 'confirm=true 필요 (금전 보정 작업)' }, 400)
+    }
+    const DB = c.env.DB
+    const filter = Number.isFinite(Number(body.user_id)) && Number(body.user_id) > 0
+      ? `AND credit_account = 'seller:${Number(body.user_id)}'` : ''
+    const entries = await DB.prepare(
+      `SELECT id, reference_id, amount, credit_account
+         FROM ledger_entries
+        WHERE event_type = 'introduction_commission'
+          AND credit_account LIKE 'seller:%' ${filter}
+          AND NOT EXISTS (SELECT 1 FROM ledger_entries r WHERE r.reference_id = ledger_entries.reference_id || ':reconciled')
+        LIMIT 1000`
+    ).all<{ id: number; reference_id: string; amount: number; credit_account: string }>().catch(() => ({ results: [] as any[] }))
+
+    let reconciled = 0, totalCredited = 0
+    for (const e of entries.results || []) {
+      const uid = e.credit_account.split(':')[1]
+      if (!uid) continue
+      const exists = await DB.prepare('SELECT id FROM users WHERE id = ?').bind(uid).first().catch(() => null)
+      if (!exists) continue // 유저 없으면 skip (수동 검토)
+      // 딜 재적립
+      await DB.prepare(
+        `INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)
+         ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`
+      ).bind(String(uid), e.amount, e.amount).run().catch(() => null)
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, description)
+         VALUES (?, 'intro_commission_backfill', ?, ?)`
+      ).bind(String(uid), e.amount, `영입 commission 보정 (ref ${e.reference_id})`).run().catch(() => null)
+      // 멱등 마커 ledger entry
+      await DB.prepare(
+        `INSERT INTO ledger_entries (event_type, reference_id, amount, debit_account, credit_account, metadata, created_at)
+         VALUES ('introduction_commission_reconcile', ?, ?, 'platform:escrow', ?, ?, datetime('now'))`
+      ).bind(`${e.reference_id}:reconciled`, e.amount, `userdeal:${uid}`, JSON.stringify({ kind: 'backfill', original_id: e.id })).run().catch(() => null)
+      reconciled++; totalCredited += e.amount
+    }
+    return c.json({ success: true, reconciled, total_credited: totalCredited })
+  } catch (err) {
+    return c.json({ success: false, error: 'backfill 실패' }, 500)
+  }
+})
+
 export { internalAdminToolsRoutes };
