@@ -129,6 +129,29 @@ export default function VouchersPage() {
   const [hasMore, setHasMore] = useState(true)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
+  // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
+  //   아래로 내리면 숨고, 살짝 위로 올리면 다시 내려옴 → 맨 위까지 안 올려도 잔액/카테고리 접근.
+  const [revealTop, setRevealTop] = useState(true)
+  const lastScrollYRef = useRef(0)
+  useEffect(() => {
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const y = window.scrollY
+        const last = lastScrollYRef.current
+        if (y < 120) setRevealTop(true)            // 상단 근처는 항상 표시
+        else if (y > last + 6) setRevealTop(false) // 아래로 스크롤 → 숨김
+        else if (y < last - 6) setRevealTop(true)  // 위로 스크롤 → 표시
+        lastScrollYRef.current = y
+        ticking = false
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   // 🛡️ 2026-05-21: 정렬 옵션 — popular/newest/price_low/price_high/discount/rating.
   //   URL ?sort=... 동기화 — 공유/북마크 가능.
   // 🛡️ 2026-05-27: 사용자 결정 — 교환권 페이지 default sort = price_low (낮은 가격순).
@@ -301,6 +324,17 @@ export default function VouchersPage() {
         </div>
       </div>
 
+      {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
+            아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 살짝 위로 올리면 둘 다 다시 내려옴.
+            sticky top-[45px] (헤더 바로 아래) + revealTop 따라 translateY. bg 는 페이지 배경과 동일 (콘텐츠 비침 방지). */}
+      <div
+        className="sticky top-[45px] z-20 bg-white dark:bg-[#0A0A0A]"
+        style={{
+          transform: revealTop ? 'translateY(0)' : 'translateY(-110%)',
+          transition: 'transform 0.25s ease',
+          willChange: 'transform',
+        }}
+      >
       {/* 🛡️ 2026-05-21 v3: 잔액 카드 — 토스 inspired (premium dark card).
             기존 v2 white 카드 "촌스러워" 피드백 → 검정 카드 + grand 타이포 + 우상단 충전 ›. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
@@ -339,9 +373,10 @@ export default function VouchersPage() {
         </div>
       </div>
 
-      {/* 🛡️ 2026-05-19: 카테고리 sticky 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로). */}
+      {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
+            2026-05-28: 자체 sticky 제거 — 위 reveal 그룹(wrapper)이 sticky 담당. */}
       {sections.length > 0 && (
-        <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
               {sections.map(s => {
@@ -367,6 +402,7 @@ export default function VouchersPage() {
           </div>
         </div>
       )}
+      </div>{/* /reveal 그룹 */}
 
       {/* 🛡️ 2026-05-21: 정렬 옵션 (사용자 요청 — 가격순/인기순 등). */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3 flex items-center justify-between">

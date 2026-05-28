@@ -63,7 +63,12 @@ productsRoutes.post('/dominant-color', rateLimit({ action: 'dominant_color', max
     );
     await DB.batch(stmts);
     return c.json({ success: true, updated: valid.length });
-  } catch {
+  } catch (err) {
+    // 🛡️ 2026-05-28: dominant_color 컬럼 미생성(migration 0282 전) 이면 graceful no-op.
+    //   schema-repair cron(매일 18 UTC) 후 컬럼 생기면 자동 동작. 500 spam 방지.
+    if (/no such column/i.test(String((err as { message?: string })?.message ?? err))) {
+      return c.json({ success: true, updated: 0 });
+    }
     return c.json({ success: false, error: '색상 저장 실패' }, 500);
   }
 });
