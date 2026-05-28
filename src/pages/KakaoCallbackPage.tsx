@@ -101,6 +101,24 @@ export default function KakaoCallbackPage() {
             .finally(() => clearTempCartItem())
         }
 
+        // 🛡️ 2026-05-27 (P2 referral): 초대 링크로 진입한 신규 사용자 → referral_tree 등록.
+        //   self-invite (본인 = 초대자) 차단. 24시간 만료. 등록 후 cleanup.
+        try {
+          const raw = localStorage.getItem('pending_referral_inviter')
+          if (raw) {
+            const parsed = JSON.parse(raw) as { id: string; ts: number }
+            const within24h = Date.now() - parsed.ts < 24 * 60 * 60_000
+            if (within24h && parsed.id && String(parsed.id) !== String(user.id)) {
+              api.post('/api/referral-tree/register', {
+                user_id: String(user.id),
+                user_type: 'user',
+                referrer_id: String(parsed.id),
+              }).catch(() => { /* graceful — 이미 등록 / 순환 등 */ })
+            }
+            localStorage.removeItem('pending_referral_inviter')
+          }
+        } catch { /* ignore */ }
+
         // ── returnUrl 결정 & 이동 ──
         // 🛡️ 2026-04-29: safeInternalPath 로 통일 — /auth/*, /login 자기참조 차단
         const stored = localStorage.getItem('loginReturnUrl')
