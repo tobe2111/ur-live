@@ -38,6 +38,18 @@ interface AuditRow {
   possibly_mispaid_to_seller: number
 }
 
+interface PendingBusinessUser {
+  id: number
+  handle: string | null
+  name: string | null
+  business_number: string | null
+  business_name: string | null
+  tax_type: string | null
+  bank_name: string | null
+  bank_account: string | null
+  account_holder: string | null
+}
+
 export default function AdminMerchantCommissionsPage() {
   const [sellerId, setSellerId] = useState('')
   const [cs, setCs] = useState<CommissionSettings | null>(null)
@@ -48,6 +60,25 @@ export default function AdminMerchantCommissionsPage() {
 
   const [audit, setAudit] = useState<{ affected_users: number; grand_total: number; data: AuditRow[] } | null>(null)
   const [auditLoading, setAuditLoading] = useState(false)
+
+  const [pendingBiz, setPendingBiz] = useState<PendingBusinessUser[]>([])
+
+  async function loadPendingBiz() {
+    try {
+      const res = await api.get('/api/admin/pending-business-users')
+      if (res.data?.success) setPendingBiz(res.data.data || [])
+    } catch { /* graceful */ }
+  }
+  useEffect(() => { loadPendingBiz() }, [])
+
+  async function actBiz(id: number, action: 'business-approve' | 'business-reject') {
+    if (action === 'business-reject' && !confirm('이 사업자 등록을 거부할까요?')) return
+    try {
+      const res = await api.post(`/api/admin/users/${id}/${action}`, {})
+      if (res.data?.success) { toast.success(action === 'business-approve' ? '승인됨 — 현금 정산 활성' : '거부됨'); setPendingBiz((p) => p.filter((u) => u.id !== id)) }
+      else toast.error(res.data?.error || '처리 실패')
+    } catch { toast.error('처리 중 오류') }
+  }
 
   async function loadSeller() {
     const id = Number(sellerId)
@@ -209,6 +240,32 @@ export default function AdminMerchantCommissionsPage() {
                 </div>
               )}
             </>
+          )}
+        </section>
+
+        {/* 유저 사업자 등록 수동 승인 */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-900">유저 사업자 등록 승인 대기</h2>
+            <button onClick={loadPendingBiz} className="text-xs text-gray-500 underline">새로고침</button>
+          </div>
+          {pendingBiz.length === 0 ? (
+            <p className="text-sm text-gray-400">대기 중인 사업자 등록이 없습니다 ✅</p>
+          ) : (
+            <div className="space-y-2">
+              {pendingBiz.map((u) => (
+                <div key={u.id} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0">
+                  <div className="text-xs">
+                    <p className="font-bold text-gray-900">{u.business_name || '-'} <span className="text-gray-400 font-normal">({u.handle ? '@' + u.handle : u.name || `#${u.id}`})</span></p>
+                    <p className="text-gray-500">사업자 {u.business_number || '-'} · {u.tax_type === 'other_income' ? '기타소득 8.8%' : '사업소득 3.3%'} · {u.bank_name} {u.bank_account} ({u.account_holder})</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => actBiz(u.id, 'business-approve')} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">승인</button>
+                    <button onClick={() => actBiz(u.id, 'business-reject')} className="px-3 py-1 border border-gray-300 text-gray-600 text-xs font-bold rounded-lg">거부</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </section>
       </div>

@@ -155,8 +155,18 @@ user_points UPSERT (balance += amount) + point_transactions INSERT (type, amount
 - 가입 진입 분기 랜딩 (`/join`)
 - 대행 등록 end-to-end (스키마 + Creator 등록 폼 + 매장 승인 `/seller/proxy-products`) — §6
 
-### ⬜ 남음 (우선순위)
-1. **(P3) 유저 사업자 NTS 미설정 시 어드민 수동 승인 화면** — `users.business_status='pending'` 검수
-2. **(P3) Creator/Agency 영입 commission 정산 rail 통합 검토** — 현재 영입(ledger user:/userdeal:) vs 추천(affiliate_earnings) 분리. 필요 시 단일화.
+### ✅ 완료 (P3)
+- 유저 사업자 수동 승인 — `/admin/merchant-commissions` 하단 섹션 +
+  `GET /api/admin/pending-business-users`, `POST /api/admin/users/:id/business-approve|reject`
+- 정산 rail 통합 **검토 → 분리 유지 결정** (아래)
+
+### 정산 rail 결정 (P3-2 검토 결과: 분리 유지)
+두 rail 은 경제적 의미가 달라 **의도적으로 분리** 유지한다:
+| rail | 대상 | 저장 | 정산 |
+|---|---|---|---|
+| 영입 commission | 매장 영입 (장기, 매장 매출 share) | ledger `user:`/`userdeal:` | 사업자 현금(주간 push) / 비사업자 딜 즉시 |
+| 추천 commission | 공구 링크 추천 (건별) | `affiliate_earnings` | `/me/withdrawal` (pull) |
+- 단일화는 마이그레이션 위험 大 + 1인 운영 부담. 대신 **CuratorEarningsPage 가 양쪽을 함께 노출** (추천 잔액 + 영입 매장/커미션) → 사용자 체감 통합.
+- 향후 진짜 필요 시점(거래량 증가)에 재검토.
 
 > 모든 항목은 무료($0) 제약 유지.
