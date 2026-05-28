@@ -257,6 +257,74 @@ export async function recordAgencyCommissionShare(
 }
 
 /**
+ * 🛡️ 2026-05-28: 유저 commission 통합 적립 SSOT (docs/SERVICE_MODEL.md §9).
+ *
+ * 모든 유저(크리에이터/큐레이터) commission 의 "현금 vs 딜" 결정을 단 한 곳으로 통합:
+ *   - 사업자 (users.business_status='verified') → user:N ledger credit → payouts-generate 현금 정산
+ *   - 비사업자                                  → userdeal:N audit + 딜 즉시 적립
+ *
+ * 영입 commission 이 현재 유일한 호출자. 추천(affiliate) 통합은 payment.routes.ts(Toss 잠금)
+ * 해제 후 같은 helper 로 forward-only 수렴 예정.
+ *
+ * idempotency 는 호출자가 reference_id 중복 체크로 보장 (여기선 재확인 안 함).
+ */
+export async function creditUserCommission(
+  DB: D1Database,
+  params: {
+    userId: number | string
+    amount: number
+    referenceId: string
+    eventType?: string       // ledger event_type (기존 쿼리 호환 위해 호출자 지정)
+    kind: string             // metadata.kind
+    dealTxType?: string      // point_transactions.type (딜 경로)
+    description?: string
+    meta?: Record<string, unknown>
+  },
+): Promise<{ payout: 'cash' | 'deal'; amount: number }> {
+  if (params.amount <= 0) return { payout: 'deal', amount: 0 }
+  const eventType = params.eventType || 'commission'
+  const baseMeta = { kind: params.kind, ...(params.meta || {}) }
+
+  const u = await DB.prepare(
+    'SELECT business_status FROM users WHERE id = ?',
+  ).bind(params.userId).first<{ business_status: string | null }>().catch(() => null)
+  const isBusiness = u?.business_status === 'verified'
+
+  if (isBusiness) {
+    await recordLedger(DB, {
+      event_type: eventType,
+      reference_id: params.referenceId,
+      amount: params.amount,
+      debit_account: 'platform:revenue',
+      credit_account: `user:${params.userId}`,
+      metadata: { ...baseMeta, payout: 'cash' },
+    })
+    return { payout: 'cash', amount: params.amount }
+  }
+
+  await recordLedger(DB, {
+    event_type: eventType,
+    reference_id: params.referenceId,
+    amount: params.amount,
+    debit_account: 'platform:revenue',
+    credit_account: `userdeal:${params.userId}`,
+    metadata: { ...baseMeta, payout: 'deal' },
+  })
+  // 비사업자 → 딜 즉시 적립 (signup-bonus 와 동일 패턴).
+  try {
+    const uid = String(params.userId)
+    await DB.prepare(
+      `INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)
+       ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`,
+    ).bind(uid, params.amount, params.amount).run()
+    await DB.prepare(
+      `INSERT INTO point_transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)`,
+    ).bind(uid, params.dealTxType || 'commission', params.amount, params.description || '커미션 적립').run().catch(() => null)
+  } catch { /* fail-soft: ledger audit 는 이미 기록됨 */ }
+  return { payout: 'deal', amount: params.amount }
+}
+
+/**
  * 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 영구 commission.
  *
  * 흐름:
@@ -309,47 +377,19 @@ export async function recordIntroductionCommissionShare(
 
   const influencerUserId = seller.introduced_by_influencer_id
 
-  // 🛡️ 2026-05-28: introduced_by_influencer_id 는 users.id 다 (sellers.id 아님!).
-  //   영입자(유저) 사업자 여부로 정산 방식 분기 (docs/SERVICE_MODEL.md §4):
-  //     - 사업자(verified) → credit_account user:N → payouts-generate 현금 정산 (tax_type 원천징수)
-  //     - 비사업자        → 딜/상품권 즉시 적립 + audit 전용 userdeal:N (payout cron 미대상)
-  //   (이전엔 seller:${userId} 로 적립 → payouts 가 sellers 테이블 오조회 → 증발/오송금 버그)
-  const u = await DB.prepare(
-    'SELECT business_status FROM users WHERE id = ?',
-  ).bind(influencerUserId).first<{ business_status: string | null }>().catch(() => null)
-  const isBusiness = u?.business_status === 'verified'
-
-  if (isBusiness) {
-    await recordLedger(DB, {
-      event_type: 'introduction_commission',
-      reference_id: ref,
-      amount,
-      debit_account: 'platform:revenue',
-      credit_account: `user:${influencerUserId}`,
-      metadata: { kind: 'introducing_influencer', voucher_id: params.voucher_id, share_pct: sharePct, payout: 'cash' },
-    })
-  } else {
-    await recordLedger(DB, {
-      event_type: 'introduction_commission',
-      reference_id: ref,
-      amount,
-      debit_account: 'platform:revenue',
-      credit_account: `userdeal:${influencerUserId}`,
-      metadata: { kind: 'introducing_influencer', voucher_id: params.voucher_id, share_pct: sharePct, payout: 'deal' },
-    })
-    // 딜/상품권 즉시 적립 (signup-bonus 와 동일 패턴).
-    try {
-      const uid = String(influencerUserId)
-      await DB.prepare(
-        `INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)
-         ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`,
-      ).bind(uid, amount, amount).run()
-      await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, description)
-         VALUES (?, 'intro_commission', ?, ?)`,
-      ).bind(uid, amount, `영입 매장 공구 커미션 (voucher ${params.voucher_id})`).run().catch(() => null)
-    } catch { /* fail-soft: ledger audit 는 이미 기록됨 */ }
-  }
+  // 🛡️ 2026-05-28: introduced_by_influencer_id 는 users.id (sellers.id 아님!).
+  //   현금/딜 분기는 통합 SSOT creditUserCommission 으로 위임. event_type 은
+  //   기존 audit/조회 쿼리 호환 위해 'introduction_commission' 유지.
+  await creditUserCommission(DB, {
+    userId: influencerUserId,
+    amount,
+    referenceId: ref,
+    eventType: 'introduction_commission',
+    kind: 'introducing_influencer',
+    dealTxType: 'intro_commission',
+    description: `영입 매장 공구 커미션 (voucher ${params.voucher_id})`,
+    meta: { voucher_id: params.voucher_id, share_pct: sharePct },
+  })
 
   return { influencer_id: influencerUserId, amount }
 }
