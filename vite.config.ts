@@ -134,6 +134,12 @@ export default defineConfig({
           if (id.includes('/src/hooks/useLiveStream')) return 'app-live-components'
           // 셀러/어드민 페이지만 사용하는 utils.
           if (id.includes('/src/utils/product-template')) return 'app-seller-components'
+          // 🛡️ 2026-05-28 (SSR phase 5): 메인 페이지 미사용 lib 별도 chunk.
+          //   이전: app-utils chunk 에 같이 묶여 메인 진입 시도 다운로드.
+          //   변경: 셀러 페이지 / Kakao 사용 시점만 fetch.
+          if (id.includes('/src/lib/seller-tracking')) return 'app-seller-components'
+          if (id.includes('/src/lib/kakao-sdk')) return 'app-kakao-sdk'
+          if (id.includes('/src/lib/firebase-auth') || id.includes('/src/lib/firebase-config')) return 'app-firebase-wrapper'
           // 🛡️ phase 5: 페이지별 hook 분리 (사용처 1곳).
           if (id.includes('/src/hooks/useCart')) return 'app-cart'
           if (id.includes('/src/hooks/useSearch')) return 'app-search'
