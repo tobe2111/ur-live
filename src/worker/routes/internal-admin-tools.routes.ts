@@ -1263,4 +1263,53 @@ internalAdminToolsRoutes.post('/api/admin/intro-commission-backfill', requireAdm
   }
 })
 
+// ============================================================
+// 유저 사업자 등록 수동 승인 (P3 — docs/SERVICE_MODEL.md §4).
+//   NTS 자동 승인 안 된 business_status='pending' 유저를 어드민이 검수.
+// ============================================================
+internalAdminToolsRoutes.get('/api/admin/pending-business-users', requireAdmin(), async (c) => {
+  try {
+    const rows = await c.env.DB.prepare(
+      `SELECT id, handle, name, business_number, business_name, tax_type,
+              bank_name, bank_account, account_holder, business_status, updated_at
+         FROM users
+        WHERE business_status = 'pending'
+        ORDER BY updated_at DESC LIMIT 200`
+    ).all().catch(() => ({ results: [] as any[] }))
+    return c.json({ success: true, data: rows.results || [] })
+  } catch {
+    return c.json({ success: false, error: '조회 실패' }, 500)
+  }
+})
+
+internalAdminToolsRoutes.post('/api/admin/users/:id/business-approve', requireAdmin(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+    const r = await c.env.DB.prepare(
+      `UPDATE users SET business_status = 'verified', business_verified_at = datetime('now'), updated_at = datetime('now')
+        WHERE id = ? AND business_status = 'pending'`
+    ).bind(id).run().catch(() => ({ meta: { changes: 0 } }))
+    if (!r.meta?.changes) return c.json({ success: false, error: '대상 없음' }, 404)
+    return c.json({ success: true })
+  } catch {
+    return c.json({ success: false, error: '승인 실패' }, 500)
+  }
+})
+
+internalAdminToolsRoutes.post('/api/admin/users/:id/business-reject', requireAdmin(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+    const r = await c.env.DB.prepare(
+      `UPDATE users SET business_status = 'rejected', updated_at = datetime('now')
+        WHERE id = ? AND business_status = 'pending'`
+    ).bind(id).run().catch(() => ({ meta: { changes: 0 } }))
+    if (!r.meta?.changes) return c.json({ success: false, error: '대상 없음' }, 404)
+    return c.json({ success: true })
+  } catch {
+    return c.json({ success: false, error: '거부 실패' }, 500)
+  }
+})
+
 export { internalAdminToolsRoutes };
