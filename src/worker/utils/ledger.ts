@@ -309,33 +309,47 @@ export async function recordIntroductionCommissionShare(
 
   const influencerUserId = seller.introduced_by_influencer_id
 
-  // 🛡️ 2026-05-28 (불일치 fix): introduced_by_influencer_id 는 users.id 다.
-  //   이전엔 credit_account = `seller:${userId}` 로 적립 → payouts-generate 가
-  //   sellers 테이블에서 그 번호를 조회 (users.id ≠ sellers.id) → commission 증발 또는
-  //   우연히 같은 번호의 다른 seller 에게 오송금. namespace 를 user:N 으로 정정.
-  await recordLedger(DB, {
-    event_type: 'introduction_commission',
-    reference_id: ref,
-    amount,
-    debit_account: 'platform:revenue',
-    credit_account: `user:${influencerUserId}`,
-    metadata: { kind: 'introducing_influencer', voucher_id: params.voucher_id, share_pct: sharePct, payout: 'deal' },
-  })
+  // 🛡️ 2026-05-28: introduced_by_influencer_id 는 users.id 다 (sellers.id 아님!).
+  //   영입자(유저) 사업자 여부로 정산 방식 분기 (docs/SERVICE_MODEL.md §4):
+  //     - 사업자(verified) → credit_account user:N → payouts-generate 현금 정산 (tax_type 원천징수)
+  //     - 비사업자        → 딜/상품권 즉시 적립 + audit 전용 userdeal:N (payout cron 미대상)
+  //   (이전엔 seller:${userId} 로 적립 → payouts 가 sellers 테이블 오조회 → 증발/오송금 버그)
+  const u = await DB.prepare(
+    'SELECT business_status FROM users WHERE id = ?',
+  ).bind(influencerUserId).first<{ business_status: string | null }>().catch(() => null)
+  const isBusiness = u?.business_status === 'verified'
 
-  // 영입 commission 즉시 딜 적립 (비사업자 → 상품권/딜). signup-bonus 와 동일 패턴.
-  //   users 테이블엔 아직 사업자 플래그 없음 → 현 단계 전원 딜 지급.
-  //   향후 유저 사업자 등록 추가 시 현금 + 원천징수 분기 (docs/SERVICE_MODEL.md 참조).
-  try {
-    const uid = String(influencerUserId)
-    await DB.prepare(
-      `INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)
-       ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`,
-    ).bind(uid, amount, amount).run()
-    await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, description)
-       VALUES (?, 'intro_commission', ?, ?)`,
-    ).bind(uid, amount, `영입 매장 공구 커미션 (voucher ${params.voucher_id})`).run().catch(() => null)
-  } catch { /* fail-soft: ledger audit 는 이미 기록됨 */ }
+  if (isBusiness) {
+    await recordLedger(DB, {
+      event_type: 'introduction_commission',
+      reference_id: ref,
+      amount,
+      debit_account: 'platform:revenue',
+      credit_account: `user:${influencerUserId}`,
+      metadata: { kind: 'introducing_influencer', voucher_id: params.voucher_id, share_pct: sharePct, payout: 'cash' },
+    })
+  } else {
+    await recordLedger(DB, {
+      event_type: 'introduction_commission',
+      reference_id: ref,
+      amount,
+      debit_account: 'platform:revenue',
+      credit_account: `userdeal:${influencerUserId}`,
+      metadata: { kind: 'introducing_influencer', voucher_id: params.voucher_id, share_pct: sharePct, payout: 'deal' },
+    })
+    // 딜/상품권 즉시 적립 (signup-bonus 와 동일 패턴).
+    try {
+      const uid = String(influencerUserId)
+      await DB.prepare(
+        `INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, 0)
+         ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`,
+      ).bind(uid, amount, amount).run()
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, description)
+         VALUES (?, 'intro_commission', ?, ?)`,
+      ).bind(uid, amount, `영입 매장 공구 커미션 (voucher ${params.voucher_id})`).run().catch(() => null)
+    } catch { /* fail-soft: ledger audit 는 이미 기록됨 */ }
+  }
 
   return { influencer_id: influencerUserId, amount }
 }

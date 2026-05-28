@@ -33,7 +33,7 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
     const credits = await DB.prepare(`
       SELECT credit_account, SUM(amount) as total
         FROM ledger_entries
-       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%')
+       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
          AND created_at BETWEEN ? AND ?
        GROUP BY credit_account
     `).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59').all<{ credit_account: string; total: number }>().catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
@@ -53,8 +53,9 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
       if (pending < MIN_AMOUNT) continue
       const [type, id] = c.credit_account.split(':')
       if (!type || !id) continue
+      // userdeal:N 은 비사업자 딜 적립 audit 전용 → 현금 payout 대상 아님 (위 WHERE 의 user:% 와 구분됨).
       const payeeType = type === 'merchant' ? 'store_owner' : type
-      if (!['store_owner', 'seller', 'agency'].includes(payeeType)) continue
+      if (!['store_owner', 'seller', 'agency', 'user'].includes(payeeType)) continue
 
       // 계좌 정보 조회
       let accountNumber: string | null = null, accountHolder: string | null = null
@@ -63,6 +64,11 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
           const row = await DB.prepare('SELECT bank_account, business_name FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null }>()
           accountNumber = row?.bank_account || null
           accountHolder = row?.business_name || null
+        } else if (payeeType === 'user') {
+          // 사업자 유저 영입 commission 현금 정산 (비사업자는 userdeal:N → 여기 안 옴).
+          const row = await DB.prepare('SELECT bank_account, account_holder, business_name FROM users WHERE id = ?').bind(id).first<{ bank_account: string | null; account_holder: string | null; business_name: string | null }>()
+          accountNumber = row?.bank_account || null
+          accountHolder = row?.account_holder || row?.business_name || null
         } else {
           const row = await DB.prepare('SELECT name FROM agencies WHERE id = ?').bind(id).first<{ name: string | null }>()
           accountHolder = row?.name || null
