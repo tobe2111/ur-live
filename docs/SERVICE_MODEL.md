@@ -150,13 +150,13 @@ user_points UPSERT (balance += amount) + point_transactions INSERT (type, amount
 - 영입 commission 기간 차등 기본값 (에이전시 12개월 / 크리에이터 6개월) — §3
 - 명칭 정리 (`seller-roles.ts` 라벨 `인플루언서` → `크리에이터`)
 - 어드민 commission-settings 엔드포인트 (GET/PATCH) — §7
-- 대행 등록 스키마 (`products.registered_by_*`) — §6
+- 어드민 매장별 커미션 관리 + audit UI (`/admin/merchant-commissions`)
+- 크리에이터 "내가 영입한 매장" 화면 (CuratorEarningsPage)
+- 가입 진입 분기 랜딩 (`/join`)
+- 대행 등록 end-to-end (스키마 + Creator 등록 폼 + 매장 승인 `/seller/proxy-products`) — §6
 
 ### ⬜ 남음 (우선순위)
-1. **(P1) 어드민 UI** — commission-settings 화면 (매장별 기간 슬라이더 + 영입자 표시) + intro-commission-audit 화면
-2. **(P2) "내가 영입한 매장" 화면** — Creator 는 마이페이지, 에이전시는 기존 `AgencyIntroducedStoresPage`
-3. **(P2) 가입 진입 분기** — "🏪 매장 / 🎤 크리에이터" 2갈래 랜딩
-4. **(P2) 대행 등록 플로우 UI** — 스키마 위에 엔드포인트 + 매장 승인 화면 (§6 설계)
-5. **(P3) 유저 사업자 NTS 미설정 시 어드민 수동 승인 화면**
+1. **(P3) 유저 사업자 NTS 미설정 시 어드민 수동 승인 화면** — `users.business_status='pending'` 검수
+2. **(P3) Creator/Agency 영입 commission 정산 rail 통합 검토** — 현재 영입(ledger user:/userdeal:) vs 추천(affiliate_earnings) 분리. 필요 시 단일화.
 
 > 모든 항목은 무료($0) 제약 유지.
