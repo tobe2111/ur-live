@@ -757,15 +757,30 @@ function AppContent() {
   )
 }
 
-function App() {
+// 🛡️ 2026-05-28 (SSR Phase 3 Step 3-1): Router 를 prop 으로 받음.
+//   client: <App /> → BrowserRouter (기존 동작 100% 보존).
+//   server: <App Router={StaticRouter} routerProps={{ location: url }} />.
+//   타입: ComponentType 추상화 (BrowserRouter 와 StaticRouter prop 인터페이스 다름).
+import type { ComponentType, ReactNode } from 'react'
+type RouterLike = ComponentType<{ children?: ReactNode; [key: string]: unknown }>
+
+interface AppProps {
+  Router?: RouterLike
+  routerProps?: Record<string, unknown>
+}
+
+function App({
+  Router = BrowserRouter as unknown as RouterLike,
+  routerProps = { future: { v7_startTransition: true, v7_relativeSplatPath: true } },
+}: AppProps = {}) {
   return (
     <ErrorBoundary>
       <ChunkErrorBoundary>
         <HelmetProvider>
           <QueryProvider>
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Router {...routerProps}>
               <AppContent />
-            </BrowserRouter>
+            </Router>
           </QueryProvider>
         </HelmetProvider>
       </ChunkErrorBoundary>
