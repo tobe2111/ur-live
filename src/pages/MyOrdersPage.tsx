@@ -32,7 +32,9 @@ type TabType = 'cart' | 'orders'
 export default function MyOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<TabType>('cart')
+  // 🛡️ 2026-05-28 (사용자 보고): /my-orders 는 주문내역이 기본. 이전 'cart' default →
+  //   주문내역 버튼 눌러도 장바구니가 떠서 혼란. 장바구니는 /cart (CartPage) 전용.
+  const [activeTab, setActiveTab] = useState<TabType>('orders')
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)

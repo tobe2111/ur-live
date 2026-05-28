@@ -469,6 +469,15 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.compare_at_price', sql: "ALTER TABLE products ADD COLUMN compare_at_price INTEGER" },
     //   - products.dominant_color: 카드 이미지 placeholder hex 색 (클라이언트 canvas 1x1 lazy 백필).
     { desc: 'products.dominant_color', sql: "ALTER TABLE products ADD COLUMN dominant_color TEXT" },
+    //   - 디지털 상품 (migration 0243) — 무재고 디지털/정보 상품 + 디지털 보관함 (/my/digital 500 fix).
+    { desc: 'products.product_kind', sql: "ALTER TABLE products ADD COLUMN product_kind TEXT DEFAULT 'physical'" },
+    { desc: 'products.delivery_type', sql: "ALTER TABLE products ADD COLUMN delivery_type TEXT DEFAULT 'shipping'" },
+    { desc: 'products.content_url', sql: "ALTER TABLE products ADD COLUMN content_url TEXT" },
+    { desc: 'products.content_format', sql: "ALTER TABLE products ADD COLUMN content_format TEXT" },
+    { desc: 'products.access_duration_days', sql: "ALTER TABLE products ADD COLUMN access_duration_days INTEGER" },
+    { desc: 'products.preview_url', sql: "ALTER TABLE products ADD COLUMN preview_url TEXT" },
+    { desc: 'products.file_size_mb', sql: "ALTER TABLE products ADD COLUMN file_size_mb INTEGER" },
+    { desc: 'orders.delivery_kind', sql: "ALTER TABLE orders ADD COLUMN delivery_kind TEXT DEFAULT 'shipping'" },
     //   - donation_settlements.donation_ids: settlement 에 포함된 donation id 들 JSON 배열.
     { desc: 'donation_settlements.donation_ids', sql: "ALTER TABLE donation_settlements ADD COLUMN donation_ids TEXT" },
     //   - user_points.total_used: 총 사용 누적 (충전 vs 사용 추적).
@@ -960,6 +969,39 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       FOREIGN KEY (user_id) REFERENCES users(id)
     )` },
     { name: 'idx_gbhp_host', sql: `CREATE INDEX IF NOT EXISTS idx_gbhp_host ON group_buy_host_participants(host_id, joined_at DESC)` },
+    // 🛡️ 2026-05-28: 디지털 상품 접근권/다운로드 로그 (migration 0243) — /my/digital 500 fix.
+    { name: 'digital_product_access', sql: `CREATE TABLE IF NOT EXISTS digital_product_access (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      order_id INTEGER NOT NULL,
+      order_item_id INTEGER,
+      access_token TEXT UNIQUE NOT NULL,
+      expires_at DATETIME,
+      download_count INTEGER DEFAULT 0,
+      download_limit INTEGER DEFAULT 100,
+      last_accessed DATETIME,
+      status TEXT DEFAULT 'active' CHECK(status IN ('active','revoked','expired')),
+      created_at DATETIME DEFAULT (datetime('now')),
+      UNIQUE(user_id, product_id, order_id)
+    )` },
+    { name: 'idx_dpa_user', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_user ON digital_product_access(user_id, status, created_at DESC)` },
+    { name: 'idx_dpa_product', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_product ON digital_product_access(product_id)` },
+    { name: 'idx_dpa_order', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_order ON digital_product_access(order_id)` },
+    { name: 'idx_dpa_token', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_token ON digital_product_access(access_token)` },
+    { name: 'digital_download_logs', sql: `CREATE TABLE IF NOT EXISTS digital_download_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      access_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      ip TEXT,
+      user_agent TEXT,
+      bytes_served INTEGER,
+      status TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_ddl_access', sql: `CREATE INDEX IF NOT EXISTS idx_ddl_access ON digital_download_logs(access_id, created_at DESC)` },
+    { name: 'idx_products_kind_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_kind_active ON products(product_kind, is_active, created_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

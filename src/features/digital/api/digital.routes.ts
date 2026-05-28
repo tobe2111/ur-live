@@ -52,6 +52,11 @@ digitalRoutes.get('/my', requireAuth(), async (c) => {
     return c.json({ success: true, data: results || [] })
   } catch (err) {
     if (c.env.ENVIRONMENT !== 'production') console.error('[digital/my]', err)
+    // 🛡️ 2026-05-28: digital_product_access 테이블/컬럼 미생성(migration 0243 미적용) 시 graceful 빈 목록.
+    //   schema-repair cron 후 자동 동작. 500 대신 빈 보관함 표시.
+    if (/no such (column|table)/i.test(String((err as { message?: string })?.message ?? err))) {
+      return c.json({ success: true, data: [] })
+    }
     return c.json({ success: false, error: '디지털 상품 조회 실패' }, 500)
   }
 })
