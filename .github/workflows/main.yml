@@ -8,10 +8,18 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 🛡️ 2026-05-28: 동시 배포 1개만 — 새 push 시 진행 중 배포 취소 (latest-wins).
+#   이전: concurrency 없음 → 빠른 연속 push 마다 deploy 누적 (한 번 hang 시 10+ 개 동시 In progress).
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare Pages
+    # 🛡️ 2026-05-28: 무한 hang 방어 — step 행 시 30분 후 실패 처리 (prerender hang 사고 재발 방지).
+    timeout-minutes: 30
     # 🛡️ 2026-04-22 배치 117 (TD-012): Node 20 runtime deprecation 대비.
     #   2026-09 부터 GHA 의 JS actions 는 Node 24 사용. 일부 actions 는 아직
     #   Node 20 을 지정 — 이 env 가 Node 24 로 강제 실행.

@@ -103,7 +103,16 @@ async function main() {
   console.log('[prerender-main] dist/client/index.html 갱신 완료 ✅')
 }
 
-main().catch((err) => {
-  console.error('[prerender-main] 실패:', err)
-  process.exit(1)
-})
+// 🛡️ 2026-05-28: 작업 완료 후 강제 exit.
+//   App entry tree 의 module-level 핸들 (타이머/리스너/싱글톤) 이 Node 이벤트 루프를
+//   살려둬 renderToString + 파일 쓰기 성공 후에도 프로세스가 안 죽음 → build/deploy 무한 hang.
+//   prerender 는 파일 1개 쓰는 게 전부라 성공 후 즉시 exit(0) 가 올바름.
+main()
+  .then(() => {
+    console.log('[prerender-main] 종료 (exit 0)')
+    process.exit(0)
+  })
+  .catch((err) => {
+    console.error('[prerender-main] 실패:', err)
+    process.exit(1)
+  })
