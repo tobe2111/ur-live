@@ -219,10 +219,16 @@ export async function recordAgencyCommissionShare(
   if (existing) return { agency_id: null, amount: 0 }
 
   // 가게의 추천 에이전시 조회
+  // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 추가.
+  //   referral_bonus_until NULL = 무기한, 날짜 있으면 만료 검사 (admin 이 매장별 설정).
   const seller = await DB.prepare(
-    'SELECT introduced_by_agency_id FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_agency_id: number | null }>().catch(() => null)
+    'SELECT introduced_by_agency_id, referral_bonus_until FROM sellers WHERE id = ?',
+  ).bind(params.merchant_id).first<{ introduced_by_agency_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
   if (!seller?.introduced_by_agency_id) return { agency_id: null, amount: 0 }
+  // 기간 만료 시 commission 0 (referral_bonus_until 설정된 경우만)
+  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
+    return { agency_id: null, amount: 0 }
+  }
 
   // 분배 비율 (platform_settings)
   let sharePct = 0.30  // default 30%
@@ -277,10 +283,15 @@ export async function recordIntroductionCommissionShare(
   if (existing) return { influencer_id: null, amount: 0 }
 
   // 매장의 입점 유치 인플루언서 조회
+  // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 (referral_bonus_until).
   const seller = await DB.prepare(
-    'SELECT introduced_by_influencer_id FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null }>().catch(() => null)
+    'SELECT introduced_by_influencer_id, referral_bonus_until FROM sellers WHERE id = ?',
+  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
   if (!seller?.introduced_by_influencer_id) return { influencer_id: null, amount: 0 }
+  // 기간 만료 시 commission 0 (referral_bonus_until 설정된 경우만, NULL = 무기한)
+  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
+    return { influencer_id: null, amount: 0 }
+  }
 
   // 분배 비율 (platform_settings.influencer_intro_share_pct, default 20%)
   let sharePct = 0.20

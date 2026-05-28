@@ -958,6 +958,69 @@ internalAdminToolsRoutes.get('/api/admin/pending-sellers', requireAdmin(), async
   }
 })
 
+// 🛡️ 2026-05-27 (사용자 결정): 매장별 영입 commission 기간 설정 + 영입자 조회.
+//   referral_bonus_until: NULL = 무기한, 날짜 = 만료일. admin 이 매장마다 조정.
+internalAdminToolsRoutes.get('/api/admin/sellers/:id/commission-settings', requireAdmin(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+    const seller = await c.env.DB.prepare(
+      `SELECT s.id, s.business_name, s.commission_rate, s.referral_bonus_until,
+              s.introduced_by_agency_id, s.introduced_by_influencer_id, s.introduced_at,
+              a.name AS agency_name, u.handle AS influencer_handle
+         FROM sellers s
+         LEFT JOIN agencies a ON a.id = s.introduced_by_agency_id
+         LEFT JOIN users u ON u.id = s.introduced_by_influencer_id
+        WHERE s.id = ?`
+    ).bind(id).first().catch(() => null)
+    if (!seller) return c.json({ success: false, error: 'seller 없음' }, 404)
+    return c.json({ success: true, data: seller })
+  } catch (err) {
+    return c.json({ success: false, error: 'commission-settings 조회 실패' }, 500)
+  }
+})
+
+internalAdminToolsRoutes.patch('/api/admin/sellers/:id/commission-settings', requireAdmin(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+    const body = await c.req.json<{
+      referral_bonus_until?: string | null
+      commission_rate?: number
+      bonus_months?: number
+    }>().catch(() => ({} as { referral_bonus_until?: string | null; commission_rate?: number; bonus_months?: number }))
+
+    const updates: string[] = []
+    const binds: (string | number | null)[] = []
+
+    if (typeof body.bonus_months === 'number' && body.bonus_months > 0) {
+      const until = new Date()
+      until.setMonth(until.getMonth() + body.bonus_months)
+      updates.push('referral_bonus_until = ?')
+      binds.push(until.toISOString())
+    } else if ('referral_bonus_until' in body) {
+      const v = body.referral_bonus_until
+      updates.push('referral_bonus_until = ?')
+      binds.push(v && String(v).trim() ? String(v) : null)
+    }
+
+    if (typeof body.commission_rate === 'number' && body.commission_rate >= 0 && body.commission_rate <= 50) {
+      updates.push('commission_rate = ?')
+      binds.push(body.commission_rate)
+    }
+
+    if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
+    binds.push(id)
+    await c.env.DB.prepare(
+      `UPDATE sellers SET ${updates.join(', ')}, updated_at = datetime('now') WHERE id = ?`
+    ).bind(...binds).run()
+
+    return c.json({ success: true })
+  } catch (err) {
+    return c.json({ success: false, error: 'commission-settings 수정 실패' }, 500)
+  }
+})
+
 // admin NTS 재검증 (수동 trigger)
 internalAdminToolsRoutes.post('/api/admin/sellers/:id/recheck-nts', requireAdmin(), async (c) => {
   try {
