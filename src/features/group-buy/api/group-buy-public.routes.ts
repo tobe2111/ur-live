@@ -25,6 +25,11 @@ import { ensureTables, calcTierDiscount, getMealVoucherCommissionRate, getSeller
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
 let _giftCatalogJoinable: boolean | null = null
 
+// 🛡️ 2026-05-28: dominant_color 컬럼 존재 여부 캐시 (migration 0282 적용 전 graceful).
+//   컬럼 없으면 SELECT 에서 제외 → "no such column" 으로 메인 피드 깨지는 것 방지.
+//   schema-repair cron (매일 18 UTC) 또는 수동 repair-schema 후 컬럼 생김.
+let _dominantColorCol: boolean | null = null
+
 export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── GET /products — 공구 목록 ──
   //   ?status=active|achieved|expired|all  (default: active)
@@ -71,42 +76,45 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         //   16개 컬럼만 (응답 56% 감소). description/product_detail_images/stock/reserved_stock 등 제외.
         //   결과: 페이로드 ~4-5KB, D1 row scan time 10-15ms ↓.
         let results: unknown[] = []
-        const COLS = `
+        // 🛡️ 2026-05-28: dominant_color 는 컬럼 부재 가능 (migration 0282 적용 전) → 조건부 포함.
+        //   부재 시 "no such column" 으로 메인 피드 깨지는 것 방지 — 같은 요청 내 1회 재시도 후 제외.
+        const isMissingDominant = (e: unknown) => /no such column.*dominant_color|dominant_color/i.test(String((e as { message?: string })?.message ?? e))
+        const buildCols = () => `
           p.id, p.name, p.price, p.original_price, p.image_url, p.category,
           p.group_buy_current, p.group_buy_target, p.group_buy_status,
           p.group_buy_deadline AS expires_at, p.group_buy_tiers,
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
-          p.dominant_color,
+          ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
         // 🛡️ 2026-05-22 영구 해결: gift_catalog JOIN 가능 여부 module-scope 기억 →
         //   table 없는 환경에서 매번 try/catch 두 번 query 발생 → 응답 2배 지연 영구 차단.
-        if (_giftCatalogJoinable !== false) {
-          try {
-            const r = await DB.prepare(`
-              SELECT ${COLS},
-                     gc.brand_name AS gc_brand_name,
-                     gc.brand_icon_url AS gc_brand_icon_url,
-                     gc.goods_type_detail AS gc_goods_type_detail
-              FROM products p
-              LEFT JOIN sellers s ON p.seller_id = s.id
-              LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
-              WHERE p.category IN (${placeholders}) AND p.is_active = 1
-                AND (p.group_buy_status = ? OR ? = 'all')
-              ORDER BY p.created_at DESC
-              LIMIT 50
-            `).bind(...categories, status, status).all()
-            results = r.results ?? []
-            if (_giftCatalogJoinable === null) _giftCatalogJoinable = true  // 첫 성공 → 다음부터 try 우선
-          } catch {
-            _giftCatalogJoinable = false  // table 부재 영구 기억 → 다음부터 fallback 만
-            // fall through to fallback below
+        const runFeed = async () => {
+          if (_giftCatalogJoinable !== false) {
+            try {
+              const r = await DB.prepare(`
+                SELECT ${buildCols()},
+                       gc.brand_name AS gc_brand_name,
+                       gc.brand_icon_url AS gc_brand_icon_url,
+                       gc.goods_type_detail AS gc_goods_type_detail
+                FROM products p
+                LEFT JOIN sellers s ON p.seller_id = s.id
+                LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
+                WHERE p.category IN (${placeholders}) AND p.is_active = 1
+                  AND (p.group_buy_status = ? OR ? = 'all')
+                ORDER BY p.created_at DESC
+                LIMIT 50
+              `).bind(...categories, status, status).all()
+              if (_giftCatalogJoinable === null) _giftCatalogJoinable = true  // 첫 성공 → 다음부터 try 우선
+              return r.results ?? []
+            } catch (e) {
+              if (isMissingDominant(e)) throw e  // 컬럼 부재 → 상위에서 flag off 후 재시도
+              _giftCatalogJoinable = false  // table 부재 영구 기억 → 다음부터 fallback 만
+            }
           }
-        }
-        if (results.length === 0 && _giftCatalogJoinable === false) {
           const r = await DB.prepare(`
-            SELECT ${COLS}
+            SELECT ${buildCols()}
             FROM products p
             LEFT JOIN sellers s ON p.seller_id = s.id
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
@@ -114,7 +122,17 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             ORDER BY p.created_at DESC
             LIMIT 50
           `).bind(...categories, status, status).all()
-          results = r.results ?? []
+          return r.results ?? []
+        }
+        try {
+          results = await runFeed()
+        } catch (e) {
+          if (isMissingDominant(e) && _dominantColorCol !== false) {
+            _dominantColorCol = false  // 영구 기억 → 다음 요청부터 제외
+            results = await runFeed()   // 같은 요청 재시도 (dominant_color 제외)
+          } else {
+            throw e
+          }
         }
         return results
       },
