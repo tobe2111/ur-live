@@ -133,19 +133,10 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
             구조: [이미지] [원가 strike] [제목] [할인% + 가격] [⭐평점 + 구매수] */}
       <div
         className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]"
-        // 🛡️ 2026-05-28: 이미지별 dominant color placeholder (DB 백필) > 카테고리 색 fallback.
-        //   p.dominant_color 있으면 정확한 색, 없으면 카테고리 색감 (식사 amber / 뷰티 pink 등).
-        //   load 전 단색 → 이미지 fade-in → 시각적 단절 ↓.
-        style={{
-          backgroundColor: p.dominant_color
-            || (rawCategory === 'meal_voucher' ? '#fef3c7'
-            : rawCategory === 'beauty_voucher' ? '#fce7f3'
-            : rawCategory === 'stay_voucher' ? '#dbeafe'
-            : rawCategory === 'health_voucher' ? '#d1fae5'
-            : rawCategory === 'pet_voucher' ? '#fed7aa'
-            : rawCategory === 'activity_voucher' ? '#e9d5ff'
-            : undefined),  // etc/default: bg-gray-100 유지
-        }}
+        // 🛡️ 2026-05-28 (사용자 보고 — 베이지 깜빡임): 카테고리 색 tint 제거.
+        //   dominant_color(이미지 실제 색) 있으면 그 색, 없으면 className 의 중성 회색(bg-gray-100)
+        //   → backfill 전에도 옅은 회색이라 깜빡임 거의 안 보임. 교환권/브라우즈 카드와 동일 패턴.
+        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
       >
         {p.image_url ? (
           <img
