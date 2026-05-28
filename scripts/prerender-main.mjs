@@ -50,17 +50,26 @@ async function main() {
   // 🛡️ entry-server dynamic import — Node ESM 호환.
   const { renderApp } = await import(SERVER_ENTRY)
 
-  // 🛡️ API 데이터 fetch (선택). cloud 환경에서 외부 접근 불가 시 빈 initialData.
-  //   진짜 데이터는 client hydrate 후 React Query 가 fresh fetch.
+  // 🛡️ API 데이터 fetch — 빌드 환경에서 외부 fetch 가능하면 사용. 실패해도 SSR HTML 은 inject.
+  //   진짜 데이터는 worker HTMLRewriter (runtime) 가 __SSR_INITIAL_MAIN__ inject + React Query fresh fetch.
+  //   prerender 의 가치 = React renderToString HTML (LCP 단축). 데이터 inject 는 부수적.
   let initialData = null
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
     const res = await fetch('https://live.ur-team.com/api/group-buy/products?status=active&category=all', {
       headers: { 'User-Agent': 'ur-live-prerender/1.0' },
-      signal: AbortSignal.timeout(5000),
+      signal: controller.signal,
     })
-    if (res.ok) initialData = await res.json()
+    clearTimeout(timeout)
+    if (res.ok) {
+      initialData = await res.json()
+      console.log('[prerender-main] API fetch 성공 (data inline)')
+    } else {
+      console.warn('[prerender-main] API status', res.status, '(skip data inject, SSR HTML 만 진행)')
+    }
   } catch (err) {
-    console.warn('[prerender-main] API fetch 실패 (skip, SSR 만 진행):', String(err))
+    console.warn('[prerender-main] API fetch 실패 (skip data inject, SSR HTML 만 진행):', String(err))
   }
 
   // 🛡️ renderApp 호출 — React renderToString 실행.
