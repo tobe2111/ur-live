@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run dev:worker\" \"npm run dev:client\"",
     "dev:worker": "wrangler dev --local",
     "dev:client": "vite",
-    "build": "npm run build:client && npm run build:worker && npm run build:prepare",
+    "build": "npm run build:client && npm run build:ssr && (npm run prerender:main || echo '[build] prerender skip (graceful)') && npm run build:worker && npm run build:prepare",
     "build:client": "vite build",
     "build:worker": "node scripts/build-worker.js",
     "build:prepare": "node scripts/build-prepare.mjs",
