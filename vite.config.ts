@@ -67,8 +67,11 @@ export default defineConfig({
           if (id.includes('firebase/')) return 'firebase'
           // TanStack Query
           if (id.includes('@tanstack/react-query')) return 'tanstack-query'
-          // Payment SDKs
-          if (id.includes('@tosspayments') || id.includes('@stripe')) return 'payments'
+          // 🛡️ 2026-05-28 (Stripe 232KB 메인 진입 사고 fix): Stripe 와 Tosspayments 분리.
+          //   이전: 둘 다 'payments' chunk → main 이 toss 호출 시 stripe 도 같이 download (232KB).
+          //   변경: 각각 별도 chunk. Stripe = StripeCheckout (lazy) 진입 시만, Toss = checkout 시만.
+          if (id.includes('@stripe')) return 'stripe'
+          if (id.includes('@tosspayments')) return 'tosspayments'
           // Charts (관리자/셀러 대시보드 전용) — recharts + d3-* 패키지 + 우리 chart 컴포넌트들.
           //   🛡️ 2026-05-17: /src/components/charts/* 도 'charts' 청크에 포함 (이전엔 'app-components' 로 분류돼서
           //     app-components → recharts static dep 만들어 charts (518 KB) 가 초기 preload 됨).
