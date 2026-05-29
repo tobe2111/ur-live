@@ -465,6 +465,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   해결: email 매칭되는 seller-user 쌍 일괄 매핑. idempotent.
     //   KakaoAuthService.upsertUser 도 동적으로 매핑 → 다음 로그인 시 자동, 이건 일괄 backfill.
     { desc: 'backfill: sellers.linked_user_id (same-email)', sql: `UPDATE sellers SET linked_user_id = (SELECT id FROM users u WHERE u.email = sellers.email LIMIT 1), updated_at = datetime('now') WHERE (linked_user_id IS NULL OR linked_user_id = 0) AND email IS NOT NULL AND email != '' AND EXISTS (SELECT 1 FROM users u2 WHERE u2.email = sellers.email)` },
+    // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
+    //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
+    { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
     // 🛡️ 2026-05-22 카카오 P0: kakao_id UNIQUE 보강 (이미 KakaoAuthService 에서 시도하지만 다중 진입점 안전).
     { desc: 'idx_users_kakao_id_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL" },
     // 🛡️ 2026-05-22 P1: 교환권 페이지 로딩 perf — 사용자별 voucher 목록 조회.

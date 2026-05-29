@@ -69,12 +69,26 @@ export function usePinAction(): UsePinActionResult {
         }
       }
 
+      // 🛡️ 2026-05-28: 원클릭 추천 = 핀 추가 + 추천 링크 클립보드 복사 동시 (사용자 결정).
+      //   링크샵에 담김(핀) + 단톡방/스토리에 바로 붙여넣을 추천 링크 복사 → 행동 1단계.
+      let linkCopied = false
+      try {
+        const handle = result.handle || (user as { handle?: string })?.handle
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'
+        const shareUrl = handle
+          ? `${origin}/u/${handle}/p/${productId}`
+          : `${origin}/products/${productId}?ref=${user.id}`
+        await navigator.clipboard.writeText(shareUrl)
+        linkCopied = true
+      } catch { /* 클립보드 차단 환경 — 핀은 이미 추가됨 */ }
+
       // 수익 simulator — 5명 공유 시 예상 적립
+      const copySuffix = linkCopied ? ' · 추천링크 복사됨' : ''
       if (price && Number.isFinite(price) && price > 0) {
         const expected = Math.round(price * 5 * (CURATOR_DEFAULTS.STATS_DEFAULT_RANGE_DAYS / 7) * 0.01)
-        toast.success(`📌 핀 추가! 5명 공유 시 예상 ${expected.toLocaleString()}원 적립`)
+        toast.success(`📌 링크샵에 담김${copySuffix} · 5명 공유 시 예상 ${expected.toLocaleString()}원 적립`)
       } else {
-        toast.success('📌 링크샵에 핀이 추가되었어요')
+        toast.success(`📌 링크샵에 담김${copySuffix} — 단톡방/스토리에 붙여넣기`)
       }
     } catch (err) {
       toast.error('핀 추가 중 오류가 발생했습니다')

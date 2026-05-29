@@ -179,7 +179,7 @@ export default function AdminMerchantCommissionsPage() {
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="text-gray-500">현재 기간 만료</span>
-                <span className="text-gray-900">{cs.referral_bonus_until ? cs.referral_bonus_until.slice(0, 10) : '무기한'}</span>
+                <span className="text-gray-900">{cs.referral_bonus_until ? cs.referral_bonus_until.slice(0, 10) : '⚠️ 무기한(레거시 — 캡 설정 권장)'}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <label className="text-xs text-gray-600">
@@ -187,7 +187,7 @@ export default function AdminMerchantCommissionsPage() {
                   <input value={bonusMonths} onChange={(e) => setBonusMonths(e.target.value)} placeholder="예: 6" className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900" />
                 </label>
                 <label className="text-xs text-gray-600">
-                  또는 만료일 (비우면 무기한)
+                  또는 만료일 (비우면 기본 12개월, 최대 24개월)
                   <input type="date" value={bonusUntil} onChange={(e) => setBonusUntil(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900" />
                 </label>
                 <label className="text-xs text-gray-600">

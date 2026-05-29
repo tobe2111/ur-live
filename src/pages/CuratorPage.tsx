@@ -230,13 +230,13 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
+        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
       ))}
     </div>
   )
 }
 
-function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
+function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
   // 🛡️ 2026-05-27 (404 fix — 사용자 보고): SPA route 는 /u/:handle/p/:productId (no /redirect suffix).
@@ -270,6 +270,10 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
     <div className="relative group">
       <a href={redirectUrl} className="block bg-white dark:bg-[#0A0A0A] rounded-xl overflow-hidden border border-gray-200 dark:border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
         <div className="aspect-square bg-gray-100 dark:bg-[#121212] relative">
+          {/* 🛡️ 2026-05-28: 링크샵 카드 순번 뱃지 (position 순) */}
+          <span className="absolute top-1.5 left-1.5 z-10 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-black/70 text-white text-[11px] font-bold flex items-center justify-center backdrop-blur">
+            {index + 1}
+          </span>
           {productImg ? (
             <img
               src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}

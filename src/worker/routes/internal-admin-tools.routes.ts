@@ -993,15 +993,28 @@ internalAdminToolsRoutes.patch('/api/admin/sellers/:id/commission-settings', req
     const updates: string[] = []
     const binds: (string | number | null)[] = []
 
+    // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 금지 — 캡 강제 (LTV 보호, docs/SERVICE_MODEL.md §3).
+    //   기본 12개월, 최대 24개월. 빈 값/무기한 요청은 기본 12개월로 강제.
+    const MAX_BONUS_MONTHS = 24
     if (typeof body.bonus_months === 'number' && body.bonus_months > 0) {
+      const months = Math.min(body.bonus_months, MAX_BONUS_MONTHS)
       const until = new Date()
-      until.setMonth(until.getMonth() + body.bonus_months)
+      until.setMonth(until.getMonth() + months)
       updates.push('referral_bonus_until = ?')
       binds.push(until.toISOString())
     } else if ('referral_bonus_until' in body) {
       const v = body.referral_bonus_until
+      let until = new Date()
+      if (v && String(v).trim()) {
+        const parsed = new Date(String(v))
+        const max = new Date(); max.setMonth(max.getMonth() + MAX_BONUS_MONTHS)
+        until = (!Number.isFinite(parsed.getTime()) || parsed > max) ? max : parsed
+      } else {
+        // 무기한 금지 → 기본 12개월
+        until.setMonth(until.getMonth() + 12)
+      }
       updates.push('referral_bonus_until = ?')
-      binds.push(v && String(v).trim() ? String(v) : null)
+      binds.push(until.toISOString())
     }
 
     if (typeof body.commission_rate === 'number' && body.commission_rate >= 0 && body.commission_rate <= 50) {
