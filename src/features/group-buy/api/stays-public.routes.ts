@@ -887,7 +887,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
         `UPDATE stay_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
       ).bind(order.stay_booking_id).run().catch(() => { /* noop */ })
       await c.env.DB.prepare(
-        `UPDATE orders SET status = 'REFUNDED', payment_status = 'canceled', updated_at = datetime('now') WHERE id = ?`
+        `UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded', updated_at = datetime('now') WHERE id = ?`
       ).bind(orderId).run().catch(() => { /* noop */ })
       return c.json({
         success: false,
