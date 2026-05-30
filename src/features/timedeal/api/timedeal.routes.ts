@@ -10,6 +10,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { executeRun, queryFirst } from '@/worker/utils/database';
 
@@ -284,7 +285,7 @@ timedealRoutes.get('/stream/:streamId', async (c) => {
 });
 
 // POST /api/timedeal/:id/claim — 타임딜 / 공동구매 클레임
-timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
+timedealRoutes.post('/:id/claim', rateLimit({ action: 'timedeal_claim', max: 20, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 

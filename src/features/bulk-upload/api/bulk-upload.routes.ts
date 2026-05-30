@@ -166,6 +166,19 @@ bulkUploadRoutes.post('/upload', requireAuth(), async (c) => {
         results.push({ row: i + 1, status: 'error', name, error: '상품명과 판매가는 필수입니다' });
         continue;
       }
+      // 🛡️ 2026-05-30: 음수/비정상 가격·재고 차단 — parseInt('-500')=-500 통과 시 장바구니/할인율/정산 수식 오염.
+      if (!Number.isFinite(price) || price <= 0 || price > 100_000_000) {
+        results.push({ row: i + 1, status: 'error', name, error: '판매가는 1~1억원 사이여야 합니다' });
+        continue;
+      }
+      if (!Number.isFinite(stock) || stock < 0 || stock > 1_000_000) {
+        results.push({ row: i + 1, status: 'error', name, error: '재고수량은 0~100만 사이여야 합니다' });
+        continue;
+      }
+      if (originalPrice != null && (!Number.isFinite(originalPrice) || originalPrice < 0 || originalPrice > 100_000_000)) {
+        results.push({ row: i + 1, status: 'error', name, error: '정가는 0~1억원 사이여야 합니다' });
+        continue;
+      }
 
       // 할인율 계산
       const discountRate = originalPrice && originalPrice > price

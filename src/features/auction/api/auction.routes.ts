@@ -11,6 +11,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { swallow } from '@/worker/utils/swallow';
 const auctionRoutes = new Hono<{ Bindings: Env }>();
@@ -205,7 +206,7 @@ auctionRoutes.post('/create', requireAuth(), async (c) => {
 //   - 입찰 시 해당 금액을 user_points 에서 hold (auction_holds)
 //   - 경쟁 입찰로 outbid 되면 hold 자동 해제
 //   - 입찰자는 balance 를 초과하는 금액으로 bid 불가 ("지불능력 증명")
-auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
+auctionRoutes.post('/:id/bid', rateLimit({ action: 'auction_bid', max: 30, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 

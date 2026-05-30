@@ -13,6 +13,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { autoSeedFakeReviews } from '../../../worker/utils/auto-seed-fake-reviews'
+import { safeError } from '../../../worker/utils/safe-error'
 
 export const adminKtAlphaRoutes = new Hono<{ Bindings: Env }>()
 
@@ -927,7 +928,8 @@ adminKtAlphaRoutes.post('/kt-alpha/sync-page', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: `sync-page 실패 (page ${startPage}-${startPage + pageCount - 1}): ${(err as Error).message.slice(0, 200)}` }, 500)
+    // 🛡️ 2026-05-30: 내부 에러 메시지(DB/SDK) 클라 노출 차단 — safeError (DEV 에서만 _debug).
+    return safeError(c, err, `sync-page 실패 (page ${startPage}-${startPage + pageCount - 1})`, '[kt-alpha]')
   }
 })
 

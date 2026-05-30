@@ -12,6 +12,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 
 export const digitalRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -62,7 +63,7 @@ digitalRoutes.get('/my', requireAuth(), async (c) => {
 })
 
 // ── GET /api/digital/access/:token — 다운로드/시청 URL 획득 ───────
-digitalRoutes.get('/access/:token', requireAuth(), async (c) => {
+digitalRoutes.get('/access/:token', rateLimit({ action: 'digital_access', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const token = c.req.param('token')
@@ -103,20 +104,23 @@ digitalRoutes.get('/access/:token', requireAuth(), async (c) => {
       return c.json({ success: false, error: '콘텐츠 URL이 설정되지 않았습니다 (셀러 문의 필요)' }, 503)
     }
 
-    // download_count 증가 + 로그
+    // download_count 증가 — 원자적 가드 (TOCTOU 방지).
+    //   🛡️ 2026-05-30: 기존 무조건 +1 → 동시 요청이 둘 다 위 pre-check 통과 후 한도 초과 가능.
+    //   `download_count < download_limit` 가드 + meta.changes 검사로 한도 원자적 enforce.
     const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || ''
     const ua = c.req.header('user-agent') || ''
-    await c.env.DB.batch([
-      c.env.DB.prepare(`
-        UPDATE digital_product_access
-        SET download_count = download_count + 1, last_accessed = datetime('now')
-        WHERE id = ?
-      `).bind(access.id),
-      c.env.DB.prepare(`
-        INSERT INTO digital_download_logs (access_id, user_id, product_id, ip, user_agent, status)
-        VALUES (?, ?, ?, ?, ?, 'success')
-      `).bind(access.id, access.user_id, access.product_id, ip, ua),
-    ])
+    const inc = await c.env.DB.prepare(`
+      UPDATE digital_product_access
+      SET download_count = download_count + 1, last_accessed = datetime('now')
+      WHERE id = ? AND download_count < download_limit
+    `).bind(access.id).run()
+    if (!inc.meta.changes) {
+      return c.json({ success: false, error: `다운로드 한도 초과 (${access.download_limit}회)` }, 403)
+    }
+    await c.env.DB.prepare(`
+      INSERT INTO digital_download_logs (access_id, user_id, product_id, ip, user_agent, status)
+      VALUES (?, ?, ?, ?, ?, 'success')
+    `).bind(access.id, access.user_id, access.product_id, ip, ua).run().catch(() => { /* 로그 실패 무시 */ })
 
     // Phase 1: 단순 URL 반환 (Phase 2 에서 R2 signed URL 로 교체)
     // content_url 이 외부 URL (YouTube/Vimeo) 면 그대로, R2 면 임시 signed URL 발급 예정
