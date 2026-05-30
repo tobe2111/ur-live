@@ -60,6 +60,26 @@
 - ✅ **이상적**: redemption 동시성(CAS `group-buy-voucher.routes.ts:53`), 재고 atomic 예약(`group-buy.routes.ts:214`)+발급 롤백+idempotency, 사용 후 정산(escrow→payable).
 - ❌ **미완성**: "미달 / 미사용 / 취소"의 자금 흐름 (위 Critical 4건). 해피패스는 이상적이나 비-해피패스가 핵심인데 가장 약함.
 
+### 🔬 2026-05-30 심층 2차 감사 — 추가 발견 + 처리
+
+자금·동시성 전수 + 미문서화 부채 스캔 (서브에이전트 2종). 위 1차 라운드에 없던 신규 항목:
+
+| 항목 | 위치 | 상태 |
+|---|---|---|
+| 🔴 **공구 Toss 카드 voucher.order_id 에 문자열(`GB-…`) 저장** — refund JOIN 전부 실패 → 카드 환불 영구 불가 | `group-buy.routes.ts:947` | ✅ **Fixed** — `RETURNING id` 정수 바인드 (딜 경로 복제) |
+| 🔴 **공구 Toss voucher `applied_price`/`expires_at` 누락** — 무한 만료 안 됨 + 정산 fallback 불일치 | `group-buy.routes.ts:944` | ✅ **Fixed** — 딜 경로와 동일 컬럼 저장 |
+| 🟡 **공구 Toss confirm 멱등성 가드 없음** — 새로고침 시 voucher 2배 발급 + 카운터 2배 | `group-buy.routes.ts:893` | ✅ **Fixed** — `payment_key` 기존 주문 조회 단락 |
+| 🔴 **숙소 오버부킹** — `MAX(0,count-1)` clamp(거부 안 함), 결제는 재고검사 前 캡처 → 실제 이중예약 | `payment.routes.ts:317`, `stays-public.routes.ts:850` | ✅ **Fixed `[UNLOCK]`** — `WHERE available_count>0` 가드 + meta.changes + 롤백 + 자동 환불 |
+| 🟡 레이트리밋 부재 (경매 입찰 / 타임딜 claim / 디지털 access) | `auction`·`timedeal`·`digital` routes | ✅ **Fixed** — `rateLimit()` 추가 |
+| 🟡 벌크업로드 음수 가격 허용 (`parseInt('-500')`) | `bulk-upload.routes.ts:132` | ✅ **Fixed** — price/stock/originalPrice 범위 검증 |
+| 🟢 디지털 다운로드 캡 TOCTOU (read-then-write) | `digital.routes.ts:99` | ✅ **Fixed** — `WHERE download_count<download_limit` 원자 가드 |
+| 🟢 kt-alpha sync-page `(err as Error).message` 누출 | `admin-kt-alpha.routes.ts:930` | ✅ **Fixed** — `safeError()` |
+
+**미처리 (후속 부채로 기록)**:
+- 🟢 **공구 Toss confirm 정산 일관성** — `/confirm-toss` 가 `donations`(commission) row + `recordLedger` + 인플 attribution 미기록 (딜 경로엔 있음). 셀러 지급 자체는 `vouchers.applied_price` 로 정상(auto-settlement)이나 ledger 정합 검증·커미션 집계엔 안 잡힘. → **이상적 해결은 deal+toss 후처리를 단일 helper 로 추출**(현재는 working 딜 경로 회귀 리스크로 보류).
+- 🟢 **숙소 예약-hold 모델 부재** — `stay_bookings status='pending'` 이 `available_count` 미차감 → 결제 전까지 무제한 pending 누적 가능. 현재 유일 enforce 지점은 결제시 차감(위 Fixed). 더 견고히 하려면 pending 시 hold 차감 + TTL 해제 cron.
+- ⚪ `appointments.routes.ts:105` `parseInt(slotId)` 트레일링 garbage 허용 (소유권 스코프라 영향 낮음).
+
 ---
 
 ## ✅ 2026-05-22 — 정책 중앙화 + 부채 정리 라운드 (Done)
