@@ -21,8 +21,9 @@
 | **즉시판매 vs 미달환불 모델 모순** — 즉시 발급(`group-buy.routes.ts:491`) + 미달 환불 cron 공존 | 아키텍처 | ✅ **확정 (사용자 결정 A: 즉시판매)** — 목표는 마케팅 표시용, 미달 환불 cron(`scheduled-cleanup.ts` 22b) 제거 |
 | **공구 미달 cron 카드(토스) 환불 누락 — 실제 금전 손실** | `cron/scheduled-cleanup.ts:831` | ✅ **해소** — 모델 A 확정으로 cron 자체 제거(미달=환불 아님). 개별 취소는 셀러/어드민 수동환불로 |
 | **어드민 강제환불도 카드(토스) 누락 (동일 버그)** — 모델 A에서 메인 공구 주 환불경로 | `group-buy-admin.routes.ts:239` | ✅ **Fixed** — `tossCancelPayment()` 분기 추가 (셀러 경로와 동일) |
-| **낙전(breakage) 정책 부재** — 미사용·만료 voucher의 돈이 정산/환불 어디에도 미정의 | `auto-settlement.ts`(used만 집계) + `cron/stay-voucher-expire.ts`(알림만) | ⏳ 정책 결정 대기 (즉시판매 확정 → 일반 상품권 낙전과 동일 처리 검토: 셀러/플랫폼 귀속 명문화) |
-| **환불 금액 정가(`product.price`) 과다환불** — 티어/프로모 할인가(`vouchers.applied_price`) 무시 | `group-buy-seller.routes.ts:92`, `group-buy-admin.routes.ts:237` ("BUG #45 패턴") | ⏳ `applied_price` 기준 통일 필요 |
+| **낙전(breakage) 정책 부재** — 미사용·만료 voucher의 돈이 정산/환불 어디에도 미정의 | `auto-settlement.ts`(used만 집계) | ✅ **Fixed/명문화** — 정책 = "만료 시 고객 환불"(사용 후 정산 모델 정합). `handleExpiredVoucherRefunds` 가 이미 deal_points 환불 → **토스 카드 낙전 환불 추가**. 셀러/플랫폼 낙전수입 없음. 가이드(`guide-seed-admin`) 명문화 |
+| **환불 금액 정가(`product.price`) 과다환불** — 티어/프로모 할인가(`vouchers.applied_price`) 무시 | `auto-settlement.ts`, `group-buy-seller.routes.ts`, `group-buy-admin.routes.ts` | ✅ **Fixed** — 3개 환불 경로(낙전 cron + 셀러/어드민 수동) 모두 `applied_price>0 ? applied_price : price` 통일. ledger/딜/토스/알림 금액 일괄 |
+| **🆕 정산 매출도 정가(`p.price`) 기준 — 티어 할인건 셀러 과다정산(플랫폼 손실)** | `auto-settlement.ts:66` `totalRevenue=sum(p.price)` | ⏳ **셀러 정산액 변동 → 사용자 승인 필요**. 고객은 `applied_price` 결제, 셀러는 `price` 정산. 환불은 통일했으나 정산 매출 기준 미변경(payout 영향 민감, 별도 결정) |
 | **미인증 카카오톡 푸시 스팸 벡터** — auth/rate-limit 둘 다 없음 | `kakao-social.routes.ts:172` `/message/send-to-subscribers` | ⏳ `requireSeller()`+소유권+rate-limit |
 
 ### 🟡 High

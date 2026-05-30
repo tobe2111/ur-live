@@ -221,8 +221,8 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
     const { results: vouchers } = await DB.prepare(
-      "SELECT v.id, v.order_id, v.user_id, o.payment_method, o.payment_key FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
-    ).bind(productId).all<{ id: number; order_id: number | null; user_id: string; payment_method: string | null; payment_key: string | null }>()
+      "SELECT v.id, v.order_id, v.applied_price, v.user_id, o.payment_method, o.payment_key FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
+    ).bind(productId).all<{ id: number; order_id: number | null; applied_price: number | null; user_id: string; payment_method: string | null; payment_key: string | null }>()
 
     let refundCount = 0
     const refundedUsers = new Set<string>()
@@ -231,13 +231,15 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
         "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
       ).bind(v.id).run()
       if ((cas.meta?.changes ?? 0) === 0) continue
+      // 🛡️ 2026-05-30: 환불 금액 = 실제 결제가(applied_price). 미존재 시 정가 fallback — 과다환불 방지.
+      const refundAmount = Number(v.applied_price) > 0 ? Number(v.applied_price) : product.price
       // 🛡️ 2026-05-21 Phase D-3: ledger reverse 자동.
       try {
         const { recordRefundLedger } = await import('../../../worker/utils/ledger')
-        await recordRefundLedger(DB, { voucher_id: v.id, reason: 'admin product force refund', amount: product.price })
+        await recordRefundLedger(DB, { voucher_id: v.id, reason: 'admin product force refund', amount: refundAmount })
       } catch (e) { if (import.meta.env?.DEV) console.warn('[admin force refund ledger]', e) }
       if (v.payment_method === 'deal_points' && v.user_id) {
-        const amount = product.price
+        const amount = refundAmount
         try {
           await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
             .bind(amount, v.user_id).run()
@@ -255,7 +257,7 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
           const result = await tossCancelPayment(
             c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database },
             v.payment_key,
-            { reason: `[어드민 환불] ${product.name}: ${reason}`, amount: product.price, idempotencyKey: `voucher-${v.id}-refund` },
+            { reason: `[어드민 환불] ${product.name}: ${reason}`, amount: refundAmount, idempotencyKey: `voucher-${v.id}-refund` },
           )
           if (result.ok) {
             await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)

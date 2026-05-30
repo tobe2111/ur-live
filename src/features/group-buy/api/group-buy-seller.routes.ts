@@ -24,6 +24,7 @@ interface RefundVoucherRow {
   id: number
   user_id: string | null
   total_amount: number
+  applied_price: number | null
   payment_method: string | null
   order_id: number | null
 }
@@ -60,7 +61,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
 
       // 미사용 바우처 환불 처리
       const { results: vouchers } = await DB.prepare(
-        "SELECT v.id, v.order_id, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
+        "SELECT v.id, v.order_id, v.applied_price, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
       ).bind(productId).all<RefundVoucherRow>()
 
       let refundCount = 0
@@ -71,16 +72,19 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
         ).bind(v.id).run()
         if ((casRes.meta?.changes ?? 0) === 0) continue
 
+        // 🛡️ 2026-05-30: 환불 금액 = 실제 결제가(applied_price). 미존재 시 정가(product.price) fallback.
+        //   기존엔 정가로 환불 → 티어/프로모 할인 결제건 과다환불. (BUG #45: total_amount 사용 금지 — voucher 1건당)
+        const refundAmount = Number(v.applied_price) > 0 ? Number(v.applied_price) : product.price
+
         // 🛡️ 2026-05-21 Phase D-3: 환불 시 ledger reverse entry 자동 (멱등).
         //   기존 voucher_used entry 가 있어도 없어도 OK (미사용 voucher 도 entry 0).
-        //   환불 amount 는 product.price (BUG #45 패턴 — total_amount 아님).
         c.executionCtx?.waitUntil((async () => {
           try {
             const { recordRefundLedger } = await import('../../../worker/utils/ledger')
             await recordRefundLedger(DB, {
               voucher_id: v.id,
               reason: '셀러/어드민 환불 (group-buy cancellation)',
-              amount: product.price,
+              amount: refundAmount,
             })
           } catch (e) { if (import.meta.env?.DEV) console.warn('[refund ledger]', e) }
         })())
@@ -92,15 +96,15 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
             const user = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(v.user_id).first<{ phone: string }>()
             if (!user?.phone) return
             const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-            const amount = product.price.toLocaleString('ko-KR')
+            const amount = refundAmount.toLocaleString('ko-KR')
             const msg = `[유어딜] 환불 완료 — ${product.name}\n${amount}원이 환불 처리되었습니다.\n(딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)`
             await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, user.phone, 'voucher_refunded', msg)
           } catch (e) { if (import.meta.env?.DEV) console.warn('[refund alimtalk]', e) }
         })())
 
-        // 딜 결제건 1 voucher 당 product.price 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
+        // 딜 결제건 1 voucher 당 applied_price(실제 결제가) 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
         if (v.payment_method === 'deal_points' && v.user_id) {
-          const amount = product.price
+          const amount = refundAmount
           await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
             .bind(amount, v.user_id).run()
           await DB.prepare(
@@ -116,7 +120,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
               const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
               const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database }, orderRow.payment_key, {
                 reason: `공동구매 미달성 환불: ${product.name}`,
-                amount: product.price,
+                amount: refundAmount,
                 idempotencyKey: `voucher-${v.id}-refund`,
               })
               if (result.ok) {

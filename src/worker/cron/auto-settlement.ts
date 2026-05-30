@@ -135,8 +135,8 @@ export async function handleExpiredVoucherRefunds(env: Env) {
     // 🛡️ 2026-04-22: LIMIT 5000 추가 — 수만 건 expired voucher 시 cron hang/OOM 방어.
     // 다음 cron 주기에 나머지 처리 (idempotent).
     const expired = await DB.prepare(`
-      SELECT v.id, v.code, v.order_id, v.product_id,
-             o.user_id, o.payment_method, p.price, p.name as product_name
+      SELECT v.id, v.code, v.order_id, v.product_id, v.applied_price,
+             o.user_id, o.payment_method, o.payment_key, p.price, p.name as product_name
       FROM vouchers v
       JOIN orders o ON v.order_id = o.id
       JOIN products p ON v.product_id = p.id
@@ -164,18 +164,25 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       }
       expireCount++;
 
+      // 🛡️ 2026-05-30 낙전(breakage) 정책 = "만료 시 고객 환불" (즉시판매 모델 정합).
+      //   환불 금액은 실제 결제가(applied_price). 미존재 시 정가(price) fallback — 과다환불 방지.
+      //   BUG #45 패턴: total_amount(주문 전체) 금지 — voucher 1건당 applied_price.
+      const refundAmount = Number(voucher.applied_price) > 0
+        ? Number(voucher.applied_price)
+        : Number(voucher.price || 0);
+
       // Refund deal points if paid with deal_points — user_points 테이블 사용
-      if (voucher.payment_method === 'deal_points' && voucher.user_id && voucher.price) {
+      if (voucher.payment_method === 'deal_points' && voucher.user_id && refundAmount > 0) {
         try {
           await ensureUserPointsTable(DB);
           const existingPts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
             .bind(voucher.user_id).first<{ balance: number }>();
           if (existingPts) {
             await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
-              .bind(voucher.price, voucher.user_id).run();
+              .bind(refundAmount, voucher.user_id).run();
           } else {
             await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)')
-              .bind(voucher.user_id, voucher.price, voucher.price).run();
+              .bind(voucher.user_id, refundAmount, refundAmount).run();
           }
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement user_points]', e);
@@ -183,7 +190,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         // Best-effort legacy column sync
         try {
           await DB.prepare("UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?")
-            .bind(voucher.price, voucher.user_id).run();
+            .bind(refundAmount, voucher.user_id).run();
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement deal_balance]', e);
         }
@@ -196,10 +203,45 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             VALUES (?, 'user', 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
           `).bind(
             voucher.user_id,
-            `바우처가 만료되어 ${Number(voucher.price ?? 0).toLocaleString('ko-KR')}딜 포인트가 환불되었습니다 (${voucher.product_name})`
+            `바우처가 만료되어 ${refundAmount.toLocaleString('ko-KR')}딜 포인트가 환불되었습니다 (${voucher.product_name})`
           ).run();
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement notifications insert]', e);
+        }
+      }
+      // 🛡️ 2026-05-30: 토스(카드) 결제 낙전 환불 — 기존엔 deal_points 만 환불되어
+      //   카드 결제 미사용 만료건이 환불 누락(금전 손실)됐음. tossCancelPayment 는 toss-gateway SSOT wrapper.
+      //   실패 시 toss_refund_failures 에 기록 → toss-refund-retry cron 재시도.
+      else if ((voucher.payment_method === 'toss' || voucher.payment_method === 'CARD')
+               && voucher.order_id && voucher.payment_key && refundAmount > 0) {
+        try {
+          const { tossCancelPayment } = await import('../utils/toss-refund');
+          const result = await tossCancelPayment(
+            env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database },
+            voucher.payment_key as string,
+            {
+              reason: `바우처 만료 환불: ${voucher.product_name}`,
+              amount: refundAmount,
+              idempotencyKey: `voucher-${voucher.id}-refund`,
+            },
+          );
+          if (result.ok) {
+            await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(voucher.order_id).run().catch(() => null);
+            refundCount++;
+            try {
+              await DB.prepare(`
+                INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
+                VALUES (?, 'user', 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
+              `).bind(
+                voucher.user_id,
+                `바우처가 만료되어 ${refundAmount.toLocaleString('ko-KR')}원이 환불 처리되었습니다 — 카드 환불은 영업일 기준 3~5일 소요 (${voucher.product_name})`
+              ).run();
+            } catch (e) { if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement toss notif]', e); }
+          } else {
+            logError('[Cron] expired voucher toss refund failed', { voucher_id: voucher.id, error_code: result.error_code });
+          }
+        } catch (e) {
+          if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement toss refund]', e);
         }
       }
 
