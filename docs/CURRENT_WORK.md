@@ -1,10 +1,14 @@
 # 🚧 진행 중 작업
 
-## 🟡 2026-05-30 — 공동구매 = 즉시판매 모델 (설계 확정 대기)
-- 결정: 경제=즉시판매(환불마찰0·즉시발급), 이름=공동구매 유지, 가격=**그룹가 즉시 단일적용**(동적 tier 제거)
-- 설계안: `docs/design/groupbuy-instant-sale.md` (구현 전, 파일별 계획+잠금 표기 완료)
-- **사용자 확인 대기**: ① 단일가 A1(price 유지) vs **A2(최대 tier 즉시 적용, 권장)** ② `group-buy-public.routes.ts` [UNLOCK_LOADING] 허가
-- 핵심 변경 예정: `group-buy.routes.ts:221-279` 인원기반 tier 제거, 카운터/목표/마감 → 연출 전용
+## 🟢 2026-05-30 — 공동구매 = 즉시판매 단일가 모델 (A2 구현 완료, 가격 코어)
+- 결정 확정: 경제=즉시판매, 이름=공동구매 유지, 가격=**A2 최대 tier 즉시 단일 적용** (사용자 승인)
+- 설계안: `docs/design/groupbuy-instant-sale.md`
+- 구현 (`[UNLOCK_LOADING]` 사용자 허가, CLAUDE.md audit log 기록):
+  - `helpers.ts` `maxTierDiscount()` 추가 / `group-buy.routes.ts:223` join 가격 = maxTier
+  - `group-buy-public.routes.ts` 상세 current_discount_pct 고정 + next_tier=null, 리스트 current_price enrich (캐시 헤더 불변)
+  - `GroupBuyDetailPage.tsx` 단계별 tier 사다리 + "N명 더 모이면 할인 시작!" 제거 → 정직한 단일가 안내
+- tsc 0 / schema·status·sql 검증 통과
+- **후속(별도 PR)**: 셀러 상품등록 폼 tier→단일 공구가 입력 전환 + i18n + 가이드(guide-seed) 동기화, 사용자 셀프취소/청약철회, breakage 귀속 정책
 
 **최종 업데이트**: 2026-05-28 (서비스 모델/정산 통합 + SSR 마이그레이션)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8` (서비스모델/정산) · `claude/vibrant-feynman-m3X3m` (SSR)

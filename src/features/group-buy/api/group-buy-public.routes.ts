@@ -19,7 +19,7 @@ import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
-import { ensureTables, calcTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
+import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -174,7 +174,18 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* graceful */ }
 
-    return c.json({ success: true, data: results })
+    // 🛡️ 2026-05-30: 즉시판매 단일가 모델 (A2) — 카드도 최대 tier 할인 반영한 공구가 전송.
+    //   AS-IS: 리스트는 price(기준가) 만 보내 카드가 tier 미반영 → 상세(할인가)와 불일치.
+    //   current_price = round(price × (1 - maxTier)) 주입. 카드는 current_price ?? price 사용.
+    //   캐시 헤더(Cache-Control/CDN-Cache-Control) 불변 — body enrich 만. design/groupbuy-instant-sale.md
+    const mapped = (results as Array<Record<string, unknown>>).map((p) => {
+      const md = maxTierDiscount((p.group_buy_tiers as string | null) ?? null)
+      if (md <= 0) return p
+      const base = Number(p.price) || 0
+      return { ...p, current_price: Math.round(base * (1 - md / 100)), current_discount_pct: md }
+    })
+
+    return c.json({ success: true, data: mapped })
   })
 
   // ── GET /products/:id — 상세 ──
@@ -237,8 +248,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
-    // 🛡️ 2026-05-15: 티어 정보 + 다음 tier 까지 남은 인원 함께 반환
-    const tierInfo = calcTierDiscount(product.group_buy_tiers, Number(product.group_buy_current ?? 0))
+    // 🛡️ 2026-05-30: 즉시판매 단일가 모델 (A2) — 인원 무관 최대 tier 할인을 고정 적용.
+    //   AS-IS(calcTierDiscount, 인원 기반 동적 인하 + next_tier 안내) 제거 → 모두 동일 공구가.
+    //   상세 unitPrice = price × (1 - current_discount_pct) 는 클라이언트에서 그대로 → 단일가.
+    //   design/groupbuy-instant-sale.md
+    const fixedDiscountPct = maxTierDiscount(product.group_buy_tiers)
 
     // 🛡️ 2026-05-27 (loading P1): tiers JSON 을 서버에서 미리 parse — 클라이언트 JSON.parse 제거 + 응답 이스케이프 절감.
     let parsedTiers: Array<{ min: number; discount_pct: number }> | null = null
@@ -256,9 +270,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       data: {
         ...product,
         group_buy_tiers: parsedTiers,  // string → array (호환: 클라이언트 useMemo 가 둘 다 handle)
-        current_discount_pct: tierInfo.discount_pct,
-        next_tier: tierInfo.next_tier,
-        next_tier_remaining: tierInfo.next_tier ? Math.max(0, tierInfo.next_tier.min - Number(product.group_buy_current ?? 0)) : null,
+        current_discount_pct: fixedDiscountPct,  // 🛡️ 2026-05-30: 단일가 — 인원 무관 고정
+        next_tier: null,                          // 🛡️ 2026-05-30: 동적 인하 제거 (즉시판매)
+        next_tier_remaining: null,
       },
     })
   })

@@ -258,17 +258,8 @@ export default function GroupBuyDetailPage() {
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
   }, [detail?.group_buy_status, productId])
 
-  const tiers = useMemo(() => {
-    const raw = detail?.group_buy_tiers
-    if (!raw) return []
-    // 🛡️ 2026-05-27: 서버가 미리 parse 한 array 면 그대로 (정렬도 서버에서 완료).
-    //   구 응답 (stale edge cache) 은 string — JSON.parse fallback.
-    if (Array.isArray(raw)) return raw
-    try {
-      const arr = JSON.parse(raw) as Array<{ min: number; discount_pct: number }>
-      return Array.isArray(arr) ? arr.sort((a, b) => a.min - b.min) : []
-    } catch { return [] }
-  }, [detail?.group_buy_tiers])
+  // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 단계별 tier 사다리 UI 제거 (design/groupbuy-instant-sale.md).
+  //   공구가는 인원 무관 고정(최대 할인 적용)이라 group_buy_tiers 렌더링 불필요.
 
   const progress = detail && detail.group_buy_target > 0
     ? Math.min(100, (detail.group_buy_current / detail.group_buy_target) * 100)
@@ -539,7 +530,7 @@ export default function GroupBuyDetailPage() {
         </button>
         <KakaoShareButton
           title={`${detail.name} 공구 참여하기`}
-          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '단계별 할인'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
           imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
           link={shareLink}
           buttonText="나도 참여하기"
@@ -684,38 +675,18 @@ export default function GroupBuyDetailPage() {
               />
             </div>
 
-            {detail.next_tier_remaining && detail.next_tier_remaining > 0 && (
+            {/* 🛡️ 2026-05-30: 즉시판매 단일가 — 인원 기반 "할인 시작!" / 단계별 사다리 제거.
+                공구가는 이미 최대 할인이 적용된 고정가 (design/groupbuy-instant-sale.md). */}
+            {detail.current_discount_pct > 0 && (
               <p className="text-[11px] text-pink-600 mt-2 flex items-center gap-1 font-medium">
                 <Sparkles className="w-3 h-3" />
-                {detail.next_tier_remaining}명 더 모이면 {detail.next_tier?.discount_pct}% 할인 시작!
+                최대 {detail.current_discount_pct}% 할인된 공구가가 지금 바로 적용돼요
               </p>
             )}
-            {detail.group_buy_target - detail.group_buy_current === 1 && (
-              <p className="text-[11px] text-red-600 mt-2 font-bold animate-pulse">🔥 1명만 더 모이면 공구 성공!</p>
+            {detail.group_buy_target > 0 && detail.group_buy_target - detail.group_buy_current === 1 && (
+              <p className="text-[11px] text-red-600 mt-2 font-bold animate-pulse">🔥 1명만 더 모이면 목표 달성!</p>
             )}
           </div>
-
-          {/* 티어 시각화 */}
-          {tiers.length > 0 && (
-            <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
-              <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-2">🎯 단계별 할인</p>
-              <div className="space-y-1.5">
-                {tiers.map((tier, idx) => {
-                  const reached = detail.group_buy_current >= tier.min
-                  return (
-                    <div key={idx} className={`flex items-center justify-between px-3 py-2 rounded-lg ${reached ? 'bg-pink-50 border border-pink-200' : 'bg-gray-50'}`}>
-                      <span className={`text-xs ${reached ? 'text-pink-700 font-bold' : 'text-gray-500'}`}>
-                        {reached ? '✅ ' : ''}{tier.min}명 모이면
-                      </span>
-                      <span className={`text-sm font-bold ${reached ? 'text-pink-600' : 'text-gray-400'}`}>
-                        -{tier.discount_pct}%
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 참여자 아바타 */}

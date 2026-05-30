@@ -20,7 +20,7 @@ import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 // 🛡️ 2026-05-15 (TD-G01 3단계): helper / sub-router 분리.
 import {
   ensureTables,
-  calcTierDiscount,
+  maxTierDiscount,
   generateVoucherCode,
   generateUniqueVoucherCode,
   getSellerCommissionRate,
@@ -218,10 +218,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       return c.json({ success: false, error: '재고가 부족합니다' }, 409)
     }
 
-    // 🛡️ 2026-05-15: 티어 할인 적용 — 현재 group_buy_current 기준 (이번 참여자 포함 전).
-    //   join 직후 increment 되면서 다음 참여자부터 새 tier 적용 가능 (자연스러운 dynamic pricing).
-    const currentTier = calcTierDiscount(product.group_buy_tiers, Number(product.group_buy_current ?? 0))
-    const tierDiscountPct = currentTier.discount_pct
+    // 🛡️ 2026-05-30: 즉시판매 단일가 모델 (A2) — 인원 무관 최대 tier 할인을 모두에게 즉시 적용.
+    //   AS-IS(calcTierDiscount, 인원 늘수록 깎임) 는 "먼저 산 사람이 더 비쌈" 모순 → 제거.
+    //   design/groupbuy-instant-sale.md 참조. 공구가 = price × (1 - maxTier). promo 는 그대로 cascade.
+    const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
 
     // 🛡️ 2026-05-15: Promo 코드 추가 할인 — 셀러 자체 발급, audience/한도/만료 검증.
     //   여기서 검증 + 즉시 used_count 증가 (race 방어). 차감 후 정상 응답 못 받으면 외부 catch 가 rollback.

@@ -166,6 +166,21 @@ export function calcTierDiscount(
 }
 
 /**
+ * 🛡️ 2026-05-30: 즉시판매 단일가 모델 (공동구매 = 즉시판매, design/groupbuy-instant-sale.md).
+ *   인원수와 무관하게 **최대 tier 할인**을 처음부터 모두에게 적용 (A2 — 그룹가 즉시 단일 적용).
+ *   calcTierDiscount(인원 기반 동적 인하) 를 대체 — "먼저 산 사람이 더 비쌈" 모순 제거.
+ *   tiers null/empty → 0 (셀러가 price 를 단일 공구가로 직접 설정한 신규 모델).
+ */
+export function maxTierDiscount(tiersJson: string | null): number {
+  if (!tiersJson) return 0
+  try {
+    const tiers = JSON.parse(tiersJson) as Array<{ min: number; discount_pct: number }>
+    if (!Array.isArray(tiers) || tiers.length === 0) return 0
+    return tiers.reduce((max, t) => Math.max(max, Number(t.discount_pct) || 0), 0)
+  } catch { return 0 }
+}
+
+/**
  * 바우처 코드 생성 — 'UR-XXXX-XXXX' (8 chars + dash, 32^8 = 1.1조 가능).
  * 🛡️ Math.random → crypto.getRandomValues (guessable code 방어).
  */

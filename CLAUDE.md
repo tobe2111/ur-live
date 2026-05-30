@@ -104,6 +104,12 @@
   - 잠금 라우트 SELECT 에 dominant_color 추가 (group-buy-public.routes / ProductRepository LIST_COLUMNS) — 추가만, Cache-Control 등 기존 잠금 동작 불변
   - GroupBuyFeedCard / VouchersPage / BrowsePage 카드: `p.dominant_color || 카테고리 색` fallback + onLoad 백필
   - 신규 public endpoint `POST /api/products/dominant-color` (hex 검증 + NULL 일 때만 UPDATE + rate limit)
+- 2026-05-30 `[UNLOCK_LOADING]` 공동구매 = 즉시판매 단일가 모델 (A2, 사용자 허가) — 동적 tier 제거.
+  - 배경/설계: `docs/design/groupbuy-instant-sale.md`. 경제=즉시판매, 이름=공동구매 유지, 가격=인원 무관 최대 tier 할인 즉시 단일 적용.
+  - `group-buy-public.routes.ts`: 상세 `current_discount_pct = maxTierDiscount`(고정), `next_tier/next_tier_remaining = null`. 리스트 응답에 `current_price` enrich. **Cache-Control / CDN-Cache-Control / tiers array parse 불변** (body enrich + 할인율 의미만 변경).
+  - `helpers.ts`: `maxTierDiscount()` 추가 (calcTierDiscount 는 존치 — 테스트/하위호환).
+  - `group-buy.routes.ts:223`: join 가격 = `maxTierDiscount` (비잠금 파일).
+  - `GroupBuyDetailPage.tsx`: 단계별 tier 사다리 UI + "N명 더 모이면 할인 시작!" 제거 → 정직한 단일가 안내. CountdownRing adaptive / below-fold lazy 등 perf 락 불변.
 
 ### 2차 확장 — 추가 잠금 항목 (회귀 시 critical path 30%+ 증가 위험)
 
