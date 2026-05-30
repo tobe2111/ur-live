@@ -465,9 +465,14 @@ app.use('*', async (c, next) => {
       // 🛡️ 2026-05-27 (Step P1-2): 라이브 페이지 SSR inject — 사용자 체류 시간 큰 페이지.
       ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
     } else {
+      // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
+      //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
+      const productMatch = url.pathname.match(/^\/products\/(\d+)(?:[/?#]|$)/);
       // 🛡️ 2026-05-27: /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint 사용 → 같은 SSR slot.
       const detailMatch = url.pathname.match(/^\/(?:group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
-      if (detailMatch) {
+      if (productMatch) {
+        ssrTarget = { slot: 'PRODUCT', path: `/api/products/${productMatch[1]}` };
+      } else if (detailMatch) {
         ssrTarget = { slot: 'DETAIL', path: `/api/group-buy/products/${detailMatch[1]}` };
       } else {
         // 🛡️ 2026-05-27: /profile/:sellerId 외 /s/:sellerId 도 동일 SellerPublicPage — SSR inject 확장.
@@ -513,7 +518,7 @@ app.use('*', async (c, next) => {
         //   이전: MAIN 150ms / DETAIL 250ms — cold 시 self-fetch-timeout → 클라가 직접 fetch → 10초+ timeout
         //   변경: MAIN 1500ms / DETAIL/SELLER 2000ms — wait 후 fresh data inject 보장.
         //   trade-off: cold 첫 사용자 1-2초 wait. warm 사용자 (99%+) 영향 0 (edge-hit 가 먼저 응답).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER') ? 2000 : 1500;
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000 : 1500;
         const ctlr = new AbortController();
         const timer = setTimeout(() => ctlr.abort(), timeoutMs);
         const selfStart = Date.now();
@@ -540,6 +545,12 @@ app.use('*', async (c, next) => {
       c.res.headers.set('X-SSR-Status', `${ssrTarget.slot}:${ssrStatus}`);
       if (timings.length > 0) c.res.headers.set('Server-Timing', timings.join(', '));
     }
+
+    // 🛡️ 2026-05-30 (loading): Early Hints — cross-origin preconnect 를 응답 Link 헤더로 송출.
+    //   index.html <head> 의 잠긴 3개 preconnect origin 과 동일(미러 — 변경 아님).
+    //   Cloudflare Early Hints(대시보드 Speed→Optimization toggle) 켜지면 103 으로 HTML 본문 전 송출(무료).
+    //   toggle off 여도 응답 헤더라 브라우저가 본문 파싱 전 preconnect 시작 → 소폭 이득, 회귀 0.
+    c.res.headers.append('Link', '<https://cdn.jsdelivr.net>; rel=preconnect; crossorigin, <https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
 
     const ssrSlot = ssrTarget?.slot ?? 'MAIN';
     const rewritten = new HTMLRewriter()

@@ -505,7 +505,7 @@ export default function VouchersPage() {
                     onMouseEnter={() => prefetchProduct(p.id)}
                     onTouchStart={() => prefetchProduct(p.id)}
                     onFocus={() => prefetchProduct(p.id)}
-                    className="text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
+                    className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
                   >
                     <div
                       className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
@@ -517,6 +517,8 @@ export default function VouchersPage() {
                           srcSet={cfSrcSet(p.image_url, 300) || undefined}
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
                           alt={p.name}
+                          width={300}
+                          height={300}
                           loading={aboveFold ? 'eager' : 'lazy'}
                           fetchPriority={aboveFold ? 'high' : 'auto'}
                           decoding="async"

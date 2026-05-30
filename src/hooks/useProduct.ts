@@ -57,6 +57,20 @@ export interface ProductOption {
   stock_quantity?: number
 }
 
+// 🛡️ 2026-05-30 (loading): 워커가 head 에 inject 한 __SSR_INITIAL_PRODUCT__ 를 읽어 즉시 first-paint.
+//   id 일치할 때만 사용 (클라 navigate 후 stale slot 오용 방지). slot 없으면 undefined → 정상 fetch.
+function readSsrProduct(productId: string | undefined): Product | undefined {
+  if (!productId || typeof document === 'undefined') return undefined
+  const el = document.getElementById('__SSR_INITIAL_PRODUCT__')
+  if (!el?.textContent) return undefined
+  try {
+    const parsed = JSON.parse(el.textContent)
+    const p = (parsed?.data ?? parsed) as Product | undefined
+    if (p && String(p.id) === String(productId)) return p
+  } catch { /* malformed slot — fall back to fetch */ }
+  return undefined
+}
+
 // 🎯 상품 상세 조회 Hook
 // 🛡️ 2026-05-24 (loading P0): staleTime override 제거 — global default (30분) 적용.
 export function useProduct(productId: string | undefined) {
@@ -68,6 +82,7 @@ export function useProduct(productId: string | undefined) {
       return response.data.data as Product
     },
     enabled: !!productId,
+    initialData: () => readSsrProduct(productId),
   })
 }
 

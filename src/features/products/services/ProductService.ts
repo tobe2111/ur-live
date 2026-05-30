@@ -64,18 +64,21 @@ export class ProductService {
       };
     }
 
-    const [products, total] = await Promise.all([
-      this.repository.findAll(filter, offset, limit),
-      this.repository.count(filter)
-    ]);
-    
+    // 🛡️ 2026-05-30 (loading): COUNT(*) 제거 — list 소비처(BrowsePage/VouchersPage)는
+    //   total 을 안 쓰고 `length === PAGE_SIZE` 로 hasMore 판정. 매 fetch COUNT 풀스캔(idx partial
+    //   미커버)이 낭비라 limit+1 fetch 로 마지막 페이지만 정확 추정(FTS 경로와 동일 패턴). D1 read 2→1.
+    const rows = await this.repository.findAll(filter, offset, limit + 1);
+    const hasMore = rows.length > limit;
+    const products = hasMore ? rows.slice(0, limit) : rows;
+    const estimatedTotal = hasMore ? offset + limit + 1 : offset + products.length;
+
     return {
       data: products,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: estimatedTotal,
+        totalPages: Math.ceil(estimatedTotal / limit)
       }
     };
   }

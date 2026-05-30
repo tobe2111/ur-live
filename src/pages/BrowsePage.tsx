@@ -512,7 +512,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                     onMouseEnter={() => prefetchProduct(product.id)}
                     onTouchStart={() => prefetchProduct(product.id)}
                     onFocus={() => prefetchProduct(product.id)}
-                    className="text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
+                    className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
                   >
                     <div
                       className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl"
@@ -524,6 +524,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                           srcSet={cfSrcSet(product.image_url, 300) || undefined}
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
                           alt={product.name || t('browse.altProduct')}
+                          width={300}
+                          height={300}
                           className="w-full h-full object-cover"
                           loading={aboveFold ? 'eager' : 'lazy'}
                           fetchPriority={aboveFold ? 'high' : 'auto'}

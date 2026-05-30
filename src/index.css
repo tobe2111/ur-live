@@ -815,3 +815,10 @@ html.dark .mobile-app-container {
   100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
 }
 
+
+/* 🛡️ 2026-05-30 (loading): 화면 밖 카드 렌더/페인트 skip → 긴 무한스크롤 목록 메인스레드 절감.
+   contain-intrinsic-size 의 auto 키워드 = 한번 렌더된 실제 크기를 기억해 스크롤 jank 최소화. */
+.ur-cv-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
