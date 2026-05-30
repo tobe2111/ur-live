@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🟡 2026-05-30 — 공동구매 = 즉시판매 모델 (설계 확정 대기)
+- 결정: 경제=즉시판매(환불마찰0·즉시발급), 이름=공동구매 유지, 가격=**그룹가 즉시 단일적용**(동적 tier 제거)
+- 설계안: `docs/design/groupbuy-instant-sale.md` (구현 전, 파일별 계획+잠금 표기 완료)
+- **사용자 확인 대기**: ① 단일가 A1(price 유지) vs **A2(최대 tier 즉시 적용, 권장)** ② `group-buy-public.routes.ts` [UNLOCK_LOADING] 허가
+- 핵심 변경 예정: `group-buy.routes.ts:221-279` 인원기반 tier 제거, 카운터/목표/마감 → 연출 전용
+
 **최종 업데이트**: 2026-05-28 (서비스 모델/정산 통합 + SSR 마이그레이션)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8` (서비스모델/정산) · `claude/vibrant-feynman-m3X3m` (SSR)
 
