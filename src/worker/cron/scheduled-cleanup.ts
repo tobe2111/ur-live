@@ -815,10 +815,10 @@ export async function handleScheduled(env: Env) {
            WHERE p.id = ?`
         ).bind(product.id).first<{ seller_id: number; user_id: string | null; seller_name: string; seller_phone: string | null }>().catch(() => null);
         const { results: vouchers } = await DB.prepare(
-          `SELECT v.id, v.user_id, o.payment_method
+          `SELECT v.id, v.order_id, v.user_id, o.payment_method, o.payment_key
            FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id
            WHERE v.product_id = ? AND v.status = 'unused'`
-        ).bind(product.id).all<{ id: number; user_id: string; payment_method: string | null }>();
+        ).bind(product.id).all<{ id: number; order_id: number | null; user_id: string; payment_method: string | null; payment_key: string | null }>();
 
         const refundedUsers = new Set<string>();
         for (const v of vouchers ?? []) {
@@ -837,6 +837,29 @@ export async function handleScheduled(env: Env) {
                 "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
               ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 자동 환불: ${product.name}`).run();
             } catch (e) { logError('[Cron] gb refund credit error', { error: String(e) }); }
+          }
+          // 🛡️ 2026-05-30: 토스(카드) 결제건 실제 환불 — 기존엔 voucher 만 refunded 마킹되고
+          //   카드 환불이 누락되어 사용자가 돈을 떼였음. 셀러 수동 환불(group-buy-seller.routes.ts:111)과 동일 패턴.
+          //   tossCancelPayment 는 toss-gateway SSOT 의 thin wrapper — 호출만 (CLAUDE.md 예외 허용).
+          else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id && v.payment_key) {
+            try {
+              const { tossCancelPayment } = await import('../utils/toss-refund');
+              const result = await tossCancelPayment(
+                env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database },
+                v.payment_key,
+                {
+                  reason: `공동구매 미달성 자동 환불: ${product.name}`,
+                  amount: product.price,
+                  idempotencyKey: `voucher-${v.id}-refund`,
+                },
+              );
+              if (result.ok) {
+                await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null);
+              } else {
+                // toss_refund_failures 에 helper 가 기록 (toss-refund-retry cron 이 재시도)
+                logError('[Cron] gb toss refund failed', { voucher_id: v.id, error_code: result.error_code });
+              }
+            } catch (e) { logError('[Cron] gb toss refund error', { voucher_id: v.id, error: String(e) }); }
           }
           if (v.user_id) refundedUsers.add(v.user_id);
           totalRefunded++;

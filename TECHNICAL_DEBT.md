@@ -8,6 +8,58 @@
 - 🟢 **Medium**: 관리 부담 / 코드 품질
 - ⚪ **Low**: cosmetic / 장기 개선
 
+---
+
+## 📊 2026-05-30 — 서비스 전반 부채 분석 라운드 (6영역 + 공구 플로우 검증)
+
+백엔드 / 보안 / 프론트엔드 / DB / 테스트·CI / 의존성 6영역 병렬 분석 + 오프라인 공동구매 자금 플로우 검증.
+
+### 🔴 Critical
+
+| 항목 | 위치 | 상태 |
+|---|---|---|
+| **공구 미달 cron 카드(토스) 환불 누락 — 실제 금전 손실** | `cron/scheduled-cleanup.ts:831` (deal_points만 환불) | ✅ **Fixed (commit 본 라운드)** — `tossCancelPayment()` 분기 추가, 셀러 수동환불(`group-buy-seller.routes.ts:111`)과 동일 패턴 |
+| **낙전(breakage) 정책 부재** — 미사용·만료 voucher의 돈이 정산/환불 어디에도 미정의 | `auto-settlement.ts`(used만 집계) + `cron/stay-voucher-expire.ts`(알림만) | ⏳ 정책 결정 대기 (낙전환불 / 셀러귀속 / 플랫폼귀속) |
+| **즉시판매 vs 미달환불 모델 모순** — 즉시 발급(`group-buy.routes.ts:491`) + 미달 환불 cron(`scheduled-cleanup.ts:796`) 공존, UX는 "보증금" 문구 | 아키텍처 | ⏳ 결제 모델 확정 대기 |
+| **환불 금액 정가(`product.price`) 과다환불** — 티어/프로모 할인가(`vouchers.applied_price`) 무시 | `scheduled-cleanup.ts:832`, `group-buy-seller.routes.ts:92` ("BUG #45 패턴") | ⏳ |
+| **미인증 카카오톡 푸시 스팸 벡터** — auth/rate-limit 둘 다 없음 | `kakao-social.routes.ts:172` `/message/send-to-subscribers` | ⏳ `requireSeller()`+소유권+rate-limit |
+
+### 🟡 High
+
+| 항목 | 위치 |
+|---|---|
+| 스키마 3중화 (migrations 191 / SSOT / repair-schema) 동기화 강제 장치 없음 + 번호 충돌 8건 + migration-status 0207–0222만 체크(최근 60개 깜깜이) + `fix_production_data.sql` 비멱등 `DELETE` 방치 | `repair-schema.routes.ts`, `internal-diagnostics.routes.ts:124`, `migrations/fix_production_data.sql` |
+| 테스트가 머지 차단 못함 — `npm test`는 main push(머지 후)만, `auto-merge-main.sh`가 CI 대기 없이 머지, 결제 핵심 테스트가 실제 소스 import 안 함(`toss-gateway.ts` 무커버리지), E2E 미실행 | `.github/workflows/{verify,main}.yml`, `scripts/auto-merge-main.sh`, `src/tests/unit/payment-*.test.ts` |
+| 클라이언트 raw `(err as Error).message` 누출 17개 파일 (`safeError` 미사용) | `seller-streams.routes.ts:132…`, `seller-profile.routes.ts:78` 등 |
+| 데이터 페칭 split-brain — 256페이지 중 239개가 React Query 우회(손수 useState/useEffect), Agency/Admin CRUD 복붙 | `src/pages/**`, `src/hooks/queries/` |
+| Toss confirm 직접 fetch (게이트웨이 우회) | `alimtalk.routes.ts:213` |
+
+### 🟢 Medium
+
+| 항목 | 위치 |
+|---|---|
+| God 파일 — youtube-live(3368) / ReelCard(1416) / BrowserBroadcaster(1185) / SellerSettlementsPage(1214) | 각 파일 |
+| CHECK 제약 미적용 (`0260` SQLite 한계로 데이터 정규화만) → status 오염 삽입 가능 | `migrations/0260` |
+| 교환권 위변조 — PIN/코드만(HMAC QR 아님), `store_verify_pin` NULL 매장은 코드만으로 사용 가능 | `group-buy-voucher.routes.ts:62` |
+| `console.*` DEV 미게이트 21건, `.catch(()=>{})` 38건(`swallow()` 우회) | frontend / worker |
+| 사용자 자발적 취소/노쇼 환불 경로 부재 (셀러/어드민/cron만) | group-buy |
+| `<div onClick>` 접근성 112건 | frontend |
+
+### ⚪ Low — 저장소 위생
+
+| 항목 | 조치 |
+|---|---|
+| `.env.production` git 추적 (VITE 시크릿) | `git rm --cached` |
+| `naver-ad-scraper/` 102MB 추적, 빌드 미참조 | 별도 repo |
+| `tsconfig.tsbuildinfo`(2.3MB) / `archive/`(14MB) / `your-homepage.html` / `.dev.vars.backup` 추적 | 정리 |
+| ESLint 고아 설정 (eslint 코어/스크립트 없음) | eslint 추가 or 제거 |
+
+### 공구 플로우 검증 결론
+- ✅ **이상적**: redemption 동시성(CAS `group-buy-voucher.routes.ts:53`), 재고 atomic 예약(`group-buy.routes.ts:214`)+발급 롤백+idempotency, 사용 후 정산(escrow→payable).
+- ❌ **미완성**: "미달 / 미사용 / 취소"의 자금 흐름 (위 Critical 4건). 해피패스는 이상적이나 비-해피패스가 핵심인데 가장 약함.
+
+---
+
 ## ✅ 2026-05-22 — 정책 중앙화 + 부채 정리 라운드 (Done)
 
 | 항목 | 상태 | 출처 |
