@@ -31,8 +31,10 @@ export async function handleAutoSettlement(env: Env) {
     } catch { /* platform_settings may not exist — use default 5% */ }
 
     // Find used vouchers not yet in any settlement, used 7+ days ago
+    // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
+    //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
     const usedVouchers = await DB.prepare(`
-      SELECT v.id, v.product_id, v.order_id, p.price, p.seller_id, p.restaurant_name,
+      SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price, p.seller_id, p.restaurant_name,
              COALESCE(p.commission_rate, ?) as commission_rate
       FROM vouchers v
       JOIN products p ON v.product_id = p.id
@@ -63,7 +65,11 @@ export async function handleAutoSettlement(env: Env) {
     const failedSellerIds: string[] = [];
     for (const [sellerId, vouchers] of Object.entries(sellerGroups)) {
       try {
-        const totalRevenue = vouchers.reduce((sum: number, v: any) => sum + (v.price || 0), 0);
+        // 실제 결제가(applied_price) 합산 — 미존재 시 정가 fallback (할인 없는 deal/레거시 voucher 무영향)
+        const totalRevenue = vouchers.reduce((sum: number, v: any) => {
+          const paid = Number(v.applied_price) > 0 ? Number(v.applied_price) : (v.price || 0);
+          return sum + paid;
+        }, 0);
         const commissionRate = vouchers[0]?.commission_rate ?? platformRate;
         // CRIT-2: standardized to Math.round() across all settlement calculations
         const commissionAmount = Math.round(totalRevenue * commissionRate / 100);
