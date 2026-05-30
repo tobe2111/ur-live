@@ -906,8 +906,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const { DB } = c.env
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
   const product = await DB.prepare(
-    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id FROM products WHERE id = ? AND is_active = 1"
-  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number }>()
+    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry FROM products WHERE id = ? AND is_active = 1"
+  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null }>()
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
   // amount 재검증 (defense-in-depth — 클라 amount 신뢰 X).
   const expectedAmount = product.price * qty
@@ -928,24 +928,48 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       tossResult.status === 'CIRCUIT_OPEN' ? 503 : 400)
   }
 
-  // 3. orders INSERT (status='PAID') + voucher 발급.
-  //    deal 흐름의 후처리 흐름을 그대로 사용 — 코드 중복 차단.
-  //    별도 helper 함수 추출은 후속 PR (현재는 직접 INSERT).
+  // 3. 멱등성 가드 (C3, 2026-05-30): 같은 paymentKey 로 이미 발급된 주문이 있으면 재발급 금지.
+  //    confirmTossPayment 는 paymentKey 기준 멱등이라 success URL 새로고침/재시도 시 ok 재반환 →
+  //    가드 없으면 voucher 2배 발급 + group_buy_current 2배 증가. 딜 경로(idempotency_key)와 동일 보호.
+  const existingOrder = await DB.prepare(
+    "SELECT id, order_number FROM orders WHERE payment_key = ? LIMIT 1"
+  ).bind(paymentKey).first<{ id: number; order_number: string }>().catch(() => null)
+  if (existingOrder) {
+    const issued = await DB.prepare("SELECT COUNT(*) AS n FROM vouchers WHERE order_id = ?")
+      .bind(existingOrder.id).first<{ n: number }>().catch(() => null)
+    return c.json({
+      success: true,
+      data: { order_number: existingOrder.order_number, qty: issued?.n ?? qty, amount: expectedAmount, idempotent: true },
+    })
+  }
+
+  // 4. orders INSERT + voucher 발급 — 딜 경로(group-buy /join)의 검증된 패턴 복제.
+  //    C1: RETURNING id 로 정수 order_id 획득 후 vouchers.order_id 에 바인드 (이전: order_number 문자열
+  //        저장 → refund JOIN(v.order_id=o.id) 전부 실패 → 카드 환불 영구 불가).
+  //    C2: applied_price + expires_at 저장 (이전: 누락 → 무한 만료 안 됨 + 정산 fallback 불일치).
+  //    NOTE: ledger/donations/인플 attribution 일관성은 후속 부채 — TECHNICAL_DEBT.md 기록.
+  //          정산 자체는 auto-settlement cron 이 vouchers.applied_price 로 동작하므로 셀러 지급은 정상.
   const orderNumber = `GB-${userId}-${Date.now()}`
+  const unitPrice = product.price                                  // 카드 경로는 정가 결제 (티어 할인 미적용)
+  const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
   try {
-    await DB.prepare(`
+    const orderInsert = await DB.prepare(`
       INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key)
       VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?)
-    `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey).run()
+      RETURNING id
+    `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey).first<{ id: number }>()
+    const newOrderId = orderInsert?.id ?? null
+    if (!newOrderId) throw new Error('order insert returned no id')
 
-    // voucher 발급 (qty 만큼) — 단순화 버전. 상세 분배 (인플 attribution 등) 는 후속.
-    for (let i = 0; i < qty; i++) {
-      const code = `V-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-      await DB.prepare(`
-        INSERT INTO vouchers (code, user_id, product_id, order_id, status, created_at)
-        VALUES (?, ?, ?, ?, 'unused', datetime('now'))
-      `).bind(code, userId, productId, orderNumber).run().catch(swallow('group-buy:confirm-toss:voucher-insert'))
-    }
+    // voucher 발급 (qty) — order_id=정수(C1) + applied_price/expires_at(C2). batch = atomic (부분발급 차단).
+    const codes = await Promise.all(Array.from({ length: qty }, () => generateUniqueVoucherCode(DB)))
+    const voucherStmts = codes.map(code =>
+      DB.prepare(`
+        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
+        VALUES (?, ?, ?, ?, ?, 0, ?)
+      `).bind(newOrderId, productId, userId, code, expiresAt, unitPrice)
+    )
+    await DB.batch(voucherStmts)
 
     // 공구 진행 카운터 +qty (atomic).
     await DB.prepare(`UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?`)
