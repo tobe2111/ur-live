@@ -834,25 +834,66 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
     }
     const tossData = tossResult.data as Record<string, unknown>
 
-    // 5. 캘린더 available_count 차감 (race condition 가드).
+    // 5. 캘린더 available_count 차감 — 원자적 오버부킹 가드.
+    //   🛡️ 2026-05-30: 기존 `MAX(0, available_count - 1)` clamp 는 재고 0 이어도 거부 안 해
+    //   마지막 방 동시 예약 시 이중 confirmed (실제 오버부킹). `available_count > 0` 가드 +
+    //   meta.changes 검사로 거부 → 부족 시 성공분 롤백 + cancelTossPayment 자동 환불.
     const nights = Math.round(
       (new Date(order.check_out_date!).getTime() - new Date(order.check_in_date!).getTime()) / 86400000,
     )
+    const securedDates: string[] = []
+    let overbooked = false
     for (let i = 0; i < nights; i++) {
       const d = new Date(new Date(order.check_in_date!).getTime() + i * 86400000)
       const ds = d.toISOString().slice(0, 10)
-      // UPSERT: row 없으면 INSERT (total_inventory - 1), 있으면 -1.
-      // 단순화: INSERT OR IGNORE + 별도 UPDATE.
+      // UPSERT: row 없으면 INSERT (total_inventory), 있으면 가드 차감.
       await c.env.DB.prepare(
         `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
          SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
       ).bind(order.room_id, order.product_id, ds, order.room_id).run().catch(() => { /* noop */ })
-      await c.env.DB.prepare(
+      const dec = await c.env.DB.prepare(
         `UPDATE product_stay_calendar
-            SET available_count = MAX(0, available_count - 1),
-                updated_at = datetime('now')
-          WHERE room_id = ? AND stay_date = ?`
-      ).bind(order.room_id, ds).run().catch(() => { /* noop */ })
+            SET available_count = available_count - 1, updated_at = datetime('now')
+          WHERE room_id = ? AND stay_date = ? AND available_count > 0`
+      ).bind(order.room_id, ds).run().catch(() => null)
+      if (dec && (dec.meta?.changes ?? 0) > 0) {
+        securedDates.push(ds)
+      } else {
+        overbooked = true
+        break
+      }
+    }
+
+    if (overbooked) {
+      // 성공분 재고 롤백.
+      for (const ds of securedDates) {
+        await c.env.DB.prepare(
+          `UPDATE product_stay_calendar SET available_count = available_count + 1, updated_at = datetime('now')
+            WHERE room_id = ? AND stay_date = ?`
+        ).bind(order.room_id, ds).run().catch(() => { /* noop */ })
+      }
+      // 결제 자동 환불 (이미 토스 승인됨).
+      try {
+        const { cancelTossPayment } = await import('../../../worker/utils/toss-gateway')
+        await cancelTossPayment({
+          env: c.env as unknown as { TOSS_SECRET_KEY?: string },
+          paymentKey,
+          cancelReason: '객실 재고 부족(오버부킹) 자동 환불',
+          idempotencyKey: `stay-overbook-refund-${orderId}`,
+        })
+      } catch { /* 환불 실패 — booking 은 취소 유지, 어드민/cron 재시도 */ }
+      // booking + order 취소 처리.
+      await c.env.DB.prepare(
+        `UPDATE stay_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
+      ).bind(order.stay_booking_id).run().catch(() => { /* noop */ })
+      await c.env.DB.prepare(
+        `UPDATE orders SET status = 'REFUNDED', payment_status = 'canceled', updated_at = datetime('now') WHERE id = ?`
+      ).bind(orderId).run().catch(() => { /* noop */ })
+      return c.json({
+        success: false,
+        error: '선택하신 날짜의 객실이 매진되었습니다. 결제는 자동 환불 처리됩니다.',
+        code: 'STAY_OVERBOOKED',
+      }, 409)
     }
 
     // 6. orders + booking 상태 갱신.

@@ -31,6 +31,7 @@
 
 ### 변경 audit log
 - 2026-05-24 초기 잠금 — commit `02be3610`, `c47e7326`, 후속
+- 2026-05-30 `[UNLOCK]` 숙소 오버부킹 원자적 가드 (사용자 허가) — `payment.routes.ts` `/confirm` 의 stay-calendar 차감 블록만 변경: `MAX(0, count-1)` clamp → `WHERE available_count > 0` 가드 + `meta.changes` 검사 + 부족 시 성공분 롤백 + `cancelTossPayment()` 자동 환불. **Toss confirm/amount 검증/client-key 로직은 미변경**, locked SSOT helper 는 호출만(수정 X). 동일 가드 `stays-public.routes.ts` `/stays/bookings/confirm` 에도 적용.
 
 ---
 

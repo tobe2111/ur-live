@@ -295,7 +295,75 @@ paymentsRouter.post('/confirm', async (c) => {
         }>()
         if (!booking || booking.status === 'confirmed') continue
 
-        // 상태 전환.
+        // 🛡️ 2026-05-30 [UNLOCK]: 오버부킹 원자적 가드 (사용자 허가).
+        //   기존 버그: 차감이 `MAX(0, available_count - 1)` clamp 라 재고 0 이어도 거부 안 함 →
+        //   마지막 방을 두 명이 동시 예약 시 둘 다 confirmed (결제는 이미 승인됨) → 실제 이중예약.
+        //   수정: (1) status='confirmed' 보다 차감을 먼저, (2) `available_count > 0` 가드 + meta.changes 검사,
+        //   (3) 한 박이라도 실패하면 성공분 롤백 + cancelTossPayment 자동 환불 + booking/order 취소.
+        const nights = Math.round((new Date(booking.check_out_date).getTime() - new Date(booking.check_in_date).getTime()) / 86400000)
+        const securedDates: string[] = []
+        let overbooked = false
+        for (let i = 0; i < nights; i++) {
+          const d = new Date(new Date(booking.check_in_date).getTime() + i * 86400000)
+          const ds = d.toISOString().slice(0, 10)
+          await c.env.DB.prepare(
+            `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
+             SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
+          ).bind(booking.room_id, booking.product_id, ds, booking.room_id).run().catch(() => { /* noop */ })
+          // 가드: 재고가 남아있을 때만 차감 (clamp 제거). changes===0 이면 매진.
+          const dec = await c.env.DB.prepare(
+            `UPDATE product_stay_calendar
+                SET available_count = available_count - 1, updated_at = datetime('now')
+              WHERE room_id = ? AND stay_date = ? AND available_count > 0`
+          ).bind(booking.room_id, ds).run().catch(() => null)
+          if (dec && (dec.meta?.changes ?? 0) > 0) {
+            securedDates.push(ds)
+          } else {
+            overbooked = true
+            break
+          }
+        }
+
+        if (overbooked) {
+          // (1) 성공분 재고 롤백 (재증가).
+          for (const ds of securedDates) {
+            await c.env.DB.prepare(
+              `UPDATE product_stay_calendar SET available_count = available_count + 1, updated_at = datetime('now')
+                WHERE room_id = ? AND stay_date = ?`
+            ).bind(booking.room_id, ds).run().catch(() => { /* noop */ })
+          }
+          // (2) 결제 자동 환불 (이미 토스 승인됨) — 잠긴 SSOT helper 호출.
+          try {
+            const { cancelTossPayment } = await import('../utils/toss-gateway')
+            await cancelTossPayment({
+              env: { TOSS_SECRET_KEY: tossSecretKey },
+              paymentKey,
+              cancelReason: '객실 재고 부족(오버부킹) 자동 환불',
+              idempotencyKey: `stay-overbook-refund-${order.id}`,
+            })
+          } catch (e) {
+            logError('payment.stay_overbook_refund_failed', { orderId: order.id, stayBookingId, error: String(e).slice(0, 200) })
+          }
+          // (3) booking + order 취소 처리 (status='confirmed' 미적용).
+          await c.env.DB.prepare(
+            `UPDATE stay_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
+          ).bind(stayBookingId).run().catch(() => { /* noop */ })
+          await c.env.DB.prepare(
+            `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, reason)
+             VALUES (?, ?, 'cancelled', 'system', '오버부킹 — 재고 부족 자동 환불')`
+          ).bind(stayBookingId, booking.status).run().catch(() => { /* noop */ })
+          await c.env.DB.prepare(
+            `UPDATE orders SET status = 'REFUNDED', updated_at = datetime('now') WHERE id = ?`
+          ).bind(order.id).run().catch(() => { /* noop */ })
+          logError('payment.stay_overbooked', { orderId: order.id, stayBookingId, roomId: booking.room_id })
+          return c.json({
+            success: false,
+            error: '선택하신 날짜의 객실이 매진되었습니다. 결제는 자동 환불 처리됩니다.',
+            code: 'STAY_OVERBOOKED',
+          }, 409)
+        }
+
+        // 재고 확보 성공 → status='confirmed' 전환.
         await c.env.DB.prepare(
           `UPDATE stay_bookings SET status = 'confirmed', updated_at = datetime('now') WHERE id = ?`
         ).bind(stayBookingId).run()
@@ -304,22 +372,6 @@ paymentsRouter.post('/confirm', async (c) => {
           `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, reason)
            VALUES (?, ?, 'confirmed', 'system', '결제 승인 — toss confirm')`
         ).bind(stayBookingId, booking.status).run().catch(() => { /* noop */ })
-
-        // 캘린더 available_count 차감.
-        const nights = Math.round((new Date(booking.check_out_date).getTime() - new Date(booking.check_in_date).getTime()) / 86400000)
-        for (let i = 0; i < nights; i++) {
-          const d = new Date(new Date(booking.check_in_date).getTime() + i * 86400000)
-          const ds = d.toISOString().slice(0, 10)
-          await c.env.DB.prepare(
-            `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
-             SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
-          ).bind(booking.room_id, booking.product_id, ds, booking.room_id).run().catch(() => { /* noop */ })
-          await c.env.DB.prepare(
-            `UPDATE product_stay_calendar
-                SET available_count = MAX(0, available_count - 1), updated_at = datetime('now')
-              WHERE room_id = ? AND stay_date = ?`
-          ).bind(booking.room_id, ds).run().catch(() => { /* noop */ })
-        }
 
         // 🛡️ 2026-05-18: 인플루언서 attribution 자동 INSERT (referrer_id 있을 시).
         //   stay_bookings.referrer_id + influencer_commission_amount 가 있으면
