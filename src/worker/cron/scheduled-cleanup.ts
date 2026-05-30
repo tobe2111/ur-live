@@ -793,135 +793,16 @@ export async function handleScheduled(env: Env) {
     results.consignment_pending_expired = meta.changes ?? 0;
   } catch { /* table may not exist */ }
 
-  // ── 22b. 🛡️ 2026-05-12: 미달성 공동구매 자동 환불 ──
-  //   group_buy_status='expired' 이며 group_buy_current < group_buy_target 인 상품의
-  //   미사용 바우처를 일괄 환불 + 딜 복구 + 참여자에게 푸시. 멱등 (CAS for vouchers, status='cancelled' 마킹).
-  try {
-    const { results: failedGroupBuys } = await DB.prepare(`
-      SELECT id, name, price FROM products
-      WHERE group_buy_status = 'expired'
-        AND group_buy_target > 0
-        AND group_buy_current < group_buy_target
-      LIMIT 20
-    `).all<{ id: number; name: string; price: number }>();
-
-    let totalRefunded = 0;
-    for (const product of failedGroupBuys ?? []) {
-      try {
-        // 🛡️ 2026-05-15: 셀러 정보 (Alimtalk + dashboard 알림용) 사전 조회
-        const sellerInfo = await DB.prepare(
-          `SELECT s.id AS seller_id, s.user_id, s.name AS seller_name, s.phone AS seller_phone
-           FROM products p LEFT JOIN sellers s ON s.id = p.seller_id
-           WHERE p.id = ?`
-        ).bind(product.id).first<{ seller_id: number; user_id: string | null; seller_name: string; seller_phone: string | null }>().catch(() => null);
-        const { results: vouchers } = await DB.prepare(
-          `SELECT v.id, v.order_id, v.user_id, o.payment_method, o.payment_key
-           FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id
-           WHERE v.product_id = ? AND v.status = 'unused'`
-        ).bind(product.id).all<{ id: number; order_id: number | null; user_id: string; payment_method: string | null; payment_key: string | null }>();
-
-        const refundedUsers = new Set<string>();
-        for (const v of vouchers ?? []) {
-          // CAS: unused → refunded (멱등)
-          const cas = await DB.prepare(
-            "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'"
-          ).bind(v.id).run();
-          if ((cas.meta?.changes ?? 0) === 0) continue;
-
-          if (v.payment_method === 'deal_points' && v.user_id) {
-            const amount = product.price;
-            try {
-              await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-                .bind(amount, v.user_id).run();
-              await DB.prepare(
-                "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-              ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 자동 환불: ${product.name}`).run();
-            } catch (e) { logError('[Cron] gb refund credit error', { error: String(e) }); }
-          }
-          // 🛡️ 2026-05-30: 토스(카드) 결제건 실제 환불 — 기존엔 voucher 만 refunded 마킹되고
-          //   카드 환불이 누락되어 사용자가 돈을 떼였음. 셀러 수동 환불(group-buy-seller.routes.ts:111)과 동일 패턴.
-          //   tossCancelPayment 는 toss-gateway SSOT 의 thin wrapper — 호출만 (CLAUDE.md 예외 허용).
-          else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id && v.payment_key) {
-            try {
-              const { tossCancelPayment } = await import('../utils/toss-refund');
-              const result = await tossCancelPayment(
-                env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database },
-                v.payment_key,
-                {
-                  reason: `공동구매 미달성 자동 환불: ${product.name}`,
-                  amount: product.price,
-                  idempotencyKey: `voucher-${v.id}-refund`,
-                },
-              );
-              if (result.ok) {
-                await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null);
-              } else {
-                // toss_refund_failures 에 helper 가 기록 (toss-refund-retry cron 이 재시도)
-                logError('[Cron] gb toss refund failed', { voucher_id: v.id, error_code: result.error_code });
-              }
-            } catch (e) { logError('[Cron] gb toss refund error', { voucher_id: v.id, error: String(e) }); }
-          }
-          if (v.user_id) refundedUsers.add(v.user_id);
-          totalRefunded++;
-        }
-
-        // 상품 상태를 'cancelled' 로 마킹 (멱등 가드 — 다음 cron tick 에서 재선택 안 됨)
-        await DB.prepare("UPDATE products SET group_buy_status = 'cancelled', updated_at = datetime('now') WHERE id = ?")
-          .bind(product.id).run();
-
-        // 환불받은 유저에게 알림 + 푸시
-        const { sendSystemPush } = await import('../../lib/system-push');
-        for (const uid of refundedUsers) {
-          try {
-            await DB.prepare(
-              `INSERT INTO user_notifications (user_id, type, title, message, link)
-               VALUES (?, 'group_buy_refunded', ?, ?, ?)`
-            ).bind(uid, '공구 미달성 — 환불 완료', `${product.name} 보증금이 환불됐어요`, `/user/profile`).run();
-          } catch { /* ignore */ }
-          try {
-            await sendSystemPush(env as unknown, 'user', uid, {
-              title: '공구 미달성 — 보증금 환불 완료',
-              body: `${product.name} 환불됐어요`,
-              url: '/user/profile',
-              tag: `gb-refunded-${product.id}`,
-            });
-          } catch { /* ignore */ }
-        }
-
-        // 🛡️ 2026-05-15: 셀러에게도 만료/환불 통보 (dashboard + Alimtalk)
-        if (sellerInfo?.seller_id) {
-          try {
-            // 🛡️ 2026-05-17: notifications 스키마 fix (user_type, message — body 컬럼 없음).
-            await DB.prepare(
-              `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-               VALUES (?, 'seller', 'group_buy_failed', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
-            ).bind(
-              sellerInfo.user_id ?? String(sellerInfo.seller_id),
-              '공구 미달성 — 자동 환불 완료',
-              `${product.name} 공구가 목표 미달성으로 자동 환불 처리됐습니다 (${refundedUsers.size}명, ${vouchers?.length ?? 0}건). 셀러 페이지에서 결산을 확인하세요.`
-            ).run();
-          } catch { /* notifications may not exist */ }
-
-          // Alimtalk (best-effort)
-          if (sellerInfo.seller_phone) {
-            try {
-              const { sendStoreOwnerAlimtalk } = await import('../../features/group-buy/api/group-buy.routes');
-              await sendStoreOwnerAlimtalk(
-                env as unknown as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
-                sellerInfo.seller_phone,
-                {
-                  restaurantName: sellerInfo.seller_name || '셀러',
-                  productName: `${product.name} (공구 미달성 환불)`,
-                  statsUrl: 'https://live.ur-team.com/seller/group-buy',
-                }
-              );
-            } catch { /* graceful */ }
-          }
-        }
-      } catch (e) { logError('[Cron] gb auto-refund per-product', { product_id: product.id, error: String(e) }); }
-    }
-    if (totalRefunded > 0) results.group_buys_auto_refunded = totalRefunded;
-  } catch (e) { logError('[Cron] group_buy_auto_refund error:', { error: String(e) }) }
+  // ── 22b. 🛡️ 2026-05-30: 메인 공구 미달 자동환불 제거 (즉시판매 모델 확정) ──
+  //   [모델 결정 — 사용자 명령] 메인 공구(group-buy.routes.ts)는 **즉시판매**다:
+  //   참여 즉시 결제 + 교환권 발급되어, 목표 인원(group_buy_target)은 **마케팅 표시용(소셜프루프)**일 뿐
+  //   환불 조건이 아니다. 따라서 목표 미달이어도 교환권은 유효하며 자동 환불하지 않는다.
+  //   이전(2026-05-12~05-30)의 "미달 자동환불 cron"은 즉시판매 모델과 모순되어 제거했다.
+  //
+  //   ※ 개별 딜을 취소해야 할 땐 셀러 수동환불(group-buy-seller.routes.ts) /
+  //     어드민 강제환불(group-buy-admin.routes.ts) 사용 — 둘 다 토스 카드환불 포함.
+  //   ※ 보증금형(all-or-nothing) 자동환불이 필요한 **커뮤니티 공구**는 아래 22d 블록에서 별도 처리.
+  //   ※ '미달성 시 자동환불' 마케팅(BusinessLandingPage)은 커뮤니티 공구 한정.
 
   // ── 22c. 🛡️ 2026-05-12: 바우처 만료 임박 리마인더 (D-7, D-1) ──
   //   reminder_sent_at 컬럼으로 dedup. 컬럼 없으면 ALTER 로 보장.

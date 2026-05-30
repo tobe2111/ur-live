@@ -221,8 +221,8 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
     const { results: vouchers } = await DB.prepare(
-      "SELECT v.id, v.user_id, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
-    ).bind(productId).all<{ id: number; user_id: string; payment_method: string | null }>()
+      "SELECT v.id, v.order_id, v.user_id, o.payment_method, o.payment_key FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
+    ).bind(productId).all<{ id: number; order_id: number | null; user_id: string; payment_method: string | null; payment_key: string | null }>()
 
     let refundCount = 0
     const refundedUsers = new Set<string>()
@@ -245,6 +245,24 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
             "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
           ).bind(v.user_id, amount, amount, v.user_id, `[어드민 환불] ${product.name}: ${reason}`).run()
         } catch (e) { console.error('[admin force-refund credit]', e) }
+      }
+      // 🛡️ 2026-05-30: 토스(카드) 결제건 실제 환불 — 기존엔 deal_points 만 환불되어
+      //   어드민 강제 환불 시 카드 결제건이 voucher 만 죽고 환불 누락(금전 손실)됐음.
+      //   셀러 수동환불(group-buy-seller.routes.ts:111)과 동일 패턴. tossCancelPayment 는 toss-gateway SSOT thin wrapper.
+      else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id && v.payment_key) {
+        try {
+          const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
+          const result = await tossCancelPayment(
+            c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database },
+            v.payment_key,
+            { reason: `[어드민 환불] ${product.name}: ${reason}`, amount: product.price, idempotencyKey: `voucher-${v.id}-refund` },
+          )
+          if (result.ok) {
+            await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
+          } else if (import.meta.env?.DEV) {
+            console.warn('[admin force-refund toss failed]', result.error_code)
+          }
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[admin force-refund toss]', e) }
       }
       if (v.user_id) refundedUsers.add(v.user_id)
       refundCount++
@@ -298,7 +316,7 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
           await DB.prepare(
             `INSERT INTO user_notifications (user_id, type, title, message, link)
              VALUES (?, 'group_buy_refunded', ?, ?, ?)`
-          ).bind(uid, '공구 환불 완료', `${product.name} 보증금이 환불됐어요`, '/user/profile').run()
+          ).bind(uid, '공구 환불 완료', `${product.name} 결제금액이 환불됐어요`, '/user/profile').run()
         } catch { /* ignore */ }
         try {
           await sendSystemPush(c.env, 'user', uid, {

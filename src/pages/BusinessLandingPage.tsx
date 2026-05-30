@@ -117,7 +117,7 @@ export default function BusinessLandingPage() {
             {[
               { icon: Clock, title: '3분 등록', desc: '카카오맵 검색 + 사진 자동 추천 + 가격 입력. 회원가입 없이도 OK.' },
               { icon: Zap, title: '운영 마찰 0', desc: 'Magic Link 로 사장님은 클릭만. PIN, 비밀번호, 앱 설치 없음.' },
-              { icon: Shield, title: '자동 환불', desc: '미달성 시 보증금 자동 환불. 분쟁/CS 부담 없음.' },
+              { icon: Shield, title: '사용 후 정산', desc: '교환권이 실제 사용된 만큼만 정산. 노쇼·미사용 리스크 없음.' },
               { icon: TrendingUp, title: '실시간 통계', desc: '오늘 매출, 사용 voucher, 정산 예정 — 실시간 알림톡.' },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100 dark:border-[#1A1A1A]">
