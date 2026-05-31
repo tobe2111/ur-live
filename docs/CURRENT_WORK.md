@@ -8,7 +8,12 @@
   - `group-buy-public.routes.ts` 상세 current_discount_pct 고정 + next_tier=null, 리스트 current_price enrich (캐시 헤더 불변)
   - `GroupBuyDetailPage.tsx` 단계별 tier 사다리 + "N명 더 모이면 할인 시작!" 제거 → 정직한 단일가 안내
 - tsc 0 / schema·status·sql 검증 통과
-- **후속(별도 PR)**: 셀러 상품등록 폼 tier→단일 공구가 입력 전환 + i18n + 가이드(guide-seed) 동기화, 사용자 셀프취소/청약철회, breakage 귀속 정책
+- **후속 4종 완료(2026-05-30)**:
+  - ① 셀러 폼 tier 입력 제거 → 단일 공구가 안내 + i18n 6개 언어 (`SellerMealVoucherNewPage`)
+  - ② 기존 진행중 공구: 런타임 maxTierDiscount 흡수 → 백필 불필요 검증
+  - ③ 사용자 셀프 취소/청약철회: `POST /api/group-buy/voucher/:code/cancel` (본인+미사용+7일) + MyVouchersPage UI
+  - ④ breakage: `auto-settlement.ts:173` 이미 만료 시 고객환불 — 문서화만
+- **잔여 후속**: 셀러 가이드 단일가 섹션(guide-update-pending), 셀프취소 인플 clawback, 취소 알림톡
 
 **최종 업데이트**: 2026-05-28 (서비스 모델/정산 통합 + SSR 마이그레이션)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8` (서비스모델/정산) · `claude/vibrant-feynman-m3X3m` (SSR)

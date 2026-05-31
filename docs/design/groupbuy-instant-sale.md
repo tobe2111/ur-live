@@ -118,6 +118,24 @@
 ---
 
 ## 다음 액션
-- [ ] 사용자: §3.1 서브결정 **A1 vs A2** 확정
-- [ ] 사용자: `group-buy-public.routes.ts` **[UNLOCK_LOADING]** 허가 (캐시·parse 불변 조건)
-- [ ] 확정 후 구현 → 본 문서 하단에 `## ✅ 구현 완료` + commit hash
+- [x] 사용자: §3.1 서브결정 **A2 확정** (최대 tier 즉시 단일 적용)
+- [x] 사용자: `group-buy-public.routes.ts` **[UNLOCK_LOADING]** 허가
+- [x] 구현 완료 (아래)
+
+---
+
+## ✅ 구현 완료 (2026-05-30, commit `1281b8a` + 후속)
+
+### 가격 코어 (commit `1281b8a`)
+- `helpers.maxTierDiscount()` / `group-buy.routes.ts` join 가격 / `group-buy-public.routes.ts` 상세·리스트 / `GroupBuyDetailPage` UI — A2 단일가. 캐시 헤더·tiers array parse 불변.
+
+### 후속 4종 (이 커밋)
+- **① 셀러 폼**: `SellerMealVoucherNewPage.tsx` 동적 tier 입력 UI(toggle + 3단계 min/discount) + 거짓 카피("차액 환불 자동정산") 제거 → 단일 공구가 안내 박스. 제출 `group_buy_tiers: null`. i18n `seller.mealVoucher.singlePrice*` 6개 언어 추가. (수정 폼엔 원래 tier 없음)
+- **② 기존 진행중 공구**: 런타임 `maxTierDiscount()` 가 legacy tiers 흡수 → **백필 불필요·무손실** (검증 완료). 기존 구매자 주문 불변, 신규 구매자는 최저가.
+- **③ 사용자 셀프 취소/청약철회**: `POST /api/group-buy/voucher/:code/cancel` 신규. 본인 + status='unused' + 발급 7일 이내(CAS created_at 가드). deal→지갑 즉시 / toss→cancelTossPayment(idempotencyKey 공유). 재고/참여수 원복. ledger reverse. UI: `MyVouchersPage` QR 모달에 "구매 취소(7일 이내 환불)" 버튼 + `useInvalidateMyVouchers`. (인플 clawback 은 셀러 /refund 와 동일하게 미적용 — 후속)
+- **④ breakage(낙전)**: `auto-settlement.ts:173` 이미 "만료 시 고객 환불(즉시판매 정합)" 구현됨 — 코드 변경 불필요, 문서화만.
+
+### 남은 후속 (별도 PR)
+- 셀러 가이드(guide-seed) 단일가 모델 섹션 신설 (현재 tier 관련 내용 자체가 없어 deferred — `guide-update-pending`)
+- 셀프 취소 + 만료환불 시 인플루언서 commission clawback (현재 admin force-refund 만)
+- 부분환불/취소 알림톡 통합

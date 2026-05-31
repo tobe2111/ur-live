@@ -9,7 +9,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Gift, Share2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
-import { useMyVouchers } from '@/hooks/queries'
+import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
@@ -166,6 +166,32 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   const [now, setNow] = useState(Date.now())
   const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
 
+  // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 사용자 셀프 구매취소(청약철회). 미사용 + 구매 7일 이내만.
+  const invalidateVouchers = useInvalidateMyVouchers()
+  const [cancelling, setCancelling] = useState(false)
+  const canSelfCancel = voucher.status === 'unused' && !!voucher.created_at &&
+    (Date.now() - new Date(voucher.created_at).getTime()) < 7 * 86400000
+  async function handleSelfCancel() {
+    if (cancelling) return
+    if (!window.confirm(t('voucher.cancelConfirm', { defaultValue: '이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)' }))) return
+    setCancelling(true)
+    try {
+      const res = await api.post(`/api/group-buy/voucher/${voucher.code}/cancel`)
+      if (res.data?.success) {
+        toast.success(res.data.message || t('voucher.cancelDone', { defaultValue: '구매가 취소되었습니다' }))
+        setVoucher(v => ({ ...v, status: 'refunded' }))
+        invalidateVouchers()
+      } else {
+        toast.error(res.data?.error || t('voucher.cancelFail', { defaultValue: '취소할 수 없습니다' }))
+      }
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg || t('voucher.cancelError', { defaultValue: '취소 중 오류가 발생했습니다' }))
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   // 🛡️ 2026-05-16: 실시간 status 폴링 (5초마다) — 사장님이 스캔하면 즉시 "사용 완료" 표시
   //   백엔드 atomic CAS 로 재사용 자체는 차단되어 있음. UI 가 늦게 인지하는 것만 해결.
   useEffect(() => {
@@ -286,6 +312,14 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
               <Gift className="w-3.5 h-3.5" /> {t('voucher.gift')}
             </button>
           </div>
+        )}
+
+        {/* 🛡️ 2026-05-30: 셀프 구매취소 (미사용 + 7일 이내) */}
+        {canSelfCancel && (
+          <button onClick={handleSelfCancel} disabled={cancelling}
+            className="mt-2 w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400 text-xs font-bold disabled:opacity-50">
+            {cancelling ? t('voucher.cancelling', { defaultValue: '취소 처리 중…' }) : t('voucher.selfCancel', { defaultValue: '구매 취소 (7일 이내 환불)' })}
+          </button>
         )}
 
         {/* 🛡️ 2026-05-16: 사용한 voucher 에 후기 보너스 안내 */}

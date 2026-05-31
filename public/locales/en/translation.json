@@ -2235,6 +2235,8 @@
       "loadingText": "Loading..."
     },
     "mealVoucher": {
+      "singlePriceTitle": "The group price is a single price",
+      "singlePriceDesc": "The selling price you entered applies equally to all participants. The price does not change with the number of buyers, and a voucher is issued immediately upon payment. Enter the original price too and the discount rate is shown automatically.",
       "title": "Register Meal Voucher",
       "restaurantInfo": "Restaurant Info",
       "placeAutoFilled": "{{name}} info has been auto-filled!",

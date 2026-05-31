@@ -1563,6 +1563,8 @@
       "loadingText": "Loading..."
     },
     "mealVoucher": {
+      "singlePriceTitle": "Le prix groupé est un prix unique",
+      "singlePriceDesc": "Le prix de vente que vous avez saisi s'applique également à tous les participants. Le prix ne change pas selon le nombre d'acheteurs et le bon est émis immédiatement après le paiement. Saisissez aussi le prix d'origine et le taux de remise s'affichera automatiquement.",
       "title": "Enregistrer un bon repas",
       "restaurantInfo": "Informations du restaurant",
       "placeAutoFilled": "Les informations de {{name}} ont été remplies automatiquement !",

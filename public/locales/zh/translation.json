@@ -2234,6 +2234,8 @@
       "loadingText": "Loading..."
     },
     "mealVoucher": {
+      "singlePriceTitle": "团购价为统一价格",
+      "singlePriceDesc": "您在上方输入的销售价将对所有参与者统一适用。价格不会因人数变化，付款后立即发放兑换券。同时填写原价可自动显示折扣率。",
       "title": "注册餐券",
       "restaurantInfo": "餐厅信息",
       "placeAutoFilled": "{{name}}的信息已自动填入！",

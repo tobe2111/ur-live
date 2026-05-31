@@ -314,6 +314,117 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
     }
   )
 
+  // ── POST /voucher/:code/cancel — 사용자 본인 구매 취소 / 청약철회 (미사용 + 7일 이내) ──
+  // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 결제 즉시 교환권 확정 발급이라 사용자 셀프 취소 경로 필요.
+  //   전자상거래법 청약철회(7일). 본인 voucher + status='unused' + 발급 7일 이내만.
+  //   환불은 셀러 /refund 패턴 mirror: deal→지갑 즉시, toss→cancelTossPayment(영업일 3~5일).
+  //   idempotencyKey 는 voucher-${id}-refund (셀러/만료 cron 과 공유 → 동일 voucher 이중환불 방어).
+  //   ⚠️ 인플루언서 commission clawback 은 셀러 /refund 와 동일하게 미적용 (후속 — admin force-refund 만 처리).
+  router.post(
+    '/voucher/:code/cancel',
+    rateLimit({ action: 'voucher_self_cancel', max: 10, windowSec: 600 }),
+    requireAuth(),
+    auditLog('group_buy.voucher.self_cancel'),
+    async (c) => {
+      const { DB } = c.env
+      const user = getCurrentUser(c)
+      if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+      const code = c.req.param('code') || ''
+      if (!/^[A-Za-z0-9-]{4,64}$/.test(code)) {
+        return c.json({ success: false, error: '잘못된 바우처 코드입니다' }, 400)
+      }
+
+      try {
+        const voucher = await DB.prepare(`
+          SELECT v.id, v.user_id, v.order_id, v.product_id, v.status, v.applied_price, v.created_at,
+                 o.payment_method, o.payment_key,
+                 p.price AS product_price, p.name AS product_name
+          FROM vouchers v
+          LEFT JOIN orders o ON o.id = v.order_id
+          LEFT JOIN products p ON p.id = v.product_id
+          WHERE v.code = ?
+        `).bind(code).first<{
+          id: number; user_id: string; order_id: number; product_id: number; status: string
+          applied_price: number | null; created_at: string
+          payment_method: string | null; payment_key: string | null
+          product_price: number; product_name: string
+        }>()
+
+        if (!voucher) return c.json({ success: false, error: '교환권을 찾을 수 없습니다' }, 404)
+
+        // 🛡️ IDOR: 본인 교환권만
+        if (String(voucher.user_id) !== String((user as { id: number | string }).id)) {
+          return c.json({ success: false, error: '본인 교환권만 취소할 수 있습니다' }, 403)
+        }
+        if (voucher.status !== 'unused') {
+          const label = voucher.status === 'used' ? '사용' : voucher.status === 'refunded' ? '환불' : '만료'
+          return c.json({ success: false, error: `이미 ${label}된 교환권입니다`, code: 'NOT_CANCELLABLE' }, 400)
+        }
+
+        // 🛡️ 청약철회 7일 — created_at 기준. CAS 에 created_at 가드 동시 적용 (race + window 동시 방어).
+        const casRes = await DB.prepare(
+          "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused' AND created_at > datetime('now', '-7 days')"
+        ).bind(voucher.id).run()
+        if ((casRes.meta?.changes ?? 0) === 0) {
+          return c.json({ success: false, error: '구매 후 7일이 지나 취소할 수 없습니다. 사용처에 직접 문의해주세요', code: 'WINDOW_EXPIRED' }, 400)
+        }
+
+        const refundAmount = Number(voucher.applied_price) > 0 ? Number(voucher.applied_price) : Number(voucher.product_price || 0)
+
+        // 재고/참여수 원복 — 이 교환권은 그룹에서 이탈 (clamp 로 음수 방어).
+        await DB.prepare(
+          "UPDATE products SET stock = stock + 1, group_buy_current = MAX(0, group_buy_current - 1), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).bind(voucher.product_id).run().catch(() => null)
+
+        // 딜 결제 — 즉시 지갑 환불
+        if (voucher.payment_method === 'deal_points' && refundAmount > 0) {
+          await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
+            .bind(refundAmount, voucher.user_id).run()
+          await DB.prepare(
+            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+          ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `구매 취소 환불: ${voucher.product_name}`).run()
+        }
+        // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일)
+        else if ((voucher.payment_method === 'toss' || voucher.payment_method === 'CARD') && voucher.order_id) {
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              if (!voucher.payment_key) return
+              const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
+              const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database }, voucher.payment_key, {
+                reason: `구매 취소(청약철회): ${voucher.product_name}`,
+                amount: refundAmount,
+                idempotencyKey: `voucher-${voucher.id}-refund`,
+              })
+              if (result.ok) {
+                await DB.prepare("UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded' WHERE id = ?").bind(voucher.order_id).run().catch(() => null)
+              }
+            } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e) }
+          })())
+        }
+
+        // ledger reverse entry (멱등)
+        c.executionCtx?.waitUntil((async () => {
+          try {
+            const { recordRefundLedger } = await import('../../../worker/utils/ledger')
+            await recordRefundLedger(DB, { voucher_id: voucher.id, reason: '사용자 구매 취소(청약철회)', amount: refundAmount })
+          } catch (e) { if (import.meta.env?.DEV) console.warn('[self-cancel ledger]', e) }
+        })())
+
+        return c.json({
+          success: true,
+          data: { refunded: refundAmount, method: voucher.payment_method === 'deal_points' ? 'deal' : 'card' },
+          message: voucher.payment_method === 'deal_points'
+            ? `${refundAmount.toLocaleString('ko-KR')}딜이 즉시 환불되었습니다`
+            : `${refundAmount.toLocaleString('ko-KR')}원이 환불 처리됩니다 (카드 영업일 기준 3~5일 소요)`,
+        })
+      } catch (err) {
+        console.error('[voucher self-cancel]', err)
+        return c.json({ success: false, error: '취소 처리 중 오류가 발생했습니다' }, 500)
+      }
+    }
+  )
+
   // ── POST /voucher/:code/partial-refund — 부분 사용 후 잔여 환불 ──
   // 🛡️ 1만원 voucher 중 5천원만 사용 → 5천원 자동 환불.
   //   유스케이스: 음식 가격이 voucher 가격보다 싸면 차액 환불.

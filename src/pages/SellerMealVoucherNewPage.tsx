@@ -52,13 +52,7 @@ export default function SellerMealVoucherNewPage() {
     // 🛡️ 2026-05-21: 지역 (region_si/region_gu) — restaurant_address 에서 자동 파싱.
     region_si: '',
     region_gu: '',
-    // 🛡️ 2026-05-15: 티어 할인 — 단계별 더 많이 모이면 더 큰 할인
-    group_buy_tiers: [
-      { min: 5, discount_pct: 5 },
-      { min: 10, discount_pct: 10 },
-      { min: 20, discount_pct: 20 },
-    ] as Array<{ min: number; discount_pct: number }>,
-    enable_tiers: false,
+    // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 입력 제거. 공구가는 price 단일 (design/groupbuy-instant-sale.md).
   })
   // 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 티어 할인 + PIN 등 부가 항목 접기.
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -202,14 +196,8 @@ export default function SellerMealVoucherNewPage() {
         // 🛡️ 2026-05-21: 지역 자동 파싱 — restaurant_address 첫 단어 = region_si.
         region_si: form.region_si || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[0]?.replace(/(특별시|광역시|특별자치시|특별자치도|도)$/, '').slice(0, 4) : null),
         region_gu: form.region_gu || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[1] || null : null),
-        // 🛡️ 2026-05-15: 티어 할인 (활성화 시에만 전송 + min 오름차순 정렬 + 유효성)
-        group_buy_tiers: form.enable_tiers
-          ? JSON.stringify(
-              form.group_buy_tiers
-                .filter(t => t.min > 0 && t.discount_pct > 0 && t.discount_pct < 100)
-                .sort((a, b) => a.min - b.min)
-            )
-          : null,
+        // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 미사용. 공구가는 price 단일 적용.
+        group_buy_tiers: null,
       }
 
       const res = await api.post('/api/seller/products', payload, { headers })
@@ -686,61 +674,15 @@ export default function SellerMealVoucherNewPage() {
                 <p className="text-[10px] text-gray-400 mt-1">바우처 발급 후 사용자에게 노출. 비워두면 매장 전화번호로 안내.</p>
               </div>
 
-              {/* 🛡️ 2026-05-15: 티어 할인 — 단계별 할인으로 전환율 부스트 */}
+              {/* 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 제거 (design/groupbuy-instant-sale.md).
+                  공구가는 위 '판매가(price)' 단일 가격으로 모든 참여자에게 동일 적용. */}
               <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">🎯 단계별 할인 (Tier)</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">더 많이 모일수록 더 큰 할인 — 입소문 효과 극대화</p>
-                  </div>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.enable_tiers}
-                      onChange={(e) => setForm(f => ({ ...f, enable_tiers: e.target.checked }))}
-                      className="sr-only peer"
-                    />
-                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                  </label>
+                <div className="bg-pink-50 border border-pink-100 rounded-lg p-3">
+                  <p className="text-sm font-bold text-gray-900">💡 {t('seller.mealVoucher.singlePriceTitle', { defaultValue: '공구가는 단일 가격이에요' })}</p>
+                  <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
+                    {t('seller.mealVoucher.singlePriceDesc', { defaultValue: '위에 입력한 판매가가 모든 참여자에게 동일하게 적용되는 공구가예요. 인원수에 따라 가격이 바뀌지 않으며, 결제 즉시 교환권이 발급됩니다. 정가(원가)를 함께 입력하면 할인율이 자동 표시돼요.' })}
+                  </p>
                 </div>
-
-                {form.enable_tiers && (
-                  <div className="space-y-2 bg-gray-50 rounded-lg p-3 mt-2">
-                    {form.group_buy_tiers.map((tier, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 w-12">{idx === 0 ? '1단계' : idx === 1 ? '2단계' : '3단계'}</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={tier.min || ''}
-                          onChange={(e) => {
-                            const next = [...form.group_buy_tiers]
-                            next[idx] = { ...next[idx], min: parseInt(e.target.value) || 0 }
-                            setForm(f => ({ ...f, group_buy_tiers: next }))
-                          }}
-                          placeholder="명수"
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-                        />
-                        <span className="text-xs text-gray-500">명 모이면</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="99"
-                          value={tier.discount_pct || ''}
-                          onChange={(e) => {
-                            const next = [...form.group_buy_tiers]
-                            next[idx] = { ...next[idx], discount_pct: parseInt(e.target.value) || 0 }
-                            setForm(f => ({ ...f, group_buy_tiers: next }))
-                          }}
-                          placeholder="%"
-                          className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
-                        />
-                        <span className="text-xs text-gray-500">% 할인</span>
-                      </div>
-                    ))}
-                    <p className="text-[10px] text-gray-400 mt-1">⚠️ 첫 참여자는 정가, tier 도달 후 참여자부터 할인 적용 (이미 결제한 사람의 차액 환불은 자동 정산일에 처리)</p>
-                  </div>
-                )}
               </div>
               </>
               )}

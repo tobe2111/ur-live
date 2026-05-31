@@ -2234,6 +2234,8 @@
       "loadingText": "Loading..."
     },
     "mealVoucher": {
+      "singlePriceTitle": "共同購入価格は単一価格です",
+      "singlePriceDesc": "上で入力した販売価格がすべての参加者に同じく適用される共同購入価格です。人数によって価格は変わらず、決済後すぐに引換券が発行されます。定価も入力すると割引率が自動表示されます。",
       "title": "食事券登録",
       "restaurantInfo": "レストラン情報",
       "placeAutoFilled": "{{name}}の情報が自動入力されました！",

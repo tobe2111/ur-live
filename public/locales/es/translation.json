@@ -1563,6 +1563,8 @@
       "loadingText": "Loading..."
     },
     "mealVoucher": {
+      "singlePriceTitle": "El precio grupal es un precio único",
+      "singlePriceDesc": "El precio de venta que ingresó se aplica por igual a todos los participantes. El precio no cambia según el número de compradores y el cupón se emite inmediatamente tras el pago. Ingrese también el precio original y la tasa de descuento se mostrará automáticamente.",
       "title": "Registrar vale de comida",
       "restaurantInfo": "Información del restaurante",
       "placeAutoFilled": "¡La información de {{name}} se ha completado automáticamente!",

@@ -2265,6 +2265,8 @@
       "loadingText": "불러오는 중..."
     },
     "mealVoucher": {
+      "singlePriceTitle": "공구가는 단일 가격이에요",
+      "singlePriceDesc": "위에 입력한 판매가가 모든 참여자에게 동일하게 적용되는 공구가예요. 인원수에 따라 가격이 바뀌지 않으며, 결제 즉시 교환권이 발급됩니다. 정가(원가)를 함께 입력하면 할인율이 자동 표시돼요.",
       "title": "식사권 등록",
       "restaurantInfo": "맛집 정보",
       "placeAutoFilled": "{{name}} 정보가 자동 입력되었습니다!",
