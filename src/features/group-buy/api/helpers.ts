@@ -7,6 +7,8 @@
 
 import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from '../../../worker/utils/swallow'
+import { recordLedger } from '../../../worker/utils/ledger'
+import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 
 const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
 
@@ -212,6 +214,94 @@ export async function clawbackVoucherCommission(
     clawed++
   }
   return clawed
+}
+
+/**
+ * 🛡️ 2026-05-31: 공구 인플루언서 referral attribution + 사용자 추천 보너스 (딜/카드 공통).
+ *   딜 경로(group-buy.routes.ts /join)의 인라인 4-account split 로직과 동일 — confirm-toss(카드)
+ *   가 동일 로직을 호출하도록 추출 (이전: 카드 결제 referral 인플 커미션 미적립 갭).
+ *   호출 전 referralInfluencerId 는 형식/자기참조/존재 검증 완료된 값이어야 함.
+ *   반환 amount 로 호출자가 sellerAmount(정산 row) 계산.
+ */
+export async function applyGroupBuyReferral(
+  DB: D1Database,
+  rates: CommissionRates,
+  p: {
+    referralInfluencerId: string
+    sellerId: number
+    productId: number
+    productName: string
+    totalAmount: number
+    orderNumber: string
+    userId: string
+    productReferralDisabled?: boolean
+  },
+): Promise<{ influencerAmount: number; userBonusAmount: number; influencerActive: boolean }> {
+  if (!p.referralInfluencerId) return { influencerAmount: 0, userBonusAmount: 0, influencerActive: false }
+
+  // 매장 marketing_enabled / 차단 / 상품 referral_disabled → 인플 비활성 (사용자 보너스는 유지).
+  const blocked = await DB.prepare(
+    "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL"
+  ).bind(p.sellerId, p.referralInfluencerId).first().catch(() => null)
+  const sellerRow = await DB.prepare(
+    `SELECT COALESCE(marketing_enabled, 1) AS marketing_enabled, referred_by_influencer, referral_bonus_until FROM sellers WHERE id = ?`
+  ).bind(p.sellerId).first<{ marketing_enabled: number; referred_by_influencer: string | null; referral_bonus_until: string | null }>().catch(() => null)
+  const influencerActive = !blocked && Number(sellerRow?.marketing_enabled ?? 1) === 1 && !p.productReferralDisabled
+
+  let effectiveInfluencerPct = 0
+  if (influencerActive) {
+    const isReferredByThis = sellerRow?.referred_by_influencer === p.referralInfluencerId
+    const referralBonusActive = !!sellerRow?.referral_bonus_until && new Date(sellerRow.referral_bonus_until) > new Date()
+    const dealRow = await DB.prepare(
+      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) LIMIT 1`
+    ).bind(p.sellerId, p.referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
+    effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
+      is_referred_by_this_influencer: isReferredByThis,
+      referral_bonus_active: referralBonusActive,
+      deal_commission_pct: dealRow?.commission_pct ?? null,
+    })
+  }
+  const influencerAmount = influencerActive ? Math.floor(p.totalAmount * effectiveInfluencerPct / 100) : 0
+  const userBonusAmount = Math.floor(p.totalAmount * rates.user_referral_bonus_pct / 100)
+
+  // 사용자 추천 보너스 (active 든 차단이든 약속한 보너스는 지급).
+  if (userBonusAmount > 0) {
+    try {
+      await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+        .bind(userBonusAmount, p.userId).run()
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+         VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+      ).bind(p.userId, userBonusAmount, userBonusAmount, p.userId, `친구 추천 보너스 (${p.productName})`, p.orderNumber).run()
+      await recordLedger(DB, {
+        event_type: 'user_referral_bonus', reference_id: p.orderNumber, amount: userBonusAmount,
+        debit_account: influencerActive ? `seller:${p.sellerId}` : 'platform:commission',
+        credit_account: `user:${p.userId}`,
+        metadata: { source: 'influencer_referral', influencer_id: p.referralInfluencerId, absorbed_by_platform: !influencerActive },
+      })
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[gb referral user-bonus]', e) }
+  }
+  // 인플루언서 attribution + balance pending (활성 시만).
+  if (influencerActive && influencerAmount > 0) {
+    try {
+      const availableAt = new Date(Date.now() + rates.refund_window_days * 86400_000).toISOString()
+      await DB.prepare(
+        `INSERT INTO influencer_attributions (influencer_id, order_id, product_id, seller_id, commission_amount, status, available_at)
+         VALUES (?, 0, ?, ?, ?, 'pending', ?)`
+      ).bind(p.referralInfluencerId, p.productId, p.sellerId, influencerAmount, availableAt).run()
+      await DB.prepare(
+        `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT(influencer_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')`
+      ).bind(p.referralInfluencerId, influencerAmount).run()
+      await recordLedger(DB, {
+        event_type: 'influencer_commission', reference_id: p.orderNumber, amount: influencerAmount,
+        debit_account: `seller:${p.sellerId}`, credit_account: `influencer:${p.referralInfluencerId}`,
+        metadata: { product_id: p.productId, available_at: availableAt },
+      })
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[gb referral attribution]', e) }
+  }
+  return { influencerAmount, userBonusAmount, influencerActive }
 }
 
 /**

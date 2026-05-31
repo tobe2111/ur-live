@@ -24,6 +24,7 @@ import {
   generateVoucherCode,
   generateUniqueVoucherCode,
   getSellerCommissionRate,
+  applyGroupBuyReferral,
   sendBuyerVoucherIssuedAlimtalk,
   sendSellerFirstVoucherAlimtalk,
 } from './helpers'
@@ -909,9 +910,20 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const { DB } = c.env
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
   const product = await DB.prepare(
-    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers FROM products WHERE id = ? AND is_active = 1"
-  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null }>()
+    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers, referral_disabled FROM products WHERE id = ? AND is_active = 1"
+  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null; referral_disabled: number | null }>()
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+
+  // 🛡️ 2026-05-31: 카드 결제 referral 추출 (딜 /join 과 동일 검증) — 인플 attribution 용.
+  const refRaw = body.ref ? String(body.ref).trim() : ''
+  let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
+  if (referralInfluencerId && referralInfluencerId === userId) referralInfluencerId = ''
+  if (referralInfluencerId) {
+    const exists = await DB.prepare(
+      "SELECT 1 FROM sellers WHERE id = ? UNION ALL SELECT 1 FROM users WHERE id = ? LIMIT 1"
+    ).bind(referralInfluencerId, referralInfluencerId).first().catch(() => null)
+    if (!exists) referralInfluencerId = ''
+  }
   // amount 재검증 (defense-in-depth — 클라 amount 신뢰 X).
   // 🛡️ 2026-05-31: 즉시판매 단일가(A2) — 카드도 최대 tier 할인 적용 (딜 경로와 일치). toss-init 와 동일 계산.
   const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
@@ -986,11 +998,25 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     await DB.prepare(`UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?`)
       .bind(qty, productId).run().catch(swallow('group-buy:confirm-toss:counter'))
 
-    // 🛡️ 2026-05-31: 정산 정합 — 딜 경로(group-buy /join)와 동일하게 ledger + donations 기록.
-    //   셀러 차등 수수료 → commission/seller split → ledger(group_buy_join) + donations(정산 row).
-    const commissionRate = await getSellerCommissionRate(DB, Number(product.seller_id))
+    // 🛡️ 2026-05-31: 정산 정합 — 딜 경로(group-buy /join)와 동일하게 ledger + donations + 인플 attribution.
+    //   셀러 차등 수수료 + 인플 referral 4-account split → ledger(group_buy_join) + donations(정산 row).
+    const [commissionRate, rates] = await Promise.all([
+      getSellerCommissionRate(DB, Number(product.seller_id)),
+      getCommissionRates(DB),
+    ])
     const commissionAmount = Math.round(expectedAmount * commissionRate)
-    const sellerAmount = expectedAmount - commissionAmount
+    // 카드 결제 인플루언서 referral attribution + 사용자 추천 보너스 (딜 경로와 동일 — 공유 헬퍼).
+    const { influencerAmount, userBonusAmount } = await applyGroupBuyReferral(DB, rates, {
+      referralInfluencerId,
+      sellerId: Number(product.seller_id),
+      productId,
+      productName: product.name,
+      totalAmount: expectedAmount,
+      orderNumber,
+      userId,
+      productReferralDisabled: Number(product.referral_disabled) === 1,
+    })
+    const sellerAmount = expectedAmount - commissionAmount - influencerAmount - userBonusAmount
     try {
       await recordLedger(DB, {
         event_type: 'group_buy_join',
