@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-05-31 — 백엔드 보안·하드닝 + 문서 동기화
+- 카카오 구독자 전체발송 무인증 스팸 벡터 차단 (`38298f4`) — rateLimit+requireAuth+소유권
+- 셀러/에이전시 카카오 연동 에러 누출 → safeError (`38298f4`)
+- `TECHNICAL_DEBT.md` 2026-05-31 현황 동기화 섹션 + stale 정정(NOT NULL 5건 종결, clawback/카카오 Fixed)
+- **다음 권장**: 숙소 예약취소 카드환불 연결 / 숙소 hold 모델 / 어드민 safeError 점진 / SSR
+
 ## 🟢 2026-05-30 — 공동구매 = 즉시판매 단일가 모델 (A2 구현 완료, 가격 코어)
 - 결정 확정: 경제=즉시판매, 이름=공동구매 유지, 가격=**A2 최대 tier 즉시 단일 적용** (사용자 승인)
 - 설계안: `docs/design/groupbuy-instant-sale.md`

@@ -10,6 +10,52 @@
 
 ---
 
+## 📊 2026-05-31 — 현황 동기화 + 재우선순위 (검증 기반)
+
+> 코드 ground-truth 로 검증해 stale 항목을 정정하고, 남은 작업을 영향×위험으로 재정렬.
+
+### ✅ 이번 라운드 해소 (commit 기준)
+| 항목 | commit |
+|---|---|
+| 공동구매 = 즉시판매 단일가(A2) — 동적 tier 제거 | `1281b8a` |
+| 셀러 폼 tier→단일가 + i18n 6언어 / 사용자 셀프취소(청약철회) 7일 / breakage 문서화 | `00a851d` |
+| 인플 commission clawback 통합(셀프취소+셀러환불) / 환불 알림톡 통합 / 셀러 가이드 | `ce601d7` |
+| 카카오 구독자 전체발송 무인증 스팸 벡터 차단 / 셀러·에이전시 연동 safeError | `38298f4` |
+| 숙소 오버부킹 환불 payment_status CHECK 오타 | `4430129` |
+
+### 🔧 stale 정정 (문서 ↔ 코드 불일치)
+- **NOT NULL INSERT 미해결 5건 → 이미 clean** (`check-sql-not-null-insert.mjs`: inserts=520, 위반 0). 2026-05-17 섹션 종결 처리.
+- **인플 clawback "admin force-refund 만" → 이제 셀러/셀프취소도 통합** (`helpers.clawbackVoucherCommission`). 만료 cron 은 이미 보유.
+- **카카오 스팸 벡터(⏳) → Fixed** (`38298f4`).
+
+### 🔴 남은 즉시 과제 (운영 위험·자금·보안)
+| 항목 | 위치 | 비고 |
+|---|---|---|
+| migration 0257/0258/0276 프로덕션 적용 미확인 | repair-schema | 운영자 1회 + smoke (환경 외부송신 차단으로 코드 측 불가) |
+| 숙소 예약취소 → 실제 카드 환불 미호출 (오버부킹 자동환불만 Fixed) | stay cancel 경로 | `cancelTossPayment` 헬퍼 재사용 가능 |
+| 숙소 예약 hold 모델 부재 (pending 무한 누적) | `stay_bookings` | hold 차감 + TTL 해제 cron |
+
+### 🟡 남은 기능 미완 (있다고 표시되나 동작 X)
+- 숙소 알림톡 실제 발송 미연결(`cron/stay-reminder.ts` INSERT만)
+- 8.8% 원천징수 자동계산+YTD / 딜 현금환급 endpoint / 지급조서 CSV export
+- 멀티플랫폼 destination 다수 501 / KT Alpha 기프티쇼 API 미연결
+
+### 🟡 남은 코드 품질 (신규개발 속도)
+- 데이터 페칭 split-brain (256p 중 239p React Query 우회)
+- `(err as Error).message` 클라 반환 — **어드민 라우트 ~50곳** 잔존(신뢰 사용자라 저위험, 점진 safeError)
+- `/confirm-toss` 정산 일관성 (ledger/commission/인플 attribution 미기록) — deal+toss 후처리 단일 helper 추출
+- 스키마 3중화 동기화 강제장치 부재 / God 파일(youtube-live 3368 등) 단계 분해
+
+### 🟢 위생
+- `.env.production` git 추적(VITE 시크릿) — ⚠️ 빌드 의존 확인 후 `git rm --cached`
+- `naver-ad-scraper`(102MB)/`archive`(14MB)/`tsconfig.tsbuildinfo` 추적 정리
+- console DEV 미게이트 21 / `.catch(()=>{})` 38 / `<div onClick>` a11y 112 / ESLint 고아 설정
+
+### 🚧 진행중 (별도 워크스트림)
+- SSR 마이그레이션(`docs/CURRENT_WORK.md`) — LCP 10.7s→0.5-1.5s. 결제·카카오·라이브 SSR-safe 풀 audit 필요.
+
+---
+
 ## 📊 2026-05-30 — 서비스 전반 부채 분석 라운드 (6영역 + 공구 플로우 검증)
 
 백엔드 / 보안 / 프론트엔드 / DB / 테스트·CI / 의존성 6영역 병렬 분석 + 오프라인 공동구매 자금 플로우 검증.
@@ -24,7 +70,7 @@
 | **낙전(breakage) 정책 부재** — 미사용·만료 voucher의 돈이 정산/환불 어디에도 미정의 | `auto-settlement.ts`(used만 집계) | ✅ **Fixed/명문화** — 정책 = "만료 시 고객 환불"(사용 후 정산 모델 정합). `handleExpiredVoucherRefunds` 가 이미 deal_points 환불 → **토스 카드 낙전 환불 추가**. 셀러/플랫폼 낙전수입 없음. 가이드(`guide-seed-admin`) 명문화 |
 | **환불 금액 정가(`product.price`) 과다환불** — 티어/프로모 할인가(`vouchers.applied_price`) 무시 | `auto-settlement.ts`, `group-buy-seller.routes.ts`, `group-buy-admin.routes.ts` | ✅ **Fixed** — 3개 환불 경로(낙전 cron + 셀러/어드민 수동) 모두 `applied_price>0 ? applied_price : price` 통일. ledger/딜/토스/알림 금액 일괄 |
 | **정산 매출도 정가(`p.price`) 기준 — 티어 할인건 셀러 과다정산(플랫폼 손실)** | `auto-settlement.ts:66` | ✅ **Fixed (사용자 승인)** — `totalRevenue` 를 `applied_price>0 ? applied_price : price` 합산으로 변경. 결제·정산·환불 3흐름 모두 `applied_price` 폐루프 정합. 셀러 가이드에 "정산=실제 판매가" 고지 추가. 할인 없는 deal/레거시 voucher 는 fallback 으로 무영향 |
-| **미인증 카카오톡 푸시 스팸 벡터** — auth/rate-limit 둘 다 없음 | `kakao-social.routes.ts:172` `/message/send-to-subscribers` | ⏳ `requireSeller()`+소유권+rate-limit |
+| **미인증 카카오톡 푸시 스팸 벡터** — auth/rate-limit 둘 다 없음 | `kakao-social.routes.ts:172` `/message/send-to-subscribers` | ✅ **Fixed (`38298f4`)** — rateLimit + requireAuth + 방송 소유 셀러/어드민 검증 |
 
 ### 🟡 High
 
@@ -194,6 +240,8 @@ IF NOT EXISTS 라 멱등.
 ---
 
 ## 📊 2026-05-17 — NOT NULL INSERT 미해결 5건 (PR 2/N audit 잔여)
+
+> ✅ **2026-05-31 종결**: `check-sql-not-null-insert.mjs` 위반 0 (inserts=520, 분석=399). 이하 기록 보존용.
 
 `scripts/check-sql-not-null-insert.mjs` 가 보고하는 잔여 위반.
 production 스키마가 마이그레이션 정의와 다를 가능성 (manual ALTER 흔적). 추후 확인 필요.
