@@ -623,8 +623,10 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
           .bind(row.commission, row.referrer_id)
       )).catch(swallow('returns:api:returns'));
+      // 🛡️ 2026-05-31: affiliate_earnings 는 default status='pending' (granted 전환 없음).
+      //   이전 `status='granted'` 타겟은 0건 매칭 → 환불 reverse 무효였음. pending/granted 모두 처리.
       await DB.prepare(
-        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND status = 'granted'"
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }
   } catch { /* table may not exist */ }

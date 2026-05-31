@@ -890,6 +890,10 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
       await c.env.DB.prepare(
         `UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded', updated_at = datetime('now') WHERE id = ?`
       ).bind(orderId).run().catch(() => { /* noop */ })
+      // 🛡️ 2026-05-31: 오버부킹 자동 환불 시 인플 affiliate 커미션도 reverse (출금 누수 차단).
+      await c.env.DB.prepare(
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
+      ).bind(orderId).run().catch(() => { /* noop */ })
       return c.json({
         success: false,
         error: '선택하신 날짜의 객실이 매진되었습니다. 결제는 자동 환불 처리됩니다.',
@@ -1018,6 +1022,15 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
               updated_at = datetime('now')
         WHERE id = ?`
     ).bind(nextStatus, reason || '사용자 취소', refundAmount, id).run()
+
+    // 🛡️ 2026-05-31: 환불 성공 시 인플 affiliate 커미션 reverse — 환불 매출 출금 누수 차단.
+    //   stays 인플 커미션은 affiliate_earnings(payment.routes 결제 confirm 시 적립, default status='pending').
+    //   환불 발생 건만 'refunded' → curator 출금 잔액 SUM 에서 제외됨.
+    if (refundActuallyDone) {
+      await c.env.DB.prepare(
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
+      ).bind(booking.order_id).run().catch(() => null)
+    }
 
     // 🛡️ 2026-05-31: confirmed 였던 예약은 차감된 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).
     //   pending 은 미차감이므로 복원 안 함 (과다 증가 방지).

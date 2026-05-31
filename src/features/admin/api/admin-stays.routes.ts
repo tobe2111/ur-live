@@ -155,6 +155,13 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
         WHERE id = ?`,
       [refundAmount, reason, id])
 
+    // 🛡️ 2026-05-31: 환불 성공 시 인플 affiliate 커미션 reverse — 환불 매출 출금 누수 차단.
+    if (refundActuallyDone && fullBooking?.order_id) {
+      await c.env.DB.prepare(
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
+      ).bind(fullBooking.order_id).run().catch(() => null)
+    }
+
     // 🛡️ 2026-05-31: confirmed 였던 예약만 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).
     if (booking.status === 'confirmed') {
       const { releaseStayInventory } = await import('@/worker/utils/stay-inventory')

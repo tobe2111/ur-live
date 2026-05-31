@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🔴→🟢 2026-05-31 — 자금루프 audit 3탄: affiliate/curator 출금 누수 (실현금)
+**발견**: `affiliate_earnings`(물리상품 referral + 숙소 referral 적립, curator 출금 SSOT)는 default `status='pending'` 이고 **granted 전환이 없음**. 그런데 ① curator 출금 잔액(`curator.routes.ts:758` `SUM(commission)`)이 status 필터 없음 → **환불 커미션도 출금 가능(user_withdrawals=실제 은행송금)**, ② returns 환불 reverse 가 `WHERE status='granted'` 타겟 → 0건 매칭(무효), ③ 숙소 취소는 affiliate reverse 자체가 없음.
+**fix**:
+- curator 출금 잔액 + 잔액표시 + 30일 대시보드 SUM 에 `COALESCE(status,'pending') != 'refunded'` 추가 (`curator.routes.ts` 758/811/588).
+- returns 환불 reverse: `status='granted'` → `COALESCE(status,'pending') IN ('granted','pending')` (실제 pending 행 처리).
+- 숙소 취소(사용자/오버부킹/어드민 3경로) 환불 성공 시 `affiliate_earnings SET status='refunded' WHERE order_id`.
+- tsc 0 / build:worker OK / sql 검증 통과.
+
 ## 🔴→🟢 2026-05-31 — 자금루프 audit: 인플 커미션 clawback 누수 fix (체계적 버그)
 **발견(audit)**: `influencer_attributions` 는 insert 시 `voucher_id` 를 안 넣어 항상 NULL인데, clawback 3곳(셀프취소/셀러환불/만료)이 모두 `WHERE voucher_id=?` 로 조회 → **0건 매칭 → 인플 커미션이 환불/취소/만료 시 전혀 회수 안 됨(누수)**. `influencer-payout` cron 은 attribution `SUM(commission_amount)` 로 balance 재집계 후 송금하므로 → 회수 안 된 커미션이 그대로 지급됨.
 **fix**:

@@ -584,9 +584,10 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     // 🛡️ 2026-05-31: 6개 쿼리 병렬화 (이전: 순차 await ~6 round-trip → 로딩 느림) + 원천별 수익 내역 추가.
     const [earnings30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
       // 30일 어필리에이트 적립 (affiliate_earnings = SSOT, 컬럼명 commission)
+      //   🛡️ 2026-05-31: 환불 커미션 제외 — 출금 잔액과 표시 정합.
       DB.prepare(
         `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
-         WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
       ).bind(userId).first<{ total: number }>().catch(() => null),
       // 30일 클릭
       DB.prepare(
@@ -753,9 +754,10 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
     const DB = c.env.DB
 
     // 잔액 검증 — affiliate_earnings SUM - 이미 출금 신청한 금액
+    //   🛡️ 2026-05-31: 환불(status='refunded') 커미션 제외 — 환불 매출 출금 누수 차단.
     const balance = await DB.prepare(
       `SELECT
-         COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ?), 0)
+         COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
          - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
          AS available`,
     ).bind(String(userId), String(userId)).first<{ available: number }>()
@@ -807,8 +809,9 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
     const DB = c.env.DB
 
     // 🛡️ 2026-05-25: 테이블 미존재 시 graceful — 0 fallback.
+    //   🛡️ 2026-05-31: 환불 커미션 제외 (출금 잔액 정합).
     const earnings = await DB.prepare(
-      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ?`,
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'`,
     ).bind(String(userId)).first<{ total: number }>().catch(() => null)
 
     const withdrawn = await DB.prepare(
