@@ -25,14 +25,12 @@
 
 **남은 것**: 인플/에이전시 최종 은행송금 자동화(PG 연동·KR 특성상 수동 일반), 정산서 PDF, Magic Link 영구저장. NTS_API_KEY 프로덕션 설정 확인(운영자).
 
-## 📋 사용자 액션 TODO (로컬 — 원격 환경 빌드 불가)
-- [ ] **SSR prerender 실제 동작 검증** (Phase 2 후속):
-  ```bash
-  npm run build:client && npm run build:ssr && npm run prerender:main
-  ```
-  - ✅ 성공: `[prerender-main] ... 갱신 완료 ✅` + `dist/client/index.html` 의 `<div id="root" ... data-ssr="main">` 에 카드 HTML 존재
-  - ❌ throw: 에러가 찍은 module/전역을 `docs/SSR_MIGRATION.md` audit 패턴(`typeof window/document` 가드 or useEffect)으로 fix → 결과 공유
-  - 성공 확인 후 → Phase 4(`_routes.json`) / Phase 5(Lighthouse 재측정)
+## 📋 사용자 액션 TODO
+- [x] ~~**SSR prerender 실제 동작 검증**~~ ✅ **2026-05-31 원격 환경에서 검증 완료** (npm 의존성 설치 후):
+  - `npm run build` 전체 체인 통과: client → ssr → **prerender(`renderToString 완료 48ms, 40578 chars` → `dist/client/index.html 갱신 완료 ✅`)** → worker(2.6mb) → prepare
+  - 렌더된 shell 에 raw i18n 키 누출 0 (실제 한글 "라이브/둘러보기/공동구매/식사권" 렌더). `NO_I18NEXT_INSTANCE` 경고는 nav 가 defaultValue/하드코딩이라 무해.
+  - 아키텍처 확정: prerender=앱 shell(0-RTT first paint), worker HTMLRewriter 가 runtime 에 `__SSR_INITIAL_MAIN__` 데이터 inject + RQ fresh fetch. `_routes.json` 이 `/` 를 worker 로 라우팅.
+  - **Phase 3-2/3-3/3-4 모두 완료** (아래 "진행 중" 섹션은 stale → 정정함). 남은 건 Phase 5 Lighthouse 실측(배포 후).
 - [ ] 배포 반영 확인: `claude/service-tech-debt-analysis-d1KOx` → main 머지 + Actions 녹색
 - [ ] 배포 후 1회: `POST https://live.ur-team.com/api/_internal/repair-schema` (숙소 migration 보장)
 - [ ] 스모크: 공구 카드결제 / 숙소 예약·취소 각 1건 (이번 세션 가격·환불·재고 변경분)
@@ -75,38 +73,27 @@
 **최종 업데이트**: 2026-05-28 (서비스 모델/정산 통합 + SSR 마이그레이션)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8` (서비스모델/정산) · `claude/vibrant-feynman-m3X3m` (SSR)
 
-## 🚧 진행 중: SSR 마이그레이션 (LCP 10.7s → 0.5-1.5s)
+## ✅ SSR 마이그레이션 — Phase 1-4 완료·검증 (2026-05-31, LCP 10.7s → 0.5-1.5s 목표)
 
-**가이드**: `docs/SSR_MIGRATION.md` 필독. Phase 1-5 자세한 계획 + audit checklist.
+**가이드**: `docs/SSR_MIGRATION.md`. **2026-05-31 원격 환경 빌드 검증으로 Phase 3-4 완료 확정.**
 
-**완료**:
-- Phase 1 인프라 (`74a0625`): entry-server/client placeholder, vite build:ssr script, prerender-main 스켈레톤
-- Phase 2 첫 fix (`c113f1b`): BottomNav 8/15곳 SSR-safe (useState + useEffect)
-- Phase 3 Step 3-1 (`e3a3a7e`): App.tsx Router prop 받기 (default = BrowserRouter, 기존 동작 100% 보존)
-- 추가: 카드 이미지 흐림 fix (`1d22ee0`) — cf-image width 200→300
+**완료 (검증됨)**:
+- Phase 1 인프라 (`74a0625`): entry-server/client, vite build:ssr, prerender-main
+- Phase 2 (`c113f1b`): BottomNav SSR-safe + `isLoggedInSync` `typeof localStorage` 가드
+- Phase 3-1 (`e3a3a7e`): App.tsx Router prop (default BrowserRouter, SSR 시 StaticRouter)
+- **Phase 3-2 entry-server.tsx 실구현 완료** — `renderToString(<App Router={StaticRouter} routerProps={{location:url}}/>)`
+- **Phase 3-3 prerender-main.mjs 실구현 완료** — API fetch 제거(빌드 의존성 0, initialData=null), shell 만 정적 렌더. 데이터는 worker HTMLRewriter 가 runtime `__SSR_INITIAL_MAIN__` inject + RQ fresh fetch.
+- **Phase 3-4 build script 체인 완료** — `build = client && ssr && (prerender||graceful skip) && worker && prepare`
+- **Phase 4 `_routes.json` 완료** — `/*` worker 라우팅(static asset 제외), worker `index.ts:444 isMainPage` 가 `caches.default` edge read + HTMLRewriter 데이터 inject
+- ✅ **검증**: `npm run build` 전체 통과, prerender `48ms / 40578 chars`, raw i18n 키 누출 0
 
-**다음 세션 진행 순서 (이상적 path)**:
-1. **Step 2-1 잔여**: BottomNav 나머지 7곳 (linkshopPath/cachedSeller/cachedHandle/JWT decode)
-2. **Step 2-3**: 메인 페이지 의존 lazy import 페이지들 SSR-safe 검증
-3. **Step 3-2**: entry-server.tsx 진짜 구현
-   - `renderToString(<App Router={StaticRouter} routerProps={{ location: url }} />)`
-   - HelmetProvider SSR mode
-   - React Query dehydrate
-4. **Step 3-3**: prerender-main.mjs 진짜 구현
-   - API fetch (`/api/group-buy/products?status=active&category=all`)
-   - import('./dist/server/entry-server.js')
-   - renderApp('/', initialData)
-   - dist/client/index.html 의 `<div id="root">` 안에 HTML inject
-5. **Step 3-4**: package.json build script 확장
-6. **Step 4**: `_routes.json` (메인 페이지만 정적)
-7. **Step 5**: Lighthouse 재측정 + 카카오 OAuth 검증
+**남은 것**:
+- **Phase 5 Lighthouse 실측** (배포 후 — 사용자/운영). 목표 아래.
+- (선택) SSR initialData 를 빌드 시점 fetch 로 확장하면 first paint 에 카드까지 — 현재는 shell+runtime inject 로도 0-RTT shell 확보. 비용/복잡도 대비 효과 작아 보류.
 
-**위험 영역**:
-- entry-server 가 import 하는 모든 모듈 SSR-safe 필수 (한 곳 throw → 빌드 실패)
-- BottomNav 잔여 7곳 + lazy import 페이지들 module 평가 시점 audit
-- 결제(Toss V2 잠금) / 카카오 OAuth / 라이브 = 풀 audit 필요
+**위험 영역(유지)**: entry-server import 모듈 SSR-safe 필수(한 곳 throw→빌드 실패. 현재 전부 통과). 결제(Toss V2 잠금)/카카오 OAuth/라이브는 lazy 라 SSR 시 Suspense fallback(평가 안 됨).
 
-**현재 Lighthouse 측정값** (이번 세션 마지막):
+**현재 Lighthouse 측정값** (SSR 배포 전):
 - Performance 44-66 (측정 변동 큼)
 - LCP 8-11s (메인 페이지)
 - TBT 300-1000ms
