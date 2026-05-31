@@ -14,6 +14,7 @@ import { curatorApi, type DashboardStats } from '@/features/curator/api/curator-
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber, safeNum } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface WithdrawalInfo {
   lifetime_earnings: number
@@ -32,12 +33,19 @@ interface WithdrawalInfo {
 export default function CuratorEarningsPage() {
   const { t } = useTranslation()
   const user = useAuthStore((s: any) => s.user)
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [handle, setHandle] = useState<string | null>((user as any)?.handle || null)
   const [wdInfo, setWdInfo] = useState<WithdrawalInfo | null>(null)
   const [showWithdraw, setShowWithdraw] = useState(false)
+
+  // 🛡️ 2026-05-31: 메인 대시보드 fetch → useApiQuery (RQ — 재방문 캐시/dedup). 인증=인터셉터 자동.
+  const dashQ = useApiQuery<DashboardStats | null>(
+    ['curator', 'dashboard'],
+    '/api/curator/me/dashboard',
+    { select: (raw) => ((raw as { success?: boolean; stats?: DashboardStats })?.success ? ((raw as { stats: DashboardStats }).stats) : null) },
+  )
+  const stats = dashQ.data ?? null
+  const loading = dashQ.isLoading
+  const error = dashQ.isError ? t('curator.dashboardError', { defaultValue: '대시보드 로딩 실패' }) : null
 
   useEffect(() => {
     curatorApi.getWithdrawalInfo().then((res) => {
@@ -51,20 +59,6 @@ export default function CuratorEarningsPage() {
       if (res.success) setWdInfo(res as any)
     } catch {}
   }
-
-  useEffect(() => {
-    let alive = true
-    curatorApi
-      .getDashboard()
-      .then((res) => {
-        if (!alive) return
-        if (res.success) setStats(res.stats)
-        else setError(t('curator.dashboardError', { defaultValue: '대시보드 로딩 실패' }))
-      })
-      .catch(() => alive && setError(t('curator.dashboardError', { defaultValue: '대시보드 로딩 실패' })))
-      .finally(() => alive && setLoading(false))
-    return () => { alive = false }
-  }, [t])
 
   // best-effort: handle 가져오기
   useEffect(() => {
@@ -295,7 +289,7 @@ function BusinessSection() {
       {status !== 'pending' && (
         <>
           {!open ? (
-            <button onClick={() => setOpen(true)} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg">
+            <button onClick={() => setOpen(true)} className="px-4 py-2 bg-gray-900 dark:bg-white dark:bg-[#0A0A0A] text-white dark:text-gray-900 dark:text-white text-xs font-bold rounded-lg">
               사업자 등록하기
             </button>
           ) : (
@@ -355,7 +349,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           <button
             onClick={onWithdraw}
             disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-white text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 bg-white dark:bg-[#0A0A0A] text-pink-600 font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {info.available < info.min_withdrawal
               ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
@@ -371,7 +365,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           </p>
           <Link
             to="/browse"
-            className="block w-full py-2.5 bg-white text-orange-600 font-bold rounded-lg text-center"
+            className="block w-full py-2.5 bg-white dark:bg-[#0A0A0A] text-orange-600 font-bold rounded-lg text-center"
           >
             🛍️ 쇼핑 둘러보기
           </Link>
@@ -410,7 +404,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   h.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                   h.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-gray-100 text-gray-600'
+                  'bg-gray-100 text-gray-600 dark:text-gray-300'
                 }`}>{h.status}</span>
               </div>
             ))}
