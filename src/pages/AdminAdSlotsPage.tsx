@@ -5,13 +5,12 @@
  * 어드민이 슬롯 상태 확인 + 낙찰 이력 + 수동 종료/초기화를 수행합니다.
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Megaphone, Trophy, Clock, TrendingUp, RefreshCw } from 'lucide-react'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface AdSlot {
   slot_id: string
@@ -61,29 +60,17 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function AdminAdSlotsPage() {
   const { t } = useTranslation()
-  const [slots, setSlots] = useState<AdSlot[]>([])
-  const [bids, setBids] = useState<AdBid[]>([])
-  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'slots' | 'bids'>('slots')
-  const token = localStorage.getItem('admin_token') || ''
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [slotsRes, bidsRes] = await Promise.all([
-        api.get('/api/admin/ad-slots', { headers: { Authorization: `Bearer ${token}` } }),
-        api.get('/api/admin/ad-slots/bids', { headers: { Authorization: `Bearer ${token}` } }),
-      ])
-      setSlots(slotsRes.data?.slots ?? [])
-      setBids(bidsRes.data?.bids ?? [])
-    } catch {
-      toast.error(t('admin.adSlots.loadFailed', { defaultValue: '광고 슬롯 데이터를 불러오지 못했습니다.' }))
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-05-31: 수동 Promise.all fetch → useApiQuery 2개 (RQ SSOT). 인증=인터셉터 자동.
+  const slotsQ = useApiQuery<AdSlot[]>(['admin', 'ad-slots'], '/api/admin/ad-slots',
+    { select: (raw) => (raw as { slots?: AdSlot[] })?.slots ?? [] })
+  const bidsQ = useApiQuery<AdBid[]>(['admin', 'ad-slots', 'bids'], '/api/admin/ad-slots/bids',
+    { select: (raw) => (raw as { bids?: AdBid[] })?.bids ?? [] })
+  const slots = slotsQ.data ?? []
+  const bids = bidsQ.data ?? []
+  const loading = slotsQ.isLoading || bidsQ.isLoading
+  const load = () => { void slotsQ.refetch(); void bidsQ.refetch() }
 
   const activeCount = slots.filter(s => s.current_seller_id).length
   const totalBids = bids.filter(b => b.status === 'active').length
