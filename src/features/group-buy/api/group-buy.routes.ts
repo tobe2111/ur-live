@@ -461,7 +461,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           await DB.prepare(
             `INSERT INTO influencer_attributions (influencer_id, order_id, product_id, seller_id, commission_amount, status, available_at)
              VALUES (?, ?, ?, ?, ?, 'pending', ?)`
-          ).bind(referralInfluencerId, 0, productId, product.seller_id, influencerAmount, availableAt).run()
+          ).bind(referralInfluencerId, newOrderId ?? 0, productId, product.seller_id, influencerAmount, availableAt).run()
           // balance pending 증가 (UPSERT)
           await DB.prepare(
             `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
@@ -1033,6 +1033,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       productName: product.name,
       totalAmount: expectedAmount,
       orderNumber,
+      orderId: newOrderId,
       userId,
       productReferralDisabled: Number(product.referral_disabled) === 1,
     })

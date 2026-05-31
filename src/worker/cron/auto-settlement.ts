@@ -13,6 +13,7 @@ import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
 import { ensureUserPointsTable } from '../utils/ensure-tables';
 import { reportCronFailure } from '../utils/cron-reporter';
+import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -251,32 +252,12 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         }
       }
 
-      // 🛡️ 2026-05-16: 인플 commission clawback — voucher 환불 시 관련 attribution 회수
-      //   환불됐는데 인플은 commission 받는 부당이득 차단.
-      //   - status='pending' 인 attribution → 'clawed_back' 으로 전환, balance pending 차감
-      //   - status='available' 이지만 paid_at IS NULL → 'clawed_back', balance available 차감
-      //   - status='paid' (이미 송금) → 다음 정산에서 음수 차감 (기록만)
+      // 🛡️ 2026-05-16/2026-05-31: 인플 commission clawback — voucher 만료 시 관련 attribution 회수.
+      //   환불됐는데 인플은 commission 받는 부당이득 차단. 공유 헬퍼로 통합(이전 인라인 `WHERE voucher_id=?`
+      //   는 attribution.voucher_id 가 항상 NULL 이라 0건 매칭 → 회수 안 되던 누수 버그. 헬퍼는 order_id
+      //   연결 + 바우처 비례 clawback). voucher.status 는 위에서 'expired' 로 설정됨 → 분모 정합.
       try {
-        const { results: attrs } = await DB.prepare(
-          `SELECT id, influencer_id, commission_amount, status
-           FROM influencer_attributions
-           WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
-        ).bind(voucher.id).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>();
-        for (const a of (attrs || [])) {
-          await DB.prepare(
-            "UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = 'voucher_expired' WHERE id = ?"
-          ).bind(a.id).run();
-          // balance 차감
-          if (a.status === 'pending') {
-            await DB.prepare(
-              "UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?"
-            ).bind(a.commission_amount, a.influencer_id).run();
-          } else if (a.status === 'available') {
-            await DB.prepare(
-              "UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?"
-            ).bind(a.commission_amount, a.influencer_id).run();
-          }
-        }
+        await clawbackVoucherCommission(DB, Number(voucher.id), 'voucher_expired');
       } catch (e) {
         if (env.ENVIRONMENT !== 'production') console.warn('[clawback]', e);
       }

@@ -195,21 +195,56 @@ export async function clawbackVoucherCommission(
   reason: string,
 ): Promise<number> {
   let clawed = 0
-  const { results: attrs } = await DB.prepare(
-    `SELECT id, influencer_id, commission_amount, status
-     FROM influencer_attributions
-     WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
-  ).bind(voucherId).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
-  for (const a of (attrs || [])) {
-    await DB.prepare(
-      "UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = ? WHERE id = ?"
-    ).bind(reason, a.id).run()
+  // 🛡️ 2026-05-31: attribution 은 주문(order_id) 단위 1행(커미션=주문 총액 기준), 환불은 바우처 단위.
+  //   이전 버그: attribution.voucher_id 는 항상 NULL(insert 누락) → `WHERE voucher_id=?` 매칭 0건
+  //   → 환불/취소/만료 시 인플 커미션이 전혀 회수 안 됨(누수). order_id 로 연결하고 바우처 비례 clawback.
+  const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?').bind(voucherId).first<{ order_id: number | null }>().catch(() => null)
+  const orderId = v?.order_id ?? null
+
+  // attribution 조회: order_id 우선(신규), 레거시 voucher_id fallback.
+  const attrRows = orderId
+    ? await DB.prepare(
+        `SELECT id, influencer_id, commission_amount, status FROM influencer_attributions
+         WHERE order_id = ? AND order_id != 0 AND status IN ('pending', 'available') AND paid_at IS NULL`
+      ).bind(orderId).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+    : await DB.prepare(
+        `SELECT id, influencer_id, commission_amount, status FROM influencer_attributions
+         WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
+      ).bind(voucherId).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+  const attrs = attrRows.results || []
+  if (attrs.length === 0) return 0
+
+  // 비례 분모: 주문 내 아직 회수 안 된 바우처 수(이 바우처 포함). 환불 flow 가 voucher.status='refunded'/'expired'
+  //   를 clawback 직전 설정하므로, unused/used + 현재 바우처(id=?) 카운트 → 회수된 건 자동 제외.
+  let denom = 1
+  if (orderId) {
+    const cntRow = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM vouchers WHERE order_id = ? AND (id = ? OR status IN ('unused', 'used'))`
+    ).bind(orderId, voucherId).first<{ n: number }>().catch(() => null)
+    denom = Math.max(1, Number(cntRow?.n ?? 1))
+  }
+
+  for (const a of attrs) {
+    // 이 바우처 몫 = 남은 커미션 / 남은(미회수) 바우처 수. qty=1 이면 전액.
+    const share = orderId
+      ? Math.min(a.commission_amount, Math.max(1, Math.floor(a.commission_amount / denom)))
+      : a.commission_amount
+    // balance 즉시 차감(즉각 일관성). 권위 출처는 attribution SUM 이라 cron 이 재집계로 보정.
     if (a.status === 'pending') {
       await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-        .bind(a.commission_amount, a.influencer_id).run()
+        .bind(share, a.influencer_id).run()
     } else if (a.status === 'available') {
       await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-        .bind(a.commission_amount, a.influencer_id).run()
+        .bind(share, a.influencer_id).run()
+    }
+    // attribution(권위 출처) 갱신: 전액 회수면 clawed_back, 부분이면 commission_amount 차감(나머지 바우처 몫 유지).
+    const remaining = a.commission_amount - share
+    if (remaining <= 0) {
+      await DB.prepare("UPDATE influencer_attributions SET status = 'clawed_back', commission_amount = 0, clawback_reason = ? WHERE id = ?")
+        .bind(reason, a.id).run()
+    } else {
+      await DB.prepare("UPDATE influencer_attributions SET commission_amount = ?, clawback_reason = ? WHERE id = ?")
+        .bind(remaining, reason, a.id).run()
     }
     clawed++
   }
@@ -233,6 +268,8 @@ export async function applyGroupBuyReferral(
     productName: string
     totalAmount: number
     orderNumber: string
+    /** 숫자 order id — attribution 연결용(clawback 이 order_id 로 매칭). 0/누락 시 clawback 불가. */
+    orderId?: number
     userId: string
     productReferralDisabled?: boolean
   },
@@ -287,8 +324,8 @@ export async function applyGroupBuyReferral(
       const availableAt = new Date(Date.now() + rates.refund_window_days * 86400_000).toISOString()
       await DB.prepare(
         `INSERT INTO influencer_attributions (influencer_id, order_id, product_id, seller_id, commission_amount, status, available_at)
-         VALUES (?, 0, ?, ?, ?, 'pending', ?)`
-      ).bind(p.referralInfluencerId, p.productId, p.sellerId, influencerAmount, availableAt).run()
+         VALUES (?, ?, ?, ?, ?, 'pending', ?)`
+      ).bind(p.referralInfluencerId, p.orderId ?? 0, p.productId, p.sellerId, influencerAmount, availableAt).run()
       await DB.prepare(
         `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
          VALUES (?, ?, datetime('now'))

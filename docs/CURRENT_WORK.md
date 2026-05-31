@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🔴→🟢 2026-05-31 — 자금루프 audit: 인플 커미션 clawback 누수 fix (체계적 버그)
+**발견(audit)**: `influencer_attributions` 는 insert 시 `voucher_id` 를 안 넣어 항상 NULL인데, clawback 3곳(셀프취소/셀러환불/만료)이 모두 `WHERE voucher_id=?` 로 조회 → **0건 매칭 → 인플 커미션이 환불/취소/만료 시 전혀 회수 안 됨(누수)**. `influencer-payout` cron 은 attribution `SUM(commission_amount)` 로 balance 재집계 후 송금하므로 → 회수 안 된 커미션이 그대로 지급됨.
+**fix**:
+- `helpers.clawbackVoucherCommission`: voucher→`order_id` 연결로 attribution 조회 + **바우처 비례 clawback**(분모=주문 내 미회수 바우처 수, 환불 flow 가 voucher.status='refunded'/'expired' 를 clawback 직전 설정해 정합). 권위 출처인 `commission_amount` 차감(전액→clawed_back, 부분→감액). qty=1 이면 전액.
+- `helpers.applyGroupBuyReferral` + `/join` 인라인 insert: attribution `order_id` 실제 주문 id 저장(이전 `0` 하드코딩).
+- `confirm-toss`: `applyGroupBuyReferral` 에 `orderId: newOrderId` 전달.
+- `auto-settlement.ts` 만료 clawback: 깨진 인라인 `WHERE voucher_id=?` 블록 → 공유 헬퍼 호출로 통합.
+- tsc 0 / build:worker OK / sql·bind 검증 통과. (레거시 `order_id=0` attribution 은 소급 연결 불가 — 신규부터 정상 회수.)
+
 ## 🟢 2026-05-31 — 테마 backlog 정리 (2차) + 공구 결제 런타임 버그 fix
 - **공구 join 응답 ReferenceError fix** (`group-buy.routes.ts:854`): A2 단일가 전환 때 제거된 `currentTier` 를 응답이 계속 참조 → 런타임 `ReferenceError`. `next_tier: null` 로 교정 (A2 모델 정합). confirm-toss `body.ref` 타입 union 누락도 fix → **tsc 0** (이전 세션 node_modules 부재로 미검출된 잠복 타입에러 2건 해소).
 - **테마 backlog 정리**: checker 정밀화(streaming/guide/dashboard 폴더 + ProductOptionForm/BulkUploadModal/LiveDonation 제외 — usage 추적으로 라이트 고정 확인) → 오탐 202→실제 58건. 유저 대면 26파일 dark: variant 정합(state-variant aware) + 이전 perl 잠복 orphan(`dark:hover:bg-[X] dark:bg-[X]`, `placeholder:text dark:text`, `hover:text dark:text`) 전수 제거. 남은 1건은 토글 thumb(의도된 흰색).
