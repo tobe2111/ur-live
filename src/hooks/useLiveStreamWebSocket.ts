@@ -294,10 +294,10 @@ export function useLiveStreamWebSocket(
               }
             )
           } else if (msg.type === 'product_change') {
-            // 🛡️ 2026-05-13: server-time sync — iframe (YouTube ultraLow) latency 가 ~3s.
-            //   WS (즉시) > iframe 영상 → 셀러가 상품 바꾼 순간 시청자 UI 만 먼저 갱신되는 사고.
-            //   timestamp + viewer 현지 시각 차이로 보정 (서버시각=클라시각 가정, 최대 3s delay).
-            const EMBED_DELAY_MS = 3000
+            // 🛡️ 2026-05-31: latencyPreference 'low'(5-15s) 전환에 맞춰 ~3s → ~8s.
+            //   WS(즉시) > iframe 영상 → 셀러가 상품 바꾼 순간 시청자 UI 만 먼저 갱신되는 사고 보정.
+            //   영상 지연만큼 상품 전환을 늦춰 영상-UI 동기화 (latencyPreference 변경 시 함께 조정).
+            const EMBED_DELAY_MS = 8000
             const elapsed = Date.now() - (msg.timestamp || Date.now())
             const delay = Math.max(0, EMBED_DELAY_MS - elapsed)
             const applyChange = () => {

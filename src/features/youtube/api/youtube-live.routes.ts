@@ -1333,9 +1333,10 @@ app.post('/live/:id/_force-live', async (c) => {
           recordFromStart: true,
           enableDvr: true,
           enableEmbed: true,
-          // 🛡️ 2026-05-13: 'low' (5-15s) → 'ultraLow' (2-5s) 통일. 라이브 커머스 핵심:
-          //   셀러가 "5개 남았어요" 외쳐도 시청자가 30초 뒤에 보면 → 이미 다 팔림.
-          latencyPreference: 'ultraLow',
+          // 🛡️ 2026-05-31 (사용자 결정: 화질·안정 우선): 'ultraLow'(2-5s) → 'low'(5-15s).
+          //   ultraLow 는 YouTube 인코딩 사다리 축소 + 버퍼 작음 → 약한 네트워크에서 화질 저하·rebuffering.
+          //   'low' 로 버퍼·화질 안정 확보 (실시간성 약간 희생). youtube-api.service.ts(:247)와 통일.
+          latencyPreference: 'low',
         },
       }),
     }
