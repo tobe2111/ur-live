@@ -1,19 +1,17 @@
 /**
  * 🛡️ 2026-05-02: TD-018 분할 — AdminPage 매출 추이 막대 차트 (recharts 미사용).
  */
-import { useEffect, useState } from 'react'
-import api from '@/lib/api'
+import { useState } from 'react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 export default function AdminRevenueChart() {
-  const [data, setData] = useState<{ date: string; revenue: number }[]>([])
   const [days, setDays] = useState(14)
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-  useEffect(() => {
-    api.get(`/api/admin/tools/chart/revenue?days=${days}`, h)
-      .then(r => { if (r.data.success) setData(r.data.data || []) })
-      .catch(() => { /* empty chart is shown on error */ })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동(admin_token). days 변경 시 재조회.
+  const { data = [] } = useApiQuery<{ date: string; revenue: number }[]>(
+    ['admin', 'revenue-chart', days],
+    `/api/admin/tools/chart/revenue?days=${days}`,
+    { select: (raw) => (raw as { success?: boolean; data?: { date: string; revenue: number }[] })?.data ?? [] },
+  )
   const max = Math.max(...data.map(d => d.revenue), 1)
   return (
     <div className="bg-white rounded-xl shadow-sm p-4">

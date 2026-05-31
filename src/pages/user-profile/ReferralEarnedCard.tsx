@@ -5,10 +5,9 @@
  *
  *   2026-05-20 정책 변경 (사용자 요청): 적립 0 도 항상 노출 — 신규 사용자에게 referral 인지/유도.
  */
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import api from '@/lib/api'
 import { ChevronRight } from 'lucide-react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface Stats {
   total_referrals: number
@@ -16,15 +15,13 @@ interface Stats {
 }
 
 export default function ReferralEarnedCard() {
-  const [stats, setStats] = useState<Stats | null>(null)
-
-  useEffect(() => {
-    const token = localStorage.getItem('access_token') || localStorage.getItem('firebase_token')
-    if (!token) return
-    api.get('/api/affiliate/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => { if (r.data?.success) setStats(r.data.data as Stats) })
-      .catch(() => { /* fail-soft */ })
-  }, [])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 로그인(토큰) 있을 때만 enabled, 인증=인터셉터 자동.
+  const loggedIn = typeof localStorage !== 'undefined' && !!(localStorage.getItem('access_token') || localStorage.getItem('firebase_token'))
+  const { data: stats = null } = useApiQuery<Stats | null>(
+    ['affiliate', 'stats'],
+    '/api/affiliate/stats',
+    { enabled: loggedIn, select: (raw) => ((raw as { success?: boolean; data?: Stats })?.success ? ((raw as { data: Stats }).data) : null) },
+  )
 
   // 적립 0 이거나 데이터 없으면 — '인플 시작' CTA 로.
   const hasEarned = stats && stats.total_earned > 0
