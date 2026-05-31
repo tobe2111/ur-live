@@ -50,7 +50,12 @@ async function getPinCount(DB: D1Database, userId: number): Promise<number> {
  * 🛡️ 2026-05-25: 큐레이터 테이블 lazy CREATE — D1 migration 미적용 환경 graceful.
  *   TD-001 (D1 CI 권한 부재) 로 migration 0278 자동 적용 안 될 때 첫 호출 시 보장.
  */
+// 🛡️ 2026-05-31 (링크샵 로딩): 모듈 레벨 1회 메모이제이션 — 매 요청 6개 DDL(CREATE/ALTER) 실행 제거.
+//   edge-MISS(cold/SSR self-fetch) 경로가 데이터 쿼리 전에 6 라운드트립으로 느려지던 것 해소.
+//   스키마는 migration 0278 + repair-schema(daily cron) 가 보장 — 워커당 첫 호출만 안전망으로 실행.
+let _curatorTablesReady = false
 async function ensureCuratorTables(DB: D1Database): Promise<void> {
+  if (_curatorTablesReady) return
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS product_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,6 +78,7 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
       await DB.prepare(sql).run().catch(() => null)
     }
     await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL`).run().catch(() => null)
+    _curatorTablesReady = true  // 성공 시에만 — 실패하면 다음 요청 재시도
   } catch { /* graceful */ }
 }
 
