@@ -4,11 +4,9 @@
  * 본인 referral 매출 / 매장별 ranking / 상품별 ranking / 일별 추세.
  */
 
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { TrendingUp, Award, Clock, ChevronLeft, BarChart3 } from 'lucide-react'
 
 interface Analytics {
@@ -26,15 +24,12 @@ interface Analytics {
 }
 
 export default function InfluencerAnalyticsPage() {
-  const [data, setData] = useState<Analytics | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/influencer-settlement/analytics')
-      .then((r) => { if (r.data?.success) setData(r.data.data) })
-      .catch(() => toast.error('로드 실패'))
-      .finally(() => setLoading(false))
-  }, [])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동.
+  const { data = null, isLoading: loading } = useApiQuery<Analytics | null>(
+    ['influencer', 'analytics'],
+    '/api/influencer-settlement/analytics',
+    { select: (raw) => ((raw as { success?: boolean; data?: Analytics })?.success ? ((raw as { data: Analytics }).data) : null) },
+  )
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-500">로딩 중...</p></div>
   if (!data) return null

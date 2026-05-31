@@ -1,9 +1,8 @@
 /**
  * 🛡️ 2026-05-02: TD-018 분할 — AgencyPage 알림 목록 (최대 5건).
  */
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface NotificationRow {
   title: string
@@ -12,13 +11,12 @@ interface NotificationRow {
 
 export default function NotificationList() {
   const { t } = useTranslation()
-  const [notifs, setNotifs] = useState<NotificationRow[]>([])
-  useEffect(() => {
-    const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
-    api.get('/api/agency/notifications', { headers })
-      .then(r => { if (r.data.success) setNotifs((r.data.data || []).slice(0, 5)) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-  }, [])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동(agency_token).
+  const { data: notifs = [] } = useApiQuery<NotificationRow[]>(
+    ['agency', 'notifications'],
+    '/api/agency/notifications',
+    { select: (raw) => ((raw as { success?: boolean; data?: NotificationRow[] })?.success ? ((raw as { data: NotificationRow[] }).data || []).slice(0, 5) : []) },
+  )
   if (notifs.length === 0) return <p className="text-xs text-gray-400">{t('agency.noNewNotifications')}</p>
   return (
     <div className="space-y-1.5">

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
-import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface BlogPost {
   id: number; slug: string; title: string; summary: string; tags: string
@@ -13,17 +13,14 @@ interface BlogPost {
 export default function BlogListPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [posts, setPosts] = useState<BlogPost[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedTag, setSelectedTag] = useState('')
 
-  useEffect(() => {
-    const url = selectedTag ? `/api/blog/public?tag=${selectedTag}` : '/api/blog/public'
-    api.get(url)
-      .then(r => { if (r.data.success) setPosts(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [selectedTag])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). selectedTag 변경 시 재조회.
+  const { data: posts = [], isLoading: loading } = useApiQuery<BlogPost[]>(
+    ['blog', 'public', selectedTag],
+    selectedTag ? `/api/blog/public?tag=${selectedTag}` : '/api/blog/public',
+    { select: (raw) => ((raw as { success?: boolean; data?: BlogPost[] })?.success ? ((raw as { data: BlogPost[] }).data || []) : []) },
+  )
 
   const allTags = [...new Set(posts.flatMap(p => { try { return JSON.parse(p.tags) } catch { return [] } }))]
 

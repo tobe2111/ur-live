@@ -1,29 +1,24 @@
 /**
  * 🛡️ 2026-05-02: TD-018 분할 — AgencyPage 인플루언서 초대 링크 섹션.
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserPlus, Link2, Copy } from 'lucide-react'
-import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 export default function InviteLinkSection() {
   const { t } = useTranslation()
-  const agencyId = localStorage.getItem('agency_id')
+  const agencyId = typeof localStorage !== 'undefined' ? localStorage.getItem('agency_id') : null
   const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
-  const [recruitedCount, setRecruitedCount] = useState(0)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    const token = localStorage.getItem('agency_token')
-    if (!token) return
-    api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        const sellers = r.data.data || []
-        setRecruitedCount(sellers.length)
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-  }, [])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동. 영입 셀러 수.
+  const { data: recruitedCount = 0 } = useApiQuery<number>(
+    ['agency', 'sellers-count'],
+    '/api/agency/sellers',
+    { select: (raw) => (((raw as { data?: unknown[] })?.data) || []).length },
+  )
 
   const handleCopy = async () => {
     try {

@@ -1,27 +1,23 @@
 /**
  * 🛡️ 2026-05-02: TD-018 분할 — AgencyPage 7일 매출 추이 막대 차트.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import type { DailyStat } from './types'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 export default function RevenueTrendChart() {
   const { t } = useTranslation()
-  const [daily, setDaily] = useState<DailyStat[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const token = localStorage.getItem('agency_token')
-    if (!token) return
-    api.get('/api/agency/stats/daily?days=7', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (r.data.success) setDaily(r.data.data || [])
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동. 토큰 있을 때만 enabled.
+  const { data: daily = [], isLoading: loading } = useApiQuery<DailyStat[]>(
+    ['agency', 'stats-daily', 7],
+    '/api/agency/stats/daily?days=7',
+    {
+      enabled: typeof localStorage !== 'undefined' && !!localStorage.getItem('agency_token'),
+      select: (raw) => ((raw as { success?: boolean; data?: DailyStat[] })?.success ? ((raw as { data: DailyStat[] }).data || []) : []),
+    },
+  )
 
   // 최근 7일 날짜 버킷 생성 (데이터 없는 날도 0으로 표시)
   const buckets = useMemo(() => {
