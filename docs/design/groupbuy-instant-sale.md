@@ -135,7 +135,11 @@
 - **③ 사용자 셀프 취소/청약철회**: `POST /api/group-buy/voucher/:code/cancel` 신규. 본인 + status='unused' + 발급 7일 이내(CAS created_at 가드). deal→지갑 즉시 / toss→cancelTossPayment(idempotencyKey 공유). 재고/참여수 원복. ledger reverse. UI: `MyVouchersPage` QR 모달에 "구매 취소(7일 이내 환불)" 버튼 + `useInvalidateMyVouchers`. (인플 clawback 은 셀러 /refund 와 동일하게 미적용 — 후속)
 - **④ breakage(낙전)**: `auto-settlement.ts:173` 이미 "만료 시 고객 환불(즉시판매 정합)" 구현됨 — 코드 변경 불필요, 문서화만.
 
-### 남은 후속 (별도 PR)
-- 셀러 가이드(guide-seed) 단일가 모델 섹션 신설 (현재 tier 관련 내용 자체가 없어 deferred — `guide-update-pending`)
-- 셀프 취소 + 만료환불 시 인플루언서 commission clawback (현재 admin force-refund 만)
-- 부분환불/취소 알림톡 통합
+### 잔여 후속 3종 — 완료 (2026-05-30)
+- **셀러 가이드**: `guide-seed-seller.ts` 에 `groupbuy-single-price` 섹션 신설 + welcome 정산 문구 정정.
+- **인플 clawback 통합**: `helpers.clawbackVoucherCommission()` 공유 헬퍼 신설 (admin force-refund / 만료 cron 인라인 로직 통합). 누수 지점 연결: 사용자 셀프취소(`self_cancel`) + 셀러 /refund(`seller_refund`). 만료 cron 은 이미 보유(`voucher_expired`).
+- **환불 알림톡 통합**: `helpers.sendRefundAlimtalk()` 신설 → 셀프취소 + 부분환불(`partial-refund`) 에 연결. 셀러 환불은 기존 인라인 유지.
+
+### 진짜 남은 것 (선택)
+- 만료 cron / 셀프취소를 단일 `clawbackVoucherCommission` 로 리팩토링 (현재 cron 은 working 인라인 유지 — 무위험 우선).
+- `paid` 상태(이미 송금) 커미션의 음수 정산 처리 (현재 회수 대상 아님 — 기록만).

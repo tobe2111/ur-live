@@ -13,7 +13,10 @@
   - ② 기존 진행중 공구: 런타임 maxTierDiscount 흡수 → 백필 불필요 검증
   - ③ 사용자 셀프 취소/청약철회: `POST /api/group-buy/voucher/:code/cancel` (본인+미사용+7일) + MyVouchersPage UI
   - ④ breakage: `auto-settlement.ts:173` 이미 만료 시 고객환불 — 문서화만
-- **잔여 후속**: 셀러 가이드 단일가 섹션(guide-update-pending), 셀프취소 인플 clawback, 취소 알림톡
+- **잔여 후속 3종 완료(2026-05-30)**:
+  - 셀러 가이드 `groupbuy-single-price` 섹션 신설 (guide-seed-seller.ts)
+  - 인플 clawback 통합: `helpers.clawbackVoucherCommission()` → 셀프취소 + 셀러 /refund 연결 (누수 차단)
+  - 환불 알림톡 통합: `helpers.sendRefundAlimtalk()` → 셀프취소 + 부분환불 연결
 
 **최종 업데이트**: 2026-05-28 (서비스 모델/정산 통합 + SSR 마이그레이션)
 **브랜치**: `claude/check-live-commerce-flow-jgNs8` (서비스모델/정산) · `claude/vibrant-feynman-m3X3m` (SSR)

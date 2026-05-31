@@ -17,7 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { recordLedger } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { sendBuyerVoucherUsedAlimtalk } from './helpers'
-import { ensureTables } from './helpers'
+import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
 // 🛡️ 2026-05-21: 카테고리 라벨 동적 (식사권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
@@ -319,7 +319,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
   //   전자상거래법 청약철회(7일). 본인 voucher + status='unused' + 발급 7일 이내만.
   //   환불은 셀러 /refund 패턴 mirror: deal→지갑 즉시, toss→cancelTossPayment(영업일 3~5일).
   //   idempotencyKey 는 voucher-${id}-refund (셀러/만료 cron 과 공유 → 동일 voucher 이중환불 방어).
-  //   ⚠️ 인플루언서 commission clawback 은 셀러 /refund 와 동일하게 미적용 (후속 — admin force-refund 만 처리).
+  //   인플루언서 commission clawback + 환불 알림톡 통합 헬퍼 호출 (helpers.ts).
   router.post(
     '/voucher/:code/cancel',
     rateLimit({ action: 'voucher_self_cancel', max: 10, windowSec: 600 }),
@@ -411,6 +411,17 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           } catch (e) { if (import.meta.env?.DEV) console.warn('[self-cancel ledger]', e) }
         })())
 
+        // 인플루언서 commission clawback (환불된 매출의 미지급 커미션 회수)
+        c.executionCtx?.waitUntil((async () => {
+          try { await clawbackVoucherCommission(DB, voucher.id, 'self_cancel') }
+          catch (e) { if (import.meta.env?.DEV) console.warn('[self-cancel clawback]', e) }
+        })())
+
+        // 환불 완료 알림톡 (통합 헬퍼)
+        c.executionCtx?.waitUntil(
+          sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount)
+        )
+
         return c.json({
           success: true,
           data: { refunded: refundAmount, method: voucher.payment_method === 'deal_points' ? 'deal' : 'card' },
@@ -461,11 +472,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // voucher 조회 + 셀러 본인 product 검증
       const voucher = await DB.prepare(`
         SELECT v.id, v.user_id, v.product_id, v.status, v.applied_price,
-               p.price AS product_price, p.seller_id
+               p.price AS product_price, p.seller_id, p.name AS product_name
         FROM vouchers v
         LEFT JOIN products p ON p.id = v.product_id
         WHERE v.code = ?
-      `).bind(code).first<{ id: number; user_id: string; product_id: number; status: string; applied_price: number | null; product_price: number; seller_id: number }>()
+      `).bind(code).first<{ id: number; user_id: string; product_id: number; status: string; applied_price: number | null; product_price: number; seller_id: number; product_name: string }>()
       if (!voucher) return c.json({ success: false, error: 'voucher 없음' }, 404)
       if (voucher.status !== 'unused') {
         return c.json({ success: false, error: `이미 ${voucher.status} 상태` }, 400)
@@ -525,6 +536,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               url: '/user/profile', tag: `partial-refund-${voucher.id}`,
             })
           } catch { /* ignore */ }
+
+          // 환불 완료 알림톡 (통합 헬퍼 — 취소/부분환불 공통)
+          c.executionCtx?.waitUntil(
+            sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount)
+          )
         }
       } catch (e) { console.error('[partial-refund]', e) }
 

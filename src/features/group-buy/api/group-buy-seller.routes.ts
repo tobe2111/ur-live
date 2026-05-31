@@ -19,6 +19,7 @@ import { auditLog } from '@/worker/middleware/audit-log'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
+import { clawbackVoucherCommission } from './helpers'
 
 interface RefundVoucherRow {
   id: number
@@ -132,6 +133,12 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
             } catch (e) { if (import.meta.env?.DEV) console.warn('[toss refund]', e) }
           })())
         }
+        // 🛡️ 2026-05-30: 인플 commission clawback — 환불된 매출의 미지급 커미션 회수 (기존 누수 차단).
+        //   admin force-refund / 만료 cron 과 동일 (helpers.clawbackVoucherCommission 통합).
+        c.executionCtx?.waitUntil((async () => {
+          try { await clawbackVoucherCommission(DB, v.id, 'seller_refund') }
+          catch (e) { if (import.meta.env?.DEV) console.warn('[seller-refund clawback]', e) }
+        })())
         refundCount++
       }
 

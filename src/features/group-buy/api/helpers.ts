@@ -181,6 +181,61 @@ export function maxTierDiscount(tiersJson: string | null): number {
 }
 
 /**
+ * 🛡️ 2026-05-30: 인플루언서 커미션 clawback — voucher 환불/취소 시 미지급 커미션 회수.
+ *   admin force-refund(group-buy-admin.routes.ts:272) / 만료 cron(auto-settlement.ts:259) 의
+ *   인라인 로직을 공유 헬퍼로 통합 — 셀러 /refund + 사용자 셀프취소 누수 차단.
+ *   pending/available + paid_at IS NULL 건만 회수 (이미 송금된 'paid' 는 미차감 — 다음 정산 음수 처리).
+ *   best-effort: 호출자가 try/catch 또는 waitUntil 로 감쌀 것 (환불 자체는 항상 진행).
+ */
+export async function clawbackVoucherCommission(
+  DB: D1Database,
+  voucherId: number,
+  reason: string,
+): Promise<number> {
+  let clawed = 0
+  const { results: attrs } = await DB.prepare(
+    `SELECT id, influencer_id, commission_amount, status
+     FROM influencer_attributions
+     WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
+  ).bind(voucherId).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+  for (const a of (attrs || [])) {
+    await DB.prepare(
+      "UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = ? WHERE id = ?"
+    ).bind(reason, a.id).run()
+    if (a.status === 'pending') {
+      await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+        .bind(a.commission_amount, a.influencer_id).run()
+    } else if (a.status === 'available') {
+      await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+        .bind(a.commission_amount, a.influencer_id).run()
+    }
+    clawed++
+  }
+  return clawed
+}
+
+/**
+ * 🛡️ 2026-05-30: 환불 완료 알림톡 통합 — 셀러/어드민 환불, 사용자 셀프취소, 부분환불 공통.
+ *   users.phone 조회 후 sendSystemAlimtalk('voucher_refunded'). best-effort (phone 없으면 skip).
+ */
+export async function sendRefundAlimtalk(
+  env: Record<string, unknown>,
+  DB: D1Database,
+  userId: string | null,
+  productName: string,
+  amount: number,
+): Promise<void> {
+  try {
+    if (!userId) return
+    const user = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone: string }>()
+    if (!user?.phone) return
+    const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+    const msg = `[유어딜] 환불 완료 — ${productName}\n${amount.toLocaleString('ko-KR')}원이 환불 처리되었습니다.\n(딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)`
+    await sendSystemAlimtalk(env, user.phone, 'voucher_refunded', msg)
+  } catch { /* best-effort */ }
+}
+
+/**
  * 바우처 코드 생성 — 'UR-XXXX-XXXX' (8 chars + dash, 32^8 = 1.1조 가능).
  * 🛡️ Math.random → crypto.getRandomValues (guessable code 방어).
  */
