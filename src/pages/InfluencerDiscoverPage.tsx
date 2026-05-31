@@ -5,12 +5,12 @@
  * marketing_enabled=0 으로 referral 거부 가능.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Link2, Copy, Share2, Search } from 'lucide-react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface Product {
   id: number
@@ -46,21 +46,18 @@ function getUserId(): string | null {
 
 export default function InfluencerDiscoverPage() {
   const navigate = useNavigate()
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState('all')
   const [filter, setFilter] = useState('')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'deadline'>('latest')
 
   const myId = getUserId() || 'me'
 
-  useEffect(() => {
-    setLoading(true)
-    api.get('/api/influencer-discover/products', { params: { category: cat } })
-      .then((r) => { if (r.data?.success) setProducts(r.data.data || []) })
-      .catch(() => toast.error('카탈로그 로드 실패'))
-      .finally(() => setLoading(false))
-  }, [cat])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). category(cat) 변경 시 재조회.
+  const { data: products = [], isLoading: loading } = useApiQuery<Product[]>(
+    ['influencer-discover', 'products', cat],
+    '/api/influencer-discover/products',
+    { params: { category: cat }, select: (raw) => ((raw as { success?: boolean; data?: Product[] })?.success ? ((raw as { data: Product[] }).data || []) : []) },
+  )
 
   function genRefLink(productId: number): string {
     return `https://live.ur-team.com/group-buy/${productId}?ref=${encodeURIComponent(myId)}`

@@ -6,13 +6,12 @@
  *
  * 🛡️ 2026-04-28: restaurant-map 옵션 B 의 admin 대시보드.
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { TrendingUp, MapPin, Phone, Bell, Handshake, RefreshCw, Navigation } from 'lucide-react'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
 
 interface SuggestionStat {
   kakao_place_id: string
@@ -29,25 +28,15 @@ interface SuggestionStat {
 }
 
 export default function AdminRestaurantDemandPage() {
-  const [items, setItems] = useState<SuggestionStat[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'invite' | 'notify'>('all')
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token')
-      const r = await api.get('/api/restaurant-suggestions/stats', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (r.data?.success) setItems(r.data.data || [])
-    } catch (err) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || '데이터 로드 실패')
-    } finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동. load=refetch(새로고침 버튼 유지).
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<SuggestionStat[]>(
+    ['admin', 'restaurant-suggestions'],
+    '/api/restaurant-suggestions/stats',
+    { select: (raw) => ((raw as { success?: boolean; data?: SuggestionStat[] })?.success ? ((raw as { data: SuggestionStat[] }).data || []) : []) },
+  )
+  const load = () => { void refetch() }
 
   const filtered = items.filter(i => {
     if (filter === 'invite') return i.invite_count > 0
