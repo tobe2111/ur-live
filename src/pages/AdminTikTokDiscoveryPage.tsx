@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { Sparkles, Eye, Heart, Video, ExternalLink } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -23,22 +22,14 @@ interface DiscoveryItem {
 
 export default function AdminTikTokDiscoveryPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<DiscoveryItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'inactive' | 'active'>('all')
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token')
-      const r = await api.get('/api/admin/tiktok-discovery', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data.success) setItems(r.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('admin.tiktokDiscovery.loadFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ SSOT). 인증=인터셉터 자동(admin_token).
+  const { data: items = [], isLoading: loading } = useApiQuery<DiscoveryItem[]>(
+    ['admin', 'tiktok-discovery'],
+    '/api/admin/tiktok-discovery',
+    { select: (raw) => ((raw as { success?: boolean; data?: DiscoveryItem[] })?.success ? (raw as { data: DiscoveryItem[] }).data : []) },
+  )
 
   const filtered = items.filter(i => {
     if (filter === 'inactive') return !i.is_seller_active
