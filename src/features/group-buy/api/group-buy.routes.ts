@@ -134,8 +134,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 상품 검증 (재고/마감/카테고리) — deal 흐름의 검증 로직 일부 재사용.
     // 🛡️ 2026-05-23: deal_only=1 도 매칭 (VouchersPage 필터 정합) — voucher category 없어도 deal-only 면 교환 가능.
     const product = await DB.prepare(
-      "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)"
-    ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; voucher_expiry: string | null; seller_id: number }>()
+      "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id, group_buy_tiers FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)"
+    ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; voucher_expiry: string | null; seller_id: number; group_buy_tiers: string | null }>()
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     if (product.seller_id && Number(product.seller_id) === Number(userId)) {
       return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
@@ -147,7 +147,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
     }
 
-    const totalAmount = product.price * qty
+    // 🛡️ 2026-05-31: 즉시판매 단일가(A2) — 카드 경로도 딜과 동일하게 최대 tier 할인 적용.
+    //   이전: product.price 정가 → 카드 구매자가 딜 구매자보다 비싸게 결제하는 불일치.
+    const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
+    const totalAmount = Math.round(product.price * (1 - tierDiscountPct / 100)) * qty
     const orderId = generateTossOrderId('GB', userId)
     return c.json({
       success: true,
@@ -906,11 +909,14 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const { DB } = c.env
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
   const product = await DB.prepare(
-    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry FROM products WHERE id = ? AND is_active = 1"
-  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null }>()
+    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers FROM products WHERE id = ? AND is_active = 1"
+  ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null }>()
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
   // amount 재검증 (defense-in-depth — 클라 amount 신뢰 X).
-  const expectedAmount = product.price * qty
+  // 🛡️ 2026-05-31: 즉시판매 단일가(A2) — 카드도 최대 tier 할인 적용 (딜 경로와 일치). toss-init 와 동일 계산.
+  const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
+  const unitPrice = Math.round(product.price * (1 - tierDiscountPct / 100))
+  const expectedAmount = unitPrice * qty
   if (Number(amount) !== expectedAmount) {
     return c.json({ success: false, error: '결제 금액이 일치하지 않습니다', code: 'AMOUNT_MISMATCH' }, 400)
   }
@@ -947,10 +953,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   //    C1: RETURNING id 로 정수 order_id 획득 후 vouchers.order_id 에 바인드 (이전: order_number 문자열
   //        저장 → refund JOIN(v.order_id=o.id) 전부 실패 → 카드 환불 영구 불가).
   //    C2: applied_price + expires_at 저장 (이전: 누락 → 무한 만료 안 됨 + 정산 fallback 불일치).
-  //    NOTE: ledger/donations/인플 attribution 일관성은 후속 부채 — TECHNICAL_DEBT.md 기록.
-  //          정산 자체는 auto-settlement cron 이 vouchers.applied_price 로 동작하므로 셀러 지급은 정상.
+  //    C3 (2026-05-31): 딜 경로와 동일하게 order_items + ledger + donations(정산기록) 기록 →
+  //          ledger 정합성 검증 + commission 집계에 카드 결제건도 잡힘.
+  //          (인플루언서 attribution 은 카드 경로 referral edge-case — 후속 부채로 잔존.)
   const orderNumber = `GB-${userId}-${Date.now()}`
-  const unitPrice = product.price                                  // 카드 경로는 정가 결제 (티어 할인 미적용)
   const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
   try {
     const orderInsert = await DB.prepare(`
@@ -962,18 +968,52 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     if (!newOrderId) throw new Error('order insert returned no id')
 
     // voucher 발급 (qty) — order_id=정수(C1) + applied_price/expires_at(C2). batch = atomic (부분발급 차단).
+    //   order_items 도 같은 batch (딜 경로와 정합 — 주문 상세 표시 + 정산 근거).
     const codes = await Promise.all(Array.from({ length: qty }, () => generateUniqueVoucherCode(DB)))
+    const orderItemStmt = DB.prepare(`
+      INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(newOrderId, productId, product.name, unitPrice, unitPrice, qty, expectedAmount)
     const voucherStmts = codes.map(code =>
       DB.prepare(`
         INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-        VALUES (?, ?, ?, ?, ?, 0, ?)
-      `).bind(newOrderId, productId, userId, code, expiresAt, unitPrice)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice)
     )
-    await DB.batch(voucherStmts)
+    await DB.batch([orderItemStmt, ...voucherStmts])
 
     // 공구 진행 카운터 +qty (atomic).
     await DB.prepare(`UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?`)
       .bind(qty, productId).run().catch(swallow('group-buy:confirm-toss:counter'))
+
+    // 🛡️ 2026-05-31: 정산 정합 — 딜 경로(group-buy /join)와 동일하게 ledger + donations 기록.
+    //   셀러 차등 수수료 → commission/seller split → ledger(group_buy_join) + donations(정산 row).
+    const commissionRate = await getSellerCommissionRate(DB, Number(product.seller_id))
+    const commissionAmount = Math.round(expectedAmount * commissionRate)
+    const sellerAmount = expectedAmount - commissionAmount
+    try {
+      await recordLedger(DB, {
+        event_type: 'group_buy_join',
+        reference_id: orderNumber,
+        amount: expectedAmount,
+        debit_account: `user:${userId}`,
+        credit_account: `seller:${product.seller_id}`,
+        fee_amount: commissionAmount,
+        fee_account: 'platform:commission',
+        metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },
+      })
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[confirm-toss ledger]', e) }
+    try {
+      await DB.prepare(`
+        INSERT INTO donations (live_stream_id, seller_id, donor_user_id, donor_name, amount,
+          commission_amount, credit_amount, commission_rate, order_id, payment_status, message)
+        VALUES (0, ?, ?, '공동구매', ?, ?, ?, ?, ?, 'completed', ?)
+      `).bind(
+        product.seller_id, userId,
+        expectedAmount, commissionAmount, sellerAmount, commissionRate,
+        orderNumber, `${getVoucherShortLabel(product.category)} 공동구매(카드): ${product.name}`
+      ).run()
+    } catch { /* donations 테이블 없으면 무시 */ }
 
     return c.json({
       success: true,
