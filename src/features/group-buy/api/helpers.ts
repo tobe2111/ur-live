@@ -248,6 +248,28 @@ export async function clawbackVoucherCommission(
     }
     clawed++
   }
+
+  // 🛡️ 2026-05-31: 에이전시 입점 sales_commission(구매 시 order 단위 적립) 도 동일 비례 회수.
+  //   payout 은 agency_store_intro_commissions 를 status 별 SUM(commission_amount) 로 집계하므로
+  //   cancelled 전환 + 부분 감액이면 정합. paid 는 제외(이미 송금). order_id 없으면 skip.
+  if (orderId) {
+    try {
+      const ag = await DB.prepare(
+        `SELECT id, commission_amount FROM agency_store_intro_commissions
+         WHERE order_id = ? AND type = 'sales_commission' AND status IN ('pending', 'available') AND paid_at IS NULL`
+      ).bind(orderId).all<{ id: number; commission_amount: number }>()
+      for (const a of (ag.results || [])) {
+        const share = Math.min(a.commission_amount, Math.max(1, Math.floor(a.commission_amount / denom)))
+        const remaining = a.commission_amount - share
+        if (remaining <= 0) {
+          await DB.prepare("UPDATE agency_store_intro_commissions SET status = 'cancelled', commission_amount = 0 WHERE id = ?").bind(a.id).run()
+        } else {
+          await DB.prepare("UPDATE agency_store_intro_commissions SET commission_amount = ? WHERE id = ?").bind(remaining, a.id).run()
+        }
+      }
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[agency intro clawback]', e) }
+  }
+
   return clawed
 }
 

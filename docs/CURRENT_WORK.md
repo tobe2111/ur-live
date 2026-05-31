@@ -9,6 +9,12 @@
 - `auto-settlement.ts` 만료 clawback: 깨진 인라인 `WHERE voucher_id=?` 블록 → 공유 헬퍼 호출로 통합.
 - tsc 0 / build:worker OK / sql·bind 검증 통과. (레거시 `order_id=0` attribution 은 소급 연결 불가 — 신규부터 정상 회수.)
 
+**audit 전체 결론 (4개 자금 흐름 환불 reversal 정합)**:
+1. ✅ 인플 커미션 — 구매 적립·환불창 후 지급 → 환불 reversal 필수 → **누수였음, fix 완료**(위).
+2. ✅ 에이전시 입점 2% sales_commission — 구매 시 order 단위 적립, 환불 reversal 없었음 → **clawbackVoucherCommission 에 비례 cancel 추가**(status='cancelled'+감액; payout 은 status별 SUM 이라 정합).
+3. ✅ 셀러 정산 — `auto-settlement` 이 `WHERE v.status='used'`(+used_at 7일+ +settlement_id NULL)로만 집계 → 환불 바우처(status='refunded')는 **애초에 정산 안 됨, 구조적 안전**(누수 아님). `donations` 는 매출추적용, payout 아님.
+4. 🟡 사용자 추천 보너스 — 구매 시 user_points 적립, 환불 reversal 없음. **소액·프로모션 + 이미 사용된 포인트 차감 음수 위험**이라 보류(known minor).
+
 ## 🟢 2026-05-31 — 테마 backlog 정리 (2차) + 공구 결제 런타임 버그 fix
 - **공구 join 응답 ReferenceError fix** (`group-buy.routes.ts:854`): A2 단일가 전환 때 제거된 `currentTier` 를 응답이 계속 참조 → 런타임 `ReferenceError`. `next_tier: null` 로 교정 (A2 모델 정합). confirm-toss `body.ref` 타입 union 누락도 fix → **tsc 0** (이전 세션 node_modules 부재로 미검출된 잠복 타입에러 2건 해소).
 - **테마 backlog 정리**: checker 정밀화(streaming/guide/dashboard 폴더 + ProductOptionForm/BulkUploadModal/LiveDonation 제외 — usage 추적으로 라이트 고정 확인) → 오탐 202→실제 58건. 유저 대면 26파일 dark: variant 정합(state-variant aware) + 이전 perl 잠복 orphan(`dark:hover:bg-[X] dark:bg-[X]`, `placeholder:text dark:text`, `hover:text dark:text`) 전수 제거. 남은 1건은 토글 thumb(의도된 흰색).
