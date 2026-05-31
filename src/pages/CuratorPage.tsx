@@ -71,7 +71,9 @@ export default function CuratorPage() {
   useEffect(() => {
     if (!handle) return
     let alive = true
-    setLoading(true)
+    // 🛡️ 2026-05-31: SSR 초기 데이터(__SSR_INITIAL_CURATOR__)가 현재 handle 과 일치하면 로더 생략 →
+    //   SSR 즉시 paint 유지(깜빡임 방지, 잠긴 GroupBuyDetail 패턴). 다른 handle 로 이동 시에만 로딩.
+    if (data?.curator?.handle !== handle) setLoading(true)
     setError(null)
     curatorApi
       .getPage(handle)

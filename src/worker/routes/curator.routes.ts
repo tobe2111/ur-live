@@ -140,6 +140,13 @@ curatorRoutes.get('/:handle', async (c) => {
       .bind(user.id, CURATOR_DEFAULTS.PIN_MAX_PER_USER)
       .all()
 
+    // 🛡️ 2026-05-31 (링크샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
+    //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
+    //   → /u/:handle 첫 paint 200-500ms+ 지연. 공개 데이터(본인 dashboard 는 /me/* 별도)라 공개 캐시 안전.
+    //   브라우저 60s / edge 900s + SWR — 소유자 편집은 CuratorPage 낙관적 업데이트로 즉시 반영.
+    c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+    c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
+
     return c.json({
       success: true,
       curator: {
