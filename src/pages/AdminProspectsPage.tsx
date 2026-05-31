@@ -51,6 +51,11 @@ export default function AdminProspectsPage() {
     try {
       const r = await api.get(`/api/admin/prospects?status=${status}`)
       if (r.data?.success) setProspects(r.data.data || [])
+      else setProspects([])
+    } catch (e) {
+      // 🛡️ 2026-05-31: catch 추가 (이전: 없음 → unhandled rejection). 빈 목록 + DEV 로그.
+      if (import.meta.env?.DEV) console.warn('[admin-prospects] load failed', e)
+      setProspects([])
     } finally {
       setLoading(false)
     }

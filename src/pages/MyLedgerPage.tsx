@@ -83,6 +83,8 @@ export default function MyLedgerPage() {
       setLoading(true)
       const res = await api.get('/api/ledger/my')
       if (res.data?.success) setData(res.data.data)
+    } catch {
+      // 🛡️ 2026-05-31: catch 추가 (이전: 없음 → unhandled rejection). data=null 유지 → "불러올 수 없습니다" 표시.
     } finally { setLoading(false) }
   }
 

@@ -100,6 +100,7 @@ export default function SellerTierPage() {
     }
     api.get('/api/seller/tier', { headers: { Authorization: `Bearer ${token}` } })
       .then(res => { if (res.data?.success) setInfo(res.data.data) })
+      .catch((e) => { if (import.meta.env?.DEV) console.warn('[seller-tier] load failed', e) })  // 🛡️ 2026-05-31: .catch 추가 (unhandled rejection 방지)
       .finally(() => setLoading(false))
   }, [navigate])
 

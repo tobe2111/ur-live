@@ -62,12 +62,14 @@ export default function MyDealHistoryPage() {
   const { data: balance = 0 } = useBalance({ fresh: true })
   const [items, setItems] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)  // 🛡️ 2026-05-31: silent fail(catch 없음) → 에러 상태 추가
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
   const [filter, setFilter] = useState<FilterType>('')
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
@@ -78,7 +80,11 @@ export default function MyDealHistoryPage() {
       if (r.data?.success) {
         setItems(r.data.data || [])
         setTotal(r.data.pagination?.total || 0)
+      } else {
+        setError(true)
       }
+    } catch {
+      setError(true)  // 이전: catch 없음 → 실패 시 빈 화면 + unhandled rejection
     } finally { setLoading(false) }
   }, [page, filter])
 
@@ -150,6 +156,12 @@ export default function MyDealHistoryPage() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : error ? (
+          <div className="py-16 text-center">
+            <p className="text-4xl mb-3">⚠️</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
+            <button onClick={() => load()} className="mt-3 text-xs text-pink-500 font-bold">다시 시도 →</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
