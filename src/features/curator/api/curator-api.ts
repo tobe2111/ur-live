@@ -60,6 +60,8 @@ export interface DashboardStats {
   purchases_30d: number
   top_pins: Array<{ id: number; product_id: number; click_count: number; product_name: string; thumbnail: string | null; image_url: string | null }>
   earnings_daily_30d: Array<{ date: string; amount: number }>
+  // 🛡️ 2026-05-31: 원천별 수익 내역 (어느 상품/주문에서 적립됐는지).
+  recent_earnings?: Array<{ id: number; product_id: number; product_name: string | null; commission: number; order_amount: number; created_at: string }>
 }
 
 export const curatorApi = {

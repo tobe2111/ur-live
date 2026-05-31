@@ -575,45 +575,42 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       }
     }
 
-    // 30일 어필리에이트 적립 (affiliate_earnings 가 기존 SSOT)
-    const earnings30 = await DB.prepare(
-      `SELECT COALESCE(SUM(commission_amount), 0) AS total
-       FROM affiliate_earnings
-       WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
-    ).bind(userId).first<{ total: number }>().catch(() => null)
-
-    // 30일 클릭
-    const clicks30 = await DB.prepare(
-      `SELECT COUNT(*) AS cnt
-       FROM pin_click_logs
-       WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
-    ).bind(userId).first<{ cnt: number }>().catch(() => null)
-
-    // 30일 구매 건수
-    const purchases30 = await DB.prepare(
-      `SELECT COUNT(*) AS cnt
-       FROM affiliate_earnings
-       WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
-    ).bind(userId).first<{ cnt: number }>().catch(() => null)
-
-    // Top 3 pins (7일 click_count 기준 — denormalized)
-    const { results: topPins } = await DB.prepare(
-      `SELECT pp.id, pp.product_id, pp.click_count, p.name AS product_name, p.thumbnail, p.image_url
-       FROM product_pins pp
-       JOIN products p ON p.id = pp.product_id
-       WHERE pp.user_id = ?
-       ORDER BY pp.click_count DESC
-       LIMIT 3`,
-    ).bind(userId).all().catch(() => ({ results: [] as any[] }))
-
-    // 일별 적립 차트 (30일)
-    const { results: daily } = await DB.prepare(
-      `SELECT date(created_at) AS date, COALESCE(SUM(commission_amount), 0) AS amount
-       FROM affiliate_earnings
-       WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')
-       GROUP BY date(created_at)
-       ORDER BY date ASC`,
-    ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+    // 🛡️ 2026-05-31: 6개 쿼리 병렬화 (이전: 순차 await ~6 round-trip → 로딩 느림) + 원천별 수익 내역 추가.
+    const [earnings30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
+      // 30일 어필리에이트 적립 (affiliate_earnings = SSOT, 컬럼명 commission)
+      DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+         WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ total: number }>().catch(() => null),
+      // 30일 클릭
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM pin_click_logs
+         WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      // 30일 구매 건수
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM affiliate_earnings
+         WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      // Top 3 pins (click_count denormalized)
+      DB.prepare(
+        `SELECT pp.id, pp.product_id, pp.click_count, p.name AS product_name, p.thumbnail, p.image_url
+         FROM product_pins pp JOIN products p ON p.id = pp.product_id
+         WHERE pp.user_id = ? ORDER BY pp.click_count DESC LIMIT 3`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      // 일별 적립 차트 (30일)
+      DB.prepare(
+        `SELECT date(created_at) AS date, COALESCE(SUM(commission), 0) AS amount
+         FROM affiliate_earnings WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')
+         GROUP BY date(created_at) ORDER BY date ASC`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      // 🛡️ 2026-05-31: 원천별 수익 내역 (어느 상품/주문에서 얼마 적립됐는지 — 사용자 요청).
+      DB.prepare(
+        `SELECT id, product_id, product_name, commission, order_amount, created_at
+         FROM affiliate_earnings WHERE referrer_id = ?
+         ORDER BY created_at DESC LIMIT 30`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+    ])
 
     return c.json({
       success: true,
@@ -624,8 +621,10 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
         month_earnings: earnings30?.total ?? 0,
         clicks_30d: clicks30?.cnt ?? 0,
         purchases_30d: purchases30?.cnt ?? 0,
-        top_pins: topPins ?? [],
-        earnings_daily_30d: daily ?? [],
+        top_pins: topPinsR.results ?? [],
+        earnings_daily_30d: dailyR.results ?? [],
+        // 원천별 수익 내역 (상품명 + 커미션 + 주문액 + 일시)
+        recent_earnings: recentR.results ?? [],
       },
     })
   } catch (err) {
@@ -648,7 +647,7 @@ curatorRoutes.get('/me/pins/stats', requireAuth(), async (c) => {
       `SELECT pp.id, pp.product_id, pp.click_count AS lifetime_clicks,
               (SELECT COUNT(*) FROM pin_click_logs WHERE pin_id = pp.id AND created_at >= datetime('now', ?)) AS clicks,
               (SELECT COUNT(*) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND ae.created_at >= datetime('now', ?)) AS purchases,
-              (SELECT COALESCE(SUM(commission_amount), 0) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND ae.created_at >= datetime('now', ?)) AS earnings
+              (SELECT COALESCE(SUM(commission), 0) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND ae.created_at >= datetime('now', ?)) AS earnings
        FROM product_pins pp
        WHERE pp.user_id = ?
        ORDER BY pp.position ASC
@@ -750,7 +749,7 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
     // 잔액 검증 — affiliate_earnings SUM - 이미 출금 신청한 금액
     const balance = await DB.prepare(
       `SELECT
-         COALESCE((SELECT SUM(commission_amount) FROM affiliate_earnings WHERE referrer_id = ?), 0)
+         COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ?), 0)
          - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
          AS available`,
     ).bind(String(userId), String(userId)).first<{ available: number }>()
@@ -803,7 +802,7 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
 
     // 🛡️ 2026-05-25: 테이블 미존재 시 graceful — 0 fallback.
     const earnings = await DB.prepare(
-      `SELECT COALESCE(SUM(commission_amount), 0) AS total FROM affiliate_earnings WHERE referrer_id = ?`,
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ?`,
     ).bind(String(userId)).first<{ total: number }>().catch(() => null)
 
     const withdrawn = await DB.prepare(

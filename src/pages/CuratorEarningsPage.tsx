@@ -109,6 +109,7 @@ export default function CuratorEarningsPage() {
               <IntroducedStoresSection />
               <BusinessSection />
               <TopPinsSection stats={stats} />
+              <RecentEarningsSection stats={stats} />
               <DailyChart stats={stats} />
             </>
           )}
@@ -560,6 +561,35 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
               <p className="text-sm font-medium truncate">{pin.product_name}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">👆 {formatNumber(pin.click_count)} 클릭</p>
             </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
+  const { t } = useTranslation()
+  const items = stats.recent_earnings || []
+  if (!items.length) return null
+  return (
+    <section className="mb-6">
+      <h2 className="text-sm font-bold mb-3">🧾 {t('curator.earnings.recent', { defaultValue: '수익 내역 (원천별)' })}</h2>
+      <div className="space-y-2">
+        {items.map((e) => (
+          <Link
+            key={e.id}
+            to={`/products/${e.product_id}`}
+            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#121212] rounded-xl p-3 border border-gray-100 dark:border-[#1A1A1A] hover:border-pink-500/50 transition-colors"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{e.product_name || t('curator.earnings.unknownProduct', { defaultValue: '상품' })}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                {new Date(e.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
+              </p>
+            </div>
+            <span className="text-sm font-bold text-pink-500 shrink-0">+{formatWon(e.commission)}</span>
           </Link>
         ))}
       </div>
