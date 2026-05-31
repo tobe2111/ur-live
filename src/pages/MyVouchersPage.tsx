@@ -107,15 +107,15 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
           <div className="bg-white dark:bg-[#0A0A0A] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">⭐ 카카오맵 후기 작성 보너스</h3>
-            <p className="text-[11px] text-gray-500 mb-4">
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4">
               매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
               <br/>1) 카카오맵 앱에서 매장 검색 → 후기 작성
               <br/>2) 후기 페이지 URL 복사 또는 스크린샷 캡쳐
               <br/>3) 아래에 제출
             </p>
             <div className="grid grid-cols-2 gap-1 mb-3">
-              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>URL 제출</button>
-              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>스크린샷 (AI 자동 검증)</button>
+              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
             </div>
             {mode === 'url' ? (
               <div>
@@ -123,14 +123,14 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
                 <input value={reviewUrl} onChange={(e) => setReviewUrl(e.target.value)}
                   placeholder="https://place.map.kakao.com/..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white dark:bg-[#1A1A1A]" />
-                <p className="text-[10px] text-gray-500 mt-1">어드민 검증 후 1~3일 내 보너스 지급</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">어드민 검증 후 1~3일 내 보너스 지급</p>
               </div>
             ) : (
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">후기 스크린샷</label>
                 <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadScreenshot(e.target.files[0])}
                   className="w-full text-xs" />
-                {uploading && <p className="text-[10px] text-gray-500 mt-1">업로드 중...</p>}
+                {uploading && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">업로드 중...</p>}
                 {screenshotUrl && screenshotUrl.startsWith('data:') && (
                   <img src={screenshotUrl} alt="preview" className="mt-2 max-h-40 rounded" />
                 )}
@@ -138,7 +138,7 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 mt-5">
-              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm font-bold text-gray-700">취소</button>
+              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
                 className="py-2 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}
@@ -153,7 +153,7 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
 
 function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
   return (
-    <div className="mx-auto bg-white p-2 rounded">
+    <div className="mx-auto bg-white dark:bg-[#0A0A0A] p-2 rounded">
       <QRCodeSVG value={value} size={size} level="M" includeMargin={false} />
     </div>
   )
@@ -239,7 +239,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose} role="presentation">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
-        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:bg-[#1A1A1A]">
+        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:hover:bg-[#1A1A1A] dark:bg-[#1A1A1A]">
           <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </button>
         <p className="text-center text-sm font-bold text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
@@ -298,7 +298,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
             ℹ️ {voucher.usage_guide}
           </p>
         )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2">{t('voucher.showQrAtStore')}</p>
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 text-center mt-2">{t('voucher.showQrAtStore')}</p>
 
         {/* 선물/공유 버튼 (사용 가능한 식사권만) */}
         {voucher.status === 'unused' && (
@@ -469,13 +469,13 @@ export default function MyVouchersPage() {
         <div className="ur-content-narrow px-4 lg:px-8 mb-3 flex gap-1.5">
           <button
             onClick={() => setViewMode('list')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
           >
             📋 리스트
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'map' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'map' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
           >
             🗺️ 지도로 보기
           </button>
@@ -484,7 +484,7 @@ export default function MyVouchersPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {viewMode === 'map' && !loading ? (
-          <Suspense fallback={<div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-sm text-gray-500" style={{ height: 400 }}>지도 불러오는 중...</div>}>
+          <Suspense fallback={<div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-sm text-gray-500 dark:text-gray-400" style={{ height: 400 }}>지도 불러오는 중...</div>}>
             <VoucherMap
               vouchers={vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)}
               onMarkerClick={(v) => setQrVoucher(vouchers.find(x => x.id === v.id) ?? null)}
@@ -827,7 +827,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
             📞 {maskedPhone} 로 발송됨
           </p>
         )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
           휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.
         </p>
         <button
@@ -839,7 +839,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         </button>
       </div>
       {v.product_image && (
-        <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white shrink-0">
+        <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white dark:bg-[#0A0A0A] shrink-0">
           <img src={v.product_image} alt={v.product_name} className="w-full h-full object-cover" loading="lazy" />
         </div>
       )}

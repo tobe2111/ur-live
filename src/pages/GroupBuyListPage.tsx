@@ -332,7 +332,7 @@ export default function GroupBuyListPage() {
           </div>
           <button
             onClick={() => navigate('/community-group-buy/new')}
-            className="shrink-0 flex items-center gap-1 bg-white text-rose-600 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
+            className="shrink-0 flex items-center gap-1 bg-white dark:bg-[#0A0A0A] text-rose-600 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="w-3.5 h-3.5" />
             {t('groupBuy.startCta', { defaultValue: '시작' })}
@@ -348,7 +348,7 @@ export default function GroupBuyListPage() {
             className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'seller'
                 ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 border-transparent'
+                : 'text-gray-400 dark:text-gray-600 dark:text-gray-300 border-transparent'
             }`}
           >
             {t('groupBuy.tabSeller', { defaultValue: '셀러 공구' })}
@@ -358,7 +358,7 @@ export default function GroupBuyListPage() {
             className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'community'
                 ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 border-transparent'
+                : 'text-gray-400 dark:text-gray-600 dark:text-gray-300 border-transparent'
             }`}
           >
             {t('groupBuy.tabCommunity', { defaultValue: '유저 공구' })}
@@ -390,7 +390,7 @@ export default function GroupBuyListPage() {
                 }}
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   category === tab.key
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
+                    ? 'bg-gray-900 dark:bg-white dark:bg-[#0A0A0A] text-white dark:text-gray-900 dark:text-white border-gray-900 dark:border-white'
                     : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
                 }`}
               >
@@ -471,7 +471,7 @@ export default function GroupBuyListPage() {
                   className={`w-full text-left px-3 py-2.5 text-[13px] ${
                     sortBy === opt
                       ? 'bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#121212] dark:hover:bg-white/[0.06]'
                   }`}
                 >
                   {SORT_LABELS[opt]}
@@ -616,7 +616,7 @@ export default function GroupBuyListPage() {
                       className="text-left active:scale-[0.98] transition-transform"
                     >
                       {/* 이미지 */}
-                      <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
+                      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
                         {p.image_url ? (
                           // 🛡️ 2026-05-15: LCP 최적화 — 첫 row (idx < 4) eager + fetchpriority high.
                           //   above-the-fold 이미지 즉시 로딩 → Lighthouse LCP 개선.
@@ -677,7 +677,7 @@ export default function GroupBuyListPage() {
                         {/* 가격 */}
                         <div className="flex items-baseline gap-1 mt-1">
                           {p.original_price && p.original_price > p.price && (
-                            <span className="text-[10px] text-gray-400 dark:text-gray-600 line-through">
+                            <span className="text-[10px] text-gray-400 dark:text-gray-600 dark:text-gray-300 line-through">
                               {formatPrice(p.original_price)}
                             </span>
                           )}
@@ -704,7 +704,7 @@ export default function GroupBuyListPage() {
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
-                            <p className="text-[10px] text-gray-600 mt-1 flex items-center gap-1">
+                            <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1">
                               <Users className="w-3 h-3 text-gray-400" />
                               {achieved ? (
                                 <span className="text-emerald-600 font-semibold">
@@ -719,7 +719,7 @@ export default function GroupBuyListPage() {
 
                         {/* 시간 */}
                         {timeLeft && (
-                          <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                             <Clock className="w-3 h-3 text-gray-400" />
                             {timeLeft}
                           </p>
@@ -738,9 +738,9 @@ export default function GroupBuyListPage() {
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="border border-gray-100 dark:border-[#1A1A1A] rounded-2xl p-4 animate-pulse">
-                    <div className="h-4 bg-gray-100 rounded w-3/4" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2 mt-2" />
-                    <div className="h-8 bg-gray-100 rounded mt-3" />
+                    <div className="h-4 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2 mt-2" />
+                    <div className="h-8 bg-gray-100 dark:bg-[#1A1A1A] rounded mt-3" />
                   </div>
                 ))}
               </div>
@@ -822,7 +822,7 @@ export default function GroupBuyListPage() {
                             {formatPrice(g.proposed_price)}
                           </span>
                         </div>
-                        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
+                        <div className="text-[11px] text-gray-400 dark:text-gray-600 dark:text-gray-300">|</div>
                         <div className="text-[12px] text-gray-500 dark:text-gray-400">
                           {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
                         </div>
@@ -830,7 +830,7 @@ export default function GroupBuyListPage() {
 
                       {/* 진행률 바 */}
                       <div className="mt-3">
-                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
                               achieved ? 'bg-emerald-500' : 'bg-pink-500'
@@ -856,7 +856,7 @@ export default function GroupBuyListPage() {
                             )}
                           </p>
                           {timeLeft && (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
                               <Clock className="w-3 h-3" />
                               {timeLeft}
                             </p>
@@ -924,7 +924,7 @@ function CurationStrip({
               onClick={() => navigate(`/group-buy/${p.id}`)}
               className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:shadow-md transition-shadow"
             >
-              <div className="relative w-full aspect-square bg-gray-100">
+              <div className="relative w-full aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
                 ) : (
@@ -936,11 +936,11 @@ function CurationStrip({
               </div>
               <div className="p-2.5 space-y-1">
                 <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                {p.restaurant_name && <p className="text-[10px] text-gray-500 truncate">{p.restaurant_name}</p>}
+                {p.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
                 <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
                   <div className={`h-full ${a.bar} rounded-full transition-all`} style={{ width: `${progress}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-500"><span className={`${a.text} font-bold`}>{remaining}명</span> 남음 · ₩{p.price?.toLocaleString("ko-KR") ?? "-"}</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400"><span className={`${a.text} font-bold`}>{remaining}명</span> 남음 · ₩{p.price?.toLocaleString("ko-KR") ?? "-"}</p>
               </div>
             </button>
           )

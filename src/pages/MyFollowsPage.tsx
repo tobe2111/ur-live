@@ -86,7 +86,7 @@ export default function MyFollowsPage() {
 
       <div className="sticky top-0 z-30 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 flex items-center gap-3 py-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]" aria-label="뒤로">
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:hover:bg-[#1A1A1A]" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-base font-extrabold text-gray-900 dark:text-white">내 단골 셀러</h1>
@@ -102,7 +102,7 @@ export default function MyFollowsPage() {
           <div className="text-center py-20">
             <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">단골 등록한 셀러가 없어요</p>
-            <p className="text-xs text-gray-500 mb-4">관심 있는 셀러 페이지에서 단골 등록하세요</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">관심 있는 셀러 페이지에서 단골 등록하세요</p>
             <button
               onClick={() => navigate('/group-buy')}
               className="px-5 py-2.5 bg-pink-500 text-white rounded-full text-sm font-bold"
@@ -122,7 +122,7 @@ export default function MyFollowsPage() {
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}
-                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#121212] text-left transition-colors"
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#121212] dark:hover:bg-[#121212] text-left transition-colors"
                   >
                     {f.seller_avatar ? (
                       <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />
@@ -165,14 +165,14 @@ export default function MyFollowsPage() {
                           aria-label={`${opt.label} 알림 ${f[opt.key] ? '끄기' : '켜기'}`}
                           aria-pressed={f[opt.key]}
                         >
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${f[opt.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-[#0A0A0A] shadow transition-transform ${f[opt.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                         </button>
                       </label>
                     ))}
 
                     <button
                       onClick={() => unfollow(f.seller_id)}
-                      className="w-full mt-2 px-3 py-2 text-[11px] text-gray-500 hover:text-red-500 transition-colors"
+                      className="w-full mt-2 px-3 py-2 text-[11px] text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors"
                     >
                       단골 해제
                     </button>

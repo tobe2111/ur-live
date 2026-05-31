@@ -87,19 +87,19 @@ export default function AboutPage() {
                 </Link>
                 <Link
                   to="/agency/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 font-bold text-sm lg:text-base transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 dark:bg-white dark:bg-[#0A0A0A] text-white dark:text-gray-900 dark:text-white hover:bg-gray-800 dark:hover:bg-gray-100 dark:hover:bg-[#1A1A1A] font-bold text-sm lg:text-base transition-colors"
                 >
                   에이전시 가입
                 </Link>
                 <Link
                   to="/"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#222] font-bold text-sm lg:text-base transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#121212] dark:hover:bg-[#222] font-bold text-sm lg:text-base transition-colors"
                 >
                   서비스 둘러보기
                 </Link>
                 <button
                   onClick={handleDownloadPdf}
-                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#222] font-bold text-sm lg:text-base transition-colors"
+                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#121212] dark:hover:bg-[#222] font-bold text-sm lg:text-base transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   PDF 다운로드
@@ -516,7 +516,7 @@ export default function AboutPage() {
 
             <button
               onClick={handleDownloadPdf}
-              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-bold text-base transition-colors shadow-xl"
+              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1A1A1A] font-bold text-base transition-colors shadow-xl"
             >
               <Printer className="w-5 h-5" />
               PDF 로 다운로드 (인쇄 → PDF 저장)

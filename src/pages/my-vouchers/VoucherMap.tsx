@@ -87,8 +87,8 @@ export default function VoucherMap<T extends VoucherMapItem>({
 
   if (vouchers.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-12 text-center">
-        <p className="text-sm text-gray-500">지도에 표시할 미사용 식사권이 없어요</p>
+      <div className="bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-12 text-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400">지도에 표시할 미사용 식사권이 없어요</p>
       </div>
     )
   }

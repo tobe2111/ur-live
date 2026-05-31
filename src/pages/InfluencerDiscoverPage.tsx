@@ -100,11 +100,11 @@ export default function InfluencerDiscoverPage() {
     })
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
       <SEO title="추천 공구 카탈로그 - 유어딜" description="원하는 공구를 골라 본인 SNS 에 추천 링크 공유. commission 자동 정산." url="/influencer/discover" />
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
         <Link2 className="w-5 h-5 text-pink-500" />
-        <h1 className="text-base font-bold text-gray-900 flex-1">추천 공구 카탈로그</h1>
+        <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
         <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-pink-600 font-bold">내 정산 →</button>
       </header>
 
@@ -115,7 +115,7 @@ export default function InfluencerDiscoverPage() {
             <button
               key={k}
               onClick={() => setCat(k)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200'}`}
             >
               {v}
             </button>
@@ -130,13 +130,13 @@ export default function InfluencerDiscoverPage() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="공구명/매장명 검색"
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-300"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular' | 'deadline')}
-            className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-xs text-gray-900 font-medium bg-white"
+            className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#0A0A0A]"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
@@ -145,34 +145,34 @@ export default function InfluencerDiscoverPage() {
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-500 py-10">로딩 중...</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-10">로딩 중...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-500 py-10">해당 카테고리에 활성 공구가 없습니다.</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-10">해당 카테고리에 활성 공구가 없습니다.</p>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {filtered.map(p => {
               const progress = p.group_buy_target > 0 ? Math.min(100, (p.group_buy_current / p.group_buy_target) * 100) : 0
               return (
-                <li key={p.id} className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
+                <li key={p.id} className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
                   <div className="flex gap-3 p-3">
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="w-20 h-20 object-cover rounded-lg shrink-0" loading="lazy" />
                     ) : (
-                      <div className="w-20 h-20 bg-gray-100 rounded-lg shrink-0" />
+                      <div className="w-20 h-20 bg-gray-100 dark:bg-[#1A1A1A] rounded-lg shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-gray-500 truncate">{p.restaurant_name || p.seller_name || '-'}</p>
-                      <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name || p.seller_name || '-'}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
                       <p className="text-sm font-extrabold text-pink-600 mt-0.5">{p.price.toLocaleString()}원</p>
-                      <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                      <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-1.5 mt-1.5 overflow-hidden">
                         <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} />
                       </div>
-                      <p className="text-[10px] text-gray-500 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
                     <button onClick={() => copyLink(p.id)}
-                      className="py-2 rounded-lg border border-gray-200 dark:border-[#2A2A2A] text-xs font-bold text-gray-700 flex items-center justify-center gap-1">
+                      className="py-2 rounded-lg border border-gray-200 dark:border-[#2A2A2A] text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
                       <Copy className="w-3 h-3" /> 링크 복사
                     </button>
                     <button onClick={() => shareLink(p)}
@@ -186,7 +186,7 @@ export default function InfluencerDiscoverPage() {
           </ul>
         )}
 
-        <p className="text-[11px] text-gray-500 text-center pt-2">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center pt-2">
           내 링크를 본 누군가가 공구 참여하면 자동 commission 적립 → 어드민이 매월 송금.<br />
           매장이 인플 거부한 경우 (드물게) commission 0, 사용자 보너스는 유어딜이 보장.
         </p>

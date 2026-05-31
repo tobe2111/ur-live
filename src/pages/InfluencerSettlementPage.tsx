@@ -78,8 +78,8 @@ function MyStoresAndDeals() {
   }, [])
   return (
     <>
-      <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
-        <h3 className="text-sm font-bold text-gray-900 mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
+      <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://live.ur-team.com/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
         ) : (
@@ -89,10 +89,10 @@ function MyStoresAndDeals() {
               return (
                 <li key={s.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
-                    <p className="text-[10px] text-gray-500">누적 commission {s.total_commission.toLocaleString()}원</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.name}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">누적 commission {s.total_commission.toLocaleString()}원</p>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded font-bold ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`text-[10px] px-2 py-1 rounded font-bold ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'}`}>
                     {remaining > 0 ? `보너스 ${remaining}개월 남음` : '보너스 종료'}
                   </span>
                 </li>
@@ -102,8 +102,8 @@ function MyStoresAndDeals() {
         )}
       </div>
 
-      <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
-        <h3 className="text-sm font-bold text-gray-900 mb-3">🤝 매장 협업 ({deals.length}건)</h3>
+      <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🤝 매장 협업 ({deals.length}건)</h3>
         {deals.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">매장과 우대 commission 협상 가능 (예: 1.5%). 매장 홍보 가서 직접 협의하거나 사이트에서 신청.</p>
         ) : (
@@ -111,13 +111,13 @@ function MyStoresAndDeals() {
             {deals.map(d => (
               <li key={d.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{d.seller_name || `매장 ${d.seller_id}`}</p>
-                  <p className="text-[10px] text-gray-500">우대 {d.commission_pct}% · {d.proposed_by === 'seller' ? '매장 제안' : '내가 신청'}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{d.seller_name || `매장 ${d.seller_id}`}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">우대 {d.commission_pct}% · {d.proposed_by === 'seller' ? '매장 제안' : '내가 신청'}</p>
                 </div>
                 <span className={`text-[10px] px-2 py-1 rounded font-bold ${
                   d.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                   d.status === 'proposed' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-500'
+                  'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'
                 }`}>
                   {d.status === 'active' ? '활성' : d.status === 'proposed' ? '대기' : d.status}
                 </span>
@@ -196,15 +196,15 @@ export default function InfluencerSettlementPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-500">로딩 중...</p></div>
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212]"><p className="text-sm text-gray-500 dark:text-gray-400">로딩 중...</p></div>
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
       <SEO title="인플루언서 정산 - 유어딜" description="referral commission 잔액 / 송금 내역 / 세금 정보 관리" url="/influencer/settlement" />
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
         <Wallet className="w-5 h-5 text-pink-500" />
-        <h1 className="text-base font-bold text-gray-900 flex-1">인플루언서 정산</h1>
+        <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
         <button
           onClick={async () => {
             const type = prompt('분쟁 유형 (unfair_block / commission_dispute / other)')?.trim() as 'unfair_block' | 'commission_dispute' | 'other'
@@ -263,27 +263,27 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-gray-900">정산 정보</h3>
+        <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">송금 방식</label>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">송금 방식</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'cash' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white dark:bg-[#0A0A0A]'}`}
               >
-                <p className="text-sm font-bold text-gray-900">현금 송금</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">원천징수 후 계좌 입금</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">현금 송금</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">원천징수 후 계좌 입금</p>
               </button>
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white'}`}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white dark:bg-[#0A0A0A]'}`}
               >
-                <p className="text-sm font-bold text-gray-900">딜 포인트 <span className="text-pink-600">+20%</span></p>
-                <p className="text-[10px] text-gray-500 mt-0.5">유어딜 결제 / 환불 X</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-pink-600">+20%</span></p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">유어딜 결제 / 환불 X</p>
               </button>
             </div>
           </div>
@@ -297,29 +297,29 @@ export default function InfluencerSettlementPage() {
             <button
               type="button"
               onClick={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-emerald-500 text-white' : 'bg-gray-300 text-gray-700'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-emerald-500 text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
             >
               {form.ranking_public ? '공개' : '비공개'}
             </button>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">사업자번호 (있을 때만)</label>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">사업자번호 (있을 때만)</label>
             <input
               value={form.business_number}
               onChange={(e) => setForm(f => ({ ...f, business_number: e.target.value.replace(/[^\d-]/g, '') }))}
               placeholder="000-00-00000 (10자리)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white"
             />
-            <p className="text-[11px] text-gray-500 mt-1">있으면 사업소득세 3.3% 원천징수, 없으면 기타소득 8.8%</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">있으면 사업소득세 3.3% 원천징수, 없으면 기타소득 8.8%</p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">세금 구분</label>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">세금 구분</label>
             <select
               value={form.tax_type}
               onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as 'business_income' | 'other_income' | 'unreported' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#0A0A0A]"
             >
               <option value="business_income">사업소득 (3.3% 원천징수, 사업자번호 필요)</option>
               <option value="other_income">기타소득 (8.8% 원천징수, 사업자번호 불필요)</option>
@@ -328,11 +328,11 @@ export default function InfluencerSettlementPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">은행</label>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">은행</label>
             <select
               value={form.bank_name}
               onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#0A0A0A]"
             >
               <option value="">은행 선택</option>
               {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국'].map(b => (
@@ -342,22 +342,22 @@ export default function InfluencerSettlementPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">계좌번호</label>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">계좌번호</label>
             <input
               value={form.bank_account}
               onChange={(e) => setForm(f => ({ ...f, bank_account: e.target.value.replace(/[^\d-]/g, '') }))}
               placeholder="000-000-000000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">예금주</label>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">예금주</label>
             <input
               value={form.account_holder}
               onChange={(e) => setForm(f => ({ ...f, account_holder: e.target.value }))}
               placeholder="홍길동"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
 
@@ -374,19 +374,19 @@ export default function InfluencerSettlementPage() {
         <MyStoresAndDeals />
 
         {/* 최근 내역 */}
-        <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">최근 commission 내역 ({recent.length}건)</h3>
+        <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
           ) : (
             <ul className="space-y-2">
               {recent.map(r => {
-                const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 text-gray-700' }
+                const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200' }
                 return (
                   <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900">{r.commission_amount.toLocaleString()}원</p>
-                      <p className="text-[10px] text-gray-500">상품 #{r.product_id} · {new Date(r.created_at).toLocaleDateString('ko-KR')}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{r.commission_amount.toLocaleString()}원</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {new Date(r.created_at).toLocaleDateString('ko-KR')}</p>
                     </div>
                     <span className={`text-[10px] px-2 py-1 rounded font-bold ${status.color}`}>{status.label}</span>
                   </li>

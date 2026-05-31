@@ -47,7 +47,7 @@ export default function InfluencerRankingsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
       <SEO title="인플루언서 랭킹 - 유어딜" description="지역별 매출 Top 인플루언서 — 실시간 ranking" url="/influencer/rankings" />
 
       <header className="sticky top-0 z-30 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-4">
@@ -66,7 +66,7 @@ export default function InfluencerRankingsPage() {
               key={r.key}
               onClick={() => setRegion(r.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                region === r.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'
+                region === r.key ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200'
               }`}
             >
               {r.label}
@@ -77,21 +77,21 @@ export default function InfluencerRankingsPage() {
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
           <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white dark:bg-[#0A0A0A]">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
           </select>
           <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white dark:bg-[#0A0A0A]">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
           </select>
         </div>
 
         {/* 랭킹 리스트 */}
-        <div className="bg-white border border-gray-200 dark:border-[#2A2A2A] rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl overflow-hidden">
           {loading ? (
-            <p className="text-sm text-gray-500 text-center py-10">로딩 중...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-10">아직 랭킹 데이터가 없습니다</p>
           ) : (
@@ -105,8 +105,8 @@ export default function InfluencerRankingsPage() {
                       {medal || r.rank}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">{r.display_name}</p>
-                      <p className="text-[10px] text-gray-500">{r.seller_count}개 매장 · {r.attribution_count}건</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{r.display_name}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">{r.seller_count}개 매장 · {r.attribution_count}건</p>
                     </div>
                     <div className="text-right">
                       {metric === 'commission' ? (

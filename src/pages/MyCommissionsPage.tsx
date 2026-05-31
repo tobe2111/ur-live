@@ -132,7 +132,7 @@ export default function MyCommissionsPage() {
           <button
             onClick={() => setShowForm(true)}
             disabled={summary.total_granted < 10000}
-            className="mt-4 w-full py-3 bg-white text-blue-700 rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            className="mt-4 w-full py-3 bg-white dark:bg-[#0A0A0A] text-blue-700 rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <Wallet className="w-4 h-4" />
             {summary.total_granted < 10000 ? '10,000원 이상부터 출금 가능' : '출금 신청하기'}
