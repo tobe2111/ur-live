@@ -12,6 +12,7 @@
  */
 
 import { Hono } from 'hono';
+import { safeError } from '@/worker/utils/safe-error'
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
@@ -36,7 +37,7 @@ adminBannersRoutes.get('/', cors(), async (c) => {
     `);
     return c.json({ success: true, data: banners });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]');
   }
 });
 
@@ -66,7 +67,7 @@ adminBannersRoutes.post('/', cors(), async (c) => {
     c.executionCtx.waitUntil(invalidateBannerCache());
     return c.json({ success: true, data: { id: result.meta.last_row_id, title: title || '' } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]');
   }
 });
 
@@ -100,7 +101,7 @@ adminBannersRoutes.put('/:id', cors(), async (c) => {
     c.executionCtx.waitUntil(invalidateBannerCache());
     return c.json({ success: true, data: { id: bannerId } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]');
   }
 });
 
@@ -115,7 +116,7 @@ adminBannersRoutes.delete('/:id', cors(), async (c) => {
     c.executionCtx.waitUntil(invalidateBannerCache());
     return c.json({ success: true, data: { id: bannerId } });
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]');
   }
 });
 

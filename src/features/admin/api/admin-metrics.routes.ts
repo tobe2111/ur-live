@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { WebhookEventRepository } from '@/worker/repositories/webhook.repository'
 
@@ -71,7 +72,7 @@ adminMetricsRoutes.get('/rate-limits', async (c) => {
     `).all()
     return c.json({ success: true, data: rows.results })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -106,7 +107,7 @@ adminMetricsRoutes.get('/webhook-failures', async (c) => {
       },
     })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -130,7 +131,7 @@ adminMetricsRoutes.post('/webhook-failures/:id/retry', async (c) => {
     }
     return c.json({ success: true, message: '재처리 마킹 완료' })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500)
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 

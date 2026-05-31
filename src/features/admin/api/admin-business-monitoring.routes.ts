@@ -8,6 +8,7 @@
  *   GET /api/admin/business-monitoring/consignment-stats — 위탁 파트너십 + 분배 정확성
  */
 import { Hono } from 'hono'
+import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 
@@ -78,7 +79,7 @@ app.get('/gift-stats', async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: true, data: empty })
     }
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -145,7 +146,7 @@ app.get('/consignment-stats', async (c) => {
     if ((err as Error).message?.includes('no such table')) {
       return c.json({ success: true, data: empty })
     }
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 

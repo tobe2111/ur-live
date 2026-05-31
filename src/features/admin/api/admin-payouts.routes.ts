@@ -10,6 +10,7 @@
  *   GET    /api/admin/payouts — 목록 조회 (status 필터)
  */
 import { Hono } from 'hono'
+import { safeError } from '@/worker/utils/safe-error'
 import { requireAdmin } from '../../../worker/middleware/auth'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
@@ -58,7 +59,7 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
     `).all<{ account: string; pending_amount: number; total_credited: number; total_paid: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number; total_credited: number; total_paid: number }> }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 

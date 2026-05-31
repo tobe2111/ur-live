@@ -10,6 +10,7 @@
  * - DELETE /reviews/generated/:productId      — 생성된 리뷰 일괄 삭제
  */
 import { Hono } from 'hono';
+import { safeError } from '@/worker/utils/safe-error'
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
@@ -606,7 +607,7 @@ adminReviewGeneratorRoutes.post('/reviews/backfill-aggregate', cors(), async (c)
     `).run();
     return c.json({ success: true, data: { updated: r.meta?.changes ?? 0 } });
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message }, 500);
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[admin]');
   }
 });
 

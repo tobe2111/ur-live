@@ -10,6 +10,7 @@
  *   인증: adminApp.use('*', requireAdmin()) 가 처리.
  */
 import { Hono } from 'hono'
+import { safeError } from '@/worker/utils/safe-error'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 
@@ -83,7 +84,7 @@ adminWithholdingRoutes.get('/withholding/summary', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -157,7 +158,7 @@ adminWithholdingRoutes.get('/withholding/csv', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -187,6 +188,6 @@ adminWithholdingRoutes.post('/withholding/mark-reported', cors(), async (c) => {
 
     return c.json({ success: true, data: { updated: result.meta.changes || 0 } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })

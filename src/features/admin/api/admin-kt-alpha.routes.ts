@@ -62,7 +62,7 @@ adminKtAlphaRoutes.get('/kt-alpha/settings', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -108,7 +108,7 @@ adminKtAlphaRoutes.patch('/kt-alpha/settings', cors(), async (c) => {
 
     return c.json({ success: true, updated })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -144,7 +144,7 @@ adminKtAlphaRoutes.post('/kt-alpha/recalc-prices', cors(), async (c) => {
       formula: `price = real_price × ${multiplier.toFixed(2)}`,
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -156,7 +156,7 @@ adminKtAlphaRoutes.post('/kt-alpha/sync', cors(), async (c) => {
     const result = await runKtAlphaCatalogSync(env)
     return c.json({ success: true, data: result })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -213,7 +213,7 @@ adminKtAlphaRoutes.get('/kt-alpha/debug', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -323,7 +323,7 @@ adminKtAlphaRoutes.post('/kt-alpha/balance', cors(), async (c) => {
       } : {}),
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -350,7 +350,7 @@ adminKtAlphaRoutes.get('/kt-alpha/catalog', cors(), async (c) => {
       .catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -585,7 +585,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -605,7 +605,7 @@ adminKtAlphaRoutes.patch('/kt-alpha/consumer-products/visibility', cors(), async
     ).bind(String(enabled)).run()
     return c.json({ success: true, data: { enabled } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -635,7 +635,7 @@ adminKtAlphaRoutes.get('/kt-alpha/consumer-products/stats', cors(), async (c) =>
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -657,7 +657,7 @@ adminKtAlphaRoutes.get('/kt-alpha/categories', cors(), async (c) => {
       .catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -693,7 +693,7 @@ adminKtAlphaRoutes.post('/kt-alpha/products/delete', cors(), async (c) => {
 
     return c.json({ success: false, error: 'gift_codes / category / all 중 하나 필요' }, 400)
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -712,7 +712,7 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/rename', cors(), async (c) => {
     ).bind(body.to, body.from).run()
     return c.json({ success: true, data: { updated: r.meta.changes || 0, from: body.from, to: body.to } })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -832,7 +832,7 @@ adminKtAlphaRoutes.post('/kt-alpha/categories/auto-classify', cors(), async (c) 
     })
   } catch (err) {
     if (import.meta.env?.DEV) console.error('[admin:kt-alpha:auto-classify]', err)
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -1052,7 +1052,7 @@ adminKtAlphaRoutes.get('/kt-alpha/categories/distribution', cors(), async (c) =>
     `).all<{ category: string; cnt: number; active_cnt: number }>().catch(() => ({ results: [] }))
     return c.json({ success: true, data: rows.results || [] })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -1172,7 +1172,7 @@ adminKtAlphaRoutes.get('/kt-alpha/diagnostic', cors(), async (c) => {
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -1210,7 +1210,7 @@ adminKtAlphaRoutes.get('/voucher-orders', cors(), async (c) => {
       stats: stats || { processing: 0, sent: 0, failed: 0 },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -1267,7 +1267,7 @@ adminKtAlphaRoutes.post('/voucher-orders/:id/resend', cors(), async (c) => {
       return c.json({ success: false, error: msg }, 500)
     }
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -1538,6 +1538,6 @@ adminKtAlphaRoutes.get('/kt-alpha/diagnose-order/:order_id', cors(), async (c) =
       },
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })

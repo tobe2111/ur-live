@@ -7,6 +7,7 @@
  * - POST /api/admin/alimtalk-failures/:id/retry — 즉시 재시도
  */
 import { Hono } from 'hono'
+import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
@@ -49,7 +50,7 @@ adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {
     await DB.prepare(`UPDATE cron_failures SET resolved = 1 WHERE id = ?`).bind(id).run()
     return c.json({ success: true })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
 
@@ -100,6 +101,6 @@ adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
     `).bind(id).run()
     return c.json({ success: true, message: '5분 이내 자동 재시도됩니다' })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500)
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
 })
