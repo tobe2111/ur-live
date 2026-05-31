@@ -166,3 +166,18 @@ npm run build:client && npm run build:ssr && npm run prerender:main
 ```
 throw 가 더 나오면 그 파일만 `typeof window/document === 'undefined'` 가드 또는 useEffect 이동.
 Phase 4(`_routes.json`) / Phase 5(Lighthouse) 는 prerender 성공 확인 후 진행.
+
+## ✅ 2026-05-31 — `/` 렌더 트리 SSR-safe 전수 정적 검증 완료
+
+이 환경은 vite 미설치로 build:ssr/prerender 직접 실행 불가 → **정적 전수 검증**으로 대체:
+- 모듈 top-level 브라우저 전역 접근: **0건** (import-time throw 없음)
+- `/` 렌더 트리(App 셸 + 프로바이더 + MainHomePage 트리) render-path 접근: **isLoggedInSync 하나뿐 → 수정 완료**
+  - 셸(BottomNav/ScrollToTop/InAppBrowserBanner/ThemeProvider 등): 전부 useEffect/typeof 가드
+  - `/` 라우트 = `<Route path="/" element={<MainHomePage/>}>` — **가드(PublicRoute/ProtectedRoute) 미래핑** → RouteGuards localStorage 호출 안 됨
+  - ThemeProvider: 두 useEffect 모두 `typeof window` 가드
+  - MainHomePage 직접 import(SiteFooter/SEO/UrDealLogo/GroupBuyFeed): render-path 접근 0
+  - GroupBuyFeed `__SSR_INITIAL_MAIN__` 읽기: `typeof document` 가드 + try-catch (useMemo)
+
+**결론**: isLoggedInSync 수정이 포함된 현재 배포에서 prerender 가 **성공할 것**으로 높은 신뢰도. (이전 배포는 이 throw 로 skip → LCP 8-11s 유지였을 가능성.)
+
+**최종 확정(사용자/CI)**: Actions 빌드 로그 `[prerender-main] ... ✅` 또는 `view-source` 의 `<div id="root" data-ssr="main">`. 이 둘 중 하나만 확인하면 LCP 개선 확정.
