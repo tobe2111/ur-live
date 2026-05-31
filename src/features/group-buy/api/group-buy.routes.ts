@@ -419,6 +419,17 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       })
     } catch (e) { if (import.meta.env?.DEV) console.warn('[gb ledger]', e) }
 
+    // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 공구 딜 결제도 적립 (이전: payment.routes 카드만
+    //   호출 → 공구는 누락). UNIQUE(order_id,type) 멱등 + introduced_by_agency_id 없으면 noop.
+    if (newOrderId) {
+      c.executionCtx?.waitUntil((async () => {
+        try {
+          const { creditAgencyStoreIntroCommission } = await import('../../../worker/utils/agency-store-intro-commission')
+          await creditAgencyStoreIntroCommission(DB, { id: newOrderId, seller_id: Number(product.seller_id), total_amount: totalAmount })
+        } catch (e) { if (import.meta.env?.DEV) console.warn('[gb agency intro]', e) }
+      })())
+    }
+
     // 🛡️ 2026-05-16: 인플루언서 attribution + 사용자 referral 보너스 (4-account 확장)
     if (hasInfluencer) {
       // 사용자 보너스 즉시 적립 (active 든 차단이든 사용자에겐 약속한 보너스 지급)
@@ -997,6 +1008,14 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     // 공구 진행 카운터 +qty (atomic).
     await DB.prepare(`UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?`)
       .bind(qty, productId).run().catch(swallow('group-buy:confirm-toss:counter'))
+
+    // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 카드 결제도 적립 (딜 경로와 동일). UNIQUE 멱등.
+    c.executionCtx?.waitUntil((async () => {
+      try {
+        const { creditAgencyStoreIntroCommission } = await import('../../../worker/utils/agency-store-intro-commission')
+        await creditAgencyStoreIntroCommission(DB, { id: newOrderId, seller_id: Number(product.seller_id), total_amount: expectedAmount })
+      } catch (e) { if (import.meta.env?.DEV) console.warn('[confirm-toss agency intro]', e) }
+    })())
 
     // 🛡️ 2026-05-31: 정산 정합 — 딜 경로(group-buy /join)와 동일하게 ledger + donations + 인플 attribution.
     //   셀러 차등 수수료 + 인플 referral 4-account split → ledger(group_buy_join) + donations(정산 row).
