@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
+import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
@@ -947,14 +948,16 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
     const reason = cancelBody?.reason
 
     const booking = await c.env.DB.prepare(
-      `SELECT b.id, b.user_id, b.status, b.total_amount, b.check_in_date, b.product_id, b.order_id,
+      `SELECT b.id, b.user_id, b.status, b.total_amount, b.check_in_date, b.check_out_date,
+              b.room_id, b.product_id, b.order_id,
               psi.cancellation_policy
          FROM stay_bookings b
          LEFT JOIN product_stay_info psi ON psi.product_id = b.product_id
         WHERE b.id = ?`
     ).bind(id).first<{
       id: number; user_id: number; status: string; total_amount: number;
-      check_in_date: string; product_id: number; order_id: number;
+      check_in_date: string; check_out_date: string; room_id: number;
+      product_id: number; order_id: number;
       cancellation_policy: string | null;
     }>()
     if (!booking) return c.json({ success: false, error: '예약 없음' }, 404)
@@ -1001,20 +1004,26 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
       }
     }
 
+    // 🛡️ 2026-05-18/31: bind 인자 계산을 명시적 변수로 분리 (audit script 가 JS ternary `?`
+    //   를 placeholder 로 오인하지 않도록). 환불 성공 시 status='refunded' (어드민 경로와 정합).
+    const nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'
+
     await c.env.DB.prepare(
       `UPDATE stay_bookings
-          SET status = 'cancelled',
+          SET status = ?,
               cancelled_at = datetime('now'),
               cancellation_reason = ?,
               refund_amount = ?,
               refunded_at = ${refundActuallyDone ? "datetime('now')" : 'NULL'},
               updated_at = datetime('now')
         WHERE id = ?`
-    ).bind(reason || '사용자 취소', refundAmount, id).run()
+    ).bind(nextStatus, reason || '사용자 취소', refundAmount, id).run()
 
-    // 🛡️ 2026-05-18: bind 인자 계산을 명시적 변수로 분리 (audit script 가 JS ternary `?`
-    //   를 placeholder 로 오인하지 않도록).
-    const nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'
+    // 🛡️ 2026-05-31: confirmed 였던 예약은 차감된 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).
+    //   pending 은 미차감이므로 복원 안 함 (과다 증가 방지).
+    if (booking.status === 'confirmed') {
+      await releaseStayInventory(c.env.DB, booking.room_id, booking.check_in_date, booking.check_out_date)
+    }
     const logReason = refundError
       ? `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%, 환불실패: ${refundError}`
       : `정책 ${policy}, 환불율 ${(refundRate * 100).toFixed(0)}%`

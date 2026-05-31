@@ -113,8 +113,8 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
     if (!reason) return c.json({ success: false, error: '환불 사유 필요' }, 400)
 
     const booking = await c.env.DB.prepare(
-      'SELECT id, status, total_amount FROM stay_bookings WHERE id = ?'
-    ).bind(id).first<{ id: number; status: string; total_amount: number }>()
+      'SELECT id, status, total_amount, room_id, check_in_date, check_out_date FROM stay_bookings WHERE id = ?'
+    ).bind(id).first<{ id: number; status: string; total_amount: number; room_id: number; check_in_date: string; check_out_date: string }>()
     if (!booking) return c.json({ success: false, error: '예약 없음' }, 404)
     if (['refunded', 'cancelled'].includes(booking.status)) {
       return c.json({ success: false, error: '이미 환불/취소된 예약입니다' }, 400)
@@ -154,6 +154,12 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
               cancellation_reason = ?, updated_at = datetime('now')
         WHERE id = ?`,
       [refundAmount, reason, id])
+
+    // 🛡️ 2026-05-31: confirmed 였던 예약만 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).
+    if (booking.status === 'confirmed') {
+      const { releaseStayInventory } = await import('@/worker/utils/stay-inventory')
+      await releaseStayInventory(c.env.DB, booking.room_id, booking.check_in_date, booking.check_out_date)
+    }
 
     await executeRun(c.env.DB,
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, reason)
