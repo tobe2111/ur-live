@@ -5,8 +5,8 @@
  * 익명화: 인플이 본인 settlement 페이지에서 ranking_public OFF 가능.
  */
 
-import { useEffect, useState } from 'react'
-import api from '@/lib/api'
+import { useState } from 'react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { Trophy, Award } from 'lucide-react'
 
@@ -35,19 +35,16 @@ const REGIONS = [
 ] as const
 
 export default function InfluencerRankingsPage() {
-  const [list, setList] = useState<Ranked[]>([])
-  const [loading, setLoading] = useState(true)
   const [region, setRegion] = useState('all')
   const [period, setPeriod] = useState<'month' | 'all'>('month')
   const [metric, setMetric] = useState<'commission' | 'count'>('commission')
 
-  useEffect(() => {
-    setLoading(true)
-    api.get('/api/influencer-rankings', { params: { region, period, metric } })
-      .then((r) => { if (r.data?.success) setList(r.data.data || []) })
-      .catch(() => setList([]))
-      .finally(() => setLoading(false))
-  }, [region, period, metric])
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). region/period/metric 변경 시 재조회 + 캐시.
+  const { data: list = [], isLoading: loading } = useApiQuery<Ranked[]>(
+    ['influencer-rankings', region, period, metric],
+    '/api/influencer-rankings',
+    { params: { region, period, metric }, select: (raw) => ((raw as { success?: boolean; data?: Ranked[] })?.success ? ((raw as { data: Ranked[] }).data || []) : []) },
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
