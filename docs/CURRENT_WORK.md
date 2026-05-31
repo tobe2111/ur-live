@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## 📋 사용자 액션 TODO (로컬 — 원격 환경 빌드 불가)
+- [ ] **SSR prerender 실제 동작 검증** (Phase 2 후속):
+  ```bash
+  npm run build:client && npm run build:ssr && npm run prerender:main
+  ```
+  - ✅ 성공: `[prerender-main] ... 갱신 완료 ✅` + `dist/client/index.html` 의 `<div id="root" ... data-ssr="main">` 에 카드 HTML 존재
+  - ❌ throw: 에러가 찍은 module/전역을 `docs/SSR_MIGRATION.md` audit 패턴(`typeof window/document` 가드 or useEffect)으로 fix → 결과 공유
+  - 성공 확인 후 → Phase 4(`_routes.json`) / Phase 5(Lighthouse 재측정)
+- [ ] 배포 반영 확인: `claude/service-tech-debt-analysis-d1KOx` → main 머지 + Actions 녹색
+- [ ] 배포 후 1회: `POST https://live.ur-team.com/api/_internal/repair-schema` (숙소 migration 보장)
+- [ ] 스모크: 공구 카드결제 / 숙소 예약·취소 각 1건 (이번 세션 가격·환불·재고 변경분)
+
 ## 🟢 2026-05-31 — SSR Phase 2 메인 트리 audit + fix
 - 인프라(entry-server renderToString + prerender HTML inject) 이미 구현 + graceful skip 확인
 - 메인 `/` 트리 정적 audit: 실제 throw 는 `isLoggedInSync()` 하나 → `typeof localStorage` 가드 추가
