@@ -82,8 +82,7 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
       data: { user_id: kakaoUserId, user_name: kakaoUserInfo.name, user_email: kakaoUserInfo.email },
     })
   } catch (err) {
-    console.error('[agency link-kakao] error:', err)
-    return c.json({ success: false, error: (err as Error).message || '카카오 연동 실패' }, 500)
+    return safeError(c, err, '카카오 연동 중 오류가 발생했습니다', '[agency link-kakao]')
   }
 })
 

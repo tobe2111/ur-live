@@ -10,6 +10,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { getKakaoToken, getKakaoTokenSimple, callKakaoApi } from '@/lib/kakao-token';
 
@@ -168,17 +169,37 @@ kakaoSocialRoutes.get('/calendar/ics/:streamId', async (c) => {
   });
 });
 
-// ── POST /message/send-to-subscribers — 구독자 전원에게 카카오 메시지 (크론용) ──
-kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
-  const { DB } = c.env;
-  const { stream_id } = await c.req.json<{ stream_id: number }>();
+// ── POST /message/send-to-subscribers — 구독자 전원에게 카카오 메시지 ──
+// 🛡️ 2026-05-31: 무인증 스팸 벡터 차단 — 방송 소유 셀러 본인(또는 어드민)만 + rate limit.
+//   기존엔 auth/rate-limit 둘 다 없어 누구나 임의 stream_id 로 구독자 전체 발송 가능했음.
+kakaoSocialRoutes.post(
+  '/message/send-to-subscribers',
+  rateLimit({ action: 'kakao_send_subscribers', max: 10, windowSec: 600 }),
+  requireAuth(),
+  async (c) => {
+    const { DB } = c.env;
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-  const stream = await DB.prepare('SELECT id, title, seller_id FROM live_streams WHERE id = ?')
-    .bind(stream_id).first<any>();
-  if (!stream) return c.json({ success: false, error: '방송 없음' }, 404);
+    let body: { stream_id?: number };
+    try { body = await c.req.json<{ stream_id?: number }>(); } catch { return c.json({ success: false, error: 'JSON 형식 오류' }, 400); }
+    const stream_id = Number(body?.stream_id);
+    if (!Number.isFinite(stream_id) || stream_id <= 0 || !Number.isInteger(stream_id)) {
+      return c.json({ success: false, error: '잘못된 stream_id 입니다' }, 400);
+    }
 
-  const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
-    .bind(stream.seller_id).first<{ name: string }>();
+    const stream = await DB.prepare('SELECT id, title, seller_id FROM live_streams WHERE id = ?')
+      .bind(stream_id).first<any>();
+    if (!stream) return c.json({ success: false, error: '방송 없음' }, 404);
+
+    // 🛡️ 소유권 — 본인 방송 또는 어드민만 (IDOR 방어)
+    const u = user as { id: number | string; type?: string };
+    if (u.type !== 'admin' && Number(stream.seller_id) !== Number(u.id)) {
+      return c.json({ success: false, error: '본인 방송만 발송할 수 있습니다' }, 403);
+    }
+
+    const seller = await DB.prepare('SELECT name FROM sellers WHERE id = ?')
+      .bind(stream.seller_id).first<{ name: string }>();
 
   // 구독자 중 카카오 토큰이 있는 유저
   const { results: subs } = await DB.prepare(`
