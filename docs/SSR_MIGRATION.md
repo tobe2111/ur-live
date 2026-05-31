@@ -134,3 +134,35 @@ const [isLoggedIn] = useState(() =>
 
 빌드 영향 0 — `npm run build` 변화 없음.
 다음 세션 = Phase 2 본격 진행.
+
+---
+
+## ✅ 2026-05-31 — Phase 2 메인 트리 SSR-safe audit + 1차 fix
+
+인프라(entry-server `renderToString` + `prerender-main.mjs` HTML inject)는 이미 구현 완료.
+`build` 의 `prerender:main || echo skip` 로 **graceful** — prerender 가 throw 하면 SSR 만 건너뛰고
+빌드는 성공(메인 백지 위험 0). 따라서 핵심 = **메인 `/` 트리의 render-path 브라우저 전역 접근 제거**.
+
+### 메인 트리 정적 audit 결과 (entry tree: App → MainHomePage + shell)
+| 대상 | 판정 |
+|---|---|
+| `utils/auth.ts:isLoggedInSync()` | ❌ **유일한 실제 throw** — `localStorage` 직접 접근(try-catch 없음). DesktopTopNav 렌더 + useUnreadCount/useCartCount `enabled` 에서 호출 → **`typeof localStorage` 가드 추가 (fixed)** |
+| `hooks/queries/localCache.ts readCache/writeCache` | ✅ try-catch 로 ReferenceError 흡수 — 안전 |
+| `shared/stores/useAuthKR.ts loadTokenCacheFromStorage` | ✅ try-catch — 안전 |
+| `shared/stores/useTheme.ts` (모듈레벨 readMode/applyToDocument) | ✅ 모든 접근 try-catch — 안전 |
+| `i18n.ts` (LanguageDetector init) | ✅ `void bootstrap()` async + `useSuspense:false` + `typeof window` 가드 + 검출기 내부 try-catch — 안전 |
+| `App.tsx` (window.location/localStorage 다수) | ✅ 전부 `useEffect`/핸들러 내부 (렌더 경로 pure, 주석 명시) |
+| `main-home/GroupBuyFeed.tsx:66` document.getElementById | ✅ `typeof document` 가드 + try-catch (useMemo) |
+| `BottomNav.tsx:36` window.location.href | ✅ onClick 핸들러 내부 |
+
+→ 정적 분석상 **메인 트리는 SSR-safe**. (단, 빌드 실행 불가 환경에서 작업 — transitive dep 의 잠재 throw 는 아래 명령으로 확인 필요)
+
+### ⚠️ 다음: 로컬에서 prerender 실제 동작 검증 (필수)
+```bash
+npm run build:client && npm run build:ssr && npm run prerender:main
+# 성공: "[prerender-main] dist/client/index.html 갱신 완료 ✅"
+#        + dist/client/index.html 의 <div id="root" ... data-ssr="main"> 에 카드 HTML 존재
+# throw 시: 에러 메시지가 어느 module 의 어느 전역인지 정확히 표시 → 위 audit 패턴으로 가드 추가
+```
+throw 가 더 나오면 그 파일만 `typeof window/document === 'undefined'` 가드 또는 useEffect 이동.
+Phase 4(`_routes.json`) / Phase 5(Lighthouse) 는 prerender 성공 확인 후 진행.

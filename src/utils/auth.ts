@@ -243,6 +243,9 @@ export function getUserNameSync(): string | null {
  * 'firebase_token' 키가 없어도 'user_id' + 'user_type=user' 조합으로 로그인 상태 판단
  */
 export function isLoggedInSync(): boolean {
+  // 🛡️ 2026-05-31 SSR: Node prerender 환경엔 localStorage 없음 → 가드 (없으면 renderToString throw).
+  //   서버에선 항상 로그아웃으로 렌더 → 클라이언트 hydrate 시 실제 상태 반영 (동작 불변).
+  if (typeof localStorage === 'undefined') return false
   // 🛡️ 2026-05-27: 토큰/세션 존재만으로 판단 — RouteGuards 와 일관.
   //   기존 버그: user_type 추가 검사 → admin/seller 로그인 (user_type='admin'/'seller') + 카카오 user
   //   동시에 있을 때 user_id 있어도 false. /my-vouchers `enabled` false → 빈 화면.

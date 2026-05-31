@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-05-31 — SSR Phase 2 메인 트리 audit + fix
+- 인프라(entry-server renderToString + prerender HTML inject) 이미 구현 + graceful skip 확인
+- 메인 `/` 트리 정적 audit: 실제 throw 는 `isLoggedInSync()` 하나 → `typeof localStorage` 가드 추가
+- useTheme/i18n/useAuthKR/localCache/App.tsx/GroupBuyFeed/BottomNav 전부 가드 확인(안전)
+- **다음(로컬 필수)**: `npm run build:ssr && npm run prerender:main` → prerender 성공/추가 throw 확인. 가이드 `docs/SSR_MIGRATION.md`
+
 ## 🟢 2026-05-31 — 백엔드 보안·하드닝 + 후속 4종 + 문서 동기화
 - 카카오 구독자 전체발송 무인증 스팸 벡터 차단 (`38298f4`) — rateLimit+requireAuth+소유권
 - 셀러/에이전시 카카오 연동 에러 누출 → safeError (`38298f4`)
