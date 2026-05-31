@@ -11,12 +11,11 @@
  *   rapid_signups_same_ip  — 동일 IP 24h ≥5명 가입
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Shield, AlertTriangle, AlertOctagon, Info, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface AbuseDetection {
   id: number
@@ -103,32 +102,24 @@ function EvidenceRow({ detection }: { detection: AbuseDetection }) {
 }
 
 export default function AdminAbusePage() {
-  const [detections, setDetections] = useState<AbuseDetection[]>([])
-  const [loading, setLoading] = useState(true)
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [patternFilter, setPatternFilter] = useState<string>('all')
-  const token = localStorage.getItem('admin_token') || ''
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/api/admin/abuse-detections', {
-        params: {
-          severity: severityFilter !== 'all' ? severityFilter : undefined,
-          pattern: patternFilter !== 'all' ? patternFilter : undefined,
-          limit: 200,
-        },
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      setDetections(res.data?.detections ?? [])
-    } catch {
-      toast.error('어뷰징 데이터를 불러오지 못했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }, [severityFilter, patternFilter, token])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-05-31: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT, 복붙 제거).
+  //   인증=api 인터셉터 자동(admin_token). filter 변경 시 자동 재조회 + 캐시 dedup.
+  const { data: detections = [], isLoading: loading, refetch } = useApiQuery<AbuseDetection[]>(
+    ['admin', 'abuse', severityFilter, patternFilter],
+    '/api/admin/abuse-detections',
+    {
+      params: {
+        severity: severityFilter !== 'all' ? severityFilter : undefined,
+        pattern: patternFilter !== 'all' ? patternFilter : undefined,
+        limit: 200,
+      },
+      select: (raw) => (raw as { detections?: AbuseDetection[] })?.detections ?? [],
+    },
+  )
+  const load = () => { void refetch() }
 
   const highCount = detections.filter(d => d.severity === 'high').length
   const unreviewedCount = detections.filter(d => !d.reviewed).length
