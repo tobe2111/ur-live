@@ -4,6 +4,7 @@
  */
 
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
+import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 
 /**
  * 🛡️ 2026-05-19: 한국어 검색 동의어 사전 — 사용자가 다양한 표현으로 검색해도 매칭.
@@ -125,7 +126,13 @@ export class ProductRepository {
     if (filter.dealOnly) {
       query += ` AND deal_only = 1`;
     } else if (filter.excludeDealOnly) {
+      // 🛡️ 2026-05-31: /browse = 쇼핑 전용 — 공구상품 완전 제외.
+      //   이전: deal_only=1 만 제외 → deal_only=0 인 active 공구가 쇼핑에 노출되는 누수.
+      //   공구 식별 3기준(group-buy-public 정합): deal_only / group_buy_status='active' / voucher 카테고리 모두 제외.
       query += ` AND (deal_only IS NULL OR deal_only = 0)`;
+      query += ` AND (group_buy_status IS NULL OR group_buy_status != 'active')`;
+      query += ` AND (category IS NULL OR category NOT IN (${VOUCHER_CATEGORIES.map(() => '?').join(',')}))`;
+      params.push(...VOUCHER_CATEGORIES);
     }
 
     // 정렬: ranking은 "실시간 인기" 가중합 (최근 24h 판매 + 전체 판매 + 평점 + 최신성)
@@ -214,7 +221,13 @@ export class ProductRepository {
     if (filter.dealOnly) {
       query += ` AND deal_only = 1`;
     } else if (filter.excludeDealOnly) {
+      // 🛡️ 2026-05-31: /browse = 쇼핑 전용 — 공구상품 완전 제외.
+      //   이전: deal_only=1 만 제외 → deal_only=0 인 active 공구가 쇼핑에 노출되는 누수.
+      //   공구 식별 3기준(group-buy-public 정합): deal_only / group_buy_status='active' / voucher 카테고리 모두 제외.
       query += ` AND (deal_only IS NULL OR deal_only = 0)`;
+      query += ` AND (group_buy_status IS NULL OR group_buy_status != 'active')`;
+      query += ` AND (category IS NULL OR category NOT IN (${VOUCHER_CATEGORIES.map(() => '?').join(',')}))`;
+      params.push(...VOUCHER_CATEGORIES);
     }
 
     const result = await this.db.prepare(query).bind(...params).first<{ count: number }>();
