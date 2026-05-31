@@ -244,6 +244,22 @@ restaurantSettlementRoutes.patch('/:id/complete', async (c) => {
       WHERE id = ?
     `, [id]);
 
+    // 🛡️ 2026-05-31: 정산 입금 완료 시 사장님 알림톡 (best-effort) — "돈 언제 들어왔는지 모름" 해소.
+    c.executionCtx?.waitUntil((async () => {
+      try {
+        const row = await DB.prepare(
+          `SELECT rs.settlement_amount, rs.restaurant_name, s.phone
+             FROM restaurant_settlements rs LEFT JOIN sellers s ON s.id = rs.seller_id
+            WHERE rs.id = ?`
+        ).bind(id).first<{ settlement_amount: number; restaurant_name: string | null; phone: string | null }>();
+        if (!row?.phone) return;
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+        const amt = Number(row.settlement_amount || 0).toLocaleString('ko-KR');
+        const msg = `[유어딜] 정산 완료 — ${row.restaurant_name || '매장'}\n정산액 ${amt}원이 등록하신 계좌로 입금 처리되었습니다.`;
+        await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, row.phone, 'settlement_completed', msg);
+      } catch { /* best-effort — 알림 실패해도 정산은 완료 */ }
+    })());
+
     return c.json({ success: true, data: { id, status: 'completed' } });
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[restaurant-settlement]');
