@@ -126,6 +126,11 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // 🛡️ 2026-05-31: 미결제 pending 숙소 예약 자동 만료 (30분 경과). 재고 미조작 — 정리 목적.
+    ctx.waitUntil(safeCron('stay-pending-expire', async () => {
+      const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
+      return handleStayPendingExpire(env)
+    }));
     // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
     ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.
