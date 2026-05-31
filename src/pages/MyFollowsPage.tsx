@@ -86,7 +86,7 @@ export default function MyFollowsPage() {
 
       <div className="sticky top-0 z-30 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 flex items-center gap-3 py-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:hover:bg-[#1A1A1A]" aria-label="뒤로">
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-base font-extrabold text-gray-900 dark:text-white">내 단골 셀러</h1>
@@ -122,7 +122,7 @@ export default function MyFollowsPage() {
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}
-                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#121212] dark:hover:bg-[#121212] text-left transition-colors"
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#121212] text-left transition-colors"
                   >
                     {f.seller_avatar ? (
                       <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />

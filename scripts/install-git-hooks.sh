@@ -131,6 +131,17 @@ node scripts/check-pii-logs.mjs || true
 echo "==> Pre-commit: 다크 모드 보더 매핑 검사 (warn-only)..."
 node scripts/check-dark-border.mjs || true
 
+# 🛡️ 2026-05-31: 다크/라이트 테마 일관성 검사 (staged 파일만, warn-only).
+#   유저 대면 화이트-토글 페이지에서 bg-white/text-gray-900 등 라이트 색상에 dark: variant
+#   누락 시 다크 모드에서 흰 박스/검은 텍스트 노출. variant-aware (hover:/focus: 등 대응).
+#   대시보드(seller/admin/agency) + 순수 다크 페이지는 자동 제외. 차단: STRICT_THEME=1.
+echo "==> Pre-commit: 다크/라이트 테마 일관성 검사 (warn-only)..."
+if echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_THEME_CHECK\]"; then
+  echo "   [SKIP_THEME_CHECK] — 건너뜀"
+else
+  node scripts/check-theme-consistency.mjs || true
+fi
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

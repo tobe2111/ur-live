@@ -560,11 +560,11 @@ export default function ProductDetailPage() {
             </button>
           )}
           <div className="flex items-center gap-2 mt-3">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.pointReward')}</span>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
             <span className="text-[11px] font-bold text-pink-500">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
-          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.vatIncluded')}</div>
+          <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
         </section>
 
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
@@ -580,7 +580,7 @@ export default function ProductDetailPage() {
             <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">{product.long_description.slice(0, 200)}</p>
           )}
           {(detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
-            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:bg-[#121212]">
+            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#121212]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
@@ -613,23 +613,23 @@ export default function ProductDetailPage() {
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title={t('productDetailPage.restaurantInfo')} defaultOpen={true}>
             <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400">
-              <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.restaurantName')}</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
+              <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantName')}</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.restaurantAddress')}</span><span>{product.restaurant_address}</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantAddress')}</span><span>{product.restaurant_address}</span></div>
               )}
               {product.restaurant_phone && (
                 <div className="flex items-center">
-                  <span className="w-16 shrink-0 text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.restaurantPhone')}</span>
+                  <span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantPhone')}</span>
                   <a href={`tel:${product.restaurant_phone}`} className="text-blue-600 font-medium underline">
                     {product.restaurant_phone}
                   </a>
                 </div>
               )}
               {product.voucher_terms && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.voucherTerms')}</span><span>{product.voucher_terms}</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherTerms')}</span><span>{product.voucher_terms}</span></div>
               )}
               {product.voucher_expiry && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500 dark:text-gray-400">{t('productDetail.voucherExpiry')}</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherExpiry')}</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
               )}
 
               {/* 지도 + 외부 연결 버튼 */}
@@ -742,10 +742,10 @@ export default function ProductDetailPage() {
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">
-              {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 dark:text-gray-400 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
+              {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
             {!showAllReviews && (reviewSummary?.total_count ?? 0) > 5 && (
-              <button onClick={() => setShowAllReviews(true)} className="flex items-center gap-0.5 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200 dark:hover:text-gray-200 active:opacity-70">
+              <button onClick={() => setShowAllReviews(true)} className="flex items-center gap-0.5 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 active:opacity-70">
                 {t('productDetail.viewAll', { defaultValue: '전체보기' })} <ChevronRight className="w-2.5 h-2.5" />
               </button>
             )}

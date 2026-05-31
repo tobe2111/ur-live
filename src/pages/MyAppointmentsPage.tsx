@@ -28,7 +28,7 @@ interface Appointment {
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   confirmed: { label: '예약 확정', cls: 'bg-emerald-100 text-emerald-700' },
-  cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
+  cancelled: { label: '취소', cls: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300' },
   no_show: { label: '노쇼', cls: 'bg-red-100 text-red-700' },
   completed: { label: '이용 완료', cls: 'bg-blue-100 text-blue-700' },
 }

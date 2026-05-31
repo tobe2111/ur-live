@@ -348,7 +348,7 @@ export default function GroupBuyListPage() {
             className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'seller'
                 ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 dark:text-gray-300 border-transparent'
+                : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
             {t('groupBuy.tabSeller', { defaultValue: '셀러 공구' })}
@@ -358,7 +358,7 @@ export default function GroupBuyListPage() {
             className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'community'
                 ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 dark:text-gray-300 border-transparent'
+                : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
             {t('groupBuy.tabCommunity', { defaultValue: '유저 공구' })}
@@ -390,7 +390,7 @@ export default function GroupBuyListPage() {
                 }}
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   category === tab.key
-                    ? 'bg-gray-900 dark:bg-white dark:bg-[#0A0A0A] text-white dark:text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
                     : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
                 }`}
               >
@@ -471,7 +471,7 @@ export default function GroupBuyListPage() {
                   className={`w-full text-left px-3 py-2.5 text-[13px] ${
                     sortBy === opt
                       ? 'bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#121212] dark:hover:bg-white/[0.06]'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#121212]'
                   }`}
                 >
                   {SORT_LABELS[opt]}
@@ -653,7 +653,7 @@ export default function GroupBuyListPage() {
                         {/* 관심 등록 */}
                         <button
                           onClick={(e) => toggleInterest(e, p.id, p.restaurant_name)}
-                          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
+                          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
                           aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
                         >
                           <Bell
@@ -677,7 +677,7 @@ export default function GroupBuyListPage() {
                         {/* 가격 */}
                         <div className="flex items-baseline gap-1 mt-1">
                           {p.original_price && p.original_price > p.price && (
-                            <span className="text-[10px] text-gray-400 dark:text-gray-600 dark:text-gray-300 line-through">
+                            <span className="text-[10px] text-gray-400 dark:text-gray-600 line-through">
                               {formatPrice(p.original_price)}
                             </span>
                           )}
@@ -822,7 +822,7 @@ export default function GroupBuyListPage() {
                             {formatPrice(g.proposed_price)}
                           </span>
                         </div>
-                        <div className="text-[11px] text-gray-400 dark:text-gray-600 dark:text-gray-300">|</div>
+                        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
                         <div className="text-[12px] text-gray-500 dark:text-gray-400">
                           {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
                         </div>
@@ -856,7 +856,7 @@ export default function GroupBuyListPage() {
                             )}
                           </p>
                           {timeLeft && (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
                               <Clock className="w-3 h-3" />
                               {timeLeft}
                             </p>

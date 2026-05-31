@@ -149,7 +149,7 @@ function IntroducedStoresSection() {
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  expired ? 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-500'
+                  expired ? 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-500'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                 }`}>
                   {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
@@ -289,7 +289,7 @@ function BusinessSection() {
       {status !== 'pending' && (
         <>
           {!open ? (
-            <button onClick={() => setOpen(true)} className="px-4 py-2 bg-gray-900 dark:bg-white dark:bg-[#0A0A0A] text-white dark:text-gray-900 dark:text-white text-xs font-bold rounded-lg">
+            <button onClick={() => setOpen(true)} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg">
               사업자 등록하기
             </button>
           ) : (
@@ -404,7 +404,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   h.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                   h.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-gray-100 text-gray-600 dark:text-gray-300'
+                  'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'
                 }`}>{h.status}</span>
               </div>
             ))}

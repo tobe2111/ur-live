@@ -596,7 +596,7 @@ export default function GroupBuyDetailPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">{detail.name}</h1>
           {detail.restaurant_name && (
             <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 dark:text-gray-400 mt-0.5 shrink-0" />
+              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-gray-700 dark:text-gray-200">{detail.restaurant_name}</p>
                 {detail.restaurant_address && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{detail.restaurant_address}</p>}
@@ -614,7 +614,7 @@ export default function GroupBuyDetailPage() {
           <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
             <div className="flex items-baseline gap-2">
               {detail.current_discount_pct > 0 && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 dark:text-gray-400 line-through">{formatNumber(detail.price)}원</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(detail.price)}원</span>
               )}
               <span className="text-2xl font-extrabold text-pink-500">{formatNumber(unitPrice)}</span>
               <span className="text-sm font-bold text-pink-500">원</span>
@@ -625,7 +625,7 @@ export default function GroupBuyDetailPage() {
               )}
             </div>
             {detail.original_price && detail.original_price > detail.price && (
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 dark:text-gray-400 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}원</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}원</p>
             )}
           </div>
         </div>
@@ -743,7 +743,7 @@ export default function GroupBuyDetailPage() {
                 </div>
                 <button
                   onClick={clearPromo}
-                  className="px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200"
+                  className="px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
                   해제
                 </button>
@@ -790,7 +790,7 @@ export default function GroupBuyDetailPage() {
                   const target = detail.seller_username || detail.seller_id
                   if (target) navigate(`/profile/${target}`)
                 }}
-                className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-[#111] transition-colors"
+                className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-[#121212] transition-colors"
               >
                 {detail.seller_avatar ? (
                   <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
@@ -812,7 +812,7 @@ export default function GroupBuyDetailPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={label}
-                      className={`w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1A1A1A] flex items-center justify-center ${color} hover:bg-gray-100 dark:hover:bg-[#222] transition-colors`}
+                      className={`w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1A1A1A] flex items-center justify-center ${color} hover:bg-gray-100 dark:hover:bg-[#1A1A1A] transition-colors`}
                     >
                       <Icon className="w-4 h-4" />
                     </a>

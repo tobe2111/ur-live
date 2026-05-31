@@ -37,14 +37,14 @@ interface ReturnRecord {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  requested: { label: '요청', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  requested: { label: '요청', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200' },
   approved: { label: '승인 (회수 송장 등록 필요)', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
   shipped: { label: '회수 발송', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
   received: { label: '수령 완료', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
   inspected: { label: '검수 완료', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
   refunded: { label: '환불 완료', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
   rejected: { label: '반려', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
-  cancelled: { label: '취소', color: 'bg-gray-100 text-gray-500' },
+  cancelled: { label: '취소', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500' },
 }
 
 export default function MyReturnsPage() {

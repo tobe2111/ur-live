@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-05-31 — 다크/라이트 테마 전반 정합 + 미래 자동 강제
+사용자 요구: "다크/라이트테마 가장 이상적으로 작업 전반 + 앞으로 생성/수정 페이지에도 정확히 적용".
+- 유저 대면 화이트-토글 페이지 13종 dark: variant 정합 (GroupBuyDetail/ProductDetail/MyVouchers/MyReturns/MyAppointments/MyFollows/Affiliate/FAQ/Search/About/GroupBuyList/Address/CuratorEarnings/MapSearchHeader)
+- perl 일괄치환이 만든 깨진 클래스 전수 교정: `dark:dark:`, 중복 `dark:bg-`/`dark:text-`, state 오매핑(`hover:bg-gray-100`→잘못된 `dark:bg-` 대신 `dark:hover:bg-`) → 0건 확인
+- **미래 자동 강제**: `scripts/check-theme-consistency.mjs` (variant-aware, 대시보드·순수다크·콜백 제외) 를 pre-commit(staged) + `verify.yml` CI 에 등록 (warn-only, `STRICT_THEME=1` 차단, `[SKIP_THEME_CHECK]` 우회). CLAUDE.md 테마 섹션 + 영구 방어선 표 갱신.
+- 기존 backlog ~200건(공유 컴포넌트 streaming/dashboard 다수) 은 warn 유지 — 점진 정리 후 strict 승격 예정.
+
 ## 🟢 2026-05-31 — 오프라인 공구 운영 플로우 audit + 자금 커버리지 갭 3종
 역할별(매장/인플/에이전시) 운영 플로우 전수 audit. 서브에이전트 2종 결과를 **직접 검증해 오판 정정**:
 - ❌→✅ "에이전시 정산 자동화 없음" 오판 — `agency-auto-settle.ts`(자동 집계+`agency_settlements` INSERT) + `agency-monthly-invoices` 실재

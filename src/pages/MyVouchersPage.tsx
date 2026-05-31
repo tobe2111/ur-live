@@ -239,7 +239,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose} role="presentation">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
-        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:hover:bg-[#1A1A1A] dark:bg-[#1A1A1A]">
+        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:bg-[#1A1A1A]">
           <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </button>
         <p className="text-center text-sm font-bold text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
@@ -298,7 +298,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
             ℹ️ {voucher.usage_guide}
           </p>
         )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 text-center mt-2">{t('voucher.showQrAtStore')}</p>
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2">{t('voucher.showQrAtStore')}</p>
 
         {/* 선물/공유 버튼 (사용 가능한 식사권만) */}
         {voucher.status === 'unused' && (
@@ -827,7 +827,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
             📞 {maskedPhone} 로 발송됨
           </p>
         )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
           휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.
         </p>
         <button

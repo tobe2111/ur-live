@@ -361,7 +361,7 @@ export default function AddressManagementPage() {
                         <button
                           onClick={() => handleDeleteAddress(address.id)}
                           aria-label={t('address.ariaDelete')}
-                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-white/60 dark:hover:bg-white/[0.06]"
+                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-white/60 dark:bg-[#0A0A0A]/60 dark:hover:bg-white/[0.06]"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

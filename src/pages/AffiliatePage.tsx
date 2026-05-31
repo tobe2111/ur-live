@@ -55,11 +55,11 @@ export default function AffiliatePage() {
             <p className="text-xs opacity-70">{t('affiliate.totalEarned')}</p>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
+              <div className="bg-white/15 dark:bg-[#0A0A0A]/15 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-bold">{data.total_referrals}</p>
                 <p className="text-[10px] opacity-70">{t('affiliate.totalReferrals')}</p>
               </div>
-              <div className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
+              <div className="bg-white/15 dark:bg-[#0A0A0A]/15 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-bold">{formatNumber(data.monthly_earned || 0)}</p>
                 <p className="text-[10px] opacity-70">{t('affiliate.monthlyEarned')}</p>
               </div>
