@@ -172,7 +172,7 @@ export default function VoucherDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500" />
       </div>
     )
@@ -180,10 +180,10 @@ export default function VoucherDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-white p-4">
-        <button onClick={() => navigate(-1)} className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900" /></button>
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] p-4">
+        <button onClick={() => navigate(-1)} className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
-          <p className="text-sm text-gray-700 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
           <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-bold">교환권 목록으로</button>
         </div>
       </div>
@@ -194,17 +194,17 @@ export default function VoucherDetailPage() {
   const label = getVoucherShortLabel(product.category)
 
   return (
-    <div className="min-h-screen bg-white pb-44 lg:pb-32">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-44 lg:pb-32">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={product.description || ''} url={`/vouchers/${product.id}`} noindex />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900" /></button>
-        <h1 className="text-[15px] font-bold text-gray-900">{label}</h1>
+        <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
+        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">{label}</h1>
         <div className="w-5" />
       </header>
 
       {product.image_url && (
-        <div className="w-full aspect-square bg-gray-50">
+        <div className="w-full aspect-square bg-gray-50 dark:bg-[#121212]">
           {/* 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP 80KB.
                 LCP 우선 이미지 → eager + fetchPriority=high. */}
           <img
@@ -222,16 +222,16 @@ export default function VoucherDetailPage() {
 
       <div className="px-4 py-5 space-y-3">
         <div className="inline-block px-2 py-0.5 bg-pink-100 text-pink-700 text-[11px] font-bold rounded">{label}</div>
-        <h2 className="text-[20px] font-extrabold text-gray-900 leading-snug">{product.name}</h2>
+        <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white leading-snug">{product.name}</h2>
         <div className="flex items-baseline gap-1">
           <span className="text-[28px] font-extrabold text-pink-600">{formatNumber(product.price)}</span>
           <span className="text-[14px] font-bold text-pink-600">딜</span>
         </div>
         {product.restaurant_name && (
-          <p className="text-[13px] text-gray-600">📍 {product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</p>
+          <p className="text-[13px] text-gray-600 dark:text-gray-300">📍 {product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</p>
         )}
         {product.description && (
-          <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap mt-4">{product.description}</p>
+          <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap mt-4">{product.description}</p>
         )}
       </div>
 
@@ -244,14 +244,14 @@ export default function VoucherDetailPage() {
 
       {/* 🛡️ 2026-05-23: BottomNav (h-14 + safe-area) 위에 표시. z-[10002] = nav (z-9999) 위. */}
       <div
-        className="fixed bottom-14 left-0 right-0 bg-white border-t border-gray-100 z-[10002] lg:bottom-0"
+        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3 flex items-center gap-2">
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg overflow-hidden shrink-0">
-            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-9 h-10 text-gray-700">−</button>
-            <span className="w-8 text-center text-sm font-bold text-gray-900">{quantity}</span>
-            <button onClick={() => setQuantity(q => q + 1)} className="w-9 h-10 text-gray-700">+</button>
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-9 h-10 text-gray-700 dark:text-gray-200">−</button>
+            <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-white">{quantity}</span>
+            <button onClick={() => setQuantity(q => q + 1)} className="w-9 h-10 text-gray-700 dark:text-gray-200">+</button>
           </div>
           <button
             onClick={handleExchange}
@@ -266,9 +266,9 @@ export default function VoucherDetailPage() {
       {/* 🛡️ 2026-05-24: KT Alpha 상품 phone 미등록 시 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowPhoneModal(false)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-gray-900 mb-2">📱 휴대폰 번호 등록</h3>
-            <p className="text-xs text-gray-600 mb-4">
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">📱 휴대폰 번호 등록</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>
               발송 받을 번호를 입력해주세요.
             </p>
@@ -278,7 +278,7 @@ export default function VoucherDetailPage() {
               onChange={(e) => setPhoneInput(formatPhone(e.target.value))}
               onKeyDown={(e) => { if (e.key === 'Enter') savePhoneAndRetry(phoneInput) }}
               placeholder="010-1234-5678"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base text-gray-900 mb-3"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base text-gray-900 dark:text-white mb-3"
               autoFocus
             />
 
@@ -290,10 +290,10 @@ export default function VoucherDetailPage() {
                 onChange={(e) => setPhoneConsent(e.target.checked)}
                 className="mt-0.5 w-4 h-4 accent-pink-500"
               />
-              <span className="text-[11px] text-gray-700 leading-relaxed">
+              <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
                 <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
                 <br/>
-                <span className="text-gray-500">
+                <span className="text-gray-500 dark:text-gray-400">
                   · 수집 항목: 휴대폰 번호<br/>
                   · 이용 목적: 기프티쇼 교환권 MMS 발송 / 알림톡 발송<br/>
                   · 보유 기간: 회원 탈퇴 시까지 (탈퇴 후 즉시 파기)
@@ -304,7 +304,7 @@ export default function VoucherDetailPage() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => { setShowPhoneModal(false); setPhoneConsent(false) }}
-                className="py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
+                className="py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200"
               >
                 취소
               </button>
