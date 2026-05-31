@@ -1,5 +1,18 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-05-31 — 오프라인 공구 운영 플로우 audit + 자금 커버리지 갭 3종
+역할별(매장/인플/에이전시) 운영 플로우 전수 audit. 서브에이전트 2종 결과를 **직접 검증해 오판 정정**:
+- ❌→✅ "에이전시 정산 자동화 없음" 오판 — `agency-auto-settle.ts`(자동 집계+`agency_settlements` INSERT) + `agency-monthly-invoices` 실재
+- ❌→✅ "매장 가입 pending 병목" 오판 — NTS 사업자 진위확인 자동승인 end-to-end 구현(폼이 rep_name+start_date 수집·전송). **`NTS_API_KEY` 환경변수만 설정하면 자동활성** (코드 변경 불필요·운영자 사안)
+- ❌→✅ "3자 분배 0%" 오판 — 에이전시(intro 2%/매장별) + 인플(referral/?ref별) **병렬 공존**
+
+**고친 실제 갭 (자금 누수)**:
+- #2 카드 결제 인플 referral attribution 누락 → `applyGroupBuyReferral` 헬퍼로 닫음 (`fb5f809`)
+- #1a 매장 정산 입금완료 알림톡 추가 (`daf9bee`)
+- #3 에이전시 intro 커미션 공구 경로(딜+카드) 누락 → `creditAgencyStoreIntroCommission` 호출 추가 (`60586ae`)
+
+**남은 것**: 인플/에이전시 최종 은행송금 자동화(PG 연동·KR 특성상 수동 일반), 정산서 PDF, Magic Link 영구저장. NTS_API_KEY 프로덕션 설정 확인(운영자).
+
 ## 📋 사용자 액션 TODO (로컬 — 원격 환경 빌드 불가)
 - [ ] **SSR prerender 실제 동작 검증** (Phase 2 후속):
   ```bash
@@ -11,6 +24,7 @@
 - [ ] 배포 반영 확인: `claude/service-tech-debt-analysis-d1KOx` → main 머지 + Actions 녹색
 - [ ] 배포 후 1회: `POST https://live.ur-team.com/api/_internal/repair-schema` (숙소 migration 보장)
 - [ ] 스모크: 공구 카드결제 / 숙소 예약·취소 각 1건 (이번 세션 가격·환불·재고 변경분)
+- [ ] **`NTS_API_KEY` 프로덕션 설정 확인** — 매장 가입 자동승인(국세청 진위확인)이 이 키 없으면 전원 pending 으로 묶임 (Cloudflare Dashboard → ur-live → Variables)
 
 ## 🟢 2026-05-31 — SSR Phase 2 메인 트리 audit + fix
 - 인프라(entry-server renderToString + prerender HTML inject) 이미 구현 + graceful skip 확인
