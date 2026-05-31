@@ -25,7 +25,7 @@ const StatusButton = ({
     className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors border ${
       active
         ? 'bg-gray-900 text-white border-gray-900'
-        : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50'
+        : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
     }`}
   >
     {label}
@@ -337,7 +337,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleSellerContact(order)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 dark:hover:bg-[#121212] transition-colors"
                       aria-label={t('ordersTab.inquiry', { defaultValue: '판매자 문의' })}
                     >
                       <MessageCircle className="h-3 w-3" strokeWidth={2} />
@@ -361,7 +361,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                     )}
                     <button
                       onClick={() => onSelectOrder(order)}
-                      className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 transition-colors ml-0.5"
+                      className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-0.5"
                     >
                       {t('ordersTab.detail', { defaultValue: '상세' })}
                       <ChevronRight className="h-3.5 w-3.5" />

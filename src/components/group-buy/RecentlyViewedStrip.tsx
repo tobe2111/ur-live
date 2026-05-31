@@ -59,7 +59,7 @@ export default function RecentlyViewedStrip() {
             className="snap-start shrink-0 w-[120px] text-left"
             aria-label={`${item.name} 다시 보기`}
           >
-            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100">
+            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
               {item.image_url ? (
                 <img src={item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
               ) : (

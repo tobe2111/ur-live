@@ -24,8 +24,15 @@ const STRICT = process.argv.includes('-s') || process.env.STRICT_THEME === '1'
 const ROOT = process.cwd()
 
 // 대시보드(dark 금지) + 콜백/디버그/embed/소개 = 제외
-const EXCLUDE = /(seller|admin|agency)/i
+//   - seller/admin/agency: 라이트 고정 대시보드 (check-dashboard-theme.sh 별도 강제)
+//   - streaming/: 셀러 방송 셋업(SellerLiveBroadcast 하위) — 대시보드 컨텍스트
+//   - guide/: SellerGuide/AgencyGuide/AdminOperationsGuide 전용
+//   - dashboard/: 대시보드 통계 카드 등 셀러/어드민 전용
+//   (usage 추적으로 확인 — 2026-05-31. 라이트 고정이라 dark: 추가 금지)
+const EXCLUDE = /(seller|admin|agency)|components\/(streaming|guide|dashboard)\//i
 const EXCLUDE_FILE = /(Callback|Debug|Embed|Introduce|Login|Register)/i
+// 최상위 컴포넌트지만 대시보드 전용(Admin/SellerProducts 에서만 사용) — 라이트 고정.
+const DASHBOARD_ONLY = /(ProductOptionForm|BulkUploadModal)\.tsx$/
 
 // 라이트 색 → 필요한 dark: prefix (같은 className 에 존재해야)
 // 🛡️ variant-aware: `hover:bg-gray-100` 은 `dark:hover:bg-...` 로 대응 (오탐 방지).
@@ -61,12 +68,13 @@ if (targetFiles.length === 0) {
 }
 
 // 강제 다크 페이지(라이트 토글 무관) — light 버튼이 섞여도 다크 고정.
-const FORCED_DARK_FILE = /(Shorts|LiveList|LivePage|live\/|Reel|ShortsPage)/i
+//   LiveDonation: live 뷰어 위 화이트 바텀시트(의도된 흰색, Toss/Kakao 결제시트 패턴) — 다크 고정.
+const FORCED_DARK_FILE = /(Shorts|LiveList|LivePage|live\/|Reel|ShortsPage|LiveDonation)/i
 const violations = []
 for (const f of targetFiles) {
   if (!fs.existsSync(f)) continue
   const rel = f.replace(ROOT + '/', '')
-  if (EXCLUDE.test(rel) || EXCLUDE_FILE.test(rel) || FORCED_DARK_FILE.test(rel)) continue
+  if (EXCLUDE.test(rel) || EXCLUDE_FILE.test(rel) || FORCED_DARK_FILE.test(rel) || DASHBOARD_ONLY.test(rel)) continue
   const src = fs.readFileSync(f, 'utf8')
   // 🛡️ 정밀: "토글 의도" 신호 — dark: variant 가 이미 하나라도 있어야 partial-dark 로 판정.
   //   (dark: 0 = 순수 다크/강제 화이트로 모호 → 플래그 X, 오탐 방지)
@@ -75,6 +83,9 @@ for (const f of targetFiles) {
   if (/bg-\[#020202\]|data-mobile-only/.test(src)) continue
   const lines = src.split('\n')
   lines.forEach((line, i) => {
+    // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
+    const trimmed = line.trim()
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
     for (const tok of LIGHT_TOKENS) {
       tok.re.lastIndex = 0
       let m

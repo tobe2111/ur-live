@@ -166,7 +166,7 @@ export default function ReferralSection({
                 <button
                   key={g.invite_code}
                   onClick={() => navigate(`/referral/${g.invite_code}`)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-left hover:bg-gray-50 dark:bg-[#121212] active:scale-[0.99] transition"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-left hover:bg-gray-50 dark:hover:bg-[#121212] active:scale-[0.99] transition"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">

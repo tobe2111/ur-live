@@ -74,7 +74,7 @@ export default function LiveTicker({ className = '' }: { className?: string }) {
   return (
     <Link
       to={`/group-buy/${e.product_id}`}
-      className={`flex items-center gap-2 px-3 py-2 rounded-full bg-white border border-gray-200 dark:border-[#2A2A2A] shadow-sm hover:shadow transition-shadow ${className}`}
+      className={`flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] shadow-sm hover:shadow transition-shadow ${className}`}
       role="status"
       aria-live="polite"
     >
@@ -94,10 +94,10 @@ export default function LiveTicker({ className = '' }: { className?: string }) {
       )}
 
       {/* 텍스트 (animate-in) */}
-      <p key={`${e.product_id}-${e.created_at}`} className="text-[11px] text-gray-700 truncate flex-1 animate-fadeIn">
-        <span className="font-bold text-gray-900">{e.masked_name}</span>
+      <p key={`${e.product_id}-${e.created_at}`} className="text-[11px] text-gray-700 dark:text-gray-200 truncate flex-1 animate-fadeIn">
+        <span className="font-bold text-gray-900 dark:text-white">{e.masked_name}</span>
         <span className="text-gray-500"> · </span>
-        <span className="text-gray-700">{e.restaurant_name || e.product_name}</span>
+        <span className="text-gray-700 dark:text-gray-200">{e.restaurant_name || e.product_name}</span>
         <span className="text-gray-400 ml-1">· {timeAgo(e.created_at)}</span>
       </p>
     </Link>

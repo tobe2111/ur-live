@@ -102,7 +102,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
             <Gift className="w-5 h-5 text-pink-500" />
             <h2 className="font-bold text-gray-900 dark:text-white">{t('gift.title', { defaultValue: '선물하기' })}</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[#1A1A1A] rounded-full">
             <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
         </div>

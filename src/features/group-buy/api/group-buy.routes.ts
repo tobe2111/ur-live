@@ -851,7 +851,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         vouchers: vouchers.results ?? [],
         group_buy_current: (updated?.group_buy_current ?? 0),
         group_buy_target: updated?.group_buy_target ?? 0,
-        next_tier: currentTier.next_tier,
+        // 🛡️ A2 단일가 모델: 동적 next_tier 없음 (최대 tier 즉시 적용). 항상 null.
+        next_tier: null,
       },
       message: appliedDiscountPct > 0
         ? `공동구매 참여 완료! 티어 할인 ${appliedDiscountPct}% 적용 + 바우처 ${qty}장 발급`
@@ -910,7 +911,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const userId = String(user.id)
 
-  const body = await c.req.json<{ paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }>().catch(() => ({} as { paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number }))
+  const body = await c.req.json<{ paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }>().catch(() => ({} as { paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }))
   const { paymentKey, orderId, amount, productId, qty: rawQty } = body
   if (!paymentKey || !orderId || !amount || !productId) {
     return c.json({ success: false, error: '결제 정보가 올바르지 않습니다' }, 400)

@@ -124,7 +124,7 @@ export default function OptionSelectModal({
             </div>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-900 transition-colors ml-2"
+              className="flex h-8 w-8 items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors ml-2"
               aria-label={t('product.optionCloseAria', { defaultValue: '옵션 선택 닫기' })}
             >
               <X className="h-5 w-5" strokeWidth={1.5} />

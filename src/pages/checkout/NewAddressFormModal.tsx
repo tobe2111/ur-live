@@ -48,7 +48,7 @@ export default function NewAddressFormModal({
             aria-required="true"
             value={newAddress.recipient_name}
             onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             placeholder={t('checkout.newAddress.recipientNamePlaceholder', { defaultValue: '받으실 분의 이름을 입력하세요' })}
           />
         </div>
@@ -64,7 +64,7 @@ export default function NewAddressFormModal({
             aria-required="true"
             value={newAddress.phone}
             onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             placeholder="010-1234-5678"
           />
         </div>
@@ -88,7 +88,7 @@ export default function NewAddressFormModal({
             <button
               type="button"
               onClick={() => setShowPostcodePopup(true)}
-              className="shrink-0 px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-[#121212] transition-all whitespace-nowrap"
+              className="shrink-0 px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#121212] transition-all whitespace-nowrap"
             >
               {t('checkout.newAddress.searchAddress', { defaultValue: '주소 검색' })}
             </button>
@@ -126,7 +126,7 @@ export default function NewAddressFormModal({
             type="text"
             value={newAddress.address_detail}
             onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-2xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             placeholder={t('checkout.newAddress.addressDetailPlaceholder', { defaultValue: '동/호수, 건물명 등 (선택)' })}
           />
         </div>
@@ -148,7 +148,7 @@ export default function NewAddressFormModal({
               e.stopPropagation()
               onClose()
             }}
-            className="flex-1 py-4 bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 rounded-2xl text-[16px] font-bold hover:bg-gray-100 dark:bg-[#1A1A1A] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+            className="flex-1 py-4 bg-gray-50 dark:bg-[#121212] text-gray-500 dark:text-gray-400 rounded-2xl text-[16px] font-bold hover:bg-gray-100 dark:hover:bg-[#1A1A1A] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
           >
             {t('common.cancel', { defaultValue: '취소' })}
           </button>

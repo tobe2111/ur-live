@@ -140,7 +140,7 @@ export function KakaoLinkButton({ role }: Props) {
         )}
         <div className="flex-1 min-w-0">
           <p className="text-xs text-green-700 font-bold">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
-          <p className="text-sm text-gray-900 font-semibold truncate">{status.user.name}</p>
+          <p className="text-sm text-gray-900 dark:text-white font-semibold truncate">{status.user.name}</p>
           {status.user.email && <p className="text-[11px] text-gray-500 truncate">{status.user.email}</p>}
         </div>
         <button onClick={unlink} disabled={working}
@@ -158,7 +158,7 @@ export function KakaoLinkButton({ role }: Props) {
       <div className="flex items-start gap-2">
         <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-lg shrink-0">💬</div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900">{t('kakaoLink.title')}</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-white">{t('kakaoLink.title')}</p>
           <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
             {t('kakaoLink.benefit', { defaultValue: '연동하면 카카오 로그인만으로 접근 가능해요. 비밀번호 관리 부담 ↓ · 보안 ↑' })}
           </p>

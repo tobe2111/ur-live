@@ -73,7 +73,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                   onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
                   disabled={item.quantity <= 1}
                   aria-label={t('cart.decreaseQty', { defaultValue: '수량 감소' })}
-                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] active:bg-gray-100 dark:active:bg-[#1A1A1A] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
@@ -83,7 +83,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                 <button
                   onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
                   aria-label={t('cart.increaseQty', { defaultValue: '수량 증가' })}
-                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] active:bg-gray-100 dark:active:bg-[#1A1A1A] transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>

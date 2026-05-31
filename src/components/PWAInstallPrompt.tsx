@@ -168,7 +168,7 @@ export default function PWAInstallPrompt() {
               </p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.desc', { defaultValue: '홈 화면에 설치하고 5,000원 쿠폰 받기' })}</p>
             </div>
-            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
+            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
@@ -202,7 +202,7 @@ export default function PWAInstallPrompt() {
               <p className="text-sm font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '🎁 앱 설치하면 환영 쿠폰!' })}</p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.manualDesc', { defaultValue: '홈 화면에 추가하고 5,000원 받기' })}</p>
             </div>
-            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 shrink-0">
+            <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>

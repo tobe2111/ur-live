@@ -216,7 +216,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
               key={p.id || i}
               type="button"
               onClick={() => handleSelect(p)}
-              className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50"
+              className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#121212]"
             >
               <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">

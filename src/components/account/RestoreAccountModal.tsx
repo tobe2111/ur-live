@@ -116,7 +116,7 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleSkip}
             aria-label={t('common.close', { defaultValue: '닫기' })}
-            className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100"
+            className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]"
           >
             <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </button>
@@ -155,7 +155,7 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleSkip}
             disabled={restoring}
-            className="w-full h-11 text-gray-500 dark:text-gray-400 hover:text-gray-700 text-[13px] font-medium"
+            className="w-full h-11 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-[13px] font-medium"
           >
             {t('user.newAccountBtn', { defaultValue: '새 계정으로 시작' })}
           </button>
