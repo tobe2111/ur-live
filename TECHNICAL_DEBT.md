@@ -54,6 +54,16 @@
 ### 🚧 진행중 (별도 워크스트림)
 - SSR 마이그레이션(`docs/CURRENT_WORK.md`) — LCP 10.7s→0.5-1.5s. 결제·카카오·라이브 SSR-safe 풀 audit 필요.
 
+### ✅ 2026-05-31 후속 진행 완료 (순차 4종)
+| # | 항목 | commit | 비고 |
+|---|---|---|---|
+| 1 | 숙소 취소/환불 시 객실 재고(available_count) 복원 | `40a5668` | 카드환불은 이미 구현(stale)이었고, **재고 미복원 버그** 발견·수정(영구 unavailable). status='refunded' 정합 |
+| 2 | 미결제 pending 숙소 예약 자동 만료 cron | `33622d8` | 안전 옵션(사용자 결정) — 잠금/재고모델 무수정. hold 모델(차감)은 [UNLOCK] 필요로 보류 |
+| 3 | 카드(toss) 경로 A2 단일가 정합 + 정산 기록(ledger/donations/order_items) | `1632642` | A2 후 카드가 정가 결제하던 불일치 수정 + confirm-toss 정산 누락 보강. 인플 attribution(카드 referral)만 잔존 |
+| 4 | 어드민 에러 누출 37곳 safeError 통일 (9 파일) | `a8e3819` | 프로젝트 하드룰 정합. 비-admin 누출 2곳은 `38298f4` 에서 처리 완료 |
+
+**남은 것**: stay hold(차감) 모델([UNLOCK] 필요), confirm-toss 인플 attribution, repo 위생(archive/ 정리는 저가치 — `.env.production`은 의도적 force-track/VITE 공개값, naver-ad-scraper 는 hook 사용 → 보류), 데이터페칭 통합/God파일/SSR(대규모 별도).
+
 ---
 
 ## 📊 2026-05-30 — 서비스 전반 부채 분석 라운드 (6영역 + 공구 플로우 검증)
