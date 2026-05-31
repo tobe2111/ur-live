@@ -225,8 +225,9 @@ export default function CuratorHeader({
                 onKeyDown={(e) => e.key === 'Enter' && saveField('name', editName)}
                 maxLength={40}
               />
-              <button onClick={() => saveField('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="취소" className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
+              {/* 🛡️ 2026-05-31: 터치 타깃 확대 (p-1.5/w-3.5 ~24px → p-2.5/w-5 ~44px) — 너무 작다는 사용자 보고. */}
+              <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-2.5 bg-pink-500 rounded-full text-white shrink-0 active:scale-95 transition-transform disabled:opacity-50"><Check className="w-5 h-5" /></button>
+              <button onClick={() => setEditingField(null)} aria-label="취소" className="p-2.5 bg-gray-200 dark:bg-[#2A2A2A] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95 transition-transform"><X className="w-5 h-5" /></button>
             </div>
           ) : (
             <h1
