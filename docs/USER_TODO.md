@@ -6,9 +6,10 @@
 
 ## 🔴 지금/곧 (배포·검증)
 - [ ] **배포 확인** — feature 브랜치가 main 자동 머지 → Cloudflare Pages 배포됐는지 GitHub Actions 녹색 확인.
-- [ ] **스키마 적용** — 배포 후 새 컬럼/테이블 적용. **둘 중 하나**:
+- [ ] **스키마 적용** — 배포 후 새 컬럼/테이블 적용. **셋 중 하나** (아무거나):
   - 그냥 둠 → 매일 새벽 3시(18 UTC) cron 이 자동 적용 (아무것도 안 해도 됨)
-  - 즉시 → 어드민 토큰으로 1회 실행: `curl -s https://live.ur-team.com/api/_internal/repair-schema -H "Authorization: Bearer <admin_token>"` (`admin_token` = 어드민 로그인 후 콘솔 `localStorage.getItem('admin_token')`)
+  - **(쉬움)** 즉시 → `/admin/health` 페이지 → "DB 스키마 복구" 섹션 → **"지금 스키마 복구" 버튼 클릭** ✨ (신규)
+  - (고급) curl: `curl -s https://live.ur-team.com/api/_internal/repair-schema -H "Authorization: Bearer <admin_token>"`
 - [ ] **시각 검증** (Claude 가 화면을 못 봄 — 큰 UI 변경 직접 확인):
   - 홈 `/` = 교환권 + "딜 모으는 법" 으로 바뀜
   - 하단바 = 홈/동네딜/쇼핑/링크샵/마이
@@ -29,9 +30,10 @@
 - [ ] **출금 방식** — 영입자 커미션: 현재 auto-push(잔고>10만원 자동송금) vs pull(사용자 출금신청) 중 선택.
 
 ## 🟢 선택 (원하면 Claude 가 구현)
-- [ ] 어드민 "스키마 복구" 버튼 (curl 없이 클릭 1회)
-- [ ] 공급자 입점 혜택을 비즈니스 랜딩(`/business`)에 노출
+- [x] ~~어드민 "스키마 복구" 버튼~~ → 완료 (`/admin/health`, commit 46fae25)
+- [x] ~~공급자 입점 혜택을 비즈니스 랜딩(`/business`)에 노출~~ → 완료 (commit 46fae25)
 - [ ] version-check: 일정 시간 무시 시 자동 새로고침(현재는 배너 수동)
+- [ ] B2B 공급사↔셀러 채팅/문의 기능 (검토용 — 아래 메모 참고)
 
 ---
 _최종 업데이트: 2026-06-01 (도매몰 INC-1~8 완성 + 노출 동선 + 버전배너 세션)_
