@@ -324,6 +324,11 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       values.push(body.youtube_video_id);
     }
     if (body.status !== undefined) {
+      // 🛡️ 2026-05-31: status enum 검증 — 임의 문자열 주입으로 자기 스트림 상태 손상 방지.
+      const ALLOWED_STREAM_STATUS = ['scheduled', 'live', 'ended', 'completed'];
+      if (!ALLOWED_STREAM_STATUS.includes(body.status)) {
+        return c.json({ success: false, error: '유효하지 않은 방송 상태입니다' }, 400);
+      }
       updates.push('status = ?');
       values.push(body.status);
       if (body.status === 'ended') {

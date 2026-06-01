@@ -21,7 +21,7 @@ import { rateLimit } from '../middleware/rate-limit';
 const app = new Hono<{ Bindings: Env }>();
 
 // ── 카카오 장소 검색 (키워드) ──
-app.get('/kakao/place/search', async (c) => {
+app.get('/kakao/place/search', rateLimit({ action: 'kakao_proxy', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query');
   const category = c.req.query('category_group_code') || 'FD6,CE7';
   const size = c.req.query('size') || '15';
@@ -41,7 +41,7 @@ app.get('/kakao/place/search', async (c) => {
 // ── 카카오 주변 음식점 검색 (좌표 기반) ──
 // 🛡️ 2026-04-28: restaurant-map 페이지가 우리 식사권 외에 카카오 맛집도 표시할 때 사용.
 // 사용자 lat/lng + radius (m) → FD6 (음식점) + CE7 (카페) 자동 검색.
-app.get('/kakao/place/nearby', async (c) => {
+app.get('/kakao/place/nearby', rateLimit({ action: 'kakao_proxy', max: 30, windowSec: 60 }), async (c) => {
   const x = c.req.query('lng'); // longitude
   const y = c.req.query('lat'); // latitude
   const radius = c.req.query('radius') || '1000'; // meters (max 20000)
@@ -63,7 +63,7 @@ app.get('/kakao/place/nearby', async (c) => {
 // ── 카카오 주소 검색 (영구 캐시) ──
 // 🛡️ 2026-05-07: 같은 주소를 반복 변환하지 않도록 RATE_LIMIT_KV 에 30일 캐시.
 // 한 번 변환된 좌표는 거의 바뀌지 않으므로 Kakao API quota 대폭 절감.
-app.get('/kakao/place/address', async (c) => {
+app.get('/kakao/place/address', rateLimit({ action: 'kakao_proxy', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query');
   if (!query) return c.json({ success: false, error: 'query required' }, 400);
   const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
