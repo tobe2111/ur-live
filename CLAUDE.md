@@ -31,6 +31,7 @@
 
 ### 변경 audit log
 - 2026-05-24 초기 잠금 — commit `02be3610`, `c47e7326`, 후속
+- 2026-05-31 `[UNLOCK]` `payment.routes.ts` `/confirm` 동시요청 CAS 가드 (사용자 승인, 보안 audit) — Toss confirm 후 `UPDATE orders SET status='DONE' WHERE order_number=? AND status NOT IN (DONE/PAID/CANCELLED/REFUNDED/FAILED)` 로 PENDING→DONE 원자 claim. `meta.changes==0`(다른 동시요청이 이미 처리)이면 reduceStock/agency·referral commission side-effect 재실행 없이 멱등 반환. **Toss confirm/amount 검증/client-key 로직 미변경** — 내부 정합(재고 2배차감·커미션 중복)만 차단. confirmTossPayment 는 호출만(수정 X).
 - 2026-05-30 `[UNLOCK]` 숙소 오버부킹 원자적 가드 (사용자 허가) — `payment.routes.ts` `/confirm` 의 stay-calendar 차감 블록만 변경: `MAX(0, count-1)` clamp → `WHERE available_count > 0` 가드 + `meta.changes` 검사 + 부족 시 성공분 롤백 + `cancelTossPayment()` 자동 환불. **Toss confirm/amount 검증/client-key 로직은 미변경**, locked SSOT helper 는 호출만(수정 X). 동일 가드 `stays-public.routes.ts` `/stays/bookings/confirm` 에도 적용.
 
 ---
@@ -99,6 +100,7 @@
   - Phase 3 FrameWrapper 사고 + rollback (`374ea9c`/`336a988`)
   - Phase 4 live hooks (`c1a42d7`)
   - Phase 5 single-page hooks (`74bb925`)
+- 2026-05-31 `[UNLOCK_LOADING]` 카카오 same-email 셀러 자동연결 verified 게이트 (사용자 승인, 보안 audit) — `KakaoAuthService.upsertUser` 의 seller auto-link 에 `kakaoUser.emailVerified === true` 조건 추가 (카카오 `is_email_verified`). 미verified email 로 사전생성된 미연결 셀러 행 takeover 차단. **`/host/new` fall-through 방지 동작은 verified 사용자에게 그대로 유지** (대부분 카카오 email 은 verified). KakaoUser/KakaoUserInfoResponse type 에 emailVerified/is_email_verified 필드 추가.
 - 2026-05-28 `[UNLOCK_LOADING]` 이미지별 dominant_color placeholder (사용자 허가) — 카드 이미지 깜빡임 0.
   - products.dominant_color 컬럼 (migration 0282 + repair-schema) + 클라이언트 canvas 1x1 lazy 백필 (`src/utils/dominant-color.ts`)
   - 잠금 라우트 SELECT 에 dominant_color 추가 (group-buy-public.routes / ProductRepository LIST_COLUMNS) — 추가만, Cache-Control 등 기존 잠금 동작 불변

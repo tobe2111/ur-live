@@ -101,6 +101,15 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       const netAmount = inf.available_amount - withholding
 
       // 실제 송금은 PG 연동 필요 — 여기선 어드민 dashboard 에 송금 대기 notification
+      // 🛡️ 2026-05-31 H2: 당월 동일 인플 송금대기 알림 중복 방지 — cron 재실행/재트리거 시
+      //   available_amount 가 재집계되며 같은 잔액을 매번 재큐잉 → admin 중복 알림 → 이중송금 오인.
+      //   실제 지급은 수동 paid_at 이라 돈 손실은 아니나 ops 노이즈/오인 차단.
+      const dupNotif = await DB.prepare(
+        `SELECT 1 FROM dashboard_notifications
+          WHERE type = 'influencer_payout_pending' AND title = ?
+            AND created_at >= datetime('now', 'start of month') LIMIT 1`
+      ).bind(`💰 인플 송금 대기: ${inf.influencer_id}`).first().catch(() => null)
+      if (dupNotif) continue
       try {
         await DB.prepare(
           `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)

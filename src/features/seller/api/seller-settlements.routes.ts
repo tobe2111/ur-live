@@ -136,12 +136,20 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
       }, 409);
     }
 
+    // 🛡️ 2026-05-31 H3: 위 SELECT-dupe 는 빠른 경로일 뿐 race 에 취약 → INSERT 를 원자적
+    //   INSERT...SELECT...WHERE NOT EXISTS 로 변경(동일기간 동시신청 시 1건만 생성).
     const result = await db.prepare(`
       INSERT INTO settlements (seller_id, amount, period_start, period_end, bank_name, account_number, account_holder, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-    `).bind(sellerId, amount, periodStart, periodEnd, bank_name || null, account_number || null, account_holder || null).run()
+      SELECT ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now')
+      WHERE NOT EXISTS (
+        SELECT 1 FROM settlements WHERE seller_id = ? AND period_start = ? AND period_end = ? AND status IN ('pending', 'approved', 'paid')
+      )
+    `).bind(sellerId, amount, periodStart, periodEnd, bank_name || null, account_number || null, account_holder || null, sellerId, periodStart, periodEnd).run()
       .catch(() => null);
     if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
+    if ((result.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '동일 기간의 정산 신청이 이미 진행 중입니다.', code: 'DUPLICATE_SETTLEMENT_PERIOD' }, 409);
+    }
     // 1. 정산 신청 → 어드민 알림
     createDashboardNotification(db, 'admin', null, 'settlement_request', '정산 신청', `셀러 #${sellerId}`, '/admin/settlement').catch(swallow('seller:api:seller-management'));
     return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });

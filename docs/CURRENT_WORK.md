@@ -1,5 +1,21 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-05-31 — 전 도메인 보안 audit (payment/auth/IDOR) + 적용
+3개 병렬 심층 audit(서브에이전트) → **전부 코드로 직접 재검증** 후 적용. IDOR/권한 계층은 홀 0건(견고).
+**비잠금 적용**:
+- C2 공구 카드 confirm-toss 멱등 race(voucher 2배) → idempotency_key(=paymentKey, 0118 unique) 원자화 (`1c14622`)
+- C1 셀러 정산 임의금액 → 서버잔액(redeemable_deal_amount) 상한 (`729b9d5`)
+- M1 카드 공구 재고 oversell → 원자 예약+자동환불+롤백 (`729b9d5`)
+- 카카오/토큰 raw-error 누출→generic, OAuth /start·/sync rate-limit (`1c14622`)
+- 카카오 프록시 rate-limit + 셀러 스트림 status enum (`05548b4`)
+- H3 정산 동일기간 중복신청 → 원자 INSERT...WHERE NOT EXISTS
+- H2 인플 payout 알림 당월 dedup (cron 재실행 중복알림→이중송금 오인 차단)
+**잠금 해제(사용자 승인, CLAUDE.md audit log 기록)**:
+- [UNLOCK] payment.routes `/confirm` 동시요청 CAS 가드 — 재고 2배차감·커미션 중복 차단
+- [UNLOCK_LOADING] 카카오 same-email 셀러 자동연결 verified-only 게이트 — takeover 차단
+**운영 설정(코드 아님)**: `TOSS_WEBHOOK_IP_ALLOWLIST` 미설정 시 위조 webhook 여지 → Cloudflare Variables 설정 권장.
+tsc 0 / build:worker OK / 전체 1802 테스트 통과.
+
 ## 🔴→🟢 2026-05-31 — 자금루프 audit 3탄: affiliate/curator 출금 누수 (실현금)
 **발견**: `affiliate_earnings`(물리상품 referral + 숙소 referral 적립, curator 출금 SSOT)는 default `status='pending'` 이고 **granted 전환이 없음**. 그런데 ① curator 출금 잔액(`curator.routes.ts:758` `SUM(commission)`)이 status 필터 없음 → **환불 커미션도 출금 가능(user_withdrawals=실제 은행송금)**, ② returns 환불 reverse 가 `WHERE status='granted'` 타겟 → 0건 매칭(무효), ③ 숙소 취소는 affiliate reverse 자체가 없음.
 **fix**:

@@ -207,6 +207,21 @@ paymentsRouter.post('/confirm', async (c) => {
       logError('toss.confirm.amount_mismatch', { orderId: orderNumber });
     }
 
+    // 🛡️ 2026-05-31 [UNLOCK] (사용자 승인): 동시 /confirm race 가드 (CAS).
+    //   기존 read-then-write(alreadyDone SELECT) 는 두 동시요청이 모두 PENDING 을 읽고
+    //   둘 다 reduceStock + agency/referral commission 적립 → 재고 2배 차감·커미션 중복.
+    //   PENDING→DONE 전이를 원자적 UPDATE 로 claim — changes==0(이미 다른 요청이 처리)이면
+    //   side-effect 재실행 없이 멱등 반환. webhook 경로(confirmPaymentAtomic)와 동일 원칙.
+    //   (Toss confirm 은 이미 위에서 완료 — 멱등이라 이중과금 없음; 본 가드는 내부 정합용.)
+    const confirmClaim = await c.env.DB.prepare(
+      `UPDATE orders SET status = 'DONE', updated_at = datetime('now')
+       WHERE order_number = ? AND status NOT IN ('DONE','PAID','CANCELLED','REFUNDED','FAILED')`
+    ).bind(orderNumber).run().catch(() => null);
+    if (!confirmClaim || (confirmClaim.meta?.changes ?? 0) === 0) {
+      const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
+      return c.json({ success: true, data: { orders: updatedOrders } });
+    }
+
     // Update all orders to DONE
     // ⚠️  If this UPDATE fails after Toss confirmed the payment, the order
     //    will be stuck PENDING forever while the customer has been charged.

@@ -169,6 +169,7 @@ export class KakaoAuthService {
             data.kakao_account?.profile?.nickname ||
             'Kakao User',
       email: data.kakao_account?.email,
+      emailVerified: data.kakao_account?.is_email_verified === true,
       profileImage: (data.properties?.profile_image ||
                     data.kakao_account?.profile?.profile_image_url || '')
                     .replace(/^http:\/\//, 'https://'),
@@ -419,7 +420,9 @@ export class KakaoAuthService {
       //   /host/new 로 fall through (사용자 보고).
       //   해결: 같은 email 의 seller 가 있고 linked_user_id IS NULL 이면 자동 매핑.
       //   idempotent — linked_user_id 이미 있으면 skip.
-      if (user.email) {
+      // 🛡️ 2026-05-31 보안([UNLOCK_LOADING] 사용자 승인): 카카오 email 이 verified 일 때만 자동연결.
+      //   미verified email 로는 사전 생성된 미연결 셀러 행 takeover 불가하도록 게이트.
+      if (user.email && kakaoUser.emailVerified === true) {
         await this.db.prepare(
           `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
            WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`

@@ -7,6 +7,7 @@ export interface KakaoUser {
   kakaoId: string;
   name: string;
   email?: string;
+  emailVerified?: boolean;  // 🛡️ 2026-05-31: 카카오 is_email_verified — 셀러 자동연결 게이트.
   profileImage?: string;
   // 🛡️ 2026-05-24: 카카오 phone_number scope 동의 시 받아옴.
   //   형식: '+82 10-1234-5678' — DB 저장 시 숫자만 정규화.
@@ -29,6 +30,7 @@ export interface KakaoUserInfoResponse {
   };
   kakao_account?: {
     email?: string;
+    is_email_verified?: boolean;  // 🛡️ 2026-05-31: 셀러 same-email 자동연결 verified 게이트용.
     phone_number?: string;       // 🛡️ 2026-05-24: phone_number scope 동의 시.
     phone_number_needs_agreement?: boolean;
     profile?: {
