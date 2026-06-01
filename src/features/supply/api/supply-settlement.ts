@@ -110,3 +110,92 @@ export async function reverseSupplierOnRefund(
   }
   return reversed;
 }
+
+/**
+ * 🛡️ 2026-06-01 지급 실행: 환불창(available_at) 지난 pending 정산을 available 로 성숙.
+ *   공급자별로 pending_amount → available_amount 이동. 멱등(이미 available 인 건 제외).
+ *   cron(일배치) + 어드민 공급자 목록 조회 시 호출.
+ * @returns 성숙된 라인 수
+ */
+export async function matureSupplierSettlements(DB: D1Database): Promise<number> {
+  // 성숙 대상(환불창 경과) 공급자별 합계.
+  const due = await DB.prepare(
+    "SELECT supplier_id, SUM(supply_amount) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') GROUP BY supplier_id"
+  ).all<{ supplier_id: number; amt: number; cnt: number }>().catch(() => ({ results: [] as { supplier_id: number; amt: number; cnt: number }[] }));
+
+  let matured = 0;
+  for (const d of due.results || []) {
+    const amt = Math.max(0, Math.floor(Number(d.amt) || 0));
+    if (amt <= 0) continue;
+    // 상태 전환 먼저(멱등 보장) → 잔고 이동.
+    const upd = await DB.prepare(
+      "UPDATE supplier_settlements SET status = 'available' WHERE supplier_id = ? AND status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now')"
+    ).bind(d.supplier_id).run();
+    const changed = upd.meta?.changes ?? 0;
+    if (changed <= 0) continue;
+    await DB.prepare(
+      "UPDATE supplier_balances SET pending_amount = MAX(0, pending_amount - ?), available_amount = available_amount + ?, updated_at = datetime('now') WHERE supplier_id = ?"
+    ).bind(amt, amt, d.supplier_id).run();
+    matured += changed;
+  }
+  return matured;
+}
+
+export interface PayoutResult {
+  ok: boolean;
+  amount: number;
+  settlement_count: number;
+  payout_id?: number;
+  error?: string;
+}
+
+/**
+ * 🛡️ 2026-06-01 지급 실행: 공급자의 available 정산 전액을 지급 처리.
+ *   available 정산 → 'paid' + paid_at, 잔고 available→paid 이동, supplier_payouts 기록, ledger.
+ *   원자성: 정산 claim(UPDATE) 의 changes 로 동시 지급 중복 차단.
+ */
+export async function payoutSupplier(
+  DB: D1Database,
+  supplierId: number,
+  opts: { adminId?: string; note?: string } = {},
+): Promise<PayoutResult> {
+  if (!supplierId) return { ok: false, amount: 0, settlement_count: 0, error: 'invalid_supplier' };
+
+  // 지급 대상 합계(available).
+  const agg = await DB.prepare(
+    "SELECT COALESCE(SUM(supply_amount), 0) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE supplier_id = ? AND status = 'available'"
+  ).bind(supplierId).first<{ amt: number; cnt: number }>().catch(() => null);
+  const amount = Math.max(0, Math.floor(Number(agg?.amt) || 0));
+  const count = Number(agg?.cnt) || 0;
+  if (amount <= 0 || count <= 0) return { ok: false, amount: 0, settlement_count: 0, error: 'no_available_balance' };
+
+  // 정산 claim — available → paid (동시 지급 중복 차단).
+  const claim = await DB.prepare(
+    "UPDATE supplier_settlements SET status = 'paid', paid_at = datetime('now') WHERE supplier_id = ? AND status = 'available'"
+  ).bind(supplierId).run();
+  const claimed = claim.meta?.changes ?? 0;
+  if (claimed <= 0) return { ok: false, amount: 0, settlement_count: 0, error: 'already_paid' };
+
+  // 잔고 이동.
+  await DB.prepare(
+    "UPDATE supplier_balances SET available_amount = MAX(0, available_amount - ?), paid_amount = paid_amount + ?, updated_at = datetime('now') WHERE supplier_id = ?"
+  ).bind(amount, amount, supplierId).run();
+
+  // 계좌 스냅샷 + payout 기록.
+  const sup = await DB.prepare('SELECT bank_name, bank_account, account_holder FROM suppliers WHERE id = ?')
+    .bind(supplierId).first<{ bank_name: string | null; bank_account: string | null; account_holder: string | null }>().catch(() => null);
+  const ins = await DB.prepare(
+    `INSERT INTO supplier_payouts (supplier_id, amount, settlement_count, status, bank_name, bank_account, account_holder, note, created_by, created_at)
+     VALUES (?, ?, ?, 'paid', ?, ?, ?, ?, ?, datetime('now'))`
+  ).bind(supplierId, amount, claimed, sup?.bank_name ?? null, sup?.bank_account ?? null, sup?.account_holder ?? null, opts.note ?? null, opts.adminId ?? null).run();
+
+  try {
+    await recordLedger(DB, {
+      event_type: 'supplier_payout', reference_id: String(ins.meta?.last_row_id ?? supplierId), amount,
+      debit_account: `supplier:${supplierId}`, credit_account: 'platform:payout',
+      metadata: { settlement_count: claimed, admin_id: opts.adminId ?? null },
+    });
+  } catch { /* ledger best-effort */ }
+
+  return { ok: true, amount, settlement_count: claimed, payout_id: Number(ins.meta?.last_row_id) || undefined };
+}

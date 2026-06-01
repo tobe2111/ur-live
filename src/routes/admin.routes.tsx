@@ -19,6 +19,7 @@ const AdminBulkTrackingPage = lazy(() => import('@/pages/AdminBulkTrackingPage')
 // 🛡️ 2026-05-25: 어드민 반품 검수 페이지
 const AdminReturnsPage = lazy(() => import('@/pages/AdminReturnsPage'))
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
+const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
@@ -174,6 +175,11 @@ export function AdminRoutes() {
       <Route path="/admin/products" element={
         <ProtectedRoute requireAdmin>
           <AdminProductsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/suppliers" element={
+        <ProtectedRoute requireAdmin>
+          <AdminSuppliersPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/alimtalk" element={

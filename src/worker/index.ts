@@ -51,6 +51,7 @@ import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
+import { adminSuppliersRoutes } from '../features/admin/api/admin-suppliers.routes';
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 어드민 — PR 1 Foundation.
 import { adminStaysRoutes } from '../features/admin/api/admin-stays.routes';
 // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 어드민.
@@ -1154,6 +1155,8 @@ adminApp.route('/', adminStatsRoutes);
 adminApp.route('/', adminSellersRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);
+// 🛡️ 2026-06-01 도매몰: 공급자 계정 관리 + 지급 실행
+adminApp.route('/', adminSuppliersRoutes);
 // 🛡️ 2026-05-18: 숙소 공구 어드민 (PR 1 Foundation).
 adminApp.route('/', adminStaysRoutes);
 // 🛡️ 2026-05-19: KT Alpha 관리 (catalog sync, markup, biz money 잔액).

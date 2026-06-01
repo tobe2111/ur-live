@@ -1079,6 +1079,23 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_supplier_settle_order', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_order ON supplier_settlements(order_id)` },
     // 🛡️ 2026-06-01 도매몰 INC-4: 공급자별 카탈로그 조회 + 어드민 승인 큐 인덱스.
     { name: 'idx_products_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_products_supplier ON products(supplier_id, supply_approval_status, created_at DESC)` },
+    { name: 'idx_supplier_settle_mature', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_mature ON supplier_settlements(status, available_at)` },
+
+    // 🛡️ 2026-06-01 도매몰 지급 실행: 공급자 지급(payout) 이력. available_amount → paid_amount 이동 기록.
+    { name: 'supplier_payouts', sql: `CREATE TABLE IF NOT EXISTS supplier_payouts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL DEFAULT 0,
+      settlement_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'paid' CHECK (status IN ('paid','failed','reversed')),
+      bank_name TEXT,
+      bank_account TEXT,
+      account_holder TEXT,
+      note TEXT,
+      created_by TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_supplier_payouts_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_payouts_supplier ON supplier_payouts(supplier_id, created_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

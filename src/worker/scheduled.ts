@@ -141,6 +141,11 @@ export async function handleCronScheduled(
   if (cron === '0 18 * * *') {
     ctx.waitUntil(safeCron('auto-settlement', () => handleAutoSettlement(env)));
     ctx.waitUntil(safeCron('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)));
+    // 🛡️ 2026-06-01 도매몰: 공급자 정산 성숙 (환불창 지난 pending → available).
+    ctx.waitUntil(safeCron('supplier-settlement-mature', async () => {
+      const { matureSupplierSettlements } = await import('../features/supply/api/supply-settlement');
+      await matureSupplierSettlements(env.DB);
+    }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.
     ctx.waitUntil(safeCron('ledger-integrity-check', () => handleLedgerIntegrityCheck(env)));

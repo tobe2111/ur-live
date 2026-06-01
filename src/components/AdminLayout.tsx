@@ -53,6 +53,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
+      // 🛡️ 2026-06-01 도매몰: 공급자(도매상) 계정 승인 + 정산 지급.
+      { path: '/admin/suppliers',        label: '공급자 관리',   icon: Store },
       // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
