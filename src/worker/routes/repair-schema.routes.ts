@@ -523,6 +523,15 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.supply_approval_status', sql: "ALTER TABLE products ADD COLUMN supply_approval_status TEXT" },
     // 어드민 승인/거부 사유 메모 (공급자 등록 상품 거부 시 사유 전달).
     { desc: 'products.admin_memo', sql: "ALTER TABLE products ADD COLUMN admin_memo TEXT" },
+
+    // 🛡️ 2026-06-01 [migration 0257 port] 사업자 등록 게이팅 정산 — 프로덕션 미적용 시
+    //   seller-settlements.routes.ts:90 게이트가 OFF(현금정산 무제한) 되는 위험 차단. additive/idempotent.
+    { desc: 'sellers.business_registration_status', sql: "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'" },
+    { desc: 'sellers.business_registration_image_url', sql: "ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT" },
+    { desc: 'sellers.business_registration_verified_at', sql: "ALTER TABLE sellers ADD COLUMN business_registration_verified_at DATETIME" },
+    { desc: 'sellers.business_registration_verified_by', sql: "ALTER TABLE sellers ADD COLUMN business_registration_verified_by INTEGER" },
+    { desc: 'sellers.business_registration_reject_reason', sql: "ALTER TABLE sellers ADD COLUMN business_registration_reject_reason TEXT" },
+    { desc: 'sellers.preferred_settlement_method', sql: "ALTER TABLE sellers ADD COLUMN preferred_settlement_method TEXT DEFAULT 'auto'" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1096,6 +1105,69 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { name: 'idx_supplier_payouts_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_payouts_supplier ON supplier_payouts(supplier_id, created_at DESC)` },
+
+    // 🛡️ 2026-06-01 [migration 0257 port] 사업자 게이팅 정산 테이블 — 영입자/셀러 딜 정산 SSOT.
+    { name: 'seller_deal_balances', sql: `CREATE TABLE IF NOT EXISTS seller_deal_balances (
+      seller_id INTEGER PRIMARY KEY,
+      gated_deal_amount INTEGER NOT NULL DEFAULT 0,
+      redeemable_deal_amount INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_seller_deal_balances_seller', sql: `CREATE INDEX IF NOT EXISTS idx_seller_deal_balances_seller ON seller_deal_balances(seller_id)` },
+    { name: 'seller_deal_transactions', sql: `CREATE TABLE IF NOT EXISTS seller_deal_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      bucket TEXT NOT NULL,
+      type TEXT NOT NULL,
+      reference_id TEXT,
+      memo TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_seller_deal_tx_seller_created', sql: `CREATE INDEX IF NOT EXISTS idx_seller_deal_tx_seller_created ON seller_deal_transactions(seller_id, created_at DESC)` },
+    { name: 'idx_seller_deal_tx_type', sql: `CREATE INDEX IF NOT EXISTS idx_seller_deal_tx_type ON seller_deal_transactions(type, created_at DESC)` },
+    { name: 'voucher_orders', sql: `CREATE TABLE IF NOT EXISTS voucher_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      goods_code TEXT NOT NULL,
+      goods_name TEXT NOT NULL,
+      goods_image_url TEXT,
+      unit_price INTEGER NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      total_amount INTEGER NOT NULL,
+      recipient_phone TEXT NOT NULL,
+      withholding_amount INTEGER NOT NULL DEFAULT 0,
+      net_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      external_order_id TEXT,
+      coupon_code TEXT,
+      failure_reason TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      sent_at DATETIME,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_voucher_orders_seller', sql: `CREATE INDEX IF NOT EXISTS idx_voucher_orders_seller ON voucher_orders(seller_id, created_at DESC)` },
+    { name: 'idx_voucher_orders_status', sql: `CREATE INDEX IF NOT EXISTS idx_voucher_orders_status ON voucher_orders(status, created_at DESC)` },
+    { name: 'tax_withholding_log', sql: `CREATE TABLE IF NOT EXISTS tax_withholding_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      payout_year INTEGER NOT NULL,
+      payout_month INTEGER NOT NULL,
+      gross_amount INTEGER NOT NULL,
+      withholding_rate REAL NOT NULL DEFAULT 8.8,
+      withholding_amount INTEGER NOT NULL,
+      net_amount INTEGER NOT NULL,
+      source_type TEXT NOT NULL,
+      source_id TEXT,
+      ytd_gross_amount INTEGER NOT NULL,
+      reportable INTEGER NOT NULL DEFAULT 1,
+      reported_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_tax_withholding_seller_year', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_seller_year ON tax_withholding_log(seller_id, payout_year, payout_month)` },
+    { name: 'idx_tax_withholding_reportable', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_reportable ON tax_withholding_log(payout_year, reportable)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {
