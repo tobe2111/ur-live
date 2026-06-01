@@ -196,7 +196,7 @@ function clearStateCookieHeader(): string {
  * Initiates OAuth: generates random state, stores signed short-lived cookie,
  * and redirects to Kakao authorize URL. This is the CSRF-safe entry point.
  */
-kakaoRoutes.get('/start', async (c) => {
+kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec: 60 }), async (c) => {
   const redirectRaw = c.req.query('redirect') || '/';
   const redirect = safeRedirect(redirectRaw);
   // intent: 'seller' | 'agency' | 'user'
@@ -293,7 +293,7 @@ kakaoRoutes.get('/consent/start', async (c) => {
  * GET /auth/kakao/sync/callback
  * 카카오싱크 OAuth 리다이렉트 콜백
  */
-kakaoRoutes.get('/sync/callback', async (c) => {
+kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max: 30, windowSec: 60 }), async (c) => {
   const { DB } = c.env;
 
   // 🛡️ 2026-05-01: 필수 환경변수 사전 검증 — 미설정 시 명시 에러로 redirect.
@@ -659,8 +659,8 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
 
   } catch (error) {
     if (import.meta.env.DEV) console.error('[Kakao Callback] Error:', error);
-    const errorMsg = (error as Error).message || 'Unknown error';
-    return c.json({ success: false, error: errorMsg }, 500);
+    // 🛡️ 2026-05-31: raw error 반환 금지(계정 enumeration/내부구조 누출). generic 메시지만.
+    return c.json({ success: false, error: '카카오 로그인 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -739,7 +739,8 @@ kakaoRoutes.post('/stepup-callback', cors(), async (c) => {
     return c.json({ success: true, message: '카카오 재인증 완료. 15분간 민감 액션 사용 가능.' })
   } catch (error) {
     if (import.meta.env.DEV) console.error('[Kakao stepup] error:', error)
-    return c.json({ success: false, error: (error as Error).message }, 500)
+    // 🛡️ 2026-05-31: raw error 반환 금지. generic 메시지만.
+    return c.json({ success: false, error: '카카오 재인증 처리 중 오류가 발생했습니다' }, 500)
   }
 })
 

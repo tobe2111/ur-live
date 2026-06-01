@@ -984,10 +984,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
   try {
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?, ?)
       RETURNING id
-    `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey).first<{ id: number }>()
+    `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
     if (!newOrderId) throw new Error('order insert returned no id')
 
@@ -1067,6 +1067,21 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       data: { order_number: orderNumber, qty, amount: expectedAmount },
     })
   } catch (err) {
+    // 🛡️ 2026-05-31: 동시 confirm-toss 경쟁(race) — idempotency_key(=paymentKey) UNIQUE 인덱스(0118)
+    //   충돌이면 이미 다른 요청이 발급 완료한 것 → 그 주문 재조회 후 멱등 성공 반환(voucher 2배 발급 차단).
+    if (String(err).includes('UNIQUE')) {
+      const existing = await DB.prepare(
+        "SELECT id, order_number FROM orders WHERE payment_key = ? LIMIT 1"
+      ).bind(paymentKey).first<{ id: number; order_number: string }>().catch(() => null)
+      if (existing) {
+        const issued = await DB.prepare("SELECT COUNT(*) AS n FROM vouchers WHERE order_id = ?")
+          .bind(existing.id).first<{ n: number }>().catch(() => null)
+        return c.json({
+          success: true,
+          data: { order_number: existing.order_number, qty: issued?.n ?? qty, amount: expectedAmount, idempotent: true },
+        })
+      }
+    }
     // 결제는 성공했으나 INSERT 실패 — admin 알림 + 사용자에게 친절한 안내.
     console.error('[group-buy:confirm-toss] post-payment INSERT failed', err)
     return c.json({

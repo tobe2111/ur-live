@@ -181,11 +181,10 @@ authTokenRoutes.post('/id-token', rateLimit({ action: 'auth_id_token', max: 20, 
 
   } catch (err) {
     console.error('[AuthToken] Error generating token:', err);
-    const message = err instanceof Error ? err.message : 'Failed to generate token';
-    
+    // 🛡️ 2026-05-31: raw error 반환 금지(내부구조 누출). generic 메시지만.
     return c.json({
       success: false,
-      error: message,
+      error: '토큰 생성 중 오류가 발생했습니다',
       code: 'INTERNAL_ERROR'
     }, 500);
   }
