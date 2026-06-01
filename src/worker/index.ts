@@ -118,6 +118,7 @@ import { pkBattlesRoutes, pkBattlesPublicRoutes } from '../features/agency/api/p
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
+import { supplierAuthRoutes } from '../features/supply/api/supplier-auth.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
 import { donationsRoutes } from '../features/donations/api/donations.routes';
@@ -1205,6 +1206,7 @@ app.route('/api/account', accountRoutes);
 
 // Supply chain (공급가 시스템)
 app.route('/api/supply', supplyRoutes);
+app.route('/api/supplier', supplierAuthRoutes); // 도매몰 INC-3: 외부 도매상 인증
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));

@@ -36,7 +36,7 @@ interface JwtPayload {
  * User types
  */
 // 🛡️ 2026-04-28: 'agency' 추가 — dashboard-notifications fetch 분기에 필요.
-export type UserType = 'user' | 'seller' | 'admin' | 'agency';
+export type UserType = 'user' | 'seller' | 'admin' | 'agency' | 'supplier';
 
 /**
  * Authenticated user context
@@ -403,6 +403,13 @@ export function requireSeller() {
  */
 export function requireAdmin() {
   return requireUserType('admin');
+}
+
+/**
+ * Require supplier (외부 도매상) authentication — 도매몰 INC-3.
+ */
+export function requireSupplier() {
+  return requireUserType('supplier');
 }
 
 /**

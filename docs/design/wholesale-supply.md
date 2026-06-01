@@ -87,7 +87,7 @@
 ## 5. 구현 증분 로드맵 (안전 분할 — 1 PR = 1 증분)
 - [x] **INC-1 경제 코어** — `lib/supply-split.ts` (즉시 split, D2/D3) + 단위테스트 7건. (commit 본 세션)
 - [x] **INC-2 데이터 모델** — `suppliers`(외부 도매상 계정), `supplier_balances`, `supplier_settlements`, `products.supplier_id` (additive DDL via repair-schema). ledger account 규약 `supplier:<id>`.
-- [ ] **INC-3 공급자 인증** — 도매상 가입/로그인(seller auth 패턴 재사용), `requireSupplier()` 미들웨어.
+- [x] **INC-3 공급자 인증** — 도매상 가입/로그인(seller auth 패턴 재사용), `requireSupplier()` 미들웨어.
 - [ ] **INC-4 공급자 카탈로그 등록** — 공급자가 직접 공급상품 등록(현재 어드민 대행 → 공급자 self-serve), 어드민 승인.
 - [ ] **INC-5 정산 split 배선** — 공급상품(supply_source_id) 판매 결제 시 `calcSupplySplit` 호출 → 공급자 balance 적립 + ledger + 환불 역전(D6). **결제 흐름이라 신중·테스트 필수.**
 - [ ] **INC-6 공급자 대시보드** — 매출/정산/카탈로그 조회 UI.
