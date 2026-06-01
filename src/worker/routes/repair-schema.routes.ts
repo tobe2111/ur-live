@@ -532,6 +532,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.business_registration_verified_by', sql: "ALTER TABLE sellers ADD COLUMN business_registration_verified_by INTEGER" },
     { desc: 'sellers.business_registration_reject_reason', sql: "ALTER TABLE sellers ADD COLUMN business_registration_reject_reason TEXT" },
     { desc: 'sellers.preferred_settlement_method', sql: "ALTER TABLE sellers ADD COLUMN preferred_settlement_method TEXT DEFAULT 'auto'" },
+
+    // 🛡️ 2026-06-01 영입자(크리에이터) 매장영입 commission — affiliate 와 구분용 source.
+    //   'affiliate'(기존 referral/promotion, NULL 포함) vs 'store_intro'(매장 영입자 영구 commission).
+    { desc: 'influencer_attributions.source', sql: "ALTER TABLE influencer_attributions ADD COLUMN source TEXT" },
+    { desc: 'seed: influencer_store_intro_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_store_intro_pct', '1.5', '크리에이터 매장 영입 commission (%, 영입자에게 매장 매출의 %)', datetime('now'))" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];

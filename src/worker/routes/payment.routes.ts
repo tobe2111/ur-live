@@ -293,6 +293,23 @@ paymentsRouter.post('/confirm', async (c) => {
       logError('payment.agency_intro_commission_failed', { error: String(e).slice(0, 200) })
     }
 
+    // 🛡️ 2026-06-01 [UNLOCK] 영입자(크리에이터) 매장영입 commission (사용자 승인).
+    //   에이전시 버전과 동형 side-effect 적립 — Toss confirm/amount 검증 미변경.
+    //   매장 sellers.introduced_by_influencer_id 있으면 매출의 N% 를 영입자 influencer_attributions
+    //   (source='store_intro') 에 적립 → 기존 payout cron 이 사업자 3.3%/비사업자 8.8% 분기 처리.
+    try {
+      const { creditInfluencerStoreIntroCommission } = await import('../utils/influencer-store-intro-commission')
+      for (const order of orders) {
+        await creditInfluencerStoreIntroCommission(c.env.DB, {
+          id: Number(order.id),
+          seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+          total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
+        })
+      }
+    } catch (e) {
+      logError('payment.influencer_intro_commission_failed', { error: String(e).slice(0, 200) })
+    }
+
     // 🛡️ 2026-05-31 [UNLOCK] 도매몰 INC-5b (사용자 승인): 공급(B2B) 상품 판매 시 공급자에게
     //   공급가 즉시 적립(D2). order_items 중 supply_source_id 라인만 calcSupplySplit 으로 분배.
     //   fail-soft — 결제 흐름 막지 않음. order_id 멱등. (환불 시 returns 경로서 역전.)

@@ -637,6 +637,12 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     await reverseSupplierOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
   } catch { /* supply 테이블 없거나 비공급 주문 — best-effort */ }
 
+  // 🛡️ 2026-06-01 영입자 매장영입 commission 환불 역전 (store_intro attribution clawback).
+  try {
+    const { reverseInfluencerStoreIntroOnRefund } = await import('../../../worker/utils/influencer-store-intro-commission');
+    await reverseInfluencerStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
+  } catch { /* best-effort */ }
+
   // ── Settlement adjustment (restaurant vouchers) ──
   // If this order was already rolled into a completed settlement, record a clawback
   // and alert ops so finance can reconcile manually.
