@@ -72,6 +72,14 @@ internalDiagnosticsRoutes.get('/api/_internal/health-dashboard', requireAdmin(),
   const secretsTotal = Object.keys(envCheck).length;
   const secretsSet = Object.values(envCheck).filter(Boolean).length;
 
+  // 🛡️ 2026-05-31: 운영 설정 가시화 — 값 노출 없이 presence(true/false)만.
+  //   필수 secrets 의 health 에는 영향 주지 않음(별도 블록). 운영자가 env 설정 후 객관 확인용.
+  const featureConfig = {
+    NTS_API_KEY: !!envAny.NTS_API_KEY,                              // 매장 사업자 자동승인 (없으면 전원 pending)
+    DATA_ENCRYPTION_KEY: !!envAny.DATA_ENCRYPTION_KEY,              // 카카오 토큰 암호화 (없으면 평문 degrade)
+    TOSS_WEBHOOK_IP_ALLOWLIST: !!envAny.TOSS_WEBHOOK_IP_ALLOWLIST,  // webhook 위조 방어 (선택)
+  };
+
   let slowQueries: Array<{ label: string; count: number; avg_ms: number; max_ms: number }> = [];
   try {
     const { getSlowQueryStats } = await import('../utils/slow-query-logger');
@@ -106,6 +114,7 @@ internalDiagnosticsRoutes.get('/api/_internal/health-dashboard', requireAdmin(),
       missing: Object.entries(envCheck).filter(([, v]) => !v).map(([k]) => k),
       health: secretsSet === secretsTotal ? 'complete' : 'incomplete',
     },
+    featureConfig,
     performance: {
       slowQueriesLast24h: slowQueries.length,
       topSlow: slowQueries.slice(0, 5),
