@@ -76,10 +76,24 @@
 
 ---
 
-## 4. 다음 액션
-1. 위 **최소 결정 셋(D1·D2·D3·D4·D6)** 사용자 확정
-2. Phase 1(정산 닫기)부터 구현 — 결정 반영 + 환불 역전 + tsc/test
-3. 도매몰 원하면 Phase 2~ 진행
+## 4. 결정 확정 (2026-05-31 사용자)
+- **D1 = 외부 도매상 입점** → 공급자 role/계정/대시보드/공급자별 정산 신설 필요 (Phase 2).
+- **D2 = 결제 시 즉시 split** → 판매 시 소매가를 공급자/셀러/플랫폼 3분할 (`lib/supply-split.ts` 구현 완료).
+- **범위 = 풀 도매몰 (Phase 1~3)**.
+- **D3 (미확정 → 권장 기본 채택)**: 마진 기준 수수료 (`feeOnFullRetail=false`). split 헬퍼가 토글 지원 — 추후 변경 1줄.
+- **D4 (미정 — 이행/재고)**: ⚠️ **결정 필요**. 권장 기본 = **위탁/드랍쉽(무재고, 공급자 배송)** — 셀러 진입장벽↓, 도매몰 관행. 결정 전 fulfillment(배송·재고차감) 증분 보류.
+- D5/D7/D9: D4 확정 후 파생 (배송주체·세금·정산주기).
+
+## 5. 구현 증분 로드맵 (안전 분할 — 1 PR = 1 증분)
+- [x] **INC-1 경제 코어** — `lib/supply-split.ts` (즉시 split, D2/D3) + 단위테스트 7건. (commit 본 세션)
+- [ ] **INC-2 데이터 모델** — `suppliers`(외부 도매상 계정), `supplier_balances`, `supplier_settlements`, `products.supplier_id` (additive DDL via repair-schema). ledger account 규약 `supplier:<id>`.
+- [ ] **INC-3 공급자 인증** — 도매상 가입/로그인(seller auth 패턴 재사용), `requireSupplier()` 미들웨어.
+- [ ] **INC-4 공급자 카탈로그 등록** — 공급자가 직접 공급상품 등록(현재 어드민 대행 → 공급자 self-serve), 어드민 승인.
+- [ ] **INC-5 정산 split 배선** — 공급상품(supply_source_id) 판매 결제 시 `calcSupplySplit` 호출 → 공급자 balance 적립 + ledger + 환불 역전(D6). **결제 흐름이라 신중·테스트 필수.**
+- [ ] **INC-6 공급자 대시보드** — 매출/정산/카탈로그 조회 UI.
+- [ ] **INC-7 소싱 마켓플레이스 UX** — 셀러용 도매 카탈로그 탐색(마진율·MOQ·단가구간 필터)·발주·메시징 (Phase 3).
+- [ ] **INC-8 D4 이행** — 재고/배송(위탁·드랍쉽 등 D4 결정 반영), 반품 역물류.
 
 ## 변경 이력
 - 2026-05-31 초안 (현 구현 audit + 결정 todolist + 도매몰 4-phase 제안)
+- 2026-05-31 결정 확정(D1 외부도매상/D2 즉시split/풀 도매몰) + INC-1 경제 코어(`lib/supply-split.ts`+테스트) 구현 + 증분 로드맵 INC-1~8
