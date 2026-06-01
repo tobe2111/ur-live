@@ -1,18 +1,17 @@
 /**
- * 빌드 버전 체크 — 서버에 새 버전이 배포됐으면 자동 리로드
+ * 빌드 버전 체크 — 서버에 새 버전이 배포됐으면 사용자에게 새로고침 배너 안내
  *
  * 동작:
  * 1. 5분마다 서버 버전 확인
  * 2. 탭 복귀 시 즉시 확인
- * 3. 로컬 버전과 다르면 SW 업데이트 + 페이지 리로드
- *
- * 이중 보호:
- * - Service Worker 레벨: 해시 기반 캐시 자동 교체
- * - App 레벨: HTML 내 번들 해시 직접 비교 → 옛 번들 고착 방지
+ * 3. 로컬 버전과 다르면 → 🛡️ 2026-06-01: 강제 리로드 대신 `ur:new-version` 이벤트 dispatch
+ *    → NewVersionBanner 가 "새로고침" 버튼 안내 (입력/스크롤 중 강제 리로드 방지).
+ *    단, MIME/text-html 깨짐(고착 번들)은 복구 위해 즉시 리로드 유지.
  */
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5분
 const VERSION_STORAGE_KEY = 'ur_build_version'
+export const NEW_VERSION_EVENT = 'ur:new-version'
 
 let currentVersion: string | null = null
 let intervalId: ReturnType<typeof setInterval> | null = null
@@ -37,6 +36,11 @@ function getLocalVersion(): string | null {
     if (m) return m[1]
   }
   return localStorage.getItem(VERSION_STORAGE_KEY)
+}
+
+/** 사용자가 배너 "새로고침" 클릭 시 호출 — 캐시 비우고 리로드. */
+export async function applyVersionUpdate() {
+  await forceReload()
 }
 
 async function forceReload() {
@@ -64,11 +68,15 @@ async function checkVersion() {
   if (!currentVersion && local) currentVersion = local
 
   if (local && serverVersion !== local) {
+    // 🛡️ 2026-06-01: 강제 리로드 대신 배너 안내 — 입력/스크롤 중 데이터 유실 방지.
+    //   sessionStorage 가드로 같은 버전은 1회만 안내 (반복 토스트 방지).
     const reloadKey = 'version_reload_' + serverVersion
     if (sessionStorage.getItem(reloadKey)) return
     sessionStorage.setItem(reloadKey, '1')
     localStorage.setItem(VERSION_STORAGE_KEY, serverVersion)
-    forceReload()
+    try {
+      window.dispatchEvent(new CustomEvent(NEW_VERSION_EVENT, { detail: { version: serverVersion } }))
+    } catch { /* CustomEvent 미지원 환경 — 다음 진입 시 새 번들 로드 */ }
   } else if (!local) {
     localStorage.setItem(VERSION_STORAGE_KEY, serverVersion)
     currentVersion = serverVersion

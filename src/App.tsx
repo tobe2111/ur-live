@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 import ToastContainer from './components/ToastContainer'
+import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
@@ -774,6 +775,7 @@ function AppContent() {
         </Suspense>
       </FrameWrapper>
       <ToastContainer />
+      <NewVersionBanner />
     </>
   )
 }

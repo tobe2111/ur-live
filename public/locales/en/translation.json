@@ -5475,5 +5475,11 @@
     "inviteDesc": "Bonus Deals on invite",
     "charge": "Charge Deals",
     "chargeDesc": "1 KRW = 1 Deal"
+  },
+  "newVersion": {
+    "message": "A new version is available. Refresh to apply.",
+    "reload": "Refresh",
+    "reloading": "Applying…",
+    "dismiss": "Dismiss"
   }
 }

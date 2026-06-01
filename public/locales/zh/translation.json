@@ -5475,5 +5475,11 @@
     "inviteDesc": "邀请得奖励",
     "charge": "充值딜",
     "chargeDesc": "1韩元 = 1딜"
+  },
+  "newVersion": {
+    "message": "有新版本啦，刷新即可应用。",
+    "reload": "刷新",
+    "reloading": "应用中…",
+    "dismiss": "关闭"
   }
 }

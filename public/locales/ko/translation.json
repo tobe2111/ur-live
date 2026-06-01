@@ -5473,5 +5473,11 @@
     "inviteDesc": "초대하면 딜 보너스",
     "charge": "딜 충전",
     "chargeDesc": "1원 = 1딜"
+  },
+  "newVersion": {
+    "message": "새 버전이 나왔어요. 새로고침하면 적용됩니다.",
+    "reload": "새로고침",
+    "reloading": "적용 중…",
+    "dismiss": "닫기"
   }
 }

@@ -5475,5 +5475,11 @@
     "inviteDesc": "招待でボーナス",
     "charge": "ディール充電",
     "chargeDesc": "1円 = 1ディール"
+  },
+  "newVersion": {
+    "message": "新しいバージョンがあります。更新すると適用されます。",
+    "reload": "更新",
+    "reloading": "適用中…",
+    "dismiss": "閉じる"
   }
 }
