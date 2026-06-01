@@ -50,7 +50,7 @@ async function ensureTable(DB: D1Database) {
  */
 export async function createDashboardNotification(
   DB: D1Database,
-  recipientType: 'admin' | 'seller' | 'agency',
+  recipientType: 'admin' | 'seller' | 'agency' | 'supplier',
   recipientId: string | null,
   type: string,
   title: string,

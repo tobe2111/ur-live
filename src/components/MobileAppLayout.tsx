@@ -31,7 +31,7 @@ const MOBILE_ONLY_PREFIXES = [
 
 // 사이드바 숨길 페이지 (셀러/어드민/에이전시 대시보드 + 결제/임베드)
 const HIDE_SIDEBAR_PREFIXES = [
-  '/seller', '/admin', '/agency', '/embed', '/checkout/return', '/introduce',
+  '/seller', '/admin', '/agency', '/supplier', '/embed', '/checkout/return', '/introduce',
 ]
 
 export default function MobileAppLayout({ children }: MobileAppLayoutProps) {

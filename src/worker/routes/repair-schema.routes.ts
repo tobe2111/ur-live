@@ -517,6 +517,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.supply_price', sql: "ALTER TABLE products ADD COLUMN supply_price INTEGER DEFAULT 0" },
     { desc: 'products.supply_source_id', sql: "ALTER TABLE products ADD COLUMN supply_source_id INTEGER" },
     { desc: 'products.supplier_id', sql: "ALTER TABLE products ADD COLUMN supplier_id INTEGER" },
+    // 🛡️ 2026-06-01 도매몰 INC-4: 공급자 self-serve 카탈로그 등록 승인 게이트.
+    //   supplier_id 가 있는(공급자 직접 등록) 상품의 승인 상태. 어드민 승인 전 is_active=0 로 카탈로그 비노출.
+    //   admin 대행 등록 상품은 NULL(=기존처럼 즉시 노출).
+    { desc: 'products.supply_approval_status', sql: "ALTER TABLE products ADD COLUMN supply_approval_status TEXT" },
+    // 어드민 승인/거부 사유 메모 (공급자 등록 상품 거부 시 사유 전달).
+    { desc: 'products.admin_memo', sql: "ALTER TABLE products ADD COLUMN admin_memo TEXT" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1071,6 +1077,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_supplier_settle_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_supplier ON supplier_settlements(supplier_id, status, created_at DESC)` },
     { name: 'idx_supplier_settle_order', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_order ON supplier_settlements(order_id)` },
+    // 🛡️ 2026-06-01 도매몰 INC-4: 공급자별 카탈로그 조회 + 어드민 승인 큐 인덱스.
+    { name: 'idx_products_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_products_supplier ON products(supplier_id, supply_approval_status, created_at DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

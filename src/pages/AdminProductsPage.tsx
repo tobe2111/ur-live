@@ -7,7 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
   Loader2, Image as ImageIcon, Star, Truck,
-  BarChart2, Download, Upload
+  BarChart2, Download, Upload, Boxes
 } from 'lucide-react'
 import { downloadAdminTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
@@ -18,12 +18,18 @@ import type { Product, SupplySalesRow, SupplySalesSummary, SampleRequest } from 
 import ProductFormModal from './admin-products/ProductFormModal'
 import SampleRequestsTab from './admin-products/SampleRequestsTab'
 import SupplySalesTab from './admin-products/SupplySalesTab'
+import SupplierProductsTab from './admin-products/SupplierProductsTab'
+import type { SupplierProductRow } from './admin-products/SupplierProductsTab'
 import type { ProductOption } from '@/components/ProductOptionForm'
 
 export default function AdminProductsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales'>('products')
+  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales' | 'supplier-products'>('products')
+  // 도매몰 INC-4: 공급자 self-serve 등록 상품 승인 큐.
+  const [supplierProducts, setSupplierProducts] = useState<SupplierProductRow[]>([])
+  const [spLoading, setSpLoading] = useState(false)
+  const [spStatusFilter, setSpStatusFilter] = useState('pending')
   const [products, setProducts] = useState<Product[]>([])
   const [sampleRequests, setSampleRequests] = useState<SampleRequest[]>([])
   const [supplySales, setSupplySales] = useState<SupplySalesRow[]>([])
@@ -64,6 +70,10 @@ export default function AdminProductsPage() {
     if (!token) { navigate('/admin/login'); return }
     loadProducts()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'supplier-products') loadSupplierProducts()
+  }, [activeTab, spStatusFilter])
 
   useEffect(() => {
     if (activeTab === 'sample-requests') loadSampleRequests()
@@ -136,6 +146,34 @@ export default function AdminProductsPage() {
       }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success(action === 'approve' ? t('admin.products.k004', { defaultValue: '샘플 신청이 승인되었습니다.' }) : t('admin.products.k005', { defaultValue: '샘플 신청이 거부되었습니다.' }))
       loadSampleRequests()
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
+    } finally { setActionLoading(null) }
+  }
+
+  // 도매몰 INC-4: 공급자 등록 상품 승인 큐 로드/처리.
+  async function loadSupplierProducts() {
+    setSpLoading(true)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const res = await api.get(`/api/admin/supplier-products?status=${spStatusFilter}&limit=100`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) setSupplierProducts(res.data.data?.items ?? [])
+    } catch {
+      toast.error(t('admin.products.spLoadFail', { defaultValue: '공급자 등록 상품을 불러올 수 없습니다.' }))
+    } finally { setSpLoading(false) }
+  }
+
+  async function handleSupplierProductAction(productId: number, action: 'approve' | 'reject') {
+    setActionLoading(productId)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.patch(`/api/admin/supplier-products/${productId}`, {
+        action,
+        admin_memo: adminMemoMap[productId] || null,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(action === 'approve' ? t('admin.products.spApproveOk', { defaultValue: '공급상품이 승인되었습니다.' }) : t('admin.products.spRejectOk', { defaultValue: '공급상품이 거부되었습니다.' }))
+      loadSupplierProducts()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
       toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
@@ -361,6 +399,12 @@ export default function AdminProductsPage() {
               <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
             )}
           </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('supplier-products')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supplier-products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-1.5"><Boxes className="w-4 h-4" /> {t('admin.products.supplierProductsTab', { defaultValue: '공급자 등록 상품' })}</span>
         </button>
         <button
           onClick={() => setActiveTab('supply-sales')}
@@ -754,6 +798,19 @@ export default function AdminProductsPage() {
           setAdminMemoMap={setAdminMemoMap}
           actionLoading={actionLoading}
           onAction={handleSampleAction}
+        />
+      )}
+
+      {activeTab === 'supplier-products' && (
+        <SupplierProductsTab
+          loading={spLoading}
+          items={supplierProducts}
+          statusFilter={spStatusFilter}
+          setStatusFilter={setSpStatusFilter}
+          adminMemoMap={adminMemoMap}
+          setAdminMemoMap={setAdminMemoMap}
+          actionLoading={actionLoading}
+          onAction={handleSupplierProductAction}
         />
       )}
 

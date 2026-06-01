@@ -582,4 +582,96 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
   }
 });
 
+// ── 🛡️ 2026-06-01 도매몰 INC-4: 공급자 self-serve 등록 상품 승인 큐 ──────────────
+//   GET  /supplier-products            — 공급자가 직접 등록한 상품 목록 (status 필터)
+//   PATCH /supplier-products/:id        — 승인(is_active=1) / 거부(supply_approval_status='rejected')
+//   (adminApp 가 requireAdmin + IP whitelist + audit 적용)
+adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const status = String(c.req.query('status') || 'pending'); // pending | approved | rejected | all
+    const page = Math.max(1, Number(c.req.query('page') || 1));
+    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 50)));
+    const offset = (page - 1) * limit;
+
+    let where = 'p.is_supply_product = 1 AND p.supplier_id IS NOT NULL';
+    const params: (string | number)[] = [];
+    if (status === 'pending' || status === 'rejected') {
+      where += ' AND p.supply_approval_status = ?'; params.push(status);
+    } else if (status === 'approved') {
+      where += " AND (p.supply_approval_status = 'approved' OR (p.supply_approval_status IS NULL AND p.is_active = 1))";
+    }
+
+    const rows = await DB.prepare(
+      `SELECT p.id, p.name, p.description, p.price AS retail_price, COALESCE(p.supply_price, 0) AS supply_price,
+              p.stock, p.image_url, p.category, p.is_active,
+              COALESCE(p.supply_approval_status, CASE WHEN p.is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
+              p.supplier_id, p.admin_memo, p.created_at,
+              s.business_name AS supplier_name, s.email AS supplier_email
+         FROM products p
+         LEFT JOIN suppliers s ON s.id = p.supplier_id
+         WHERE ${where}
+         ORDER BY p.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...params, limit, offset).all();
+
+    const total = await DB.prepare(
+      `SELECT COUNT(*) AS count FROM products p WHERE ${where}`
+    ).bind(...params).first<{ count: number }>();
+
+    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, page, limit } });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] GET /supplier-products error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const pid = c.req.param('id');
+    if (!/^\d+$/.test(String(pid))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string }>();
+    if (!body.action || !['approve', 'reject'].includes(body.action)) {
+      return c.json({ success: false, error: 'action은 approve 또는 reject이어야 합니다' }, 400);
+    }
+
+    const existing = await DB.prepare(
+      `SELECT id, name, supplier_id, supply_approval_status, is_active
+         FROM products WHERE id = ? AND is_supply_product = 1 AND supplier_id IS NOT NULL`
+    ).bind(pid).first<{ id: number; name: string; supplier_id: number; supply_approval_status: string | null; is_active: number }>();
+    if (!existing) return c.json({ success: false, error: '공급자 등록 상품을 찾을 수 없습니다' }, 404);
+
+    if (body.action === 'approve') {
+      await DB.prepare(
+        "UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(body.admin_memo || null, pid).run();
+    } else {
+      await DB.prepare(
+        "UPDATE products SET supply_approval_status = 'rejected', is_active = 0, admin_memo = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(body.admin_memo || null, pid).run();
+    }
+
+    await writeAuditLog(c, {
+      action: body.action === 'approve' ? 'supplier_product_approve' : 'supplier_product_reject',
+      targetType: 'product', targetId: String(pid),
+      after: { supplier_id: existing.supplier_id, memo: body.admin_memo || null },
+    }).catch(() => {});
+
+    // 공급자 대시보드 알림.
+    const notifType = body.action === 'approve' ? 'supply_product_approved' : 'supply_product_rejected';
+    const notifTitle = body.action === 'approve' ? '공급상품 승인됨' : '공급상품 거부됨';
+    createDashboardNotification(DB, 'supplier', String(existing.supplier_id), notifType, notifTitle,
+      `상품: ${existing.name}`, '/supplier').catch((_e) => { if (import.meta.env.DEV) console.warn(_e); });
+
+    return c.json({
+      success: true,
+      data: { id: Number(pid), approval_status: body.action === 'approve' ? 'approved' : 'rejected' },
+      message: body.action === 'approve' ? '공급상품이 승인되어 셀러 카탈로그에 노출됩니다.' : '공급상품이 거부되었습니다.',
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] PATCH /supplier-products/:id error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminProductsRoutes;

@@ -29,6 +29,7 @@ import { isKorea } from '@/shared/config/region'
 import { SellerRoutes } from './routes/seller.routes'
 import { AdminRoutes } from './routes/admin.routes'
 import { AgencyRoutes } from './routes/agency.routes'
+import { SupplierRoutes } from './routes/supplier.routes'
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
@@ -572,6 +573,9 @@ function AppContent() {
 
             {/* Agency 페이지들 (공개 + 보호) — src/routes/agency.routes.tsx */}
             {AgencyRoutes()}
+
+            {/* Supplier(도매 공급자) 페이지들 — src/routes/supplier.routes.tsx (도매몰 INC-6) */}
+            {SupplierRoutes()}
 
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<ErrorBoundary><CartPage /></ErrorBoundary>} />

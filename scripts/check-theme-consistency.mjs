@@ -29,7 +29,7 @@ const ROOT = process.cwd()
 //   - guide/: SellerGuide/AgencyGuide/AdminOperationsGuide 전용
 //   - dashboard/: 대시보드 통계 카드 등 셀러/어드민 전용
 //   (usage 추적으로 확인 — 2026-05-31. 라이트 고정이라 dark: 추가 금지)
-const EXCLUDE = /(seller|admin|agency)|components\/(streaming|guide|dashboard)\//i
+const EXCLUDE = /(seller|admin|agency|supplier)|components\/(streaming|guide|dashboard)\//i
 const EXCLUDE_FILE = /(Callback|Debug|Embed|Introduce|Login|Register)/i
 // 최상위 컴포넌트지만 대시보드 전용(Admin/SellerProducts 에서만 사용) — 라이트 고정.
 const DASHBOARD_ONLY = /(ProductOptionForm|BulkUploadModal)\.tsx$/
