@@ -512,6 +512,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'settlements.total_platform_fee', sql: "ALTER TABLE settlements ADD COLUMN total_platform_fee INTEGER DEFAULT 0" },
     { desc: 'settlements.total_settlement', sql: "ALTER TABLE settlements ADD COLUMN total_settlement INTEGER DEFAULT 0" },
     { desc: 'settlements.generated_at', sql: "ALTER TABLE settlements ADD COLUMN generated_at DATETIME" },
+    // 🛡️ 2026-05-31 도매몰 INC-2: 공급(B2B) 컬럼 — 마이그레이션 미적용 환경 보장(additive/idempotent).
+    { desc: 'products.is_supply_product', sql: "ALTER TABLE products ADD COLUMN is_supply_product INTEGER DEFAULT 0" },
+    { desc: 'products.supply_price', sql: "ALTER TABLE products ADD COLUMN supply_price INTEGER DEFAULT 0" },
+    { desc: 'products.supply_source_id', sql: "ALTER TABLE products ADD COLUMN supply_source_id INTEGER" },
+    { desc: 'products.supplier_id', sql: "ALTER TABLE products ADD COLUMN supplier_id INTEGER" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1021,6 +1026,51 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_ddl_access', sql: `CREATE INDEX IF NOT EXISTS idx_ddl_access ON digital_download_logs(access_id, created_at DESC)` },
     { name: 'idx_products_kind_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_kind_active ON products(product_kind, is_active, created_at DESC)` },
+
+    // 🛡️ 2026-05-31 도매몰 INC-2: 외부 도매상(공급자) 데이터 모델. (D1=외부 도매상, D2=즉시 split)
+    { name: 'suppliers', sql: `CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_name TEXT NOT NULL,
+      business_number TEXT,
+      representative TEXT,
+      email TEXT,
+      phone TEXT,
+      password_hash TEXT,
+      bank_name TEXT,
+      bank_account TEXT,
+      account_holder TEXT,
+      commission_rate REAL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','suspended','rejected')),
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_suppliers_email', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL` },
+    { name: 'idx_suppliers_status', sql: `CREATE INDEX IF NOT EXISTS idx_suppliers_status ON suppliers(status, created_at DESC)` },
+
+    { name: 'supplier_balances', sql: `CREATE TABLE IF NOT EXISTS supplier_balances (
+      supplier_id INTEGER PRIMARY KEY,
+      pending_amount INTEGER NOT NULL DEFAULT 0,
+      available_amount INTEGER NOT NULL DEFAULT 0,
+      paid_amount INTEGER NOT NULL DEFAULT 0,
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+
+    { name: 'supplier_settlements', sql: `CREATE TABLE IF NOT EXISTS supplier_settlements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier_id INTEGER NOT NULL,
+      order_id INTEGER,
+      product_id INTEGER,
+      seller_id INTEGER,
+      retail_amount INTEGER NOT NULL DEFAULT 0,
+      supply_amount INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','available','paid','cancelled')),
+      created_at DATETIME DEFAULT (datetime('now')),
+      available_at DATETIME,
+      paid_at DATETIME,
+      note TEXT
+    )` },
+    { name: 'idx_supplier_settle_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_supplier ON supplier_settlements(supplier_id, status, created_at DESC)` },
+    { name: 'idx_supplier_settle_order', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_order ON supplier_settlements(order_id)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {
