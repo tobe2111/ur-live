@@ -109,7 +109,8 @@ function getCategoryIcon(category: string): string {
 
 const PAGE_SIZE = 30
 
-export default function VouchersPage() {
+// 🛡️ 2026-06-01: embedded — 홈(/)에서 교환권 본문을 재사용. SEO/자체헤더 skip + SSR 는 MAIN 슬롯에서 읽음.
+export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-05-24 (loading P0): 카드 hover/touch 시 상품 상세 prefetch.
@@ -256,7 +257,7 @@ export default function VouchersPage() {
     if (!brand && !category && sort === 'price_low' && page === 1) {
       try {
         if (typeof document !== 'undefined') {
-          const el = document.getElementById('__SSR_INITIAL_VOUCHERS__')
+          const el = document.getElementById(embedded ? '__SSR_INITIAL_MAIN__' : '__SSR_INITIAL_VOUCHERS__')
           if (el?.textContent) {
             const parsed = JSON.parse(el.textContent)
             if (parsed?.success && Array.isArray(parsed?.data)) {
@@ -301,28 +302,33 @@ export default function VouchersPage() {
   }
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20 min-h-screen">
-      <SEO
-        title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
-        description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
-        url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
-      />
+    <div className={embedded ? '' : 'bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20 min-h-screen'}>
+      {!embedded && (
+        <SEO
+          title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
+          description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
+          url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
+        />
+      )}
 
       {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
-          BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지. */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <div className="flex-1 flex items-center gap-1.5">
-            <Gift className="w-5 h-5 text-amber-500" />
-            <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
-              {brand ? brand : '교환권'}
-            </h1>
+          BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지.
+          🛡️ 2026-06-01: embedded(홈) 모드면 홈의 sticky 헤더가 담당 → 자체 헤더 skip. */}
+      {!embedded && (
+        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <div className="flex-1 flex items-center gap-1.5">
+              <Gift className="w-5 h-5 text-amber-500" />
+              <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
+                {brand ? brand : '교환권'}
+              </h1>
+            </div>
+            <button onClick={() => navigate('/search')} className="shrink-0 p-1">
+              <Search className="w-5 h-5 text-gray-900 dark:text-white" />
+            </button>
           </div>
-          <button onClick={() => navigate('/search')} className="shrink-0 p-1">
-            <Search className="w-5 h-5 text-gray-900 dark:text-white" />
-          </button>
         </div>
-      </div>
+      )}
 
       {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
             아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 살짝 위로 올리면 둘 다 다시 내려옴.

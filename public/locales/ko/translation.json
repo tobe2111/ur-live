@@ -5460,5 +5460,17 @@
     "empty": "반품 내역이 없습니다",
     "trackingTitle": "반품 회수 추적",
     "submitShipping": "회수 송장 등록"
+  },
+  "dealEarn": {
+    "title": "딜 모으는 법",
+    "subtitle": "모아서 교환권으로 바꾸세요",
+    "linkshop": "링크샵 공유",
+    "linkshopDesc": "담고 공유하면 커미션 딜",
+    "recruit": "매장 영입",
+    "recruitDesc": "매출마다 영입 커미션",
+    "invite": "친구 초대",
+    "inviteDesc": "초대하면 딜 보너스",
+    "charge": "딜 충전",
+    "chargeDesc": "1원 = 1딜"
   }
 }

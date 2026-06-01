@@ -26,7 +26,8 @@ import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
-import GroupBuyFeed from './main-home/GroupBuyFeed'
+import DealEarnStrip from '@/components/main/DealEarnStrip'
+import VouchersPage from './VouchersPage'
 
 export default function MainHomePage() {
   const navigate = useNavigate()
@@ -41,8 +42,8 @@ export default function MainHomePage() {
   return (
     <>
       <SEO
-        title={t('seo.home.title', { defaultValue: '돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스' })}
-        description={t('seo.home.description', { defaultValue: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.' })}
+        title={t('seo.home.title', { defaultValue: '유어딜 — 교환권·공동구매로 돈버는 쇼핑' })}
+        description={t('seo.home.description', { defaultValue: '딜로 스타벅스·편의점 교환권 즉시 교환. 링크샵·매장영입으로 딜 적립하고 동네 공동구매까지.' })}
         url="/"
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
@@ -83,10 +84,14 @@ export default function MainHomePage() {
         </div>
       </div>
 
-      {/* ═══ 공구 단일 피드 ═══ */}
-      <div className="ur-content-wide">
-        <GroupBuyFeed />
-      </div>
+      {/* ═══ 💰 딜 모으는 법 (정적, 즉시 렌더) ═══ */}
+      <DealEarnStrip />
+
+      {/* ═══ 🎟️ 교환권 (홈 메인 콘텐츠) ═══
+          🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권 + 딜모으는법 (사용자 승인).
+          VouchersPage 를 embedded 로 재사용 — SSR 는 worker MAIN 슬롯(deal_only) 에서 0-RTT 로 읽음.
+          오프라인 공구는 동네딜(/group-buy) 탭이 전담. */}
+      <VouchersPage embedded />
 
       <SiteFooter />
     </>

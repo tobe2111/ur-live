@@ -5462,5 +5462,17 @@
     "empty": "没有退货记录",
     "trackingTitle": "退货回收追踪",
     "submitShipping": "登记回收运单"
+  },
+  "dealEarn": {
+    "title": "赚取딜的方法",
+    "subtitle": "攒起来兑换券",
+    "linkshop": "分享链接店",
+    "linkshopDesc": "分享得佣金딜",
+    "recruit": "招募店铺",
+    "recruitDesc": "每笔销售有佣金",
+    "invite": "邀请好友",
+    "inviteDesc": "邀请得奖励",
+    "charge": "充值딜",
+    "chargeDesc": "1韩元 = 1딜"
   }
 }

@@ -5462,5 +5462,17 @@
     "empty": "Aucun historique de retour",
     "trackingTitle": "Suivi de retour",
     "submitShipping": "Enregistrer le bordereau"
+  },
+  "dealEarn": {
+    "title": "Gagner des Deals",
+    "subtitle": "Cumulez et échangez contre des bons",
+    "linkshop": "Partager Link Shop",
+    "linkshopDesc": "Partagez pour une commission",
+    "recruit": "Recruter un magasin",
+    "recruitDesc": "Commission sur chaque vente",
+    "invite": "Inviter des amis",
+    "inviteDesc": "Bonus à l invitation",
+    "charge": "Recharger Deals",
+    "chargeDesc": "1 KRW = 1 Deal"
   }
 }

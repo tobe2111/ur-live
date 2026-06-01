@@ -5462,5 +5462,17 @@
     "empty": "No return history",
     "trackingTitle": "Return Pickup Tracking",
     "submitShipping": "Register Pickup Waybill"
+  },
+  "dealEarn": {
+    "title": "How to earn Deals",
+    "subtitle": "Collect and swap for vouchers",
+    "linkshop": "Share Link Shop",
+    "linkshopDesc": "Pin & share for commission",
+    "recruit": "Recruit a store",
+    "recruitDesc": "Commission on every sale",
+    "invite": "Invite friends",
+    "inviteDesc": "Bonus Deals on invite",
+    "charge": "Charge Deals",
+    "chargeDesc": "1 KRW = 1 Deal"
   }
 }

@@ -5462,5 +5462,17 @@
     "empty": "返品履歴がありません",
     "trackingTitle": "返品回収追跡",
     "submitShipping": "回収伝票を登録"
+  },
+  "dealEarn": {
+    "title": "ディールの貯め方",
+    "subtitle": "貯めて引換券に交換",
+    "linkshop": "リンクショップ共有",
+    "linkshopDesc": "共有でコミッション",
+    "recruit": "店舗を勧誘",
+    "recruitDesc": "売上ごとに報酬",
+    "invite": "友達招待",
+    "inviteDesc": "招待でボーナス",
+    "charge": "ディール充電",
+    "chargeDesc": "1円 = 1ディール"
   }
 }

@@ -456,7 +456,10 @@ app.use('*', async (c, next) => {
     let ssrTarget: SsrTarget | null = null;
 
     if (isMainPage) {
-      ssrTarget = { slot: 'MAIN', path: '/api/group-buy/products?status=active&category=all' };
+      // 🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권(deal_only) 콘텐츠로 전환 (사용자 승인).
+      //   MAIN 슬롯을 교환권 endpoint 로 변경 — 이 path 는 이미 HOT_PATHS 에 warm 되어 0-RTT 유지.
+      //   (홈에서 임베드한 VouchersPage 가 __SSR_INITIAL_MAIN__ 을 읽음.)
+      ssrTarget = { slot: 'MAIN', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
     } else if (url.pathname === '/vouchers' && !url.search) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
       //   클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.

@@ -5462,5 +5462,17 @@
     "empty": "Sin historial de devolución",
     "trackingTitle": "Seguimiento de recogida",
     "submitShipping": "Registrar guía de recogida"
+  },
+  "dealEarn": {
+    "title": "Cómo ganar Deals",
+    "subtitle": "Júntalos y cámbialos por vales",
+    "linkshop": "Compartir Link Shop",
+    "linkshopDesc": "Comparte y gana comisión",
+    "recruit": "Captar tienda",
+    "recruitDesc": "Comisión por cada venta",
+    "invite": "Invitar amigos",
+    "inviteDesc": "Bonus al invitar",
+    "charge": "Cargar Deals",
+    "chargeDesc": "1 KRW = 1 Deal"
   }
 }

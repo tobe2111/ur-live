@@ -87,6 +87,7 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-06-01 `[UNLOCK_LOADING]` 홈 = 교환권 + 딜모으는법 전환 (사용자 승인) — 홈 `/` 메인 콘텐츠를 공구 피드 → 교환권으로 변경. (1) `worker/index.ts` MAIN SSR 슬롯 path 를 `/api/products?...deal_only=1&sort=price_low`(이미 HOT_PATHS warm → 0-RTT 유지)로 변경. (2) `VouchersPage` 에 `embedded` prop 추가 — embedded 시 SEO/자체헤더 skip + SSR 를 `__SSR_INITIAL_MAIN__` 에서 읽음(기존 `/vouchers` 동작·default sort price_low 불변). (3) `MainHomePage` 가 `GroupBuyFeed` → `DealEarnStrip`(정적) + `<VouchersPage embedded/>` 렌더. entry chunk 58.9KB(회귀 없음). 오프라인 공구는 동네딜(`/group-buy`) 탭 전담. GroupBuyFeed prewarm paths 는 동네딜용으로 유지.
 - 2026-06-01 `[UNLOCK_LOADING]` 하단바 재구성 (사용자 승인) — `BottomNav.tsx` 5탭 재배치: 교환권(`/vouchers`) 탭 제거 → 동네딜(`/group-buy`, MapPin) 추가. 순서 홈/동네딜/쇼핑/링크샵/마이. **linkshop localStorage 경로 로직·active-path 패턴 보존** + 동네딜 active-path(`/stays`,`/meal-vouchers`) 추가. `DesktopTopNav` 공구 라벨도 동네딜로 정합. nav.dongnedeal 6개 언어. 교환권 콘텐츠는 블렌드 홈 상단 + `/vouchers` 전체보기로 유지(라우트 불변). 다음: 홈을 기프티콘+딜모으는법으로 전환.
 - 2026-05-27 초기 잠금 — commit `cf837926` 외 누적 (`0d6217fe` 이후 모든 perf commit)
 - 2026-05-27 2차 확장 — commit `c4925af`~`74bb925` (이번 세션 총 14 commits, critical path -341 KB / -31%)
