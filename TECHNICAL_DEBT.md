@@ -1231,3 +1231,18 @@ src/features/group-buy/api/
 - ✅ 불일치 ≥ 1원 또는 음수 wallet 1개+ 감지 시 Discord webhook 즉시 alert
 - 임계값 (`IMBALANCE_THRESHOLD = 1`) 은 반올림 오차 ε 허용
 
+
+## 🟡 2026-05-31 자금루프 audit 잔여 (narrow/추적용 — 누수 3대장은 fix 완료)
+
+### 1. 에이전시 관리셀러 정산 — 물리상품 반품 시 commission 과다 (narrow, MED)
+- **현상**: `returns.routes.ts` `PUT /:id/refund` 는 `returns`/`affiliate_earnings`/ledger 만 갱신, **`orders.status` 미변경** → 환불된 주문이 `DELIVERED` 유지. `agency-auto-settle.ts` 는 `status IN (DELIVERED,DONE) AND settlement_status='confirmed' AND agency_settled=0` 인 주문의 **full `total_amount`** 에 commission 적립 → 정산 전 반품 시 에이전시 과다 지급.
+- **범위**: 에이전시-관리셀러 + 물리상품 반품 + (반품이 agency 정산보다 먼저) 타이밍. 공구/숙소/voucher 무관.
+- **권장 fix**: 환불 완료 시 `refund_amount >= order.total_amount` 면 `orders.status='REFUNDED'` 로 전이(stays/voucher 환불 흐름과 정합 → agency-settle 자동 제외). 부분환불은 net-revenue 정산 별도 설계 필요.
+- **미적용 사유**: status 전이의 셀러 주문뷰/통계 ripple 미검증 — 별도 PR 에서 물리상품 주문 status 흐름 audit 후 적용 권장.
+
+### 2. user_referral_bonus 환불 미회수 (minor, promotional)
+- 공구 구매 시 `?ref` buyer 에게 user_points 보너스 적립(`helpers.applyGroupBuyReferral`). 환불/취소 시 미회수.
+- 소액·프로모션 + 이미 사용된 포인트 차감은 음수 위험 → `MAX(0, balance-amount)` clamp 로 닫을 수 있으나 우선순위 낮음.
+
+### 운영 설정 (코드 아님)
+- `TOSS_WEBHOOK_IP_ALLOWLIST` 미설정 시 위조 webhook 여지(금액 DB 재검증되나 가짜 PAID 가능) → Cloudflare Dashboard → ur-live → Variables 설정 권장.
