@@ -62,7 +62,7 @@ export default function RefundPolicyPage() {
           <div className="mb-5">
             <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">반품 주소</h3>
             <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-              부산광역시 금정구 놀이마당로26 1402호
+              서울특별시 강남구 남부순환로359길 14, 3층(도곡동)
             </p>
           </div>
 

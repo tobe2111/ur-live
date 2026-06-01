@@ -45,7 +45,7 @@ export default function TermsOfServicePage() {
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표자: 정지원</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업자등록번호: 479-09-02930</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 통신판매업신고번호: 2025-부산금정-0540</p>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업장주소: 부산광역시 금정구 놀이마당로26 1402호</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동)</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표전화: 0507-0177-0432</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표이메일: jiwon@ur-team.com</p>
               </div>

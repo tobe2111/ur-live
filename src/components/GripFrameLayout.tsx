@@ -239,7 +239,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                   사업자등록번호: 479-09-02930 | 통신판매업신고: 2025-부산금정-0540
                 </p>
                 <p className="text-white/20">
-                  사업장주소: 부산광역시 금정구 놀이마당로26 1402
+                  사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동)
                 </p>
                 <p className="text-white/20">
                   대표전화: 0507-0177-0432 | 대표이메일: jiwon@ur-team.com
