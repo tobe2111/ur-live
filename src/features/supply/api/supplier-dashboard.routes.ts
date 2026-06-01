@@ -292,3 +292,107 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
     return safeError(c, err, '정산 내역 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
+
+// ── GET /orders — 발송 대기/처리 주문 (INC-8 위탁/드랍쉽) ──────────────────────
+//   이 공급자의 공급상품(원본)을 셀러가 복제판매 → 결제된 주문을 공급자가 직접 배송.
+//   order_items → products(sp, 셀러 복제본) → sp.supply_source_id = 공급자 원본(src.supplier_id).
+supplierDashboardRoutes.get('/orders', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const offset = (page - 1) * limit;
+  // status: to_ship(발송대기) | shipped(발송완료) | all
+  const status = c.req.query('status') || 'to_ship';
+  try {
+    let statusWhere = "o.status IN ('PAID','PREPARING','READY')";
+    if (status === 'shipped') statusWhere = "o.status IN ('SHIPPING','DELIVERED')";
+    else if (status === 'all') statusWhere = "o.status NOT IN ('PENDING','CANCELLED','FAILED','REFUNDED')";
+
+    // 주문 단위 집계 — 이 공급자 라인이 1개 이상 있는 주문.
+    const rows = await DB.prepare(
+      `SELECT o.id AS order_id, o.order_number, o.status, o.created_at,
+              o.shipping_name, o.shipping_phone, o.shipping_address,
+              o.recipient_name, o.recipient_phone,
+              o.courier, o.tracking_number, o.shipped_at,
+              COUNT(oi.id) AS line_count, SUM(oi.quantity) AS total_qty,
+              GROUP_CONCAT(sp.name, ' | ') AS item_names
+         FROM orders o
+         JOIN order_items oi ON oi.order_id = o.id
+         JOIN products sp ON sp.id = oi.product_id
+         JOIN products src ON src.id = sp.supply_source_id
+        WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}
+        GROUP BY o.id
+        ORDER BY o.created_at DESC
+        LIMIT ? OFFSET ?`
+    ).bind(sid, limit, offset).all();
+
+    const totalRow = await DB.prepare(
+      `SELECT COUNT(DISTINCT o.id) AS count
+         FROM orders o
+         JOIN order_items oi ON oi.order_id = o.id
+         JOIN products sp ON sp.id = oi.product_id
+         JOIN products src ON src.id = sp.supply_source_id
+        WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}`
+    ).bind(sid).first<{ count: number }>().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: {
+        items: rows.results ?? [],
+        total: totalRow?.count ?? 0,
+        page, limit,
+        has_more: (totalRow?.count ?? 0) > offset + limit,
+      },
+    });
+  } catch (err) {
+    return safeError(c, err, '주문 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── PUT /orders/:orderId/shipping — 공급자 운송장 입력 (INC-8) ─────────────────
+//   기존 셀러 배송 인프라(courier 정규화 + tracking_carrier_code + shipping_tracking_events) 재사용.
+supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  const orderId = c.req.param('orderId');
+  if (!/^\d+$/.test(String(orderId))) return c.json({ success: false, error: '잘못된 주문 ID' }, 400);
+  try {
+    const body = await c.req.json<{ courier?: string; tracking_number?: string }>().catch(() => ({} as { courier?: string; tracking_number?: string }));
+    const tracking = String(body.tracking_number || '').replace(/\s+/g, '');
+    if (!tracking) return c.json({ success: false, error: '운송장 번호를 입력해주세요' }, 400);
+
+    // 소유권 검증 — 이 주문에 공급자의 공급상품 라인이 실제로 있는지.
+    const owns = await DB.prepare(
+      `SELECT 1 FROM order_items oi
+         JOIN products sp ON sp.id = oi.product_id
+         JOIN products src ON src.id = sp.supply_source_id
+        WHERE oi.order_id = ? AND src.supplier_id = ? LIMIT 1`
+    ).bind(orderId, sid).first().catch(() => null);
+    if (!owns) return c.json({ success: false, error: '해당 주문을 찾을 수 없습니다' }, 404);
+
+    const { normalizeCourierKey } = await import('../../../worker/utils/courier-codes');
+    const carrierKey = normalizeCourierKey(body.courier);
+
+    await DB.prepare(
+      `UPDATE orders
+          SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
+              shipped_at = COALESCE(shipped_at, datetime('now')),
+              status = CASE WHEN status IN ('PAID','PREPARING','READY') THEN 'SHIPPING' ELSE status END,
+              updated_at = datetime('now')
+        WHERE id = ?`
+    ).bind(tracking, body.courier || null, carrierKey || null, orderId).run();
+
+    // 배송 추적 이벤트 audit (셀러 흐름과 동일 — 테이블 없으면 무시).
+    await DB.prepare(
+      `INSERT INTO shipping_tracking_events (order_id, carrier_code, tracking_number, status, status_text, source, created_at)
+       VALUES (?, ?, ?, 'shipped', '공급자 발송 등록', 'supplier', datetime('now'))`
+    ).bind(orderId, carrierKey || null, tracking).run().catch(() => { /* table optional */ });
+
+    return c.json({ success: true, message: '운송장이 등록되었습니다.' });
+  } catch (err) {
+    return safeError(c, err, '운송장 등록 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});

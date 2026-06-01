@@ -299,6 +299,17 @@ export default function SellerSupplyPage() {
                           {t('seller.supplyPrice')} <strong>{formatNumber(product.supply_price)}{t('common.won')}</strong>
                         </span>
                       </div>
+                      {/* 🛡️ 2026-06-01 INC-7: 마진 표시 — 셀러가 한눈에 수익성 판단. */}
+                      {product.retail_price > product.supply_price && (
+                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
+                          <span className="text-[11px] font-bold text-emerald-700">
+                            {t('seller.marginLabel', { defaultValue: '마진' })} {formatNumber(product.retail_price - product.supply_price)}{t('common.won')}
+                          </span>
+                          <span className="text-[10px] text-emerald-600">
+                            ({Math.round(((product.retail_price - product.supply_price) / product.retail_price) * 100)}%)
+                          </span>
+                        </div>
+                      )}
                       <p className="text-xs text-gray-400 mt-0.5">{t('seller.stockCount', { count: product.stock })}</p>
                     </div>
 

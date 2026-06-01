@@ -7,14 +7,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X } from 'lucide-react'
+import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession } from '@/lib/supplier-api'
 
-type Tab = 'overview' | 'catalog' | 'settlements'
+type Tab = 'overview' | 'orders' | 'catalog' | 'settlements'
 
 interface Me {
   profile: { business_name: string; email: string; status: string }
@@ -28,6 +28,13 @@ interface CatalogItem {
 interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null
   retail_amount: number; supply_amount: number; status: string; created_at: string; available_at: string | null
+}
+interface OrderItem {
+  order_id: number; order_number: string | null; status: string; created_at: string
+  shipping_name: string | null; shipping_phone: string | null; shipping_address: string | null
+  recipient_name: string | null; recipient_phone: string | null
+  courier: string | null; tracking_number: string | null; shipped_at: string | null
+  line_count: number; total_qty: number; item_names: string | null
 }
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: typeof Clock }> = {
@@ -49,6 +56,9 @@ export default function SupplierDashboardPage() {
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [settlements, setSettlements] = useState<SettlementItem[]>([])
+  const [orders, setOrders] = useState<OrderItem[]>([])
+  const [orderStatus, setOrderStatus] = useState<'to_ship' | 'shipped'>('to_ship')
+  const [shipModal, setShipModal] = useState<OrderItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
 
@@ -81,9 +91,17 @@ export default function SupplierDashboardPage() {
     } catch (err) { if (import.meta.env.DEV) console.error(err) }
   }, [])
 
+  const loadOrders = useCallback(async () => {
+    try {
+      const res = await supplierApi.get<{ data: { items: OrderItem[] } }>(`/api/supplier/orders?status=${orderStatus}&limit=100`)
+      setOrders(res.data.items ?? [])
+    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+  }, [orderStatus])
+
   useEffect(() => { loadMe() }, [loadMe])
   useEffect(() => { if (tab === 'catalog') loadCatalog() }, [tab, loadCatalog])
   useEffect(() => { if (tab === 'settlements') loadSettlements() }, [tab, loadSettlements])
+  useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
 
   const logout = () => {
     clearSupplierSession()
@@ -92,6 +110,7 @@ export default function SupplierDashboardPage() {
 
   const tabs: { key: Tab; label: string; Icon: typeof Wallet }[] = [
     { key: 'overview', label: t('supplier.tabOverview', { defaultValue: '개요' }), Icon: Wallet },
+    { key: 'orders', label: t('supplier.tabOrders', { defaultValue: '발송 관리' }), Icon: Truck },
     { key: 'catalog', label: t('supplier.tabCatalog', { defaultValue: '내 카탈로그' }), Icon: Package },
     { key: 'settlements', label: t('supplier.tabSettlements', { defaultValue: '정산 내역' }), Icon: Receipt },
   ]
@@ -131,12 +150,23 @@ export default function SupplierDashboardPage() {
           <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : tab === 'overview' ? (
           <OverviewTab me={me} t={t} />
+        ) : tab === 'orders' ? (
+          <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
         ) : tab === 'catalog' ? (
           <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} />
         ) : (
           <SettlementsTab items={settlements} t={t} />
         )}
       </main>
+
+      {shipModal && (
+        <ShipModal
+          t={t}
+          order={shipModal}
+          onClose={() => setShipModal(null)}
+          onShipped={() => { setShipModal(null); loadOrders() }}
+        />
+      )}
 
       {showAdd && (
         <AddProductModal
@@ -274,6 +304,121 @@ function SettlementsTab({ items, t }: { items: SettlementItem[]; t: (k: string, 
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function OrdersTab({ items, t, status, setStatus, onShip }: {
+  items: OrderItem[]
+  t: (k: string, o?: Record<string, unknown>) => string
+  status: 'to_ship' | 'shipped'
+  setStatus: (s: 'to_ship' | 'shipped') => void
+  onShip: (o: OrderItem) => void
+}) {
+  const fmtAddr = (o: OrderItem) => {
+    const name = o.recipient_name || o.shipping_name || '-'
+    const phone = o.recipient_phone || o.shipping_phone || ''
+    let addr = o.shipping_address || ''
+    try { const p = JSON.parse(addr); addr = [p.address, p.address_detail].filter(Boolean).join(' ') } catch { /* plain text */ }
+    return { name, phone, addr }
+  }
+  return (
+    <div>
+      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 border border-gray-200 w-fit">
+        {([['to_ship', t('supplier.toShip', { defaultValue: '발송 대기' })], ['shipped', t('supplier.shipped', { defaultValue: '발송 완료' })]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setStatus(k)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${status === k ? 'bg-[#FF0033] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {items.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-gray-400 text-sm">
+          {status === 'to_ship' ? t('supplier.noToShip', { defaultValue: '발송할 주문이 없습니다.' }) : t('supplier.noShipped', { defaultValue: '발송 완료된 주문이 없습니다.' })}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map(o => {
+            const a = fmtAddr(o)
+            return (
+              <div key={o.order_id} className="bg-white rounded-2xl border border-gray-200 p-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-gray-900 text-sm">#{o.order_number || o.order_id}</p>
+                      <span className="text-xs text-gray-400">{(o.created_at || '').slice(0, 10)}</span>
+                      <span className="text-xs text-gray-500">{t('supplier.qtyN', { defaultValue: '수량' })} {o.total_qty}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 truncate">{o.item_names}</p>
+                    <p className="text-xs text-gray-500 mt-1">📦 {a.name} {a.phone} · {a.addr || t('supplier.noAddr', { defaultValue: '주소 정보 없음' })}</p>
+                    {o.tracking_number && (
+                      <p className="text-xs text-green-600 mt-1">🚚 {o.courier || ''} {o.tracking_number}</p>
+                    )}
+                  </div>
+                  {status === 'to_ship' && (
+                    <button onClick={() => onShip(o)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#FF0033] text-white rounded-lg">
+                      <Truck className="w-3.5 h-3.5" /> {t('supplier.enterTracking', { defaultValue: '운송장 입력' })}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ShipModal({ t, order, onClose, onShipped }: {
+  t: (k: string, o?: Record<string, unknown>) => string
+  order: OrderItem
+  onClose: () => void
+  onShipped: () => void
+}) {
+  const [courier, setCourier] = useState(order.courier || '')
+  const [tracking, setTracking] = useState(order.tracking_number || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    if (!tracking.trim()) { setError(t('supplier.errTracking', { defaultValue: '운송장 번호를 입력해주세요' })); return }
+    setSaving(true)
+    try {
+      await supplierApi.put(`/api/supplier/orders/${order.order_id}/shipping`, { courier: courier.trim() || undefined, tracking_number: tracking.trim() })
+      toast.success(t('supplier.shippedOk', { defaultValue: '운송장이 등록되었습니다.' }))
+      onShipped()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally { setSaving(false) }
+  }
+
+  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">{t('supplier.enterTracking', { defaultValue: '운송장 입력' })}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">#{order.order_number || order.order_id} · {order.item_names}</p>
+        {error && <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+        <form onSubmit={submit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('supplier.courier', { defaultValue: '택배사' })}</label>
+            <input value={courier} onChange={e => setCourier(e.target.value)} className={inputCls} placeholder={t('supplier.courierPh', { defaultValue: '예: CJ대한통운' })} disabled={saving} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('supplier.trackingNo', { defaultValue: '운송장 번호' })} <span className="text-red-500">*</span></label>
+            <input value={tracking} onChange={e => setTracking(e.target.value)} className={inputCls} disabled={saving} />
+          </div>
+          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60 mt-2">
+            {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.registerTracking', { defaultValue: '발송 등록' })}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

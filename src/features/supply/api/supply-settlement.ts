@@ -21,6 +21,7 @@ interface SupplyLine {
   seller_id: number | null;
   supply_price: number;
   supplier_id: number;
+  source_product_id: number | null;
 }
 
 /**
@@ -42,7 +43,7 @@ export async function creditSupplierOnOrder(
   const rows = await DB.prepare(`
     SELECT oi.quantity AS qty, oi.price AS unit_price, oi.product_id AS product_id,
            sp.seller_id AS seller_id, COALESCE(sp.supply_price, 0) AS supply_price,
-           src.supplier_id AS supplier_id
+           src.supplier_id AS supplier_id, sp.supply_source_id AS source_product_id
     FROM order_items oi
     JOIN products sp ON sp.id = oi.product_id
     LEFT JOIN products src ON src.id = sp.supply_source_id
@@ -77,6 +78,15 @@ export async function creditSupplierOnOrder(
         metadata: { product_id: r.product_id, retail, supply: split.supplier_amount },
       });
     } catch { /* ledger best-effort */ }
+
+    // 🛡️ 2026-06-01 INC-8(위탁/드랍쉽): 공급자 원본 재고 차감 — 공급자가 실재고 기준 발송.
+    //   셀러 복제본 재고(reserveStock)와 별개로 원본(공급자) 공유 재고를 같이 줄여 공급자 대시보드 정확.
+    //   이 루프는 멱등 가드(supplier_settlements 존재) 안이라 주문당 1회만 실행.
+    if (r.source_product_id) {
+      await DB.prepare(
+        "UPDATE products SET stock = MAX(0, COALESCE(stock,0) - ?), sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(qty, qty, r.source_product_id).run().catch(() => { /* best-effort */ });
+    }
     credited++;
   }
   return credited;
@@ -107,6 +117,24 @@ export async function reverseSupplierOnRefund(
         .bind(a.supply_amount, a.supplier_id).run();
     }
     reversed++;
+  }
+
+  // 🛡️ 2026-06-01 INC-8(위탁/드랍쉽): 환불 시 공급자 원본 재고 복원 — 반품 역물류.
+  //   settlement 가 실제 역전된 경우(reversed>0)만 복원 — 비공급/미적립 주문 무영향.
+  if (reversed > 0) {
+    const lines = await DB.prepare(`
+      SELECT oi.quantity AS qty, sp.supply_source_id AS source_product_id
+      FROM order_items oi
+      JOIN products sp ON sp.id = oi.product_id
+      WHERE oi.order_id = ? AND sp.supply_source_id IS NOT NULL
+    `).bind(orderId).all<{ qty: number; source_product_id: number | null }>().catch(() => ({ results: [] as { qty: number; source_product_id: number | null }[] }));
+    for (const l of lines.results || []) {
+      if (!l.source_product_id) continue;
+      const qty = Math.max(1, Math.floor(Number(l.qty) || 1));
+      await DB.prepare(
+        "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ?"
+      ).bind(qty, qty, l.source_product_id).run().catch(() => { /* best-effort */ });
+    }
   }
   return reversed;
 }

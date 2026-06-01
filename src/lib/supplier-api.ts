@@ -61,4 +61,5 @@ export const supplierApi = {
   get: <T = Json>(path: string) => request<T>('GET', path),
   post: <T = Json>(path: string, body?: unknown) => request<T>('POST', path, body),
   patch: <T = Json>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+  put: <T = Json>(path: string, body?: unknown) => request<T>('PUT', path, body),
 };

@@ -91,10 +91,11 @@
 - [x] **INC-4 공급자 카탈로그 등록** (2026-06-01) — 공급자 self-serve 등록: `POST /api/supplier/products`(is_active=0 + supply_approval_status='pending') + `PATCH /api/supplier/products/:id`(pending/rejected 만). 어드민 승인 큐 `GET/PATCH /api/admin/supplier-products` + `SupplierProductsTab`(AdminProductsPage 4번째 탭). 승인 시 is_active=1 → 셀러 카탈로그(is_active=1) 자동 노출. products.supply_approval_status / admin_memo 컬럼 + idx_products_supplier (repair-schema additive).
 - [x] **INC-5 정산 split 배선** (5a 헬퍼 + 5b 결제/환불 배선 완료, 사용자 승인, D3=마진기준) — 공급상품(supply_source_id) 판매 결제 시 `calcSupplySplit` 호출 → 공급자 balance 적립 + ledger + 환불 역전(D6). **결제 흐름이라 신중·테스트 필수.**
 - [x] **INC-6 공급자 대시보드** (2026-06-01) — `/supplier/login`·`/supplier/register`(공개) + `/supplier` 대시보드(self-guard via supplier_token). 탭: 개요(잔고 pending/available/paid + 상품 카운트), 카탈로그(내 공급상품 + 등록 모달), 정산 내역. API: `GET /api/supplier/me|products|settlements`. `src/lib/supplier-api.ts` 헬퍼(supplier_token). 라이트 테마, i18n defaultValue. HIDE_SIDEBAR_PREFIXES + 테마체크 EXCLUDE 에 /supplier 추가.
-- [ ] **INC-7 소싱 마켓플레이스 UX** — 셀러용 도매 카탈로그 탐색(마진율·MOQ·단가구간 필터)·발주·메시징 (Phase 3).
-- [ ] **INC-8 D4 이행** — 재고/배송(위탁·드랍쉽 등 D4 결정 반영), 반품 역물류.
+- [x] **INC-7 소싱 마켓플레이스 UX** (2026-06-01) — 셀러 공급 카탈로그(SellerSupplyPage)에 **마진(금액+%) 배지** 표시 추가(수익성 한눈). 기존 검색/카테고리/지역/정렬 필터 + 샘플신청 + register 흐름 위에 enrich. (D4=드랍쉽이라 셀러 선구매 없음 → 전통적 발주(PO)/단가구간/MOQ 불필요·보류, seller↔supplier 메시징은 P1 — 별도 thread 인프라 필요.)
+- [x] **INC-8 D4 이행 — 위탁/드랍쉽** (2026-06-01) — 기존 배송 인프라 재사용. (1) 판매 시 공급자 **원본 재고 차감**(creditSupplierOnOrder 내, 멱등) + 환불 시 **복원**(reverseSupplierOnRefund, 반품 역물류). (2) 공급자 대시보드 **발송 관리 탭**: `GET /api/supplier/orders`(발송대기/완료) + `PUT /api/supplier/orders/:id/shipping`(소유권 검증 + courier 정규화 + tracking_carrier_code + shipping_tracking_events + status→SHIPPING). 셀러 운송장 흐름(seller-orders)과 동일 컬럼·courier-codes 재사용. shipping-sync cron 이 자동 배송완료 처리.
 
 ## 변경 이력
 - 2026-05-31 초안 (현 구현 audit + 결정 todolist + 도매몰 4-phase 제안)
 - 2026-05-31 결정 확정(D1 외부도매상/D2 즉시split/풀 도매몰) + INC-1 경제 코어(`lib/supply-split.ts`+테스트) 구현 + 증분 로드맵 INC-1~8
 - 2026-06-01 D4=위탁/드랍쉽 확정(D5=공급자 배송 파생) + INC-5b 결제/환불 배선 + INC-4(공급자 self-serve 카탈로그+어드민 승인) + INC-6(공급자 대시보드/로그인/가입) 구현. 남은 작업: INC-7(소싱 마켓플레이스 UX) / INC-8(D4 이행 — 재고·배송).
+- 2026-06-01 (2차) INC-7(마진 배지) + INC-8(위탁/드랍쉽 이행 — 원본 재고 차감/복원 + 공급자 발송관리 탭 + 운송장 입력) 완료 → **INC-1~8 전부 완료**. 잔여 P1(선택): seller↔supplier 메시징, 단가구간/MOQ(드랍쉽이라 비필수), 팝빌 세금계산서 자동화.
