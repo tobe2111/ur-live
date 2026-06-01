@@ -973,6 +973,20 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     })
   }
 
+  // 🛡️ 2026-05-31 M1: 카드 경로 재고 원자적 예약 (딜 /join 과 정합 — oversell 차단).
+  //   딜 경로(line 218)는 stock 차감하는데 카드 경로는 안 해 동시결제 시 재고 초과 발급 가능했음.
+  //   결제는 이미 완료(confirmTossPayment) 상태라 재고 부족 시 cancelTossPayment 자동 환불.
+  const reserveStock = await DB.prepare(
+    'UPDATE products SET stock = stock - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND stock >= ?'
+  ).bind(qty, productId, qty).run().catch(() => null)
+  if (!reserveStock?.meta?.changes) {
+    try {
+      const { cancelTossPayment } = await import('../../../worker/utils/toss-gateway')
+      await cancelTossPayment({ env: c.env as unknown as { TOSS_SECRET_KEY?: string }, paymentKey, cancelReason: '재고 부족 자동 환불', idempotencyKey: `gb-card-oversold-${paymentKey}` })
+    } catch (e) { if (import.meta.env?.DEV) console.warn('[confirm-toss oversold refund]', e) }
+    return c.json({ success: false, error: '재고가 부족하여 결제가 자동 취소되었습니다', code: 'OUT_OF_STOCK' }, 409)
+  }
+
   // 4. orders INSERT + voucher 발급 — 딜 경로(group-buy /join)의 검증된 패턴 복제.
   //    C1: RETURNING id 로 정수 order_id 획득 후 vouchers.order_id 에 바인드 (이전: order_number 문자열
   //        저장 → refund JOIN(v.order_id=o.id) 전부 실패 → 카드 환불 영구 불가).
@@ -1067,6 +1081,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       data: { order_number: orderNumber, qty, amount: expectedAmount },
     })
   } catch (err) {
+    // 🛡️ 2026-05-31 M1: 주문 미생성 → 예약했던 재고 롤백(예약은 try 진입 전 차감됨).
+    //   UNIQUE 충돌(race 패자)도 롤백 — 승자 주문이 canonical 이라 패자 차감분은 되돌려야 정합.
+    await DB.prepare('UPDATE products SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(qty, productId).run().catch(() => null)
     // 🛡️ 2026-05-31: 동시 confirm-toss 경쟁(race) — idempotency_key(=paymentKey) UNIQUE 인덱스(0118)
     //   충돌이면 이미 다른 요청이 발급 완료한 것 → 그 주문 재조회 후 멱등 성공 반환(voucher 2배 발급 차단).
     if (String(err).includes('UNIQUE')) {

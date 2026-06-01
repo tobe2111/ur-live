@@ -102,7 +102,16 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
     }
 
     const { amount, bank_name, account_number, account_holder } = await c.req.json();
-    if (!amount || amount <= 0) return c.json({ success: false, error: '정산 금액이 올바르지 않습니다' }, 400);
+    if (!Number.isFinite(amount) || amount <= 0) return c.json({ success: false, error: '정산 금액이 올바르지 않습니다' }, 400);
+    // 🛡️ 2026-05-31 보안: 클라이언트 amount 를 서버 잔액으로 상한 검증 (이전: amount>0 만 검사 →
+    //   임의 거액 신청 가능). /deal-withdraw 와 동일 SSOT(seller_deal_balances.redeemable_deal_amount).
+    const settleBal = await db.prepare(
+      'SELECT redeemable_deal_amount FROM seller_deal_balances WHERE seller_id = ?'
+    ).bind(sellerId).first<{ redeemable_deal_amount: number }>().catch(() => null);
+    const settleable = Math.max(0, Number(settleBal?.redeemable_deal_amount ?? 0));
+    if (amount > settleable) {
+      return c.json({ success: false, error: `정산 가능 잔액(${settleable.toLocaleString()}원)을 초과했습니다`, code: 'AMOUNT_EXCEEDS_BALANCE' }, 400);
+    }
     // 🛡️ 2026-05-18: NOT NULL period_start/period_end — 신청 시점의 전월 1일 ~ 말일 (관행).
     const now = new Date();
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
