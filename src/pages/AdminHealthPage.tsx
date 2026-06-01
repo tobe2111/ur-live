@@ -7,7 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { toast } from '@/hooks/useToast'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SEO from '@/components/SEO'
-import { Activity, RefreshCw } from 'lucide-react'
+import { Activity, RefreshCw, Database, Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface Metrics {
@@ -180,6 +180,9 @@ export default function AdminHealthPage() {
           </div>
         )}
 
+        {/* 🛡️ 2026-06-01: DB 스키마 복구 (curl 없이 버튼 1회) */}
+        <SchemaRepairSection />
+
         {/* 🛡️ 2026-04-26 M7: Webhook 실패 상세 + 재시도 (TD-009) */}
         <WebhookFailuresSection />
 
@@ -191,6 +194,101 @@ export default function AdminHealthPage() {
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+// 🛡️ 2026-06-01: DB 스키마 복구 섹션 — 신규 migration 컬럼/테이블 즉시 적용 (cron 은 매일 자동)
+interface SchemaRepairResult {
+  success: boolean
+  columns?: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }>
+  tables?: Array<{ name: string; status: 'ok' | 'error'; error?: string }>
+}
+
+function SchemaRepairSection() {
+  const [running, setRunning] = useState(false)
+  const [result, setResult] = useState<SchemaRepairResult | null>(null)
+
+  const run = async () => {
+    if (running) return
+    setRunning(true)
+    setResult(null)
+    try {
+      const token = localStorage.getItem('admin_token')
+      const res = await fetch('/api/_internal/repair-schema', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as SchemaRepairResult
+      setResult(data)
+      const added = data.columns?.filter((r) => r.status === 'added').length ?? 0
+      const errs =
+        (data.columns?.filter((r) => r.status === 'error').length ?? 0) +
+        (data.tables?.filter((r) => r.status === 'error').length ?? 0)
+      if (errs > 0) toast.error(`스키마 복구: ${errs}건 오류 — 상세 확인`)
+      else toast.success(added > 0 ? `스키마 복구 완료: 컬럼 ${added}개 추가` : '스키마 최신 상태 (변경 없음)')
+    } catch {
+      toast.error('스키마 복구 요청 실패')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const added = result?.columns?.filter((r) => r.status === 'added') ?? []
+  const errs = [
+    ...(result?.columns?.filter((r) => r.status === 'error').map((r) => `컬럼: ${r.desc} — ${r.error}`) ?? []),
+    ...(result?.tables?.filter((r) => r.status === 'error').map((r) => `테이블: ${r.name} — ${r.error}`) ?? []),
+  ]
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-gray-700" />
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">DB 스키마 복구</h2>
+            <p className="text-xs text-gray-500">
+              신규 배포의 누락 컬럼/테이블을 즉시 적용. (매일 새벽 3시 자동 실행되므로 평소엔 불필요)
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={run}
+          disabled={running}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+        >
+          {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+          {running ? '실행 중...' : '지금 스키마 복구'}
+        </button>
+      </div>
+
+      {result && (
+        <div className="mt-4 space-y-2 text-xs">
+          {errs.length === 0 ? (
+            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-700">
+              ✅ 정상 — {added.length > 0 ? `컬럼 ${added.length}개 추가됨` : '추가할 항목 없음 (이미 최신)'}
+            </div>
+          ) : (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+              ⚠️ {errs.length}건 오류:
+              <ul className="mt-1 list-disc pl-4">
+                {errs.map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {added.length > 0 && (
+            <details className="text-gray-600">
+              <summary className="cursor-pointer">추가된 컬럼 {added.length}개 보기</summary>
+              <ul className="mt-1 list-disc pl-4">
+                {added.map((r, i) => (
+                  <li key={i}>{r.desc}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 

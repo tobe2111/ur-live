@@ -38,6 +38,8 @@ export default function BusinessLandingPage() {
         <div className="flex items-center gap-3">
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">인플루언서</Link>
           <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>
+          {/* 🛡️ 2026-06-01 도매몰(B2B) 진입 — store_owner '공급자 가입'과 구분 */}
+          <Link to="/supplier/login" className="hidden sm:inline text-sm text-amber-600 dark:text-amber-400 hover:underline">도매 공급사</Link>
           <button onClick={() => navigate('/seller/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
             무료 시작하기
           </button>
@@ -200,6 +202,35 @@ export default function BusinessLandingPage() {
           무료로 시작하기 →
         </button>
         <p className="text-xs opacity-70 mt-6">신용카드 불필요 · 등록 후 바로 카톡 share 가능 · 계약 기간 없음</p>
+      </section>
+
+      {/* 🛡️ 2026-06-01 도매 공급사(B2B 도매몰) 모집 밴드 — store_owner CTA 와 구분 */}
+      <section className="bg-amber-50 dark:bg-[#161310] border-t border-amber-100 dark:border-[#2A2A2A] px-6 lg:px-12 py-12 text-center">
+        <p className="text-xs font-bold tracking-wide text-amber-600 dark:text-amber-400 mb-2">도매 공급사 모집</p>
+        <h2 className="text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white mb-3">
+          제품만 있으면, 셀러가 팔아드립니다
+        </h2>
+        <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 mb-2 max-w-2xl mx-auto">
+          상품을 등록하면 유어딜의 라이브·매장 셀러들이 가져다 판매하고, 주문은 공급사가 직접 발송합니다.
+          재고·마케팅 부담 없이 공급가만 정하세요. 판매 즉시 정산.
+        </p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">
+          ※ 내 가게 공동구매를 직접 운영하실 사장님은 위 ‘무료 시작하기(매장 셀러)’를 이용하세요.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={() => navigate('/supplier/register')}
+            className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-full font-bold text-sm"
+          >
+            도매 공급사 입점 신청 →
+          </button>
+          <button
+            onClick={() => navigate('/supplier/login')}
+            className="px-6 py-3 border-2 border-amber-200 dark:border-[#3A2F1A] text-amber-700 dark:text-amber-300 hover:border-amber-300 rounded-full font-bold text-sm"
+          >
+            도매몰 로그인
+          </button>
+        </div>
       </section>
 
       {/* Footer */}
