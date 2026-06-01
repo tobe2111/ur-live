@@ -2024,7 +2024,9 @@
       "disputesPending": "[TODO:fr] 검토 대기",
       "disputesNone": "[TODO:fr] 없음",
       "realtime": "[TODO:fr] 실시간"
-    }
+    },
+    "areYouSupplier": "Vous êtes fournisseur en gros ?",
+    "goWholesale": "Grossiste →"
   },
   "admin": {
     "login": {
@@ -5481,5 +5483,9 @@
     "reload": "Actualiser",
     "reloading": "Application…",
     "dismiss": "Fermer"
+  },
+  "supplier": {
+    "areYouSeller": "Vous êtes vendeur live/boutique ?",
+    "goSeller": "Connexion vendeur →"
   }
 }

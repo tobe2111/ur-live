@@ -2695,7 +2695,9 @@
       "disputesPending": "[TODO:zh] 검토 대기",
       "disputesNone": "[TODO:zh] 없음",
       "realtime": "[TODO:zh] 실시간"
-    }
+    },
+    "areYouSupplier": "您是批发供应商吗？",
+    "goWholesale": "批发商城 →"
   },
   "admin": {
     "login": {
@@ -5481,5 +5483,9 @@
     "reload": "刷新",
     "reloading": "应用中…",
     "dismiss": "关闭"
+  },
+  "supplier": {
+    "areYouSeller": "您是直播/门店卖家吗？",
+    "goSeller": "卖家登录 →"
   }
 }

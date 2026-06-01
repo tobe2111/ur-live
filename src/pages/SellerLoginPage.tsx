@@ -280,6 +280,13 @@ export default function SellerLoginPage() {
                   {t('seller.sellerRegister')}
                 </Link>
               </p>
+              {/* 🛡️ 2026-06-01 도매몰 크로스링크: 도매 공급사 진입 */}
+              <p className="text-xs text-gray-400 mt-2">
+                {t('seller.areYouSupplier', { defaultValue: '도매 공급사이신가요?' })}{' '}
+                <Link to="/supplier/login" className="text-amber-600 font-medium hover:underline">
+                  {t('seller.goWholesale', { defaultValue: '도매몰 →' })}
+                </Link>
+              </p>
             </div>
           </div>
 

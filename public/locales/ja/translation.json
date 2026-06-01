@@ -2695,7 +2695,9 @@
       "disputesPending": "[TODO:ja] 검토 대기",
       "disputesNone": "[TODO:ja] 없음",
       "realtime": "[TODO:ja] 실시간"
-    }
+    },
+    "areYouSupplier": "卸供給社の方ですか？",
+    "goWholesale": "卸モール →"
   },
   "admin": {
     "login": {
@@ -5481,5 +5483,9 @@
     "reload": "更新",
     "reloading": "適用中…",
     "dismiss": "閉じる"
+  },
+  "supplier": {
+    "areYouSeller": "ライブ/店舗セラーの方ですか？",
+    "goSeller": "セラーログイン →"
   }
 }

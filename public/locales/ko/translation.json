@@ -2698,7 +2698,9 @@
       "empty": "등록된 숙소가 없습니다",
       "create": "숙소 등록",
       "createFirst": "첫 숙소 등록하기"
-    }
+    },
+    "areYouSupplier": "도매 공급사이신가요?",
+    "goWholesale": "도매몰 →"
   },
   "admin": {
     "login": {
@@ -5479,5 +5481,9 @@
     "reload": "새로고침",
     "reloading": "적용 중…",
     "dismiss": "닫기"
+  },
+  "supplier": {
+    "areYouSeller": "라이브/매장 셀러이신가요?",
+    "goSeller": "셀러 로그인 →"
   }
 }

@@ -148,6 +148,13 @@ export default function SupplierLoginPage() {
                 {t('supplier.registerLink', { defaultValue: '공급자 가입' })}
               </Link>
             </p>
+            {/* 🛡️ 2026-06-01 도매몰 크로스링크: 셀러 진입 */}
+            <p className="mt-2 text-center text-xs text-gray-400">
+              {t('supplier.areYouSeller', { defaultValue: '라이브/매장 셀러이신가요?' })}{' '}
+              <Link to="/seller/login" className="text-[#FF0033] font-medium hover:underline">
+                {t('supplier.goSeller', { defaultValue: '셀러 로그인 →' })}
+              </Link>
+            </p>
           </div>
           <p className="mt-6 text-center text-xs text-gray-400">
             {t('supplier.support', { defaultValue: '문의' })}: <a href="mailto:support@ur-team.com" className="underline">support@ur-team.com</a>
