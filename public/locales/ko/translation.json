@@ -2424,10 +2424,10 @@
     "noViewerData": "시청자 데이터가 아직 없습니다",
     "broadcastViewers": "방송 시청자",
     "ordersCompleted": "주문 완료",
-    "loginHeroTitle": "라이브 커머스의 시작",
-    "loginHeroDesc": "셀러 전용 대시보드에서 매출, 방송, 상품을 한눈에 관리하세요.",
-    "loginFeature1Title": "라이브 방송 관리",
-    "loginFeature1Desc": "실시간 방송 시작부터 종료까지 원클릭",
+    "loginHeroTitle": "셀러 비즈니스의 시작",
+    "loginHeroDesc": "셀러 전용 대시보드에서 공동구매·주문·정산을 한눈에 관리하세요.",
+    "loginFeature1Title": "공동구매 관리",
+    "loginFeature1Desc": "공동구매 등록부터 마감·정산까지 한 번에",
     "loginFeature2Title": "상품·주문 통합",
     "loginFeature2Desc": "상품 등록과 주문 처리를 한 화면에서",
     "loginFeature3Title": "매출 분석 리포트",
@@ -3881,8 +3881,7 @@
     "my": "마이",
     "search": "검색",
     "restaurants": "맛집",
-    "groupBuy": "공구",
-    "my": "마이"
+    "groupBuy": "공구"
   },
   "bulkUpload": {
     "title": "상품 대량등록",

@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Mail, Lock, Eye, EyeOff, Play, Package, TrendingUp, ArrowRight } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -106,7 +106,7 @@ export default function SellerLoginPage() {
 
           <div className="space-y-5">
             {[
-              { icon: Play, title: t('seller.loginFeature1Title'), desc: t('seller.loginFeature1Desc') },
+              { icon: Users, title: t('seller.loginFeature1Title'), desc: t('seller.loginFeature1Desc') },
               { icon: Package, title: t('seller.loginFeature2Title'), desc: t('seller.loginFeature2Desc') },
               { icon: TrendingUp, title: t('seller.loginFeature3Title'), desc: t('seller.loginFeature3Desc') },
             ].map(({ icon: Icon, title, desc }) => (
