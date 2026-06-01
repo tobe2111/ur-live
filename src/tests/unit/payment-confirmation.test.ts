@@ -83,9 +83,10 @@ function buildApp() {
   return app;
 }
 
-// Minimal D1-like stub (never called because OrderRepository is mocked)
+// Minimal D1-like stub. `.run()` returns changes:1 so the /confirm CAS guard
+// (PENDING→DONE atomic claim, 2026-05-31) treats the happy path as the winner.
 const fakeDB = {
-  prepare: () => ({ bind: () => ({ first: () => Promise.resolve(null) }) }),
+  prepare: () => ({ bind: () => ({ first: () => Promise.resolve(null), run: () => Promise.resolve({ meta: { changes: 1 } }) }) }),
 } as unknown as D1Database;
 
 function makeEnv(extra: Record<string, unknown> = {}) {
