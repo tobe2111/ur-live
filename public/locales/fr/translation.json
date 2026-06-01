@@ -3207,7 +3207,8 @@
     "groupBuy": "Achat groupé",
     "my": "Mon",
     "linkshop": "Linkshop",
-    "vouchers": "Bons"
+    "vouchers": "Bons",
+    "dongnedeal": "Offres locales"
   },
   "bulkUpload": {
     "title": "Import de produits en masse",

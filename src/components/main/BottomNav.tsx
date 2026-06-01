@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Gift, Sparkles } from 'lucide-react'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -172,10 +172,13 @@ export default function BottomNav() {
     } catch { /* ignore */ }
     setLinkshopPath('/u/me')
   }, [isLoggedIn, hasSellerToken])
+  // 🛡️ 2026-06-01 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 교환권 탭 제거 → 동네딜(오프라인 공구) 추가.
+  //   순서 = 홈 / 동네딜 / 쇼핑 / 링크샵 / 마이. 교환권 콘텐츠는 홈 상단 + /vouchers 전체보기로 유지.
+  //   linkshop localStorage 경로 로직·active-path 패턴은 그대로 보존.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
+    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
     { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },
-    { icon: Gift,        label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
     { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile' },
   ]
@@ -196,6 +199,8 @@ export default function BottomNav() {
       if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/') ||
           cur.startsWith('/profile/') || cur.startsWith('/s/')) return true
     }
+    // 🛡️ 2026-06-01: 동네딜 탭(오프라인 공구) — /group-buy 외 /stays·/meal-vouchers 도 활성.
+    if (path === '/group-buy' && (cur.startsWith('/stays') || cur.startsWith('/meal-vouchers'))) return true
     return false
   }
 

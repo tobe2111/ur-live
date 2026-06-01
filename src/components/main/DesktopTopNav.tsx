@@ -26,7 +26,7 @@ export default function DesktopTopNav() {
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     { icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' },
-    { icon: Gift, key: 'groupBuy', label: t('nav.groupBuy', { defaultValue: '공구' }), path: '/group-buy' },
+    { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
     { icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
   ]
 

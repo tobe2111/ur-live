@@ -3878,7 +3878,8 @@
     "groupBuy": "团购",
     "my": "我的",
     "linkshop": "链接店",
-    "vouchers": "券"
+    "vouchers": "券",
+    "dongnedeal": "附近团购"
   },
   "bulkUpload": {
     "title": "批量上传商品",
