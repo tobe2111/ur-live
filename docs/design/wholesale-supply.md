@@ -89,7 +89,7 @@
 - [x] **INC-2 데이터 모델** — `suppliers`(외부 도매상 계정), `supplier_balances`, `supplier_settlements`, `products.supplier_id` (additive DDL via repair-schema). ledger account 규약 `supplier:<id>`.
 - [x] **INC-3 공급자 인증** — 도매상 가입/로그인(seller auth 패턴 재사용), `requireSupplier()` 미들웨어.
 - [ ] **INC-4 공급자 카탈로그 등록** — 공급자가 직접 공급상품 등록(현재 어드민 대행 → 공급자 self-serve), 어드민 승인.
-- [~] **INC-5 정산 split 배선** (5a 헬퍼 완료 / 5b 결제배선 승인대기) — 공급상품(supply_source_id) 판매 결제 시 `calcSupplySplit` 호출 → 공급자 balance 적립 + ledger + 환불 역전(D6). **결제 흐름이라 신중·테스트 필수.**
+- [x] **INC-5 정산 split 배선** (5a 헬퍼 + 5b 결제/환불 배선 완료, 사용자 승인, D3=마진기준) — 공급상품(supply_source_id) 판매 결제 시 `calcSupplySplit` 호출 → 공급자 balance 적립 + ledger + 환불 역전(D6). **결제 흐름이라 신중·테스트 필수.**
 - [ ] **INC-6 공급자 대시보드** — 매출/정산/카탈로그 조회 UI.
 - [ ] **INC-7 소싱 마켓플레이스 UX** — 셀러용 도매 카탈로그 탐색(마진율·MOQ·단가구간 필터)·발주·메시징 (Phase 3).
 - [ ] **INC-8 D4 이행** — 재고/배송(위탁·드랍쉽 등 D4 결정 반영), 반품 역물류.

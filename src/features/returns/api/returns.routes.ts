@@ -631,6 +631,12 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     }
   } catch { /* table may not exist */ }
 
+  // 🛡️ 2026-05-31 도매몰 INC-5b: 공급(B2B) 상품 환불 시 공급자 적립 역전 (출금 누수 차단).
+  try {
+    const { reverseSupplierOnRefund } = await import('../../supply/api/supply-settlement');
+    await reverseSupplierOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
+  } catch { /* supply 테이블 없거나 비공급 주문 — best-effort */ }
+
   // ── Settlement adjustment (restaurant vouchers) ──
   // If this order was already rolled into a completed settlement, record a clawback
   // and alert ops so finance can reconcile manually.

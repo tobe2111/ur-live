@@ -293,6 +293,18 @@ paymentsRouter.post('/confirm', async (c) => {
       logError('payment.agency_intro_commission_failed', { error: String(e).slice(0, 200) })
     }
 
+    // 🛡️ 2026-05-31 [UNLOCK] 도매몰 INC-5b (사용자 승인): 공급(B2B) 상품 판매 시 공급자에게
+    //   공급가 즉시 적립(D2). order_items 중 supply_source_id 라인만 calcSupplySplit 으로 분배.
+    //   fail-soft — 결제 흐름 막지 않음. order_id 멱등. (환불 시 returns 경로서 역전.)
+    try {
+      const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
+      for (const order of orders) {
+        await creditSupplierOnOrder(c.env.DB, Number(order.id))
+      }
+    } catch (e) {
+      logError('payment.supplier_credit_failed', { error: String(e).slice(0, 200) })
+    }
+
     // 🛡️ 2026-05-18: 숙소 예약 (orders.stay_booking_id) 가 있으면 stay_bookings status='confirmed'
     //   + 캘린더 available_count 차감 + 인플루언서 commission 지급 affiliate track.
     for (const order of orders) {
