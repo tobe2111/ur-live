@@ -1685,7 +1685,8 @@
       "streamingGuide": "Guía de streaming",
       "notifyFollowers": "Notificar seguidores",
       "stays": "Vales de alojamiento",
-      "staysBookings": "Reservas"
+      "staysBookings": "Reservas",
+      "supply": "Abastecimiento mayorista"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

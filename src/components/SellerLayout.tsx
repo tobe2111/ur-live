@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag, Sparkles
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag, Sparkles, Boxes
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { getRoleShortLabel } from '@/shared/seller-roles'
@@ -60,6 +60,8 @@ const NAV_GROUPS: {
     labelKey: 'seller.layout.sales',
     items: [
       { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' },
+      // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
+      { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' },
       { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package, mode: 'common' },
       // group-buy 는 매장 voucher 핵심 — store mode 우선이지만 인플도 voucher 발행 가능 → both 모드.
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },

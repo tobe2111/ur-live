@@ -2356,7 +2356,8 @@
       "streamingGuide": "直播指南",
       "notifyFollowers": "通知粉丝",
       "stays": "住宿团购",
-      "staysBookings": "预订管理"
+      "staysBookings": "预订管理",
+      "supply": "批发采购"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

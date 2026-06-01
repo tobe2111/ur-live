@@ -17,6 +17,10 @@ export default function SiteFooter() {
           <a href="/agency/register/business" className="text-violet-600 dark:text-violet-400 hover:underline">
             🤵 에이전시 사업 시작 →
           </a>
+          {/* 🛡️ 2026-06-01 도매몰 노출: 도매 공급사(도매상) 입점 — store_owner 가게입점과 별개. */}
+          <a href="/supplier/register" className="text-amber-600 dark:text-amber-400 hover:underline">
+            📦 도매 공급사로 입점 →
+          </a>
         </div>
 
         {/* Contact */}

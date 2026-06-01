@@ -2372,7 +2372,8 @@
       "streamingGuide": "配信ガイド",
       "notifyFollowers": "フォロワー通知",
       "stays": "宿泊共同購入",
-      "staysBookings": "予約管理"
+      "staysBookings": "予約管理",
+      "supply": "卸仕入れ"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
