@@ -23,7 +23,7 @@
 - **moderation `/check`** — 이미 rate-limit(120/60s) 적용됨. 무상태·IDOR 아님 → auth 미추가(라이브 채팅 preflight UX 보호). 적정 완화 상태.
 
 ### 🟡 남은 대형 트랙 (단일 세션 부적합 — 점진/결정 필요)
-- **Tier 2 — 데이터페칭 RQ 이전 (208/269 페이지)**: 대부분 내부 admin/agency CRUD. 통째 churn 은 회귀 위험 + 저ROI. **사용자 대면·재방문 잦은 페이지부터 점진** 권장(대부분 핵심 user 페이지는 이미 SSR/RQ). 청크 단위 PR 필요.
+- **Tier 2 — 데이터페칭 RQ 이전**: ✅ **exemplar 완료** — `MyFollowsPage` → `useMyFollows` 훅(useQuery + optimistic useMutation 2종). 패턴/컨벤션(`queryKeys` SSOT, `localCache` fallback, `refetchOnMount:'always'`) 정착. **나머지는 동일 패턴으로 점진**: 안전 후보(read-only user 페이지) = `InterestListPage`/`MyReviewsPage`/`NotificationsPage`/`MyCouponsPage` 등. ⚠️ **고위험 흐름 제외**(checkout/payment-success/auth/kakao-callback — 부작용 순서 민감, 수동 유지). 대시보드(seller/admin/agency) 144개는 저ROI(내부) — 후순위.
 - **Tier 3 — 기능 미완**: 8.8% 원천징수 자동계산(세율 정책 결정), 딜 현금환급 endpoint, 지급조서 CSV, KT Alpha 기프티쇼 API(외부 계약/키), 숙소 알림톡 실발송(알리고 템플릿) — **외부 API/도메인 결정 의존**, 순수 코드로 완결 불가.
 - **Tier 4 — God 파일 분해**: `youtube-live.routes`(3369·라이브 송출 핵심, 레지스트리 영구 deferred) 등 — risk-isolated 단계 PR 필요(블라인드 분해 금지).
 
