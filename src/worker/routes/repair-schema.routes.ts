@@ -244,6 +244,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.intro_code', sql: "ALTER TABLE sellers ADD COLUMN intro_code TEXT" },
     // 🛡️ 2026-05-21 정정: 사업소득 (3.3%) default — 기타소득 (8.8%) 은 단발성 협업만.
     { desc: 'sellers.tax_type', sql: "ALTER TABLE sellers ADD COLUMN tax_type TEXT DEFAULT 'business_income'" },
+    // 🏭 2026-06-01 유통스타트 도매몰: 유통사(=셀러) 등급 + 특별할인 기간. (docs/design/wholesale-utongstart.md)
+    //   distributor_grade: A/B/C/D/OEM (NULL=미배정→기본 D). special_discount_until: 이 시각 전까지 SPECIAL 등급가 적용.
+    { desc: 'sellers.distributor_grade', sql: "ALTER TABLE sellers ADD COLUMN distributor_grade TEXT" },
+    { desc: 'sellers.special_discount_until', sql: "ALTER TABLE sellers ADD COLUMN special_discount_until DATETIME" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).
@@ -1066,6 +1070,25 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_suppliers_email', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL` },
     { name: 'idx_suppliers_status', sql: `CREATE INDEX IF NOT EXISTS idx_suppliers_status ON suppliers(status, created_at DESC)` },
+
+    // 🏭 2026-06-01 유통스타트 도매몰: 유통사 등급별 마진율 (어드민 편집). 유통사공급가 = 제조사공급가 × (1+margin_pct/100).
+    { name: 'distributor_grades', sql: `CREATE TABLE IF NOT EXISTS distributor_grades (
+      grade TEXT PRIMARY KEY,
+      label TEXT,
+      margin_pct REAL NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_special INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    // 기본 등급 시드 (어드민이 /admin 에서 마진율 편집). 고등급(A)일수록 저마진. SPECIAL=덤핑.
+    { name: 'seed: distributor_grades', sql: `INSERT OR IGNORE INTO distributor_grades (grade, label, margin_pct, sort_order, is_special) VALUES
+      ('A','A등급',10,1,0),
+      ('B','B등급',15,2,0),
+      ('C','C등급',20,3,0),
+      ('D','D등급(기본)',25,4,0),
+      ('OEM','OEM',8,5,0),
+      ('SPECIAL','특별할인(기간한정)',0,9,1)` },
 
     { name: 'supplier_balances', sql: `CREATE TABLE IF NOT EXISTS supplier_balances (
       supplier_id INTEGER PRIMARY KEY,
