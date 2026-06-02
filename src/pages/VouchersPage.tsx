@@ -12,7 +12,7 @@
  *   2. 금액권 그리드 (선택 브랜드 또는 전체) — 무한 스크롤
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
@@ -108,6 +108,96 @@ function getCategoryIcon(category: string): string {
 }
 
 const PAGE_SIZE = 30
+
+// 🛡️ 2026-06-01 (loading): 피드 카드 React.memo — 부모(스크롤 reveal/잔액 등) 재렌더 시 전체 카드
+//   재조정 방지. GroupBuyFeedCard/ReelCard 와 동일 패턴. 데이터/SSR/정렬/이미지속성 불변(순수 렌더 래퍼).
+//   props 는 p + aboveFold 만(둘 다 스크롤에 불변) → shallow compare 로 카드 재렌더 0.
+const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProduct; aboveFold: boolean }) {
+  const navigate = useNavigate()
+  const prefetchProduct = usePrefetchProduct()
+  const hasStrike = !!p.original_price && p.original_price > p.price
+  const discountRate = hasStrike
+    ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
+    : (p.discount_rate || 0)
+  const rating = Number(p.avg_rating || 0)
+  const reviewCount = Number(p.review_count || 0)
+  const soldCount = Number(p.sold_count || 0)
+  const soldLabel = soldCount >= 10000
+    ? `${(soldCount / 10000).toFixed(1).replace(/\.0$/, '')}만`
+    : soldCount >= 1000
+    ? `${(soldCount / 1000).toFixed(1).replace(/\.0$/, '')}천`
+    : String(soldCount)
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/vouchers/${p.id}`)}
+      onMouseEnter={() => prefetchProduct(p.id)}
+      onTouchStart={() => prefetchProduct(p.id)}
+      onFocus={() => prefetchProduct(p.id)}
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
+    >
+      <div
+        className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
+        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
+      >
+        {p.image_url ? (
+          <img
+            src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
+            srcSet={cfSrcSet(p.image_url, 300) || undefined}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+            alt={p.name}
+            width={300}
+            height={300}
+            loading={aboveFold ? 'eager' : 'lazy'}
+            fetchPriority={aboveFold ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={(e) => {
+              const el = e.currentTarget as HTMLImageElement
+              el.style.opacity = '1'
+              if (!p.dominant_color) {
+                const color = extractDominantColor(el)
+                if (color) reportDominantColor(p.id, color)
+              }
+            }}
+            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Gift className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+          </div>
+        )}
+      </div>
+      <div className="mt-2 flex flex-col flex-1">
+        {p.brand_name && (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold leading-none mb-1">[{p.brand_name}]</p>
+        )}
+        <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{p.name}</p>
+        <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+          {hasStrike ? `${formatNumber(p.original_price!)}딜` : ' '}
+        </p>
+        <div className="flex items-baseline gap-1 mt-0.5">
+          {discountRate > 0 && (
+            <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
+          )}
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}딜</span>
+        </div>
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center gap-0.5">
+            <span className="text-yellow-500">★</span>
+            {rating > 0 ? (
+              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+            ) : (
+              <span className="font-semibold text-gray-400 dark:text-gray-500">신규</span>
+            )}
+            {reviewCount > 0 && <span className="text-gray-400">({reviewCount})</span>}
+          </span>
+          {soldCount > 0 && <span>구매 {soldLabel}</span>}
+        </div>
+      </div>
+    </button>
+  )
+})
 
 // 🛡️ 2026-06-01: embedded — 홈(/)에서 교환권 본문을 재사용. SEO/자체헤더 skip + SSR 는 MAIN 슬롯에서 읽음.
 export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
@@ -487,95 +577,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6">
-              {products.map((p, idx) => {
-                const aboveFold = idx < 4
-                // 🛡️ 2026-05-23: BrowsePage 카드와 동일 디자인 (사용자 요청).
-                //   단위만 "원" → "딜". 원가 strikethrough + 할인% + 별점 + 구매수.
-                const hasStrike = !!p.original_price && p.original_price > p.price
-                const discountRate = hasStrike
-                  ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
-                  : (p.discount_rate || 0)
-                const rating = Number(p.avg_rating || 0)
-                const reviewCount = Number(p.review_count || 0)
-                const soldCount = Number(p.sold_count || 0)
-                const soldLabel = soldCount >= 10000
-                  ? `${(soldCount / 10000).toFixed(1).replace(/\.0$/, '')}만`
-                  : soldCount >= 1000
-                  ? `${(soldCount / 1000).toFixed(1).replace(/\.0$/, '')}천`
-                  : String(soldCount)
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => navigate(`/vouchers/${p.id}`)}
-                    onMouseEnter={() => prefetchProduct(p.id)}
-                    onTouchStart={() => prefetchProduct(p.id)}
-                    onFocus={() => prefetchProduct(p.id)}
-                    className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
-                  >
-                    <div
-                      className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
-                      style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
-                    >
-                      {p.image_url ? (
-                        <img
-                          src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
-                          srcSet={cfSrcSet(p.image_url, 300) || undefined}
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
-                          alt={p.name}
-                          width={300}
-                          height={300}
-                          loading={aboveFold ? 'eager' : 'lazy'}
-                          fetchPriority={aboveFold ? 'high' : 'auto'}
-                          decoding="async"
-                          onLoad={(e) => {
-                            const el = e.currentTarget as HTMLImageElement
-                            el.style.opacity = '1'
-                            if (!p.dominant_color) {
-                              const color = extractDominantColor(el)
-                              if (color) reportDominantColor(p.id, color)
-                            }
-                          }}
-                          style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Gift className="w-10 h-10 text-gray-300 dark:text-gray-600" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-col flex-1">
-                      {p.brand_name && (
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold leading-none mb-1">[{p.brand_name}]</p>
-                      )}
-                      <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{p.name}</p>
-                      <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
-                        {hasStrike ? `${formatNumber(p.original_price!)}딜` : ' '}
-                      </p>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        {discountRate > 0 && (
-                          <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
-                        )}
-                        <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}딜</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                        {/* 🛡️ 2026-05-27: rating > 0 일 때만 점수, 아니면 "신규" (BrowsePage 와 일관). */}
-                        <span className="inline-flex items-center gap-0.5">
-                          <span className="text-yellow-500">★</span>
-                          {rating > 0 ? (
-                            <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
-                          ) : (
-                            <span className="font-semibold text-gray-400 dark:text-gray-500">신규</span>
-                          )}
-                          {reviewCount > 0 && <span className="text-gray-400">({reviewCount})</span>}
-                        </span>
-                        {soldCount > 0 && <span>구매 {soldLabel}</span>}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
+              {products.map((p, idx) => (
+                <VoucherCard key={p.id} p={p} aboveFold={idx < 4} />
+              ))}
             </div>
             {/* 무한 스크롤 sentinel */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">

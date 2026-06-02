@@ -49,8 +49,9 @@ const STATUS_MAP = {
 } as const
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
+// 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
 //   장점: 외부 서비스 다운에 영향 X, latency 0, 오프라인에서도 렌더, 프라이버시.
-import { QRCodeSVG } from 'qrcode.react'
+const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
 
 // 🛡️ 2026-05-16: 카카오맵 후기 보너스 제출 버튼 (used voucher 에 노출)
 //   URL 또는 스크린샷 둘 중 하나 제출 → 백엔드가 OCR / 어드민 검증
@@ -154,7 +155,9 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
 function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
   return (
     <div className="mx-auto bg-white dark:bg-[#0A0A0A] p-2 rounded">
-      <QRCodeSVG value={value} size={size} level="M" includeMargin={false} />
+      <Suspense fallback={<div style={{ width: size, height: size }} className="animate-pulse bg-gray-100 dark:bg-[#1A1A1A] rounded" />}>
+        <QRCodeSVG value={value} size={size} level="M" includeMargin={false} />
+      </Suspense>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
@@ -21,6 +21,98 @@ import type { Product, SortOption } from './browse/types'
 interface BrowsePageProps {
   defaultCategory?: string
 }
+
+// 🛡️ 2026-06-01 (loading): 상품 카드 React.memo — 필터/정렬/무한스크롤 append 시 부모 재렌더로
+//   전체 카드 재조정되던 것을 차단. interested 는 per-card boolean(Set 아님) → 토글한 카드만 재렌더.
+//   GroupBuyFeedCard 패턴과 동일. SSR(__SSR_INITIAL_BROWSE__)/이미지속성/데이터 불변(순수 렌더 래퍼).
+const BrowseProductCard = memo(function BrowseProductCard({
+  product, aboveFold, isMealVoucher, interested, onToggleInterest,
+}: {
+  product: Product
+  aboveFold: boolean
+  isMealVoucher: boolean
+  interested: boolean
+  onToggleInterest: (e: React.MouseEvent, productId: number, productName: string | undefined, currentlyInterested: boolean) => void
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const prefetchProduct = usePrefetchProduct()
+  const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
+  const displayPrice = product.current_price || product.price
+  const hasStrike = !!(product.original_price && product.original_price > displayPrice)
+  const rating = (product as { avg_rating?: number }).avg_rating ?? 0
+  const soldCount = product.sold_count ?? 0
+  const soldLabel = soldCount >= 10000 ? `${(soldCount / 10000).toFixed(1)}만` : soldCount.toLocaleString('ko-KR')
+  return (
+    <button
+      onClick={() => navigate(`/products/${product.id}`)}
+      onMouseEnter={() => prefetchProduct(product.id)}
+      onTouchStart={() => prefetchProduct(product.id)}
+      onFocus={() => prefetchProduct(product.id)}
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
+    >
+      <div
+        className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl"
+        style={product.dominant_color ? { backgroundColor: product.dominant_color } : undefined}
+      >
+        {product.image_url ? (
+          <img
+            src={cfImage(product.image_url, { width: 300, format: 'auto' }) || product.image_url}
+            srcSet={cfSrcSet(product.image_url, 300) || undefined}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+            alt={product.name || t('browse.altProduct')}
+            width={300}
+            height={300}
+            className="w-full h-full object-cover"
+            loading={aboveFold ? 'eager' : 'lazy'}
+            fetchPriority={aboveFold ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={(e) => {
+              if (!product.dominant_color) {
+                const color = extractDominantColor(e.currentTarget as HTMLImageElement)
+                if (color) reportDominantColor(product.id, color)
+              }
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
+        )}
+        {isMealVoucher && (
+          <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
+            <Bell
+              onClick={(e: React.MouseEvent) => onToggleInterest(e, product.id, product.name, interested)}
+              className={`w-3 h-3 ${interested ? 'text-pink-500 fill-pink-500' : 'text-gray-300 dark:text-gray-600'}`}
+            />
+          </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-col flex-1">
+        <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{product.name}</p>
+        <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+          {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
+        </p>
+        <div className="flex items-baseline gap-1 mt-0.5">
+          {discountRate > 0 && (
+            <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
+          )}
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center gap-0.5">
+            <span className="text-yellow-500">★</span>
+            {rating > 0 ? (
+              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+            ) : (
+              <span className="font-semibold text-gray-400 dark:text-gray-500">신규</span>
+            )}
+          </span>
+          {soldCount > 0 && <span>구매 {soldLabel}</span>}
+        </div>
+      </div>
+    </button>
+  )
+})
 
 export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const { t } = useTranslation()
@@ -84,10 +176,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const isMealVoucher = category === 'meal_voucher'
   const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
 
-  const toggleInterest = (e: React.MouseEvent, productId: number, productName?: string) => {
+  // 🛡️ 2026-06-01 (loading): currentlyInterested 를 인자로 받아 interestedIds 클로저 제거 → useCallback 안정화
+  //   (memo 카드가 stable 콜백 받도록). 동작 동일.
+  const toggleInterest = useCallback((e: React.MouseEvent, productId: number, productName: string | undefined, currentlyInterested: boolean) => {
     e.stopPropagation()
     e.preventDefault()
-    const isAdding = !interestedIds.has(productId)
+    const isAdding = !currentlyInterested
     setInterestedIds(prev => {
       const next = new Set(prev)
       if (isAdding) next.add(productId)
@@ -109,7 +203,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       })
       toast.info(t('common.interestRemoved'))
     }
-  }
+  }, [t])
 
   // 카카오맵 초기화 (식사권 + 지도 모드일 때만)
   useEffect(() => {
@@ -494,90 +588,16 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
                   디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8 items-stretch">
-              {displayed.map((product, idx) => {
-                const aboveFold = idx < 4
-                const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
-                const displayPrice = product.current_price || product.price
-                const hasStrike = !!(product.original_price && product.original_price > displayPrice)
-                const rating = (product as { avg_rating?: number }).avg_rating ?? 0
-                const soldCount = product.sold_count ?? 0
-                const soldLabel = soldCount >= 10000
-                  ? `${(soldCount / 10000).toFixed(1)}만`
-                  : soldCount.toLocaleString('ko-KR')
-
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => navigate(`/products/${product.id}`)}
-                    onMouseEnter={() => prefetchProduct(product.id)}
-                    onTouchStart={() => prefetchProduct(product.id)}
-                    onFocus={() => prefetchProduct(product.id)}
-                    className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
-                  >
-                    <div
-                      className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl"
-                      style={product.dominant_color ? { backgroundColor: product.dominant_color } : undefined}
-                    >
-                      {product.image_url ? (
-                        <img
-                          src={cfImage(product.image_url, { width: 300, format: 'auto' }) || product.image_url}
-                          srcSet={cfSrcSet(product.image_url, 300) || undefined}
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
-                          alt={product.name || t('browse.altProduct')}
-                          width={300}
-                          height={300}
-                          className="w-full h-full object-cover"
-                          loading={aboveFold ? 'eager' : 'lazy'}
-                          fetchPriority={aboveFold ? 'high' : 'auto'}
-                          decoding="async"
-                          onLoad={(e) => {
-                            if (!product.dominant_color) {
-                              const color = extractDominantColor(e.currentTarget as HTMLImageElement)
-                              if (color) reportDominantColor(product.id, color)
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
-                      )}
-                      {isMealVoucher && (
-                        <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
-                          <Bell
-                            onClick={(e: React.MouseEvent) => toggleInterest(e, product.id, product.name)}
-                            className={`w-3 h-3 ${interestedIds.has(product.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-300 dark:text-gray-600'}`}
-                          />
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-2 flex flex-col flex-1">
-                      <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{product.name}</p>
-                      <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
-                        {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
-                      </p>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        {discountRate > 0 && (
-                          <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
-                        )}
-                        <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                        {/* 🛡️ 2026-05-27 (사용자 보고 — 리뷰 점수 적용 안 됨): rating > 0 일 때만 점수, 아니면 "신규".
-                              ProfileHeader 패턴과 일관 (review_count == 0 이면 별점 의미 없음). */}
-                        <span className="inline-flex items-center gap-0.5">
-                          <span className="text-yellow-500">★</span>
-                          {rating > 0 ? (
-                            <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
-                          ) : (
-                            <span className="font-semibold text-gray-400 dark:text-gray-500">신규</span>
-                          )}
-                        </span>
-                        {soldCount > 0 && <span>구매 {soldLabel}</span>}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
+              {displayed.map((product, idx) => (
+                <BrowseProductCard
+                  key={product.id}
+                  product={product}
+                  aboveFold={idx < 4}
+                  isMealVoucher={isMealVoucher}
+                  interested={interestedIds.has(product.id)}
+                  onToggleInterest={toggleInterest}
+                />
+              ))}
             </div>
 
             {/* 더보기 — sentinel div: observer가 보이면 자동 로드 + 버튼 fallback */}
