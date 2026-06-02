@@ -2,46 +2,26 @@
  * InterestListPage - 관심 맛집 목록
  * 다크 테마 (유저 대면 메인)
  */
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
-import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-
-interface InterestItem {
-  id: number
-  restaurant_name: string
-  product_id: number
-  type: string
-  created_at?: string
-}
+import { useMyInterests, useRemoveInterest, type InterestItem } from '@/hooks/queries/useMyInterests'
 
 export default function InterestListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [items, setItems] = useState<InterestItem[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/interest/my')
-      .then(r => {
-        if (r.data.success) setItems(r.data.data || [])
-      })
-      .catch(() => toast.error(t('interestList.loadError')))
-      .finally(() => setLoading(false))
-  }, [t])
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱 + optimistic 삭제/롤백).
+  const { data: items = [], isLoading: loading } = useMyInterests()
+  const removeMut = useRemoveInterest()
 
   const handleRemove = (item: InterestItem) => {
     if (!confirm(t('interestList.removeConfirm', { defaultValue: '관심 목록에서 삭제하시겠습니까?' }))) return
-    setItems(prev => prev.filter(i => i.id !== item.id))
-    api.post('/api/interest/remove', { product_id: item.product_id, type: item.type })
-      .then(() => toast.success(t('interestList.removed')))
-      .catch(() => {
-        setItems(prev => [...prev, item])
-        toast.error(t('interestList.removeError'))
-      })
+    removeMut.mutate(item, {
+      onSuccess: () => toast.success(t('interestList.removed')),
+      onError: () => toast.error(t('interestList.removeError')),
+    })
   }
 
   return (

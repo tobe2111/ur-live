@@ -48,6 +48,7 @@ export const queryKeys = {
   myOrders: (filters?: Record<string, unknown>) => ['my', 'orders', filters ?? {}] as const,
   myAppointments: () => ['my', 'appointments'] as const,
   myFollows: () => ['my', 'follows'] as const,
+  myInterests: () => ['my', 'interests'] as const,
 
   // 카테고리 / 메타
   meta: () => ['meta'] as const,
