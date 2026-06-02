@@ -1,24 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Copy, TrendingUp, Users, Gift, Loader2, Share2, ChevronRight } from 'lucide-react'
-import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/hooks/queries/useAffiliate'
 
 export default function AffiliatePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/affiliate/stats')
-      .then(r => { if (r.data.success) setData(r.data.data) })
-      .catch(() => toast.error(t('affiliate.loginRequired')))
-      .finally(() => setLoading(false))
-  }, [t])
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query.
+  const { data = null, isLoading: loading, isError } = useAffiliateStats()
+  useEffect(() => { if (isError) toast.error(t('affiliate.loginRequired')) }, [isError, t])
 
   const copyLink = (url: string) => {
     navigator.clipboard.writeText(url)
@@ -178,20 +172,7 @@ export default function AffiliatePage() {
 function TopGroupsToShare() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [groups, setGroups] = useState<Array<{
-    id: number; name: string; image_url?: string; price: number;
-    restaurant_name?: string; group_buy_target: number; group_buy_current: number;
-    group_buy_deadline?: string; progress_pct: number; my_potential_bonus: number;
-    share_url: string;
-  }>>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/affiliate/top-groups')
-      .then(r => { if (r.data?.success) setGroups(r.data.data || []) })
-      .catch(() => { /* silent */ })
-      .finally(() => setLoading(false))
-  }, [])
+  const { data: groups = [], isLoading: loading } = useAffiliateTopGroups()
 
   if (loading) return null
   if (groups.length === 0) return null
@@ -242,19 +223,7 @@ function TopGroupsToShare() {
 
 // 🛡️ 2026-05-15: 인플루언서 funnel — 카테고리별 / 일별 추이
 function FunnelStats() {
-  const [data, setData] = useState<{
-    total_referrals: number; total_earned: number;
-    by_category: Array<{ category: string; count: number; earned: number }>;
-    daily: Array<{ day: string; count: number; earned: number }>;
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/affiliate/funnel')
-      .then(r => { if (r.data?.success) setData(r.data.data) })
-      .catch(() => { /* silent */ })
-      .finally(() => setLoading(false))
-  }, [])
+  const { data, isLoading: loading } = useAffiliateFunnel()
 
   if (loading || !data || data.total_referrals === 0) return null
 

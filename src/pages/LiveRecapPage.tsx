@@ -2,52 +2,22 @@
  * /live/recap/:id — 종료된 라이브 다시보기 (VOD)
  * YouTube recordFromStart=true 로 생성된 VOD 를 동일 video_id 로 임베드.
  */
-import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Eye, ShoppingBag, Clock } from 'lucide-react'
-import api from '@/lib/api'
 import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
-
-interface RecapStream {
-  id: number
-  title: string
-  youtube_video_id: string | null
-  seller_name: string | null
-  viewer_count: number
-  ended_at: string | null
-  created_at: string
-  current_product: { id: number; name: string; price: number; image_url: string | null } | null
-}
+import { useLiveRecap } from '@/hooks/queries/useLiveRecap'
 
 export default function LiveRecapPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [stream, setStream] = useState<RecapStream | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [relatedStreams, setRelatedStreams] = useState<RecapStream[]>([])
-
-  useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    api.get(`/api/streams/${id}`)
-      .then(res => {
-        if (res.data.success) setStream(res.data.data)
-      })
-      .catch((e) => { if (import.meta.env.DEV) console.warn('[LiveRecap] stream load failed:', e) })
-      .finally(() => setLoading(false))
-
-    api.get('/api/streams?status=ended&limit=6')
-      .then(res => {
-        if (res.data.success) {
-          setRelatedStreams((res.data.data || []).filter((s: RecapStream) => String(s.id) !== id))
-        }
-      })
-      .catch((e) => { if (import.meta.env.DEV) console.warn('[LiveRecap] related streams failed:', e) })
-  }, [id])
+  // 🛡️ 2026-06-01 Tier2: 수동 2-fetch → useLiveRecap 단일 쿼리(id별 캐시).
+  const { data, isLoading: loading } = useLiveRecap(id)
+  const stream = data?.stream ?? null
+  const relatedStreams = data?.related ?? []
 
   if (loading) {
     return (

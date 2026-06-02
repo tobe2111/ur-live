@@ -1,33 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Clock, Share2, Tag } from 'lucide-react'
-import api from '@/lib/api'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { escapeHtml } from '@/shared/utils/html'
-
-interface BlogPost {
-  id: number; slug: string; title: string; summary: string; content: string
-  tags: string; author: string; thumbnail_url: string | null; published_at: string
-}
+import { useBlogPost } from '@/hooks/queries/useBlogPost'
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const [post, setPost] = useState<BlogPost | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (public 콘텐츠, slug별 캐시).
+  const { data: post = null, isLoading: loading } = useBlogPost(slug)
 
-  useEffect(() => {
-    if (!slug) return
-    window.scrollTo(0, 0)
-    api.get(`/api/blog/public/${slug}`)
-      .then(r => { if (r.data.success) setPost(r.data.data) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [slug])
+  useEffect(() => { window.scrollTo(0, 0) }, [slug])
 
   if (loading) {
     return (

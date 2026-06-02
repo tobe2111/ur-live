@@ -7,25 +7,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Search, MapPin, Calendar, Users, Star, SlidersHorizontal, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-
-interface StaySearchItem {
-  id: number
-  name: string
-  image_url?: string
-  property_type?: string
-  star_rating?: number | null
-  region_sido?: string
-  region_sigungu?: string
-  amenities?: string | null
-  price_from?: number | null
-  max_guests?: number | null
-  avg_rating?: number | null
-  review_count?: number
-}
+import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   hotel: '호텔', motel: '모텔', pension: '펜션', guesthouse: '게스트하우스',
@@ -35,11 +20,15 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 function todayIso() { return new Date().toISOString().slice(0, 10) }
 function tomorrowIso() { return new Date(Date.now() + 86400000).toISOString().slice(0, 10) }
 
+function buildQs(filters: Record<string, string | number>): string {
+  const qs = new URLSearchParams()
+  Object.entries(filters).forEach(([k, v]) => { if (v !== '' && v !== 0) qs.set(k, String(v)) })
+  return qs.toString()
+}
+
 export default function StaysSearchPage() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
-  const [items, setItems] = useState<StaySearchItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
 
   const [filters, setFilters] = useState({
@@ -55,26 +44,22 @@ export default function StaysSearchPage() {
     sort: params.get('sort') || 'recent',
   })
 
-  useEffect(() => { load() }, [filters.check_in, filters.check_out, filters.guests, filters.sort]) // eslint-disable-line
+  // 🛡️ 2026-06-01 Tier2: 수동 load → React Query. queryQs 가 바뀔 때만 재요청.
+  //   자동검색은 4개 필터(체크인/아웃/인원/정렬), 나머지는 '적용' 버튼에서 commit (기존 동작 유지).
+  const [queryQs, setQueryQs] = useState(() => buildQs(filters))
+  const { data: items = [], isLoading: loading } = useStaysSearch(queryQs)
 
-  async function load() {
-    setLoading(true)
-    try {
-      const qs = new URLSearchParams()
-      Object.entries(filters).forEach(([k, v]) => {
-        if (v !== '' && v !== 0) qs.set(k, String(v))
-      })
-      const res = await api.get(`/api/group-buy/stays/search?${qs.toString()}`)
-      if (res.data?.success) setItems(res.data.data || [])
-    } catch { /* fail-soft */ } finally { setLoading(false) }
-  }
+  useEffect(() => {
+    setQueryQs(buildQs(filters))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.check_in, filters.check_out, filters.guests, filters.sort])
 
   function apply() {
     const next = new URLSearchParams()
     Object.entries(filters).forEach(([k, v]) => { if (v !== '' && v !== 0) next.set(k, String(v)) })
     setParams(next)
     setShowFilters(false)
-    load()
+    setQueryQs(buildQs(filters))
   }
 
   const nights = Math.max(1, Math.round((new Date(filters.check_out).getTime() - new Date(filters.check_in).getTime()) / 86400000))

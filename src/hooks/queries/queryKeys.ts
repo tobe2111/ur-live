@@ -67,4 +67,10 @@ export const queryKeys = {
   // 라이브
   liveStreams: (filters?: Record<string, unknown>) => ['live', 'streams', filters ?? {}] as const,
   liveStream: (id: number | string) => ['live', 'stream', String(id)] as const,
+  liveRecap: (id: number | string) => ['live', 'recap', String(id)] as const,
+
+  // 콘텐츠 / 어필리에이트 / 검색
+  blogPost: (slug: string) => ['blog', 'post', slug] as const,
+  affiliate: (section: string) => ['affiliate', section] as const,
+  staysSearch: (qs: string) => ['stays', 'search', qs] as const,
 } as const
