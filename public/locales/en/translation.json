@@ -2332,7 +2332,10 @@
       "revenue": "Revenue",
       "settings": "Settings",
       "backToMain": "Returning to main",
-      "backToUser": "Back to user"
+      "backToUser": "Back to user",
+      "products": "Products",
+      "groupbuy": "Group Buy & Stays",
+      "ordersCustomers": "Orders & Customers"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",

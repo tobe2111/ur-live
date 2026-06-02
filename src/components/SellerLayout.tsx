@@ -57,20 +57,32 @@ const NAV_GROUPS: {
     ],
   },
   {
-    labelKey: 'seller.layout.sales',
+    // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
+    labelKey: 'seller.layout.products',
     items: [
       { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' },
       // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
       { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' },
       { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package, mode: 'common' },
+      { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3, mode: 'common' },
+    ],
+  },
+  {
+    labelKey: 'seller.layout.groupbuy',
+    mode: 'store',
+    items: [
       // group-buy 는 매장 voucher 핵심 — store mode 우선이지만 인플도 voucher 발행 가능 → both 모드.
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
       // 🛡️ 2026-05-18: 숙소 공구 — 객실/캘린더 (PR 2/6).
       { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store' },
       // 🛡️ 2026-05-18: 숙소 예약 관리 + KPI — PR 4/6.
       { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store' },
+    ],
+  },
+  {
+    labelKey: 'seller.layout.ordersCustomers',
+    items: [
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag, mode: 'common' },
-      { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3, mode: 'common' },
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },

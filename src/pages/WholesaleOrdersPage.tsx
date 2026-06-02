@@ -27,6 +27,7 @@ const STATUS_LABEL: Record<string, { t: string; c: string }> = {
   PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400' },
   REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' },
   CANCELLED: { t: '취소', c: 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400' },
+  EXPIRED: { t: '만료', c: 'bg-gray-100 text-gray-400 dark:bg-[#1A1A1A] dark:text-gray-500' },
   FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400' },
 }
 

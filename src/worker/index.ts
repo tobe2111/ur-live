@@ -1766,7 +1766,22 @@ app.onError(errorHandler);
 import { handleCronScheduled } from './scheduled';
 
 import { swallow } from './utils/swallow';
+// 🏭 2026-06-01 유통스타트 도메인 진입 라우팅 (Phase 5, lock-safe 추가).
+//   utongstart.com 루트 접속 → /wholesale 로 서버 302. 클라이언트 redirect 의 첫 깜빡임 제거.
+//   ⚠️ 잠긴 SSR inject / caches.default 블록은 미수정 — fetch 진입부에 additive 가드만.
+//   live.ur-team.com 등 다른 호스트는 즉시 app.fetch 로 통과(no-op).
+const WHOLESALE_HOSTS = new Set(['utongstart.com', 'www.utongstart.com']);
+
 export default {
-  fetch: app.fetch,
+  fetch: (request: Request, env: unknown, ctx: unknown) => {
+    try {
+      const url = new URL(request.url);
+      if (WHOLESALE_HOSTS.has(url.hostname.toLowerCase()) && (url.pathname === '/' || url.pathname === '')) {
+        return Response.redirect(`${url.origin}/wholesale`, 302);
+      }
+    } catch { /* URL 파싱 실패 시 통과 */ }
+    // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
+    return app.fetch(request, env, ctx);
+  },
   scheduled: handleCronScheduled,
 };

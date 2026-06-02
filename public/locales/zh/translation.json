@@ -2331,7 +2331,10 @@
       "revenue": "收入",
       "settings": "设置",
       "backToMain": "返回主页",
-      "backToUser": "返回用户模式"
+      "backToUser": "返回用户模式",
+      "products": "商品·采购",
+      "groupbuy": "团购·住宿",
+      "ordersCustomers": "订单·客户"
     },
     "liveChat": {
       "title": "实时聊天",

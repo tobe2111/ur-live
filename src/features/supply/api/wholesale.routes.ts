@@ -231,6 +231,10 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
   const { DB } = c.env
   try {
     await ensureOrderTables(DB)
+    // 만료 정리(best-effort): 이 유통사의 1시간 경과 미결제(PENDING) 주문 = 체크아웃 이탈 → EXPIRED.
+    await DB.prepare(
+      "UPDATE wholesale_orders SET status='EXPIRED' WHERE distributor_seller_id=? AND status='PENDING' AND created_at < datetime('now','-1 hour')"
+    ).bind(sellerId).run().catch(() => { /* best-effort */ })
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const rawItems = Array.isArray(body.items) ? body.items : []
     if (!rawItems.length) return c.json({ success: false, error: '주문 항목이 없습니다' }, 400)

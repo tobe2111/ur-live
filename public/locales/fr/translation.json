@@ -1667,7 +1667,10 @@
       "revenue": "Revenus",
       "settings": "Paramètres",
       "backToMain": "Retour à l'accueil",
-      "backToUser": "Retour utilisateur"
+      "backToUser": "Retour utilisateur",
+      "products": "Produits",
+      "groupbuy": "Achats groupés & séjours",
+      "ordersCustomers": "Commandes & clients"
     },
     "nav": {
       "products": "Produits",
