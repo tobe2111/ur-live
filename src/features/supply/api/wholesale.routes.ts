@@ -39,6 +39,10 @@ async function ensureOrderTables(DB: D1Database) {
     courier TEXT,
     tracking_number TEXT,
     shipped_at DATETIME,
+    ship_to_name TEXT,
+    ship_to_phone TEXT,
+    ship_to_address TEXT,
+    ship_to_postal TEXT,
     created_at DATETIME DEFAULT (datetime('now')),
     paid_at DATETIME
   )`).run().catch(swallow('wholesale:create-orders'))
@@ -51,7 +55,11 @@ async function ensureOrderTables(DB: D1Database) {
     qty INTEGER NOT NULL DEFAULT 1,
     base_supply_price INTEGER NOT NULL DEFAULT 0,
     distributor_unit_price INTEGER NOT NULL DEFAULT 0,
-    line_total INTEGER NOT NULL DEFAULT 0
+    line_total INTEGER NOT NULL DEFAULT 0,
+    courier TEXT,
+    tracking_number TEXT,
+    shipped_at DATETIME,
+    line_status TEXT NOT NULL DEFAULT 'PENDING'
   )`).run().catch(swallow('wholesale:create-items'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:idx1'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)`).run().catch(swallow('wholesale:idx2'))
@@ -269,11 +277,22 @@ app.post('/orders', async (c) => {
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
 
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
+
+    // 배송지 스냅샷 — body 우선, 없으면 셀러 프로필. 제조사(공급자) 직배송에 사용.
+    const shipFromProfile = await DB.prepare(
+      'SELECT recipient_name, shipping_phone, shipping_address, shipping_postal_code, name FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ recipient_name: string | null; shipping_phone: string | null; shipping_address: string | null; shipping_postal_code: string | null; name: string | null }>().catch(() => null)
+    const ship = (body.shipping || {}) as Record<string, unknown>
+    const shipName = String(ship.name || shipFromProfile?.recipient_name || shipFromProfile?.name || '').slice(0, 60) || null
+    const shipPhone = String(ship.phone || shipFromProfile?.shipping_phone || '').slice(0, 30) || null
+    const shipAddr = String(ship.address || shipFromProfile?.shipping_address || '').slice(0, 300) || null
+    const shipPostal = String(ship.postal || shipFromProfile?.shipping_postal_code || '').slice(0, 20) || null
+
     const tossOrderId = `WHS-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     const ins = await DB.prepare(`
-      INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total)
-      VALUES (?, ?, 'PENDING', ?, ?, ?, ?)
-    `).bind(sellerId, tossOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal).run()
+      INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
+      VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(sellerId, tossOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shipName, shipPhone, shipAddr, shipPostal).run()
     const orderId = Number(ins.meta?.last_row_id)
 
     for (const l of lines) {

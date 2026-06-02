@@ -128,6 +128,9 @@ export default function SupplierDashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600 hidden sm:inline">{me?.profile.business_name}</span>
+            <button onClick={() => navigate('/supplier/wholesale-orders')} className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900 font-medium">
+              <Truck className="w-4 h-4" /> {t('supplier.wholesaleOrders', { defaultValue: '도매 주문' })}
+            </button>
             <button onClick={logout} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
               <LogOut className="w-4 h-4" /> {t('supplier.logout', { defaultValue: '로그아웃' })}
             </button>

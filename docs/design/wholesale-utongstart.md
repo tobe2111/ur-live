@@ -124,10 +124,14 @@
 - [x] **Phase 1b — 어드민 설정 UI** (commit, 2026-06-01)
   - `distributor-admin.routes.ts` (`/api/admin/distributor`): 등급 마진율 편집 + 유통사 검색/등급배정 + 특별할인 종료일
   - `AdminDistributorGradesPage` (`/admin/distributor-grades`) + AdminLayout '유통사 등급' 메뉴
-- [ ] **Phase 2 — 유통사 도매 카탈로그 + B2B 주문(선결제)**: 유통사가 자기 등급 공급가로 보고 Toss 선결제 주문 → 유통스타트가 제조사에 base 정산(기존 supplier_settlements 재사용), 마진=플랫폼수익. 제조사 신원 비노출.
-- [ ] **Phase 3 — 제조사 운영**: 주문처리(송장입력) / 반품처리(C/S)
+- [x] **Phase 2 — 유통사 도매 카탈로그 + B2B 주문(선결제)** (commit, 2026-06-01)
+  - `wholesale.routes.ts`: /me /catalog /catalog/:id /orders(생성) /orders/confirm(Toss SSOT+CAS+재고+서버금액검증) /orders 목록·상세. 제조사가·신원 비노출.
+  - 페이지 5종 (카탈로그/상세/체크아웃/성공/내역). 배송지 스냅샷.
+- [x] **Phase 3 — 제조사 운영** (commit, 2026-06-01)
+  - `wholesale-supplier.routes.ts` (`/api/supplier/wholesale`): /orders(내 라인+배송지) /items/:id/ship(송장) /orders/:id/refund(반품→cancelTossPayment+재고복원). 라인별 발송, 전 라인 발송 시 주문 SHIPPED.
+  - `SupplierWholesaleOrdersPage` + 대시보드 '도매 주문' 링크.
 - [ ] **Phase 4 — 세금/거래내역/제안**: 거래내역서 + 세금계산서(1차 수동) 양방향 + 상품제안(플랫폼→유통사) + 제조사 컨택/제품등록요청
-- [ ] **Phase 5 — utongstart.com 도메인 인식 라우팅** (DNS 등록은 사용자 1회)
+- [x] **Phase 5 — utongstart.com 도메인 인식 라우팅** (commit, 2026-06-01 — DNS 등록은 사용자 1회)
 
 ---
 

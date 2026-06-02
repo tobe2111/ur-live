@@ -1104,6 +1104,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       courier TEXT,
       tracking_number TEXT,
       shipped_at DATETIME,
+      ship_to_name TEXT,
+      ship_to_phone TEXT,
+      ship_to_address TEXT,
+      ship_to_postal TEXT,
       created_at DATETIME DEFAULT (datetime('now')),
       paid_at DATETIME
     )` },
@@ -1116,7 +1120,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       qty INTEGER NOT NULL DEFAULT 1,
       base_supply_price INTEGER NOT NULL DEFAULT 0,
       distributor_unit_price INTEGER NOT NULL DEFAULT 0,
-      line_total INTEGER NOT NULL DEFAULT 0
+      line_total INTEGER NOT NULL DEFAULT 0,
+      courier TEXT,
+      tracking_number TEXT,
+      shipped_at DATETIME,
+      line_status TEXT NOT NULL DEFAULT 'PENDING'
     )` },
     { name: 'idx_wholesale_orders_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)` },
     { name: 'idx_wholesale_items_order', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)` },

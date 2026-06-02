@@ -10,6 +10,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 const SupplierLoginPage = lazy(() => import('@/pages/SupplierLoginPage'))
 const SupplierRegisterPage = lazy(() => import('@/pages/SupplierRegisterPage'))
 const SupplierDashboardPage = lazy(() => import('@/pages/SupplierDashboardPage'))
+const SupplierWholesaleOrdersPage = lazy(() => import('@/pages/SupplierWholesaleOrdersPage'))
 
 export function SupplierRoutes() {
   return (
@@ -17,6 +18,7 @@ export function SupplierRoutes() {
       <Route path="/supplier/login" element={<ErrorBoundary><SupplierLoginPage /></ErrorBoundary>} />
       <Route path="/supplier/register" element={<ErrorBoundary><SupplierRegisterPage /></ErrorBoundary>} />
       <Route path="/supplier" element={<ErrorBoundary><SupplierDashboardPage /></ErrorBoundary>} />
+      <Route path="/supplier/wholesale-orders" element={<ErrorBoundary><SupplierWholesaleOrdersPage /></ErrorBoundary>} />
     </>
   )
 }
