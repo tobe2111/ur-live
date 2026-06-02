@@ -11,6 +11,7 @@
  * 멱등: 같은 wholesale_order_id + source='wholesale' 이미 있으면 재적립 안 함.
  */
 import { recordLedger } from '@/worker/utils/ledger'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 const REFUND_WINDOW_DAYS = 7
 
@@ -52,6 +53,7 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   `).bind(wholesaleOrderId).all<WholesaleLine>().catch(() => ({ results: [] as WholesaleLine[] }))
 
   let credited = 0
+  const notifySuppliers = new Set<number>()
   const availableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
@@ -77,7 +79,18 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
         metadata: { product_id: r.product_id, qty, wholesale_order_id: wholesaleOrderId },
       })
     } catch { /* ledger best-effort */ }
+    notifySuppliers.add(r.supplier_id)
     credited++
+  }
+
+  // 제조사 대시보드 알림 — 주문 접수 시 발송 준비 안내 (제조사당 1회, best-effort).
+  for (const sid of notifySuppliers) {
+    try {
+      await createDashboardNotification(
+        DB, 'supplier', String(sid), 'wholesale_order',
+        '새 도매 주문', '도매 주문이 접수되었습니다. 발송을 준비해주세요.', '/supplier/wholesale-orders',
+      )
+    } catch { /* best-effort */ }
   }
   return credited
 }
