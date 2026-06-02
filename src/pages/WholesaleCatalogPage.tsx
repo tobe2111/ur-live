@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Package, Search, Loader2, Tag, ShoppingCart, Receipt, ClipboardList, Sparkles } from 'lucide-react'
 import { formatWon } from '@/utils/format'
+import { useWholesaleCatalog, useWholesaleMe, useWholesaleProposals } from '@/hooks/queries/useWholesale'
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 카탈로그 (Phase 2). 등급가만 노출, 제조사 신원 비노출.
 
@@ -31,35 +31,20 @@ const GRADE_LABEL: Record<string, string> = {
 export default function WholesaleCatalogPage() {
   const navigate = useNavigate()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const h = { headers: { Authorization: `Bearer ${token}` } }
 
-  const [me, setMe] = useState<MeInfo | null>(null)
-  const [items, setItems] = useState<CatalogItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [authErr, setAuthErr] = useState(false)
-  const [proposals, setProposals] = useState<CatalogItem[]>([])
+  const [committedSearch, setCommittedSearch] = useState('')
 
-  const loadCatalog = useCallback((q: string) => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (q) params.set('search', q)
-    api.get(`/api/wholesale/catalog?${params.toString()}`, h)
-      .then(r => { if (r.data.success) setItems(r.data.items || []) })
-      .catch(e => { if (e?.response?.status === 401) setAuthErr(true); if (import.meta.env.DEV) console.warn(e) })
-      .finally(() => setLoading(false))
-  }, [token])
-
-  useEffect(() => {
-    if (!token) { setAuthErr(true); setLoading(false); return }
-    api.get('/api/wholesale/me', h)
-      .then(r => { if (r.data.success) setMe(r.data) })
-      .catch(e => { if (e?.response?.status === 401) setAuthErr(true) })
-    api.get('/api/wholesale/proposals', h)
-      .then(r => { if (r.data.success) setProposals((r.data.proposals || []).map((p: { product_id: number } & CatalogItem) => ({ ...p, id: p.product_id }))) })
-      .catch(() => { /* optional */ })
-    loadCatalog('')
-  }, [token, loadCatalog])
+  // 🛡️ 2026-06-01 Tier2: 수동 3-fetch → React Query 훅 3종. 검색은 form submit 시 commit.
+  const catalogQ = useWholesaleCatalog(committedSearch)
+  const meQ = useWholesaleMe()
+  const proposalsQ = useWholesaleProposals()
+  const items = (catalogQ.data ?? []) as unknown as CatalogItem[]
+  const me = (meQ.data ?? null) as MeInfo | null
+  const proposals = (proposalsQ.data ?? []) as unknown as CatalogItem[]
+  const loading = catalogQ.isLoading
+  const authErr = !token || catalogQ.isError || meQ.isError
+  const loadCatalog = (q: string) => setCommittedSearch(q)
 
   if (authErr) {
     return (

@@ -1,24 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Package } from 'lucide-react'
 import { formatWon } from '@/utils/format'
+import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 
 // 🏭 2026-06-01 유통스타트 — 유통사 도매 주문 내역 (Phase 2).
-
-interface OrderRow {
-  id: number
-  toss_order_id: string
-  status: string
-  grade: string | null
-  subtotal: number
-  courier: string | null
-  tracking_number: string | null
-  created_at: string
-  paid_at: string | null
-  shipped_at: string | null
-}
 
 const STATUS_LABEL: Record<string, { t: string; c: string }> = {
   PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' },
@@ -34,16 +21,12 @@ const STATUS_LABEL: Record<string, { t: string; c: string }> = {
 export default function WholesaleOrdersPage() {
   const navigate = useNavigate()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const [orders, setOrders] = useState<OrderRow[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query.
+  const { data: orders = [], isLoading: loading } = useWholesaleOrders()
 
   useEffect(() => {
-    if (!token) { navigate('/seller/login'); return }
-    api.get('/api/wholesale/orders', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => { if (r.data.success) setOrders(r.data.orders || []) })
-      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
-      .finally(() => setLoading(false))
-  }, [token])
+    if (!token) navigate('/seller/login')
+  }, [token, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">

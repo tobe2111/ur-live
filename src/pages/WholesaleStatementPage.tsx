@@ -1,14 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Printer } from 'lucide-react'
 import { formatWon } from '@/utils/format'
+import { useWholesaleStatement } from '@/hooks/queries/useWholesale'
 
 // 🏭 2026-06-01 유통스타트 — 거래내역서 (유통사 매입 내역, 인쇄 가능) Phase 4.
-
-interface OrderRow { id: number; status: string; subtotal: number; grade: string | null; paid_at: string | null; created_at: string }
-interface Summary { count: number; total_paid: number; total_refunded: number; net: number }
 
 const STATUS_KO: Record<string, string> = { PAID: '결제완료', SHIPPED: '발송완료', REFUNDED: '환불' }
 
@@ -20,22 +17,16 @@ export default function WholesaleStatementPage() {
 
   const [from, setFrom] = useState(monthAgo)
   const [to, setTo] = useState(today)
-  const [orders, setOrders] = useState<OrderRow[]>([])
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get(`/api/wholesale/statement?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => { if (r.data.success) { setOrders(r.data.orders || []); setSummary(r.data.summary) } })
-      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
-      .finally(() => setLoading(false))
-  }, [from, to, token])
+  // 🛡️ 2026-06-01 Tier2: 수동 load → React Query. '조회' 버튼이 q 를 commit (날짜 입력 중 재요청 방지).
+  const [q, setQ] = useState({ from: monthAgo, to: today })
+  const { data, isLoading: loading } = useWholesaleStatement(q.from, q.to)
+  const orders = data?.orders ?? []
+  const summary = data?.summary ?? null
+  const load = () => setQ({ from, to })
 
   useEffect(() => {
-    if (!token) { navigate('/seller/login'); return }
-    load()
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!token) navigate('/seller/login')
+  }, [token, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">

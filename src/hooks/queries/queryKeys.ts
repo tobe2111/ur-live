@@ -73,4 +73,7 @@ export const queryKeys = {
   blogPost: (slug: string) => ['blog', 'post', slug] as const,
   affiliate: (section: string) => ['affiliate', section] as const,
   staysSearch: (qs: string) => ['stays', 'search', qs] as const,
+
+  // 유통스타트(도매) B2B
+  wholesale: (section: string, param = '') => ['wholesale', section, param] as const,
 } as const
