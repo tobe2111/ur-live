@@ -250,6 +250,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.special_discount_until', sql: "ALTER TABLE sellers ADD COLUMN special_discount_until DATETIME" },
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
+    { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).
@@ -1103,6 +1104,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       supply_total INTEGER NOT NULL DEFAULT 0,
       margin_total INTEGER NOT NULL DEFAULT 0,
       payment_key TEXT,
+      refunded_amount INTEGER NOT NULL DEFAULT 0,
       courier TEXT,
       tracking_number TEXT,
       shipped_at DATETIME,

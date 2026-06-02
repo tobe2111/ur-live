@@ -88,7 +88,7 @@ export default function SupplierWholesaleOrdersPage() {
           <div className="space-y-3">
             {lines.map(l => {
               const shipped = l.line_status === 'SHIPPED'
-              const refunded = l.order_status === 'REFUNDED'
+              const refunded = l.line_status === 'REFUNDED'
               const d = draft[l.item_id] || { courier: l.courier || '', tracking: l.tracking_number || '' }
               return (
                 <div key={l.item_id} className="bg-white rounded-xl border border-gray-200 p-4">

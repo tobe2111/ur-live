@@ -16,8 +16,9 @@ import {
   resolveDistributorPrice, marginForGrade, effectiveGrade,
   type GradeMargin, type DistributorGrade,
 } from '@/lib/distributor-pricing'
-import { confirmTossPayment } from '@/worker/utils/toss-gateway'
+import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -37,6 +38,7 @@ async function ensureOrderTables(DB: D1Database) {
     supply_total INTEGER NOT NULL DEFAULT 0,
     margin_total INTEGER NOT NULL DEFAULT 0,
     payment_key TEXT,
+    refunded_amount INTEGER NOT NULL DEFAULT 0,
     courier TEXT,
     tracking_number TEXT,
     shipped_at DATETIME,
@@ -223,7 +225,7 @@ app.get('/catalog/:id', async (c) => {
 })
 
 // ── POST /orders — B2B 주문 생성(PENDING) + Toss 결제 파라미터 반환 ────────────
-app.post('/orders', async (c) => {
+app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
@@ -314,7 +316,7 @@ app.post('/orders', async (c) => {
 })
 
 // ── POST /orders/confirm — Toss 승인 + 멱등 PAID 전환 + 재고 차감 ──────────────
-app.post('/orders/confirm', async (c) => {
+app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
@@ -354,13 +356,34 @@ app.post('/orders/confirm', async (c) => {
       return c.json({ success: true, order_id: order.id, already: true })
     }
 
-    // 재고 차감 (best-effort, 0 미만 방지)
+    // 재고 원자적 차감 (oversell 가드) — stock NULL(무제한)은 통과, stock<qty 면 실패.
+    //   동시 주문이 마지막 재고를 동시에 claim 하는 것을 차단. 실패 시 전액 환불 + 롤백.
     const items = await DB.prepare('SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id = ?')
       .bind(order.id).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
-    for (const it of items.results || []) {
-      await DB.prepare(
-        "UPDATE products SET stock = MAX(0, COALESCE(stock,0) - ?), sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ?"
-      ).bind(it.qty, it.qty, it.product_id).run().catch(() => { /* best-effort */ })
+    const lineList = items.results || []
+    const decremented: Array<{ product_id: number; qty: number }> = []
+    let oversold = false
+    for (const it of lineList) {
+      const upd = await DB.prepare(
+        "UPDATE products SET stock = stock - ?, sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ? AND (stock IS NULL OR stock >= ?)"
+      ).bind(it.qty, it.qty, it.product_id, it.qty).run().catch(() => ({ meta: { changes: 0 } }))
+      if ((upd.meta?.changes ?? 0) === 0) { oversold = true; break }
+      decremented.push(it)
+    }
+
+    if (oversold) {
+      // 롤백 — 차감 성공분 복원.
+      for (const d of decremented) {
+        await DB.prepare(
+          "UPDATE products SET stock = stock + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
+        ).bind(d.qty, d.qty, d.product_id).run().catch(() => { /* best-effort */ })
+      }
+      // 자동 전액 환불 (이미 승인된 결제) + 주문 실패 처리.
+      try {
+        await cancelTossPayment({ env: c.env, paymentKey, cancelReason: '재고 부족(동시주문) 자동 환불', idempotencyKey: `whs-oversell-${order.id}` })
+      } catch { /* best-effort */ }
+      await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(order.id).run().catch(() => {})
+      return c.json({ success: false, error: '재고가 부족하여 자동 환불되었습니다. 다시 시도해주세요.', code: 'OVERSOLD' }, 409)
     }
 
     // 제조사 정산 적립 (멱등, fail-soft — 정산 실패가 결제완료를 막지 않음).

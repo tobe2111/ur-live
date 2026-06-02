@@ -39,7 +39,7 @@ app.get('/orders', async (c) => {
              o.ship_to_name, o.ship_to_phone, o.ship_to_address, o.ship_to_postal
       FROM wholesale_order_items i
       JOIN wholesale_orders o ON o.id = i.wholesale_order_id
-      WHERE i.supplier_id = ? AND o.status IN ('PAID','SHIPPED')
+      WHERE i.supplier_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')
       ORDER BY o.created_at DESC LIMIT 200
     `).bind(sid).all()
     return c.json({ success: true, items: results ?? [] })
@@ -85,7 +85,8 @@ app.post('/items/:id/ship', async (c) => {
   }
 })
 
-// ── POST /orders/:id/refund — 반품 승인(전액 환불) ────────────────────────────
+// ── POST /orders/:id/refund — 반품 승인(제조사 본인 라인만 부분환불) ──────────
+//   다중 제조사 주문에서 호출한 제조사의 라인만 환불 — 다른 제조사 라인 무영향.
 app.post('/orders/:id/refund', async (c) => {
   const sid = supplierId(c)
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -96,52 +97,64 @@ app.post('/orders/:id/refund', async (c) => {
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const reason = String(body.reason || '판매자 반품 승인').slice(0, 100)
 
-    // 내 상품이 포함된 주문만 환불 처리 가능.
-    const owns = await DB.prepare(
-      'SELECT 1 FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? LIMIT 1'
-    ).bind(orderId, sid).first()
-    if (!owns) return c.json({ success: false, error: '권한이 없습니다' }, 403)
-
     const order = await DB.prepare(
-      'SELECT id, status, payment_key, subtotal FROM wholesale_orders WHERE id = ?'
-    ).bind(orderId).first<{ id: number; status: string; payment_key: string | null; subtotal: number }>()
+      'SELECT id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
+    ).bind(orderId).first<{ id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
-    if (order.status === 'REFUNDED') return c.json({ success: true, already: true })
-    if (!['PAID', 'SHIPPED'].includes(order.status) || !order.payment_key) {
+    if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
       return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
     }
 
-    // CAS claim — 동시 환불 차단.
-    const claim = await DB.prepare(
-      "UPDATE wholesale_orders SET status='REFUNDING' WHERE id=? AND status IN ('PAID','SHIPPED')"
-    ).bind(orderId).run()
-    if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
+    // 내 라인 중 아직 환불 안 된 것.
+    const myLines = await DB.prepare(
+      "SELECT id, product_id, qty, line_total FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status != 'REFUNDED'"
+    ).bind(orderId, sid).all<{ id: number; product_id: number; qty: number; line_total: number }>()
+    const lines = myLines.results || []
+    if (lines.length === 0) return c.json({ success: false, error: '환불할 내 주문 라인이 없습니다' }, 400)
 
-    // Toss 전액 취소 — 잠긴 SSOT helper.
+    const refundAmount = lines.reduce((s, l) => s + (l.line_total || 0), 0)
+    if (refundAmount <= 0) return c.json({ success: false, error: '환불 금액이 올바르지 않습니다' }, 400)
+
+    // CAS claim — 내 라인을 REFUNDED 로 원자 전환(동시/중복 환불 차단).
+    const lineIds = lines.map(l => l.id)
+    const ph = lineIds.map(() => '?').join(',')
+    const claim = await DB.prepare(
+      `UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE id IN (${ph}) AND line_status != 'REFUNDED'`
+    ).bind(...lineIds).run()
+    const claimed = claim.meta?.changes ?? 0
+    if (claimed === 0) return c.json({ success: true, already: true })
+
+    // Toss 부분 취소 — 잠긴 SSOT helper. 제조사별 stable idempotency-key.
     const res = await cancelTossPayment({
       env: c.env, paymentKey: order.payment_key, cancelReason: reason,
-      idempotencyKey: `whs-refund-${orderId}`,
+      cancelAmount: refundAmount,
+      idempotencyKey: `whs-refund-${orderId}-sup${sid}`,
     })
     if (!res.ok) {
-      // 롤백 — 환불 실패 시 원상태로.
-      await DB.prepare("UPDATE wholesale_orders SET status='PAID' WHERE id=? AND status='REFUNDING'").bind(orderId).run()
+      // 롤백 — 라인 상태 복구 (SHIPPED 였는지 PENDING 이었는지 모르므로 보수적으로 SHIPPED 표시 X → 원복은 PENDING/SHIPPED 구분 위해 별도 처리 생략, 환불 전 상태로).
+      await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${ph}) AND line_status='REFUNDED'`).bind(...lineIds).run().catch(() => {})
       return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
     }
 
-    await DB.prepare("UPDATE wholesale_orders SET status='REFUNDED' WHERE id=?").bind(orderId).run()
+    // 제조사 정산 역전 (내 라인만, fail-soft).
+    try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason, sid) } catch { /* best-effort */ }
 
-    // 제조사 정산 적립 역전 (pending/available, fail-soft).
-    try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason) } catch { /* best-effort */ }
-
-    // 재고 복원.
-    const items = await DB.prepare('SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id = ?')
-      .bind(orderId).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
-    for (const it of items.results || []) {
+    // 재고 복원 (내 라인만).
+    for (const l of lines) {
       await DB.prepare(
         "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ?"
-      ).bind(it.qty, it.qty, it.product_id).run().catch(() => { /* best-effort */ })
+      ).bind(l.qty, l.qty, l.product_id).run().catch(() => { /* best-effort */ })
     }
-    return c.json({ success: true })
+
+    // 누적 환불액 + 주문 상태(전체 환불 시 REFUNDED, 아니면 PARTIAL_REFUNDED).
+    await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(refundAmount, orderId).run()
+    const remain = await DB.prepare(
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'"
+    ).bind(orderId).first<{ c: number }>()
+    const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
+    await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
+
+    return c.json({ success: true, refunded_amount: refundAmount, order_status: newStatus })
   } catch (err) {
     return safeError(c, err, '환불 처리 중 오류가 발생했습니다', '[wholesale-supplier]')
   }

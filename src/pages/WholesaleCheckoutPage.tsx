@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
+import api from '@/lib/api'
 import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
 import { getSellerId } from '@/lib/seller-auth'
 import { formatWon } from '@/utils/format'
@@ -16,18 +17,40 @@ interface OrderState { orderId: string; amount: number; orderName: string }
 export default function WholesaleCheckoutPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const order = (location.state || null) as OrderState | null
+  const [sp] = useSearchParams()
+  const stateOrder = (location.state || null) as OrderState | null
 
+  const [order, setOrder] = useState<OrderState | null>(stateOrder)
   const [state, setState] = useState<'loading' | 'ready' | 'processing' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
   const initializedRef = useRef(false)
   const widgetsRef = useRef<TossWidgets | null>(null)
 
+  // 새로고침 등으로 navigation state 유실 시 ?order=<id> 로 주문 재조회해 복구.
+  useEffect(() => {
+    if (stateOrder?.orderId) return
+    const oid = sp.get('order')
+    if (!oid) return
+    const token = localStorage.getItem('seller_token')
+    api.get(`/api/wholesale/orders/${oid}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        if (!r.data.success) { setErrorMsg('주문을 찾을 수 없습니다.'); setState('error'); return }
+        const o = r.data.order as { toss_order_id: string; subtotal: number; status: string }
+        if (o.status !== 'PENDING') { setErrorMsg('이미 처리된 주문입니다.'); setState('error'); return }
+        const items = (r.data.items || []) as Array<{ name: string }>
+        const orderName = items.length <= 1
+          ? (items[0]?.name || '도매 주문').slice(0, 90)
+          : `${items[0].name.slice(0, 40)} 외 ${items.length - 1}건`
+        setOrder({ orderId: o.toss_order_id, amount: o.subtotal, orderName })
+      })
+      .catch(() => { setErrorMsg('주문 정보를 불러오지 못했습니다.'); setState('error') })
+  }, [stateOrder, sp])
+
   useEffect(() => {
     if (initializedRef.current) return
     if (!order || !order.orderId || !Number.isFinite(order.amount) || order.amount <= 0 || !order.orderName) {
-      setErrorMsg('주문 정보가 올바르지 않습니다. 카탈로그에서 다시 주문해주세요.')
-      setState('error')
+      // state 없고 ?order 재조회도 불가할 때만 에러 — 재조회 대기 중에는 단정하지 않음.
+      if (!sp.get('order') && !stateOrder) { setErrorMsg('주문 정보가 올바르지 않습니다. 카탈로그에서 다시 주문해주세요.'); setState('error') }
       return
     }
     const sellerId = getSellerId()

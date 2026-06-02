@@ -24,7 +24,10 @@ const STATUS_LABEL: Record<string, { t: string; c: string }> = {
   PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' },
   PAID: { t: '결제완료', c: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' },
   SHIPPED: { t: '발송완료', c: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400' },
+  PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400' },
+  REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' },
   CANCELLED: { t: '취소', c: 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400' },
+  FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400' },
 }
 
 export default function WholesaleOrdersPage() {

@@ -44,7 +44,8 @@ export default function WholesaleProductPage() {
     try {
       const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }] }, h)
       if (r.data.success) {
-        navigate('/wholesale/checkout', {
+        // order_id 를 쿼리로도 전달 — 체크아웃 새로고침 시 state 유실되어도 복구 가능.
+        navigate(`/wholesale/checkout?order=${r.data.order_id}`, {
           state: { orderId: r.data.toss_order_id, amount: r.data.amount, orderName: r.data.order_name },
         })
       } else {

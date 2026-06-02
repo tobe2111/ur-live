@@ -83,15 +83,26 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
 }
 
 /**
- * 도매 주문 환불 시 제조사 적립 역전 (pending/available 만, paid 제외). 멱등(이미 cancelled 면 skip).
+ * 도매 주문 환불 시 제조사 적립 역전 (pending/available 만, paid 제외). 멱등.
+ * @param supplierId 지정 시 해당 제조사 라인만 역전(부분환불). 미지정 시 주문 전체.
  * @returns 역전된 라인 수
  */
-export async function reverseSupplierOnWholesaleRefund(DB: D1Database, wholesaleOrderId: number, reason: string): Promise<number> {
+export async function reverseSupplierOnWholesaleRefund(
+  DB: D1Database,
+  wholesaleOrderId: number,
+  reason: string,
+  supplierId?: number,
+): Promise<number> {
   if (!wholesaleOrderId) return 0
   await ensureSourceColumn(DB)
+  const scoped = Number.isFinite(supplierId) && (supplierId as number) > 0
   const rows = await DB.prepare(
-    "SELECT id, supplier_id, supply_amount, status FROM supplier_settlements WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND paid_at IS NULL"
-  ).bind(wholesaleOrderId).all<{ id: number; supplier_id: number; supply_amount: number; status: string }>().catch(() => ({ results: [] as { id: number; supplier_id: number; supply_amount: number; status: string }[] }))
+    `SELECT id, supplier_id, supply_amount, status FROM supplier_settlements
+     WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND paid_at IS NULL
+     ${scoped ? 'AND supplier_id = ?' : ''}`
+  ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]))
+    .all<{ id: number; supplier_id: number; supply_amount: number; status: string }>()
+    .catch(() => ({ results: [] as { id: number; supplier_id: number; supply_amount: number; status: string }[] }))
 
   let reversed = 0
   for (const a of rows.results || []) {
