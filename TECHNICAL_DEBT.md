@@ -10,9 +10,29 @@
 
 ---
 
+## 📊 2026-06-01 (2차) — Tier1 안전게이트 완료 + 부채 재측정 정정
+
+사용자 "개선할 것" 질의 → 4-track 우선순위 합의 후 진행. 코드 ground-truth 재측정으로 stale 정정.
+
+### ✅ Tier 1 — 안전 게이트 (완료, commit)
+- **결제 SSOT `toss-gateway` 테스트 0→12** (`src/tests/unit/toss-gateway.test.ts`) — 순수함수 + confirm/cancel early-return 가드 + error-messages 매핑 (네트워크 X). 잠긴 gateway 미수정.
+- **배포 게이트**: `auto-merge-main.sh` 가 main 머지(=Cloudflare 배포) 전 `tsc --noEmit` 실행 → 타입에러로 깨진 배포 차단(esbuild 가 strip 하던 class). bypass `[SKIP_GATE]`/`SKIP_DEPLOY_GATE=1`.
+
+### 🔧 stale 정정 (재측정 결과 — 부채가 문서보다 적음)
+- **"클라 에러누출 ~33곳" → 실제 user-facing 0**. `seller-orders`/`seller-streams`/`seller-profile` 는 이미 전부 `safeError`. `products`(공개) 5곳은 이번 라운드 fix. **남은 실반환 누출은 admin-gated/internal ~5** (`admin-kt-alpha` 3·대부분 slice(200), `bulk-upload` row-result 1, `internal-diagnostics` 1) — 신뢰 사용자·저위험. cron 의 `(err).message` 들은 `logError` 호출(클라 반환 아님, 누출 아님).
+- **moderation `/check`** — 이미 rate-limit(120/60s) 적용됨. 무상태·IDOR 아님 → auth 미추가(라이브 채팅 preflight UX 보호). 적정 완화 상태.
+
+### 🟡 남은 대형 트랙 (단일 세션 부적합 — 점진/결정 필요)
+- **Tier 2 — 데이터페칭 RQ 이전 (208/269 페이지)**: 대부분 내부 admin/agency CRUD. 통째 churn 은 회귀 위험 + 저ROI. **사용자 대면·재방문 잦은 페이지부터 점진** 권장(대부분 핵심 user 페이지는 이미 SSR/RQ). 청크 단위 PR 필요.
+- **Tier 3 — 기능 미완**: 8.8% 원천징수 자동계산(세율 정책 결정), 딜 현금환급 endpoint, 지급조서 CSV, KT Alpha 기프티쇼 API(외부 계약/키), 숙소 알림톡 실발송(알리고 템플릿) — **외부 API/도메인 결정 의존**, 순수 코드로 완결 불가.
+- **Tier 4 — God 파일 분해**: `youtube-live.routes`(3369·라이브 송출 핵심, 레지스트리 영구 deferred) 등 — risk-isolated 단계 PR 필요(블라인드 분해 금지).
+
+---
+
 ## 📊 2026-06-01 — 머니플로우 + 잠복버그 감사 라운드 (서브에이전트 2종 + 코드 재검증)
 
 도매몰 구축 후 전 서비스 감사. 2개 병렬 에이전트(머니플로우 / 잠복 타입·보안)가 **현재 코드로 재검증**(레지스트리 주장 신뢰 X).
+
 
 ### ✅ 이번 라운드 해소 (commit)
 | 항목 | 위치 | 처리 |
