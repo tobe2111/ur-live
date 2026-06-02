@@ -46,7 +46,10 @@ export function useMyOrders(filters?: { status?: string; limit?: number }) {
       if (filters?.limit) params.set('limit', String(filters.limit))
       const q = params.toString() ? `?${params}` : ''
       return api.get(`/api/orders${q}`).then((r) => {
-        const arr = Array.isArray(r.data?.data) ? (r.data.data as MyOrder[]) : []
+        // 🛡️ 2026-06-01: /api/orders 는 data:{items:[...]} 형태 (배열 아님) — items/orders fallback.
+        //   (이전: Array.isArray 만 검사 → 항상 [] 반환하던 잠복 버그. refetchOnMount 잠금은 불변.)
+        const d = r.data?.data
+        const arr = (Array.isArray(d) ? d : (d?.items || d?.orders || [])) as MyOrder[]
         writeCache(cacheKey, arr)
         return arr
       }).catch(() => readCache<MyOrder[]>(cacheKey, []))

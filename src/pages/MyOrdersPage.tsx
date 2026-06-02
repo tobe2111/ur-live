@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -10,6 +10,7 @@ import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useMyOrders } from '@/hooks/queries/useMyData'
 // 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
 const OrderDetailModal = lazy(() => import('./my-orders/OrderDetailModal'))
 import CancelOrderModal from './my-orders/CancelOrderModal'
@@ -23,8 +24,9 @@ export default function MyOrdersPage() {
   const navigate = useNavigate()
   // 🛡️ 2026-05-28 (사용자 요청 A): /my-orders 는 주문내역 전용. 장바구니는 /cart (CartPage) 하나로 일원화
   //   (이전엔 cart/orders 탭 — /cart 와 중복 + 디자인 불일치). 헤더는 쇼핑 페이지 표준 스타일.
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 loadData → useMyOrders 재사용(RQ 중복요청 dedup → isLoadingRef 불필요).
+  const { data: ordersRaw = [], isLoading: loading, isError, refetch } = useMyOrders()
+  const orders = ordersRaw as unknown as Order[]
   const [processing, setProcessing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   useEscapeKey(() => { if (selectedOrder) setSelectedOrder(null) })
@@ -40,18 +42,11 @@ export default function MyOrdersPage() {
   const [cancelReason, setCancelReason] = useState('')
   const [isPartialCancel, setIsPartialCancel] = useState(false)
   const [cancelAmount, setCancelAmount] = useState('')
-  // ✅ UX C5 FIX: 에러 상태로 재시도 UI 제공 (리다이렉트 루프 방지)
-  const [error, setError] = useState<string | null>(null)
+  // 🛡️ 2026-06-01 Tier2: 에러는 useMyOrders 의 isError 로 대체(훅이 실패 시 캐시 fallback).
+  const error = isError ? t('myOrders.errorOrders') : null
 
   // Check login status (통합 인증 사용)
   const userId = getUserIdSync()
-
-  // ✅ BUG #25 FIX: A ref-based flag prevents concurrent loadData() calls.
-  // Previously, switching tabs AND triggering handleUpdateQuantity/handleRemoveItem
-  // at roughly the same time fired two simultaneous loadData() calls.  The second
-  // call would overwrite the state of the first with stale server data because
-  // both read `activeTab` from the closure at the same point in time.
-  const isLoadingRef = useRef(false)
 
   useEffect(() => { document.title = t('myOrders.docTitle') }, [t])
 
@@ -63,47 +58,8 @@ export default function MyOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ✅ UX C5 FIX: 401 시 리다이렉트 대신 에러 표시.
-  useEffect(() => {
-    if (!isLoggedInSync() || !userId) return
-    loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
-
-  async function loadData() {
-    // ✅ BUG #25 FIX: Guard against concurrent calls
-    if (isLoadingRef.current) {
-      return
-    }
-    isLoadingRef.current = true
-    setLoading(true)
-    setError(null)
-    try {
-      const uid = userId || getUserIdSync()
-
-      if (!uid) {
-        if (import.meta.env.DEV) console.error('No user ID available')
-        return
-      }
-
-      const response = await api.get('/api/orders')
-      if (response.data.success) {
-        const d = response.data.data
-        setOrders(Array.isArray(d) ? d : (d?.items || d?.orders || []))
-      }
-    } catch (err: unknown) {
-      if (import.meta.env.DEV) console.error('Failed to load data:', err)
-      const e = err as { response?: { status?: number } }
-      if (e?.response?.status === 401) {
-        setError(t('myOrders.sessionExpired'))
-      } else {
-        setError(t('myOrders.errorOrders'))
-      }
-    } finally {
-      setLoading(false)
-      isLoadingRef.current = false
-    }
-  }
+  // mutation(구매확정/취소) 후 목록 갱신용
+  function loadData() { refetch() }
 
   async function handleConfirmOrder(orderId: number | string, orderNumber: string) {
     if (!confirm(t('myOrders.confirmPurchasePrompt', { orderNumber, defaultValue: `주문 ${orderNumber}을(를) 구매확정 하시겠습니까?\n구매확정 후에는 취소할 수 없습니다.` }))) return
