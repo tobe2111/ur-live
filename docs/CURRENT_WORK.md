@@ -1,5 +1,19 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-06-01 — 유통스타트 도매몰 (Phase 1~5 + 정산) 신규 구축
+별도 도매몰(utongstart.com, 같은 코드/DB) — 3자(유통사=셀러 / 유통스타트=플랫폼 / 제조사=공급자) 등급제 B2B 선결제 모델. 스펙·결정: `docs/design/wholesale-utongstart.md`, 사용자 할일: `docs/design/wholesale-utongstart-TODO.md`.
+- **P1** 등급 가격엔진 `lib/distributor-pricing.ts`(제조사가×(1+등급마진), 특별할인 기간 우선) + `distributor_grades` 테이블 + 유닛 8.
+- **P1b** 어드민 `/admin/distributor-grades` — 등급 마진율 편집 + 유통사 등급배정 + 특별할인.
+- **P2** 유통사 카탈로그+B2B 선결제 `/api/wholesale/*`(등급가·제조사 신원 비노출, Toss SSOT helper·서버금액검증·CAS·재고·멱등) + 페이지 5종(`/wholesale*`).
+- **P3** 제조사 `/api/supplier/wholesale/*` 송장입력 + 반품(cancelTossPayment+재고복원) + `SupplierWholesaleOrdersPage`.
+- **P4** 거래내역서(`/wholesale/statement`) + 상품제안(`wholesale_proposals`, 어드민→유통사) + 세금계산서 월집계(1차 수동).
+- **P5** `utils/domain.ts isUtongstart()` — utongstart.com 루트 → `/wholesale` 분기.
+- **정산** `wholesale-settlement.ts` — 결제완료 시 제조사 공급가(base×qty)를 `supplier_settlements(source='wholesale')` 적립→기존 mature→payout 파이프라인 자동지급, 환불 시 역전. consumer 정산과 `source` 컬럼으로 order_id 충돌 분리.
+- **남은 운영작업(코드 아님)**: Cloudflare 커스텀도메인 등록 + 카카오 콜백 + repair-schema 1회 + 등급/제조사/유통사 데이터 입력 (TODO 파일).
+- 전 구간 잠금 SSOT(toss-gateway) 미수정·호출만. tsc 0 / build OK / unit 15 pass.
+
+---
+
 ## 🟢 2026-05-31 — 전 도메인 보안 audit (payment/auth/IDOR) + 적용
 3개 병렬 심층 audit(서브에이전트) → **전부 코드로 직접 재검증** 후 적용. IDOR/권한 계층은 홀 0건(견고).
 **비잠금 적용**:
