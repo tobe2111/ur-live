@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { RotateCcw } from 'lucide-react'
@@ -10,23 +10,16 @@ import { formatNumber } from '@/utils/format'
 export default function AgencyReturnsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [returns, setReturns] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token || ''}` }
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery (인터셉터가 agency_token 자동 주입).
+  const { data: returns = [], isLoading: loading } = useApiQuery<any[]>(
+    ['agency', 'returns'], '/api/agency/returns',
+    { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
-
-  useEffect(() => {
-    api.get('/api/agency/returns', { headers })
-      .then(r => { if (r.data.success) setReturns(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
 
   const statusLabels: Record<string, { label: string; color: string }> = {
     requested: { label: '신청', color: 'bg-yellow-100 text-yellow-700' },

@@ -1,31 +1,33 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Star, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
+const REVIEWS_KEY = ['seller', 'reviews'] as const
+
 export default function SellerReviewsPage() {
   const { t } = useTranslation()
-  const [reviews, setReviews] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const qc = useQueryClient()
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery. 답변은 setQueryData 로 캐시 갱신.
+  const { data: reviews = [], isLoading: loading } = useApiQuery<any[]>(
+    REVIEWS_KEY, '/api/seller/analytics/reviews',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
   const [replyId, setReplyId] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
-  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
-
-  useEffect(() => {
-    api.get('/api/seller/analytics/reviews', getAuthHeaders())
-      .then(r => { if (r.data.success) setReviews(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }, [])
 
   const submitReply = async (reviewId: number) => {
     if (!replyText.trim()) return
+    const reply = replyText.trim()
     try {
-      await api.post(`/api/seller/analytics/reviews/${reviewId}/reply`, { reply: replyText.trim() }, getAuthHeaders())
+      await api.post(`/api/seller/analytics/reviews/${reviewId}/reply`, { reply })
       toast.success(t('seller.reviews.replySubmitted'))
-      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, seller_reply: replyText.trim(), seller_reply_at: new Date().toISOString() } : r))
+      qc.setQueryData<any[]>(REVIEWS_KEY, prev => (prev || []).map(r => r.id === reviewId ? { ...r, seller_reply: reply, seller_reply_at: new Date().toISOString() } : r))
       setReplyId(null); setReplyText('')
     } catch { toast.error(t('seller.reviews.replyFailed')) }
   }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { BarChart2 } from 'lucide-react'
@@ -10,24 +10,17 @@ import { formatNumber } from '@/utils/format'
 export default function AgencyComparePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('30')
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token || ''}` }
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery (period별 캐시).
+  const { data = [], isLoading: loading } = useApiQuery<any[]>(
+    ['agency', 'compare', period], '/api/agency/sellers/compare',
+    { params: { period }, select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
-
-  useEffect(() => {
-    setLoading(true)
-    api.get(`/api/agency/sellers/compare?period=${period}`, { headers })
-      .then(r => { if (r.data.success) setData(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }, [period])
 
   const maxRevenue = Math.max(...data.map(d => d.revenue), 1)
 

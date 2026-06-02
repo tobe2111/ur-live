@@ -4,10 +4,10 @@
  * 숙소(stay_voucher) 상품 전용 — 공구 페이지(/seller/group-buy)와 분리.
  * 이유: 숙소는 객실 타입/날짜별 가격/캘린더 등 별도 모델.
  */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, Plus, MapPin, Star, Calendar, Users, ChevronRight } from 'lucide-react'
@@ -34,24 +34,17 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 export default function SellerStaysPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [stays, setStays] = useState<StayListItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery (인터셉터가 seller_token 자동 주입).
+  const { data: stays = [], isLoading: loading } = useApiQuery<StayListItem[]>(
+    ['seller', 'stays'], '/api/seller/stays',
+    { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
 
   useEffect(() => {
-    const token = localStorage.getItem('seller_token')
-    if (!token) { navigate('/seller/login'); return }
-    loadStays()
+    if (!token) navigate('/seller/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadStays() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const res = await api.get('/api/seller/stays', { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data?.success) setStays(res.data.data || [])
-    } catch { /* fail-soft */ } finally { setLoading(false) }
-  }
 
   return (
     <SellerLayout

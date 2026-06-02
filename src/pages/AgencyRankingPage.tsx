@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Trophy, Users } from 'lucide-react'
@@ -10,25 +10,17 @@ import { formatNumber } from '@/utils/format'
 export default function AgencyRankingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [sellers, setSellers] = useState<any[]>([])
   const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue')
-  const [loading, setLoading] = useState(true)
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token || ''}` }
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery (metric별 캐시).
+  const { data: sellers = [], isLoading: loading } = useApiQuery<any[]>(
+    ['agency', 'ranking', metric], '/api/agency/ranking',
+    { params: { metric }, select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
-
-  useEffect(() => {
-    setLoading(true)
-    api.get(`/api/agency/ranking?metric=${metric}`, { headers })
-      .then(r => { if (r.data.success) setSellers(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [metric])
 
   const badges = ['👑', '💎', '⭐']
 
