@@ -14,12 +14,14 @@
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { moderateChat } from '@/shared/utils/chat-moderation';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 
 import { swallow } from '@/worker/utils/swallow';
 const app = new Hono<{ Bindings: Env }>();
 
 // POST /check — 채팅 메시지 사전 검사
-app.post('/check', async (c) => {
+// 🛡️ 2026-06-01 하드닝: 무인증 endpoint 의 로그-INSERT 남용 방지 rate-limit (IP 기준).
+app.post('/check', rateLimit({ action: 'moderation-check', max: 120, windowSec: 60 }), async (c) => {
   const body = await c.req.json<{ message: string }>().catch(() => ({ message: '' }));
   const message = (body.message || '').slice(0, 500);
   if (!message.trim()) {

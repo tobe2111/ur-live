@@ -12,6 +12,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
+import { safeError } from '../../../worker/utils/safe-error';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { cacheInvalidate } from '@/worker/utils/cache';
@@ -127,10 +128,7 @@ sellerStreamsRoutes.get('/', async (c) => {
 
   } catch (error: unknown) {
     console.error('Get seller streams error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message || 'Failed to get streams'
-    }, 500);
+    return safeError(c, error, '스트림 목록을 불러오지 못했습니다', '[seller-streams]');
   }
 });
 
@@ -178,7 +176,7 @@ sellerStreamsRoutes.get('/:id', async (c) => {
     console.error('Get stream error:', error);
     return c.json({
       success: false,
-      error: (error as Error).message || 'Failed to get stream'
+      error: '스트림을 불러오지 못했습니다'
     }, 500);
   }
 });
@@ -272,7 +270,7 @@ sellerStreamsRoutes.post('/', async (c) => {
     console.error('Create stream error:', error);
     return c.json({
       success: false,
-      error: (error as Error).message || 'Failed to create stream'
+      error: '스트림 생성 중 오류가 발생했습니다'
     }, 500);
   }
 });
@@ -415,7 +413,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     console.error('Update stream error:', error);
     return c.json({
       success: false,
-      error: (error as Error).message || 'Failed to update stream'
+      error: '스트림 수정 중 오류가 발생했습니다'
     }, 500);
   }
 });
@@ -471,7 +469,7 @@ sellerStreamsRoutes.delete('/:id', async (c) => {
     console.error('Delete stream error:', error);
     return c.json({
       success: false,
-      error: (error as Error).message || 'Failed to delete stream'
+      error: '스트림 삭제 중 오류가 발생했습니다'
     }, 500);
   }
 });
@@ -594,7 +592,7 @@ sellerStreamsRoutes.get('/:id/analytics', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Stream analytics error:', error);
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return safeError(c, error, '요청 처리 중 오류가 발생했습니다', '[seller-streams]');
   }
 });
 
@@ -656,7 +654,7 @@ sellerStreamsRoutes.get('/analytics/summary', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Analytics summary error:', error);
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return safeError(c, error, '요청 처리 중 오류가 발생했습니다', '[seller-streams]');
   }
 });
 
@@ -688,7 +686,7 @@ sellerStreamsRoutes.put('/:id/product-display', async (c) => {
 
     return c.json({ success: true, data: { mode }, message: mode === 'all' ? '전체 상품이 표시됩니다' : '현재 상품만 표시됩니다' });
   } catch (error: unknown) {
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return safeError(c, error, '요청 처리 중 오류가 발생했습니다', '[seller-streams]');
   }
 });
 
@@ -710,7 +708,7 @@ sellerStreamsRoutes.post('/:id/heartbeat', async (c) => {
 
     return c.json({ success: true });
   } catch (error: unknown) {
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return safeError(c, error, '요청 처리 중 오류가 발생했습니다', '[seller-streams]');
   }
 });
 
@@ -806,7 +804,7 @@ sellerStreamsRoutes.post('/:id/change-product', async (c) => {
 
     return c.json({ success: true, message: '상품이 변경되었습니다' });
   } catch (error: unknown) {
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return safeError(c, error, '요청 처리 중 오류가 발생했습니다', '[seller-streams]');
   }
 });
 
@@ -900,6 +898,6 @@ sellerStreamsRoutes.get('/:id/live-stats', async (c) => {
       }
     });
   } catch (error: unknown) {
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return safeError(c, error, '요청 처리 중 오류가 발생했습니다', '[seller-streams]');
   }
 });

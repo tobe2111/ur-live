@@ -380,10 +380,7 @@ sellerManagementRoutes.get('/stats', async (c) => {
 
   } catch (error: unknown) {
     console.error('Get seller stats error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message || 'Failed to get seller stats'
-    }, 500);
+    return safeError(c, error, '셀러 통계를 불러오지 못했습니다', '[seller-management]');
   }
 });
 

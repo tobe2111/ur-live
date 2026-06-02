@@ -11,6 +11,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
+import { safeError } from '../../../worker/utils/safe-error'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
@@ -75,7 +76,7 @@ sellerProfileRoutes.get('/profile', async (c) => {
     console.error('Get seller profile error:', error);
     return c.json({
       success: false,
-      error: (error as Error).message || 'Failed to get seller profile'
+      error: '셀러 프로필을 불러오지 못했습니다'
     }, 500);
   }
 });
@@ -203,7 +204,7 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
 
   } catch (error: unknown) {
     console.error('Update seller profile error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to update seller profile' }, 500);
+    return safeError(c, error, '셀러 프로필 수정 중 오류가 발생했습니다', '[seller-profile]');
   }
 });
 
@@ -436,7 +437,7 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
     if (errMsg.includes('NOT NULL constraint')) {
       return c.json({ success: false, error: '필수 항목을 모두 입력해주세요 (사업자번호, 상호명, 대표자명).' }, 400);
     }
-    return c.json({ success: false, error: `저장 실패: ${errMsg}` }, 500);
+    return safeError(c, error, '사업자 정보 저장 중 오류가 발생했습니다', '[seller-profile]');
   }
 });
 

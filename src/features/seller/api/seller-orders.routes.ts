@@ -158,7 +158,7 @@ sellerOrdersRoutes.get('/orders', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Get seller orders error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to get orders' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -440,7 +440,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
     return c.json({ success: true, message: '송장번호가 등록되었습니다.' });
   } catch (error: unknown) {
     console.error('Update tracking error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to update tracking' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -513,7 +513,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Get seller products error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to get products' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -565,7 +565,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     return c.json({ success: true, data: { ...product, options } });
   } catch (error: unknown) {
     console.error('Get seller product detail error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to get product' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -632,7 +632,7 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Bulk status update error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to bulk update' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -796,7 +796,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
     console.error('Create seller product error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to create product' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -904,7 +904,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     return c.json({ success: true, data: updated });
   } catch (error: unknown) {
     console.error('Update seller product error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to update product' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -948,7 +948,7 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
     return c.json({ success: true, message: '상품이 삭제되었습니다.' });
   } catch (error: unknown) {
     console.error('Delete seller product error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to delete product' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -989,7 +989,7 @@ sellerOrdersRoutes.post('/products/:id/link-to-stream', async (c) => {
     });
   } catch (error: unknown) {
     console.error('Link product to stream error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to link product' }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -1016,7 +1016,7 @@ sellerOrdersRoutes.put('/products/:id/pin', async (c) => {
 
     return c.json({ success: true, message: `PIN이 설정되었습니다: ${pin}` });
   } catch (error: unknown) {
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 
@@ -1058,6 +1058,6 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
 
     return c.json({ success: true, message: '사장님께 알림톡이 발송되었습니다', stats_url: statsUrl, rotated: rotate });
   } catch (error: unknown) {
-    return c.json({ success: false, error: (error as Error).message }, 500);
+    return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });

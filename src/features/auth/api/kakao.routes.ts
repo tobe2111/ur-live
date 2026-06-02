@@ -438,8 +438,8 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         c.header('Set-Cookie', sessionCookie, { append: true });
       } catch (e) {
         if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
-        const detail = encodeURIComponent((e as Error).message || 'session_cookie_failed');
-        return c.redirect(`${redirectTarget}?error=session_cookie_failed&detail=${detail}`, 302);
+        // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
+        return c.redirect(`${redirectTarget}?error=session_cookie_failed`, 302);
       }
 
       // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
@@ -545,10 +545,11 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       c.header('Set-Cookie', clearStateCookieHeader());
 
       // 🛡️ 2026-05-01: Firebase 분기 제거 (KR 미사용). Database 만 별도 처리.
+      // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
       if (errorMsg.includes('Database')) {
-        return c.redirect(`${redirectTarget}?error=database_error&detail=${encodeURIComponent(errorMsg)}`);
+        return c.redirect(`${redirectTarget}?error=database_error`);
       }
-      return c.redirect(`${redirectTarget}?error=kakao_auth_failed&detail=${encodeURIComponent(errorMsg)}`);
+      return c.redirect(`${redirectTarget}?error=kakao_auth_failed`);
     }
 
   } catch (error) {
@@ -560,8 +561,8 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       const method = (error as { existingMethod?: string })?.existingMethod || 'other';
       return c.redirect(`${redirectTarget}?error=email_already_linked&method=${method}`);
     }
-    const errorMsg = encodeURIComponent((error as Error).message || 'unknown');
-    return c.redirect(`${redirectTarget}?error=kakao_sync_failed&detail=${errorMsg}`);
+    // 🛡️ 2026-06-01 하드닝: 원시 에러 redirect 노출 금지.
+    return c.redirect(`${redirectTarget}?error=kakao_sync_failed`);
   }
 });
 
@@ -624,7 +625,7 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
       return c.json({
         success: false,
         error: 'session_cookie_failed',
-        detail: (e as Error).message || 'unknown',
+        detail: 'internal_error',
       }, 500);
     }
 

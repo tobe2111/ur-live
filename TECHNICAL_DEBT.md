@@ -24,11 +24,16 @@
 | 🔴 **order.routes 추천커미션 회수 컬럼 오류** — `user_id/amount`(미존재) 쿼리→`.catch` 삼킴→cancel/refund 시 추천 커미션 **무회수(조용한 누수)** | `order.routes.ts:604,783` | 실제 스키마 `beneficiary_id/commission_amount` 로 정정 → 의도된 clawback 실제 작동 (2차 감사 발견) |
 | ✅ **셀러 정식 환불 경로 신설** (위 🔴 차단의 정식 대체) | `seller-orders.routes.ts` `POST /orders/:id/refund` + `order-refund.ts` | 검증된 헬퍼 조합 공유 util `refundOrderFully` — Toss취소/딜환불 + CAS 멱등 + 재고복원/디지털revoke + 추천·affiliate·공급자·영입자 역전(올바른 컬럼). rate-limit + IDOR(seller_id) + 환불성공 후에만 알림. **셀러가 결제완료 주문을 올바르게 취소·환불 가능** |
 
-### 🟢 남은 부채 (이번 라운드 미처리 — 안전·저위험, 후속)
+### ✅ 하드닝 라운드 (2026-06-01 후속, commit)
+| 항목 | 위치 | 처리 |
+|---|---|---|
+| 원시에러 누출 sweep — 셀러/카카오 경로 | `seller-orders`(11), `seller-streams`(11), `seller-profile`(3), `seller-management`(1), `kakao.routes`(6: redirect URL/JSON detail) | `safeError` 또는 정적 메시지로 통일. **카카오 OAuth redirect 의 raw 에러 노출 제거**(error 코드만 유지) |
+| `moderation.routes.ts` `POST /check` 무인증 남용 | moderation | rate-limit(120/60s, IP) 추가 — 로그-INSERT 남용 방지. (requireAuth 는 익명 채팅 호환 미검증으로 보류) |
+
+### 🟢 남은 부채 (안전·저위험, 후속)
 | 항목 | 위치 | 비고 |
 |---|---|---|
-| 원시에러 누출 sweep 잔여 ~33곳 | `seller-orders`(11), `seller-streams`(11), `seller-profile`(2), `seller-management`(1), `kakao.routes`(3), orders/bulk-upload/admin-kt-alpha | **인증된 셀러/어드민 경로라 저위험**. 점진 `safeError` (레지스트리 기존 항목과 동일 성격) |
-| `moderation.routes.ts:22` `POST /check` 무인증 | moderation | 무상태 텍스트검열(IDOR 아님). `requireAuth`+rate-limit 권장, 저위험 |
+| 원시에러 누출 잔여 | orders/bulk-upload/admin-kt-alpha 등 | **인증/내부 경로라 저위험**. 점진 `safeError` |
 | 셀러 환불 **프론트 UI 버튼** | seller dashboard | 백엔드 `POST /orders/:id/refund` 완비 — 셀러 주문 상세에 '취소·환불' 버튼만 추가하면 됨(후속, 저위험) |
 
 ### 검증 결론 (에이전트)
