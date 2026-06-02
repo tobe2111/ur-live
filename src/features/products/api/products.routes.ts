@@ -22,6 +22,7 @@ import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { invalidateProductCache } from '@/lib/cache-invalidation';
+import { safeError } from '@/worker/utils/safe-error';
 import { validateImageUrl } from '@/worker/utils/validation';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { cacheGet } from '@/worker/utils/cache';
@@ -310,11 +311,7 @@ productsRoutes.get('/', cors(), async (c) => {
     });
     
   } catch (error) {
-    console.error('[Products API] Get list error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
+    return safeError(c, error, '상품 목록을 불러오지 못했습니다', '[products]');
   }
 });
 
@@ -386,10 +383,7 @@ productsRoutes.get('/:id', cors(), async (c) => {
       }, 404);
     }
     
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
+    return safeError(c, error, '상품 처리 중 오류가 발생했습니다', '[products]');
   }
 });
 
@@ -466,10 +460,7 @@ productsRoutes.post('/', tightCors(), rateLimit({ action: 'product_create', max:
     
   } catch (error) {
     console.error('[Products API] Create error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
+    return safeError(c, error, '상품 처리 중 오류가 발생했습니다', '[products]');
   }
 });
 
@@ -532,10 +523,7 @@ productsRoutes.put('/:id', tightCors(), requireAuth(), async (c) => {
       }, 404);
     }
     
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
+    return safeError(c, error, '상품 처리 중 오류가 발생했습니다', '[products]');
   }
 });
 
@@ -597,10 +585,7 @@ productsRoutes.delete('/:id', tightCors(), requireAuth(), async (c) => {
       }, 404);
     }
     
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
+    return safeError(c, error, '상품 처리 중 오류가 발생했습니다', '[products]');
   }
 });
 

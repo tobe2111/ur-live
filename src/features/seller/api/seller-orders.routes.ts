@@ -16,6 +16,7 @@ import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
+import { safeError } from '../../../worker/utils/safe-error';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
@@ -189,6 +190,26 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
     }
     const prevPh = allowedPrev.map(() => '?').join(',');
 
+    // 🛡️ 2026-06-01 머니플로우 감사 fix (🔴 실금전 손실 차단):
+    //   셀러가 status 변경만으로 '결제 완료' 주문을 CANCELLED 처리하면 — Toss 카드취소/딜포인트
+    //   환불/커미션 역전이 전혀 일어나지 않아 고객은 돈을 못 돌려받고 '취소' 알림톡만 받음.
+    //   결제 캡처된 주문(PAID/DONE/PREPARING/SHIPPING/DELIVERED)의 취소는 반드시 환불 경로
+    //   (고객 반품 승인 / 관리자 환불 — Toss cancel + 딜환불 + 커미션 역전 포함)를 거쳐야 함.
+    //   여기서는 무환불 CANCELLED 를 차단. (미결제 PENDING/AWAITING_PAYMENT 취소는 그대로 허용)
+    if (dbStatus === 'CANCELLED') {
+      const cur = await db.prepare(
+        `SELECT UPPER(status) AS status FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
+      ).bind(orderId, orderId, sellerId).first<{ status: string }>();
+      const CAPTURED = ['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED'];
+      if (cur && CAPTURED.includes(cur.status)) {
+        return c.json({
+          success: false,
+          error: '결제 완료된 주문은 상태 변경으로 취소할 수 없습니다. 환불(반품) 절차를 이용해주세요.',
+          code: 'REFUND_REQUIRED',
+        }, 400);
+      }
+    }
+
     // 소유권 확인 + 상태 변경 + 전이 검증을 원자적으로 처리
     const result = await db.prepare(
       `UPDATE orders SET status = ?, updated_at = datetime('now')
@@ -271,8 +292,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
 
     return c.json({ success: true, message: '주문 상태가 업데이트되었습니다.' });
   } catch (error: unknown) {
-    console.error('Update order status error:', error);
-    return c.json({ success: false, error: (error as Error).message || 'Failed to update status' }, 500);
+    return safeError(c, error, '주문 상태 변경 중 오류가 발생했습니다', '[seller-orders]');
   }
 }
 

@@ -10,6 +10,33 @@
 
 ---
 
+## 📊 2026-06-01 — 머니플로우 + 잠복버그 감사 라운드 (서브에이전트 2종 + 코드 재검증)
+
+도매몰 구축 후 전 서비스 감사. 2개 병렬 에이전트(머니플로우 / 잠복 타입·보안)가 **현재 코드로 재검증**(레지스트리 주장 신뢰 X).
+
+### ✅ 이번 라운드 해소 (commit)
+| 항목 | 위치 | 처리 |
+|---|---|---|
+| 🔴 **셀러 status 변경으로 결제완료 주문 무환불 CANCELLED** — Toss취소/딜환불/커미션역전 0, 고객은 '취소' 알림톡만 받고 돈 못 받음 | `seller-orders.routes.ts` `handleStatusUpdate` | **캡처상태(PAID/DONE/PREPARING/SHIPPING/DELIVERED) CANCELLED 차단** + `REFUND_REQUIRED` 안내. 미결제 취소는 허용 |
+| 🟡 어드민 숙소환불 Toss 실패해도 `status='refunded'` 거짓표기 | `admin-stays.routes.ts:150` | `nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'` (유저경로 정합) + status_log 동기 |
+| 🟢 **공개(미인증) 상품 API 원시에러 누출 5곳** | `products.routes.ts:316/391/471/537/602` | `safeError()` 통일 (열거공격/스키마 누출 차단). 최고 노출 |
+| 🟢 셀러 주문 status 핸들러 에러 누출 | `seller-orders.routes.ts:275` | `safeError()` |
+
+### 🟢 남은 부채 (이번 라운드 미처리 — 안전·저위험, 후속)
+| 항목 | 위치 | 비고 |
+|---|---|---|
+| 원시에러 누출 sweep 잔여 ~33곳 | `seller-orders`(11), `seller-streams`(11), `seller-profile`(2), `seller-management`(1), `kakao.routes`(3), orders/bulk-upload/admin-kt-alpha | **인증된 셀러/어드민 경로라 저위험**. 점진 `safeError` (레지스트리 기존 항목과 동일 성격) |
+| `moderation.routes.ts:22` `POST /check` 무인증 | moderation | 무상태 텍스트검열(IDOR 아님). `requireAuth`+rate-limit 권장, 저위험 |
+| 셀러 결제완료 주문 **정식 환불 UI 부재** | seller | 위 🔴 차단으로 무환불 손실은 막음. 셀러가 직접 환불하려면 환불 플로우 UX 필요 — **제품 결정 필요**(반품 승인 경로 안내 or 셀러 환불 endpoint 신설). 현재는 관리자/반품 경로로 처리 |
+
+### 검증 결론 (에이전트)
+- **tsc: 0 에러** (빌드는 타입 strip 하지만 tsc/CI 기준도 clean — 직전 `AdminWholesaleOrdersPage` 잠복에러 1건은 이미 수정).
+- **IDOR/무인증 mutation: 사실상 0** — 전수 확인 시 agency/admin/supply `app.use('*', require*)` 또는 수동 토큰검사로 게이트됨. (moderation /check 1건만 저위험 예외)
+- **금융 빈 catch: 정상** — 전부 멱등 스키마복구 / fire-and-forget 알림 / CAS 후 보상쓰기(권위상태는 CAS claim). 손실경로 아님.
+- **머니플로우 verified-correct**: order refund/cancel, returns, 유저 숙소취소, group-buy confirm-toss(인플 attribution+ledger 기록됨), voucher 셀프취소, appointments, community group-buy(딜전용), stay-pending cron — 전부 실제 환불/역전 수행 확인.
+
+---
+
 ## 📊 2026-05-31 — 현황 동기화 + 재우선순위 (검증 기반)
 
 > 코드 ground-truth 로 검증해 stale 항목을 정정하고, 남은 작업을 영향×위험으로 재정렬.

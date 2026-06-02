@@ -147,13 +147,16 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
       }
     }
 
+    // 🛡️ 2026-06-01 머니플로우 감사 fix: Toss 환불 실패 시 status='refunded' 로 거짓표기 금지.
+    //   실제 환불 성공 시에만 'refunded', 실패면 'cancelled' (유저 경로 stays-public 과 동일 정합).
+    const nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'
     await executeRun(c.env.DB,
       `UPDATE stay_bookings
-          SET status = 'refunded', refund_amount = ?,
+          SET status = ?, refund_amount = ?,
               refunded_at = ${refundActuallyDone ? "datetime('now')" : 'NULL'},
               cancellation_reason = ?, updated_at = datetime('now')
         WHERE id = ?`,
-      [refundAmount, reason, id])
+      [nextStatus, refundAmount, reason, id])
 
     // 🛡️ 2026-05-31: 환불 성공 시 인플 affiliate 커미션 reverse — 환불 매출 출금 누수 차단.
     if (refundActuallyDone && fullBooking?.order_id) {
@@ -170,8 +173,8 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
 
     await executeRun(c.env.DB,
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, reason)
-       VALUES (?, ?, 'refunded', 'admin', ?)`,
-      [id, booking.status, refundError ? `${reason} (환불API 실패: ${refundError})` : reason]).catch(() => { /* noop */ })
+       VALUES (?, ?, ?, 'admin', ?)`,
+      [id, booking.status, nextStatus, refundError ? `${reason} (환불API 실패: ${refundError})` : reason]).catch(() => { /* noop */ })
 
     await writeAuditLog(c, {
       action: 'admin_refund_stay_booking',
