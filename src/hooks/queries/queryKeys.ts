@@ -50,6 +50,8 @@ export const queryKeys = {
   myFollows: () => ['my', 'follows'] as const,
   myInterests: () => ['my', 'interests'] as const,
   myCoupons: () => ['my', 'coupons'] as const,
+  myReturns: () => ['my', 'returns'] as const,
+  following: () => ['social', 'following'] as const,
 
   // 카테고리 / 메타
   meta: () => ['meta'] as const,

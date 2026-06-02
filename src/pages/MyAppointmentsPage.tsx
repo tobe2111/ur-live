@@ -3,12 +3,12 @@
  *   URL: /my-appointments
  *   숙소 예약은 별도 /my-stays 페이지.
  */
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calendar, MapPin, Phone, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import { useMyAppointments } from '@/hooks/queries/useMyData'
 
 interface Appointment {
   id: number
@@ -35,25 +35,16 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function MyAppointmentsPage() {
   const navigate = useNavigate()
-  const [items, setItems] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => { load() }, [])
-
-  async function load() {
-    try {
-      setLoading(true)
-      const res = await api.get('/api/appointments/my')
-      if (res.data?.success) setItems(res.data.data || [])
-    } finally { setLoading(false) }
-  }
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → 기존 useMyAppointments 재사용(/api/appointments/my 동일).
+  const { data: appts = [], isLoading: loading, refetch } = useMyAppointments()
+  const items = appts as unknown as Appointment[]
 
   async function cancel(a: Appointment) {
     const reason = window.prompt('취소 사유를 입력하세요:')
     if (!reason) return
     try {
       const res = await api.patch(`/api/appointments/${a.id}/cancel`, { cancel_reason: reason })
-      if (res.data?.success) { toast.success('취소 완료'); load() }
+      if (res.data?.success) { toast.success('취소 완료'); refetch() }
       else toast.error(res.data?.error || '취소 실패')
     } catch (e: unknown) {
       const ax = e as { response?: { data?: { error?: string } } }

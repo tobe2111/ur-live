@@ -7,40 +7,25 @@
  *
  * 다크 테마 (메인 사이드바 카테고리).
  */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, UserCheck, Users } from 'lucide-react'
 import SEO from '@/components/SEO'
-import api from '@/lib/api'
 import { isLoggedInSync, requireLogin } from '@/utils/auth'
-
-interface FollowedSeller {
-  id: number
-  name: string
-  profile_image: string | null
-  bio: string | null
-}
+import { useFollowing } from '@/hooks/queries/useFollowing'
 
 export default function FollowingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [sellers, setSellers] = useState<FollowedSeller[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱).
+  const { data: sellers = [], isLoading: loading, isError } = useFollowing()
+  const error = isError ? t('following.loadFailed', { defaultValue: '팔로우 목록을 불러올 수 없습니다.' }) : null
 
   useEffect(() => {
     if (!isLoggedInSync()) {
       requireLogin(navigate, t('following.loginRequired', { defaultValue: '로그인이 필요합니다.' }))
-      return
     }
-    api.get('/api/social/following')
-      .then(r => {
-        if (r.data.success) setSellers(r.data.data || [])
-        else setError(r.data.error || t('following.loadFailed', { defaultValue: '팔로우 목록을 불러올 수 없습니다.' }))
-      })
-      .catch(() => setError(t('following.loadFailed', { defaultValue: '팔로우 목록을 불러올 수 없습니다.' })))
-      .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

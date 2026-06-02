@@ -8,7 +8,7 @@
  * - approved 상태: 회수 송장 등록 inline form
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -16,25 +16,7 @@ import api from '@/lib/api'
 import TrackingModal from '@/components/shipping/TrackingModal'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
-
-interface ReturnRecord {
-  id: number
-  order_id: number | null
-  order_number: string
-  status: string
-  reason: string
-  detail_reason: string | null
-  return_shipping_company: string | null
-  return_tracking_number: string | null
-  inspection_result: string | null
-  refund_amount: number | null
-  requested_at: string
-  shipped_at: string | null
-  inspected_at: string | null
-  refunded_at: string | null
-  order_total: number | null
-  order_status: string | null
-}
+import { useMyReturns, useApplyReturnTracking, type ReturnRecord } from '@/hooks/queries/useMyReturns'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   requested: { label: '요청', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200' },
@@ -49,25 +31,11 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 
 export default function MyReturnsPage() {
   const { t } = useTranslation()
-  const [returns, setReturns] = useState<ReturnRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. 송장 등록 후 캐시만 갱신(재요청 X).
+  const { data: returns = [], isLoading: loading, isError } = useMyReturns()
+  const applyTracking = useApplyReturnTracking()
+  const error = isError ? '반품 목록을 불러올 수 없습니다' : null
   const [trackingTarget, setTrackingTarget] = useState<{ carrier: string; number: string } | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    api.get('/api/returns/my')
-      .then((res) => {
-        if (!alive) return
-        if (res.data?.success) setReturns(res.data.data || [])
-      })
-      .catch((err) => {
-        if (!alive) return
-        setError(err?.response?.data?.error || '반품 목록을 불러올 수 없습니다')
-      })
-      .finally(() => alive && setLoading(false))
-    return () => { alive = false }
-  }, [])
 
   return (
     <>
@@ -142,9 +110,7 @@ export default function MyReturnsPage() {
                     {/* approved 상태 — 회수 송장 등록 inline */}
                     {r.status === 'approved' && !r.return_tracking_number && (
                       <ShippingForm returnId={r.id} onSubmitted={(carrier, number) => {
-                        setReturns(returns.map(x => x.id === r.id
-                          ? { ...x, status: 'shipped', return_shipping_company: carrier, return_tracking_number: number, shipped_at: new Date().toISOString() }
-                          : x))
+                        applyTracking(r.id, carrier, number)
                       }} />
                     )}
                   </article>
