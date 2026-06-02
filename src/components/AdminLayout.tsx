@@ -49,29 +49,49 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: '거래',
+    // 🛡️ 2026-06-01: 거래(21) 덤핑그룹 → 5개 논리 그룹 분할 (사용자 결정, 라우트 불변).
+    title: '거래/주문',
     items: [
       { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
-      // 🛡️ 2026-06-01 도매몰: 공급자(도매상) 계정 승인 + 정산 지급.
-      { path: '/admin/suppliers',        label: '공급자 관리',   icon: Store },
-      // 🏭 2026-06-01 유통스타트: 유통사 등급/마진 설정 + 도매주문 모니터.
-      { path: '/admin/distributor-grades', label: '유통사 등급',  icon: Layers },
-      { path: '/admin/wholesale-orders',   label: '도매 주문',    icon: ShoppingBag },
+      { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
+      { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
       // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
-      // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
-      { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
-      // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 관리.
-      { path: '/admin/kt-alpha',              label: 'KT Alpha (교환권)', icon: Gift },
+    ],
+  },
+  {
+    // 🏭 2026-06-01 유통스타트 도매몰 전용 그룹.
+    title: '도매 (유통스타트)',
+    items: [
+      { path: '/admin/suppliers',          label: '공급자 관리',   icon: Store },
+      { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
+      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
+    ],
+  },
+  {
+    title: '정산/재무',
+    items: [
       { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
       { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
       { path: '/admin/payouts',          label: '💸 통합 정산 (ledger)', icon: Wallet },
       { path: '/admin/commission-withdrawals', label: '추천 출금 승인', icon: DollarSign },
-      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
-      { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+    ],
+  },
+  {
+    title: '검증/CS',
+    items: [
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
-      { path: '/admin/coupons',          label: '쿠폰 관리',    icon: Ticket },
+      // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
+      { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
+      // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 관리.
+      { path: '/admin/kt-alpha',              label: 'KT Alpha (교환권)', icon: Gift },
+    ],
+  },
+  {
+    title: '성장/발굴',
+    items: [
       { path: '/admin/castings',         label: '캐스팅',        icon: Megaphone },
       { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
       { path: '/admin/restaurant-demand', label: '맛집 수요 신호', icon: TrendingUp },
