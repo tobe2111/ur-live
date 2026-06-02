@@ -21,6 +21,7 @@ export const queryKeys = {
   points: () => ['points'] as const,
   balance: () => ['points', 'balance'] as const,
   chargeOptions: () => ['points', 'charge-options'] as const,
+  dealHistory: (page: number, filter: string) => ['points', 'history', page, filter] as const,
 
   // 장바구니 + 알림
   cart: () => ['cart'] as const,
@@ -51,6 +52,7 @@ export const queryKeys = {
   myInterests: () => ['my', 'interests'] as const,
   myCoupons: () => ['my', 'coupons'] as const,
   myReturns: () => ['my', 'returns'] as const,
+  wishlist: () => ['my', 'wishlist'] as const,
   following: () => ['social', 'following'] as const,
 
   // 카테고리 / 메타

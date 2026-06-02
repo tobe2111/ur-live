@@ -11,33 +11,15 @@ import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { useTheme } from '@/shared/stores/useTheme'
 import { formatNumber } from '@/utils/format'
-
-interface WishlistItem {
-  id: number
-  user_id: number
-  product_id: number
-  created_at: string
-  product_name: string
-  price: number
-  original_price: number
-  discount_rate: number
-  image_url: string
-  stock: number
-  category: string
-  is_active: number
-  seller_name: string
-  seller_id: number
-  // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시.
-  deal_only?: number
-}
+import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
 
 const WishlistPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [wishlists, setWishlists] = useState<WishlistItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<number | null>(null)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱). userId 는 WishlistButton 에 전달용 유지.
+  const { data: wishlists = [], isLoading: loading, isError, refetch } = useWishlist()
+  const error = isError ? t('wishlist.loadError') : null
 
   useEffect(() => {
     if (!isLoggedInSync()) {
@@ -46,34 +28,9 @@ const WishlistPage: React.FC = () => {
       navigate('/login')
       return
     }
-
     const uid = getUserIdSync()
-    if (uid) {
-      setUserId(parseInt(uid))
-      loadWishlists(parseInt(uid))
-    }
+    if (uid) setUserId(parseInt(uid))
   }, [navigate])
-
-  const loadWishlists = async (_uid: number) => {
-    try {
-      setLoading(true)
-      // ✅ UX C3 FIX: auth-implicit endpoint (IDOR 방지, URL에 userId 노출 금지)
-      // 🛡️ 2026-04-22 배치 137: axios → api (auth interceptor 적용되어야 requireAuth 통과)
-      const response = await api.get('/api/wishlists')
-
-      if (response.data.success) {
-        setWishlists(response.data.data.items)
-      } else {
-        throw new Error(response.data.error)
-      }
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      if (import.meta.env.DEV) console.error('[Wishlist] Load error:', err)
-      setError(err_.response?.data?.error || t('wishlist.loadError'))
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleProductClick = (productId: number) => {
     navigate(`/products/${productId}`)
@@ -105,12 +62,8 @@ const WishlistPage: React.FC = () => {
     }
   }
 
-  const handleWishlistToggle = (productId: number, isWishlisted: boolean) => {
-    if (!isWishlisted) {
-      if (userId) {
-        loadWishlists(userId)
-      }
-    }
+  const handleWishlistToggle = (_productId: number, isWishlisted: boolean) => {
+    if (!isWishlisted) refetch()
   }
 
   const { applied } = useTheme()
@@ -134,7 +87,7 @@ const WishlistPage: React.FC = () => {
         <div className="text-center">
           <p className="mb-4" style={{ color: tk.danger }}>{error}</p>
           <button
-            onClick={() => userId && loadWishlists(userId)}
+            onClick={() => refetch()}
             className="px-6 py-2 rounded-xl text-white active:opacity-90"
             style={{ background: tk.accentGradient }}
           >

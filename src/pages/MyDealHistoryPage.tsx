@@ -5,24 +5,13 @@
  *   - 페이지네이션 (50건/페이지)
  *   - 항목 클릭 시 관련 페이지 (충전 → /points/charge, 주문 → /my-orders, 등)
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import api from '@/lib/api'
 import { useBalance } from '@/hooks/queries'
+import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
 import { ChevronLeft } from 'lucide-react'
-
-interface Transaction {
-  id: number
-  type: string
-  amount: number
-  points_amount: number | null
-  balance_after: number | null
-  description: string
-  order_id: number | null
-  created_at: string
-}
 
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
 
@@ -60,35 +49,12 @@ const PAGE_SIZE = 50
 export default function MyDealHistoryPage() {
   const navigate = useNavigate()
   const { data: balance = 0 } = useBalance({ fresh: true })
-  const [items, setItems] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)  // 🛡️ 2026-05-31: silent fail(catch 없음) → 에러 상태 추가
   const [page, setPage] = useState(0)
-  const [total, setTotal] = useState(0)
   const [filter, setFilter] = useState<FilterType>('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(false)
-    try {
-      const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(page * PAGE_SIZE),
-      })
-      if (filter) params.set('type', filter)
-      const r = await api.get(`/api/points/history?${params}`)
-      if (r.data?.success) {
-        setItems(r.data.data || [])
-        setTotal(r.data.pagination?.total || 0)
-      } else {
-        setError(true)
-      }
-    } catch {
-      setError(true)  // 이전: catch 없음 → 실패 시 빈 화면 + unhandled rejection
-    } finally { setLoading(false) }
-  }, [page, filter])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (page/filter queryKey + keepPreviousData).
+  const { data, isLoading: loading, isError: error, refetch } = useDealHistory(page, filter)
+  const items: Transaction[] = data?.items ?? []
+  const total = data?.total ?? 0
 
   function onItemClick(tx: Transaction) {
     if (tx.type === 'charge') navigate('/points/charge')
@@ -161,7 +127,7 @@ export default function MyDealHistoryPage() {
           <div className="py-16 text-center">
             <p className="text-4xl mb-3">⚠️</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
-            <button onClick={() => load()} className="mt-3 text-xs text-pink-500 font-bold">다시 시도 →</button>
+            <button onClick={() => refetch()} className="mt-3 text-xs text-pink-500 font-bold">다시 시도 →</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
