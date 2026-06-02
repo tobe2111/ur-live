@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { Play, Users, Clock, Radio } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -37,20 +36,17 @@ function StreamStatusBadge({ status }: { status: string }) {
 export default function AgencyStreamsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [streams, setStreams] = useState<Stream[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'live' | 'ended'>('all')
-
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token}` }
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: streams = [], isLoading: loading } = useApiQuery<Stream[]>(
+    ['agency', 'streams'], '/api/agency/streams',
+    { select: (r: any) => r?.data || [], enabled: !!token },
+  )
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
-    api.get('/api/agency/streams', { headers })
-      .then(r => setStreams(r.data.data || []))
-      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
-      .finally(() => setLoading(false))
-  }, [token])
+    if (!token) navigate('/agency/login', { replace: true })
+  }, [token, navigate])
 
   const filtered = filter === 'all' ? streams : streams.filter(s => s.status === filter)
   const liveCount = streams.filter(s => s.status === 'live').length

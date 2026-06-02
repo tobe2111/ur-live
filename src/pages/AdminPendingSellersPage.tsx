@@ -9,9 +9,9 @@
  * 기존 분산된 admin 페이지 통합 → 어드민 검수 부담 ↓.
  */
 
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 
@@ -37,22 +37,12 @@ interface PendingSeller {
 }
 
 export default function AdminPendingSellersPage() {
-  const [sellers, setSellers] = useState<PendingSeller[]>([])
-  const [loading, setLoading] = useState(true)
-
-  async function load() {
-    setLoading(true)
-    try {
-      const r = await api.get('/api/admin/pending-sellers')
-      if (r.data?.success) setSellers(r.data.data || [])
-    } catch {
-      toast.error('목록 조회 실패')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery. 승인/거부 후 refetch.
+  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<PendingSeller[]>(
+    ['admin', 'pending-sellers'], '/api/admin/pending-sellers',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   async function approve(id: number) {
     if (!confirm('이 셀러를 승인할까요?')) return

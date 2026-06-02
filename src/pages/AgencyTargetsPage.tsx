@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Target, Check, Users } from 'lucide-react'
@@ -9,30 +10,22 @@ import { formatNumber } from '@/utils/format'
 
 export default function AgencyTargetsPage() {
   const { t } = useTranslation()
-  const [targets, setTargets] = useState<any[]>([])
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
-  const [loading, setLoading] = useState(true)
   const [editId, setEditId] = useState<number | null>(null)
   const [editValue, setEditValue] = useState('')
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
-
-  const load = (m: string) => {
-    setLoading(true)
-    api.get(`/api/agency/targets?month=${m}`, { headers })
-      .then(r => { if (r.data.success) setTargets(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load(month) }, [month])
+  // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery (month별 캐시). 저장 후 refetch.
+  const { data: targets = [], isLoading: loading, refetch } = useApiQuery<any[]>(
+    ['agency', 'targets', month], '/api/agency/targets',
+    { params: { month }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
 
   const handleSave = async (sellerId: number) => {
     const amount = parseInt(editValue) || 0
     try {
-      await api.put('/api/agency/targets', { seller_id: sellerId, month, target_amount: amount }, { headers })
+      await api.put('/api/agency/targets', { seller_id: sellerId, month, target_amount: amount })
       toast.success('목표가 설정되었습니다')
       setEditId(null)
-      load(month)
+      refetch()
     } catch { toast.error('저장 실패') }
   }
 
