@@ -121,7 +121,9 @@
 - [x] **Phase 1 — 등급 가격 엔진 + 스키마** (commit, 2026-06-01)
   - `src/lib/distributor-pricing.ts` (유통사공급가 = 제조사공급가×(1+등급마진), 특별할인 기간 우선) + 유닛테스트 8
   - `distributor_grades` 테이블 + 시드(A/B/C/D/OEM/SPECIAL) · `sellers.distributor_grade` / `special_discount_until`
-- [ ] **Phase 1b — 어드민 설정 UI**: 등급별 마진율 편집 + 유통사(셀러)별 등급 수동배정 + 특별할인 체크/기간
+- [x] **Phase 1b — 어드민 설정 UI** (commit, 2026-06-01)
+  - `distributor-admin.routes.ts` (`/api/admin/distributor`): 등급 마진율 편집 + 유통사 검색/등급배정 + 특별할인 종료일
+  - `AdminDistributorGradesPage` (`/admin/distributor-grades`) + AdminLayout '유통사 등급' 메뉴
 - [ ] **Phase 2 — 유통사 도매 카탈로그 + B2B 주문(선결제)**: 유통사가 자기 등급 공급가로 보고 Toss 선결제 주문 → 유통스타트가 제조사에 base 정산(기존 supplier_settlements 재사용), 마진=플랫폼수익. 제조사 신원 비노출.
 - [ ] **Phase 3 — 제조사 운영**: 주문처리(송장입력) / 반품처리(C/S)
 - [ ] **Phase 4 — 세금/거래내역/제안**: 거래내역서 + 세금계산서(1차 수동) 양방향 + 상품제안(플랫폼→유통사) + 제조사 컨택/제품등록요청
@@ -129,4 +131,14 @@
 
 ---
 
-_상태: 스펙 확정 + Phase 1 완료. 다음 = Phase 1b(어드민 설정 UI)._
+_상태: Phase 1 + 1b 완료. 다음 = Phase 2(유통사 도매 카탈로그 + B2B 선결제 주문)._
+
+### 부록: utongstart.com 도메인을 "도매몰 페이지만" 연결하는 방법
+단일 Cloudflare Pages 배포(같은 코드/DB)에서 도메인별로 다른 진입 화면을 주는 구성:
+1. **(사용자 1회) Cloudflare 커스텀 도메인 추가** — Pages `ur-live` 프로젝트 → Custom domains → `utongstart.com` 추가(DNS CNAME). 같은 앱이 그대로 뜸.
+2. **호스트 인식 라우팅(코드, Phase 5)**:
+   - `isUtongstart()` = `location.hostname` 이 `utongstart.com` 인지 검사하는 헬퍼.
+   - 루트 `/` 진입 시: utongstart 면 도매 카탈로그(유통사 로그인/카탈로그)로, live.ur-team.com 이면 기존 소비자 홈으로 분기.
+   - 소비자 전용 라우트는 utongstart 에서 `/wholesale` 등으로 redirect(또는 숨김) — 도매 UX 만 노출.
+   - (선택) `worker/index.ts` 에서 `host` 검사해 SSR 기본 경로/메타를 도매용으로. 단 SSR inject 블록은 잠금 영역이라 새 slot 패턴으로 추가.
+3. 두 도메인이 같은 D1·세션을 쓰므로 데이터/계정은 공유, **화면(진입·네비)만 분리**.
