@@ -88,6 +88,33 @@ export function useWholesaleCatalog(search: string) {
   })
 }
 
+export interface WholesaleProductData {
+  item: (WholesaleCatalogItem & {
+    name: string
+    description: string | null
+    image_url: string | null
+    category: string | null
+    stock: number
+    distributor_price: number
+  }) | null
+  grade: string
+}
+
+export function useWholesaleProduct(id: string | undefined) {
+  return useQuery<WholesaleProductData>({
+    queryKey: queryKeys.wholesale('product', id ?? ''),
+    queryFn: () =>
+      api
+        .get(`/api/wholesale/catalog/${id}`, sellerAuth())
+        .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' }))
+        .catch(() => ({ item: null, grade: '' })),
+    enabled: hasSellerToken() && !!id,
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useWholesaleMe() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return useQuery<any>({

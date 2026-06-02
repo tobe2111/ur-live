@@ -5,18 +5,9 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Minus, Plus, Tag } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
+import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 
 // 🏭 2026-06-01 유통스타트 도매 상품 상세 + B2B 주문 (Phase 2).
-
-interface Item {
-  id: number
-  name: string
-  description: string | null
-  image_url: string | null
-  category: string | null
-  stock: number
-  distributor_price: number
-}
 
 export default function WholesaleProductPage() {
   const { id } = useParams()
@@ -24,19 +15,16 @@ export default function WholesaleProductPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const h = { headers: { Authorization: `Bearer ${token}` } }
 
-  const [item, setItem] = useState<Item | null>(null)
-  const [grade, setGrade] = useState('')
+  // 🛡️ 2026-06-01 Tier2: 읽기는 React Query. 주문 POST(placeOrder) 는 그대로 유지.
+  const { data, isLoading: loading } = useWholesaleProduct(id)
+  const item = data?.item ?? null
+  const grade = data?.grade ?? ''
   const [qty, setQty] = useState(1)
-  const [loading, setLoading] = useState(true)
   const [ordering, setOrdering] = useState(false)
 
   useEffect(() => {
-    if (!token) { navigate('/seller/login'); return }
-    api.get(`/api/wholesale/catalog/${id}`, h)
-      .then(r => { if (r.data.success) { setItem(r.data.item); setGrade(r.data.grade) } })
-      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
-      .finally(() => setLoading(false))
-  }, [id, token])
+    if (!token) navigate('/seller/login')
+  }, [token, navigate])
 
   async function placeOrder() {
     if (!item || ordering) return
