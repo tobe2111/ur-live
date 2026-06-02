@@ -4,41 +4,14 @@
  *   - POST /api/referral-tree/withdrawals: granted 잔액 출금 신청
  *   - GET /api/referral-tree/withdrawals: 내 출금 신청 이력
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Wallet, CheckCircle, Clock, XCircle, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { formatWon } from '@/utils/format'
-
-interface Summary {
-  total_pending: number
-  total_granted: number
-  total_withdrawn: number
-}
-
-interface Commission {
-  id: number
-  order_id: number
-  tier: number
-  commission_amount: number
-  status: string
-  created_at: string
-}
-
-interface Withdrawal {
-  id: number
-  total_amount: number
-  commission_count: number
-  status: 'pending' | 'approved' | 'rejected'
-  bank_name: string
-  account_number: string
-  account_holder: string
-  requested_at: string
-  processed_at: string | null
-  rejection_reason: string | null
-}
+import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
   pending: { label: '심사 대기', cls: 'bg-amber-100 text-amber-700', icon: Clock },
@@ -48,34 +21,16 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof Ch
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [summary, setSummary] = useState<Summary>({ total_pending: 0, total_granted: 0, total_withdrawn: 0 })
-  const [commissions, setCommissions] = useState<Commission[]>([])
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
+  // 🛡️ 2026-06-01 Tier2: 수동 Promise.all → useMyCommissions 단일 쿼리. 출금 신청 후 refetch.
+  const { data, isLoading: loading, refetch } = useMyCommissions()
+  const summary = data?.summary ?? { total_pending: 0, total_granted: 0, total_withdrawn: 0 }
+  const commissions = data?.commissions ?? []
+  const withdrawals = data?.withdrawals ?? []
   const [showForm, setShowForm] = useState(false)
   const [bankName, setBankName] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
   const [accountHolder, setAccountHolder] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => { load() }, [])
-
-  async function load() {
-    try {
-      setLoading(true)
-      const [comRes, wdRes] = await Promise.all([
-        api.get('/api/referral-tree/my-commissions?page_size=20').catch(() => null),
-        api.get('/api/referral-tree/withdrawals').catch(() => null),
-      ])
-      if (comRes?.data?.success) {
-        setSummary(comRes.data.data.summary)
-        setCommissions(comRes.data.data.commissions || [])
-      }
-      if (wdRes?.data?.success) setWithdrawals(wdRes.data.data || [])
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function submit() {
     if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
@@ -93,7 +48,7 @@ export default function MyCommissionsPage() {
         toast.success(`출금 신청 완료 — ${formatWon(res.data.data.total_amount)} (${res.data.data.commission_count}건)`)
         setShowForm(false)
         setBankName(''); setAccountNumber(''); setAccountHolder('')
-        load()
+        refetch()
       } else {
         toast.error(res.data.error || '출금 신청 실패')
       }
