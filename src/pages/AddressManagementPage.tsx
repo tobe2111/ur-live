@@ -13,25 +13,7 @@ import {
 import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
-
-type EntryMethod = 'free' | 'password' | 'intercom' | 'pickup_box'
-
-interface ShippingAddress {
-  id: number
-  user_id: number
-  recipient_name: string
-  phone: string
-  postal_code: string
-  address: string
-  address_detail: string
-  is_default: number
-  label?: string | null
-  delivery_note?: string | null
-  entry_code?: string | null
-  entry_method?: EntryMethod | null
-  created_at: string
-  updated_at: string
-}
+import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -62,8 +44,8 @@ export default function AddressManagementPage() {
     t('address.msgPresetFragile'),
   ]
   const navigate = useNavigate()
-  const [addresses, setAddresses] = useState<ShippingAddress[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. CRUD mutation 후 refetch.
+  const { data: addresses = [], isLoading: loading, refetch } = useAddresses()
   const [showForm, setShowForm] = useState(false)
   const [showPostcodePopup, setShowPostcodePopup] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -76,9 +58,8 @@ export default function AddressManagementPage() {
     if (!userId) {
       toast.info(t('address.loginRequired'))
       navigate('/login')
-      return
     }
-    loadAddresses()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
 
   // ✅ UX H15 FIX: Daum Postcode SDK 1회만 로드 (JSX <script> 중복 등록 방지)
@@ -116,20 +97,6 @@ export default function AddressManagementPage() {
     return () => clearTimeout(timer)
   }, [showPostcodePopup])
 
-  async function loadAddresses() {
-    try {
-      const response = await api.get('/api/shipping-addresses')
-      if (response.data.success) {
-        setAddresses(response.data.data || [])
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to load addresses:', error)
-      toast.error(t('address.loadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
   async function handleSaveAddress() {
     if (!formData.recipient_name || !formData.phone || !formData.address) {
       toast.error(t('address.requiredFields'))
@@ -149,7 +116,7 @@ export default function AddressManagementPage() {
         })
       }
       closeForm()
-      loadAddresses()
+      refetch()
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to save address:', error)
       toast.error(t('address.saveFailed'))
@@ -160,7 +127,7 @@ export default function AddressManagementPage() {
     if (!confirm(t('address.deleteConfirm'))) return
     try {
       await api.delete(`/api/shipping-addresses/${id}`)
-      loadAddresses()
+      refetch()
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to delete address:', error)
       toast.error(t('address.deleteFailed'))
@@ -172,7 +139,7 @@ export default function AddressManagementPage() {
       const address = addresses.find(a => a.id === id)
       if (!address) return
       await api.put(`/api/shipping-addresses/${id}`, { ...address, is_default: 1 })
-      loadAddresses()
+      refetch()
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to set default:', error)
       toast.error(t('address.setDefaultFailed'))

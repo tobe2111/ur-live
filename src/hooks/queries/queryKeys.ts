@@ -56,6 +56,7 @@ export const queryKeys = {
   digitalLibrary: () => ['my', 'digital-library'] as const,
   myStays: () => ['my', 'stays'] as const,
   myGroupBuys: () => ['my', 'group-buys'] as const,
+  addresses: () => ['my', 'shipping-addresses'] as const,
   following: () => ['social', 'following'] as const,
 
   // 카테고리 / 메타
