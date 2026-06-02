@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
-import { Layers, Save, Loader2, Search, Tag, Percent } from 'lucide-react'
+import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급/마진 설정 (Phase 1b).
@@ -42,6 +42,18 @@ export default function AdminDistributorGradesPage() {
   const [distributors, setDistributors] = useState<DistributorRow[]>([])
   const [searching, setSearching] = useState(false)
   const [savingDist, setSavingDist] = useState<number | null>(null)
+
+  // 상품제안
+  const [propSeller, setPropSeller] = useState('')
+  const [propProduct, setPropProduct] = useState('')
+  const [propNote, setPropNote] = useState('')
+  const [proposals, setProposals] = useState<Array<{ id: number; distributor_seller_id: number; product_name: string; product_id: number; note: string | null }>>([])
+  const [propBusy, setPropBusy] = useState(false)
+
+  // 세금 집계
+  const [taxMonth, setTaxMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [taxData, setTaxData] = useState<{ by_distributor: Array<Record<string, unknown>>; by_supplier: Array<Record<string, unknown>> } | null>(null)
+  const [taxLoading, setTaxLoading] = useState(false)
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -96,6 +108,34 @@ export default function AdminDistributorGradesPage() {
         setDistributors(prev => prev.map(x => x.id === d.id ? { ...x, distributor_grade: grade, special_discount_until: special } : x))
       } else toast.error(r.data.error || '저장 실패')
     } catch { toast.error('저장 중 오류') } finally { setSavingDist(null) }
+  }
+
+  const loadProposals = useCallback(() => {
+    api.get('/api/admin/distributor/proposals', h)
+      .then(r => { if (r.data.success) setProposals(r.data.proposals || []) })
+      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
+  }, [])
+  useEffect(() => { loadProposals() }, [loadProposals])
+
+  async function createProposal() {
+    const sid = Number(propSeller), pid = Number(propProduct)
+    if (!Number.isFinite(sid) || sid <= 0 || !Number.isFinite(pid) || pid <= 0) { toast.error('유통사 ID와 상품 ID를 입력하세요'); return }
+    setPropBusy(true)
+    try {
+      const r = await api.post('/api/admin/distributor/proposals', { distributor_seller_id: sid, product_id: pid, note: propNote }, h)
+      if (r.data.success) { toast.success('제안 생성됨'); setPropProduct(''); setPropNote(''); loadProposals() }
+      else toast.error(r.data.error || '실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류') } finally { setPropBusy(false) }
+  }
+  async function withdrawProposal(id: number) {
+    try { await api.delete(`/api/admin/distributor/proposals/${id}`, h); loadProposals() } catch { toast.error('철회 실패') }
+  }
+  function loadTax() {
+    setTaxLoading(true)
+    api.get(`/api/admin/distributor/tax-summary?month=${taxMonth}`, h)
+      .then(r => { if (r.data.success) setTaxData({ by_distributor: r.data.by_distributor || [], by_supplier: r.data.by_supplier || [] }) })
+      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
+      .finally(() => setTaxLoading(false))
   }
 
   if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
@@ -224,6 +264,76 @@ export default function AdminDistributorGradesPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </section>
+
+        {/* ── 상품 제안 (어드민 → 유통사) ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+            <Sparkles className="w-4 h-4 text-amber-500" /> 상품 제안
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">유통사에게 도매 상품을 추천합니다. 유통사 카탈로그 상단 &ldquo;추천 상품 제안&rdquo;에 노출됩니다.</p>
+          <div className="flex flex-wrap items-end gap-2 mb-4">
+            <input type="number" value={propSeller} onChange={e => setPropSeller(e.target.value)} placeholder="유통사 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <input type="number" value={propProduct} onChange={e => setPropProduct(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <input type="text" value={propNote} onChange={e => setPropNote(e.target.value)} placeholder="메모(선택)" maxLength={200} className="flex-1 min-w-[160px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <button onClick={createProposal} disabled={propBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              {propBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} 제안
+            </button>
+          </div>
+          {proposals.length === 0 ? (
+            <p className="text-sm text-gray-400 py-2">등록된 제안이 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-gray-50">
+              {proposals.map(p => (
+                <li key={p.id} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-gray-700">유통사 #{p.distributor_seller_id} → <b className="text-gray-900">{p.product_name}</b> (상품#{p.product_id}){p.note ? ` · ${p.note}` : ''}</span>
+                  <button onClick={() => withdrawProposal(p.id)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* ── 세금계산서 집계 (1차 수동 발행 참고) ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+            <Receipt className="w-4 h-4 text-gray-500" /> 세금계산서 집계
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">월별 거래액 집계. 유통스타트→유통사(매출) / 제조사→유통스타트(매입) 세금계산서를 수동 발행할 때 참고합니다.</p>
+          <div className="flex items-end gap-2 mb-4">
+            <input type="month" value={taxMonth} onChange={e => setTaxMonth(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <button onClick={loadTax} disabled={taxLoading} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{taxLoading ? '조회중…' : '조회'}</button>
+          </div>
+          {taxData && (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">유통사별 매출 (→ 유통사 발행)</h3>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {taxData.by_distributor.length === 0 ? <tr><td className="text-gray-400 py-2">없음</td></tr> : taxData.by_distributor.map((d, i) => (
+                      <tr key={i} className="border-b border-gray-50">
+                        <td className="py-1.5 text-gray-700">{String(d.business_name || d.name || `#${d.seller_id}`)}</td>
+                        <td className="py-1.5 text-right font-medium text-gray-900">{Number(d.sales_total || 0).toLocaleString('ko-KR')}원</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">제조사별 매입 (← 제조사 수취)</h3>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {taxData.by_supplier.length === 0 ? <tr><td className="text-gray-400 py-2">없음</td></tr> : taxData.by_supplier.map((s, i) => (
+                      <tr key={i} className="border-b border-gray-50">
+                        <td className="py-1.5 text-gray-700">{String(s.business_name || `#${s.supplier_id}`)}</td>
+                        <td className="py-1.5 text-right font-medium text-gray-900">{Number(s.purchase_total || 0).toLocaleString('ko-KR')}원</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </section>

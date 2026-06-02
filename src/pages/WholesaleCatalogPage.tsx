@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Package, Search, Loader2, Tag, ShoppingCart } from 'lucide-react'
+import { Package, Search, Loader2, Tag, ShoppingCart, Receipt, ClipboardList, Sparkles } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 카탈로그 (Phase 2). 등급가만 노출, 제조사 신원 비노출.
@@ -38,6 +38,7 @@ export default function WholesaleCatalogPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [authErr, setAuthErr] = useState(false)
+  const [proposals, setProposals] = useState<CatalogItem[]>([])
 
   const loadCatalog = useCallback((q: string) => {
     setLoading(true)
@@ -54,6 +55,9 @@ export default function WholesaleCatalogPage() {
     api.get('/api/wholesale/me', h)
       .then(r => { if (r.data.success) setMe(r.data) })
       .catch(e => { if (e?.response?.status === 401) setAuthErr(true) })
+    api.get('/api/wholesale/proposals', h)
+      .then(r => { if (r.data.success) setProposals((r.data.proposals || []).map((p: { product_id: number } & CatalogItem) => ({ ...p, id: p.product_id }))) })
+      .catch(() => { /* optional */ })
     loadCatalog('')
   }, [token, loadCatalog])
 
@@ -82,18 +86,46 @@ export default function WholesaleCatalogPage() {
             <span className="text-lg font-bold text-gray-900 dark:text-white">유통스타트</span>
             <span className="text-sm text-gray-400 dark:text-gray-500">도매몰</span>
           </div>
-          {me && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold ${me.special_active ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-200'}`}>
-                <Tag className="w-3.5 h-3.5" /> {GRADE_LABEL[me.grade] || me.grade}
-              </span>
-              <span className="text-gray-400 dark:text-gray-500">마진 {me.margin_pct}%</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3 text-sm">
+            <button onClick={() => navigate('/wholesale/orders')} className="hidden sm:inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+              <ClipboardList className="w-4 h-4" /> 주문내역
+            </button>
+            <button onClick={() => navigate('/wholesale/statement')} className="hidden sm:inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+              <Receipt className="w-4 h-4" /> 거래내역서
+            </button>
+            {me && (
+              <>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold ${me.special_active ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-200'}`}>
+                  <Tag className="w-3.5 h-3.5" /> {GRADE_LABEL[me.grade] || me.grade}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">마진 {me.margin_pct}%</span>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="ur-content-wide px-4 lg:px-8 py-6">
+        {proposals.length > 0 && (
+          <section className="mb-6">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-white mb-3">
+              <Sparkles className="w-4 h-4 text-amber-500" /> 추천 상품 제안
+            </h2>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {proposals.map(p => (
+                <button key={p.id} onClick={() => navigate(`/wholesale/product/${p.id}`)} className="flex-shrink-0 w-40 text-left bg-white dark:bg-[#121212] rounded-xl border border-amber-200 dark:border-amber-500/20 overflow-hidden">
+                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+                    {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" loading="lazy" />}
+                  </div>
+                  <div className="p-2.5">
+                    <h3 className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2 mb-1">{p.name}</h3>
+                    <div className="text-sm font-bold text-gray-900 dark:text-white">{formatWon(p.distributor_price)}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         {me?.special_active && me.special_discount_until && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-sm">
             🔥 특별할인 적용 중 — {new Date(me.special_discount_until).toLocaleDateString('ko-KR')}까지 최저 공급가

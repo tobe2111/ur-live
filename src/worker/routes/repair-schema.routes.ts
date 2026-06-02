@@ -1129,6 +1129,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_wholesale_orders_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)` },
     { name: 'idx_wholesale_items_order', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)` },
     { name: 'idx_wholesale_items_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)` },
+    // 🏭 2026-06-01 유통스타트: 상품제안 (어드민 → 유통사). Phase 4.
+    { name: 'wholesale_proposals', sql: `CREATE TABLE IF NOT EXISTS wholesale_proposals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      distributor_seller_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wholesale_proposals_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_proposals_seller ON wholesale_proposals(distributor_seller_id, status, created_at DESC)` },
 
     { name: 'supplier_balances', sql: `CREATE TABLE IF NOT EXISTS supplier_balances (
       supplier_id INTEGER PRIMARY KEY,

@@ -46,6 +46,7 @@ const WholesaleProductPage = lazy(() => import('./pages/WholesaleProductPage'))
 const WholesaleCheckoutPage = lazy(() => import('./pages/WholesaleCheckoutPage'))
 const WholesaleSuccessPage = lazy(() => import('./pages/WholesaleSuccessPage'))
 const WholesaleOrdersPage = lazy(() => import('./pages/WholesaleOrdersPage'))
+const WholesaleStatementPage = lazy(() => import('./pages/WholesaleStatementPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
@@ -486,6 +487,7 @@ function AppContent() {
             <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />
             <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
             <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />
+            <Route path="/wholesale/statement" element={<WholesaleStatementPage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}

@@ -135,4 +135,100 @@ app.patch('/distributors/:id', async (c) => {
   }
 })
 
+// ── 상품제안 (어드민 → 유통사) ────────────────────────────────────────────────
+async function ensureProposals(db: D1Database) {
+  await db.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
+    note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(swallow('distributor-admin:ensure-proposals'))
+}
+
+// POST /proposals — 제안 생성
+app.post('/proposals', async (c) => {
+  try {
+    await ensureProposals(c.env.DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const sellerId = Number(body.distributor_seller_id)
+    const productId = Number(body.product_id)
+    const note = typeof body.note === 'string' ? body.note.slice(0, 200) : null
+    if (!Number.isFinite(sellerId) || sellerId <= 0 || !Number.isFinite(productId) || productId <= 0) {
+      return c.json({ success: false, error: '유통사와 상품을 선택해주세요' }, 400)
+    }
+    // 상품이 도매 상품인지 확인.
+    const prod = await c.env.DB.prepare(
+      "SELECT 1 FROM products WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL"
+    ).bind(productId).first()
+    if (!prod) return c.json({ success: false, error: '도매 상품이 아닙니다' }, 400)
+    await c.env.DB.prepare(
+      "INSERT INTO wholesale_proposals (distributor_seller_id, product_id, note, status) VALUES (?, ?, ?, 'active')"
+    ).bind(sellerId, productId, note).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '제안 생성 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// GET /proposals?seller_id= — 제안 목록
+app.get('/proposals', async (c) => {
+  try {
+    await ensureProposals(c.env.DB)
+    const sellerId = Number(c.req.query('seller_id'))
+    const binds: unknown[] = []
+    let where = "wp.status = 'active'"
+    if (Number.isFinite(sellerId) && sellerId > 0) { where += ' AND wp.distributor_seller_id = ?'; binds.push(sellerId) }
+    const { results } = await c.env.DB.prepare(`
+      SELECT wp.id, wp.distributor_seller_id, wp.note, wp.created_at, p.name AS product_name, p.id AS product_id
+      FROM wholesale_proposals wp JOIN products p ON p.id = wp.product_id
+      WHERE ${where} ORDER BY wp.created_at DESC LIMIT 200
+    `).bind(...binds).all()
+    return c.json({ success: true, proposals: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '제안 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// DELETE /proposals/:id — 제안 철회
+app.delete('/proposals/:id', async (c) => {
+  try {
+    await ensureProposals(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    await c.env.DB.prepare("UPDATE wholesale_proposals SET status = 'withdrawn' WHERE id = ?").bind(id).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '제안 철회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// ── GET /tax-summary?month=YYYY-MM — 세금계산서 집계 (1차 수동 발행 참고) ───────
+//   유통스타트→유통사 매출(유통사별 매입합) + 제조사→유통스타트 매입(제조사별 정산합).
+app.get('/tax-summary', async (c) => {
+  try {
+    const month = (c.req.query('month') || '').slice(0, 7)
+    const m = /^\d{4}-\d{2}$/.test(month) ? month : new Date().toISOString().slice(0, 7)
+
+    const byDistributor = await c.env.DB.prepare(`
+      SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
+             COUNT(*) AS order_count, COALESCE(SUM(o.subtotal),0) AS sales_total
+      FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
+      WHERE o.status IN ('PAID','SHIPPED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+      GROUP BY o.distributor_seller_id ORDER BY sales_total DESC
+    `).bind(m).all().catch(() => ({ results: [] }))
+
+    const bySupplier = await c.env.DB.prepare(`
+      SELECT i.supplier_id, sup.business_name,
+             COALESCE(SUM(i.base_supply_price * i.qty),0) AS purchase_total, COUNT(DISTINCT i.wholesale_order_id) AS order_count
+      FROM wholesale_order_items i
+      JOIN wholesale_orders o ON o.id = i.wholesale_order_id
+      LEFT JOIN suppliers sup ON sup.id = i.supplier_id
+      WHERE o.status IN ('PAID','SHIPPED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+      GROUP BY i.supplier_id ORDER BY purchase_total DESC
+    `).bind(m).all().catch(() => ({ results: [] }))
+
+    return c.json({ success: true, month: m, by_distributor: byDistributor.results ?? [], by_supplier: bySupplier.results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '세금 집계 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 export { app as distributorAdminRoutes }

@@ -408,4 +408,61 @@ app.get('/orders/:id', async (c) => {
   }
 })
 
+// ── GET /proposals — 나에게 제안된 상품 (등급가 포함) ─────────────────────────
+app.get('/proposals', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
+      note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
+    )`).run().catch(swallow('wholesale:ensure-proposals'))
+    const sg = await loadSellerGrade(DB, sellerId)
+    const table = await loadGradeTable(DB)
+    const { results } = await DB.prepare(`
+      SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
+             COALESCE(p.supply_price,0) AS supply_price
+      FROM wholesale_proposals wp
+      JOIN products p ON p.id = wp.product_id
+      WHERE wp.distributor_seller_id = ? AND wp.status = 'active'
+        AND p.is_active = 1 AND p.is_supply_product = 1
+      ORDER BY wp.created_at DESC LIMIT 50
+    `).bind(sellerId).all<{ id: number; note: string | null; created_at: string; product_id: number; name: string; image_url: string | null; stock: number; supply_price: number }>()
+    const items = (results || []).map(r => {
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
+      return { id: r.id, note: r.note, product_id: r.product_id, name: r.name, image_url: r.image_url, stock: r.stock, distributor_price: price }
+    })
+    return c.json({ success: true, proposals: items })
+  } catch (err) {
+    return safeError(c, err, '제안 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── GET /statement?from=&to= — 거래내역서 (유통사 매입 내역) ──────────────────
+app.get('/statement', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureOrderTables(DB)
+    const from = (c.req.query('from') || '').slice(0, 10)
+    const to = (c.req.query('to') || '').slice(0, 10)
+    let where = "distributor_seller_id = ? AND status IN ('PAID','SHIPPED','REFUNDED')"
+    const binds: unknown[] = [sellerId]
+    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) { where += ' AND date(COALESCE(paid_at, created_at)) >= ?'; binds.push(from) }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(to)) { where += ' AND date(COALESCE(paid_at, created_at)) <= ?'; binds.push(to) }
+    const { results } = await DB.prepare(`
+      SELECT id, status, subtotal, grade, paid_at, created_at
+      FROM wholesale_orders WHERE ${where} ORDER BY COALESCE(paid_at, created_at) DESC LIMIT 500
+    `).bind(...binds).all<{ id: number; status: string; subtotal: number; grade: string | null; paid_at: string | null; created_at: string }>()
+    const rows = results || []
+    const totalPaid = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.subtotal || 0), 0)
+    const totalRefunded = rows.filter(r => r.status === 'REFUNDED').reduce((s, r) => s + (r.subtotal || 0), 0)
+    return c.json({ success: true, orders: rows, summary: { count: rows.length, total_paid: totalPaid, total_refunded: totalRefunded, net: totalPaid - totalRefunded } })
+  } catch (err) {
+    return safeError(c, err, '거래내역 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
 export { app as wholesaleRoutes }
