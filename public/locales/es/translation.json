@@ -2029,7 +2029,11 @@
       "realtime": "[TODO:es] 실시간"
     },
     "areYouSupplier": "¿Eres proveedor mayorista?",
-    "goWholesale": "Mayorista →"
+    "goWholesale": "Mayorista →",
+    "cancelRefund": "Cancelar y reembolsar",
+    "confirmRefund": "¿Cancelar este pedido y reembolsar el pago? No se puede deshacer.",
+    "refundDone": "Pedido cancelado y reembolsado",
+    "refundFailed": "Error al reembolsar"
   },
   "admin": {
     "login": {

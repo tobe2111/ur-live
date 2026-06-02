@@ -2700,7 +2700,11 @@
       "realtime": "[TODO:zh] 실시간"
     },
     "areYouSupplier": "您是批发供应商吗？",
-    "goWholesale": "批发商城 →"
+    "goWholesale": "批发商城 →",
+    "cancelRefund": "取消订单·退款",
+    "confirmRefund": "取消该订单并退款？此操作无法撤销。",
+    "refundDone": "已取消并退款",
+    "refundFailed": "退款处理失败"
   },
   "admin": {
     "login": {

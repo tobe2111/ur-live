@@ -2700,7 +2700,11 @@
       "realtime": "[TODO:en] 실시간"
     },
     "areYouSupplier": "Are you a wholesale supplier?",
-    "goWholesale": "Wholesale →"
+    "goWholesale": "Wholesale →",
+    "cancelRefund": "Cancel & Refund",
+    "confirmRefund": "Cancel this order and refund the payment? This cannot be undone.",
+    "refundDone": "Order cancelled and refunded",
+    "refundFailed": "Refund failed"
   },
   "admin": {
     "login": {

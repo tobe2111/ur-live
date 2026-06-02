@@ -214,6 +214,32 @@ export default function SellerOrdersPage() {
     }
   }
 
+  // 🛡️ 2026-06-01 머니플로우 감사: 결제완료 주문 정식 취소·환불 (Toss/딜 환불 + 커미션 역전).
+  async function handleRefund(orderNumber: string) {
+    if (!confirm(t('seller.confirmRefund', { defaultValue: '이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.' }))) {
+      return
+    }
+    setUpdating(true)
+    setError('')
+    try {
+      const response = await api.post(`/api/seller/orders/${orderNumber}/refund`, {})
+      if (response.data.success) {
+        toast.success(t('seller.refundDone', { defaultValue: '취소·환불 처리되었습니다' }))
+        invalidateOrders()
+        if (selectedOrder && selectedOrder.order_number === orderNumber) {
+          setShowDetail(false)
+          setSelectedOrder(null)
+        }
+      }
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string } } }
+      if (import.meta.env.DEV) console.error('Failed to refund:', error)
+      setError(error_.response?.data?.error || t('seller.refundFailed', { defaultValue: '환불 처리에 실패했습니다' }))
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   async function handleTrackingSubmit(e: React.FormEvent, orderNumber: string) {
     e.preventDefault()
     setUpdating(true)
@@ -580,6 +606,7 @@ export default function SellerOrdersPage() {
             onTrackingFormChange={setTrackingForm}
             onClose={() => setShowDetail(false)}
             onStatusChange={handleStatusChange}
+            onRefund={handleRefund}
             onTrackingSubmit={handleTrackingSubmit}
           />
         </Suspense>

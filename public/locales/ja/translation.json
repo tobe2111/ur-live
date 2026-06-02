@@ -2700,7 +2700,11 @@
       "realtime": "[TODO:ja] 실시간"
     },
     "areYouSupplier": "卸供給社の方ですか？",
-    "goWholesale": "卸モール →"
+    "goWholesale": "卸モール →",
+    "cancelRefund": "注文キャンセル·返金",
+    "confirmRefund": "この注文をキャンセルして返金しますか？元に戻せません。",
+    "refundDone": "キャンセル·返金が完了しました",
+    "refundFailed": "返金処理に失敗しました"
   },
   "admin": {
     "login": {

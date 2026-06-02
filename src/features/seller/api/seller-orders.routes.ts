@@ -17,6 +17,7 @@ import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { safeError } from '../../../worker/utils/safe-error';
+import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
@@ -204,7 +205,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
       if (cur && CAPTURED.includes(cur.status)) {
         return c.json({
           success: false,
-          error: '결제 완료된 주문은 상태 변경으로 취소할 수 없습니다. 환불(반품) 절차를 이용해주세요.',
+          error: '결제 완료된 주문은 상태 변경으로 취소할 수 없습니다. 환불(POST /api/seller/orders/:id/refund) 을 사용하세요.',
           code: 'REFUND_REQUIRED',
         }, 400);
       }
@@ -298,6 +299,40 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
 
 sellerOrdersRoutes.put('/orders/:id/status', handleStatusUpdate);
 sellerOrdersRoutes.patch('/orders/:id/status', handleStatusUpdate);
+
+// ─── POST /api/seller/orders/:id/refund ───────────────────────────────────
+// 🛡️ 2026-06-01 머니플로우 감사: 셀러가 결제완료 주문을 '올바르게' 환불(취소).
+//   status 변경 무환불 CANCELLED 차단(handleStatusUpdate)의 정식 대체 경로.
+//   검증된 공유 루틴 refundOrderFully — Toss취소/딜환불 + CAS + 재고복원 + 커미션/공급자/영입자 역전.
+sellerOrdersRoutes.post('/orders/:id/refund', rateLimit({ action: 'seller_order_refund', max: 20, windowSec: 3600 }), async (c) => {
+  try {
+    const sellerId = await getActiveSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    const orderId = c.req.param('id');
+    if (!orderId) return c.json({ success: false, error: '잘못된 주문 ID' }, 400);
+    const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }));
+    const reason = (typeof body.reason === 'string' ? body.reason : '판매자 주문 취소').slice(0, 200);
+
+    const { refundOrderFully } = await import('../../../worker/utils/order-refund');
+    const r = await refundOrderFully(c.env.DB, c.env as unknown as { TOSS_SECRET_KEY?: string }, orderId, { reason, expectSellerId: sellerId });
+    if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, r.status);
+
+    // 환불 성공 후 구매자 알림 (성공 후에만 — 거짓 취소 알림 방지).
+    try {
+      const ord = await c.env.DB.prepare(
+        'SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1'
+      ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
+      if (ord?.user_id) {
+        const { notifyUser } = await import('../../../lib/notifications');
+        await notifyUser(c.env.DB, ord.user_id, 'order_status', '❌ 주문이 취소·환불되었습니다.', `주문번호: ${ord.order_number}`, '/my-orders');
+      }
+    } catch { /* fire and forget */ }
+
+    return c.json({ success: true, message: r.already ? '이미 환불 처리된 주문입니다' : '주문이 취소·환불되었습니다', refund_amount: r.refundAmount ?? 0 });
+  } catch (error) {
+    return safeError(c, error, '환불 처리 중 오류가 발생했습니다', '[seller-orders]');
+  }
+});
 
 // ─── PUT /api/seller/orders/:id/tracking ──────────────────────────────────
 sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {

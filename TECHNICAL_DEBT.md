@@ -21,13 +21,15 @@
 | 🟡 어드민 숙소환불 Toss 실패해도 `status='refunded'` 거짓표기 | `admin-stays.routes.ts:150` | `nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'` (유저경로 정합) + status_log 동기 |
 | 🟢 **공개(미인증) 상품 API 원시에러 누출 5곳** | `products.routes.ts:316/391/471/537/602` | `safeError()` 통일 (열거공격/스키마 누출 차단). 최고 노출 |
 | 🟢 셀러 주문 status 핸들러 에러 누출 | `seller-orders.routes.ts:275` | `safeError()` |
+| 🔴 **order.routes 추천커미션 회수 컬럼 오류** — `user_id/amount`(미존재) 쿼리→`.catch` 삼킴→cancel/refund 시 추천 커미션 **무회수(조용한 누수)** | `order.routes.ts:604,783` | 실제 스키마 `beneficiary_id/commission_amount` 로 정정 → 의도된 clawback 실제 작동 (2차 감사 발견) |
+| ✅ **셀러 정식 환불 경로 신설** (위 🔴 차단의 정식 대체) | `seller-orders.routes.ts` `POST /orders/:id/refund` + `order-refund.ts` | 검증된 헬퍼 조합 공유 util `refundOrderFully` — Toss취소/딜환불 + CAS 멱등 + 재고복원/디지털revoke + 추천·affiliate·공급자·영입자 역전(올바른 컬럼). rate-limit + IDOR(seller_id) + 환불성공 후에만 알림. **셀러가 결제완료 주문을 올바르게 취소·환불 가능** |
 
 ### 🟢 남은 부채 (이번 라운드 미처리 — 안전·저위험, 후속)
 | 항목 | 위치 | 비고 |
 |---|---|---|
 | 원시에러 누출 sweep 잔여 ~33곳 | `seller-orders`(11), `seller-streams`(11), `seller-profile`(2), `seller-management`(1), `kakao.routes`(3), orders/bulk-upload/admin-kt-alpha | **인증된 셀러/어드민 경로라 저위험**. 점진 `safeError` (레지스트리 기존 항목과 동일 성격) |
 | `moderation.routes.ts:22` `POST /check` 무인증 | moderation | 무상태 텍스트검열(IDOR 아님). `requireAuth`+rate-limit 권장, 저위험 |
-| 셀러 결제완료 주문 **정식 환불 UI 부재** | seller | 위 🔴 차단으로 무환불 손실은 막음. 셀러가 직접 환불하려면 환불 플로우 UX 필요 — **제품 결정 필요**(반품 승인 경로 안내 or 셀러 환불 endpoint 신설). 현재는 관리자/반품 경로로 처리 |
+| 셀러 환불 **프론트 UI 버튼** | seller dashboard | 백엔드 `POST /orders/:id/refund` 완비 — 셀러 주문 상세에 '취소·환불' 버튼만 추가하면 됨(후속, 저위험) |
 
 ### 검증 결론 (에이전트)
 - **tsc: 0 에러** (빌드는 타입 strip 하지만 tsc/CI 기준도 clean — 직전 `AdminWholesaleOrdersPage` 잠복에러 1건은 이미 수정).

@@ -600,9 +600,11 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     try {
       const revokeTs = new Date().toISOString();
       // 먼저 granted 인 commission 을 읽고 CAS 로 withdrawn 전환
+      // 🛡️ 2026-06-01 머니플로우 감사 fix: 잘못된 컬럼(user_id/amount)으로 항상 0건 매칭 →
+      //   추천 커미션 회수가 조용히 무효였음. 실제 스키마 컬럼(beneficiary_id/commission_amount)으로 정정.
       const toRevoke = await c.env.DB.prepare(
-        "SELECT id, user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
-      ).bind(body.order_id).all<{ id: number; user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
+        "SELECT id, beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+      ).bind(body.order_id).all<{ id: number; beneficiary_id: string; commission_amount: number }>().catch(() => ({ results: [] as Array<{ id: number; beneficiary_id: string; commission_amount: number }> }));
 
       for (const co of (toRevoke.results || [])) {
         const cas = await c.env.DB.prepare(
@@ -612,7 +614,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
         if (cas && (cas.meta?.changes ?? 0) > 0) {
           await c.env.DB.prepare(
             'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-          ).bind(co.amount, co.user_id).run().catch(swallow('order:commission-revoke-points'));
+          ).bind(co.commission_amount, co.beneficiary_id).run().catch(swallow('order:commission-revoke-points'));
         }
       }
     } catch (e) {
@@ -777,9 +779,10 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       // ✅ 추천 커미션 회수 (cancel paid 경로)
       // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 (refund 와 동일 패턴)
       try {
+        // 🛡️ 2026-06-01 머니플로우 감사 fix: user_id/amount → beneficiary_id/commission_amount (실제 스키마).
         const toRevoke = await c.env.DB.prepare(
-          "SELECT id, user_id, amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
-        ).bind(orderId).all<{ id: number; user_id: string; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string; amount: number }> }));
+          "SELECT id, beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+        ).bind(orderId).all<{ id: number; beneficiary_id: string; commission_amount: number }>().catch(() => ({ results: [] as Array<{ id: number; beneficiary_id: string; commission_amount: number }> }));
 
         for (const co of (toRevoke.results || [])) {
           const cas = await c.env.DB.prepare(
@@ -788,7 +791,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
           if (cas && (cas.meta?.changes ?? 0) > 0) {
             await c.env.DB.prepare(
               'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-            ).bind(co.amount, co.user_id).run().catch((err) => {
+            ).bind(co.commission_amount, co.beneficiary_id).run().catch((err) => {
               console.error('[ORDERS] user_points debit failed (cancel paid):', err);
             });
           }

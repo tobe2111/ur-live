@@ -18,6 +18,7 @@ interface Props {
   onTrackingFormChange: (next: TrackingForm) => void
   onClose: () => void
   onStatusChange: (orderNumber: string, nextStatus: string) => void
+  onRefund?: (orderNumber: string) => void
   onTrackingSubmit: (e: React.FormEvent, orderNumber: string) => void
 }
 
@@ -28,7 +29,7 @@ const COURIERS = [
   'EMS', 'DHL', 'FedEx', 'UPS', 'USPS',
 ]
 
-export default function OrderDetailModal({ order, updating, trackingForm, onTrackingFormChange, onClose, onStatusChange, onTrackingSubmit }: Props) {
+export default function OrderDetailModal({ order, updating, trackingForm, onTrackingFormChange, onClose, onStatusChange, onRefund, onTrackingSubmit }: Props) {
   const { t } = useTranslation()
   const statusText = useStatusText()
   const next = nextStatusOf(order.status)
@@ -186,6 +187,19 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                     t('seller.changeStatusTo', { status: statusText(next) })
                   )}
                 </Button>
+              </div>
+            )}
+
+            {/* 🛡️ 2026-06-01 취소·환불 (결제완료 주문 정식 환불 경로) */}
+            {onRefund && ['PAID', 'DONE', 'PREPARING', 'SHIPPING'].includes(order.status) && (
+              <div className="border-b pb-4">
+                <button
+                  onClick={() => onRefund(order.order_number)}
+                  disabled={updating}
+                  className="w-full py-3 border border-rose-300 text-rose-600 rounded-lg font-medium hover:bg-rose-50 disabled:opacity-50"
+                >
+                  {t('seller.cancelRefund', { defaultValue: '주문 취소·환불' })}
+                </button>
               </div>
             )}
 

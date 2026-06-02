@@ -2029,7 +2029,11 @@
       "realtime": "[TODO:fr] 실시간"
     },
     "areYouSupplier": "Vous êtes fournisseur en gros ?",
-    "goWholesale": "Grossiste →"
+    "goWholesale": "Grossiste →",
+    "cancelRefund": "Annuler et rembourser",
+    "confirmRefund": "Annuler cette commande et rembourser le paiement ? Irréversible.",
+    "refundDone": "Commande annulée et remboursée",
+    "refundFailed": "Échec du remboursement"
   },
   "admin": {
     "login": {
