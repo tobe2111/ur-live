@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet,
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -55,6 +55,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
       // 🛡️ 2026-06-01 도매몰: 공급자(도매상) 계정 승인 + 정산 지급.
       { path: '/admin/suppliers',        label: '공급자 관리',   icon: Store },
+      // 🏭 2026-06-01 유통스타트: 유통사 등급/마진 설정.
+      { path: '/admin/distributor-grades', label: '유통사 등급',  icon: Layers },
       // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
