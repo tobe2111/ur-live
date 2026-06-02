@@ -21,6 +21,7 @@ const AdminReturnsPage = lazy(() => import('@/pages/AdminReturnsPage'))
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
+const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
@@ -186,6 +187,11 @@ export function AdminRoutes() {
       <Route path="/admin/distributor-grades" element={
         <ProtectedRoute requireAdmin>
           <AdminDistributorGradesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/wholesale-orders" element={
+        <ProtectedRoute requireAdmin>
+          <AdminWholesaleOrdersPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/alimtalk" element={

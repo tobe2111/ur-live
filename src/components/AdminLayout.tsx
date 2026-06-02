@@ -55,8 +55,9 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
       // 🛡️ 2026-06-01 도매몰: 공급자(도매상) 계정 승인 + 정산 지급.
       { path: '/admin/suppliers',        label: '공급자 관리',   icon: Store },
-      // 🏭 2026-06-01 유통스타트: 유통사 등급/마진 설정.
+      // 🏭 2026-06-01 유통스타트: 유통사 등급/마진 설정 + 도매주문 모니터.
       { path: '/admin/distributor-grades', label: '유통사 등급',  icon: Layers },
+      { path: '/admin/wholesale-orders',   label: '도매 주문',    icon: ShoppingBag },
       // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.

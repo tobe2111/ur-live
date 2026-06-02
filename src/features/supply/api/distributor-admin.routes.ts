@@ -15,6 +15,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { swallow } from '@/worker/utils/swallow'
+import { cancelTossPayment } from '@/worker/utils/toss-gateway'
+import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -228,6 +230,111 @@ app.get('/tax-summary', async (c) => {
     return c.json({ success: true, month: m, by_distributor: byDistributor.results ?? [], by_supplier: bySupplier.results ?? [] })
   } catch (err) {
     return safeError(c, err, '세금 집계 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// ── 도매주문 모니터 (어드민 오버사이트) ───────────────────────────────────────
+// GET /orders?status=&search=&page= — 전체 B2B 도매 주문
+app.get('/orders', async (c) => {
+  try {
+    const status = (c.req.query('status') || '').toUpperCase()
+    const search = (c.req.query('search') || '').trim().slice(0, 60)
+    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+    const limit = Math.min(parseInt(c.req.query('limit') || '30', 10), 100)
+    const offset = (page - 1) * limit
+    const VALID = ['PENDING', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED', 'FAILED']
+    const binds: unknown[] = []
+    let where = '1=1'
+    if (VALID.includes(status)) { where += ' AND o.status = ?'; binds.push(status) }
+    if (search) { where += ' AND (s.business_name LIKE ? OR s.name LIKE ? OR s.username LIKE ?)'; const l = `%${search}%`; binds.push(l, l, l) }
+    const { results } = await c.env.DB.prepare(`
+      SELECT o.id, o.distributor_seller_id, o.status, o.grade, o.subtotal, o.supply_total, o.margin_total,
+             o.refunded_amount, o.created_at, o.paid_at,
+             s.business_name, s.name AS seller_name, s.username,
+             (SELECT COUNT(*) FROM wholesale_order_items wi WHERE wi.wholesale_order_id = o.id) AS item_count
+      FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
+      WHERE ${where} ORDER BY o.created_at DESC LIMIT ? OFFSET ?
+    `).bind(...binds, limit, offset).all().catch(() => ({ results: [] }))
+    const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS c FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id WHERE ${where}`)
+      .bind(...binds).first<{ c: number }>().catch(() => ({ c: 0 }))
+    return c.json({ success: true, orders: results ?? [], total: totalRow?.c ?? 0, page, limit })
+  } catch (err) {
+    return safeError(c, err, '도매주문 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// GET /orders/:id — 주문 상세 (라인별 제조사/금액)
+app.get('/orders/:id', async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+    const order = await c.env.DB.prepare(`
+      SELECT o.*, s.business_name, s.name AS seller_name, s.username
+      FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id WHERE o.id = ?
+    `).bind(id).first()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    const { results } = await c.env.DB.prepare(`
+      SELECT i.product_id, i.name, i.qty, i.base_supply_price, i.distributor_unit_price, i.line_total,
+             i.line_status, i.courier, i.tracking_number, i.supplier_id, sup.business_name AS supplier_name
+      FROM wholesale_order_items i LEFT JOIN suppliers sup ON sup.id = i.supplier_id
+      WHERE i.wholesale_order_id = ?
+    `).bind(id).all().catch(() => ({ results: [] }))
+    return c.json({ success: true, order, items: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '주문 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// POST /orders/:id/refund — 어드민 강제 전액 환불 (분쟁/멈춘 주문 개입)
+app.post('/orders/:id/refund', async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const reason = String(body.reason || '관리자 환불').slice(0, 100)
+
+    const order = await c.env.DB.prepare(
+      'SELECT id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
+    ).bind(id).first<{ id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    if (order.status === 'REFUNDED') return c.json({ success: true, already: true })
+    if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
+      return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
+    }
+    // 남은 환불 가능액 = subtotal - 이미 환불액.
+    const remaining = Math.max(0, (order.subtotal || 0) - (order.refunded_amount || 0))
+    if (remaining <= 0) return c.json({ success: false, error: '환불할 잔액이 없습니다' }, 400)
+
+    // CAS claim.
+    const claim = await c.env.DB.prepare(
+      "UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal WHERE id = ? AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')"
+    ).bind(id).run()
+    if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
+
+    const res = await cancelTossPayment({
+      env: c.env, paymentKey: order.payment_key, cancelReason: reason,
+      cancelAmount: remaining, idempotencyKey: `whs-admin-refund-${id}`,
+    })
+    if (!res.ok) {
+      // 롤백.
+      await c.env.DB.prepare("UPDATE wholesale_orders SET status='PAID', refunded_amount=? WHERE id=? AND status='REFUNDED'")
+        .bind(order.refunded_amount || 0, id).run().catch(() => {})
+      return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
+    }
+
+    // 남은 모든 라인 REFUNDED + 정산 역전(전체) + 재고복원.
+    await c.env.DB.prepare("UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'").bind(id).run().catch(() => {})
+    try { await reverseSupplierOnWholesaleRefund(c.env.DB, id, reason) } catch { /* best-effort */ }
+    const lines = await c.env.DB.prepare("SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id = ?")
+      .bind(id).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
+    for (const l of lines.results || []) {
+      await c.env.DB.prepare(
+        "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
+      ).bind(l.qty, l.qty, l.product_id).run().catch(() => {})
+    }
+    return c.json({ success: true, refunded_amount: remaining })
+  } catch (err) {
+    return safeError(c, err, '환불 처리 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 

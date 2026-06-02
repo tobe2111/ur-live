@@ -1,0 +1,182 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { Package, Loader2, Search, RotateCcw, X } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
+import { formatWon } from '@/utils/format'
+
+// 🏭 2026-06-01 유통스타트 — 어드민 도매주문 모니터 (오버사이트 + 강제환불). 라이트 테마.
+
+interface OrderRow {
+  id: number
+  distributor_seller_id: number
+  status: string
+  grade: string | null
+  subtotal: number
+  margin_total: number
+  refunded_amount: number
+  created_at: string
+  business_name: string | null
+  seller_name: string | null
+  username: string | null
+  item_count: number
+}
+interface DetailItem {
+  product_id: number; name: string; qty: number; base_supply_price: number
+  distributor_unit_price: number; line_total: number; line_status: string
+  courier: string | null; tracking_number: string | null; supplier_name: string | null
+}
+
+const STATUS: Record<string, { t: string; c: string }> = {
+  PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700' },
+  PAID: { t: '결제완료', c: 'bg-emerald-50 text-emerald-700' },
+  SHIPPED: { t: '발송완료', c: 'bg-blue-50 text-blue-700' },
+  PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700' },
+  REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700' },
+  FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500' },
+}
+const FILTERS = ['', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED']
+
+export default function AdminWholesaleOrdersPage() {
+  const navigate = useNavigate()
+  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+
+  const [orders, setOrders] = useState<OrderRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState('')
+  const [search, setSearch] = useState('')
+  const [detail, setDetail] = useState<{ order: OrderRow & Record<string, unknown>; items: DetailItem[] } | null>(null)
+  const [refunding, setRefunding] = useState(false)
+
+  useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
+
+  const load = useCallback((st: string, q: string) => {
+    setLoading(true)
+    const p = new URLSearchParams()
+    if (st) p.set('status', st)
+    if (q) p.set('search', q)
+    api.get(`/api/admin/distributor/orders?${p.toString()}`, h)
+      .then(r => { if (r.data.success) setOrders(r.data.orders || []) })
+      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load(status, search) }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function openDetail(id: number) {
+    api.get(`/api/admin/distributor/orders/${id}`, h)
+      .then(r => { if (r.data.success) setDetail({ order: r.data.order, items: r.data.items || [] }) })
+      .catch(() => toast.error('상세 조회 실패'))
+  }
+
+  async function forceRefund(id: number) {
+    if (!window.confirm(`주문 #${id} 을(를) 관리자 강제 전액환불 할까요? 되돌릴 수 없습니다.`)) return
+    setRefunding(true)
+    try {
+      const r = await api.post(`/api/admin/distributor/orders/${id}/refund`, { reason: '관리자 환불' }, h)
+      if (r.data.success) { toast.success('환불 처리됨'); setDetail(null); load(status, search) }
+      else toast.error(r.data.error || '환불 실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류') }
+    finally { setRefunding(false) }
+  }
+
+  return (
+    <AdminLayout title="도매 주문">
+      <div className="ur-content-full px-4 lg:px-8 py-6">
+        <DashboardPageHeader icon={<Package className="w-5 h-5" />} title="도매 주문 모니터" subtitle="유통스타트 B2B 주문 현황 + 분쟁/멈춘 주문 강제환불" />
+
+        <div className="flex flex-wrap items-center gap-2 my-4">
+          {FILTERS.map(f => (
+            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+              {f ? (STATUS[f]?.t || f) : '전체'}
+            </button>
+          ))}
+          <form onSubmit={e => { e.preventDefault(); load(status, search) }} className="relative ml-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="유통사 검색" className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+          </form>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : orders.length === 0 ? (
+          <p className="text-center text-gray-400 py-20">주문이 없습니다.</p>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-100">
+                  <th className="py-2.5 px-4 font-medium">주문</th>
+                  <th className="py-2.5 px-4 font-medium">유통사</th>
+                  <th className="py-2.5 px-4 font-medium">등급</th>
+                  <th className="py-2.5 px-4 font-medium">상태</th>
+                  <th className="py-2.5 px-4 font-medium text-right">결제액</th>
+                  <th className="py-2.5 px-4 font-medium text-right">마진</th>
+                  <th className="py-2.5 px-4 font-medium">일자</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr key={o.id} onClick={() => openDetail(o.id)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
+                    <td className="py-2.5 px-4 text-gray-700">#{o.id} <span className="text-gray-400">({o.item_count})</span></td>
+                    <td className="py-2.5 px-4 text-gray-900">{o.business_name || o.seller_name || o.username || `#${o.distributor_seller_id}`}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{o.grade || '-'}</td>
+                    <td className="py-2.5 px-4"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[o.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[o.status]?.t || o.status}</span></td>
+                    <td className="py-2.5 px-4 text-right font-medium text-gray-900">{formatWon(o.subtotal)}</td>
+                    <td className="py-2.5 px-4 text-right text-gray-600">{formatWon(o.margin_total)}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{new Date(o.created_at).toLocaleDateString('ko-KR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 상세 모달 */}
+      {detail && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">주문 #{detail.order.id} 상세</h3>
+              <button onClick={() => setDetail(null)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="text-sm text-gray-600 mb-3">
+              상태 <b>{STATUS[detail.order.status as string]?.t || String(detail.order.status)}</b> ·
+              결제 <b>{formatWon(Number(detail.order.subtotal))}</b> ·
+              환불 {formatWon(Number(detail.order.refunded_amount) || 0)}
+            </div>
+            <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-4">
+              배송지: {String(detail.order.ship_to_name || '-')} {String(detail.order.ship_to_phone || '')}<br />
+              {String(detail.order.ship_to_address || '-')}
+            </div>
+            <table className="w-full text-sm mb-4">
+              <thead><tr className="text-left text-gray-500 border-b border-gray-100">
+                <th className="py-2 font-medium">상품</th><th className="py-2 font-medium">제조사</th>
+                <th className="py-2 font-medium text-right">수량</th><th className="py-2 font-medium text-right">금액</th><th className="py-2 font-medium">상태</th>
+              </tr></thead>
+              <tbody>
+                {detail.items.map((it, i) => (
+                  <tr key={i} className="border-b border-gray-50">
+                    <td className="py-2 text-gray-900">{it.name}</td>
+                    <td className="py-2 text-gray-600">{it.supplier_name || `#${it.supplier_id}`}</td>
+                    <td className="py-2 text-right text-gray-600">{it.qty}</td>
+                    <td className="py-2 text-right text-gray-900">{formatWon(it.line_total)}</td>
+                    <td className="py-2 text-gray-500">{it.line_status === 'REFUNDED' ? '환불' : it.line_status === 'SHIPPED' ? `발송(${it.courier || ''})` : '대기'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(detail.order.status as string) && (
+              <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </AdminLayout>
+  )
+}
