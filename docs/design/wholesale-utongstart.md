@@ -130,12 +130,16 @@
 - [x] **Phase 3 — 제조사 운영** (commit, 2026-06-01)
   - `wholesale-supplier.routes.ts` (`/api/supplier/wholesale`): /orders(내 라인+배송지) /items/:id/ship(송장) /orders/:id/refund(반품→cancelTossPayment+재고복원). 라인별 발송, 전 라인 발송 시 주문 SHIPPED.
   - `SupplierWholesaleOrdersPage` + 대시보드 '도매 주문' 링크.
-- [ ] **Phase 4 — 세금/거래내역/제안**: 거래내역서 + 세금계산서(1차 수동) 양방향 + 상품제안(플랫폼→유통사) + 제조사 컨택/제품등록요청
+- [x] **Phase 4 — 세금/거래내역/제안** (commit, 2026-06-01)
+  - 상품제안(어드민→유통사): `wholesale_proposals` + admin CRUD + 유통사 카탈로그 '추천 상품 제안'.
+  - 거래내역서: `/api/wholesale/statement` + `WholesaleStatementPage`(인쇄).
+  - 세금계산서 집계(1차 수동): `/api/admin/distributor/tax-summary` 월별 유통사 매출/제조사 매입 — admin 섹션.
+  - (남은 항목: 제조사 컨택/제품등록요청 워크플로우 — 기존 supplier self-serve 카탈로그로 대체 가능, 필요 시 후속)
 - [x] **Phase 5 — utongstart.com 도메인 인식 라우팅** (commit, 2026-06-01 — DNS 등록은 사용자 1회)
 
 ---
 
-_상태: Phase 1 + 1b 완료. 다음 = Phase 2(유통사 도매 카탈로그 + B2B 선결제 주문)._
+_상태: **Phase 1 ~ 5 전체 완료** (2026-06-01). 도매몰 코어 = 등급가 카탈로그 → B2B 선결제 → 제조사 송장/반품 → 거래내역·제안·세금집계 + utongstart.com 도메인 분기. 남은 운영 작업: (1) Cloudflare 커스텀도메인 등록(사용자), (2) 제조사→유통스타트 정산 자동 지급 배선(현재는 wholesale_order_items 에 매입액 스냅샷 + admin 집계까지)._
 
 ### 부록: utongstart.com 도메인을 "도매몰 페이지만" 연결하는 방법
 단일 Cloudflare Pages 배포(같은 코드/DB)에서 도메인별로 다른 진입 화면을 주는 구성:
