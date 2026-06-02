@@ -1,35 +1,14 @@
 /**
  * 🛡️ 2026-05-18 (PR 6/6): 사용자 본인 숙소 예약 목록 + 취소 + 리뷰 작성.
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Building2, Calendar, MapPin, Star, MessageCircle, X as XIcon, ChevronLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-
-interface MyBooking {
-  id: number
-  product_id: number
-  product_name: string
-  room_id: number
-  room_name: string
-  image_url: string | null
-  check_in_date: string | null
-  check_out_date: string | null
-  nights: number
-  guest_count: number
-  total_amount: number
-  status: string
-  check_in_code: string | null
-  created_at: string
-  // 🛡️ 2026-05-18: voucher 모드 필드.
-  sale_mode?: 'date' | 'voucher'
-  voucher_type?: 'weekday' | 'weekend' | null
-  voucher_expires_at?: string | null
-  voucher_used_at?: string | null
-}
+import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '결제 대기', color: 'bg-gray-700 text-gray-300' },
@@ -44,28 +23,12 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function MyStaysPage() {
   const navigate = useNavigate()
-  const [bookings, setBookings] = useState<MyBooking[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (예약 목록 캐싱). cancel/review 후 refetch.
+  const { data: bookings = [], isLoading: loading, refetch } = useMyStays()
   const [reviewModalFor, setReviewModalFor] = useState<MyBooking | null>(null)
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   function token() {
     return localStorage.getItem('access_token') || localStorage.getItem('firebase_token') || ''
-  }
-
-  async function load() {
-    setLoading(true)
-    try {
-      const r = await api.get('/api/group-buy/stays/my-bookings', { headers: { Authorization: `Bearer ${token()}` } })
-      if (r.data?.success) setBookings(r.data.data || [])
-    } catch (err: unknown) {
-      const ax = err as { response?: { status?: number } }
-      if (ax.response?.status === 401) navigate('/login?returnUrl=/my-stays')
-    } finally { setLoading(false) }
   }
 
   async function cancel(b: MyBooking) {
@@ -76,7 +39,7 @@ export default function MyStaysPage() {
       if (r.data?.success) {
         const { refund_amount, refund_rate } = r.data.data
         toast.success(`취소됨 — 환불 ${(refund_rate * 100).toFixed(0)}% (₩${formatNumber(refund_amount)})`)
-        load()
+        refetch()
       }
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } }
@@ -173,7 +136,7 @@ export default function MyStaysPage() {
           booking={reviewModalFor}
           token={token()}
           onClose={() => setReviewModalFor(null)}
-          onSubmitted={() => { setReviewModalFor(null); load() }}
+          onSubmitted={() => { setReviewModalFor(null); refetch() }}
         />
       )}
     </div>

@@ -13,26 +13,10 @@ import { Download, Play, FileText, BookOpen, Music, Image as ImageIcon, Clock, A
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-
-interface DigitalAccess {
-  access_id: number
-  access_token: string
-  expires_at: string | null
-  download_count: number
-  download_limit: number
-  last_accessed: string | null
-  status: 'active' | 'revoked' | 'expired'
-  created_at: string
-  product_id: number
-  product_name: string
-  image_url: string | null
-  product_kind: 'digital' | 'video_course' | 'pdf_guide' | 'live_class'
-  content_format: string | null
-  file_size_mb: number | null
-  preview_url: string | null
-  seller_name: string | null
-  seller_image: string | null
-}
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
+import { isLoggedInSync } from '@/utils/auth'
+import { useDigitalLibrary, type DigitalAccess } from '@/hooks/queries/useDigitalLibrary'
 
 const KIND_LABEL: Record<string, string> = {
   digital: '📄 디지털 파일',
@@ -54,21 +38,14 @@ const FORMAT_ICON: Record<string, typeof Download> = {
 export default function MyDigitalLibraryPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [items, setItems] = useState<DigitalAccess[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (보관함 목록 캐싱).
+  const { data: items = [], isLoading: loading } = useDigitalLibrary()
+  const qc = useQueryClient()
   const [opening, setOpening] = useState<string | null>(null)
 
-  useEffect(() => { loadItems() }, [])
-
-  async function loadItems() {
-    try {
-      const res = await api.get('/api/digital/my')
-      if (res.data?.success) setItems(res.data.data || [])
-    } catch (err: unknown) {
-      const e = err as { response?: { status?: number } }
-      if (e.response?.status === 401) navigate('/login?returnUrl=/my/digital')
-    } finally { setLoading(false) }
-  }
+  useEffect(() => {
+    if (!isLoggedInSync()) navigate('/login?returnUrl=/my/digital')
+  }, [navigate])
 
   async function openItem(token: string) {
     if (opening) return
@@ -95,8 +72,8 @@ export default function MyDigitalLibraryPage() {
         a.click()
         document.body.removeChild(a)
       }
-      // 카운트 갱신
-      setItems(prev => prev.map(it => it.access_token === token
+      // 카운트 갱신 (캐시 직접 갱신 — 재요청 없이)
+      qc.setQueryData<DigitalAccess[]>(queryKeys.digitalLibrary(), prev => (prev ?? []).map(it => it.access_token === token
         ? { ...it, download_count: res.data.data.download_count, last_accessed: new Date().toISOString() }
         : it
       ))

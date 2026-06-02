@@ -2,69 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Users, Clock, ShoppingBag, Gift, Ticket, Store } from 'lucide-react';
-import api from '@/lib/api';
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
+import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────
-
-interface Tier { count: number; discount: number }
-
-interface ReferralGroup {
-  id: number | string;
-  invite_code: string;
-  product_id: number;
-  creator_user_id: number | string;
-  creator_name: string;
-  current_count: number;
-  target_count: number;
-  discount_percent: number;
-  tiers?: Tier[];
-  unlocked_tier?: Tier | null;
-  expires_at: string;
-  status: 'open' | 'achieved' | 'expired' | 'cancelled';
-  is_creator: boolean;
-}
-
-interface VoucherEntry {
-  id: number;
-  code: string;
-  product_id: number;
-  status: 'unused' | 'used' | 'expired' | 'refunded';
-  used_at?: string | null;
-  expires_at?: string | null;
-  created_at: string;
-  product_name?: string;
-  restaurant_name?: string;
-  product_image?: string;
-}
-
-interface CommunityGroupBuy {
-  id: number;
-  invite_code?: string;
-  creator_user_id: string | number;
-  creator_name: string;
-  restaurant_name: string;
-  proposed_price: number;
-  deposit_per_person: number;
-  target_count: number;
-  current_count: number;
-  status: 'proposed' | 'negotiating' | 'confirmed' | 'achieved' | 'failed' | 'refunded';
-  confirmed_price?: number;
-  confirmed_discount_percent?: number;
-  expires_at?: string;
-  created_at: string;
-  my_status?: string;
-}
-
-interface ProductInfo {
-  id: number;
-  name: string;
-  image_url?: string;
-  thumbnail_url?: string;
-}
 
 type Source = 'referral' | 'voucher' | 'community';
 type TabKey = 'all' | Source;
@@ -118,11 +62,12 @@ export default function MyGroupBuysPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>('all');
 
-  const [referralGroups, setReferralGroups] = useState<ReferralGroup[]>([]);
-  const [vouchers, setVouchers] = useState<VoucherEntry[]>([]);
-  const [community, setCommunity] = useState<CommunityGroupBuy[]>([]);
-  const [products, setProducts] = useState<Record<number, ProductInfo>>({});
-  const [loading, setLoading] = useState(true);
+  // 🛡️ 2026-06-01 Tier2: 3개 엔드포인트 + 상품 hydration 로드를 useMyGroupBuys 단일 쿼리로 캡슐화.
+  const { data, isLoading: loading } = useMyGroupBuys();
+  const referralGroups: ReferralGroup[] = data?.referralGroups ?? [];
+  const vouchers: VoucherEntry[] = data?.vouchers ?? [];
+  const community: CommunityGroupBuy[] = data?.community ?? [];
+  const products: Record<number, ProductInfo> = data?.products ?? {};
 
   useEffect(() => {
     const userType = localStorage.getItem('user_type');
@@ -130,57 +75,9 @@ export default function MyGroupBuysPage() {
     if (userType !== 'user' || !userId) {
       toast.info(t('myGroupBuys.loginRequired'));
       navigate('/login');
-      return;
     }
-    (async () => {
-      // 3 endpoints in parallel — each with its own try/catch so one failure doesn't blank the page
-      const [refRes, vouRes, comRes] = await Promise.allSettled([
-        api.get('/api/referral/my'),
-        api.get('/api/group-buy/my'),
-        api.get('/api/community-group-buy/my'),
-      ]);
-
-      let refList: ReferralGroup[] = [];
-      let vouList: VoucherEntry[] = [];
-      let comList: CommunityGroupBuy[] = [];
-
-      if (refRes.status === 'fulfilled' && refRes.value.data?.success) {
-        refList = refRes.value.data.data || [];
-      }
-      if (vouRes.status === 'fulfilled' && vouRes.value.data?.success) {
-        vouList = vouRes.value.data.data || [];
-      }
-      if (comRes.status === 'fulfilled' && comRes.value.data?.success) {
-        const d = comRes.value.data.data || {};
-        const created = (d.created || []) as CommunityGroupBuy[];
-        const joined = (d.joined || []) as CommunityGroupBuy[];
-        comList = [...created, ...joined];
-      }
-
-      setReferralGroups(refList);
-      setVouchers(vouList);
-      setCommunity(comList);
-
-      // Hydrate product info for referral entries (vouchers already include product fields)
-      const productIds = Array.from(new Set(refList.map(g => g.product_id).filter(Boolean)));
-      if (productIds.length > 0) {
-        const results = await Promise.all(
-          productIds.map(async (pid) => {
-            try {
-              const p = await api.get(`/api/group-buy/products/${pid}`);
-              if (p.data?.success) return [pid, p.data.data as ProductInfo] as const;
-            } catch { /* ignore */ }
-            return null;
-          })
-        );
-        const map: Record<number, ProductInfo> = {};
-        results.forEach(r => { if (r) map[r[0]] = r[1]; });
-        setProducts(map);
-      }
-
-      setLoading(false);
-    })();
-  }, [navigate, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Build unified item list
   const unified = useMemo<UnifiedItem[]>(() => {
