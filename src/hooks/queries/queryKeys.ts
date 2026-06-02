@@ -76,4 +76,9 @@ export const queryKeys = {
 
   // 유통스타트(도매) B2B
   wholesale: (section: string, param = '') => ['wholesale', section, param] as const,
+
+  // 추천 그룹 / 지도
+  referral: (code: string) => ['referral', 'group', code] as const,
+  mapStreams: () => ['map', 'streams'] as const,
+  mapProducts: (category: string) => ['map', 'products', category] as const,
 } as const

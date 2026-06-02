@@ -22,6 +22,7 @@ import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
+import { useMapProducts } from '@/hooks/queries/useMapProducts'
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }
@@ -30,9 +31,7 @@ export type { KakaoPlace }
 
 export default function RestaurantMapPage() {
   const { t } = useTranslation()
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [selected, setSelected] = useState<Restaurant | null>(null)
-  const [loading, setLoading] = useState(true)
   const [region, setRegion] = useState('')
   const [search, setSearch] = useState('')
   const [mapView, setMapView] = useState(true)
@@ -41,6 +40,8 @@ export default function RestaurantMapPage() {
   const [category, setCategory] = useState<string>('')
   // 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'>('all')
+  // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
+  const { data: restaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType)
   const [sortBy, setSortBy] = useState<SortBy>('discount')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
@@ -169,18 +170,6 @@ export default function RestaurantMapPage() {
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])
-
-  // 데이터 로드 — voucherType 으로 카테고리 필터 (all / meal / beauty / health)
-  useEffect(() => {
-    api.get('/api/group-buy/products', { params: { category: voucherType === 'all' ? 'all' : voucherType } })
-      .then(r => {
-        if (r.data.success) {
-          setRestaurants(r.data.data || [])
-        }
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [voucherType])
 
   // 🛡️ 2026-04-28: 옵션 B — 사용자 위치 기반 카카오 일반 맛집 자동 로드.
   //  식사권 적은 단계에 빈 지도 문제 해결 + 수요 신호 (영입 신청) 수집.

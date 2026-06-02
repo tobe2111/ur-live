@@ -7,30 +7,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { formatNumber } from '@/utils/format'
-
-interface Tier { count: number; discount: number }
-interface Member { user_name: string; joined_at: string }
-interface ReferralGroup {
-  invite_code: string
-  creator_name: string
-  product_id: number
-  current_count: number
-  target_count: number
-  discount_percent: number
-  tiers: Tier[]
-  unlocked_tier: Tier | null
-  next_tier: Tier | null
-  expires_at: string
-  status: 'open' | 'achieved' | 'expired'
-  members: Member[]
-}
-
-interface ProductInfo {
-  id: number
-  name: string
-  price: number
-  image_url?: string
-}
+import { useReferral, type Tier, type Member, type ReferralGroup, type ProductInfo } from '@/hooks/queries/useReferral'
 
 /** 로그인 여부 판단 (localStorage) */
 function useCurrentUserId(): string | null {
@@ -66,44 +43,11 @@ export default function ReferralPage() {
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
   const userId = useCurrentUserId()
-  const [group, setGroup] = useState<ReferralGroup | null>(null)
-  const [product, setProduct] = useState<ProductInfo | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-01 Tier2: 수동 2-fetch → useReferral 단일 쿼리(code별 캐시). join 후 refetch.
+  const { data, isLoading: loading, refetch } = useReferral(code)
+  const group = data?.group ?? null
+  const product = data?.product ?? null
   const [joining, setJoining] = useState(false)
-
-  const fetchGroup = async () => {
-    if (!code) return
-    try {
-      const r = await api.get(`/api/referral/${code}`)
-      if (r.data.success) {
-        const g: ReferralGroup = r.data.data
-        setGroup(g)
-        // 상품 정보 조회
-        if (g.product_id) {
-          try {
-            const p = await api.get(`/api/group-buy/products/${g.product_id}`)
-            if (p.data.success) {
-              const prod = p.data.data
-              setProduct({
-                id: prod.id,
-                name: prod.name,
-                price: prod.price,
-                image_url: prod.image_url || prod.thumbnail_url,
-              })
-            }
-          } catch {
-            // 상품 조회 실패해도 페이지는 표시
-          }
-        }
-      }
-    } catch {
-      toast.error(t('referralPage.inviteLinkInvalid'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchGroup() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [code])
 
   const handleJoin = async () => {
     if (!userId) {
@@ -124,7 +68,7 @@ export default function ReferralPage() {
         } else {
           toast.success(t('referralPage.joinSuccess'))
         }
-        await fetchGroup()
+        await refetch()
       } else {
         toast.error(res.data.error || t('referralPage.joinFail'))
       }
