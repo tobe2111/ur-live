@@ -32,6 +32,21 @@ fi
 
 log "start merging $CURRENT_BRANCH → main"
 
+# 🛡️ 2026-06-01 배포 게이트: 머지(=Cloudflare 자동배포) 전 로컬 타입검사.
+#   배경: 빌드(esbuild)는 타입을 strip 해 타입에러를 통과시킴 → 깨진 코드가 배포될 수 있음
+#   (실제 2026-06-01 감사에서 잠복 타입에러 발견). tsc 로 머지 전 차단.
+#   bypass(긴급): commit 메시지에 [SKIP_GATE] 또는 환경변수 SKIP_DEPLOY_GATE=1.
+LAST_MSG=$(git log -1 --pretty=%B 2>/dev/null)
+if [ "${SKIP_DEPLOY_GATE:-0}" != "1" ] && ! printf '%s' "$LAST_MSG" | grep -q '\[SKIP_GATE\]'; then
+  log "gate: tsc --noEmit 검사 중 (배포 전 타입 안전)..."
+  if ! npx tsc --noEmit --skipLibCheck > /tmp/auto-merge-tsc.log 2>&1; then
+    log "❌ gate 실패: 타입 에러 — main 머지/배포 중단. 수정 후 재push (긴급 시 [SKIP_GATE])"
+    grep -E "error TS" /tmp/auto-merge-tsc.log | head -8 | tee -a "$LOG_FILE"
+    exit 1
+  fi
+  log "✅ gate: tsc 통과 — 머지 진행"
+fi
+
 # uncommitted changes 가드 — 있으면 stash
 HAS_STASH=0
 if ! git diff --quiet HEAD || ! git diff --cached --quiet; then
