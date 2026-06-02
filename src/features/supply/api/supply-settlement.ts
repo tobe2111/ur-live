@@ -34,8 +34,8 @@ export async function creditSupplierOnOrder(
   platformRate = 5,
 ): Promise<number> {
   if (!orderId) return 0;
-  // 멱등 가드 — 이미 처리된 주문이면 skip.
-  const existing = await DB.prepare('SELECT 1 FROM supplier_settlements WHERE order_id = ? LIMIT 1')
+  // 멱등 가드 — 이미 처리된 주문이면 skip. (wholesale 정산은 order_id 공간 분리 — 제외)
+  const existing = await DB.prepare("SELECT 1 FROM supplier_settlements WHERE order_id = ? AND COALESCE(source,'consumer') != 'wholesale' LIMIT 1")
     .bind(orderId).first().catch(() => null);
   if (existing) return 0;
 
@@ -102,8 +102,9 @@ export async function reverseSupplierOnRefund(
   reason: string,
 ): Promise<number> {
   if (!orderId) return 0;
+  // 🏭 2026-06-01: wholesale 정산(source='wholesale')은 도매 환불 경로에서 별도 역전 — order_id 충돌 방지.
   const rows = await DB.prepare(
-    "SELECT id, supplier_id, supply_amount, status FROM supplier_settlements WHERE order_id = ? AND status IN ('pending','available') AND paid_at IS NULL"
+    "SELECT id, supplier_id, supply_amount, status FROM supplier_settlements WHERE order_id = ? AND COALESCE(source,'consumer') != 'wholesale' AND status IN ('pending','available') AND paid_at IS NULL"
   ).bind(orderId).all<{ id: number; supplier_id: number; supply_amount: number; status: string }>().catch(() => ({ results: [] as { id: number; supplier_id: number; supply_amount: number; status: string }[] }));
 
   let reversed = 0;

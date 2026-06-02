@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { requireSupplier } from '@/worker/middleware/auth'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
+import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireSupplier())
@@ -128,6 +129,9 @@ app.post('/orders/:id/refund', async (c) => {
     }
 
     await DB.prepare("UPDATE wholesale_orders SET status='REFUNDED' WHERE id=?").bind(orderId).run()
+
+    // 제조사 정산 적립 역전 (pending/available, fail-soft).
+    try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason) } catch { /* best-effort */ }
 
     // 재고 복원.
     const items = await DB.prepare('SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id = ?')

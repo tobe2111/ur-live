@@ -18,6 +18,7 @@ import {
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
+import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -361,6 +362,9 @@ app.post('/orders/confirm', async (c) => {
         "UPDATE products SET stock = MAX(0, COALESCE(stock,0) - ?), sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(it.qty, it.qty, it.product_id).run().catch(() => { /* best-effort */ })
     }
+
+    // 제조사 정산 적립 (멱등, fail-soft — 정산 실패가 결제완료를 막지 않음).
+    try { await creditSupplierOnWholesaleOrder(DB, order.id) } catch { /* best-effort */ }
 
     return c.json({ success: true, order_id: order.id })
   } catch (err) {

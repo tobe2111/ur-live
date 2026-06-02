@@ -1,0 +1,105 @@
+/**
+ * 🏭 2026-06-01 유통스타트 도매몰 — 제조사(공급자) 정산 배선 (Phase 2 후속).
+ *
+ * B2B 선결제 주문(유통사→유통스타트) 결제완료 시, 각 라인의 제조사 공급가(base × qty)를
+ * 제조사(supplier)에게 적립 → 기존 공급자 지급 파이프라인(matureSupplierSettlements →
+ * payoutSupplier)이 7일 환불창 성숙 후 자동 지급.
+ *
+ * 충돌 방지: supplier_settlements.source='wholesale' 로 consumer(드랍쉽) 정산과 분리.
+ *   - consumer 정산: source='consumer' (default). reverseSupplierOnRefund 가 wholesale 제외.
+ *   - wholesale 정산: 이 파일에서만 적립/역전.
+ * 멱등: 같은 wholesale_order_id + source='wholesale' 이미 있으면 재적립 안 함.
+ */
+import { recordLedger } from '@/worker/utils/ledger'
+
+const REFUND_WINDOW_DAYS = 7
+
+const _sourceEnsured = new WeakSet<object>()
+/** supplier_settlements.source 컬럼 보장 (repair-schema CI 불안정 대비). */
+async function ensureSourceColumn(DB: D1Database): Promise<void> {
+  if (_sourceEnsured.has(DB)) return
+  _sourceEnsured.add(DB)
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'")
+    .run().catch(() => { /* 이미 존재 — 무시 */ })
+}
+
+interface WholesaleLine {
+  product_id: number
+  supplier_id: number
+  qty: number
+  base_supply_price: number
+  distributor_unit_price: number
+}
+
+/**
+ * 도매 주문의 제조사 라인을 공급자에게 적립 (pending). 멱등.
+ * @returns 적립된 라인 수
+ */
+export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOrderId: number): Promise<number> {
+  if (!wholesaleOrderId) return 0
+  await ensureSourceColumn(DB)
+
+  // 멱등 가드.
+  const existing = await DB.prepare(
+    "SELECT 1 FROM supplier_settlements WHERE order_id = ? AND source = 'wholesale' LIMIT 1"
+  ).bind(wholesaleOrderId).first().catch(() => null)
+  if (existing) return 0
+
+  const rows = await DB.prepare(`
+    SELECT product_id, supplier_id, qty, base_supply_price, distributor_unit_price
+    FROM wholesale_order_items
+    WHERE wholesale_order_id = ? AND supplier_id IS NOT NULL AND base_supply_price > 0
+  `).bind(wholesaleOrderId).all<WholesaleLine>().catch(() => ({ results: [] as WholesaleLine[] }))
+
+  let credited = 0
+  const availableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
+  for (const r of rows.results || []) {
+    const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
+    const supplyAmount = Math.floor(Number(r.base_supply_price) || 0) * qty
+    if (supplyAmount <= 0) continue
+    const retailAmount = Math.floor(Number(r.distributor_unit_price) || 0) * qty // 유통사 지불액(참고)
+
+    await DB.prepare(`
+      INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
+      VALUES (?, ?, ?, NULL, ?, ?, 'pending', ?, 'wholesale', 'B2B 도매주문')
+    `).bind(r.supplier_id, wholesaleOrderId, r.product_id, retailAmount, supplyAmount, availableAt).run()
+
+    await DB.prepare(`
+      INSERT INTO supplier_balances (supplier_id, pending_amount, updated_at)
+      VALUES (?, ?, datetime('now'))
+      ON CONFLICT(supplier_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')
+    `).bind(r.supplier_id, supplyAmount).run()
+
+    try {
+      await recordLedger(DB, {
+        event_type: 'supplier_wholesale', reference_id: `whs-${wholesaleOrderId}`, amount: supplyAmount,
+        debit_account: 'platform:wholesale', credit_account: `supplier:${r.supplier_id}`,
+        metadata: { product_id: r.product_id, qty, wholesale_order_id: wholesaleOrderId },
+      })
+    } catch { /* ledger best-effort */ }
+    credited++
+  }
+  return credited
+}
+
+/**
+ * 도매 주문 환불 시 제조사 적립 역전 (pending/available 만, paid 제외). 멱등(이미 cancelled 면 skip).
+ * @returns 역전된 라인 수
+ */
+export async function reverseSupplierOnWholesaleRefund(DB: D1Database, wholesaleOrderId: number, reason: string): Promise<number> {
+  if (!wholesaleOrderId) return 0
+  await ensureSourceColumn(DB)
+  const rows = await DB.prepare(
+    "SELECT id, supplier_id, supply_amount, status FROM supplier_settlements WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND paid_at IS NULL"
+  ).bind(wholesaleOrderId).all<{ id: number; supplier_id: number; supply_amount: number; status: string }>().catch(() => ({ results: [] as { id: number; supplier_id: number; supply_amount: number; status: string }[] }))
+
+  let reversed = 0
+  for (const a of rows.results || []) {
+    await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ?").bind(reason, a.id).run()
+    const col = a.status === 'pending' ? 'pending_amount' : 'available_amount'
+    await DB.prepare(`UPDATE supplier_balances SET ${col} = MAX(0, ${col} - ?), updated_at = datetime('now') WHERE supplier_id = ?`)
+      .bind(a.supply_amount, a.supplier_id).run()
+    reversed++
+  }
+  return reversed
+}
