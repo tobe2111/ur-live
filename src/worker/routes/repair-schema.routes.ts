@@ -1090,6 +1090,38 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       ('OEM','OEM',8,5,0),
       ('SPECIAL','특별할인(기간한정)',0,9,1)` },
 
+    // 🏭 2026-06-01 유통스타트: B2B 선결제 도매 주문 (유통사→유통스타트).
+    { name: 'wholesale_orders', sql: `CREATE TABLE IF NOT EXISTS wholesale_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      distributor_seller_id INTEGER NOT NULL,
+      toss_order_id TEXT UNIQUE,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      grade TEXT,
+      subtotal INTEGER NOT NULL DEFAULT 0,
+      supply_total INTEGER NOT NULL DEFAULT 0,
+      margin_total INTEGER NOT NULL DEFAULT 0,
+      payment_key TEXT,
+      courier TEXT,
+      tracking_number TEXT,
+      shipped_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now')),
+      paid_at DATETIME
+    )` },
+    { name: 'wholesale_order_items', sql: `CREATE TABLE IF NOT EXISTS wholesale_order_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wholesale_order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      supplier_id INTEGER,
+      name TEXT,
+      qty INTEGER NOT NULL DEFAULT 1,
+      base_supply_price INTEGER NOT NULL DEFAULT 0,
+      distributor_unit_price INTEGER NOT NULL DEFAULT 0,
+      line_total INTEGER NOT NULL DEFAULT 0
+    )` },
+    { name: 'idx_wholesale_orders_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)` },
+    { name: 'idx_wholesale_items_order', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)` },
+    { name: 'idx_wholesale_items_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)` },
+
     { name: 'supplier_balances', sql: `CREATE TABLE IF NOT EXISTS supplier_balances (
       supplier_id INTEGER PRIMARY KEY,
       pending_amount INTEGER NOT NULL DEFAULT 0,

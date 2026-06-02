@@ -1,0 +1,151 @@
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Loader2, ArrowLeft } from 'lucide-react'
+import SEO from '@/components/SEO'
+import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
+import { getSellerId } from '@/lib/seller-auth'
+import { formatWon } from '@/utils/format'
+
+// 🏭 2026-06-01 유통스타트 도매 B2B 선결제 (Phase 2). 셀러(유통사) 컨텍스트 Toss 위젯.
+//   TossWidgetPayPage 의 검증된 시퀀스를 셀러용으로 복제 (customerKey = wseller_<id>).
+
+type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
+
+interface OrderState { orderId: string; amount: number; orderName: string }
+
+export default function WholesaleCheckoutPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const order = (location.state || null) as OrderState | null
+
+  const [state, setState] = useState<'loading' | 'ready' | 'processing' | 'error'>('loading')
+  const [errorMsg, setErrorMsg] = useState('')
+  const initializedRef = useRef(false)
+  const widgetsRef = useRef<TossWidgets | null>(null)
+
+  useEffect(() => {
+    if (initializedRef.current) return
+    if (!order || !order.orderId || !Number.isFinite(order.amount) || order.amount <= 0 || !order.orderName) {
+      setErrorMsg('주문 정보가 올바르지 않습니다. 카탈로그에서 다시 주문해주세요.')
+      setState('error')
+      return
+    }
+    const sellerId = getSellerId()
+    if (!sellerId) { navigate('/seller/login'); return }
+    initializedRef.current = true
+
+    const STEP_TIMEOUT_MS = 8000
+    const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
+      Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`[TIMEOUT:${label}]`)), STEP_TIMEOUT_MS))])
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const clientKey = getTossClientKey()
+        const sdk = await withTimeout(getTossPayments(clientKey), 'SDK_LOAD')
+        if (cancelled) return
+        const sanitized = String(sellerId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 40)
+        const widgets = sdk.widgets({ customerKey: `wseller_${sanitized}`.substring(0, 50) })
+        if (!widgets) throw new Error('widgets() returned null')
+        await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(order.amount) }), 'SET_AMOUNT')
+
+        let svPayment = '', svAgreement = ''
+        try {
+          const r = await fetch('/api/payments/client-key', { cache: 'no-store' })
+          const j = await r.json() as { data?: { variant_payment?: string; variant_agreement?: string } }
+          svPayment = String(j?.data?.variant_payment || '')
+          svAgreement = String(j?.data?.variant_agreement || '')
+        } catch { /* fallback */ }
+        const VK_PAYMENT = svPayment || ((import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || '')
+        const VK_AGREEMENT = svAgreement || ((import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || '')
+
+        const tryRender = async (method: 'renderPaymentMethods' | 'renderAgreement', selector: string, preferred: string) => {
+          if (preferred) {
+            try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* fall through */ }
+          }
+          await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
+        }
+        await tryRender('renderPaymentMethods', '#wholesale-pay-method', VK_PAYMENT)
+        await tryRender('renderAgreement', '#wholesale-pay-agreement', VK_AGREEMENT)
+
+        if (cancelled) return
+        widgetsRef.current = widgets
+        setState('ready')
+      } catch (err: unknown) {
+        if (cancelled) return
+        const raw = err instanceof Error ? err.message : String(err)
+        const baseMsg = /TIMEOUT/i.test(raw)
+          ? '결제 위젯 로딩이 지연됩니다. 새로고침해주세요.'
+          : /not.*found|404|variant/i.test(raw)
+          ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다.'
+          : '결제 초기화 실패'
+        setErrorMsg(`${baseMsg}\n\n[SDK]: ${raw.slice(0, 200)}`)
+        setState('error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [order, navigate])
+
+  async function handlePay() {
+    if (!widgetsRef.current || state !== 'ready' || !order) return
+    setState('processing')
+    try {
+      await widgetsRef.current.requestPayment({
+        orderId: order.orderId,
+        orderName: order.orderName.length > 100 ? order.orderName.slice(0, 97) + '...' : order.orderName,
+        successUrl: `${window.location.origin}/wholesale/success`,
+        failUrl: `${window.location.origin}/wholesale/checkout`,
+      })
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string }
+      if (e?.code === 'USER_CANCEL') { setState('ready'); return }
+      setErrorMsg(e?.message || '결제 요청 실패')
+      setState('error')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+      <SEO title="도매 결제 - 유통스타트" description="유통사 도매 결제" url="/wholesale/checkout" noindex />
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#121212]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A2A2A]">
+        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+          <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">도매 결제</h1>
+          <div className="w-9" />
+        </div>
+      </header>
+
+      <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4 pb-32">
+        <section className="bg-white dark:bg-[#121212] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] p-4">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">주문 상품</p>
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{order?.orderName || '—'}</p>
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2A2A2A] flex items-center justify-between">
+            <span className="text-[13px] text-gray-500 dark:text-gray-400">결제 금액</span>
+            <span className="text-[20px] font-extrabold text-gray-900 dark:text-white">{order ? formatWon(order.amount) : '—'}</span>
+          </div>
+        </section>
+
+        <div id="wholesale-pay-method" className="min-h-[180px] bg-white dark:bg-[#121212] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] overflow-hidden" />
+        <div id="wholesale-pay-agreement" className="min-h-[60px] bg-white dark:bg-[#121212] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] overflow-hidden" />
+
+        {state === 'error' && errorMsg && (
+          <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-2xl">
+            <p className="text-[13px] font-medium text-red-800 dark:text-red-300 whitespace-pre-wrap">{errorMsg}</p>
+            <button onClick={() => navigate('/wholesale')} className="mt-2 text-[12px] text-blue-600 dark:text-blue-400 underline font-medium">카탈로그로 돌아가기</button>
+          </div>
+        )}
+      </main>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#121212] border-t border-gray-100 dark:border-[#2A2A2A] z-30" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <div className="ur-content-narrow px-4 pt-3">
+          <button onClick={handlePay} disabled={state !== 'ready'} className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-full disabled:opacity-50">
+            {state === 'loading' && <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />결제 시스템 로딩 중...</span>}
+            {state === 'processing' && <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />결제 진행 중...</span>}
+            {state === 'ready' && order && `${formatWon(order.amount)} 결제하기`}
+            {state === 'error' && '결제 시스템 오류'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

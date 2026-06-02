@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from '
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
+import { isUtongstart } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -40,6 +41,11 @@ import { SupplierRoutes } from './routes/supplier.routes'
 //   변경 waterfall: HTML → main chunk (MainHomePage 포함) → render → axios fetch
 //   → 메인 페이지 첫 paint 50-100ms 단축. 다른 페이지 진입 시는 main bundle 약간 커짐 (trade-off OK — 메인 진입 70%+).
 import MainHomePage from './pages/MainHomePage'
+const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
+const WholesaleProductPage = lazy(() => import('./pages/WholesaleProductPage'))
+const WholesaleCheckoutPage = lazy(() => import('./pages/WholesaleCheckoutPage'))
+const WholesaleSuccessPage = lazy(() => import('./pages/WholesaleSuccessPage'))
+const WholesaleOrdersPage = lazy(() => import('./pages/WholesaleOrdersPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
@@ -474,7 +480,12 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={<MainHomePage />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <MainHomePage />} />
+            <Route path="/wholesale" element={<WholesaleCatalogPage />} />
+            <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
+            <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />
+            <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
+            <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}

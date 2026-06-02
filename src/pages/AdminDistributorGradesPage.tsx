@@ -98,15 +98,15 @@ export default function AdminDistributorGradesPage() {
     } catch { toast.error('저장 중 오류') } finally { setSavingDist(null) }
   }
 
-  if (loading) return <AdminLayout><DashboardLoading /></AdminLayout>
+  if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
 
   return (
-    <AdminLayout>
+    <AdminLayout title="유통사 등급">
       <div className="ur-content-full px-4 lg:px-8 py-6 space-y-8">
         <DashboardPageHeader
-          icon={Layers}
+          icon={<Layers className="w-5 h-5" />}
           title="유통사 등급 · 마진 설정"
-          description="유통스타트 도매몰 — 등급별 마진율과 유통사 배정을 관리합니다. (도매 카탈로그 가격에만 적용)"
+          subtitle="유통스타트 도매몰 — 등급별 마진율과 유통사 배정을 관리합니다. (도매 카탈로그 가격에만 적용)"
         />
 
         {/* ── 등급별 마진율 ── */}
