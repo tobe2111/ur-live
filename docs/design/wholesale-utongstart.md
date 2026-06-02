@@ -139,7 +139,19 @@
 
 ---
 
-_상태: **Phase 1 ~ 5 전체 완료** (2026-06-01). 도매몰 코어 = 등급가 카탈로그 → B2B 선결제 → 제조사 송장/반품 → 거래내역·제안·세금집계 + utongstart.com 도메인 분기. 남은 운영 작업: (1) Cloudflare 커스텀도메인 등록(사용자), (2) 제조사→유통스타트 정산 자동 지급 배선(현재는 wholesale_order_items 에 매입액 스냅샷 + admin 집계까지)._
+### 견고화 (2026-06-01, 검증 후 수정)
+`wrangler dev --local` 실 토큰 검증으로 발견한 갭 4종 수정 (commit):
+- **부분환불**: 다중 제조사 주문에서 제조사가 본인 라인만 부분환불(Toss cancelAmount + supplier-scoped 정산역전 + 해당 라인 재고복원). 전부 환불 시 REFUNDED, 일부면 PARTIAL_REFUNDED.
+- **oversell 가드**: confirm 재고차감 원자화(`stock IS NULL OR stock>=qty`) + 실패 시 롤백 + 자동 전액환불(stays 패턴).
+- **rate limit**: `/orders`·`/orders/confirm` 30회/60s.
+- **체크아웃 복구**: `?order=<id>` 로 새로고침 시 주문 재조회.
+
+판단 보류/유지:
+- **정산 7일 보류창 유지** — 기존 공급자 정산 파이프라인(`SUPPLIER_REFUND_WINDOW_DAYS=7`)과 일관. 반품 가능 기간 동안 지급 보류가 합리적.
+- **도메인 분기 client-side** — 첫 진입 시 소비자 SSR 깜빡임 후 redirect(경미). worker host 라우팅은 잠긴 SSR inject 영역이라 후속.
+- **PENDING 만료 cron 없음** — 미결제 주문은 방치돼도 무해(unique toss_order_id). 후속 가능.
+
+_상태: **Phase 1 ~ 5 전체 완료 + 견고화** (2026-06-01). 도매몰 코어 = 등급가 카탈로그 → B2B 선결제 → 제조사 송장/반품 → 거래내역·제안·세금집계 + utongstart.com 도메인 분기. 남은 운영 작업: (1) Cloudflare 커스텀도메인 등록(사용자), (2) 제조사→유통스타트 정산 자동 지급 배선(현재는 wholesale_order_items 에 매입액 스냅샷 + admin 집계까지)._
 
 ### 부록: utongstart.com 도메인을 "도매몰 페이지만" 연결하는 방법
 단일 Cloudflare Pages 배포(같은 코드/DB)에서 도메인별로 다른 진입 화면을 주는 구성:

@@ -10,6 +10,8 @@
 - **P5** `utils/domain.ts isUtongstart()` — utongstart.com 루트 → `/wholesale` 분기.
 - **정산** `wholesale-settlement.ts` — 결제완료 시 제조사 공급가(base×qty)를 `supplier_settlements(source='wholesale')` 적립→기존 mature→payout 파이프라인 자동지급, 환불 시 역전. consumer 정산과 `source` 컬럼으로 order_id 충돌 분리.
 - **남은 운영작업(코드 아님)**: Cloudflare 커스텀도메인 등록 + 카카오 콜백 + repair-schema 1회 + 등급/제조사/유통사 데이터 입력 (TODO 파일).
+- **견고화(검증 후)**: 부분환불(제조사 본인 라인만, Toss cancelAmount)·oversell 원자가드+자동환불·rate limit(`/orders`,`/orders/confirm`)·체크아웃 `?order=` 복구. 정산 7일창 유지(기존 공급자 파이프라인 일관).
+- **검증**: `wrangler dev --local` + 실 seller JWT 로 라우트 마운트/등급가/주문생성/검증 런타임 확인. **돈 경로(Toss confirm→정산→환불)는 스테이징(Toss키+시드) E2E 필요** — 코드/읽기경로만 런타임 확인됨.
 - 전 구간 잠금 SSOT(toss-gateway) 미수정·호출만. tsc 0 / build OK / unit 15 pass.
 
 ---
