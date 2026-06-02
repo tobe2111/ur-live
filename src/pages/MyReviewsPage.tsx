@@ -1,54 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Star, AlertCircle, MessageSquare } from 'lucide-react'
 import SEO from '@/components/SEO'
-import api from '@/lib/api'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
+import { useMyOrders } from '@/hooks/queries/useMyData'
 import type { Order } from '@/types/order'
 
 export default function MyReviewsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → 기존 useMyOrders 재사용(중복 fetch 제거) + 리뷰가능 필터.
+  const { data: allOrders = [], isLoading: loading, isError, refetch } = useMyOrders()
+  const orders = useMemo(
+    () =>
+      (allOrders as unknown as Order[]).filter((o) => {
+        const s = o.status?.toLowerCase()
+        return s === 'delivered' || s === 'done'
+      }),
+    [allOrders],
+  )
+  const error = isError ? t('myReviews.loadFailed') : null
 
   useEffect(() => {
     if (!isLoggedInSync()) {
       requireLogin(navigate, t('myReviews.loginRequired'))
-      return
     }
-    loadOrders()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadOrders() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await api.get('/api/orders')
-      if (res.data.success) {
-        const d = res.data.data
-        const list = Array.isArray(d) ? d : (d?.items || d?.orders || [])
-        const reviewable = (list as Order[]).filter(o => {
-          const s = o.status?.toLowerCase()
-          return s === 'delivered' || s === 'done'
-        })
-        setOrders(reviewable)
-      } else {
-        setError(res.data.error || t('myReviews.loadFailed'))
-      }
-    } catch (err: any) {
-      if (err?.response?.status === 401) {
-        setError(t('myReviews.sessionExpired'))
-      } else {
-        setError(t('myReviews.loadFailed'))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
@@ -78,7 +57,7 @@ export default function MyReviewsPage() {
             <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
             <p className="text-[14px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
-              onClick={loadOrders}
+              onClick={() => refetch()}
               className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
             >
               {t('myReviews.retry')}

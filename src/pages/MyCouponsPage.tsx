@@ -1,59 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Ticket, AlertCircle } from 'lucide-react'
 import SEO from '@/components/SEO'
-import api from '@/lib/api'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
-
-interface Coupon {
-  id: number
-  code: string
-  name: string
-  type: 'fixed' | 'percent'
-  value: number
-  min_order_amount: number
-  max_discount: number | null
-  expires_at: string | null
-}
+import { useMyCoupons, type Coupon } from '@/hooks/queries/useMyCoupons'
 
 export default function MyCouponsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [coupons, setCoupons] = useState<Coupon[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱).
+  const { data: coupons = [], isLoading: loading, isError, refetch } = useMyCoupons()
+  const error = isError ? t('myCoupons.loadFailed') : null
 
   useEffect(() => {
     if (!isLoggedInSync()) {
       requireLogin(navigate, t('myCoupons.loginRequired'))
-      return
     }
-    loadCoupons()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadCoupons() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await api.get('/api/coupons/my')
-      if (res.data.success) {
-        setCoupons(Array.isArray(res.data.data) ? res.data.data : [])
-      } else {
-        setError(res.data.error || t('myCoupons.loadFailed'))
-      }
-    } catch (err: any) {
-      if (err?.response?.status === 401) {
-        setError(t('myCoupons.sessionExpired'))
-      } else {
-        setError(t('myCoupons.loadFailed'))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function formatDiscount(c: Coupon) {
     if (c.type === 'percent') {
@@ -103,7 +69,7 @@ export default function MyCouponsPage() {
             <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
             <p className="text-[14px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
-              onClick={loadCoupons}
+              onClick={() => refetch()}
               className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
             >
               {t('myCoupons.retry')}
