@@ -26,7 +26,7 @@ interface OrderRow {
 interface DetailItem {
   product_id: number; name: string; qty: number; base_supply_price: number
   distributor_unit_price: number; line_total: number; line_status: string
-  courier: string | null; tracking_number: string | null; supplier_name: string | null
+  courier: string | null; tracking_number: string | null; supplier_id: number | null; supplier_name: string | null
 }
 
 const STATUS: Record<string, { t: string; c: string }> = {
