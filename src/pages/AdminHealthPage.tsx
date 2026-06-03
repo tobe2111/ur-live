@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { swallow } from '@/shared/utils/swallow'
 import AdminLayout from '@/components/AdminLayout'
 import { toast } from '@/hooks/useToast'
@@ -57,42 +58,17 @@ function MetricCard({
 export default function AdminHealthPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [metrics, setMetrics] = useState<Metrics | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastFetched, setLastFetched] = useState<Date | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  async function load() {
-    try {
-      const token = localStorage.getItem('admin_token')
-      const res = await api.get('/api/admin/metrics', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.data?.success) {
-        setMetrics(res.data.data)
-        setError(null)
-        setLastFetched(new Date())
-      } else {
-        setError(res.data?.error || '메트릭 조회 실패')
-      }
-    } catch (e: any) {
-      setError(e?.response?.data?.error || e?.message || '네트워크 오류')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 10s 폴링 → useApiQuery refetchInterval.
+  const { data: metrics = null, isLoading: loading, isError, dataUpdatedAt, refetch } = useApiQuery<Metrics | null>(
+    ['admin', 'metrics'], '/api/admin/metrics',
+    { select: (r: any) => (r?.success ? r.data : null), refetchInterval: 10_000 },
+  )
+  const error = isError ? '메트릭 조회 실패' : null
+  const lastFetched = dataUpdatedAt ? new Date(dataUpdatedAt) : null
+  const load = () => refetch()
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) {
-      navigate('/admin/login')
-      return
-    }
-    load()
-    intervalRef.current = setInterval(load, 10_000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

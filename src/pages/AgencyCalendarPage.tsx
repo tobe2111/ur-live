@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Plus, AlertCircle, MessageCircle, Star, Bell } from 'lucide-react'
@@ -76,8 +77,6 @@ export default function AgencyCalendarPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [month, setMonth] = useState(ymToString(new Date()))
-  const [streams, setStreams] = useState<CalendarStream[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedStream, setSelectedStream] = useState<CalendarStream | null>(null)
   const [streamNotes, setStreamNotes] = useState<Note[]>([])
   const [streamDetail, setStreamDetail] = useState<CalendarStream & { peak_viewers?: number; current_viewers?: number } | null>(null)
@@ -91,22 +90,17 @@ export default function AgencyCalendarPage() {
     content: '',
     visible_to_seller: false,
   })
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (month별 캐시).
+  const { data: streams = [], isLoading: loading, refetch } = useApiQuery<CalendarStream[]>(
+    ['agency', 'calendar', month], '/api/agency/calendar',
+    { params: { month }, select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
+  const load = () => refetch()
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
+    if (!token) navigate('/agency/login', { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get(`/api/agency/calendar?month=${month}`, { headers })
-      .then(r => { if (r.data?.success) setStreams(r.data.data || []) })
-      .catch(() => toast.error(t('agency.calendar.loadFailed', { defaultValue: '캘린더 조회 실패' })))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month])
-
-  useEffect(() => { load() }, [load])
 
   const openStream = async (s: CalendarStream) => {
     setSelectedStream(s)

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Megaphone, Plus, Check, Building2 } from 'lucide-react'
 
@@ -31,9 +32,13 @@ interface Casting {
 export default function AdminCastingsPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'castings' | 'advertisers'>('castings')
-  const [castings, setCastings] = useState<Casting[]>([])
-  const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all → useApiQuery 2개.
+  const castingsQ = useApiQuery<Casting[]>(['admin', 'castings'], '/api/admin/castings', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const advertisersQ = useApiQuery<Advertiser[]>(['admin', 'advertisers'], '/api/admin/advertisers', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const castings = castingsQ.data ?? []
+  const advertisers = advertisersQ.data ?? []
+  const loading = castingsQ.isLoading || advertisersQ.isLoading
+  const fetchAll = () => { castingsQ.refetch(); advertisersQ.refetch() }
   const [creatingCasting, setCreatingCasting] = useState(false)
   const [creatingAdvertiser, setCreatingAdvertiser] = useState(false)
 
@@ -49,24 +54,6 @@ export default function AdminCastingsPage() {
   const [advName, setAdvName] = useState('')
   const [advEmail, setAdvEmail] = useState('')
   const [advContact, setAdvContact] = useState('')
-
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token')
-      const headers = { Authorization: `Bearer ${token}` }
-      const [castingRes, advRes] = await Promise.all([
-        api.get('/api/admin/castings', { headers }),
-        api.get('/api/admin/advertisers', { headers }),
-      ])
-      if (castingRes.data.success) setCastings(castingRes.data.data)
-      if (advRes.data.success) setAdvertisers(advRes.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '불러오기 실패')
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
 
   async function createAdvertiser() {
     if (!advName || !advEmail) return toast.error('이름/이메일 필수')
