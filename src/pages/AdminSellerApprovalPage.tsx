@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink } from 'lucide-react'
@@ -58,8 +59,6 @@ export default function AdminSellerApprovalPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
   const [filter, setFilter] = useState<typeof STATUS_OPTIONS[number]['key']>(
     (searchParams.get('status') as typeof STATUS_OPTIONS[number]['key']) || 'pending'
@@ -70,24 +69,16 @@ export default function AdminSellerApprovalPage() {
   const h = useMemo(() => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
   }), [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (필터/검색은 클라 적용).
+  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<Seller[]>(
+    ['admin', 'sellers-approval'], '/api/admin/sellers',
+    { params: { limit: 200 }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      // 전체 셀러 + pending 별도 (병합 쿼리)
-      const res = await api.get('/api/admin/sellers?limit=200', h)
-      if (res.data.success) setSellers(res.data.data || [])
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-  useEffect(() => { load() }, [])
 
   // 필터 + 검색 적용
   const filtered = useMemo(() => {

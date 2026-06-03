@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
@@ -11,32 +12,22 @@ import { toast } from '@/hooks/useToast'
 export default function AgencyContractsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [contracts, setContracts] = useState<any[]>([])
-  const [sellers, setSellers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ seller_id: '', start_date: '', end_date: '', terms: '' })
   const [pinPrompt, setPinPrompt] = useState<null | 'create' | { id: number; status: string }>(null)
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token || ''}` }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all → useApiQuery 2개.
+  const contractsQ = useApiQuery<any[]>(['agency', 'contracts'], '/api/agency/contracts', { select: (r: any) => r?.data || [], enabled: !!token })
+  const sellersQ = useApiQuery<any[]>(['agency', 'contract-sellers'], '/api/agency/sellers', { select: (r: any) => r?.data || [], enabled: !!token })
+  const contracts = contractsQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const loading = contractsQ.isLoading || sellersQ.isLoading
+  const load = () => { contractsQ.refetch(); sellersQ.refetch() }
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
-
-  const load = () => {
-    setLoading(true)
-    Promise.all([
-      api.get('/api/agency/contracts', { headers }),
-      api.get('/api/agency/sellers', { headers }),
-    ]).then(([c, s]) => {
-      setContracts(c.data.data || [])
-      setSellers(s.data.data || [])
-    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }
-  useEffect(() => { load() }, [])
 
   const handleCreate = async () => {
     if (!form.seller_id || !form.start_date || !form.end_date) { toast.error('필수 항목을 입력해주세요'); return }
