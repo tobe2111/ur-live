@@ -7,6 +7,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import PLSimulator from '@/components/agency/PLSimulator'
 import { LayoutDashboard } from 'lucide-react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import { formatNumber } from '@/utils/format'
@@ -31,18 +32,30 @@ const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
 
+type AgencyBundle = {
+  stats: Stats | null; kpiData: KpiData | null; monthlyTasks: MonthlyTask[]
+  sellers: Seller[]; orders: Order[]; daily: DailyStat[]; streams: Stream[]
+  agencyProfile: { commission_rate?: number } | null
+}
+
+// sessionStorage 즉시렌더 캐시 (5분 TTL) → useApiQuery initialData seed.
+function readAgencyCache(): AgencyBundle | undefined {
+  try {
+    const cached = sessionStorage.getItem('agency_dashboard_cache')
+    if (!cached) return undefined
+    const c = JSON.parse(cached)
+    if (Date.now() - (c.ts || 0) >= 5 * 60 * 1000) return undefined
+    return {
+      stats: c.stats ?? null, kpiData: null, monthlyTasks: [],
+      sellers: Array.isArray(c.sellers) ? c.sellers : [], orders: Array.isArray(c.orders) ? c.orders : [],
+      daily: Array.isArray(c.daily) ? c.daily : [], streams: [], agencyProfile: null,
+    }
+  } catch { return undefined }
+}
+
 export default function AgencyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [kpiData, setKpiData] = useState<KpiData | null>(null)
-  const [monthlyTasks, setMonthlyTasks] = useState<MonthlyTask[]>([])
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [daily, setDaily] = useState<DailyStat[]>([])
-  const [streams, setStreams] = useState<Stream[]>([])
-  const [agencyProfile, setAgencyProfile] = useState<{ commission_rate?: number } | null>(null)
-  const [loading, setLoading] = useState(true)
 
   // 월간 매출 목표 (localStorage 저장)
   const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
@@ -54,69 +67,59 @@ export default function AgencyPage() {
   const token = localStorage.getItem('agency_token')
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
-    const headers = { Authorization: `Bearer ${token}` }
-
-    // sessionStorage 캐시로 즉시 렌더 (5분 TTL)
-    try {
-      const cached = sessionStorage.getItem('agency_dashboard_cache')
-      if (cached) {
-        const c = JSON.parse(cached)
-        if (Date.now() - (c.ts || 0) < 5 * 60 * 1000) {
-          if (c.stats) setStats(c.stats)
-          if (Array.isArray(c.sellers)) setSellers(c.sellers)
-          if (Array.isArray(c.orders)) setOrders(c.orders)
-          if (Array.isArray(c.daily)) setDaily(c.daily)
-          setLoading(false)
-        }
-      }
-    } catch { /* 파싱 실패 무시 */ }
-
-    // 🛡️ 2026-05-27 (loading P1 — audit D): 8 endpoint → 1 bundle fetch.
-    //   서버 self-fetch 로 8 sub-request 병렬 처리 후 통합 응답.
-    //   Worker invocation 8 → 1 (비용 ↓). 부분 실패 graceful.
-    api.get('/api/agency/dashboard/bundle', { headers })
-      .then((res) => {
-        if (!res.data?.success) {
-          toast.error(t('agency.sessionExpired'))
-          navigate('/agency/login', { replace: true })
-          return
-        }
-        const b = res.data.data as {
-          stats?: { data?: Stats }
-          kpi?: { data?: unknown }
-          daily?: { data?: unknown[] }
-          sellers?: { data?: unknown[] }
-          orders?: { data?: unknown[] }
-          streams?: { data?: unknown[] }
-          profile?: { success?: boolean; data?: unknown }
-          monthlyTasks?: { data?: unknown[] }
-        }
-        const nextStats = b.stats?.data ?? null
-        const nextSellers = b.sellers?.data ?? []
-        const nextOrders = b.orders?.data ?? []
-        const nextDaily = b.daily?.data ?? []
-        const nextStreams = b.streams?.data ?? []
-        const nextProfile = b.profile?.success ? b.profile.data : null
-
-        if (b.kpi?.data) setKpiData(b.kpi.data as Parameters<typeof setKpiData>[0])
-        if (b.monthlyTasks?.data) setMonthlyTasks(b.monthlyTasks.data as Parameters<typeof setMonthlyTasks>[0])
-        if (nextStats) setStats(nextStats)
-        setSellers(nextSellers as Parameters<typeof setSellers>[0])
-        setOrders(nextOrders as Parameters<typeof setOrders>[0])
-        setDaily(nextDaily as Parameters<typeof setDaily>[0])
-        setStreams(nextStreams as Parameters<typeof setStreams>[0])
-        if (nextProfile) setAgencyProfile(nextProfile as Parameters<typeof setAgencyProfile>[0])
-
-        // sessionStorage 캐시 (5분 TTL)
-        try {
-          sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
-            ts: Date.now(), stats: nextStats, sellers: nextSellers, orders: nextOrders, daily: nextDaily,
-          }))
-        } catch { /* quota 무시 */ }
-      })
-      .finally(() => setLoading(false))
+    if (!token) navigate('/agency/login', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 8→1 bundle fetch 를 useApiQuery 로 이전.
+  //   sessionStorage 5분 캐시는 initialData 로 보존(즉시렌더) + refetchOnMount:'always' 로 백그라운드 fresh.
+  const bundleQ = useApiQuery<AgencyBundle | null>(['agency', 'dashboard-bundle'], '/api/agency/dashboard/bundle', {
+    enabled: !!token,
+    refetchOnMount: 'always',
+    initialData: readAgencyCache(),
+    select: (raw: any) => {
+      if (!raw?.success) return null
+      const b = raw.data || {}
+      return {
+        stats: b.stats?.data ?? null,
+        kpiData: b.kpi?.data ?? null,
+        monthlyTasks: b.monthlyTasks?.data ?? [],
+        sellers: b.sellers?.data ?? [],
+        orders: b.orders?.data ?? [],
+        daily: b.daily?.data ?? [],
+        streams: b.streams?.data ?? [],
+        agencyProfile: b.profile?.success ? b.profile.data : null,
+      }
+    },
+  })
+  const stats = bundleQ.data?.stats ?? null
+  const kpiData = bundleQ.data?.kpiData ?? null
+  const monthlyTasks = bundleQ.data?.monthlyTasks ?? []
+  const sellers = bundleQ.data?.sellers ?? []
+  const orders = bundleQ.data?.orders ?? []
+  const daily = bundleQ.data?.daily ?? []
+  const streams = bundleQ.data?.streams ?? []
+  const agencyProfile = bundleQ.data?.agencyProfile ?? null
+  const loading = bundleQ.isLoading && !bundleQ.data
+
+  // 세션 만료(success=false) → 로그인. fresh 데이터 도착 시 sessionStorage 캐시 갱신.
+  useEffect(() => {
+    if (bundleQ.isFetched && bundleQ.data === null && !bundleQ.isFetching) {
+      toast.error(t('agency.sessionExpired'))
+      navigate('/agency/login', { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundleQ.isFetched, bundleQ.data, bundleQ.isFetching])
+  useEffect(() => {
+    const d = bundleQ.data
+    if (!d || bundleQ.isFetching) return
+    try {
+      sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
+        ts: Date.now(), stats: d.stats, sellers: d.sellers, orders: d.orders, daily: d.daily,
+      }))
+    } catch { /* quota 무시 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundleQ.data, bundleQ.isFetching])
 
   const sortedSellers = useMemo(() =>
     [...sellers].sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0)),

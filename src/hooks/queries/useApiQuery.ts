@@ -30,6 +30,8 @@ export function useApiQuery<T = unknown>(
     refetchInterval?: number
     /** 🛡️ 2026-06-03: 인터셉터가 토큰 자동 주입 안 하는 prefix(/api/seller-public, /api/supply 등) 용 수동 헤더. */
     headers?: Record<string, string>
+    /** 🛡️ 2026-06-03: 대시보드 즉시렌더용 — sessionStorage 등 동기 캐시 seed. refetchOnMount:'always' 와 함께 쓰면 즉시 표시 + 백그라운드 fresh. */
+    initialData?: T
   },
 ): UseQueryResult<T> {
   return useQuery<T>({
@@ -48,5 +50,6 @@ export function useApiQuery<T = unknown>(
     refetchOnMount: opts?.refetchOnMount,
     refetchInterval: opts?.refetchInterval,
     refetchIntervalInBackground: false,
+    initialData: opts?.initialData,
   })
 }
