@@ -61,6 +61,26 @@ export default function AdminDistributorGradesPage() {
   const [taxData, setTaxData] = useState<{ by_distributor: Array<Record<string, unknown>>; by_supplier: Array<Record<string, unknown>> } | null>(null)
   const [taxLoading, setTaxLoading] = useState(false)
 
+  // 🛡️ 2026-06-03 OEM/ODM 신청 관리 + 세금계산서 발행 + 유통채널 선정.
+  const [oemStatus, setOemStatus] = useState('')
+  const oemQ = useApiQuery<Array<Record<string, any>>>(
+    ['admin', 'dist-oem', oemStatus], '/api/admin/distributor/oem-requests',
+    { params: oemStatus ? { status: oemStatus } : {}, headers: h.headers, select: (r: any) => (r?.success ? r.requests || [] : []) },
+  )
+  const taxDocsQ = useApiQuery<Array<Record<string, any>>>(
+    ['admin', 'dist-taxdocs', taxMonth], '/api/admin/distributor/tax-documents',
+    { params: { month: taxMonth }, headers: h.headers, select: (r: any) => (r?.success ? r.documents || [] : []) },
+  )
+  const [issuing, setIssuing] = useState(false)
+  // 유통채널 선정(product-access)
+  const [accessProductId, setAccessProductId] = useState('')
+  const [accessProductQuery, setAccessProductQuery] = useState('')
+  const accessQ = useApiQuery<{ product: any; distributors: Array<Record<string, any>> } | null>(
+    ['admin', 'dist-access', accessProductQuery], '/api/admin/distributor/product-access',
+    { params: accessProductQuery ? { product_id: accessProductQuery } : {}, enabled: !!accessProductQuery, headers: h.headers, select: (r: any) => (r?.success ? { product: r.product, distributors: r.distributors || [] } : null) },
+  )
+  const [accessSeller, setAccessSeller] = useState('')
+
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
@@ -137,6 +157,45 @@ export default function AdminDistributorGradesPage() {
       .then(r => { if (r.data.success) setTaxData({ by_distributor: r.data.by_distributor || [], by_supplier: r.data.by_supplier || [] }) })
       .catch(e => { if (import.meta.env.DEV) console.warn(e) })
       .finally(() => setTaxLoading(false))
+  }
+
+  async function updateOem(id: number, patch: Record<string, unknown>) {
+    try { await api.patch(`/api/admin/distributor/oem-requests/${id}`, patch, h); oemQ.refetch() }
+    catch { toast.error('처리 실패') }
+  }
+  async function issueTaxDocs(docType: 'tax_invoice' | 'transaction_statement') {
+    setIssuing(true)
+    try {
+      const r = await api.post('/api/admin/distributor/tax-documents/issue', { month: taxMonth, doc_type: docType }, h)
+      if (r.data?.success) { toast.success(`${r.data.issued}건 발행됨`); taxDocsQ.refetch() }
+      else toast.error(r.data?.error || '발행 실패')
+    } catch { toast.error('발행 실패') } finally { setIssuing(false) }
+  }
+  function openTaxDoc(id: number) {
+    const token = localStorage.getItem('admin_token')
+    // 인증 헤더로 HTML 받아 새 창에 렌더(직접 링크는 토큰 미첨부).
+    fetch(`/api/admin/distributor/tax-documents/${id}/html`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(res => res.ok ? res.text() : Promise.reject(new Error('문서 로드 실패')))
+      .then(html => { const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() } })
+      .catch(() => toast.error('문서를 열 수 없습니다'))
+  }
+  async function grantAccess() {
+    const pid = Number(accessProductId), sid = Number(accessSeller)
+    if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(sid) || sid <= 0) { toast.error('상품 ID와 유통사 ID를 입력하세요'); return }
+    try {
+      await api.post('/api/admin/distributor/product-access', { product_id: pid, distributor_seller_id: sid }, h)
+      toast.success('유통회원 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선정 실패') }
+  }
+  async function revokeAccess(id: number) {
+    try { await api.delete(`/api/admin/distributor/product-access/${id}`, h); accessQ.refetch() } catch { toast.error('해제 실패') }
+  }
+  function exportProducts() {
+    const token = localStorage.getItem('admin_token')
+    fetch('/api/admin/distributor/products/export', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
+      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `supply-products-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) })
+      .catch(() => toast.error('상품 내보내기 실패'))
   }
 
   if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
@@ -335,6 +394,120 @@ export default function AdminDistributorGradesPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* 세금계산서/거래명세서 발행 (내부 발행 + 인쇄) */}
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">세금계산서 / 거래명세서 발행</h3>
+              <button onClick={() => issueTaxDocs('tax_invoice')} disabled={issuing} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold disabled:opacity-50">
+                {taxMonth} 세금계산서 발행
+              </button>
+              <button onClick={() => issueTaxDocs('transaction_statement')} disabled={issuing} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-bold disabled:opacity-50">
+                거래명세서 발행
+              </button>
+              <button onClick={exportProducts} className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium">
+                <Receipt className="w-3.5 h-3.5" /> 상품정보 CSV(A/B/C)
+              </button>
+            </div>
+            {(taxDocsQ.data || []).length === 0 ? (
+              <p className="text-xs text-gray-400">발행된 문서가 없습니다. 위 버튼으로 {taxMonth} 분을 발행하세요.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead><tr className="text-left text-gray-500 border-b border-gray-100"><th className="py-2">구분</th><th>유형</th><th>상대처</th><th className="text-right">공급가액</th><th className="text-right">부가세</th><th className="text-right">합계</th><th></th></tr></thead>
+                  <tbody>
+                    {(taxDocsQ.data || []).map((d) => (
+                      <tr key={d.id} className="border-b border-gray-50">
+                        <td className="py-1.5">{d.direction === 'sales' ? '매출(→유통사)' : '매입(←제조사)'}</td>
+                        <td className="text-gray-600">{d.doc_type === 'tax_invoice' ? '세금계산서' : '거래명세서'}</td>
+                        <td className="text-gray-900">{d.party_name}</td>
+                        <td className="text-right">{Number(d.supply_amount || 0).toLocaleString('ko-KR')}</td>
+                        <td className="text-right text-gray-500">{Number(d.vat_amount || 0).toLocaleString('ko-KR')}</td>
+                        <td className="text-right font-bold">{Number(d.total_amount || 0).toLocaleString('ko-KR')}</td>
+                        <td><button onClick={() => openTaxDoc(d.id)} className="px-2 py-1 bg-gray-100 rounded font-medium">인쇄</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── 유통채널 선정 (유통스타트 유통채널 공급 상품 → 선정 유통회원) ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+            <Layers className="w-4 h-4 text-gray-500" /> 유통채널 선정 (선정 유통회원 관리)
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 유통회원에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
+          <div className="flex flex-wrap items-end gap-2 mb-3">
+            <input type="number" value={accessProductId} onChange={e => setAccessProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <button onClick={() => setAccessProductQuery(accessProductId)} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
+            <input type="number" value={accessSeller} onChange={e => setAccessSeller(e.target.value)} placeholder="유통사 ID 선정" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <button onClick={grantAccess} className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"><Plus className="w-4 h-4" /> 선정</button>
+          </div>
+          {accessQ.data && (
+            <div>
+              <p className="text-xs text-gray-600 mb-2">상품 <b>{accessQ.data.product?.name}</b> · 공급범위 <b>{accessQ.data.product?.supply_visibility}</b> · 선정 {accessQ.data.distributors.length}곳</p>
+              {accessQ.data.distributors.length === 0 ? (
+                <p className="text-sm text-gray-400">선정된 유통회원이 없습니다.</p>
+              ) : (
+                <ul className="divide-y divide-gray-50">
+                  {accessQ.data.distributors.map((d) => (
+                    <li key={d.id} className="flex items-center justify-between py-2 text-sm">
+                      <span className="text-gray-700">{d.business_name || d.seller_name || `#${d.distributor_seller_id}`} <span className="text-gray-400 text-xs">{d.distributor_grade || '미배정(C)'}</span></span>
+                      <button onClick={() => revokeAccess(d.id)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ── OEM/ODM 신청 관리 ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
+              <Sparkles className="w-4 h-4 text-amber-500" /> OEM / ODM 신청 관리
+            </h2>
+            <select value={oemStatus} onChange={e => setOemStatus(e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+              <option value="">전체</option><option value="open">접수</option><option value="matching">매칭중</option>
+              <option value="matched">매칭완료</option><option value="closed">종료</option><option value="rejected">반려</option>
+            </select>
+          </div>
+          {(oemQ.data || []).length === 0 ? (
+            <p className="text-sm text-gray-400 py-4">신청 내역이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {(oemQ.data || []).map((r) => (
+                <div key={r.id} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-900 text-white">{r.kind}</span>
+                      <span className="font-semibold text-gray-900 text-sm">{r.product_name}</span>
+                      <span className="text-xs text-gray-500">{r.distributor_business_name || r.distributor_name || `유통사#${r.distributor_seller_id}`}</span>
+                    </div>
+                    <select value={r.status} onChange={e => updateOem(r.id, { status: e.target.value })} className="px-2 py-1 border border-gray-200 rounded text-xs text-gray-900">
+                      {['open', 'matching', 'matched', 'closed', 'rejected'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {r.category && `${r.category} · `}{r.target_qty ? `${Number(r.target_qty).toLocaleString('ko-KR')}개 · ` : ''}{r.target_price ? `희망 ₩${Number(r.target_price).toLocaleString('ko-KR')}` : ''}
+                  </p>
+                  {r.note && <p className="text-xs text-gray-600 mt-1">{r.note}</p>}
+                  <div className="flex items-center gap-2 mt-2">
+                    <input defaultValue={r.matched_supplier_id || ''} placeholder="매칭 제조사 ID" type="number"
+                      className="w-32 px-2 py-1 border border-gray-200 rounded text-xs text-gray-900"
+                      onBlur={e => { const v = e.target.value.trim(); if (v !== String(r.matched_supplier_id || '')) updateOem(r.id, { matched_supplier_id: v ? Number(v) : null }) }} />
+                    <input defaultValue={r.admin_memo || ''} placeholder="관리자 메모(저장: Enter)"
+                      className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs text-gray-900"
+                      onKeyDown={e => { if (e.key === 'Enter') updateOem(r.id, { admin_memo: (e.target as HTMLInputElement).value }) }} />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>
