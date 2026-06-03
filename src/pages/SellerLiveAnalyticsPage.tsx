@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardStatCard, DashboardLoading } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import ReplayChapterMarkers from '@/components/live/ReplayChapterMarkers'
 import {
   Eye, Users, MessageCircle, ShoppingBag, TrendingUp,
@@ -82,22 +83,16 @@ function fmtDuration(seconds: number) {
 // ── Summary View (list of all streams) ──
 function AnalyticsSummary() {
   const { t } = useTranslation()
-  const [data, setData] = useState<SummaryData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   // 🛡️ 2026-05-13 (#3): status 탭 — 모든 / 예약 / 진행 / 종료 (관리 통합 페이지)
   const [statusTab, setStatusTab] = useState<'all' | 'scheduled' | 'live' | 'ended'>('all')
-
-  function loadSummary() {
-    setLoading(true)
-    api.get(`/api/seller/streams/analytics/summary?period=${period}`)
-      .then(r => { if (r.data?.success) setData(r.data.data) })
-      .catch((err: unknown) => { if (import.meta.env.DEV) console.error(err) })
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { loadSummary() }, [period])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (period별 캐시).
+  const { data = null, isLoading: loading, refetch } = useApiQuery<SummaryData | null>(
+    ['seller', 'live-summary', period], '/api/seller/streams/analytics/summary',
+    { params: { period }, select: (r: any) => (r?.success ? r.data : null) },
+  )
+  const loadSummary = () => refetch()
 
   async function handleDelete(e: React.MouseEvent, stream: StreamSummary) {
     e.preventDefault(); e.stopPropagation()

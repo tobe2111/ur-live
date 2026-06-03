@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, TrendingUp, Users, Star, AlertTriangle, RefreshCw, MessageSquare, DollarSign } from 'lucide-react'
@@ -74,41 +75,25 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function AdminStaysPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'stays' | 'bookings'>('stays')
-  const [kpi, setKpi] = useState<Kpi | null>(null)
-  const [stays, setStays] = useState<StayItem[]>([])
-  const [bookings, setBookings] = useState<AdminBooking[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery 3개(kpi+stays+bookings).
+  const kpiQ = useApiQuery<Kpi | null>(['admin', 'stays-kpi'], '/api/admin/stays/kpi', { select: (r: any) => (r?.success ? r.data : null) })
+  const staysQ = useApiQuery<StayItem[]>(['admin', 'stays'], '/api/admin/stays', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const bookingsQ = useApiQuery<AdminBooking[]>(['admin', 'stays-bookings', statusFilter], '/api/admin/stays/bookings', { params: statusFilter ? { status: statusFilter } : {}, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const kpi = kpiQ.data ?? null
+  const stays = staysQ.data ?? []
+  const bookings = bookingsQ.data ?? []
+  const loading = kpiQ.isLoading || staysQ.isLoading
+  const loadAll = () => { kpiQ.refetch(); staysQ.refetch() }
+  const loadBookings = () => bookingsQ.refetch()
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    loadAll()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { loadBookings() }, [statusFilter]) // eslint-disable-line
-
   function header() {
     return { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-  }
-
-  async function loadAll() {
-    setLoading(true)
-    try {
-      const [kpiR, staysR] = await Promise.all([
-        api.get('/api/admin/stays/kpi', { headers: header() }),
-        api.get('/api/admin/stays', { headers: header() }),
-      ])
-      if (kpiR.data?.success) setKpi(kpiR.data.data)
-      if (staysR.data?.success) setStays(staysR.data.data || [])
-    } catch { /* noop */ } finally { setLoading(false) }
-  }
-
-  async function loadBookings() {
-    try {
-      const r = await api.get(`/api/admin/stays/bookings${statusFilter ? `?status=${statusFilter}` : ''}`, { headers: header() })
-      if (r.data?.success) setBookings(r.data.data || [])
-    } catch { /* noop */ }
   }
 
   async function refund(id: number) {
