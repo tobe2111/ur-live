@@ -100,7 +100,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
 
     const rows = await DB.prepare(
       `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
-              stock, image_url, category,
+              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product,
               COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
               is_active, admin_memo, created_at, updated_at
          FROM products WHERE ${where}
@@ -225,7 +225,11 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     if (!rows.length) return c.json({ success: false, error: '처리할 행이 없습니다' }, 400);
 
     const results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[] = [];
-    let created = 0;
+    // 🛡️ 유효 행만 INSERT statement 로 모아 DB.batch 청크 실행 (행별 순차 .run() 은 Cloudflare subrequest 한도 초과).
+    const stmts: D1PreparedStatement[] = [];
+    const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, slug, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const name = String(r['상품명'] || r.name || '').trim();
@@ -240,19 +244,20 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();
       const isBrand = ['Y', 'YES', '예', '1', 'TRUE', 'O'].includes(brandRaw) ? 1 : 0;
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
-      try {
-        await DB.prepare(
-          `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
-             is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(
-          name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
-          Math.floor(retailFinal), Math.floor(supplyPrice), stock,
-          String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, slug,
-        ).run();
-        created++; results.push({ row: i + 2, name, status: 'ok' });
-      } catch {
-        results.push({ row: i + 2, name, status: 'error', reason: 'DB 오류' });
+      stmts.push(DB.prepare(INSERT_SQL).bind(
+        name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
+        Math.floor(retailFinal), Math.floor(supplyPrice), stock,
+        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, slug,
+      ));
+      results.push({ row: i + 2, name, status: 'ok' });
+    }
+    let created = 0;
+    const CHUNK = 100;
+    for (let i = 0; i < stmts.length; i += CHUNK) {
+      try { await DB.batch(stmts.slice(i, i + CHUNK)); created += Math.min(CHUNK, stmts.length - i); }
+      catch {
+        // 청크 실패 시 해당 청크 결과를 error 로 표시 (부분 성공 유지).
+        for (const res of results.filter(x => x.status === 'ok').slice(i, i + CHUNK)) { res.status = 'error'; res.reason = 'DB 오류'; }
       }
     }
     if (created > 0) {
@@ -262,6 +267,79 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
   } catch (err) {
     return safeError(c, err, '대량 등록 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 제조사 자가관리: '승인한 유통채널' 상품의 허용 유통사 관리 (UTONGSTART_ONLY 는 관리자 전용) ──
+//   소유 검증: supplier_id = sid + supply_source_id IS NULL. visibility='APPROVED_CHANNEL' 인 경우만.
+async function ownApprovedChannelProduct(DB: D1Database, pid: number, sid: number) {
+  return DB.prepare(
+    "SELECT id, COALESCE(supply_visibility,'ALL') AS supply_visibility FROM products WHERE id = ? AND supplier_id = ? AND is_supply_product = 1 AND supply_source_id IS NULL"
+  ).bind(pid, sid).first<{ id: number; supply_visibility: string }>();
+}
+
+supplierDashboardRoutes.get('/products/:id/channel-access', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  const pid = Number(c.req.param('id'));
+  if (!Number.isFinite(pid) || pid <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
+  try {
+    await ensureSupplyVisibilitySchema(DB);
+    const prod = await ownApprovedChannelProduct(DB, pid, sid);
+    if (!prod) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    const { results } = await DB.prepare(`
+      SELECT pda.id, pda.distributor_seller_id, pda.created_at,
+             s.business_name, s.name AS seller_name, s.username, s.distributor_grade
+      FROM product_distributor_access pda LEFT JOIN sellers s ON s.id = pda.distributor_seller_id
+      WHERE pda.product_id = ? ORDER BY pda.created_at DESC`
+    ).bind(pid).all();
+    return c.json({ success: true, supply_visibility: prod.supply_visibility, distributors: results ?? [] });
+  } catch (err) {
+    return safeError(c, err, '채널 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+supplierDashboardRoutes.post('/products/:id/channel-access', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  const pid = Number(c.req.param('id'));
+  if (!Number.isFinite(pid) || pid <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
+  try {
+    await ensureSupplyVisibilitySchema(DB);
+    const prod = await ownApprovedChannelProduct(DB, pid, sid);
+    if (!prod) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    if (prod.supply_visibility !== 'APPROVED_CHANNEL') {
+      return c.json({ success: false, error: "'승인한 유통채널' 공급 상품만 직접 관리할 수 있습니다. (유통스타트 유통채널은 관리자 선정)" }, 409);
+    }
+    const body = await c.req.json<{ distributor_seller_id?: number }>().catch(() => ({} as { distributor_seller_id?: number }));
+    const dsid = Number(body.distributor_seller_id);
+    if (!Number.isFinite(dsid) || dsid <= 0) return c.json({ success: false, error: '유통사 ID를 입력하세요' }, 400);
+    const seller = await DB.prepare('SELECT 1 FROM sellers WHERE id = ?').bind(dsid).first();
+    if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 400);
+    await DB.prepare('INSERT OR IGNORE INTO product_distributor_access (product_id, distributor_seller_id) VALUES (?, ?)').bind(pid, dsid).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return safeError(c, err, '유통사 승인 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+supplierDashboardRoutes.delete('/products/:id/channel-access/:accessId', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  const pid = Number(c.req.param('id'));
+  const accessId = Number(c.req.param('accessId'));
+  if (!Number.isFinite(pid) || !Number.isFinite(accessId)) return c.json({ success: false, error: '잘못된 ID' }, 400);
+  try {
+    const prod = await ownApprovedChannelProduct(DB, pid, sid);
+    if (!prod) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    // 소유 상품의 access 행만 삭제 (product_id 일치 강제).
+    await DB.prepare('DELETE FROM product_distributor_access WHERE id = ? AND product_id = ?').bind(accessId, pid).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return safeError(c, err, '승인 해제 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 

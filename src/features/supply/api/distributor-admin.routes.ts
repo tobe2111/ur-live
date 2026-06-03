@@ -216,9 +216,9 @@ app.get('/tax-summary', async (c) => {
 
     const byDistributor = await c.env.DB.prepare(`
       SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
-             COUNT(*) AS order_count, COALESCE(SUM(o.subtotal),0) AS sales_total
+             COUNT(*) AS order_count, COALESCE(SUM(MAX(0, o.subtotal - COALESCE(o.refunded_amount,0))),0) AS sales_total
       FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
-      WHERE o.status IN ('PAID','SHIPPED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+      WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
       GROUP BY o.distributor_seller_id ORDER BY sales_total DESC
     `).bind(m).all().catch(() => ({ results: [] }))
 
@@ -228,7 +228,8 @@ app.get('/tax-summary', async (c) => {
       FROM wholesale_order_items i
       JOIN wholesale_orders o ON o.id = i.wholesale_order_id
       LEFT JOIN suppliers sup ON sup.id = i.supplier_id
-      WHERE o.status IN ('PAID','SHIPPED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+      WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+        AND i.line_status != 'REFUNDED'
       GROUP BY i.supplier_id ORDER BY purchase_total DESC
     `).bind(m).all().catch(() => ({ results: [] }))
 
@@ -538,22 +539,23 @@ app.post('/tax-documents/issue', async (c) => {
     if (!/^\d{4}-\d{2}$/.test(month)) return c.json({ success: false, error: '월 형식 오류 (YYYY-MM)' }, 400)
     const docType = body.doc_type === 'transaction_statement' ? 'transaction_statement' : 'tax_invoice'
 
-    // 매출(유통스타트→유통사): 유통사별 subtotal 합 (유통사 지불액 = VAT 포함 가격이므로 공급가액 역산).
+    // 매출(유통스타트→유통사): 유통사별 순매출(subtotal − 환불액) 합. 부분/전액 환불분 차감.
     const byDist = await c.env.DB.prepare(`
       SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
-             COUNT(*) AS order_count, COALESCE(SUM(o.subtotal),0) AS total
+             COUNT(*) AS order_count, COALESCE(SUM(MAX(0, o.subtotal - COALESCE(o.refunded_amount,0))),0) AS total
       FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
       WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
       GROUP BY o.distributor_seller_id
     `).bind(month).all<{ seller_id: number; business_name: string | null; name: string | null; order_count: number; total: number }>().catch(() => ({ results: [] }))
 
-    // 매입(제조사→유통스타트): 제조사별 base_supply_price 합.
+    // 매입(제조사→유통스타트): 제조사별 base_supply_price 합 (환불된 라인 제외).
     const bySup = await c.env.DB.prepare(`
       SELECT i.supplier_id, sup.business_name,
              COUNT(DISTINCT i.wholesale_order_id) AS order_count, COALESCE(SUM(i.base_supply_price * i.qty),0) AS total
       FROM wholesale_order_items i JOIN wholesale_orders o ON o.id = i.wholesale_order_id
       LEFT JOIN suppliers sup ON sup.id = i.supplier_id
-      WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ? AND i.supplier_id IS NOT NULL
+      WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+        AND i.supplier_id IS NOT NULL AND i.line_status != 'REFUNDED'
       GROUP BY i.supplier_id
     `).bind(month).all<{ supplier_id: number; business_name: string | null; order_count: number; total: number }>().catch(() => ({ results: [] }))
 

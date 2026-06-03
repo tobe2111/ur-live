@@ -89,32 +89,54 @@ app.post('/tracking/bulk', async (c) => {
     if (!rows.length) return c.json({ success: false, error: '처리할 행이 없습니다' }, 400)
 
     const results: { item_id: number; status: 'ok' | 'skip' | 'error'; reason?: string }[] = []
-    const affectedOrders = new Set<number>()
+    // 입력 정규화 + item_id → {courier, tracking} (중복 시 마지막 우선).
+    const want = new Map<number, { courier: string; tracking: string }>()
     for (const r of rows) {
       const itemId = Number(r.item_id || r['item_id'])
       const courier = String(r.courier || '').trim().slice(0, 40)
       const tracking = String(r.tracking_number || r.tracking || '').trim().slice(0, 60)
       if (!Number.isFinite(itemId) || itemId <= 0) { results.push({ item_id: itemId || 0, status: 'error', reason: 'item_id 오류' }); continue }
       if (!courier || !tracking) { results.push({ item_id: itemId, status: 'skip', reason: '택배사/운송장 누락' }); continue }
-      const line = await DB.prepare(
-        "SELECT id, wholesale_order_id, line_status FROM wholesale_order_items WHERE id = ? AND supplier_id = ?"
-      ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number; line_status: string }>()
+      want.set(itemId, { courier, tracking })
+    }
+
+    // 🛡️ 내 라인 일괄 조회 (IN 청크 — SQLite 변수 한도 999 회피). 행별 SELECT 제거.
+    const ids = [...want.keys()]
+    const owned = new Map<number, { wholesale_order_id: number; line_status: string }>()
+    for (let i = 0; i < ids.length; i += 400) {
+      const chunk = ids.slice(i, i + 400)
+      const ph = chunk.map(() => '?').join(',')
+      const { results: found } = await DB.prepare(
+        `SELECT id, wholesale_order_id, line_status FROM wholesale_order_items WHERE supplier_id = ? AND id IN (${ph})`
+      ).bind(sid, ...chunk).all<{ id: number; wholesale_order_id: number; line_status: string }>()
+      for (const l of found || []) owned.set(l.id, { wholesale_order_id: l.wholesale_order_id, line_status: l.line_status })
+    }
+
+    // UPDATE statement 모아 batch 청크 실행.
+    const stmts: D1PreparedStatement[] = []
+    const affectedOrders = new Set<number>()
+    for (const [itemId, v] of want) {
+      const line = owned.get(itemId)
       if (!line) { results.push({ item_id: itemId, status: 'error', reason: '내 주문 라인 아님' }); continue }
       if (line.line_status === 'REFUNDED') { results.push({ item_id: itemId, status: 'skip', reason: '환불된 라인' }); continue }
-      await DB.prepare(
-        "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=?"
-      ).bind(courier, tracking, itemId).run()
+      stmts.push(DB.prepare(
+        "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=? AND supplier_id=?"
+      ).bind(v.courier, v.tracking, itemId, sid))
       affectedOrders.add(line.wholesale_order_id)
       results.push({ item_id: itemId, status: 'ok' })
     }
-    // 주문별 전 라인 발송완료 시 주문 SHIPPED.
-    for (const oid of affectedOrders) {
-      const pending = await DB.prepare(
-        "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
-      ).bind(oid).first<{ c: number }>()
-      if ((pending?.c ?? 0) === 0) {
-        await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'").bind(oid).run().catch(() => {})
-      }
+    for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100))
+
+    // 영향 주문 중 미발송 라인이 없는 것 → SHIPPED (한 문장, 청크).
+    const oids = [...affectedOrders]
+    for (let i = 0; i < oids.length; i += 400) {
+      const chunk = oids.slice(i, i + 400)
+      const ph = chunk.map(() => '?').join(',')
+      await DB.prepare(
+        `UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now')
+         WHERE id IN (${ph}) AND status='PAID'
+           AND NOT EXISTS (SELECT 1 FROM wholesale_order_items wi WHERE wi.wholesale_order_id = wholesale_orders.id AND wi.line_status != 'SHIPPED')`
+      ).bind(...chunk).run().catch(() => {})
     }
     const ok = results.filter(r => r.status === 'ok').length
     return c.json({ success: true, summary: { total: results.length, ok, skipped: results.filter(r => r.status === 'skip').length, failed: results.filter(r => r.status === 'error').length }, results })

@@ -41,11 +41,14 @@ export async function ensureTaxDocSchema(DB: D1Database): Promise<void> {
     .run().catch(swallow('tax-doc:idx'))
 }
 
-/** 부가세 10% 분리 (공급가액에 VAT 별도 가산). */
-export function splitVat(amount: number): { supply: number; vat: number; total: number } {
-  const supply = Math.max(0, Math.round(amount))
-  const vat = Math.round(supply * 0.1)
-  return { supply, vat, total: supply + vat }
+/**
+ * 부가세 분리 — 입력은 유통사가 실제 결제한 **VAT 포함 총액**(wholesale_orders.subtotal = Toss 청구액).
+ * 공급가액 = round(총액 / 1.1), 부가세 = 총액 − 공급가액. (VAT 를 더하지 않고 추출 — 실거래액 보존)
+ */
+export function splitVat(grossInclusive: number): { supply: number; vat: number; total: number } {
+  const total = Math.max(0, Math.round(grossInclusive))
+  const supply = Math.round(total / 1.1)
+  return { supply, vat: total - supply, total }
 }
 
 const esc = (v: unknown): string =>
