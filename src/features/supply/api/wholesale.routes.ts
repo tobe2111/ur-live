@@ -20,6 +20,7 @@ import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gatew
 import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
+import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -138,16 +139,18 @@ app.get('/catalog', async (c) => {
       "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
     ).first<{ c: number }>().catch(() => null)
     if (!hasCol || hasCol.c === 0) {
-      return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'D' })
+      return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
     }
 
+    await ensureSupplyVisibilitySchema(DB)
     const sg = await loadSellerGrade(DB, sellerId)
     const table = await loadGradeTable(DB)
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
 
     // 도매 가능 = 제조사 공급상품(공급자 직등록 원본). supply_source_id IS NULL = 원본(셀러 복제본 제외).
-    let where = "p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0"
-    const params: (string | number)[] = []
+    // + 공급 범위(supply_visibility) 가시성: ALL 이거나 허용목록(선정된 유통회원)에 포함.
+    let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
+    const params: (string | number)[] = [sellerId]
     if (search) { where += ' AND p.name LIKE ?'; params.push(`%${search}%`) }
     if (category) { where += ' AND p.category = ?'; params.push(category) }
 
@@ -193,13 +196,15 @@ app.get('/catalog/:id', async (c) => {
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
   try {
+    await ensureSupplyVisibilitySchema(DB)
     const r = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
              COALESCE(p.supply_price,0) AS supply_price
       FROM products p
       WHERE p.id = ? AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
-    `).bind(id).first<{
+        AND ${visibilityWhere('p')}
+    `).bind(id, sellerId).first<{
       id: number; name: string; description: string | null; image_url: string | null;
       category: string | null; stock: number; supply_price: number
     }>()
@@ -250,16 +255,19 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       reqMap.set(pid, (reqMap.get(pid) || 0) + qty)
     }
 
+    await ensureSupplyVisibilitySchema(DB)
     const sg = await loadSellerGrade(DB, sellerId)
     const table = await loadGradeTable(DB)
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
+    // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
     const prods = await DB.prepare(`
-      SELECT id, name, supplier_id, stock, COALESCE(supply_price,0) AS supply_price
-      FROM products
-      WHERE id IN (${placeholders}) AND is_supply_product = 1 AND is_active = 1
-        AND supply_source_id IS NULL AND COALESCE(supply_price,0) > 0
-    `).bind(...ids).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number }>()
+      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price
+      FROM products p
+      WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
+        AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
+        AND ${visibilityWhere('p')}
+    `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       return c.json({ success: false, error: '주문할 수 없는 상품이 포함되어 있습니다' }, 400)

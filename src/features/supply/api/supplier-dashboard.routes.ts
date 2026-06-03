@@ -18,6 +18,7 @@ import { requireSupplier } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
+import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -132,8 +133,10 @@ supplierDashboardRoutes.post('/products', async (c) => {
     type ProductBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
+      supply_visibility?: string; barcode?: string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
+    await ensureSupplyVisibilitySchema(DB);
 
     const name = (body.name || '').trim();
     const supplyPrice = Number(body.supply_price);
@@ -157,12 +160,15 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
     // 🛡️ is_active=0 (어드민 승인 전 카탈로그 비노출) + supply_approval_status='pending'.
     //   seller_id=NULL (소스 카탈로그 상품 — 셀러가 register 로 자기 스토어에 복제).
+    const visibility = normalizeVisibility(body.supply_visibility);
+    const barcode = (body.barcode || '').trim().slice(0, 64) || null;
+
     const result = await DB.prepare(
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -172,6 +178,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       (body.image_url || '').slice(0, 1000),
       (body.category || 'lifestyle').slice(0, 60),
       sid,
+      visibility,
+      barcode,
       slug,
     ).run();
 
@@ -214,8 +222,10 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     type EditBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
+      supply_visibility?: string; barcode?: string;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
+    await ensureSupplyVisibilitySchema(DB);
 
     const sets: string[] = [];
     const params: (string | number)[] = [];
@@ -224,12 +234,17 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (typeof body.image_url === 'string') { sets.push('image_url = ?'); params.push(body.image_url.slice(0, 1000)); }
     if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
+    if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility)); }
+    if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
 
     let newSupply = existing.supply_price;
+    let supplyChanged = false;
     if (body.supply_price != null) {
       newSupply = Number(body.supply_price);
       if (!Number.isFinite(newSupply) || newSupply <= 0) return c.json({ success: false, error: '공급가는 0원 이상이어야 합니다' }, 400);
-      sets.push('supply_price = ?'); params.push(Math.floor(newSupply));
+      newSupply = Math.floor(newSupply);
+      sets.push('supply_price = ?'); params.push(newSupply);
+      supplyChanged = newSupply !== existing.supply_price;
     }
     if (body.suggested_retail_price != null) {
       const r = Number(body.suggested_retail_price);
@@ -242,6 +257,11 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
     await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params, pid).run();
+
+    // 🛡️ 스펙: 공급가 수정 시 수정 전 금액 기록 (관리자만 확인).
+    if (supplyChanged) {
+      await recordSupplyPriceChange(DB, Number(pid), sid, existing.supply_price, newSupply, `supplier:${sid}`);
+    }
 
     return c.json({ success: true, data: { id: Number(pid), approval_status: 'pending' }, message: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' });
   } catch (err) {

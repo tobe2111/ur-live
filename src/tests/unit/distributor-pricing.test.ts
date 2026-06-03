@@ -34,16 +34,16 @@ describe('distributor-pricing — 유통스타트 등급별 공급가', () => {
     expect(effectiveGrade({ grade: 'A', specialUntil: null })).toBe('A');
   });
 
-  it('effectiveGrade: 미배정/잘못된 등급 → 기본 D(고마진 보수적)', () => {
-    expect(effectiveGrade({ grade: null })).toBe('D');
-    expect(effectiveGrade({ grade: 'ZZZ' })).toBe('D');
+  it('effectiveGrade: 미배정/잘못된 등급 → 기본 C(스펙: 가입 시 자동 C등급)', () => {
+    expect(effectiveGrade({ grade: null })).toBe('C');
+    expect(effectiveGrade({ grade: 'ZZZ' })).toBe('C');
     expect(effectiveGrade({ grade: 'oem' })).toBe('OEM');
   });
 
   it('marginForGrade: 테이블 우선, 없으면 기본값', () => {
     expect(marginForGrade('A')).toBe(DEFAULT_GRADE_MARGINS.A);
     expect(marginForGrade('A', [{ grade: 'A', margin_pct: 7 }])).toBe(7);
-    expect(marginForGrade('UNKNOWN')).toBe(DEFAULT_GRADE_MARGINS.D); // fallback
+    expect(marginForGrade('UNKNOWN')).toBe(DEFAULT_GRADE_MARGINS.C); // fallback = 기본 등급(C)
   });
 
   it('resolveDistributorPrice: 전 과정 통합', () => {

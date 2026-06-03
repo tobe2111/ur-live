@@ -30,8 +30,8 @@ export const DEFAULT_GRADE_MARGINS: Record<DistributorGrade, number> = {
   SPECIAL: 0,
 };
 
-/** 미배정 유통사 기본 등급 — 가장 보수적(고마진). 어드민이 수동 상향 배정. */
-export const DEFAULT_UNGRADED: DistributorGrade = 'D';
+/** 미배정 유통사 기본 등급 — 스펙: "유통회원 가입 시 자동 C등급". 어드민이 A/B 상향 또는 D 하향 배정. */
+export const DEFAULT_UNGRADED: DistributorGrade = 'C';
 
 /**
  * 유통사가 지불할 공급가 (원 단위 반올림).
