@@ -23,10 +23,19 @@
 | **정산기준 브랜드/일반 분기** | ✅ Phase E | products.is_brand_product → 당일 vs 7일 성숙 |
 | 공급자/유통사/어드민 UI | ✅ Phase F | SupplierDashboardPage(필드+대량) / WholesaleOemPage / AdminDistributorGradesPage(선정·OEM·세금·export) |
 
+## 자가 비판 감사 → 수정 완료 (commit `17c8f79`)
+- ✅ **#1 대량 CSV subrequest 한도** — 행별 순차 `.run()` → `DB.batch` 청크(100). tracking 은 IN 청크 1회 조회 + batch.
+- ✅ **#2 세금계산서 VAT 방향** — `subtotal`=유통사 실결제액(VAT 포함)이므로 가산이 아닌 **추출(÷1.1)**. 단위테스트 lock.
+- ✅ **#3 부분환불 과대계상** — 매출=`SUM(subtotal−refunded_amount)`, 매입=환불 라인 제외.
+- ✅ **#5 '승인한 유통채널' 제조사 자가관리** — supplier `/products/:id/channel-access` (소유+APPROVED_CHANNEL 한정). UTONGSTART_ONLY 는 관리자 전용 유지.
+
 ## 미구현 / 후속 (의도적 보류)
+- **#4 브랜드제품 즉시정산 리스크** (사용자 결정 보류): 현재 `available_at=now` → 환불 클로백 안전창 없음. 옵션: 1~2일 짧은 보호창. **결정 대기.**
 - **외부 전자세금계산서 연동**(팝빌 등): 내부 발행 기록 + 인쇄용 HTML까지. 정식 e-세금계산서는 별도 연동 자리만.
 - **1일 1억 정산 한도 가드**: payout 실행 단계 캡 미적용(후속).
 - **교환(exchange) 플로우**: 환불(refund)만 구현.
+- **products 테이블 플래그 과적재**: 장기적으로 supply 전용 테이블 분리 검토(현재는 실용적 유지).
+- 진짜 `.xlsx` (현재 UTF-8 BOM CSV — 의존성 0 trade-off).
 - 제품 카테고리 선별·제조사 컨택 = 운영 프로세스(코드 무관).
 
 ## ✅ 구현 완료
