@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -46,44 +47,30 @@ interface SettlementRecord {
 export default function AdminSettlementPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('all')
-  const [stats, setStats] = useState<SettlementStats | null>(null)
-  const [sellers, setSellers] = useState<SellerSettlement[]>([])
-  const [records, setRecords] = useState<SettlementRecord[]>([])
   const [selectedSeller, setSelectedSeller] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [revertModal, setRevertModal] = useState<{ orderId: number } | null>(null)
   const [revertReason, setRevertReason] = useState('')
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) { navigate('/admin/login'); return }
-    loadData()
-  }, [navigate, period, selectedSeller, statusFilter])
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
 
-  async function loadData() {
-    try {
-      setLoading(true)
-      const statsRes = await api.get(`/api/admin/settlement/stats?period=${period}`)
-      if (statsRes.data.success) {
-        setStats(statsRes.data.data.overview)
-        setSellers(statsRes.data.data.sellers || [])
-      }
-      const params = new URLSearchParams()
-      if (period !== 'all') params.append('period', period)
-      if (selectedSeller) params.append('seller_id', selectedSeller.toString())
-      if (statusFilter !== 'all') params.append('status', statusFilter)
-      const recordsRes = await api.get(`/api/admin/settlement/records?${params.toString()}`)
-      if (recordsRes.data.success) setRecords(recordsRes.data.data || [])
-      setLoading(false)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number } }
-      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리. 페이지는 noop.
-      if (axiosErr.response?.status === 401) { /* lib/api.ts interceptor 처리 */ }
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (stats[period] + records[period/seller/status], 필터 key 반응형).
+  const statsQ = useApiQuery<{ overview: SettlementStats | null; sellers: SellerSettlement[] }>(['admin', 'settlement-stats', period], '/api/admin/settlement/stats', {
+    params: { period },
+    select: (r: any) => ({ overview: r?.success ? r.data.overview : null, sellers: r?.success ? (r.data.sellers || []) : [] }),
+  })
+  const recordsQ = useApiQuery<SettlementRecord[]>(['admin', 'settlement-records', period, selectedSeller, statusFilter], '/api/admin/settlement/records', {
+    params: { ...(period !== 'all' ? { period } : {}), ...(selectedSeller ? { seller_id: selectedSeller } : {}), ...(statusFilter !== 'all' ? { status: statusFilter } : {}) },
+    select: (r: any) => (r?.success ? r.data || [] : []),
+  })
+  const stats = statsQ.data?.overview ?? null
+  const sellers = statsQ.data?.sellers ?? []
+  const records = recordsQ.data ?? []
+  const loading = statsQ.isLoading || recordsQ.isLoading
+  const loadData = () => { statsQ.refetch(); recordsQ.refetch() }
 
   async function updateSettlementStatus(orderId: number, status: string, currentStatus?: string) {
     if (currentStatus === 'completed' && status === 'pending') {

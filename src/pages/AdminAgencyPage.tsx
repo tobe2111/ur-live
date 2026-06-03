@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound, Users } from 'lucide-react'
 import { tierLabel, tierBadgeClass } from '@/shared/utils/agency-tier'
@@ -40,11 +41,8 @@ const initForm = { name: '', contact_name: '', email: '', password: '', phone: '
 export default function AdminAgencyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [agencies, setAgencies] = useState<Agency[]>([])
-  const [unassigned, setUnassigned] = useState<Seller[]>([])
   const [agencySellers, setAgencySellers] = useState<Record<number, Seller[]>>({})
   const [expanded, setExpanded] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalMode>(null)
   const [editTarget, setEditTarget] = useState<Agency | null>(null)
   const [form, setForm] = useState(initForm)
@@ -60,21 +58,14 @@ export default function AdminAgencyPage() {
     }
   }, [navigate])
 
-  async function fetchAgencies() {
-    const r = await api.get('/api/admin/agencies', { headers })
-    setAgencies(r.data.data || [])
-  }
-
-  async function fetchUnassigned() {
-    const r = await api.get('/api/admin/agencies/unassigned-sellers', { headers })
-    setUnassigned(r.data.data || [])
-  }
-
-  useEffect(() => {
-    setLoading(true)
-    Promise.all([fetchAgencies(), fetchUnassigned()])
-      .finally(() => setLoading(false))
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): mount Promise.all → useApiQuery 2개 (agencySellers 는 lazy 확장 캐시라 명령형 유지).
+  const agenciesQ = useApiQuery<Agency[]>(['admin', 'agencies'], '/api/admin/agencies', { select: (r: any) => (r?.data || []) })
+  const unassignedQ = useApiQuery<Seller[]>(['admin', 'agencies-unassigned'], '/api/admin/agencies/unassigned-sellers', { select: (r: any) => (r?.data || []) })
+  const agencies = agenciesQ.data ?? []
+  const unassigned = unassignedQ.data ?? []
+  const loading = agenciesQ.isLoading || unassignedQ.isLoading
+  const fetchAgencies = () => agenciesQ.refetch()
+  const fetchUnassigned = () => unassignedQ.refetch()
 
   async function toggleExpand(agencyId: number) {
     if (expanded === agencyId) { setExpanded(null); return }
