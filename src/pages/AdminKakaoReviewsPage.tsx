@@ -5,8 +5,9 @@
  * [승인] 클릭 시 즉시 보너스 딜 지급 + 사용자 알림.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -31,19 +32,13 @@ interface Submission {
 
 export default function AdminKakaoReviewsPage() {
   const [tab, setTab] = useState<'submitted' | 'paid' | 'rejected'>('submitted')
-  const [list, setList] = useState<Submission[]>([])
-  const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<number | null>(null)
-
-  useEffect(() => { load() }, [tab])
-
-  function load() {
-    setLoading(true)
-    api.get('/api/admin-review-bonus/list', { params: { status: tab } })
-      .then((r) => { if (r.data?.success) setList(r.data.data || []) })
-      .catch(() => toast.error('로드 실패'))
-      .finally(() => setLoading(false))
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab별 캐시).
+  const { data: list = [], isLoading: loading, refetch } = useApiQuery<Submission[]>(
+    ['admin', 'review-bonus', tab], '/api/admin-review-bonus/list',
+    { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   async function approve(id: number) {
     if (!confirm('승인 + 보너스 지급?')) return

@@ -6,8 +6,9 @@
  * [rejected] → 거절 사유 입력
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -34,19 +35,13 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default function AdminInfluencerDisputesPage() {
   const [tab, setTab] = useState<'open' | 'resolved' | 'rejected'>('open')
-  const [list, setList] = useState<Dispute[]>([])
-  const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<number | null>(null)
-
-  useEffect(() => { load() }, [tab])
-
-  function load() {
-    setLoading(true)
-    api.get('/api/admin-payouts/disputes', { params: { status: tab } })
-      .then((r) => { if (r.data?.success) setList(r.data.data || []) })
-      .catch(() => toast.error('로드 실패'))
-      .finally(() => setLoading(false))
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab별 캐시).
+  const { data: list = [], isLoading: loading, refetch } = useApiQuery<Dispute[]>(
+    ['admin', 'influencer-disputes', tab], '/api/admin-payouts/disputes',
+    { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   async function resolve(d: Dispute, action: 'resolved' | 'rejected') {
     const resolution = prompt(`${action === 'resolved' ? '조정 결과' : '거절 사유'} (필수, 최소 5자)`)

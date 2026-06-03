@@ -6,8 +6,9 @@
  * 라이트 테마 고정 (대시보드 룰 — 다크 variant 금지).
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -26,22 +27,13 @@ interface ProxyProduct {
 }
 
 export default function SellerProxyProductsPage() {
-  const [items, setItems] = useState<ProxyProduct[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<ProxyProduct[]>(
+    ['seller', 'proxy-products'], '/api/seller/analytics/proxy-products',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
   const [busy, setBusy] = useState<number | null>(null)
-
-  async function load() {
-    setLoading(true)
-    try {
-      const res = await api.get('/api/seller/analytics/proxy-products')
-      if (res.data?.success) setItems(res.data.data || [])
-    } catch {
-      toast.error('목록 조회 실패')
-    } finally {
-      setLoading(false)
-    }
-  }
-  useEffect(() => { load() }, [])
+  const load = () => refetch()
 
   async function act(id: number, action: 'approve' | 'reject') {
     if (action === 'reject' && !confirm('이 대행 등록을 거부(삭제)할까요?')) return
@@ -50,7 +42,7 @@ export default function SellerProxyProductsPage() {
       const res = await api.post(`/api/seller/analytics/proxy-products/${id}/${action}`, {})
       if (res.data?.success) {
         toast.success(action === 'approve' ? '승인됨 — 공개되었습니다' : '거부됨')
-        setItems((prev) => prev.filter((p) => p.id !== id))
+        refetch()
       } else {
         toast.error(res.data?.error || '처리 실패')
       }
