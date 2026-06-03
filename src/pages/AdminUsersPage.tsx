@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -54,12 +55,8 @@ interface UserDetail {
 export default function AdminUsersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
   const [sort, setSort] = useState<SortKey>('created_at')
   const [order, setOrder] = useState<'desc' | 'asc'>('desc')
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -74,36 +71,26 @@ export default function AdminUsersPage() {
   const LIMIT = 50
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    loadUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sort, order])
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
 
-  async function loadUsers() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(LIMIT),
-        sort,
-        order,
-      })
-      if (search.trim()) params.set('search', search.trim())
-      const res = await api.get(`/api/admin/users?${params}`, h)
-      if (res.data.success) {
-        setUsers(res.data.data || [])
-        // 🛡️ 2026-05-24: backend 가 totalPages 와 pagination.totalPages 둘 다 반환 (호환).
-        const tp = res.data.totalPages || res.data.pagination?.totalPages || 1
-        const tc = res.data.total || res.data.pagination?.total || 0
-        setTotalPages(tp)
-        setTotalCount(tc)
-      }
-    } catch {
-      toast.error('유저 목록을 불러오지 못했습니다')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (page/sort/order key, search 는 검색 시 refetch).
+  const usersQ = useApiQuery<{ rows: User[]; totalPages: number; total: number }>(
+    ['admin', 'users', page, sort, order], '/api/admin/users',
+    {
+      params: { page, limit: LIMIT, sort, order, ...(search.trim() ? { search: search.trim() } : {}) },
+      select: (r: any) => ({
+        rows: r?.success ? (r.data || []) : [],
+        totalPages: r?.totalPages || r?.pagination?.totalPages || 1,
+        total: r?.total || r?.pagination?.total || 0,
+      }),
+    },
+  )
+  const users = usersQ.data?.rows ?? []
+  const totalPages = usersQ.data?.totalPages ?? 1
+  const totalCount = usersQ.data?.total ?? 0
+  const loading = usersQ.isLoading
+  const loadUsers = () => usersQ.refetch()
 
   // 🛡️ 컬럼 헤더 클릭 시 정렬 — 같은 컬럼 다시 클릭하면 asc/desc 토글.
   function handleSort(key: SortKey) {

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import i18next from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { formatKST } from '@/utils/date'
@@ -114,10 +115,6 @@ function parseShippingAddress(address: string, zipcode?: string, detail?: string
 export default function AdminOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [orders, setOrders] = useState<Order[]>([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -127,7 +124,10 @@ export default function AdminOrdersPage() {
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' })
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
-  const [sellers, setSellers] = useState<Array<{ id: number; name: string }>>([])
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token') && !localStorage.getItem('access_token')) navigate('/admin/login')
+  }, [navigate])
 
   // 🛡️ 2026-05-27 (loading P1 — audit A): 검색 debounce 300ms (서버 fetch trigger).
   useEffect(() => {
@@ -138,46 +138,32 @@ export default function AdminOrdersPage() {
   // 🛡️ filter 변경 시 page 1 reset.
   useEffect(() => { setCurrentPage(1) }, [statusFilter, sellerFilter, debouncedSearch, dateFilter.start, dateFilter.end])
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true); setError('')
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      if (!token) { navigate('/admin/login'); return }
-      // 🛡️ 2026-05-27 (audit A): 서버 페이지네이션 + 검색/필터 서버 측.
-      const params = new URLSearchParams({ page: String(currentPage), limit: String(itemsPerPage) })
-      if (statusFilter !== 'ALL') params.set('status', statusFilter)
-      if (sellerFilter !== 'ALL') params.set('seller_id', sellerFilter)
-      if (debouncedSearch) params.set('search', debouncedSearch)
-      if (dateFilter.start) params.set('start_date', dateFilter.start)
-      if (dateFilter.end) params.set('end_date', dateFilter.end)
-      const response = await api.get(`/api/admin/orders?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-      if (response.data.success) {
-        setOrders(response.data.data)
-        setTotalCount(Number(response.data.pagination?.total ?? response.data.data.length))
-      }
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      setError(t('admin.orders.k027', { defaultValue: '주문 목록을 불러올 수 없습니다.' }))
-      if (err_.response?.status === 401) { /* interceptor 처리 */ }
-    } finally { setLoading(false) }
-  }, [navigate, currentPage, statusFilter, sellerFilter, debouncedSearch, dateFilter.start, dateFilter.end, t])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (서버 페이지네이션 + 필터 key 반응형).
+  const ordersQ = useApiQuery<{ rows: Order[]; total: number }>(
+    ['admin', 'orders', currentPage, statusFilter, sellerFilter, debouncedSearch, dateFilter.start, dateFilter.end],
+    '/api/admin/orders',
+    {
+      params: {
+        page: currentPage, limit: itemsPerPage,
+        ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+        ...(sellerFilter !== 'ALL' ? { seller_id: sellerFilter } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(dateFilter.start ? { start_date: dateFilter.start } : {}),
+        ...(dateFilter.end ? { end_date: dateFilter.end } : {}),
+      },
+      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], total: Number(r?.pagination?.total ?? (r?.data?.length || 0)) }),
+    },
+  )
+  const orders = ordersQ.data?.rows ?? []
+  const totalCount = ordersQ.data?.total ?? 0
+  const loading = ordersQ.isLoading
+  const error = ordersQ.isError ? t('admin.orders.k027', { defaultValue: '주문 목록을 불러올 수 없습니다.' }) : ''
+  const loadOrders = () => ordersQ.refetch()
 
-  const loadSellers = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const response = await api.get('/api/admin/sellers', { headers: { Authorization: `Bearer ${token}` } })
-      if (response.data.success) {
-        setSellers(response.data.data.map((s: { id: number; name?: string; username?: string; business_name?: string }) => ({ id: s.id, name: s.name || s.username || s.business_name || `Seller ${s.id}` })))
-      }
-    } catch (e) {
-      if (import.meta.env.DEV) console.error('[AdminOrders] loadSellers failed:', e)
-      toast.error(t('admin.orders.k028', { defaultValue: '셀러 목록을 불러올 수 없습니다.' }))
-    }
-  }, [])
-
-  // 🛡️ filter / page 변경 시 자동 재fetch (loadOrders 의 useCallback deps).
-  useEffect(() => { loadOrders() }, [loadOrders])
-  useEffect(() => { loadSellers() }, [loadSellers])
+  const sellersQ = useApiQuery<Array<{ id: number; name: string }>>(['admin', 'orders-sellers'], '/api/admin/sellers', {
+    select: (r: any) => (r?.success ? (r.data || []).map((s: { id: number; name?: string; username?: string; business_name?: string }) => ({ id: s.id, name: s.name || s.username || s.business_name || `Seller ${s.id}` })) : []),
+  })
+  const sellers = sellersQ.data ?? []
 
   // 서버 페이지네이션 — orders 가 이미 한 page. 클라 측 slice 불필요.
   const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage))

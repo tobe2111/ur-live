@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Ticket, AlertCircle, RefreshCw, TrendingUp, BarChart3 } from 'lucide-react'
@@ -85,54 +86,26 @@ const STATUS_COLOR: Record<string, string> = {
 export default function AdminGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState<GroupBuyRow[]>([])
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [refunding, setRefunding] = useState<number | null>(null)
   const [tab, setTab] = useState<Tab>('monitor')
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) { navigate('/admin/login'); return }
-    if (tab === 'monitor') loadList(filter)
-    else loadAnalytics()
-  }, [filter, tab])
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
 
-  async function loadAnalytics() {
-    setAnalyticsLoading(true)
-    try {
-      const res = await api.get('/api/group-buy/admin/analytics', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` },
-      })
-      if (res.data?.success) setAnalytics(res.data.data)
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('[admin gb analytics]', err)
-    } finally {
-      setAnalyticsLoading(false)
-    }
-  }
-
-  async function loadList(f: StatusFilter) {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (f === 'unsuccessful') {
-        params.set('filter', 'unsuccessful')
-      } else if (f !== 'all') {
-        params.set('status', f)
-      }
-      const res = await api.get(`/api/group-buy/admin/list?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` },
-      })
-      if (res.data?.success) setItems(res.data.data || [])
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('[admin-gb load]', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (monitor 리스트 + analytics).
+  const listQ = useApiQuery<GroupBuyRow[]>(['admin', 'gb-list', filter], '/api/group-buy/admin/list', {
+    params: filter === 'unsuccessful' ? { filter: 'unsuccessful' } : filter !== 'all' ? { status: filter } : {},
+    enabled: tab === 'monitor',
+    select: (r: any) => (r?.success ? r.data || [] : []),
+  })
+  const analyticsQ = useApiQuery<AnalyticsData | null>(['admin', 'gb-analytics'], '/api/group-buy/admin/analytics', { enabled: tab === 'analytics', select: (r: any) => (r?.success ? r.data : null) })
+  const items = listQ.data ?? []
+  const analytics = analyticsQ.data ?? null
+  const loading = listQ.isLoading
+  const analyticsLoading = analyticsQ.isLoading
+  const loadList = (_f?: StatusFilter) => listQ.refetch()
 
   async function forceRefund(productId: number, name: string) {
     const reason = window.prompt(
