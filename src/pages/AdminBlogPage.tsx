@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -55,8 +56,12 @@ export default function AdminBlogPage() {
   const editId = searchParams.get('edit')
 
   const [view, setView] = useState<View>(editId ? 'edit' : 'list')
-  const [posts, setPosts] = useState<BlogPost[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: posts = [], isLoading: loading, refetch } = useApiQuery<BlogPost[]>(
+    ['admin', 'blog'], '/api/admin/blog',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadPosts = async () => { await refetch() }
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -87,14 +92,6 @@ export default function AdminBlogPage() {
     }
   }, [editId, posts])
 
-  async function loadPosts() {
-    try {
-      setLoading(true)
-      const res = await api.get('/api/admin/blog')
-      if (res.data.success) setPosts(res.data.data || [])
-    } catch { toast.error(t('admin.blog.k002', { defaultValue: '블로그 목록 로드 실패' })) }
-    finally { setLoading(false) }
-  }
 
   function openEdit(post?: BlogPost) {
     if (post) {

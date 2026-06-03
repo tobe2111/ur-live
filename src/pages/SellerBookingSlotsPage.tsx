@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -37,29 +38,21 @@ interface NewSlot {
 export default function SellerBookingSlotsPage() {
   const { id: productId } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [slots, setSlots] = useState<Slot[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (productId별 캐시).
+  const { data: slots = [], isLoading: loading, refetch } = useApiQuery<Slot[]>(
+    ['seller', 'booking-slots', productId], `/api/seller/products/${productId}/booking-slots`,
+    { enabled: !!productId, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
   const [newSlots, setNewSlots] = useState<NewSlot[]>([
     { day_of_week: 1, start_time: '10:00', end_time: '11:00', capacity: 1 },
   ])
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!localStorage.getItem('seller_token')) { navigate('/seller/login'); return }
-    load()
-  }, [productId])
-
-  async function load() {
-    try {
-      setLoading(true)
-      const res = await api.get(`/api/seller/products/${productId}/booking-slots`)
-      if (res.data?.success) setSlots(res.data.data || [])
-    } catch (e) {
-      console.error('load slots', e)
-    } finally {
-      setLoading(false)
-    }
-  }
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function submit() {
     const valid = newSlots.filter(s =>

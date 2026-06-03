@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 
 /**
@@ -30,27 +31,14 @@ interface GroupedError {
 
 export default function AdminErrorsPage() {
   const [hours, setHours] = useState(1)
-  const [rows, setRows] = useState<ErrorRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-
-  async function load() {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await api.get(`/api/_errors/recent?hours=${hours}&limit=500`)
-      if (res.data?.success) setRows(res.data.data || [])
-      else setError(res.data?.error || 'load failed')
-    } catch (e) {
-      const err = e as { response?: { data?: { error?: string; code?: string } } }
-      setError(err?.response?.data?.error || (e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [hours])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (hours별 캐시).
+  const { data: rows = [], isLoading: loading, isError, refetch } = useApiQuery<ErrorRow[]>(
+    ['admin', 'errors', hours], '/api/_errors/recent',
+    { params: { hours, limit: 500 }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const error = isError ? 'load failed' : ''
+  const load = () => refetch()
 
   // 메시지로 그룹화
   const groups: GroupedError[] = []
