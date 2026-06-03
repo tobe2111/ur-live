@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import {
   Package, ShoppingBag, Play, DollarSign,
@@ -54,6 +55,118 @@ const newOrderAudio = typeof Audio !== 'undefined'
     )
   : ({ play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement)
 
+// 🛡️ 2026-06-03 Tier2(대시보드): 6-endpoint 대시보드 번들 타입 + fetcher + sessionStorage seed.
+type SellerDashBundle = {
+  hasBank: boolean
+  stats: DashboardStats
+  dailyStats: DailyStats[]
+  topProducts: TopProduct[]
+  streams: LiveStream[]
+  stockAlertCount: number
+  followerCount: number
+  hasLiveHistory: boolean
+  hasMealVouchers: boolean
+  mealVoucherCount: number
+  activeGroupBuys: number
+}
+
+const DEFAULT_DASH_STATS: DashboardStats = {
+  totalRevenue: 0, totalOrders: 0, activeStreams: 0, totalViewers: 0,
+  pendingOrders: 0, cancelledOrders: 0, completedOrders: 0, avgOrderValue: 0,
+}
+
+// sessionStorage 5분 TTL 캐시 → useQuery initialData (즉시렌더 보존).
+function readSellerDashCache(period: string): SellerDashBundle | undefined {
+  try {
+    const cached = sessionStorage.getItem(`seller_dashboard_cache_${period}`)
+    if (!cached) return undefined
+    const c = JSON.parse(cached)
+    if (Date.now() - (c.ts || 0) >= 5 * 60 * 1000) return undefined
+    return {
+      hasBank: false,
+      stats: c.stats ?? DEFAULT_DASH_STATS,
+      dailyStats: c.dailyStats ?? [],
+      topProducts: c.topProducts ?? [],
+      streams: c.streams ?? [],
+      stockAlertCount: typeof c.stockAlertCount === 'number' ? c.stockAlertCount : 0,
+      followerCount: typeof c.followerCount === 'number' ? c.followerCount : 0,
+      hasLiveHistory: !!c.hasLiveHistory,
+      hasMealVouchers: !!c.hasMealVouchers,
+      mealVoucherCount: typeof c.mealVoucherCount === 'number' ? c.mealVoucherCount : 0,
+      activeGroupBuys: typeof c.activeGroupBuys === 'number' ? c.activeGroupBuys : 0,
+    }
+  } catch { return undefined }
+}
+
+async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
+  const token = getSellerToken()
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const [dashRes, streamsRes, stockRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
+    api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
+    api.get('/api/seller/streams', { headers }),
+    api.get('/api/inventory/stock/alerts', { headers }),
+    api.get(`/api/social/followers/${getSellerId()}`),
+    api.get('/api/seller/products', { headers }),
+    api.get('/api/seller/profile', { headers }),
+  ])
+
+  const bundle: SellerDashBundle = {
+    hasBank: false, stats: { ...DEFAULT_DASH_STATS }, dailyStats: [], topProducts: [], streams: [],
+    stockAlertCount: 0, followerCount: 0, hasLiveHistory: false, hasMealVouchers: false, mealVoucherCount: 0, activeGroupBuys: 0,
+  }
+
+  if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
+    const p = profileRes.value.data.data
+    bundle.hasBank = !!(p?.bank_name && p?.bank_account)
+  }
+  if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
+    const d = dashRes.value.data.data
+    bundle.stats = {
+      totalRevenue: d.summary?.total_sales || 0, totalOrders: d.summary?.total_orders || 0,
+      activeStreams: 0, totalViewers: 0,
+      pendingOrders: d.summary?.pending_orders || 0, cancelledOrders: d.summary?.cancelled_orders || 0,
+      completedOrders: d.summary?.completed_orders || 0, avgOrderValue: d.summary?.avg_order_value || 0,
+      lowStockCount: d.summary?.low_stock_count || 0, pendingSettlement: d.summary?.pending_settlement || 0,
+    }
+    bundle.dailyStats = d.daily || []
+    bundle.topProducts = d.topProducts || []
+  }
+  if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
+    const s: LiveStream[] = streamsRes.value.data.data || []
+    bundle.streams = s
+    bundle.stats.activeStreams = s.filter(x => x.status === 'live').length
+    bundle.stats.totalViewers = s.reduce((sum, x) => sum + (x.viewer_count || 0), 0)
+    bundle.hasLiveHistory = s.length > 0
+  }
+  if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
+    const alerts = stockRes.value.data.data || []
+    bundle.stockAlertCount = Array.isArray(alerts) ? alerts.length : 0
+  }
+  if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
+    bundle.followerCount = followerRes.value.data.data?.count || 0
+  }
+  if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
+    const prods = productsRes.value.data.data || []
+    type ProdEntry = { category?: string; group_buy_status?: string }
+    const vouchers = (prods as ProdEntry[]).filter(p => p.category === 'meal_voucher' || p.category === 'group_buy')
+    bundle.hasMealVouchers = vouchers.length > 0
+    bundle.mealVoucherCount = vouchers.length
+    bundle.activeGroupBuys = vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length
+  }
+
+  // sessionStorage 캐시 (5분 TTL) — 다음 진입 즉시렌더.
+  try {
+    sessionStorage.setItem(`seller_dashboard_cache_${period}`, JSON.stringify({
+      ts: Date.now(), stats: bundle.stats, dailyStats: bundle.dailyStats, topProducts: bundle.topProducts,
+      streams: bundle.streams, stockAlertCount: bundle.stockAlertCount, followerCount: bundle.followerCount,
+      hasLiveHistory: bundle.hasLiveHistory, hasMealVouchers: bundle.hasMealVouchers,
+      mealVoucherCount: bundle.mealVoucherCount, activeGroupBuys: bundle.activeGroupBuys,
+    }))
+  } catch { /* quota 무시 */ }
+
+  return bundle
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function SellerPage() {
   const { t, i18n } = useTranslation()
@@ -70,17 +183,27 @@ export default function SellerPage() {
   const isLiveMode = activeMode === 'live'
   const isStoreMode = activeMode === 'store'
 
-  // Stats
-  const [hasBank, setHasBank] = useState(false)
-  const [stats, setStats] = useState<DashboardStats>({
-    totalRevenue: 0, totalOrders: 0, activeStreams: 0, totalViewers: 0,
-    pendingOrders: 0, cancelledOrders: 0, completedOrders: 0, avgOrderValue: 0
-  })
-  const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
-  const [streams, setStreams] = useState<LiveStream[]>([])
-  const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 6-endpoint Promise.allSettled 대시보드 → useQuery.
+  //   sessionStorage 5분 캐시 = initialData (즉시렌더) + refetchOnMount:'always' 백그라운드 fresh.
+  //   실시간 주문 폴링(pollOrders)은 snapshot-diff/알림 사이드이펙트라 명령형 유지.
+  const dashQ = useQuery<SellerDashBundle>({
+    queryKey: ['seller', 'dashboard', period],
+    queryFn: () => fetchSellerDashboard(period),
+    enabled: isSellerAuthenticated(),
+    initialData: () => readSellerDashCache(period),
+    staleTime: 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+  })
+  const hasBank = dashQ.data?.hasBank ?? false
+  const stats = dashQ.data?.stats ?? DEFAULT_DASH_STATS
+  const dailyStats = dashQ.data?.dailyStats ?? []
+  const topProducts = dashQ.data?.topProducts ?? []
+  const streams = dashQ.data?.streams ?? []
+  const loading = dashQ.isLoading && !dashQ.data
 
   // Real-time orders
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
@@ -90,17 +213,13 @@ export default function SellerPage() {
   const lastMaxIdRef = useRef<number>(0)
   const newOrderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Stock alerts
-  const [stockAlertCount, setStockAlertCount] = useState(0)
-
-  // 팔로워/구독자 수
-  const [followerCount, setFollowerCount] = useState(0)
-
-  // 활동 데이터 기반 대시보드 커스터마이징
-  const [hasLiveHistory, setHasLiveHistory] = useState(false)
-  const [hasMealVouchers, setHasMealVouchers] = useState(false)
-  const [mealVoucherCount, setMealVoucherCount] = useState(0)
-  const [activeGroupBuys, setActiveGroupBuys] = useState(0)
+  // 대시보드 번들에서 파생 (stock/follower/활동 데이터)
+  const stockAlertCount = dashQ.data?.stockAlertCount ?? 0
+  const followerCount = dashQ.data?.followerCount ?? 0
+  const hasLiveHistory = dashQ.data?.hasLiveHistory ?? false
+  const hasMealVouchers = dashQ.data?.hasMealVouchers ?? false
+  const mealVoucherCount = dashQ.data?.mealVoucherCount ?? 0
+  const activeGroupBuys = dashQ.data?.activeGroupBuys ?? 0
 
   // 월간 매출 목표 (localStorage 저장)
   const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
@@ -111,32 +230,9 @@ export default function SellerPage() {
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isSellerAuthenticated()) {
-      redirectToLogin(navigate)
-      return
-    }
-    // sessionStorage 캐시로 즉시 렌더 (5분 TTL)
-    try {
-      const cached = sessionStorage.getItem(`seller_dashboard_cache_${period}`)
-      if (cached) {
-        const c = JSON.parse(cached)
-        if (Date.now() - (c.ts || 0) < 5 * 60 * 1000) {
-          if (c.stats) setStats(c.stats)
-          if (c.dailyStats) setDailyStats(c.dailyStats)
-          if (c.topProducts) setTopProducts(c.topProducts)
-          if (c.streams) setStreams(c.streams)
-          if (typeof c.stockAlertCount === 'number') setStockAlertCount(c.stockAlertCount)
-          if (typeof c.followerCount === 'number') setFollowerCount(c.followerCount)
-          if (typeof c.hasLiveHistory === 'boolean') setHasLiveHistory(c.hasLiveHistory)
-          if (typeof c.hasMealVouchers === 'boolean') setHasMealVouchers(c.hasMealVouchers)
-          if (typeof c.mealVoucherCount === 'number') setMealVoucherCount(c.mealVoucherCount)
-          if (typeof c.activeGroupBuys === 'number') setActiveGroupBuys(c.activeGroupBuys)
-          setLoading(false)
-        }
-      }
-    } catch { /* 파싱 실패 무시 */ }
-    loadDashboardData()
-  }, [navigate, period])
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate])
 
   // ── Real-time orders polling ───────────────────────────────────────────────
   const pollOrders = useCallback(async (isManual = false) => {
@@ -196,106 +292,6 @@ export default function SellerPage() {
       if (newOrderTimerRef.current) clearTimeout(newOrderTimerRef.current)
     }
   }, [pollOrders])
-
-  // ── Dashboard data ─────────────────────────────────────────────────────────
-  async function loadDashboardData() {
-    try {
-      const token = getSellerToken()
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
-
-      const [dashRes, streamsRes, stockRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
-        api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
-        api.get('/api/seller/streams', { headers }),
-        api.get('/api/inventory/stock/alerts', { headers }),
-        api.get(`/api/social/followers/${getSellerId()}`),
-        api.get('/api/seller/products', { headers }),
-        api.get('/api/seller/profile', { headers }),
-      ])
-      // 온보딩 체크: 정산 계좌 등록 여부
-      if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
-        const p = profileRes.value.data.data
-        setHasBank(!!(p?.bank_name && p?.bank_account))
-      }
-
-      // 캐시 저장용 스냅샷
-      const snapshot: Record<string, unknown> = { ts: Date.now() }
-
-      let nextStats: DashboardStats | null = null
-      if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
-        const d = dashRes.value.data.data
-        nextStats = {
-          totalRevenue:    d.summary?.total_sales      || 0,
-          totalOrders:     d.summary?.total_orders     || 0,
-          activeStreams:    0,
-          totalViewers:    0,
-          pendingOrders:   d.summary?.pending_orders   || 0,
-          cancelledOrders: d.summary?.cancelled_orders || 0,
-          completedOrders: d.summary?.completed_orders || 0,
-          avgOrderValue:   d.summary?.avg_order_value  || 0,
-          lowStockCount:   d.summary?.low_stock_count  || 0,
-          pendingSettlement: d.summary?.pending_settlement || 0,
-        }
-        setDailyStats(d.daily || [])
-        setTopProducts(d.topProducts || [])
-        snapshot.dailyStats = d.daily || []
-        snapshot.topProducts = d.topProducts || []
-      }
-
-      if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
-        const s: LiveStream[] = streamsRes.value.data.data || []
-        setStreams(s)
-        if (nextStats) {
-          nextStats.activeStreams = s.filter(x => x.status === 'live').length
-          nextStats.totalViewers = s.reduce((sum, x) => sum + (x.viewer_count || 0), 0)
-        }
-        snapshot.streams = s
-      }
-      if (nextStats) {
-        setStats(nextStats)
-        snapshot.stats = nextStats
-      }
-
-      if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
-        const alerts = stockRes.value.data.data || []
-        const count = Array.isArray(alerts) ? alerts.length : 0
-        setStockAlertCount(count)
-        snapshot.stockAlertCount = count
-      }
-      if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
-        const count = followerRes.value.data.data?.count || 0
-        setFollowerCount(count)
-        snapshot.followerCount = count
-      }
-
-      // 활동 데이터 분석: 라이브 이력 + 식사권 상품
-      if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
-        const allStreams: LiveStream[] = streamsRes.value.data.data || []
-        const hasHistory = allStreams.length > 0
-        setHasLiveHistory(hasHistory)
-        snapshot.hasLiveHistory = hasHistory
-      }
-      if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
-        const prods = productsRes.value.data.data || []
-        type ProdEntry = { category?: string; group_buy_status?: string }
-        const vouchers = (prods as ProdEntry[]).filter(p => p.category === 'meal_voucher' || p.category === 'group_buy')
-        const hasVouchers = vouchers.length > 0
-        const activeBuys = vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length
-        setHasMealVouchers(hasVouchers)
-        setMealVoucherCount(vouchers.length)
-        setActiveGroupBuys(activeBuys)
-        snapshot.hasMealVouchers = hasVouchers
-        snapshot.mealVoucherCount = vouchers.length
-        snapshot.activeGroupBuys = activeBuys
-      }
-
-      // sessionStorage 캐시 (5분 TTL)
-      try { sessionStorage.setItem(`seller_dashboard_cache_${period}`, JSON.stringify(snapshot)) } catch { /* quota 무시 */ }
-    } catch {
-      // silent fail
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // ── Period-over-period 델타 계산 ──────────────────────────────────────────
   // dailyStats: 최근 N일 데이터. 전반기(prev) vs 후반기(curr) 비교.

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
@@ -29,15 +30,61 @@ import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './a
 //   AlertTriangle, Zap, ChevronRight, Search, MoreVertical, Bell, Send, Shield,
 //   Radio, Activity, FileText) 제거.
 
+// 🛡️ 2026-06-03 Tier2(대시보드): 4-endpoint 번들 타입 + fetcher + sessionStorage seed.
+type AdminBundle = { sellers: Seller[]; pending: Seller[]; streams: Stream[]; liveStreams: Stream[] }
+
+function readAdminDashCache(): AdminBundle | undefined {
+  try {
+    const cached = sessionStorage.getItem('admin_dashboard_cache')
+    if (!cached) return undefined
+    const c = JSON.parse(cached)
+    if (Date.now() - (c.ts || 0) >= 5 * 60 * 1000) return undefined
+    return { sellers: c.sellers || [], pending: c.pending || [], streams: c.streams || [], liveStreams: c.liveStreams || [] }
+  } catch { return undefined }
+}
+
+async function fetchAdminDashboard(): Promise<AdminBundle> {
+  const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.allSettled([
+    api.get('/api/admin/sellers?limit=200'),
+    api.get('/api/admin/sellers/pending?limit=100'),
+    api.get('/api/streams?limit=100'),
+    api.get('/api/streams?status=live&limit=50'),
+  ])
+  const sellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
+  const pending = pendingRes.status === 'fulfilled' ? (pendingRes.value.data.data || []) : []
+  const streams = streamsRes.status === 'fulfilled' ? (streamsRes.value.data.data || []) : []
+  const liveStreams = liveStreamsRes.status === 'fulfilled' ? (liveStreamsRes.value.data.data || []) : []
+  const bundle = { sellers, pending, streams, liveStreams }
+  try { sessionStorage.setItem('admin_dashboard_cache', JSON.stringify({ ts: Date.now(), ...bundle })) } catch { /* quota 무시 */ }
+  return bundle
+}
+
 export default function AdminPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [pendingSellers, setPendingSellers] = useState<Seller[]>([])
-  const [streams, setStreams] = useState<Stream[]>([])
-  const [stats, setStats] = useState<Stats>({ totalSellers: 0, activeSellers: 0, totalStreams: 0, activeStreams: 0 })
+  // 🛡️ 2026-06-03 Tier2(대시보드): 4-endpoint 번들 → useQuery (initialData=sessionStorage 즉시렌더 + refetchOnMount:'always').
+  const dashQ = useQuery<AdminBundle>({
+    queryKey: ['admin', 'dashboard'],
+    queryFn: fetchAdminDashboard,
+    enabled: !!localStorage.getItem('admin_token'),
+    initialData: () => readAdminDashCache(),
+    staleTime: 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+  })
+  const sellers = dashQ.data?.sellers ?? []
+  const pendingSellers = dashQ.data?.pending ?? []
+  const streams = dashQ.data?.streams ?? []
+  const stats: Stats = {
+    totalSellers: sellers.length,
+    activeSellers: sellers.filter((s: Seller) => s.status === 'approved').length,
+    totalStreams: streams.length,
+    activeStreams: streams.filter((s: Stream) => s.status === 'live').length,
+  }
+  const loading = dashQ.isLoading && !dashQ.data
+  const loadData = () => dashQ.refetch()
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({ todaySales: 0, todayOrders: 0, currentVisitors: 0, liveStreams: 0 })
-  const [loading, setLoading] = useState(true)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
@@ -89,95 +136,17 @@ export default function AdminPage() {
       }
     } catch { toast.error(t('admin.commission.updateFailed', { defaultValue: '수수료 변경 실패' })) }
   }
-  const [liveStreams, setLiveStreams] = useState<Stream[]>([])
+  const liveStreams = dashQ.data?.liveStreams ?? []
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) {
-      navigate('/admin/login', { replace: true })
-      return
-    }
-    // sessionStorage 캐시로 즉시 렌더 (5분 TTL)
-    try {
-      const cached = sessionStorage.getItem('admin_dashboard_cache')
-      if (cached) {
-        const c = JSON.parse(cached)
-        if (Date.now() - (c.ts || 0) < 5 * 60 * 1000) {
-          const sellersData = c.sellers || []
-          const streamsData = c.streams || []
-          setSellers(sellersData)
-          setPendingSellers(c.pending || [])
-          setStreams(streamsData)
-          setLiveStreams(c.liveStreams || [])
-          setStats({
-            totalSellers: sellersData.length,
-            activeSellers: sellersData.filter((s: Seller) => s.status === 'approved').length,
-            totalStreams: streamsData.length,
-            activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length,
-          })
-          setLoading(false)
-        }
-      }
-    } catch { /* 파싱 실패 무시 */ }
-    loadData()
+    if (!localStorage.getItem('admin_token')) { navigate('/admin/login', { replace: true }); return }
     loadDashboardStats()
     const interval = setInterval(() => { if (!document.hidden) loadDashboardStats() }, 30000)
     const onVisible = () => { if (!document.hidden) loadDashboardStats() }
     document.addEventListener('visibilitychange', onVisible)
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
-
-  async function loadData() {
-    // Promise.allSettled: 하나 실패해도 나머지 데이터 표시
-    // 🛡️ 2026-05-27 (사용자 증가 대비): 무제한 fetch → limit 추가. 응답 size + JS 처리 ↓.
-    //   현재 base 작아도 미래 안전망. 일반 어드민 dashboard 는 최근 N개로 충분.
-    const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.allSettled([
-      api.get('/api/admin/sellers?limit=200'),
-      api.get('/api/admin/sellers/pending?limit=100'),
-      api.get('/api/streams?limit=100'),
-      api.get('/api/streams?status=live&limit=50'),
-    ])
-
-    // 401 체크: 첫 번째 auth 호출 실패 시 로그인으로
-    const firstAuthErr = [sellersRes, pendingRes].find(r => r.status === 'rejected')
-    if (firstAuthErr && firstAuthErr.status === 'rejected') {
-      const apiErr = firstAuthErr.reason as ApiError
-      if (apiErr?.response?.status === 401) {
-        // 🛡️ 2026-05-25 자동 로그아웃 fix: axios interceptor 가 refresh 시도 중인데
-        //   페이지 catch 가 즉시 token 삭제 → race condition.
-        //   interceptor 가 refresh 실패 시 자체 clearAuthData + redirect 처리 (lib/api.ts:470-485).
-        //   페이지에서는 단순히 로딩만 멈춤 — interceptor 처리 신뢰.
-        setLoading(false)
-        return
-      }
-    }
-
-    const sellersData = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
-    const pendingData = pendingRes.status === 'fulfilled' ? (pendingRes.value.data.data || []) : []
-    const streamsData = streamsRes.status === 'fulfilled' ? (streamsRes.value.data.data || []) : []
-    const liveStreamsData = liveStreamsRes.status === 'fulfilled' ? (liveStreamsRes.value.data.data || []) : []
-
-    setLiveStreams(liveStreamsData)
-    setSellers(sellersData)
-    setPendingSellers(pendingData)
-    setStreams(streamsData)
-    setStats({
-      totalSellers: sellersData.length,
-      activeSellers: sellersData.filter((s: Seller) => s.status === 'approved').length,
-      totalStreams: streamsData.length,
-      activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length,
-    })
-
-    // sessionStorage 캐시 저장 (5분 TTL)
-    try {
-      sessionStorage.setItem('admin_dashboard_cache', JSON.stringify({
-        ts: Date.now(),
-        sellers: sellersData, pending: pendingData, streams: streamsData, liveStreams: liveStreamsData,
-      }))
-    } catch { /* quota 초과 무시 */ }
-
-    setLoading(false)
-  }
 
   async function loadDashboardStats() {
     try {
