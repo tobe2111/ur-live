@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Settings, Save, Loader2 } from 'lucide-react'
@@ -41,20 +42,17 @@ export default function AdminPlatformSettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [settings, setSettings] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) {
-      navigate('/admin/login', { replace: true })
-    }
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
-  useEffect(() => {
-    api.get('/api/admin/tools/settings', h)
-      .then(r => { if (r.data.success) setSettings(r.data.data || {}) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }, [])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형이라 데이터 도착 시 시드.
+  const settingsQ = useApiQuery<Record<string, string>>(['admin', 'platform-settings'], '/api/admin/tools/settings', { select: (r: any) => (r?.success ? r.data || {} : {}) })
+  const loading = settingsQ.isLoading
+  useEffect(() => { if (settingsQ.data) setSettings(settingsQ.data) }, [settingsQ.data])
 
   function validateSetting(key: string, value: string): string | null {
     const n = Number(value)

@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -49,26 +50,26 @@ const DEFAULTS: Settings = {
 export default function AdminCommissionSettingsPage() {
   const { t } = useTranslation()
   const [form, setForm] = useState<Settings>(DEFAULTS)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형 폼이라 데이터 도착 시 시드.
+  const settingsQ = useApiQuery<Array<{ key: string; value: string }>>(['admin', 'commission-settings'], '/api/admin-tools/settings', {
+    select: (r: any) => (r?.success && Array.isArray(r.data) ? r.data : []),
+  })
+  const loading = settingsQ.isLoading
+
   useEffect(() => {
-    api.get('/api/admin-tools/settings')
-      .then((r) => {
-        if (r.data?.success && Array.isArray(r.data.data)) {
-          const map = new Map<string, string>(r.data.data.map((s: { key: string; value: string }) => [s.key, s.value]))
-          setForm((prev) => {
-            const next = { ...prev }
-            for (const key of Object.keys(DEFAULTS) as Array<keyof Settings>) {
-              if (map.has(key)) next[key] = String(map.get(key))
-            }
-            return next
-          })
-        }
-      })
-      .catch(() => { /* fallback DEFAULTS */ })
-      .finally(() => setLoading(false))
-  }, [])
+    const rows = settingsQ.data
+    if (!rows || rows.length === 0) return
+    const map = new Map<string, string>(rows.map((s) => [s.key, s.value]))
+    setForm((prev) => {
+      const next = { ...prev }
+      for (const key of Object.keys(DEFAULTS) as Array<keyof Settings>) {
+        if (map.has(key)) next[key] = String(map.get(key))
+      }
+      return next
+    })
+  }, [settingsQ.data])
 
   async function handleSave() {
     // 검증: 총 합계 (margin + influencer + user_bonus + agency) 가 50% 넘으면 차단

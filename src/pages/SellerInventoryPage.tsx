@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -17,9 +18,6 @@ import type { Product, StockMovement } from './seller-inventory/types'
 export default function SellerInventoryPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [products, setProducts] = useState<Product[]>([])
-  const [alerts, setAlerts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [history, setHistory] = useState<StockMovement[]>([])
   const [showModal, setShowModal] = useState(false)
@@ -117,34 +115,23 @@ export default function SellerInventoryPage() {
   }, [stopCamera])
 
   useEffect(() => {
-    loadData()
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadData() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      if (!token) { navigate('/seller/login'); return }
-      const headers = { Authorization: `Bearer ${token}` }
-
-      const [prodRes, alertRes] = await Promise.all([
-        api.get('/api/seller/products', { headers }),
-        api.get('/api/inventory/stock/alerts', { headers }),
-      ])
-
-      if (prodRes.data.success) {
-        const all = prodRes.data.data?.products || prodRes.data.data || []
-        setProducts(all.filter((p: Product) => !p.is_supply_product))
-      }
-      if (alertRes.data.success) {
-        setAlerts(alertRes.data.data || [])
-      }
-    } catch {
-      toast.error(t('seller.dataLoadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): Promise.all → useApiQuery (products + alerts[수동헤더], 재고이력은 lazy 명령형).
+  const authHeaders = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
+  const productsQ = useApiQuery<Product[]>(['seller', 'inventory-products'], '/api/seller/products', {
+    select: (r: any) => {
+      const all = r?.data?.products || r?.data || []
+      return r?.success ? all.filter((p: Product) => !p.is_supply_product) : []
+    },
+  })
+  const alertsQ = useApiQuery<Product[]>(['seller', 'inventory-alerts'], '/api/inventory/stock/alerts', { headers: authHeaders, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const products = productsQ.data ?? []
+  const alerts = alertsQ.data ?? []
+  const loading = productsQ.isLoading || alertsQ.isLoading
+  const loadData = () => { productsQ.refetch(); alertsQ.refetch() }
 
   async function generateBarcode(productId: number) {
     try {
