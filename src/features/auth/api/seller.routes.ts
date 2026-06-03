@@ -622,7 +622,8 @@ sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot
           RESEND_FROM
         ).catch((e) => console.error('[Seller ForgotPassword] Email send failed:', e));
       } else {
-        if (import.meta.env.DEV) console.warn('[Seller ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl);
+        // 🛡️ 2026-06-03: resetUrl(비번재설정 토큰) DEV 로그 제거 — agency 와 동일 PII 룰.
+        if (import.meta.env.DEV) console.warn('[Seller ForgotPassword] RESEND_API_KEY not configured; notification not sent.');
       }
     } else {
       if (import.meta.env.DEV) console.info('[Seller ForgotPassword] Unknown email (silent):', maskEmail(email));

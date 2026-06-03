@@ -488,8 +488,8 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
         ).catch((e) => console.error('[Agency ForgotPassword] Email send failed:', e))
       } else {
         // 🛡️ 2026-05-19: resetUrl 평문 로그 금지 — 토큰 노출 시 비밀번호 즉시 변경 가능.
-        if (import.meta.env.DEV) console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email. resetUrl=', resetUrl)
-        else console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; skipping email send.')
+        //   2026-06-03: DEV 에서도 resetUrl 미로그 (자체 룰 준수, PII 로그 제거).
+        console.warn('[Agency ForgotPassword] RESEND_API_KEY not configured; notification not sent.')
       }
     } else {
       // 🛡️ 2026-05-19: PII redaction — email 평문 출력 금지.
