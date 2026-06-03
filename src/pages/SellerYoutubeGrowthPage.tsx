@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Youtube, Loader2, CheckCircle, Clock, XCircle, Users } from 'lucide-react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatNumber } from '@/utils/format'
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
@@ -38,9 +39,6 @@ const STATUS_STYLES: Record<string, { label: string; icon: typeof Clock; color: 
 export default function SellerYoutubeGrowthPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [packages, setPackages] = useState<GrowthPackage[]>([])
-  const [requests, setRequests] = useState<GrowthRequest[]>([])
-  const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [channelUrl, setChannelUrl] = useState('')
   const [selected, setSelected] = useState<GrowthPackage | null>(null)
@@ -51,9 +49,22 @@ export default function SellerYoutubeGrowthPage() {
   const token = localStorage.getItem('seller_token')
 
   useEffect(() => {
-    if (!token) { navigate('/seller/login'); return }
-    Promise.all([loadPackages(), loadRequests()]).finally(() => setLoading(false))
+    if (!token) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (packages 공개 + my 수동 헤더).
+  const packagesQ = useApiQuery<GrowthPackage[]>(['seller', 'ytg-packages'], '/api/youtube-growth/packages', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const requestsQ = useApiQuery<GrowthRequest[]>(['seller', 'ytg-my'], '/api/youtube-growth/my', { headers: { Authorization: `Bearer ${token}` }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const packages = packagesQ.data ?? []
+  const requests = requestsQ.data ?? []
+  const loading = packagesQ.isLoading || requestsQ.isLoading
+
+  // packages 도착 시 기본 선택(1,000명 = index 2) — 1회만.
+  useEffect(() => {
+    if (packages.length > 0 && !selected) setSelected(packages[2] ?? packages[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packages])
 
   // 토스 위젯 마운트
   useEffect(() => {
@@ -75,25 +86,6 @@ export default function SellerYoutubeGrowthPage() {
     }, 200)
     return () => clearTimeout(timer)
   }, [showWidget])
-
-  async function loadPackages() {
-    try {
-      const res = await api.get('/api/youtube-growth/packages')
-      if (res.data.success) {
-        setPackages(res.data.data)
-        setSelected(res.data.data[2]) // 1,000명 기본 선택
-      }
-    } catch {}
-  }
-
-  async function loadRequests() {
-    try {
-      const res = await api.get('/api/youtube-growth/my', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (res.data.success) setRequests(res.data.data || [])
-    } catch {}
-  }
 
   async function handleStartPayment() {
     if (!selected || !channelUrl.trim()) {

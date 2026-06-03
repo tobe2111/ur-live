@@ -9,6 +9,7 @@ import {
   Package
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { formatNumber } from '@/utils/format'
@@ -47,54 +48,35 @@ export default function SellerAlimtalkPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'logs'>('overview')
-  const [balance, setBalance] = useState(0)
-  const [creditHistory, setCreditHistory] = useState<CreditHistory[]>([])
-  const [logs, setLogs] = useState<AlimtalkLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [logsLoading, setLogsLoading] = useState(false)
   const [chargeModal, setChargeModal] = useState(false)
-  const [packages, setPackages] = useState<DbPackage[]>([])
   const [selectedPkgId, setSelectedPkgId] = useState<number | null>(null)
   const [paying, setPaying] = useState(false)
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
-    loadCredits()
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
 
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (credits + logs[enabled]).
+  const creditsQ = useApiQuery<{ balance: number; history: CreditHistory[]; packages: DbPackage[] }>(['seller', 'alimtalk-credits'], '/api/seller/alimtalk/credits', {
+    select: (r: any) => (r?.success ? { balance: r.data.balance ?? 0, history: r.data.history ?? [], packages: r.data.packages ?? [] } : { balance: 0, history: [], packages: [] }),
+  })
+  const logsQ = useApiQuery<AlimtalkLog[]>(['seller', 'alimtalk-logs'], '/api/seller/alimtalk/logs', { enabled: activeTab === 'logs', select: (r: any) => (r?.success ? r.data ?? [] : []) })
+  const balance = creditsQ.data?.balance ?? 0
+  const creditHistory = creditsQ.data?.history ?? []
+  const packages = creditsQ.data?.packages ?? []
+  const logs = logsQ.data ?? []
+  const loading = creditsQ.isLoading
+  const logsLoading = logsQ.isLoading
+  const loadCredits = () => creditsQ.refetch()
+
+  // packages 도착 시 기본 선택(중간 패키지) — 1회만.
   useEffect(() => {
-    if (activeTab === 'logs') loadLogs()
-  }, [activeTab])
-
-  async function loadCredits() {
-    setLoading(true)
-    try {
-      const res = await api.get('/api/seller/alimtalk/credits', {
-        headers: { Authorization: `Bearer ${getSellerToken()}` }
-      })
-      if (res.data.success) {
-        setBalance(res.data.data.balance ?? 0)
-        setCreditHistory(res.data.data.history ?? [])
-        const pkgs: DbPackage[] = res.data.data.packages ?? []
-        setPackages(pkgs)
-        if (pkgs.length > 0 && selectedPkgId === null) {
-          setSelectedPkgId(pkgs[Math.floor(pkgs.length / 2)]?.id ?? pkgs[0].id)
-        }
-      }
-    } catch {
-      // Silently handle when table doesn't exist
-    } finally { setLoading(false) }
-  }
-
-  async function loadLogs() {
-    setLogsLoading(true)
-    try {
-      const res = await api.get('/api/seller/alimtalk/logs', {
-        headers: { Authorization: `Bearer ${getSellerToken()}` }
-      })
-      if (res.data.success) setLogs(res.data.data ?? [])
-    } catch { /* ignore */ } finally { setLogsLoading(false) }
-  }
+    if (packages.length > 0 && selectedPkgId === null) {
+      setSelectedPkgId(packages[Math.floor(packages.length / 2)]?.id ?? packages[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packages])
 
   // 🛡️ 2026-05-20: Toss V1 widget API → V2 payment API 마이그레이션.
   //   기존: window.TossPayments!(key).requestPayment('카드', { amount: number })

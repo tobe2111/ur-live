@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -16,16 +17,13 @@ interface Deal { id: number; influencer_id: string; commission_pct: number; stat
 
 // 🛡️ 2026-05-16: 협업 deal — 매장이 인플에게 우대 commission 제안 + 받은 신청 응답
 function DealsSection() {
-  const [deals, setDeals] = useState<Deal[]>([])
   const [proposing, setProposing] = useState(false)
   const [showProposeModal, setShowProposeModal] = useState(false)
   const [proposeForm, setProposeForm] = useState({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '' })
   const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }
-  useEffect(() => {
-    api.get('/api/seller-marketing/deals', { headers })
-      .then(r => { if (r.data?.success) setDeals(r.data.data || []) })
-      .catch(() => { /* silent */ })
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): /api/seller-marketing prefix 라 수동 헤더.
+  const dealsQ = useApiQuery<Deal[]>(['seller', 'marketing-deals'], '/api/seller-marketing/deals', { headers, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const deals = dealsQ.data ?? []
   async function submitPropose() {
     const influencerId = proposeForm.influencer_id.trim()
     const pct = Number(proposeForm.commission_pct)
@@ -42,8 +40,7 @@ function DealsSection() {
         toast.success('제안 발송됨 — 인플이 수락하면 활성화')
         setShowProposeModal(false)
         setProposeForm({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '' })
-        const r2 = await api.get('/api/seller-marketing/deals', { headers })
-        if (r2.data?.success) setDeals(r2.data.data || [])
+        dealsQ.refetch()
       } else toast.error(r.data?.error || '실패')
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
@@ -55,8 +52,7 @@ function DealsSection() {
     try {
       await api.post(`/api/seller-marketing/deals/${id}/respond`, { action }, { headers })
       toast.success(action === 'accept' ? '활성화됨' : '거절됨')
-      const r2 = await api.get('/api/seller-marketing/deals', { headers })
-      if (r2.data?.success) setDeals(r2.data.data || [])
+      dealsQ.refetch()
     } catch { toast.error('실패') }
   }
   return (
@@ -137,34 +133,28 @@ function DealsSection() {
 export default function SellerMarketingPage() {
   const navigate = useNavigate()
   const [marketingEnabled, setMarketingEnabled] = useState(true)
-  const [blocked, setBlocked] = useState<Blocked[]>([])
-  const [recent, setRecent] = useState<Recent[]>([])
-  const [loading, setLoading] = useState(true)
   const [blockingId, setBlockingId] = useState<string | null>(null)
 
   const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) {
-      redirectToLogin(navigate)
-      return
-    }
-    load()
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function load() {
-    setLoading(true)
-    api.get('/api/seller-marketing/me', { headers })
-      .then((r) => {
-        if (r.data?.success) {
-          setMarketingEnabled(r.data.data.marketing_enabled)
-          setBlocked(r.data.data.blocked || [])
-          setRecent(r.data.data.recent || [])
-        }
-      })
-      .catch(() => toast.error('데이터 로드 실패'))
-      .finally(() => setLoading(false))
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. marketing_enabled 는 토글 편집형 → 로컬 state 시드.
+  const meQ = useApiQuery<{ marketing_enabled: boolean; blocked: Blocked[]; recent: Recent[] } | null>(['seller', 'marketing-me'], '/api/seller-marketing/me', {
+    headers,
+    select: (r: any) => (r?.success ? { marketing_enabled: r.data.marketing_enabled, blocked: r.data.blocked || [], recent: r.data.recent || [] } : null),
+  })
+  const blocked = meQ.data?.blocked ?? []
+  const recent = meQ.data?.recent ?? []
+  const loading = meQ.isLoading
+  const load = () => meQ.refetch()
+
+  useEffect(() => {
+    if (meQ.data) setMarketingEnabled(meQ.data.marketing_enabled)
+  }, [meQ.data])
 
   async function toggleMarketing() {
     const next = !marketingEnabled

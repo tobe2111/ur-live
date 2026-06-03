@@ -7,6 +7,7 @@ import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { safeNum, formatNumber, formatWon } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 
@@ -29,51 +30,38 @@ interface VoucherLogSummary {
 export default function SellerGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [products, setProducts] = useState<GroupBuyProduct[]>([])
-  const [voucherStats, setVoucherStats] = useState<Record<number, VoucherStat>>({})
-  const [voucherLogSummary, setVoucherLogSummary] = useState<VoucherLogSummary | null>(null)
-  // 🛡️ 2026-05-13 (공구 UX #1): 셀러 정산 / 수수료 정보
-  const [commissionRate, setCommissionRate] = useState<number>(0.05)  // 기본 5% (서버에서 fetch)
-  const [loading, setLoading] = useState(true)
 
   const headers = { Authorization: `Bearer ${getSellerToken()}` }
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
-    loadData()
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadData() {
-    setLoading(true)
-    try {
-      // 🛡️ 2026-05-13 (공구 UX #1+#2): products + voucher logs summary + 수수료율 병렬 fetch
-      const [productsRes, logsRes, settingsRes] = await Promise.all([
-        api.get('/api/seller/products', { headers }),
-        api.get('/api/group-buy/voucher-logs', { headers }).catch(() => ({ data: { data: { summary: null, logs: [] } } })),
-        api.get('/api/group-buy/commission-rate').catch(() => ({ data: { rate: 0.05 } })),
-      ])
-      if (productsRes.data.success) {
-        // 🛡️ 2026-05-17: meal_voucher 만 보던 필터 → 6 voucher 카테고리 전체로 확장
-        const mealVouchers = (productsRes.data.data || []).filter((p: { category?: string }) => isVoucherCategory(p.category))
-        setProducts(mealVouchers)
-        // 바우처 통계: 각 상품별 (vouchers 테이블에서 집계)
-        if (mealVouchers.length > 0) {
-          const statsRes = await api.get(`/api/group-buy/seller-voucher-stats?product_ids=${mealVouchers.map((p: GroupBuyProduct) => p.id).join(',')}`, { headers })
-            .catch(() => ({ data: { success: false } }))
-          if (statsRes.data?.success) {
-            const map: Record<number, VoucherStat> = {}
-            for (const s of (statsRes.data.data || [])) {
-              map[s.product_id] = s
-            }
-            setVoucherStats(map)
-          }
-        }
-      }
-      if (logsRes.data?.data?.summary) setVoucherLogSummary(logsRes.data.data.summary)
-      if (settingsRes.data?.rate) setCommissionRate(Number(settingsRes.data.rate))
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all 체인 → useApiQuery (products → stats 의존 + logs + 수수료율).
+  const productsQ = useApiQuery<GroupBuyProduct[]>(['seller', 'gb-products'], '/api/seller/products', {
+    headers,
+    select: (r: any) => (r?.success ? (r.data || []).filter((p: { category?: string }) => isVoucherCategory(p.category)) : []),
+  })
+  const products = productsQ.data ?? []
+  const productIds = products.map(p => p.id).join(',')
+  const statsQ = useApiQuery<Record<number, VoucherStat>>(['seller', 'gb-voucher-stats', productIds], '/api/group-buy/seller-voucher-stats', {
+    params: { product_ids: productIds },
+    headers,
+    enabled: products.length > 0,
+    select: (r: any) => {
+      const map: Record<number, VoucherStat> = {}
+      if (r?.success) for (const s of (r.data || [])) map[s.product_id] = s
+      return map
+    },
+  })
+  const voucherLogsQ = useApiQuery<VoucherLogSummary | null>(['seller', 'gb-voucher-logs'], '/api/group-buy/voucher-logs', { headers, select: (r: any) => (r?.data?.summary ?? null) })
+  const commissionQ = useApiQuery<number>(['seller', 'gb-commission-rate'], '/api/group-buy/commission-rate', { select: (r: any) => (r?.rate ? Number(r.rate) : 0.05) })
+  const voucherStats = statsQ.data ?? {}
+  const voucherLogSummary = voucherLogsQ.data ?? null
+  const commissionRate = commissionQ.data ?? 0.05
+  const loading = productsQ.isLoading
+  const loadData = () => { productsQ.refetch(); statsQ.refetch(); voucherLogsQ.refetch() }
 
   // 정산액 계산: 셀러 수령액 = 가격 × 참여 × (1 - 수수료율)
   // 🛡️ 2026-05-17: safeNum 으로 NaN 방지 (DB null → 0 변환)
