@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Eye, Heart, Video, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -28,9 +29,13 @@ interface Product {
 export default function SellerShortsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [shorts, setShorts] = useState<Short[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all → useApiQuery 2개.
+  const shortsQ = useApiQuery<Short[]>(['seller', 'shorts'], '/api/shorts/seller/list', { select: (r: any) => r?.data ?? [] })
+  const productsQ = useApiQuery<Product[]>(['seller', 'shorts-products'], '/api/seller/products', { select: (r: any) => r?.data ?? [] })
+  const shorts = shortsQ.data ?? []
+  const products = productsQ.data ?? []
+  const loading = shortsQ.isLoading || productsQ.isLoading
+  const loadData = () => { shortsQ.refetch(); productsQ.refetch() }
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -42,22 +47,9 @@ export default function SellerShortsPage() {
   const headers = { Authorization: `Bearer ${getSellerToken()}` }
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
-    loadData()
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
-
-  async function loadData() {
-    setLoading(true)
-    try {
-      const [shortsRes, productsRes] = await Promise.all([
-        api.get('/api/shorts/seller/list', { headers }),
-        api.get('/api/seller/products', { headers }),
-      ])
-      setShorts(shortsRes.data.data ?? [])
-      setProducts(productsRes.data.data ?? [])
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
-  }
 
   // YouTube URL에서 video ID 추출
   function extractYoutubeId(url: string): string | null {
@@ -112,7 +104,7 @@ export default function SellerShortsPage() {
     try {
       await api.delete(`/api/shorts/${id}`, { headers })
       toast.success(t('seller.deleted'))
-      setShorts(prev => prev.filter(s => s.id !== id))
+      shortsQ.refetch()
     } catch {
       toast.error(t('seller.deleteFailed'))
     }

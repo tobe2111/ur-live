@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import AgencyLayout from '@/components/AgencyLayout'
@@ -12,27 +13,18 @@ export default function AgencyProductsPage() {
   const { t } = useTranslation()
   const { sellerId } = useParams<{ sellerId: string }>()
   const navigate = useNavigate()
-  const [products, setProducts] = useState<any[]>([])
-  const [sellerName, setSellerName] = useState('')
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState({ name: '', description: '', price: 0, original_price: 0, stock: 100, image_url: '', category: 'general' })
   const [submitting, setSubmitting] = useState(false)
   const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token') || ''}` }
-
-  useEffect(() => {
-    if (!sellerId) return
-    Promise.all([
-      api.get(`/api/agency/sellers/${sellerId}/products`, { headers }),
-      api.get('/api/agency/sellers', { headers }),
-    ]).then(([prodRes, sellersRes]) => {
-      if (prodRes.data.success) setProducts(prodRes.data.data || [])
-      const seller = (sellersRes.data.data || []).find((s: { id: number | string; name?: string }) => String(s.id) === sellerId)
-      if (seller) setSellerName(seller.name)
-    }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [sellerId])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all → useApiQuery 2개.
+  const productsQ = useApiQuery<any[]>(['agency', 'seller-products', sellerId], `/api/agency/sellers/${sellerId}/products`, { enabled: !!sellerId, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const sellersQ = useApiQuery<any[]>(['agency', 'all-sellers'], '/api/agency/sellers', { select: (r: any) => r?.data || [] })
+  const products = productsQ.data ?? []
+  const loading = productsQ.isLoading
+  const sellerName = (sellersQ.data ?? []).find((s: { id: number | string; name?: string }) => String(s.id) === sellerId)?.name || ''
+  const load = () => { productsQ.refetch(); sellersQ.refetch() }
 
   async function handleSubmit() {
     if (!form.name || !form.price) { toast.error('상품명과 가격을 입력하세요'); return }
@@ -47,8 +39,7 @@ export default function AgencyProductsPage() {
       }
       setShowForm(false); setEditingId(null)
       setForm({ name: '', description: '', price: 0, original_price: 0, stock: 100, image_url: '', category: 'general' })
-      const r = await api.get(`/api/agency/sellers/${sellerId}/products`, { headers })
-      if (r.data.success) setProducts(r.data.data || [])
+      productsQ.refetch()
     } catch (err: unknown) { const e = err as { response?: { data?: { error?: string } } }; toast.error(e.response?.data?.error || '실패') }
     finally { setSubmitting(false) }
   }
