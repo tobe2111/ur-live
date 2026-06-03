@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { Package, Search, Loader2, Tag, ShoppingCart, Receipt, ClipboardList, Sparkles } from 'lucide-react'
+import { Package, Search, Loader2, Tag, ShoppingCart, Receipt, ClipboardList, Sparkles, Factory } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleProposals } from '@/hooks/queries/useWholesale'
 
@@ -77,6 +77,9 @@ export default function WholesaleCatalogPage() {
             </button>
             <button onClick={() => navigate('/wholesale/statement')} className="hidden sm:inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
               <Receipt className="w-4 h-4" /> 거래내역서
+            </button>
+            <button onClick={() => navigate('/wholesale/oem')} className="hidden sm:inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+              <Factory className="w-4 h-4" /> OEM/ODM
             </button>
             {me && (
               <>
