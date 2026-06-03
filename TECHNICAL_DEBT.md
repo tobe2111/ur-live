@@ -44,6 +44,10 @@
     - `seller-tier-limits`(0→6): 등급별 voucher 한도(default 5/다이아 무제한) + referral 권한.
     - `maxTierDiscount`(+5): 즉시판매 단일가(현재 활성 pricing) 보강.
   - **세션 누계 테스트 안전망 ~130개 신설**(돈 라우트 29 + 인증 8 + 결제SSOT 12 + 라이브 12 + 계산/보안/결제 로직 ~70). 1444 tests green.
+  - ✅ **일관성/보안 체크 트랙**(프로젝트 자체 check 스크립트 실행 → 실문제만 수정):
+    - **i18n**: `check-i18n-sync` 누락 15키(셀러 3키×5언어) 실번역 추가 → `All 6 languages in sync` (CLAUDE.md 6언어 룰 해소).
+    - **PII**: `check-pii-logs` — agency/seller ForgotPassword 의 `resetUrl`(비번재설정 토큰) DEV 로그 제거(자체 보안주석과 모순이던 2곳) → CRITICAL 0.
+    - **검증된 false-positive**(수정 불필요): check-api-auth 18건=middleware/cron/utils·의도적 public 라우트 → **auth 표면 정상 게이트 확인**. check-dark-border 다수=B2B/대시보드 라이트테마(dark 추가 시 오히려 `check-dashboard-theme` 위반). check-nan-dashboard=가드된 숫자.
 - **Tier 4 — God 파일 분해**: ✅ **안전망 2단계 완료** — (1) `youtube-live-routes.contract.test.ts`: 라우트 인벤토리 34개 SSOT 고정 + 방송 생명주기 핵심 강검증(파일소실 사고 재현 차단). (2) `youtube-live-routes.auth.test.ts`: 9개 핵심 엔드포인트가 미인증 요청을 DB 접근 전 401 거절함을 검증(auth 배선 누락 회귀 차단). 둘 다 network/DB 없이 실행(24 tests green). pure 헬퍼(`hmacHex`/`hmacBase64Sha1`)는 이미 `youtube-live.hmac.ts` 로 분리됨.
   - **실제 분해 PLAN (staging 필수 — 다음 PR)**: 안전망 green 상태에서 **1 PR = 1 핸들러群 verbatim 이동**(인라인 미들웨어 동반 → tsc 가 미해결 참조 포착) → `app.route()` 재마운트 → contract+auth green → **스테이징 실제 방송 1회 스모크(create→start→status→end)**. 묶음 순서: ① `/streaming/*`(WHIP/OME, 결합도↓) ② `/live/_*`(quota/health/admin 진단) ③ `/live/:id/{diagnose,force-transition,reset-zombie}`(운영도구) ④ 마지막 생명주기 핵심. ⚠️ network-free 테스트로 **post-auth 런타임(방송 실동작) 검증 불가** → 스테이징 실송출 없는 블라인드 분해 금지(2026-05-12 사고 영역).
 - **Tier 3 — 기능 미완**: 8.8% 원천징수 자동계산(세율 정책 결정), 딜 현금환급 endpoint, 지급조서 CSV, KT Alpha 기프티쇼 API(외부 계약/키), 숙소 알림톡 실발송(알리고 템플릿) — **외부 API/도메인 결정 의존**, 순수 코드로 완결 불가.
