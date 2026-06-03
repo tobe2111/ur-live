@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { ArrowLeft, Loader2, Play, Edit, Trash2 } from 'lucide-react'
 import { formatKST } from '@/utils/date'
@@ -26,9 +27,8 @@ export default function SellerStreamEditPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
-  const [stream, setStream] = useState<Stream | null>(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -36,49 +36,27 @@ export default function SellerStreamEditPage() {
   })
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('seller_token')
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    if (!sessionToken) {
-      navigate('/seller/login')
-      return
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집 폼이라 데이터 도착 시 시드.
+  const streamQ = useApiQuery<Stream | null>(['seller', 'stream-edit', id], `/api/seller/streams/${id}`, { select: (r: any) => (r?.success ? r.stream ?? null : null) })
+  const stream = streamQ.data ?? null
+  const loading = streamQ.isLoading
+  useEffect(() => {
+    if (streamQ.data) {
+      setFormData({ title: streamQ.data.title || '', description: streamQ.data.description || '', status: streamQ.data.status || 'live' })
+    } else if (streamQ.isFetched && !streamQ.data) {
+      setError(t('seller.streamNotFound'))
     }
-
-    loadStream()
-  }, [id])
-
-  async function loadStream() {
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-
-      const response = await api.get(`/api/seller/streams/${id}`, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        const foundStream = response.data.stream
-        if (foundStream) {
-          setStream(foundStream)
-          setFormData({
-            title: foundStream.title || '',
-            description: foundStream.description || '',
-            status: foundStream.status || 'live'
-          })
-        } else {
-          setError(t('seller.streamNotFound'))
-        }
-      }
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error('Failed to load stream:', error)
-      setError(t('seller.streamLoadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamQ.data, streamQ.isFetched])
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    setSubmitting(true)
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
@@ -102,7 +80,7 @@ export default function SellerStreamEditPage() {
       if (import.meta.env.DEV) console.error('Failed to update stream:', error)
       setError(error_.response?.data?.error || t('seller.updateFailed'))
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -311,10 +289,10 @@ export default function SellerStreamEditPage() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
               >
-                {loading ? (
+                {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     {t('seller.updatingStream')}

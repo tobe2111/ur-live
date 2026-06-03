@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -29,17 +30,12 @@ export default function SellerStreamNewPage() {
     watchUrl: string
   } | null>(null)
   const [createdStreamId, setCreatedStreamId] = useState<number | null>(null)
-  const [myProducts, setMyProducts] = useState<{ id: number; name: string; price: number }[]>([])
   const [linkedProductIds, setLinkedProductIds] = useState<Set<number>>(new Set())
   const [linkingProducts, setLinkingProducts] = useState(false)
 
-  useEffect(() => {
-    const token = localStorage.getItem('seller_token')
-    if (!token) return
-    api.get('/api/seller/products?limit=100', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => { if (r.data.success) setMyProducts(r.data.data || []) })
-      .catch(() => { toast.error(t('seller.stream.productsLoadFailed', { defaultValue: '상품 목록을 불러올 수 없습니다' })) })
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): mount 페칭 → useApiQuery (/api/seller prefix 토큰 자동 주입).
+  const myProductsQ = useApiQuery<{ id: number; name: string; price: number }[]>(['seller', 'stream-new-products'], '/api/seller/products', { params: { limit: 100 }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const myProducts = myProductsQ.data ?? []
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setFormData(prev => ({

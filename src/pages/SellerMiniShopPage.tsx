@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Palette, Image as ImageIcon, ExternalLink, Save, Loader2, Eye, Upload } from 'lucide-react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { compressForUpload } from '@/lib/image-compress'
@@ -53,10 +54,23 @@ export default function SellerMiniShopPage() {
     external_live_instagram: '',
     external_live_facebook: '',
   })
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [sellerSlug, setSellerSlug] = useState<string | null>(null)
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집 폼이라 데이터 도착 시 시드.
+  const profileQ = useApiQuery<any>(['seller', 'minishop-profile'], '/api/seller/profile', { headers, select: (r: any) => (r?.data || r) })
+  const loading = profileQ.isLoading
+  useEffect(() => {
+    const d = profileQ.data
+    if (!d) return
+    setForm({
+      banner_url: d?.banner_url || '', brand_color: d?.brand_color || '',
+      external_live_tiktok: d?.external_live_tiktok || '', external_live_instagram: d?.external_live_instagram || '', external_live_facebook: d?.external_live_facebook || '',
+    })
+    setSellerSlug(d?.username || String(d?.id || ''))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileQ.data])
 
   // 🛡️ 2026-05-16: DataURL 대신 imgbb 정식 업로드 → DB row 부피 폭증 방지.
   //   compress (WebP 1920px ≤500KB) → /api/seller/upload-image → CDN URL 만 저장.
@@ -93,21 +107,8 @@ export default function SellerMiniShopPage() {
   }
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
-    api.get('/api/seller/profile', { headers })
-      .then(r => {
-        const d = r.data?.data || r.data
-        setForm({
-          banner_url: d?.banner_url || '',
-          brand_color: d?.brand_color || '',
-          external_live_tiktok: d?.external_live_tiktok || '',
-          external_live_instagram: d?.external_live_instagram || '',
-          external_live_facebook: d?.external_live_facebook || '',
-        })
-        setSellerSlug(d?.username || String(d?.id || ''))
-      })
-      .catch(() => toast.error('프로필 로드 실패'))
-      .finally(() => setLoading(false))
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
