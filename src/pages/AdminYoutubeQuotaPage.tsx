@@ -11,6 +11,7 @@ import { AlertTriangle, RefreshCw, Loader2, Youtube } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 
 interface DashboardData {
@@ -24,28 +25,12 @@ interface DashboardData {
 }
 
 export default function AdminYoutubeQuotaPage() {
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/api/youtube/live/_admin-quota-dashboard')
-      if (res.data?.success) setData(res.data.data)
-    } catch (e) {
-      toast.error('대시보드 로드 실패')
-      // eslint-disable-next-line no-console
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    const id = setInterval(load, 30_000)  // 30s 폴링
-    return () => clearInterval(id)
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 30s 폴링 → useApiQuery refetchInterval.
+  const { data = null, isLoading: loading, refetch } = useApiQuery<DashboardData | null>(
+    ['admin', 'youtube-quota'], '/api/youtube/live/_admin-quota-dashboard',
+    { select: (r: any) => (r?.success ? r.data : null), refetchInterval: 30_000 },
+  )
+  const load = () => refetch()
 
   const formatNum = (n: number) => n.toLocaleString('ko-KR')
 

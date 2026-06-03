@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken } from '@/lib/seller-auth'
@@ -24,23 +25,12 @@ interface RealtimeStats {
 }
 
 export default function SellerRealtimeDashboardPage() {
-  const [data, setData] = useState<RealtimeStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }
-
-  function load() {
-    setLoading(true)
-    api.get('/api/seller-marketing/realtime-stats', { headers })
-      .then((r) => { if (r.data?.success) setData(r.data.data) })
-      .catch(() => toast.error('로드 실패'))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => {
-    load()
-    const t = setInterval(load, 60_000)
-    return () => clearInterval(t)
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 60s 폴링 → useApiQuery refetchInterval.
+  const { data = null, isLoading: loading, refetch } = useApiQuery<RealtimeStats | null>(
+    ['seller', 'realtime-stats'], '/api/seller-marketing/realtime-stats',
+    { select: (r: any) => (r?.success ? r.data : null), refetchInterval: 60_000 },
+  )
+  const load = () => refetch()
 
   if (loading && !data) return <SellerLayout title="실시간 대시보드"><div className="p-6"><p className="text-gray-500">로딩 중...</p></div></SellerLayout>
   if (!data) return null

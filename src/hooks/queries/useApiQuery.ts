@@ -26,6 +26,8 @@ export function useApiQuery<T = unknown>(
     staleTime?: number
     gcTime?: number
     refetchOnMount?: boolean | 'always'
+    /** 🛡️ 2026-06-03: 폴링 페이지 이전용 — 주기적 refetch(ms). foreground 만(배터리 절약). */
+    refetchInterval?: number
   },
 ): UseQueryResult<T> {
   return useQuery<T>({
@@ -39,5 +41,7 @@ export function useApiQuery<T = unknown>(
     gcTime: opts?.gcTime ?? 30 * 60_000,
     refetchOnWindowFocus: false,
     refetchOnMount: opts?.refetchOnMount,
+    refetchInterval: opts?.refetchInterval,
+    refetchIntervalInBackground: false,
   })
 }
