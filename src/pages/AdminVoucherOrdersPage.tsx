@@ -9,9 +9,10 @@
  * /api/admin/voucher-orders (신규) + /api/admin/voucher-orders/:id/resend (신규)
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 
 interface VoucherOrderRow {
@@ -38,44 +39,33 @@ interface KtAlphaStatus {
 export default function AdminVoucherOrdersPage() {
   const [hours, setHours] = useState(24)
   const [statusFilter, setStatusFilter] = useState<'all' | 'processing' | 'sent' | 'failed'>('all')
-  const [rows, setRows] = useState<VoucherOrderRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [stats, setStats] = useState<{ processing: number; sent: number; failed: number }>({ processing: 0, sent: 0, failed: 0 })
-  const [ktStatus, setKtStatus] = useState<KtAlphaStatus | null>(null)
 
-  // 운영 상태 (dev_mode / settings) 로드
-  useEffect(() => {
-    api.get('/api/admin/kt-alpha/settings').then(r => {
-      if (r.data?.success) {
-        const s = r.data.data || {}
-        setKtStatus({
-          dev_mode: s.dev_mode === 1 || s.dev_mode === '1' || s.dev_mode === 'Y',
-          api_enabled: s.api_enabled === 1 || s.api_enabled === '1',
-          has_user_id: !!s.user_id,
-          has_callback_no: !!s.callback_no,
-        })
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (KT 설정 + 발송 리스트, 필터 key 반응형).
+  const ktStatusQ = useApiQuery<KtAlphaStatus | null>(['admin', 'kt-alpha-settings'], '/api/admin/kt-alpha/settings', {
+    select: (r: any) => {
+      if (!r?.success) return null
+      const s = r.data || {}
+      return {
+        dev_mode: s.dev_mode === 1 || s.dev_mode === '1' || s.dev_mode === 'Y',
+        api_enabled: s.api_enabled === 1 || s.api_enabled === '1',
+        has_user_id: !!s.user_id,
+        has_callback_no: !!s.callback_no,
       }
-    }).catch(() => null)
-  }, [])
+    },
+  })
+  const ktStatus = ktStatusQ.data ?? null
 
-  async function load() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ hours: String(hours), limit: '500' })
-      if (statusFilter !== 'all') params.set('status', statusFilter)
-      const res = await api.get(`/api/admin/voucher-orders?${params.toString()}`)
-      if (res.data?.success) {
-        setRows(res.data.data || [])
-        setStats(res.data.stats || { processing: 0, sent: 0, failed: 0 })
-      }
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [hours, statusFilter])
+  const ordersQ = useApiQuery<{ rows: VoucherOrderRow[]; stats: { processing: number; sent: number; failed: number } }>(
+    ['admin', 'voucher-orders', hours, statusFilter], '/api/admin/voucher-orders',
+    {
+      params: { hours, limit: 500, ...(statusFilter !== 'all' ? { status: statusFilter } : {}) },
+      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], stats: r?.stats || { processing: 0, sent: 0, failed: 0 } }),
+    },
+  )
+  const rows = ordersQ.data?.rows ?? []
+  const stats = ordersQ.data?.stats ?? { processing: 0, sent: 0, failed: 0 }
+  const loading = ordersQ.isLoading
+  const load = () => ordersQ.refetch()
 
   async function handleResend(id: number) {
     if (!confirm('이 voucher 를 재발송할까요?')) return

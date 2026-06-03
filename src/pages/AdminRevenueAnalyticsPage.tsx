@@ -1,8 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { TrendingUp, DollarSign, ShoppingCart, BarChart2, Loader2 } from 'lucide-react'
@@ -72,56 +71,26 @@ function fmt(n: number | null | undefined): string {
 export default function AdminRevenueAnalyticsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('30d')
 
-  const [summary, setSummary] = useState<RevenueSummary | null>(null)
-  const [chartData, setChartData] = useState<RevenueDataPoint[]>([])
-  const [topSellers, setTopSellers] = useState<TopSeller[]>([])
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
-  const [categories, setCategories] = useState<CategoryData[]>([])
-
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
   }, [navigate])
 
-  useEffect(() => {
-    loadAll()
-  }, [period])
-
-  async function loadAll() {
-    setLoading(true)
-    try {
-      const [revenueRes, sellersRes, productsRes, categoryRes] = await Promise.all([
-        api.get(`/api/admin/analytics/revenue?period=${period}`),
-        api.get('/api/admin/analytics/top-sellers?limit=10'),
-        api.get('/api/admin/analytics/top-products?limit=10'),
-        api.get('/api/admin/analytics/category'),
-      ])
-
-      if (revenueRes.data.success) {
-        setSummary(revenueRes.data.data.summary || revenueRes.data.data)
-        setChartData(revenueRes.data.data.chart || revenueRes.data.data.daily || [])
-      }
-      if (sellersRes.data.success) {
-        setTopSellers(sellersRes.data.data || [])
-      }
-      if (productsRes.data.success) {
-        setTopProducts(productsRes.data.data || [])
-      }
-      if (categoryRes.data.success) {
-        setCategories(categoryRes.data.data || [])
-      }
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number } }
-      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리. 페이지는 noop.
-      if (axiosErr.response?.status !== 401) {
-        toast.error('매출 데이터를 불러오지 못했습니다')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): Promise.all 4 → useApiQuery 4개 (revenue 만 period 의존).
+  const revenueQ = useApiQuery<{ summary: RevenueSummary | null; chart: RevenueDataPoint[] }>(['admin', 'analytics-revenue', period], '/api/admin/analytics/revenue', {
+    params: { period },
+    select: (r: any) => (r?.success ? { summary: r.data.summary || r.data, chart: r.data.chart || r.data.daily || [] } : { summary: null, chart: [] }),
+  })
+  const topSellersQ = useApiQuery<TopSeller[]>(['admin', 'analytics-top-sellers'], '/api/admin/analytics/top-sellers', { params: { limit: 10 }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const topProductsQ = useApiQuery<TopProduct[]>(['admin', 'analytics-top-products'], '/api/admin/analytics/top-products', { params: { limit: 10 }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const categoriesQ = useApiQuery<CategoryData[]>(['admin', 'analytics-category'], '/api/admin/analytics/category', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const summary = revenueQ.data?.summary ?? null
+  const chartData = revenueQ.data?.chart ?? []
+  const topSellers = topSellersQ.data ?? []
+  const topProducts = topProductsQ.data ?? []
+  const categories = categoriesQ.data ?? []
+  const loading = revenueQ.isLoading || topSellersQ.isLoading || topProductsQ.isLoading || categoriesQ.isLoading
 
   const summaryCards = [
     { label: '총 매출', value: `${fmt(summary?.total_revenue)}원`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },

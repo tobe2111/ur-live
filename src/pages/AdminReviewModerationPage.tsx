@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -46,49 +47,32 @@ export default function AdminReviewModerationPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [stats, setStats] = useState<ReviewStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [filters, setFilters] = useState({ status: 'all', rating: '', sort: 'newest', product_id: '' })
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    loadStats()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { loadReviews() }, [page, filters])
-
-  async function loadStats() {
-    try {
-      const res = await api.get('/api/admin/reviews/stats', h)
-      if (res.data.success) setStats(res.data.data)
-    } catch {}
-  }
-
-  async function loadReviews() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: page.toString(), limit: '20', ...filters })
-      const res = await api.get(`/api/admin/reviews/list?${params}`, h)
-      if (res.data.success) {
-        setReviews(res.data.data || [])
-        setTotalPages(res.data.pagination?.totalPages || 1)
-      }
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      toast.error(err_.response?.data?.error || '리뷰 로드 실패')
-    } finally { setLoading(false) }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (stats + reviews 리스트, 필터 key 반응형).
+  const statsQ = useApiQuery<ReviewStats | null>(['admin', 'review-stats'], '/api/admin/reviews/stats', { select: (r: any) => (r?.success ? r.data : null) })
+  const stats = statsQ.data ?? null
+  const reviewsQ = useApiQuery<{ rows: Review[]; totalPages: number }>(['admin', 'review-list', page, filters], '/api/admin/reviews/list', {
+    params: { page, limit: 20, ...filters },
+    select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
+  })
+  const reviews = reviewsQ.data?.rows ?? []
+  const totalPages = reviewsQ.data?.totalPages ?? 1
+  const loading = reviewsQ.isLoading
 
   async function toggleVisibility(review: Review) {
     const newVal = review.is_visible ? 0 : 1
     try {
       await api.patch(`/api/admin/reviews/${review.id}/visibility`, { is_visible: newVal }, h)
       toast.success(newVal ? '리뷰가 표시됩니다' : '리뷰가 숨겨졌습니다')
-      setReviews(prev => prev.map(r => r.id === review.id ? { ...r, is_visible: newVal } : r))
-      loadStats()
+      reviewsQ.refetch()
+      statsQ.refetch()
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       toast.error(err_.response?.data?.error || '변경 실패')
@@ -100,8 +84,8 @@ export default function AdminReviewModerationPage() {
     try {
       await api.delete(`/api/admin/reviews/${review.id}`, h)
       toast.success('리뷰가 삭제되었습니다')
-      loadReviews()
-      loadStats()
+      reviewsQ.refetch()
+      statsQ.refetch()
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       toast.error(err_.response?.data?.error || '삭제 실패')

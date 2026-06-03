@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState, DashboardCard } from '@/components/dashboard'
 import { Activity, AlertTriangle, RefreshCw, CheckCircle2, MessageSquare, Loader2 } from 'lucide-react'
@@ -41,14 +42,7 @@ export default function AdminSystemMonitoringPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'cron' | 'alimtalk'>('cron')
   const [showResolved, setShowResolved] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState<number | null>(null)
-
-  const [cronFailures, setCronFailures] = useState<CronFailure[]>([])
-  const [cronCounts, setCronCounts] = useState<Array<{ severity: string; cnt: number }>>([])
-
-  const [alimtalkFailures, setAlimtalkFailures] = useState<AlimtalkFailure[]>([])
-  const [alimtalkStats, setAlimtalkStats] = useState({ abandoned: 0, pending: 0, succeeded: 0 })
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -56,29 +50,21 @@ export default function AdminSystemMonitoringPage() {
 
   const auth = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      if (tab === 'cron') {
-        const res = await api.get(`/api/admin/cron-failures?resolved=${showResolved ? 1 : 0}`, auth)
-        if (res.data?.success) {
-          setCronFailures(res.data.data.items)
-          setCronCounts(res.data.data.unresolved_counts)
-        }
-      } else {
-        const res = await api.get(`/api/admin/alimtalk-failures?resolved=${showResolved ? 1 : 0}`, auth)
-        if (res.data?.success) {
-          setAlimtalkFailures(res.data.data.items)
-          setAlimtalkStats(res.data.data.stats)
-        }
-      }
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-  useEffect(() => { load() }, [tab, showResolved])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (cron / alimtalk, resolved key 반응형).
+  const cronQ = useApiQuery<{ items: CronFailure[]; counts: Array<{ severity: string; cnt: number }> }>(
+    ['admin', 'cron-failures', showResolved], '/api/admin/cron-failures',
+    { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'cron', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], counts: r?.success ? (r.data.unresolved_counts || []) : [] }) },
+  )
+  const alimtalkQ = useApiQuery<{ items: AlimtalkFailure[]; stats: { abandoned: number; pending: number; succeeded: number } }>(
+    ['admin', 'alimtalk-failures', showResolved], '/api/admin/alimtalk-failures',
+    { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'alimtalk', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], stats: r?.success ? r.data.stats : { abandoned: 0, pending: 0, succeeded: 0 } }) },
+  )
+  const cronFailures = cronQ.data?.items ?? []
+  const cronCounts = cronQ.data?.counts ?? []
+  const alimtalkFailures = alimtalkQ.data?.items ?? []
+  const alimtalkStats = alimtalkQ.data?.stats ?? { abandoned: 0, pending: 0, succeeded: 0 }
+  const loading = tab === 'cron' ? cronQ.isLoading : alimtalkQ.isLoading
+  const load = () => { if (tab === 'cron') cronQ.refetch(); else alimtalkQ.refetch() }
 
   const resolveCron = async (id: number) => {
     setActing(id)

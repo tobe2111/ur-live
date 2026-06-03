@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Star, Loader2, Trash2, Sparkles, FileText } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
@@ -14,13 +15,11 @@ interface Product {
 export default function AdminReviewsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [products, setProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null)
   const [count, setCount] = useState(50)
   const [avgRating, setAvgRating] = useState(4.5)
   const [options, setOptions] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'template' | 'ai'>('template')
   const [progress, setProgress] = useState('')
 
@@ -32,12 +31,10 @@ export default function AdminReviewsPage() {
     }
   }, [navigate])
 
-  useEffect(() => {
-    api.get('/api/admin/products', { headers })
-      .then(r => { if (r.data.success) setProducts(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): mount 페칭 → useApiQuery.
+  const productsQ = useApiQuery<Product[]>(['admin', 'reviews-products'], '/api/admin/products', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const products = productsQ.data ?? []
+  const loading = productsQ.isLoading
 
   async function generateReviews() {
     if (!selectedProduct) { toast.error('상품을 선택해주세요'); return }
