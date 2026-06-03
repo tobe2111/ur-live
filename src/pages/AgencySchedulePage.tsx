@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { ChevronLeft, ChevronRight, Play, Clock, Loader2, Calendar } from 'lucide-react'
@@ -9,24 +9,17 @@ import { ChevronLeft, ChevronRight, Play, Clock, Loader2, Calendar } from 'lucid
 export default function AgencySchedulePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [streams, setStreams] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token || ''}` }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: streams = [], isLoading: loading } = useApiQuery<any[]>(
+    ['agency', 'schedule'], '/api/agency/schedule',
+    { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
-
-  useEffect(() => {
-    api.get('/api/agency/schedule', { headers })
-      .then(r => { if (r.data.success) setStreams(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()

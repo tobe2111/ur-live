@@ -4,9 +4,9 @@
  *   /seller/voucher-orders 신규 페이지.
  *   여기서 캡처해서 KT Alpha 상용 Key 신청 첨부.
  */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Gift, Phone, Calendar, CheckCircle, XCircle, Clock } from 'lucide-react'
@@ -38,23 +38,16 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.
 
 export default function SellerVoucherOrdersPage() {
   const navigate = useNavigate()
-  const [orders, setOrders] = useState<VoucherOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: orders = [], isLoading: loading } = useApiQuery<VoucherOrder[]>(
+    ['seller', 'voucher-orders'], '/api/seller/voucher-orders',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
 
   useEffect(() => {
-    if (!localStorage.getItem('seller_token')) { navigate('/seller/login'); return }
-    load()
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function load() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const r = await api.get('/api/seller/voucher-orders', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data?.success) setOrders(r.data.data || [])
-    } catch { /* fail-soft */ } finally { setLoading(false) }
-  }
 
   const totalSent = orders.filter(o => o.status === 'sent').length
   const totalAmount = orders.filter(o => o.status === 'sent').reduce((s, o) => s + o.total_amount, 0)

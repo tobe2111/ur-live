@@ -1,6 +1,7 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Ticket, Plus, Trash2, Loader2 } from 'lucide-react'
@@ -9,19 +10,14 @@ import { formatNumber } from '@/utils/format'
 
 export default function SellerCouponsPage() {
   const { t } = useTranslation()
-  const [coupons, setCoupons] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ code: '', name: '', type: 'fixed', value: '', min_order: '', max_discount: '', total_count: '100', expires_at: '' })
-  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/api/seller/analytics/coupons', getAuthHeaders())
-      .then(r => { if (r.data.success) setCoupons(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }, [])
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: coupons = [], isLoading: loading, refetch } = useApiQuery<any[]>(
+    ['seller', 'coupons'], '/api/seller/analytics/coupons',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   const handleCreate = async () => {
     if (!form.code || !form.name || !form.value) { toast.error(t('seller.coupons.fillRequired')); return }
@@ -30,7 +26,7 @@ export default function SellerCouponsPage() {
         ...form, value: Number(form.value), min_order: Number(form.min_order) || 0,
         max_discount: Number(form.max_discount) || null, total_count: Number(form.total_count),
         expires_at: form.expires_at || null,
-      }, getAuthHeaders())
+      })
       toast.success(t('seller.coupons.created'))
       setShowForm(false); load()
     } catch { toast.error(t('seller.coupons.createFailed')) }
@@ -39,7 +35,7 @@ export default function SellerCouponsPage() {
   const handleDelete = async (id: number) => {
     if (!confirm(t('seller.coupons.confirmDeactivate'))) return
     try {
-      await api.delete(`/api/seller/analytics/coupons/${id}`, getAuthHeaders())
+      await api.delete(`/api/seller/analytics/coupons/${id}`)
       load()
     } catch {
       toast.error(t('seller.coupons.deleteFailed'))

@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -36,25 +37,18 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function SellerAppointmentsPage() {
   const navigate = useNavigate()
-  const [items, setItems] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'completed' | 'no_show' | 'cancelled'>('confirmed')
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (filter별 캐시).
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Appointment[]>(
+    ['seller', 'appointments', filter], '/api/seller/appointments',
+    { params: filter === 'all' ? {} : { status: filter }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   useEffect(() => {
-    if (!localStorage.getItem('seller_token')) { navigate('/seller/login'); return }
-    load()
-  }, [filter])
-
-  async function load() {
-    try {
-      setLoading(true)
-      const status = filter === 'all' ? '' : filter
-      const res = await api.get(`/api/seller/appointments${status ? '?status=' + status : ''}`)
-      if (res.data?.success) setItems(res.data.data || [])
-    } finally {
-      setLoading(false)
-    }
-  }
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function markComplete(a: Appointment) {
     if (!confirm(`${a.user_name || a.user_id} 님 이용 완료 처리하시겠습니까?`)) return

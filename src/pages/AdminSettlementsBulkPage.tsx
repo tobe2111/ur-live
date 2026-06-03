@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
@@ -11,22 +12,17 @@ import { formatNumber } from '@/utils/format'
 export default function AdminSettlementsBulkPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [pending, setPending] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<number[]>([])
   const [processing, setProcessing] = useState(false)
-  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: pending = [], isLoading: loading, refetch } = useApiQuery<any[]>(
+    ['admin', 'settlements-pending'], '/api/admin/tools/settlements/pending',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) {
-      navigate('/admin/login', { replace: true })
-    }
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
-  useEffect(() => {
-    api.get('/api/admin/tools/settlements/pending', h)
-      .then(r => { if (r.data.success) setPending(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }, [])
 
   const toggleAll = () => setSelected(selected.length === pending.length ? [] : pending.map(p => p.seller_id))
   const toggle = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -36,9 +32,9 @@ export default function AdminSettlementsBulkPage() {
     if (!confirm(`${selected.length}명의 셀러 정산을 처리하시겠습니까?`)) return
     setProcessing(true)
     try {
-      const res = await api.post('/api/admin/tools/settlements/process', { seller_ids: selected }, h)
+      const res = await api.post('/api/admin/tools/settlements/process', { seller_ids: selected })
       toast.success(res.data.message)
-      setPending(prev => prev.filter(p => !selected.includes(p.seller_id)))
+      refetch()
       setSelected([])
     } catch { toast.error('처리 실패') }
     finally { setProcessing(false) }

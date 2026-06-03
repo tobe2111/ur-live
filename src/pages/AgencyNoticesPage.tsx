@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Send, Loader2, Bell } from 'lucide-react'
@@ -13,34 +14,27 @@ export default function AgencyNoticesPage() {
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [notices, setNotices] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token || ''}` }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: notices = [], isLoading: loading, refetch } = useApiQuery<any[]>(
+    ['agency', 'notices'], '/api/agency/notices',
+    { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
-
-  useEffect(() => {
-    api.get('/api/agency/notices', { headers })
-      .then(r => { if (r.data.success) setNotices(r.data.data || []) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }, [])
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) { toast.error('제목과 내용을 입력해주세요'); return }
     if (!confirm('소속 셀러 전원에게 공지를 발송하시겠습니까?')) return
     setSending(true)
     try {
-      const res = await api.post('/api/agency/notices', { title: title.trim(), message: message.trim() }, { headers })
+      const res = await api.post('/api/agency/notices', { title: title.trim(), message: message.trim() })
       if (res.data.success) {
         toast.success(res.data.message)
         setTitle(''); setMessage('')
-        setNotices(prev => [{ title: title.trim(), message: message.trim(), created_at: new Date().toISOString() }, ...prev])
+        refetch()
       }
     } catch { toast.error('발송 실패') }
     finally { setSending(false) }
