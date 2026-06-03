@@ -1,8 +1,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Shield, ChevronDown, ChevronUp, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
@@ -31,10 +30,7 @@ const LIMIT = 50
 export default function AdminAuditLogPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [logs, setLogs] = useState<AuditLog[]>([])
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   // Filters
@@ -45,58 +41,34 @@ export default function AdminAuditLogPage() {
   const [endDate, setEndDate] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
-  // Admin options for dropdown
-  const [adminOptions, setAdminOptions] = useState<AdminOption[]>([])
-
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    loadAdminOptions()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
   }, [navigate])
 
-  useEffect(() => {
-    loadLogs()
-  }, [page])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 필터는 검색 시 refetch (page 만 key).
+  const adminOptionsQ = useApiQuery<AdminOption[]>(['admin', 'admins'], '/api/admin/admins', {
+    select: (r: any) => (r?.success ? (r.data || []).map((a: { id: number; email: string }) => ({ id: a.id, email: a.email })) : []),
+  })
+  const adminOptions = adminOptionsQ.data ?? []
 
-  async function loadAdminOptions() {
-    try {
-      const res = await api.get('/api/admin/admins')
-      if (res.data.success) {
-        setAdminOptions(res.data.data.map((a: { id: number; email: string }) => ({ id: a.id, email: a.email })))
-      }
-    } catch {
-      // ignore - dropdown will just be empty
-    }
-  }
-
-  async function loadLogs() {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
-      if (adminId) params.append('admin_id', adminId)
-      if (action) params.append('action', action)
-      if (targetType) params.append('target_type', targetType)
-      if (startDate) params.append('start_date', startDate)
-      if (endDate) params.append('end_date', endDate)
-      const res = await api.get(`/api/admin/audit-logs?${params}`)
-      if (res.data.success) {
-        setLogs(res.data.data || [])
-        setTotalPages(res.data.pagination?.totalPages || 1)
-      }
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number } }
-      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리.
-      if (axiosErr.response?.status !== 401) {
-        toast.error('감사 로그를 불러오지 못했습니다')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  const logsQ = useApiQuery<{ logs: AuditLog[]; totalPages: number }>(['admin', 'audit-logs', page], '/api/admin/audit-logs', {
+    params: {
+      page, limit: LIMIT,
+      ...(adminId ? { admin_id: adminId } : {}),
+      ...(action ? { action } : {}),
+      ...(targetType ? { target_type: targetType } : {}),
+      ...(startDate ? { start_date: startDate } : {}),
+      ...(endDate ? { end_date: endDate } : {}),
+    },
+    select: (r: any) => ({ logs: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
+  })
+  const logs = logsQ.data?.logs ?? []
+  const totalPages = logsQ.data?.totalPages ?? 1
+  const loading = logsQ.isLoading
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    setPage(1)
-    loadLogs()
+    if (page !== 1) setPage(1); else logsQ.refetch()
   }
 
   function resetFilters() {
@@ -105,8 +77,7 @@ export default function AdminAuditLogPage() {
     setTargetType('')
     setStartDate('')
     setEndDate('')
-    setPage(1)
-    setTimeout(loadLogs, 0)
+    if (page !== 1) setPage(1); else setTimeout(() => logsQ.refetch(), 0)
   }
 
   function formatJSON(val: Record<string, unknown> | string | null) {

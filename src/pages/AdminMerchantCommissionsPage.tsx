@@ -8,8 +8,9 @@
  * 라이트 테마 고정 (대시보드 룰 — 다크 variant 금지).
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import AdminLayout from '@/components/AdminLayout'
 import { toast } from '@/hooks/useToast'
@@ -58,24 +59,21 @@ export default function AdminMerchantCommissionsPage() {
   const [rate, setRate] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const [audit, setAudit] = useState<{ affected_users: number; grand_total: number; data: AuditRow[] } | null>(null)
-  const [auditLoading, setAuditLoading] = useState(false)
+  // 🛡️ 2026-06-03 Tier2(대시보드): mount-time 페칭 → useApiQuery (audit + pendingBiz). cs 조회는 폼 채움 side-effect 라 명령형 유지.
+  const auditQ = useApiQuery<{ affected_users: number; grand_total: number; data: AuditRow[] } | null>(['admin', 'intro-commission-audit'], '/api/admin/intro-commission-audit', { select: (r: any) => (r?.success ? { affected_users: r.affected_users, grand_total: r.grand_total, data: r.data } : null) })
+  const audit = auditQ.data ?? null
+  const auditLoading = auditQ.isFetching
+  const loadAudit = () => auditQ.refetch()
 
-  const [pendingBiz, setPendingBiz] = useState<PendingBusinessUser[]>([])
-
-  async function loadPendingBiz() {
-    try {
-      const res = await api.get('/api/admin/pending-business-users')
-      if (res.data?.success) setPendingBiz(res.data.data || [])
-    } catch { /* graceful */ }
-  }
-  useEffect(() => { loadPendingBiz() }, [])
+  const pendingBizQ = useApiQuery<PendingBusinessUser[]>(['admin', 'pending-business-users'], '/api/admin/pending-business-users', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const pendingBiz = pendingBizQ.data ?? []
+  const loadPendingBiz = () => pendingBizQ.refetch()
 
   async function actBiz(id: number, action: 'business-approve' | 'business-reject') {
     if (action === 'business-reject' && !confirm('이 사업자 등록을 거부할까요?')) return
     try {
       const res = await api.post(`/api/admin/users/${id}/${action}`, {})
-      if (res.data?.success) { toast.success(action === 'business-approve' ? '승인됨 — 현금 정산 활성' : '거부됨'); setPendingBiz((p) => p.filter((u) => u.id !== id)) }
+      if (res.data?.success) { toast.success(action === 'business-approve' ? '승인됨 — 현금 정산 활성' : '거부됨'); pendingBizQ.refetch() }
       else toast.error(res.data?.error || '처리 실패')
     } catch { toast.error('처리 중 오류') }
   }
@@ -115,19 +113,6 @@ export default function AdminMerchantCommissionsPage() {
       toast.error('저장 중 오류')
     }
   }
-
-  async function loadAudit() {
-    setAuditLoading(true)
-    try {
-      const res = await api.get('/api/admin/intro-commission-audit')
-      if (res.data?.success) setAudit(res.data)
-    } catch {
-      toast.error('audit 조회 실패')
-    } finally {
-      setAuditLoading(false)
-    }
-  }
-  useEffect(() => { loadAudit() }, [])
 
   async function backfill(userId?: number) {
     if (!confirm(userId ? `유저 #${userId} 영입 commission을 딜로 재적립할까요?` : '전체 영향 유저에게 딜을 재적립할까요? (idempotent)')) return

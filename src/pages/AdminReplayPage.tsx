@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatNumber } from '@/utils/format'
 import { onYoutubeThumbError } from '@/utils/youtube-thumb'
 import { toast } from '@/hooks/useToast'
@@ -21,10 +22,6 @@ interface Product { id: number; name: string; price: number; image_url?: string 
 export default function AdminReplayPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [streams, setStreams] = useState<Stream[]>([])
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState({
@@ -40,18 +37,15 @@ export default function AdminReplayPage() {
       navigate('/admin/login', { replace: true })
     }
   }, [navigate])
-  useEffect(() => {
-    Promise.all([
-      api.get('/api/admin/streams?status=ended', { headers }),
-      api.get('/api/admin/sellers', { headers }),
-      api.get('/api/admin/products', { headers }),
-    ]).then(([streamsRes, sellersRes, productsRes]) => {
-      setStreams(streamsRes.data.data || [])
-      setSellers(sellersRes.data.data || [])
-      setProducts(productsRes.data.data || [])
-    }).catch(() => toast.error('데이터 로딩 실패'))
-      .finally(() => setLoading(false))
-  }, [])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): Promise.all 수동 페칭 → useApiQuery 3개.
+  const streamsQ = useApiQuery<Stream[]>(['admin', 'replay-streams'], '/api/admin/streams', { params: { status: 'ended' }, select: (r: any) => (r?.data || []) })
+  const sellersQ = useApiQuery<Seller[]>(['admin', 'replay-sellers'], '/api/admin/sellers', { select: (r: any) => (r?.data || []) })
+  const productsQ = useApiQuery<Product[]>(['admin', 'replay-products'], '/api/admin/products', { select: (r: any) => (r?.data || []) })
+  const streams = streamsQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const products = productsQ.data ?? []
+  const loading = streamsQ.isLoading || sellersQ.isLoading || productsQ.isLoading
 
   function resetForm() {
     setForm({ seller_id: 0, title: '', description: '', youtube_url: '', product_ids: [] })
@@ -101,9 +95,7 @@ export default function AdminReplayPage() {
         toast.success('다시보기가 생성되었습니다')
       }
       resetForm()
-      // 새로고침
-      const r = await api.get('/api/admin/streams?status=ended', { headers })
-      setStreams(r.data.data || [])
+      streamsQ.refetch()
     } catch (err: unknown) { toast.error((err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response?.data?.error || '저장 실패') }
     finally { setSubmitting(false) }
   }
@@ -112,7 +104,7 @@ export default function AdminReplayPage() {
     if (!confirm('이 다시보기를 삭제하시겠습니까?')) return
     try {
       await api.delete(`/api/admin/streams/${id}`, { headers })
-      setStreams(prev => prev.filter(s => s.id !== id))
+      streamsQ.refetch()
       toast.success('삭제되었습니다')
     } catch { toast.error('삭제 실패') }
   }

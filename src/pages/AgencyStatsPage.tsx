@@ -4,8 +4,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { BarChart2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy, DollarSign } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -49,67 +48,43 @@ type Period = '7d' | '30d' | '90d'
 export default function AgencyStatsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [stats, setStats] = useState<SellerStat[]>([])
   const [period, setPeriod] = useState<Period>('30d')
-  const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<'revenue' | 'orders' | 'streams'>('revenue')
 
-  // Agency commission rate
-  const [commissionRate, setCommissionRate] = useState(2.0)
-
-  // Restaurant comparison state
-  const [comparison, setComparison] = useState<ComparisonRow[]>([])
-  const [comparisonLoading, setComparisonLoading] = useState(false)
+  // Restaurant comparison sort state
   const [comparisonSort, setComparisonSort] = useState<ComparisonSortKey>('revenue')
   const [comparisonSortAsc, setComparisonSortAsc] = useState(false)
 
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token}` }
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
-    api.get('/api/agency/sellers', { headers })
-      .then(r => setSellers(r.data.data || []))
-      .catch(() => { toast.error(t('agency.stats.sessionExpired', { defaultValue: '세션이 만료되었습니다. 다시 로그인해주세요.' })); navigate('/agency/login', { replace: true }) })
-    // Fetch agency profile for commission rate
-    api.get('/api/agency/profile', { headers })
-      .then(r => {
-        const rate = r.data?.data?.commission_rate
-        if (typeof rate === 'number' && rate > 0) setCommissionRate(rate)
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+    if (!token) navigate('/agency/login', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  useEffect(() => {
-    if (!sellers.length) { setLoading(false); return }
-    setLoading(true)
-    api.get(`/api/agency/stats/batch?period=${period}`, { headers })
-      .then(r => {
-        const { orders: orderMap, streams: streamMap } = r.data.data as {
-          orders: Record<number, { order_count: number; revenue: number; net_revenue: number }>
-          streams: Record<number, { stream_count: number; total_viewers: number }>
-        }
-        setStats(sellers.map(s => ({
-          seller: s,
-          orders: orderMap[s.id] ?? null,
-          streams: streamMap[s.id] ?? null,
-        })))
-      })
-      .catch(() => setStats(sellers.map(s => ({ seller: s, orders: null, streams: null }))))
-      .finally(() => setLoading(false))
-  }, [sellers, period])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 체인 → useApiQuery (sellers→stats/compare 의존, enabled 게이트).
+  const sellersQ = useApiQuery<Seller[]>(['agency', 'stats-sellers'], '/api/agency/sellers', { select: (r: any) => (r?.data || []) })
+  const sellers = sellersQ.data ?? []
+  const profileQ = useApiQuery<number>(['agency', 'stats-profile-rate'], '/api/agency/profile', {
+    select: (r: any) => { const rate = r?.data?.commission_rate; return (typeof rate === 'number' && rate > 0) ? rate : 2.0 },
+  })
+  const commissionRate = profileQ.data ?? 2.0
 
-  // Fetch restaurant comparison data
-  useEffect(() => {
-    if (!token || !sellers.length) return
-    setComparisonLoading(true)
-    const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
-    api.get(`/api/agency/sellers/compare?period=${days}`, { headers })
-      .then(r => setComparison(r.data.data || []))
-      .catch(() => setComparison([]))
-      .finally(() => setComparisonLoading(false))
-  }, [sellers, period, token])
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
+  const statsBatchQ = useApiQuery<{ orders: Record<number, { order_count: number; revenue: number; net_revenue: number }>; streams: Record<number, { stream_count: number; total_viewers: number }> } | null>(
+    ['agency', 'stats-batch', period], '/api/agency/stats/batch',
+    { params: { period }, enabled: sellers.length > 0, select: (r: any) => (r?.data || null) },
+  )
+  const stats: SellerStat[] = useMemo(() => sellers.map(s => ({
+    seller: s,
+    orders: statsBatchQ.data?.orders?.[s.id] ?? null,
+    streams: statsBatchQ.data?.streams?.[s.id] ?? null,
+  })), [sellers, statsBatchQ.data])
+  const loading = sellersQ.isLoading || (sellers.length > 0 && statsBatchQ.isLoading)
+
+  const comparisonQ = useApiQuery<ComparisonRow[]>(['agency', 'stats-compare', days], '/api/agency/sellers/compare', { params: { period: days }, enabled: sellers.length > 0, select: (r: any) => (r?.data || []) })
+  const comparison = comparisonQ.data ?? []
+  const comparisonLoading = comparisonQ.isLoading
 
   const sorted = [...stats].sort((a, b) => {
     if (sort === 'revenue') return (b.orders?.revenue ?? 0) - (a.orders?.revenue ?? 0)
