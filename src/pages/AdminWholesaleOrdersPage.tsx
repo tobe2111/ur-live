@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Package, Loader2, Search, RotateCcw, X } from 'lucide-react'
@@ -43,27 +44,18 @@ export default function AdminWholesaleOrdersPage() {
   const navigate = useNavigate()
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
-  const [orders, setOrders] = useState<OrderRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
   const [detail, setDetail] = useState<{ order: OrderRow & Record<string, unknown>; items: DetailItem[] } | null>(null)
   const [refunding, setRefunding] = useState(false)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시, search 는 refetch 로 commit).
+  const { data: orders = [], isLoading: loading, refetch } = useApiQuery<OrderRow[]>(
+    ['admin', 'distributor-orders', status], '/api/admin/distributor/orders',
+    { params: { ...(status ? { status } : {}), ...(search ? { search } : {}) }, select: (r: any) => (r?.success ? r.orders || [] : []) },
+  )
+  const load = (_st?: string, _q?: string) => refetch()
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
-
-  const load = useCallback((st: string, q: string) => {
-    setLoading(true)
-    const p = new URLSearchParams()
-    if (st) p.set('status', st)
-    if (q) p.set('search', q)
-    api.get(`/api/admin/distributor/orders?${p.toString()}`, h)
-      .then(r => { if (r.data.success) setOrders(r.data.orders || []) })
-      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
-      .finally(() => setLoading(false))
-  }, [])
-
-  useEffect(() => { load(status, search) }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openDetail(id: number) {
     api.get(`/api/admin/distributor/orders/${id}`, h)

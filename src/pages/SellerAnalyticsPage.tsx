@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardStatCard, DashboardLoading } from '@/components/dashboard'
 import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight, Gift, Calendar } from 'lucide-react'
@@ -21,30 +22,20 @@ export default function SellerAnalyticsPage() {
   interface MonthlyTrend { month: string; new_products: number; new_vouchers: number }
   interface FunnelKpi { days: number; clicks_total: number; unique_visitors: number; orders: number; commission_total: number; conversion_rate: number }
 
-  const [data, setData] = useState<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | FunnelKpi | null>(null)
-  const [detailedData, setDetailedData] = useState<DetailedAnalytics | null>(null)
-  const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(30)
-  const getAuthHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
-
-  useEffect(() => { load() }, [tab, days])
-
-  useEffect(() => {
-    api.get('/api/seller/analytics/detailed', getAuthHeaders())
-      .then(r => { if (r.data.success) setDetailedData(r.data.data) })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-  }, [])
-
-  const load = () => {
-    setLoading(true)
-    const url = tab === 'revenue' ? `/api/seller/analytics/chart/revenue?days=${days}`
-      : tab === 'customers' ? '/api/seller/analytics/customers'
-      : tab === 'products' ? '/api/seller/analytics/products/performance'
-      : tab === 'commission' ? '/api/seller/analytics/referral-commissions/summary'
-      : tab === 'funnel' ? '/api/seller/funnel-kpi?days=30'
-      : '/api/seller/analytics/products/monthly-trend'
-    api.get(url, getAuthHeaders()).then(r => { if (r.data.success) setData(r.data.data) }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }).finally(() => setLoading(false))
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab/days별 캐시).
+  const analyticsUrl = tab === 'revenue' ? `/api/seller/analytics/chart/revenue?days=${days}`
+    : tab === 'customers' ? '/api/seller/analytics/customers'
+    : tab === 'products' ? '/api/seller/analytics/products/performance'
+    : tab === 'commission' ? '/api/seller/analytics/referral-commissions/summary'
+    : tab === 'funnel' ? '/api/seller/funnel-kpi?days=30'
+    : '/api/seller/analytics/products/monthly-trend'
+  const { data = null, isLoading: loading } = useApiQuery<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | FunnelKpi | null>(
+    ['seller', 'analytics', tab, days], analyticsUrl, { select: (r: any) => (r?.success ? r.data : null) },
+  )
+  const { data: detailedData = null } = useApiQuery<DetailedAnalytics | null>(
+    ['seller', 'analytics-detailed'], '/api/seller/analytics/detailed', { select: (r: any) => (r?.success ? r.data : null) },
+  )
 
   return (
     <SellerLayout title={t('seller.analyticsTitle')}>

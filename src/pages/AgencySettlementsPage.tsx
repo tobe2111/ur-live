@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import AgencyLayout from '@/components/AgencyLayout'
@@ -13,20 +14,16 @@ import { formatNumber } from '@/utils/format'
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [data, setData] = useState<any[]>([])
-  const [summary, setSummary] = useState<any>({})
-  const [loading, setLoading] = useState(true)
   const [requesting, setRequesting] = useState(false)
   const [pinPrompt, setPinPrompt] = useState(false)
-
-  function load() {
-    api.get('/api/agency/settlements')
-      .then(r => { if (r.data.success) { setData(r.data.data || []); setSummary(r.data.summary || {}) } })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (data+summary).
+  const { data: settle, isLoading: loading, refetch } = useApiQuery<{ data: any[]; summary: any }>(
+    ['agency', 'settlements'], '/api/agency/settlements',
+    { select: (r: any) => (r?.success ? { data: r.data || [], summary: r.summary || {} } : { data: [], summary: {} }) },
+  )
+  const data = settle?.data ?? []
+  const summary = settle?.summary ?? {}
+  const load = () => refetch()
 
   const payableAmount = summary.total_agency_commission || 0
   const confirmedCount = summary.confirmed || 0

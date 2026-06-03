@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -42,59 +43,36 @@ interface Product {
 export default function SellerProductsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [products, setProducts] = useState<Product[]>([])
-  const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [activeTab, setActiveTab] = useState<'my' | 'supply'>('my')
-
-  useEffect(() => {
-    loadProducts()
-  }, [])
-
-  async function loadProducts() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-      
-
-      if (!sessionToken) {
-        navigate('/seller/login')
-        return
-      }
-
-      const headers = { 'Authorization': `Bearer ${sessionToken}` }
-      const [prodRes, supplyRes] = await Promise.allSettled([
-        api.get('/api/seller/products', { headers }),
-        api.get('/api/supply/products', { headers }),
-      ])
-      if (prodRes.status === 'fulfilled' && prodRes.value.data.success) {
-        // 내 상품에서 공급 상품(is_supply_product=1) 제외
-        const allProducts = prodRes.value.data.data || []
-        setProducts(allProducts.filter((p: Product & { is_supply_product?: boolean }) => !p.is_supply_product))
-      }
-      if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
-        const d = supplyRes.value.data.data
-        const items = Array.isArray(d) ? d : d?.items || []
-        setSupplyProducts(items.filter((p: Record<string, unknown>) =>
-          String(p.request_status || '').toUpperCase() === 'APPROVED'
-        ).map((p: Record<string, unknown>) => ({
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.allSettled → useApiQuery 2개(transform 은 select 에서).
+  const productsQ = useApiQuery<Product[]>(['seller', 'products-mine'], '/api/seller/products', {
+    select: (r: any) => (r?.success ? (r.data || []).filter((p: Product & { is_supply_product?: boolean }) => !p.is_supply_product) : []),
+  })
+  const supplyQ = useApiQuery<Product[]>(['seller', 'products-supply'], '/api/supply/products', {
+    select: (r: any) => {
+      if (!r?.success) return []
+      const d = r.data
+      const items = Array.isArray(d) ? d : d?.items || []
+      return items.filter((p: Record<string, unknown>) => String(p.request_status || '').toUpperCase() === 'APPROVED')
+        .map((p: Record<string, unknown>) => ({
           id: p.id, name: p.name, description: p.description || '',
           price: p.retail_price || p.price, stock: p.stock || 0,
           image_url: p.image_url || '', is_active: 1, category: p.category || '',
-        } as unknown as Product)))
-      }
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error('Failed to load products:', error)
-      setError(t('seller.productListLoadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
+        } as unknown as Product))
+    },
+  })
+  const products = productsQ.data ?? []
+  const supplyProducts = supplyQ.data ?? []
+  const loading = productsQ.isLoading || supplyQ.isLoading
+  const error = productsQ.isError ? t('seller.productListLoadFailed') : ''
+  const loadProducts = () => { productsQ.refetch(); supplyQ.refetch() }
+
+  useEffect(() => {
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleToggleActive(productId: number, currentStatus: boolean) {
     if (!confirm(t('seller.confirmToggleActive', { status: currentStatus ? t('seller.toggleDeactivate') : t('seller.toggleActivate') }))) {
