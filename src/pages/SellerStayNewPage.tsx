@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Building2, MapPin, Clock, Shield, Sparkles, ArrowLeft } from 'lucide-react'
@@ -95,20 +96,15 @@ export default function SellerStayNewPage() {
   } | null>(null)
 
   useEffect(() => {
-    const token = localStorage.getItem('seller_token')
-    if (!token) return
-    api.get('/api/seller/stays-quota', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => { if (r.data?.success) setQuota(r.data.data) })
-      .catch(() => { /* fail-soft */ })
-  }, [])
-
-  useEffect(() => {
-    const token = localStorage.getItem('seller_token')
-    if (!token) { navigate('/seller/login'); return }
-    api.get('/api/seller/stays-amenities', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => { if (r.data?.success) setAmenitiesList(r.data.data || []) })
-      .catch(() => { /* fail-soft */ })
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (/api/seller prefix 토큰 자동 주입).
+  const quotaQ = useApiQuery<typeof quota>(['seller', 'stays-quota'], '/api/seller/stays-quota', { select: (r: any) => (r?.success ? r.data : null) })
+  const amenitiesQ = useApiQuery<Amenity[]>(['seller', 'stays-amenities'], '/api/seller/stays-amenities', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  useEffect(() => { if (quotaQ.data !== undefined) setQuota(quotaQ.data) }, [quotaQ.data])
+  useEffect(() => { if (amenitiesQ.data) setAmenitiesList(amenitiesQ.data) }, [amenitiesQ.data])
 
   function toggleAmenity(field: 'amenities' | 'room_amenities', code: string) {
     setForm((f) => {

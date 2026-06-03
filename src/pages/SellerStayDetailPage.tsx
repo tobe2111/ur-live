@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, Bed, Calendar, ArrowLeft, Plus, Trash2, Save, ChevronLeft, ChevronRight, Ban, Edit } from 'lucide-react'
@@ -68,33 +69,23 @@ export default function SellerStayDetailPage() {
   const productId = Number(id)
 
   const [tab, setTab] = useState<'info' | 'rooms' | 'calendar'>('info')
-  const [loading, setLoading] = useState(true)
-  const [info, setInfo] = useState<StayInfo | null>(null)
-  const [rooms, setRooms] = useState<StayRoom[]>([])
-  const [calendar, setCalendar] = useState<CalendarRow[]>([])
 
   useEffect(() => {
-    const token = localStorage.getItem('seller_token')
-    if (!token) { navigate('/seller/login'); return }
-    if (!Number.isFinite(productId)) { navigate('/seller/stays'); return }
-    loadAll()
+    if (!localStorage.getItem('seller_token')) { navigate('/seller/login'); return }
+    if (!Number.isFinite(productId)) navigate('/seller/stays')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId])
 
-  async function loadAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const res = await api.get(`/api/seller/stays/${productId}`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data?.success) {
-        setInfo(res.data.data.product as StayInfo)
-        setRooms((res.data.data.rooms as StayRoom[]) || [])
-        setCalendar((res.data.data.calendar as CalendarRow[]) || [])
-      }
-    } catch {
-      toast.error('로딩 실패')
-    } finally { setLoading(false) }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (product+rooms+calendar 단일 응답).
+  const stayQ = useApiQuery<{ product: StayInfo | null; rooms: StayRoom[]; calendar: CalendarRow[] }>(
+    ['seller', 'stay-detail', productId], `/api/seller/stays/${productId}`,
+    { enabled: Number.isFinite(productId), select: (r: any) => ({ product: r?.success ? r.data.product : null, rooms: r?.success ? (r.data.rooms || []) : [], calendar: r?.success ? (r.data.calendar || []) : [] }) },
+  )
+  const info = stayQ.data?.product ?? null
+  const rooms = stayQ.data?.rooms ?? []
+  const calendar = stayQ.data?.calendar ?? []
+  const loading = stayQ.isLoading
+  const loadAll = () => stayQ.refetch()
 
   if (loading) return <SellerLayout title="숙소"><DashboardLoading /></SellerLayout>
   if (!info) return <SellerLayout title="숙소"><div className="p-8 text-center text-gray-500">숙소 정보를 불러올 수 없습니다</div></SellerLayout>

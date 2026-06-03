@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +33,6 @@ export default function SellerBusinessInfoPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null)
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -70,46 +70,22 @@ export default function SellerBusinessInfoPage() {
   const [bizRegSubmitting, setBizRegSubmitting] = useState(false)
 
   useEffect(() => {
-    loadBusinessInfo()
-    loadBankInfo()
-    loadBusinessRegistration()
     loadDaumPostcodeScript()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadBankInfo() {
-    try {
-      const response = await api.get('/api/seller/profile')
-      if (response.data.success && response.data.data) {
-        const s = response.data.data
-        setBankInfo({
-          bank_name: s.bank_name || '',
-          bank_account: s.bank_account || '',
-          account_holder: s.account_holder || s.name || '',
-        })
-      }
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('[BusinessInfo] load bank info failed:', err)
-    }
-  }
-
-  // 🛡️ 2026-05-19: 사업자등록증 현재 상태 로드.
-  async function loadBusinessRegistration() {
-    try {
-      const r = await api.get('/api/seller/profile')
-      if (r.data?.success && r.data.data) {
-        const s = r.data.data
-        setBizRegImageUrl(s.business_registration_image_url || '')
-        setBizRegStatus(
-          s.business_registration_image_url
-            ? (s.business_registration_status || 'pending') as 'pending' | 'verified' | 'rejected'
-            : 'none'
-        )
-        setBizRegRejectReason(s.business_registration_reject_reason || '')
-      }
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('[BusinessInfo] load biz reg failed:', err)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집 폼이라 데이터 도착 시 시드.
+  //   profile 은 은행정보 + 사업자등록증 상태 공유(중복 fetch 제거), business-info 는 별도.
+  const profileQ = useApiQuery<any>(['seller', 'biz-profile'], '/api/seller/profile', { select: (r: any) => (r?.success ? r.data : null) })
+  useEffect(() => {
+    const s = profileQ.data
+    if (!s) return
+    setBankInfo({ bank_name: s.bank_name || '', bank_account: s.bank_account || '', account_holder: s.account_holder || s.name || '' })
+    setBizRegImageUrl(s.business_registration_image_url || '')
+    setBizRegStatus(s.business_registration_image_url ? (s.business_registration_status || 'pending') as 'pending' | 'verified' | 'rejected' : 'none')
+    setBizRegRejectReason(s.business_registration_reject_reason || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileQ.data])
 
   // 사업자등록증 이미지 업로드 + URL 저장.
   async function handleBizRegFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -212,44 +188,20 @@ export default function SellerBusinessInfoPage() {
     document.head.appendChild(script)
   }
 
-  async function loadBusinessInfo() {
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-
-      if (!sessionToken) {
-        navigate('/seller/login')
-        return
-      }
-
-      const response = await api.get('/api/seller/business-info')
-
-      if (response.data.success && response.data.data) {
-        setBusinessInfo(response.data.data)
-        setFormData({
-          business_number: response.data.data.business_number || '',
-          business_name: response.data.data.business_name || '',
-          ceo_name: response.data.data.ceo_name || '',
-          business_type: response.data.data.business_type || '',
-          business_category: response.data.data.business_category || '',
-          postal_code: response.data.data.postal_code || '',
-          address: response.data.data.address || '',
-          address_detail: response.data.data.address_detail || '',
-          phone: response.data.data.phone || '',
-          email: response.data.data.email || ''
-        })
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string }; status?: number } }
-      if (error_.response?.status === 404) {
-        // Business info not yet registered
-      } else {
-        if (import.meta.env.DEV) console.error('Failed to load business info:', error)
-        setError(t('seller.businessInfoLoadFailed'))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  const businessInfoQ = useApiQuery<any>(['seller', 'business-info'], '/api/seller/business-info', { select: (r: any) => (r?.success ? r.data : null) })
+  const loading = businessInfoQ.isLoading
+  const loadBusinessInfo = () => businessInfoQ.refetch()
+  useEffect(() => {
+    const d = businessInfoQ.data
+    if (!d) return
+    setBusinessInfo(d)
+    setFormData({
+      business_number: d.business_number || '', business_name: d.business_name || '', ceo_name: d.ceo_name || '',
+      business_type: d.business_type || '', business_category: d.business_category || '', postal_code: d.postal_code || '',
+      address: d.address || '', address_detail: d.address_detail || '', phone: d.phone || '', email: d.email || '',
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessInfoQ.data])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

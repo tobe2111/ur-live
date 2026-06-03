@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
@@ -26,7 +27,6 @@ export default function SellerProductEditPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
@@ -59,96 +59,36 @@ export default function SellerProductEditPage() {
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
-    // Check authentication
-    const sessionToken = localStorage.getItem('seller_token')
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    if (!sessionToken) {
-      navigate('/seller/login')
-      return
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집 폼이라 데이터 도착 시 시드.
+  const productQ = useApiQuery<any>(['seller', 'product-edit', id], `/api/seller/products/${id}`, { select: (r: any) => (r?.success ? r.data : null) })
+  const streamsQ = useApiQuery<LiveStream[]>(['seller', 'product-edit-streams'], '/api/seller/streams', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const loading = productQ.isLoading
+  useEffect(() => { if (streamsQ.data) setLiveStreams(streamsQ.data) }, [streamsQ.data])
+  useEffect(() => {
+    const productData = productQ.data
+    if (!productData) { if (productQ.isFetched && productQ.isError) setError(t('common.productLoadFailed')); return }
+    setProduct(productData)
+    let detailImages: string[] = []
+    if (productData.detail_images) {
+      detailImages = typeof productData.detail_images === 'string' ? JSON.parse(productData.detail_images) : productData.detail_images
     }
-    
-    loadProduct()
-    loadLiveStreams()
-  }, [id])
-
-  async function loadProduct() {
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-
-      if (!sessionToken) {
-        navigate('/seller/login')
-        return
-      }
-
-      const response = await api.get(`/api/seller/products/${id}`, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        const productData = response.data.data
-        setProduct(productData)
-        
-        // Parse detail_images if it exists
-        let detailImages: string[] = []
-        if (productData.detail_images) {
-          detailImages = typeof productData.detail_images === 'string' 
-            ? JSON.parse(productData.detail_images)
-            : productData.detail_images
-        }
-        
-        setFormData({
-          name: productData.name,
-          description: productData.description || '',
-          price: String(productData.price),
-          stock: String(productData.stock),
-          image_url: productData.image_url || '',
-          live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
-          live_only_price: productData.live_only_price ? String(productData.live_only_price) : '',
-          live_price_enabled: !!productData.live_price_enabled,
-          is_active: productData.is_active,
-          detail_images: detailImages,
-          product_type: productData.product_type || 'featured',
-          category: productData.category || 'lifestyle',
-          restaurant_name: productData.restaurant_name || '',
-          restaurant_address: productData.restaurant_address || '',
-          restaurant_phone: productData.restaurant_phone || '',
-          voucher_terms: productData.voucher_terms || '',
-          voucher_expiry: productData.voucher_expiry || '',
-          group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '',
-          group_buy_deadline: productData.group_buy_deadline || '',
-          store_verify_pin: productData.store_verify_pin || '',
-        })
-        
-        // Set product options if they exist
-        if (productData.options && Array.isArray(productData.options)) {
-          setProductOptions(productData.options)
-        }
-      }
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error('Failed to load product:', error)
-      setError(t('common.productLoadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadLiveStreams() {
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-
-      if (!sessionToken) return
-
-      const response = await api.get('/api/seller/streams', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        setLiveStreams(response.data.data || [])
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to load live streams:', error)
-    }
-  }
+    setFormData({
+      name: productData.name, description: productData.description || '', price: String(productData.price), stock: String(productData.stock),
+      image_url: productData.image_url || '', live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
+      live_only_price: productData.live_only_price ? String(productData.live_only_price) : '', live_price_enabled: !!productData.live_price_enabled,
+      is_active: productData.is_active, detail_images: detailImages, product_type: productData.product_type || 'featured', category: productData.category || 'lifestyle',
+      restaurant_name: productData.restaurant_name || '', restaurant_address: productData.restaurant_address || '', restaurant_phone: productData.restaurant_phone || '',
+      voucher_terms: productData.voucher_terms || '', voucher_expiry: productData.voucher_expiry || '',
+      group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
+      store_verify_pin: productData.store_verify_pin || '',
+    })
+    if (productData.options && Array.isArray(productData.options)) setProductOptions(productData.options)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productQ.data])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
