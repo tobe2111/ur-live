@@ -46,25 +46,32 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   ).bind(wholesaleOrderId).first().catch(() => null)
   if (existing) return 0
 
+  // 🛡️ 스펙 정산 분기: 브랜드제품(is_brand_product=1) = 판매 후 당일(즉시 available) / 일반제품 = 7일 환불창 성숙.
+  //   products.is_brand_product 없을 수 있어 LEFT JOIN + COALESCE(0).
   const rows = await DB.prepare(`
-    SELECT product_id, supplier_id, qty, base_supply_price, distributor_unit_price
-    FROM wholesale_order_items
-    WHERE wholesale_order_id = ? AND supplier_id IS NOT NULL AND base_supply_price > 0
-  `).bind(wholesaleOrderId).all<WholesaleLine>().catch(() => ({ results: [] as WholesaleLine[] }))
+    SELECT i.product_id, i.supplier_id, i.qty, i.base_supply_price, i.distributor_unit_price,
+           COALESCE(p.is_brand_product, 0) AS is_brand_product
+    FROM wholesale_order_items i LEFT JOIN products p ON p.id = i.product_id
+    WHERE i.wholesale_order_id = ? AND i.supplier_id IS NOT NULL AND i.base_supply_price > 0
+  `).bind(wholesaleOrderId).all<WholesaleLine & { is_brand_product: number }>().catch(() => ({ results: [] as (WholesaleLine & { is_brand_product: number })[] }))
 
   let credited = 0
   const notifySuppliers = new Set<number>()
-  const availableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
+  const generalAvailableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
+  const nowIso = new Date().toISOString()
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
     const supplyAmount = Math.floor(Number(r.base_supply_price) || 0) * qty
     if (supplyAmount <= 0) continue
     const retailAmount = Math.floor(Number(r.distributor_unit_price) || 0) * qty // 유통사 지불액(참고)
+    const isBrand = Number(r.is_brand_product) === 1
+    const availableAt = isBrand ? nowIso : generalAvailableAt
+    const noteText = isBrand ? 'B2B 도매주문(브랜드 — 당일정산)' : 'B2B 도매주문(일반 — 7일성숙)'
 
     await DB.prepare(`
       INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
-      VALUES (?, ?, ?, NULL, ?, ?, 'pending', ?, 'wholesale', 'B2B 도매주문')
-    `).bind(r.supplier_id, wholesaleOrderId, r.product_id, retailAmount, supplyAmount, availableAt).run()
+      VALUES (?, ?, ?, NULL, ?, ?, 'pending', ?, 'wholesale', ?)
+    `).bind(r.supplier_id, wholesaleOrderId, r.product_id, retailAmount, supplyAmount, availableAt, noteText).run()
 
     await DB.prepare(`
       INSERT INTO supplier_balances (supplier_id, pending_amount, updated_at)

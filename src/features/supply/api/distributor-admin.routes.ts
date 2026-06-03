@@ -21,6 +21,7 @@ import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visi
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
 import { buildCsv, csvResponse } from './supply-csv'
 import { distributorPrice, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
+import { ensureTaxDocSchema, splitVat, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -522,6 +523,122 @@ app.get('/products/export', async (c) => {
     return csvResponse(buildCsv(headers, out), `supply-products-${new Date().toISOString().slice(0, 10)}.csv`)
   } catch (err) {
     return safeError(c, err, '상품 내보내기 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// ── 세금계산서/거래명세서 발행 (내부 발행 + 인쇄용 문서) ───────────────────────
+
+// POST /tax-documents/issue — 해당 월 집계로 발행 기록 생성 (멱등 upsert)
+//   body: { month: 'YYYY-MM', doc_type?: 'tax_invoice'|'transaction_statement' }
+app.post('/tax-documents/issue', async (c) => {
+  try {
+    await ensureTaxDocSchema(c.env.DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const month = String(body.month || '').slice(0, 7)
+    if (!/^\d{4}-\d{2}$/.test(month)) return c.json({ success: false, error: '월 형식 오류 (YYYY-MM)' }, 400)
+    const docType = body.doc_type === 'transaction_statement' ? 'transaction_statement' : 'tax_invoice'
+
+    // 매출(유통스타트→유통사): 유통사별 subtotal 합 (유통사 지불액 = VAT 포함 가격이므로 공급가액 역산).
+    const byDist = await c.env.DB.prepare(`
+      SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
+             COUNT(*) AS order_count, COALESCE(SUM(o.subtotal),0) AS total
+      FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
+      WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+      GROUP BY o.distributor_seller_id
+    `).bind(month).all<{ seller_id: number; business_name: string | null; name: string | null; order_count: number; total: number }>().catch(() => ({ results: [] }))
+
+    // 매입(제조사→유통스타트): 제조사별 base_supply_price 합.
+    const bySup = await c.env.DB.prepare(`
+      SELECT i.supplier_id, sup.business_name,
+             COUNT(DISTINCT i.wholesale_order_id) AS order_count, COALESCE(SUM(i.base_supply_price * i.qty),0) AS total
+      FROM wholesale_order_items i JOIN wholesale_orders o ON o.id = i.wholesale_order_id
+      LEFT JOIN suppliers sup ON sup.id = i.supplier_id
+      WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ? AND i.supplier_id IS NOT NULL
+      GROUP BY i.supplier_id
+    `).bind(month).all<{ supplier_id: number; business_name: string | null; order_count: number; total: number }>().catch(() => ({ results: [] }))
+
+    let issued = 0
+    for (const r of byDist.results || []) {
+      if (!r.total) continue
+      const { supply, vat, total } = splitVat(r.total)
+      // supplier_id=0 sentinel — SQLite UNIQUE 는 NULL 을 서로 다르게 취급해 dedup 실패하므로 0 사용.
+      const res = await c.env.DB.prepare(`
+        INSERT INTO tax_documents (doc_type, direction, period_month, distributor_seller_id, supplier_id, party_name, supply_amount, vat_amount, total_amount, order_count, status, issued_at)
+        VALUES (?, 'sales', ?, ?, 0, ?, ?, ?, ?, ?, 'issued', datetime('now'))
+        ON CONFLICT(doc_type, direction, period_month, distributor_seller_id, supplier_id)
+        DO UPDATE SET supply_amount=excluded.supply_amount, vat_amount=excluded.vat_amount, total_amount=excluded.total_amount, order_count=excluded.order_count, status='issued', issued_at=datetime('now')
+      `).bind(docType, month, r.seller_id, r.business_name || r.name || `유통사#${r.seller_id}`, supply, vat, total, r.order_count).run().catch(() => null)
+      if (res) issued++
+    }
+    for (const r of bySup.results || []) {
+      if (!r.total) continue
+      const { supply, vat, total } = splitVat(r.total)
+      // distributor_seller_id=0 sentinel (위와 동일 이유).
+      const res = await c.env.DB.prepare(`
+        INSERT INTO tax_documents (doc_type, direction, period_month, distributor_seller_id, supplier_id, party_name, supply_amount, vat_amount, total_amount, order_count, status, issued_at)
+        VALUES (?, 'purchase', ?, 0, ?, ?, ?, ?, ?, ?, 'issued', datetime('now'))
+        ON CONFLICT(doc_type, direction, period_month, distributor_seller_id, supplier_id)
+        DO UPDATE SET supply_amount=excluded.supply_amount, vat_amount=excluded.vat_amount, total_amount=excluded.total_amount, order_count=excluded.order_count, status='issued', issued_at=datetime('now')
+      `).bind(docType, month, r.supplier_id, r.business_name || `제조사#${r.supplier_id}`, supply, vat, total, r.order_count).run().catch(() => null)
+      if (res) issued++
+    }
+    return c.json({ success: true, issued, month, doc_type: docType })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 발행 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// GET /tax-documents?month=&direction=&doc_type= — 발행 목록
+app.get('/tax-documents', async (c) => {
+  try {
+    await ensureTaxDocSchema(c.env.DB)
+    const binds: unknown[] = []
+    let where = '1=1'
+    const month = (c.req.query('month') || '').slice(0, 7)
+    if (/^\d{4}-\d{2}$/.test(month)) { where += ' AND period_month = ?'; binds.push(month) }
+    const direction = c.req.query('direction')
+    if (direction === 'sales' || direction === 'purchase') { where += ' AND direction = ?'; binds.push(direction) }
+    const docType = c.req.query('doc_type')
+    if (docType === 'tax_invoice' || docType === 'transaction_statement') { where += ' AND doc_type = ?'; binds.push(docType) }
+    const { results } = await c.env.DB.prepare(
+      `SELECT * FROM tax_documents WHERE ${where} ORDER BY period_month DESC, direction, total_amount DESC LIMIT 500`
+    ).bind(...binds).all()
+    return c.json({ success: true, documents: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// GET /tax-documents/:id/html — 인쇄용 문서 (세금계산서/거래명세서)
+app.get('/tax-documents/:id/html', async (c) => {
+  try {
+    await ensureTaxDocSchema(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.text('잘못된 ID', 400)
+    const doc = await c.env.DB.prepare('SELECT * FROM tax_documents WHERE id = ?').bind(id).first<TaxDocRow>()
+    if (!doc) return c.text('문서를 찾을 수 없습니다', 404)
+    return c.html(renderTaxDocHtml(doc))
+  } catch (err) {
+    return safeError(c, err, '문서 생성 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// PATCH /tax-documents/:id — 상태 변경 (issued/void)
+app.patch('/tax-documents/:id', async (c) => {
+  try {
+    await ensureTaxDocSchema(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const status = String(body.status || '')
+    if (!['issued', 'void', 'draft'].includes(status)) return c.json({ success: false, error: '잘못된 상태값' }, 400)
+    const res = await c.env.DB.prepare(
+      "UPDATE tax_documents SET status = ?, issued_at = CASE WHEN ?='issued' THEN datetime('now') ELSE issued_at END WHERE id = ?"
+    ).bind(status, status, id).run()
+    if (!res.meta.changes) return c.json({ success: false, error: '문서를 찾을 수 없습니다' }, 404)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '문서 상태 변경 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 

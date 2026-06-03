@@ -33,6 +33,10 @@ export async function ensureSupplyVisibilitySchema(DB: D1Database): Promise<void
   if (!have.has('barcode')) {
     await DB.prepare('ALTER TABLE products ADD COLUMN barcode TEXT').run().catch(swallow('supply-vis:add-barcode'))
   }
+  if (!have.has('is_brand_product')) {
+    // 스펙 정산 분기: 브랜드제품(1) = 판매 후 당일 정산 / 일반제품(0) = 7일 환불창 성숙 후.
+    await DB.prepare('ALTER TABLE products ADD COLUMN is_brand_product INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-brand'))
+  }
 
   await DB.prepare(`CREATE TABLE IF NOT EXISTS product_distributor_access (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

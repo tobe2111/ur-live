@@ -134,7 +134,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
     type ProductBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -163,13 +163,14 @@ supplierDashboardRoutes.post('/products', async (c) => {
     //   seller_id=NULL (소스 카탈로그 상품 — 셀러가 register 로 자기 스토어에 복제).
     const visibility = normalizeVisibility(body.supply_visibility);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
+    const isBrand = body.is_brand_product ? 1 : 0;
 
     const result = await DB.prepare(
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -181,6 +182,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       sid,
       visibility,
       barcode,
+      isBrand,
       slug,
     ).run();
 
@@ -200,9 +202,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
 // ── GET /products/bulk-template — 대량등록 표준 양식 CSV ───────────────────────
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
-  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '설명']
-  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', '상품 설명']
-  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', '선정 유통사만 노출']
+  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '설명']
+  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '상품 설명']
+  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '선정 유통사만 노출']
   return csvResponse(buildCsv(headers, [example, example2]), 'supply-products-template.csv')
 })
 
@@ -235,16 +237,18 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       const retailFinal = Number.isFinite(retail) && retail >= supplyPrice ? retail : supplyPrice;
       const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility);
       const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
+      const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();
+      const isBrand = ['Y', 'YES', '예', '1', 'TRUE', 'O'].includes(brandRaw) ? 1 : 0;
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
       try {
         await DB.prepare(
           `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
-             is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, datetime('now'), datetime('now'))`
+             is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(
           name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
           Math.floor(retailFinal), Math.floor(supplyPrice), stock,
-          String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, slug,
+          String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, slug,
         ).run();
         created++; results.push({ row: i + 2, name, status: 'ok' });
       } catch {
@@ -286,7 +290,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     type EditBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -300,6 +304,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility)); }
     if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
+    if (body.is_brand_product != null) { sets.push('is_brand_product = ?'); params.push(body.is_brand_product ? 1 : 0); }
 
     let newSupply = existing.supply_price;
     let supplyChanged = false;
