@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Heart, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, CreditCard } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -49,44 +50,24 @@ export default function SellerDonationsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'donations' | 'settlements'>('donations')
-  const [donations, setDonations] = useState<DonationRow[]>([])
-  const [settlements, setSettlements] = useState<SettlementRow[]>([])
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [loading, setLoading] = useState(true)
   const [settleModal, setSettleModal] = useState(false)
   const [bankInfo, setBankInfo] = useState('')
   const [requesting, setRequesting] = useState(false)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (summary+donations+settlements).
+  const summaryQ = useApiQuery<Summary | null>(['seller', 'donations-summary'], '/api/seller/donations/summary', { select: (r: any) => r?.data ?? null })
+  const donationsQ = useApiQuery<DonationRow[]>(['seller', 'donations'], '/api/seller/donations', { select: (r: any) => r?.data ?? [] })
+  const settlementsQ = useApiQuery<SettlementRow[]>(['seller', 'donation-settlements'], '/api/seller/donations/settlements', { select: (r: any) => r?.data ?? [], enabled: activeTab === 'settlements' })
+  const summary = summaryQ.data ?? null
+  const donations = donationsQ.data ?? []
+  const settlements = settlementsQ.data ?? []
+  const loading = summaryQ.isLoading || donationsQ.isLoading
+  const loadData = () => { summaryQ.refetch(); donationsQ.refetch() }
+  const loadSettlements = () => settlementsQ.refetch()
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
-    loadData()
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
-
-  useEffect(() => {
-    if (activeTab === 'settlements') loadSettlements()
-  }, [activeTab])
-
-  async function loadData() {
-    setLoading(true)
-    try {
-      const h = { Authorization: `Bearer ${getSellerToken()}` }
-      const [sumRes, donRes] = await Promise.all([
-        api.get('/api/seller/donations/summary', { headers: h }),
-        api.get('/api/seller/donations', { headers: h }),
-      ])
-      setSummary(sumRes.data.data)
-      setDonations(donRes.data.data ?? [])
-    } catch { /* ignore */ } finally { setLoading(false) }
-  }
-
-  async function loadSettlements() {
-    try {
-      const res = await api.get('/api/seller/donations/settlements', {
-        headers: { Authorization: `Bearer ${getSellerToken()}` },
-      })
-      setSettlements(res.data.data ?? [])
-    } catch { /* ignore */ }
-  }
 
   async function requestSettlement() {
     if (!bankInfo.trim()) { toast.error(t('seller.enterBankInfo')); return }
