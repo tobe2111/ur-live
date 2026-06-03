@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, TrendingUp, Calendar, Users, AlertTriangle, CheckCircle, XCircle, LogIn, LogOut as LogOutIcon, Phone } from 'lucide-react'
@@ -71,42 +72,25 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function SellerStaysBookingsPage() {
   const navigate = useNavigate()
-  const [kpi, setKpi] = useState<KPI | null>(null)
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [days, setDays] = useState(30)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (days/status별 캐시).
+  const kpiQ = useApiQuery<KPI | null>(
+    ['seller', 'stays-kpi', days], '/api/seller/stays-kpi',
+    { params: { days }, select: (r: any) => (r?.success ? r.data as KPI : null) },
+  )
+  const kpi = kpiQ.data ?? null
+  const loadKpi = () => kpiQ.refetch()
+  const { data: bookings = [], isLoading: loading, refetch } = useApiQuery<Booking[]>(
+    ['seller', 'stays-bookings', statusFilter], '/api/seller/stays-bookings',
+    { params: statusFilter ? { status: statusFilter } : {}, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadBookings = () => refetch()
 
   useEffect(() => {
-    const token = localStorage.getItem('seller_token')
-    if (!token) { navigate('/seller/login'); return }
-    loadKpi()
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days])
-
-  useEffect(() => {
-    loadBookings()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter])
-
-  async function loadKpi() {
-    try {
-      const token = localStorage.getItem('seller_token')
-      const r = await api.get(`/api/seller/stays-kpi?days=${days}`, { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data?.success) setKpi(r.data.data as KPI)
-    } catch { /* noop */ }
-  }
-
-  async function loadBookings() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const r = await api.get(`/api/seller/stays-bookings${statusFilter ? `?status=${statusFilter}` : ''}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (r.data?.success) setBookings(r.data.data || [])
-    } catch { /* noop */ } finally { setLoading(false) }
-  }
+  }, [])
 
   // 🛡️ 2026-05-18: voucher 사용 처리 — 매장에서 게스트가 voucher 코드 제시 시 호출.
   async function useVoucher(b: Booking) {

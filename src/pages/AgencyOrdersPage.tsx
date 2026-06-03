@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { ShoppingBag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -43,32 +44,25 @@ function PayBadge({ status }: { status: string }) {
 export default function AgencyOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [orders, setOrders] = useState<Order[]>([])
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
   const [filterSeller, setFilterSeller] = useState('')
   const limit = 20
 
   const token = localStorage.getItem('agency_token')
-  const headers = { Authorization: `Bearer ${token}` }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (page/seller별 캐시).
+  const sellersQ = useApiQuery<Seller[]>(['agency', 'order-sellers'], '/api/agency/sellers', { select: (r: any) => r?.data || [], enabled: !!token })
+  const ordersQ = useApiQuery<{ orders: Order[]; total: number }>(
+    ['agency', 'orders', page, filterSeller], '/api/agency/orders',
+    { params: { page, limit, ...(filterSeller ? { seller_id: filterSeller } : {}) }, select: (r: any) => ({ orders: r?.data || [], total: r?.meta?.total || 0 }), enabled: !!token },
+  )
+  const sellers = sellersQ.data ?? []
+  const orders = ordersQ.data?.orders ?? []
+  const total = ordersQ.data?.total ?? 0
+  const loading = ordersQ.isLoading
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
-    api.get('/api/agency/sellers', { headers }).then(r => setSellers(r.data.data || []))
-  }, [token])
-
-  useEffect(() => {
-    if (!token) return
-    setLoading(true)
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
-    if (filterSeller) params.set('seller_id', filterSeller)
-    api.get(`/api/agency/orders?${params}`, { headers })
-      .then(r => { setOrders(r.data.data || []); setTotal(r.data.meta?.total || 0) })
-      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
-      .finally(() => setLoading(false))
-  }, [token, page, filterSeller])
+    if (!token) navigate('/agency/login', { replace: true })
+  }, [token, navigate])
 
   const totalPages = Math.ceil(total / limit)
 
