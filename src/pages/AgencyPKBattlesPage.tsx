@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Swords, Plus, Trophy, X, Play, XCircle } from 'lucide-react'
 
@@ -36,31 +37,17 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 }
 
 export default function AgencyPKBattlesPage() {
-  const [items, setItems] = useState<Battle[]>([])
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all → useApiQuery 2개.
+  const battlesQ = useApiQuery<Battle[]>(['agency', 'pk'], '/api/agency/pk', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const sellersQ = useApiQuery<Seller[]>(['agency', 'pk-sellers'], '/api/agency/sellers', { select: (r: any) => r?.data || [] })
+  const items = battlesQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const loading = battlesQ.isLoading || sellersQ.isLoading
+  const fetchAll = () => { battlesQ.refetch(); sellersQ.refetch() }
   const [creating, setCreating] = useState(false)
   const [sellerA, setSellerA] = useState<number | ''>('')
   const [sellerB, setSellerB] = useState<number | ''>('')
   const [duration, setDuration] = useState(30)
-
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('agency_token')
-      const headers = { Authorization: `Bearer ${token}` }
-      const [battlesRes, sellersRes] = await Promise.all([
-        api.get('/api/agency/pk', { headers }),
-        api.get('/api/agency/sellers', { headers }).catch(() => ({ data: { data: [] } })),
-      ])
-      if (battlesRes.data.success) setItems(battlesRes.data.data)
-      if (sellersRes.data?.data) setSellers(sellersRes.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '불러오기 실패')
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
 
   async function createBattle() {
     if (!sellerA || !sellerB || sellerA === sellerB) {

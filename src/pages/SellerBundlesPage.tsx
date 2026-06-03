@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { isSellerAuthenticated, getSellerToken } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -23,12 +24,16 @@ export default function SellerBundlesPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const [bundles, setBundles] = useState<Bundle[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.allSettled → useApiQuery 2개.
+  const bundlesQ = useApiQuery<Bundle[]>(['seller', 'bundles'], '/api/seller/bundles', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const productsQ = useApiQuery<Product[]>(['seller', 'bundle-products'], '/api/seller/products', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const bundles = bundlesQ.data ?? []
+  const products = productsQ.data ?? []
+  const loading = bundlesQ.isLoading || productsQ.isLoading
+  const loadData = () => { bundlesQ.refetch(); productsQ.refetch() }
 
   const [form, setForm] = useState({
     name: '', description: '', discount_type: 'percent' as 'percent' | 'fixed',
@@ -36,22 +41,9 @@ export default function SellerBundlesPage() {
   })
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { navigate('/seller/login'); return }
-    loadData()
+    if (!isSellerAuthenticated()) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadData() {
-    setLoading(true)
-    try {
-      const [bRes, pRes] = await Promise.allSettled([
-        api.get('/api/seller/bundles', { headers }),
-        api.get('/api/seller/products', { headers }),
-      ])
-      if (bRes.status === 'fulfilled' && bRes.value.data?.success) setBundles(bRes.value.data.data || [])
-      if (pRes.status === 'fulfilled' && pRes.value.data?.success) setProducts(pRes.value.data.data || [])
-    } catch { toast.error(t('seller.bundles.loadFailed', { defaultValue: '데이터를 불러올 수 없습니다' })) }
-    finally { setLoading(false) }
-  }
 
   function resetForm() {
     setForm({ name: '', description: '', discount_type: 'percent', discount_value: 10, items: [] })
