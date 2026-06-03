@@ -94,3 +94,46 @@ describe('generateStoreOwnerToken', () => {
     expect(tokens.size).toBe(100)
   })
 })
+
+// 🛡️ 2026-06-01: maxTierDiscount — 즉시판매 단일가 모델(현재 활성). calcTierDiscount 대체.
+//   인원 무관 최대 tier 할인 적용 → 실제 공구 판매가 결정. (테스트 누락분 보강)
+import { maxTierDiscount } from '@/features/group-buy/api/helpers'
+
+describe('maxTierDiscount (즉시판매 단일가)', () => {
+  it('null/empty/잘못된 JSON → 0', () => {
+    expect(maxTierDiscount(null)).toBe(0)
+    expect(maxTierDiscount('')).toBe(0)
+    expect(maxTierDiscount('[]')).toBe(0)
+    expect(maxTierDiscount('not-json')).toBe(0)
+    expect(maxTierDiscount('{}')).toBe(0)
+  })
+
+  it('여러 tier 중 최대 discount_pct 반환 (인원 무관)', () => {
+    const tiers = JSON.stringify([
+      { min: 5, discount_pct: 10 },
+      { min: 10, discount_pct: 20 },
+      { min: 20, discount_pct: 35 },
+    ])
+    expect(maxTierDiscount(tiers)).toBe(35)
+  })
+
+  it('정렬 순서 무관하게 최대값', () => {
+    const tiers = JSON.stringify([
+      { min: 20, discount_pct: 35 },
+      { min: 5, discount_pct: 10 },
+    ])
+    expect(maxTierDiscount(tiers)).toBe(35)
+  })
+
+  it('단일 tier → 그 값', () => {
+    expect(maxTierDiscount(JSON.stringify([{ min: 1, discount_pct: 15 }]))).toBe(15)
+  })
+
+  it('비정상 discount_pct(문자/null) → 0 으로 안전 처리', () => {
+    const tiers = JSON.stringify([
+      { min: 5, discount_pct: 'abc' },
+      { min: 10, discount_pct: 25 },
+    ])
+    expect(maxTierDiscount(tiers)).toBe(25)
+  })
+})
