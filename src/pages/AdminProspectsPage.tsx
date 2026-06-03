@@ -9,9 +9,10 @@
  * Status 필터: visiting / converted / expired
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 
 type ProspectStatus = 'visiting' | 'converted' | 'expired'
@@ -42,26 +43,13 @@ const STATUS_META: Record<ProspectStatus, { label: string; color: string }> = {
 }
 
 export default function AdminProspectsPage() {
-  const [prospects, setProspects] = useState<Prospect[]>([])
-  const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<ProspectStatus>('visiting')
-
-  async function load() {
-    setLoading(true)
-    try {
-      const r = await api.get(`/api/admin/prospects?status=${status}`)
-      if (r.data?.success) setProspects(r.data.data || [])
-      else setProspects([])
-    } catch (e) {
-      // 🛡️ 2026-05-31: catch 추가 (이전: 없음 → unhandled rejection). 빈 목록 + DEV 로그.
-      if (import.meta.env?.DEV) console.warn('[admin-prospects] load failed', e)
-      setProspects([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [status])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시).
+  const { data: prospects = [], isLoading: loading, refetch } = useApiQuery<Prospect[]>(
+    ['admin', 'prospects', status], '/api/admin/prospects',
+    { params: { status }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   // 통계 — 영업자별 그룹
   const introducerStats = prospects.reduce((acc, p) => {

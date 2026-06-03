@@ -3,11 +3,12 @@
  *   계정 승인/정지 + 잔고 조회 + available 잔고 지급(payout).
  *   라이트 테마 (어드민 대시보드).
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 
@@ -38,28 +39,19 @@ const STATUS = {
 
 export default function AdminSuppliersPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<SupplierRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
-  const [pendingCount, setPendingCount] = useState(0)
   const [actionId, setActionId] = useState<number | null>(null)
 
   const token = () => localStorage.getItem('admin_token') || localStorage.getItem('access_token')
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get(`/api/admin/suppliers?status=${statusFilter}&limit=200`, { headers: { Authorization: `Bearer ${token()}` } })
-      if (res.data.success) {
-        setItems(res.data.data?.items ?? [])
-        setPendingCount(res.data.data?.pending_count ?? 0)
-      }
-    } catch {
-      toast.error(t('admin.suppliers.loadFail', { defaultValue: '공급자 목록을 불러올 수 없습니다.' }))
-    } finally { setLoading(false) }
-  }, [statusFilter, t])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (statusFilter별 캐시).
+  const { data: supData, isLoading: loading, refetch } = useApiQuery<{ items: SupplierRow[]; pending_count: number }>(
+    ['admin', 'suppliers', statusFilter], '/api/admin/suppliers',
+    { params: { status: statusFilter, limit: 200 }, select: (r: any) => (r?.success ? { items: r.data?.items ?? [], pending_count: r.data?.pending_count ?? 0 } : { items: [], pending_count: 0 }) },
+  )
+  const items = supData?.items ?? []
+  const pendingCount = supData?.pending_count ?? 0
+  const load = () => refetch()
 
   async function setStatus(id: number, status: string) {
     setActionId(id)
