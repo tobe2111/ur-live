@@ -11,9 +11,9 @@
  *   4. 최근 commission 적립 내역 (ledger)
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -77,39 +77,18 @@ const STATUS_LABEL: Record<CommissionEntry['status'], string> = {
 
 export default function AgencyIntroducedStoresPage() {
   const { t: _t } = useTranslation()
-  const [loading, setLoading] = useState(true)
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [stores, setStores] = useState<IntroducedStore[]>([])
-  const [commissions, setCommissions] = useState<CommissionEntry[]>([])
-  const [introCode, setIntroCode] = useState<IntroCode | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('agency_token')}` }
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    Promise.all([
-      api.get('/api/agency/introduced-stores/summary', { headers }),
-      api.get('/api/agency/introduced-stores', { headers }),
-      api.get('/api/agency/introduced-stores/commissions?limit=30', { headers }),
-      api.get('/api/agency/intro-code', { headers }),
-    ])
-      .then(([s, l, c, ic]) => {
-        if (cancelled) return
-        if (s.data?.success) setSummary(s.data.data)
-        if (l.data?.success) setStores(l.data.data || [])
-        if (c.data?.success) setCommissions(c.data.data || [])
-        if (ic.data?.success) setIntroCode(ic.data.data)
-      })
-      .catch(() => {
-        if (cancelled) return
-        toast.error('데이터 로딩 실패')
-      })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): Promise.all 수동 페칭 → useApiQuery 4개.
+  const summaryQ = useApiQuery<Summary | null>(['agency', 'intro-summary'], '/api/agency/introduced-stores/summary', { select: (r: any) => (r?.success ? r.data : null) })
+  const storesQ = useApiQuery<IntroducedStore[]>(['agency', 'intro-stores'], '/api/agency/introduced-stores', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const commissionsQ = useApiQuery<CommissionEntry[]>(['agency', 'intro-commissions'], '/api/agency/introduced-stores/commissions', { params: { limit: 30 }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const introCodeQ = useApiQuery<IntroCode | null>(['agency', 'intro-code'], '/api/agency/intro-code', { select: (r: any) => (r?.success ? r.data : null) })
+  const summary = summaryQ.data ?? null
+  const stores = storesQ.data ?? []
+  const commissions = commissionsQ.data ?? []
+  const introCode = introCodeQ.data ?? null
+  const loading = summaryQ.isLoading || storesQ.isLoading || commissionsQ.isLoading || introCodeQ.isLoading
 
   const handleCopyCode = async () => {
     if (!introCode?.share_url) return

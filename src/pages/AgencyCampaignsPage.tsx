@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Megaphone, Plus, Calendar, Target, Users, RefreshCw, X, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { swallow } from '@/shared/utils/swallow'
 
 interface Campaign {
   id: number
@@ -67,13 +67,9 @@ const STATUS_LABEL_KEYS: Record<Campaign['status'], { key: string; default: stri
 export default function AgencyCampaignsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [tab, setTab] = useState<typeof STATUS_TAB_KEYS[number]['key']>('all')
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [sellers, setSellers] = useState<SellerOption[]>([])
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
@@ -85,39 +81,23 @@ export default function AgencyCampaignsPage() {
     selectedSellerIds: [] as number[],
   })
 
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery 3개(campaigns+sellers+participants).
+  const campaignsQ = useApiQuery<Campaign[]>(['agency', 'campaigns', tab], '/api/agency/campaigns', { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const sellersQ = useApiQuery<SellerOption[]>(['agency', 'campaign-sellers'], '/api/agency/sellers', { enabled: creating, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const participantsQ = useApiQuery<Participant[]>(['agency', 'campaign-detail', selectedCampaign?.id ?? 0], selectedCampaign ? `/api/agency/campaigns/${selectedCampaign.id}` : '/api/agency/campaigns/0', { enabled: selectedCampaign !== null, select: (r: any) => (r?.success ? r.data?.participants || [] : []) })
+  const campaigns = campaignsQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const participants = participantsQ.data ?? []
+  const loading = campaignsQ.isLoading
+  const load = () => campaignsQ.refetch()
+
   useEffect(() => {
     if (!token) { navigate('/agency/login', { replace: true }); return }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get(`/api/agency/campaigns?status=${tab}`, { headers })
-      .then(r => { if (r.data?.success) setCampaigns(r.data.data || []) })
-      .catch((e: any) => {
-        if (e?.response?.status === 401) { /* lib/api.ts interceptor 처리 */ return }
-        toast.error(t('agency.campaigns.loadFailed', { defaultValue: '캠페인 조회 실패' }))
-      })
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab])
-
-  useEffect(() => { load() }, [load])
-
-  const loadSellers = () => {
-    api.get('/api/agency/sellers', { headers })
-      .then(r => { if (r.data?.success) setSellers(r.data.data || []) })
-      .catch(swallow('agency:campaigns-fetch-sellers'))
-  }
-
-  const openCampaignDetail = async (c: Campaign) => {
-    setSelectedCampaign(c)
-    try {
-      const r = await api.get(`/api/agency/campaigns/${c.id}`, { headers })
-      if (r.data?.success) setParticipants(r.data.data.participants || [])
-    } catch {
-      toast.error(t('agency.campaigns.detailLoadFailed', { defaultValue: '상세 조회 실패' }))
-    }
+  const openCampaignDetail = (c: Campaign) => {
+    setSelectedCampaign(c)  // participantsQ enabled=(selectedCampaign!==null) → 자동 fetch
   }
 
   const submit = async () => {
@@ -167,7 +147,7 @@ export default function AgencyCampaignsPage() {
     try {
       await api.post(`/api/agency/campaigns/${id}/refresh`, {}, { headers })
       toast.success(t('agency.campaigns.refreshed', { defaultValue: '재집계 완료' }))
-      if (selectedCampaign?.id === id) openCampaignDetail(selectedCampaign)
+      if (selectedCampaign?.id === id) participantsQ.refetch()
     } catch (e: any) {
       toast.error(e?.response?.data?.error || t('agency.campaigns.refreshFailed', { defaultValue: '재집계 실패' }))
     }
@@ -182,7 +162,7 @@ export default function AgencyCampaignsPage() {
           icon={<Megaphone className="h-5 w-5" />}
           actions={
             <button
-              onClick={() => { loadSellers(); setCreating(true) }}
+              onClick={() => setCreating(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg"
             >
               <Plus className="w-4 h-4" /> {t('agency.campaigns.create', { defaultValue: '캠페인 만들기' })}

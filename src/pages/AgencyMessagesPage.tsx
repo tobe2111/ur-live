@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { MessageSquare, Plus, Trash2, Send, X, History } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { swallow } from '@/shared/utils/swallow'
 
 type Category = 'invite' | 'follow_up' | 'reactivation' | 'announcement' | 'general'
 
@@ -58,16 +58,22 @@ export default function AgencyMessagesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'templates' | 'sends'>('templates')
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [sends, setSends] = useState<Send[]>([])
-  const [sellers, setSellers] = useState<SellerOption[]>([])
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [sendingTemplate, setSendingTemplate] = useState<Template | null>(null)
   const [selectedSellerIds, setSelectedSellerIds] = useState<number[]>([])
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery 3개(templates+sends+sellers).
+  const templatesQ = useApiQuery<Template[]>(['agency', 'msg-templates'], '/api/agency/messages/templates', { enabled: tab === 'templates', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const sendsQ = useApiQuery<Send[]>(['agency', 'msg-sends'], '/api/agency/messages/sends', { params: { limit: 50 }, enabled: tab === 'sends', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const sellersQ = useApiQuery<SellerOption[]>(['agency', 'msg-sellers'], '/api/agency/sellers', { enabled: sendingTemplate !== null, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const templates = templatesQ.data ?? []
+  const sends = sendsQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const loading = tab === 'templates' ? templatesQ.isLoading : sendsQ.isLoading
+  const loadTemplates = () => templatesQ.refetch()
 
   const [form, setForm] = useState({
     name: '',
@@ -79,36 +85,6 @@ export default function AgencyMessagesPage() {
     if (!token) { navigate('/agency/login', { replace: true }); return }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const loadTemplates = useCallback(() => {
-    setLoading(true)
-    api.get('/api/agency/messages/templates', { headers })
-      .then(r => { if (r.data?.success) setTemplates(r.data.data || []) })
-      .catch(() => toast.error(t('agency.messages.loadTemplatesFailed', { defaultValue: '템플릿 조회 실패' })))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const loadSends = useCallback(() => {
-    setLoading(true)
-    api.get('/api/agency/messages/sends?limit=50', { headers })
-      .then(r => { if (r.data?.success) setSends(r.data.data || []) })
-      .catch(() => toast.error(t('agency.messages.loadHistoryFailed', { defaultValue: '이력 조회 실패' })))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const loadSellers = () => {
-    api.get('/api/agency/sellers', { headers })
-      .then(r => { if (r.data?.success) setSellers(r.data.data || []) })
-      .catch(swallow('agency:messages-fetch-sellers'))
-  }
-
-  useEffect(() => {
-    if (tab === 'templates') loadTemplates()
-    else if (tab === 'sends') loadSends()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab])
 
   const submit = async () => {
     if (!form.name || !form.body) { toast.error(t('agency.messages.nameBodyRequired', { defaultValue: '이름/본문 필수' })); return }
@@ -153,8 +129,7 @@ export default function AgencyMessagesPage() {
   }
 
   const openSend = (tpl: Template) => {
-    loadSellers()
-    setSendingTemplate(tpl)
+    setSendingTemplate(tpl)  // sellersQ enabled=(sendingTemplate!==null) → 자동 fetch
     setSelectedSellerIds([])
   }
 

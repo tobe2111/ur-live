@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { ShoppingBag as ShoppingBagIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown, MessageCircle, Send } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -278,9 +279,6 @@ type TabKey = 'popular' | 'all' | 'negotiating' | 'confirmed'
 export default function AgencyGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [groupBuys, setGroupBuys] = useState<GroupBuy[]>([])
-  const [stats, setStats] = useState<Stats>({ active: 0, total_participants: 0, negotiating: 0, confirmed: 0 })
-  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>('popular')
   const [confirmTarget, setConfirmTarget] = useState<GroupBuy | null>(null)
   // 🛡️ 2026-05-13 (Phase C): 메시지 모달 타겟
@@ -289,46 +287,32 @@ export default function AgencyGroupBuyPage() {
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
 
-  const fetchData = (currentTab: TabKey) => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
-    setLoading(true)
+  const listUrl = tab === 'popular'
+    ? '/api/community-group-buy/popular'
+    : tab === 'negotiating'
+      ? '/api/community-group-buy/list?status=negotiating&sort=popular'
+      : tab === 'confirmed'
+        ? '/api/community-group-buy/list?status=confirmed&sort=popular'
+        : '/api/community-group-buy/list?sort=popular'
+  const statsUrl = '/api/community-group-buy/list?sort=popular'
 
-    let listUrl: string
-    if (currentTab === 'popular') {
-      listUrl = '/api/community-group-buy/popular'
-    } else if (currentTab === 'negotiating') {
-      listUrl = '/api/community-group-buy/list?status=negotiating&sort=popular'
-    } else if (currentTab === 'confirmed') {
-      listUrl = '/api/community-group-buy/list?status=confirmed&sort=popular'
-    } else {
-      listUrl = '/api/community-group-buy/list?sort=popular'
-    }
-
-    // 🛡️ 2026-05-13 (공구 UX): stats 용 fetch 중복 호출 제거.
-    //   currentTab='all' 면 listUrl 와 stats URL 이 동일 → 같은 데이터 사용.
-    const statsUrl = '/api/community-group-buy/list?sort=popular'
-    const requests = listUrl === statsUrl
-      ? [api.get(listUrl, { headers })]
-      : [api.get(listUrl, { headers }), api.get(statsUrl, { headers })]
-
-    Promise.all(requests)
-      .then((responses) => {
-        const listRes = responses[0]
-        const allRes = responses[1] ?? responses[0]
-        setGroupBuys(listRes.data.data || [])
-        const all: GroupBuy[] = allRes.data.data || []
-        setStats({
-          active: all.filter(g => ['proposed', 'negotiating'].includes(g.status)).length,
-          total_participants: all.reduce((sum, g) => sum + (g.participant_count || 0), 0),
-          negotiating: all.filter(g => g.status === 'negotiating').length,
-          confirmed: all.filter(g => g.status === 'confirmed').length,
-        })
-      })
-      .catch(() => {
-        toast.error(t('agency.groupBuy.loadFailed', { defaultValue: '데이터를 불러오는데 실패했습니다.' }))
-      })
-      .finally(() => setLoading(false))
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 fetchData → useApiQuery 2개(tab 리스트 + stats용 전체).
+  const listQ = useApiQuery<GroupBuy[]>(['agency', 'gb-list', tab], listUrl, { select: (r: any) => (r?.data || []) })
+  const statsQ = useApiQuery<Stats>(['agency', 'gb-stats'], statsUrl, {
+    select: (r: any) => {
+      const all: GroupBuy[] = r?.data || []
+      return {
+        active: all.filter(g => ['proposed', 'negotiating'].includes(g.status)).length,
+        total_participants: all.reduce((sum, g) => sum + (g.participant_count || 0), 0),
+        negotiating: all.filter(g => g.status === 'negotiating').length,
+        confirmed: all.filter(g => g.status === 'confirmed').length,
+      }
+    },
+  })
+  const groupBuys = listQ.data ?? []
+  const stats = statsQ.data ?? { active: 0, total_participants: 0, negotiating: 0, confirmed: 0 }
+  const loading = listQ.isLoading
+  const fetchData = (_tab?: TabKey) => { listQ.refetch(); statsQ.refetch() }
 
   // 🛡️ 2026-05-13 (공구 UX): 에이전시 수익 계산 — 확정가 × 참여자 × 수수료율.
   //   기본 3% (agency_commission_rate platform 설정값 미구현 시 fallback).
@@ -339,8 +323,9 @@ export default function AgencyGroupBuyPage() {
   }
 
   useEffect(() => {
-    fetchData(tab)
-  }, [token, tab])
+    if (!token) navigate('/agency/login', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   const changeStatus = (id: number, status: string) => {
     if (!token) return

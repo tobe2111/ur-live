@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Award, Plus, Trash2, Eye, X, BarChart3 } from 'lucide-react'
@@ -71,15 +72,24 @@ export default function AgencyIncentivesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'rules' | 'payouts' | 'preview'>('rules')
-  const [rules, setRules] = useState<Rule[]>([])
-  const [payouts, setPayouts] = useState<Payout[]>([])
-  const [preview, setPreview] = useState<Preview | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [payoutMonth, setPayoutMonth] = useState('')
   const [previewMonth, setPreviewMonth] = useState(ymNow())
   const [creating, setCreating] = useState(false)
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery 3개(rules+payouts+preview).
+  const rulesQ = useApiQuery<Rule[]>(['agency', 'inc-rules'], '/api/agency/incentives/rules', { enabled: tab === 'rules', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const payoutsQ = useApiQuery<Payout[]>(['agency', 'inc-payouts', payoutMonth], '/api/agency/incentives/payouts', { params: payoutMonth ? { month: payoutMonth } : {}, enabled: tab === 'payouts', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const previewQ = useApiQuery<Preview | null>(['agency', 'inc-preview', previewMonth], '/api/agency/incentives/preview', { params: { month: previewMonth }, enabled: tab === 'preview', select: (r: any) => (r?.success ? r.data : null) })
+  const rules = rulesQ.data ?? []
+  const payouts = payoutsQ.data ?? []
+  const preview = previewQ.data ?? null
+  const loading = tab === 'rules' ? rulesQ.isLoading : tab === 'payouts' ? payoutsQ.isLoading : previewQ.isLoading
+  const loadRules = () => rulesQ.refetch()
+  const loadPayouts = (month?: string) => { if (month !== undefined) setPayoutMonth(month); else payoutsQ.refetch() }
+  const loadPreview = (_month?: string) => previewQ.refetch()
 
   const [form, setForm] = useState({
     name: '',
@@ -93,41 +103,6 @@ export default function AgencyIncentivesPage() {
     if (!token) { navigate('/agency/login', { replace: true }); return }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const loadRules = useCallback(() => {
-    setLoading(true)
-    api.get('/api/agency/incentives/rules', { headers })
-      .then(r => { if (r.data?.success) setRules(r.data.data || []) })
-      .catch(() => toast.error(t('agency.incentives.loadRulesFailed', { defaultValue: '규칙 조회 실패' })))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const loadPayouts = useCallback((month?: string) => {
-    setLoading(true)
-    const url = month ? `/api/agency/incentives/payouts?month=${month}` : '/api/agency/incentives/payouts'
-    api.get(url, { headers })
-      .then(r => { if (r.data?.success) setPayouts(r.data.data || []) })
-      .catch(() => toast.error(t('agency.incentives.loadPayoutsFailed', { defaultValue: '지급 이력 조회 실패' })))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const loadPreview = useCallback((month: string) => {
-    setLoading(true)
-    api.get(`/api/agency/incentives/preview?month=${month}`, { headers })
-      .then(r => { if (r.data?.success) setPreview(r.data.data) })
-      .catch(() => toast.error(t('agency.incentives.previewFailed', { defaultValue: 'Preview 실패' })))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    if (tab === 'rules') loadRules()
-    else if (tab === 'payouts') loadPayouts()
-    else if (tab === 'preview') loadPreview(previewMonth)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab])
 
   const submit = async () => {
     if (!form.name) { toast.error(t('agency.incentives.nameRequired', { defaultValue: '이름 필수' })); return }
