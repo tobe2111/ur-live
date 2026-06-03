@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { Button } from '@/components/ui/button'
@@ -97,85 +98,41 @@ function RevenueCalendar({ dailyData }: { dailyData: { date: string; revenue: nu
 export default function SellerSettlementsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [settlements, setSettlements] = useState<Settlement[]>([])
-  const [stats, setStats] = useState<SettlementStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
-  const [dailyRevenue, setDailyRevenue] = useState<{ date: string; revenue: number }[]>([])
   const [pinPrompt, setPinPrompt] = useState(false)
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('seller_token')
-    if (!sessionToken) {
-      navigate('/seller/login')
-      return
-    }
-    // Populate bank info from seller profile if not already in localStorage
+    if (!sessionToken) { navigate('/seller/login'); return }
+    // Populate bank info from seller profile if not already in localStorage (best-effort)
     if (!localStorage.getItem('seller_bank_name')) {
-      api.get('/api/seller/profile', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      }).then(res => {
+      api.get('/api/seller/profile', { headers: { 'Authorization': `Bearer ${sessionToken}` } }).then(res => {
         if (res.data.success && res.data.data) {
           const seller = res.data.data
           if (seller.bank_name) localStorage.setItem('seller_bank_name', seller.bank_name)
           if (seller.bank_account) localStorage.setItem('seller_account_number', seller.bank_account)
           if (seller.account_holder) localStorage.setItem('seller_account_holder', seller.account_holder)
         }
-      }).catch(() => { /* profile fetch is best-effort */ })
+      }).catch(() => { /* best-effort */ })
     }
-    loadSettlements()
-  }, [selectedPeriod])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  async function loadSettlements() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-      
-      // Get settlements
-      const response = await api.get('/api/seller/settlements', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
-        params: selectedPeriod !== 'all' ? { period: selectedPeriod } : {}
-      })
-
-      if (response.data.success) {
-        setSettlements(response.data.data)
-      }
-
-      // Get stats
-      const statsResponse = await api.get('/api/seller/settlements/stats', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (statsResponse.data.success) {
-        setStats(statsResponse.data.data)
-      }
-
-      // Get daily revenue for calendar
-      try {
-        const dailyRes = await api.get('/api/seller/dashboard/stats?period=30d', {
-          headers: { 'Authorization': `Bearer ${sessionToken}` }
-        })
-        if (dailyRes.data.success && dailyRes.data.data?.daily_revenue) {
-          setDailyRevenue(dailyRes.data.data.daily_revenue)
-        }
-      } catch {
-        // daily revenue is optional - calendar will show empty
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      if (import.meta.env.DEV) console.error('Failed to load settlements:', error)
-      setError(t('seller.settlementLoadFailed'))
-      if (error_.response?.status === 401) {
-        navigate('/seller/login')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (settlements[period] + stats + daily revenue).
+  const settlementsQ = useApiQuery<Settlement[]>(['seller', 'settlements', selectedPeriod], '/api/seller/settlements', {
+    params: selectedPeriod !== 'all' ? { period: selectedPeriod } : {},
+    select: (r: any) => (r?.success ? r.data || [] : []),
+  })
+  const statsQ = useApiQuery<SettlementStats | null>(['seller', 'settlements-stats'], '/api/seller/settlements/stats', { select: (r: any) => (r?.success ? r.data : null) })
+  const dailyQ = useApiQuery<{ date: string; revenue: number }[]>(['seller', 'settlements-daily'], '/api/seller/dashboard/stats', { params: { period: '30d' }, select: (r: any) => (r?.success ? (r.data?.daily_revenue || []) : []) })
+  const settlements = settlementsQ.data ?? []
+  const stats = statsQ.data ?? null
+  const dailyRevenue = dailyQ.data ?? []
+  const loading = settlementsQ.isLoading || statsQ.isLoading
+  const loadSettlements = () => { settlementsQ.refetch(); statsQ.refetch(); dailyQ.refetch() }
+  useEffect(() => { if (settlementsQ.isError) setError(t('seller.settlementLoadFailed')) }, [settlementsQ.isError, t])
 
   const hasBankInfo = !!(localStorage.getItem('seller_bank_name') && localStorage.getItem('seller_account_number'))
 

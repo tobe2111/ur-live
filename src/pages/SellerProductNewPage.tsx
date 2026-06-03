@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
@@ -30,7 +31,9 @@ export default function SellerProductNewPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
+  // 🛡️ 2026-06-03 Tier2(대시보드): mount 페칭 → useApiQuery (/api/seller prefix 토큰 자동 주입).
+  const streamsQ = useApiQuery<LiveStream[]>(['seller', 'product-new-streams'], '/api/seller/streams', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const liveStreams = streamsQ.data ?? []
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -55,23 +58,9 @@ export default function SellerProductNewPage() {
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('seller_token')
-    if (!sessionToken) { navigate('/seller/login'); return }
-    loadLiveStreams()
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadLiveStreams() {
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-      if (!sessionToken) { navigate('/seller/login'); return }
-      const response = await api.get('/api/seller/streams', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-      if (response.data.success) setLiveStreams(response.data.data || [])
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to load live streams:', error)
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
