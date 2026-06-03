@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, TrendingUp, Users, DollarSign, Star } from 'lucide-react'
@@ -66,40 +67,24 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function AgencyStaysPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'stays' | 'bookings'>('stays')
-  const [kpi, setKpi] = useState<Kpi | null>(null)
-  const [stays, setStays] = useState<StayItem[]>([])
-  const [bookings, setBookings] = useState<AgencyBooking[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery 3개(kpi+stays+bookings).
+  const kpiQ = useApiQuery<Kpi | null>(['agency', 'stays-kpi'], '/api/agency/stays/kpi', { select: (r: any) => (r?.success ? r.data : null) })
+  const staysQ = useApiQuery<StayItem[]>(['agency', 'stays'], '/api/agency/stays', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const bookingsQ = useApiQuery<AgencyBooking[]>(['agency', 'stays-bookings', statusFilter], '/api/agency/stays/bookings', { params: statusFilter ? { status: statusFilter } : {}, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const kpi = kpiQ.data ?? null
+  const stays = staysQ.data ?? []
+  const bookings = bookingsQ.data ?? []
+  const loading = kpiQ.isLoading || staysQ.isLoading
+  const loadAll = () => { kpiQ.refetch(); staysQ.refetch() }
+  const loadBookings = () => bookingsQ.refetch()
 
   useEffect(() => {
-    if (!localStorage.getItem('agency_token')) { navigate('/agency/login'); return }
-    loadAll()
+    if (!localStorage.getItem('agency_token')) navigate('/agency/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { loadBookings() }, [statusFilter]) // eslint-disable-line
-
   function h() { return { Authorization: `Bearer ${localStorage.getItem('agency_token')}` } }
-
-  async function loadAll() {
-    setLoading(true)
-    try {
-      const [kpiR, staysR] = await Promise.all([
-        api.get('/api/agency/stays/kpi', { headers: h() }),
-        api.get('/api/agency/stays', { headers: h() }),
-      ])
-      if (kpiR.data?.success) setKpi(kpiR.data.data)
-      if (staysR.data?.success) setStays(staysR.data.data || [])
-    } catch { /* noop */ } finally { setLoading(false) }
-  }
-
-  async function loadBookings() {
-    try {
-      const r = await api.get(`/api/agency/stays/bookings${statusFilter ? `?status=${statusFilter}` : ''}`, { headers: h() })
-      if (r.data?.success) setBookings(r.data.data || [])
-    } catch { /* noop */ }
-  }
 
   return (
     <AgencyLayout title="담당 셀러 숙소">
