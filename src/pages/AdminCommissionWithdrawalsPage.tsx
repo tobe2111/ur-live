@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -38,29 +39,19 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function AdminCommissionWithdrawalsPage() {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
-  const [rows, setRows] = useState<Withdrawal[]>([])
   const [actionId, setActionId] = useState<number | null>(null)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (filter별 캐시).
+  const { data: rows = [], isLoading: loading, refetch } = useApiQuery<Withdrawal[]>(
+    ['admin', 'commission-withdrawals', filter], '/api/referral-tree/admin/withdrawals',
+    { params: { status: filter }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) { navigate('/admin/login'); return }
-    load()
-  }, [navigate, filter])
-
-  async function load() {
-    try {
-      setLoading(true)
-      const res = await api.get(`/api/referral-tree/admin/withdrawals?status=${filter}`)
-      if (res.data.success) setRows(res.data.data || [])
-    } catch (e) {
-      console.error('load withdrawals', e)
-      toast.error('불러오기 실패')
-    } finally {
-      setLoading(false)
-    }
-  }
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function approve(w: Withdrawal) {
     const memo = window.prompt(

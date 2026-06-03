@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
@@ -28,8 +29,12 @@ const EMPTY_FORM = {
 export default function AdminBannersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [banners, setBanners] = useState<Banner[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: banners = [], isLoading: loading, refetch } = useApiQuery<Banner[]>(
+    ['admin', 'banners'], '/api/admin/banners',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadBanners = () => refetch()
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState(EMPTY_FORM)
@@ -41,22 +46,9 @@ export default function AdminBannersPage() {
   }
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) {
-      navigate('/admin/login'); return
-    }
-    loadBanners()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadBanners() {
-    try {
-      setLoading(true)
-      const response = await api.get('/api/admin/banners')
-      if (response.data.success) setBanners(response.data.data || [])
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      showAlert(err_.response?.data?.error || t('admin.banners.k001', { defaultValue: '배너 로딩 실패' }), 'error')
-    } finally { setLoading(false) }
-  }
 
   function handleEdit(banner: Banner) {
     setEditingBanner(banner)

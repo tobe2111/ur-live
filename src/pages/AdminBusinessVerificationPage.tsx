@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Shield, CheckCircle, XCircle, ExternalLink, Phone, Mail } from 'lucide-react'
@@ -29,24 +30,19 @@ interface PendingSeller {
 
 export default function AdminBusinessVerificationPage() {
   const navigate = useNavigate()
-  const [sellers, setSellers] = useState<PendingSeller[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<PendingSeller[]>(
+    ['admin', 'biz-verification-pending'], '/api/admin/sellers/business-registration/pending',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    load()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function h() { return { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-
-  async function load() {
-    setLoading(true)
-    try {
-      const r = await api.get('/api/admin/sellers/business-registration/pending', { headers: h() })
-      if (r.data?.success) setSellers(r.data.data || [])
-    } catch { /* fail-soft */ } finally { setLoading(false) }
-  }
 
   async function verify(sellerId: number) {
     if (!confirm('이 셀러의 사업자등록증을 승인하시겠습니까?\n승인 후 현금 정산 + 딜 환급 가능.')) return
