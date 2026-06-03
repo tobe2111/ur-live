@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -52,10 +53,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 export default function AdminPayoutsPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'pending_ledger' | 'payouts' | 'rates' | 'annual'>('pending_ledger')
-  const [pending, setPending] = useState<PendingRow[]>([])
-  const [payouts, setPayouts] = useState<Payout[]>([])
   const [filter, setFilter] = useState<'pending' | 'approved' | 'sent' | 'all'>('pending')
-  const [loading, setLoading] = useState(true)
   // 🛡️ 2026-05-21 Phase D: commission rates + 연말 리포트.
   const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10', agency_share_pct: '30', influencer_intro_share_pct: '20' })
   const [savingRates, setSavingRates] = useState(false)
@@ -63,27 +61,20 @@ export default function AdminPayoutsPage() {
   const [annualType, setAnnualType] = useState<'all' | 'store_owner' | 'seller' | 'agency'>('all')
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    load()
-  }, [tab, filter])
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
 
-  async function load() {
-    try {
-      setLoading(true)
-      if (tab === 'pending_ledger') {
-        const res = await api.get('/api/admin/payouts/pending')
-        if (res.data?.success) setPending(res.data.data || [])
-      } else if (tab === 'rates') {
-        const res = await api.get('/api/admin/payouts/commission-rates')
-        if (res.data?.success) setRates(res.data.data)
-      } else if (tab === 'annual') {
-        // 별도 fetch 없음 — UI 에서 download 버튼만
-      } else {
-        const res = await api.get(`/api/admin/payouts?status=${filter}`)
-        if (res.data?.success) setPayouts(res.data.data || [])
-      }
-    } finally { setLoading(false) }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (pending/payouts 리스트 + rates 폼 시드).
+  const pendingQ = useApiQuery<PendingRow[]>(['admin', 'payouts-pending'], '/api/admin/payouts/pending', { enabled: tab === 'pending_ledger', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const payoutsQ = useApiQuery<Payout[]>(['admin', 'payouts-list', filter], '/api/admin/payouts', { params: { status: filter }, enabled: tab === 'payouts', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const ratesQ = useApiQuery<typeof rates | null>(['admin', 'payouts-rates'], '/api/admin/payouts/commission-rates', { enabled: tab === 'rates', select: (r: any) => (r?.success ? r.data : null) })
+  const pending = pendingQ.data ?? []
+  const payouts = payoutsQ.data ?? []
+  const loading = tab === 'pending_ledger' ? pendingQ.isLoading : tab === 'payouts' ? payoutsQ.isLoading : false
+  // rates 탭은 편집형 폼 → 쿼리 데이터 도착 시 로컬 state 시드.
+  useEffect(() => { if (ratesQ.data) setRates(ratesQ.data) }, [ratesQ.data])
+
+  const load = () => { if (tab === 'pending_ledger') pendingQ.refetch(); else if (tab === 'payouts') payoutsQ.refetch() }
 
   async function generate() {
     if (!confirm('지난주 정산 일괄 생성 (10,000원 이상 잔액만)?')) return

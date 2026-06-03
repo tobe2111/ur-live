@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -63,67 +63,34 @@ function fmt(n: number | null | undefined): string {
 export default function AdminDealMonitorPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<DealStats | null>(null)
   const [tab, setTab] = useState<Tab>('charges')
-  const [charges, setCharges] = useState<ChargeRecord[]>([])
-  const [users, setUsers] = useState<UserSummary[]>([])
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [sort, setSort] = useState('total_charged')
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) { navigate('/admin/login'); return }
-    loadStats()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
   }, [navigate])
 
-  useEffect(() => {
-    if (tab === 'charges') loadCharges()
-    else loadUsers()
-  }, [tab, page, search, sort])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (stats + charges/users 탭별, 필터 key 반응형).
+  const statsQ = useApiQuery<DealStats | null>(['admin', 'deals-stats'], '/api/admin/deals/stats', { select: (r: any) => (r?.success ? r.data : null) })
+  const stats = statsQ.data ?? null
 
-  async function loadStats() {
-    try {
-      const res = await api.get('/api/admin/deals/stats')
-      if (res.data.success) setStats(res.data.data)
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      // 🛡️ 2026-05-25 자동 로그아웃 fix: interceptor 가 refresh 처리. 페이지는 noop.
-      if (err_.response?.status === 401) { /* lib/api.ts interceptor */ }
-    }
-  }
-
-  async function loadCharges() {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams({ page: String(page), limit: '20' })
-      if (search) params.append('search', search)
-      const res = await api.get(`/api/admin/deals/charges?${params}`)
-      if (res.data.success) {
-        setCharges(res.data.data || [])
-        setTotalPages(res.data.pagination?.totalPages || 1)
-      }
-    } catch { /* handled by interceptor */ } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadUsers() {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams({ page: String(page), limit: '20', sort })
-      const res = await api.get(`/api/admin/deals/users?${params}`)
-      if (res.data.success) {
-        setUsers(res.data.data)
-        setTotalPages(res.data.pagination.totalPages)
-      }
-    } catch { /* handled by interceptor */ } finally {
-      setLoading(false)
-    }
-  }
+  const chargesQ = useApiQuery<{ rows: ChargeRecord[]; totalPages: number }>(['admin', 'deals-charges', page, search], '/api/admin/deals/charges', {
+    params: { page, limit: 20, ...(search ? { search } : {}) },
+    enabled: tab === 'charges',
+    select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
+  })
+  const usersQ = useApiQuery<{ rows: UserSummary[]; totalPages: number }>(['admin', 'deals-users', page, sort], '/api/admin/deals/users', {
+    params: { page, limit: 20, sort },
+    enabled: tab === 'users',
+    select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
+  })
+  const charges = chargesQ.data?.rows ?? []
+  const users = usersQ.data?.rows ?? []
+  const loading = tab === 'charges' ? chargesQ.isLoading : usersQ.isLoading
+  const totalPages = (tab === 'charges' ? chargesQ.data?.totalPages : usersQ.data?.totalPages) ?? 1
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()

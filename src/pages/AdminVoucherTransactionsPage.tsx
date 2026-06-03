@@ -12,10 +12,11 @@
  *   - 상단 합계 카드: 오늘 거래 수 / 오늘 거래 금액 (대시보드 stats 재사용)
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, formatWon } from '@/utils/format'
 
@@ -253,59 +254,39 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 const PAGE_SIZE = 50
 
 export default function AdminVoucherTransactionsPage() {
-  const [rows, setRows] = useState<VoucherTxRow[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(0)
   const [status, setStatus] = useState<'' | 'unused' | 'used' | 'expired' | 'refunded'>('')
   const [userId, setUserId] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [category, setCategory] = useState('')
-  const [todayStats, setTodayStats] = useState<{ count: number; amount: number }>({ count: 0, amount: 0 })
   const [diagOrderId, setDiagOrderId] = useState<number | null>(null)
   const [diagInputValue, setDiagInputValue] = useState('')
 
-  useEffect(() => {
-    api.get('/api/admin/dashboard/stats')
-      .then(r => {
-        if (r.data?.success) {
-          setTodayStats({
-            count: r.data.data?.todayVouchers || 0,
-            amount: r.data.data?.todayVouchersAmount || 0,
-          })
-        }
-      })
-      .catch(() => null)
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (오늘 stats + 거래 리스트, 필터는 key 반응형).
+  const todayStatsQ = useApiQuery<{ count: number; amount: number }>(['admin', 'voucher-tx-today'], '/api/admin/dashboard/stats', {
+    select: (r: any) => ({ count: r?.data?.todayVouchers || 0, amount: r?.data?.todayVouchersAmount || 0 }),
+  })
+  const todayStats = todayStatsQ.data ?? { count: 0, amount: 0 }
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(page * PAGE_SIZE),
-      })
-      if (status) params.set('status', status)
-      if (userId.trim()) params.set('user_id', userId.trim())
-      if (dateFrom) params.set('date_from', dateFrom)
-      if (dateTo) params.set('date_to', dateTo)
-      if (category) params.set('category', category)
-      const res = await api.get(`/api/admin/vouchers/transactions?${params.toString()}`)
-      if (res.data?.success) {
-        setRows(res.data.data?.rows || [])
-        setTotal(res.data.data?.total || 0)
-      } else {
-        toast.error(res.data?.error || '조회 실패')
-      }
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, status, userId, dateFrom, dateTo, category])
-
-  useEffect(() => { load() }, [load])
+  const listQ = useApiQuery<{ rows: VoucherTxRow[]; total: number }>(
+    ['admin', 'voucher-transactions', page, status, userId.trim(), dateFrom, dateTo, category],
+    '/api/admin/vouchers/transactions',
+    {
+      params: {
+        limit: PAGE_SIZE, offset: page * PAGE_SIZE,
+        ...(status ? { status } : {}),
+        ...(userId.trim() ? { user_id: userId.trim() } : {}),
+        ...(dateFrom ? { date_from: dateFrom } : {}),
+        ...(dateTo ? { date_to: dateTo } : {}),
+        ...(category ? { category } : {}),
+      },
+      select: (r: any) => ({ rows: r?.data?.rows || [], total: r?.data?.total || 0 }),
+    },
+  )
+  const rows = listQ.data?.rows ?? []
+  const total = listQ.data?.total ?? 0
+  const loading = listQ.isLoading
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -401,7 +382,7 @@ export default function AdminVoucherTransactionsPage() {
             <div>
               <label className="block text-xs text-gray-600 mb-1">user_id</label>
               <input value={userId} onChange={(e) => setUserId(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { setPage(0); load() } }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { if (page !== 0) setPage(0); else listQ.refetch() } }}
                 placeholder="enter 로 검색"
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900" />
             </div>
@@ -458,7 +439,7 @@ export default function AdminVoucherTransactionsPage() {
                   </td>
                   {/* 🛡️ 2026-05-25: KT Alpha 발송 상태 컬럼 + inline 재발송 */}
                   <td className="py-2 px-3 text-center">
-                    <KtAlphaStatusCell row={r} onChange={() => load()} />
+                    <KtAlphaStatusCell row={r} onChange={() => listQ.refetch()} />
                   </td>
                   <td className="py-2 px-3 text-gray-600 font-mono text-[10px]">{r.code}</td>
                   <td className="py-2 px-3 text-gray-500 text-[10px]">{r.order_number || `#${r.order_id}`}</td>
