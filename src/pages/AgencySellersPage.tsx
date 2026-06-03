@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Users as UsersIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Search, TrendingUp, ShoppingBag, Play, UserPlus, Copy, Link, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -118,8 +119,6 @@ function InviteSellerPanel({ sellerCount }: { sellerCount: number }) {
 export default function AgencySellersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Seller | null>(null)
   const [sellerStats, setSellerStats] = useState<SellerStats | null>(null)
@@ -130,12 +129,14 @@ export default function AgencySellersPage() {
   const headers = { Authorization: `Bearer ${token}` }
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
-    api.get('/api/agency/sellers', { headers })
-      .then(r => setSellers(r.data.data || []))
-      .catch(() => { toast.error('세션이 만료되었습니다. 다시 로그인해주세요.'); navigate('/agency/login', { replace: true }) })
-      .finally(() => setLoading(false))
+    if (!token) navigate('/agency/login', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 셀러 리스트 mount 페칭 → useApiQuery (per-seller stats 는 모달 lazy 명령형 유지).
+  const sellersQ = useApiQuery<Seller[]>(['agency', 'sellers-list'], '/api/agency/sellers', { select: (r: any) => (r?.data || []) })
+  const sellers = sellersQ.data ?? []
+  const loading = sellersQ.isLoading
 
   async function loadStats(seller: Seller, p = period) {
     setSelected(seller)

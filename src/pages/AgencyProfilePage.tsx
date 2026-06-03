@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -12,54 +13,36 @@ import { SellerPinSetup } from '@/components/auth/SellerPinPrompt'
 export default function AgencyProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<any>(null)
   const [form, setForm] = useState({ name: '', contact_name: '', phone: '', bank_name: '', bank_account: '', account_holder: '' })
   // 🛡️ 2026-05-16 (#20 white-label): 브랜드 커스터마이징
   const [brand, setBrand] = useState({ slug: '', bio: '', logo_url: '', cover_url: '', brand_color: '' })
   const [savingBrand, setSavingBrand] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token || ''}` }
 
   useEffect(() => {
-    if (!token) {
-      navigate('/agency/login', { replace: true })
-    }
+    if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
 
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형 폼이라 데이터 도착 시 로컬 state 시드.
+  const profileQ = useApiQuery<any>(['agency', 'profile-edit'], '/api/agency/profile', { headers, select: (r: any) => (r?.success ? r.data : null) })
+  const brandQ = useApiQuery<any>(['agency', 'brand-public'], '/api/agency-public/me/public', { headers, select: (r: any) => (r?.success ? r.data : null) })
+  const profile = profileQ.data ?? null
+  const loading = profileQ.isLoading
+
   useEffect(() => {
-    api.get('/api/agency/profile', { headers })
-      .then(r => {
-        if (r.data.success) {
-          setProfile(r.data.data)
-          setForm({
-            name: r.data.data.name || '',
-            contact_name: r.data.data.contact_name || '',
-            phone: r.data.data.phone || '',
-            bank_name: r.data.data.bank_name || '',
-            bank_account: r.data.data.bank_account || '',
-            account_holder: r.data.data.account_holder || '',
-          })
-        }
-      })
-      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-      .finally(() => setLoading(false))
-    // 🛡️ 2026-05-16 (#20): 브랜드 정보 별도 fetch
-    api.get('/api/agency-public/me/public', { headers })
-      .then(r => {
-        if (r.data?.success && r.data.data) {
-          setBrand({
-            slug: r.data.data.slug || '',
-            bio: r.data.data.bio || '',
-            logo_url: r.data.data.logo_url || '',
-            cover_url: r.data.data.cover_url || '',
-            brand_color: r.data.data.brand_color || '',
-          })
-        }
-      })
-      .catch(() => { /* migration 0225 미적용 환경 무시 */ })
-  }, [])
+    if (profileQ.data) setForm({
+      name: profileQ.data.name || '', contact_name: profileQ.data.contact_name || '', phone: profileQ.data.phone || '',
+      bank_name: profileQ.data.bank_name || '', bank_account: profileQ.data.bank_account || '', account_holder: profileQ.data.account_holder || '',
+    })
+  }, [profileQ.data])
+  useEffect(() => {
+    if (brandQ.data) setBrand({
+      slug: brandQ.data.slug || '', bio: brandQ.data.bio || '', logo_url: brandQ.data.logo_url || '',
+      cover_url: brandQ.data.cover_url || '', brand_color: brandQ.data.brand_color || '',
+    })
+  }, [brandQ.data])
 
   async function handleSave() {
     setSaving(true)
