@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { ArrowRightLeft, ArrowRight, Check, X } from 'lucide-react'
 
@@ -34,31 +35,17 @@ const STATUS_CLS: Record<string, string> = {
 
 export default function AgencyTransfersPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<Transfer[]>([])
-  const [myAgencyId, setMyAgencyId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('agency_token')
-      const r = await api.get('/api/agency/transfers', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data.success) {
-        setItems(r.data.data)
-        // 첫 transfer 의 from/to 중 하나가 본인일 텐데 직접 확인 어려움 → 전체 ID 뽑기
-        // 간단히 from_agency_id 가 가장 많이 나오는 거를 본인으로 추정 — 또는 별도 endpoint
-      }
-      // me 조회
-      try {
-        const me = await api.get('/api/agency/me', { headers: { Authorization: `Bearer ${token}` } })
-        if (me.data?.data?.id) setMyAgencyId(Number(me.data.data.id))
-      } catch { /* skip */ }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('agency.transfers.loadFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 2-fetch → useApiQuery 2개.
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Transfer[]>(
+    ['agency', 'transfers'], '/api/agency/transfers',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const meQ = useApiQuery<number | null>(
+    ['agency', 'me-id'], '/api/agency/me',
+    { select: (r: any) => (r?.data?.id ? Number(r.data.id) : null) },
+  )
+  const myAgencyId = meQ.data ?? null
+  const fetchAll = () => { refetch(); meQ.refetch() }
 
   async function respondToIncoming(id: number, response: 'accept' | 'reject') {
     const reason = response === 'reject' ? prompt(t('agency.transfers.rejectReasonPrompt', { defaultValue: '거절 사유 (선택):' })) || '' : undefined
