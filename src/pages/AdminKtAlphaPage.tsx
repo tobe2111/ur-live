@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Gift, RefreshCw, DollarSign, TrendingUp, AlertTriangle, Settings, Package } from 'lucide-react'
@@ -207,39 +208,25 @@ export default function AdminKtAlphaPage() {
   }
 
   // 🛡️ 2026-05-19: 대량 등록 (KT Alpha catalog → products) 상태/액션.
-  const [consumerStats, setConsumerStats] = useState<{
-    total: number; visible: number; total_sold: number; avg_price: number; min_price: number; max_price: number;
-  }>({ total: 0, visible: 0, total_sold: 0, avg_price: 0, min_price: 0, max_price: 0 })
-  const [consumerLastImport, setConsumerLastImport] = useState<string | null>(null)
+  const ZERO_CONSUMER = { total: 0, visible: 0, total_sold: 0, avg_price: 0, min_price: 0, max_price: 0 }
   const [importing, setImporting] = useState(false)
   const [dryRunResult, setDryRunResult] = useState<{
     inserted: number; updated: number; markup_pct: number;
     samples: Array<{ gift_code: string; name: string; price: number; action: string }>;
   } | null>(null)
 
-  async function loadConsumerStats() {
-    try {
-      const r = await api.get('/api/admin/kt-alpha/consumer-products/stats', { headers: h() })
-      if (r.data?.success) {
-        setConsumerStats(r.data.data.stats || consumerStats)
-        setConsumerLastImport(r.data.data.last_import_at || null)
-      }
-    } catch { /* fail-soft */ }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): consumer stats + categories 수동 페칭 → useApiQuery (mount read).
+  const consumerQ = useApiQuery<{ stats: typeof ZERO_CONSUMER; last_import_at: string | null }>(['admin', 'kt-consumer-stats'], '/api/admin/kt-alpha/consumer-products/stats', {
+    headers: h(),
+    select: (r: any) => (r?.success ? { stats: r.data.stats || ZERO_CONSUMER, last_import_at: r.data.last_import_at || null } : { stats: ZERO_CONSUMER, last_import_at: null }),
+  })
+  const consumerStats = consumerQ.data?.stats ?? ZERO_CONSUMER
+  const consumerLastImport = consumerQ.data?.last_import_at ?? null
+  const loadConsumerStats = () => consumerQ.refetch()
 
-  // 🛡️ 2026-05-19: 카테고리별 통계.
-  const [categories, setCategories] = useState<Array<{
-    category: string; total: number; visible: number; sold: number; min_price: number; max_price: number;
-  }>>([])
-
-  async function loadCategories() {
-    try {
-      const r = await api.get('/api/admin/kt-alpha/categories', { headers: h() })
-      if (r.data?.success) setCategories(r.data.data || [])
-    } catch { /* fail-soft */ }
-  }
-
-  useEffect(() => { loadConsumerStats(); loadCategories() }, []) // eslint-disable-line
+  const categoriesQ = useApiQuery<Array<{ category: string; total: number; visible: number; sold: number; min_price: number; max_price: number }>>(['admin', 'kt-categories'], '/api/admin/kt-alpha/categories', { headers: h(), select: (r: any) => (r?.success ? r.data || [] : []) })
+  const categories = categoriesQ.data ?? []
+  const loadCategories = () => categoriesQ.refetch()
 
   async function deleteByCategory(category: string, count: number) {
     if (!confirm(`'${category}' 카테고리의 ${count}개 상품을 모두 삭제합니다.\n복구 불가 — 계속할까요?`)) return

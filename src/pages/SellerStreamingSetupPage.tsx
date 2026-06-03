@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { Copy, CheckCircle2, Smartphone, Monitor, Loader2, AlertCircle, Youtube, ExternalLink, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { QRCodeSVG as QRCode } from 'qrcode.react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -40,20 +41,12 @@ export default function SellerStreamingSetupPage() {
   const detectMobile = () => typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
   const [device, setDevice] = useState<'mobile' | 'pc'>(() => (detectMobile() ? 'mobile' : 'pc'))
 
-  useEffect(() => {
-    void load()
-  }, [])
-
-  async function load() {
-    try {
-      const res = await api.get('/api/seller/youtube/streaming-setup')
-      if (res.data?.success) {
-        setData({ status: res.data.data.status, ...res.data.data })
-      }
-    } catch {
-      setData({ status: 'no_oauth' })
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. init/rotate 가 data 직접 갱신하므로 로컬 state 시드.
+  const setupQ = useApiQuery<SetupData>(['seller', 'streaming-setup'], '/api/seller/youtube/streaming-setup', {
+    select: (r: any) => (r?.success ? { status: r.data.status, ...r.data } : { status: 'no_oauth' as SetupStatus }),
+  })
+  const load = () => setupQ.refetch()
+  useEffect(() => { if (setupQ.data) setData(setupQ.data) }, [setupQ.data])
 
   async function init() {
     setInitializing(true)
