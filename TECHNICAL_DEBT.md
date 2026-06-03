@@ -109,22 +109,24 @@
 - **카카오 스팸 벡터(⏳) → Fixed** (`38298f4`).
 
 ### 🔴 남은 즉시 과제 (운영 위험·자금·보안)
+> ⚠️ **2026-06-03 코드 재검증**: 아래 자금 버그 항목들은 **이미 fix 됨**(이 섹션이 stale 이었음). 코드 ground-truth 확인 결과:
+> - ~~숙소 예약취소 카드 환불 미호출~~ → **fix됨**: `stays-public.routes.ts` cancel 이 정책별 환불율 계산 + `tossCancelPayment`(idempotency) 호출 + affiliate 역전 + 재고복원. 어드민 `admin-stays.routes` refund / `appointments.routes` cancel(deal 즉시환급 + toss 자동취소)도 모두 구현됨.
+> - ~~숙소 hold/pending 무한 누적~~ → **fix됨**: `cron/stay-pending-expire.ts` 가 pending → expired.
+> - ~~`/confirm-toss` 정산 일관성(commission/attribution 미기록)~~ → **fix됨**: `payment.routes` confirm 이 agency/influencer/supplier commission + 인플 attribution 기록.
+
 | 항목 | 위치 | 비고 |
 |---|---|---|
-| migration 0257/0258/0276 프로덕션 적용 미확인 | repair-schema | 운영자 1회 + smoke (환경 외부송신 차단으로 코드 측 불가) |
-| 숙소 예약취소 → 실제 카드 환불 미호출 (오버부킹 자동환불만 Fixed) | stay cancel 경로 | `cancelTossPayment` 헬퍼 재사용 가능 |
-| 숙소 예약 hold 모델 부재 (pending 무한 누적) | `stay_bookings` | hold 차감 + TTL 해제 cron |
+| migration 0257/0258/0276 프로덕션 적용 미확인 | repair-schema | **운영자 액션**(D1 권한) — 코드 측 불가 |
 
-### 🟡 남은 기능 미완 (있다고 표시되나 동작 X)
-- 숙소 알림톡 실제 발송 미연결(`cron/stay-reminder.ts` INSERT만)
-- 8.8% 원천징수 자동계산+YTD / 딜 현금환급 endpoint / 지급조서 CSV export
-- 멀티플랫폼 destination 다수 501 / KT Alpha 기프티쇼 API 미연결
+### 🟡 남은 기능 미완 (외부 의존 — 순수 코드로 완결 불가)
+- 숙소 알림톡 실제 발송(알리고 템플릿) / KT Alpha 기프티쇼 API(키) / 멀티플랫폼 OAuth(계약) / 전자세금계산서(Bill36524 키) / 8.8% 원천징수 자동계산(세율 정책 결정)
 
-### 🟡 남은 코드 품질 (신규개발 속도)
-- 데이터 페칭 split-brain (256p 중 239p React Query 우회)
-- `(err as Error).message` 클라 반환 — **어드민 라우트 ~50곳** 잔존(신뢰 사용자라 저위험, 점진 safeError)
-- `/confirm-toss` 정산 일관성 (ledger/commission/인플 attribution 미기록) — deal+toss 후처리 단일 helper 추출
-- 스키마 3중화 동기화 강제장치 부재 / God 파일(youtube-live 3368 등) 단계 분해
+### 🟡 남은 코드 품질 (검증된 실-잔여, 완결 가능)
+- **데이터 페칭 RQ 이전**: user-facing 100% 완료. **대시보드 128p 잔존**(내부·저ROI, `useApiQuery` 패턴 확립)
+- **God 파일 분해**: youtube-live 3369 등 — 라이브계열 스테이징 필수(안전망 완비), 비-라이브 가능
+- **타입 안전성**: `any`/`as any` 649곳 (점근적)
+- **테스트**: mutation-coverage 114(money-critical 은 커버됨) / E2E 11 spec (얇음)
+- ~~`(err as Error).message` 클라 반환~~ → user-facing 0, admin-internal ~5 (저위험)
 
 ### 🟢 위생
 - `.env.production` git 추적(VITE 시크릿) — ⚠️ 빌드 의존 확인 후 `git rm --cached`
