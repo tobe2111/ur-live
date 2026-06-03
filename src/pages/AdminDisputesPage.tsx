@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { AlertCircle, CheckCircle2, XCircle, Loader2, Clock, Bot, ChevronDown, ChevronRight } from 'lucide-react'
@@ -55,30 +56,20 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export default function AdminDisputesPage() {
   const navigate = useNavigate()
-  const [items, setItems] = useState<Dispute[]>([])
   const [tab, setTab] = useState<Tab>('escalated')
-  const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState<number | null>(null)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab별 캐시).
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Dispute[]>(
+    ['admin', 'disputes', tab], '/api/disputes/admin/list',
+    { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadList = (_status?: Tab) => refetch()
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) { navigate('/admin/login'); return }
-    loadList(tab)
-  }, [tab])
-
-  async function loadList(status: Tab) {
-    setLoading(true)
-    try {
-      const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }
-      const res = await api.get(`/api/disputes/admin/list?status=${status}`, { headers })
-      if (res.data?.success) setItems(res.data.data || [])
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('[admin disputes]', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function approveRefund(d: Dispute) {
     if (!confirm(`voucher ${d.voucher_code} 환불 승인하시겠습니까?\n\n• voucher → refunded\n• 딜 결제건 자동 환불\n• 유저에게 푸시`)) return

@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { Users, TrendingUp, Calendar, Briefcase, ArrowRight } from 'lucide-react'
 
 interface AgencyPublic {
@@ -22,26 +21,12 @@ interface AgencyPublic {
 
 export default function AgencyPublicPage() {
   const { slug } = useParams<{ slug: string }>()
-  const [data, setData] = useState<AgencyPublic | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!slug) return
-    api.get(`/api/agency-public/${slug}`)
-      .then((r) => {
-        if (r.data.success) setData(r.data.data)
-        else setError(r.data.error || '페이지를 찾을 수 없습니다.')
-      })
-      .catch((err) => {
-        if (err.response?.status === 404) {
-          setError('해당 에이전시를 찾을 수 없습니다.')
-        } else {
-          setError('일시적 오류 — 잠시 후 다시 시도해주세요.')
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [slug])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (public, slug별 캐시).
+  const { data = null, isLoading: loading, isError } = useApiQuery<AgencyPublic | null>(
+    ['agency-public', slug ?? ''], `/api/agency-public/${slug}`,
+    { enabled: !!slug, select: (r: any) => (r?.success ? r.data : null) },
+  )
+  const error = isError || (!loading && !data && slug) ? '해당 에이전시를 찾을 수 없습니다.' : null
 
   if (loading) {
     return (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Bell, Mail, MessageSquare, Smartphone, Loader2 } from 'lucide-react'
@@ -43,30 +44,18 @@ const CATEGORY_LABELS: Array<{ key: string; label: string; types: string[] }> = 
 
 export default function AdminNotificationSettingsPage() {
   const { t } = useTranslation()
-  const [settings, setSettings] = useState<Setting[]>([])
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/api/admin/notification-settings')
-      setSettings(res.data?.data || [])
-    } catch {
-      toast.error(t('admin.notificationSettings.loadFailed', { defaultValue: '설정 로드 실패' }))
-    } finally {
-      setLoading(false)
-    }
-  }
-  useEffect(() => { load() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: settings = [], isLoading: loading, refetch } = useApiQuery<Setting[]>(
+    ['admin', 'notification-settings'], '/api/admin/notification-settings',
+    { select: (r: any) => r?.data || [] },
+  )
 
   const toggle = async (type: string, channel: keyof Setting, value: boolean) => {
     setSaving(`${type}:${channel}`)
     try {
       await api.put(`/api/admin/notification-settings/${type}`, { [channel]: value })
-      setSettings(prev => prev.map(s =>
-        s.notification_type === type ? { ...s, [channel]: value ? 1 : 0 } : s
-      ))
+      refetch()
       toast.success(t('admin.notificationSettings.changeSuccess', { defaultValue: '변경 완료' }))
     } catch {
       toast.error(t('admin.notificationSettings.changeFailed', { defaultValue: '변경 실패' }))

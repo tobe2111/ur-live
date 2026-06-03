@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { QrCode, Copy, Plus, Trash2, ExternalLink, Users } from 'lucide-react'
 
@@ -20,24 +21,15 @@ interface InviteCode {
 
 export default function AgencyInvitesPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<InviteCode[]>([])
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [label, setLabel] = useState('')
   const [maxUses, setMaxUses] = useState(100)
-
-  async function fetchItems() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('agency_token')
-      const r = await api.get('/api/agency/invites', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data.success) setItems(r.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '영입 코드 조회 실패')
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchItems() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<InviteCode[]>(
+    ['agency', 'invites'], '/api/agency/invites',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const fetchItems = () => refetch()
 
   async function createCode() {
     if (creating) return

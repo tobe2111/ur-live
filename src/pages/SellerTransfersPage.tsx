@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { ArrowRightLeft, Check, X, ArrowRight, Building2 } from 'lucide-react'
 
@@ -30,21 +31,13 @@ interface Transfer {
 
 export default function SellerTransfersPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<Transfer[]>([])
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState<number | null>(null)
-
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const r = await api.get('/api/seller/transfers')
-      if (r.data.success) setItems(r.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('seller.transfers.loadFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Transfer[]>(
+    ['seller', 'transfers'], '/api/seller/transfers',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const fetchAll = () => refetch()
 
   async function respond(id: number, approved: boolean) {
     const msg = approved

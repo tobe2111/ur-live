@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Megaphone, Check, X, Calendar, DollarSign } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -27,8 +28,12 @@ type StatusMap = Record<string, { label: string; cls: string }>
 
 export default function SellerCastingsPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<Casting[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Casting[]>(
+    ['seller', 'castings'], '/api/seller/castings',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const fetchAll = () => refetch()
 
   const statusMap: StatusMap = {
     sent_to_seller: { label: t('seller.castings.statusSentToSeller', { defaultValue: '응답 대기' }), cls: 'bg-yellow-100 text-yellow-800' },
@@ -37,18 +42,6 @@ export default function SellerCastingsPage() {
     completed: { label: t('seller.castings.statusCompleted', { defaultValue: '완료' }), cls: 'bg-blue-100 text-blue-700' },
   }
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const r = await api.get('/api/seller/castings', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data.success) setItems(r.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('seller.castings.loadFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }, [t])
-
-  useEffect(() => { fetchAll() }, [fetchAll])
 
   async function respond(id: number, response: 'accept' | 'reject') {
     const reason = response === 'reject' ? prompt(t('seller.castings.rejectReasonPrompt', { defaultValue: '거절 사유 (선택):' })) || '' : undefined
