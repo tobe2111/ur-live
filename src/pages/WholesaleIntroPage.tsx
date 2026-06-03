@@ -1,0 +1,146 @@
+/**
+ * 🏭 2026-06-03 유통스타트 도매몰 — 공개 소개 랜딩 (시중 노출용, 인덱싱 대상).
+ *   utongstart.com 루트 + /wholesale/intro. 로그인 불필요 — 가치제안 + 듀얼 가입 CTA.
+ *   제조회원(제조사) → /supplier/register, 유통회원(유통사) → /wholesale/join.
+ */
+import { useNavigate } from 'react-router-dom'
+import SEO from '@/components/SEO'
+import { Factory, Store, ArrowRight, PackageCheck, TrendingDown, FileSpreadsheet, ShieldCheck, Boxes, Layers } from 'lucide-react'
+
+export default function WholesaleIntroPage() {
+  const navigate = useNavigate()
+
+  return (
+    <div className="min-h-screen bg-white text-gray-900">
+      <SEO
+        title="유통스타트 — B2B 도매몰 | 제조사·유통사 직거래 플랫폼"
+        description="제조사와 유통사를 직접 잇는 B2B 도매 플랫폼. 등급별 공급가, OEM/ODM 제작, 대량 주문·송장 엑셀, 위탁배송까지. 제조사 입점·유통사 가입 무료."
+        url="/wholesale/intro"
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Service',
+          name: '유통스타트 B2B 도매몰',
+          serviceType: 'B2B 도매 유통 플랫폼',
+          description: '제조사와 유통사를 직접 잇는 B2B 도매 플랫폼 — 등급별 공급가, OEM/ODM 제작 매칭, 대량 주문·송장 엑셀, 위탁배송.',
+          areaServed: 'KR',
+          provider: { '@type': 'Organization', name: '유통스타트', url: 'https://utongstart.com' },
+        }}
+      />
+
+      {/* 헤더 */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
+        <div className="ur-content-wide mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Boxes className="w-6 h-6 text-[#FF0033]" />
+            <span className="text-lg font-extrabold tracking-tight">유통스타트</span>
+            <span className="text-xs text-gray-400 hidden sm:inline">B2B 도매몰</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <button onClick={() => navigate('/seller/login')} className="px-3 py-2 text-gray-600 hover:text-gray-900 font-medium">유통사 로그인</button>
+            <button onClick={() => navigate('/supplier/login')} className="px-3 py-2 text-gray-600 hover:text-gray-900 font-medium hidden sm:inline">제조사 로그인</button>
+          </div>
+        </div>
+      </header>
+
+      {/* 히어로 */}
+      <section className="ur-content-wide mx-auto px-4 lg:px-8 pt-14 pb-16 lg:pt-24 lg:pb-24 text-center">
+        <span className="inline-block px-3 py-1 rounded-full bg-[#FF0033]/10 text-[#FF0033] text-xs font-bold mb-5">제조사 ↔ 유통사 직거래</span>
+        <h1 className="text-3xl lg:text-5xl font-extrabold leading-tight tracking-tight">
+          좋은 제품을 <span className="text-[#FF0033]">가장 좋은 공급가</span>로.<br />
+          유통, 유통스타트에서 시작하세요.
+        </h1>
+        <p className="mt-5 text-base lg:text-lg text-gray-600 max-w-2xl mx-auto">
+          제조사는 전국 유통 채널을, 유통사는 검증된 제품을 — 등급별 공급가·OEM 제작·위탁배송까지 한 곳에서.
+          가입비·월 고정비 0원, 거래되는 만큼만.
+        </p>
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button onClick={() => navigate('/wholesale/join')}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#FF0033] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors">
+            <Store className="w-5 h-5" /> 유통사로 가입하기 <ArrowRight className="w-4 h-4" />
+          </button>
+          <button onClick={() => navigate('/supplier/register')}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gray-900 text-white font-bold text-[15px] hover:bg-gray-800 transition-colors">
+            <Factory className="w-5 h-5" /> 제조사로 입점하기 <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="mt-4 text-xs text-gray-400">가입 후 바로 카탈로그 열람 · 유통사는 가입 시 C등급 즉시 적용</p>
+      </section>
+
+      {/* 신뢰 지표 */}
+      <section className="border-y border-gray-100 bg-gray-50">
+        <div className="ur-content-wide mx-auto px-4 lg:px-8 py-8 grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+          {[
+            { n: '등급별', l: '공급가 (A·B·C·OEM)' },
+            { n: 'OEM·ODM', l: '제조 매칭 지원' },
+            { n: '엑셀', l: '대량 주문·송장 처리' },
+            { n: '위탁배송', l: '제조사 직배송 연동' },
+          ].map((s, i) => (
+            <div key={i}>
+              <div className="text-xl lg:text-2xl font-extrabold text-gray-900">{s.n}</div>
+              <div className="text-xs lg:text-sm text-gray-500 mt-1">{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 작동 방식 */}
+      <section className="ur-content-wide mx-auto px-4 lg:px-8 py-16 lg:py-20">
+        <h2 className="text-2xl lg:text-3xl font-extrabold text-center mb-3">어떻게 작동하나요?</h2>
+        <p className="text-center text-gray-500 mb-12">3단계면 충분합니다.</p>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {[
+            { icon: Layers, t: '1. 가입 & 등급 부여', d: '유통사는 가입 즉시 C등급으로 시작. 거래 실적에 따라 A·B 상향. 제조사는 상품을 등록(개별/엑셀 대량)합니다.' },
+            { icon: TrendingDown, t: '2. 등급가로 주문', d: '유통사는 내 등급에 맞는 공급가만 보고 주문. 제조사 신원·원가는 비공개. 주문서 엑셀 업로드로 대량 주문도 간편.' },
+            { icon: PackageCheck, t: '3. 직배송 & 정산', d: '제조사가 운송장 입력(엑셀 일괄 가능) → 직배송. 정산은 브랜드 익일 / 일반 7일. 세금계산서 자동.' },
+          ].map((s, i) => (
+            <div key={i} className="rounded-2xl border border-gray-200 p-6">
+              <div className="w-11 h-11 rounded-xl bg-[#FF0033]/10 flex items-center justify-center mb-4">
+                <s.icon className="w-6 h-6 text-[#FF0033]" />
+              </div>
+              <h3 className="font-bold text-lg mb-2">{s.t}</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 제조사 vs 유통사 */}
+      <section className="bg-gray-50 border-y border-gray-100">
+        <div className="ur-content-wide mx-auto px-4 lg:px-8 py-16 lg:py-20 grid lg:grid-cols-2 gap-6">
+          <div className="rounded-2xl bg-white border border-gray-200 p-7">
+            <div className="flex items-center gap-2 mb-4"><Factory className="w-6 h-6 text-gray-900" /><h3 className="text-xl font-extrabold">제조사라면</h3></div>
+            <ul className="space-y-3 text-sm text-gray-700">
+              {['전국 유통사에게 한 번에 노출 — 영업 없이 판로 확대', '공급 범위 직접 설정 (전체공급 / 승인한 유통채널만)', '상품 대량등록·주문확인·송장 엑셀로 운영 간소화', '원가·신원은 유통사에 비공개 — 가격 교란 방지'].map((t, i) => (
+                <li key={i} className="flex gap-2"><ShieldCheck className="w-4 h-4 text-[#FF0033] shrink-0 mt-0.5" />{t}</li>
+              ))}
+            </ul>
+            <button onClick={() => navigate('/supplier/register')} className="mt-6 inline-flex items-center gap-1.5 text-[#FF0033] font-bold text-sm">제조사 입점 신청 <ArrowRight className="w-4 h-4" /></button>
+          </div>
+          <div className="rounded-2xl bg-white border border-gray-200 p-7">
+            <div className="flex items-center gap-2 mb-4"><Store className="w-6 h-6 text-gray-900" /><h3 className="text-xl font-extrabold">유통사라면</h3></div>
+            <ul className="space-y-3 text-sm text-gray-700">
+              {['검증된 제조사 상품을 내 등급 공급가로 사입', '가입 즉시 C등급 — 실적 쌓이면 A·B 상향', 'OEM/ODM 신청 → 유통스타트가 제조사 매칭·생산 지원', '주문서·송장 엑셀로 대량 거래도 빠르게'].map((t, i) => (
+                <li key={i} className="flex gap-2"><FileSpreadsheet className="w-4 h-4 text-[#FF0033] shrink-0 mt-0.5" />{t}</li>
+              ))}
+            </ul>
+            <button onClick={() => navigate('/wholesale/join')} className="mt-6 inline-flex items-center gap-1.5 text-[#FF0033] font-bold text-sm">유통사 가입하기 <ArrowRight className="w-4 h-4" /></button>
+          </div>
+        </div>
+      </section>
+
+      {/* 마감 CTA */}
+      <section className="ur-content-wide mx-auto px-4 lg:px-8 py-16 lg:py-24 text-center">
+        <h2 className="text-2xl lg:text-3xl font-extrabold mb-4">지금 시작하세요</h2>
+        <p className="text-gray-600 mb-8">가입비·월 고정비 없이, 오늘 바로 거래를 시작할 수 있습니다.</p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button onClick={() => navigate('/wholesale/join')} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#FF0033] text-white font-bold hover:bg-[#e0002e] transition-colors"><Store className="w-5 h-5" /> 유통사로 가입</button>
+          <button onClick={() => navigate('/supplier/register')} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-colors"><Factory className="w-5 h-5" /> 제조사로 입점</button>
+        </div>
+      </section>
+
+      <footer className="border-t border-gray-100 py-8 text-center text-xs text-gray-400">
+        © {new Date().getFullYear()} 유통스타트 (UtongStart) · B2B 도매 플랫폼
+      </footer>
+    </div>
+  )
+}

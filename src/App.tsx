@@ -48,6 +48,8 @@ const WholesaleSuccessPage = lazy(() => import('./pages/WholesaleSuccessPage'))
 const WholesaleOrdersPage = lazy(() => import('./pages/WholesaleOrdersPage'))
 const WholesaleStatementPage = lazy(() => import('./pages/WholesaleStatementPage'))
 const WholesaleOemPage = lazy(() => import('./pages/WholesaleOemPage'))
+const WholesaleIntroPage = lazy(() => import('./pages/WholesaleIntroPage'))
+const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
@@ -456,7 +458,10 @@ function AppContent() {
   const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
+  // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
+    || location.pathname === '/wholesale' || location.pathname.startsWith('/wholesale/')
+    || location.pathname === '/supplier' || location.pathname.startsWith('/supplier/')
 
   return (
     <>
@@ -482,7 +487,9 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <MainHomePage />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale/intro" replace /> : <MainHomePage />} />
+            <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
+            <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale" element={<WholesaleCatalogPage />} />
             <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
             <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />

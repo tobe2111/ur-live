@@ -33,6 +33,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/vouchers?category=department', priority: 0.7, changefreq: 'weekly' },
     { loc: '/vouchers?category=mobile', priority: 0.7, changefreq: 'weekly' },
     { loc: '/restaurant-map', priority: 0.7, changefreq: 'daily' },
+    // 🏭 유통스타트 B2B 도매몰 — 공개 소개/가입 (시중 노출/검색 유입).
+    { loc: '/wholesale/intro', priority: 0.8, changefreq: 'weekly' },
+    { loc: '/wholesale/join', priority: 0.7, changefreq: 'monthly' },
   ];
 
   if (DB) {

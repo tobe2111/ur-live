@@ -36,6 +36,15 @@
 - ✅ **전자세금계산서(바로빌) 연동** — `barobill.ts` env 주입 리팩토링 + `POST /tax-documents/:id/issue-nts`(매출 방향만, 발행자=유통스타트). 자격증명/플랫폼 사업자정보 미설정 시 actionable 503(fail-soft). `tax_documents.nts_confirm_num/invoice_key/external_status` + 어드민 '국세청발행' 버튼.
   - **활성화 조건(운영 TODO)**: Cloudflare 환경변수 `BAROBILL_PROD_API_KEY`(+`BAROBILL_ENV=production`) + `platform_settings`(company_business_number/company_name/company_ceo/company_address) 등록.
 
+## 3차 — 시중 노출/유입 레이어 (사용자 지적 "도매몰은 시중에 노출되어야 함")
+이전 작업은 전부 로그인 뒤 기능(엔진)이었고, 발견→유입→가입 퍼널이 부재했음. 보강:
+- ✅ **공개 소개 랜딩** `WholesaleIntroPage`(`/wholesale/intro`) — 인덱싱 대상(SEO + Service JSON-LD), 가치제안 + 작동방식 + 제조사/유통사 듀얼 CTA.
+- ✅ **유통사 전용 가입** `WholesaleJoinPage`(`/wholesale/join`) — 셀러 온보딩으로 funnel(returnUrl=/wholesale), 가입 즉시 C등급. 제조사는 `/supplier/register`.
+- ✅ **도메인 진입 변경** — `utongstart.com` 루트 302 → `/wholesale/intro`(로그인 월 대신). App `isUtongstart()` `/` redirect도 intro로.
+- ✅ **로그아웃 카탈로그** — `/wholesale` 미로그인 시 `/wholesale/intro` 로 redirect(노출/가입 유도). 로그인+에러는 재시도 UI.
+- ✅ **sitemap/SEO** — `/wholesale/intro`·`/wholesale/join` sitemap 등록(검색 유입).
+- ✅ **B2B 도메인 정리** — `/wholesale*`·`/supplier*` 에서 소비자 BottomNav/DesktopTopNav 미표시.
+
 ## 미구현 / 의도적 보류 (엔지니어링 판단)
 - **매입(제조사→유통스타트) 전자세금계산서**: 제조사가 발행 주체 → 플랫폼 계정 발행 불가(역발행 요청 별도 플로우 필요).
 - **교환(exchange) 플로우**: 환불(refund)만 구현.

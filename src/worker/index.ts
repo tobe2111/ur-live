@@ -1777,7 +1777,8 @@ export default {
     try {
       const url = new URL(request.url);
       if (WHOLESALE_HOSTS.has(url.hostname.toLowerCase()) && (url.pathname === '/' || url.pathname === '')) {
-        return Response.redirect(`${url.origin}/wholesale`, 302);
+        // 공개 소개 랜딩으로 (로그인 월 대신 — 시장 노출/가입 유도).
+        return Response.redirect(`${url.origin}/wholesale/intro`, 302);
       }
     } catch { /* URL 파싱 실패 시 통과 */ }
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).

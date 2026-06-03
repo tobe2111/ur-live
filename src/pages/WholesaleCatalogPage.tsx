@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { Package, Search, Loader2, Tag, ShoppingCart, Receipt, ClipboardList, Sparkles, Factory } from 'lucide-react'
 import { formatWon } from '@/utils/format'
@@ -43,19 +43,23 @@ export default function WholesaleCatalogPage() {
   const me = (meQ.data ?? null) as MeInfo | null
   const proposals = (proposalsQ.data ?? []) as unknown as CatalogItem[]
   const loading = catalogQ.isLoading
-  const authErr = !token || catalogQ.isError || meQ.isError
   const loadCatalog = (q: string) => setCommittedSearch(q)
 
+  // 미로그인 = 시장 방문자 → 공개 소개 랜딩으로 (로그인 월 대신 노출/가입 유도).
+  if (!token) return <Navigate to="/wholesale/intro" replace />
+
+  const authErr = catalogQ.isError || meQ.isError
   if (authErr) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-6 text-center">
-        <SEO title="유통스타트 도매몰" description="유통사 전용 도매 카탈로그" url="/wholesale" />
+        <SEO title="유통스타트 도매몰" description="유통사 전용 도매 카탈로그" url="/wholesale" noindex />
         <Package className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">유통스타트 도매몰</h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">유통사 로그인 후 도매 카탈로그를 이용할 수 있습니다.</p>
-        <button onClick={() => navigate('/seller/login')} className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold">
-          유통사 로그인
-        </button>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">카탈로그를 불러오지 못했어요</h1>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">잠시 후 다시 시도해주세요.</p>
+        <div className="flex gap-2">
+          <button onClick={() => { catalogQ.refetch(); meQ.refetch() }} className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold">다시 시도</button>
+          <button onClick={() => navigate('/seller/login')} className="px-6 py-3 border border-gray-300 dark:border-[#2A2A2A] rounded-lg font-semibold text-gray-700 dark:text-gray-200">로그인</button>
+        </div>
       </div>
     )
   }
