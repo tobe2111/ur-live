@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Download, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react'
@@ -43,30 +44,20 @@ interface Totals {
 export default function AdminWithholdingPage() {
   const navigate = useNavigate()
   const [year, setYear] = useState(new Date().getFullYear())
-  const [sellers, setSellers] = useState<SellerSummary[]>([])
-  const [totals, setTotals] = useState<Totals | null>(null)
-  const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState(false)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (year별 캐시, sellers+totals).
+  const { data: wdata, isLoading: loading, refetch } = useApiQuery<{ sellers: SellerSummary[]; totals: Totals | null }>(
+    ['admin', 'withholding', year], '/api/admin/withholding/summary',
+    { params: { year }, select: (r: any) => (r?.success ? { sellers: r.data.sellers || [], totals: r.data.totals || null } : { sellers: [], totals: null }) },
+  )
+  const sellers = wdata?.sellers ?? []
+  const totals = wdata?.totals ?? null
+  const load = () => refetch()
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    load()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year])
-
-  async function load() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token')
-      const r = await api.get(`/api/admin/withholding/summary?year=${year}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (r.data?.success) {
-        setSellers(r.data.data.sellers || [])
-        setTotals(r.data.data.totals || null)
-      }
-    } catch { /* fail-soft */ } finally { setLoading(false) }
-  }
+  }, [])
 
   function downloadCsv(reportableOnly: boolean) {
     const token = localStorage.getItem('admin_token')

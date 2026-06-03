@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import TrackingModal from '@/components/shipping/TrackingModal'
@@ -54,37 +55,18 @@ const STATUS_OPTIONS: Array<{ key: string; label: string; color: string }> = [
 
 export default function AdminReturnsPage() {
   const { t } = useTranslation()
-  const [returns, setReturns] = useState<ReturnRecord[]>([])
-  const [counts, setCounts] = useState<Record<string, number>>({})
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('requested')
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [trackingTarget, setTrackingTarget] = useState<{ carrier: string; number: string } | null>(null)
-
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시, returns+counts).
+  const { data: rdata, isLoading: loading, refetch } = useApiQuery<{ returns: ReturnRecord[]; counts: Record<string, number> }>(
+    ['admin', 'returns', statusFilter], '/api/returns/admin',
+    { params: statusFilter ? { status: statusFilter } : {}, select: (r: any) => (r?.success ? { returns: r.data || [], counts: r.counts || {} } : { returns: [], counts: {} }) },
+  )
+  const returns = rdata?.returns ?? []
+  const counts = rdata?.counts ?? {}
+  const loadReturns = () => refetch()
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
-
-  useEffect(() => {
-    loadReturns()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter])
-
-  async function loadReturns() {
-    setLoading(true)
-    try {
-      const params = statusFilter ? `?status=${statusFilter}` : ''
-      const res = await api.get(`/api/returns/admin${params}`, h)
-      if (res.data?.success) {
-        setReturns(res.data.data || [])
-        setCounts(res.data.counts || {})
-      } else {
-        toast.error(res.data?.error || '목록 불러오기 실패')
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '목록 불러오기 실패')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function handleApprove(id: number) {
     if (!confirm('이 반품을 승인하시겠습니까? (사용자가 회수 송장 등록 가능 상태로 전환)')) return
