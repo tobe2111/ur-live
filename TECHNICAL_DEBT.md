@@ -32,7 +32,14 @@
   - 🟡 **God 파일 실제 분해**=스테이징 PR 필요(안전망 완비).
   - ✅ **돈 라우트 테스트 안전망 신설**(2026-06-01, 테스트 0→29, 4개 파일) — 돈 경로 **사실상 전수 커버**: `returns`(역적립)·`referral-tree`(commission/출금)·`agency`/`admin-settlements`(정산)·`wholesale`(B2B)·`donations`(후원)·`stays-public`(숙소예약결제)·`gifts`(선물결제)·`distributor-admin`·`wholesale-supplier`·`order`(주문/환불)·`disputes`(분쟁승인)·`seller-ad-slots`(입찰). 각 라우트: 계약(핸들러 소실 차단) + 결제/환불/출금/정산 엔드포인트 미인증 401/403. network/DB 없이(`env.DB.prepare→throw` 로 DB-before-auth 회귀도 포착). 기존 `payment`/`webhook`/`group-buy`/`points` 와 합쳐 거의 완비.
   - ✅ **인증/세션 라우트 안전망**(0→8, `auth-routes.contract.test.ts`) — 2FA setup/verify/disable·PIN step-up·카카오 계정연결/해제 전부 미인증 거절(401/429) → **2FA 우회·결제PIN 우회·계정 takeover 차단**. auth-token/supplier-auth 입력검증. (core `requireAuth`/`requireAdmin` 미들웨어는 기존 `auth-middleware.test.ts` 로 이미 커버.)
-  - ✅ **원천징수 계산 로직 테스트**(0→7, `tax-withholding.test.ts`) — `withholdAndLog` 의 실제 돈 math 를 mock DB 로 검증: 비율 SSOT(3.3%/8.8%) 잠금, floor 라운딩, 사업자 면제(net=gross), 기타소득 300만 reportable 임계, 음수 clamp. **route 가드뿐 아니라 돈이 깎이는 계산 자체** 보호.
+  - ✅ **돈/보안 계산 로직 테스트**(route 가드뿐 아니라 **로직 자체** 보호, mock DB):
+    - `tax-withholding`(0→7): 원천징수 비율 SSOT(3.3%/8.8%)·floor·사업자면제·300만 reportable·음수 clamp.
+    - `store-intro-commission`(0→7): 영입자 commission = 매출×pct floor + 멱등/블록/영입자없음/소액 가드.
+    - `circuit-breaker`(0→8): 결제-critical 회복탄력성 — maxFailures→OPEN/fallback/half-open 복구/timeout.
+    - `state-machine`(0→9): 주문 상태 무결성 — 역전(PAID→PENDING)·후퇴(DELIVERED→SHIPPING)·종결재오픈 차단.
+    - `account-lockout`(0→7): 로그인 브루트포스 잠금 정책(10/20/30회→15분/1h/24h).
+    - `maxTierDiscount`(+5): 즉시판매 단일가(현재 활성 pricing) 보강.
+  - **세션 누계 테스트 안전망 ~104개 신설**(돈 라우트 29 + 인증 8 + 결제SSOT 12 + 라이브 12 + 계산/보안 로직 43). 1419 tests green.
 - **Tier 4 — God 파일 분해**: ✅ **안전망 2단계 완료** — (1) `youtube-live-routes.contract.test.ts`: 라우트 인벤토리 34개 SSOT 고정 + 방송 생명주기 핵심 강검증(파일소실 사고 재현 차단). (2) `youtube-live-routes.auth.test.ts`: 9개 핵심 엔드포인트가 미인증 요청을 DB 접근 전 401 거절함을 검증(auth 배선 누락 회귀 차단). 둘 다 network/DB 없이 실행(24 tests green). pure 헬퍼(`hmacHex`/`hmacBase64Sha1`)는 이미 `youtube-live.hmac.ts` 로 분리됨.
   - **실제 분해 PLAN (staging 필수 — 다음 PR)**: 안전망 green 상태에서 **1 PR = 1 핸들러群 verbatim 이동**(인라인 미들웨어 동반 → tsc 가 미해결 참조 포착) → `app.route()` 재마운트 → contract+auth green → **스테이징 실제 방송 1회 스모크(create→start→status→end)**. 묶음 순서: ① `/streaming/*`(WHIP/OME, 결합도↓) ② `/live/_*`(quota/health/admin 진단) ③ `/live/:id/{diagnose,force-transition,reset-zombie}`(운영도구) ④ 마지막 생명주기 핵심. ⚠️ network-free 테스트로 **post-auth 런타임(방송 실동작) 검증 불가** → 스테이징 실송출 없는 블라인드 분해 금지(2026-05-12 사고 영역).
 - **Tier 3 — 기능 미완**: 8.8% 원천징수 자동계산(세율 정책 결정), 딜 현금환급 endpoint, 지급조서 CSV, KT Alpha 기프티쇼 API(외부 계약/키), 숙소 알림톡 실발송(알리고 템플릿) — **외부 API/도메인 결정 의존**, 순수 코드로 완결 불가.
