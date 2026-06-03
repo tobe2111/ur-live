@@ -4,7 +4,7 @@
  *   self-guard: supplier_token 없으면 /supplier/login.
  *   라이트 테마 (대시보드 계열) + i18n.
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck } from 'lucide-react'
@@ -12,7 +12,18 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
-import { supplierApi, isSupplierLoggedIn, clearSupplierSession } from '@/lib/supplier-api'
+import { supplierApi, isSupplierLoggedIn, clearSupplierSession, getSupplierToken } from '@/lib/supplier-api'
+
+// 인증 헤더로 CSV 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
+async function downloadSupplierCsv(path: string, filename: string) {
+  const token = getSupplierToken()
+  const res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) { toast.error('다운로드 실패'); return }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
 
 type Tab = 'overview' | 'orders' | 'catalog' | 'settlements'
 
@@ -156,7 +167,7 @@ export default function SupplierDashboardPage() {
         ) : tab === 'orders' ? (
           <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
         ) : tab === 'catalog' ? (
-          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} />
+          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} />
         ) : (
           <SettlementsTab items={settlements} t={t} />
         )}
@@ -226,14 +237,45 @@ function OverviewTab({ me, t }: { me: Me | null; t: (k: string, o?: Record<strin
   )
 }
 
-function CatalogTab({ items, t, onAdd }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void }) {
+function CatalogTab({ items, t, onAdd, onBulkDone }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void }) {
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    try {
+      const csv = await file.text()
+      const res = await supplierApi.post<{ summary?: { created: number; failed: number } }>('/api/supplier/products/bulk', { csv })
+      const s = res.summary
+      toast.success(t('supplier.bulkDone', { defaultValue: '{{c}}건 등록, {{f}}건 실패', c: s?.created ?? 0, f: s?.failed ?? 0 })
+        .replace('{{c}}', String(s?.created ?? 0)).replace('{{f}}', String(s?.failed ?? 0)))
+      onBulkDone()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '대량 등록 실패')
+    } finally { setUploading(false) }
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <p className="text-sm text-gray-600">{t('supplier.catalogCount', { defaultValue: '총 {{n}}개', n: items.length }).replace('{{n}}', String(items.length))}</p>
-        <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF0033] text-white text-sm font-semibold">
-          <Plus className="w-4 h-4" /> {t('supplier.addProduct', { defaultValue: '공급상품 등록' })}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => downloadSupplierCsv('/api/supplier/products/bulk-template', 'supply-products-template.csv')}
+            className="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50">
+            {t('supplier.dlTemplate', { defaultValue: '양식 다운' })}
+          </button>
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60">
+            {uploading ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.bulkUpload', { defaultValue: '대량 등록(CSV)' })}
+          </button>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} />
+          <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF0033] text-white text-sm font-semibold">
+            <Plus className="w-4 h-4" /> {t('supplier.addProduct', { defaultValue: '공급상품 등록' })}
+          </button>
+        </div>
       </div>
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-gray-400 text-sm">
@@ -427,7 +469,7 @@ function ShipModal({ t, order, onClose, onShipped }: {
 }
 
 function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', category: 'lifestyle', image_url: '' })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -449,6 +491,9 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
         stock: Number(form.stock) || 0,
         category: form.category,
         image_url: form.image_url.trim() || undefined,
+        supply_visibility: form.supply_visibility,
+        barcode: form.barcode.trim() || undefined,
+        is_brand_product: form.is_brand_product,
       })
       toast.success(t('supplier.productCreated', { defaultValue: '상품이 등록되었습니다. 승인 후 노출됩니다.' }))
       onCreated()
@@ -503,6 +548,25 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '대표 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{t('supplier.fieldBarcode', { defaultValue: '바코드 (오프라인 판로)' })}</label>
+              <input disabled={saving} value={form.barcode} onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))} className={inputCls} placeholder="8801234567890" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('supplier.fieldVisibility', { defaultValue: '공급 범위' })}</label>
+              <select disabled={saving} value={form.supply_visibility} onChange={e => setForm(f => ({ ...f, supply_visibility: e.target.value }))} className={inputCls}>
+                <option value="ALL">{t('supplier.visAll', { defaultValue: '전체공급 (모든 유통사)' })}</option>
+                <option value="APPROVED_CHANNEL">{t('supplier.visApproved', { defaultValue: '승인한 유통채널만' })}</option>
+                <option value="UTONGSTART_ONLY">{t('supplier.visUtong', { defaultValue: '유통스타트 유통채널 (선정 유통사)' })}</option>
+              </select>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" disabled={saving} checked={form.is_brand_product} onChange={e => setForm(f => ({ ...f, is_brand_product: e.target.checked }))} className="w-4 h-4" />
+            {t('supplier.fieldBrand', { defaultValue: '브랜드제품 (판매 후 당일 정산)' })}
+          </label>
+          <p className="text-[11px] text-gray-400 -mt-1">{t('supplier.brandHint', { defaultValue: '체크 시 판매 후 당일 정산, 미체크 시 일반제품(7일 환불창 후 정산).' })}</p>
           <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60 mt-2">
             {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.submitProduct', { defaultValue: '등록 신청' })}
           </button>
