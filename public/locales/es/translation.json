@@ -1670,7 +1670,8 @@
       "backToUser": "Volver a usuario",
       "products": "Productos",
       "groupbuy": "Compras grupales y estancias",
-      "ordersCustomers": "Pedidos y clientes"
+      "ordersCustomers": "Pedidos y clientes",
+      "curator": "Mi tienda de enlaces"
     },
     "nav": {
       "products": "Productos",
@@ -1689,7 +1690,9 @@
       "notifyFollowers": "Notificar seguidores",
       "stays": "Vales de alojamiento",
       "staysBookings": "Reservas",
-      "supply": "Abastecimiento mayorista"
+      "supply": "Abastecimiento mayorista",
+      "hosting": "Alojamiento de compra grupal",
+      "curatorEarnings": "Ganancias del curador"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

@@ -2335,7 +2335,8 @@
       "backToUser": "Back to user",
       "products": "Products",
       "groupbuy": "Group Buy & Stays",
-      "ordersCustomers": "Orders & Customers"
+      "ordersCustomers": "Orders & Customers",
+      "curator": "My Link Shop"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2370,7 +2371,9 @@
       "notifyFollowers": "Notify Followers",
       "stays": "Stay Vouchers",
       "staysBookings": "Bookings",
-      "supply": "Wholesale Sourcing"
+      "supply": "Wholesale Sourcing",
+      "hosting": "Group Buy Hosting",
+      "curatorEarnings": "Curator Earnings"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

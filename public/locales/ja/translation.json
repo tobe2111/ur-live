@@ -2334,7 +2334,8 @@
       "backToUser": "ユーザーに戻る",
       "products": "商品·仕入",
       "groupbuy": "共同購入·宿泊",
-      "ordersCustomers": "注文·顧客"
+      "ordersCustomers": "注文·顧客",
+      "curator": "マイリンクショップ"
     },
     "liveChat": {
       "title": "リアルタイムチャット",
@@ -2376,7 +2377,9 @@
       "notifyFollowers": "フォロワー通知",
       "stays": "宿泊共同購入",
       "staysBookings": "予約管理",
-      "supply": "卸仕入れ"
+      "supply": "卸仕入れ",
+      "hosting": "共同購入ホスティング",
+      "curatorEarnings": "キュレーター収益"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
