@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import {
@@ -22,21 +24,14 @@ import SupplierProductsTab from './admin-products/SupplierProductsTab'
 import type { SupplierProductRow } from './admin-products/SupplierProductsTab'
 import type { ProductOption } from '@/components/ProductOptionForm'
 
+const EMPTY_TABS = { all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 }
+
 export default function AdminProductsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales' | 'supplier-products'>('products')
   // 도매몰 INC-4: 공급자 self-serve 등록 상품 승인 큐.
-  const [supplierProducts, setSupplierProducts] = useState<SupplierProductRow[]>([])
-  const [spLoading, setSpLoading] = useState(false)
   const [spStatusFilter, setSpStatusFilter] = useState('pending')
-  const [products, setProducts] = useState<Product[]>([])
-  const [sampleRequests, setSampleRequests] = useState<SampleRequest[]>([])
-  const [supplySales, setSupplySales] = useState<SupplySalesRow[]>([])
-  const [supplySummary, setSupplySummary] = useState<SupplySalesSummary | null>(null)
-  const [salesLoading, setSalesLoading] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [srLoading, setSrLoading] = useState(false)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -60,81 +55,51 @@ export default function AdminProductsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
   const [pageLimit, setPageLimit] = useState(100)
-  const [totalCount, setTotalCount] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [tabCounts, setTabCounts] = useState({ all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 })
-  const [categoryList, setCategoryList] = useState<Array<{ category: string; cnt: number }>>([])
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-    if (!token) { navigate('/admin/login'); return }
-    loadProducts()
-  }, [])
+    if (!localStorage.getItem('admin_token') && !localStorage.getItem('access_token')) navigate('/admin/login')
+  }, [navigate])
 
-  useEffect(() => {
-    if (activeTab === 'supplier-products') loadSupplierProducts()
-  }, [activeTab, spStatusFilter])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (products 필터 key 반응형 + 3 탭 enabled).
+  const queryClient = useQueryClient()
+  const adminAuth = { Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('access_token')}` }
+  const productsKey = ['admin', 'products', page, pageLimit, statusFilter, sourceFilter, categoryFilter, sortField, sortOrder, search]
+  // 로컬 optimistic patch (toggle/rate 즉시 반영) — 현재 필터 key 의 캐시 rows 직접 수정.
+  const patchProducts = (fn: (rows: Product[]) => Product[]) =>
+    queryClient.setQueryData(productsKey, (old: any) => (old ? { ...old, rows: fn(old.rows || []) } : old))
+  const productsQ = useApiQuery<{ rows: Product[]; total: number; total_pages: number; tabs: typeof EMPTY_TABS; categories: Array<{ category: string; cnt: number }> }>(
+    productsKey,
+    '/api/admin/products',
+    {
+      enabled: activeTab === 'products',
+      headers: adminAuth,
+      params: { page, limit: pageLimit, status: statusFilter, source: sourceFilter, sort: sortField, order: sortOrder, ...(search ? { q: search } : {}), ...(categoryFilter ? { category: categoryFilter } : {}) },
+      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], total: r?.total ?? 0, total_pages: r?.total_pages ?? 0, tabs: r?.tabs ?? EMPTY_TABS, categories: r?.categories ?? [] }),
+    },
+  )
+  const products = productsQ.data?.rows ?? []
+  const totalCount = productsQ.data?.total ?? 0
+  const totalPages = productsQ.data?.total_pages ?? 0
+  const tabCounts = productsQ.data?.tabs ?? EMPTY_TABS
+  const categoryList = productsQ.data?.categories ?? []
+  const loading = productsQ.isLoading
+  const loadProducts = () => productsQ.refetch()
+  useEffect(() => { if (productsQ.isError) setError(t('admin.products.k001', { defaultValue: '상품 목록을 불러올 수 없습니다.' })) }, [productsQ.isError, t])
 
-  useEffect(() => {
-    if (activeTab === 'sample-requests') loadSampleRequests()
-    if (activeTab === 'supply-sales') loadSupplySales()
-  }, [activeTab])
+  const sampleRequestsQ = useApiQuery<SampleRequest[]>(['admin', 'sample-requests'], '/api/admin/sample-requests', { enabled: activeTab === 'sample-requests', headers: adminAuth, select: (r: any) => (r?.success ? r.data?.items ?? [] : []) })
+  const sampleRequests = sampleRequestsQ.data ?? []
+  const srLoading = sampleRequestsQ.isLoading
+  const loadSampleRequests = () => sampleRequestsQ.refetch()
 
-  async function loadProducts() {
-    setLoading(true); setError('')
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const params = new URLSearchParams({
-        page: String(page), limit: String(pageLimit),
-        status: statusFilter, source: sourceFilter,
-        sort: sortField, order: sortOrder,
-      })
-      if (search) params.set('q', search)
-      if (categoryFilter) params.set('category', categoryFilter)
-      const response = await api.get(`/api/admin/products?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
-      if (response.data.success) {
-        setProducts(response.data.data)
-        setTotalCount(response.data.total ?? 0)
-        setTotalPages(response.data.total_pages ?? 0)
-        if (response.data.tabs) setTabCounts(response.data.tabs)
-        if (response.data.categories) setCategoryList(response.data.categories)
-      }
-    } catch {
-      setError(t('admin.products.k001', { defaultValue: '상품 목록을 불러올 수 없습니다.' }))
-    } finally { setLoading(false) }
-  }
+  const supplySalesQ = useApiQuery<{ rows: SupplySalesRow[]; summary: SupplySalesSummary | null }>(['admin', 'supply-sales'], '/api/admin/supply/sales', { enabled: activeTab === 'supply-sales', headers: adminAuth, select: (r: any) => ({ rows: r?.success ? (r.data?.rows ?? []) : [], summary: r?.success ? (r.data?.summary ?? null) : null }) })
+  const supplySales = supplySalesQ.data?.rows ?? []
+  const supplySummary = supplySalesQ.data?.summary ?? null
+  const salesLoading = supplySalesQ.isLoading
 
-  // 🛡️ 2026-05-19: 필터 변경 시 자동 reload.
-  useEffect(() => {
-    if (activeTab !== 'products') return
-    loadProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageLimit, statusFilter, sourceFilter, categoryFilter, sortField, sortOrder, search])
-
-  async function loadSampleRequests() {
-    setSrLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const res = await api.get('/api/admin/sample-requests', { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data.success) setSampleRequests(res.data.data?.items ?? [])
-    } catch {
-      toast.error(t('admin.products.k002', { defaultValue: '샘플 신청 목록을 불러올 수 없습니다.' }))
-    } finally { setSrLoading(false) }
-  }
-
-  async function loadSupplySales() {
-    setSalesLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const res = await api.get('/api/admin/supply/sales', { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data.success) {
-        setSupplySales(res.data.data?.rows ?? [])
-        setSupplySummary(res.data.data?.summary ?? null)
-      }
-    } catch {
-      toast.error(t('admin.products.k003', { defaultValue: '판매 현황을 불러올 수 없습니다.' }))
-    } finally { setSalesLoading(false) }
-  }
+  const supplierProductsQ = useApiQuery<SupplierProductRow[]>(['admin', 'supplier-products', spStatusFilter], '/api/admin/supplier-products', { enabled: activeTab === 'supplier-products', headers: adminAuth, params: { status: spStatusFilter, limit: 100 }, select: (r: any) => (r?.success ? r.data?.items ?? [] : []) })
+  const supplierProducts = supplierProductsQ.data ?? []
+  const spLoading = supplierProductsQ.isLoading
+  const loadSupplierProducts = () => supplierProductsQ.refetch()
 
   async function handleSampleAction(reqId: number, action: 'approve' | 'reject') {
     setActionLoading(reqId)
@@ -150,18 +115,6 @@ export default function AdminProductsPage() {
       const axiosErr = err as { response?: { data?: { error?: string } } }
       toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
     } finally { setActionLoading(null) }
-  }
-
-  // 도매몰 INC-4: 공급자 등록 상품 승인 큐 로드/처리.
-  async function loadSupplierProducts() {
-    setSpLoading(true)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const res = await api.get(`/api/admin/supplier-products?status=${spStatusFilter}&limit=100`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data.success) setSupplierProducts(res.data.data?.items ?? [])
-    } catch {
-      toast.error(t('admin.products.spLoadFail', { defaultValue: '공급자 등록 상품을 불러올 수 없습니다.' }))
-    } finally { setSpLoading(false) }
   }
 
   async function handleSupplierProductAction(productId: number, action: 'approve' | 'reject') {
@@ -284,7 +237,7 @@ export default function AdminProductsPage() {
   // 🛡️ 2026-05-19: 상품별 추천 ON/OFF + 보상률 변경 (optimistic update — 즉시 UI 반영, 실패 시 롤백).
   async function handleToggleReferral(productId: number, current: number) {
     const next = current === 1 ? 0 : 1
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_enabled: next } : p))
+    patchProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_enabled: next } : p))
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.patch(`/api/admin/products/${productId}`, { referral_enabled: next }, { headers: { Authorization: `Bearer ${token}` } })
@@ -292,7 +245,7 @@ export default function AdminProductsPage() {
         ? t('admin.products.referralOn', { defaultValue: '추천 ON — 사용자가 공유 시 보상 지급' })
         : t('admin.products.referralOff', { defaultValue: '추천 OFF' }))
     } catch (err) {
-      setProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_enabled: current } : p))
+      patchProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_enabled: current } : p))
       const axiosErr = err as { response?: { data?: { error?: string } } }
       toast.error(axiosErr.response?.data?.error || '변경 실패')
     }
@@ -300,7 +253,7 @@ export default function AdminProductsPage() {
 
   async function handleSetReferralRate(productId: number, ratePercent: number | null) {
     const value = ratePercent === null ? null : ratePercent / 100  // % → ratio
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_commission_rate: value } : p))
+    patchProducts(prev => prev.map(p => p.id === productId ? { ...p, referral_commission_rate: value } : p))
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.patch(`/api/admin/products/${productId}`, { referral_commission_rate: value }, { headers: { Authorization: `Bearer ${token}` } })
@@ -666,7 +619,7 @@ export default function AdminProductsPage() {
                             try {
                               const tk = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
                               await api.patch(`/api/admin/products/${product.id}`, { stock: val }, { headers: { Authorization: `Bearer ${tk}` } })
-                              setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: val } : p))
+                              patchProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: val } : p))
                               toast.success(t('admin.products.stockChanged', { val, defaultValue: `재고 ${val}개로 변경` }))
                             } catch (err: unknown) {
                               e.target.value = String(product.stock)
@@ -689,7 +642,7 @@ export default function AdminProductsPage() {
                             try {
                               const tk = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
                               await api.patch(`/api/admin/products/${product.id}`, { sold_count: val }, { headers: { Authorization: `Bearer ${tk}` } })
-                              setProducts(prev => prev.map(p => p.id === product.id ? { ...p, sold_count: val } : p))
+                              patchProducts(prev => prev.map(p => p.id === product.id ? { ...p, sold_count: val } : p))
                               toast.success(t('admin.products.soldCountChanged', { val, defaultValue: `판매 수 ${val}으로 변경` }))
                             } catch { toast.error(t('admin.products.k031', { defaultValue: '변경 실패' })) }
                           }}

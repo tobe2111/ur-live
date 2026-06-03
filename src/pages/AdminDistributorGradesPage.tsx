@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X } from 'lucide-react'
@@ -47,8 +48,13 @@ export default function AdminDistributorGradesPage() {
   const [propSeller, setPropSeller] = useState('')
   const [propProduct, setPropProduct] = useState('')
   const [propNote, setPropNote] = useState('')
-  const [proposals, setProposals] = useState<Array<{ id: number; distributor_seller_id: number; product_name: string; product_id: number; note: string | null }>>([])
   const [propBusy, setPropBusy] = useState(false)
+  // 🛡️ 2026-06-03 Tier2(대시보드): proposals 리스트 → useApiQuery (grades/distributors 는 인라인 편집 명령형 유지).
+  const proposalsQ = useApiQuery<Array<{ id: number; distributor_seller_id: number; product_name: string; product_id: number; note: string | null }>>(
+    ['admin', 'distributor-proposals'], '/api/admin/distributor/proposals',
+    { headers: h.headers, select: (r: any) => (r?.success ? r.proposals || [] : []) },
+  )
+  const proposals = proposalsQ.data ?? []
 
   // 세금 집계
   const [taxMonth, setTaxMonth] = useState(new Date().toISOString().slice(0, 7))
@@ -110,12 +116,7 @@ export default function AdminDistributorGradesPage() {
     } catch { toast.error('저장 중 오류') } finally { setSavingDist(null) }
   }
 
-  const loadProposals = useCallback(() => {
-    api.get('/api/admin/distributor/proposals', h)
-      .then(r => { if (r.data.success) setProposals(r.data.proposals || []) })
-      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
-  }, [])
-  useEffect(() => { loadProposals() }, [loadProposals])
+  const loadProposals = useCallback(() => { proposalsQ.refetch() }, [proposalsQ])
 
   async function createProposal() {
     const sid = Number(propSeller), pid = Number(propProduct)
