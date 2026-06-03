@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { TrendingUp, ChevronLeft, Award, History } from 'lucide-react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { getSellerToken } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardCard, DashboardLoading } from '@/components/dashboard'
@@ -46,8 +47,11 @@ const TIER_THRESHOLDS: Record<Tier, number> = {
 export default function SellerTierPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [info, setInfo] = useState<TierInfo | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: info = null, isLoading: loading } = useApiQuery<TierInfo | null>(
+    ['seller', 'tier'], '/api/seller/tier',
+    { select: (r: any) => (r?.success ? r.data : null) },
+  )
 
   const TIER_META: Record<Tier, { label: string; emoji: string; color: string; bg: string; border: string; benefits: string[] }> = {
     diamond: {
@@ -93,15 +97,7 @@ export default function SellerTierPage() {
   }
 
   useEffect(() => {
-    const token = getSellerToken()
-    if (!token) {
-      navigate('/seller/login')
-      return
-    }
-    api.get('/api/seller/tier', { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => { if (res.data?.success) setInfo(res.data.data) })
-      .catch((e) => { if (import.meta.env?.DEV) console.warn('[seller-tier] load failed', e) })  // 🛡️ 2026-05-31: .catch 추가 (unhandled rejection 방지)
-      .finally(() => setLoading(false))
+    if (!getSellerToken()) navigate('/seller/login')
   }, [navigate])
 
   if (loading) {

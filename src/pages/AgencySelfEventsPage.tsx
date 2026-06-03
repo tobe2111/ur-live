@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Trophy, Plus, X, TrendingUp, Users, Eye } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -38,8 +39,12 @@ const STATUS_CLS_SE: Record<string, string> = {
 
 export default function AgencySelfEventsPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<SelfEvent[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<SelfEvent[]>(
+    ['agency', 'self-events'], '/api/agency/self-events',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const fetchAll = () => refetch()
   const [creating, setCreating] = useState(false)
 
   const [title, setTitle] = useState('')
@@ -52,18 +57,6 @@ export default function AgencySelfEventsPage() {
   const [targetValue, setTargetValue] = useState(1_000_000)
   const [rewardDeal, setRewardDeal] = useState(50_000)
 
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('agency_token')
-      const r = await api.get('/api/agency/self-events', { headers: { Authorization: `Bearer ${token}` } })
-      if (r.data.success) setItems(r.data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('agency.selfEvents.loadFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
 
   async function createEvent() {
     if (!title.trim()) return toast.error(t('agency.selfEvents.titleRequired', { defaultValue: '제목을 입력하세요' }))

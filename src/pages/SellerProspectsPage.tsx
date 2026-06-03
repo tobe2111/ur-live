@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 
@@ -37,8 +38,12 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 }
 
 export default function SellerProspectsPage() {
-  const [prospects, setProspects] = useState<Prospect[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: prospects = [], isLoading: loading, refetch } = useApiQuery<Prospect[]>(
+    ['seller', 'prospects-mine'], '/api/prospects/mine',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
   const [showAdd, setShowAdd] = useState(false)
   const [introducerType, setIntroducerType] = useState<'agency' | 'influencer'>('influencer')
   const [form, setForm] = useState({
@@ -72,22 +77,9 @@ export default function SellerProspectsPage() {
     }
   }
 
-  async function load() {
-    setLoading(true)
-    try {
-      const r = await api.get('/api/prospects/mine')
-      if (r.data?.success) setProspects(r.data.data || [])
-    } catch {
-      toast.error('목록 조회 실패')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     // 토큰 유형 추정 — agency_token 있으면 agency, 아니면 influencer
     if (localStorage.getItem('agency_token')) setIntroducerType('agency')
-    load()
   }, [])
 
   async function submit() {

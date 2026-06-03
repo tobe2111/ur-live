@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Tag, Plus, Copy, Trash2, Loader2, Share2, Users, CheckCircle2, Megaphone } from 'lucide-react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -44,8 +45,12 @@ export default function SellerPromoCodesPage() {
   const navigate = useNavigate()
   const headers = { Authorization: `Bearer ${getSellerToken()}` }
 
-  const [codes, setCodes] = useState<PromoCode[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: codes = [], isLoading: loading, refetch } = useApiQuery<PromoCode[]>(
+    ['seller', 'promo-codes'], '/api/promo/seller/list',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadCodes = () => refetch()
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({
     code: '',
@@ -63,13 +68,6 @@ export default function SellerPromoCodesPage() {
     loadCodes()
   }, [])
 
-  function loadCodes() {
-    setLoading(true)
-    api.get('/api/promo/seller/list', { headers })
-      .then(r => { if (r.data?.success) setCodes(r.data.data || []) })
-      .catch(() => toast.error('코드 로드 실패'))
-      .finally(() => setLoading(false))
-  }
 
   async function createCode() {
     const code = form.code.trim().toUpperCase()

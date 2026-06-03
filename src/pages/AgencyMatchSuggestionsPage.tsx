@@ -13,6 +13,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { UserPlus, CheckCircle2, XCircle, Clock, TrendingUp, Star } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface MatchSuggestion {
   id: number
@@ -121,25 +122,13 @@ function SuggestionCard({ s, onAccept, onDecline }: {
 }
 
 export default function AgencyMatchSuggestionsPage() {
-  const [suggestions, setSuggestions] = useState<MatchSuggestion[]>([])
-  const [loading, setLoading] = useState(true)
   const token = localStorage.getItem('agency_token') || ''
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/api/agency/match-suggestions', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      setSuggestions(res.data?.suggestions ?? [])
-    } catch {
-      toast.error('제안 목록을 불러오지 못했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: suggestions = [], isLoading: loading, refetch } = useApiQuery<MatchSuggestion[]>(
+    ['agency', 'match-suggestions'], '/api/agency/match-suggestions',
+    { select: (r: any) => (r?.suggestions ?? []), enabled: !!token },
+  )
+  const load = () => refetch()
 
   const handleAccept = async (id: number) => {
     try {
@@ -147,7 +136,7 @@ export default function AgencyMatchSuggestionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       toast.success('셀러를 수락했습니다. 이제 담당 셀러 목록에 추가됩니다.')
-      setSuggestions(prev => prev.filter(s => s.id !== id))
+      refetch()
     } catch {
       toast.error('수락에 실패했습니다.')
     }
@@ -159,7 +148,7 @@ export default function AgencyMatchSuggestionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       toast.success('제안을 거절했습니다.')
-      setSuggestions(prev => prev.filter(s => s.id !== id))
+      refetch()
     } catch {
       toast.error('거절에 실패했습니다.')
     }
