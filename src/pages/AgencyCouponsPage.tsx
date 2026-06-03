@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Ticket, Plus, X, BarChart3, ChevronRight } from 'lucide-react'
@@ -39,15 +40,20 @@ interface SellerOption {
 export default function AgencyCouponsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [distributions, setDistributions] = useState<Distribution[]>([])
-  const [sellers, setSellers] = useState<SellerOption[]>([])
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [statsParentId, setStatsParentId] = useState<number | null>(null)
   const [sellerStats, setSellerStats] = useState<SellerStat[]>([])
 
   const token = localStorage.getItem('agency_token')
   const headers = { Authorization: `Bearer ${token}` }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery 2개.
+  const distQ = useApiQuery<Distribution[]>(['agency', 'coupon-distributions'], '/api/agency/coupons/distributions', { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token })
+  const sellersQ = useApiQuery<SellerOption[]>(['agency', 'coupon-sellers'], '/api/agency/sellers', { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token })
+  const distributions = distQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const loading = distQ.isLoading
+  const load = () => distQ.refetch()
+  const loadSellers = () => sellersQ.refetch()
 
   const [form, setForm] = useState({
     name: '',
@@ -60,26 +66,9 @@ export default function AgencyCouponsPage() {
   })
 
   useEffect(() => {
-    if (!token) { navigate('/agency/login', { replace: true }); return }
+    if (!token) navigate('/agency/login', { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/api/agency/coupons/distributions', { headers })
-      .then(r => { if (r.data?.success) setDistributions(r.data.data || []) })
-      .catch(() => toast.error('배포 이력 조회 실패'))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  const loadSellers = () => {
-    api.get('/api/agency/sellers', { headers })
-      .then(r => { if (r.data?.success) setSellers(r.data.data || []) })
-      .catch(swallow('agency:coupons-fetch-sellers'))
-  }
 
   const distribute = async () => {
     if (!form.name) { toast.error('쿠폰 이름 필수'); return }
