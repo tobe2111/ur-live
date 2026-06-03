@@ -15,6 +15,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { requireSupplier } from '@/worker/middleware/auth'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { buildCsv, csvResponse, parseCsv } from './supply-csv'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireSupplier())
@@ -45,6 +46,80 @@ app.get('/orders', async (c) => {
     return c.json({ success: true, items: results ?? [] })
   } catch (err) {
     return safeError(c, err, '도매 주문 조회 중 오류가 발생했습니다', '[wholesale-supplier]')
+  }
+})
+
+// ── GET /orders/export — 발송대기 주문 라인 CSV (주문 많을 경우 엑셀 다운) ─────────
+app.get('/orders/export', async (c) => {
+  const sid = supplierId(c)
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    const onlyToShip = c.req.query('status') !== 'all'
+    const statusWhere = onlyToShip ? "AND i.line_status = 'PENDING'" : ''
+    const { results } = await DB.prepare(`
+      SELECT i.id AS item_id, i.wholesale_order_id, i.name, i.qty, i.base_supply_price,
+             (i.base_supply_price * i.qty) AS settle_amount, i.line_status,
+             o.ship_to_name, o.ship_to_phone, o.ship_to_address, o.ship_to_postal, o.paid_at
+      FROM wholesale_order_items i
+      JOIN wholesale_orders o ON o.id = i.wholesale_order_id
+      WHERE i.supplier_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') ${statusWhere}
+      ORDER BY o.created_at DESC LIMIT 5000
+    `).bind(sid).all<Record<string, unknown>>()
+    const headers = ['item_id', 'order_id', '상품명', '수량', '공급가', '정산금액', '상태', '받는분', '연락처', '주소', '우편번호', '결제일', 'courier', 'tracking_number']
+    const rows = (results || []).map(r => [
+      r.item_id, r.wholesale_order_id, r.name, r.qty, r.base_supply_price, r.settle_amount, r.line_status,
+      r.ship_to_name, r.ship_to_phone, r.ship_to_address, r.ship_to_postal, r.paid_at, '', '',
+    ])
+    return csvResponse(buildCsv(headers, rows), `wholesale-orders-${new Date().toISOString().slice(0, 10)}.csv`)
+  } catch (err) {
+    return safeError(c, err, '주문 내보내기 중 오류가 발생했습니다', '[wholesale-supplier]')
+  }
+})
+
+// ── POST /tracking/bulk — 송장 일괄 업로드 (CSV: item_id, courier, tracking_number) ──
+app.post('/tracking/bulk', async (c) => {
+  const sid = supplierId(c)
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ csv?: string }>().catch(() => ({} as { csv?: string }))
+    if (!body.csv || typeof body.csv !== 'string') return c.json({ success: false, error: 'CSV 데이터가 없습니다' }, 400)
+    const rows = parseCsv(body.csv, 5000)
+    if (!rows.length) return c.json({ success: false, error: '처리할 행이 없습니다' }, 400)
+
+    const results: { item_id: number; status: 'ok' | 'skip' | 'error'; reason?: string }[] = []
+    const affectedOrders = new Set<number>()
+    for (const r of rows) {
+      const itemId = Number(r.item_id || r['item_id'])
+      const courier = String(r.courier || '').trim().slice(0, 40)
+      const tracking = String(r.tracking_number || r.tracking || '').trim().slice(0, 60)
+      if (!Number.isFinite(itemId) || itemId <= 0) { results.push({ item_id: itemId || 0, status: 'error', reason: 'item_id 오류' }); continue }
+      if (!courier || !tracking) { results.push({ item_id: itemId, status: 'skip', reason: '택배사/운송장 누락' }); continue }
+      const line = await DB.prepare(
+        "SELECT id, wholesale_order_id, line_status FROM wholesale_order_items WHERE id = ? AND supplier_id = ?"
+      ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number; line_status: string }>()
+      if (!line) { results.push({ item_id: itemId, status: 'error', reason: '내 주문 라인 아님' }); continue }
+      if (line.line_status === 'REFUNDED') { results.push({ item_id: itemId, status: 'skip', reason: '환불된 라인' }); continue }
+      await DB.prepare(
+        "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=?"
+      ).bind(courier, tracking, itemId).run()
+      affectedOrders.add(line.wholesale_order_id)
+      results.push({ item_id: itemId, status: 'ok' })
+    }
+    // 주문별 전 라인 발송완료 시 주문 SHIPPED.
+    for (const oid of affectedOrders) {
+      const pending = await DB.prepare(
+        "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
+      ).bind(oid).first<{ c: number }>()
+      if ((pending?.c ?? 0) === 0) {
+        await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'").bind(oid).run().catch(() => {})
+      }
+    }
+    const ok = results.filter(r => r.status === 'ok').length
+    return c.json({ success: true, summary: { total: results.length, ok, skipped: results.filter(r => r.status === 'skip').length, failed: results.filter(r => r.status === 'error').length }, results })
+  } catch (err) {
+    return safeError(c, err, '송장 일괄 업로드 중 오류가 발생했습니다', '[wholesale-supplier]')
   }
 })
 

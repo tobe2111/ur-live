@@ -504,4 +504,86 @@ app.get('/statement', async (c) => {
   }
 })
 
+// ── 엑셀(CSV) — 유통사 등급가 카탈로그 다운로드 + 주문 양식 ─────────────────────
+import { buildCsv, csvResponse } from './supply-csv'
+
+// GET /catalog-export — 내 등급가 카탈로그 CSV (제조사 신원 비노출 — 등급가만)
+app.get('/catalog-export', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureSupplyVisibilitySchema(DB)
+    const sg = await loadSellerGrade(DB, sellerId)
+    const table = await loadGradeTable(DB)
+    const rows = await DB.prepare(`
+      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price
+      FROM products p
+      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
+        AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+      ORDER BY p.name LIMIT 10000
+    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number }>()
+    const out = (rows.results || []).map(r => {
+      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
+      return [r.id, r.name, r.category || '', r.stock, price, grade]
+    })
+    return csvResponse(buildCsv(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.csv`)
+  } catch (err) {
+    return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// GET /order-template — 주문 양식 CSV (product_id, qty 작성 → 업로드)
+app.get('/order-template', (c) => {
+  return csvResponse(buildCsv(['product_id', '상품명', '주문수량'], [['예: 123', '상품명(참고)', '10']]), 'wholesale-order-template.csv')
+})
+
+// ── OEM/ODM 신청 (유통회원) — 스펙: 유통스타트가 제조사 찾기·연결·생산 지원 ──────────
+import { ensureOemSchema } from './oem-requests'
+
+// POST /oem-requests — OEM/ODM 신청
+app.post('/oem-requests', rateLimit({ action: 'wholesale-oem', max: 20, windowSec: 3600 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureOemSchema(DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const productName = String(body.product_name || '').trim().slice(0, 200)
+    if (!productName) return c.json({ success: false, error: '제품명을 입력해주세요' }, 400)
+    const kind = String(body.kind || 'OEM').toUpperCase() === 'ODM' ? 'ODM' : 'OEM'
+    const category = body.category ? String(body.category).slice(0, 60) : null
+    const note = body.note ? String(body.note).slice(0, 2000) : null
+    const targetQty = Number.isFinite(Number(body.target_qty)) ? Math.max(0, Math.floor(Number(body.target_qty))) : null
+    const targetPrice = Number.isFinite(Number(body.target_price)) ? Math.max(0, Math.floor(Number(body.target_price))) : null
+    const ins = await DB.prepare(
+      `INSERT INTO oem_requests (distributor_seller_id, kind, product_name, category, target_qty, target_price, note, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`
+    ).bind(sellerId, kind, productName, category, targetQty, targetPrice, note).run()
+    return c.json({ success: true, id: Number(ins.meta?.last_row_id), message: 'OEM/ODM 신청이 접수되었습니다. 유통스타트가 제조사를 매칭해 연락드립니다.' }, 201)
+  } catch (err) {
+    return safeError(c, err, 'OEM/ODM 신청 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// GET /oem-requests — 내 신청 목록
+app.get('/oem-requests', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureOemSchema(DB)
+    const { results } = await DB.prepare(`
+      SELECT r.id, r.kind, r.product_name, r.category, r.target_qty, r.target_price, r.note,
+             r.status, r.admin_memo, r.matched_supplier_id, r.created_at, r.updated_at,
+             sup.business_name AS matched_supplier_name
+      FROM oem_requests r LEFT JOIN suppliers sup ON sup.id = r.matched_supplier_id
+      WHERE r.distributor_seller_id = ? ORDER BY r.created_at DESC LIMIT 100
+    `).bind(sellerId).all()
+    return c.json({ success: true, requests: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, 'OEM/ODM 신청 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
 export { app as wholesaleRoutes }

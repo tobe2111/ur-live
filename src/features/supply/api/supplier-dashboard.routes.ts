@@ -19,6 +19,7 @@ import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
+import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -194,6 +195,69 @@ supplierDashboardRoutes.post('/products', async (c) => {
     }, 201);
   } catch (err) {
     return safeError(c, err, '상품 등록 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── GET /products/bulk-template — 대량등록 표준 양식 CSV ───────────────────────
+supplierDashboardRoutes.get('/products/bulk-template', (c) => {
+  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '설명']
+  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', '상품 설명']
+  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', '선정 유통사만 노출']
+  return csvResponse(buildCsv(headers, [example, example2]), 'supply-products-template.csv')
+})
+
+// ── POST /products/bulk — 대량등록 (CSV 업로드) ────────────────────────────────
+supplierDashboardRoutes.post('/products/bulk', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    await ensureSupplyVisibilitySchema(DB);
+    const sup = await DB.prepare('SELECT status FROM suppliers WHERE id = ?').bind(sid).first<{ status: string }>();
+    if (!sup || sup.status !== 'approved') {
+      return c.json({ success: false, error: '승인된 공급자만 상품을 등록할 수 있습니다' }, 403);
+    }
+    const body = await c.req.json<{ csv?: string }>().catch(() => ({} as { csv?: string }));
+    if (!body.csv || typeof body.csv !== 'string') return c.json({ success: false, error: 'CSV 데이터가 없습니다' }, 400);
+    const rows = parseCsv(body.csv, 2000);
+    if (!rows.length) return c.json({ success: false, error: '처리할 행이 없습니다' }, 400);
+
+    const results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[] = [];
+    let created = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r['상품명'] || r.name || '').trim();
+      const supplyPrice = Number(String(r['공급가'] || r.supply_price || '').replace(/[,\s]/g, ''));
+      const retail = Number(String(r['권장소비자가'] || r.suggested_retail_price || r['공급가'] || '').replace(/[,\s]/g, ''));
+      const stock = Math.max(0, Math.floor(Number(String(r['재고'] || r.stock || '0').replace(/[,\s]/g, '')) || 0));
+      if (!name) { results.push({ row: i + 2, status: 'error', reason: '상품명 누락' }); continue; }
+      if (!Number.isFinite(supplyPrice) || supplyPrice <= 0) { results.push({ row: i + 2, name, status: 'error', reason: '공급가 오류' }); continue; }
+      const retailFinal = Number.isFinite(retail) && retail >= supplyPrice ? retail : supplyPrice;
+      const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility);
+      const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
+      const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
+      try {
+        await DB.prepare(
+          `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
+             is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(
+          name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
+          Math.floor(retailFinal), Math.floor(supplyPrice), stock,
+          String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, slug,
+        ).run();
+        created++; results.push({ row: i + 2, name, status: 'ok' });
+      } catch {
+        results.push({ row: i + 2, name, status: 'error', reason: 'DB 오류' });
+      }
+    }
+    if (created > 0) {
+      createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 대량 등록',
+        `공급자 #${sid}: ${created}건 승인 요청`, '/admin/products').catch(swallow('supplier-dashboard'));
+    }
+    return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
+  } catch (err) {
+    return safeError(c, err, '대량 등록 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 
