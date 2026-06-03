@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
@@ -20,8 +21,12 @@ type Segment = 'all' | 'vip' | 'new' | 'dormant' | 'active'
 export default function AdminCouponsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [coupons, setCoupons] = useState<Coupon[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: coupons = [], isLoading: loading, refetch } = useApiQuery<Coupon[]>(
+    ['admin', 'coupons'], '/api/admin/coupons',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadCoupons = () => refetch()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     code: '', name: '', type: 'fixed' as 'fixed' | 'percent',
@@ -42,16 +47,6 @@ export default function AdminCouponsPage() {
       navigate('/admin/login', { replace: true })
     }
   }, [navigate])
-
-  useEffect(() => { loadCoupons() }, [])
-
-  async function loadCoupons() {
-    try {
-      const r = await api.get('/api/admin/coupons', { headers })
-      if (r.data.success) setCoupons(r.data.data || [])
-    } catch { toast.error(t('admin.coupons.k001', { defaultValue: '쿠폰 목록 로딩 실패' })) }
-    finally { setLoading(false) }
-  }
 
   function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -87,7 +82,7 @@ export default function AdminCouponsPage() {
     try {
       await api.delete(`/api/admin/coupons/${id}`, { headers })
       toast.success(t('admin.coupons.k007', { defaultValue: '삭제되었습니다' }))
-      setCoupons(prev => prev.filter(c => c.id !== id))
+      refetch()
     } catch { toast.error(t('admin.coupons.k008', { defaultValue: '삭제 실패' })) }
   }
 

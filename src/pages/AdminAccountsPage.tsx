@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -39,8 +40,12 @@ export default function AdminAccountsPage() {
     if (types < 2) return t('admin.accounts.pwComplexity')
     return null
   }
-  const [admins, setAdmins] = useState<Admin[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: admins = [], isLoading: loading, refetch } = useApiQuery<Admin[]>(
+    ['admin', 'admins'], '/api/admin/admins',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const loadAdmins = () => refetch()
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState<Admin | null>(null)
   const [showResetPw, setShowResetPw] = useState<Admin | null>(null)
@@ -50,19 +55,9 @@ export default function AdminAccountsPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_token')) { navigate('/admin/login'); return }
-    loadAdmins()
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadAdmins() {
-    try {
-      const res = await api.get('/api/admin/admins', h)
-      if (res.data.success) setAdmins(res.data.data || [])
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || t('admin.accounts.loadFailed'))
-    } finally { setLoading(false) }
-  }
 
   async function createAdmin() {
     if (!form.email || !form.password) { toast.error(t('admin.accounts.enterEmailPw')); return }

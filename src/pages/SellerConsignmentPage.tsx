@@ -11,6 +11,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
@@ -54,33 +55,23 @@ export default function SellerConsignmentPage() {
     ended: t('seller.consignment.statusEnded', { defaultValue: '종료됨' }),
   }
 
-  const [partnerships, setPartnerships] = useState<Partnership[]>([])
-  const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState<'all' | 'host' | 'owner'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | Partnership['status']>('all')
   const [actingId, setActingId] = useState<number | null>(null)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (role/status별 캐시).
+  const { data: partnerships = [], isLoading: loading, refetch } = useApiQuery<Partnership[]>(
+    ['seller', 'consignment', roleFilter, statusFilter], '/api/seller/consignment',
+    {
+      params: { ...(roleFilter !== 'all' ? { role: roleFilter } : {}), ...(statusFilter !== 'all' ? { status: statusFilter } : {}) },
+      select: (r: any) => r?.data || [],
+    },
+  )
+  const reload = () => refetch()
 
   const mySellerId = useMemo(() => {
     const v = localStorage.getItem('seller_id')
     return v ? Number(v) : null
   }, [])
-
-  const reload = async () => {
-    setLoading(true)
-    try {
-      const params: Record<string, string> = {}
-      if (roleFilter !== 'all') params.role = roleFilter
-      if (statusFilter !== 'all') params.status = statusFilter
-      const res = await api.get('/api/seller/consignment', { params })
-      setPartnerships(res.data?.data || [])
-    } catch (err) {
-      toast.error(t('seller.consignment.loadFailed', { defaultValue: '목록을 불러오지 못했어요' }))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { reload() }, [roleFilter, statusFilter])
 
   const handleApprove = async (id: number) => {
     setActingId(id)
