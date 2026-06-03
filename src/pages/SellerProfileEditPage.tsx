@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { compressForThumbnail } from '@/lib/image-compress'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
@@ -29,7 +30,6 @@ import type { SellerProfile } from './seller-profile-edit/types'
 export default function SellerProfileEditPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<SellerProfile | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
@@ -106,54 +106,26 @@ export default function SellerProfileEditPage() {
       setActiveTab(tabParam as typeof activeTab)
     }
 
-    loadProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadProfile() {
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-      const response = await api.get('/api/seller/profile', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        const seller = response.data.data
-        setProfile(seller)
-        
-        // Initialize form with current values
-        setProfileData({
-          profile_image: seller.profile_image || '',
-          bio: seller.bio || ''
-        })
-        
-        setSnsData({
-          sns_instagram: seller.sns_instagram || '',
-          sns_youtube: seller.sns_youtube || '',
-          sns_facebook: seller.sns_facebook || '',
-          sns_twitter: seller.sns_twitter || '',
-          website_url: seller.website_url || '',
-          kakao_chat_link: seller.kakao_chat_link || ''
-        })
-        
-        setBusinessData({
-          business_name: seller.business_name || '',
-          business_number: seller.business_number || '',
-          company_name: seller.company_name || ''
-        })
-        
-        setPersonalData({
-          name: seller.name || '',
-          email: seller.email || '',
-          phone: seller.phone || ''
-        })
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Failed to load profile:', error)
-      setErrorMessage(t('seller.profileLoadFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집 폼(4종)이라 데이터 도착 시 시드.
+  const profileQ = useApiQuery<any>(['seller', 'profile-edit'], '/api/seller/profile', { select: (r: any) => (r?.success ? r.data : null) })
+  const loading = profileQ.isLoading
+  const loadProfile = () => profileQ.refetch()
+  useEffect(() => {
+    const seller = profileQ.data
+    if (!seller) return
+    setProfile(seller)
+    setProfileData({ profile_image: seller.profile_image || '', bio: seller.bio || '' })
+    setSnsData({
+      sns_instagram: seller.sns_instagram || '', sns_youtube: seller.sns_youtube || '', sns_facebook: seller.sns_facebook || '',
+      sns_twitter: seller.sns_twitter || '', website_url: seller.website_url || '', kakao_chat_link: seller.kakao_chat_link || '',
+    })
+    setBusinessData({ business_name: seller.business_name || '', business_number: seller.business_number || '', company_name: seller.company_name || '' })
+    setPersonalData({ name: seller.name || '', email: seller.email || '', phone: seller.phone || '' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileQ.data])
 
   async function handleSaveProfile() {
     setSaving(true)
