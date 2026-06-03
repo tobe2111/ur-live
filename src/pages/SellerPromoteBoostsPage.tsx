@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Rocket, Zap, Clock } from 'lucide-react'
 
@@ -29,9 +29,6 @@ interface ActiveLive {
 
 export default function SellerPromoteBoostsPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<Boost[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeLive, setActiveLive] = useState<ActiveLive | null>(null)
 
   const TIER_META: Record<string, { label: string; emoji: string; bg: string; hours: number }> = {
     bronze: { label: t('seller.boosts.tierBronze', { defaultValue: '브론즈' }), emoji: '🥉', bg: 'bg-amber-50 border-amber-300', hours: 12 },
@@ -39,24 +36,13 @@ export default function SellerPromoteBoostsPage() {
     gold:   { label: t('seller.boosts.tierGold', { defaultValue: '골드' }),   emoji: '🥇', bg: 'bg-yellow-50 border-yellow-400', hours: 48 },
   }
 
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const headers = { Authorization: `Bearer ${token}` }
-      const r = await api.get('/api/seller/promote-boosts', { headers })
-      if (r.data?.success) setItems(r.data.data)
-      // 활성 라이브 조회
-      try {
-        const live = await api.get('/api/seller/streams?status=live', { headers })
-        if (live.data?.data?.[0]) setActiveLive({ id: live.data.data[0].id, title: live.data.data[0].title })
-      } catch { /* skip */ }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('seller.boosts.loadFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (/api/seller prefix 토큰 자동 주입).
+  const boostsQ = useApiQuery<Boost[]>(['seller', 'promote-boosts'], '/api/seller/promote-boosts', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const liveQ = useApiQuery<ActiveLive | null>(['seller', 'promote-boosts-live'], '/api/seller/streams', { params: { status: 'live' }, select: (r: any) => (r?.data?.[0] ? { id: r.data[0].id, title: r.data[0].title } : null) })
+  const items = boostsQ.data ?? []
+  const loading = boostsQ.isLoading
+  const activeLive = liveQ.data ?? null
+  const fetchAll = () => { boostsQ.refetch(); liveQ.refetch() }
 
   async function activate(boost: Boost) {
     if (!activeLive) {

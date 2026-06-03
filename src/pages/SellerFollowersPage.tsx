@@ -10,10 +10,10 @@
  *   - 최근 단골 10명 (마스킹)
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Bell, TrendingUp, Loader2, Megaphone } from 'lucide-react'
-import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -28,17 +28,19 @@ interface Analytics {
 
 export default function SellerFollowersPage() {
   const navigate = useNavigate()
-  const headers = { Authorization: `Bearer ${getSellerToken()}` }
-  const [data, setData] = useState<Analytics | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
-    api.get('/api/seller-public/seller/analytics', { headers })
-      .then(r => { if (r.data?.success) setData(r.data.data) })
-      .catch(() => { /* silent */ })
-      .finally(() => setLoading(false))
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. seller-public prefix 라 수동 헤더 전달.
+  const analyticsQ = useApiQuery<Analytics | null>(['seller', 'followers-analytics'], '/api/seller-public/seller/analytics', {
+    headers: { Authorization: `Bearer ${getSellerToken()}` },
+    select: (r: any) => (r?.success ? r.data : null),
+  })
+  const data = analyticsQ.data ?? null
+  const loading = analyticsQ.isLoading
 
   if (loading) {
     return <SellerLayout title="단골 분석"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div></SellerLayout>

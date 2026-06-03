@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { swallow } from '@/shared/utils/swallow'
 import { Rocket, Plus, Clock, CheckCircle2, XCircle } from 'lucide-react'
 
 interface Boost {
@@ -43,31 +43,18 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function AgencyPromoteBoostsPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<Boost[]>([])
-  const [sellers, setSellers] = useState<Seller[]>([])
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [sellerId, setSellerId] = useState<number | ''>('')
   const [tier, setTier] = useState<'bronze' | 'silver' | 'gold'>('silver')
   const [note, setNote] = useState('')
 
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('agency_token')
-      const headers = { Authorization: `Bearer ${token}` }
-      const [boostRes, sellerRes] = await Promise.all([
-        api.get('/api/agency/promote-boosts', { headers }),
-        api.get('/api/agency/sellers', { headers }).catch(swallow('agency:fetch-sellers')),
-      ])
-      if (boostRes.data?.success) setItems(boostRes.data.data)
-      if ((sellerRes as any)?.data?.data) setSellers((sellerRes as any).data.data)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t('common.fetchFailed', { defaultValue: '불러오기 실패' }))
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchAll() }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): mount Promise.all → useApiQuery 2개 (/api/agency prefix 토큰 자동 주입).
+  const boostsQ = useApiQuery<Boost[]>(['agency', 'promote-boosts'], '/api/agency/promote-boosts', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const sellersQ = useApiQuery<Seller[]>(['agency', 'promote-boosts-sellers'], '/api/agency/sellers', { select: (r: any) => (r?.data || []) })
+  const items = boostsQ.data ?? []
+  const sellers = sellersQ.data ?? []
+  const loading = boostsQ.isLoading
+  const fetchAll = () => { boostsQ.refetch(); sellersQ.refetch() }
 
   async function issueBoost() {
     if (!sellerId) return toast.error(t('agency.promoteBoosts.selectSeller', { defaultValue: '셀러를 선택해주세요' }))

@@ -28,12 +28,17 @@ export function useApiQuery<T = unknown>(
     refetchOnMount?: boolean | 'always'
     /** 🛡️ 2026-06-03: 폴링 페이지 이전용 — 주기적 refetch(ms). foreground 만(배터리 절약). */
     refetchInterval?: number
+    /** 🛡️ 2026-06-03: 인터셉터가 토큰 자동 주입 안 하는 prefix(/api/seller-public, /api/supply 등) 용 수동 헤더. */
+    headers?: Record<string, string>
   },
 ): UseQueryResult<T> {
   return useQuery<T>({
     queryKey,
     queryFn: async () => {
-      const res = await api.get(url, opts?.params ? { params: opts.params } : undefined)
+      const cfg = opts?.params || opts?.headers
+        ? { ...(opts?.params ? { params: opts.params } : {}), ...(opts?.headers ? { headers: opts.headers } : {}) }
+        : undefined
+      const res = await api.get(url, cfg)
       return (opts?.select ? opts.select(res.data) : res.data) as T
     },
     enabled: opts?.enabled ?? true,

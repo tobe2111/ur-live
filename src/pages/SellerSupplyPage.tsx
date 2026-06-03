@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -58,8 +59,6 @@ export default function SellerSupplyPage() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-requests'>('catalog')
 
   // Catalog
-  const [products, setProducts] = useState<SupplyProduct[]>([])
-  const [catalogLoading, setCatalogLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   // 🛡️ 2026-05-21: 매장 수만 개 대응 — 카테고리/지역/정렬 필터 추가.
@@ -67,10 +66,6 @@ export default function SellerSupplyPage() {
   const [filterCategory, setFilterCategory] = useState('')
   const [filterRegion, setFilterRegion] = useState('')
   const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price_low' | 'price_high'>('popular')
-
-  // My requests
-  const [requests, setRequests] = useState<SampleRequest[]>([])
-  const [reqLoading, setReqLoading] = useState(false)
 
   // Sample request modal
   const [requestModal, setRequestModal] = useState<SupplyProduct | null>(null)
@@ -85,42 +80,28 @@ export default function SellerSupplyPage() {
   const token = () => localStorage.getItem('seller_token')
 
   useEffect(() => {
-    if (!token()) { navigate('/seller/login'); return }
-    loadCatalog()
-  }, [search, filterCategory, filterRegion, sortBy])
+    if (!token()) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  useEffect(() => {
-    if (activeTab === 'my-requests') loadMyRequests()
-  }, [activeTab])
-
-  async function loadCatalog() {
-    setCatalogLoading(true)
-    try {
-      const params = new URLSearchParams({ limit: '50' })
-      if (search) params.set('search', search)
-      if (filterCategory) params.set('category', filterCategory)
-      if (filterRegion) params.set('region_si', filterRegion)
-      if (sortBy) params.set('sort', sortBy)
-      const res = await api.get(`/api/supply/products?${params}`, {
-        headers: { Authorization: `Bearer ${token()}` }
-      })
-      if (res.data.success) setProducts(res.data.data?.items ?? [])
-    } catch {
-      toast.error(t('seller.loadSupplyProductsFailed'))
-    } finally { setCatalogLoading(false) }
-  }
-
-  async function loadMyRequests() {
-    setReqLoading(true)
-    try {
-      const res = await api.get('/api/supply/sample-requests', {
-        headers: { Authorization: `Bearer ${token()}` }
-      })
-      if (res.data.success) setRequests(res.data.data ?? [])
-    } catch {
-      toast.error(t('seller.loadSampleRequestsFailed'))
-    } finally { setReqLoading(false) }
-  }
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. /api/supply prefix 라 수동 헤더.
+  const authHeaders = { Authorization: `Bearer ${token()}` }
+  const catalogQ = useApiQuery<SupplyProduct[]>(['seller', 'supply-catalog', search, filterCategory, filterRegion, sortBy], '/api/supply/products', {
+    params: { limit: 50, ...(search ? { search } : {}), ...(filterCategory ? { category: filterCategory } : {}), ...(filterRegion ? { region_si: filterRegion } : {}), ...(sortBy ? { sort: sortBy } : {}) },
+    headers: authHeaders,
+    select: (r: any) => (r?.success ? (r.data?.items ?? []) : []),
+  })
+  const requestsQ = useApiQuery<SampleRequest[]>(['seller', 'supply-requests'], '/api/supply/sample-requests', {
+    enabled: activeTab === 'my-requests',
+    headers: authHeaders,
+    select: (r: any) => (r?.success ? (r.data ?? []) : []),
+  })
+  const products = catalogQ.data ?? []
+  const catalogLoading = catalogQ.isLoading
+  const requests = requestsQ.data ?? []
+  const reqLoading = requestsQ.isLoading
+  const loadCatalog = () => catalogQ.refetch()
+  const loadMyRequests = () => requestsQ.refetch()
 
   async function handleSampleRequest() {
     if (!requestModal) return
