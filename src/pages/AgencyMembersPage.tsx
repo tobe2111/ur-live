@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Users, UserPlus, X, Pause, Play, Trash2, Copy, Check } from 'lucide-react'
@@ -55,8 +56,6 @@ const STATUS_LABEL_KEYS: Record<Member['status'], string> = {
 export default function AgencyMembersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [members, setMembers] = useState<Member[]>([])
-  const [loading, setLoading] = useState(true)
   const [inviting, setInviting] = useState(false)
   const [inviteResult, setInviteResult] = useState<{ token: string; email: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -74,17 +73,12 @@ export default function AgencyMembersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/api/agency/members', { headers })
-      .then(r => { if (r.data?.success) setMembers(r.data.data || []) })
-      .catch((e: any) => {
-        if (e?.response?.status === 401) { /* lib/api.ts interceptor 처리 — refresh 시도 후 실패 시만 redirect */ }
-        else toast.error(t('agency.members.loadFailed', { defaultValue: '멤버 조회 실패' }))
-      })
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: members = [], isLoading: loading, refetch } = useApiQuery<Member[]>(
+    ['agency', 'members'], '/api/agency/members',
+    { select: (r: any) => (r?.success ? r.data || [] : []), enabled: !!token },
+  )
+  const load = () => refetch()
 
   useEffect(() => { load() }, [load])
 

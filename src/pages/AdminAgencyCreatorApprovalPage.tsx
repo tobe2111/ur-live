@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { UserCheck, UserX, Building2, Mail, Phone } from 'lucide-react'
@@ -30,10 +31,14 @@ interface Approval {
 export default function AdminAgencyCreatorApprovalPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [items, setItems] = useState<Approval[]>([])
-  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<ApprovalStatus>('pending')
   const [acting, setActing] = useState<number | null>(null)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab별 캐시).
+  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Approval[]>(
+    ['admin', 'agency-creator-approvals', tab], '/api/admin/agency-creator-approvals',
+    { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
 
   const STATUS_TABS: { key: ApprovalStatus; label: string }[] = [
     { key: 'pending', label: t('admin.agencyCreatorApproval.tabPending', { defaultValue: '심사 대기' }) },
@@ -50,19 +55,6 @@ export default function AdminAgencyCreatorApprovalPage() {
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get(`/api/admin/agency-creator-approvals?status=${tab}`, { headers })
-      .then(r => { if (r.data?.success) setItems(r.data.data || []) })
-      .catch((e) => {
-        if (import.meta.env.DEV) console.warn('[approvals:list]', e)
-        toast.error('목록 조회 실패')
-      })
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab])
-
-  useEffect(() => { load() }, [load])
 
   const approve = async (id: number) => {
     if (!confirm('이 셀러를 승인하시겠습니까? 승인 후 즉시 로그인/판매가 가능해집니다.')) return

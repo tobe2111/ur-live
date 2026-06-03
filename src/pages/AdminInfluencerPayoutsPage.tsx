@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -37,9 +38,14 @@ function calcWithholding(amount: number, taxType: string | null, businessNumber:
 }
 
 export default function AdminInfluencerPayoutsPage() {
-  const [list, setList] = useState<PayoutRow[]>([])
-  const [payoutMin, setPayoutMin] = useState(100000)
-  const [loading, setLoading] = useState(true)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (list + payout_min).
+  const { data: payoutData, isLoading: loading, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number }>(
+    ['admin', 'influencer-payouts'], '/api/admin-payouts/payouts',
+    { select: (r: any) => (r?.success ? { list: r.data.list || [], payout_min: r.data.payout_min || 100000 } : { list: [], payout_min: 100000 }) },
+  )
+  const list = payoutData?.list ?? []
+  const payoutMin = payoutData?.payout_min ?? 100000
+  const load = () => refetch()
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkProcessing, setBulkProcessing] = useState(false)
@@ -81,20 +87,6 @@ export default function AdminInfluencerPayoutsPage() {
     load()
   }
 
-  useEffect(() => { load() }, [])
-
-  function load() {
-    setLoading(true)
-    api.get('/api/admin-payouts/payouts')
-      .then((r) => {
-        if (r.data?.success) {
-          setList(r.data.data.list || [])
-          setPayoutMin(r.data.data.payout_min || 100000)
-        }
-      })
-      .catch(() => toast.error('데이터 로드 실패'))
-      .finally(() => setLoading(false))
-  }
 
   async function process(row: PayoutRow) {
     const method = row.payout_method || 'cash'
