@@ -171,6 +171,16 @@ export default function AdminDistributorGradesPage() {
       else toast.error(r.data?.error || '발행 실패')
     } catch { toast.error('발행 실패') } finally { setIssuing(false) }
   }
+  async function issueNts(id: number) {
+    try {
+      const r = await api.post(`/api/admin/distributor/tax-documents/${id}/issue-nts`, {}, h)
+      if (r.data?.success) { toast.success(r.data.already ? '이미 발행됨' : `전자세금계산서 발행 완료 (승인번호 ${r.data.nts_confirm_num || '-'})`); taxDocsQ.refetch() }
+      else toast.error(r.data?.error || '발행 실패')
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string; needs_config?: boolean } } }
+      toast.error(err?.response?.data?.error || '전자세금계산서 발행 실패')
+    }
+  }
   function openTaxDoc(id: number) {
     const token = localStorage.getItem('admin_token')
     // 인증 헤더로 HTML 받아 새 창에 렌더(직접 링크는 토큰 미첨부).
@@ -194,7 +204,7 @@ export default function AdminDistributorGradesPage() {
     const token = localStorage.getItem('admin_token')
     fetch('/api/admin/distributor/products/export', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
-      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `supply-products-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) })
+      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `supply-products-${new Date().toISOString().slice(0, 10)}.xlsx`; a.click(); URL.revokeObjectURL(url) })
       .catch(() => toast.error('상품 내보내기 실패'))
   }
 
@@ -408,7 +418,7 @@ export default function AdminDistributorGradesPage() {
                 거래명세서 발행
               </button>
               <button onClick={exportProducts} className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium">
-                <Receipt className="w-3.5 h-3.5" /> 상품정보 CSV(A/B/C)
+                <Receipt className="w-3.5 h-3.5" /> 상품정보 엑셀(A/B/C)
               </button>
             </div>
             {(taxDocsQ.data || []).length === 0 ? (
@@ -426,7 +436,14 @@ export default function AdminDistributorGradesPage() {
                         <td className="text-right">{Number(d.supply_amount || 0).toLocaleString('ko-KR')}</td>
                         <td className="text-right text-gray-500">{Number(d.vat_amount || 0).toLocaleString('ko-KR')}</td>
                         <td className="text-right font-bold">{Number(d.total_amount || 0).toLocaleString('ko-KR')}</td>
-                        <td><button onClick={() => openTaxDoc(d.id)} className="px-2 py-1 bg-gray-100 rounded font-medium">인쇄</button></td>
+                        <td className="whitespace-nowrap">
+                          <button onClick={() => openTaxDoc(d.id)} className="px-2 py-1 bg-gray-100 rounded font-medium">인쇄</button>
+                          {d.direction === 'sales' && (
+                            d.nts_confirm_num
+                              ? <span className="ml-1 text-[10px] text-emerald-600 font-medium">국세청✓</span>
+                              : <button onClick={() => issueNts(d.id)} className="ml-1 px-2 py-1 bg-gray-900 text-white rounded font-medium">국세청발행</button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

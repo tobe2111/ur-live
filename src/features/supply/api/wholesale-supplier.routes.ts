@@ -15,7 +15,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { requireSupplier } from '@/worker/middleware/auth'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
-import { buildCsv, csvResponse, parseCsv } from './supply-csv'
+import { parseCsv } from './supply-csv'
+import { buildXlsx, xlsxResponse } from './xlsx'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireSupplier())
@@ -67,11 +68,13 @@ app.get('/orders/export', async (c) => {
       ORDER BY o.created_at DESC LIMIT 5000
     `).bind(sid).all<Record<string, unknown>>()
     const headers = ['item_id', 'order_id', '상품명', '수량', '공급가', '정산금액', '상태', '받는분', '연락처', '주소', '우편번호', '결제일', 'courier', 'tracking_number']
-    const rows = (results || []).map(r => [
-      r.item_id, r.wholesale_order_id, r.name, r.qty, r.base_supply_price, r.settle_amount, r.line_status,
-      r.ship_to_name, r.ship_to_phone, r.ship_to_address, r.ship_to_postal, r.paid_at, '', '',
+    const rows: (string | number | null | undefined)[][] = (results || []).map(r => [
+      Number(r.item_id), Number(r.wholesale_order_id), String(r.name ?? ''), Number(r.qty),
+      Number(r.base_supply_price), Number(r.settle_amount), String(r.line_status ?? ''),
+      String(r.ship_to_name ?? ''), String(r.ship_to_phone ?? ''), String(r.ship_to_address ?? ''),
+      String(r.ship_to_postal ?? ''), String(r.paid_at ?? ''), '', '',
     ])
-    return csvResponse(buildCsv(headers, rows), `wholesale-orders-${new Date().toISOString().slice(0, 10)}.csv`)
+    return xlsxResponse(buildXlsx(headers, rows), `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (err) {
     return safeError(c, err, '주문 내보내기 중 오류가 발생했습니다', '[wholesale-supplier]')
   }

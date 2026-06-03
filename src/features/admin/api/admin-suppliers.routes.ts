@@ -146,8 +146,9 @@ adminSuppliersRoutes.post('/suppliers/:id/payout', cors(), async (c) => {
     if (!result.ok) {
       const msg = result.error === 'no_available_balance' ? '지급 가능한 잔고가 없습니다'
         : result.error === 'already_paid' ? '이미 처리된 지급입니다'
+        : result.error === 'daily_cap_exceeded' ? '오늘 정산 한도(기본 1억원)를 초과합니다. 내일 다시 시도하거나 한도를 조정하세요'
         : '지급 처리에 실패했습니다';
-      return c.json({ success: false, error: msg }, 400);
+      return c.json({ success: false, error: msg, code: result.error }, 400);
     }
 
     await writeAuditLog(c, { action: 'supplier_payout', targetType: 'supplier', targetId: String(id), after: { amount: result.amount, settlement_count: result.settlement_count, payout_id: result.payout_id } }).catch(() => {});

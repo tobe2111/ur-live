@@ -29,13 +29,18 @@
 - ✅ **#3 부분환불 과대계상** — 매출=`SUM(subtotal−refunded_amount)`, 매입=환불 라인 제외.
 - ✅ **#5 '승인한 유통채널' 제조사 자가관리** — supplier `/products/:id/channel-access` (소유+APPROVED_CHANNEL 한정). UTONGSTART_ONLY 는 관리자 전용 유지.
 
-## 미구현 / 후속 (의도적 보류)
-- **#4 브랜드제품 즉시정산 리스크** (사용자 결정 보류): 현재 `available_at=now` → 환불 클로백 안전창 없음. 옵션: 1~2일 짧은 보호창. **결정 대기.**
-- **외부 전자세금계산서 연동**(팝빌 등): 내부 발행 기록 + 인쇄용 HTML까지. 정식 e-세금계산서는 별도 연동 자리만.
-- **1일 1억 정산 한도 가드**: payout 실행 단계 캡 미적용(후속).
+## 2차 마감 — 잔여 항목 처리 (commit 후속)
+- ✅ **#4 브랜드 정산 보호창** — `available_at=now` → **익일(1일 보호창)**. 환불 클로백 안전창 확보하며 '거의 당일' 유지.
+- ✅ **1일 정산 한도** — `payoutSupplier` 에 플랫폼 일일 캡(기본 1억, `platform_settings.supplier_daily_payout_cap` 조정). 초과 시 `daily_cap_exceeded` 반려 + 어드민 메시지.
+- ✅ **진짜 .xlsx** — 의존성 0 OOXML stored-zip 생성기(`xlsx.ts`, CRC32). 다운로드 전용 export 3종(유통사 카탈로그/제조사 주문/어드민 상품정보)을 .xlsx 로 전환. 재업로드용 양식은 CSV 유지(왕복 파싱). 단위테스트 lock.
+- ✅ **전자세금계산서(바로빌) 연동** — `barobill.ts` env 주입 리팩토링 + `POST /tax-documents/:id/issue-nts`(매출 방향만, 발행자=유통스타트). 자격증명/플랫폼 사업자정보 미설정 시 actionable 503(fail-soft). `tax_documents.nts_confirm_num/invoice_key/external_status` + 어드민 '국세청발행' 버튼.
+  - **활성화 조건(운영 TODO)**: Cloudflare 환경변수 `BAROBILL_PROD_API_KEY`(+`BAROBILL_ENV=production`) + `platform_settings`(company_business_number/company_name/company_ceo/company_address) 등록.
+
+## 미구현 / 의도적 보류 (엔지니어링 판단)
+- **매입(제조사→유통스타트) 전자세금계산서**: 제조사가 발행 주체 → 플랫폼 계정 발행 불가(역발행 요청 별도 플로우 필요).
 - **교환(exchange) 플로우**: 환불(refund)만 구현.
-- **products 테이블 플래그 과적재**: 장기적으로 supply 전용 테이블 분리 검토(현재는 실용적 유지).
-- 진짜 `.xlsx` (현재 UTF-8 BOM CSV — 의존성 0 trade-off).
+- **products 테이블 플래그 과적재 → supply 전용 테이블 분리**: 잠긴 perf 경로(LIST_COLUMNS/SSR/인덱스) 광범위 수정 + 회귀 위험 큰 대규모 리팩토링. 기능 이득 0 → **CLAUDE.md '대규모 리팩토링 금지' 룰에 따라 의도적 보류**(별도 계획된 마이그레이션으로 진행 권장).
+- 재업로드 양식의 .xlsx 파싱(현재 CSV 업로드 — 왕복에 적합).
 - 제품 카테고리 선별·제조사 컨택 = 운영 프로세스(코드 무관).
 
 ## ✅ 구현 완료

@@ -504,10 +504,11 @@ app.get('/statement', async (c) => {
   }
 })
 
-// ── 엑셀(CSV) — 유통사 등급가 카탈로그 다운로드 + 주문 양식 ─────────────────────
+// ── 엑셀 — 유통사 등급가 카탈로그 다운로드(.xlsx) + 주문 양식(.csv 재업로드용) ─────
 import { buildCsv, csvResponse } from './supply-csv'
+import { buildXlsx, xlsxResponse } from './xlsx'
 
-// GET /catalog-export — 내 등급가 카탈로그 CSV (제조사 신원 비노출 — 등급가만)
+// GET /catalog-export — 내 등급가 카탈로그 .xlsx (제조사 신원 비노출 — 등급가만)
 app.get('/catalog-export', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -527,7 +528,7 @@ app.get('/catalog-export', async (c) => {
       const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
       return [r.id, r.name, r.category || '', r.stock, price, grade]
     })
-    return csvResponse(buildCsv(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.csv`)
+    return xlsxResponse(buildXlsx(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (err) {
     return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[wholesale]')
   }

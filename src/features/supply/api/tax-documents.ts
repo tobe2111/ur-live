@@ -34,11 +34,18 @@ export async function ensureTaxDocSchema(DB: D1Database): Promise<void> {
     order_count INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'issued',
     issued_at DATETIME,
+    nts_confirm_num TEXT,
+    invoice_key TEXT,
+    external_status TEXT DEFAULT 'none',
     created_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(doc_type, direction, period_month, distributor_seller_id, supplier_id)
   )`).run().catch(swallow('tax-doc:create'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_taxdoc_month ON tax_documents(period_month, direction)')
     .run().catch(swallow('tax-doc:idx'))
+  // 이미 생성된 테이블 대비 컬럼 보강 (멱등).
+  for (const col of ['nts_confirm_num TEXT', 'invoice_key TEXT', "external_status TEXT DEFAULT 'none'"]) {
+    await DB.prepare(`ALTER TABLE tax_documents ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ })
+  }
 }
 
 /**

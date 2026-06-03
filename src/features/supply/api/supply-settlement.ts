@@ -198,6 +198,19 @@ export async function payoutSupplier(
   const count = Number(agg?.cnt) || 0;
   if (amount <= 0 || count <= 0) return { ok: false, amount: 0, settlement_count: 0, error: 'no_available_balance' };
 
+  // 🛡️ 플랫폼 1일 정산 한도(기본 1억). platform_settings.supplier_daily_payout_cap 로 조정 가능, 0/미설정이면 기본.
+  const DEFAULT_DAILY_CAP = 100_000_000;
+  const capRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'supplier_daily_payout_cap'")
+    .first<{ value: string }>().catch(() => null);
+  const dailyCap = Math.max(0, Math.floor(Number(capRow?.value) || 0)) || DEFAULT_DAILY_CAP;
+  const todayPaid = await DB.prepare(
+    "SELECT COALESCE(SUM(amount), 0) AS amt FROM supplier_payouts WHERE status = 'paid' AND date(created_at) = date('now')"
+  ).first<{ amt: number }>().catch(() => null);
+  const paidToday = Math.max(0, Math.floor(Number(todayPaid?.amt) || 0));
+  if (paidToday + amount > dailyCap) {
+    return { ok: false, amount: 0, settlement_count: 0, error: 'daily_cap_exceeded' };
+  }
+
   // 정산 claim — available → paid (동시 지급 중복 차단).
   const claim = await DB.prepare(
     "UPDATE supplier_settlements SET status = 'paid', paid_at = datetime('now') WHERE supplier_id = ? AND status = 'available'"

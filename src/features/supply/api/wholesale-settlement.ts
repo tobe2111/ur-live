@@ -14,6 +14,8 @@ import { recordLedger } from '@/worker/utils/ledger'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 const REFUND_WINDOW_DAYS = 7
+// 🛡️ 브랜드제품: '거의 당일' 정산이되 최소 환불 클로백 안전창(1일) 확보 — 지급 후 환불로 인한 미회수 방지.
+const BRAND_REFUND_WINDOW_DAYS = 1
 
 const _sourceEnsured = new WeakSet<object>()
 /** supplier_settlements.source 컬럼 보장 (repair-schema CI 불안정 대비). */
@@ -58,15 +60,15 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   let credited = 0
   const notifySuppliers = new Set<number>()
   const generalAvailableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
-  const nowIso = new Date().toISOString()
+  const brandAvailableAt = new Date(Date.now() + BRAND_REFUND_WINDOW_DAYS * 86400_000).toISOString()
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
     const supplyAmount = Math.floor(Number(r.base_supply_price) || 0) * qty
     if (supplyAmount <= 0) continue
     const retailAmount = Math.floor(Number(r.distributor_unit_price) || 0) * qty // 유통사 지불액(참고)
     const isBrand = Number(r.is_brand_product) === 1
-    const availableAt = isBrand ? nowIso : generalAvailableAt
-    const noteText = isBrand ? 'B2B 도매주문(브랜드 — 당일정산)' : 'B2B 도매주문(일반 — 7일성숙)'
+    const availableAt = isBrand ? brandAvailableAt : generalAvailableAt
+    const noteText = isBrand ? 'B2B 도매주문(브랜드 — 익일정산/1일보호창)' : 'B2B 도매주문(일반 — 7일성숙)'
 
     await DB.prepare(`
       INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)

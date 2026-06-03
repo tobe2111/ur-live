@@ -14,33 +14,38 @@
 
 // 환경 설정 (런타임 주입)
 const BAROBILL_CONFIG = {
-  // 환경에 따라 자동 선택 (NODE_ENV 또는 직접 지정)
-  ENV: 'test' as 'test' | 'production',
-
-  // API 엔드포인트
   TEST_BASE_URL: 'https://testapi.barobill.co.kr',
   PROD_BASE_URL: 'https://api.barobill.co.kr',
 };
 
-// 🛡️ env 에서 주입 — Worker context (`c.env`) 또는 Node `process.env` 양쪽 호환
-function getApiKey(env?: { BAROBILL_TEST_API_KEY?: string; BAROBILL_PROD_API_KEY?: string }): string {
-  const isProd = BAROBILL_CONFIG.ENV === 'production';
-  const fromEnv = isProd ? env?.BAROBILL_PROD_API_KEY : env?.BAROBILL_TEST_API_KEY;
-  if (fromEnv) return fromEnv;
-  // Node fallback (CI/script 호출 시)
-  if (typeof process !== 'undefined' && process.env) {
-    const v = isProd ? process.env.BAROBILL_PROD_API_KEY : process.env.BAROBILL_TEST_API_KEY;
-    if (v) return v;
-  }
+// 🛡️ Worker context (`c.env`) 또는 Node `process.env` 양쪽 호환.
+export interface BarobillEnv {
+  BAROBILL_TEST_API_KEY?: string;
+  BAROBILL_PROD_API_KEY?: string;
+  BAROBILL_ENV?: string; // 'production' → 운영 서버/키
+}
+
+function envVal(env: BarobillEnv | undefined, key: keyof BarobillEnv): string | undefined {
+  return env?.[key] ?? (typeof process !== 'undefined' ? process.env?.[key] : undefined);
+}
+function isProdEnv(env?: BarobillEnv): boolean {
+  return (envVal(env, 'BAROBILL_ENV') || 'test') === 'production';
+}
+
+/** 바로빌 자격증명(키) 설정 여부 — 미설정 시 내부 발행만(전자세금계산서 비활성). */
+export function isBarobillConfigured(env?: BarobillEnv): boolean {
+  return !!(isProdEnv(env) ? envVal(env, 'BAROBILL_PROD_API_KEY') : envVal(env, 'BAROBILL_TEST_API_KEY'));
+}
+
+function getApiKey(env?: BarobillEnv): string {
+  const isProd = isProdEnv(env);
+  const v = isProd ? envVal(env, 'BAROBILL_PROD_API_KEY') : envVal(env, 'BAROBILL_TEST_API_KEY');
+  if (v) return v;
   throw new Error(`바로빌 API 키 미설정 — 환경변수 BAROBILL_${isProd ? 'PROD' : 'TEST'}_API_KEY 필요`);
 }
 
-/**
- * 바로빌 API 기본 설정 가져오기
- */
-function getBarobillConfig(env?: { BAROBILL_TEST_API_KEY?: string; BAROBILL_PROD_API_KEY?: string }) {
-  const isProduction = BAROBILL_CONFIG.ENV === 'production';
-
+function getBarobillConfig(env?: BarobillEnv) {
+  const isProduction = isProdEnv(env);
   return {
     baseUrl: isProduction ? BAROBILL_CONFIG.PROD_BASE_URL : BAROBILL_CONFIG.TEST_BASE_URL,
     apiKey: getApiKey(env),
@@ -51,8 +56,8 @@ function getBarobillConfig(env?: { BAROBILL_TEST_API_KEY?: string; BAROBILL_PROD
 /**
  * 바로빌 API 호출 기본 함수
  */
-async function callBarobillAPI(endpoint: string, data: any) {
-  const config = getBarobillConfig();
+async function callBarobillAPI(env: BarobillEnv | undefined, endpoint: string, data: any) {
+  const config = getBarobillConfig(env);
   const url = `${config.baseUrl}${endpoint}`;
   
   try {
@@ -127,7 +132,7 @@ interface TaxInvoiceIssueRequest {
 /**
  * 전자세금계산서 발행
  */
-export async function issueBarobillTaxInvoice(request: TaxInvoiceIssueRequest) {
+export async function issueBarobillTaxInvoice(env: BarobillEnv | undefined, request: TaxInvoiceIssueRequest) {
   try {
     // 바로빌 API 형식으로 데이터 변환
     const barobillData = {
@@ -184,7 +189,7 @@ export async function issueBarobillTaxInvoice(request: TaxInvoiceIssueRequest) {
     };
     
     // 바로빌 API 호출
-    const result = await callBarobillAPI('/eTaxInvoice/RegistAndIssue', barobillData);
+    const result = await callBarobillAPI(env, '/eTaxInvoice/RegistAndIssue', barobillData);
     
     // 응답 형식
     // {
@@ -213,7 +218,7 @@ export async function issueBarobillTaxInvoice(request: TaxInvoiceIssueRequest) {
 /**
  * 전자세금계산서 취소
  */
-export async function cancelBarobillTaxInvoice(supplierBusinessNumber: string, invoiceKey: string, reason: string) {
+export async function cancelBarobillTaxInvoice(env: BarobillEnv | undefined, supplierBusinessNumber: string, invoiceKey: string, reason: string) {
   try {
     const barobillData = {
       CorpNum: supplierBusinessNumber,
@@ -221,7 +226,7 @@ export async function cancelBarobillTaxInvoice(supplierBusinessNumber: string, i
       Memo: reason,
     };
     
-    const result = await callBarobillAPI('/eTaxInvoice/Delete', barobillData);
+    const result = await callBarobillAPI(env, '/eTaxInvoice/Delete', barobillData);
     
     if (result.code !== 1) {
       throw new Error(`바로빌 취소 실패: ${result.message}`);
@@ -240,14 +245,14 @@ export async function cancelBarobillTaxInvoice(supplierBusinessNumber: string, i
 /**
  * 전자세금계산서 조회
  */
-export async function getBarobillTaxInvoice(supplierBusinessNumber: string, invoiceKey: string) {
+export async function getBarobillTaxInvoice(env: BarobillEnv | undefined, supplierBusinessNumber: string, invoiceKey: string) {
   try {
     const barobillData = {
       CorpNum: supplierBusinessNumber,
       InvoiceKey: invoiceKey,
     };
     
-    const result = await callBarobillAPI('/eTaxInvoice/GetInfo', barobillData);
+    const result = await callBarobillAPI(env, '/eTaxInvoice/GetInfo', barobillData);
     
     if (result.code !== 1) {
       throw new Error(`바로빌 조회 실패: ${result.message}`);
@@ -278,7 +283,7 @@ export function isBarobillMockMode(): boolean {
 /**
  * Mock 또는 실제 API 호출 (자동 선택)
  */
-export async function issueTaxInvoiceAuto(request: TaxInvoiceIssueRequest) {
+export async function issueTaxInvoiceAuto(env: BarobillEnv | undefined, request: TaxInvoiceIssueRequest) {
   if (isBarobillMockMode()) {
     // Mock 모드
     return {
@@ -289,7 +294,7 @@ export async function issueTaxInvoiceAuto(request: TaxInvoiceIssueRequest) {
     };
   } else {
     // 실제 바로빌 API 호출
-    return await issueBarobillTaxInvoice(request);
+    return await issueBarobillTaxInvoice(env, request);
   }
 }
 

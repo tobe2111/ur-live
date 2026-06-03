@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Truck, Loader2, RotateCcw, Package } from 'lucide-react'
+import { ArrowLeft, Truck, Loader2, RotateCcw, Package, Download, Upload } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
-import { supplierApi, isSupplierLoggedIn } from '@/lib/supplier-api'
+import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplier-api'
 
 // 🏭 2026-06-01 유통스타트 — 제조사(공급자) 도매 주문 처리 (Phase 3). 송장 입력 + 반품 승인.
 // 라이트 테마 (대시보드 계열).
@@ -34,6 +34,33 @@ export default function SupplierWholesaleOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<number | null>(null)
   const [draft, setDraft] = useState<Record<number, { courier: string; tracking: string }>>({})
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // 주문 .xlsx 내보내기 (인증 헤더 fetch → blob).
+  async function exportOrders() {
+    const token = getSupplierToken()
+    const res = await fetch('/api/supplier/wholesale/orders/export', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) { toast.error('내보내기 실패'); return }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // 송장 일괄 업로드 (CSV: item_id, courier, tracking_number).
+  async function bulkTracking(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    try {
+      const csv = await file.text()
+      const r = await supplierApi.post<{ summary?: { ok: number; failed: number; skipped: number } }>('/api/supplier/wholesale/tracking/bulk', { csv })
+      const s = r.summary
+      toast.success(`송장 ${s?.ok ?? 0}건 등록 (실패 ${s?.failed ?? 0}, 건너뜀 ${s?.skipped ?? 0})`)
+      load()
+    } catch (err) { toast.error(err instanceof Error ? err.message : '일괄 업로드 실패') } finally { setUploading(false) }
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -76,6 +103,15 @@ export default function SupplierWholesaleOrdersPage() {
         <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 h-[52px]">
           <button onClick={() => navigate('/supplier')} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900" /></button>
           <h1 className="text-[15px] font-bold text-gray-900">도매 주문 처리</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={exportOrders} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              <Download className="w-3.5 h-3.5" /> 주문 엑셀
+            </button>
+            <button onClick={() => fileRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} 송장 일괄(CSV)
+            </button>
+            <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={bulkTracking} />
+          </div>
         </div>
       </header>
 

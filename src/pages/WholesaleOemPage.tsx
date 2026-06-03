@@ -94,7 +94,7 @@ export default function WholesaleOemPage() {
             <span className="text-lg font-bold text-gray-900">OEM / ODM 신청</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => downloadCsv('/api/wholesale/catalog-export', 'wholesale-catalog.csv')}
+            <button onClick={() => downloadCsv('/api/wholesale/catalog-export', 'wholesale-catalog.xlsx')}
               className="inline-flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
               <Download className="w-4 h-4" /> 카탈로그(등급가)
             </button>

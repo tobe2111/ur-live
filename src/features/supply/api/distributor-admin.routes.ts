@@ -19,9 +19,10 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
-import { buildCsv, csvResponse } from './supply-csv'
+import { buildXlsx, xlsxResponse } from './xlsx'
 import { distributorPrice, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
 import { ensureTaxDocSchema, splitVat, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
+import { isBarobillConfigured, issueBarobillTaxInvoice, type BarobillEnv } from '@/services/barobill'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -521,7 +522,7 @@ app.get('/products/export', async (c) => {
       distributorPrice(r.supply_price, marginForGrade('C', table)),
     ]))
     const headers = ['product_id', '상품명', '제조사', '카테고리', '재고', '바코드', '공급범위', '제조사공급가', 'A등급가', 'B등급가', 'C등급가']
-    return csvResponse(buildCsv(headers, out), `supply-products-${new Date().toISOString().slice(0, 10)}.csv`)
+    return xlsxResponse(buildXlsx(headers, out), `supply-products-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (err) {
     return safeError(c, err, '상품 내보내기 중 오류가 발생했습니다', '[distributor-admin]')
   }
@@ -622,6 +623,84 @@ app.get('/tax-documents/:id/html', async (c) => {
     return c.html(renderTaxDocHtml(doc))
   } catch (err) {
     return safeError(c, err, '문서 생성 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// POST /tax-documents/:id/issue-nts — 바로빌 전자세금계산서 발행 (국세청)
+//   매출(sales=유통스타트→유통사) 방향만. 발행자=유통스타트(바로빌 계정), 공급받는자=유통사.
+//   매입(제조사→유통스타트)은 제조사가 발행하는 것이라 플랫폼 계정으로 발행 불가(역발행 별도).
+//   자격증명(BAROBILL_*) 또는 플랫폼 사업자정보 미설정 시 actionable 에러(fail-soft).
+app.post('/tax-documents/:id/issue-nts', async (c) => {
+  try {
+    await ensureTaxDocSchema(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    const doc = await c.env.DB.prepare('SELECT * FROM tax_documents WHERE id = ?').bind(id).first<TaxDocRow & {
+      direction: string; distributor_seller_id: number | null; supply_amount: number; vat_amount: number; total_amount: number; nts_confirm_num: string | null
+    }>()
+    if (!doc) return c.json({ success: false, error: '문서를 찾을 수 없습니다' }, 404)
+    if (doc.nts_confirm_num) return c.json({ success: true, already: true, nts_confirm_num: doc.nts_confirm_num })
+    if (doc.direction !== 'sales') {
+      return c.json({ success: false, error: '매입(제조사→유통스타트) 세금계산서는 제조사가 발행합니다. 플랫폼 발행은 매출 방향만 가능합니다' }, 400)
+    }
+    if (!isBarobillConfigured(c.env as unknown as BarobillEnv)) {
+      return c.json({ success: false, error: '전자세금계산서 발급사(바로빌) 자격증명 미설정 — Cloudflare 환경변수 BAROBILL_TEST_API_KEY/BAROBILL_PROD_API_KEY 등록 필요', needs_config: true }, 503)
+    }
+
+    // 플랫폼(유통스타트) 사업자정보 — platform_settings.
+    const ps = await c.env.DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('company_business_number','company_name','company_ceo','company_address','company_biz_type','company_biz_class','company_email','company_tel')"
+    ).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
+    const ps_map: Record<string, string> = {}
+    for (const r of ps.results || []) ps_map[r.key] = r.value
+    if (!ps_map.company_business_number || !ps_map.company_name) {
+      return c.json({ success: false, error: '플랫폼 사업자정보 미설정 — platform_settings(company_business_number/company_name/company_ceo/company_address) 등록 필요', needs_config: true }, 503)
+    }
+
+    // 공급받는자(유통사).
+    const seller = await c.env.DB.prepare(
+      'SELECT business_number, business_name, name, email, phone FROM sellers WHERE id = ?'
+    ).bind(doc.distributor_seller_id).first<{ business_number: string | null; business_name: string | null; name: string | null; email: string | null; phone: string | null }>()
+    if (!seller) return c.json({ success: false, error: '유통사 정보를 찾을 수 없습니다' }, 404)
+
+    let result: { success: boolean; ntsConfirmNumber?: string; invoiceKey?: string; message?: string }
+    try {
+      result = await issueBarobillTaxInvoice(c.env as unknown as BarobillEnv, {
+        supplierBusinessNumber: ps_map.company_business_number,
+        supplierBusinessName: ps_map.company_name,
+        supplierCEO: ps_map.company_ceo || ps_map.company_name,
+        supplierAddress: ps_map.company_address || '',
+        supplierBusinessType: ps_map.company_biz_type,
+        supplierBusinessCategory: ps_map.company_biz_class,
+        supplierEmail: ps_map.company_email,
+        supplierTel: ps_map.company_tel,
+        buyerBusinessNumber: seller.business_number || undefined,
+        buyerBusinessName: seller.business_name || seller.name || `유통사#${doc.distributor_seller_id}`,
+        buyerEmail: seller.email || undefined,
+        buyerTel: seller.phone || undefined,
+        writeDate: `${doc.period_month}-01`,
+        purposeType: '02', // 청구
+        taxType: '01', // 과세
+        items: [{ name: `${doc.period_month} 도매 거래 합계`, quantity: 1, unitPrice: doc.supply_amount, supplyPrice: doc.supply_amount, taxAmount: doc.vat_amount }],
+        totalSupplyPrice: doc.supply_amount,
+        totalTaxAmount: doc.vat_amount,
+        totalAmount: doc.total_amount,
+        memo: `유통스타트 도매 ${doc.period_month}`,
+      })
+    } catch (e) {
+      await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(() => {})
+      return c.json({ success: false, error: e instanceof Error ? e.message : '전자세금계산서 발행 실패' }, 502)
+    }
+    if (!result.success) {
+      await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(() => {})
+      return c.json({ success: false, error: result.message || '전자세금계산서 발행 실패' }, 502)
+    }
+    await c.env.DB.prepare(
+      "UPDATE tax_documents SET nts_confirm_num=?, invoice_key=?, external_status='issued', status='issued', issued_at=datetime('now') WHERE id=?"
+    ).bind(result.ntsConfirmNumber || null, result.invoiceKey || null, id).run()
+    return c.json({ success: true, nts_confirm_num: result.ntsConfirmNumber, invoice_key: result.invoiceKey })
+  } catch (err) {
+    return safeError(c, err, '전자세금계산서 발행 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 
