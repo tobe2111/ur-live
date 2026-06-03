@@ -26,7 +26,9 @@ export default function AgencyProfilePage() {
   }, [token, navigate])
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형 폼이라 데이터 도착 시 로컬 state 시드.
-  const profileQ = useApiQuery<any>(['agency', 'profile-edit'], '/api/agency/profile', { headers, select: (r: any) => (r?.success ? r.data : null) })
+  //   /api/agency/profile 은 인터셉터가 토큰 자동 주입(headers 전달 X — 토큰 회전 시 stale 헤더가 인터셉터 fresh 토큰을 덮어쓰는 문제 회피).
+  //   /api/agency-public/* 는 미주입 prefix → headers 수동 전달 필요.
+  const profileQ = useApiQuery<any>(['agency', 'profile-edit'], '/api/agency/profile', { select: (r: any) => (r?.success ? r.data : null) })
   const brandQ = useApiQuery<any>(['agency', 'brand-public'], '/api/agency-public/me/public', { headers, select: (r: any) => (r?.success ? r.data : null) })
   const profile = profileQ.data ?? null
   const loading = profileQ.isLoading

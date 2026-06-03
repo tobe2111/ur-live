@@ -56,6 +56,7 @@ export default function AdminUsersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('created_at')
   const [order, setOrder] = useState<'desc' | 'asc'>('desc')
@@ -74,11 +75,12 @@ export default function AdminUsersPage() {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login')
   }, [navigate])
 
-  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (page/sort/order key, search 는 검색 시 refetch).
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  //   검색은 제출 시 commit(appliedSearch) → key 에 포함해야 페이지네이션이 항상 현재 검색어와 일치(캐시된 페이지가 옛 검색어로 표시되는 문제 회피).
   const usersQ = useApiQuery<{ rows: User[]; totalPages: number; total: number }>(
-    ['admin', 'users', page, sort, order], '/api/admin/users',
+    ['admin', 'users', page, sort, order, appliedSearch], '/api/admin/users',
     {
-      params: { page, limit: LIMIT, sort, order, ...(search.trim() ? { search: search.trim() } : {}) },
+      params: { page, limit: LIMIT, sort, order, ...(appliedSearch ? { search: appliedSearch } : {}) },
       select: (r: any) => ({
         rows: r?.success ? (r.data || []) : [],
         totalPages: r?.totalPages || r?.pagination?.totalPages || 1,
@@ -117,7 +119,7 @@ export default function AdminUsersPage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     setPage(1)
-    loadUsers()
+    setAppliedSearch(search.trim())  // key 변경 → 자동 refetch (page 1 부터)
   }
 
   async function toggleDetail(userId: number) {

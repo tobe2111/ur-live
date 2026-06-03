@@ -54,6 +54,9 @@ export default function SellerStreamingSetupPage() {
       const res = await api.post('/api/seller/youtube/streaming-setup/init')
       if (res.data?.success) {
         setData({ status: 'configured', ...res.data.data })
+        // 🛡️ 2026-06-03 코드리뷰 fix: 쿼리 캐시도 갱신 — 안 하면 staleTime 후 refetch 가 stale 'no_oauth' 로
+        //   seeding effect 를 트리거해 방금 발급한 송출 키를 덮어쓸 수 있음.
+        setupQ.refetch()
         toast.success('송출 키 발급 완료')
       } else {
         toast.error(res.data?.error || '발급 실패')

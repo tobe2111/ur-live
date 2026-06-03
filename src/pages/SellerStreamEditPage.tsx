@@ -47,11 +47,14 @@ export default function SellerStreamEditPage() {
   useEffect(() => {
     if (streamQ.data) {
       setFormData({ title: streamQ.data.title || '', description: streamQ.data.description || '', status: streamQ.data.status || 'live' })
+      setError('')  // 성공 시 이전 에러 배너 해제
+    } else if (streamQ.isError) {
+      setError(t('seller.streamLoadFailed'))  // 네트워크/서버 오류
     } else if (streamQ.isFetched && !streamQ.data) {
-      setError(t('seller.streamNotFound'))
+      setError(t('seller.streamNotFound'))  // 성공 응답이지만 스트림 없음
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [streamQ.data, streamQ.isFetched])
+  }, [streamQ.data, streamQ.isFetched, streamQ.isError])
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault()

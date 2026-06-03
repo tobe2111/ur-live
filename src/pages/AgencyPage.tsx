@@ -6,8 +6,8 @@ import AgencyGroupBuyAlert from '@/components/agency/AgencyGroupBuyAlert'
 import { DashboardPageHeader } from '@/components/dashboard'
 import PLSimulator from '@/components/agency/PLSimulator'
 import { LayoutDashboard } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import { formatNumber } from '@/utils/format'
@@ -38,7 +38,7 @@ type AgencyBundle = {
   agencyProfile: { commission_rate?: number } | null
 }
 
-// sessionStorage 즉시렌더 캐시 (5분 TTL) → useApiQuery initialData seed.
+// sessionStorage 즉시렌더 캐시 (5분 TTL) → useQuery initialData seed (이미 shaped — select 미사용).
 function readAgencyCache(): AgencyBundle | undefined {
   try {
     const cached = sessionStorage.getItem('agency_dashboard_cache')
@@ -51,6 +51,31 @@ function readAgencyCache(): AgencyBundle | undefined {
       daily: Array.isArray(c.daily) ? c.daily : [], streams: [], agencyProfile: null,
     }
   } catch { return undefined }
+}
+
+// 🛡️ 2026-06-03: bundle fetch + shaping. select 대신 fetcher 에서 shape → initialData(이미 shaped)와 형태 일치.
+//   세션만료(success=false) → null 반환(상위 effect 가 로그인 redirect). 성공 시 sessionStorage 캐시 갱신.
+async function fetchAgencyBundle(): Promise<AgencyBundle | null> {
+  const res = await api.get('/api/agency/dashboard/bundle')
+  const raw: any = res.data
+  if (!raw?.success) return null
+  const b = raw.data || {}
+  const bundle: AgencyBundle = {
+    stats: b.stats?.data ?? null,
+    kpiData: b.kpi?.data ?? null,
+    monthlyTasks: b.monthlyTasks?.data ?? [],
+    sellers: b.sellers?.data ?? [],
+    orders: b.orders?.data ?? [],
+    daily: b.daily?.data ?? [],
+    streams: b.streams?.data ?? [],
+    agencyProfile: b.profile?.success ? b.profile.data : null,
+  }
+  try {
+    sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
+      ts: Date.now(), stats: bundle.stats, sellers: bundle.sellers, orders: bundle.orders, daily: bundle.daily,
+    }))
+  } catch { /* quota 무시 */ }
+  return bundle
 }
 
 export default function AgencyPage() {
@@ -71,26 +96,18 @@ export default function AgencyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  // 🛡️ 2026-06-03 Tier2(대시보드): 8→1 bundle fetch 를 useApiQuery 로 이전.
-  //   sessionStorage 5분 캐시는 initialData 로 보존(즉시렌더) + refetchOnMount:'always' 로 백그라운드 fresh.
-  const bundleQ = useApiQuery<AgencyBundle | null>(['agency', 'dashboard-bundle'], '/api/agency/dashboard/bundle', {
+  // 🛡️ 2026-06-03 Tier2(대시보드): 8→1 bundle fetch 를 useQuery 로 이전.
+  //   sessionStorage 5분 캐시는 initialData 로 보존(즉시렌더, 함수형 — mount 1회만 parse) + refetchOnMount:'always' 백그라운드 fresh.
+  //   select 미사용 — fetcher 가 shape → initialData 와 형태 일치(select 가 initialData 까지 적용되어 null 되던 버그 회피).
+  const bundleQ = useQuery<AgencyBundle | null>({
+    queryKey: ['agency', 'dashboard-bundle'],
+    queryFn: fetchAgencyBundle,
     enabled: !!token,
+    initialData: () => readAgencyCache() ?? undefined,
+    staleTime: 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
     refetchOnMount: 'always',
-    initialData: readAgencyCache(),
-    select: (raw: any) => {
-      if (!raw?.success) return null
-      const b = raw.data || {}
-      return {
-        stats: b.stats?.data ?? null,
-        kpiData: b.kpi?.data ?? null,
-        monthlyTasks: b.monthlyTasks?.data ?? [],
-        sellers: b.sellers?.data ?? [],
-        orders: b.orders?.data ?? [],
-        daily: b.daily?.data ?? [],
-        streams: b.streams?.data ?? [],
-        agencyProfile: b.profile?.success ? b.profile.data : null,
-      }
-    },
   })
   const stats = bundleQ.data?.stats ?? null
   const kpiData = bundleQ.data?.kpiData ?? null
@@ -102,7 +119,7 @@ export default function AgencyPage() {
   const agencyProfile = bundleQ.data?.agencyProfile ?? null
   const loading = bundleQ.isLoading && !bundleQ.data
 
-  // 세션 만료(success=false) → 로그인. fresh 데이터 도착 시 sessionStorage 캐시 갱신.
+  // 세션 만료(success=false → fetcher 가 null 반환) → 로그인. (캐시 갱신은 fetcher 내부에서 성공 시 수행.)
   useEffect(() => {
     if (bundleQ.isFetched && bundleQ.data === null && !bundleQ.isFetching) {
       toast.error(t('agency.sessionExpired'))
@@ -110,16 +127,6 @@ export default function AgencyPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundleQ.isFetched, bundleQ.data, bundleQ.isFetching])
-  useEffect(() => {
-    const d = bundleQ.data
-    if (!d || bundleQ.isFetching) return
-    try {
-      sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
-        ts: Date.now(), stats: d.stats, sellers: d.sellers, orders: d.orders, daily: d.daily,
-      }))
-    } catch { /* quota 무시 */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundleQ.data, bundleQ.isFetching])
 
   const sortedSellers = useMemo(() =>
     [...sellers].sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0)),

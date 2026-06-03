@@ -33,32 +33,36 @@ export default function AdminAuditLogPage() {
   const [page, setPage] = useState(1)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
-  // Filters
+  // Filters (입력값) + applied(제출 시 commit — queryKey 에 포함되어 페이지네이션이 항상 현재 필터와 일치).
   const [adminId, setAdminId] = useState('')
   const [action, setAction] = useState('')
   const [targetType, setTargetType] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [applied, setApplied] = useState({ adminId: '', action: '', targetType: '', startDate: '', endDate: '' })
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login')
   }, [navigate])
 
-  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 필터는 검색 시 refetch (page 만 key).
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  //   필터는 검색 시 commit(applied) → key 에 포함. 캐시된 페이지가 옛 필터로 표시되는 문제 회피.
   const adminOptionsQ = useApiQuery<AdminOption[]>(['admin', 'admins'], '/api/admin/admins', {
     select: (r: any) => (r?.success ? (r.data || []).map((a: { id: number; email: string }) => ({ id: a.id, email: a.email })) : []),
   })
   const adminOptions = adminOptionsQ.data ?? []
 
-  const logsQ = useApiQuery<{ logs: AuditLog[]; totalPages: number }>(['admin', 'audit-logs', page], '/api/admin/audit-logs', {
+  const logsQ = useApiQuery<{ logs: AuditLog[]; totalPages: number }>(
+    ['admin', 'audit-logs', page, applied.adminId, applied.action, applied.targetType, applied.startDate, applied.endDate],
+    '/api/admin/audit-logs', {
     params: {
       page, limit: LIMIT,
-      ...(adminId ? { admin_id: adminId } : {}),
-      ...(action ? { action } : {}),
-      ...(targetType ? { target_type: targetType } : {}),
-      ...(startDate ? { start_date: startDate } : {}),
-      ...(endDate ? { end_date: endDate } : {}),
+      ...(applied.adminId ? { admin_id: applied.adminId } : {}),
+      ...(applied.action ? { action: applied.action } : {}),
+      ...(applied.targetType ? { target_type: applied.targetType } : {}),
+      ...(applied.startDate ? { start_date: applied.startDate } : {}),
+      ...(applied.endDate ? { end_date: applied.endDate } : {}),
     },
     select: (r: any) => ({ logs: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
   })
@@ -68,16 +72,14 @@ export default function AdminAuditLogPage() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    if (page !== 1) setPage(1); else logsQ.refetch()
+    setPage(1)
+    setApplied({ adminId, action, targetType, startDate, endDate })
   }
 
   function resetFilters() {
-    setAdminId('')
-    setAction('')
-    setTargetType('')
-    setStartDate('')
-    setEndDate('')
-    if (page !== 1) setPage(1); else setTimeout(() => logsQ.refetch(), 0)
+    setAdminId(''); setAction(''); setTargetType(''); setStartDate(''); setEndDate('')
+    setPage(1)
+    setApplied({ adminId: '', action: '', targetType: '', startDate: '', endDate: '' })
   }
 
   function formatJSON(val: Record<string, unknown> | string | null) {
