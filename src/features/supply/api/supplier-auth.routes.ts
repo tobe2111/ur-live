@@ -11,6 +11,7 @@ import { cors } from 'hono/cors';
 import { sign } from 'hono/jwt';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { maskEmail } from '@/lib/mask';
 
@@ -40,7 +41,7 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     business_name TEXT NOT NULL,
     business_number TEXT, representative TEXT, email TEXT, phone TEXT, password_hash TEXT,
     bank_name TEXT, bank_account TEXT, account_holder TEXT, commission_rate REAL,
-    status TEXT NOT NULL DEFAULT 'pending',
+    status TEXT NOT NULL DEFAULT 'pending', linked_user_id INTEGER,
     created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => { /* exists */ });
   // 기존 테이블에 누락 가능 컬럼 보강 (이미 있으면 throw → 무시).
@@ -48,10 +49,12 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     'business_number TEXT', 'representative TEXT', 'email TEXT', 'phone TEXT', 'password_hash TEXT',
     'bank_name TEXT', 'bank_account TEXT', 'account_holder TEXT', 'commission_rate REAL',
     "status TEXT NOT NULL DEFAULT 'pending'", 'created_at DATETIME', 'updated_at DATETIME',
+    'linked_user_id INTEGER', // 🏭 2026-06-04 카카오 통합 — 카카오 유저 ↔ 제조회원 연결
   ]) {
     await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
   }
   await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL').run().catch(() => {});
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_linked_user ON suppliers(linked_user_id) WHERE linked_user_id IS NOT NULL').run().catch(() => {});
 }
 
 // ── POST /register — 도매상 가입 ──────────────────────────────────────────────
@@ -98,6 +101,62 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     }, 201);
   } catch (err) {
     return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[supplier-auth]');
+  }
+});
+
+// ── POST /become — 카카오(일반 유저) → 제조회원 입점/로그인 ──────────────────────────
+//   카카오 통합: 유저 세션으로 제조회원 행을 생성/연결(linked_user_id). 제조회원은 어드민 승인 필요라
+//   신규/미승인은 status='pending'(토큰 X), 승인됨이면 supplier_token 발급. 카카오 콜백 코어는 미변경.
+supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_become', max: 10, windowSec: 600 }), async (c) => {
+  const { DB } = c.env;
+  const authed = c.get('user' as never) as { id?: string | number; email?: string; name?: string; type?: string } | undefined;
+  if (!authed || authed.type !== 'user') return c.json({ success: false, error: '카카오 로그인이 필요합니다' }, 401);
+  const userId = Number(authed.id);
+  if (!Number.isFinite(userId) || userId <= 0) return c.json({ success: false, error: '유효하지 않은 사용자입니다' }, 400);
+  try {
+    await ensureSupplierSchema(DB);
+    const u = await DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(userId)
+      .first<{ id: number; email: string | null; name: string | null }>().catch(() => null);
+    const email = (authed.email || u?.email || '').trim().toLowerCase();
+    const name = (authed.name || u?.name || '제조회원').trim();
+
+    type SupRow = { id: number; business_name: string; email: string | null; status: string };
+    // 1) 이미 연결된 제조회원?
+    let sup = await DB.prepare('SELECT id, business_name, email, status FROM suppliers WHERE linked_user_id = ? LIMIT 1')
+      .bind(userId).first<SupRow>().catch(() => null);
+    // 2) 같은 이메일 미연결 제조회원 → 연결.
+    if (!sup && email) {
+      const byEmail = await DB.prepare('SELECT id, business_name, email, status FROM suppliers WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0) LIMIT 1')
+        .bind(email).first<SupRow>().catch(() => null);
+      if (byEmail) {
+        await DB.prepare("UPDATE suppliers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?").bind(userId, byEmail.id).run().catch(() => {});
+        sup = byEmail;
+      }
+    }
+    // 3) 없으면 신규 제조회원 생성 (status='pending' — 어드민 승인 필요).
+    if (!sup) {
+      if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400);
+      const ins = await DB.prepare(`
+        INSERT INTO suppliers (business_name, email, status, linked_user_id, created_at, updated_at)
+        VALUES (?, ?, 'pending', ?, datetime('now'), datetime('now'))
+      `).bind(name, email, userId).run().catch(() => null);
+      const sid = Number(ins?.meta?.last_row_id);
+      if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);
+      return c.json({ success: true, status: 'pending', message: '제조회원 입점 신청 완료 — 관리자 승인 후 이용할 수 있습니다' });
+    }
+    // 승인 전이면 토큰 없이 대기 안내.
+    if (sup.status !== 'approved') {
+      return c.json({ success: true, status: sup.status, message: sup.status === 'pending' ? '관리자 승인 대기 중입니다' : '이용할 수 없는 계정 상태입니다' });
+    }
+    // 승인됨 → supplier_token 발급 (login 과 동일 payload).
+    const nowSec = Math.floor(Date.now() / 1000);
+    const token = await sign({
+      sub: sup.id.toString(), supplier_id: sup.id, email: sup.email, name: sup.business_name,
+      type: 'supplier', iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
+    }, c.env.JWT_SECRET);
+    return c.json({ success: true, status: 'approved', data: { token, supplier: { id: sup.id, business_name: sup.business_name, email: sup.email } } });
+  } catch (err) {
+    return safeError(c, err, '제조회원 전환 중 오류가 발생했습니다', '[supplier-auth]');
   }
 });
 

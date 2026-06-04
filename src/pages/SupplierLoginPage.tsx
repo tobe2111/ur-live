@@ -21,7 +21,24 @@ export default function SupplierLoginPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (isSupplierLoggedIn()) navigate('/supplier', { replace: true })
+    if (isSupplierLoggedIn()) { navigate('/supplier', { replace: true }); return }
+    // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인된 채 돌아오면 제조회원 전환/로그인 자동 시도.
+    //   승인됨 → supplier 세션 + /supplier. 미승인 → 승인 대기 안내. (세션 쿠키로 인증)
+    if (typeof window !== 'undefined' && localStorage.getItem('user_id')) {
+      (async () => {
+        try {
+          const res = await fetch('/api/supplier/become', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+          const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; supplier: { id: number; business_name: string; email: string } } }
+          if (data.success && data.status === 'approved' && data.data) {
+            setSupplierSession(data.data.token, data.data.supplier)
+            toast.success('제조회원으로 로그인되었습니다')
+            navigate('/supplier', { replace: true })
+          } else if (data.success && (data.status === 'pending')) {
+            toast.info(data.message || '제조회원 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
+          }
+        } catch { /* silent — 일반 로그인 폼 유지 */ }
+      })()
+    }
   }, [navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,6 +158,17 @@ export default function SupplierLoginPage() {
                 {loading ? t('common.loading', { defaultValue: '처리 중...' }) : (<>{t('supplier.loginButton', { defaultValue: '로그인' })} <ArrowRight className="w-4 h-4" /></>)}
               </button>
             </form>
+
+            {/* 🏭 2026-06-04 카카오 통합 — 카카오로 제조회원 입점/로그인. 승인 후 이용. */}
+            <div className="my-4 flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">또는</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/login&intent=user' }}
+              className="w-full h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
+              카카오로 제조회원 입점·로그인
+            </button>
 
             <p className="mt-6 text-center text-sm text-gray-600">
               {t('supplier.noAccount', { defaultValue: '계정이 없으신가요?' })}{' '}
