@@ -586,9 +586,18 @@ export default function AdminProductsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-gray-900">{formatNumber(product.price)}{t('common.won', { defaultValue: '원' })}</p>
-                        {product.is_supply_product && product.supply_price != null && product.supply_price > 0 && (
-                          <p className="text-xs text-purple-600 mt-0.5">{t('admin.products.supplyPriceLabel', { defaultValue: '공급가' })} {formatNumber(product.supply_price)}{t('common.won', { defaultValue: '원' })}</p>
+                        {/* 🏭 2026-06-04: 도매(공급)상품은 공급가를 주 가격으로 표시(판매가 X) — 사용자 요구.
+                            일반 상품은 판매가 주 표시. */}
+                        {product.is_supply_product && product.supply_price != null && product.supply_price > 0 ? (
+                          <>
+                            <p className="text-sm font-bold text-purple-700">
+                              {formatNumber(product.supply_price)}{t('common.won', { defaultValue: '원' })}
+                              <span className="ml-1 text-[10px] font-medium text-purple-500">{t('admin.products.supplyPriceLabel', { defaultValue: '공급가' })}</span>
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{t('admin.products.recoRetailLabel', { defaultValue: '권장판매가' })} {formatNumber(product.price)}{t('common.won', { defaultValue: '원' })}</p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium text-gray-900">{formatNumber(product.price)}{t('common.won', { defaultValue: '원' })}</p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
