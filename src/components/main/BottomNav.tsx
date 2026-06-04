@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
@@ -318,6 +319,8 @@ export default function BottomNav() {
                   {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도) */}
                   {isSeller && (
                     <div className="space-y-3">
+                      {/* 🏭 2026-06-04 라이브커머스 잠정 중단 — '라이브 방송 시작하기' 진입 숨김. */}
+                      {!LIVE_COMMERCE_SUSPENDED && (
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
@@ -330,6 +333,7 @@ export default function BottomNav() {
                           <p className="text-[12px] text-white/70 mt-0.5">{t('bottomNav.liveBroadcastDesc', { defaultValue: 'YouTube 연동으로 바로 방송 시작' })}</p>
                         </div>
                       </button>
+                      )}
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
