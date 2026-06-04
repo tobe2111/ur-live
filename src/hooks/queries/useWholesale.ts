@@ -81,7 +81,7 @@ export function useWholesaleCatalog(search: string) {
       if (search) params.set('search', search)
       return api.get(`/api/wholesale/catalog?${params.toString()}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : []))
     },
-    enabled: hasSellerToken(),
+    // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능(가격은 서버가 null 로 가림).
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -108,7 +108,8 @@ export function useWholesaleProduct(id: string | undefined) {
         .get(`/api/wholesale/catalog/${id}`, sellerAuth())
         .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' }))
         .catch(() => ({ item: null, grade: '' })),
-    enabled: hasSellerToken() && !!id,
+    // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능(가격 null).
+    enabled: !!id,
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

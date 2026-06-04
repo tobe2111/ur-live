@@ -230,8 +230,11 @@ app.get('/recent-items', async (c) => {
 
 // ── GET /catalog ────────────────────────────────────────────────────────────
 app.get('/catalog', async (c) => {
+  // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
+  //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const guest = !sellerId
+  const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
   const limit = Math.min(parseInt(c.req.query('limit') || '24', 10), 100)
@@ -248,14 +251,14 @@ app.get('/catalog', async (c) => {
     }
 
     await ensureSupplyVisibilitySchema(DB)
-    const sg = await loadSellerGrade(DB, sellerId)
+    const sg = guest ? { distributor_grade: null, special_discount_until: null } : await loadSellerGrade(DB, sellerId!)
     const table = await loadGradeTable(DB)
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
 
     // 도매 가능 = 제조사 공급상품(공급자 직등록 원본). supply_source_id IS NULL = 원본(셀러 복제본 제외).
     // + 공급 범위(supply_visibility) 가시성: ALL 이거나 허용목록(선정된 유통회원)에 포함.
     let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
-    const params: (string | number)[] = [sellerId]
+    const params: (string | number)[] = [visBind]
     if (search) { where += ' AND p.name LIKE ?'; params.push(`%${search}%`) }
     if (category) { where += ' AND p.category = ?'; params.push(category) }
 
@@ -279,19 +282,21 @@ app.get('/catalog', async (c) => {
     const total = totalRow?.c ?? 0
 
     // ⚠️ supply_price/supplier_id 비노출 — 등급가 + 권장소비자가(마진 산출용)만 반환.
+    //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
     const items = (rows.results || []).map(r => {
-      const { price } = resolveDistributorPrice({
+      const price = guest ? null : resolveDistributorPrice({
         baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
-      })
+      }).price
       return {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
-        retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
+        retail_price: guest ? null : (r.retail_price || null), moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
+        requires_login: guest,
       }
     })
 
-    return c.json({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade })
+    return c.json({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade: guest ? null : grade, requires_login: guest })
   } catch (err) {
     return safeError(c, err, '카탈로그 조회 중 오류가 발생했습니다', '[wholesale]')
   }
@@ -299,8 +304,9 @@ app.get('/catalog', async (c) => {
 
 // ── GET /catalog/:id ──────────────────────────────────────────────────────────
 app.get('/catalog/:id', async (c) => {
+  // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능. 가격(등급가/권장가/tier)은 로그인 시에만.
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const guest = !sellerId
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
@@ -315,13 +321,26 @@ app.get('/catalog/:id', async (c) => {
       WHERE p.id = ? AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND ${visibilityWhere('p')}
-    `).bind(id, sellerId).first<{
+    `).bind(id, sellerId ?? -1).first<{
       id: number; name: string; description: string | null; image_url: string | null;
       category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; sold_count: number; margin_override: number | null
     }>()
     if (!r) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
-    const sg = await loadSellerGrade(DB, sellerId)
+    const moq = Math.max(1, r.moq || 1)
+    if (guest) {
+      return c.json({
+        success: true,
+        item: {
+          id: r.id, name: r.name, description: r.description, image_url: r.image_url,
+          category: r.category, stock: r.stock, distributor_price: null,
+          retail_price: null, moq, sold_count: r.sold_count || 0, tiers: [], requires_login: true,
+        },
+        grade: null, requires_login: true,
+      })
+    }
+
+    const sg = await loadSellerGrade(DB, sellerId!)
     const table = await loadGradeTable(DB)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
@@ -330,7 +349,6 @@ app.get('/catalog/:id', async (c) => {
     // 수량 구간 할인 tier — 등급가 위에 적용한 구간별 단가 노출(없으면 빈 배열).
     const tierMap = await loadQtyTiers(DB, [r.id])
     const rawTiers = tierMap.get(r.id) || []
-    const moq = Math.max(1, r.moq || 1)
     // floor=공급원가(supply_price): 수량할인이 원가 이하로 내려가 플랫폼 역마진 나는 것 방지(표시=결제 동일).
     const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers, r.supply_price) }))
     return c.json({

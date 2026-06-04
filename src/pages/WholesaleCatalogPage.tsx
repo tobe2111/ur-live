@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn } from 'lucide-react'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { toast } from '@/hooks/useToast'
@@ -24,15 +24,23 @@ interface CatalogItem {
   image_url: string | null
   category: string | null
   stock: number
-  distributor_price: number
+  distributor_price: number | null
   retail_price?: number | null
   moq?: number
   has_tiers?: boolean
   sold_count?: number
+  requires_login?: boolean
 }
 
-// ── 가격 라인 (할인% + 공급가 앵커) ──
+// ── 가격 라인 (할인% + 공급가 앵커) ── 비로그인 → 도매가 숨김 + 로그인 유도.
 function Price({ p, size = 20 }: { p: CatalogItem; size?: number }) {
+  if (p.distributor_price == null) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold" style={{ background: WT.brandSoft, color: WT.brand }}>
+        <Lock className="w-3 h-3" /> 로그인하고 공급가 확인
+      </span>
+    )
+  }
   const dr = p.retail_price ? discountRate(p.distributor_price, p.retail_price) : 0
   return (
     <div className="flex items-baseline gap-1.5">
@@ -68,8 +76,8 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
 function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void }) {
-  const mr = p.retail_price ? marginRate(p.distributor_price, p.retail_price) : 0
-  const um = p.retail_price ? unitMargin(p.distributor_price, p.retail_price) : 0
+  const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
+  const um = p.retail_price && p.distributor_price != null ? unitMargin(p.distributor_price, p.retail_price) : 0
   const moq = Math.max(1, p.moq || 1)
   return (
     <div className="group flex flex-col">
@@ -94,7 +102,9 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
         <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>재고 {comma(p.stock)}</div>
       )}
       {moq > 1 && (
-        <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>최소 {comma(moq)}개 · 박스 {won(p.distributor_price * moq)}</div>
+        <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>
+          최소 {comma(moq)}개{p.distributor_price != null ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
+        </div>
       )}
     </div>
   )
@@ -320,8 +330,8 @@ export default function WholesaleCatalogPage() {
   const items = useMemo(() => {
     let list = allItems.filter((p) => cat === 'all' || p.category === cat)
     list = [...list].sort((a, b) =>
-      sort === 'low' ? a.distributor_price - b.distributor_price :
-      sort === 'margin' ? marginRate(b.distributor_price, b.retail_price || 0) - marginRate(a.distributor_price, a.retail_price || 0) :
+      sort === 'low' ? (a.distributor_price ?? 0) - (b.distributor_price ?? 0) :
+      sort === 'margin' ? marginRate(b.distributor_price ?? 0, b.retail_price || 0) - marginRate(a.distributor_price ?? 0, a.retail_price || 0) :
       (b.sold_count || 0) - (a.sold_count || 0))
     return list
   }, [allItems, cat, sort])
@@ -335,8 +345,15 @@ export default function WholesaleCatalogPage() {
   const recentQ = useWholesaleRecentItems()
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
+  const loggedIn = !!token
+  const goLogin = () => navigate('/seller/login?returnUrl=/wholesale')
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
+    if (!loggedIn || p.distributor_price == null) {
+      toast.info('로그인하면 등급 공급가로 담을 수 있어요')
+      goLogin()
+      return
+    }
     const moq = Math.max(1, p.moq || 1)
     cart.add({ id: p.id, qty: moq, name: p.name, image_url: p.image_url, price: p.distributor_price, moq })
     toast.success(moq > 1 ? `장바구니에 ${comma(moq)}개 담았어요` : '장바구니에 담았어요')
@@ -354,8 +371,6 @@ export default function WholesaleCatalogPage() {
       .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`; a.click(); URL.revokeObjectURL(url) })
       .catch(() => toast.error('단가표 다운로드에 실패했어요'))
   }
-
-  if (!token) return <Navigate to="/wholesale/intro" replace />
 
   const SORTS: [typeof sort, string][] = [['rec', '인기순'], ['low', '낮은 공급가'], ['margin', '높은 마진']]
   const monthSpend = stmtQ.data?.summary?.total_paid ?? 0
@@ -375,20 +390,34 @@ export default function WholesaleCatalogPage() {
             <span className="text-[13px]" style={{ color: WT.ink4 }}>도매몰</span>
           </button>
           <div className="flex-1" />
-          <nav className="hidden sm:flex items-center gap-4 text-[13px] font-medium" style={{ color: WT.ink2 }}>
-            <button onClick={() => navigate('/wholesale/orders')} className="inline-flex items-center gap-1"><ClipboardList className="w-4 h-4" /> 주문내역</button>
-            <button onClick={() => navigate('/wholesale/statement')} className="inline-flex items-center gap-1"><Receipt className="w-4 h-4" /> 거래내역</button>
-            <button onClick={() => navigate('/wholesale/documents')} className="inline-flex items-center gap-1"><FileText className="w-4 h-4" /> 자료</button>
-            <button onClick={() => navigate('/wholesale/oem')} className="inline-flex items-center gap-1"><Factory className="w-4 h-4" /> OEM/ODM</button>
-          </nav>
-          <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative shrink-0 p-1.5" style={{ color: WT.ink2 }}>
-            <ShoppingCart className="w-5 h-5" />
-            {cart.count > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
-          </button>
-          <button onClick={() => setGradeOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0" style={{ background: WT.brandSoft, color: WT.brand }}>
-            <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
-            {GRADE_LABEL[grade] || grade}등급{me ? ` · 마진 ${me.margin_pct}%` : ''}
-          </button>
+          {loggedIn ? (
+            <>
+              <nav className="hidden sm:flex items-center gap-4 text-[13px] font-medium" style={{ color: WT.ink2 }}>
+                <button onClick={() => navigate('/wholesale/orders')} className="inline-flex items-center gap-1"><ClipboardList className="w-4 h-4" /> 주문내역</button>
+                <button onClick={() => navigate('/wholesale/statement')} className="inline-flex items-center gap-1"><Receipt className="w-4 h-4" /> 거래내역</button>
+                <button onClick={() => navigate('/wholesale/documents')} className="inline-flex items-center gap-1"><FileText className="w-4 h-4" /> 자료</button>
+                <button onClick={() => navigate('/wholesale/oem')} className="inline-flex items-center gap-1"><Factory className="w-4 h-4" /> OEM/ODM</button>
+              </nav>
+              <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative shrink-0 p-1.5" style={{ color: WT.ink2 }}>
+                <ShoppingCart className="w-5 h-5" />
+                {cart.count > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
+              </button>
+              <button onClick={() => setGradeOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0" style={{ background: WT.brandSoft, color: WT.brand }}>
+                <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
+                {GRADE_LABEL[grade] || grade}등급{me ? ` · 마진 ${me.margin_pct}%` : ''}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => navigate('/wholesale/intro')} className="hidden sm:inline text-[13px] font-medium" style={{ color: WT.ink2 }}>서비스 소개</button>
+              <button onClick={goLogin} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }}>
+                <LogIn className="w-4 h-4" /> 로그인
+              </button>
+              <button onClick={() => navigate('/wholesale/join')} className="inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-bold text-white shrink-0" style={{ background: WT.brand }}>
+                가입
+              </button>
+            </>
+          )}
         </div>
         {/* 검색 */}
         <div className="ur-content-wide px-5 lg:px-8 pb-3">
@@ -408,20 +437,34 @@ export default function WholesaleCatalogPage() {
         {/* 히어로 + 대시보드 + OEM */}
         <div className="pt-4 pb-5 space-y-3">
           <BrandHero />
-          <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} onGrade={() => setGradeOpen(true)} />
-          {me?.special_active && me.special_discount_until && (
-            <div className="px-4 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: WT.brandSoft, color: WT.brand }}>
-              특별가 적용 중 — {new Date(me.special_discount_until).toLocaleDateString('ko-KR')}까지 최저 공급가로 구매할 수 있어요
+          {loggedIn ? (
+            <>
+              <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} onGrade={() => setGradeOpen(true)} />
+              {me?.special_active && me.special_discount_until && (
+                <div className="px-4 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: WT.brandSoft, color: WT.brand }}>
+                  특별가 적용 중 — {new Date(me.special_discount_until).toLocaleDateString('ko-KR')}까지 최저 공급가로 구매할 수 있어요
+                </div>
+              )}
+              <button onClick={() => navigate('/wholesale/oem')} className="w-full flex items-center gap-3.5 rounded-2xl p-4 text-left" style={{ border: '1px solid ' + WT.line, background: '#fff' }}>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: WT.fill }}><Factory className="w-5 h-5" style={{ color: WT.ink2 }} /></span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-bold truncate" style={{ color: WT.ink }}>자사 브랜드 제품이 필요하세요?</div>
+                  <div className="text-[12px] mt-0.5 truncate" style={{ color: WT.ink3 }}>OEM/ODM 제조사 연결·컨설팅 신청</div>
+                </div>
+                <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.ink4 }} />
+              </button>
+            </>
+          ) : (
+            // 비로그인: 가입 유도 배너 (도매가는 가입/로그인 후 노출)
+            <div className="flex items-center gap-3.5 rounded-2xl p-4" style={{ background: WT.ink }}>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.12)' }}><Lock className="w-5 h-5 text-white" /></span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold text-white">가입하면 등급 공급가가 보여요</div>
+                <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>유통사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</div>
+              </div>
+              <button onClick={() => navigate('/wholesale/join')} className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-bold" style={{ background: WT.brand, color: '#fff' }}>가입하기</button>
             </div>
           )}
-          <button onClick={() => navigate('/wholesale/oem')} className="w-full flex items-center gap-3.5 rounded-2xl p-4 text-left" style={{ border: '1px solid ' + WT.line, background: '#fff' }}>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: WT.fill }}><Factory className="w-5 h-5" style={{ color: WT.ink2 }} /></span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[14px] font-bold truncate" style={{ color: WT.ink }}>자사 브랜드 제품이 필요하세요?</div>
-              <div className="text-[12px] mt-0.5 truncate" style={{ color: WT.ink3 }}>OEM/ODM 제조사 연결·컨설팅 신청</div>
-            </div>
-            <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.ink4 }} />
-          </button>
         </div>
 
         {/* 빠른 재주문 (최근 사입) */}
@@ -472,9 +515,11 @@ export default function WholesaleCatalogPage() {
               ))}
             </div>
           </div>
-          <button onClick={exportCatalog} className="mb-4 w-full flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
-            <FileSpreadsheet className="w-4 h-4" /> 단가표 엑셀 다운로드 <span style={{ color: WT.ink4 }}>(내 등급가)</span>
-          </button>
+          {loggedIn && (
+            <button onClick={exportCatalog} className="mb-4 w-full flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
+              <FileSpreadsheet className="w-4 h-4" /> 단가표 엑셀 다운로드 <span style={{ color: WT.ink4 }}>(내 등급가)</span>
+            </button>
+          )}
 
           <div className="lg:flex lg:gap-7">
             <Sidebar cat={cat} setCat={setCat} counts={catCounts} />

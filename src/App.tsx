@@ -490,12 +490,12 @@ function AppContent() {
           <ErrorBoundary key={location.key}>
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
-          {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale/intro" replace />}
+          {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale" replace />}
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale/intro" replace /> : <MainHomePage />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <MainHomePage />} />
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale" element={<WholesaleCatalogPage />} />

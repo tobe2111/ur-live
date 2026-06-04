@@ -29,9 +29,11 @@ const MOBILE_ONLY_PREFIXES = [
   '/shorts',       // ShortsPage (9:16 쇼츠)
 ]
 
-// 사이드바 숨길 페이지 (셀러/어드민/에이전시 대시보드 + 결제/임베드)
+// 사이드바 숨길 페이지 (셀러/어드민/에이전시 대시보드 + 결제/임베드 + 도매몰)
+// 🏭 2026-06-04 도매몰(/wholesale)·제조사(/supplier) 는 별도 B2B 서피스 — 소비자 좌측
+//   카테고리 사이드바 미표시 (utongstart 도매몰은 자체 카테고리 UI 사용).
 const HIDE_SIDEBAR_PREFIXES = [
-  '/seller', '/admin', '/agency', '/supplier', '/embed', '/checkout/return', '/introduce',
+  '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
 ]
 
 export default function MobileAppLayout({ children }: MobileAppLayoutProps) {

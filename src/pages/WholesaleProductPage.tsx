@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Check } from 'lucide-react'
+import { ArrowLeft, Loader2, Check, Lock } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
@@ -15,8 +15,8 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 interface QtyTierView { min_qty: number; discount_pct: number; unit_price: number }
 interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
-  category: string | null; stock: number; distributor_price: number
-  retail_price?: number | null; moq?: number; sold_count?: number; tiers?: QtyTierView[]
+  category: string | null; stock: number; distributor_price: number | null
+  retail_price?: number | null; moq?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
 }
 
 // 수량 구간별 단가표 (등급가 위 volume 할인 — 많이 살수록 ↓). 현재 수량 구간 강조.
@@ -77,11 +77,13 @@ export default function WholesaleProductPage() {
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
   const cart = useWholesaleCart()
 
-  useEffect(() => { if (!token) navigate('/seller/login') }, [token, navigate])
+  // 🏭 2026-06-04 몰-first: 비로그인도 상세 열람 가능(가격은 가림). 강제 로그인 redirect 제거.
+  const goLogin = () => navigate(`/seller/login?returnUrl=/wholesale/product/${id ?? ''}`)
   useEffect(() => { setQty(Math.max(1, item?.moq || 1)); setTab('desc') }, [item?.id, item?.moq])
 
   function addToCart() {
     if (!item) return
+    if (item.distributor_price == null) { toast.info('로그인하면 등급 공급가로 담을 수 있어요'); goLogin(); return }
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
@@ -91,6 +93,7 @@ export default function WholesaleProductPage() {
 
   async function placeOrder() {
     if (!item || ordering) return
+    if (item.distributor_price == null) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
     setOrdering(true)
     try {
       const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }] }, h)
@@ -114,13 +117,14 @@ export default function WholesaleProductPage() {
 
   const moq = Math.max(1, item.moq || 1)
   const tiers = item.tiers || []
+  const locked = item.distributor_price == null // 비로그인 → 가격 가림 + 로그인 유도
   // 현재 수량에 적용되는 단가 — qty 이상 만족하는 최대 min_qty tier(없으면 등급가). 서버 /orders 와 동일 규칙.
-  let effUnit = item.distributor_price, bestMin = 0
+  let effUnit = item.distributor_price ?? 0, bestMin = 0
   for (const t of tiers) if (qty >= t.min_qty && t.min_qty >= bestMin) { bestMin = t.min_qty; effUnit = t.unit_price }
   const total = effUnit * qty
-  const dr = item.retail_price ? discountRate(item.distributor_price, item.retail_price) : 0
-  const um = item.retail_price ? unitMargin(item.distributor_price, item.retail_price) : 0
-  const mr = item.retail_price ? marginRate(item.distributor_price, item.retail_price) : 0
+  const dr = item.retail_price ? discountRate(item.distributor_price ?? 0, item.retail_price) : 0
+  const um = item.retail_price ? unitMargin(item.distributor_price ?? 0, item.retail_price) : 0
+  const mr = item.retail_price ? marginRate(item.distributor_price ?? 0, item.retail_price) : 0
   const catLabel = WHOLESALE_CATEGORIES.find(c => c.id === item.category)?.label
   const tabs: [typeof tab, string][] = [['desc', '상세설명'], ['ship', '배송'], ['settle', '정산'], ['return', '반품·교환']]
 
@@ -147,29 +151,45 @@ export default function WholesaleProductPage() {
           {catLabel && <span className="inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold mb-2.5" style={{ background: WT.fill, color: WT.ink2 }}>{catLabel}</span>}
           <h2 className="font-extrabold tracking-[-0.01em] leading-snug text-[21px] lg:text-[26px]" style={{ color: WT.ink }}>{item.name}</h2>
 
-          <div className="mt-4 flex items-center gap-2">
-            <span className="inline-flex items-center font-bold rounded-full px-2.5 py-0.5 text-[13px]" style={{ color: WT.brand, background: WT.brandSoft }}>{GRADE_LABEL[grade] || grade}등급가</span>
-            <span className="text-[13px]" style={{ color: WT.ink3 }}>개당 공급가</span>
-          </div>
-          <div className="mt-1.5 flex items-end gap-2.5">
-            <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price)}</span>
-            {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
-          </div>
-          <div className="mt-1.5 text-[14px] tabular-nums" style={{ color: WT.ink4 }}>
-            {item.retail_price ? <>권장 소비자가 <span className="line-through">{won(item.retail_price)}</span></> : null}
-            {moq > 1 && <>{item.retail_price ? <span className="mx-2" style={{ color: WT.line }}>|</span> : null}박스 {comma(moq)}개 <span className="font-semibold" style={{ color: WT.ink2 }}>{won(item.distributor_price * moq)}</span></>}
-          </div>
-
-          {/* 마진 여력 */}
-          {um > 0 && (
-            <div className="mt-3.5 flex items-center gap-2 rounded-2xl p-3.5" style={{ background: WT.posBg }}>
-              <Check className="w-5 h-5" style={{ color: WT.pos }} strokeWidth={2.6} />
-              <span className="text-[14px] font-bold" style={{ color: WT.pos }}>개당 마진 +{won(um)} <span className="font-extrabold">({mr}%)</span></span>
+          {locked ? (
+            // 비로그인: 도매가 숨김 + 로그인/가입 유도
+            <div className="mt-4 rounded-2xl p-4" style={{ background: WT.fill }}>
+              <div className="flex items-center gap-2 text-[14px] font-bold" style={{ color: WT.ink }}>
+                <Lock className="w-4 h-4" style={{ color: WT.brand }} /> 등급 공급가는 로그인 후 확인할 수 있어요
+              </div>
+              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>유통사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</p>
+              <div className="mt-3 flex gap-2.5">
+                <button onClick={goLogin} className="flex-1 h-12 rounded-xl text-[15px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>로그인</button>
+                <button onClick={() => navigate('/wholesale/join')} className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>유통사 가입</button>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              <div className="mt-4 flex items-center gap-2">
+                <span className="inline-flex items-center font-bold rounded-full px-2.5 py-0.5 text-[13px]" style={{ color: WT.brand, background: WT.brandSoft }}>{GRADE_LABEL[grade] || grade}등급가</span>
+                <span className="text-[13px]" style={{ color: WT.ink3 }}>개당 공급가</span>
+              </div>
+              <div className="mt-1.5 flex items-end gap-2.5">
+                <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price ?? 0)}</span>
+                {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
+              </div>
+              <div className="mt-1.5 text-[14px] tabular-nums" style={{ color: WT.ink4 }}>
+                {item.retail_price ? <>권장 소비자가 <span className="line-through">{won(item.retail_price)}</span></> : null}
+                {moq > 1 && <>{item.retail_price ? <span className="mx-2" style={{ color: WT.line }}>|</span> : null}박스 {comma(moq)}개 <span className="font-semibold" style={{ color: WT.ink2 }}>{won((item.distributor_price ?? 0) * moq)}</span></>}
+              </div>
 
-          {/* 수량 구간별 단가표 (tier 있을 때만) */}
-          {tiers.length > 0 && <TierTable basePrice={item.distributor_price} moq={moq} tiers={tiers} qty={qty} />}
+              {/* 마진 여력 */}
+              {um > 0 && (
+                <div className="mt-3.5 flex items-center gap-2 rounded-2xl p-3.5" style={{ background: WT.posBg }}>
+                  <Check className="w-5 h-5" style={{ color: WT.pos }} strokeWidth={2.6} />
+                  <span className="text-[14px] font-bold" style={{ color: WT.pos }}>개당 마진 +{won(um)} <span className="font-extrabold">({mr}%)</span></span>
+                </div>
+              )}
+
+              {/* 수량 구간별 단가표 (tier 있을 때만) */}
+              {tiers.length > 0 && <TierTable basePrice={item.distributor_price ?? 0} moq={moq} tiers={tiers} qty={qty} />}
+            </>
+          )}
 
           {/* 정보 리스트 */}
           <div className="mt-3.5 rounded-2xl overflow-hidden" style={{ background: WT.fill2 }}>
@@ -182,6 +202,11 @@ export default function WholesaleProductPage() {
 
           {/* 데스크톱 인라인 CTA */}
           <div className="hidden lg:block">
+            {locked ? (
+              <button onClick={goLogin} className="mt-5 w-full h-14 rounded-2xl text-[16px] font-bold text-white flex items-center justify-center gap-2" style={{ background: WT.brand }}>
+                <Lock className="w-5 h-5" /> 로그인하고 공급가 확인
+              </button>
+            ) : (<>
             <div className="mt-5 flex items-center gap-3">
               <div className="inline-flex items-center rounded-full h-11" style={{ background: WT.fill }}>
                 <button className="h-11 w-11 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - moq))} disabled={qty <= moq}>−</button>
@@ -200,6 +225,7 @@ export default function WholesaleProductPage() {
                 {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
               </button>
             </div>
+            </>)}
           </div>
         </div>
       </main>
@@ -224,6 +250,11 @@ export default function WholesaleProductPage() {
 
       {/* 모바일 하단 고정 CTA */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white z-40 px-5 pt-2.5" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        {locked ? (
+          <button onClick={goLogin} className="w-full h-14 rounded-2xl text-[16px] font-bold text-white flex items-center justify-center gap-2" style={{ background: WT.brand }}>
+            <Lock className="w-5 h-5" /> 로그인하고 공급가 확인
+          </button>
+        ) : (<>
         <div className="flex items-center justify-between mb-2.5 px-1">
           <div className="inline-flex items-center rounded-full h-10" style={{ background: WT.fill }}>
             <button className="h-10 w-10 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - moq))} disabled={qty <= moq}>−</button>
@@ -242,6 +273,7 @@ export default function WholesaleProductPage() {
             {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
           </button>
         </div>
+        </>)}
       </div>
     </div>
   )

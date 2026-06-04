@@ -1805,8 +1805,9 @@ export default {
     try {
       const url = new URL(request.url);
       if (WHOLESALE_HOSTS.has(url.hostname.toLowerCase()) && !isWholesaleAllowedPath(url.pathname || '/')) {
-        // 도매몰 도메인에서 비-도매몰 경로 → 공개 소개 랜딩으로 302 (도매몰 전용).
-        return Response.redirect(`${url.origin}/wholesale/intro`, 302);
+        // 🏭 2026-06-04 몰-first: 도매몰 도메인 비-도매몰 경로 → 카탈로그(/wholesale)로 302.
+        //   (기존 /wholesale/intro 소개 랜딩 대신 바로 상품 몰. intro 는 링크로만 접근.)
+        return Response.redirect(`${url.origin}/wholesale`, 302);
       }
     } catch { /* URL 파싱 실패 시 통과 */ }
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
