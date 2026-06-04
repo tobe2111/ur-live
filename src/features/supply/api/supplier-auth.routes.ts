@@ -9,7 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign } from 'hono/jwt';
-import { hashPassword, verifyPassword, validatePasswordComplexity } from '@/lib/password';
+import { hashPassword, verifyPassword } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { safeError } from '@/worker/utils/safe-error';
 import { maskEmail } from '@/lib/mask';
@@ -19,6 +19,40 @@ type Bindings = { DB: D1Database; JWT_SECRET: string; ENVIRONMENT?: string };
 export const supplierAuthRoutes = new Hono<{ Bindings: Bindings }>();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// 🛡️ 2026-06-04 (사용자 요청): 공급자 비밀번호 완화 — 영문+숫자 8자 이상(대소문자/특수문자 불필요).
+//   어드민/셀러용 강한 validatePasswordComplexity(10자+특수문자)와 분리. 프론트(8자 체크)와 정합.
+function validateSupplierPassword(pw: string): { ok: true } | { ok: false; error: string } {
+  if (typeof pw !== 'string' || pw.length < 8) return { ok: false, error: '비밀번호는 8자 이상이어야 합니다' };
+  if (pw.length > 128) return { ok: false, error: '비밀번호는 128자 이하여야 합니다' };
+  if (!/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) return { ok: false, error: '비밀번호는 영문과 숫자를 포함해야 합니다' };
+  return { ok: true };
+}
+
+// 🛡️ 2026-06-04 (가입 500 수정): production suppliers 테이블이 일부 컬럼 누락 시 INSERT 'no such column' → 500.
+//   (CLAUDE.md D1 마이그레이션 CI 미작동) CREATE IF NOT EXISTS + 누락 컬럼 ALTER 보강(멱등).
+const _supplierSchemaEnsured = new WeakSet<object>();
+async function ensureSupplierSchema(DB: D1Database): Promise<void> {
+  if (_supplierSchemaEnsured.has(DB)) return;
+  _supplierSchemaEnsured.add(DB);
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS suppliers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    business_name TEXT NOT NULL,
+    business_number TEXT, representative TEXT, email TEXT, phone TEXT, password_hash TEXT,
+    bank_name TEXT, bank_account TEXT, account_holder TEXT, commission_rate REAL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(() => { /* exists */ });
+  // 기존 테이블에 누락 가능 컬럼 보강 (이미 있으면 throw → 무시).
+  for (const col of [
+    'business_number TEXT', 'representative TEXT', 'email TEXT', 'phone TEXT', 'password_hash TEXT',
+    'bank_name TEXT', 'bank_account TEXT', 'account_holder TEXT', 'commission_rate REAL',
+    "status TEXT NOT NULL DEFAULT 'pending'", 'created_at DATETIME', 'updated_at DATETIME',
+  ]) {
+    await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
+  }
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL').run().catch(() => {});
+}
 
 // ── POST /register — 도매상 가입 ──────────────────────────────────────────────
 supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_register', max: 5, windowSec: 600 }), async (c) => {
@@ -37,8 +71,11 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400);
     if (!businessName) return c.json({ success: false, error: '상호(사업자명)는 필수입니다' }, 400);
-    const pw = validatePasswordComplexity(password);
-    if (!pw.ok) return c.json({ success: false, error: pw.error || '비밀번호가 복잡성 요건을 충족하지 않습니다' }, 400);
+    const pw = validateSupplierPassword(password);
+    if (!pw.ok) return c.json({ success: false, error: pw.error || '비밀번호 형식이 올바르지 않습니다' }, 400);
+
+    // 🛡️ 스키마 보강 — 누락 컬럼으로 인한 INSERT 500 방지.
+    await ensureSupplierSchema(DB);
 
     // 중복 이메일 차단 (idx_suppliers_email UNIQUE 와 정합).
     const dupe = await DB.prepare('SELECT id FROM suppliers WHERE email = ? LIMIT 1').bind(email).first<{ id: number }>().catch(() => null);

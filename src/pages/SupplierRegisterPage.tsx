@@ -31,6 +31,7 @@ export default function SupplierRegisterPage() {
     setError('')
     if (!form.business_name.trim()) { setError(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
     if (form.password.length < 8) { setError(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
+    if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
     setLoading(true)
     try {
       const res = await fetch('/api/supplier/register', {
@@ -127,7 +128,7 @@ export default function SupplierRegisterPage() {
               </div>
               <div>
                 <label className={labelCls}>{t('common.password', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
-                <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '8자 이상' })} />
+                <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} />
               </div>
             </div>
 
