@@ -326,19 +326,22 @@ app.post('/orders/:id/refund', rateLimit({ action: 'admin-wholesale-refund', max
     if (!res.ok) {
       // 롤백.
       await c.env.DB.prepare("UPDATE wholesale_orders SET status='PAID', refunded_amount=? WHERE id=? AND status='REFUNDED'")
-        .bind(order.refunded_amount || 0, id).run().catch(() => {})
+        .bind(order.refunded_amount || 0, id).run().catch(swallow('admin:refund-rollback'))
       return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
     }
 
     // 남은 모든 라인 REFUNDED + 정산 역전(전체) + 재고복원.
-    await c.env.DB.prepare("UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'").bind(id).run().catch(() => {})
+    //   ⚠️ 재고는 '이번에 새로 환불되는 라인'만 복원 — 제조사가 이미 부분환불해 재고 복원된 라인을
+    //   중복 복원하지 않도록(이중 복원 버그 방지). UPDATE 전에 미환불 라인을 먼저 캡처.
+    const newLines = await c.env.DB.prepare(
+      "SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'"
+    ).bind(id).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
+    await c.env.DB.prepare("UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'").bind(id).run().catch(swallow('admin:refund-line-update'))
     try { await reverseSupplierOnWholesaleRefund(c.env.DB, id, reason) } catch { /* best-effort */ }
-    const lines = await c.env.DB.prepare("SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id = ?")
-      .bind(id).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
-    for (const l of lines.results || []) {
+    for (const l of newLines.results || []) {
       await c.env.DB.prepare(
         "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
-      ).bind(l.qty, l.qty, l.product_id).run().catch(() => {})
+      ).bind(l.qty, l.qty, l.product_id).run().catch(swallow('admin:refund-stock-restore'))
     }
     return c.json({ success: true, refunded_amount: remaining })
   } catch (err) {

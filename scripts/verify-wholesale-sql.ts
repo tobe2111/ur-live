@@ -200,8 +200,20 @@ async function main() {
   assert.strictEqual(Number(after?.n), 1, '전체교체 후 1건이어야 함')
   ok('수량 구간 할인 — 테이블 + tierUnitPrice(주문 단가 재계산) + replace 멱등')
 
+  // 12) 관리자 전액환불 재고 이중복원 방지 — '미환불 라인'만 재고 복원
+  await DB.prepare("INSERT INTO wholesale_orders (id, distributor_seller_id, status, subtotal) VALUES (800,10,'PARTIAL_REFUNDED',30000)").run()
+  // 제조사A 라인(product 1) 이미 REFUNDED(부분환불·재고 복원 완료) + 제조사B 라인(product 2) SHIPPED
+  await DB.prepare("INSERT INTO wholesale_order_items (id, wholesale_order_id, product_id, supplier_id, qty, line_total, line_status) VALUES (8001,800,1,9,10,10000,'REFUNDED')").run()
+  await DB.prepare("INSERT INTO wholesale_order_items (id, wholesale_order_id, product_id, supplier_id, qty, line_total, line_status) VALUES (8002,800,2,8,20,20000,'SHIPPED')").run()
+  // 관리자 전액환불의 '새로 환불되는 라인' 캡처(UPDATE 전): line_status != 'REFUNDED' 만 → B 만
+  const newLines = await DB.prepare("SELECT product_id, qty FROM wholesale_order_items WHERE wholesale_order_id=? AND line_status != 'REFUNDED'").bind(800).all<{ product_id: number; qty: number }>()
+  const nl = newLines.results || []
+  assert.strictEqual(nl.length, 1, '재고복원 대상은 미환불 라인 1건(B)이어야 함')
+  assert.strictEqual(Number(nl[0].product_id), 2, '이미 환불된 A(product1)는 재고 복원 대상 아님(이중복원 방지)')
+  ok('관리자 전액환불 — 미환불 라인만 재고 복원(이중복원 방지)')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/11\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/12\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })
