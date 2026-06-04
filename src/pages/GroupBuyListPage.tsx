@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -28,6 +28,19 @@ import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/const
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
+// 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜 SSR 주입(__SSR_INITIAL_GROUPBUY__) 즉시 소비 → 마운트 fetch 워터폴 제거.
+//   consume-once(el.remove) — 클라 재진입 시엔 script 없음 → 정상 fetch.
+function readSsrGroupBuy(): GroupBuyProduct[] | null {
+  if (typeof document === 'undefined') return null
+  const el = document.getElementById('__SSR_INITIAL_GROUPBUY__')
+  if (!el?.textContent) return null
+  try {
+    const parsed = JSON.parse(el.textContent) as { success?: boolean; data?: GroupBuyProduct[] }
+    el.remove()
+    return parsed?.success ? (parsed.data || []) : null
+  } catch { return null }
+}
+
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -46,9 +59,12 @@ export default function GroupBuyListPage() {
   const urlDistrict = searchParams.get('district') || null
 
   const [mainTab, setMainTab] = useState<MainTab>('seller')
-  const [items, setItems] = useState<GroupBuyProduct[]>([])
+  // SSR 주입 1회 캡처 (lazy init → 첫 렌더에만 읽음). null = 미주입(클라 재진입) → 정상 fetch.
+  const ssrInitialRef = useRef<GroupBuyProduct[] | null | undefined>(undefined)
+  if (ssrInitialRef.current === undefined) ssrInitialRef.current = readSsrGroupBuy()
+  const [items, setItems] = useState<GroupBuyProduct[]>(ssrInitialRef.current || [])
   const [communityItems, setCommunityItems] = useState<CommunityGroupBuy[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(ssrInitialRef.current == null)
   const [communityLoading, setCommunityLoading] = useState(true)
   const [category, setCategory] = useState<CategoryFilter>(initialCategory)
   const [sortBy, setSortBy] = useState<SortOption>(initialSort)
@@ -107,6 +123,8 @@ export default function GroupBuyListPage() {
 
   // 셀러 공구 로딩
   useEffect(() => {
+    // SSR 주입 데이터로 이미 시드됨(prewarm fresh) → 마운트 cold fetch 스킵(워터폴 제거).
+    if (ssrInitialRef.current !== null) { ssrInitialRef.current = null; return }
     setLoading(true)
     api
       .get('/api/group-buy/products?status=active')

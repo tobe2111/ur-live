@@ -50,6 +50,8 @@ const HOT_PATHS: readonly string[] = [
   // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
   //   이 key 를 cron 이 warm 하지 않으면 readKvCacheForSSR miss → 첫 사용자 skeleton.
   '/api/group-buy/products?status=active&category=all',
+  // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜(/group-buy) SSR 슬롯 key — 클라 요청과 정확히 일치.
+  '/api/group-buy/products?status=active',
   // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
   //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
   '/api/group-buy/products?status=active&category=meal_voucher',
@@ -125,10 +127,10 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
     try {
       // Top 10 인기 셀러 (recent 30일 매출 기준 — 없으면 sellers.id 최신순 fallback)
       const sellersResult = await env.DB.prepare(
-        `SELECT username FROM sellers
+        `SELECT id, username FROM sellers
           WHERE status = 'approved' AND username IS NOT NULL AND username != ''
           ORDER BY id DESC LIMIT 10`
-      ).all<{ username: string }>().catch(() => ({ results: [] as { username: string }[] }))
+      ).all<{ id: number; username: string }>().catch(() => ({ results: [] as { id: number; username: string }[] }))
       // 🛡️ 2026-05-27: Top 10 큐레이터 (핀 가진 user) — /u/:handle 페이지 warm.
       const curatorsResult = await env.DB.prepare(
         `SELECT u.handle FROM users u
@@ -146,6 +148,8 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
       const dynamicPaths: string[] = []
       for (const s of sellersResult.results ?? []) {
         if (s.username) dynamicPaths.push(`/api/sellers/${s.username}/public`)
+        // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 링크샵 기본탭(상품) sub-data warm — SellerPublicPage 첫 진입 cold D1 제거.
+        if (Number.isFinite(s.id)) dynamicPaths.push(`/api/products?seller_id=${s.id}&limit=20`)
       }
       for (const p of productsResult.results ?? []) {
         if (Number.isFinite(p.id)) dynamicPaths.push(`/api/group-buy/products/${p.id}`)

@@ -473,6 +473,11 @@ app.use('*', async (c, next) => {
     } else if (url.pathname === '/live' && !url.search) {
       // 🛡️ 2026-05-27 (Step P1-2): 라이브 페이지 SSR inject — 사용자 체류 시간 큰 페이지.
       ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
+    } else if (url.pathname === '/group-buy' && !url.search) {
+      // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜(공구 리스트) SSR inject — 유일하게 누락됐던 리스트 페이지.
+      //   GroupBuyListPage 가 마운트 후 /api/group-buy/products?status=active 를 cold fetch(3-RTT 워터폴) 하던 것 제거.
+      //   ⚠️ path 는 클라가 보내는 query 와 정확히 일치해야 edge-key hit (prewarm 키도 동일하게 추가).
+      ssrTarget = { slot: 'GROUPBUY', path: '/api/group-buy/products?status=active' };
     } else {
       // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
       //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
@@ -939,6 +944,8 @@ app.use('/api/currency/rates', publicCache(3600), cacheControl(3600)); // 환율
 app.use('/api/banners', publicCache(300), cacheControl(300));    // 5 min (공개 배너)
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
 app.use('/api/shorts', publicCache(60), cacheControl(60));                // 쇼츠 피드 1min (공개)
+// 🛡️ 2026-06-04 [LOADING_ADDITIVE]: /api/shorts/feed (서브경로) 는 위 정확매칭에서 누락 → 링크샵 쇼츠탭 cold.
+app.use('/api/shorts/feed', publicCache(60), cacheControl(60));           // 쇼츠 feed 1min (공개)
 app.use('/api/reviews/product/*', publicCache(120), cacheControl(120));   // 리뷰 목록 2min (리뷰 쓰기는 POST 라 캐시 무영향)
 app.use('/api/restaurants', publicCache(300), cacheControl(300));         // 식당 목록 5min (공개)
 // 🛡️ 2026-04-28: 메인페이지 통합 endpoint — 1회 호출 + 1분 edge cache (공개 — user 무관)
