@@ -21,10 +21,13 @@ interface DetailItem {
 
 // 수량 구간별 단가표 (등급가 위 volume 할인 — 많이 살수록 ↓). 현재 수량 구간 강조.
 function TierTable({ basePrice, moq, tiers, qty }: { basePrice: number; moq: number; tiers: QtyTierView[]; qty: number }) {
-  // 기본 구간(moq~) + 설정된 tier 들을 min_qty 오름차순 병합.
-  const rows = [{ min_qty: moq, unit_price: basePrice }, ...tiers.map(t => ({ min_qty: t.min_qty, unit_price: t.unit_price }))]
-    .filter((r, i, a) => a.findIndex(x => x.min_qty === r.min_qty) === i)
-    .sort((a, b) => a.min_qty - b.min_qty)
+  // 기본(moq) 행 단가 = moq 에서 실제 적용되는 단가(moq 이하 tier 는 접어 반영) — 표시=결제 일치.
+  let moqUnit = basePrice, foldBest = 0
+  for (const t of tiers) if (moq >= t.min_qty && t.min_qty >= foldBest) { foldBest = t.min_qty; moqUnit = t.unit_price }
+  // moq 초과 구간만 추가 band(중복/무의미 구간 제거).
+  const above = tiers.filter(t => t.min_qty > moq).sort((a, b) => a.min_qty - b.min_qty)
+  const rows = [{ min_qty: moq, unit_price: moqUnit }, ...above.map(t => ({ min_qty: t.min_qty, unit_price: t.unit_price }))]
+  const baseUnit = rows[0]?.unit_price ?? basePrice
   // 현재 적용 구간 = qty 이상 만족하는 최대 min_qty.
   let curMin = rows[0]?.min_qty ?? moq
   for (const r of rows) if (qty >= r.min_qty) curMin = r.min_qty
@@ -36,7 +39,7 @@ function TierTable({ basePrice, moq, tiers, qty }: { basePrice: number; moq: num
       </div>
       {rows.map((r) => {
         const cur = r.min_qty === curMin
-        const save = basePrice - r.unit_price
+        const save = baseUnit - r.unit_price
         return (
           <div key={r.min_qty} className="flex items-center justify-between px-4 h-12" style={{ borderTop: '1px solid ' + WT.line, background: cur ? WT.brandSoft : '#fff' }}>
             <span className="text-[14px] font-semibold" style={{ color: cur ? WT.brand : WT.ink }}>{comma(r.min_qty)}개~{cur && <span className="ml-1.5 text-[11px] font-bold" style={{ color: WT.brand }}>현재</span>}</span>

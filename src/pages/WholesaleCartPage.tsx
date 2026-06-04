@@ -15,12 +15,14 @@ export default function WholesaleCartPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, setQty, remove, clear, subtotal, totalQty } = useWholesaleCart()
   const [ordering, setOrdering] = useState(false)
+  const [unavailable, setUnavailable] = useState<number[]>([])
 
   if (!token) return <Navigate to="/wholesale/intro" replace />
 
   async function placeOrder() {
     if (!items.length || ordering) return
     setOrdering(true)
+    setUnavailable([])
     try {
       const r = await api.post('/api/wholesale/orders', { items: items.map((x) => ({ product_id: x.id, qty: x.qty })) }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data.success) {
@@ -28,9 +30,13 @@ export default function WholesaleCartPage() {
         navigate(`/wholesale/checkout?order=${r.data.order_id}`, { state: { orderId: r.data.toss_order_id, amount: r.data.amount, orderName: r.data.order_name } })
       } else { toast.error(r.data.error || '주문 생성 실패') }
     } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문 생성 중 오류')
+      const data = (e as { response?: { data?: { error?: string; unavailable?: number[] } } })?.response?.data
+      if (Array.isArray(data?.unavailable) && data.unavailable.length) setUnavailable(data.unavailable)
+      toast.error(data?.error || '주문 생성 중 오류')
     } finally { setOrdering(false) }
   }
+
+  const removeUnavailable = () => { unavailable.forEach(remove); setUnavailable([]) }
 
   return (
     <div className="min-h-screen pb-28" style={{ background: '#fff', color: WT.ink }}>
@@ -52,15 +58,26 @@ export default function WholesaleCartPage() {
           </div>
         ) : (
           <>
+            {unavailable.length > 0 && (
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl p-3.5" style={{ background: '#FDECEF', border: '1px solid #F8C9D2' }}>
+                <p className="text-[13px] font-medium" style={{ color: '#B3253B' }}>주문 불가 상품 {unavailable.length}개가 있어요 (품절·중지·권한 변경)</p>
+                <button onClick={removeUnavailable} className="shrink-0 px-3 h-9 rounded-lg text-[13px] font-bold text-white" style={{ background: '#D63A4E' }}>빼고 계속</button>
+              </div>
+            )}
             <div className="space-y-2.5">
-              {items.map((it) => (
-                <div key={it.id} className="flex gap-3 rounded-2xl bg-white p-3" style={{ border: '1px solid ' + WT.line }}>
+              {items.map((it) => {
+                const bad = unavailable.includes(it.id)
+                return (
+                <div key={it.id} className="flex gap-3 rounded-2xl bg-white p-3" style={{ border: '1px solid ' + (bad ? '#F1AAB6' : WT.line), background: bad ? '#FFF6F8' : '#fff' }}>
                   <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="w-16 h-16 shrink-0 rounded-xl overflow-hidden" style={{ background: WT.fill }}>
                     {it.image_url && <img src={it.image_url} alt={it.name || ''} className="w-full h-full object-cover" loading="lazy" />}
                   </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="text-left text-[14px] font-medium line-clamp-2 leading-[1.4]" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</button>
+                      <div className="min-w-0">
+                        <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="text-left text-[14px] font-medium line-clamp-2 leading-[1.4]" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</button>
+                        {bad && <span className="inline-block mt-1 px-2 py-0.5 text-[11px] font-bold rounded-full" style={{ background: '#FDECEF', color: '#B3253B' }}>주문 불가</span>}
+                      </div>
                       <button onClick={() => remove(it.id)} aria-label="삭제" className="shrink-0 p-1"><Trash2 className="w-4 h-4" style={{ color: WT.ink4 }} /></button>
                     </div>
                     <div className="mt-1 text-[14px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(it.price || 0)} <span className="text-[12px] font-medium" style={{ color: WT.ink4 }}>/ 개</span></div>
@@ -76,7 +93,8 @@ export default function WholesaleCartPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
             <button onClick={clear} className="mt-3 text-[13px] font-medium" style={{ color: WT.ink3 }}>전체 비우기</button>
 
