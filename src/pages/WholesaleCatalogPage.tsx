@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut } from 'lucide-react'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
+import { clearAuthData } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import {
   WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES,
@@ -347,6 +348,12 @@ export default function WholesaleCatalogPage() {
   const cart = useWholesaleCart()
   const loggedIn = !!token
   const goLogin = () => navigate('/seller/login?returnUrl=/wholesale')
+  const logout = () => {
+    // 셀러 세션만 정리(유저/어드민 세션 보존) 후 도매몰에 머무름 — full reload 로 토큰/RQ 캐시 깨끗이.
+    clearAuthData('seller')
+    toast.success('로그아웃되었어요')
+    if (typeof window !== 'undefined') window.location.assign('/wholesale')
+  }
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
     if (!loggedIn || p.distributor_price == null) {
@@ -405,6 +412,9 @@ export default function WholesaleCatalogPage() {
               <button onClick={() => setGradeOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0" style={{ background: WT.brandSoft, color: WT.brand }}>
                 <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
                 {GRADE_LABEL[grade] || grade}등급{me ? ` · 마진 ${me.margin_pct}%` : ''}
+              </button>
+              <button onClick={logout} aria-label="로그아웃" title="로그아웃" className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink3 }}>
+                <LogOut className="w-4 h-4" /><span className="hidden sm:inline">로그아웃</span>
               </button>
             </>
           ) : (
