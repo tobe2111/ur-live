@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { getRoleShortLabel } from '@/shared/seller-roles'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -112,8 +113,10 @@ const NAV_GROUPS: {
   },
 ]
 
-/** mode segmented control 가시성: 'both' 셀러만 토글 가능. 다른 타입은 고정. */
+/** mode segmented control 가시성: 'both' 셀러만 토글 가능. 다른 타입은 고정.
+ *  라이브 중단 시 모두 'store'(공구/매장) 단일 모드 → 토글 숨김 + 라이브 메뉴 비노출. */
 function modesForSellerType(st: SellerType): SellerMode[] {
+  if (LIVE_COMMERCE_SUSPENDED) return ['store']
   if (st === 'influencer') return ['live']
   if (st === 'store_owner') return ['store']
   return ['live', 'store']  // both
@@ -155,6 +158,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     const saved = (localStorage.getItem('seller_dashboard_mode') || 'live') as SellerMode
     return availableModes.includes(saved) ? saved : availableModes[0]
   })
+
+  // 🏭 라이브 중단 시: 다른 컴포넌트(SellerPage 의 useSellerMode 등)도 store 로 인식하도록 동기화.
+  useEffect(() => {
+    if (LIVE_COMMERCE_SUSPENDED && localStorage.getItem('seller_dashboard_mode') !== 'store') {
+      localStorage.setItem('seller_dashboard_mode', 'store')
+      try { window.dispatchEvent(new CustomEvent('seller-mode-changed', { detail: 'store' })) } catch { /* noop */ }
+    }
+  }, [])
   function switchMode(m: SellerMode) {
     setActiveMode(m)
     localStorage.setItem('seller_dashboard_mode', m)

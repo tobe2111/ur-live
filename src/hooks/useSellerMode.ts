@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 // 🛡️ 2026-05-21 Phase D-5: helper 마이그레이션 (직접 비교 금지).
 import { isInfluencer, isStoreOwner } from '@/shared/seller-roles'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 
 export type SellerMode = 'live' | 'store'
 
@@ -36,7 +37,9 @@ export function useSellerMode(): SellerMode {
 }
 
 function readMode(): SellerMode {
-  if (typeof window === 'undefined') return 'live'
+  if (typeof window === 'undefined') return LIVE_COMMERCE_SUSPENDED ? 'store' : 'live'
+  // 🏭 2026-06-04 라이브커머스 잠정 중단 — 모든 셀러 store(공구/매장) 모드 강제.
+  if (LIVE_COMMERCE_SUSPENDED) return 'store'
   const sellerType = localStorage.getItem('seller_type')
   // 셀러 타입이 단일이면 강제 — toggle UI 도 노출 안 됨.
   if (isInfluencer(sellerType) && !isStoreOwner(sellerType)) return 'live'
