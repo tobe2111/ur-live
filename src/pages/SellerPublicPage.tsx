@@ -185,7 +185,8 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       }
     } catch { /* SSR inject 누락 / 손상 — fallback */ }
 
-    // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch helper.
+    // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch — 홈탭이 셋 다 프리뷰하므로 모두 즉시(비차단).
+    //   로딩 속도는 prewarm(products) + /api/shorts/feed edge cache 로 해결(cold D1 제거). lazy-탭은 홈 프리뷰 회귀라 미적용.
     const fetchSubData = (numericId: number) => {
       api.get(`/api/products?seller_id=${numericId}&limit=20`)
         .then(r => setProducts(r.data.data || []))

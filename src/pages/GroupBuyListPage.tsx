@@ -136,8 +136,12 @@ export default function GroupBuyListPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // 유저 공구 로딩
+  // 유저 공구 로딩 — 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 기본탭은 '셀러 공구'라
+  //   유저공구(uncached) fetch 를 마운트마다 하던 것 → '유저 공구' 탭 첫 진입 시 1회만 로드(워밍 낭비 제거).
+  const communityFetchedRef = useRef(false)
   useEffect(() => {
+    if (mainTab !== 'community' || communityFetchedRef.current) return
+    communityFetchedRef.current = true
     setCommunityLoading(true)
     api
       .get('/api/community-group-buy/list?status=proposed&sort=popular&limit=20')
@@ -146,7 +150,7 @@ export default function GroupBuyListPage() {
       })
       .catch((e) => { if (import.meta.env.DEV) console.warn('[GroupBuy] community list failed:', e) })
       .finally(() => setCommunityLoading(false))
-  }, [])
+  }, [mainTab])
 
   useEffect(() => {
     if (!showSortDropdown) return
