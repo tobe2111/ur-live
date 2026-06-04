@@ -13,8 +13,8 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import {
-  resolveDistributorPrice, marginForGrade, effectiveGrade,
-  type GradeMargin, type DistributorGrade,
+  resolveDistributorPrice, marginForGrade, effectiveGrade, tierUnitPrice, qtyTierDiscount,
+  type GradeMargin, type DistributorGrade, type QtyTier,
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
@@ -99,6 +99,22 @@ async function loadSellerGrade(DB: D1Database, sellerId: number): Promise<Seller
     'SELECT distributor_grade, special_discount_until FROM sellers WHERE id = ?'
   ).bind(sellerId).first<SellerGradeRow>().catch(() => null)
   return row ?? { distributor_grade: null, special_discount_until: null }
+}
+
+/** 상품들의 수량 구간 할인 tier 로드 → Map<product_id, QtyTier[]> (min_qty 오름차순). */
+async function loadQtyTiers(DB: D1Database, productIds: number[]): Promise<Map<number, QtyTier[]>> {
+  const map = new Map<number, QtyTier[]>()
+  if (!productIds.length) return map
+  const ph = productIds.map(() => '?').join(',')
+  const { results } = await DB.prepare(
+    `SELECT product_id, min_qty, discount_pct FROM product_qty_tiers WHERE product_id IN (${ph}) ORDER BY min_qty ASC`
+  ).bind(...productIds).all<{ product_id: number; min_qty: number; discount_pct: number }>().catch(() => ({ results: [] as { product_id: number; min_qty: number; discount_pct: number }[] }))
+  for (const r of results || []) {
+    const arr = map.get(r.product_id) || []
+    arr.push({ min_qty: r.min_qty, discount_pct: r.discount_pct })
+    map.set(r.product_id, arr)
+  }
+  return map
 }
 
 // ── GET /me ───────────────────────────────────────────────────────────────────
@@ -310,12 +326,18 @@ app.get('/catalog/:id', async (c) => {
       baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
     })
+    // 수량 구간 할인 tier — 등급가 위에 적용한 구간별 단가 노출(없으면 빈 배열).
+    const tierMap = await loadQtyTiers(DB, [r.id])
+    const rawTiers = tierMap.get(r.id) || []
+    const moq = Math.max(1, r.moq || 1)
+    const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers) }))
     return c.json({
       success: true,
       item: {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
-        retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), sold_count: r.sold_count || 0,
+        retail_price: r.retail_price || null, moq, sold_count: r.sold_count || 0,
+        tiers,
       },
       grade,
     })
@@ -368,6 +390,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       return c.json({ success: false, error: '주문할 수 없는 상품이 포함되어 있습니다' }, 400)
     }
 
+    // 수량 구간 할인 tier 일괄 로드 (authoritative 단가에 적용).
+    const tierMap = await loadQtyTiers(DB, ids)
     let subtotal = 0, supplyTotal = 0
     const lines: Array<{ product_id: number; supplier_id: number | null; name: string; qty: number; base: number; unit: number; line_total: number }> = []
     for (const p of found) {
@@ -384,10 +408,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         baseSupplyPrice: p.supply_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
       })
-      const lineTotal = price * qty
+      // 등급가 위에 수량 구간 할인 적용 → 최종 authoritative 단가.
+      const unit = tierUnitPrice(price, qty, tierMap.get(p.id))
+      const lineTotal = unit * qty
       subtotal += lineTotal
       supplyTotal += p.supply_price * qty
-      lines.push({ product_id: p.id, supplier_id: p.supplier_id, name: p.name, qty, base: p.supply_price, unit: price, line_total: lineTotal })
+      lines.push({ product_id: p.id, supplier_id: p.supplier_id, name: p.name, qty, base: p.supply_price, unit, line_total: lineTotal })
     }
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
 

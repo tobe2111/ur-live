@@ -61,6 +61,18 @@ export async function ensureSupplyVisibilitySchema(DB: D1Database): Promise<void
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_pda_product ON product_distributor_access(product_id)')
     .run().catch(swallow('supply-vis:idx-product'))
 
+  // 🏭 2026-06-04 수량 구간 할인(volume tier) — 상품별 "많이 살수록 ↓" (% 할인). 관리자 설정.
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS product_qty_tiers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    min_qty INTEGER NOT NULL,
+    discount_pct REAL NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(product_id, min_qty)
+  )`).run().catch(swallow('supply-vis:create-qty-tiers'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_pqt_product ON product_qty_tiers(product_id, min_qty)')
+    .run().catch(swallow('supply-vis:idx-pqt'))
+
   // 공급가 수정 이력 (스펙: 수정 전 금액 기록 — 관리자만 확인).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS supply_price_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

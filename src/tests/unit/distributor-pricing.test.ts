@@ -5,6 +5,8 @@ import {
   effectiveGrade,
   marginForGrade,
   resolveDistributorPrice,
+  qtyTierDiscount,
+  tierUnitPrice,
   DEFAULT_GRADE_MARGINS,
 } from '@/lib/distributor-pricing';
 
@@ -86,6 +88,28 @@ describe('distributor-pricing — 유통스타트 등급별 공급가', () => {
     const zero = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'B', marginOverridePct: 0 });
     expect(zero.overridden).toBe(true); // 0% = 유효(마진 0, 덤핑)
     expect(zero.price).toBe(10000);
+  });
+
+  it('수량 구간 할인: qty 이상 만족하는 최대 tier 할인 적용', () => {
+    const tiers = [{ min_qty: 100, discount_pct: 5 }, { min_qty: 500, discount_pct: 10 }];
+    expect(qtyTierDiscount(20, tiers)).toBe(0);    // 구간 미달
+    expect(qtyTierDiscount(100, tiers)).toBe(5);   // 100개~
+    expect(qtyTierDiscount(499, tiers)).toBe(5);
+    expect(qtyTierDiscount(500, tiers)).toBe(10);  // 500개~
+    expect(qtyTierDiscount(9999, tiers)).toBe(10);
+    expect(qtyTierDiscount(100, null)).toBe(0);    // tier 없음
+    expect(qtyTierDiscount(100, [])).toBe(0);
+  });
+
+  it('tierUnitPrice: 등급가 × (1 − 구간할인), 원 반올림', () => {
+    const tiers = [{ min_qty: 100, discount_pct: 5 }, { min_qty: 500, discount_pct: 10 }];
+    expect(tierUnitPrice(10000, 20, tiers)).toBe(10000);  // 할인 없음
+    expect(tierUnitPrice(10000, 100, tiers)).toBe(9500);  // 5%
+    expect(tierUnitPrice(10000, 500, tiers)).toBe(9000);  // 10%
+    expect(tierUnitPrice(9999, 100, tiers)).toBe(Math.round(9999 * 0.95));
+    expect(tierUnitPrice(10000, 100, [])).toBe(10000);    // tier 없음 = 등급가 불변
+    // discount 90 초과는 90 으로 클램프
+    expect(tierUnitPrice(10000, 1, [{ min_qty: 1, discount_pct: 99 }])).toBe(1000);
   });
 
   it('고등급일수록 저렴 (A < B < C < D)', () => {

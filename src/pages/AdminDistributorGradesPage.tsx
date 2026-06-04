@@ -84,6 +84,9 @@ export default function AdminDistributorGradesPage() {
   const [marginProductId, setMarginProductId] = useState('')
   const [marginPct, setMarginPct] = useState('')
   const [marginBusy, setMarginBusy] = useState(false)
+  // 🏭 2026-06-04 수량 구간 할인(volume tier) — "수량:할인%" 쌍.
+  const [tierText, setTierText] = useState('')
+  const [tierBusy, setTierBusy] = useState(false)
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -218,6 +221,25 @@ export default function AdminDistributorGradesPage() {
       if (r.data?.success) { toast.success(clear ? `상품#${pid} 특가 해제 (등급마진 복귀)` : `상품#${pid} 마진 ${pct}% 고정`); if (clear) setMarginPct('') }
       else toast.error(r.data?.error || '설정 실패')
     } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '설정 실패') } finally { setMarginBusy(false) }
+  }
+  async function saveTiers(clear: boolean) {
+    const pid = Number(marginProductId)
+    if (!Number.isFinite(pid) || pid <= 0) { toast.error('상품 ID를 입력하세요'); return }
+    const tiers: { min_qty: number; discount_pct: number }[] = []
+    if (!clear) {
+      for (const part of tierText.split(',').map(s => s.trim()).filter(Boolean)) {
+        const [mqS, dpS] = part.split(':')
+        const mq = Number((mqS || '').trim()), dp = Number((dpS || '').trim())
+        if (!Number.isFinite(mq) || !Number.isFinite(dp)) { toast.error('형식: 수량:할인%  예) 100:5, 500:10'); return }
+        tiers.push({ min_qty: mq, discount_pct: dp })
+      }
+    }
+    setTierBusy(true)
+    try {
+      const r = await api.put(`/api/admin/distributor/products/${pid}/qty-tiers`, { tiers }, h)
+      if (r.data?.success) { toast.success(tiers.length ? `상품#${pid} 수량구간 ${tiers.length}개 저장` : `상품#${pid} 수량구간 해제`); if (clear) setTierText('') }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '저장 실패') } finally { setTierBusy(false) }
   }
   function exportProducts() {
     const token = localStorage.getItem('admin_token')
@@ -528,6 +550,21 @@ export default function AdminDistributorGradesPage() {
             )}
           </div>
           <p className="text-[11px] text-gray-400 mt-2">상품 ID는 위 &ldquo;상품정보 엑셀&rdquo; 다운로드(product_id 컬럼)에서 확인할 수 있습니다.</p>
+
+          {/* 수량 구간 할인 (volume tier) — 같은 상품 ID 기준 */}
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 mb-1">
+              <Percent className="w-4 h-4 text-gray-500" /> 수량 구간 할인 (많이 살수록 ↓)
+            </h3>
+            <p className="text-sm text-gray-500 mb-3">위 상품 ID 기준. 등급가 위에 <b>구매 수량별 추가 할인</b>을 적용합니다. <code className="text-gray-700">수량:할인%</code> 쌍을 쉼표로 — 예: <code className="text-gray-700">100:5, 500:10</code> (100개↑ 5%, 500개↑ 10%).</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <input value={tierText} onChange={e => setTierText(e.target.value)} placeholder="100:5, 500:10" className="flex-1 min-w-[200px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+              <button onClick={() => saveTiers(false)} disabled={tierBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {tierBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 구간 저장
+              </button>
+              <button onClick={() => saveTiers(true)} disabled={tierBusy} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">해제</button>
+            </div>
+          </div>
         </section>
 
         {/* ── OEM/ODM 신청 관리 ── */}

@@ -41,10 +41,15 @@
 - `WholesaleDocsPage`(/wholesale/documents): 거래명세서/세금계산서 탭 + 공급가/부가세/합계 + 상태칩 + 인쇄/PDF(인증 fetch→새창). 헤더 "자료" 링크.
 - 공급사 정보 비노출 유지. verify:sql 10/10(스코프/IDOR 케이스 포함).
 
-## 🟡 시안엔 있으나 미구현 (실데이터/모델 갭 — 추가 구현 후보)
-| 시안 요소 | 갭 사유 |
-|---|---|
-| **수량 구간별 단가표**(많이 살수록↓) | 실제 모델은 등급 단일가. 구간 단가는 가격모델 확장 필요(대형). |
+### 5차 증분 (2026-06-04) — 수량 구간별 단가(volume tier) ✅ 모델 확장 완료
+- 모델: **등급 = 누구인가(base 공급가) × 수량구간 = 얼마나 사는가(추가 % 할인)**. 곱(stack), additive(tier 없으면 기존 단일가 불변).
+- `lib/distributor-pricing.ts`: `qtyTierDiscount`/`tierUnitPrice` (0~90% 클램프) + 단위테스트 2.
+- `product_qty_tiers`(lazy ensure, UNIQUE(product_id,min_qty)). 관리자 설정 `GET/PUT /api/admin/distributor/products/:id/qty-tiers`(전체교체) + AdminDistributorGradesPage "수량:할인%" 입력.
+- 상세 API tiers 반환 + **주문 /orders authoritative 단가에 tier 적용**(SSOT). 상세 UI 수량 구간 단가표(현재 구간 강조) + qty 변동 시 합계 반영. 카트 스냅샷도 tier 단가.
+- verify:sql 11/11(테이블/주문단가/replace 멱등), unit 12/12.
+
+## 🟢 시안 전 요소 구현 완료 (실데이터/모델 기준)
+남은 polish: OEM 페이지 WT 토큰 미세정렬(이미 라이트·정상) · 카탈로그 카드 수량할인 배지(선택).
 | 박스/개당 단가 병기 · MOQ | products에 MOQ 컬럼 없음. 추가 시 스키마 컬럼 필요. |
 | 마감 임박 카운트다운 / badge(특가/NEW/BEST) | API가 badge 미반환. |
 | 장바구니(다품목 담기) | 현재 흐름은 상세→단일주문→체크아웃. 카트 상태/엔드포인트 신설 필요. |

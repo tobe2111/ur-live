@@ -81,6 +81,30 @@ export function marginForGrade(grade: string, table?: GradeMargin[] | null): num
   return Number.isFinite(def) ? def : DEFAULT_GRADE_MARGINS[DEFAULT_UNGRADED];
 }
 
+// ── 수량 구간 할인 (volume tier) — 등급가 위에 "많이 살수록 ↓" 적용 (2026-06-04) ──
+//   모델: 등급 = 누구인가(base 공급가), 수량구간 = 얼마나 사는가(추가 % 할인). 둘은 곱(stack).
+//   tier 없으면 0% (= 기존 동작 불변). discount_pct 는 0~90 클램프.
+export interface QtyTier { min_qty: number; discount_pct: number }
+
+/** qty 에 적용되는 수량구간 할인율(%) — min_qty <= qty 인 tier 중 최대 할인. 없으면 0. */
+export function qtyTierDiscount(qty: number, tiers?: QtyTier[] | null): number {
+  if (!tiers || !tiers.length) return 0
+  let best = 0
+  for (const t of tiers) {
+    const mq = Math.max(1, Math.floor(Number(t.min_qty) || 1))
+    const d = Math.max(0, Math.min(90, Number(t.discount_pct) || 0))
+    if (qty >= mq && d > best) best = d
+  }
+  return best
+}
+
+/** 등급가 + 수량구간 할인 적용 최종 단가 (원 반올림). */
+export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[] | null): number {
+  const base = Math.max(0, Math.round(gradePrice || 0))
+  const d = qtyTierDiscount(qty, tiers)
+  return d > 0 ? Math.round(base * (1 - d / 100)) : base
+}
+
 /** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급.
  *  marginOverridePct(상품별 고정 마진, 사용자 확정 2026-06-04): 설정(>=0)되면 등급/특별 무관
  *  이 마진을 그 상품 전 유통사에 동일 적용(전략/특가 상품). 미설정(null)이면 기존 등급 마진. */

@@ -11,7 +11,7 @@ import { Miniflare } from 'miniflare'
 import { ensureSupplyVisibilitySchema, visibilityWhere, recordSupplyPriceChange } from '@/features/supply/api/supply-visibility'
 import { ensureTaxDocSchema, splitVat } from '@/features/supply/api/tax-documents'
 import { ensureOemSchema } from '@/features/supply/api/oem-requests'
-import { resolveDistributorPrice } from '@/lib/distributor-pricing'
+import { resolveDistributorPrice, tierUnitPrice } from '@/lib/distributor-pricing'
 
 const BASE_SCHEMA = `
 CREATE TABLE products (
@@ -174,8 +174,30 @@ async function main() {
   assert.strictEqual(Number(stolen?.n), 0, '타 유통사 문서가 본인 조회에 노출되면 안 됨')
   ok('자료 유통사 스코프 — 본인 sales 만(매입/타인 제외, IDOR 가드)')
 
+  // 11) 수량 구간 할인(volume tier) — 테이블 + 주문 authoritative 단가 재계산
+  const tcols = await DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='product_qty_tiers'").all<{ name: string }>()
+  assert.ok((tcols.results || []).length === 1, 'product_qty_tiers 테이블 누락')
+  // 상품 902: 등급가(=base) 10000, tier 100개↑ 5% / 500개↑ 10%
+  await DB.prepare("INSERT INTO products (id,name,supply_price,is_supply_product,is_active,supply_source_id,supply_visibility) VALUES (902,'구간상품',10000,1,1,NULL,'ALL')").run()
+  await DB.batch([
+    DB.prepare("INSERT INTO product_qty_tiers (product_id,min_qty,discount_pct) VALUES (902,100,5)"),
+    DB.prepare("INSERT INTO product_qty_tiers (product_id,min_qty,discount_pct) VALUES (902,500,10)"),
+  ])
+  const trows = await DB.prepare("SELECT min_qty, discount_pct FROM product_qty_tiers WHERE product_id=902 ORDER BY min_qty").all<{ min_qty: number; discount_pct: number }>()
+  const tiers = (trows.results || []).map(r => ({ min_qty: r.min_qty, discount_pct: r.discount_pct }))
+  // 주문 단가 = 등급가 × (1 − 구간할인). 라우트 /orders 와 동일 규칙(tierUnitPrice).
+  assert.strictEqual(tierUnitPrice(10000, 20, tiers), 10000, '구간 미달 = 등급가')
+  assert.strictEqual(tierUnitPrice(10000, 100, tiers), 9500, '100개↑ 5%')
+  assert.strictEqual(tierUnitPrice(10000, 500, tiers), 9000, '500개↑ 10%')
+  // 전체교체(replace) 멱등 — DELETE 후 재삽입해도 중복 UNIQUE 충돌 없음
+  await DB.prepare("DELETE FROM product_qty_tiers WHERE product_id=902").run()
+  await DB.prepare("INSERT INTO product_qty_tiers (product_id,min_qty,discount_pct) VALUES (902,200,7)").run()
+  const after = await DB.prepare("SELECT COUNT(*) AS n FROM product_qty_tiers WHERE product_id=902").first<{ n: number }>()
+  assert.strictEqual(Number(after?.n), 1, '전체교체 후 1건이어야 함')
+  ok('수량 구간 할인 — 테이블 + tierUnitPrice(주문 단가 재계산) + replace 멱등')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/10\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/11\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })

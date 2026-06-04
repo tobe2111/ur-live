@@ -9,13 +9,46 @@ import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOL
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
-//   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 하단 고정 CTA. 라이트 고정 B2B.
-//   ⚠️ 수량 구간별 단가표는 시안에만 있던 목업 — 실제 모델은 등급 단일가라 생략(추가 구현 시 가격모델 확장 필요).
+//   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 수량 구간별 단가표(volume tier) + 하단 고정 CTA.
+//   가격 = 등급가 × (1 − 수량구간 할인). 결제액은 /orders 가 동일 규칙으로 재계산(SSOT).
 
+interface QtyTierView { min_qty: number; discount_pct: number; unit_price: number }
 interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
   category: string | null; stock: number; distributor_price: number
-  retail_price?: number | null; moq?: number; sold_count?: number
+  retail_price?: number | null; moq?: number; sold_count?: number; tiers?: QtyTierView[]
+}
+
+// 수량 구간별 단가표 (등급가 위 volume 할인 — 많이 살수록 ↓). 현재 수량 구간 강조.
+function TierTable({ basePrice, moq, tiers, qty }: { basePrice: number; moq: number; tiers: QtyTierView[]; qty: number }) {
+  // 기본 구간(moq~) + 설정된 tier 들을 min_qty 오름차순 병합.
+  const rows = [{ min_qty: moq, unit_price: basePrice }, ...tiers.map(t => ({ min_qty: t.min_qty, unit_price: t.unit_price }))]
+    .filter((r, i, a) => a.findIndex(x => x.min_qty === r.min_qty) === i)
+    .sort((a, b) => a.min_qty - b.min_qty)
+  // 현재 적용 구간 = qty 이상 만족하는 최대 min_qty.
+  let curMin = rows[0]?.min_qty ?? moq
+  for (const r of rows) if (qty >= r.min_qty) curMin = r.min_qty
+  return (
+    <div className="mt-3.5 rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>
+      <div className="flex items-center justify-between px-4 h-10" style={{ background: WT.fill2 }}>
+        <span className="text-[12px] font-bold" style={{ color: WT.ink2 }}>수량 구간별 단가</span>
+        <span className="text-[12px]" style={{ color: WT.ink3 }}>많이 살수록 ↓</span>
+      </div>
+      {rows.map((r) => {
+        const cur = r.min_qty === curMin
+        const save = basePrice - r.unit_price
+        return (
+          <div key={r.min_qty} className="flex items-center justify-between px-4 h-12" style={{ borderTop: '1px solid ' + WT.line, background: cur ? WT.brandSoft : '#fff' }}>
+            <span className="text-[14px] font-semibold" style={{ color: cur ? WT.brand : WT.ink }}>{comma(r.min_qty)}개~{cur && <span className="ml-1.5 text-[11px] font-bold" style={{ color: WT.brand }}>현재</span>}</span>
+            <span className="flex items-baseline gap-2">
+              {save > 0 && <span className="text-[12px] font-semibold tabular-nums" style={{ color: WT.pos }}>개당 -{won(save)}</span>}
+              <span className="text-[15px] font-extrabold tabular-nums" style={{ color: cur ? WT.brand : WT.ink }}>{won(r.unit_price)}</span>
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function KV({ label, value, accent }: { label: string; value: string; accent?: string }) {
@@ -46,7 +79,10 @@ export default function WholesaleProductPage() {
 
   function addToCart() {
     if (!item) return
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: item.distributor_price, moq: Math.max(1, item.moq || 1) })
+    // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
+    let unit = item.distributor_price, bm = 0
+    for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1) })
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
@@ -74,7 +110,11 @@ export default function WholesaleProductPage() {
   }
 
   const moq = Math.max(1, item.moq || 1)
-  const total = item.distributor_price * qty
+  const tiers = item.tiers || []
+  // 현재 수량에 적용되는 단가 — qty 이상 만족하는 최대 min_qty tier(없으면 등급가). 서버 /orders 와 동일 규칙.
+  let effUnit = item.distributor_price, bestMin = 0
+  for (const t of tiers) if (qty >= t.min_qty && t.min_qty >= bestMin) { bestMin = t.min_qty; effUnit = t.unit_price }
+  const total = effUnit * qty
   const dr = item.retail_price ? discountRate(item.distributor_price, item.retail_price) : 0
   const um = item.retail_price ? unitMargin(item.distributor_price, item.retail_price) : 0
   const mr = item.retail_price ? marginRate(item.distributor_price, item.retail_price) : 0
@@ -124,6 +164,9 @@ export default function WholesaleProductPage() {
               <span className="text-[14px] font-bold" style={{ color: WT.pos }}>개당 마진 +{won(um)} <span className="font-extrabold">({mr}%)</span></span>
             </div>
           )}
+
+          {/* 수량 구간별 단가표 (tier 있을 때만) */}
+          {tiers.length > 0 && <TierTable basePrice={item.distributor_price} moq={moq} tiers={tiers} qty={qty} />}
 
           {/* 정보 리스트 */}
           <div className="mt-3.5 rounded-2xl overflow-hidden" style={{ background: WT.fill2 }}>
