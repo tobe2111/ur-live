@@ -206,9 +206,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
 // ── GET /products/bulk-template — 대량등록 표준 양식 CSV ───────────────────────
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
-  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '설명']
-  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '상품 설명']
-  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '선정 유통사만 노출']
+  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '최소주문수량', '설명']
+  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '1', '상품 설명']
+  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '20', '선정 유통사만 노출(20개 단위)']
   return csvResponse(buildCsv(headers, [example, example2]), 'supply-products-template.csv')
 })
 
@@ -232,8 +232,8 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     // 🛡️ 유효 행만 INSERT statement 로 모아 DB.batch 청크 실행 (행별 순차 .run() 은 Cloudflare subrequest 한도 초과).
     const stmts: D1PreparedStatement[] = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
-       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, slug, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))`;
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, slug, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const name = String(r['상품명'] || r.name || '').trim();
@@ -247,11 +247,12 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
       const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();
       const isBrand = ['Y', 'YES', '예', '1', 'TRUE', 'O'].includes(brandRaw) ? 1 : 0;
+      const moq = Math.min(100000, Math.max(1, Math.floor(Number(String(r['최소주문수량'] || r.min_order_qty || '1').replace(/[,\s]/g, '')) || 1)));
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
         Math.floor(retailFinal), Math.floor(supplyPrice), stock,
-        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, slug,
+        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, moq, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });
     }
