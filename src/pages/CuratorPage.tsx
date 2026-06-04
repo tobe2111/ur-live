@@ -271,7 +271,8 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
   return (
     <div className="relative group">
       <a href={redirectUrl} className="block bg-white dark:bg-[#0A0A0A] rounded-xl overflow-hidden border border-gray-200 dark:border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
-        <div className="aspect-square bg-gray-100 dark:bg-[#121212] relative">
+        {/* 🏭 2026-06-04 (카드 로딩 체감): dominant_color placeholder + fade-in — 그레이→이미지 대신 색→이미지. */}
+        <div className="aspect-square bg-gray-100 dark:bg-[#121212] relative" style={pin.dominant_color ? { backgroundColor: pin.dominant_color } : undefined}>
           {/* 🛡️ 2026-05-28: 링크샵 카드 순번 뱃지 (position 순) */}
           <span className="absolute top-1.5 left-1.5 z-10 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-black/70 text-white text-[11px] font-bold flex items-center justify-center backdrop-blur">
             {index + 1}

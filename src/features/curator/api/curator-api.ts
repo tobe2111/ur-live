@@ -24,6 +24,7 @@ export interface CuratorPin {
   deal_only?: number
   is_active: number
   commission_rate: number
+  dominant_color?: string | null
 }
 
 export interface CuratorProfile {

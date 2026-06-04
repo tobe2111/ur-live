@@ -135,7 +135,7 @@ curatorRoutes.get('/:handle', async (c) => {
     const { results: pins } = await DB.prepare(
       `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
               p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price,
-              p.category, p.is_active,
+              p.category, p.is_active, p.dominant_color,
               COALESCE(p.referral_commission_rate, 0) AS commission_rate
        FROM product_pins pp
        JOIN products p ON p.id = pp.product_id

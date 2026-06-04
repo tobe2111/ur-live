@@ -954,6 +954,11 @@ app.use('/api/home/bundle', publicCache(60), cacheControl(60));
 app.use('/api/home/categories', publicCache(300), cacheControl(300));
 // 🛡️ 2026-04-30 perf audit: 추가 공개 read-only 엔드포인트 캐싱
 app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // 셀러 공개 프로필 1min
+// 🏭 2026-06-04 (링크샵 로딩 근본수정): /api/curator/:handle 는 manual 헤더만 있어 caches.default 에
+//   write 안 됨 → worker SSR inject 가 항상 edge-MISS → 매 요청 cold self-fetch(최대 1.5s). publicCache
+//   미들웨어가 cache.put 하여 SSR edge-HIT 0-RTT 보장. 공개 데이터(본인 편집은 /me/* + 클라 낙관).
+//   exact 1세그먼트 매칭 → /:handle/p/* redirect·/me/* 미영향.
+app.use('/api/curator/:handle', publicCache(300), cacheControl(60, 900));    // 링크샵 공개 프로필 — edge 5min + 브라우저 1min
 app.use('/api/sections', publicCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
 app.use('/api/seller-tiers', publicCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
 app.use('/api/blog/public/*', publicCache(180), cacheControl(180));         // 블로그 공개 글 3min

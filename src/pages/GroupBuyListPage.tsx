@@ -961,9 +961,19 @@ function CurationStrip({
               onClick={() => navigate(`/group-buy/${p.id}`)}
               className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:shadow-md transition-shadow"
             >
-              <div className="relative w-full aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+              {/* 🏭 2026-06-04 (카드 로딩 체감): 큐레이션 스트립도 cfImage(리사이즈)+srcSet+dominant_color
+                  — 기존 원본 풀사이즈 <img> → 첫 화면 이미지 지연. 메인 그리드와 동일 최적화. */}
+              <div className="relative w-full aspect-square bg-gray-100 dark:bg-[#1A1A1A]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
                 {p.image_url ? (
-                  <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
+                  <img
+                    src={cfImage(p.image_url, { width: 320, format: 'auto' })}
+                    srcSet={cfSrcSet(p.image_url, 320)}
+                    sizes="160px"
+                    alt={p.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-pink-100 to-rose-200" />
                 )}
