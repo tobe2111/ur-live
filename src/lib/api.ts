@@ -244,8 +244,10 @@ api.interceptors.request.use(
     // 수동 Authorization 헤더가 있으면 그대로 사용
     if (config.headers['Authorization'] || config.headers['authorization']) return config;
 
-    // ── Seller API (/api/seller/*, /api/youtube/*) ─────────────────────────
-    if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/')) {
+    // ── Seller API (/api/seller/*, /api/youtube/*, /api/supply/* 소싱) ──────
+    //   🛡️ 2026-06-04: /api/supply/* (셀러 공급상품 소싱) 누락 → 토큰 미부착 → 401 →
+    //   응답 인터셉터가 /seller/login 으로 강제 redirect 하던 버그. seller_token 부착.
+    if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/') || url.startsWith('/api/supply/')) {
       const token = localStorage.getItem('seller_token');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;

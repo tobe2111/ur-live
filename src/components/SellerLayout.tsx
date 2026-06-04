@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -205,6 +205,21 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
+  // 🛡️ 2026-06-04 (사용자 신고 — 영구 수정): 각 셀러 페이지가 자기 SellerLayout 을 렌더 →
+  //   페이지 이동마다 사이드바 <nav> 가 unmount/remount → 스크롤이 top 으로 리셋되어
+  //   하단 카테고리 클릭 시 시야가 위로 점프. 이전 fix(JSX 변수화)는 같은-페이지 re-render 만 막음.
+  //   해법: <nav> 스크롤 위치를 sessionStorage 에 보존 → remount 시 동기 복원.
+  //   sidebar JSX 가 데스크톱+모바일 2번 렌더되므로 ref 콜백으로 각 인스턴스 개별 처리
+  //   (단일 ref 객체는 마지막=숨겨진 모바일만 잡힘). display:none 인 쪽은 scrollTop 무시되어 안전.
+  const navScrollRef = useCallback((el: HTMLElement | null) => {
+    if (!el) return
+    const saved = sessionStorage.getItem('seller_nav_scroll')
+    if (saved) el.scrollTop = parseInt(saved, 10) || 0
+    el.addEventListener('scroll', () => {
+      try { sessionStorage.setItem('seller_nav_scroll', String(el.scrollTop)) } catch { /* quota */ }
+    }, { passive: true })
+  }, [])
+
   // 🛡️ 2026-05-21 Phase D-5: getRoleShortLabel helper 사용 (직접 비교 금지).
   const sellerTypeLabel = getRoleShortLabel(sellerType)
 
@@ -277,7 +292,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       )}
 
       {/* Grouped navigation */}
-      <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+      <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {filteredNavGroups.map((group, gi) => (
           <div key={gi} className="mt-3 first:mt-1">
             {(group.label || group.labelKey) && (

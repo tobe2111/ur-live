@@ -2373,7 +2373,8 @@
       "staysBookings": "Bookings",
       "supply": "Wholesale Sourcing",
       "hosting": "Group Buy Hosting",
-      "curatorEarnings": "Curator Earnings"
+      "curatorEarnings": "Curator Earnings",
+      "prospects": "Recruit Stores"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

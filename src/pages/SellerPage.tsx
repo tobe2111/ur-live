@@ -48,12 +48,19 @@ const Skel = ({ className }: { className?: string }) => (
 
 // 🛡️ 2026-05-27 (memory): 새 주문 알림 사운드 — module-scope 1회 생성 → GC 압력 ↓.
 //   이전: 매 폴링마다 new Audio(data:...) → 인스턴스 누적.
-const newOrderAudio = typeof Audio !== 'undefined'
-  ? Object.assign(
-      new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1'),
-      { volume: 0.3 },
-    )
-  : ({ play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement)
+// 🛡️ 2026-06-04 (CSP): data:audio URI 는 CSP media-src('self' https: blob:) 에 차단됨 →
+//   콘솔 violation. base64 → Blob → object URL(blob:) 로 변환해 정책 위반 없이 재생.
+const NEW_ORDER_WAV_B64 = 'UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1'
+const newOrderAudio: HTMLAudioElement = (() => {
+  if (typeof Audio === 'undefined') return { play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement
+  try {
+    const bytes = Uint8Array.from(atob(NEW_ORDER_WAV_B64), (ch) => ch.charCodeAt(0))
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }))
+    return Object.assign(new Audio(url), { volume: 0.3 })
+  } catch {
+    return { play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement
+  }
+})()
 
 // 🛡️ 2026-06-03 Tier2(대시보드): 6-endpoint 대시보드 번들 타입 + fetcher + sessionStorage seed.
 type SellerDashBundle = {

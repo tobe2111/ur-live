@@ -12,34 +12,36 @@ export default function DealEarnStrip() {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
+  // 🛡️ 2026-06-04 (사용자 피드백 — 아이콘 촌스러움): 채도 높은 그라데이션 원형 →
+  //   소프트 틴트 squircle + 라인 컬러 아이콘. 통일감 있는 모던 핀테크 톤.
   const items = [
     {
       icon: Link2,
       label: t('dealEarn.linkshop', { defaultValue: '링크샵 공유' }),
       desc: t('dealEarn.linkshopDesc', { defaultValue: '담고 공유하면 커미션 딜' }),
       to: '/user/profile',
-      cls: 'from-pink-500 to-rose-500',
+      tint: 'bg-rose-50 text-rose-500 dark:bg-rose-500/12 dark:text-rose-400',
     },
     {
       icon: Store,
       label: t('dealEarn.recruit', { defaultValue: '매장 영입' }),
       desc: t('dealEarn.recruitDesc', { defaultValue: '매출마다 영입 커미션' }),
       to: '/seller/prospects',
-      cls: 'from-violet-500 to-purple-500',
+      tint: 'bg-violet-50 text-violet-500 dark:bg-violet-500/12 dark:text-violet-400',
     },
     {
       icon: UserPlus,
       label: t('dealEarn.invite', { defaultValue: '친구 초대' }),
       desc: t('dealEarn.inviteDesc', { defaultValue: '초대하면 딜 보너스' }),
       to: '/referral',
-      cls: 'from-sky-500 to-blue-500',
+      tint: 'bg-sky-50 text-sky-500 dark:bg-sky-500/12 dark:text-sky-400',
     },
     {
       icon: Wallet,
       label: t('dealEarn.charge', { defaultValue: '딜 충전' }),
       desc: t('dealEarn.chargeDesc', { defaultValue: '1원 = 1딜' }),
       to: '/points/charge',
-      cls: 'from-amber-500 to-orange-500',
+      tint: 'bg-amber-50 text-amber-500 dark:bg-amber-500/12 dark:text-amber-400',
     },
   ]
 
@@ -54,15 +56,15 @@ export default function DealEarnStrip() {
         </span>
       </div>
       <div className="grid grid-cols-4 gap-2">
-        {items.map(({ icon: Icon, label, desc, to, cls }) => (
+        {items.map(({ icon: Icon, label, desc, to, tint }) => (
           <button
             key={label}
             type="button"
             onClick={() => navigate(to)}
-            className="flex flex-col items-center text-center gap-1.5 p-2 rounded-2xl bg-gray-50 dark:bg-[#141414] active:scale-[0.97] transition-transform"
+            className="group flex flex-col items-center text-center gap-1.5 py-2 active:scale-[0.97] transition-transform"
           >
-            <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${cls} flex items-center justify-center`}>
-              <Icon className="w-5 h-5 text-white" />
+            <span className={`w-12 h-12 rounded-2xl ${tint} flex items-center justify-center transition-shadow group-hover:shadow-sm`}>
+              <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
             </span>
             <span className="text-[11px] font-semibold text-gray-900 dark:text-white leading-tight">{label}</span>
             <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-tight hidden sm:block">{desc}</span>

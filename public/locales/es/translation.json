@@ -1692,7 +1692,8 @@
       "staysBookings": "Reservas",
       "supply": "Abastecimiento mayorista",
       "hosting": "Alojamiento de compra grupal",
-      "curatorEarnings": "Ganancias del curador"
+      "curatorEarnings": "Ganancias del curador",
+      "prospects": "Captar tiendas"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
