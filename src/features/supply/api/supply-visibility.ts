@@ -16,17 +16,46 @@ import { swallow } from '@/worker/utils/swallow'
 export const SUPPLY_VISIBILITY_VALUES = ['ALL', 'APPROVED_CHANNEL', 'UTONGSTART_ONLY'] as const
 export type SupplyVisibility = (typeof SUPPLY_VISIBILITY_VALUES)[number]
 
-const _ensured = new WeakSet<object>()
+// 🛡️ 완료된 ensure 만 캐시(promise 기반) — add 를 await 전에 하면 동시 cold 요청이
+//   컬럼 생성 전에 쿼리해 500. in-flight promise 를 공유해 동시 호출이 같은 완료를 기다림.
+const _ensuring = new WeakMap<object, Promise<void>>()
+
+export async function ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
+  const existing = _ensuring.get(DB)
+  if (existing) return existing
+  const p = _ensureSupplyVisibilitySchema(DB)
+  _ensuring.set(DB, p)
+  try {
+    await p
+  } catch {
+    _ensuring.delete(DB) // 실패 시 다음 호출이 재시도하도록 캐시 제거
+  }
+}
 
 /** products.supply_visibility / barcode 컬럼 + 허용목록·공급가이력 테이블 보장 (멱등). */
-export async function ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
-  if (_ensured.has(DB)) return
-  _ensured.add(DB)
-
+async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   // products 컬럼 추가 (존재 확인 후) — D1 은 ADD COLUMN IF NOT EXISTS 미지원.
   const cols = await DB.prepare("SELECT name FROM pragma_table_info('products')")
     .all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }))
   const have = new Set((cols.results || []).map(r => r.name))
+  // 🛡️ 2026-06-04 핵심 공급(B2B) 컬럼 self-heal — 기존엔 /api/_internal/repair-schema 수동 실행에만
+  //   의존했음. 미실행 환경에서 /catalog·/home 이 supply_price/supply_source_id 참조 시 500.
+  //   카탈로그·주문 등 모든 supply route 가 이 ensure 를 호출하므로 여기서 보장하면 영구 self-heal.
+  if (!have.has('is_supply_product')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN is_supply_product INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-is-supply'))
+  }
+  if (!have.has('supply_price')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN supply_price INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-supply-price'))
+  }
+  if (!have.has('supply_source_id')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN supply_source_id INTEGER').run().catch(swallow('supply-vis:add-supply-source'))
+  }
+  if (!have.has('supplier_id')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN supplier_id INTEGER').run().catch(swallow('supply-vis:add-supplier-id'))
+  }
+  if (!have.has('supply_approval_status')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN supply_approval_status TEXT').run().catch(swallow('supply-vis:add-approval'))
+  }
   if (!have.has('supply_visibility')) {
     await DB.prepare("ALTER TABLE products ADD COLUMN supply_visibility TEXT DEFAULT 'ALL'").run().catch(swallow('supply-vis:add-col'))
   }

@@ -256,8 +256,36 @@ async function main() {
   assert.strictEqual(r3.meta?.changes ?? 0, 1, '잔여 한도 내 신청은 삽입')
   ok('출금 조건부 INSERT 원자성 — 가용액 초과 동시 신청 차단(이중지급 방지)')
 
+  // 15) catalog 500 회귀 — 공급컬럼 없는 구버전 products 테이블(마이그레이션 미적용 prod 모사)에서
+  //     ensureSupplyVisibilitySchema 가 핵심 공급컬럼을 self-heal → 카탈로그 쿼리가 throw 없이 실행.
+  {
+    const mf2 = new Miniflare({ modules: true, script: 'export default {};', d1Databases: { DB: 'wholesale-bare' } })
+    const DB2 = await mf2.getD1Database('DB') as unknown as D1Database
+    // 공급 관련 컬럼이 전혀 없는 최소 products (구 스키마) — supply_price/is_supply_product/supply_source_id 없음
+    await DB2.prepare(`CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, price INTEGER, stock INTEGER, image_url TEXT, category TEXT, is_active INTEGER DEFAULT 1, sold_count INTEGER DEFAULT 0, dominant_color TEXT, created_at TEXT DEFAULT (datetime('now')))`).run()
+    await DB2.prepare(`CREATE TABLE sellers (id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_grade TEXT, special_discount_until TEXT)`).run()
+    await ensureSupplyVisibilitySchema(DB2)
+    const c2 = await DB2.prepare("SELECT name FROM pragma_table_info('products')").all<{ name: string }>()
+    const cn2 = (c2.results || []).map(r => r.name)
+    for (const col of ['is_supply_product', 'supply_price', 'supply_source_id', 'supplier_id', 'supply_approval_status', 'min_order_qty', 'supply_margin_override_pct'])
+      assert(cn2.includes(col), `self-heal 후 products.${col} 누락`)
+    // 실제 카탈로그 SELECT (wholesale.routes.ts /catalog 와 동일 컬럼/조인) — throw 없이 실행돼야 함
+    const catalogQ = `SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
+        COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
+        COALESCE(p.min_order_qty,1) AS moq,
+        EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers,
+        COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
+      FROM products p
+      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+      ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT ? OFFSET ?`
+    const cat = await DB2.prepare(catalogQ).bind(1, 24, 0).all()
+    assert(Array.isArray(cat.results), '카탈로그 쿼리 결과 비정상')
+    await mf2.dispose()
+    ok('catalog 500 회귀 — 공급컬럼 self-heal 후 카탈로그 쿼리 throw 없음')
+  }
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/14\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/15\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })
