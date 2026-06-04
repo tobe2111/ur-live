@@ -17,9 +17,9 @@ export default function SiteFooter() {
           <a href="/agency/register/business" className="text-violet-600 dark:text-violet-400 hover:underline">
             🤵 에이전시 사업 시작 →
           </a>
-          {/* 🛡️ 2026-06-01 도매몰 노출: 도매 공급사(도매상) 입점 — store_owner 가게입점과 별개. */}
-          <a href="/supplier/register" className="text-amber-600 dark:text-amber-400 hover:underline">
-            📦 도매 공급사로 입점 →
+          {/* 🛡️ 2026-06-04 도매몰 진입 플로우: 통합 소개 허브(/wholesale/intro)로 — 제조사 입점·유통사 가입 분기. */}
+          <a href="/wholesale/intro" className="text-amber-600 dark:text-amber-400 hover:underline">
+            📦 유통스타트 B2B 도매몰 (제조사·유통사) →
           </a>
         </div>
 
