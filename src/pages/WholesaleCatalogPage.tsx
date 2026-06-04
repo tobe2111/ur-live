@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download } from 'lucide-react'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
@@ -369,7 +369,6 @@ export default function WholesaleCatalogPage() {
   // 🏭 2026-06-04 도매몰 허브 — 제조사(공급사=브랜드사) / 셀러 본인 대시보드로 가는 진입.
   //   제조사는 supplier_token, 셀러는 seller_token(단, 순수 유통사 is_distributor 는 제외).
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
-  const isRealSeller = loggedIn && typeof window !== 'undefined' && localStorage.getItem('is_distributor') !== '1'
   const goLogin = () => navigate('/wholesale/login')
   const logout = () => {
     // 셀러 세션만 정리(유저/어드민 세션 보존) 후 도매몰에 머무름 — full reload 로 토큰/RQ 캐시 깨끗이.
@@ -492,14 +491,9 @@ export default function WholesaleCatalogPage() {
                 <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
                 {GRADE_LABEL[grade] || grade}등급{me ? ` · 마진 ${me.margin_pct}%` : ''}
               </button>
-              {isRealSeller && (
-                <button onClick={() => navigate('/seller')} className="hidden md:inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="셀러 대시보드로 이동">
-                  <LayoutDashboard className="w-4 h-4" /> 셀러
-                </button>
-              )}
               {supplierToken && (
                 <button onClick={() => navigate('/supplier')} className="hidden md:inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동">
-                  <Factory className="w-4 h-4" /> 제조사
+                  <Factory className="w-4 h-4" /> 제조사 대시보드
                 </button>
               )}
               <button onClick={logout} aria-label="로그아웃" title="로그아웃" className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink3 }}>
@@ -514,13 +508,13 @@ export default function WholesaleCatalogPage() {
               </button>
             </>
           ) : (
+            // 비로그인 — 제조회원 / 유통회원 로그인 + 가입 (도매몰 한 곳에서 양쪽 역할 진입).
             <>
-              {/* 제조사(공급사) 진입 — 도매몰 한 곳에서 양쪽 역할 모두. */}
-              <button onClick={() => navigate('/supplier/login')} className="hidden sm:inline-flex items-center gap-1 text-[13px] font-medium" style={{ color: WT.ink2 }} title="제조사(공급사) 로그인·입점">
-                <Factory className="w-4 h-4" /> 제조사 입점
+              <button onClick={() => navigate('/supplier/login')} className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조회원(공급사) 로그인">
+                <Factory className="w-4 h-4" /> 제조회원<span className="hidden sm:inline"> 로그인</span>
               </button>
-              <button onClick={goLogin} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }}>
-                <LogIn className="w-4 h-4" /> 로그인
+              <button onClick={goLogin} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }} title="유통회원(바이어) 로그인">
+                <LogIn className="w-4 h-4" /> 유통회원<span className="hidden sm:inline"> 로그인</span>
               </button>
               <button onClick={() => navigate('/wholesale/join')} className="inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-bold text-white shrink-0" style={{ background: WT.brand }}>
                 가입
