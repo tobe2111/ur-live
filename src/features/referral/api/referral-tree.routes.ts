@@ -949,11 +949,13 @@ referralTreeRoutes.patch('/admin/withdrawals/:id/approve', requireAdmin(), async
   if (!w) return c.json({ success: false, error: 'Not found' }, 404)
   if (w.status !== 'pending') return c.json({ success: false, error: 'Already processed' }, 409)
 
-  await DB.prepare(
+  // 🛡️ 2026-06-04: 원자 claim — 동시/더블 승인 차단(이중 알림/처리 방지). pending 일 때만 전이.
+  const claim = await DB.prepare(
     `UPDATE commission_withdrawals
        SET status = 'approved', processed_at = datetime('now'), processed_by = ?, admin_memo = ?
-     WHERE id = ?`,
+     WHERE id = ? AND status = 'pending'`,
   ).bind(String(user?.id || 'admin'), body.admin_memo || null, id).run()
+  if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: false, error: 'Already processed' }, 409)
 
   await DB.prepare(
     `UPDATE referral_commissions
