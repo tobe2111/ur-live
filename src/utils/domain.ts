@@ -19,3 +19,22 @@ export function isUtongstart(): boolean {
   } catch { /* noop */ }
   return false
 }
+
+// 🏭 2026-06-04 도매몰 도메인 게이팅 (SPA 가드).
+//   utongstart.com 에서 허용되는 경로 prefix. worker(src/worker/index.ts `WHOLESALE_ALLOWED_PATHS`)
+//   와 동일 — 한쪽 변경 시 반드시 같이 갱신. worker 302 가 주 방어, 이건 SPA navigate() 보강.
+//   ⚠️ 추가만 OK — 제거 시 도매몰에 소비자몰 페이지가 노출됨.
+const WHOLESALE_ALLOWED_PATHS = [
+  '/wholesale', '/supplier',            // 도매몰 + 제조사 surface
+  '/seller/login', '/seller/register',  // 유통사 = 셀러 계정 인증
+  '/auth/', '/login',                   // 카카오 OAuth 콜백 / 로그인
+]
+
+/** utongstart.com 에서 해당 SPA 경로가 도매몰 surface 인지 (밖이면 /wholesale/intro 로 보냄). */
+export function isWholesaleAllowedPath(pathname: string): boolean {
+  for (const p of WHOLESALE_ALLOWED_PATHS) {
+    if (pathname === p) return true
+    if (pathname.startsWith(p.endsWith('/') ? p : p + '/')) return true
+  }
+  return false
+}

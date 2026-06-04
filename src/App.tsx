@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from '
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
-import { isUtongstart } from './utils/domain'
+import { isUtongstart, isWholesaleAllowedPath } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -486,6 +486,9 @@ function AppContent() {
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
           <main id="main-content" className={hideBottomNav ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0'}>
           <ErrorBoundary key={location.key}>
+          {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
+              worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
+          {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale/intro" replace />}
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />

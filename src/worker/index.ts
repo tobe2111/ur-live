@@ -1774,17 +1774,38 @@ import { handleCronScheduled } from './scheduled';
 
 import { swallow } from './utils/swallow';
 // 🏭 2026-06-01 유통스타트 도메인 진입 라우팅 (Phase 5, lock-safe 추가).
-//   utongstart.com 루트 접속 → /wholesale 로 서버 302. 클라이언트 redirect 의 첫 깜빡임 제거.
+//   utongstart.com = 도매몰 전용. 도매몰 surface 밖의 페이지 경로는 /wholesale/intro 로 서버 302.
 //   ⚠️ 잠긴 SSR inject / caches.default 블록은 미수정 — fetch 진입부에 additive 가드만.
 //   live.ur-team.com 등 다른 호스트는 즉시 app.fetch 로 통과(no-op).
 const WHOLESALE_HOSTS = new Set(['utongstart.com', 'www.utongstart.com']);
+
+// 🏭 2026-06-04 도매몰 도메인 게이팅 (사용자 승인 "가장 이상적이고 근본적으로").
+//   utongstart.com 에서 접근 허용되는 경로 prefix. 이 목록 밖의 페이지 라우트는 302.
+//   ⚠️ 추가만 OK — 제거 시 도매몰에 소비자몰 페이지가 노출됨.
+//   동기화 대상: src/utils/domain.ts `isWholesaleAllowedPath` (클라 SPA 가드 — 같이 갱신).
+const WHOLESALE_ALLOWED_PATHS = [
+  '/api/', '/assets/', '/cdn-cgi/', '/locales/',  // 인프라 (호스트 무관 통과)
+  '/wholesale', '/supplier',                        // 도매몰 + 제조사 surface
+  '/seller/login', '/seller/register',              // 유통사 = 셀러 계정 인증
+  '/auth/', '/login',                               // 카카오 OAuth 콜백 / 로그인
+];
+
+/** utongstart.com 에서 해당 경로가 허용되는지 (정적파일 + allowlist prefix). */
+function isWholesaleAllowedPath(pathname: string): boolean {
+  if (/\.[a-z0-9]+$/i.test(pathname)) return true; // 정적 파일 (favicon/robots/.js/.css …)
+  for (const p of WHOLESALE_ALLOWED_PATHS) {
+    if (pathname === p) return true;
+    if (pathname.startsWith(p.endsWith('/') ? p : p + '/')) return true;
+  }
+  return false;
+}
 
 export default {
   fetch: (request: Request, env: unknown, ctx: unknown) => {
     try {
       const url = new URL(request.url);
-      if (WHOLESALE_HOSTS.has(url.hostname.toLowerCase()) && (url.pathname === '/' || url.pathname === '')) {
-        // 공개 소개 랜딩으로 (로그인 월 대신 — 시장 노출/가입 유도).
+      if (WHOLESALE_HOSTS.has(url.hostname.toLowerCase()) && !isWholesaleAllowedPath(url.pathname || '/')) {
+        // 도매몰 도메인에서 비-도매몰 경로 → 공개 소개 랜딩으로 302 (도매몰 전용).
         return Response.redirect(`${url.origin}/wholesale/intro`, 302);
       }
     } catch { /* URL 파싱 실패 시 통과 */ }
