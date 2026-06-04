@@ -87,6 +87,9 @@ export default function AdminDistributorGradesPage() {
   // 🏭 2026-06-04 수량 구간 할인(volume tier) — "수량:할인%" 쌍.
   const [tierText, setTierText] = useState('')
   const [tierBusy, setTierBusy] = useState(false)
+  // 🏭 2026-06-04 플랫폼 사업자정보(전자세금계산서 발행 전제) — platform_settings.
+  const [company, setCompany] = useState<Record<string, string>>({})
+  const [companyBusy, setCompanyBusy] = useState(false)
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -97,7 +100,19 @@ export default function AdminDistributorGradesPage() {
       .then(r => { if (r.data.success) setGrades(r.data.grades || []) })
       .catch(e => { if (import.meta.env.DEV) console.warn(e) })
       .finally(() => setLoading(false))
+    api.get('/api/admin/distributor/company-info', h)
+      .then(r => { if (r.data.success) setCompany(r.data.company || {}) })
+      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
   }, [])
+
+  async function saveCompany() {
+    setCompanyBusy(true)
+    try {
+      const r = await api.put('/api/admin/distributor/company-info', company, h)
+      if (r.data?.success) toast.success('사업자정보 저장됨 — 전자세금계산서 발행에 사용됩니다')
+      else toast.error('저장 실패')
+    } catch { toast.error('저장 중 오류') } finally { setCompanyBusy(false) }
+  }
 
   const loadDistributors = useCallback((q: string, assignedOnly = false) => {
     setSearching(true)
@@ -447,6 +462,26 @@ export default function AdminDistributorGradesPage() {
               </div>
             </div>
           )}
+
+          {/* 플랫폼 사업자정보 (전자세금계산서 발행 전제 — 바로빌 + platform_settings) */}
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">플랫폼 사업자정보 <span className="text-xs font-normal text-gray-400">(국세청 전자세금계산서 발행에 사용)</span></h3>
+            <p className="text-xs text-gray-500 mb-3">아래 정보 + Cloudflare 환경변수 <code className="text-gray-700">BAROBILL_PROD_API_KEY</code> 가 모두 설정되면 &ldquo;국세청발행&rdquo; 버튼이 활성화됩니다.</p>
+            <div className="grid sm:grid-cols-2 gap-2 mb-3">
+              {([
+                ['company_name', '상호(법인명)'], ['company_business_number', '사업자등록번호'],
+                ['company_ceo', '대표자'], ['company_address', '사업장 주소'],
+                ['company_biz_type', '업태'], ['company_biz_class', '종목'],
+                ['company_email', '이메일'], ['company_tel', '전화'],
+              ] as const).map(([k, label]) => (
+                <input key={k} value={company[k] || ''} onChange={e => setCompany(c => ({ ...c, [k]: e.target.value }))}
+                  placeholder={label} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
+              ))}
+            </div>
+            <button onClick={saveCompany} disabled={companyBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              {companyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 사업자정보 저장
+            </button>
+          </div>
 
           {/* 세금계산서/거래명세서 발행 (내부 발행 + 인쇄) */}
           <div className="mt-5 pt-5 border-t border-gray-100">

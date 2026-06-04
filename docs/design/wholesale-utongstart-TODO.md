@@ -33,6 +33,25 @@
 - [ ] **9. (선택) 세금계산서** — 월말 `/admin/distributor-grades` 세금집계로 유통사별 매출/
       제조사별 매입 확인 후 **수동 발행** (1차 정책).
 
+## 🧾 전자세금계산서(국세청) 발행 — 2026-06-04 추가
+
+내부 발행/인쇄(거래명세서·세금계산서)는 코드로 완료(유통사는 `/wholesale/documents` 에서 조회·인쇄).
+**국세청 정식 전자세금계산서(바로빌)** 발행만 아래 2개 설정이 필요:
+
+- [ ] **A. 플랫폼 사업자정보 입력** — `/admin/distributor-grades` → "플랫폼 사업자정보" 폼에
+      상호·사업자번호·대표자·주소·업태·종목·이메일·전화 입력 후 저장. (**코드 UI 완료 — 입력만**)
+- [ ] **B. 바로빌 API 키 등록** — Cloudflare → Workers&Pages → `ur-live` → Settings → Variables
+      → `BAROBILL_PROD_API_KEY` (운영) 또는 `BAROBILL_TEST_API_KEY` (테스트) + `BAROBILL_ENV=production`.
+      (**Cloudflare 콘솔 작업 — 코드 불가**)
+
+→ A + B 완료 시 세금계산서 행의 "국세청발행" 버튼 활성화. 미설정 시 내부 발행/인쇄는 그대로 동작.
+
+## ⚙️ 새 스키마(자동 self-heal) — 별도 마이그레이션 불필요
+
+2026-06-04 추가 컬럼/테이블(`products.min_order_qty`·`supply_margin_override_pct`,
+`product_qty_tiers`, `tax_documents`)은 **lazy ensure** 로 첫 도매 API 호출 시 자동 생성됨
+(TD-001 마이그레이션 CI 무관). 명시적 1회 원하면 `/admin/health` 스키마 복구 클릭.
+
 ## 🧪 가동 전 테스트 (권장)
 
 - [ ] 유통사 계정으로 `/wholesale` → 상품 주문 → Toss 결제 → 주문내역 확인

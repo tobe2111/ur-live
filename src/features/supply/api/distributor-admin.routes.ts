@@ -563,6 +563,37 @@ app.patch('/products/:id/margin-override', async (c) => {
   }
 })
 
+// 플랫폼(유통스타트) 사업자정보 — 전자세금계산서(바로빌) 발행에 필요. platform_settings 저장.
+const COMPANY_KEYS = ['company_business_number', 'company_name', 'company_ceo', 'company_address', 'company_biz_type', 'company_biz_class', 'company_email', 'company_tel'] as const
+
+app.get('/company-info', async (c) => {
+  try {
+    const ph = COMPANY_KEYS.map(() => '?').join(',')
+    const { results } = await c.env.DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN (${ph})`)
+      .bind(...COMPANY_KEYS).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
+    const company: Record<string, string> = {}
+    for (const r of results || []) company[r.key] = r.value
+    return c.json({ success: true, company })
+  } catch (err) {
+    return safeError(c, err, '사업자정보 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+app.put('/company-info', async (c) => {
+  try {
+    const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    const stmts = COMPANY_KEYS.filter(k => k in body).map(k =>
+      c.env.DB.prepare(
+        `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+      ).bind(k, String(body[k] ?? '').slice(0, 200)))
+    if (stmts.length) await c.env.DB.batch(stmts)
+    return c.json({ success: true, saved: stmts.length })
+  } catch (err) {
+    return safeError(c, err, '사업자정보 저장 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 // GET/PUT /products/:id/qty-tiers — 수량 구간 할인(volume tier) 조회/일괄설정 (관리자, 2026-06-04)
 //   tier = 등급가 위에 "min_qty 이상 구매 시 discount_pct% 추가 할인". 전체 교체(replace).
 //   ⚠️ 결제액 직결 — wholesale.routes /orders 가 같은 tier 를 읽어 authoritative 단가 재계산.
