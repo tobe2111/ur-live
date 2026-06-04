@@ -437,7 +437,10 @@ export default function WholesaleCatalogPage() {
             </>
           ) : (
             <>
-              <button onClick={() => navigate('/wholesale/intro')} className="hidden sm:inline text-[13px] font-medium" style={{ color: WT.ink2 }}>서비스 소개</button>
+              {/* 제조사(공급사) 진입 — 도매몰 한 곳에서 양쪽 역할 모두. */}
+              <button onClick={() => navigate('/supplier/login')} className="hidden sm:inline-flex items-center gap-1 text-[13px] font-medium" style={{ color: WT.ink2 }} title="제조사(공급사) 로그인·입점">
+                <Factory className="w-4 h-4" /> 제조사 입점
+              </button>
               <button onClick={goLogin} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }}>
                 <LogIn className="w-4 h-4" /> 로그인
               </button>
