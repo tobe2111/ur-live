@@ -5,7 +5,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
 import { getSellerId } from '@/lib/seller-auth'
-import { formatWon } from '@/utils/format'
+import { WT, won } from './wholesale/wholesale-theme'
 
 // 🏭 2026-06-01 유통스타트 도매 B2B 선결제 (Phase 2). 셀러(유통사) 컨텍스트 Toss 위젯.
 //   TossWidgetPayPage 의 검증된 시퀀스를 셀러용으로 복제 (customerKey = wseller_<id>).
@@ -128,43 +128,43 @@ export default function WholesaleCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 결제 - 유통스타트" description="유통사 도매 결제" url="/wholesale/checkout" noindex />
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#121212]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A2A2A]">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
-          <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
-          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">도매 결제</h1>
+          <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>도매 결제</h1>
           <div className="w-9" />
         </div>
       </header>
 
       <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4 pb-32">
-        <section className="bg-white dark:bg-[#121212] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] p-4">
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">주문 상품</p>
-          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{order?.orderName || '—'}</p>
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2A2A2A] flex items-center justify-between">
-            <span className="text-[13px] text-gray-500 dark:text-gray-400">결제 금액</span>
-            <span className="text-[20px] font-extrabold text-gray-900 dark:text-white">{order ? formatWon(order.amount) : '—'}</span>
+        <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
+          <p className="text-[12px] mb-1" style={{ color: WT.ink3 }}>주문 상품</p>
+          <p className="text-[15px] font-bold" style={{ color: WT.ink }}>{order?.orderName || '—'}</p>
+          <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
+            <span className="text-[13px]" style={{ color: WT.ink3 }}>결제 금액</span>
+            <span className="text-[20px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{order ? won(order.amount) : '—'}</span>
           </div>
         </section>
 
-        <div id="wholesale-pay-method" className="min-h-[180px] bg-white dark:bg-[#121212] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] overflow-hidden" />
-        <div id="wholesale-pay-agreement" className="min-h-[60px] bg-white dark:bg-[#121212] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] overflow-hidden" />
+        <div id="wholesale-pay-method" className="min-h-[180px] rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid ' + WT.line }} />
+        <div id="wholesale-pay-agreement" className="min-h-[60px] rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid ' + WT.line }} />
 
         {state === 'error' && errorMsg && (
-          <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-2xl">
-            <p className="text-[13px] font-medium text-red-800 dark:text-red-300 whitespace-pre-wrap">{errorMsg}</p>
-            <button onClick={() => navigate('/wholesale')} className="mt-2 text-[12px] text-blue-600 dark:text-blue-400 underline font-medium">카탈로그로 돌아가기</button>
+          <div className="p-4 rounded-2xl" style={{ background: '#FDECEF', border: '1px solid #F8C9D2' }}>
+            <p className="text-[13px] font-medium whitespace-pre-wrap" style={{ color: '#B3253B' }}>{errorMsg}</p>
+            <button onClick={() => navigate('/wholesale')} className="mt-2 text-[12px] underline font-medium" style={{ color: WT.ink2 }}>카탈로그로 돌아가기</button>
           </div>
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#121212] border-t border-gray-100 dark:border-[#2A2A2A] z-30" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-white z-30" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="ur-content-narrow px-4 pt-3">
-          <button onClick={handlePay} disabled={state !== 'ready'} className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-full disabled:opacity-50">
+          <button onClick={handlePay} disabled={state !== 'ready'} className="w-full h-14 text-[16px] font-bold rounded-2xl text-white disabled:opacity-50" style={{ background: WT.brand }}>
             {state === 'loading' && <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />결제 시스템 로딩 중...</span>}
             {state === 'processing' && <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />결제 진행 중...</span>}
-            {state === 'ready' && order && `${formatWon(order.amount)} 결제하기`}
+            {state === 'ready' && order && `${won(order.amount)} 결제하기`}
             {state === 'error' && '결제 시스템 오류'}
           </button>
         </div>

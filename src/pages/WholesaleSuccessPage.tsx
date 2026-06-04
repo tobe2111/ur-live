@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
-import { formatWon } from '@/utils/format'
+import { WT, won } from './wholesale/wholesale-theme'
 
 // 🏭 2026-06-01 유통스타트 도매 결제 성공 → 서버 confirm (Phase 2).
 //   Toss 가 successUrl 에 paymentKey/orderId/amount 를 붙여 redirect.
@@ -41,28 +41,28 @@ export default function WholesaleSuccessPage() {
   }, [paymentKey, orderId, amount, navigate])
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 결제 완료 - 유통스타트" description="도매 주문 결제 결과" url="/wholesale/success" noindex />
       {state === 'confirming' && (
-        <><Loader2 className="w-10 h-10 animate-spin text-gray-400 mb-4" /><p className="text-gray-600 dark:text-gray-300">결제를 확인하고 있습니다...</p></>
+        <><Loader2 className="w-10 h-10 animate-spin mb-4" style={{ color: WT.ink4 }} /><p style={{ color: WT.ink2 }}>결제를 확인하고 있습니다...</p></>
       )}
       {state === 'done' && (
         <>
-          <CheckCircle2 className="w-14 h-14 text-emerald-500 mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">주문이 완료되었습니다</h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{formatWon(amount)} 결제 완료</p>
+          <CheckCircle2 className="w-14 h-14 mb-4" style={{ color: WT.pos }} />
+          <h1 className="text-xl font-bold mb-1" style={{ color: WT.ink }}>주문이 완료되었습니다</h1>
+          <p className="mb-6 tabular-nums" style={{ color: WT.ink2 }}>{won(amount)} 결제 완료</p>
           <div className="flex gap-3">
-            <button onClick={() => navigate('/wholesale/orders')} className="px-5 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold">주문 내역</button>
-            <button onClick={() => navigate('/wholesale')} className="px-5 py-3 border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-200 rounded-lg font-semibold">계속 쇼핑</button>
+            <button onClick={() => navigate('/wholesale/orders')} className="px-5 h-12 rounded-xl font-bold text-white" style={{ background: WT.ink }}>주문 내역</button>
+            <button onClick={() => navigate('/wholesale')} className="px-5 h-12 rounded-xl font-bold" style={{ background: WT.fill, color: WT.ink }}>계속 쇼핑</button>
           </div>
         </>
       )}
       {state === 'error' && (
         <>
-          <XCircle className="w-14 h-14 text-rose-500 mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">결제 확인 실패</h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6 whitespace-pre-wrap">{errorMsg}</p>
-          <button onClick={() => navigate('/wholesale')} className="px-5 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold">카탈로그로</button>
+          <XCircle className="w-14 h-14 mb-4" style={{ color: '#D63A4E' }} />
+          <h1 className="text-xl font-bold mb-1" style={{ color: WT.ink }}>결제 확인 실패</h1>
+          <p className="mb-6 whitespace-pre-wrap" style={{ color: WT.ink2 }}>{errorMsg}</p>
+          <button onClick={() => navigate('/wholesale')} className="px-5 h-12 rounded-xl font-bold text-white" style={{ background: WT.ink }}>카탈로그로</button>
         </>
       )}
     </div>
