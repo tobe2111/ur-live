@@ -175,12 +175,15 @@ export default function BottomNav() {
   // 🛡️ 2026-06-01 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 교환권 탭 제거 → 동네딜(오프라인 공구) 추가.
   //   순서 = 홈 / 동네딜 / 쇼핑 / 링크샵 / 마이. 교환권 콘텐츠는 홈 상단 + /vouchers 전체보기로 유지.
   //   linkshop localStorage 경로 로직·active-path 패턴은 그대로 보존.
+  // 🛡️ 2026-06-04: lazy 라우트 청크를 "누르려는 순간(pointerdown/hover)" 미리 받기 → 클릭 후 청크 대기 제거.
+  //   홈(eager)과 달리 동네딜·쇼핑·마이는 lazy 라 클릭 시 청크 다운로드 동안 PageLoader 스피너가 떴음(카드 늦게 뜸).
+  //   intent 시에만 발화 → 홈 초기로딩(Lighthouse) 영향 0. Vite 가 App.tsx 의 동일 청크로 dedup.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
-    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
-    { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse' },
+    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage') },
+    { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') },
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
-    { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile' },
+    { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => import('@/pages/UserProfilePage') },
   ]
 
   const isActivePath = (path: string) => {
@@ -204,14 +207,18 @@ export default function BottomNav() {
     return false
   }
 
-  const renderItem = ({ icon: Icon, label, path }: typeof navItems[0]) => {
+  const renderItem = ({ icon: Icon, label, path, prefetch }: typeof navItems[0] & { prefetch?: () => Promise<unknown> }) => {
     const active = isActivePath(path)
     const isMyTab = path === '/user/profile'
+    // intent(hover/press) 시 lazy 청크 prefetch — dedup 되므로 다중 호출 안전, 실패 무시.
+    const warm = prefetch ? () => { try { prefetch().catch(() => {}) } catch { /* noop */ } } : undefined
 
     return (
       <button
         key={label}
         onClick={() => navigate(path)}
+        onPointerDown={warm}
+        onMouseEnter={warm}
         className="flex-1 flex flex-col items-center justify-center h-full"
         aria-label={label}
       >
