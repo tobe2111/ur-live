@@ -1,5 +1,6 @@
 # 유통스타트 B2B 도매몰 — 스펙 + 구현 상태
 
+> 📎 **원본 보존**: [`wholesale-b2b-mindmap.md`](./wholesale-b2b-mindmap.md) (전사본) + [`assets/wholesale-b2b-mindmap.pdf`](./assets/wholesale-b2b-mindmap.pdf) (PDF 원본, 2026-06-04 저장).
 > 출처: 사용자 공유 mind-map PDF `유통스타트B2B몰.mmap` (2026-06-03).
 > 3역할: **제조회원**(제조사/supplier) · **유통회원**(유통사/distributor) · **관리자**.
 
