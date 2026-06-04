@@ -49,7 +49,24 @@
 - verify:sql 11/11(테이블/주문단가/replace 멱등), unit 12/12.
 
 ## 🟢 시안 전 요소 구현 완료 (실데이터/모델 기준)
-남은 polish: OEM 페이지 WT 토큰 미세정렬(이미 라이트·정상) · 카탈로그 카드 수량할인 배지(선택).
+
+### 도매몰 페이지 디자인 현황 (전 페이지 라이트 고정 · #FF0033 1포인트 · dark: 0건)
+| 페이지 | 상태 | 비고 |
+|---|---|---|
+| WholesaleCatalogPage (홈) | ✅ WT 토큰 | 브랜드히어로+대시보드+레일+카드+사이드바 |
+| WholesaleProductPage (상세) | ✅ WT 토큰 | 가격앵커+마진+수량구간표+CTA |
+| WholesaleCartPage (장바구니) | ✅ WT 토큰 | 다품목 |
+| WholesaleOrdersPage (주문내역) | ✅ WT 토큰 | 상태칩+송장복사 |
+| WholesaleStatementPage (거래내역서) | ✅ WT 토큰 | 요약+표+인쇄 |
+| WholesaleDocsPage (자료) | ✅ WT 토큰 | 거래명세서/세금계산서 |
+| WholesaleCheckoutPage (결제) | ✅ WT 토큰 | dark: 제거. Toss 위젯 로직 보존 |
+| WholesaleSuccessPage (완료) | ✅ WT 토큰 | dark: 제거 |
+| WholesaleIntroPage (공개 랜딩) | ✅ 라이트+브랜드 | Tailwind neutral(=WT 시각 동일)+#FF0033. SEO/JSON-LD |
+| WholesaleJoinPage (유통사 가입) | ✅ 라이트+브랜드 | 동일 |
+| WholesaleOemPage (OEM/ODM) | ✅ 라이트+브랜드 | 동일 |
+
+→ **전 페이지 라이트 고정 + 브랜드 일관 완료.** Intro/Join/Oem 은 Tailwind neutral(gray-900≈WT.ink 등, 육안 동일)
+사용 — 토큰 상수 단일화는 시각 차 없는 코드 위생 항목(선택, 미실행). 8개 핵심 페이지는 WT 토큰 SSOT.
 | 박스/개당 단가 병기 · MOQ | products에 MOQ 컬럼 없음. 추가 시 스키마 컬럼 필요. |
 | 마감 임박 카운트다운 / badge(특가/NEW/BEST) | API가 badge 미반환. |
 | 장바구니(다품목 담기) | 현재 흐름은 상세→단일주문→체크아웃. 카트 상태/엔드포인트 신설 필요. |
