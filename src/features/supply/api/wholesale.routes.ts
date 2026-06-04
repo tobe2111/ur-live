@@ -389,7 +389,13 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
-      return c.json({ success: false, error: '주문할 수 없는 상품이 포함되어 있습니다' }, 400)
+      // 어떤 상품이 주문 불가인지 이름으로 안내(카트 부분 불가 UX) — 비노출 정보 없이 name 만.
+      const foundIds = new Set(found.map(p => p.id))
+      const missing = ids.filter(id => !foundIds.has(id))
+      const nm = await DB.prepare(`SELECT name FROM products WHERE id IN (${missing.map(() => '?').join(',')})`)
+        .bind(...missing).all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }))
+      const names = (nm.results || []).map(r => r.name).filter(Boolean).join(', ')
+      return c.json({ success: false, error: `주문할 수 없는 상품이 포함되어 있습니다${names ? `: ${names}` : ''} (품절·중지·열람권한 변경)`, unavailable: missing }, 400)
     }
 
     // 수량 구간 할인 tier 일괄 로드 (authoritative 단가에 적용).
