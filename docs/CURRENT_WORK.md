@@ -23,7 +23,8 @@
   + 보강: `/company-info` 형식검증·0% tier 거부·refund/issue-nts rate limit·silent catch→swallow.
   **정합 확인(버그 아님)**: creditSupplier 배선/멱등/CAS · confirm 금액 서버재검증 · 정산 source 분리 · oversell NULL 대칭 · renderTaxDocHtml XSS escaping · bulk 승인게이트.
   라이브: 송출 로직 미변경, 안전 UX만(StepSetup 무한대기 30s 탈출 · Quick Start 최근상품). unit 13/13 · verify:sql 13/13 · tsc 0 · build OK.
-- **8차 — 인접 도메인 자금경로 심층 + fix**: ① 숙소 오버부킹 **reserve-before-charge** 근본수정([UNLOCK] payment.routes, 사용자승인 — 달력차감을 Toss승인 전으로 + booking CAS + Toss실패시 release. ⚠️staging E2E 권장). ② 인플 수동지급 **이중지급 CAS**(marketing /payouts/process — 적립 전 잔고 claim). ③ referral 출금승인 CAS. **정합확인**: 인플 payout cron 잔고 자가치유(attributions SUM)·소비자 결제 CAS/멱등·후원 status-only(이중적립0)·어필리에이트 clawback(2026-05-31)·curator/referral 출금=admin승인 게이트(요청만).
+- **8차 — 인접 도메인 자금경로 심층 + fix**: ① 숙소 오버부킹 **reserve-before-charge** 근본수정([UNLOCK] payment.routes, 사용자승인 — 달력차감을 Toss승인 전으로 + booking CAS + Toss실패시 release. ⚠️staging E2E 권장). ② 인플 수동지급 **이중지급 CAS**(marketing /payouts/process — 적립 전 잔고 claim). ③ referral 출금승인 CAS.
+- **9차 — 출금/지급 동시성 전수 (플랫폼 전역)**: ④ curator 출금 **조건부 INSERT 원자화**(가용액 재평가 — 동시 신청 초과지급 차단, verify:sql 14/14). ⑤ referral 출금신청 **commission claim-first**(phantom 출금=초과지급 차단). **정합확인(이미 안전)**: 공급자 payout(CAS+권위SUM)·인플 payout cron(attributions SUM 자가치유)·seller settlement(C1 잔액상한+H3 원자 period dedup, 2026-05-31). → 6개 지급경로(supplier/influencer/curator/referral/seller/wholesale) 동시성 모두 잠금.
 - **시안 전 요소 구현 완료**. unit 12/12 · verify:sql 11/11 · tsc 0 · build OK. 남은 polish: OEM 토큰 미세정렬·카드 수량할인 배지(선택).
 
 ## 🟢 2026-06-04 — 도매몰 게이팅·마진·합배송 + audit (이번 세션)
