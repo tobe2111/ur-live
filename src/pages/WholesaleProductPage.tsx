@@ -15,7 +15,7 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
   category: string | null; stock: number; distributor_price: number
-  retail_price?: number | null; sold_count?: number
+  retail_price?: number | null; moq?: number; sold_count?: number
 }
 
 function KV({ label, value, accent }: { label: string; value: string; accent?: string }) {
@@ -42,11 +42,11 @@ export default function WholesaleProductPage() {
   const cart = useWholesaleCart()
 
   useEffect(() => { if (!token) navigate('/seller/login') }, [token, navigate])
-  useEffect(() => { setQty(1); setTab('desc') }, [item?.id])
+  useEffect(() => { setQty(Math.max(1, item?.moq || 1)); setTab('desc') }, [item?.id, item?.moq])
 
   function addToCart() {
     if (!item) return
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: item.distributor_price })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: item.distributor_price, moq: Math.max(1, item.moq || 1) })
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
@@ -73,6 +73,7 @@ export default function WholesaleProductPage() {
     )
   }
 
+  const moq = Math.max(1, item.moq || 1)
   const total = item.distributor_price * qty
   const dr = item.retail_price ? discountRate(item.distributor_price, item.retail_price) : 0
   const um = item.retail_price ? unitMargin(item.distributor_price, item.retail_price) : 0
@@ -111,11 +112,10 @@ export default function WholesaleProductPage() {
             <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price)}</span>
             {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
           </div>
-          {item.retail_price ? (
-            <div className="mt-1.5 text-[14px] tabular-nums" style={{ color: WT.ink4 }}>
-              권장 소비자가 <span className="line-through">{won(item.retail_price)}</span>
-            </div>
-          ) : null}
+          <div className="mt-1.5 text-[14px] tabular-nums" style={{ color: WT.ink4 }}>
+            {item.retail_price ? <>권장 소비자가 <span className="line-through">{won(item.retail_price)}</span></> : null}
+            {moq > 1 && <>{item.retail_price ? <span className="mx-2" style={{ color: WT.line }}>|</span> : null}박스 {comma(moq)}개 <span className="font-semibold" style={{ color: WT.ink2 }}>{won(item.distributor_price * moq)}</span></>}
+          </div>
 
           {/* 마진 여력 */}
           {um > 0 && (
@@ -138,9 +138,9 @@ export default function WholesaleProductPage() {
           <div className="hidden lg:block">
             <div className="mt-5 flex items-center gap-3">
               <div className="inline-flex items-center rounded-full h-11" style={{ background: WT.fill }}>
-                <button className="h-11 w-11 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(1, q - 1))} disabled={qty <= 1}>−</button>
+                <button className="h-11 w-11 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - moq))} disabled={qty <= moq}>−</button>
                 <span className="w-12 text-center text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(qty)}</span>
-                <button className="h-11 w-11 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + 1)}>+</button>
+                <button className="h-11 w-11 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + moq)}>+</button>
               </div>
               <div className="flex-1 text-right">
                 <span className="text-[13px] mr-2" style={{ color: WT.ink3 }}>합계</span>
@@ -180,9 +180,9 @@ export default function WholesaleProductPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white z-40 px-5 pt-2.5" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-between mb-2.5 px-1">
           <div className="inline-flex items-center rounded-full h-10" style={{ background: WT.fill }}>
-            <button className="h-10 w-10 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(1, q - 1))} disabled={qty <= 1}>−</button>
+            <button className="h-10 w-10 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - moq))} disabled={qty <= moq}>−</button>
             <span className="w-11 text-center text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(qty)}</span>
-            <button className="h-10 w-10 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + 1)}>+</button>
+            <button className="h-10 w-10 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + moq)}>+</button>
           </div>
           <div className="text-right">
             <span className="text-[12px] mr-1.5" style={{ color: WT.ink3 }}>합계</span>

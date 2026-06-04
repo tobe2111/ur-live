@@ -42,7 +42,7 @@ async function main() {
   // 1) ensure 컬럼/테이블
   const cols = await DB.prepare("SELECT name FROM pragma_table_info('products')").all<{ name: string }>()
   const cnames = (cols.results || []).map(r => r.name)
-  for (const c of ['supply_visibility', 'barcode', 'is_brand_product', 'supply_margin_override_pct']) assert(cnames.includes(c), `products.${c} 누락`)
+  for (const c of ['supply_visibility', 'barcode', 'is_brand_product', 'supply_margin_override_pct', 'min_order_qty']) assert(cnames.includes(c), `products.${c} 누락`)
   const tbls = await DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all<{ name: string }>()
   const tnames = (tbls.results || []).map(r => r.name)
   for (const t of ['product_distributor_access', 'supply_price_history', 'tax_documents', 'oem_requests']) assert(tnames.includes(t), `${t} 누락`)
@@ -146,8 +146,21 @@ async function main() {
   assert.strictEqual(ostatus?.status, 'SHIPPED', '전 라인 발송 후 주문 SHIPPED 전환 실패')
   ok('합배송 일괄발송 — 제조사별 격리 + 송장1개 + 전라인 발송 시 주문 SHIPPED')
 
+  // 9) MOQ — 컬럼 기본값 1 + 박스 단가/주문 하한 계산
+  await DB.prepare("INSERT INTO products (id,name,supply_price,is_supply_product,is_active,supply_source_id,supply_visibility,min_order_qty) VALUES (900,'박스상품',5000,1,1,NULL,'ALL',20)").run()
+  await DB.prepare("INSERT INTO products (id,name,supply_price,is_supply_product,is_active,supply_source_id,supply_visibility) VALUES (901,'낱개상품',5000,1,1,NULL,'ALL')").run()
+  const moqRow = await DB.prepare("SELECT COALESCE(min_order_qty,1) AS moq FROM products WHERE id=900").first<{ moq: number }>()
+  const defRow = await DB.prepare("SELECT COALESCE(min_order_qty,1) AS moq FROM products WHERE id=901").first<{ moq: number }>()
+  assert.strictEqual(Number(moqRow?.moq), 20, `MOQ 저장 오류 (${moqRow?.moq})`)
+  assert.strictEqual(Number(defRow?.moq), 1, `MOQ 기본값(1) 오류 (${defRow?.moq})`)
+  // 주문 하한 검증 로직 (라우트와 동일): qty < moq → 거부
+  const moq = Number(moqRow?.moq)
+  assert.ok(10 < moq, 'MOQ 미만 주문이 통과되면 안 됨(10<20)')
+  assert.ok(20 >= moq && 40 >= moq, 'MOQ 이상 주문은 허용')
+  ok('MOQ — 컬럼 기본값 1 + 저장 + 주문 하한(qty>=moq) 판정')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/8\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/9\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })

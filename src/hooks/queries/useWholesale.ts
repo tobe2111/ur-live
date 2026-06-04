@@ -157,7 +157,7 @@ export function useWholesaleHome() {
 
 export interface WholesaleReorderItem {
   id: number; name: string; image_url: string | null; stock: number
-  distributor_price: number; retail_price: number | null; last_qty: number; last_date: string
+  distributor_price: number; retail_price: number | null; moq?: number; last_qty: number; last_date: string
 }
 
 /** 빠른 재주문 — 최근 사입한 상품 + 마지막 수량. */

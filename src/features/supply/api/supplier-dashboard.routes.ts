@@ -101,6 +101,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
     const rows = await DB.prepare(
       `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
               stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product,
+              COALESCE(min_order_qty,1) AS min_order_qty,
               COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
               is_active, admin_memo, created_at, updated_at
          FROM products WHERE ${where}
@@ -134,7 +135,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
     type ProductBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string; is_brand_product?: boolean;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; min_order_qty?: number;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -143,6 +144,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const supplyPrice = Number(body.supply_price);
     const suggestedRetail = Number(body.suggested_retail_price ?? body.supply_price);
     const stock = Number.isFinite(Number(body.stock)) ? Math.max(0, Math.floor(Number(body.stock))) : 0;
+    // MOQ — 최소 주문 수량(박스 단위). 1~100000, 기본 1.
+    const moq = Number.isFinite(Number(body.min_order_qty)) ? Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty)))) : 1;
 
     if (!name) return c.json({ success: false, error: '상품명은 필수입니다' }, 400);
     if (name.length > 200) return c.json({ success: false, error: '상품명은 200자 이하여야 합니다' }, 400);
@@ -169,8 +172,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -183,6 +186,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       visibility,
       barcode,
       isBrand,
+      moq,
       slug,
     ).run();
 

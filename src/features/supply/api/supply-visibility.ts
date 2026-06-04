@@ -42,6 +42,11 @@ export async function ensureSupplyVisibilitySchema(DB: D1Database): Promise<void
     //   전 유통사에 동일 적용(전략/특가 상품). NULL = 기존 등급별 마진. 관리자만 설정.
     await DB.prepare('ALTER TABLE products ADD COLUMN supply_margin_override_pct REAL').run().catch(swallow('supply-vis:add-margin-override'))
   }
+  if (!have.has('min_order_qty')) {
+    // 🏭 2026-06-04 최소 주문 수량(MOQ) — 도매 박스 단위. 공급자 설정, 기본 1(낱개).
+    //   카드/상세/카트 박스·개당 단가 병기 + 주문 서버 검증(qty >= moq).
+    await DB.prepare('ALTER TABLE products ADD COLUMN min_order_qty INTEGER DEFAULT 1').run().catch(swallow('supply-vis:add-moq'))
+  }
 
   await DB.prepare(`CREATE TABLE IF NOT EXISTS product_distributor_access (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

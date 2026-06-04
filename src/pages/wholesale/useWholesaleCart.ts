@@ -12,6 +12,7 @@ export interface WCartItem {
   name?: string
   image_url?: string | null
   price?: number // 담을 당시 등급 공급가
+  moq?: number   // 최소 주문 수량 (스텝퍼 단위/하한)
 }
 
 const KEY = 'ut_wholesale_cart_v1'

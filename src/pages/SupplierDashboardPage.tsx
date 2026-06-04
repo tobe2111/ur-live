@@ -527,7 +527,7 @@ function ShipModal({ t, order, onClose, onShipped }: {
 }
 
 function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -547,6 +547,7 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
         supply_price: supply,
         suggested_retail_price: retail,
         stock: Number(form.stock) || 0,
+        min_order_qty: Number(form.min_order_qty) || 1,
         category: form.category,
         image_url: form.image_url.trim() || undefined,
         supply_visibility: form.supply_visibility,
@@ -601,6 +602,11 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
               <label className={labelCls}>{t('supplier.fieldCategory', { defaultValue: '카테고리' })}</label>
               <input disabled={saving} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls} />
             </div>
+          </div>
+          <div>
+            <label className={labelCls}>{t('supplier.fieldMoq', { defaultValue: '최소 주문 수량 (MOQ)' })}</label>
+            <input type="number" min={1} disabled={saving} value={form.min_order_qty} onChange={e => setForm(f => ({ ...f, min_order_qty: e.target.value }))} className={inputCls} placeholder="1" />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.moqHint', { defaultValue: '박스 단위 최소 주문 수량. 비우면 1(낱개 주문 가능).' })}</p>
           </div>
           <div>
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '대표 이미지 URL' })}</label>

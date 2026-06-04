@@ -26,6 +26,7 @@ interface CatalogItem {
   stock: number
   distributor_price: number
   retail_price?: number | null
+  moq?: number
   sold_count?: number
 }
 
@@ -68,6 +69,7 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void }) {
   const mr = p.retail_price ? marginRate(p.distributor_price, p.retail_price) : 0
   const um = p.retail_price ? unitMargin(p.distributor_price, p.retail_price) : 0
+  const moq = Math.max(1, p.moq || 1)
   return (
     <div className="group flex flex-col">
       <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
@@ -86,6 +88,9 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
         </div>
       ) : (
         <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>재고 {comma(p.stock)}</div>
+      )}
+      {moq > 1 && (
+        <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>최소 {comma(moq)}개 · 박스 {won(p.distributor_price * moq)}</div>
       )}
     </div>
   )
@@ -328,12 +333,14 @@ export default function WholesaleCatalogPage() {
   const cart = useWholesaleCart()
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
-    cart.add({ id: p.id, qty: 1, name: p.name, image_url: p.image_url, price: p.distributor_price })
-    toast.success('장바구니에 담았어요')
+    const moq = Math.max(1, p.moq || 1)
+    cart.add({ id: p.id, qty: moq, name: p.name, image_url: p.image_url, price: p.distributor_price, moq })
+    toast.success(moq > 1 ? `장바구니에 ${comma(moq)}개 담았어요` : '장바구니에 담았어요')
   }
   const reorder = (r: ReorderItem) => {
-    cart.add({ id: r.id, qty: Math.max(1, r.last_qty), name: r.name, image_url: r.image_url, price: r.distributor_price })
-    toast.success(`장바구니에 ${comma(Math.max(1, r.last_qty))}개 담았어요`)
+    const moq = Math.max(1, (r as ReorderItem & { moq?: number }).moq || 1)
+    cart.add({ id: r.id, qty: Math.max(moq, r.last_qty), name: r.name, image_url: r.image_url, price: r.distributor_price, moq })
+    toast.success(`장바구니에 ${comma(Math.max(moq, r.last_qty))}개 담았어요`)
   }
 
   function exportCatalog() {

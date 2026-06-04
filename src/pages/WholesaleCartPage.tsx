@@ -65,11 +65,13 @@ export default function WholesaleCartPage() {
                     </div>
                     <div className="mt-1 text-[14px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(it.price || 0)} <span className="text-[12px] font-medium" style={{ color: WT.ink4 }}>/ 개</span></div>
                     <div className="mt-2 flex items-center justify-between">
+                      {(() => { const step = Math.max(1, it.moq || 1); return (
                       <div className="inline-flex items-center rounded-full h-9" style={{ background: WT.fill }}>
-                        <button className="h-9 w-9 text-[18px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - 1)} disabled={it.qty <= 1}>−</button>
+                        <button className="h-9 w-9 text-[18px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= step}>−</button>
                         <span className="w-10 text-center text-[14px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(it.qty)}</span>
-                        <button className="h-9 w-9 text-[18px]" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty + 1)}>+</button>
+                        <button className="h-9 w-9 text-[18px]" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty + step)}>+</button>
                       </div>
+                      )})()}
                       <span className="text-[14px] font-bold tabular-nums" style={{ color: WT.ink }}>{won((it.price || 0) * it.qty)}</span>
                     </div>
                   </div>
