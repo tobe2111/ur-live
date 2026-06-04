@@ -23,7 +23,7 @@ CREATE TABLE products (
 CREATE TABLE sellers (id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_grade TEXT, special_discount_until TEXT, business_number TEXT, business_name TEXT, name TEXT, email TEXT, phone TEXT);
 CREATE TABLE suppliers (id INTEGER PRIMARY KEY AUTOINCREMENT, business_name TEXT);
 CREATE TABLE wholesale_orders (id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER, status TEXT, subtotal INTEGER DEFAULT 0, refunded_amount INTEGER DEFAULT 0, paid_at TEXT, created_at TEXT DEFAULT (datetime('now')));
-CREATE TABLE wholesale_order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, wholesale_order_id INTEGER, product_id INTEGER, supplier_id INTEGER, name TEXT, qty INTEGER, base_supply_price INTEGER, distributor_unit_price INTEGER, line_total INTEGER, line_status TEXT DEFAULT 'PENDING');
+CREATE TABLE wholesale_order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, wholesale_order_id INTEGER, product_id INTEGER, supplier_id INTEGER, name TEXT, qty INTEGER, base_supply_price INTEGER, distributor_unit_price INTEGER, line_total INTEGER, courier TEXT, tracking_number TEXT, shipped_at TEXT, line_status TEXT DEFAULT 'PENDING');
 CREATE TABLE supplier_payouts (id INTEGER PRIMARY KEY AUTOINCREMENT, supplier_id INTEGER, amount INTEGER, status TEXT, created_at TEXT DEFAULT (datetime('now')));
 `
 
@@ -119,8 +119,35 @@ async function main() {
   assert.strictEqual(nPriced.overridden, false, 'fallback 인데 override 플래그 set')
   ok('상품별 마진 override — SELECT→가격 재계산 (등급 무관 동일가 / NULL=등급가)')
 
+  // 8) 합배송 일괄발송 — 주문 내 내 미발송 라인 전체 SHIPPED + 전 라인 발송 시 주문 SHIPPED
+  await DB.prepare("INSERT INTO wholesale_orders (id, distributor_seller_id, status, subtotal) VALUES (700,10,'PAID',30000)").run()
+  // 제조사 9: 라인 2개(PENDING), 제조사 8: 라인 1개(PENDING) — 다중 제조사 주문
+  await DB.prepare("INSERT INTO wholesale_order_items (id, wholesale_order_id, product_id, supplier_id, qty, line_total, line_status) VALUES (7001,700,1,9,1,10000,'PENDING')").run()
+  await DB.prepare("INSERT INTO wholesale_order_items (id, wholesale_order_id, product_id, supplier_id, qty, line_total, line_status) VALUES (7002,700,2,9,1,10000,'PENDING')").run()
+  await DB.prepare("INSERT INTO wholesale_order_items (id, wholesale_order_id, product_id, supplier_id, qty, line_total, line_status) VALUES (7003,700,1,8,1,10000,'PENDING')").run()
+  // 제조사 9 일괄발송 — 내 PENDING 2건만 SHIPPED, 제조사 8 라인 무영향
+  const ship9 = await DB.prepare(
+    "UPDATE wholesale_order_items SET courier='CJ', tracking_number='T-1', shipped_at=datetime('now'), line_status='SHIPPED' WHERE wholesale_order_id=? AND supplier_id=? AND line_status='PENDING'"
+  ).bind(700, 9).run()
+  assert.strictEqual(ship9.meta?.changes ?? 0, 2, `제조사9 일괄발송 라인 수 오류 (${ship9.meta?.changes})`)
+  const otherLine = await DB.prepare("SELECT line_status FROM wholesale_order_items WHERE id=7003").first<{ line_status: string }>()
+  assert.strictEqual(otherLine?.line_status, 'PENDING', '다른 제조사 라인이 영향받음(합배송 격리 실패)')
+  // 같은 송장 1개가 두 라인에 적용됐는지
+  const sameTrack = await DB.prepare("SELECT COUNT(DISTINCT tracking_number) AS n FROM wholesale_order_items WHERE wholesale_order_id=700 AND supplier_id=9").first<{ n: number }>()
+  assert.strictEqual(Number(sameTrack?.n), 1, '합배송인데 송장이 라인별로 다름')
+  // 주문엔 아직 제조사8 미발송 라인 남음 → 주문 SHIPPED 전환 안 됨
+  const pend1 = await DB.prepare("SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id=700 AND line_status!='SHIPPED'").first<{ c: number }>()
+  assert.strictEqual(Number(pend1?.c), 1, '미발송 라인 집계 오류')
+  // 제조사8도 발송 → 전 라인 SHIPPED → 주문 SHIPPED
+  await DB.prepare("UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE wholesale_order_id=700 AND supplier_id=8 AND line_status='PENDING'").run()
+  const pend2 = await DB.prepare("SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id=700 AND line_status!='SHIPPED'").first<{ c: number }>()
+  if (Number(pend2?.c) === 0) await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED' WHERE id=700 AND status='PAID'").run()
+  const ostatus = await DB.prepare("SELECT status FROM wholesale_orders WHERE id=700").first<{ status: string }>()
+  assert.strictEqual(ostatus?.status, 'SHIPPED', '전 라인 발송 후 주문 SHIPPED 전환 실패')
+  ok('합배송 일괄발송 — 제조사별 격리 + 송장1개 + 전라인 발송 시 주문 SHIPPED')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/7\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/8\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })

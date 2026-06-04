@@ -185,6 +185,50 @@ app.post('/items/:id/ship', async (c) => {
   }
 })
 
+// ── POST /orders/:id/ship-all — 합배송: 주문 내 내(제조사) 미발송 라인 전체를 송장 1개로 일괄 발송 ──
+//   같은 제조사가 한 주문에 여러 상품 → 박스 하나 → 송장 하나. 라인별 반복 입력 제거.
+//   소유권: 내 supplier_id 라인만. SHIPPED/REFUNDED 라인은 건너뜀(멱등).
+app.post('/orders/:id/ship-all', async (c) => {
+  const sid = supplierId(c)
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  const orderId = Number(c.req.param('id'))
+  if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const courier = String(body.courier || '').trim().slice(0, 40)
+    const tracking = String(body.tracking_number || '').trim().slice(0, 60)
+    if (!courier || !tracking) return c.json({ success: false, error: '택배사와 운송장 번호를 입력해주세요' }, 400)
+
+    // 주문 존재 + 발송 가능 상태 확인.
+    const order = await DB.prepare("SELECT id, status FROM wholesale_orders WHERE id = ?")
+      .bind(orderId).first<{ id: number; status: string }>()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status)) {
+      return c.json({ success: false, error: '발송할 수 없는 주문 상태입니다' }, 400)
+    }
+
+    // 내 미발송(PENDING) 라인 일괄 발송 — 한 문장 원자 처리(소유권 + 상태 가드).
+    const upd = await DB.prepare(
+      "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE wholesale_order_id=? AND supplier_id=? AND line_status='PENDING'"
+    ).bind(courier, tracking, orderId, sid).run()
+    const shipped = upd.meta?.changes ?? 0
+    if (shipped === 0) return c.json({ success: true, already: true, shipped: 0 })
+
+    // 주문의 모든 라인이 발송완료면 주문 상태도 SHIPPED.
+    const pending = await DB.prepare(
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
+    ).bind(orderId).first<{ c: number }>()
+    if ((pending?.c ?? 0) === 0) {
+      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'")
+        .bind(orderId).run()
+    }
+    return c.json({ success: true, shipped })
+  } catch (err) {
+    return safeError(c, err, '일괄 발송 중 오류가 발생했습니다', '[wholesale-supplier]')
+  }
+})
+
 // ── POST /orders/:id/refund — 반품 승인(제조사 본인 라인만 부분환불) ──────────
 //   다중 제조사 주문에서 호출한 제조사의 라인만 환불 — 다른 제조사 라인 무영향.
 app.post('/orders/:id/refund', async (c) => {

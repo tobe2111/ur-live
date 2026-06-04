@@ -1000,7 +1000,7 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 1. 유통사가 등급가로 **선결제(Toss)** → \`wholesale_orders\`.
 2. 결제완료 시 제조사 공급가(base×수량)를 \`supplier_settlements(source='wholesale')\`에 적립.
    - **브랜드제품**: 익일(1일 보호창) 성숙. **일반제품**: 7일 환불창 후 성숙 → 지급.
-3. 제조사 \`/supplier/wholesale-orders\` **송장 입력**(엑셀 일괄 가능) → SHIPPED.
+3. 제조사 \`/supplier/wholesale-orders\` **송장 입력** → SHIPPED. 한 주문에 같은 제조사 상품이 여러 개면 **합배송(전체 일괄발송)** — 송장 1개로 한번에 발송(미발송 2건 이상 시 노출). 개별 송장도 가능. CSV 일괄 업로드 지원.
 4. 반품: 제조사 본인 라인만 부분환불(Toss 부분취소 + 정산 역전 + 재고복원).
 5. **플랫폼 1일 정산 한도 = 기본 1억원**(\`platform_settings.supplier_daily_payout_cap\` 조정). 초과 시 지급 차단.
 

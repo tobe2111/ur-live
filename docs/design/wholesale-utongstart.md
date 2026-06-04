@@ -136,6 +136,11 @@
   - 세금계산서 집계(1차 수동): `/api/admin/distributor/tax-summary` 월별 유통사 매출/제조사 매입 — admin 섹션.
   - (남은 항목: 제조사 컨택/제품등록요청 워크플로우 — 기존 supplier self-serve 카탈로그로 대체 가능, 필요 시 후속)
 - [x] **Phase 5 — utongstart.com 도메인 인식 라우팅** (commit, 2026-06-01 — DNS 등록은 사용자 1회)
+- [x] **Phase 8 — 도매 합배송(주문내 제조사별 일괄발송)** (commit, 2026-06-04)
+  - `POST /api/supplier/wholesale/orders/:id/ship-all`: 주문 내 내(제조사) 미발송(PENDING) 라인 전체를 송장 1개로 원자 발송(소유권+상태 가드). 전 라인 SHIPPED 시 주문 SHIPPED. 멱등(already).
+  - `SupplierWholesaleOrdersPage`: 라인 평면 리스트 → **주문 단위 그룹**(배송지 1회 표시) + 미발송 2건 이상이면 "합배송 — N개 한 송장으로 발송" 패널. 개별 송장도 유지.
+  - 제조사별 격리(다른 제조사 라인 무영향) — miniflare 검증 8/8.
+  - ⚠️ 물리적 박스 합치기(다중 제조사 묶음)는 물류허브 필요라 범위 외(사용자 확정).
 - [x] **Phase 7 — 상품별 등급마진 override(특가/전략상품)** (commit, 2026-06-04)
   - `distributor-pricing.ts` `resolveDistributorPrice({ marginOverridePct })`: 설정 시 등급/특별 무관 동일 마진(고정). 단위테스트 +2.
   - `products.supply_margin_override_pct REAL` (lazy ensure) + 서버 재계산 7곳 일괄 반영(표시가=결제가).
