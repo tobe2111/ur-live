@@ -166,6 +166,51 @@ app.get('/home', async (c) => {
   }
 })
 
+// ── GET /recent-items — 빠른 재주문 (최근 사입한 상품 + 마지막 수량, 등급가) ──────
+//   유통사 본인 주문 라인에서 상품별 최신 1건 추출(현재 구매 가능 + 가시성 통과 한정).
+app.get('/recent-items', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureOrderTables(DB)
+    await ensureSupplyVisibilitySchema(DB)
+    // 최근 주문 라인 (상품별 최신 1건 — JS dedupe). 결제완료 이상만.
+    const lines = await DB.prepare(`
+      SELECT i.product_id AS product_id, i.qty AS qty, o.created_at AS created_at
+      FROM wholesale_order_items i JOIN wholesale_orders o ON o.id = i.wholesale_order_id
+      WHERE o.distributor_seller_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED','DONE')
+      ORDER BY o.created_at DESC LIMIT 120
+    `).bind(sellerId).all<{ product_id: number; qty: number; created_at: string }>().catch(() => ({ results: [] as { product_id: number; qty: number; created_at: string }[] }))
+    const seen = new Map<number, { qty: number; created_at: string }>()
+    for (const l of lines.results || []) if (!seen.has(l.product_id)) seen.set(l.product_id, { qty: l.qty, created_at: l.created_at })
+    const ids = [...seen.keys()].slice(0, 12)
+    if (!ids.length) return c.json({ success: true, items: [] })
+
+    const sg = await loadSellerGrade(DB, sellerId)
+    const table = await loadGradeTable(DB)
+    const ph = ids.map(() => '?').join(',')
+    // 현재 구매 가능 + 가시성 통과한 원본 공급상품만 (단종/숨김 제외).
+    const prods = await DB.prepare(`
+      SELECT p.id, p.name, p.image_url, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+             COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
+      FROM products p
+      WHERE p.id IN (${ph}) AND p.is_supply_product = 1 AND p.is_active = 1
+        AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; stock: number; supply_price: number; retail_price: number; margin_override: number | null }>()
+    const byId = new Map((prods.results || []).map(p => [p.id, p]))
+    const items = ids.map(id => {
+      const p = byId.get(id); const meta = seen.get(id)
+      if (!p) return null
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      return { id: p.id, name: p.name, image_url: p.image_url, stock: p.stock, distributor_price: price, retail_price: p.retail_price || null, last_qty: meta?.qty || 1, last_date: (meta?.created_at || '').slice(0, 10) }
+    }).filter(Boolean)
+    return c.json({ success: true, items })
+  } catch (err) {
+    return safeError(c, err, '재주문 목록 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
 // ── GET /catalog ────────────────────────────────────────────────────────────
 app.get('/catalog', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)

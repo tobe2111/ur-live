@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart } from 'lucide-react'
-import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement } from '@/hooks/queries/useWholesale'
+import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { toast } from '@/hooks/useToast'
 import {
@@ -102,6 +102,30 @@ function MiniCard({ p, onOpen, onAdd, tag }: { p: CatalogItem; onOpen: (p: Catal
       </div>
       <button onClick={() => onOpen(p)} className="mt-2 text-left text-[13px] leading-[1.4] line-clamp-2 min-h-[36px]" style={{ color: WT.ink2 }}>{p.name}</button>
       <div className="mt-0.5"><Price p={p} size={17} /></div>
+    </div>
+  )
+}
+
+// ── 빠른 재주문 카드 (최근 사입 상품 → 같은 수량 재담기) ──
+interface ReorderItem { id: number; name: string; image_url: string | null; stock: number; distributor_price: number; last_qty: number; last_date: string }
+function ReorderCard({ r, onOpen, onReorder }: { r: ReorderItem; onOpen: (id: number) => void; onReorder: (r: ReorderItem) => void }) {
+  const [done, setDone] = useState(false)
+  return (
+    <div className="shrink-0 w-[230px] flex flex-col rounded-2xl bg-white p-3 snap-start" style={{ border: '1px solid ' + WT.line, boxShadow: WT.shSoft }}>
+      <div className="flex gap-3">
+        <button onClick={() => onOpen(r.id)} className="w-12 h-12 shrink-0 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
+          {r.image_url && <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <button onClick={() => onOpen(r.id)} className="block text-left text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{r.name}</button>
+          <div className="text-[12px] mt-0.5 tabular-nums" style={{ color: WT.ink3 }}>{r.last_date} 사입 · {comma(r.last_qty)}개</div>
+        </div>
+      </div>
+      <button onClick={() => { onReorder(r); setDone(true); setTimeout(() => setDone(false), 1000) }}
+        className="mt-2.5 h-9 rounded-xl text-[13px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
+        style={done ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink }}>
+        {done ? <><Check className="w-4 h-4" /> 담음</> : '같은 수량 재주문'}
+      </button>
     </div>
   )
 }
@@ -299,11 +323,17 @@ export default function WholesaleCatalogPage() {
     return m
   }, [allItems])
 
+  const recentQ = useWholesaleRecentItems()
+  const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
     cart.add({ id: p.id, qty: 1, name: p.name, image_url: p.image_url, price: p.distributor_price })
     toast.success('장바구니에 담았어요')
+  }
+  const reorder = (r: ReorderItem) => {
+    cart.add({ id: r.id, qty: Math.max(1, r.last_qty), name: r.name, image_url: r.image_url, price: r.distributor_price })
+    toast.success(`장바구니에 ${comma(Math.max(1, r.last_qty))}개 담았어요`)
   }
 
   function exportCatalog() {
@@ -381,6 +411,14 @@ export default function WholesaleCatalogPage() {
             <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.ink4 }} />
           </button>
         </div>
+
+        {/* 빠른 재주문 (최근 사입) */}
+        {recent.length > 0 && (
+          <section className="py-6">
+            <SectionHead title="빠른 재주문" sub="최근 사입한 상품" />
+            <Rail>{recent.map((r) => <ReorderCard key={r.id} r={r} onOpen={(id) => navigate(`/wholesale/product/${id}`)} onReorder={reorder} />)}</Rail>
+          </section>
+        )}
 
         {/* 전용 공급 (관리자 제안) */}
         {home && home.proposals.length > 0 && (

@@ -155,6 +155,24 @@ export function useWholesaleHome() {
   })
 }
 
+export interface WholesaleReorderItem {
+  id: number; name: string; image_url: string | null; stock: number
+  distributor_price: number; retail_price: number | null; last_qty: number; last_date: string
+}
+
+/** 빠른 재주문 — 최근 사입한 상품 + 마지막 수량. */
+export function useWholesaleRecentItems() {
+  return useQuery<WholesaleReorderItem[]>({
+    queryKey: queryKeys.wholesale('recent-items'),
+    queryFn: () =>
+      api.get('/api/wholesale/recent-items', sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
+    enabled: hasSellerToken(),
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useWholesaleProposals() {
   return useQuery<WholesaleCatalogItem[]>({
     queryKey: queryKeys.wholesale('proposals'),
