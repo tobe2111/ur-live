@@ -85,6 +85,18 @@ export default function WholesaleLoginPage() {
           </button>
         </form>
 
+        {/* 🏭 2026-06-04 카카오 통합 로그인 — 카카오 계정으로 유통회원 로그인/시작.
+            기존 유통사(이메일 연결)면 자동 로그인, 신규면 /wholesale 에서 1탭 전환. */}
+        <div className="relative my-4 flex items-center gap-3">
+          <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
+          <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
+          <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
+        </div>
+        <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale&intent=user' }}
+          className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
+          카카오로 계속하기
+        </button>
+
         <div className="mt-6 text-center text-sm text-[#8A929E]">
           아직 유통사가 아니신가요?{' '}
           <button onClick={() => navigate('/wholesale/join')} className="text-[#FF0033] font-semibold">유통사 가입 →</button>

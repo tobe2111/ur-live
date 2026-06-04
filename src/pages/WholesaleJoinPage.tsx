@@ -127,6 +127,17 @@ export default function WholesaleJoinPage() {
           </button>
         </form>
 
+        {/* 🏭 2026-06-04 카카오로 간편 가입 — 카카오 로그인 후 /wholesale 에서 1탭 유통회원 시작. */}
+        <div className="relative my-4 flex items-center gap-3">
+          <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
+          <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
+          <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
+        </div>
+        <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale&intent=user' }}
+          className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
+          카카오로 시작하기
+        </button>
+
         <div className="mt-8 pt-6 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
           제조사(공급사)이신가요?{' '}
           <button onClick={() => navigate('/supplier/register')} className="text-[#FF0033] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조사 입점 →</button>

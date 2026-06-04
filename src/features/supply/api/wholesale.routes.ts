@@ -22,6 +22,7 @@ import {
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { requireAuth } from '@/worker/middleware/auth'
 import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 
@@ -197,6 +198,97 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     })
   } catch (err) {
     return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
+  }
+})
+
+// ── POST /become-distributor — 카카오(일반 유저)가 유통회원으로 전환/가입 ──────────────
+//   카카오 로그인=유저 세션. 유통회원=sellers(is_distributor=1) 행. 이 엔드포인트가 유저↔셀러
+//   (distributor) 행을 생성/연결(linked_user_id) 후 seller_token 발급 → 도매몰 즉시 이용.
+//   ⚠️ 한 유저당 셀러 1행(idx_sellers_linked_user_id). 이미 셀러면 is_distributor 승급만.
+app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-become-distributor', max: 10, windowSec: 600 }), async (c) => {
+  const { DB, JWT_SECRET } = c.env
+  if (!JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류' }, 500)
+  const authed = c.get('user' as never) as { id?: string | number; email?: string; name?: string; type?: string } | undefined
+  // 카카오 일반 유저만 (seller/admin 토큰으로는 불가 — userId 의미 다름).
+  if (!authed || authed.type !== 'user') return c.json({ success: false, error: '카카오 로그인이 필요합니다' }, 401)
+  const userId = Number(authed.id)
+  if (!Number.isFinite(userId) || userId <= 0) return c.json({ success: false, error: '유효하지 않은 사용자입니다' }, 400)
+  try {
+    for (const sql of [
+      "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
+      'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
+      'ALTER TABLE sellers ADD COLUMN business_name TEXT',
+      'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
+      'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
+      'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
+    ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:alter')) }
+
+    // 유저 기본 정보 (이메일/이름) — 셀러 행 생성/표시용.
+    const u = await DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(userId)
+      .first<{ id: number; email: string | null; name: string | null }>().catch(() => null)
+    const email = (authed.email || u?.email || '').trim().toLowerCase()
+    const name = (authed.name || u?.name || '유통회원').trim()
+
+    type SellerRow = { id: number; username: string; email: string | null; name: string | null; status: string; seller_type: string | null; is_distributor: number | null }
+    // 1) 이미 이 유저에 연결된 셀러?
+    let seller = await DB.prepare(
+      'SELECT id, username, email, name, status, seller_type, is_distributor FROM sellers WHERE linked_user_id = ? LIMIT 1'
+    ).bind(userId).first<SellerRow>().catch(() => null)
+
+    // 2) 없으면 같은 이메일의 미연결 셀러를 연결.
+    if (!seller && email) {
+      const byEmail = await DB.prepare(
+        'SELECT id, username, email, name, status, seller_type, is_distributor FROM sellers WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0) LIMIT 1'
+      ).bind(email).first<SellerRow>().catch(() => null)
+      if (byEmail) {
+        await DB.prepare("UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?").bind(userId, byEmail.id).run().catch(swallow('wholesale:become:link'))
+        seller = byEmail
+      }
+    }
+
+    // 3) 여전히 없으면 신규 유통회원 셀러 생성.
+    if (!seller) {
+      if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
+      // username 생성(unique)
+      const base = (email.split('@')[0] || 'dist').replace(/[^a-z0-9]/gi, '').slice(0, 16).toLowerCase() || 'dist'
+      let username = ''
+      for (let i = 0; i < 6; i++) {
+        const cand = `${base}${Math.floor(1000 + Math.random() * 9000)}`
+        const ex = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(cand).first()
+        if (!ex) { username = cand; break }
+      }
+      if (!username) username = `dist${Date.now().toString().slice(-8)}`
+      const ins = await DB.prepare(`
+        INSERT INTO sellers (username, email, name, business_name, status, commission_rate, seller_type,
+          distributor_grade, is_distributor, linked_user_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'approved', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
+      `).bind(username, email, name, name, DEFAULT_COMMISSION_RATE, userId).run()
+      const sid = Number(ins.meta?.last_row_id)
+      if (!sid) return c.json({ success: false, error: '유통회원 생성 중 오류가 발생했습니다' }, 500)
+      seller = { id: sid, username, email, name, status: 'approved', seller_type: 'influencer', is_distributor: 1 }
+    } else if (!seller.is_distributor) {
+      // 4) 기존 셀러면 유통회원 승급만 (distributor_grade 없으면 C).
+      await DB.prepare("UPDATE sellers SET is_distributor = 1, distributor_grade = COALESCE(distributor_grade,'C'), updated_at = datetime('now') WHERE id = ?").bind(seller.id).run().catch(swallow('wholesale:become:upgrade'))
+      seller.is_distributor = 1
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000)
+    const payload = {
+      sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username,
+      type: 'seller', status: seller.status || 'approved', seller_type: seller.seller_type || 'influencer', is_distributor: 1,
+      iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
+    }
+    const token = await sign(payload, JWT_SECRET)
+    const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+    return c.json({
+      success: true,
+      data: {
+        accessToken: token, refreshToken, token,
+        seller: { id: seller.id, username: seller.username, email: seller.email || email, name: seller.name || name, status: seller.status || 'approved', seller_type: seller.seller_type || 'influencer', is_distributor: 1 },
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '유통회원 전환 중 오류가 발생했습니다', '[wholesale:become]')
   }
 })
 
