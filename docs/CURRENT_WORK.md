@@ -13,7 +13,16 @@
 - **5차 — 수량 구간별 단가(volume tier)**: 등급가 × 수량구간 %할인(곱·additive). `qtyTierDiscount`/`tierUnitPrice` + `product_qty_tiers` + 관리자 `PUT /products/:id/qty-tiers` + 상세 단가표 + 주문 authoritative 재계산(SSOT).
 - **6차 — 전 페이지 디자인 통일 + 마감**: Checkout/Success dark: 제거(WT 라이트, Toss 위젯 로직 보존) · Intro/Join/Oem Tailwind gray→정확한 WT hex(레이아웃 불변, gray- 0건) · 카탈로그 "수량할인" 배지(has_tiers) · 전자세금계산서 플랫폼 사업자정보 admin UI(`/company-info`, 바로빌 블록 절반 해소 — API키만 Cloudflare). **도매몰 전 11페이지 라이트 고정 일관 완료**.
 - **인프라 블록 정직 상태**: 바로빌=사업자정보 UI완료/API키만 Cloudflare(TODO 문서화) · 새 스키마=lazy ensure self-heal(마이그레이션 불요) · youtube god-file 분해=**staging 실송출 검증 필수(CLAUDE.md 하드룰)라 미실행**.
-- **7차 — 전수조사(서브에이전트 2종) + 심층 fix**: ① 도매몰 머니패스 전수 — 대부분 정합, 실버그 수정: 제조사 부분환불 Toss실패 롤백(PENDING→SHIPPED 둔갑) 라인별 원복 · `/company-info` 형식검증 · 0% tier 거부 · refund/issue-nts rate limit. ② **심층 발견·fix: 역마진(negative margin)** — 정산은 제조사에 항상 원가 적립인데 수량할인이 마진 초과 시 원가 미만 결제 → 플랫폼 손해. `tierUnitPrice` 에 floor=공급원가 추가(표시=결제 양쪽) → margin_total≥0 보장(정산 solvent). ③ 라이브 플로우 전수 — 송출 로직 미변경 안전 UX만: StepSetup 무한대기 30s 탈출 안내 · Quick Start 최근상품 우선. unit 13/13 · verify:sql 11/11.
+- **7차 — 전수조사(서브에이전트 2종) + 심층 fix 6건**: 도매몰 자금경로(주문생성→confirm→정산→성숙→지급→환불×2) end-to-end. **실버그 6건 영구 차단**:
+  ① 역마진 — 수량할인이 공급원가 이하로 내려가 플랫폼 손해 → `tierUnitPrice(floor=공급원가)`(표시=결제), `margin_total≥0` 불변식.
+  ② 관리자 전액환불 재고 이중복원(제조사 부분환불 후) → 미환불 라인만 복원.
+  ③ 제조사 부분환불 Toss실패 롤백이 PENDING→SHIPPED 둔갑 → 라인별 원상태 복구.
+  ④ 정산 잔고 캐시 드리프트(SUM-then-claim 레이스) → settlements 권위 SUM 자가치유(영구).
+  ⑤ confirm 만료-청구 race(Toss청구 후 EXPIRED면 고객 미회수) → 자동환불+ORDER_EXPIRED.
+  ⑥ CSV 대량등록 MOQ 미지원 → 단건과 feature-parity.
+  + 보강: `/company-info` 형식검증·0% tier 거부·refund/issue-nts rate limit·silent catch→swallow.
+  **정합 확인(버그 아님)**: creditSupplier 배선/멱등/CAS · confirm 금액 서버재검증 · 정산 source 분리 · oversell NULL 대칭 · renderTaxDocHtml XSS escaping · bulk 승인게이트.
+  라이브: 송출 로직 미변경, 안전 UX만(StepSetup 무한대기 30s 탈출 · Quick Start 최근상품). unit 13/13 · verify:sql 13/13 · tsc 0 · build OK.
 - **시안 전 요소 구현 완료**. unit 12/12 · verify:sql 11/11 · tsc 0 · build OK. 남은 polish: OEM 토큰 미세정렬·카드 수량할인 배지(선택).
 
 ## 🟢 2026-06-04 — 도매몰 게이팅·마진·합배송 + audit (이번 세션)
