@@ -74,6 +74,9 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400);
     if (!businessName) return c.json({ success: false, error: '상호(사업자명)는 필수입니다' }, 400);
+    // 🏭 2026-06-04 (사용자 결정): 제조회원도 사업자등록번호 필수(승인 심사용).
+    const bizNum = (body.business_number || '').trim();
+    if (!/^\d{3}-\d{2}-\d{5}$/.test(bizNum)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400);
     const pw = validateSupplierPassword(password);
     if (!pw.ok) return c.json({ success: false, error: pw.error || '비밀번호 형식이 올바르지 않습니다' }, 400);
 
@@ -90,7 +93,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
         bank_name, bank_account, account_holder, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
     `).bind(
-      businessName, body.business_number || null, body.representative || null, email, body.phone || null, passwordHash,
+      businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
       body.bank_name || null, body.bank_account || null, body.account_holder || null,
     ).run();
 
@@ -133,16 +136,9 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
         sup = byEmail;
       }
     }
-    // 3) 없으면 신규 제조회원 생성 (status='pending' — 어드민 승인 필요).
+    // 3) 없으면 — 사업자 정보(상호·사업자번호 등) 입점 신청 필요. 자동 생성 X → 입점 폼으로 유도.
     if (!sup) {
-      if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400);
-      const ins = await DB.prepare(`
-        INSERT INTO suppliers (business_name, email, status, linked_user_id, created_at, updated_at)
-        VALUES (?, ?, 'pending', ?, datetime('now'), datetime('now'))
-      `).bind(name, email, userId).run().catch(() => null);
-      const sid = Number(ins?.meta?.last_row_id);
-      if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);
-      return c.json({ success: true, status: 'pending', message: '제조회원 입점 신청 완료 — 관리자 승인 후 이용할 수 있습니다' });
+      return c.json({ success: true, status: 'needs_registration', message: '제조회원 입점 신청(사업자 정보)이 필요합니다' });
     }
     // 승인 전이면 토큰 없이 대기 안내.
     if (sup.status !== 'approved') {

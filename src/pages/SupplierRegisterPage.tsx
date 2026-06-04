@@ -30,6 +30,7 @@ export default function SupplierRegisterPage() {
     e.preventDefault()
     setError('')
     if (!form.business_name.trim()) { setError(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
+    if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { setError(t('supplier.errBizNum', { defaultValue: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' })); return }
     if (form.password.length < 8) { setError(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
     if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
     setLoading(true)
@@ -39,7 +40,7 @@ export default function SupplierRegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           business_name: form.business_name.trim(),
-          business_number: form.business_number.trim() || undefined,
+          business_number: form.business_number.trim(),
           representative: form.representative.trim() || undefined,
           email: form.email.trim(),
           phone: form.phone.trim() || undefined,
@@ -109,8 +110,8 @@ export default function SupplierRegisterPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })}</label>
-                <input disabled={loading} value={form.business_number} onChange={set('business_number')} className={inputCls} placeholder="000-00-00000" />
+                <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })} <span className="text-[#FF0033]">*</span></label>
+                <input required disabled={loading} value={form.business_number} onChange={set('business_number')} className={inputCls} placeholder="000-00-00000" />
               </div>
               <div>
                 <label className={labelCls}>{t('supplier.fieldRepresentative', { defaultValue: '대표자명' })}</label>

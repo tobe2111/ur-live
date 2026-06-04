@@ -370,31 +370,9 @@ export default function WholesaleCatalogPage() {
   //   제조사는 supplier_token, 셀러는 seller_token(단, 순수 유통사 is_distributor 는 제외).
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
   // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인됐지만 아직 유통회원(seller_token)이 아닌 상태.
+  //   사업자 정보 + 관리자 승인 필요라 1탭 X → 입점 폼(/wholesale/join)으로 유도.
   const userSession = !loggedIn && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
-  const [becomeBusy, setBecomeBusy] = useState(false)
   const goLogin = () => navigate('/wholesale/login')
-  async function becomeDistributor() {
-    if (becomeBusy) return
-    setBecomeBusy(true)
-    try {
-      const r = await api.post('/api/wholesale/become-distributor', {})
-      const d = r.data?.data
-      if (!r.data?.success || !d?.accessToken) throw new Error(r.data?.error || '전환 실패')
-      const s = d.seller
-      localStorage.setItem('seller_token', d.accessToken)
-      localStorage.setItem('access_token', d.accessToken)
-      localStorage.setItem('seller_refresh_token', d.refreshToken || '')
-      localStorage.setItem('seller_id', String(s.id))
-      localStorage.setItem('seller_name', s.name || '')
-      localStorage.setItem('seller_username', s.username || '')
-      localStorage.setItem('seller_type', s.seller_type || 'influencer')
-      localStorage.setItem('is_distributor', '1')
-      toast.success('유통회원으로 시작합니다 — 등급 공급가가 열렸어요')
-      window.location.assign('/wholesale')
-    } catch (err) {
-      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '유통회원 전환 중 오류가 발생했어요')
-    } finally { setBecomeBusy(false) }
-  }
   const logout = () => {
     // 셀러 세션만 정리(유저/어드민 세션 보존) 후 도매몰에 머무름 — full reload 로 토큰/RQ 캐시 깨끗이.
     clearAuthData('seller')
@@ -587,11 +565,11 @@ export default function WholesaleCatalogPage() {
             <div className="flex items-center gap-3.5 rounded-2xl p-4" style={{ background: WT.ink }}>
               <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.12)' }}><Lock className="w-5 h-5 text-white" /></span>
               <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold text-white">카카오 계정으로 유통회원 시작하기</div>
-                <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>버튼 한 번이면 C등급 공급가로 바로 사입 — 추가 가입 없이 카카오 계정 그대로</div>
+                <div className="text-[14px] font-bold text-white">카카오 계정으로 유통회원 신청하기</div>
+                <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>사업자 정보만 입력하면 관리자 승인 후 등급 공급가로 사입 — 카카오 계정 그대로</div>
               </div>
-              <button onClick={becomeDistributor} disabled={becomeBusy} className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-bold disabled:opacity-60" style={{ background: WT.brand, color: '#fff' }}>
-                {becomeBusy ? '처리 중…' : '유통회원 시작'}
+              <button onClick={() => navigate('/wholesale/join')} className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-bold" style={{ background: WT.brand, color: '#fff' }}>
+                유통회원 신청
               </button>
             </div>
           ) : (

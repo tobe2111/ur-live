@@ -33,8 +33,12 @@ export default function SupplierLoginPage() {
             setSupplierSession(data.data.token, data.data.supplier)
             toast.success('제조회원으로 로그인되었습니다')
             navigate('/supplier', { replace: true })
-          } else if (data.success && (data.status === 'pending')) {
+          } else if (data.success && data.status === 'pending') {
             toast.info(data.message || '제조회원 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
+          } else if (data.success && data.status === 'needs_registration') {
+            // 신규 — 사업자 정보 입점 신청 필요.
+            toast.info('제조회원 입점 신청(사업자 정보)을 먼저 진행해주세요')
+            navigate('/supplier/register', { replace: true })
           }
         } catch { /* silent — 일반 로그인 폼 유지 */ }
       })()

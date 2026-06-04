@@ -23,6 +23,7 @@ import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gatew
 import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 
@@ -135,7 +136,8 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     const email = String(body.email || '').trim().toLowerCase()
     const password = String(body.password || '')
     const phone = String(body.phone || '').trim()
-    const business_number = String(body.business_number || '').trim() // 선택(세금계산서용)
+    const business_number = String(body.business_number || '').trim() // 🏭 사업자등록번호 — 필수(승인 심사용)
+    const representative = String(body.representative || '').trim()    // 대표자명
 
     if (!name || !business_name || !email || !password) {
       return c.json({ success: false, error: '담당자명·상호·이메일·비밀번호를 모두 입력해주세요' }, 400)
@@ -143,8 +145,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ success: false, error: '이메일 형식이 올바르지 않습니다' }, 400)
     const pw = validatePasswordComplexity(password)
     if (!pw.ok) return c.json({ success: false, error: pw.error }, 400)
-    if (business_number && !/^\d{3}-\d{2}-\d{5}$/.test(business_number)) {
-      return c.json({ success: false, error: '사업자번호 형식이 올바르지 않습니다 (000-00-00000)' }, 400)
+    // 🏭 2026-06-04 (사용자 결정): 유통회원도 사업자 정보 필수 + 관리자 승인. 사업자번호 필수.
+    if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) {
+      return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)
     }
 
     // 누락 가능 컬럼 보장 (idempotent)
@@ -152,6 +155,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
       "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
       'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
       'ALTER TABLE sellers ADD COLUMN business_number TEXT',
+      'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
       'ALTER TABLE sellers ADD COLUMN phone TEXT',
       'ALTER TABLE sellers ADD COLUMN business_name TEXT',
       'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
@@ -172,29 +176,23 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     if (!username) username = `dist${Date.now().toString().slice(-8)}`
 
     const passwordHash = await hashPassword(password)
+    // status='pending' — 관리자 승인 전까지 로그인 불가(seller login 이 pending 차단). 토큰 미발급.
     const ins = await DB.prepare(`
-      INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, phone,
+      INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
         status, commission_rate, seller_type, distributor_grade, is_distributor, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, 'influencer', 'C', 1, datetime('now'), datetime('now'))
-    `).bind(username, email, passwordHash, name, business_name, business_number || null, phone || null, DEFAULT_COMMISSION_RATE).run()
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'influencer', 'C', 1, datetime('now'), datetime('now'))
+    `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null, DEFAULT_COMMISSION_RATE).run()
     const sellerId = Number(ins.meta?.last_row_id)
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
 
-    const nowSec = Math.floor(Date.now() / 1000)
-    const payload = {
-      sub: String(sellerId), seller_id: sellerId, email, name, username,
-      type: 'seller', status: 'approved', seller_type: 'influencer', is_distributor: 1,
-      iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
-    }
-    const token = await sign(payload, JWT_SECRET)
-    const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+    // 어드민 승인 큐 알림 (셀러 승인 페이지에서 처리 — 유통회원도 동일 큐).
+    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청',
+      `${business_name} (${business_number})`, '/admin/seller-approval').catch(swallow('wholesale:register:notify'))
 
     return c.json({
       success: true,
-      data: {
-        accessToken: token, refreshToken, token,
-        seller: { id: sellerId, username, email, name, business_name, status: 'approved', commission_rate: DEFAULT_COMMISSION_RATE, seller_type: 'influencer', is_distributor: 1 },
-      },
+      status: 'pending',
+      message: '유통회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.',
     })
   } catch (err) {
     return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
@@ -214,16 +212,24 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
   const userId = Number(authed.id)
   if (!Number.isFinite(userId) || userId <= 0) return c.json({ success: false, error: '유효하지 않은 사용자입니다' }, 400)
   try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const business_name = String(body.business_name || '').trim()
+    const business_number = String(body.business_number || '').trim()
+    const representative = String(body.representative || '').trim()
+    const phone = String(body.phone || '').trim()
+
     for (const sql of [
       "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
       'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
       'ALTER TABLE sellers ADD COLUMN business_name TEXT',
+      'ALTER TABLE sellers ADD COLUMN business_number TEXT',
+      'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
+      'ALTER TABLE sellers ADD COLUMN phone TEXT',
       'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
       'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
       'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
     ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:alter')) }
 
-    // 유저 기본 정보 (이메일/이름) — 셀러 행 생성/표시용.
     const u = await DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(userId)
       .first<{ id: number; email: string | null; name: string | null }>().catch(() => null)
     const email = (authed.email || u?.email || '').trim().toLowerCase()
@@ -234,7 +240,6 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     let seller = await DB.prepare(
       'SELECT id, username, email, name, status, seller_type, is_distributor FROM sellers WHERE linked_user_id = ? LIMIT 1'
     ).bind(userId).first<SellerRow>().catch(() => null)
-
     // 2) 없으면 같은 이메일의 미연결 셀러를 연결.
     if (!seller && email) {
       const byEmail = await DB.prepare(
@@ -246,47 +251,43 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       }
     }
 
-    // 3) 여전히 없으면 신규 유통회원 셀러 생성.
-    if (!seller) {
-      if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
-      // username 생성(unique)
-      const base = (email.split('@')[0] || 'dist').replace(/[^a-z0-9]/gi, '').slice(0, 16).toLowerCase() || 'dist'
-      let username = ''
-      for (let i = 0; i < 6; i++) {
-        const cand = `${base}${Math.floor(1000 + Math.random() * 9000)}`
-        const ex = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(cand).first()
-        if (!ex) { username = cand; break }
+    if (seller) {
+      // 기존 셀러 → 유통회원 승급(is_distributor). 이미 승인된 계정이면 즉시 토큰(검증 완료된 사업자).
+      if (!seller.is_distributor) {
+        await DB.prepare("UPDATE sellers SET is_distributor = 1, distributor_grade = COALESCE(distributor_grade,'C'), updated_at = datetime('now') WHERE id = ?").bind(seller.id).run().catch(swallow('wholesale:become:upgrade'))
+        seller.is_distributor = 1
       }
-      if (!username) username = `dist${Date.now().toString().slice(-8)}`
-      const ins = await DB.prepare(`
-        INSERT INTO sellers (username, email, name, business_name, status, commission_rate, seller_type,
-          distributor_grade, is_distributor, linked_user_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'approved', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
-      `).bind(username, email, name, name, DEFAULT_COMMISSION_RATE, userId).run()
-      const sid = Number(ins.meta?.last_row_id)
-      if (!sid) return c.json({ success: false, error: '유통회원 생성 중 오류가 발생했습니다' }, 500)
-      seller = { id: sid, username, email, name, status: 'approved', seller_type: 'influencer', is_distributor: 1 }
-    } else if (!seller.is_distributor) {
-      // 4) 기존 셀러면 유통회원 승급만 (distributor_grade 없으면 C).
-      await DB.prepare("UPDATE sellers SET is_distributor = 1, distributor_grade = COALESCE(distributor_grade,'C'), updated_at = datetime('now') WHERE id = ?").bind(seller.id).run().catch(swallow('wholesale:become:upgrade'))
-      seller.is_distributor = 1
+      if (seller.status !== 'approved' && seller.status !== 'active') {
+        return c.json({ success: true, status: seller.status || 'pending', message: '유통회원 승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.' })
+      }
+      const nowSec = Math.floor(Date.now() / 1000)
+      const payload = { sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username, type: 'seller', status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }
+      const token = await sign(payload, JWT_SECRET)
+      const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+      return c.json({ success: true, status: 'approved', data: { accessToken: token, refreshToken, token, seller: { id: seller.id, username: seller.username, email: seller.email || email, name: seller.name || name, status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1 } } })
     }
 
-    const nowSec = Math.floor(Date.now() / 1000)
-    const payload = {
-      sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username,
-      type: 'seller', status: seller.status || 'approved', seller_type: seller.seller_type || 'influencer', is_distributor: 1,
-      iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
+    // 3) 신규 → 사업자 정보 필수 + status='pending'(어드민 승인). 토큰 미발급.
+    if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
+    if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400)
+    if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)
+    const base = (email.split('@')[0] || 'dist').replace(/[^a-z0-9]/gi, '').slice(0, 16).toLowerCase() || 'dist'
+    let username = ''
+    for (let i = 0; i < 6; i++) {
+      const cand = `${base}${Math.floor(1000 + Math.random() * 9000)}`
+      const ex = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(cand).first()
+      if (!ex) { username = cand; break }
     }
-    const token = await sign(payload, JWT_SECRET)
-    const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
-    return c.json({
-      success: true,
-      data: {
-        accessToken: token, refreshToken, token,
-        seller: { id: seller.id, username: seller.username, email: seller.email || email, name: seller.name || name, status: seller.status || 'approved', seller_type: seller.seller_type || 'influencer', is_distributor: 1 },
-      },
-    })
+    if (!username) username = `dist${Date.now().toString().slice(-8)}`
+    const ins = await DB.prepare(`
+      INSERT INTO sellers (username, email, name, business_name, business_number, representative_name, phone,
+        status, commission_rate, seller_type, distributor_grade, is_distributor, linked_user_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
+    `).bind(username, email, name, business_name, business_number, representative || null, phone || null, DEFAULT_COMMISSION_RATE, userId).run()
+    const sid = Number(ins.meta?.last_row_id)
+    if (!sid) return c.json({ success: false, error: '유통회원 신청 중 오류가 발생했습니다' }, 500)
+    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청', `${business_name} (${business_number})`, '/admin/seller-approval').catch(swallow('wholesale:become:notify'))
+    return c.json({ success: true, status: 'pending', message: '유통회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' })
   } catch (err) {
     return safeError(c, err, '유통회원 전환 중 오류가 발생했습니다', '[wholesale:become]')
   }
