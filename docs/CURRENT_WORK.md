@@ -7,7 +7,8 @@
 - **상품상세 전면 재작성** `WholesaleProductPage`: 공급가 앵커+할인%+권장가 + 마진 밴드 + 정보 리스트 + 탭 + 하단 고정 CTA(주문 API 유지).
 - **API 보강**(비잠금): `/home`·`/catalog`·`/catalog/:id` 에 `retail_price`(권장가)+`sold_count` 추가 → 마진 산출. 원가/제조사 신원 계속 비노출.
 - 테마 체커에 `wholesale` 제외 등록(라이트 고정). tsc 0 / build OK / verify:sql 8/8.
-- **미구현(갭, IMPLEMENTATION.md)**: 수량구간단가(모델확장)·빠른재주문·MOQ·badge·다품목 장바구니·기타화면 TDS 정비.
+- **2차 증분(우리 구조 적합)**: 다품목 장바구니(`useWholesaleCart`+`WholesaleCartPage`, 주문 API items[] 활용, 서버 등급가 재계산=SSOT) · 빠른 재주문(`/recent-items`) · 마감임박 badge · 주문내역/거래내역서 TDS 정비. 도입 silent catch 1건 즉시 toast 전환(부채 예방).
+- **남은 갭**: 수량구간단가(등급 단일가 모델 → 확장 필요) · MOQ(products 컬럼+공급자 입력) · 자료(거래명세서/세금계산서) 유통사 뷰 · OEM 토큰 미세정렬.
 
 ## 🟢 2026-06-04 — 도매몰 게이팅·마진·합배송 + audit (이번 세션)
 - **utongstart.com 도매몰 전용 게이팅** (`6000a2e`): worker 진입 302(주방어) + App.tsx SPA 가드. 도매 surface(`/wholesale`·`/supplier`·`/seller/login|register`·`/auth/`·`/login`·정적) 밖 경로 → `/wholesale/intro`. allowlist worker↔`utils/domain.ts` 동기화. 다른 호스트 no-op.
