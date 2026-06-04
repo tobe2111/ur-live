@@ -52,6 +52,7 @@ const WholesaleDocsPage = lazy(() => import('./pages/WholesaleDocsPage'))
 const WholesaleOemPage = lazy(() => import('./pages/WholesaleOemPage'))
 const WholesaleIntroPage = lazy(() => import('./pages/WholesaleIntroPage'))
 const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
+const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
@@ -498,6 +499,7 @@ function AppContent() {
             <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <MainHomePage />} />
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
+            <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
             <Route path="/wholesale" element={<WholesaleCatalogPage />} />
             <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
             <Route path="/wholesale/cart" element={<WholesaleCartPage />} />

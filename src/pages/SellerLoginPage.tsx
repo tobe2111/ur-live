@@ -73,7 +73,14 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_email', seller.email || '')
         localStorage.setItem('seller_username', seller.username || seller.slug || '')
         localStorage.setItem('seller_type', seller.seller_type || 'influencer')
-        navigate('/seller', { replace: true })
+        // 🏭 2026-06-04 유통사 분리: 순수 유통사(is_distributor)는 셀러 대시보드 대신 도매몰로.
+        if (seller.is_distributor) {
+          localStorage.setItem('is_distributor', '1')
+          navigate('/wholesale', { replace: true })
+        } else {
+          localStorage.removeItem('is_distributor')
+          navigate('/seller', { replace: true })
+        }
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }

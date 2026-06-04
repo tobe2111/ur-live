@@ -78,7 +78,7 @@ export default function WholesaleProductPage() {
   const cart = useWholesaleCart()
 
   // 🏭 2026-06-04 몰-first: 비로그인도 상세 열람 가능(가격은 가림). 강제 로그인 redirect 제거.
-  const goLogin = () => navigate(`/seller/login?returnUrl=/wholesale/product/${id ?? ''}`)
+  const goLogin = () => navigate('/wholesale/login')
   useEffect(() => { setQty(Math.max(1, item?.moq || 1)); setTab('desc') }, [item?.id, item?.moq])
 
   function addToCart() {

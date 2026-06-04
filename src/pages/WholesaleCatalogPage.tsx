@@ -366,10 +366,11 @@ export default function WholesaleCatalogPage() {
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
   const loggedIn = !!token
-  const goLogin = () => navigate('/seller/login?returnUrl=/wholesale')
+  const goLogin = () => navigate('/wholesale/login')
   const logout = () => {
     // 셀러 세션만 정리(유저/어드민 세션 보존) 후 도매몰에 머무름 — full reload 로 토큰/RQ 캐시 깨끗이.
     clearAuthData('seller')
+    try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
     toast.success('로그아웃되었어요')
     if (typeof window !== 'undefined') window.location.assign('/wholesale')
   }

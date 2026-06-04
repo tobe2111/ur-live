@@ -20,6 +20,7 @@ export default function WholesaleJoinPage() {
 
   // 이미 유통사(셀러) 로그인 상태면 카탈로그로 바로.
   useEffect(() => { if (hasSeller) navigate('/wholesale', { replace: true }) }, [hasSeller, navigate])
+  if (hasSeller) return null // 리다이렉트 중 가입폼 깜빡임 방지
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -65,7 +66,7 @@ export default function WholesaleJoinPage() {
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
             <Boxes className="w-6 h-6 text-[#FF0033]" /><span className="text-lg font-extrabold">유통스타트</span>
           </button>
-          <button onClick={() => navigate('/seller/login?returnUrl=/wholesale')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">이미 가입했어요</button>
+          <button onClick={() => navigate('/wholesale/login')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">이미 가입했어요</button>
         </div>
       </header>
 

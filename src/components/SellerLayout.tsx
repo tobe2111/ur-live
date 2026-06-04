@@ -402,6 +402,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     </aside>
   )
 
+  // 🏭 유통사(is_distributor) → /wholesale 리다이렉트 중에는 셀러 대시보드 렌더 X (깜빡임 방지).
+  if (typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1') return null
+
   return (
     <div className="seller-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (

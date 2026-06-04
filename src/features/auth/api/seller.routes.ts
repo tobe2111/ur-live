@@ -190,13 +190,15 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     try { await DB.prepare("ALTER TABLE sellers ADD COLUMN business_number TEXT").run() } catch { /* already exists */ }
     try { await DB.prepare("ALTER TABLE sellers ADD COLUMN phone TEXT").run() } catch { /* already exists */ }
     try { await DB.prepare("ALTER TABLE sellers ADD COLUMN business_name TEXT").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN distributor_grade TEXT").run() } catch { /* already exists */ }
+    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0").run() } catch { /* already exists */ }
 
     // 1. 이메일로 셀러 조회
     const seller = await DB.prepare(`
       SELECT
         id, username, email, password_hash, name,
         business_name, business_number, phone, status, commission_rate,
-        seller_type, created_at, updated_at
+        seller_type, is_distributor, created_at, updated_at
       FROM sellers
       WHERE email = ?
     `).bind(email).first<Record<string, any>>();
@@ -267,6 +269,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       type: 'seller',
       status: seller.status,
       seller_type: (seller.seller_type as string) || 'influencer',
+      is_distributor: seller.is_distributor ? 1 : 0,
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 🛡️ 2026-04-30: 7일 → 30일 (모바일 사용자 빈번한 만료 호소 대응)
     };
@@ -329,7 +332,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
           business_name: seller.business_name as string,
           status: seller.status as string,
           commission_rate: seller.commission_rate as number,
-          seller_type: (seller.seller_type as string) || 'influencer'
+          seller_type: (seller.seller_type as string) || 'influencer',
+          is_distributor: seller.is_distributor ? 1 : 0
         }
       }
     });
@@ -507,6 +511,7 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
       type: 'seller',
       status: seller.status,
       seller_type: (seller.seller_type as string) || 'influencer',
+      is_distributor: seller.is_distributor ? 1 : 0,
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 🛡️ 2026-04-30: 7일 → 30일 (모바일 사용자 빈번한 만료 호소 대응)
     };
