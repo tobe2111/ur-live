@@ -776,10 +776,20 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
     const netAmount = amount - withholdingTax
 
     try {
+      // 🛡️ 2026-06-04: 잔액검증+INSERT 원자화 — 동시/중복 신청이 둘 다 available 을 읽고 둘 다
+      //   신청 → 관리자 이중승인 시 초과지급. 조건부 INSERT(가용액 재평가 시점=삽입)로 차단:
+      //   두 번째 동시요청은 첫 신청분(requested)이 available 에서 차감돼 0 rows → 거부.
       const result = await DB.prepare(
         `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'requested')`,
-      ).bind(String(userId), amount, withholdingTax, netAmount, bankName, bankAccount, accountHolder).run()
+         SELECT ?, ?, ?, ?, ?, ?, ?, 'requested'
+         WHERE (
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
+           - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
+         ) >= ?`,
+      ).bind(String(userId), amount, withholdingTax, netAmount, bankName, bankAccount, accountHolder, String(userId), String(userId), amount).run()
+      if ((result.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
+      }
 
       return c.json({
         success: true,

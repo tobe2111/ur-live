@@ -27,6 +27,8 @@ CREATE TABLE wholesale_order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, wholes
 CREATE TABLE supplier_payouts (id INTEGER PRIMARY KEY AUTOINCREMENT, supplier_id INTEGER, amount INTEGER, status TEXT, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE supplier_settlements (id INTEGER PRIMARY KEY AUTOINCREMENT, supplier_id INTEGER, order_id INTEGER, product_id INTEGER, seller_id INTEGER, retail_amount INTEGER, supply_amount INTEGER, status TEXT, available_at TEXT, paid_at TEXT, source TEXT DEFAULT 'consumer', note TEXT);
 CREATE TABLE supplier_balances (supplier_id INTEGER PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, paid_amount INTEGER DEFAULT 0, updated_at TEXT);
+CREATE TABLE affiliate_earnings (id INTEGER PRIMARY KEY AUTOINCREMENT, referrer_id TEXT, commission INTEGER, status TEXT);
+CREATE TABLE user_withdrawals (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, amount INTEGER, withholding_tax INTEGER, net_amount INTEGER, bank_name TEXT, bank_account TEXT, account_holder TEXT, status TEXT);
 `
 
 let passed = 0
@@ -236,8 +238,26 @@ async function main() {
   assert.strictEqual(Number(bal?.paid_amount), 5000, 'paid 는 mature 가 안 건드림(payout 전용)')
   ok('정산 잔고 캐시 자가치유 — settlements SUM 재계산(드리프트 영구 차단)')
 
+  // 14) 출금 조건부 INSERT 원자성 — 동시 신청 초과지급 방지 (curator 출금 패턴)
+  await DB.prepare("INSERT INTO affiliate_earnings (referrer_id, commission, status) VALUES ('u9', 10000, 'granted')").run()
+  const condInsert = (amt: number) => DB.prepare(
+    `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status)
+     SELECT ?, ?, 0, ?, 'b', 'acc12345', 'h', 'requested'
+     WHERE (
+       COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status,'pending') != 'refunded'),0)
+       - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')),0)
+     ) >= ?`
+  ).bind('u9', amt, amt, 'u9', 'u9', amt)
+  const r1 = await condInsert(8000).run()  // available 10000 >= 8000 → 삽입
+  assert.strictEqual(r1.meta?.changes ?? 0, 1, '1차 출금 신청 삽입돼야')
+  const r2 = await condInsert(8000).run()  // available 10000-8000=2000 < 8000 → 0 rows(초과 차단)
+  assert.strictEqual(r2.meta?.changes ?? 0, 0, '잔액 초과 2차 신청은 0 rows(원자 차단)')
+  const r3 = await condInsert(2000).run()  // 남은 2000 == 2000 → 삽입
+  assert.strictEqual(r3.meta?.changes ?? 0, 1, '잔여 한도 내 신청은 삽입')
+  ok('출금 조건부 INSERT 원자성 — 가용액 초과 동시 신청 차단(이중지급 방지)')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/13\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/14\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })
