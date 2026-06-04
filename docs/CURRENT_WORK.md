@@ -1,5 +1,28 @@
 # 🚧 진행 중 작업
 
+## 📋 도매몰·대시보드 TODO / 확인 체크리스트 (2026-06-04) — "남은 할 일" 물어보면 여기 참조
+
+### ✅ 사용자 확인 필요 (배포 반영 후 체크)
+- [ ] `/wholesale` 진입 시 헤더에 **제조회원 로그인 + 유통회원 로그인 + 가입** 버튼 표시
+- [ ] 어드민 좌측 nav 가 **🏭 도매몰 / 🏪 오프라인 공구 / 🛒 온라인 쇼핑** + 공통으로 분류됨
+- [ ] `/admin/distributor-grades` → **'데모 상품 10개 생성'** 클릭 → `/wholesale` 카탈로그에 10개 노출
+- [ ] `/group-buy` · `/u/:handle`(링크샵) 카드 로딩 빨라짐 (SSR 엣지캐시 적용)
+- [ ] 라이브 항목 숨김 확인: 셀러/어드민/에이전시 nav + 어드민 홈(`/admin`) 위젯
+- [ ] 매장 계정 vs 크리에이터 계정 로그인 → 셀러 메뉴가 역할대로 갈림(숙소=매장, 링크샵=크리에이터)
+- [ ] 유통사 가입(`/wholesale/join`) → 로그인 → `/wholesale` 완결(셀러 대시보드 안 거침)
+
+### 🟡 결정/운영 필요 (코드로 불가 — 사용자·Cloudflare)
+- [ ] **카카오 로그인을 제조회원/유통회원에도?** 현재: 카카오=일반유저 전용(+같은이메일 셀러 자동연결). 제조회원=`/supplier/login`(전용), 유통회원=`/wholesale/login`(이메일·비번). → 카카오로 제조/유통 가입·로그인까지 통합하려면 auth 확장 필요(아래 🔵).
+- [ ] `utongstart.com` 도메인 → Cloudflare Pages 커스텀 도메인 연결 (코드는 준비됨)
+- [ ] barobill API 키 (전자세금계산서) — Cloudflare Variables (`BAROBILL_*`)
+- [ ] Scrape Shield → **Email Address Obfuscation OFF** (CSP email-decode 콘솔 노이즈 제거)
+
+### 🔵 코드로 가능 — 요청 시 진행
+- [ ] (큰작업) **카카오 통합 로그인** — 카카오로 제조회원/유통회원 가입·로그인(역할 intent + 콜백 분기 + seller/supplier 생성). auth-sensitive라 별도 진행.
+- [ ] 라이브커머스 재개 시 `src/shared/feature-flags.ts` `LIVE_COMMERCE_SUSPENDED=false` 한 줄 (모든 라이브 UI 코드 보존됨)
+- [ ] 셀러/어드민 추가 간소화 (요청 시)
+
+
 ## 🟢 2026-06-04 — 도매몰 쇼핑몰 UI 시안 구현 (Claude Design 핸드오프)
 시안: `docs/design/wholesale-shop-design/` (원본 HTML/jsx/대화 보존 + IMPLEMENTATION.md). TDS(Toss) 라이트 — 무채색+#FF0033 1포인트, 라이트 고정 B2B.
 - **토큰 SSOT** `src/pages/wholesale/wholesale-theme.ts` (WT 토큰 + won/discountRate/marginRate + 카테고리).
