@@ -11,14 +11,18 @@
 - [ ] 매장 계정 vs 크리에이터 계정 로그인 → 셀러 메뉴가 역할대로 갈림(숙소=매장, 링크샵=크리에이터)
 - [ ] 유통사 가입(`/wholesale/join`) → 로그인 → `/wholesale` 완결(셀러 대시보드 안 거침)
 
+### ✅ 카카오 통합 로그인 — 구현 완료 (2026-06-04)
+- 유통회원(Phase A): `/wholesale/login`·`/wholesale/join` 카카오 버튼 → 로그인 후 `POST /api/wholesale/become-distributor`(유저세션) 로 유통회원 1탭 시작/전환. 이메일 연결 유통사는 자동 로그인.
+- 제조회원(Phase B): `/supplier/login` 카카오 버튼 → `POST /api/supplier/become`. 신규=승인대기(어드민 검증 게이트 유지), 승인됨=supplier_token 자동 발급.
+- 카카오 콜백 코어 미변경(안전) — 기존 유저세션 + 별도 become 엔드포인트 패턴.
+
 ### 🟡 결정/운영 필요 (코드로 불가 — 사용자·Cloudflare)
-- [ ] **카카오 로그인을 제조회원/유통회원에도?** 현재: 카카오=일반유저 전용(+같은이메일 셀러 자동연결). 제조회원=`/supplier/login`(전용), 유통회원=`/wholesale/login`(이메일·비번). → 카카오로 제조/유통 가입·로그인까지 통합하려면 auth 확장 필요(아래 🔵).
 - [ ] `utongstart.com` 도메인 → Cloudflare Pages 커스텀 도메인 연결 (코드는 준비됨)
 - [ ] barobill API 키 (전자세금계산서) — Cloudflare Variables (`BAROBILL_*`)
 - [ ] Scrape Shield → **Email Address Obfuscation OFF** (CSP email-decode 콘솔 노이즈 제거)
 
 ### 🔵 코드로 가능 — 요청 시 진행
-- [ ] (큰작업) **카카오 통합 로그인** — 카카오로 제조회원/유통회원 가입·로그인(역할 intent + 콜백 분기 + seller/supplier 생성). auth-sensitive라 별도 진행.
+- [x] ~~카카오 통합 로그인~~ — 완료(위 ✅ 참조).
 - [ ] 라이브커머스 재개 시 `src/shared/feature-flags.ts` `LIVE_COMMERCE_SUSPENDED=false` 한 줄 (모든 라이브 UI 코드 보존됨)
 - [ ] 셀러/어드민 추가 간소화 (요청 시)
 
