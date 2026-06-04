@@ -11,6 +11,8 @@
 - **3차 — MOQ(박스 단위)**: `products.min_order_qty`(기본1) + 공급자폼 + API 4종 + 카드/상세/카트 박스·개당 + 서버 `qty<moq` 차단.
 - **4차 — 유통사 자료 뷰**: `/api/wholesale/documents`(본인 sales) + `/documents/:id/html`(IDOR 가드) + `WholesaleDocsPage`(거래명세서/세금계산서 탭·인쇄). 기존 tax_documents 재사용.
 - **5차 — 수량 구간별 단가(volume tier)**: 등급가 × 수량구간 %할인(곱·additive). `qtyTierDiscount`/`tierUnitPrice` + `product_qty_tiers` + 관리자 `PUT /products/:id/qty-tiers` + 상세 단가표 + 주문 authoritative 재계산(SSOT).
+- **6차 — 전 페이지 디자인 통일 + 마감**: Checkout/Success dark: 제거(WT 라이트, Toss 위젯 로직 보존) · Intro/Join/Oem Tailwind gray→정확한 WT hex(레이아웃 불변, gray- 0건) · 카탈로그 "수량할인" 배지(has_tiers) · 전자세금계산서 플랫폼 사업자정보 admin UI(`/company-info`, 바로빌 블록 절반 해소 — API키만 Cloudflare). **도매몰 전 11페이지 라이트 고정 일관 완료**.
+- **인프라 블록 정직 상태**: 바로빌=사업자정보 UI완료/API키만 Cloudflare(TODO 문서화) · 새 스키마=lazy ensure self-heal(마이그레이션 불요) · youtube god-file 분해=**staging 실송출 검증 필수(CLAUDE.md 하드룰)라 미실행**.
 - **시안 전 요소 구현 완료**. unit 12/12 · verify:sql 11/11 · tsc 0 · build OK. 남은 polish: OEM 토큰 미세정렬·카드 수량할인 배지(선택).
 
 ## 🟢 2026-06-04 — 도매몰 게이팅·마진·합배송 + audit (이번 세션)
