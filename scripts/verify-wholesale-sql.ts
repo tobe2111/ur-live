@@ -11,6 +11,7 @@ import { Miniflare } from 'miniflare'
 import { ensureSupplyVisibilitySchema, visibilityWhere, recordSupplyPriceChange } from '@/features/supply/api/supply-visibility'
 import { ensureTaxDocSchema, splitVat } from '@/features/supply/api/tax-documents'
 import { ensureOemSchema } from '@/features/supply/api/oem-requests'
+import { resolveDistributorPrice } from '@/lib/distributor-pricing'
 
 const BASE_SCHEMA = `
 CREATE TABLE products (
@@ -41,7 +42,7 @@ async function main() {
   // 1) ensure 컬럼/테이블
   const cols = await DB.prepare("SELECT name FROM pragma_table_info('products')").all<{ name: string }>()
   const cnames = (cols.results || []).map(r => r.name)
-  for (const c of ['supply_visibility', 'barcode', 'is_brand_product']) assert(cnames.includes(c), `products.${c} 누락`)
+  for (const c of ['supply_visibility', 'barcode', 'is_brand_product', 'supply_margin_override_pct']) assert(cnames.includes(c), `products.${c} 누락`)
   const tbls = await DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all<{ name: string }>()
   const tnames = (tbls.results || []).map(r => r.name)
   for (const t of ['product_distributor_access', 'supply_price_history', 'tax_documents', 'oem_requests']) assert(tnames.includes(t), `${t} 누락`)
@@ -102,8 +103,24 @@ async function main() {
   assert.strictEqual(Number(hcnt?.n), 1, `공급가 이력 기록 오류 (n=${hcnt?.n})`)
   ok('공급가 이력 — 변경분만 기록')
 
+  // 7) 상품별 마진 override — SELECT→resolveDistributorPrice 머니패스 (등급 무관 동일가)
+  await DB.prepare("INSERT INTO sellers (id, distributor_grade) VALUES (20,'A')").run() // A등급(최저 10%)
+  await DB.prepare("INSERT INTO products (id,name,supply_price,is_supply_product,is_active,supply_source_id,supply_visibility,supply_margin_override_pct) VALUES (500,'특가상품',10000,1,1,NULL,'ALL',12)").run()
+  await DB.prepare("INSERT INTO products (id,name,supply_price,is_supply_product,is_active,supply_source_id,supply_visibility,supply_margin_override_pct) VALUES (501,'일반상품',10000,1,1,NULL,'ALL',NULL)").run()
+  const prow = await DB.prepare("SELECT COALESCE(supply_price,0) AS supply_price, supply_margin_override_pct AS margin_override FROM products WHERE id=500").first<{ supply_price: number; margin_override: number | null }>()
+  const nrow = await DB.prepare("SELECT COALESCE(supply_price,0) AS supply_price, supply_margin_override_pct AS margin_override FROM products WHERE id=501").first<{ supply_price: number; margin_override: number | null }>()
+  // A등급(10%) 이지만 override 12% 가 우선 → 11200
+  const pPriced = resolveDistributorPrice({ baseSupplyPrice: prow!.supply_price, grade: 'A', marginOverridePct: prow!.margin_override })
+  assert.strictEqual(pPriced.price, 11200, `override 가격 오류 (기대 11200, 실제 ${pPriced.price})`)
+  assert.strictEqual(pPriced.overridden, true, 'override 플래그 누락')
+  // override NULL → A등급(10%) 그대로 11000
+  const nPriced = resolveDistributorPrice({ baseSupplyPrice: nrow!.supply_price, grade: 'A', marginOverridePct: nrow!.margin_override })
+  assert.strictEqual(nPriced.price, 11000, `등급가 fallback 오류 (기대 11000, 실제 ${nPriced.price})`)
+  assert.strictEqual(nPriced.overridden, false, 'fallback 인데 override 플래그 set')
+  ok('상품별 마진 override — SELECT→가격 재계산 (등급 무관 동일가 / NULL=등급가)')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/6\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/7\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })

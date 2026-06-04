@@ -111,7 +111,7 @@
 - (3) **완전 별도 사이트** — 코드/DB 따로. 브랜드 완전 분리되나 개발·운영 2배. (지금은 비추천)
 
 ### 6-2. 아직 안 정한 것 (구현 중 정해도 됨)
-- **D-C. 마진율 설정 단위**: 등급 마진을 (a) 플랫폼 전역 1벌(예: A+10/B+15…)로 하고 상품별 예외 허용? 아니면 (b) 상품마다 등급가 따로? → *기본은 (a) 전역 + 상품별 override 권장*.
+- **D-C. 마진율 설정 단위** → ✅ **확정·구현(2026-06-04)**: (a) 플랫폼 전역 등급마진 + **상품별 마진 override(고정)**. 상품에 `supply_margin_override_pct` 설정 시 **등급(A/B/C/D) 무관 모든 유통사 동일가**(전략/특가 상품). NULL = 기존 등급마진. 관리자만 설정(`PATCH /api/admin/distributor/products/:id/margin-override`, `/admin/distributor-grades` 화면 "상품별 마진(특가)" 섹션). 서버 재계산 7곳(home/catalog/detail/order-create/proposals/catalog-export/admin-export) 일괄 반영 — 표시가=결제가 일치.
 - **D-D. 세금계산서**: 팝빌/바로빌 자동발행 vs 수동(1차 수동→추후 자동). → *기본은 1차 수동, 추후 자동 권장*.
 
 ---
@@ -136,6 +136,11 @@
   - 세금계산서 집계(1차 수동): `/api/admin/distributor/tax-summary` 월별 유통사 매출/제조사 매입 — admin 섹션.
   - (남은 항목: 제조사 컨택/제품등록요청 워크플로우 — 기존 supplier self-serve 카탈로그로 대체 가능, 필요 시 후속)
 - [x] **Phase 5 — utongstart.com 도메인 인식 라우팅** (commit, 2026-06-01 — DNS 등록은 사용자 1회)
+- [x] **Phase 7 — 상품별 등급마진 override(특가/전략상품)** (commit, 2026-06-04)
+  - `distributor-pricing.ts` `resolveDistributorPrice({ marginOverridePct })`: 설정 시 등급/특별 무관 동일 마진(고정). 단위테스트 +2.
+  - `products.supply_margin_override_pct REAL` (lazy ensure) + 서버 재계산 7곳 일괄 반영(표시가=결제가).
+  - 관리자 설정: `PATCH /api/admin/distributor/products/:id/margin-override` + `/admin/distributor-grades` "상품별 마진(특가)" 섹션. admin 엑셀에 override 컬럼.
+  - miniflare 실 SQLite 검증 7/7 (SELECT→가격 재계산 등급 무관 동일가 / NULL=등급가).
 - [x] **Phase 6 — utongstart.com 도매몰 전용 게이팅** (commit, 2026-06-04)
   - worker 진입 302(주 방어): `WHOLESALE_HOSTS` + `isWholesaleAllowedPath()` — utongstart.com 에서 도매몰 surface(`/wholesale`·`/supplier`·`/seller/login|register`·`/auth/`·`/login`·`/api/`·`/assets/`·정적파일) 밖의 모든 페이지 경로 → `/wholesale/intro` 302. (직접 URL·새로고침·SEO 차단)
   - SPA 가드(보강): `App.tsx` 에서 `isUtongstart() && !isWholesaleAllowedPath(location.pathname)` → `<Navigate to="/wholesale/intro" replace />`. (앱 내부 navigate() 차단)

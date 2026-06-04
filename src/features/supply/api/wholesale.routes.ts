@@ -125,7 +125,7 @@ app.get('/me', async (c) => {
 
 // ── GET /home — 도매몰 쇼핑 홈 한 번에 (베스트/신상품/카테고리/추천제안) ──────────
 //   🛡️ 2026-06-04: 쇼핑몰형 홈용. 등급가 서버계산 + 가시성 가드 + 제조사 신원 비노출. SSR inject 가능(1 콜).
-interface HomeRow { id: number; name: string; image_url: string | null; category: string | null; stock: number; supply_price: number; dominant_color?: string | null; sold_count?: number }
+interface HomeRow { id: number; name: string; image_url: string | null; category: string | null; stock: number; supply_price: number; margin_override?: number | null; dominant_color?: string | null; sold_count?: number }
 app.get('/home', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -136,9 +136,9 @@ app.get('/home', async (c) => {
     const table = await loadGradeTable(DB)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
-    const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
+    const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price }
     })
 
@@ -198,14 +198,14 @@ app.get('/catalog', async (c) => {
 
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
-             COALESCE(p.supply_price, 0) AS supply_price
+             COALESCE(p.supply_price, 0) AS supply_price, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE ${where}
       ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number
+      category: string | null; stock: number; supply_price: number; margin_override: number | null
     }>()
 
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
@@ -216,7 +216,7 @@ app.get('/catalog', async (c) => {
     const items = (rows.results || []).map(r => {
       const { price } = resolveDistributorPrice({
         baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
-        specialUntil: sg.special_discount_until, table,
+        specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
       })
       return {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
@@ -241,14 +241,14 @@ app.get('/catalog/:id', async (c) => {
     await ensureSupplyVisibilitySchema(DB)
     const r = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
-             COALESCE(p.supply_price,0) AS supply_price
+             COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id = ? AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND ${visibilityWhere('p')}
     `).bind(id, sellerId).first<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number
+      category: string | null; stock: number; supply_price: number; margin_override: number | null
     }>()
     if (!r) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
@@ -256,7 +256,7 @@ app.get('/catalog/:id', async (c) => {
     const table = await loadGradeTable(DB)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
-      specialUntil: sg.special_discount_until, table,
+      specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
     })
     return c.json({
       success: true,
@@ -304,12 +304,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
     const prods = await DB.prepare(`
-      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price
+      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number }>()
+    `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       return c.json({ success: false, error: '주문할 수 없는 상품이 포함되어 있습니다' }, 400)
@@ -324,7 +324,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       }
       const { price } = resolveDistributorPrice({
         baseSupplyPrice: p.supply_price, grade: sg.distributor_grade,
-        specialUntil: sg.special_discount_until, table,
+        specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
       })
       const lineTotal = price * qty
       subtotal += lineTotal
@@ -495,6 +495,7 @@ app.get('/proposals', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   try {
+    await ensureSupplyVisibilitySchema(DB) // supply_margin_override_pct 컬럼 보장 (cold isolate)
     await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposals (
       id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
       note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
@@ -503,15 +504,15 @@ app.get('/proposals', async (c) => {
     const table = await loadGradeTable(DB)
     const { results } = await DB.prepare(`
       SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
-             COALESCE(p.supply_price,0) AS supply_price
+             COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
       FROM wholesale_proposals wp
       JOIN products p ON p.id = wp.product_id
       WHERE wp.distributor_seller_id = ? AND wp.status = 'active'
         AND p.is_active = 1 AND p.is_supply_product = 1
       ORDER BY wp.created_at DESC LIMIT 50
-    `).bind(sellerId).all<{ id: number; note: string | null; created_at: string; product_id: number; name: string; image_url: string | null; stock: number; supply_price: number }>()
+    `).bind(sellerId).all<{ id: number; note: string | null; created_at: string; product_id: number; name: string; image_url: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const items = (results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return { id: r.id, note: r.note, product_id: r.product_id, name: r.name, image_url: r.image_url, stock: r.stock, distributor_price: price }
     })
     return c.json({ success: true, proposals: items })
@@ -560,14 +561,14 @@ app.get('/catalog-export', async (c) => {
     const sg = await loadSellerGrade(DB, sellerId)
     const table = await loadGradeTable(DB)
     const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price
+      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
       ORDER BY p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number }>()
+    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
-      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
+      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, grade]
     })
     return xlsxResponse(buildXlsx(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)

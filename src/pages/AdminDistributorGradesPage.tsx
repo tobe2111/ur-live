@@ -80,6 +80,10 @@ export default function AdminDistributorGradesPage() {
     { params: accessProductQuery ? { product_id: accessProductQuery } : {}, enabled: !!accessProductQuery, headers: h.headers, select: (r: any) => (r?.success ? { product: r.product, distributors: r.distributors || [] } : null) },
   )
   const [accessSeller, setAccessSeller] = useState('')
+  // 🏭 2026-06-04 상품별 등급마진 override(특가) — 설정 시 등급 무관 동일가.
+  const [marginProductId, setMarginProductId] = useState('')
+  const [marginPct, setMarginPct] = useState('')
+  const [marginBusy, setMarginBusy] = useState(false)
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -199,6 +203,21 @@ export default function AdminDistributorGradesPage() {
   }
   async function revokeAccess(id: number) {
     try { await api.delete(`/api/admin/distributor/product-access/${id}`, h); accessQ.refetch() } catch { toast.error('해제 실패') }
+  }
+  async function setMarginOverride(clear: boolean) {
+    const pid = Number(marginProductId)
+    if (!Number.isFinite(pid) || pid <= 0) { toast.error('상품 ID를 입력하세요'); return }
+    let pct: number | null = null
+    if (!clear) {
+      pct = Number(marginPct)
+      if (!Number.isFinite(pct) || pct < 0 || pct > 500) { toast.error('마진율은 0~500(%) 사이여야 합니다'); return }
+    }
+    setMarginBusy(true)
+    try {
+      const r = await api.patch(`/api/admin/distributor/products/${pid}/margin-override`, { margin_pct: clear ? null : pct }, h)
+      if (r.data?.success) { toast.success(clear ? `상품#${pid} 특가 해제 (등급마진 복귀)` : `상품#${pid} 마진 ${pct}% 고정`); if (clear) setMarginPct('') }
+      else toast.error(r.data?.error || '설정 실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '설정 실패') } finally { setMarginBusy(false) }
   }
   function exportProducts() {
     const token = localStorage.getItem('admin_token')
@@ -482,6 +501,33 @@ export default function AdminDistributorGradesPage() {
               )}
             </div>
           )}
+        </section>
+
+        {/* ── 상품별 마진(특가) 설정 ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+            <Percent className="w-4 h-4 text-rose-500" /> 상품별 마진 (특가/전략상품)
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            특정 상품에 마진율을 고정하면 <b>등급(A/B/C/D) 무관 모든 유통사가 같은 공급가</b>로 구매합니다. 전략·특가 상품용. 비워서 해제하면 등급별 마진으로 복귀합니다.
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <input type="number" value={marginProductId} onChange={e => setMarginProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <div className="relative">
+              <input type="number" min={0} max={500} step={0.1} value={marginPct} onChange={e => setMarginPct(e.target.value)} placeholder="마진율" className="w-28 pl-3 pr-7 py-2 border border-gray-200 rounded-lg text-gray-900" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+            </div>
+            <button onClick={() => setMarginOverride(false)} disabled={marginBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              {marginBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />} 특가 적용
+            </button>
+            <button onClick={() => setMarginOverride(true)} disabled={marginBusy} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">
+              해제
+            </button>
+            {marginProductId && Number(marginPct) > 0 && (
+              <span className="text-xs text-gray-500 self-center">예: 공급가 10,000원 → <b className="text-gray-900 tabular-nums">{Math.round(10000 * (1 + (Number(marginPct) || 0) / 100)).toLocaleString('ko-KR')}원</b></span>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">상품 ID는 위 &ldquo;상품정보 엑셀&rdquo; 다운로드(product_id 컬럼)에서 확인할 수 있습니다.</p>
         </section>
 
         {/* ── OEM/ODM 신청 관리 ── */}

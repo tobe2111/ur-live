@@ -61,6 +61,33 @@ describe('distributor-pricing — 유통스타트 등급별 공급가', () => {
     expect(s.margin).toBe(0);
   });
 
+  it('상품별 마진 override(고정): 등급/특별 무관 동일 마진 적용', () => {
+    const future = new Date(Date.now() + 86400000).toISOString();
+    // override 12% → 등급 무관 base×1.12
+    const a = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'A', marginOverridePct: 12 });
+    const d = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'D', marginOverridePct: 12 });
+    expect(a.overridden).toBe(true);
+    expect(a.price).toBe(11200);
+    expect(a.marginPct).toBe(12);
+    expect(d.price).toBe(11200); // 등급 달라도 동일가
+    // override 는 특별할인 기간보다 우선(고정가)
+    const s = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'B', specialUntil: future, marginOverridePct: 12 });
+    expect(s.price).toBe(11200);
+    expect(s.overridden).toBe(true);
+  });
+
+  it('override 미설정/잘못된 값 → 기존 등급 마진 fallback', () => {
+    const none = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'B', marginOverridePct: null });
+    expect(none.overridden).toBe(false);
+    expect(none.price).toBe(11500); // B 등급 그대로
+    const neg = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'B', marginOverridePct: -5 });
+    expect(neg.overridden).toBe(false); // 음수 무시
+    expect(neg.price).toBe(11500);
+    const zero = resolveDistributorPrice({ baseSupplyPrice: 10000, grade: 'B', marginOverridePct: 0 });
+    expect(zero.overridden).toBe(true); // 0% = 유효(마진 0, 덤핑)
+    expect(zero.price).toBe(10000);
+  });
+
   it('고등급일수록 저렴 (A < B < C < D)', () => {
     const base = 10000;
     const a = distributorPrice(base, DEFAULT_GRADE_MARGINS.A);

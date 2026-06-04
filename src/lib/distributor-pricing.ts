@@ -81,20 +81,26 @@ export function marginForGrade(grade: string, table?: GradeMargin[] | null): num
   return Number.isFinite(def) ? def : DEFAULT_GRADE_MARGINS[DEFAULT_UNGRADED];
 }
 
-/** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급. */
+/** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급.
+ *  marginOverridePct(상품별 고정 마진, 사용자 확정 2026-06-04): 설정(>=0)되면 등급/특별 무관
+ *  이 마진을 그 상품 전 유통사에 동일 적용(전략/특가 상품). 미설정(null)이면 기존 등급 마진. */
 export function resolveDistributorPrice(opts: {
   baseSupplyPrice: number;
   grade?: string | null;
   specialUntil?: string | null;
   table?: GradeMargin[] | null;
+  marginOverridePct?: number | null;
   now?: Date;
-}): { price: number; margin: number; grade: DistributorGrade; marginPct: number } {
+}): { price: number; margin: number; grade: DistributorGrade; marginPct: number; overridden: boolean } {
   const grade = effectiveGrade(opts);
-  const marginPct = marginForGrade(grade, opts.table);
+  const ov = opts.marginOverridePct;
+  const hasOverride = ov != null && Number.isFinite(Number(ov)) && Number(ov) >= 0;
+  const marginPct = hasOverride ? Math.max(0, Number(ov)) : marginForGrade(grade, opts.table);
   return {
     price: distributorPrice(opts.baseSupplyPrice, marginPct),
     margin: platformMargin(opts.baseSupplyPrice, marginPct),
     grade,
     marginPct,
+    overridden: hasOverride,
   };
 }

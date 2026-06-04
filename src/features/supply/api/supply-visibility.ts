@@ -37,6 +37,11 @@ export async function ensureSupplyVisibilitySchema(DB: D1Database): Promise<void
     // 스펙 정산 분기: 브랜드제품(1) = 판매 후 당일 정산 / 일반제품(0) = 7일 환불창 성숙 후.
     await DB.prepare('ALTER TABLE products ADD COLUMN is_brand_product INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-brand'))
   }
+  if (!have.has('supply_margin_override_pct')) {
+    // 🏭 2026-06-04 상품별 등급마진 override (사용자 확정) — 설정 시 등급 무관 이 마진을
+    //   전 유통사에 동일 적용(전략/특가 상품). NULL = 기존 등급별 마진. 관리자만 설정.
+    await DB.prepare('ALTER TABLE products ADD COLUMN supply_margin_override_pct REAL').run().catch(swallow('supply-vis:add-margin-override'))
+  }
 
   await DB.prepare(`CREATE TABLE IF NOT EXISTS product_distributor_access (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
