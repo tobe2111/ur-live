@@ -11,6 +11,7 @@
  *
  *   Tier S WebSocket 시퀀스 시스템과 함께 작동 — DO broadcast() 가 자동으로 seq 부여 + log.
  */
+import { swallow } from './swallow'
 
 // 🛡️ 2026-05-14: any-compatible — Worker Env / Cron Env 모두 받기 (LIVE_STREAM property 만 사용).
 export async function broadcastStreamStatus(
@@ -40,9 +41,9 @@ export async function broadcastStreamStatus(
       }),
     })
     if (waitUntil) {
-      waitUntil(broadcast.then(() => {}).catch(() => {}))
+      waitUntil(broadcast.then(() => {}).catch(swallow(`broadcast-stream-status:${streamId}`)))
     } else {
-      await broadcast.then(() => {}).catch(() => {})
+      await broadcast.then(() => {}).catch(swallow(`broadcast-stream-status:${streamId}`))
     }
   } catch (e) {
     console.warn(`[broadcastStreamStatus] stream ${streamId} → ${status} failed:`, (e as Error).message)

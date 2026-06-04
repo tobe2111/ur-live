@@ -19,6 +19,7 @@
 import { SHIPPING_DEFAULTS } from '../../shared/constants/policy'
 import { fetchTrackerDelivery } from '../utils/tracker-delivery'
 import { getTrackerCode, normalizeCourierKey } from '../utils/courier-codes'
+import { swallow } from '../utils/swallow'
 
 type Env = Record<string, unknown> & { DB?: D1Database }
 
@@ -125,7 +126,7 @@ export async function syncShippingStatusBatch(env: Env | any): Promise<SyncBatch
             body: `주문 ${order.order_number} 이 도착했습니다`,
             url: '/my-orders',
             tag: `delivered-${order.id}`,
-          }).catch(() => {})
+          }).catch(swallow('shipping-sync:delivered-push'))
         } catch {}
       }
 

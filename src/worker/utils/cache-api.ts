@@ -22,6 +22,7 @@
  *   /cache/streams-live?v=${dbVersionStamp}
  *   DB 변경 시 dbVersionStamp 증가 → 새 URL → cache miss → 새로 fetch
  */
+import { swallow } from './swallow'
 
 /**
  * Cloudflare default cache 사용 (모든 worker 공유).
@@ -86,6 +87,6 @@ export async function cacheApi<T>(
   if (cached !== null) return cached
   const fresh = await fetcher()
   // fire-and-forget put (응답 지연 X)
-  void cacheApiPut(key, fresh, options).catch(() => {})
+  void cacheApiPut(key, fresh, options).catch(swallow('cache-api:swr-put'))
   return fresh
 }

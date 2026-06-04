@@ -1,5 +1,6 @@
 import { logInfo, logError } from '../utils/logger'
 import { broadcastStreamStatus } from '../utils/broadcast-stream-status'
+import { swallow } from '../utils/swallow'
 /**
  * 라이브 방송 상태 동기화 — 5분 cron (시작 + 종료 자동 감지)
  *
@@ -130,7 +131,7 @@ export async function handleYoutubeBroadcastEndDetect(env: Env): Promise<void> {
         `).bind(vodReady, vodBlockedReason, stream.id).run().catch(() => { /* column 없으면 skip */ });
         // VOD 상태 변화 알림 (이번 cron 에서 처음 ready 가 됐으면 시청자 WS 알림)
         if (vodReady === 1 || vodBlockedReason) {
-          await broadcastStreamStatus(env, stream.id, 'ended', { type: 'system', id: 0 }).catch(() => {})
+          await broadcastStreamStatus(env, stream.id, 'ended', { type: 'system', id: 0 }).catch(swallow('youtube-broadcast-end-detect:vod-notify'))
         }
       }
 
