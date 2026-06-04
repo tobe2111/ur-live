@@ -41,7 +41,7 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     business_name TEXT NOT NULL,
     business_number TEXT, representative TEXT, email TEXT, phone TEXT, password_hash TEXT,
     bank_name TEXT, bank_account TEXT, account_holder TEXT, commission_rate REAL,
-    status TEXT NOT NULL DEFAULT 'pending', linked_user_id INTEGER,
+    status TEXT NOT NULL DEFAULT 'pending', linked_user_id INTEGER, business_license_url TEXT,
     created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => { /* exists */ });
   // 기존 테이블에 누락 가능 컬럼 보강 (이미 있으면 throw → 무시).
@@ -50,6 +50,7 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     'bank_name TEXT', 'bank_account TEXT', 'account_holder TEXT', 'commission_rate REAL',
     "status TEXT NOT NULL DEFAULT 'pending'", 'created_at DATETIME', 'updated_at DATETIME',
     'linked_user_id INTEGER', // 🏭 2026-06-04 카카오 통합 — 카카오 유저 ↔ 제조회원 연결
+    'business_license_url TEXT', // 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용)
   ]) {
     await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
   }
@@ -65,8 +66,10 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       business_name?: string; business_number?: string; representative?: string;
       email?: string; phone?: string; password?: string;
       bank_name?: string; bank_account?: string; account_holder?: string;
+      business_license_url?: string;
     };
     const body = await c.req.json<RegBody>().catch(() => ({} as RegBody));
+    const bizLicenseUrl = (body.business_license_url || '').trim().slice(0, 500);
 
     const email = (body.email || '').trim().toLowerCase();
     const password = body.password || '';
@@ -90,11 +93,11 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     const passwordHash = await hashPassword(password);
     const result = await DB.prepare(`
       INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-        bank_name, bank_account, account_holder, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        bank_name, bank_account, account_holder, business_license_url, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
     `).bind(
       businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
-      body.bank_name || null, body.bank_account || null, body.account_holder || null,
+      body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
     ).run();
 
     return c.json({

@@ -17,6 +17,7 @@ interface SupplierRow {
   business_name: string
   business_number: string | null
   representative: string | null
+  business_license_url?: string | null
   email: string
   phone: string | null
   bank_name: string | null
@@ -123,6 +124,13 @@ export default function AdminSuppliersPage() {
                       {s.representative && <>{s.representative} · </>}{s.email}{s.phone && <> · {s.phone}</>}
                       {s.business_number && <> · {t('admin.suppliers.bizNo', { defaultValue: '사업자' })} {s.business_number}</>}
                     </p>
+                    {/* 🏭 2026-06-04 사업자등록증 — 승인 심사용 (클릭 시 원본 확인) */}
+                    {s.business_license_url && (
+                      <a href={s.business_license_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">
+                        <img src={s.business_license_url} alt="사업자등록증" className="w-12 h-12 rounded border border-gray-200 object-cover" />
+                        <span className="text-[11px] text-blue-600 font-medium">사업자등록증 보기</span>
+                      </a>
+                    )}
                     {(s.bank_name || s.bank_account) && (
                       <p className="text-xs text-gray-400 mt-0.5">{t('admin.suppliers.account', { defaultValue: '정산계좌' })}: {s.bank_name} {s.bank_account} {s.account_holder && `(${s.account_holder})`}</p>
                     )}

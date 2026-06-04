@@ -10,6 +10,7 @@ import { ArrowLeft, CheckCircle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
+import BusinessCertUpload from '@/components/BusinessCertUpload'
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
@@ -17,6 +18,7 @@ export default function SupplierRegisterPage() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [licenseUrl, setLicenseUrl] = useState('')
   const [form, setForm] = useState({
     business_name: '', business_number: '', representative: '',
     email: '', phone: '', password: '',
@@ -48,6 +50,7 @@ export default function SupplierRegisterPage() {
           bank_name: form.bank_name.trim() || undefined,
           bank_account: form.bank_account.trim() || undefined,
           account_holder: form.account_holder.trim() || undefined,
+          business_license_url: licenseUrl || undefined,
         }),
       })
       const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string }
@@ -118,6 +121,8 @@ export default function SupplierRegisterPage() {
                 <input disabled={loading} value={form.representative} onChange={set('representative')} className={inputCls} />
               </div>
             </div>
+            {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
+            <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} />
             <div>
               <label className={labelCls}>{t('common.email', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
               <input required type="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" />

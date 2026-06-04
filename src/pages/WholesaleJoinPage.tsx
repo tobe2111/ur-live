@@ -10,6 +10,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Store, ArrowRight, CheckCircle2, Boxes, Loader2, Factory } from 'lucide-react'
+import BusinessCertUpload from '@/components/BusinessCertUpload'
 
 export default function WholesaleJoinPage() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function WholesaleJoinPage() {
   })
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [licenseUrl, setLicenseUrl] = useState('')
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
 
   // 이미 유통사(셀러) 로그인 상태면 카탈로그로 바로.
@@ -40,7 +42,7 @@ export default function WholesaleJoinPage() {
     try {
       const payload = {
         name: form.name.trim(), business_name: form.business_name.trim(), business_number: form.business_number.trim(),
-        representative: form.representative.trim(), phone: form.phone.trim(),
+        representative: form.representative.trim(), phone: form.phone.trim(), business_license_url: licenseUrl,
       }
       // 카카오 유저 → become-distributor(세션 인증), 그 외 → register(이메일/비번).
       const res = kakaoUser
@@ -159,7 +161,8 @@ export default function WholesaleJoinPage() {
             <label className="block text-[13px] font-semibold mb-1.5">연락처 <span className="text-[#B6BCC4] font-normal">(선택)</span></label>
             <input value={form.phone} onChange={set('phone')} disabled={loading} className={inputCls} placeholder="010-0000-0000" />
           </div>
-          <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
+          <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} />
+          <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보(사업자등록증 포함)를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
 
           <button type="submit" disabled={loading}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FF0033] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">

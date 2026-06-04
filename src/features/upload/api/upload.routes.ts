@@ -20,6 +20,7 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { safeError } from '../../../worker/utils/safe-error'
 
 type Bindings = {
@@ -147,6 +148,37 @@ uploadRoutes.post('/upload/image', cors(), async (c) => {
     })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload]')
+  }
+})
+
+// 🏭 2026-06-04 사업자등록증 업로드 (회원가입 문서 — 비인증 허용, rate-limit + 이미지 검증).
+//   유통회원/제조회원 가입은 미인증 상태라 /upload/image(인증필요)를 못 씀 → 별도 공개 엔드포인트.
+//   저장만(가입 payload 에 URL 포함되어 승인 심사용). 남용 방지: IP rate-limit + 매직바이트 + 크기제한.
+uploadRoutes.post('/upload/business-cert', cors(), rateLimit({ action: 'biz-cert-upload', max: 10, windowSec: 600 }), async (c) => {
+  try {
+    if (!c.env.MEDIA_BUCKET) return c.json({ success: false, error: 'R2 binding 미설정', code: 'R2_NOT_CONFIGURED' }, 503)
+    const formData = await c.req.formData().catch(() => null)
+    if (!formData) return c.json({ success: false, error: 'multipart/form-data 필요' }, 400)
+    const file = formData.get('file')
+    if (!(file instanceof File)) return c.json({ success: false, error: 'file field 필요' }, 400)
+    if (file.size > MAX_SIZE) return c.json({ success: false, error: `파일이 너무 큽니다 (최대 ${MAX_SIZE / 1024 / 1024}MB)` }, 413)
+    if (file.size < 100) return c.json({ success: false, error: '파일이 너무 작습니다' }, 400)
+    if (!ALLOWED_MIME.has(file.type)) return c.json({ success: false, error: `허용 파일 타입: ${[...ALLOWED_MIME].join(', ')}` }, 415)
+    const buffer = await file.arrayBuffer()
+    const detected = detectMime(new Uint8Array(buffer))
+    if (!detected) return c.json({ success: false, error: '이미지 파일 형식이 올바르지 않습니다 (위변조 의심)' }, 400)
+    const ext = detected === 'image/jpeg' ? 'jpg' : detected === 'image/png' ? 'png' : detected === 'image/webp' ? 'webp' : detected === 'image/gif' ? 'gif' : 'bin'
+    const yyyymm = new Date().toISOString().slice(0, 7)
+    const key = `uploads/biz-cert/${yyyymm}/${randomKey()}.${ext}`
+    await c.env.MEDIA_BUCKET.put(key, buffer, {
+      httpMetadata: { contentType: detected, cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { kind: 'business-cert', uploaded_at: new Date().toISOString() },
+    })
+    const publicBase = c.env.PUBLIC_R2_URL || ''
+    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `r2://${key}`
+    return c.json({ success: true, data: { key, url, size: file.size, mime: detected } })
+  } catch (err) {
+    return safeError(c, err, '사업자등록증 업로드 중 오류가 발생했습니다', '[upload]')
   }
 })
 

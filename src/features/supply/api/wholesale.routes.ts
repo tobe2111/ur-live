@@ -138,6 +138,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     const phone = String(body.phone || '').trim()
     const business_number = String(body.business_number || '').trim() // 🏭 사업자등록번호 — 필수(승인 심사용)
     const representative = String(body.representative || '').trim()    // 대표자명
+    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
 
     if (!name || !business_name || !email || !password) {
       return c.json({ success: false, error: '담당자명·상호·이메일·비밀번호를 모두 입력해주세요' }, 400)
@@ -156,6 +157,8 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
       'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
       'ALTER TABLE sellers ADD COLUMN business_number TEXT',
       'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
+      'ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT',
+      "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'",
       'ALTER TABLE sellers ADD COLUMN phone TEXT',
       'ALTER TABLE sellers ADD COLUMN business_name TEXT',
       'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
@@ -179,9 +182,10 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     // status='pending' — 관리자 승인 전까지 로그인 불가(seller login 이 pending 차단). 토큰 미발급.
     const ins = await DB.prepare(`
       INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
+        business_registration_image_url, business_registration_status,
         status, commission_rate, seller_type, distributor_grade, is_distributor, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'influencer', 'C', 1, datetime('now'), datetime('now'))
-    `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null, DEFAULT_COMMISSION_RATE).run()
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, datetime('now'), datetime('now'))
+    `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null, business_license_url || null, DEFAULT_COMMISSION_RATE).run()
     const sellerId = Number(ins.meta?.last_row_id)
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
 
@@ -217,6 +221,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const business_number = String(body.business_number || '').trim()
     const representative = String(body.representative || '').trim()
     const phone = String(body.phone || '').trim()
+    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500)
 
     for (const sql of [
       "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
@@ -224,6 +229,8 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       'ALTER TABLE sellers ADD COLUMN business_name TEXT',
       'ALTER TABLE sellers ADD COLUMN business_number TEXT',
       'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
+      'ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT',
+      "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'",
       'ALTER TABLE sellers ADD COLUMN phone TEXT',
       'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
       'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
@@ -281,9 +288,10 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     if (!username) username = `dist${Date.now().toString().slice(-8)}`
     const ins = await DB.prepare(`
       INSERT INTO sellers (username, email, name, business_name, business_number, representative_name, phone,
+        business_registration_image_url, business_registration_status,
         status, commission_rate, seller_type, distributor_grade, is_distributor, linked_user_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
-    `).bind(username, email, name, business_name, business_number, representative || null, phone || null, DEFAULT_COMMISSION_RATE, userId).run()
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
+    `).bind(username, email, name, business_name, business_number, representative || null, phone || null, business_license_url || null, DEFAULT_COMMISSION_RATE, userId).run()
     const sid = Number(ins.meta?.last_row_id)
     if (!sid) return c.json({ success: false, error: '유통회원 신청 중 오류가 발생했습니다' }, 500)
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청', `${business_name} (${business_number})`, '/admin/seller-approval').catch(swallow('wholesale:become:notify'))

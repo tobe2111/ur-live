@@ -41,7 +41,7 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
 
     const rows = await DB.prepare(
       `SELECT s.id, s.business_name, s.business_number, s.representative, s.email, s.phone,
-              s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at,
+              s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
               COALESCE(b.pending_amount, 0)   AS pending_amount,
               COALESCE(b.available_amount, 0) AS available_amount,
               COALESCE(b.paid_amount, 0)      AS paid_amount,
