@@ -166,9 +166,9 @@ function Rail({ children }: { children: React.ReactNode }) {
   return <div className="flex gap-3.5 overflow-x-auto pb-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
 }
 
-// ── 서비스 정체성 히어로 ──
-function BrandHero() {
-  const props = ['검증 제조사 직공급', '내 등급 전용 공급가', '익일·7일 정산']
+// ── 서비스 정체성 히어로 ── (비로그인 시 '내 등급' 표현 없이 중립 카피)
+function BrandHero({ loggedIn }: { loggedIn: boolean }) {
+  const props = ['검증 제조사 직공급', loggedIn ? '내 등급 전용 공급가' : '등급별 도매 공급가', '익일·7일 정산']
   return (
     <div className="rounded-2xl overflow-hidden p-5 lg:p-7" style={{ background: WT.ink, color: '#fff' }}>
       <div className="flex items-center gap-1.5 mb-2.5">
@@ -177,7 +177,7 @@ function BrandHero() {
       </div>
       <h2 className="font-extrabold tracking-[-0.02em] leading-[1.28] text-[21px] lg:text-[28px]">
         검증된 제조사 상품을<br />
-        <span style={{ color: '#FF4D66' }}>내 등급 공급가</span>로 사입하세요
+        <span style={{ color: '#FF4D66' }}>{loggedIn ? '내 등급 공급가' : '도매 공급가'}</span>로 사입하세요
       </h2>
       <p className="mt-2.5 leading-relaxed text-[13px] lg:text-[14px]" style={{ color: '#A7AEB6' }}>
         공급사는 숨기고 가격은 투명하게 — 대량 사입에 최적화된 도매 전용 가격.
@@ -224,11 +224,12 @@ function Dashboard({ grade, marginPct, company, monthSpend, orderCount, onGrade 
   )
 }
 
-// ── 카테고리 칩 ──
-function CatChips({ cat, setCat }: { cat: string; setCat: (c: string) => void }) {
+// ── 카테고리 칩 ── (실제 상품에 존재하는 카테고리만 — 데이터 기반)
+interface CatOpt { id: string; label: string }
+function CatChips({ cat, setCat, cats }: { cat: string; setCat: (c: string) => void; cats: CatOpt[] }) {
   return (
     <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {WHOLESALE_CATEGORIES.map((c) => {
+      {cats.map((c) => {
         const on = cat === c.id
         return (
           <button key={c.id} onClick={() => setCat(c.id)}
@@ -243,12 +244,12 @@ function CatChips({ cat, setCat }: { cat: string; setCat: (c: string) => void })
 }
 
 // ── 데스크톱 사이드바 ──
-function Sidebar({ cat, setCat, counts }: { cat: string; setCat: (c: string) => void; counts: Record<string, number> }) {
+function Sidebar({ cat, setCat, counts, cats }: { cat: string; setCat: (c: string) => void; counts: Record<string, number>; cats: CatOpt[] }) {
   return (
     <aside className="w-[176px] shrink-0 hidden lg:block">
       <div className="text-[13px] font-bold mb-2 px-1" style={{ color: WT.ink3 }}>카테고리</div>
       <ul className="space-y-0.5">
-        {WHOLESALE_CATEGORIES.map((c) => {
+        {cats.map((c) => {
           const on = cat === c.id
           return (
             <li key={c.id}>
@@ -342,6 +343,23 @@ export default function WholesaleCatalogPage() {
     for (const p of allItems) if (p.category) m[p.category] = (m[p.category] || 0) + 1
     return m
   }, [allItems])
+
+  // 카테고리 칩/사이드바 = 실제 상품에 존재하는 카테고리만(데이터 기반). 알려진 id 는 한글 라벨,
+  // 모르는 값은 원본 문자열 그대로 — 공급자가 자유 입력해도 필터가 항상 동작.
+  const cats = useMemo<CatOpt[]>(() => {
+    const present = new Set<string>()
+    for (const p of allItems) if (p.category) present.add(p.category)
+    const labelOf = new Map(WHOLESALE_CATEGORIES.map(c => [c.id, c.label]))
+    const known = WHOLESALE_CATEGORIES
+      .filter(c => c.id !== 'all' && present.has(c.id))
+      .map(c => ({ id: c.id, label: c.label }))
+    const knownIds = new Set(known.map(k => k.id))
+    const unknown = [...present]
+      .filter(id => !knownIds.has(id))
+      .sort((a, b) => (catCounts[b] || 0) - (catCounts[a] || 0))
+      .map(id => ({ id, label: labelOf.get(id) || id }))
+    return [{ id: 'all', label: '전체' }, ...known, ...unknown]
+  }, [allItems, catCounts])
 
   const recentQ = useWholesaleRecentItems()
   const recent = (recentQ.data ?? []) as ReorderItem[]
@@ -446,7 +464,7 @@ export default function WholesaleCatalogPage() {
       <main className="ur-content-wide px-5 lg:px-8">
         {/* 히어로 + 대시보드 + OEM */}
         <div className="pt-4 pb-5 space-y-3">
-          <BrandHero />
+          <BrandHero loggedIn={loggedIn} />
           {loggedIn ? (
             <>
               <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} onGrade={() => setGradeOpen(true)} />
@@ -515,8 +533,8 @@ export default function WholesaleCatalogPage() {
 
         {/* 전체 상품 */}
         <section className="pt-6 pb-10">
-          <SectionHead title={cat === 'all' ? '전체 상품' : (WHOLESALE_CATEGORIES.find(c => c.id === cat)?.label || '상품')} sub={comma(items.length) + '개'} />
-          <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} /></div>
+          <SectionHead title={cat === 'all' ? '전체 상품' : (cats.find(c => c.id === cat)?.label || '상품')} sub={comma(items.length) + '개'} />
+          <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex gap-1.5">
               {SORTS.map(([k, l]) => (
@@ -532,7 +550,7 @@ export default function WholesaleCatalogPage() {
           )}
 
           <div className="lg:flex lg:gap-7">
-            <Sidebar cat={cat} setCat={setCat} counts={catCounts} />
+            <Sidebar cat={cat} setCat={setCat} counts={catCounts} cats={cats} />
             <div className="flex-1">
               {loading ? (
                 <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>

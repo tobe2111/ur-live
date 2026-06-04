@@ -13,6 +13,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession, getSupplierToken } from '@/lib/supplier-api'
+import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
 // 인증 헤더로 CSV 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
 async function downloadSupplierCsv(path: string, filename: string) {
@@ -600,7 +601,13 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
             </div>
             <div>
               <label className={labelCls}>{t('supplier.fieldCategory', { defaultValue: '카테고리' })}</label>
-              <input disabled={saving} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls} />
+              {/* 🏭 2026-06-04 카테고리 표준화 — 자유 입력 → 도매몰 표준 카테고리 select.
+                  카탈로그 필터(WHOLESALE_CATEGORIES)와 값 일치 → 유통사 카테고리 필터가 항상 동작. */}
+              <select disabled={saving} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls}>
+                {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div>
