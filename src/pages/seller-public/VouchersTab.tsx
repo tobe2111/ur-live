@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import type { Product } from './types'
 
 interface Props {
@@ -34,8 +35,18 @@ export default function VouchersTab({ mealVouchers, isOwner, textClass }: Props)
         const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
         return (
           <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl text-left active:scale-[0.98]">
-            <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
-              {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+            <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
+              {p.image_url && (
+                <img
+                  src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
+                  srcSet={cfSrcSet(p.image_url, 200) || undefined}
+                  sizes="96px"
+                  alt="" loading="lazy" decoding="async"
+                  onLoad={(e) => { e.currentTarget.style.opacity = '1' }}
+                  style={{ opacity: 0, transition: 'opacity 200ms ease-out' }}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-bold ${textClass} line-clamp-1`}>{p.name}</p>

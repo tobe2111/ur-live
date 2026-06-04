@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Eye, Play, Plus, MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import StreamCard from './StreamCard'
 import UpcomingStreamsBanner from './UpcomingStreamsBanner'
 import type { Product, Short, LiveStream, Tab } from './types'
@@ -45,8 +46,18 @@ export default function HomeTab({
               const isAchieved = (p.group_buy_current || 0) > 0 && (p.group_buy_target || 0) > 0 && p.group_buy_current! >= p.group_buy_target!
               return (
                 <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
-                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
-                    {p.image_url && <img src={p.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
+                    {p.image_url && (
+                      <img
+                        src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
+                        srcSet={cfSrcSet(p.image_url, 300) || undefined}
+                        sizes="176px"
+                        alt="" loading="lazy" decoding="async"
+                        onLoad={(e) => { e.currentTarget.style.opacity = '1' }}
+                        style={{ opacity: 0, transition: 'opacity 200ms ease-out' }}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
                     {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
                   </div>

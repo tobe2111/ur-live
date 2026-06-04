@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -373,9 +374,17 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
                     onClick={() => navigate(`/products/${p.id}`)}
                     className="text-left active:scale-[0.98] transition-transform w-full block"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 rounded-xl">
+                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 rounded-xl" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                        <img
+                          src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
+                          srcSet={cfSrcSet(p.image_url, 300) || undefined}
+                          sizes="(max-width: 640px) 50vw, 200px"
+                          alt={p.name} loading="lazy" decoding="async"
+                          onLoad={(e) => { e.currentTarget.style.opacity = '1' }}
+                          style={{ opacity: 0, transition: 'opacity 200ms ease-out' }}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full bg-gray-100" />
                       )}
