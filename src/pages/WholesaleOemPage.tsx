@@ -13,7 +13,7 @@ import { toast } from '@/hooks/useToast'
 interface OemRequest {
   id: number; kind: string; product_name: string; category: string | null
   target_qty: number | null; target_price: number | null; note: string | null
-  status: string; admin_memo: string | null; matched_supplier_name: string | null; created_at: string
+  status: string; admin_memo: string | null; matched: number | null; created_at: string
 }
 
 const sellerToken = () => (typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null)
@@ -173,7 +173,7 @@ export default function WholesaleOemPage() {
                       {r.target_qty ? `${r.target_qty.toLocaleString('ko-KR')}개 · ` : ''}
                       {r.target_price ? `희망 ₩${r.target_price.toLocaleString('ko-KR')}` : ''}
                     </p>
-                    {r.matched_supplier_name && <p className="text-xs text-emerald-600 mt-1">매칭 제조사: {r.matched_supplier_name}</p>}
+                    {r.matched ? <p className="text-xs text-emerald-600 mt-1">✓ 제조사 매칭 완료 — 유통스타트가 생산·연결을 진행합니다</p> : null}
                     {r.admin_memo && <p className="text-xs text-[#4E5560] mt-1 bg-[#F4F5F7] rounded p-2">💬 {r.admin_memo}</p>}
                     <p className="text-[10px] text-[#B6BCC4] mt-1">{(r.created_at || '').slice(0, 10)}</p>
                   </div>

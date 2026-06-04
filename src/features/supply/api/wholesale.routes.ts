@@ -758,11 +758,13 @@ app.get('/oem-requests', async (c) => {
   const { DB } = c.env
   try {
     await ensureOemSchema(DB)
+    // 🔒 중개 룰: 제조사↔유통스타트↔유통사. 유통사에게 매칭 제조사 신원(이름/ID) 절대 비노출.
+    //    매칭 여부(matched 1/0)만 반환 → UI 는 "제조사 매칭 완료"만 표시, 직접 컨택 차단.
     const { results } = await DB.prepare(`
       SELECT r.id, r.kind, r.product_name, r.category, r.target_qty, r.target_price, r.note,
-             r.status, r.admin_memo, r.matched_supplier_id, r.created_at, r.updated_at,
-             sup.business_name AS matched_supplier_name
-      FROM oem_requests r LEFT JOIN suppliers sup ON sup.id = r.matched_supplier_id
+             r.status, r.admin_memo, r.created_at, r.updated_at,
+             CASE WHEN r.matched_supplier_id IS NOT NULL THEN 1 ELSE 0 END AS matched
+      FROM oem_requests r
       WHERE r.distributor_seller_id = ? ORDER BY r.created_at DESC LIMIT 100
     `).bind(sellerId).all()
     return c.json({ success: true, requests: results ?? [] })
