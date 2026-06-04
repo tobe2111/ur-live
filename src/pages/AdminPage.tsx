@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
   Users, Play, Package, TrendingUp, CheckCircle,
@@ -409,7 +410,7 @@ export default function AdminPage() {
           { label: '오늘 주문', value: `${formatNumber(dashboardStats.todayOrders || 0)}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: '현재 방문자', value: `${formatNumber(dashboardStats.currentVisitors || 0)}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: '라이브 방송', value: `${formatNumber(dashboardStats.liveStreams || 0)}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
-        ].map(card => (
+        ].filter(card => !(LIVE_COMMERCE_SUSPENDED && card.label === '라이브 방송')).map(card => (
           <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2 sm:mb-3">
               <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
@@ -506,7 +507,7 @@ export default function AdminPage() {
           { label: t('admin.dashboard.k028', { defaultValue: '승인된 판매자' }), value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/seller-approval?status=active' },
           { label: t('admin.dashboard.k029', { defaultValue: '총 라이브' }), value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50', link: '/admin/live-monitor' },
           { label: t('admin.dashboard.k030', { defaultValue: '진행 중 라이브' }), value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50', link: '/admin/live-monitor?status=live' },
-        ].map(card => (
+        ].filter(card => !(LIVE_COMMERCE_SUSPENDED && card.link.startsWith('/admin/live-monitor'))).map(card => (
           <button
             key={card.label}
             onClick={() => navigate(card.link)}
@@ -523,7 +524,8 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* ── 진행 중인 라이브 ── */}
+      {/* ── 진행 중인 라이브 ── 🏭 2026-06-04 라이브 잠정 중단 시 숨김 (복원 가능) */}
+      {!LIVE_COMMERCE_SUSPENDED && (
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
           <Play className="w-4 h-4 text-red-500" />
@@ -565,6 +567,7 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* ── 수수료 설정 ── */}
       {commissionSettings.length > 0 && (
