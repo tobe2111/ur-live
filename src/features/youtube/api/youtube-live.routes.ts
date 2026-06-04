@@ -201,8 +201,9 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     //   🛡️ 2026-05-14: YouTube Data API v3 가 `cdn.ingestionType='webrtc'` 거부 확인됨
     //     ("Invalid value for ingestion type"). YouTube Studio UI 내부 전용이고 API 미노출.
     //     → env 가 true 여도 무조건 'rtmp' 로 fallback. webrtc 분기는 YouTube 가 API 열 때 활성.
-    const useWebRTC = false  // 보존된 분기 — YouTube API 가 webrtc ingestion 열면 env 다시 사용
-    void (c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST
+    // 🛡️ 2026-06-04 (P6): env 플래그로 전환 — YouTube WebRTC/WHIP ingestion 열렸을 때 운영자가 테스트/활성.
+    //   YOUTUBE_USE_WEBRTC_INGEST='true' 면 webrtc(=brower 직송, 미디어서버 0). 기본 false → rtmp(OBS/외부).
+    const useWebRTC = String((c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST || '').toLowerCase() === 'true'
 
     let liveSetup
     if (sellerAuth?.default_stream_id && !useWebRTC) {
@@ -257,6 +258,9 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
           privacyStatus,
           cachedRtmp
         )
+        // 🛡️ 2026-06-04 (P2 fix): persistent 경로 쿼터 미집계 → 95% 안전게이트가 장님 → 생 403.
+        //   broadcasts.insert(50) + bind(50) + endActive 의 list 2회(~2) ≈ 102 유닛 집계(보수적).
+        await trackQuota(c.env, QUOTA_COST.insert * 2 + 2, 'setup_persistent_stream', c.executionCtx)
       }
     } else {
       // First time / no persistent stream / useWebRTC=true → 새 stream 생성
@@ -2590,11 +2594,14 @@ app.get('/streaming/health', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const omeConfigured = !!(c.env.OME_HOST && c.env.OME_WEBHOOK_SECRET && c.env.OME_API_TOKEN)
-  // youtube_whip_available: 항상 true — rtmp_key 있는 stream 이면 YouTube WHIP 직접 사용 가능.
-  // 실제 rtmp_key 보유 여부는 /streaming/whip-token 에서 stream_id 기준으로 체크.
+  // 🛡️ 2026-06-04 (P6 fix): youtube_whip_available 를 '항상 true'(거짓) → 실제 가용성 반영.
+  //   브라우저 직송은 OME(자체 미디어서버) 구성 OR YouTube WebRTC ingestion(env 플래그) 둘 중 하나 필요.
+  //   둘 다 없으면 false → 셀러 UI 가 즉시 OBS 가이드 표시(카메라 권한 미끼-전환 제거).
+  const webrtcEnabled = String((c.env as { YOUTUBE_USE_WEBRTC_INGEST?: string }).YOUTUBE_USE_WEBRTC_INGEST || '').toLowerCase() === 'true'
+  const browserPublish = omeConfigured || webrtcEnabled
   return c.json({
     success: true,
-    data: { ome_available: omeConfigured, youtube_whip_available: true },
+    data: { ome_available: omeConfigured, youtube_whip_available: webrtcEnabled, browser_publish: browserPublish },
   })
 })
 

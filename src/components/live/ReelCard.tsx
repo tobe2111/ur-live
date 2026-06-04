@@ -145,7 +145,8 @@ function ReelCardImpl({
     const pollYouTubeChat = async () => {
       if (document.hidden) return
       try {
-        const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
+        // 🛡️ 2026-06-04 (P3 fix): 시청자는 공개 캐시 채팅 사용(셀러-전용 엔드포인트는 401). 캐시는 마지막 50개 반환 → 아래 dedup.
+        const url = `/api/youtube/chat/chat/${stream.id}/public`
         const res = await api.get(url)
         if (res.data.success && res.data.data?.messages) {
           const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({

@@ -213,6 +213,29 @@ app.get('/chat/:streamId', async (c) => {
 })
 
 /**
+ * GET /api/youtube/chat/chat/:streamId/public
+ * 🛡️ 2026-06-04 (P3 fix): 시청자용 공개 채팅 — 셀러 폴링이 채운 live_chat_cache 를 인증 없이 읽음.
+ *   기존: 시청자가 셀러-전용 /chat/:streamId 를 6초마다 호출 → 항상 401 → 채팅 영영 안 뜸 + 낭비.
+ *   변경: 캐시 read(공개, YouTube 호출 0, 셀러 1폴링 → N시청자 공유). 4초 edge cache.
+ */
+app.get('/chat/:streamId/public', async (c) => {
+  const streamId = parseInt(c.req.param('streamId'))
+  if (!Number.isFinite(streamId)) return c.json({ success: false, error: 'invalid stream' }, 400)
+  try {
+    const rows = await c.env.DB.prepare(`
+      SELECT chat_id AS id, author, message, timestamp FROM live_chat_cache
+      WHERE stream_id = ? ORDER BY timestamp DESC LIMIT 50
+    `).bind(streamId).all<{ id: string; author: string; message: string; timestamp: number }>()
+      .catch(() => ({ results: [] as { id: string; author: string; message: string; timestamp: number }[] }))
+    const messages = (rows.results || []).slice().reverse() // 시간순(오래된→최신)
+    c.header('Cache-Control', 'public, max-age=4')
+    return c.json({ success: true, data: { messages } })
+  } catch {
+    return c.json({ success: true, data: { messages: [] } })
+  }
+})
+
+/**
  * POST /api/youtube/chat/:streamId
  * Send chat message
  */

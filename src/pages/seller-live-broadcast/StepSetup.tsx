@@ -62,39 +62,22 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
     }
   }, [])
 
-  // 브라우저 송출 가용성:
-  //   1. stream.rtmp_key 있으면 YouTube WHIP direct → 항상 가능 (OME 불필요)
-  //   2. rtmp_key 없으면 OME health check (가용성 false 면 5s 마다 자동 재시도 → 회복 시 자동 표시)
-  // 🛡️ 2026-05-14: 사용자에게 "새로고침 하세요" 강요 X. 자동 복구가 우선.
+  // 🛡️ 2026-06-04 (P6 fix): 브라우저 송출 가용성 = 서버 health 의 browser_publish 만 신뢰.
+  //   기존: rtmp_key 있으면 무조건 true 로 가정 → BrowserBroadcaster 를 먼저 띄우고 카메라 권한 요청 후에야
+  //   OBS 로 폴백(미끼-전환). OME 제거 + useWebRTC 미설정이면 browser_publish=false → 즉시 OBS 가이드.
   useEffect(() => {
-    if (stream.rtmp_key) {
-      setOmeAvailable(true)  // YouTube WHIP direct 사용 가능
-      return
-    }
     let cancelled = false
-    let retryTimer: ReturnType<typeof setTimeout> | null = null
-    const check = () => {
-      api.get('/api/seller/youtube/streaming/health')
-        .then(r => {
-          if (cancelled) return
-          const ok = !!(r.data?.data?.ome_available || r.data?.data?.youtube_whip_available)
-          setOmeAvailable(ok)
-          if (!ok) {
-            retryTimer = setTimeout(check, 5000) // 5s 마다 자동 재시도
-          }
-        })
-        .catch(() => {
-          if (cancelled) return
-          setOmeAvailable(false)
-          retryTimer = setTimeout(check, 5000)
-        })
-    }
-    check()
-    return () => {
-      cancelled = true
-      if (retryTimer) clearTimeout(retryTimer)
-    }
-  }, [stream.rtmp_key])
+    api.get('/api/seller/youtube/streaming/health')
+      .then(r => {
+        if (cancelled) return
+        const d = r.data?.data || {}
+        // browser_publish 우선(신규). 구버전 호환: ome_available || youtube_whip_available.
+        const ok = d.browser_publish !== undefined ? !!d.browser_publish : !!(d.ome_available || d.youtube_whip_available)
+        setOmeAvailable(ok)
+      })
+      .catch(() => { if (!cancelled) setOmeAvailable(false) })
+    return () => { cancelled = true }
+  }, [])
 
   // 대기 경과 시간 카운터 (탈출 안내 표시용)
   useEffect(() => {
