@@ -25,6 +25,8 @@ CREATE TABLE suppliers (id INTEGER PRIMARY KEY AUTOINCREMENT, business_name TEXT
 CREATE TABLE wholesale_orders (id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER, status TEXT, subtotal INTEGER DEFAULT 0, refunded_amount INTEGER DEFAULT 0, paid_at TEXT, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE wholesale_order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, wholesale_order_id INTEGER, product_id INTEGER, supplier_id INTEGER, name TEXT, qty INTEGER, base_supply_price INTEGER, distributor_unit_price INTEGER, line_total INTEGER, courier TEXT, tracking_number TEXT, shipped_at TEXT, line_status TEXT DEFAULT 'PENDING');
 CREATE TABLE supplier_payouts (id INTEGER PRIMARY KEY AUTOINCREMENT, supplier_id INTEGER, amount INTEGER, status TEXT, created_at TEXT DEFAULT (datetime('now')));
+CREATE TABLE supplier_settlements (id INTEGER PRIMARY KEY AUTOINCREMENT, supplier_id INTEGER, order_id INTEGER, product_id INTEGER, seller_id INTEGER, retail_amount INTEGER, supply_amount INTEGER, status TEXT, available_at TEXT, paid_at TEXT, source TEXT DEFAULT 'consumer', note TEXT);
+CREATE TABLE supplier_balances (supplier_id INTEGER PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, paid_amount INTEGER DEFAULT 0, updated_at TEXT);
 `
 
 let passed = 0
@@ -212,8 +214,30 @@ async function main() {
   assert.strictEqual(Number(nl[0].product_id), 2, '이미 환불된 A(product1)는 재고 복원 대상 아님(이중복원 방지)')
   ok('관리자 전액환불 — 미환불 라인만 재고 복원(이중복원 방지)')
 
+  // 13) 정산 잔고 캐시 자가치유 — settlements(권위)에서 SUM 재계산 (SUM-then-claim 드리프트 영구 차단)
+  await DB.batch([
+    DB.prepare("INSERT INTO supplier_settlements (supplier_id, supply_amount, status, source) VALUES (50, 1000, 'pending', 'wholesale')"),
+    DB.prepare("INSERT INTO supplier_settlements (supplier_id, supply_amount, status, source) VALUES (50, 2000, 'pending', 'wholesale')"),
+    DB.prepare("INSERT INTO supplier_settlements (supplier_id, supply_amount, status, source) VALUES (50, 3000, 'available', 'wholesale')"),
+    DB.prepare("INSERT INTO supplier_settlements (supplier_id, supply_amount, status, source) VALUES (50, 5000, 'paid', 'wholesale')"),
+  ])
+  // 캐시를 일부러 틀리게(드리프트) 세팅
+  await DB.prepare("INSERT INTO supplier_balances (supplier_id, pending_amount, available_amount, paid_amount) VALUES (50, 99999, 0, 5000)").run()
+  // 자가치유 재계산(라우트 mature 와 동일 SQL): pending=SUM(pending), available=SUM(available)
+  await DB.prepare(
+    `UPDATE supplier_balances SET
+       pending_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status='pending'),0),
+       available_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status='available'),0)
+     WHERE supplier_id = ?`
+  ).bind(50, 50, 50).run()
+  const bal = await DB.prepare("SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id=50").first<{ pending_amount: number; available_amount: number; paid_amount: number }>()
+  assert.strictEqual(Number(bal?.pending_amount), 3000, `pending 자가치유 오류(기대 3000, 실제 ${bal?.pending_amount})`)
+  assert.strictEqual(Number(bal?.available_amount), 3000, `available 자가치유 오류(기대 3000, 실제 ${bal?.available_amount})`)
+  assert.strictEqual(Number(bal?.paid_amount), 5000, 'paid 는 mature 가 안 건드림(payout 전용)')
+  ok('정산 잔고 캐시 자가치유 — settlements SUM 재계산(드리프트 영구 차단)')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/12\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/13\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })

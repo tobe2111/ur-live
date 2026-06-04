@@ -162,9 +162,15 @@ export async function matureSupplierSettlements(DB: D1Database): Promise<number>
     ).bind(d.supplier_id).run();
     const changed = upd.meta?.changes ?? 0;
     if (changed <= 0) continue;
+    // 🛡️ 2026-06-04: 잔고 캐시를 settlements(권위 출처)에서 재계산 — 증분(±amt) 대신 SUM 재산정으로
+    //   SUM-then-claim 레이스 드리프트를 영구 차단(자가치유). paid_amount 는 payout 에서만 변경되므로 미수정.
     await DB.prepare(
-      "UPDATE supplier_balances SET pending_amount = MAX(0, pending_amount - ?), available_amount = available_amount + ?, updated_at = datetime('now') WHERE supplier_id = ?"
-    ).bind(amt, amt, d.supplier_id).run();
+      `UPDATE supplier_balances SET
+         pending_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status = 'pending'), 0),
+         available_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status = 'available'), 0),
+         updated_at = datetime('now')
+       WHERE supplier_id = ?`
+    ).bind(d.supplier_id, d.supplier_id, d.supplier_id).run();
     matured += changed;
   }
   return matured;

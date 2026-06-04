@@ -493,7 +493,15 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
       "UPDATE wholesale_orders SET status='PAID', paid_at=datetime('now'), payment_key=? WHERE id=? AND status='PENDING'"
     ).bind(paymentKey, order.id).run()
     if ((claim.meta?.changes ?? 0) === 0) {
-      return c.json({ success: true, order_id: order.id, already: true })
+      // 🛡️ 2026-06-04: CAS 실패 분기 — 다른 동시 confirm 이 PAID 처리(Toss 멱등 = 1회 청구)면 멱등 반환.
+      //   그 외(만료 cron 이 PENDING→EXPIRED 로 sweep 등)면 '결제는 됐는데 주문이 죽은' 상태 →
+      //   청구된 금액 자동 환불(고객 미회수 방지). 정산/재고 side-effect 는 PAID claim 한쪽만 실행되므로 안전.
+      const cur = await DB.prepare("SELECT status FROM wholesale_orders WHERE id = ?").bind(order.id).first<{ status: string }>().catch(() => null)
+      if (cur?.status === 'PAID') return c.json({ success: true, order_id: order.id, already: true })
+      try {
+        await cancelTossPayment({ env: c.env, paymentKey, cancelReason: '주문 만료 — 자동 환불', idempotencyKey: `whs-expired-refund-${order.id}` })
+      } catch { /* best-effort */ }
+      return c.json({ success: false, error: '주문이 만료되어 결제가 자동 취소되었습니다. 다시 주문해주세요.', code: 'ORDER_EXPIRED' }, 409)
     }
 
     // 재고 원자적 차감 (oversell 가드) — stock NULL(무제한)은 통과, stock<qty 면 실패.
