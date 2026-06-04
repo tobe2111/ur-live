@@ -12,6 +12,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
+import { swallow } from '@/worker/utils/swallow'
 import { requireSupplier } from '@/worker/middleware/auth'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
@@ -249,10 +250,10 @@ app.post('/orders/:id/refund', async (c) => {
       return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
     }
 
-    // 내 라인 중 아직 환불 안 된 것.
+    // 내 라인 중 아직 환불 안 된 것. (line_status 도 조회 — Toss 실패 시 정확 롤백용)
     const myLines = await DB.prepare(
-      "SELECT id, product_id, qty, line_total FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status != 'REFUNDED'"
-    ).bind(orderId, sid).all<{ id: number; product_id: number; qty: number; line_total: number }>()
+      "SELECT id, product_id, qty, line_total, line_status FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status != 'REFUNDED'"
+    ).bind(orderId, sid).all<{ id: number; product_id: number; qty: number; line_total: number; line_status: string }>()
     const lines = myLines.results || []
     if (lines.length === 0) return c.json({ success: false, error: '환불할 내 주문 라인이 없습니다' }, 400)
 
@@ -275,8 +276,15 @@ app.post('/orders/:id/refund', async (c) => {
       idempotencyKey: `whs-refund-${orderId}-sup${sid}`,
     })
     if (!res.ok) {
-      // 롤백 — 라인 상태 복구 (SHIPPED 였는지 PENDING 이었는지 모르므로 보수적으로 SHIPPED 표시 X → 원복은 PENDING/SHIPPED 구분 위해 별도 처리 생략, 환불 전 상태로).
-      await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${ph}) AND line_status='REFUNDED'`).bind(...lineIds).run().catch(() => {})
+      // 롤백 — 각 라인을 환불 전 상태(PENDING/SHIPPED)로 정확히 복구. PENDING 라인이 SHIPPED 로 둔갑하던 버그 fix.
+      const pendingIds = lines.filter(l => l.line_status === 'PENDING').map(l => l.id)
+      const shippedIds = lines.filter(l => l.line_status === 'SHIPPED').map(l => l.id)
+      if (pendingIds.length) {
+        await DB.prepare(`UPDATE wholesale_order_items SET line_status='PENDING' WHERE id IN (${pendingIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...pendingIds).run().catch(swallow('wholesale-supplier:refund-rollback-pending'))
+      }
+      if (shippedIds.length) {
+        await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${shippedIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...shippedIds).run().catch(swallow('wholesale-supplier:refund-rollback-shipped'))
+      }
       return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
     }
 
@@ -287,7 +295,7 @@ app.post('/orders/:id/refund', async (c) => {
     for (const l of lines) {
       await DB.prepare(
         "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ?"
-      ).bind(l.qty, l.qty, l.product_id).run().catch(() => { /* best-effort */ })
+      ).bind(l.qty, l.qty, l.product_id).run().catch(swallow('wholesale-supplier:refund-stock-restore'))
     }
 
     // 누적 환불액 + 주문 상태(전체 환불 시 REFUNDED, 아니면 PARTIAL_REFUNDED).

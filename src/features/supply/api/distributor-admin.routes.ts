@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
@@ -293,7 +294,7 @@ app.get('/orders/:id', async (c) => {
 })
 
 // POST /orders/:id/refund — 어드민 강제 전액 환불 (분쟁/멈춘 주문 개입)
-app.post('/orders/:id/refund', async (c) => {
+app.post('/orders/:id/refund', rateLimit({ action: 'admin-wholesale-refund', max: 20, windowSec: 60 }), async (c) => {
   try {
     const id = Number(c.req.param('id'))
     if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
@@ -582,6 +583,15 @@ app.get('/company-info', async (c) => {
 app.put('/company-info', async (c) => {
   try {
     const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    // 형식 검증 — 세금계산서 다운스트림 깨짐 방지. (값이 있을 때만 검사)
+    const bizNum = body.company_business_number != null ? String(body.company_business_number).trim() : null
+    if (bizNum && !/^\d{3}-?\d{2}-?\d{5}$/.test(bizNum)) {
+      return c.json({ success: false, error: '사업자등록번호 형식 오류 (000-00-00000)' }, 400)
+    }
+    const email = body.company_email != null ? String(body.company_email).trim() : null
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return c.json({ success: false, error: '이메일 형식 오류' }, 400)
+    }
     const stmts = COMPANY_KEYS.filter(k => k in body).map(k =>
       c.env.DB.prepare(
         `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
@@ -629,7 +639,7 @@ app.put('/products/:id/qty-tiers', async (c) => {
       const mq = Math.floor(Number(t.min_qty))
       const dp = Number(t.discount_pct)
       if (!Number.isFinite(mq) || mq < 1 || mq > 1000000) return c.json({ success: false, error: '최소 수량은 1 이상이어야 합니다' }, 400)
-      if (!Number.isFinite(dp) || dp < 0 || dp > 90) return c.json({ success: false, error: '할인율은 0~90(%) 사이여야 합니다' }, 400)
+      if (!Number.isFinite(dp) || dp <= 0 || dp > 90) return c.json({ success: false, error: '할인율은 0 초과 90 이하(%)여야 합니다' }, 400)
       dedup.set(mq, Math.round(dp * 100) / 100)
     }
     // 전체 교체.
@@ -748,7 +758,7 @@ app.get('/tax-documents/:id/html', async (c) => {
 //   매출(sales=유통스타트→유통사) 방향만. 발행자=유통스타트(바로빌 계정), 공급받는자=유통사.
 //   매입(제조사→유통스타트)은 제조사가 발행하는 것이라 플랫폼 계정으로 발행 불가(역발행 별도).
 //   자격증명(BAROBILL_*) 또는 플랫폼 사업자정보 미설정 시 actionable 에러(fail-soft).
-app.post('/tax-documents/:id/issue-nts', async (c) => {
+app.post('/tax-documents/:id/issue-nts', rateLimit({ action: 'admin-nts-issue', max: 30, windowSec: 60 }), async (c) => {
   try {
     await ensureTaxDocSchema(c.env.DB)
     const id = Number(c.req.param('id'))
