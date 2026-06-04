@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-06-04 — 도매몰 게이팅·마진·합배송 + audit (이번 세션)
+- **utongstart.com 도매몰 전용 게이팅** (`6000a2e`): worker 진입 302(주방어) + App.tsx SPA 가드. 도매 surface(`/wholesale`·`/supplier`·`/seller/login|register`·`/auth/`·`/login`·정적) 밖 경로 → `/wholesale/intro`. allowlist worker↔`utils/domain.ts` 동기화. 다른 호스트 no-op.
+- **npm audit high/critical 0건** (`882dc54`): axios 1.15.2→1.17.0(프론트 high), protobufjs override ^7.5.8(firebase 경유 transitive high, firebase 다운그레이드 회피), vitest critical은 dev전용+UI서버 RCE(미사용)라 `.audit-allowlist.json` 등재. `check-npm-audit.sh` GHSA advisory 단위 + allowlist 게이트로 개선(blanket bypass 제거).
+- **상품별 등급마진 override(특가)** (`1ec0873`): `resolveDistributorPrice({marginOverridePct})` — 설정 시 등급 무관 동일가, NULL=등급마진. `products.supply_margin_override_pct`(lazy ensure) + 서버 재계산 7곳 일괄(표시가=결제가) + `PATCH /api/admin/distributor/products/:id/margin-override` + AdminDistributorGradesPage UI. 단위10/10·verify:sql.
+- **도매 합배송(주문내 제조사별 일괄발송)** (`6d3fe10`): `POST /api/supplier/wholesale/orders/:id/ship-all` — 내 미발송 라인 전체 송장1개 원자발송, 제조사별 격리, 전라인 발송시 주문 SHIPPED. SupplierWholesaleOrdersPage 주문단위 그룹 + 합배송 패널. verify:sql 8/8.
+- **silent catch 5곳 → swallow()** (`e49c821`): best-effort 배경경로 관측성. 동작 불변.
+- **코드 audit (서브에이전트)**: 지목 항목 대부분 false positive 확인 — 셀러양도 인증(TD-016 이미 차단), NaN 6곳(전부 가드), rate-limit 3곳(이미 적용), bulk 음수가격(이미 검증), 8.8%원천징수(이미 배선). 스퓨리어스 수정 회피. **남은 진짜 backlog는 인프라/결정 블록**: 스키마 이중화 DROP(TD-001 migration CI 선행), youtube-live god-file 분해(staging 필수), 세금계산서 국세청발행(바로빌 키=사용자).
+
+---
+
 ## 🟢 2026-06-01 — 유통스타트 도매몰 (Phase 1~5 + 정산) 신규 구축
 별도 도매몰(utongstart.com, 같은 코드/DB) — 3자(유통사=셀러 / 유통스타트=플랫폼 / 제조사=공급자) 등급제 B2B 선결제 모델. 스펙·결정: `docs/design/wholesale-utongstart.md`, 사용자 할일: `docs/design/wholesale-utongstart-TODO.md`.
 - **P1** 등급 가격엔진 `lib/distributor-pricing.ts`(제조사가×(1+등급마진), 특별할인 기간 우선) + `distributor_grades` 테이블 + 유닛 8.
