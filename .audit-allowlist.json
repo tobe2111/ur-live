@@ -1,0 +1,15 @@
+{
+  "_doc": "npm audit high/critical 허용 목록. scripts/check-npm-audit.sh 가 읽음. 여기 등재된 GHSA advisory 만 차단에서 제외 — 그 외 새 high/critical 은 그대로 차단. 등재 시 반드시 reason/accepted_by/date/review 명시. 도달 불가/오탐만 등재할 것 (실제 production 위험은 패키지 업그레이드로 해결).",
+  "allow": [
+    {
+      "ghsa": "GHSA-5xrq-8626-4rwp",
+      "package": "vitest",
+      "severity": "critical",
+      "title": "When Vitest UI server is listening, arbitrary file can be read and executed",
+      "reason": "dev 전용 devDependency (production 번들 미포함). 취약점은 `vitest --ui` UI 서버가 listening 일 때만 트리거되는데 본 프로젝트는 UI 서버를 쓰지 않음(scripts: `vitest run` / `vitest` 만). 패치(vitest@4)는 vite 5→6 major 연쇄로 빌드 툴체인을 깨므로 보류. 실제 도달 불가 → 허용.",
+      "accepted_by": "tobe2111 (urteam.corp@gmail.com)",
+      "date": "2026-06-04",
+      "review": "vitest 가 vite 6 호환 + 본 레포 빌드 무영향 확인되면 4.x 업그레이드 후 본 항목 제거. 그 전까지 `vitest --ui` 사용 금지."
+    }
+  ]
+}

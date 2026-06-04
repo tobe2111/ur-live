@@ -2,6 +2,13 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-06-04 — npm audit high/critical 정리 + allowlist 게이트
+- ✅ **axios** `1.15.2 → 1.17.0` (production 의존성, high 4종 해결 — minor 범위, 빌드/tsc 무영향 검증).
+- ✅ **protobufjs** override `^7.5.8`(→7.6.2) — firebase/firebase-admin 경유 transitive high 6종 해결. firebase major 다운그레이드 회피(override 방식).
+- 🟡 **vitest** critical `GHSA-5xrq-8626-4rwp` 잔여(허용) — dev 전용 + `vitest --ui` 서버 RCE(본 레포 미사용). 패치(vitest@4)는 vite 5→6 연쇄로 빌드 툴체인 깸 → 보류. `.audit-allowlist.json` 에 사유/승인자/날짜 등재. **`vitest --ui` 사용 금지.** vite6 호환 확인 시 4.x 업글 후 allowlist 제거.
+- 🟢 잔여 moderate 21건(esbuild dev서버 SSRF, brace-expansion 등) — 게이트 비차단(high/critical 만). 대부분 dev/빌드 전용, --force 시 vite/wrangler major 연쇄라 보류.
+- 🛠 게이트 개선: `scripts/check-npm-audit.sh` 가 GHSA advisory 단위로 검사 + `.audit-allowlist.json` 적용. 등재되지 않은 새 high/critical 은 그대로 차단(blanket bypass 제거 방향).
+
 분류:
 - 🔴 **Critical**: 운영 위험 / 사고 재발 가능
 - 🟡 **High**: 비효율 / 신규 개발 제약
