@@ -279,6 +279,10 @@ if (!rootElement) {
 
     // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
     import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
+
+    // 🏭 2026-06-04: 청크-실패 자동 reload 가드를 부팅 성공 후 해제 → "세션당 1회"가 아니라
+    //   "장애 1건당 1회". 5초 후에도 앱이 살아있으면 청크 정상 로드된 것 → 다음 배포에서 또 복구 가능.
+    setTimeout(() => { try { sessionStorage.removeItem('__ur_chunk_reload__') } catch { /* silent */ } }, 5000)
   } catch (error) {
     console.error('[App] ❌ React 렌더링 실패:', error)
     rootElement.innerHTML = `

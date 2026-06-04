@@ -2,6 +2,29 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
+    <!-- 🏭 2026-06-04 배포-청크 불일치 자동 복구 (가장 이상적 + 안전).
+         캐시된 옛 index.html 이 삭제된 app 청크(/assets/*.js)를 참조 → 404 → SPA fallback HTML →
+         "Expected a JavaScript module script but server responded with text/html" → 앱 부팅 실패
+         ("인터넷 연결 끊김"). 이 인라인 가드는 청크 로드 전에 실행되어, app 청크 로드 실패를
+         capture 단계로 감지 → 세션당 1회만 자동 새로고침 → 사용자는 최신 index.html 로 무중단 복구.
+         ⚠️ 제3자/외부 스크립트(예: CSP 차단된 /cdn-cgi/* email-decode)는 제외 → 불필요한 reload 0. -->
+    <script>
+      (function () {
+        function isAppChunk(t) {
+          return t && t.tagName === 'SCRIPT' && typeof t.src === 'string'
+            && t.src.lastIndexOf(location.origin + '/assets/', 0) === 0;
+        }
+        window.addEventListener('error', function (e) {
+          if (!isAppChunk(e && e.target)) return; // app 청크(/assets/*.js) 실패만 처리
+          try {
+            var k = '__ur_chunk_reload__';
+            if (sessionStorage.getItem(k)) return; // 1회만 — 무한 reload 차단
+            sessionStorage.setItem(k, '1');
+            location.reload();
+          } catch (_) { /* sessionStorage 차단 환경 — silent */ }
+        }, true); // capture: 리소스 로드 에러는 버블하지 않음
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
