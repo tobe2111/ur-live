@@ -141,7 +141,7 @@ app.get('/me', async (c) => {
 
 // ── GET /home — 도매몰 쇼핑 홈 한 번에 (베스트/신상품/카테고리/추천제안) ──────────
 //   🛡️ 2026-06-04: 쇼핑몰형 홈용. 등급가 서버계산 + 가시성 가드 + 제조사 신원 비노출. SSR inject 가능(1 콜).
-interface HomeRow { id: number; name: string; image_url: string | null; category: string | null; stock: number; supply_price: number; retail_price?: number; moq?: number; margin_override?: number | null; dominant_color?: string | null; sold_count?: number }
+interface HomeRow { id: number; name: string; image_url: string | null; category: string | null; stock: number; supply_price: number; retail_price?: number; moq?: number; has_tiers?: number; margin_override?: number | null; dominant_color?: string | null; sold_count?: number }
 app.get('/home', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -152,11 +152,11 @@ app.get('/home', async (c) => {
     const table = await loadGradeTable(DB)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
-    const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
+    const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       // ⚠️ retail_price = 권장소비자가(공급자 입력) — 원가(supply_price)/제조사 신원은 비노출. 유통사 마진 산출용.
-      return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), sold_count: r.sold_count || 0 }
+      return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0 }
     })
 
     const [best, fresh, cats, proposalsRes] = await Promise.all([
@@ -263,6 +263,7 @@ app.get('/catalog', async (c) => {
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
              COALESCE(p.supply_price, 0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
+             EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers,
              COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE ${where}
@@ -270,7 +271,7 @@ app.get('/catalog', async (c) => {
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; has_tiers: number; sold_count: number; margin_override: number | null
     }>()
 
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
@@ -286,7 +287,7 @@ app.get('/catalog', async (c) => {
       return {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
-        retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), sold_count: r.sold_count || 0,
+        retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
       }
     })
 

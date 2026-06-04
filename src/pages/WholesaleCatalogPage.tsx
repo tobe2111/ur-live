@@ -27,6 +27,7 @@ interface CatalogItem {
   distributor_price: number
   retail_price?: number | null
   moq?: number
+  has_tiers?: boolean
   sold_count?: number
 }
 
@@ -74,7 +75,10 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
     <div className="group flex flex-col">
       <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
         <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full"><ProductImg p={p} /></button>
-        {p.stock > 0 && p.stock < 200 && <div className="absolute top-2.5 left-2.5 z-10"><span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span></div>}
+        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
+          {p.has_tiers && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: WT.brand }}>수량할인</span>}
+          {p.stock > 0 && p.stock < 200 && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span>}
+        </div>
         <QuickAdd p={p} onAdd={onAdd} />
       </div>
       <button onClick={() => onOpen(p)} className="mt-2.5 text-left text-[14px] leading-[1.4] line-clamp-2 min-h-[39px]" style={{ color: WT.ink2 }}>{p.name}</button>
