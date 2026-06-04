@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart } from 'lucide-react'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
+import { toast } from '@/hooks/useToast'
 import {
   WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES,
 } from './wholesale/wholesale-theme'
+import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 홈 — Claude Design 시안 구현 (TDS/Toss 라이트).
@@ -48,20 +50,30 @@ function ProductImg({ p, className = '' }: { p: CatalogItem; className?: string 
   )
 }
 
+// ── 코너 퀵담기 ──
+function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => void }) {
+  const [hit, setHit] = useState(false)
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onAdd(p); setHit(true); setTimeout(() => setHit(false), 1000) }}
+      aria-label={p.name + ' 담기'}
+      className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center transition-colors"
+      style={hit ? { background: WT.ink, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { background: '#fff', color: WT.ink, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+      {hit ? <Check className="w-[18px] h-[18px]" strokeWidth={2.6} /> : <Plus className="w-[18px] h-[18px]" strokeWidth={2.4} />}
+    </button>
+  )
+}
+
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-function ProductCard({ p, onOpen }: { p: CatalogItem; onOpen: (p: CatalogItem) => void }) {
+function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void }) {
   const mr = p.retail_price ? marginRate(p.distributor_price, p.retail_price) : 0
   const um = p.retail_price ? unitMargin(p.distributor_price, p.retail_price) : 0
   return (
     <div className="group flex flex-col">
       <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
         <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full"><ProductImg p={p} /></button>
-        <button
-          onClick={() => onOpen(p)} aria-label={p.name + ' 담기'}
-          className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center"
-          style={{ background: '#fff', color: WT.ink, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
-          <Plus className="w-[18px] h-[18px]" strokeWidth={2.4} />
-        </button>
+        {p.stock > 0 && p.stock < 200 && <div className="absolute top-2.5 left-2.5 z-10"><span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span></div>}
+        <QuickAdd p={p} onAdd={onAdd} />
       </div>
       <button onClick={() => onOpen(p)} className="mt-2.5 text-left text-[14px] leading-[1.4] line-clamp-2 min-h-[39px]" style={{ color: WT.ink2 }}>{p.name}</button>
       <div className="mt-1"><Price p={p} /></div>
@@ -80,12 +92,13 @@ function ProductCard({ p, onOpen }: { p: CatalogItem; onOpen: (p: CatalogItem) =
 }
 
 // ── 가로 레일 미니 카드 ──
-function MiniCard({ p, onOpen, tag }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; tag?: string }) {
+function MiniCard({ p, onOpen, onAdd, tag }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; tag?: string }) {
   return (
     <div className="group shrink-0 w-[150px] lg:w-[166px] flex flex-col snap-start">
       <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
         <button onClick={() => onOpen(p)} className="block w-full h-full"><ProductImg p={p} /></button>
-        {tag && <div className="absolute top-2.5 right-2.5 z-10"><span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white whitespace-nowrap" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>{tag}</span></div>}
+        {tag && <div className="absolute top-2.5 left-2.5 z-10"><span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white whitespace-nowrap" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>{tag}</span></div>}
+        <QuickAdd p={p} onAdd={onAdd} />
       </div>
       <button onClick={() => onOpen(p)} className="mt-2 text-left text-[13px] leading-[1.4] line-clamp-2 min-h-[36px]" style={{ color: WT.ink2 }}>{p.name}</button>
       <div className="mt-0.5"><Price p={p} size={17} /></div>
@@ -286,7 +299,12 @@ export default function WholesaleCatalogPage() {
     return m
   }, [allItems])
 
+  const cart = useWholesaleCart()
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
+  const addToCart = (p: CatalogItem) => {
+    cart.add({ id: p.id, qty: 1, name: p.name, image_url: p.image_url, price: p.distributor_price })
+    toast.success('장바구니에 담았어요')
+  }
 
   function exportCatalog() {
     const t = localStorage.getItem('seller_token') || getSupplierToken()
@@ -321,6 +339,10 @@ export default function WholesaleCatalogPage() {
             <button onClick={() => navigate('/wholesale/statement')} className="inline-flex items-center gap-1"><Receipt className="w-4 h-4" /> 거래내역</button>
             <button onClick={() => navigate('/wholesale/oem')} className="inline-flex items-center gap-1"><Factory className="w-4 h-4" /> OEM/ODM</button>
           </nav>
+          <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative shrink-0 p-1.5" style={{ color: WT.ink2 }}>
+            <ShoppingCart className="w-5 h-5" />
+            {cart.count > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
+          </button>
           <button onClick={() => setGradeOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0" style={{ background: WT.brandSoft, color: WT.brand }}>
             <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
             {GRADE_LABEL[grade] || grade}등급{me ? ` · 마진 ${me.margin_pct}%` : ''}
@@ -368,7 +390,7 @@ export default function WholesaleCatalogPage() {
               <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: WT.ink, color: '#fff' }}>선정 회원 전용</span>
             </div>
             <p className="text-[13px] mb-3.5" style={{ color: WT.ink3 }}>유통스타트가 회원님께만 공개하는 상품이에요</p>
-            <Rail>{(home.proposals as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} tag="전용" />)}</Rail>
+            <Rail>{(home.proposals as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} tag="전용" />)}</Rail>
           </section>
         )}
 
@@ -376,7 +398,7 @@ export default function WholesaleCatalogPage() {
         {home && home.best.length > 0 && (
           <section className="py-6">
             <SectionHead title="베스트셀러" sub="많이 사입한 상품" />
-            <Rail>{(home.best as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} />)}</Rail>
+            <Rail>{(home.best as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} />)}</Rail>
           </section>
         )}
 
@@ -384,7 +406,7 @@ export default function WholesaleCatalogPage() {
         {home && home.new.length > 0 && (
           <section className="py-6">
             <SectionHead title="신규 입고" sub="이번 주" />
-            <Rail>{(home.new as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} />)}</Rail>
+            <Rail>{(home.new as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} />)}</Rail>
           </section>
         )}
 
@@ -413,7 +435,7 @@ export default function WholesaleCatalogPage() {
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
-                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} />)}
+                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} />)}
                 </div>
               )}
             </div>

@@ -44,6 +44,7 @@ import MainHomePage from './pages/MainHomePage'
 const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
 const WholesaleProductPage = lazy(() => import('./pages/WholesaleProductPage'))
 const WholesaleCheckoutPage = lazy(() => import('./pages/WholesaleCheckoutPage'))
+const WholesaleCartPage = lazy(() => import('./pages/WholesaleCartPage'))
 const WholesaleSuccessPage = lazy(() => import('./pages/WholesaleSuccessPage'))
 const WholesaleOrdersPage = lazy(() => import('./pages/WholesaleOrdersPage'))
 const WholesaleStatementPage = lazy(() => import('./pages/WholesaleStatementPage'))
@@ -498,6 +499,7 @@ function AppContent() {
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale" element={<WholesaleCatalogPage />} />
             <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
+            <Route path="/wholesale/cart" element={<WholesaleCartPage />} />
             <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />
             <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
             <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />

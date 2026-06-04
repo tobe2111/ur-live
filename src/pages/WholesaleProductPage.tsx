@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
+import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
 //   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 하단 고정 CTA. 라이트 고정 B2B.
@@ -38,9 +39,16 @@ export default function WholesaleProductPage() {
   const [qty, setQty] = useState(1)
   const [ordering, setOrdering] = useState(false)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
+  const cart = useWholesaleCart()
 
   useEffect(() => { if (!token) navigate('/seller/login') }, [token, navigate])
   useEffect(() => { setQty(1); setTab('desc') }, [item?.id])
+
+  function addToCart() {
+    if (!item) return
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: item.distributor_price })
+    toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
+  }
 
   async function placeOrder() {
     if (!item || ordering) return
@@ -139,10 +147,13 @@ export default function WholesaleProductPage() {
                 <span className="text-[20px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(total)}</span>
               </div>
             </div>
-            <button onClick={placeOrder} disabled={ordering || item.stock <= 0}
-              className="mt-3 w-full h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-              {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
-            </button>
+            <div className="mt-3 flex gap-2.5">
+              <button onClick={addToCart} disabled={item.stock <= 0} className="px-7 h-14 rounded-2xl text-[16px] font-bold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink }}>담기</button>
+              <button onClick={placeOrder} disabled={ordering || item.stock <= 0}
+                className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
+                {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -178,10 +189,13 @@ export default function WholesaleProductPage() {
             <span className="text-[19px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(total)}</span>
           </div>
         </div>
-        <button onClick={placeOrder} disabled={ordering || item.stock <= 0}
-          className="w-full h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-          {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
-        </button>
+        <div className="flex gap-2.5">
+          <button onClick={addToCart} disabled={item.stock <= 0} className="px-6 h-14 rounded-2xl text-[16px] font-bold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink }}>담기</button>
+          <button onClick={placeOrder} disabled={ordering || item.stock <= 0}
+            className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
+            {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
+          </button>
+        </div>
       </div>
     </div>
   )
