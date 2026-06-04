@@ -123,6 +123,48 @@ app.get('/me', async (c) => {
   }
 })
 
+// ── GET /home — 도매몰 쇼핑 홈 한 번에 (베스트/신상품/카테고리/추천제안) ──────────
+//   🛡️ 2026-06-04: 쇼핑몰형 홈용. 등급가 서버계산 + 가시성 가드 + 제조사 신원 비노출. SSR inject 가능(1 콜).
+interface HomeRow { id: number; name: string; image_url: string | null; category: string | null; stock: number; supply_price: number; dominant_color?: string | null; sold_count?: number }
+app.get('/home', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureSupplyVisibilitySchema(DB)
+    const sg = await loadSellerGrade(DB, sellerId)
+    const table = await loadGradeTable(DB)
+    const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
+    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
+    const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
+    const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table })
+      return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price }
+    })
+
+    const [best, fresh, cats, proposalsRes] = await Promise.all([
+      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
+      DB.prepare(`
+        SELECT ${cols} FROM wholesale_proposals wp JOIN products p ON p.id = wp.product_id
+        WHERE wp.status = 'active' AND wp.distributor_seller_id = ? AND ${baseWhere} ORDER BY wp.created_at DESC LIMIT 12
+      `).bind(sellerId, sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+    ])
+
+    return c.json({
+      success: true,
+      grade,
+      best: enrich(best.results || []),
+      new: enrich(fresh.results || []),
+      proposals: enrich(proposalsRes.results || []),
+      categories: (cats.results || []).map(c2 => ({ key: c2.category, count: c2.cnt })),
+    })
+  } catch (err) {
+    return safeError(c, err, '도매몰 홈 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
 // ── GET /catalog ────────────────────────────────────────────────────────────
 app.get('/catalog', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
