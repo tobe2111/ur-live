@@ -46,6 +46,20 @@ export async function handleScheduled(env: Env) {
     results.stale_streams_alerted = stale.results?.length ?? 0;
   } catch (e) { logError('[Cron] stale_streams alert error:', { error: String(e) }) }
 
+  // ── 1a-2. 좀비 라이브 자동 종료 (P4 fix, 2026-06-04)
+  //   OME(브라우저 송출 중계) 제거 후, youtube_video_id 없는 'live' 스트림은 YouTube actualEndTime cron 으로
+  //   감지 불가 → 영영 'live' 로 고착(기존엔 12h 알림만). OME 가 사라져 이런 스트림은 새로 생길 수도 없으므로
+  //   1시간+ heartbeat 없는 'no-video-id live' 는 안전하게 자동 ended. (OBS/YouTube 스트림은 video_id 있어 제외)
+  try {
+    const zombie = await DB.prepare(`
+      UPDATE live_streams SET status = 'ended', ended_at = COALESCE(ended_at, datetime('now')), updated_at = datetime('now')
+      WHERE status = 'live'
+        AND (youtube_video_id IS NULL OR youtube_video_id = '')
+        AND updated_at < datetime('now', '-1 hour')
+    `).run().catch(() => ({ meta: { changes: 0 } }));
+    results.zombie_live_ended = (zombie as { meta?: { changes?: number } })?.meta?.changes ?? 0;
+  } catch (e) { logError('[Cron] zombie_live auto-end error:', { error: String(e) }) }
+
   // ── 1b. dead 웹캠 방송 — admin alert 만 (자동 cancelled X)
   try {
     const dead = await DB.prepare(`

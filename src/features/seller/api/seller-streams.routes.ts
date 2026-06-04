@@ -322,14 +322,18 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       values.push(body.youtube_video_id);
     }
     if (body.status !== undefined) {
-      // 🛡️ 2026-05-31: status enum 검증 — 임의 문자열 주입으로 자기 스트림 상태 손상 방지.
-      const ALLOWED_STREAM_STATUS = ['scheduled', 'live', 'ended', 'completed'];
-      if (!ALLOWED_STREAM_STATUS.includes(body.status)) {
+      // 🛡️ 2026-06-04 (P5 fix): live_streams.status CHECK 는 ('scheduled','live','ended') 만 허용.
+      //   기존 'completed' 가 허용목록에 있어 셀러가 PUT 시 CHECK 위반 → SqlError → 500(스트림 수정 불가).
+      //   'completed' 는 'ended' 로 매핑(종료 의미 동일). enum 외 값은 400.
+      const raw = String(body.status);
+      const status = raw === 'completed' ? 'ended' : raw;
+      const ALLOWED_STREAM_STATUS = ['scheduled', 'live', 'ended'];
+      if (!ALLOWED_STREAM_STATUS.includes(status)) {
         return c.json({ success: false, error: '유효하지 않은 방송 상태입니다' }, 400);
       }
       updates.push('status = ?');
-      values.push(body.status);
-      if (body.status === 'ended') {
+      values.push(status);
+      if (status === 'ended') {
         updates.push("ended_at = datetime('now')");
       }
     }

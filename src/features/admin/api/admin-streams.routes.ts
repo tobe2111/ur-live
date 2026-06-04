@@ -113,7 +113,14 @@ adminStreamsRoutes.put('/streams/:id', cors(), async (c) => {
     if (body.title) { updates.push('title = ?'); vals.push(body.title); }
     if (body.description !== undefined) { updates.push('description = ?'); vals.push(body.description); }
     if (body.youtube_video_id) { updates.push('youtube_video_id = ?'); vals.push(body.youtube_video_id); }
-    if (body.status) { updates.push('status = ?'); vals.push(body.status); if (body.status === 'ended') updates.push("ended_at = datetime('now')"); }
+    if (body.status) {
+      // 🛡️ 2026-06-04 (P5 fix): CHECK 는 ('scheduled','live','ended') 만 허용 — 검증 없이 쓰면 CHECK 위반 500.
+      const st = body.status === 'completed' ? 'ended' : body.status;
+      if (!['scheduled', 'live', 'ended'].includes(st)) {
+        return c.json({ success: false, error: '유효하지 않은 방송 상태입니다' }, 400);
+      }
+      updates.push('status = ?'); vals.push(st); if (st === 'ended') updates.push("ended_at = datetime('now')");
+    }
 
     if (updates.length > 0) {
       updates.push("updated_at = datetime('now')");
