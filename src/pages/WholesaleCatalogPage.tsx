@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download } from 'lucide-react'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
@@ -397,6 +398,61 @@ export default function WholesaleCatalogPage() {
       .catch(() => toast.error('단가표 다운로드에 실패했어요'))
   }
 
+  // ── 대량 주문(엑셀) — 양식 다운로드 + 작성본 업로드 → 주문 생성 → 체크아웃 ──
+  const bulkInputRef = useRef<HTMLInputElement | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  function downloadOrderForm() {
+    const t = localStorage.getItem('seller_token')
+    fetch('/api/wholesale/order-template', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
+      .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
+      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) })
+      .catch(() => toast.error('주문 양식 다운로드에 실패했어요'))
+  }
+  // 따옴표 포함 CSV 한 줄 파싱.
+  function parseCsvLine(line: string): string[] {
+    const out: string[] = []; let cur = ''; let q = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++ } else q = false } else cur += ch }
+      else if (ch === '"') q = true
+      else if (ch === ',') { out.push(cur); cur = '' }
+      else cur += ch
+    }
+    out.push(cur); return out
+  }
+  async function onBulkFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (e.target) e.target.value = '' // 같은 파일 재선택 허용
+    if (!file || bulkBusy) return
+    setBulkBusy(true)
+    try {
+      const text = await file.text()
+      const lines = text.split(/\r?\n/).filter(l => l.trim())
+      if (lines.length < 2) { toast.error('내용이 없는 파일이에요'); return }
+      const header = parseCsvLine(lines[0]).map(h => h.trim())
+      const pidIdx = header.findIndex(h => h.toLowerCase() === 'product_id')
+      let qtyIdx = header.findIndex(h => h.replace(/\s/g, '') === '주문수량')
+      if (pidIdx < 0) { toast.error('product_id 열을 찾을 수 없어요 (양식을 다시 받아주세요)'); return }
+      if (qtyIdx < 0) qtyIdx = header.length - 1 // 주문수량 헤더 없으면 마지막 열
+      const items: { product_id: number; qty: number }[] = []
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i])
+        const pid = Number(String(cols[pidIdx] ?? '').replace(/[^0-9]/g, ''))
+        const qty = Math.floor(Number(String(cols[qtyIdx] ?? '').replace(/[^0-9.]/g, '')))
+        if (Number.isFinite(pid) && pid > 0 && Number.isFinite(qty) && qty > 0) items.push({ product_id: pid, qty })
+      }
+      if (!items.length) { toast.error('주문수량이 입력된 행이 없어요'); return }
+      const r = await api.post('/api/wholesale/orders', { items }, { headers: { Authorization: `Bearer ${token}` } })
+      if (r.data?.success) {
+        toast.success(`${comma(items.length)}개 품목 주문서 생성 — 결제로 이동해요`)
+        navigate(`/wholesale/checkout?order=${r.data.order_id}`, { state: { orderId: r.data.toss_order_id, amount: r.data.amount, orderName: r.data.order_name } })
+      } else {
+        toast.error(r.data?.error || '주문서 처리에 실패했어요')
+      }
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문서 업로드 중 오류가 발생했어요')
+    } finally { setBulkBusy(false) }
+  }
+
   const SORTS: [typeof sort, string][] = [['rec', '인기순'], ['low', '낮은 공급가'], ['margin', '높은 마진']]
   const monthSpend = stmtQ.data?.summary?.total_paid ?? 0
   const orderCount = stmtQ.data?.summary?.count ?? 0
@@ -547,9 +603,25 @@ export default function WholesaleCatalogPage() {
             </div>
           </div>
           {loggedIn && (
-            <button onClick={exportCatalog} className="mb-4 w-full flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
-              <FileSpreadsheet className="w-4 h-4" /> 단가표 엑셀 다운로드 <span style={{ color: WT.ink4 }}>(내 등급가)</span>
-            </button>
+            <div className="mb-4 rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: WT.fill2 }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[14px] font-bold" style={{ color: WT.ink }}>대량 주문 (엑셀)</span>
+                <span className="text-[11px] font-bold rounded-full px-2 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>주문 많을 때</span>
+              </div>
+              <p className="text-[12px] mb-3" style={{ color: WT.ink3 }}>주문 양식(내 카탈로그·등급가 포함)을 받아 <b>주문수량</b>만 채워 업로드하면 한 번에 주문서가 생성돼요.</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button onClick={downloadOrderForm} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: '#fff', color: WT.ink, border: '1px solid ' + WT.line }}>
+                  <Download className="w-4 h-4" /> 주문 양식 다운로드
+                </button>
+                <button onClick={() => bulkInputRef.current?.click()} disabled={bulkBusy} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-60" style={{ background: WT.ink }}>
+                  {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 작성본 업로드 → 주문
+                </button>
+                <input ref={bulkInputRef} type="file" accept=".csv,text/csv" onChange={onBulkFile} className="hidden" />
+              </div>
+              <button onClick={exportCatalog} className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
+                <FileSpreadsheet className="w-3.5 h-3.5" /> 단가표만 받기 (.xlsx)
+              </button>
+            </div>
           )}
 
           <div className="lg:flex lg:gap-7">

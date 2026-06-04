@@ -736,9 +736,35 @@ app.get('/catalog-export', async (c) => {
   }
 })
 
-// GET /order-template — 주문 양식 CSV (product_id, qty 작성 → 업로드)
-app.get('/order-template', (c) => {
-  return csvResponse(buildCsv(['product_id', '상품명', '주문수량'], [['예: 123', '상품명(참고)', '10']]), 'wholesale-order-template.csv')
+// GET /order-template — 주문 양식 CSV. 로그인 시 내 카탈로그(등급가 포함) 프리필 →
+//   유통사는 '주문수량' 칸만 채워 업로드. 비로그인은 빈 양식(헤더만).
+app.get('/order-template', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  const header = ['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '주문수량']
+  if (!sellerId) {
+    return csvResponse(buildCsv(header, [['예: 123', '상품명(참고용)', '식품', '500', '9000', '1', '10']]), 'wholesale-order-template.csv')
+  }
+  const { DB } = c.env
+  try {
+    await ensureSupplyVisibilitySchema(DB)
+    const sg = await loadSellerGrade(DB, sellerId)
+    const table = await loadGradeTable(DB)
+    const rows = await DB.prepare(`
+      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+             COALESCE(p.min_order_qty,1) AS moq, p.supply_margin_override_pct AS margin_override
+      FROM products p
+      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
+        AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+      ORDER BY p.category, p.name LIMIT 10000
+    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; margin_override: number | null }>()
+    const out = (rows.results || []).map(r => {
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), ''] // 주문수량은 빈칸 — 유통사가 입력
+    })
+    return csvResponse(buildCsv(header, out), `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`)
+  } catch (err) {
+    return safeError(c, err, '주문 양식 생성 중 오류가 발생했습니다', '[wholesale]')
+  }
 })
 
 // ── OEM/ODM 신청 (유통회원) — 스펙: 유통스타트가 제조사 찾기·연결·생산 지원 ──────────
