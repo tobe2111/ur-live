@@ -664,6 +664,16 @@ adminApp.post('/payouts/process', async (c) => {
   if (!balance || balance.available_amount <= 0) return c.json({ success: false, error: '잔액 없음' }, 400)
   const amount = balance.available_amount
 
+  // 🛡️ 2026-06-04: 이중 지급 차단 CAS — available_amount 가 아직 amount 일 때만 0 으로 claim.
+  //   더블클릭/동시 요청이 둘 다 잔액을 읽고 둘 다 딜포인트를 적립하던 이중 지급 버그 방지.
+  //   credit(user_points) 이전에 claim → 진 요청은 아무 지급도 못 함.
+  const claim = await DB.prepare(
+    "UPDATE influencer_balances SET available_amount = 0, total_paid_out = total_paid_out + ?, updated_at = datetime('now') WHERE influencer_id = ? AND available_amount = ?"
+  ).bind(amount, influencerId, amount).run().catch(() => null)
+  if (!claim || (claim.meta?.changes ?? 0) === 0) {
+    return c.json({ success: false, error: '이미 처리되었거나 잔액이 변경되었습니다. 새로고침 후 다시 시도하세요.' }, 409)
+  }
+
   if (body.method === 'deal') {
     // 딜 보너스 % 적용
     const bonusRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_deal_bonus_pct'").first<{ value: string }>().catch(() => null)
@@ -679,10 +689,7 @@ adminApp.post('/payouts/process', async (c) => {
        VALUES (?, 'influencer_payout', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
     ).bind(influencerId, dealAmount, dealAmount, influencerId, `인플 정산 (딜 +${bonusPct}% 보너스)`).run().catch(swallow('marketing:influencer-payout:tx'))
   }
-  // 둘 다 — balance 차감 + total_paid_out 누적 + attribution paid 처리
-  await c.env.DB.prepare(
-    `UPDATE influencer_balances SET available_amount = 0, total_paid_out = total_paid_out + ?, updated_at = datetime('now') WHERE influencer_id = ?`
-  ).bind(amount, influencerId).run()
+  // attribution paid 처리 (잔고 claim 은 위에서 완료).
   await c.env.DB.prepare(
     `UPDATE influencer_attributions SET status = 'paid', paid_at = datetime('now')
      WHERE influencer_id = ? AND status = 'available' AND paid_at IS NULL`
