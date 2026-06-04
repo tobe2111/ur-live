@@ -432,7 +432,7 @@ api.interceptors.response.use(
       // dashboard 토큰이 없으면 이 블록 건너뛰고 Firebase user refresh 블록으로 fall through.
       // 기존 동작: 유저가 셀러 공개 프로필 보다가 401 → "셀러 인증 만료" → /seller/login (잘못)
       // 🛡️ 2026-04-30: /api/guides/* 도 dashboard 흐름 — :type 으로 token 결정.
-      const _isDashboardUrl = url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/') || url.includes('/api/guides/');
+      const _isDashboardUrl = url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/') || url.includes('/api/agency/') || url.includes('/api/guides/') || url.includes('/api/supply/');
       // /api/guides/admin → admin / /api/guides/seller → seller (또는 admin) / /api/guides/agency → agency (또는 admin)
       let _guideType: 'admin' | 'seller' | 'agency' | null = null;
       if (url.includes('/api/guides/')) {
@@ -443,12 +443,12 @@ api.interceptors.response.use(
         : _guideType === 'agency' ? 'agency_token'
         : _guideType === 'seller' ? 'seller_token'
         : url.includes('/api/agency/') ? 'agency_token'
-        : (url.includes('/api/seller/') || url.includes('/api/youtube/')) ? 'seller_token'
+        : (url.includes('/api/seller/') || url.includes('/api/youtube/') || url.includes('/api/supply/')) ? 'seller_token'
         : 'admin_token';
       const _hasDashboardToken = _isDashboardUrl && !!localStorage.getItem(_isDashTokenKey);
 
       if (_isDashboardUrl && _hasDashboardToken) {
-        const isSeller = _guideType === 'seller' || (!_guideType && (url.includes('/api/seller/') || url.includes('/api/youtube/')));
+        const isSeller = _guideType === 'seller' || (!_guideType && (url.includes('/api/seller/') || url.includes('/api/youtube/') || url.includes('/api/supply/')));
         const isAgency = _guideType === 'agency' || (!_guideType && url.includes('/api/agency/'));
         const tokenKey = isAgency ? 'agency_token' : isSeller ? 'seller_token' : 'admin_token';
         const refreshTokenKey = isAgency ? 'agency_refresh_token' : isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
