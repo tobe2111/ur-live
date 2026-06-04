@@ -150,7 +150,7 @@ export async function createLiveBroadcastHandler(c: LiveCreateCtx) {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
 
     // Get valid access token (channel_id로 특정 채널 지정 가능)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, channel_id)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY, channel_id)
 
     if (!accessToken) {
       return c.json({
@@ -604,7 +604,7 @@ app.get('/live/:id/detect-webcam', async (c) => {
     return c.json({ success: false, error: 'YouTube API not configured' }, 500)
   }
   const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
-  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
   if (!accessToken) return c.json({ success: false, error: 'YouTube 연동이 필요합니다' }, 401)
 
   try {
@@ -695,7 +695,7 @@ app.post('/live/:id/start', async (c) => {
     }
 
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
 
     // 🛡️ 2026-05-07: 웹캠 모드 (youtube_broadcast_id 없음) — accessToken 유무 무관하게 DB 만 업데이트.
     //   /create-webcam 으로 만들어진 stream 은 YouTube broadcast 가 없으므로 transition 불가.
@@ -813,7 +813,7 @@ app.get('/live/:id/status', async (c) => {
     }
 
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
 
     // 웹캠 모드: YouTube OAuth 없어도 DB 상태 반환 (polling이 조용히 실패하지 않도록)
     // 🛡️ 2026-05-07: youtube_broadcast_id 가 null 인 경우 (create-webcam 으로 생성된 stream)
@@ -1021,7 +1021,7 @@ app.get('/live/:id/diagnose', async (c) => {
   if (dbStream.youtube_broadcast_id && c.env.YOUTUBE_CLIENT_ID && c.env.YOUTUBE_CLIENT_SECRET) {
     try {
       const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
-      const accessToken = await getValidAccessToken(c.env.DB, dbStream.seller_id, youtubeService)
+      const accessToken = await getValidAccessToken(c.env.DB, dbStream.seller_id, youtubeService, c.env.DATA_ENCRYPTION_KEY)
       if (accessToken) {
         const ytRes = await fetch(
           `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=id,snippet,status,contentDetails&id=${encodeURIComponent(dbStream.youtube_broadcast_id)}`,
@@ -1161,7 +1161,7 @@ app.post('/live/:id/force-transition', async (c) => {
 
   try {
     const yt = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, yt)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, yt, c.env.DATA_ENCRYPTION_KEY)
     if (!accessToken) return c.json({ success: false, error: '유효한 YouTube 토큰 없음 (재연결 필요)' }, 401)
 
     // broadcast + bound stream status 한 번에 조회
@@ -1314,7 +1314,7 @@ app.post('/live/:id/_force-live', async (c) => {
   }
 
   const youtubeService = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
-  const accessToken = await getValidAccessToken(c.env.DB, stream.seller_id, youtubeService)
+  const accessToken = await getValidAccessToken(c.env.DB, stream.seller_id, youtubeService, c.env.DATA_ENCRYPTION_KEY)
   if (!accessToken) return c.json({ success: false, error: 'OAuth token unavailable' }, 401)
 
   const broadcastId = stream.youtube_broadcast_id
@@ -1547,7 +1547,7 @@ app.post('/live/_verify-whip-proxy', async (c) => {
     `).bind(sellerId).all<{ id: number; youtube_broadcast_id: string | null }>()
 
     const youtubeService = new YouTubeAPIService(ytClientId, ytClientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
 
     for (const z of zombies.results || []) {
       try {
@@ -1573,7 +1573,7 @@ app.post('/live/_verify-whip-proxy', async (c) => {
   // 3. YouTube WebRTC ingestion 실제 호출 테스트
   try {
     const youtubeService = new YouTubeAPIService(ytClientId, ytClientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
     if (!accessToken) {
       result.webrtc_supported = false
       result.webrtc_detail = '❌ YouTube OAuth 토큰 없음 — /seller/youtube/connect 먼저 연결 필요'
@@ -1673,7 +1673,7 @@ app.post('/live/:id/admin-force-end', requireAdmin(), async (c) => {
   if (stream.youtube_broadcast_id && c.env.YOUTUBE_CLIENT_ID && c.env.YOUTUBE_CLIENT_SECRET) {
     try {
       const yt = new YouTubeAPIService(c.env.YOUTUBE_CLIENT_ID, c.env.YOUTUBE_CLIENT_SECRET)
-      const token = await getValidAccessToken(c.env.DB, stream.seller_id, yt)
+      const token = await getValidAccessToken(c.env.DB, stream.seller_id, yt, c.env.DATA_ENCRYPTION_KEY)
       if (token) await yt.endBroadcast(token, stream.youtube_broadcast_id).catch(() => {})
     } catch { /* ignore */ }
   }
@@ -1818,7 +1818,7 @@ app.get('/live/:id/youtube-stats', async (c) => {
     if (!stream?.youtube_video_id) return c.json({ success: false, error: 'Stream not found' }, 404)
 
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
     if (!accessToken) return c.json({ success: false, error: 'YouTube auth required' }, 401)
 
     // videos.list — 60s 캐싱 (ConnectionQualityGauge 8s 폴링 → YouTube API 실제 호출 1/8로 감소)
@@ -1896,7 +1896,7 @@ app.post('/live/:id/end', async (c) => {
     const broadcastId = stream.youtube_broadcast_id as string | null
     if (broadcastId) {
       const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-      const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+      const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
       if (!accessToken) {
         youtubeEndError = 'no_access_token'
       } else {
@@ -2261,7 +2261,7 @@ app.get('/live/:id/chat', async (c) => {
     }
 
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
     if (!accessToken) return c.json({ success: false, error: 'YouTube auth required' }, 401)
 
     const url = new URL('https://www.googleapis.com/youtube/v3/liveChat/messages')
@@ -2418,7 +2418,7 @@ app.get('/live-readiness', async (c) => {
   }
 
   const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
 
   if (!accessToken) {
     // OAuth 한 번도 안 했거나 refresh token 도 만료
@@ -2519,7 +2519,7 @@ app.post('/streaming-setup/init', async (c) => {
   }
 
   const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+  const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
   if (!accessToken) {
     return c.json({ success: false, error: 'YouTube 연동이 필요합니다', error_code: 'YOUTUBE_AUTH_REQUIRED' }, 401)
   }
@@ -3144,7 +3144,7 @@ export async function omeAdmissionHandler(
         await new Promise((r) => setTimeout(r, 2000))
         const MAX_TX_RETRIES = 15
         const yt = new YouTubeAPIService(env.YOUTUBE_CLIENT_ID, env.YOUTUBE_CLIENT_SECRET)
-        const accessToken = await getValidAccessToken(env.DB, sellerId, yt)
+        const accessToken = await getValidAccessToken(env.DB, sellerId, yt, env.DATA_ENCRYPTION_KEY)
         if (!accessToken) {
           console.warn('[OME admission] no valid access token, skipping transition')
           return

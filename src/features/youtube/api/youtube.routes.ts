@@ -6,6 +6,8 @@
 import { Hono } from 'hono'
 import { verify as honoVerify } from 'hono/jwt'
 import { YouTubeAPIService } from '../services/youtube-api.service'
+// 🛡️ 2026-06-04 (P1 보안): YouTube OAuth 토큰 at-rest 암호화. KEK 미설정 시 평문 passthrough(하위호환).
+import { encryptAtRest, decryptAtRest } from '../../../worker/utils/data-crypto'
 import type { 
   YouTubeOAuthTokens, 
   YouTubeChannel, 
@@ -19,6 +21,7 @@ type Bindings = {
   YOUTUBE_CLIENT_ID?: string
   YOUTUBE_CLIENT_SECRET?: string
   YOUTUBE_REDIRECT_URI?: string
+  DATA_ENCRYPTION_KEY?: string
 }
 
 interface JwtPayload {
@@ -187,6 +190,7 @@ export async function getValidAccessToken(
   db: D1Database,
   sellerId: number,
   youtubeService: YouTubeAPIService,
+  kek?: string,            // 🛡️ 2026-06-04 (P1): DATA_ENCRYPTION_KEY — 토큰 복호화/암호화용
   channelOAuthId?: number
 ): Promise<string | null> {
   const auth = channelOAuthId
@@ -203,21 +207,25 @@ export async function getValidAccessToken(
 
   if (!auth) return null
 
+  // 🛡️ at-rest 복호화 (평문 legacy 값은 passthrough).
+  const accessTokenPlain = await decryptAtRest(auth.access_token, kek)
+
   // Check if token is expired (with 5-minute buffer)
   if (auth.expires_at > Date.now() + 5 * 60 * 1000) {
-    return auth.access_token
+    return accessTokenPlain
   }
 
   // Refresh token
   try {
-    const tokens = await youtubeService.refreshAccessToken(auth.refresh_token)
-    
-    // Update database
+    const refreshTokenPlain = await decryptAtRest(auth.refresh_token, kek)
+    const tokens = await youtubeService.refreshAccessToken(refreshTokenPlain)
+
+    // Update database (새 access_token 암호화 저장)
     await db.prepare(`
-      UPDATE seller_youtube_oauth 
+      UPDATE seller_youtube_oauth
       SET access_token = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(tokens.access_token, tokens.expires_at, auth.id).run()
+    `).bind(await encryptAtRest(tokens.access_token, kek), tokens.expires_at, auth.id).run()
 
     return tokens.access_token
   } catch (error) {
@@ -359,10 +367,15 @@ app.post('/oauth/callback', async (c) => {
       'SELECT id FROM seller_youtube_oauth WHERE seller_id = ? AND channel_id = ?'
     ).bind(sellerId, channel.id).first<{ id: number }>()
 
+    // 🛡️ 2026-06-04 (P1): 토큰 at-rest 암호화 후 저장 (KEK 미설정이면 평문 — 하위호환).
+    const kek = c.env.DATA_ENCRYPTION_KEY
+    const encAccess = await encryptAtRest(tokens.access_token, kek)
+    const encRefresh = tokens.refresh_token ? await encryptAtRest(tokens.refresh_token, kek) : null
+
     if (existing) {
       // Only overwrite refresh_token if Google returned a new one (prompt=consent always does,
       // but guard against empty string wiping a valid existing token)
-      const refreshTokenToSave = tokens.refresh_token || null
+      const refreshTokenToSave = encRefresh
       const sql = refreshTokenToSave
         ? `UPDATE seller_youtube_oauth SET
              access_token = ?, refresh_token = ?, expires_at = ?,
@@ -375,8 +388,8 @@ app.post('/oauth/callback', async (c) => {
              is_active = 1, updated_at = CURRENT_TIMESTAMP
            WHERE id = ?`
       const params = refreshTokenToSave
-        ? [tokens.access_token, refreshTokenToSave, tokens.expires_at, googleEmail, channel.thumbnail, channel.subscriberCount, existing.id]
-        : [tokens.access_token, tokens.expires_at, googleEmail, channel.thumbnail, channel.subscriberCount, existing.id]
+        ? [encAccess, refreshTokenToSave, tokens.expires_at, googleEmail, channel.thumbnail, channel.subscriberCount, existing.id]
+        : [encAccess, tokens.expires_at, googleEmail, channel.thumbnail, channel.subscriberCount, existing.id]
       await c.env.DB.prepare(sql).bind(...params).run()
     } else {
       await c.env.DB.prepare(`
@@ -385,7 +398,7 @@ app.post('/oauth/callback', async (c) => {
           channel_id, channel_title, channel_thumbnail, subscriber_count
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        sellerId, googleEmail, tokens.access_token, tokens.refresh_token, tokens.expires_at,
+        sellerId, googleEmail, encAccess, encRefresh, tokens.expires_at,
         channel.id, channel.title, channel.thumbnail, channel.subscriberCount
       ).run()
     }
@@ -512,7 +525,7 @@ app.get('/shorts/sync', async (c) => {
 
   try {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService, c.env.DATA_ENCRYPTION_KEY)
     if (!accessToken) return c.json({ success: false, error: 'YouTube 인증 필요' }, 401)
 
     // 채널 ID 가져오기

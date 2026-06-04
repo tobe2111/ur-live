@@ -7,12 +7,15 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
+// 🛡️ 2026-06-04 (P1): YouTube 토큰 at-rest 복호화 (평문 legacy passthrough).
+import { decryptAtRest } from '../../../worker/utils/data-crypto'
 
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
   YOUTUBE_CLIENT_ID?: string
   YOUTUBE_CLIENT_SECRET?: string
+  DATA_ENCRYPTION_KEY?: string
 }
 
 interface JwtPayload {
@@ -93,7 +96,7 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
 /**
  * Helper: Get valid YouTube access token
  */
-async function getAccessToken(db: D1Database, sellerId: number): Promise<string | null> {
+async function getAccessToken(db: D1Database, sellerId: number, kek?: string): Promise<string | null> {
   const auth = await db.prepare(`
     SELECT access_token, refresh_token, expires_at
     FROM seller_youtube_oauth
@@ -103,14 +106,8 @@ async function getAccessToken(db: D1Database, sellerId: number): Promise<string 
 
   if (!auth) return null
 
-  // Check if expired
-  if (auth.expires_at > Date.now() + 5 * 60 * 1000) {
-    return auth.access_token
-  }
-
-  // Refresh token (implementation needed)
-  // For now, return existing token
-  return auth.access_token
+  // 🛡️ 2026-06-04 (P1): at-rest 복호화 (평문 legacy passthrough). refresh 미구현이라 현재 access_token 그대로.
+  return await decryptAtRest(auth.access_token, kek)
 }
 
 /**
@@ -137,7 +134,7 @@ app.get('/chat/:streamId', async (c) => {
     }
 
     const liveChatId = stream.youtube_live_chat_id
-    const accessToken = await getAccessToken(c.env.DB, sellerId)
+    const accessToken = await getAccessToken(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
 
     if (!accessToken) {
       return c.json({ success: false, error: 'YouTube authentication required' }, 401)
@@ -263,7 +260,7 @@ app.post('/chat/:streamId', async (c) => {
     }
 
     const liveChatId = stream.youtube_live_chat_id
-    const accessToken = await getAccessToken(c.env.DB, sellerId)
+    const accessToken = await getAccessToken(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
 
     if (!accessToken) {
       return c.json({ success: false, error: 'YouTube authentication required' }, 401)
