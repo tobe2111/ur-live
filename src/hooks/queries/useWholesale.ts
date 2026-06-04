@@ -173,6 +173,25 @@ export function useWholesaleRecentItems() {
   })
 }
 
+export interface WholesaleDocRow {
+  id: number; doc_type: string; period_month: string; party_name: string | null
+  supply_amount: number; vat_amount: number; total_amount: number; order_count: number
+  status: string; issued_at: string | null; nts_confirm_num: string | null
+}
+
+/** 유통사 본인 발행 자료(거래명세서/세금계산서, sales 방향). */
+export function useWholesaleDocuments() {
+  return useQuery<WholesaleDocRow[]>({
+    queryKey: queryKeys.wholesale('documents'),
+    queryFn: () =>
+      api.get('/api/wholesale/documents', sellerAuth()).then((r) => (r.data?.success ? (r.data.documents || []) : [])).catch(() => []),
+    enabled: hasSellerToken(),
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useWholesaleProposals() {
   return useQuery<WholesaleCatalogItem[]>({
     queryKey: queryKeys.wholesale('proposals'),

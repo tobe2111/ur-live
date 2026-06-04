@@ -159,8 +159,23 @@ async function main() {
   assert.ok(20 >= moq && 40 >= moq, 'MOQ 이상 주문은 허용')
   ok('MOQ — 컬럼 기본값 1 + 저장 + 주문 하한(qty>=moq) 판정')
 
+  // 10) 자료(tax_documents) 유통사 스코프 — 본인 sales 문서만 노출(매입/타인 제외)
+  // case 3 에서 distributor 10 의 sales 세금계산서 1건 발행됨. 추가로 매입 + 타 유통사 sales 삽입.
+  await DB.prepare("INSERT INTO tax_documents (doc_type,direction,period_month,distributor_seller_id,supplier_id,party_name,supply_amount,vat_amount,total_amount,order_count,status,issued_at) VALUES ('tax_invoice','purchase','2026-06',NULL,7,'제조사X',9000,900,9900,1,'issued',datetime('now'))").run()
+  await DB.prepare("INSERT INTO tax_documents (doc_type,direction,period_month,distributor_seller_id,supplier_id,party_name,supply_amount,vat_amount,total_amount,order_count,status,issued_at) VALUES ('transaction_statement','sales','2026-06',99,0,'유통사B',5000,500,5500,1,'issued',datetime('now'))").run()
+  const mine = await DB.prepare(
+    "SELECT id, direction, distributor_seller_id FROM tax_documents WHERE distributor_seller_id = ? AND direction = 'sales' ORDER BY id"
+  ).bind(10).all<{ id: number; direction: string; distributor_seller_id: number }>()
+  const mineRows = mine.results || []
+  assert.ok(mineRows.length >= 1, '본인 sales 문서가 조회되어야 함')
+  assert.ok(mineRows.every(r => r.direction === 'sales' && Number(r.distributor_seller_id) === 10), '매입/타 유통사 문서가 섞이면 안 됨(IDOR)')
+  // IDOR: 타 유통사(99) 문서를 distributor 10 으로 조회 시 0건
+  const stolen = await DB.prepare("SELECT COUNT(*) AS n FROM tax_documents WHERE id IN (SELECT id FROM tax_documents WHERE distributor_seller_id=99) AND distributor_seller_id=10").first<{ n: number }>()
+  assert.strictEqual(Number(stolen?.n), 0, '타 유통사 문서가 본인 조회에 노출되면 안 됨')
+  ok('자료 유통사 스코프 — 본인 sales 만(매입/타인 제외, IDOR 가드)')
+
   await mf.dispose()
-  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/9\n`)
+  console.log(`\n✅ 도매몰 실 SQLite 검증 통과 — ${passed}/10\n`)
 }
 
 main().catch((e) => { console.error('\n❌ 검증 실패:', e?.message || e); process.exit(1) })

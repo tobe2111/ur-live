@@ -48,6 +48,7 @@ const WholesaleCartPage = lazy(() => import('./pages/WholesaleCartPage'))
 const WholesaleSuccessPage = lazy(() => import('./pages/WholesaleSuccessPage'))
 const WholesaleOrdersPage = lazy(() => import('./pages/WholesaleOrdersPage'))
 const WholesaleStatementPage = lazy(() => import('./pages/WholesaleStatementPage'))
+const WholesaleDocsPage = lazy(() => import('./pages/WholesaleDocsPage'))
 const WholesaleOemPage = lazy(() => import('./pages/WholesaleOemPage'))
 const WholesaleIntroPage = lazy(() => import('./pages/WholesaleIntroPage'))
 const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
@@ -504,6 +505,7 @@ function AppContent() {
             <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
             <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />
             <Route path="/wholesale/statement" element={<WholesaleStatementPage />} />
+            <Route path="/wholesale/documents" element={<WholesaleDocsPage />} />
             <Route path="/wholesale/oem" element={<WholesaleOemPage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />

@@ -605,6 +605,47 @@ app.get('/statement', async (c) => {
   }
 })
 
+// ── GET /documents — 유통사 본인 발행 자료(거래명세서/세금계산서, sales 방향만) ──────
+import { ensureTaxDocSchema, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
+
+app.get('/documents', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureTaxDocSchema(DB)
+    // sales = 유통스타트→유통사(본인 수취 자료). 매입(purchase)은 제조사 자료라 비노출.
+    const { results } = await DB.prepare(
+      `SELECT id, doc_type, period_month, party_name, supply_amount, vat_amount, total_amount, order_count, status, issued_at, nts_confirm_num
+       FROM tax_documents WHERE distributor_seller_id = ? AND direction = 'sales'
+       ORDER BY period_month DESC, id DESC LIMIT 200`
+    ).bind(sellerId).all()
+    return c.json({ success: true, documents: results || [] })
+  } catch (err) {
+    return safeError(c, err, '자료 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── GET /documents/:id/html — 인쇄용 HTML (본인 sales 문서만, IDOR 가드) ──────────
+app.get('/documents/:id/html', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.text('로그인이 필요합니다', 401)
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.text('잘못된 문서 ID', 400)
+  try {
+    await ensureTaxDocSchema(DB)
+    const doc = await DB.prepare(
+      `SELECT id, doc_type, direction, period_month, party_name, supply_amount, vat_amount, total_amount, order_count, status, issued_at
+       FROM tax_documents WHERE id = ? AND distributor_seller_id = ? AND direction = 'sales'`
+    ).bind(id, sellerId).first<TaxDocRow>()
+    if (!doc) return c.text('문서를 찾을 수 없습니다', 404)
+    return c.html(renderTaxDocHtml(doc))
+  } catch {
+    return c.text('문서를 열 수 없습니다', 500)
+  }
+})
+
 // ── 엑셀 — 유통사 등급가 카탈로그 다운로드(.xlsx) + 주문 양식(.csv 재업로드용) ─────
 import { buildCsv, csvResponse } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'

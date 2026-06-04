@@ -36,6 +36,11 @@
 - 카드 "최소 N개 · 박스 ₩" · 상세 수량 기본/스텝=MOQ·박스 단가 · 카트 담기 qty=MOQ·스텝퍼 MOQ 단위.
 - **서버 검증**: `/orders` 에서 `qty < moq` 차단(클라 UI + 서버 이중 방어). verify:sql 9/9.
 
+### 4차 증분 (2026-06-04) — 유통사 자료(거래명세서/세금계산서) 뷰
+- `GET /api/wholesale/documents`(본인 sales 방향만) + `GET /documents/:id/html`(IDOR 가드 — distributor_seller_id 일치 + sales). 기존 `tax_documents`+`renderTaxDocHtml` 재사용.
+- `WholesaleDocsPage`(/wholesale/documents): 거래명세서/세금계산서 탭 + 공급가/부가세/합계 + 상태칩 + 인쇄/PDF(인증 fetch→새창). 헤더 "자료" 링크.
+- 공급사 정보 비노출 유지. verify:sql 10/10(스코프/IDOR 케이스 포함).
+
 ## 🟡 시안엔 있으나 미구현 (실데이터/모델 갭 — 추가 구현 후보)
 | 시안 요소 | 갭 사유 |
 |---|---|
