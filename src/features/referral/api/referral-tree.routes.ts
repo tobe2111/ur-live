@@ -865,24 +865,38 @@ referralTreeRoutes.post('/withdrawals', requireAuth(), async (c) => {
   }
   const beneficiaryType = granted[0].beneficiary_type || 'user'
 
-  // 출금 요청 row 생성
+  // 🛡️ 2026-06-04: 동시 신청 phantom 출금(초과지급) 방지 — commission 을 *먼저 원자 claim* 하고
+  //   실제 claim 된 분으로 출금액 확정. 동시요청 중 하나만 granted 를 claim(나머지는 0건 → 롤백).
   const insertResult = await DB.prepare(
     `INSERT INTO commission_withdrawals
        (beneficiary_id, beneficiary_type, total_amount, commission_count, status, bank_name, account_number, account_holder)
-     VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`,
-  ).bind(userId, beneficiaryType, totalAmount, granted.length, bankName, accountNumber, accountHolder).run()
+     VALUES (?, ?, 0, 0, 'pending', ?, ?, ?)`,
+  ).bind(userId, beneficiaryType, bankName, accountNumber, accountHolder).run()
   const withdrawalId = insertResult.meta.last_row_id as number
 
-  // commission status 전환
-  await DB.prepare(
+  // commission 원자 claim — status='granted' 인 것만 이 withdrawal 에 귀속.
+  const claim = await DB.prepare(
     `UPDATE referral_commissions
        SET status = 'withdrawal_requested', withdrawal_request_id = ?
      WHERE beneficiary_id = ? AND status = 'granted'`,
   ).bind(withdrawalId, userId).run()
+  const claimedCount = claim.meta?.changes ?? 0
+  if (claimedCount === 0) {
+    // 다른 동시 요청이 먼저 claim → phantom withdrawal 삭제 후 거부.
+    await DB.prepare("DELETE FROM commission_withdrawals WHERE id = ?").bind(withdrawalId).run().catch(() => {})
+    return c.json({ success: false, error: '출금 가능한 commission 이 없습니다.' }, 400)
+  }
+  // 실제 claim 된 합계로 출금 row 확정 (claim 시점 권위값).
+  const claimedSum = await DB.prepare(
+    "SELECT COALESCE(SUM(commission_amount), 0) AS amt FROM referral_commissions WHERE withdrawal_request_id = ?"
+  ).bind(withdrawalId).first<{ amt: number }>().catch(() => ({ amt: totalAmount }))
+  const finalTotal = claimedSum?.amt ?? totalAmount
+  await DB.prepare("UPDATE commission_withdrawals SET total_amount = ?, commission_count = ? WHERE id = ?")
+    .bind(finalTotal, claimedCount, withdrawalId).run()
 
   return c.json({
     success: true,
-    data: { withdrawal_id: withdrawalId, total_amount: totalAmount, commission_count: granted.length },
+    data: { withdrawal_id: withdrawalId, total_amount: finalTotal, commission_count: claimedCount },
   })
 })
 
