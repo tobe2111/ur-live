@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, Globe, Activity, Ticket, Star, BarChart2, BookOpen, Wifi, Tag, Sparkles, Boxes
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { getRoleShortLabel } from '@/shared/seller-roles'
@@ -45,17 +45,7 @@ const NAV_GROUPS: {
       { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
     ],
   },
-  {
-    labelKey: 'seller.layout.broadcast',
-    hideFor: ['store_owner'],
-    mode: 'live',
-    items: [
-      { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true, mode: 'live' },
-      { path: '/seller/streaming-setup', labelKey: 'seller.streamingSetup', icon: Wifi, mode: 'live' },
-      { path: '/seller/shorts', labelKey: 'seller.shorts', icon: Play, mode: 'live' },
-      { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity, mode: 'live' },
-    ],
-  },
+  // 🏭 2026-06-04 (사용자 요청): 방송 그룹(라이브 방송/송출 키/쇼츠/라이브 분석) 숨김 — 셀러 대시보드 간소화.
   {
     // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
     labelKey: 'seller.layout.products',
@@ -145,6 +135,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🛡️ 2026-04-30: 만료 5분 전 자동 refresh + 탭 복귀 시 검증
   useTokenAutoRefresh('seller')
+
+  // 🏭 2026-06-04 유통사 분리 — 유통사(도매 바이어) 전용 계정은 셀러 대시보드 대신 도매몰로.
+  //   (is_distributor=1 = /wholesale 에서 가입한 순수 바이어. 라이브셀러/겸업 계정은 영향 없음.)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1') {
+      navigate('/wholesale', { replace: true })
+    }
+  }, [navigate])
 
   const sellerName = localStorage.getItem('seller_name') || 'Seller'
   const sellerType = (localStorage.getItem('seller_type') || 'influencer') as SellerType
@@ -475,20 +473,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <MessageCircle className="w-4 h-4" />
       </a>
 
-      {/* Mobile quick-action FAB
-          🛡️ 2026-04-30: 이미 라이브 방송 페이지면 숨김 (현 페이지 navigate = no-op 인 것 처럼 보였던 사용자 신고) */}
-      {!location.pathname.startsWith('/seller/live') && (
-        <div className="md:hidden fixed bottom-6 right-4 z-40">
-          <button
-            onClick={() => navigate('/seller/live-broadcast')}
-            className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
-            style={{ background: 'linear-gradient(90deg, #FF0033, #EC4899)', boxShadow: '0 8px 24px rgba(255,0,51,0.3)' }}
-          >
-            <Radio className="w-4 h-4" />
-            라이브 시작
-          </button>
-        </div>
-      )}
+      {/* 🏭 2026-06-04 (사용자 요청): 모바일 '라이브 시작' FAB 제거 — 셀러 대시보드 간소화. */}
     </div>
   )
 }

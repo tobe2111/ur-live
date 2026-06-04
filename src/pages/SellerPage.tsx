@@ -6,7 +6,6 @@ import api from '@/lib/api'
 import {
   Package, ShoppingBag, Play, DollarSign,
   TrendingUp,
-  ChevronRight,
   AlertCircle,
   AlertTriangle, CreditCard,
   LayoutDashboard
@@ -18,17 +17,12 @@ import RoleGate from '@/components/RoleGate'
 import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
 import { DashboardPageHeader } from '@/components/dashboard'
-import SellerOnboardingChecklist from '@/components/seller/SellerOnboardingChecklist'
 import SellerReferralInfoCard from '@/components/seller/SellerReferralInfoCard'
 import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
 import SellerKpiDashboard from '@/components/seller/SellerKpiDashboard'
-import TierBadge from '@/components/seller/TierBadge'
-import SellerOnboardingWidget from '@/components/seller/SellerOnboardingWidget'
 import { formatNumber } from '@/utils/format'
 import { swallow } from '@/shared/utils/swallow'
 import LazyChart from './seller-page/LazyChart'
-import OnboardingChecklist from './seller-page/OnboardingChecklist'
-import RealtimeOrdersPanel from './seller-page/RealtimeOrdersPanel'
 import MonthlyGoalCard from './seller-page/MonthlyGoalCard'
 import ConversionFunnel from './seller-page/ConversionFunnel'
 import QuickActions from './seller-page/QuickActions'
@@ -496,8 +490,7 @@ export default function SellerPage() {
           </div>
         </RoleGate>
 
-        {/* 🛡️ 2026-05-15: 신규 셀러 onboarding checklist (5단계, 모두 완료 시 자동 hide) */}
-        <SellerOnboardingChecklist />
+        {/* 🏭 2026-06-04 (사용자 요청): 시작 가이드(온보딩 체크리스트) 제거 — 대시보드 간소화. */}
         {/* 🛡️ 2026-05-27: 영입자 + commission 분배 가시화 (영입자 있을 때만 표시) */}
         <SellerReferralInfoCard />
 
@@ -525,28 +518,8 @@ export default function SellerPage() {
 
         {isLiveMode && <SellerGroupBuyOverview />}
 
-        {/* 🛡️ 2026-05-05: 등급 배지 — diamond/gold/silver/bronze/new */}
-        <TierBadge />
-
-        {/* 2026-05-05: 광고 슬롯 입찰 진입 배너 */}
-        <button
-          type="button"
-          onClick={() => navigate('/seller/ad-slots')}
-          className="w-full mx-0 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-2xl text-left hover:from-pink-100 hover:to-purple-100 transition-colors"
-        >
-          <span className="text-xl" aria-hidden="true">📢</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-bold text-gray-900">{t('seller.adSlotsTitle', { defaultValue: '광고 슬롯 입찰' })}</p>
-            <p className="text-[11px] text-gray-500">{t('seller.adSlotsDesc', { defaultValue: '메인·라이브 상단 24시간 우선 노출 — 매일 18시 낙찰' })}</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-        </button>
-
-        {/* 🛡️ 2026-04-23 배치 170: 셀러 온보딩 가이드 (신규 셀러만 표시) */}
-        <OnboardingChecklist stats={stats} hasBank={hasBank} />
-
-        {/* 🛡️ 2026-04-27 Phase 1-5: 7일 부트캠프 위젯 */}
-        <SellerOnboardingWidget />
+        {/* 🏭 2026-06-04 (사용자 요청): 현재 등급(TierBadge) · 광고 슬롯 입찰 배너 · 시작 가이드(온보딩) ·
+            7일 부트캠프 위젯 제거 — 셀러 대시보드 간소화. */}
 
           {/* ── 월간 매출 목표 진행률 ── */}
           <MonthlyGoalCard
@@ -681,16 +654,7 @@ export default function SellerPage() {
           {/* ── Main grid ── */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
 
-            {/* ── Real-time orders (col-span-2) ── */}
-            <RealtimeOrdersPanel
-              recentOrders={recentOrders}
-              newOrderIds={newOrderIds}
-              ordersRefreshing={ordersRefreshing}
-              lastUpdated={lastUpdated}
-              onRefresh={() => pollOrders(true)}
-              fmtPrice={fmtPrice}
-              timeAgo={timeAgo}
-            />
+            {/* 🏭 2026-06-04 (사용자 요청): 실시간 주문 패널 제거 — 셀러 대시보드 간소화. */}
 
             {/* ── Right panel (col-span-1) ── */}
             <div className="space-y-4">

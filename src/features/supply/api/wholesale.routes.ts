@@ -10,6 +10,9 @@
  * 마운트: app.route('/api/wholesale', wholesaleRoutes)
  */
 import { Hono } from 'hono'
+import { sign } from 'hono/jwt'
+import { hashPassword, validatePasswordComplexity } from '@/lib/password'
+import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import {
@@ -116,6 +119,86 @@ async function loadQtyTiers(DB: D1Database, productIds: number[]): Promise<Map<n
   }
   return map
 }
+
+// ── POST /register — 유통사(도매 바이어) 경량 전용 가입 ─────────────────────────────
+//   라이브커머스 셀러 온보딩(유튜브·NTS·seller_type)과 분리. seller 계정을 재사용하되
+//   distributor_grade='C' + is_distributor=1 로 표시 → /seller 대시보드 대신 /wholesale 에서 완결.
+//   ⚠️ 사업자번호는 세금계산서용 선택값. 가입 즉시 사용 가능(status='approved').
+app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSec: 3600 }), async (c) => {
+  const { DB, JWT_SECRET } = c.env
+  if (!JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류' }, 500)
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const name = String(body.name || '').trim()                 // 담당자명
+    const business_name = String(body.business_name || '').trim() // 상호(회사명)
+    const email = String(body.email || '').trim().toLowerCase()
+    const password = String(body.password || '')
+    const phone = String(body.phone || '').trim()
+    const business_number = String(body.business_number || '').trim() // 선택(세금계산서용)
+
+    if (!name || !business_name || !email || !password) {
+      return c.json({ success: false, error: '담당자명·상호·이메일·비밀번호를 모두 입력해주세요' }, 400)
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ success: false, error: '이메일 형식이 올바르지 않습니다' }, 400)
+    const pw = validatePasswordComplexity(password)
+    if (!pw.ok) return c.json({ success: false, error: pw.error }, 400)
+    if (business_number && !/^\d{3}-\d{2}-\d{5}$/.test(business_number)) {
+      return c.json({ success: false, error: '사업자번호 형식이 올바르지 않습니다 (000-00-00000)' }, 400)
+    }
+
+    // 누락 가능 컬럼 보장 (idempotent)
+    for (const sql of [
+      "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
+      'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
+      'ALTER TABLE sellers ADD COLUMN business_number TEXT',
+      'ALTER TABLE sellers ADD COLUMN phone TEXT',
+      'ALTER TABLE sellers ADD COLUMN business_name TEXT',
+      'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
+      'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
+    ]) { await DB.prepare(sql).run().catch(swallow('wholesale:register:alter')) }
+
+    const dup = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first()
+    if (dup) return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409)
+
+    // username 생성 (unique 확보)
+    const base = (email.split('@')[0] || 'dist').replace(/[^a-z0-9]/gi, '').slice(0, 16).toLowerCase() || 'dist'
+    let username = ''
+    for (let i = 0; i < 6; i++) {
+      const cand = `${base}${Math.floor(1000 + Math.random() * 9000)}`
+      const ex = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(cand).first()
+      if (!ex) { username = cand; break }
+    }
+    if (!username) username = `dist${Date.now().toString().slice(-8)}`
+
+    const passwordHash = await hashPassword(password)
+    const ins = await DB.prepare(`
+      INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, phone,
+        status, commission_rate, seller_type, distributor_grade, is_distributor, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, 'influencer', 'C', 1, datetime('now'), datetime('now'))
+    `).bind(username, email, passwordHash, name, business_name, business_number || null, phone || null, DEFAULT_COMMISSION_RATE).run()
+    const sellerId = Number(ins.meta?.last_row_id)
+    if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
+
+    const nowSec = Math.floor(Date.now() / 1000)
+    const payload = {
+      sub: String(sellerId), seller_id: sellerId, email, name, username,
+      type: 'seller', status: 'approved', seller_type: 'influencer', is_distributor: 1,
+      iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
+    }
+    const token = await sign(payload, JWT_SECRET)
+    const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+
+    return c.json({
+      success: true,
+      data: {
+        accessToken: token, refreshToken, token,
+        seller: { id: sellerId, username, email, name, business_name, status: 'approved', commission_rate: DEFAULT_COMMISSION_RATE, seller_type: 'influencer', is_distributor: 1 },
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
+  }
+})
 
 // ── GET /me ───────────────────────────────────────────────────────────────────
 app.get('/me', async (c) => {
