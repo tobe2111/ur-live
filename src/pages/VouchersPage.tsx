@@ -284,7 +284,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         const cached = JSON.parse(raw) as { ts: number; data: CategorySection[] }
         if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) {
           setSections(cached.data)
-          if (!category && !brand && cached.data.length > 0) {
+          // 🏭 2026-06-04 (flash fix): embedded(홈)에서는 첫 카테고리 자동선택 X.
+          //   기존: 홈 SSR(전체 deal) 표시 → JS 가 ?category=첫카테고리 로 교체 → 내용/URL 깜빡임.
+          //   embedded 는 category 비워둬 SSR MAIN 즉시표시 유지 + 홈 URL 깨끗('/').
+          if (!embedded && !category && !brand && cached.data.length > 0) {
             const next = new URLSearchParams(searchParams)
             next.set('category', cached.data[0].category)
             setSearchParams(next, { replace: true })
@@ -299,8 +302,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         const list = r.data.data as CategorySection[]
         setSections(list)
         try { localStorage.setItem('vouchers_categories_v1', JSON.stringify({ ts: Date.now(), data: list })) } catch { /* quota */ }
-        // 카테고리 URL 미지정 시 첫 카테고리 (인기 ↑) 자동 선택.
-        if (!category && !brand && list.length > 0) {
+        // 카테고리 URL 미지정 시 첫 카테고리 (인기 ↑) 자동 선택. (embedded 홈은 제외 — flash 방지)
+        if (!embedded && !category && !brand && list.length > 0) {
           const next = new URLSearchParams(searchParams)
           next.set('category', list[0].category)
           setSearchParams(next, { replace: true })
