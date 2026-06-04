@@ -22,7 +22,6 @@ import { SORT_LABELS, STATUS_BADGES } from './group-buy-list/constants'
 import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import LiveTicker from '@/components/group-buy/LiveTicker'
-import RecentlyViewedStrip from '@/components/group-buy/RecentlyViewedStrip'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 
@@ -243,6 +242,22 @@ export default function GroupBuyListPage() {
 
     return result
   }, [items, category, sortBy, searchQuery, regionKey, districtKey])
+
+  // 🛡️ 2026-06-04: 큐레이션 3종 — filtered 변경 시에만 재계산(매 렌더/스크롤 재계산 방지).
+  const curation = useMemo(() => {
+    const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)
+    const closingToday = filtered.filter(p => {
+      if (!p.group_buy_deadline) return false
+      const ms = new Date(p.group_buy_deadline).getTime() - Date.now()
+      return ms > 0 && ms < 24 * 3600 * 1000
+    }).slice(0, 4)
+    const almostDone = filtered.filter(p => {
+      if (!p.group_buy_target) return false
+      const pct = (p.group_buy_current ?? 0) / p.group_buy_target
+      return pct >= 0.7 && pct < 1
+    }).slice(0, 4)
+    return { lastOne, closingToday, almostDone }
+  }, [filtered])
 
   const filteredCommunity = useMemo(() => {
     let result = [...communityItems]
@@ -518,55 +533,40 @@ export default function GroupBuyListPage() {
         {mainTab === 'seller' ? (
           /* ── 셀러 공구 상품 그리드 (2열) ── */
           <>
-            {/* 🛡️ 2026-05-15: 최근 본 공구 — localStorage 기반 (재방문 promote) */}
-            <RecentlyViewedStrip />
+            {/* 🛡️ 2026-06-04 (사용자 요청): '최근 본 공구' 제거. */}
 
-            {/* 🛡️ 2026-05-15: 큐레이션 섹션 — 1명 남음 / 오늘 마감 / 거의 성공 */}
-            {!loading && filtered.length > 0 && (() => {
-              const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)
-              const closingToday = filtered.filter(p => {
-                if (!p.group_buy_deadline) return false
-                const ms = new Date(p.group_buy_deadline).getTime() - Date.now()
-                return ms > 0 && ms < 24 * 3600 * 1000
-              }).slice(0, 4)
-              const almostDone = filtered.filter(p => {
-                if (!p.group_buy_target) return false
-                const pct = (p.group_buy_current ?? 0) / p.group_buy_target
-                return pct >= 0.7 && pct < 1
-              }).slice(0, 4)
-
-              return (
-                <>
-                  {lastOne.length > 0 && (
-                    <CurationStrip
-                      title="🔥 1명만 더 모이면 성공"
-                      subtitle="지금 참여하면 바로 공구 확정"
-                      items={lastOne}
-                      navigate={navigate}
-                      accent="red"
-                    />
-                  )}
-                  {closingToday.length > 0 && (
-                    <CurationStrip
-                      title="⏰ 오늘 마감"
-                      subtitle="놓치면 다음 기회까지 며칠"
-                      items={closingToday}
-                      navigate={navigate}
-                      accent="amber"
-                    />
-                  )}
-                  {almostDone.length > 0 && (
-                    <CurationStrip
-                      title="✨ 거의 성공"
-                      subtitle="목표의 70% 이상"
-                      items={almostDone}
-                      navigate={navigate}
-                      accent="pink"
-                    />
-                  )}
-                </>
-              )
-            })()}
+            {/* 🛡️ 2026-05-15: 큐레이션 섹션 — 1명 남음 / 오늘 마감 / 거의 성공 (useMemo 로 매 렌더 재계산 방지) */}
+            {!loading && filtered.length > 0 && (
+              <>
+                {curation.lastOne.length > 0 && (
+                  <CurationStrip
+                    title="🔥 1명만 더 모이면 성공"
+                    subtitle="지금 참여하면 바로 공구 확정"
+                    items={curation.lastOne}
+                    navigate={navigate}
+                    accent="red"
+                  />
+                )}
+                {curation.closingToday.length > 0 && (
+                  <CurationStrip
+                    title="⏰ 오늘 마감"
+                    subtitle="놓치면 다음 기회까지 며칠"
+                    items={curation.closingToday}
+                    navigate={navigate}
+                    accent="amber"
+                  />
+                )}
+                {curation.almostDone.length > 0 && (
+                  <CurationStrip
+                    title="✨ 거의 성공"
+                    subtitle="목표의 70% 이상"
+                    items={curation.almostDone}
+                    navigate={navigate}
+                    accent="pink"
+                  />
+                )}
+              </>
+            )}
 
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
