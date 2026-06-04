@@ -18,6 +18,7 @@ export interface GroupBuyProduct {
   group_buy_status?: string
   sold_count?: number
   created_at?: string
+  dominant_color?: string | null
 }
 
 export interface CommunityGroupBuy {

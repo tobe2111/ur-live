@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
@@ -638,10 +639,15 @@ export default function GroupBuyListPage() {
                       className="text-left active:scale-[0.98] transition-transform"
                     >
                       {/* 이미지 */}
-                      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">
+                      {/* 🛡️ 2026-06-04 (사용자 — 카드 로딩 체감): dominant_color placeholder + fade-in.
+                          이미지 로드 전 회색 박스 대신 이미지 실제 색을 즉시 표시 → "툭 뜨는" 느낌 제거.
+                          홈 피드 카드(GroupBuyFeedCard)와 동일 패턴. 서버비용 0(색은 기존 응답에 포함). */}
+                      <div
+                        className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
+                        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
+                      >
                         {p.image_url ? (
                           // 🛡️ 2026-05-15: LCP 최적화 — 첫 row (idx < 4) eager + fetchpriority high.
-                          //   above-the-fold 이미지 즉시 로딩 → Lighthouse LCP 개선.
                           //   CF Image Resizing — 카드 width 400px 기준 1x/2x/3x DPI.
                           <img
                             src={cfImage(p.image_url, { width: 400, format: 'auto' })}
@@ -652,6 +658,15 @@ export default function GroupBuyListPage() {
                             loading={idx < 4 ? 'eager' : 'lazy'}
                             fetchPriority={idx < 2 ? 'high' : 'auto'}
                             decoding="async"
+                            onLoad={(e) => {
+                              const el = e.currentTarget
+                              el.style.opacity = '1'
+                              if (!p.dominant_color) {
+                                const color = extractDominantColor(el)
+                                if (color) reportDominantColor(p.id, color)
+                              }
+                            }}
+                            style={{ opacity: idx < 4 ? 1 : 0, transition: 'opacity 200ms ease-out' }}
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
