@@ -62,12 +62,11 @@ const NAV_GROUPS: {
     labelKey: 'seller.layout.groupbuy',
     mode: 'store',
     items: [
-      // group-buy 는 매장 voucher 핵심 — store mode 우선이지만 인플도 voucher 발행 가능 → both 모드.
+      // group-buy(교환권/공구) 는 매장·크리에이터 공통 (둘 다 발행).
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
-      // 🛡️ 2026-05-18: 숙소 공구 — 객실/캘린더 (PR 2/6).
-      { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store' },
-      // 🛡️ 2026-05-18: 숙소 예약 관리 + KPI — PR 4/6.
-      { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store' },
+      // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
+      { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },
+      { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store', hideFor: ['influencer'] },
     ],
   },
   {
@@ -91,8 +90,10 @@ const NAV_GROUPS: {
     ],
   },
   // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 링크샵 통합 — 셀러도 본인 user 계정 큐레이터 가능
+  // 🏭 2026-06-04 역할 큐레이션 — 링크샵/큐레이터/영입은 크리에이터 전용. 매장사장님에겐 숨김.
   {
     labelKey: 'seller.layout.curator',
+    hideFor: ['store_owner'],
     items: [
       { path: '/host', labelKey: 'seller.nav.hosting', icon: Sparkles, mode: 'common' },
       { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' },
