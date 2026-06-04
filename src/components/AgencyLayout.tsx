@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -128,6 +129,8 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   //   default 'all' = 모든 항목 (backward compat). localStorage 에 저장.
   const [activeMode, setActiveMode] = useState<AgencyMode>(() => {
     if (typeof window === 'undefined') return 'all'
+    // 🏭 2026-06-04 라이브 중단 — 토글 숨김 + 'all'(=common+store, live는 필터 제외). stale 'live' 무시.
+    if (LIVE_COMMERCE_SUSPENDED) return 'all'
     return (localStorage.getItem('agency_dashboard_mode') || 'all') as AgencyMode
   })
   function switchMode(m: AgencyMode) {
@@ -140,8 +143,10 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
     .map(group => ({
       ...group,
       items: group.items.filter(item => {
-        if (activeMode === 'all') return true
         const m = item.mode || 'common'
+        // 🏭 2026-06-04 라이브커머스 잠정 중단 — live 전용 항목 숨김 (복원 가능).
+        if (LIVE_COMMERCE_SUSPENDED && m === 'live') return false
+        if (activeMode === 'all') return true
         return m === 'common' || m === activeMode
       }),
     }))
@@ -253,7 +258,9 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         </div>
       </div>
 
-      {/* 🛡️ 2026-05-17: Mode 토글 — 라이브/매장/전체 (UI 선호 기반 필터). */}
+      {/* 🛡️ 2026-05-17: Mode 토글 — 라이브/매장/전체 (UI 선호 기반 필터).
+          🏭 2026-06-04: 라이브커머스 잠정 중단 시 토글 숨김 (live 모드 무의미). */}
+      {!LIVE_COMMERCE_SUSPENDED && (
       <div className="px-4 py-2 border-y border-white/10 bg-white/[0.02]">
         <div className="flex gap-1 p-1 bg-black/30 rounded-full">
           {([
@@ -277,6 +284,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
           ))}
         </div>
       </div>
+      )}
 
       {/* Navigation — 그룹별 */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">

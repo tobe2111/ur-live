@@ -8,6 +8,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -24,50 +25,58 @@ interface NavGroup {
   items: NavItem[]
 }
 
+// 🏭 2026-06-04 (사용자 결정): 3개 사업라인 중심 IA — 도매몰 / 오프라인 공구 / 온라인 쇼핑 + 공통.
+//   ⚠️ 라우트/아이콘/라벨 전부 보존 — 그룹 배치만 변경(데이터 reorder, 로직 불변). 라이브 항목은
+//   VISIBLE_NAV_GROUPS 필터에서 별도 숨김(잠정 중단).
 const NAV_GROUPS: NavGroup[] = [
   {
     title: '운영',
     items: [
       { path: '/admin',                  label: '대시보드',      icon: LayoutDashboard, exact: true },
       { path: '/admin/insights',         label: '운영 인사이트', icon: AlertTriangle },
-      { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
-      { path: '/admin/live-monitor',     label: '라이브 모니터', icon: Radio },
+      { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
       { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
-      { path: '/admin/ad-slots',         label: '광고 슬롯',     icon: Megaphone },
     ],
   },
   {
-    title: '파트너',
-    items: [
-      { path: '/admin/users',           label: '유저 관리',     icon: Users },
-      { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
-      // 🛡️ 2026-05-27 (사용자 결정): 매장 검수 통합 + 영업 prospects 모니터링
-      { path: '/admin/pending-sellers', label: '매장 검수',     icon: UserCheck },
-      { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
-      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
-    ],
-  },
-  {
-    // 🛡️ 2026-06-01: 거래(21) 덤핑그룹 → 5개 논리 그룹 분할 (사용자 결정, 라우트 불변).
-    title: '거래/주문',
-    items: [
-      { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
-      { path: '/admin/products',         label: '상품 관리',     icon: Package },
-      { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
-      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
-      { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
-      // 🛡️ 2026-05-18: 숙소 공구 운영 — PR 5/6.
-      { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
-    ],
-  },
-  {
-    // 🏭 2026-06-01 유통스타트 도매몰 전용 그룹.
-    title: '도매 (유통스타트)',
+    // 🏭 도매몰 (유통스타트 B2B)
+    title: '🏭 도매몰',
     items: [
       { path: '/admin/suppliers',          label: '공급자 관리',   icon: Store },
       { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
+    ],
+  },
+  {
+    // 🏪 오프라인 공구 (매장 공구 / 교환권 / 숙소)
+    title: '🏪 오프라인 공구',
+    items: [
+      { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
+      { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
+      { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
+      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
+      { path: '/admin/restaurant-demand', label: '맛집 수요 신호', icon: TrendingUp },
+    ],
+  },
+  {
+    // 🛒 온라인 쇼핑 (일반 상품 / 주문 / 교환권 발행)
+    title: '🛒 온라인 쇼핑',
+    items: [
+      { path: '/admin/products',         label: '상품 관리',     icon: Package },
+      { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
+      { path: '/admin/kt-alpha',         label: 'KT Alpha (교환권)', icon: Gift },
+      { path: '/admin/banners',          label: '배너 관리',     icon: Image },
+    ],
+  },
+  {
+    title: '회원/파트너',
+    items: [
+      { path: '/admin/users',           label: '유저 관리',     icon: Users },
+      { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
+      { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
+      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
     ],
   },
   {
@@ -83,28 +92,26 @@ const NAV_GROUPS: NavGroup[] = [
     title: '검증/CS',
     items: [
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
-      // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
-      // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 관리.
-      { path: '/admin/kt-alpha',              label: 'KT Alpha (교환권)', icon: Gift },
-    ],
-  },
-  {
-    title: '성장/발굴',
-    items: [
-      { path: '/admin/castings',         label: '캐스팅',        icon: Megaphone },
-      { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
-      { path: '/admin/restaurant-demand', label: '맛집 수요 신호', icon: TrendingUp },
+      { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
     ],
   },
   {
     title: '콘텐츠',
     items: [
-      { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
-      { path: '/admin/banners',           label: '배너 관리',     icon: Image },
-      { path: '/admin/replay',            label: '다시보기 관리', icon: Play },
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
+    ],
+  },
+  {
+    // 📺 라이브커머스 — 잠정 중단(LIVE_COMMERCE_SUSPENDED). 그룹째 숨김, 재개 시 플래그만 false → 복원.
+    title: '📺 라이브커머스',
+    items: [
+      { path: '/admin/live-monitor',     label: '라이브 모니터', icon: Radio },
+      { path: '/admin/ad-slots',         label: '광고 슬롯',     icon: Megaphone },
+      { path: '/admin/castings',         label: '캐스팅',        icon: Megaphone },
+      { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
+      { path: '/admin/replay',           label: '다시보기 관리', icon: Play },
     ],
   },
   {
@@ -122,6 +129,15 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ]
+
+// 🏭 2026-06-04 라이브커머스 잠정 중단 — 어드민 nav 에서 라이브 전용 항목 숨김 (플래그 재사용, 복원 가능).
+//   라이브 모니터 / 광고 슬롯(입찰) / 캐스팅 / TikTok 발굴 / 다시보기(라이브 replay).
+const LIVE_ADMIN_PATHS = new Set<string>([
+  '/admin/live-monitor', '/admin/ad-slots', '/admin/castings', '/admin/tiktok-discovery', '/admin/replay',
+])
+const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
+  ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
+  : NAV_GROUPS
 
 interface AdminLayoutProps {
   title: string
@@ -221,7 +237,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
       {/* Grouped navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {NAV_GROUPS.map((group) => (
+        {VISIBLE_NAV_GROUPS.map((group) => (
           <div key={group.title} className="mt-3 first:mt-1">
             <div
               className="px-4 py-1.5 font-extrabold uppercase text-white/30"
