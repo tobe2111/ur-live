@@ -132,15 +132,27 @@ export default function StepSetup({ stream, method, channels, copiedField, onCop
       )}
 
       {/* 🛡️ 2026-05-14: OME 미가용 시 자동 재시도 — "새로고침 하세요" 안 함, 5s 마다 자동 health check.
-          가용성 회복 시 자동으로 BrowserBroadcaster 표시. */}
+          가용성 회복 시 자동으로 BrowserBroadcaster 표시.
+          🛡️ 2026-06-04: 30s 경과(RTMP 키 미발급 + 인프라 불가)면 무한 "점검 중" 대신 명시적 탈출 안내. */}
       {omeAvailable === false && !hasPersistentKey && !(stream.rtmp_url && stream.rtmp_key) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-          <Loader2 className="w-5 h-5 animate-spin text-amber-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-900">송출 인프라 점검 중...</p>
-            <p className="text-[11px] text-amber-700 mt-0.5">잠시 후 자동으로 시작됩니다 (수동 새로고침 불필요)</p>
+        waitSeconds < 30 ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-amber-600 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">송출 인프라 점검 중...</p>
+              <p className="text-[11px] text-amber-700 mt-0.5">잠시 후 자동으로 시작됩니다 (수동 새로고침 불필요)</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
+            <p className="text-sm font-bold text-amber-900">송출 준비를 완료할 수 없어요</p>
+            <p className="text-[11px] text-amber-700 mt-1">RTMP 키가 아직 발급되지 않았습니다. 방송을 다시 생성하거나 OBS/Prism 등 외부 도구로 송출해 주세요. 계속 반복되면 고객센터로 문의해 주세요.</p>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => window.location.reload()} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg">다시 시도</button>
+              <button onClick={onBack} className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 text-xs font-semibold rounded-lg">방송 목록으로</button>
+            </div>
+          </div>
+        )
       )}
 
       {/* 🛡️ 로딩 상태 표시 (omeAvailable === null) — 빈 화면 방지 */}

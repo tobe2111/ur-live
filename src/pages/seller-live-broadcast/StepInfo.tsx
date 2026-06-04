@@ -140,7 +140,9 @@ export default function StepInfo({ title, setTitle, description, setDescription,
     const dateFmt = new Intl.DateTimeFormat(lng, { month: 'short', day: 'numeric' }).format(now)
     const timeFmt = new Intl.DateTimeFormat(lng, { hour: 'numeric', hour12: false }).format(now)
     const autoTitle = t('seller.liveBroadcast.quickAutoTitle', { date: dateFmt, hour: timeFmt }) as string
-    const productIds = sellableProducts.slice(0, 5).map(p => p.id)
+    // 🛡️ 2026-06-04: '첫 5개' → 최근 사용 상품 우선 + 부족분 채움(셀러 실제 판매 패턴 반영, 선택 친화도 ↑).
+    const recentValid = recentProductIds.filter(id => sellableProducts.some(p => p.id === id))
+    const productIds = [...new Set([...recentValid, ...sellableProducts.map(p => p.id)])].slice(0, 5)
     setTitle(autoTitle)
     setSelectedProducts(productIds)
     setMethod('quick')
