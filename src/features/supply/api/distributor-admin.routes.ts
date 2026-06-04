@@ -854,4 +854,61 @@ app.patch('/tax-documents/:id', async (c) => {
   }
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🏭 2026-06-04 도매몰 데모 상품 시드 (어드민) — 멱등. 카탈로그에 바로 노출되는 공급상품 10개.
+//   is_active=1 + is_supply_product=1 + supply_price>0 + visibility=ALL → /wholesale 카탈로그 즉시 표시.
+//   slug 'demo-wholesale-N' 마커로 식별 → 재실행 시 중복 안 함, DELETE 로 일괄 제거.
+//   ⚠️ 표시용 데모 — supplier_id=NULL (주문 시 정산은 데모이므로 무의미). 운영 데이터 아님.
+const DEMO_SLUG_PREFIX = 'demo-wholesale-'
+const DEMO_PRODUCTS: { name: string; category: string; supply: number; retail: number; stock: number; moq: number; color: string; img: string }[] = [
+  { name: '프리미엄 블렌드 원두 커피 1kg', category: 'food', supply: 9800, retail: 16000, stock: 480, moq: 10, color: '#6F4E37', img: 'https://picsum.photos/seed/urwh1/600/600' },
+  { name: '유기농 데일리 견과 믹스 500g', category: 'food', supply: 7200, retail: 12900, stock: 320, moq: 10, color: '#C8A06A', img: 'https://picsum.photos/seed/urwh2/600/600' },
+  { name: '수분 진정 마스크팩 30매', category: 'beauty', supply: 8500, retail: 19900, stock: 150, moq: 5, color: '#9FD8CB', img: 'https://picsum.photos/seed/urwh3/600/600' },
+  { name: '비타민C 브라이트닝 앰플 30ml', category: 'beauty', supply: 11200, retail: 24000, stock: 90, moq: 3, color: '#F2B705', img: 'https://picsum.photos/seed/urwh4/600/600' },
+  { name: '호텔 컬렉션 극세사 수건 10장', category: 'living', supply: 14500, retail: 26000, stock: 60, moq: 2, color: '#D9E4EC', img: 'https://picsum.photos/seed/urwh5/600/600' },
+  { name: '진공 보온 스테인리스 텀블러 500ml', category: 'living', supply: 6900, retail: 13900, stock: 240, moq: 6, color: '#4A5A6A', img: 'https://picsum.photos/seed/urwh6/600/600' },
+  { name: '베이직 무지 반팔 티셔츠 (5color)', category: 'fashion', supply: 4300, retail: 9900, stock: 600, moq: 10, color: '#2E2E2E', img: 'https://picsum.photos/seed/urwh7/600/600' },
+  { name: '데일리 컴포트 양말 10족 세트', category: 'fashion', supply: 3200, retail: 7900, stock: 800, moq: 10, color: '#B0A8B9', img: 'https://picsum.photos/seed/urwh8/600/600' },
+  { name: '고속 충전 USB-C 케이블 3개입', category: 'digital', supply: 5100, retail: 11900, stock: 360, moq: 5, color: '#1F6FEB', img: 'https://picsum.photos/seed/urwh9/600/600' },
+  { name: '차량용 디퓨저 방향제 세트', category: 'lifestyle', supply: 4600, retail: 9900, stock: 280, moq: 5, color: '#7FB069', img: 'https://picsum.photos/seed/urwh10/600/600' },
+]
+
+app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 5, windowSec: 60 }), async (c) => {
+  const { DB } = c.env
+  try {
+    await ensureSupplyVisibilitySchema(DB)
+    await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('seed-demo:dc'))
+    const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').first<{ c: number }>()
+    if ((existing?.c ?? 0) > 0) {
+      return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 상품이 있습니다 (삭제 후 재생성하세요)' })
+    }
+    let seeded = 0
+    for (let i = 0; i < DEMO_PRODUCTS.length; i++) {
+      const d = DEMO_PRODUCTS[i]
+      await DB.prepare(
+        `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
+           is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, is_brand_product,
+           min_order_qty, dominant_color, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 1, 1, NULL, 'approved', 'ALL', 0, ?, ?, ?, datetime('now'), datetime('now'))`,
+      ).bind(
+        d.name, `검증 제조사 공급 데모 상품 — ${d.name}`, d.retail, d.supply, d.stock, d.img, d.category, d.moq, d.color, DEMO_SLUG_PREFIX + (i + 1),
+      ).run()
+      seeded++
+    }
+    return c.json({ success: true, seeded })
+  } catch (err) {
+    return safeError(c, err, '데모 상품 생성 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+app.delete('/seed-demo-products', async (c) => {
+  const { DB } = c.env
+  try {
+    const r = await DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').run()
+    return c.json({ success: true, deleted: r.meta?.changes ?? 0 })
+  } catch (err) {
+    return safeError(c, err, '데모 상품 삭제 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 export { app as distributorAdminRoutes }
