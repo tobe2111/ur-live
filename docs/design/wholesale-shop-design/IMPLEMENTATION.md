@@ -24,6 +24,12 @@
 ### API 보강 (비잠금 `wholesale.routes.ts`)
 - `/home` `/catalog` `/catalog/:id` 응답에 **`retail_price`(권장소비자가=products.price) + `sold_count`** 추가 → 카드/상세의 할인%·마진 산출. ⚠️ 원가(`supply_price`)·제조사 신원은 계속 비노출.
 
+### 2차 증분 (2026-06-04, 우리 구조에 맞게)
+- **다품목 장바구니**: `useWholesaleCart`(localStorage+useSyncExternalStore) + `WholesaleCartPage`(/wholesale/cart) + 카탈로그 코너 퀵담기 + 상세 "담기" + 헤더 뱃지. 주문 API `items[]` 그대로 활용(서버 등급가 재계산=SSOT, 카트가는 표시용 스냅샷).
+- **빠른 재주문**: `GET /api/wholesale/recent-items`(본인 주문 상품별 최신+마지막수량+현재 등급가, 구매가능/가시성 통과만) + 홈 레일(같은 수량 재주문→카트).
+- **badge 파생**: 재고<200 '마감임박'(카드). NEW/전용은 섹션으로 표현.
+- **주문내역·거래내역서 TDS 정비**: WT 토큰 라이트 재정비(상태칩/송장복사/요약/표). OEM 페이지는 기존 라이트 유지(정상).
+
 ## 🟡 시안엔 있으나 미구현 (실데이터/모델 갭 — 추가 구현 후보)
 | 시안 요소 | 갭 사유 |
 |---|---|

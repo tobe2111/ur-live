@@ -341,7 +341,7 @@ export default function WholesaleCatalogPage() {
     fetch('/api/wholesale/catalog-export', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
       .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
       .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`; a.click(); URL.revokeObjectURL(url) })
-      .catch(() => { /* noop */ })
+      .catch(() => toast.error('단가표 다운로드에 실패했어요'))
   }
 
   if (!token) return <Navigate to="/wholesale/intro" replace />
