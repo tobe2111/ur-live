@@ -979,28 +979,38 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 - \`shipping_tracking_events\` audit 추가 → 반품 회수 송장도 tracker.delivery 추적 가능 (인프라 완성, UI 후속)`,
   },
   {
-    key: 'wholesale-utongstart', icon: '🏭', title: '유통스타트 도매몰 운영 (2026-06)', order: 840,
-    content: `### 유통스타트 도매몰 — 3자 등급제 B2B 선결제
-별도 도메인(\`utongstart.com\`, 같은 코드/DB)로 운영하는 도매몰. **유통사(=셀러) ↔ 유통스타트(플랫폼) ↔ 제조사(=공급자)** 3자 구조.
+    key: 'wholesale-utongstart', icon: '🏭', title: '유통스타트 B2B 유통 플랫폼(도매몰) 운영 (2026-06)', order: 840,
+    content: `### 유통스타트 — 제조사·유통사를 잇는 B2B 유통 플랫폼
+별도 도메인(\`utongstart.com\`, 같은 코드/DB) "도매몰". **유통사(=셀러) ↔ 유통스타트(플랫폼) ↔ 제조사(=공급자)** 3자 구조.
+공개 소개: \`/wholesale/intro\` / 유통사 가입: \`/wholesale/join\` / 쇼핑 카탈로그: \`/wholesale\`.
 
-**가격 모델**: 유통사 공급가 = 제조사 공급가 × (1 + 등급 마진율). 마진이 플랫폼 수익. 제조사 신원·공급가는 유통사에게 비노출.
+**가격 모델**: 유통사 공급가 = 제조사 공급가 × (1 + 등급 마진율). 마진이 플랫폼 수익. 제조사 신원·원가는 유통사에 **비노출**(서버 차단).
 
 ### 어드민 화면 (\`/admin/distributor-grades\`)
-- **등급 마진율**: A/B/C/D/OEM/특별할인 마진율 편집. 고등급(A)일수록 저마진. 기본 A10/B15/C20/D25/OEM8/특별0%.
-- **유통사 등급 배정**: 셀러 검색 → 등급 매기기 + 특별할인 종료일(기간 내 SPECIAL 최저가 적용). 미배정 = 기본 D(최고마진).
-- **상품 제안**: 특정 유통사에게 도매 상품 추천 → 유통사 카탈로그 상단 노출.
-- **세금계산서 집계**: 월별 유통사 매출/제조사 매입 합계 (1차 수동 발행 참고).
+- **등급 마진율**: A/B/C/D/OEM/특별할인 마진율 편집. 고등급(A)일수록 저마진. 기본 A10/B15/**C20(기본)**/D25/OEM8/특별0%.
+- **유통사 등급 배정**: 셀러 검색 → 등급 + 특별할인 종료일(기간 내 SPECIAL 최저가). ⚠️ **유통사 가입 시 자동 C등급** — 미배정도 C로 동작(D 아님). 관리자가 A/B 상향 또는 D 하향.
+- **유통채널 선정(product-access)**: 공급범위가 '승인한 유통채널'/'유통스타트 유통채널'인 상품 → 상품ID 조회 후 **선정 유통회원만 노출**(선정/해제).
+- **공급가 이력**: 제조사가 공급가 수정 시 수정 전 금액 기록(관리자만 확인).
+- **상품정보 CSV(A/B/C 등급가)**: \`상품정보 엑셀\` 다운로드 — 유통채널 제안용.
+- **OEM/ODM 신청 관리**: 유통사 신청 목록 → 상태(접수/매칭중/매칭완료/종료/반려) + 매칭 제조사 ID + 메모. 유통스타트가 제조사 찾아 연결·생산 지원.
+- **세금계산서/거래명세서 발행**: 월 선택 → \`발행\`(매출=유통스타트→유통사 / 매입=제조사→유통스타트). 부가세 10% 분리(공급가=총액÷1.1). \`인쇄\`(PDF). **국세청 발행**: 바로빌 연동(매출 방향) — \`BAROBILL_*\` 환경변수 + \`platform_settings\` 사업자정보 설정 시 활성.
 
-### 정산 흐름
-1. 유통사가 도매 카탈로그에서 등급가로 **선결제(Toss)** → \`wholesale_orders\`.
-2. 결제완료 시 **제조사 공급가(base×수량)를 \`supplier_settlements(source='wholesale')\`에 적립** → 기존 공급자 지급 파이프라인(7일 환불창 → 성숙 → 지급)이 자동 정산.
-3. 제조사가 \`/supplier/wholesale-orders\`에서 **송장 입력** → 주문 SHIPPED.
-4. 반품 시 제조사가 **본인 라인만 부분환불**(Toss 부분취소 + 정산 역전 + 재고복원). 전부면 REFUNDED, 일부면 PARTIAL_REFUNDED.
+### 정산 흐름 & 한도
+1. 유통사가 등급가로 **선결제(Toss)** → \`wholesale_orders\`.
+2. 결제완료 시 제조사 공급가(base×수량)를 \`supplier_settlements(source='wholesale')\`에 적립.
+   - **브랜드제품**: 익일(1일 보호창) 성숙. **일반제품**: 7일 환불창 후 성숙 → 지급.
+3. 제조사 \`/supplier/wholesale-orders\` **송장 입력**(엑셀 일괄 가능) → SHIPPED.
+4. 반품: 제조사 본인 라인만 부분환불(Toss 부분취소 + 정산 역전 + 재고복원).
+5. **플랫폼 1일 정산 한도 = 기본 1억원**(\`platform_settings.supplier_daily_payout_cap\` 조정). 초과 시 지급 차단.
+
+### 엑셀(CSV) 대량처리
+- 제조사: 대량 상품등록(\`/supplier/products/bulk\` + 양식다운), 주문확인 export, 송장 일괄업로드.
+- 유통사: 카탈로그 등급가 다운, 주문양식. 어드민: 상품정보(A/B/C 등급가) export.
 
 ### 운영 체크
-- 신규 제조사: \`/supplier/register\` → \`/admin/suppliers\` 승인 → 도매 상품 등록(공급가 입력).
-- 신규 유통사: 셀러 가입 후 \`/admin/distributor-grades\`에서 등급 배정 필수(미배정 시 D).
-- 도매 결제는 잠긴 Toss SSOT helper 사용. 동시주문 oversell 자동 가드 + 자동환불.
-- 도메인 연결: Cloudflare Pages \`ur-live\` → Custom domains → \`utongstart.com\` (운영 1회).`,
+- 신규 제조사: \`/supplier/register\`(영문+숫자 8자) → \`/admin/suppliers\` 승인 → 도매 상품 등록(공급가·공급범위·바코드).
+- 신규 유통사: 가입 시 자동 C등급. 필요 시 \`/admin/distributor-grades\`에서 상향.
+- 도매 결제는 잠긴 Toss SSOT helper. 동시주문 oversell 자동 가드 + 자동환불.
+- 도메인 연결: Cloudflare Pages \`ur-live\` → Custom domains → \`utongstart.com\`(운영 1회) → 루트 자동 \`/wholesale/intro\`.`,
   },
 ]
