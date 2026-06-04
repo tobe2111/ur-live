@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🟢 2026-06-04 — 도매몰 쇼핑몰 UI 시안 구현 (Claude Design 핸드오프)
+시안: `docs/design/wholesale-shop-design/` (원본 HTML/jsx/대화 보존 + IMPLEMENTATION.md). TDS(Toss) 라이트 — 무채색+#FF0033 1포인트, 라이트 고정 B2B.
+- **토큰 SSOT** `src/pages/wholesale/wholesale-theme.ts` (WT 토큰 + won/discountRate/marginRate + 카테고리).
+- **홈/카탈로그 전면 재작성** `WholesaleCatalogPage`: 브랜드 히어로 + 사입 대시보드 + 등급 시트(4단계) + 전용공급/베스트/신규 레일 + 정제 카드(할인%/마진) + 정렬/사이드바 + 단가표 엑셀.
+- **상품상세 전면 재작성** `WholesaleProductPage`: 공급가 앵커+할인%+권장가 + 마진 밴드 + 정보 리스트 + 탭 + 하단 고정 CTA(주문 API 유지).
+- **API 보강**(비잠금): `/home`·`/catalog`·`/catalog/:id` 에 `retail_price`(권장가)+`sold_count` 추가 → 마진 산출. 원가/제조사 신원 계속 비노출.
+- 테마 체커에 `wholesale` 제외 등록(라이트 고정). tsc 0 / build OK / verify:sql 8/8.
+- **미구현(갭, IMPLEMENTATION.md)**: 수량구간단가(모델확장)·빠른재주문·MOQ·badge·다품목 장바구니·기타화면 TDS 정비.
+
 ## 🟢 2026-06-04 — 도매몰 게이팅·마진·합배송 + audit (이번 세션)
 - **utongstart.com 도매몰 전용 게이팅** (`6000a2e`): worker 진입 302(주방어) + App.tsx SPA 가드. 도매 surface(`/wholesale`·`/supplier`·`/seller/login|register`·`/auth/`·`/login`·정적) 밖 경로 → `/wholesale/intro`. allowlist worker↔`utils/domain.ts` 동기화. 다른 호스트 no-op.
 - **npm audit high/critical 0건** (`882dc54`): axios 1.15.2→1.17.0(프론트 high), protobufjs override ^7.5.8(firebase 경유 transitive high, firebase 다운그레이드 회피), vitest critical은 dev전용+UI서버 RCE(미사용)라 `.audit-allowlist.json` 등재. `check-npm-audit.sh` GHSA advisory 단위 + allowlist 게이트로 개선(blanket bypass 제거).

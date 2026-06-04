@@ -127,6 +127,34 @@ export function useWholesaleMe() {
   })
 }
 
+export interface WholesaleHomeData {
+  grade: string
+  best: WholesaleCatalogItem[]
+  new: WholesaleCatalogItem[]
+  proposals: WholesaleCatalogItem[]
+  categories: { key: string; count: number }[]
+}
+
+/** 도매몰 홈 한 번에 (베스트/신상품/추천제안/카테고리). 시안 홈의 섹션 레일용. */
+export function useWholesaleHome() {
+  return useQuery<WholesaleHomeData>({
+    queryKey: queryKeys.wholesale('home'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/home', sellerAuth())
+        .then((r) =>
+          r.data?.success
+            ? { grade: r.data.grade || '', best: r.data.best || [], new: r.data.new || [], proposals: r.data.proposals || [], categories: r.data.categories || [] }
+            : { grade: '', best: [], new: [], proposals: [], categories: [] },
+        )
+        .catch(() => ({ grade: '', best: [], new: [], proposals: [], categories: [] })),
+    enabled: hasSellerToken(),
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useWholesaleProposals() {
   return useQuery<WholesaleCatalogItem[]>({
     queryKey: queryKeys.wholesale('proposals'),
