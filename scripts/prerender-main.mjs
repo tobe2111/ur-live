@@ -38,11 +38,24 @@ if (!existsSync(SERVER_ENTRY)) {
   process.exit(1)
 }
 
-// 🛡️ SSR 시 필요한 browser 전역 polyfill (Node 환경).
-//   메인 페이지 entry tree 가 useEffect 안에서만 window 접근 = 평가 안 됨.
-//   단 module-level 접근 컴포넌트 있으면 throw — audit 후 fix.
-// SSR 시 window/document 가 undefined — 컴포넌트가 `typeof window` 가드 사용해야.
-// polyfill 안 함 (의도적 — undefined 일 때 컴포넌트가 안전 분기 타도록).
+// 🛡️ 2026-06-04 [근본 수정]: SSR localStorage 크래시 방지 — 렌더 중 localStorage 를 읽는 컴포넌트
+//   (예: VouchersPage 의 카테고리 캐시) 하나가 "localStorage is not defined" 를 throw 하면
+//   renderToString 의 그 서브트리가 통째로 ErrorBoundary fallback(스피너)으로 떨어짐 →
+//   prerender 결과 index.html 이 "콘텐츠 없이 스피너만" 이 되어 모든 페이지 첫 paint 가 느려짐.
+//   (사용자 신고: 동네딜 리스트 로딩 느림 — HTML 에 `data-msg="localStorage is not defined"` + spinner 확인)
+//
+//   이전 정책은 "polyfill 안 함 — 컴포넌트가 typeof window 가드" 였으나, 한 컴포넌트만 누락돼도
+//   SSR 전체가 조용히 스피너가 되는 취약 구조였음. 클라이언트는 createRoot(re-render, hydrate 아님)라
+//   SSR=로그아웃/빈캐시 뷰 ↔ 클라=실제 상태 mismatch 가 무해 → 안전한 no-op 스토리지 스텁으로 전환.
+const __ssrNoopStorage = {
+  getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {},
+  key: () => null, get length() { return 0 },
+}
+if (typeof globalThis.localStorage === 'undefined') globalThis.localStorage = __ssrNoopStorage
+if (typeof globalThis.sessionStorage === 'undefined') globalThis.sessionStorage = __ssrNoopStorage
+if (typeof globalThis.matchMedia === 'undefined') {
+  globalThis.matchMedia = () => ({ matches: false, media: '', onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent() { return false } })
+}
 
 async function main() {
   console.log('[prerender-main] 시작')
