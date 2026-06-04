@@ -98,11 +98,15 @@ export function qtyTierDiscount(qty: number, tiers?: QtyTier[] | null): number {
   return best
 }
 
-/** 등급가 + 수량구간 할인 적용 최종 단가 (원 반올림). */
-export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[] | null): number {
+/** 등급가 + 수량구간 할인 적용 최종 단가 (원 반올림).
+ *  floor: 공급원가(base_supply_price). 수량할인이 원가 이하로 내려가 플랫폼이 손해보는 것을 방지
+ *  (마진 하한 0 — 많이 사도 원가까지만 할인). 미지정(0)이면 하한 없음(하위호환). */
+export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[] | null, floor = 0): number {
   const base = Math.max(0, Math.round(gradePrice || 0))
   const d = qtyTierDiscount(qty, tiers)
-  return d > 0 ? Math.round(base * (1 - d / 100)) : base
+  const discounted = d > 0 ? Math.round(base * (1 - d / 100)) : base
+  const lo = Math.max(0, Math.round(floor || 0))
+  return Math.max(lo, discounted)
 }
 
 /** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급.

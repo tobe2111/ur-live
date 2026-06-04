@@ -112,6 +112,18 @@ describe('distributor-pricing — 유통스타트 등급별 공급가', () => {
     expect(tierUnitPrice(10000, 1, [{ min_qty: 1, discount_pct: 99 }])).toBe(1000);
   });
 
+  it('tierUnitPrice: floor(공급원가) 하한 — 수량할인이 원가 이하로 못 내려감(플랫폼 역마진 차단)', () => {
+    const tiers = [{ min_qty: 500, discount_pct: 30 }];
+    // 등급가 12000(원가 10000 + 마진 20%), 500개 30% 할인 = 8400 < 원가 → 10000 으로 floor
+    expect(tierUnitPrice(12000, 500, tiers, 10000)).toBe(10000);
+    // 할인이 마진 내(10%)면 floor 미발동: 12000*0.9=10800 > 10000
+    expect(tierUnitPrice(12000, 500, [{ min_qty: 500, discount_pct: 10 }], 10000)).toBe(10800);
+    // 구간 미달이면 등급가(floor 무관)
+    expect(tierUnitPrice(12000, 100, tiers, 10000)).toBe(12000);
+    // floor 미지정(하위호환) = 하한 없음
+    expect(tierUnitPrice(12000, 500, tiers)).toBe(8400);
+  });
+
   it('고등급일수록 저렴 (A < B < C < D)', () => {
     const base = 10000;
     const a = distributorPrice(base, DEFAULT_GRADE_MARGINS.A);

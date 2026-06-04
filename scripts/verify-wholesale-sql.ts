@@ -189,6 +189,10 @@ async function main() {
   assert.strictEqual(tierUnitPrice(10000, 20, tiers), 10000, '구간 미달 = 등급가')
   assert.strictEqual(tierUnitPrice(10000, 100, tiers), 9500, '100개↑ 5%')
   assert.strictEqual(tierUnitPrice(10000, 500, tiers), 9000, '500개↑ 10%')
+  // 🛡️ 역마진 차단: floor=공급원가. 큰 수량할인이 원가 이하로 내려가면 원가로 clamp.
+  // 등급가 12000(원가 10000), 30% 할인=8400 < 원가 → 10000 으로 floor(플랫폼 마진 0, 음수 X).
+  assert.strictEqual(tierUnitPrice(12000, 500, [{ min_qty: 500, discount_pct: 30 }], 10000), 10000, '역마진 floor 미작동')
+  assert.ok(tierUnitPrice(12000, 500, [{ min_qty: 500, discount_pct: 30 }], 10000) >= 10000, '단가가 공급원가 이상이어야(역마진 차단)')
   // 전체교체(replace) 멱등 — DELETE 후 재삽입해도 중복 UNIQUE 충돌 없음
   await DB.prepare("DELETE FROM product_qty_tiers WHERE product_id=902").run()
   await DB.prepare("INSERT INTO product_qty_tiers (product_id,min_qty,discount_pct) VALUES (902,200,7)").run()

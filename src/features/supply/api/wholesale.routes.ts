@@ -331,7 +331,8 @@ app.get('/catalog/:id', async (c) => {
     const tierMap = await loadQtyTiers(DB, [r.id])
     const rawTiers = tierMap.get(r.id) || []
     const moq = Math.max(1, r.moq || 1)
-    const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers) }))
+    // floor=공급원가(supply_price): 수량할인이 원가 이하로 내려가 플랫폼 역마진 나는 것 방지(표시=결제 동일).
+    const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers, r.supply_price) }))
     return c.json({
       success: true,
       item: {
@@ -409,8 +410,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         baseSupplyPrice: p.supply_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
       })
-      // 등급가 위에 수량 구간 할인 적용 → 최종 authoritative 단가.
-      const unit = tierUnitPrice(price, qty, tierMap.get(p.id))
+      // 등급가 위에 수량 구간 할인 적용 → 최종 authoritative 단가. floor=공급원가(역마진 차단).
+      const unit = tierUnitPrice(price, qty, tierMap.get(p.id), p.supply_price)
       const lineTotal = unit * qty
       subtotal += lineTotal
       supplyTotal += p.supply_price * qty
