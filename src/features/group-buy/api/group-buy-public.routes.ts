@@ -55,7 +55,16 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       out.live_query_ms = Date.now() - t1
       out.live_query_rows = (r.results || []).length
     } catch (e) { out.live_query_err = String((e as Error)?.message || e) }
-    out.note = 'live_query_ms 가 크면 인덱스/D1 cold 문제, feed_cache EMPTY 면 cron 문제, 둘 다 정상이면 엣지캐시/이미지 문제'
+    // 🏭 활성 동네딜 상품의 실제 image_url + 호스트 (이미지 최적화 화이트리스트 점검용)
+    try {
+      const imgs = await DB.prepare("SELECT id, name, image_url FROM products WHERE is_active=1 AND group_buy_status='active' ORDER BY created_at DESC LIMIT 10").all<{ id: number; name: string; image_url: string | null }>()
+      out.product_images = (imgs.results || []).map(p => {
+        let host = ''
+        try { host = p.image_url ? new URL(p.image_url).host : '(none)' } catch { host = '(invalid)' }
+        return { id: p.id, name: p.name, host, image_url: p.image_url }
+      })
+    } catch (e) { out.product_images_err = String((e as Error)?.message || e) }
+    out.note = 'product_images[].host 가 cfImage 프록시 목록에 없으면 원본 풀사이즈 로드(느림). feed_cache EMPTY 면 cron 문제(부차).'
     return c.json({ success: true, diag: out })
   })
 
