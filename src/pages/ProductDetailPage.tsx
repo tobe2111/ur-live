@@ -178,12 +178,18 @@ export default function ProductDetailPage() {
       navigate('/login')
       return
     }
+    // 🏭 2026-06-05 (사용자 신고 — 옵션 기능): 옵션 있는 상품은 선택 필수 + 옵션 가격조정 반영.
+    if (options.length > 0 && !selectedOptions.option) {
+      showToast(t('productDetail.optionPlaceholder', { defaultValue: '옵션을 선택해주세요' }), 'error')
+      return
+    }
+    const optAdj = options.find((o: ProductOption) => Number(o.id) === selectedOptions.option)?.price_adjustment || 0
 
     try {
       await api.post('/api/cart', {
         product_id: product!.id,
         quantity,
-        price_snapshot: product!.price,
+        price_snapshot: (product!.price || 0) + optAdj,
         options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
       })
       showToast(t('cart.itemAdded'), 'success')
@@ -209,6 +215,14 @@ export default function ProductDetailPage() {
     }
 
     if (!product) return
+    // 🏭 2026-06-05 (사용자 신고 — 옵션 기능): 옵션 있는 상품은 선택 필수 + 가격조정 반영.
+    if (options.length > 0 && !selectedOptions.option) {
+      showToast(t('productDetail.optionPlaceholder', { defaultValue: '옵션을 선택해주세요' }), 'error')
+      return
+    }
+    const optAdj = options.find((o: ProductOption) => Number(o.id) === selectedOptions.option)?.price_adjustment || 0
+    const optValue = options.find((o: ProductOption) => Number(o.id) === selectedOptions.option)?.option_value || null
+    const unitPrice = (product.price || 0) + optAdj
 
     // 🛡️ 2026-05-23: getProductFlow SSOT 사용 (voucher_deal flow → 딜 결제).
     const { flow } = resolveProductFlow(product)
@@ -263,19 +277,19 @@ export default function ProductDetailPage() {
           product_id: product.id,
           product_name: product.name,
           product_description: product.description,
-          product_price: product.price,
+          product_price: unitPrice,
           product_image: product.image_url,
           image_url: product.image_url,
           quantity,
-          price_snapshot: product.price,
-          price: product.price,
-          item_total: product.price * quantity,
+          price_snapshot: unitPrice,
+          price: unitPrice,
+          item_total: unitPrice * quantity,
           seller_id: product.seller_id ?? null,
           seller_name: product.seller_name ?? null,
           shipping_fee: 3000,
           free_shipping_threshold: 0,
-          option_id: Object.values(selectedOptions)[0] || null,
-          option_value: null,
+          option_id: selectedOptions.option || null,
+          option_value: optValue,
         }]
       }
     })
