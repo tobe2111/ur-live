@@ -57,6 +57,23 @@ let _curatorTablesReady = false
 // 🏭 2026-06-04 (perf 전수조사): users.banner_url 컬럼 존재 여부 모듈 캐시 (group-buy 의 _dominantColorCol 패턴).
 //   null=미확정, true=존재, false=없음. 컬럼 없는 환경에서 매 요청 2회 user 쿼리 도는 것 방지.
 let _bannerUrlCol: boolean | null = null
+// 🏭 2026-06-05 (사용자 신고 — 배경/프로필 사진 저장 500): users 프로필 편집 컬럼 자가치유.
+//   PATCH /me/profile 의 UPDATE 가 banner_url/profile_image/updated_at 컬럼을 직접 쓰는데,
+//   migration 미적용 DB 면 'no such column' → 500. 스키마 복구 버튼/cron 을 기다리지 않도록
+//   첫 저장 시 1회 idempotent ALTER(이미 있으면 throw → swallow). repair-schema 와 동일 컬럼.
+let _userProfileColsReady = false
+async function ensureUserProfileCols(DB: D1Database): Promise<void> {
+  if (_userProfileColsReady) return
+  for (const sql of [
+    'ALTER TABLE users ADD COLUMN banner_url TEXT',
+    'ALTER TABLE users ADD COLUMN profile_image TEXT',
+    'ALTER TABLE users ADD COLUMN updated_at TEXT',
+  ]) {
+    await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
+  }
+  _userProfileColsReady = true
+  _bannerUrlCol = true // 컬럼 보장됨 — GET 경로 캐시도 갱신
+}
 async function ensureCuratorTables(DB: D1Database): Promise<void> {
   if (_curatorTablesReady) return
   try {
@@ -526,6 +543,9 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       binds.push(v)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
+
+    // 🏭 2026-06-05: migration 미적용 DB 에서도 저장되도록 컬럼 자가치유(1회).
+    await ensureUserProfileCols(c.env.DB)
 
     binds.push(userId)
     await c.env.DB.prepare(
