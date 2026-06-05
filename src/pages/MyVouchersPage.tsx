@@ -661,8 +661,8 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
           {statusBadge && <span className="ml-auto">{statusBadge}</span>}
         </div>
 
-        {/* 상품명 */}
-        <p className="line-clamp-2 mb-1" style={{ fontSize: 14, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
+        {/* 상품명 — 🏭 2026-06-05 (사용자 신고 — 다크에서 안 보임): 하드코딩 #0A0A0A → 테마 대응 클래스. */}
+        <p className="line-clamp-2 mb-1 text-gray-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.3 }}>
           {v.product_name}
         </p>
 
@@ -683,11 +683,11 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               navigator.clipboard?.writeText(v.code)
               toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
             }}
-            className={v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}
+            className={`text-gray-900 dark:text-white bg-black/[0.04] dark:bg-white/10 ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
             style={{
               fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontWeight: 700, color: '#0A0A0A', letterSpacing: '0.02em',
-              background: 'rgba(0,0,0,0.04)', padding: '3px 6px', borderRadius: 4,
+              fontWeight: 700, letterSpacing: '0.02em',
+              padding: '3px 6px', borderRadius: 4,
             }}>
             {v.code}
           </code>
@@ -708,38 +708,27 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         </div>
       </div>
 
-      {/* 절취선 노치 (top + bottom round cutouts) + 점선 */}
+      {/* 절취선 노치 (top + bottom round cutouts) + 점선 — 🏭 2026-06-05: 노치는 페이지 배경색(테마), 점선은 테마 대응. */}
       <div className="relative flex items-stretch" style={{ width: 1 }}>
-        <span aria-hidden style={{
-          position: 'absolute', left: -7, top: -7, width: 14, height: 14, borderRadius: '50%',
-          background: '#F2F2F7',
-        }} />
-        <span aria-hidden style={{
-          position: 'absolute', left: -7, bottom: -7, width: 14, height: 14, borderRadius: '50%',
-          background: '#F2F2F7',
-        }} />
-        <span aria-hidden style={{
-          width: 1, marginTop: 12, marginBottom: 12, alignSelf: 'stretch',
-          backgroundImage: 'linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 6px)',
-          backgroundSize: '1px 6px',
-        }} />
+        <span aria-hidden className="absolute w-3.5 h-3.5 rounded-full bg-gray-50 dark:bg-[#020202]" style={{ left: -7, top: -7 }} />
+        <span aria-hidden className="absolute w-3.5 h-3.5 rounded-full bg-gray-50 dark:bg-[#020202]" style={{ left: -7, bottom: -7 }} />
+        <span aria-hidden className="self-stretch border-l border-dashed border-black/20 dark:border-white/20" style={{ marginTop: 12, marginBottom: 12 }} />
       </div>
 
       {/* 우측 액션 (~25%) */}
-      <div className="w-[88px] flex flex-col items-center justify-center gap-1.5 px-2 py-3 shrink-0"
-        style={{ background: 'rgba(0,0,0,0.025)' }}>
+      <div className="w-[88px] flex flex-col items-center justify-center gap-1.5 px-2 py-3 shrink-0 bg-black/[0.025] dark:bg-white/[0.04]">
         {v.status === 'unused' ? (
           <>
             {/* 미니 QR placeholder */}
+            {/* 🏭 2026-06-05 (사용자 신고 — 다크에서 안 보임): QR 버튼·'사용' 라벨 테마 대응. */}
             <button
               onClick={onShowQr}
               aria-label={t('voucher.scan')}
-              className="w-12 h-12 rounded-md flex items-center justify-center active:opacity-80"
-              style={{ background: '#0A0A0A', color: '#FFFFFF' }}
+              className="w-12 h-12 rounded-md flex items-center justify-center active:opacity-80 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
             >
               <QrCode className="w-6 h-6" strokeWidth={1.5} />
             </button>
-            <span style={{ fontSize: 10, color: '#0A0A0A', fontWeight: 700, letterSpacing: '-0.01em' }}>
+            <span className="text-gray-900 dark:text-white" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '-0.01em' }}>
               {t('voucher.use', { defaultValue: '사용' })}
             </span>
           </>
