@@ -472,7 +472,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <button
           type="button"
           onClick={() => navigate('/points/charge')}
-          className="w-full text-left rounded-2xl bg-gradient-to-br from-gray-900 to-black dark:from-[#101010] dark:to-black p-5 active:scale-[0.99] transition-transform"
+          /* 🏭 2026-06-05 (사용자 요청): 토스식 프리미엄 다크 그라데이션(은은한 인디고 틴트). */
+          className="w-full text-left rounded-2xl p-5 active:scale-[0.99] transition-transform"
+          style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -484,7 +486,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 <span className="text-[18px] font-bold text-gray-500">딜</span>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-gray-400 mt-1">
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}>
               충전 <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>

@@ -127,7 +127,9 @@ export default function UserProfilePage() {
       <h1 className="sr-only">마이페이지</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-4 pb-5">
+      {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
+      <div className="bg-gradient-to-b from-pink-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#020202]">
+      <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
             src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
@@ -158,6 +160,7 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
+      </div>{/* /헤더 그라데이션 wrapper */}
 
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
