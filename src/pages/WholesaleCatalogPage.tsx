@@ -537,6 +537,19 @@ export default function WholesaleCatalogPage() {
             />
           </form>
         </div>
+        {/* 🏭 2026-06-04 (사용자 신고 — 모바일 기능버튼 누락): 로그인 유통회원의 핵심 메뉴가 헤더에서
+            hidden sm:flex 로 모바일에 안 보이던 문제 → 모바일 전용 가로스크롤 기능 줄 추가(sm:hidden). */}
+        {loggedIn && (
+          <div className="sm:hidden ur-content-wide px-5 pb-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <button onClick={() => navigate('/wholesale/orders')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><ClipboardList className="w-3.5 h-3.5" /> 주문내역</button>
+            <button onClick={() => navigate('/wholesale/statement')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><Receipt className="w-3.5 h-3.5" /> 거래내역</button>
+            <button onClick={() => navigate('/wholesale/documents')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><FileText className="w-3.5 h-3.5" /> 자료</button>
+            <button onClick={() => navigate('/wholesale/oem')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><Factory className="w-3.5 h-3.5" /> OEM/ODM</button>
+            {supplierToken && (
+              <button onClick={() => navigate('/supplier')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.ink, color: '#fff' }}><Factory className="w-3.5 h-3.5" /> 제조사 대시보드</button>
+            )}
+          </div>
+        )}
       </header>
 
       <main className="ur-content-wide px-5 lg:px-8">

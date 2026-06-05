@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
+import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
 import { captureTrackingFromUrl } from '@/lib/seller-tracking'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
@@ -431,7 +431,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
           {[
             { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       emoji: '🛍️' },
-            { key: 'meal_voucher', label: t('browse.categoryVoucher', { defaultValue: '교환권' }), emoji: '🎫' },
+            // 🏭 2026-06-04 (사용자 지적): 식사권/교환권은 쇼핑(/browse=실물상품)이 아닌 동네딜·교환권 영역 → 칩 제거.
             { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      emoji: '🍱' },
             { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   emoji: '👗' },
             { key: 'beauty',       label: t('browse.categoryBeauty', { defaultValue: '뷰티' }),    emoji: '💄' },
@@ -463,23 +463,14 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       </div>
 
       <div className="ur-content-wide px-4 py-5 lg:px-8">
-        {/* 섹션 헤더 */}
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{category === 'all' ? t('browse.todaysHot') : (({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':t('browse.categoryVoucher')} as Record<string, string>)[category] || category)}</h1>
-        </div>
+        {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
+        {category !== 'all' && (
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital')} as Record<string, string>)[category] || category)}</h1>
+          </div>
+        )}
 
-        {/* v4 배너 (Editorial Grid) */}
-        <div className="rounded-2xl p-4 flex items-center justify-between relative overflow-hidden mb-5"
-          style={{ background: 'linear-gradient(135deg, #4C1D95 0%, #6B21A8 50%, #BE185D 100%)' }}>
-          <div>
-            <p className="text-[10px] font-bold tracking-widest text-white/75">TODAY'S DEAL</p>
-            <p className="text-[16px] font-extrabold text-white mt-0.5">매일 바뀌는 초특가</p>
-            <p className="text-[11px] text-white/85 mt-1">최대 70% OFF · 오늘만</p>
-          </div>
-          <div className="flex items-center gap-1 text-[11px] font-bold text-white">
-            전체 보기 <ChevronRight className="w-3 h-3" />
-          </div>
-        </div>
+        {/* 🏭 2026-06-04 (사용자 요청): '오늘의 핫딜'(TODAY'S DEAL) 프로모 배너 제거 — 불필요. */}
 
         {/* 필터 + 정렬 */}
         <div className="flex items-center justify-between mb-3">

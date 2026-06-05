@@ -100,8 +100,12 @@ export default function UserProfilePage() {
   }
 
   // 🚫 로그인 안 됨
-  // 한국: localStorage 기반 인증이므로 Zustand user 없어도 OK
-  const isLoggedInViaLocalStorage = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  // 🏭 2026-06-04 (사용자 신고 — 마이 클릭 시 / 로 튕김 영구수정):
+  //   기존 `user_type === 'user'` 검사는 셀러+유저 이중 로그인 시 user_type 이 'seller' 로
+  //   덮여 실패 → /login → PublicRoute(이미 로그인 판단) → / 로 튕기는 무한 redirect 유발.
+  //   ProtectedRoute.isUserLoggedIn() 과 동일 기준(user_id / session_login 존재)으로 통일 —
+  //   CLAUDE.md 잠금규칙("토큰/ID 존재만으로 인증 판단, user_type 추가검사 X")과 정합.
+  const isLoggedInViaLocalStorage = !!localStorage.getItem('user_id') || !!localStorage.getItem('session_login')
   if (!user && !isLoggedInViaLocalStorage) {
     return <Navigate to="/login" replace />
   }
