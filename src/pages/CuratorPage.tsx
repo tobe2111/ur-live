@@ -47,7 +47,6 @@ export default function CuratorPage() {
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<CuratorTab>('home')
-  const [monthEarnings, setMonthEarnings] = useState(0)
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -60,14 +59,6 @@ export default function CuratorPage() {
     } catch { /* localStorage unavailable */ }
     return false
   })()
-
-  // 🛡️ 2026-05-27 (옵션 C): 본인 view 에서만 dashboard 추가 fetch — 30일 적립 노출.
-  useEffect(() => {
-    if (!isOwner) return
-    curatorApi.getDashboard()
-      .then((r: any) => setMonthEarnings(r?.stats?.month_earnings ?? 0))
-      .catch(() => { /* graceful */ })
-  }, [isOwner])
 
   useEffect(() => {
     if (!handle) return
@@ -179,8 +170,6 @@ export default function CuratorPage() {
         <CuratorHeader
           curator={curator}
           pinCount={pins.length}
-          totalClicks={totalClicks}
-          monthEarnings={monthEarnings}
           isOwner={isOwner}
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}

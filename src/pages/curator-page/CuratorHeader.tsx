@@ -16,7 +16,6 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Heart, Pencil, Check, X, Camera, Settings } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
-import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -49,8 +48,6 @@ interface CuratorHeaderProps {
     banner_url?: string | null
   }
   pinCount: number
-  totalClicks: number
-  monthEarnings?: number
   isOwner: boolean
   onCopyLink: () => void
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
@@ -59,8 +56,6 @@ interface CuratorHeaderProps {
 export default function CuratorHeader({
   curator,
   pinCount,
-  totalClicks,
-  monthEarnings = 0,
   isOwner,
   onCopyLink,
   onCuratorUpdate,
@@ -150,67 +145,70 @@ export default function CuratorHeader({
     }
   }
 
+  // 🏭 2026-06-05 (사용자 요청 — UI 영역 그라데이션): 헤더 배경.
+  const gradientCss = gradientFor(curator.banner_url) || DEFAULT_GRADIENT
+  const hasPhoto = !!curator.banner_url && !gradientFor(curator.banner_url)
+
   return (
-    <header>
-      {/* 🛡️ 2026-05-27: banner_url 있으면 사진, 없으면 gradient. 🏭 2026-06-05: 'gradient:<id>' 토큰이면 프리셋 그라데이션. */}
-      <div className="h-44 relative overflow-hidden">
-        {curator.banner_url && !gradientFor(curator.banner_url) ? (
-          <>
-            <img
-              src={cfImage(curator.banner_url, { width: 1280, format: 'auto' }) || curator.banner_url}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </>
+    <header className="relative">
+      {/* 🏭 2026-06-05 (사용자 요청 — UI 영역 그라데이션): 상단 영역 전체를 덮는 그라데이션 백드롭.
+          하드 엣지 배너 박스가 아니라, 아바타/이름 영역 뒤까지 흐른 뒤 페이지 배경으로 부드럽게 페이드. */}
+      <div className="absolute inset-x-0 top-0 h-[220px] overflow-hidden pointer-events-none">
+        {hasPhoto ? (
+          <img
+            src={cfImage(curator.banner_url!, { width: 1280, format: 'auto' }) || curator.banner_url!}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+          />
         ) : (
-          <div className="w-full h-full" style={{ background: gradientFor(curator.banner_url) || DEFAULT_GRADIENT }}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </div>
+          <div className="w-full h-full" style={{ background: gradientCss }} />
         )}
-        {isOwner && (
-          <>
-            {/* 🏭 2026-06-05: 배경 = 사진 업로드 / 그라데이션 선택 (우상단 컨트롤). */}
-            <div className="absolute top-2 right-2 flex items-center gap-1.5">
-              <button onClick={() => bannerInputRef.current?.click()} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
-                <Camera className="w-3.5 h-3.5" /> 사진
-              </button>
-              <button onClick={() => setShowGradients(v => !v)} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
-                🎨 그라데이션
-              </button>
-            </div>
-            {showGradients && (
-              <div className="absolute left-0 right-0 bottom-0 p-2.5 bg-black/55 backdrop-blur flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                {Object.entries(GRADIENT_PRESETS).map(([id, css]) => (
-                  <button key={id} onClick={() => setBannerGradient(id)} aria-label={id}
-                    className="shrink-0 w-9 h-9 rounded-full border-2 border-white/70 active:scale-90 transition-transform"
-                    style={{ background: css }} />
-                ))}
-              </div>
-            )}
-            <input
-              ref={bannerInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) uploadBannerImage(f)
-              }}
-            />
-            {uploadingBanner && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xs font-bold">
-                ⏳ 업로드 중...
-              </div>
-            )}
-          </>
-        )}
+        {/* 페이지 배경으로 페이드 — 하드 엣지 제거, 영역으로 자연스럽게 이어짐 (라이트=white / 다크=#020202) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white dark:to-[#020202]" />
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 -mt-12 pb-4">
+      {/* 🏭 2026-06-05: 소유자 배경 컨트롤 (사진 / 그라데이션) — 백드롭 위 z-20. */}
+      {isOwner && (
+        <>
+          <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+            <button onClick={() => bannerInputRef.current?.click()} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
+              <Camera className="w-3.5 h-3.5" /> 사진
+            </button>
+            <button onClick={() => setShowGradients(v => !v)} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
+              🎨 그라데이션
+            </button>
+          </div>
+          {showGradients && (
+            <div className="absolute top-14 right-3 z-20 p-2.5 rounded-2xl bg-black/60 backdrop-blur flex items-center gap-2 max-w-[calc(100%-1.5rem)] overflow-x-auto scrollbar-hide">
+              {Object.entries(GRADIENT_PRESETS).map(([id, css]) => (
+                <button key={id} onClick={() => setBannerGradient(id)} aria-label={id}
+                  className="shrink-0 w-9 h-9 rounded-full border-2 border-white/70 active:scale-90 transition-transform"
+                  style={{ background: css }} />
+              ))}
+            </div>
+          )}
+          <input
+            ref={bannerInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) uploadBannerImage(f)
+            }}
+          />
+          {uploadingBanner && (
+            <div className="absolute inset-x-0 top-0 h-[220px] bg-black/50 flex items-center justify-center text-white text-xs font-bold z-20">
+              ⏳ 업로드 중...
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="relative z-10 max-w-3xl mx-auto px-4 pt-[148px] pb-4">
         {/* 큰 아바타 (셀러 페이지 동일) */}
         <div className="flex items-end gap-3">
           <div className="relative shrink-0">
@@ -312,27 +310,11 @@ export default function CuratorHeader({
           </div>
         )}
 
-        {/* 통계 grid-3 — 셀러 페이지 동일 */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="rounded-2xl px-3 py-2.5 bg-gray-100 dark:bg-white/[0.04]">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">추천 핀</p>
-            <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.02em' }}>{formatNumber(pinCount)}</p>
-          </div>
-          <div className="rounded-2xl px-3 py-2.5 bg-gray-100 dark:bg-white/[0.04]">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">누적 클릭</p>
-            <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-0.5" style={{ letterSpacing: '-0.02em' }}>{formatNumber(totalClicks)}</p>
-          </div>
-          <div className="rounded-2xl px-3 py-2.5 bg-gray-100 dark:bg-white/[0.04]">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">30일 적립</p>
-            <p className="text-[15px] font-extrabold text-pink-400 mt-0.5" style={{ letterSpacing: '-0.02em' }}>
-              {isOwner ? formatNumber(monthEarnings) : '—'}
-            </p>
-          </div>
-        </div>
+        {/* 🏭 2026-06-05 (사용자 요청): 추천 핀 / 누적 클릭 / 30일 적립 통계 제거 — 영역 그라데이션 중심으로 단순화. */}
 
         {/* CTA grid-2 (본인) / 공유 + 좋아요 (다른) */}
         {isOwner ? (
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-2 gap-2 mt-4">
             <button
               type="button"
               onClick={() => setEditingField('name')}
