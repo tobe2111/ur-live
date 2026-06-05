@@ -144,13 +144,21 @@ export default function BottomNav() {
     if (typeof window === 'undefined') return
     if (!isLoggedIn) { setLinkshopPath('/host/new'); return }
     try {
+      // 🏭 2026-06-05 (사용자 신고 — /api/curator/user 400): stale/예약 핸들 가드.
+      //   옛 계정의 'user'(generic @user) 등 예약·무효 핸들이 캐시에 남아 /u/user → 400 나던 것 차단.
+      //   reserved/짧은 값은 무시하고 stale 키 정리 → /u/me(현재 본인) 로 자연 fallback.
+      const RESERVED = new Set(['user', 'me', 'admin', 'seller', 'api', 'host', 'new'])
+      const badHandle = (v: string | null): boolean => !v || v.length < 3 || RESERVED.has(v.toLowerCase())
       // 1차: localStorage cache
       const sellerUsername = localStorage.getItem('seller_username')
-      if (sellerUsername) { setLinkshopPath(`/profile/${sellerUsername}`); return }
+      if (sellerUsername && !badHandle(sellerUsername)) { setLinkshopPath(`/profile/${sellerUsername}`); return }
+      if (sellerUsername && badHandle(sellerUsername)) { try { localStorage.removeItem('seller_username') } catch { /* */ } }
       const cachedSeller = localStorage.getItem('linked_seller_username')
-      if (cachedSeller) { setLinkshopPath(`/profile/${cachedSeller}`); return }
+      if (cachedSeller && !badHandle(cachedSeller)) { setLinkshopPath(`/profile/${cachedSeller}`); return }
+      if (cachedSeller && badHandle(cachedSeller)) { try { localStorage.removeItem('linked_seller_username') } catch { /* */ } }
       const cachedHandle = localStorage.getItem('user_handle')
-      if (cachedHandle) { setLinkshopPath(`/u/${cachedHandle}`); return }
+      if (cachedHandle && !badHandle(cachedHandle)) { setLinkshopPath(`/u/${cachedHandle}`); return }
+      if (cachedHandle && badHandle(cachedHandle)) { try { localStorage.removeItem('user_handle') } catch { /* */ } }
 
       // 2차: seller_token payload 에서 username 추출 (영구 fallback)
       if (hasSellerToken) {

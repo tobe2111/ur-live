@@ -47,10 +47,15 @@ export function slugifyHandle(seed: string | null | undefined): string {
  * 예약어 / 정규식 검증.
  * @returns true = 사용 가능 format
  */
+// 🏭 2026-06-05 (사용자 신고 — /api/curator/user 400): 형식 검증과 예약어를 분리.
+//   format 검증(조회 route 가 사용)은 정규식만 — 예약어라도 이미 발급된 핸들은 조회 가능해야 함
+//   (안 그러면 'user'를 예약하자마자 기존 @user 링크샵이 400). 예약어는 신규 발급(isHandleAvailable)에서만 차단.
 export function isValidHandleFormat(handle: string): boolean {
-  if (!CURATOR_DEFAULTS.HANDLE_PATTERN.test(handle)) return false
-  if (CURATOR_DEFAULTS.HANDLE_RESERVED.includes(handle)) return false
-  return true
+  return CURATOR_DEFAULTS.HANDLE_PATTERN.test(handle)
+}
+
+export function isHandleReserved(handle: string): boolean {
+  return CURATOR_DEFAULTS.HANDLE_RESERVED.includes(handle)
 }
 
 /**
@@ -107,7 +112,8 @@ export async function isHandleAvailable(
   handle: string,
   excludeUserId?: number,
 ): Promise<boolean> {
-  if (!isValidHandleFormat(handle)) return false
+  // 신규 발급 가용성: 형식 + 예약어(여기서만 차단) + DB UNIQUE.
+  if (!isValidHandleFormat(handle) || isHandleReserved(handle)) return false
   const row = await DB.prepare(
     excludeUserId
       ? 'SELECT id FROM users WHERE handle = ? AND id != ? LIMIT 1'
