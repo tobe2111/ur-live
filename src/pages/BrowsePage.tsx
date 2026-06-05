@@ -401,12 +401,25 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   }, [showSortDropdown])
 
   const sorted = useMemo(() => {
-    // 🏭 2026-06-05 (감사 — 근본수정): 정렬·가격범위는 서버(/api/products sort+min/max_price)가 "전체 상품"
-    //   기준으로 적용 → 로드된 일부만 정렬/필터되던 버그 해소. 클라 중복 처리 제거.
-    //   무료배송(5만원↑ 휴리스틱)만 클라 유지(서버에 free-shipping 필드 부재). 향후 base_shipping_fee=0 서버필터로 대체 가능.
-    if (!freeShipOnly) return products
-    return products.filter(p => (p.current_price || p.price) >= 50000)
-  }, [products, freeShipOnly])
+    // 🏭 2026-06-05 (사용자 신고 — 정렬이 화면에 반영 안 됨): 서버 정렬/가격필터에 더해 로드된 상품을 클라에서도
+    //   한 번 더 정렬·필터 → 캐시/배포 지연과 무관하게 선택이 "즉시 보이게"(belt-and-suspenders).
+    //   서버는 전체 상품 기준 정확성(페이지 경계) 담당, 클라는 즉시 시각 반영.
+    const pr = (p: Product) => (p.current_price || p.price) || 0
+    let result = [...products]
+    if (priceRange === 'under10') result = result.filter(p => pr(p) < 10000)
+    else if (priceRange === 'under30') result = result.filter(p => pr(p) < 30000)
+    else if (priceRange === 'under50') result = result.filter(p => pr(p) < 50000)
+    else if (priceRange === 'over50') result = result.filter(p => pr(p) >= 50000)
+    if (freeShipOnly) result = result.filter(p => pr(p) >= 50000)
+    switch (sortBy) {
+      case 'price_asc': result.sort((a, b) => pr(a) - pr(b)); break
+      case 'price_desc': result.sort((a, b) => pr(b) - pr(a)); break
+      case 'popular': result.sort((a, b) => (Number(b.sold_count) || 0) - (Number(a.sold_count) || 0)); break
+      case 'discount': result.sort((a, b) => (Number(b.discount_rate) || 0) - (Number(a.discount_rate) || 0)); break
+      case 'newest': result.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)); break
+    }
+    return result
+  }, [products, sortBy, priceRange, freeShipOnly])
 
   const displayed = sorted.slice(0, showCount)
   // showCount < 로드된 항목 OR 백엔드에 더 있음 → "더 있다" 표시.

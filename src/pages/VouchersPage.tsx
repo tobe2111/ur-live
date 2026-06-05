@@ -346,6 +346,25 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       .map(x => x.b)
   }, [currentBrands, category])
 
+  // 🏭 2026-06-05 (사용자 신고 — 정렬이 화면에 반영 안 됨): 서버 정렬에 더해 로드된 상품을 클라에서도
+  //   한 번 더 정렬 → 캐시/배포 지연과 무관하게 선택한 정렬이 "즉시 보이게". (서버는 페이지 경계 정확성 담당)
+  const displayProducts = useMemo(() => {
+    const arr = [...products]
+    const price = (p: VoucherProduct) => Number(p.price) || 0
+    const disc = (p: VoucherProduct) => p.original_price && p.original_price > p.price
+      ? Math.round(((p.original_price - p.price) / p.original_price) * 100)
+      : (Number(p.discount_rate) || 0)
+    switch (sort) {
+      case 'price_low': arr.sort((a, b) => price(a) - price(b)); break
+      case 'price_high': arr.sort((a, b) => price(b) - price(a)); break
+      case 'popular': arr.sort((a, b) => (Number(b.sold_count) || 0) - (Number(a.sold_count) || 0)); break
+      case 'rating': arr.sort((a, b) => (Number(b.avg_rating) || 0) - (Number(a.avg_rating) || 0)); break
+      case 'discount': arr.sort((a, b) => disc(b) - disc(a)); break
+      case 'newest': arr.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)); break
+    }
+    return arr
+  }, [products, sort])
+
   // 상품 로드 (페이지 변경 / 필터 변경 시)
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
     if (reset) setLoading(true); else setLoadingMore(true)
@@ -621,7 +640,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
-              {products.map((p, idx) => (
+              {displayProducts.map((p, idx) => (
                 <VoucherCard key={p.id} p={p} aboveFold={idx < 4} />
               ))}
             </div>
