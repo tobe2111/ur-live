@@ -149,6 +149,28 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     }, { replace: true })
   }
   const [showSortDropdown, setShowSortDropdown] = useState(false)
+  // 🏭 2026-06-05 (사용자 요청): 카테고리 scroll-up reveal — 동네딜/교환권처럼 위로 살짝 올리면 카테고리 재노출.
+  //   아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 위로 살짝 올리면 다시 내려옴.
+  const [revealTop, setRevealTop] = useState(true)
+  const lastScrollYRef = useRef(0)
+  useEffect(() => {
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const y = window.scrollY
+        const last = lastScrollYRef.current
+        if (y < 120) setRevealTop(true)            // 상단 근처는 항상 표시
+        else if (y > last + 6) setRevealTop(false) // 아래로 스크롤 → 숨김
+        else if (y < last - 6) setRevealTop(true)  // 위로 스크롤 → 표시
+        lastScrollYRef.current = y
+        ticking = false
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   // 🛡️ 2026-05-19: 진짜 cursor-based 무한스크롤 (이전: client-side slice 만).
   //   2260+ 개 상품에서도 메모리 효율 + 백엔드 1페이지씩 가져옴.
   // 🛡️ 2026-05-24 (loading P0): PAGE_SIZE 50 → 20.
@@ -429,7 +451,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       {/* 🛡️ 2026-05-21: 카테고리 가로 스크롤 아이콘 (당근/쿠팡 패턴 — 옵션 A).
             기존 칩 → 이모지 아이콘 + 라벨 세로 배치 + 가로 스크롤.
             한 화면 4-5개씩 표시, 손가락으로 swipe. */}
-      <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
+      {/* 🏭 2026-06-05 (사용자 요청): 카테고리 scroll-up reveal — 위로 조금 올리면 재노출 (동네딜/교환권 패턴).
+            sticky top-[60px](모바일 헤더 아래)/md:top-14(데스크톱 탑네비 아래) + revealTop 따라 translateY. */}
+      <div
+        className="sticky top-[60px] md:top-14 z-30 bg-white dark:bg-[#0A0A0A]"
+        style={{ transform: revealTop ? 'translateY(0)' : 'translateY(-110%)', transition: 'transform 0.25s ease', willChange: 'transform' }}
+      >
+      <div className="border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
         <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
           {[
             { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       emoji: '🛍️' },
@@ -462,6 +490,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             )
           })}
         </div>
+      </div>
       </div>
 
       <div className="ur-content-wide px-4 py-5 lg:px-8">
