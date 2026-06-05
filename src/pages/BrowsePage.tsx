@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
+import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List, ImageOff } from 'lucide-react'
 import { captureTrackingFromUrl } from '@/lib/seller-tracking'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
@@ -47,6 +47,8 @@ const BrowseProductCard = memo(function BrowseProductCard({
   // 🏭 2026-06-04 (사용자 요청): 대표색 단색 카드 — 사진이 같은 색으로 번져 텍스트 블록과 경계 없이 이어짐.
   //   서버 dominant_color 없으면 이미지 로드 즉시 추출해 이 카드에 바로 적용(검정 fallback 방지).
   const [cardColor, setCardColor] = useState<string | null>(product.dominant_color || null)
+  // 🏭 2026-06-05 (사용자 신고 — 깨진 이미지가 빈 카드로): onError 폴백(없으면 깨진 아이콘/빈칸).
+  const [imgError, setImgError] = useState(false)
   const grad = cardGradient(cardColor)
   return (
     <button
@@ -61,7 +63,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
         className="relative aspect-square w-full overflow-hidden"
         style={{ backgroundColor: grad.base }}
       >
-        {product.image_url ? (
+        {product.image_url && !imgError ? (
           <img
             src={cfImage(product.image_url, { width: 300, format: 'auto' }) || product.image_url}
             srcSet={cfSrcSet(product.image_url, 300) || undefined}
@@ -80,9 +82,12 @@ const BrowseProductCard = memo(function BrowseProductCard({
                 if (!product.dominant_color) reportDominantColor(product.id, color)
               }
             }}
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full" />
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageOff className="w-8 h-8" style={{ color: grad.sub }} />
+          </div>
         )}
         {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
         <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />

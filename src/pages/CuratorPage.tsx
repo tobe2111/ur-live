@@ -239,6 +239,7 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
   const [deleting, setDeleting] = useState(false)
   // 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 통일): 쇼핑/동네딜 카드와 동일한 대표색 번짐.
   const [cardColor, setCardColor] = useState<string | null>(pin.dominant_color || null)
+  const [imgError, setImgError] = useState(false)
   const grad = cardGradient(cardColor)
 
   async function handleDelete(e: React.MouseEvent) {
@@ -272,7 +273,7 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
           <span className="absolute top-1.5 left-1.5 z-10 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-black/70 text-white text-[11px] font-bold flex items-center justify-center backdrop-blur">
             {index + 1}
           </span>
-          {productImg ? (
+          {productImg && !imgError ? (
             <img
               src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}
               srcSet={cfSrcSet(productImg, 200) || undefined}
@@ -288,6 +289,7 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
                   if (!pin.dominant_color) reportDominantColor(pin.product_id, color)
                 }
               }}
+              onError={() => setImgError(true)}
               className="w-full h-full object-cover"
             />
           ) : (

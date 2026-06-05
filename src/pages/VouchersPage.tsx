@@ -138,6 +138,9 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
     : String(soldCount)
   // 🏭 2026-06-05 (사용자 요청): 홈 교환권 카드도 쇼핑/동네딜처럼 대표색 그라데이션.
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  // 🏭 2026-06-05 (사용자 신고 — 가끔 이미지가 깨져 빈 회색 카드): 이미지 로드 실패 시 Gift 폴백.
+  //   기존엔 onLoad 로만 노출(opacity 0→1)하고 onError 가 없어, 깨진 이미지는 opacity 0 인 채 빈칸으로 남았음.
+  const [imgError, setImgError] = useState(false)
   const grad = cardGradient(cardColor)
   return (
     <button
@@ -150,7 +153,7 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
       style={{ backgroundColor: grad.base }}
     >
       <div className="relative aspect-square w-full overflow-hidden" style={{ backgroundColor: grad.base }}>
-        {p.image_url ? (
+        {p.image_url && !imgError ? (
           <img
             src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
             srcSet={cfSrcSet(p.image_url, 300) || undefined}
@@ -170,12 +173,14 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
                 if (!p.dominant_color) reportDominantColor(p.id, color)
               }
             }}
+            onError={() => setImgError(true)}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
             <Gift className="w-10 h-10" style={{ color: grad.sub }} />
+            {p.brand_name && <span className="text-[11px] font-bold" style={{ color: grad.sub }}>{p.brand_name}</span>}
           </div>
         )}
         {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}

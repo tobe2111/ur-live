@@ -57,6 +57,8 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  // 🏭 2026-06-05 (사용자 신고 — 깨진 이미지가 빈 카드로): onError 폴백.
+  const [imgError, setImgError] = useState(false)
   const grad = cardGradient(cardColor)
   const discount = calcDiscountRate(p)
   const target = p.group_buy_target || 0
@@ -72,7 +74,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
     >
       {/* 이미지 */}
       <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: grad.base }}>
-        {p.image_url ? (
+        {p.image_url && !imgError ? (
           <img
             src={cfImage(p.image_url, { width: 400, format: 'auto' })}
             srcSet={cfSrcSet(p.image_url, 400)}
@@ -91,6 +93,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
                 if (!p.dominant_color) reportDominantColor(p.id, color)
               }
             }}
+            onError={() => setImgError(true)}
             style={{ opacity: idx < 4 ? 1 : 0, transition: 'opacity 200ms ease-out' }}
           />
         ) : (
