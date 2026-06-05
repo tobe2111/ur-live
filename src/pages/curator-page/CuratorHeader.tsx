@@ -21,6 +21,24 @@ import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
+// 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 선택): 배경 그라데이션 프리셋.
+//   banner_url 에 'gradient:<id>' 토큰으로 저장 (백엔드 curator.routes 가 허용).
+const GRADIENT_PRESETS: Record<string, string> = {
+  berry: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+  sunset: 'linear-gradient(135deg, #ff6a88 0%, #ff99ac 50%, #fcb69f 100%)',
+  ocean: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
+  grape: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  mint: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+  gold: 'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)',
+  night: 'linear-gradient(135deg, #232526 0%, #414345 100%)',
+  flamingo: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+}
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #fb7185 0%, #f43f5e 50%, #a855f7 100%)'
+function gradientFor(banner: string | null | undefined): string | null {
+  if (banner && banner.startsWith('gradient:')) return GRADIENT_PRESETS[banner.slice(9)] || DEFAULT_GRADIENT
+  return null
+}
+
 interface CuratorHeaderProps {
   curator: {
     id: number
@@ -56,6 +74,18 @@ export default function CuratorHeader({
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
+  // 🏭 2026-06-05: 배경 그라데이션 선택기.
+  const [showGradients, setShowGradients] = useState(false)
+  async function setBannerGradient(id: string) {
+    try {
+      const res = await api.patch('/api/curator/me/profile', { banner_url: `gradient:${id}` })
+      if (res.data?.success) {
+        onCuratorUpdate?.({ banner_url: `gradient:${id}` })
+        setShowGradients(false)
+        toast.success('배경 그라데이션 적용됨')
+      } else { toast.error(res.data?.error || '적용 실패') }
+    } catch { toast.error('적용 실패') }
+  }
 
   async function saveField(field: 'name' | 'bio', value: string) {
     if (saving) return
@@ -122,12 +152,9 @@ export default function CuratorHeader({
 
   return (
     <header>
-      {/* 🛡️ 2026-05-27 (사용자 요청): banner_url 있으면 사진, 없으면 gradient. 본인 view 시 클릭 업로드. */}
-      <div
-        className={`h-44 relative overflow-hidden ${isOwner ? 'cursor-pointer group' : ''}`}
-        onClick={() => isOwner && bannerInputRef.current?.click()}
-      >
-        {curator.banner_url ? (
+      {/* 🛡️ 2026-05-27: banner_url 있으면 사진, 없으면 gradient. 🏭 2026-06-05: 'gradient:<id>' 토큰이면 프리셋 그라데이션. */}
+      <div className="h-44 relative overflow-hidden">
+        {curator.banner_url && !gradientFor(curator.banner_url) ? (
           <>
             <img
               src={cfImage(curator.banner_url, { width: 1280, format: 'auto' }) || curator.banner_url}
@@ -140,18 +167,30 @@ export default function CuratorHeader({
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           </>
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-pink-400 via-rose-400 to-purple-400">
+          <div className="w-full h-full" style={{ background: gradientFor(curator.banner_url) || DEFAULT_GRADIENT }}>
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           </div>
         )}
         {isOwner && (
           <>
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold flex items-center gap-1 bg-black/60 px-3 py-1.5 rounded-full">
-                <Camera className="w-3.5 h-3.5" />
-                배경 사진 {curator.banner_url ? '변경' : '추가'}
-              </span>
+            {/* 🏭 2026-06-05: 배경 = 사진 업로드 / 그라데이션 선택 (우상단 컨트롤). */}
+            <div className="absolute top-2 right-2 flex items-center gap-1.5">
+              <button onClick={() => bannerInputRef.current?.click()} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
+                <Camera className="w-3.5 h-3.5" /> 사진
+              </button>
+              <button onClick={() => setShowGradients(v => !v)} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
+                🎨 그라데이션
+              </button>
             </div>
+            {showGradients && (
+              <div className="absolute left-0 right-0 bottom-0 p-2.5 bg-black/55 backdrop-blur flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                {Object.entries(GRADIENT_PRESETS).map(([id, css]) => (
+                  <button key={id} onClick={() => setBannerGradient(id)} aria-label={id}
+                    className="shrink-0 w-9 h-9 rounded-full border-2 border-white/70 active:scale-90 transition-transform"
+                    style={{ background: css }} />
+                ))}
+              </div>
+            )}
             <input
               ref={bannerInputRef}
               type="file"

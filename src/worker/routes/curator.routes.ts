@@ -514,7 +514,10 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     }
     if (typeof body.banner_url === 'string') {
       const v = body.banner_url.trim()
-      if (v && !/^https?:\/\//i.test(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      // 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 선택): banner_url 은 http URL 또는 'gradient:<id>' 토큰 허용.
+      if (v && !/^https?:\/\//i.test(v) && !/^gradient:[a-z0-9_-]{1,24}$/i.test(v)) {
+        return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      }
       updates.push('banner_url = ?')
       binds.push(v)
     }

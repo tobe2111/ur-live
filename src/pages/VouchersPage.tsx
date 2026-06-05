@@ -108,7 +108,10 @@ function getCategoryIcon(category: string): string {
   return CATEGORY_ICONS[category] || '🎁'
 }
 
-const PAGE_SIZE = 30
+// 🏭 2026-06-05 (사용자 신고 — 교환권 스크롤해도 상품 다 안 나옴): SSR 주입 슬롯(MAIN/VOUCHERS) 이
+//   limit=20 인데 클라 PAGE_SIZE 가 30 이라 hasMore=(20===30)=false → 무한스크롤이 즉시 멈춰 20개만 노출됐고,
+//   계속됐어도 page2 가 limit30 offset30 으로 20~29 를 건너뜀. SSR limit 과 동일하게 맞춰 근본 해결.
+const PAGE_SIZE = 20
 
 // 🏭 2026-06-04 (사용자 요청): 홈(embedded) 기본 카테고리 = '커피/음료' (KT Alpha goods_type_detail).
 //   worker/index.ts MAIN 슬롯 + cache-prewarm HOT_PATH 의 category 값과 반드시 동일해야 SSR 0-RTT 정합.
