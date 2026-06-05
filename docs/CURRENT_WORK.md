@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-05 (후속) — 정렬 근본수정 · 팝업 전면 인앱화 · 링크샵 영역 그라데이션
+- **정렬/로딩 근본수정** (`3a5bc93`): `ProductRepository.findAll` 이 `dominant_color` 미적용 DB 에서 매 요청 `no such column` 실패→재시도(쿼리 2회+SELECT* 페이로드) → 느린 로딩 + 정렬 무시. 컬럼 존재여부 모듈캐시(`_dominantColorCol`, group-buy 패턴)로 최초 1요청만 재시도 → 이후 1차 성공(빠름+정렬보존+슬림). 옛 폴백의 ORDER BY 덮어쓰기 제거.
+- **네이티브 confirm/alert 전면 인앱화** (`7d7067d`): `confirmDialog`/`alertDialog`(`ConfirmHost` 마운트, 네이티브 fallback) 로 어드민·에이전시·셀러·유저대면 ~95파일 교체(위험액션 danger 빨강). prompt()·로컬 confirm()함수·인프라 fallback 은 보존. 7 Opus 병렬.
+- **링크샵 영역 그라데이션** (`eb0cdd1`, `b7a49d5`): 헤더를 하드엣지 배너박스 → 페이지로 페이드되는 영역 그라데이션 백드롭(아바타 히어로)으로 재설계 + 추천핀/누적클릭/30일적립 통계 3종 제거(수익은 대시보드 CTA 유지). 핀 카드도 쇼핑/동네딜과 동일 cardGradient(대표색 번짐+라이브 추출) 적용.
+
 ### ✅ 2026-06-05 — UI/버그 묶음 완료 (이번 세션)
 - 마이(`/user/profile`) → `/` 무한튕김 **영구수정**: 내부 가드를 `ProtectedRoute`와 동일 기준(user_id/session_login)으로 통일(셀러+유저 이중로그인 시 user_type='seller'라 튕기던 것).
 - 셀러 프로모코드 403 수정: `/api/promo/seller/list` 에 seller Bearer 헤더 명시(인터셉터 prefix 밖).
