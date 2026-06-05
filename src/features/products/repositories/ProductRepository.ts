@@ -42,6 +42,19 @@ function expandSynonyms(token: string): string[] {
   return []
 }
 
+/**
+ * 🏭 2026-06-05 (근본수정 — 느린 로딩 + 정렬 무시의 진짜 원인):
+ *   products.dominant_color 컬럼이 미적용된 DB 에서는 LIST_COLUMNS 에 dominant_color 가 있어
+ *   **모든 findAll 쿼리가 'no such column' 으로 1차 실패 → 재시도** 했음. 즉 매 요청마다
+ *   쿼리 2번 + SELECT * 페이로드 폭증 → "상품 불러오는게 늦다" + (옛 폴백의) 정렬 무시.
+ *
+ *   해결: 컬럼 존재 여부를 워커 수명 동안 1회만 탐지해 모듈 레벨 캐시. 최초 1요청만 재시도 비용을
+ *   내고, 이후 모든 요청은 1차 쿼리에서 바로 성공 → 빠른 로딩 + 슬림 페이로드 + 정렬 보존.
+ *   (group-buy-public.routes 의 _dominantColorCol 패턴과 동일.)
+ *   null = 미탐지(컬럼 포함 시도), false = 없음(영구 제외), true = 있음.
+ */
+let _dominantColorCol: boolean | null = null
+
 export class ProductRepository {
   constructor(private db: D1Database) {}
   
@@ -68,14 +81,17 @@ export class ProductRepository {
     // 🛡️ 2026-04-22: suspended/inactive seller 상품 숨김 (검색/브라우즈 방어)
     // seller_id NULL (cafe24 등) 은 통과, seller is_active=0 이면 상품 숨김.
     // 목록 카드에 필요한 컬럼만 (BrowsePage/VouchersPage/HomePage 카드 렌더 검증).
-    const LIST_COLUMNS = [
+    const baseCols = [
       'id', 'name', 'price', 'original_price', 'discount_rate', 'image_url',
       'category', 'brand_name', 'seller_id', 'stock', 'stock_quantity',
       'sold_count', 'view_count', 'avg_rating', 'review_count',
       'is_active', 'status', 'product_type', 'deal_only', 'created_at',
       'group_buy_target', 'group_buy_current', 'group_buy_deadline', 'group_buy_status',
-      'restaurant_name', 'voucher_expiry', 'dominant_color',
-    ].join(', ');
+      'restaurant_name', 'voucher_expiry',
+    ];
+    // dominant_color: 미적용 DB 면 제외(영구 캐시) → 매 요청 실패-재시도 제거.
+    if (_dominantColorCol !== false) baseCols.push('dominant_color');
+    const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
     const params: any[] = [];
@@ -164,21 +180,25 @@ export class ProductRepository {
 
     try {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
+      if (_dominantColorCol === null) _dominantColorCol = true; // 1차 성공 → 컬럼 존재 확정(이후 항상 포함)
       return result.results || [];
     } catch (err) {
-      // 🏭 2026-06-05 (사용자 신고 — 정렬이 안 먹고 등록순으로만 나옴, 근본수정):
-      //   기존 fallback 은 'no such column'(예: dominant_color 미적용 DB) 시 ORDER BY 를 통째로
-      //   created_at DESC 로 바꿔버려 **모든 정렬(낮은가격순 등)이 무시**됐음. 누락된 건 보통 SELECT 의
-      //   표시 컬럼이지 정렬 컬럼(price/sold_count 등)이 아니므로 → SELECT 만 'SELECT *' 로 바꾸고
-      //   요청한 ORDER BY(정렬)는 보존. 정렬 컬럼까지 누락된 드문 경우에만 created_at 로 최종 폴백.
+      // 🏭 2026-06-05 (근본수정 — 정렬 무시 + 느린 로딩):
+      //   1) dominant_color 미적용 DB → 모듈 캐시(_dominantColorCol=false) 후 1회 재귀.
+      //      이번 요청만 재시도하고 **이후 모든 요청은 1차 쿼리에서 성공** → 빠름 + 정렬/슬림 페이로드 보존.
+      //   2) 그 외 표시 컬럼 누락 → SELECT 만 'SELECT *' 로 바꾸고 요청 ORDER BY(정렬)는 보존
+      //      (옛 폴백처럼 ORDER BY 를 created_at 로 덮어쓰지 않음). 정렬 컬럼까지 없는 드문 경우만 최종 폴백.
       const errMsg = (err as Error).message || '';
       if (/no such column/i.test(errMsg)) {
+        if (/dominant_color/i.test(errMsg) && _dominantColorCol !== false) {
+          _dominantColorCol = false;
+          return this.findAll(filter, offset, limit);
+        }
         const selectStar = query.replace(/SELECT[\s\S]*?FROM products/, 'SELECT * FROM products');
         try {
           const r = await this.db.prepare(selectStar).bind(...params).all<Product>();
           return r.results || [];
         } catch {
-          // 정렬 컬럼 자체가 없는 드문 경우 → 등록순 최종 폴백.
           const safeQuery = selectStar.replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
           const fallback = await this.db.prepare(safeQuery).bind(...params).all<Product>();
           return fallback.results || [];
