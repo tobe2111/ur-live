@@ -423,10 +423,19 @@ export class KakaoAuthService {
       // 🛡️ 2026-05-31 보안([UNLOCK_LOADING] 사용자 승인): 카카오 email 이 verified 일 때만 자동연결.
       //   미verified email 로는 사전 생성된 미연결 셀러 행 takeover 불가하도록 게이트.
       if (user.email && kakaoUser.emailVerified === true) {
-        await this.db.prepare(
-          `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
-           WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`
-        ).bind(user.id, user.email).run().catch(() => null);
+        // 🏭 2026-06-05 [UNLOCK] (사용자 승인 — 정지원/디스크프리 계정 중첩 근본수정):
+        //   users.email 에 UNIQUE 제약이 없어, 두 카카오 계정이 같은 email 을 공유하면(또는 시드 중복)
+        //   이 자동연결이 '다른 사람의 미연결 셀러'를 이 유저에 붙여 링크샵이 옛 계정으로 뜰 수 있음.
+        //   → email 이 정확히 이 유저 1명에게만 속할 때(모호하지 않을 때)만 연결. 모호하면 연결 보류(안전).
+        const dupe = await this.db.prepare(
+          `SELECT COUNT(*) AS c FROM users WHERE email = ? AND email IS NOT NULL AND email != ''`
+        ).bind(user.email).first<{ c: number }>().catch(() => ({ c: 0 }));
+        if ((dupe?.c ?? 0) <= 1) {
+          await this.db.prepare(
+            `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
+             WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`
+          ).bind(user.id, user.email).run().catch(() => null);
+        }
       }
 
       return { ...user, isNewUser };

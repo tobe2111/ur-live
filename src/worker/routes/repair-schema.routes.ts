@@ -471,7 +471,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //         가 linked_seller 못 찾음 → BottomNav 가 /host/new fall through (사용자 보고).
     //   해결: email 매칭되는 seller-user 쌍 일괄 매핑. idempotent.
     //   KakaoAuthService.upsertUser 도 동적으로 매핑 → 다음 로그인 시 자동, 이건 일괄 backfill.
-    { desc: 'backfill: sellers.linked_user_id (same-email)', sql: `UPDATE sellers SET linked_user_id = (SELECT id FROM users u WHERE u.email = sellers.email LIMIT 1), updated_at = datetime('now') WHERE (linked_user_id IS NULL OR linked_user_id = 0) AND email IS NOT NULL AND email != '' AND EXISTS (SELECT 1 FROM users u2 WHERE u2.email = sellers.email)` },
+    // 🏭 2026-06-05 [UNLOCK] (사용자 승인 — 정지원/디스크프리 계정 중첩 근본수정): 결정적 + 1:1 매칭만.
+    //   기존 LIMIT 1(ORDER BY 없음)은 같은 email 의 user 가 둘 이상이면 어느 user 에 붙을지 비결정적 →
+    //   셀러를 엉뚱한 user 에 연결(링크샵이 옛 계정으로). 이제 email 이 정확히 1명일 때만(COUNT=1) 연결.
+    { desc: 'backfill: sellers.linked_user_id (same-email, 1:1 only)', sql: `UPDATE sellers SET linked_user_id = (SELECT id FROM users u WHERE u.email = sellers.email ORDER BY u.id LIMIT 1), updated_at = datetime('now') WHERE (linked_user_id IS NULL OR linked_user_id = 0) AND email IS NOT NULL AND email != '' AND (SELECT COUNT(*) FROM users u2 WHERE u2.email = sellers.email) = 1` },
+    // 🏭 2026-06-05 [UNLOCK]: users.email partial UNIQUE — 두 카카오 계정이 같은 email 로 분리 생성되는 것 차단.
+    //   best-effort: 기존 중복 email 이 있으면 생성 실패(아래 catch) → 중복 정리 후 재실행 시 적용.
+    { desc: 'idx_users_email_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL AND email != ''" },
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
