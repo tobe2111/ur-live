@@ -46,9 +46,12 @@ export default function SellerPromoCodesPage() {
   const headers = { Authorization: `Bearer ${getSellerToken()}` }
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  // 🏭 2026-06-04 (사용자 신고 403): /api/promo/* 는 인터셉터 seller_token 자동주입 prefix 가
+  //   아님(/api/seller·/api/youtube·/api/supply 만) → 토큰 미부착 → 서버 requireAuth 가 유저세션으로
+  //   인식(type!=='seller') → 403. create/delete 처럼 seller Bearer 헤더를 명시 전달.
   const { data: codes = [], isLoading: loading, refetch } = useApiQuery<PromoCode[]>(
     ['seller', 'promo-codes'], '/api/promo/seller/list',
-    { select: (r: any) => (r?.success ? r.data || [] : []) },
+    { select: (r: any) => (r?.success ? r.data || [] : []), headers },
   )
   const loadCodes = () => refetch()
   const [showCreate, setShowCreate] = useState(false)
