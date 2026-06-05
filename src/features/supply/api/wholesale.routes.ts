@@ -150,6 +150,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) {
       return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)
     }
+    if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400)
 
     // 누락 가능 컬럼 보장 (idempotent)
     for (const sql of [
@@ -278,6 +279,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
     if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400)
     if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)
+    if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400)
     const base = (email.split('@')[0] || 'dist').replace(/[^a-z0-9]/gi, '').slice(0, 16).toLowerCase() || 'dist'
     let username = ''
     for (let i = 0; i < 6; i++) {

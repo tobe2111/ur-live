@@ -37,6 +37,7 @@ export default function WholesaleJoinPage() {
     if (loading) return
     if (!form.business_name.trim()) { toast.error('상호(회사명)를 입력해주세요'); return }
     if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { toast.error('사업자등록번호를 정확히 입력해주세요 (000-00-00000)'); return }
+    if (!licenseUrl) { toast.error('사업자등록증 이미지를 업로드해주세요'); return }
     if (!kakaoUser && (!form.name.trim() || !form.email.trim() || !form.password)) { toast.error('담당자명·이메일·비밀번호를 입력해주세요'); return }
     setLoading(true)
     try {
@@ -161,7 +162,7 @@ export default function WholesaleJoinPage() {
             <label className="block text-[13px] font-semibold mb-1.5">연락처 <span className="text-[#B6BCC4] font-normal">(선택)</span></label>
             <input value={form.phone} onChange={set('phone')} disabled={loading} className={inputCls} placeholder="010-0000-0000" />
           </div>
-          <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} />
+          <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
           <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보(사업자등록증 포함)를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
 
           <button type="submit" disabled={loading}

@@ -80,6 +80,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     // 🏭 2026-06-04 (사용자 결정): 제조회원도 사업자등록번호 필수(승인 심사용).
     const bizNum = (body.business_number || '').trim();
     if (!/^\d{3}-\d{2}-\d{5}$/.test(bizNum)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400);
+    if (!bizLicenseUrl) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400);
     const pw = validateSupplierPassword(password);
     if (!pw.ok) return c.json({ success: false, error: pw.error || '비밀번호 형식이 올바르지 않습니다' }, 400);
 

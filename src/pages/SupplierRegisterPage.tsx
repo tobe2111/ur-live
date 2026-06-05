@@ -33,6 +33,7 @@ export default function SupplierRegisterPage() {
     setError('')
     if (!form.business_name.trim()) { setError(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
     if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { setError(t('supplier.errBizNum', { defaultValue: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' })); return }
+    if (!licenseUrl) { setError(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
     if (form.password.length < 8) { setError(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
     if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
     setLoading(true)
@@ -122,7 +123,7 @@ export default function SupplierRegisterPage() {
               </div>
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
-            <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} />
+            <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
             <div>
               <label className={labelCls}>{t('common.email', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
               <input required type="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" />
