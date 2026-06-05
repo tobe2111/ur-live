@@ -4,9 +4,21 @@ import react from '@vitejs/plugin-react';
 //   재발 방지: 패키지 제거 + import 금지. 재도입은 별도 PR (CLAUDE.md 참조).
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 
-// 빌드마다 유니크한 버전 — 타임스탬프 기반
+// 빌드마다 유니크한 버전 — 타임스탬프 기반 (SW 캐시 키 용)
 const BUILD_VERSION = `${new Date().toISOString().slice(0, 10)}-${Date.now().toString(36)}`;
+
+// 🏭 2026-06-05 (사용자 요청): 앱 버전 = v1.0.<커밋수> — 배포마다 숫자가 올라감.
+//   git 전체 히스토리(main.yml fetch-depth:0)에서 커밋 수를 patch 로. git 불가 시 날짜 기반 폴백(단조 증가).
+function computeAppVersion(): string {
+  let n = 0;
+  try { n = parseInt(execSync('git rev-list --count HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(), 10) || 0; } catch { /* no git */ }
+  // shallow clone(=1) / git 부재 → 2026-01-01 기준 경과일로 폴백(단조 증가, 최소 git count 보다 크게).
+  if (n < 2) n = Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 86400000) + 400;
+  return `1.0.${n}`;
+}
+const APP_VERSION = computeAppVersion();
 
 // 빌드 후 훅: Service Worker의 CACHE_VERSION 자동 치환
 function swVersionPlugin() {
@@ -36,6 +48,7 @@ export default defineConfig({
   ],
   define: {
     __BUILD_VERSION__: JSON.stringify(BUILD_VERSION),
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
   resolve: {
     alias: {

@@ -19,9 +19,9 @@ import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatPhone } from '@/utils/format-phone'
 
-const APP_VERSION = '1.0.0'
-// 🏭 2026-06-05 (사용자 신고 — 버전이 v1.0.0 고정): 빌드마다 바뀌는 __BUILD_VERSION__(vite define, 날짜+base36)을 표시.
-//   기존 BUILD_HASH 는 VITE_APP_VERSION 미설정이라 항상 빈 값이었음 → 빌드 줄이 아예 안 떴음.
+// 🏭 2026-06-05 (사용자 요청): 버전 = v1.0.<커밋수> — 배포마다 숫자가 올라감(vite define __APP_VERSION__).
+//   빌드 줄은 디버깅용 날짜+해시(__BUILD_VERSION__) 유지.
+const APP_VERSION = (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0')
 const BUILD_VERSION = (typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : '')
 const BUILD_HASH = BUILD_VERSION
 
@@ -134,7 +134,7 @@ export function AppVersionSection() {
       <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion', { defaultValue: '현재 버전' })}</span>
-          <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}{BUILD_VERSION ? ` · ${BUILD_VERSION}` : ''}</span>
+          <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
         </div>
         {BUILD_HASH && (
           <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
