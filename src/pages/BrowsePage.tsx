@@ -41,6 +41,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
   const displayPrice = product.current_price || product.price
   const hasStrike = !!(product.original_price && product.original_price > displayPrice)
   const rating = (product as { avg_rating?: number }).avg_rating ?? 0
+  const reviewCount = Number((product as { review_count?: number }).review_count ?? 0)
   const soldCount = product.sold_count ?? 0
   const soldLabel = soldCount >= 10000 ? `${(soldCount / 10000).toFixed(1)}만` : soldCount.toLocaleString('ko-KR')
   // 🏭 2026-06-04 (사용자 요청): 대표색 단색 카드 — 사진이 같은 색으로 번져 텍스트 블록과 경계 없이 이어짐.
@@ -114,6 +115,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
             ) : (
               <span className="font-semibold">신규</span>
             )}
+            {reviewCount > 0 && <span>({reviewCount})</span>}
           </span>
           {soldCount > 0 && <span>구매 {soldLabel}</span>}
         </div>

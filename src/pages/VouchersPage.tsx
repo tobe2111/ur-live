@@ -23,6 +23,7 @@ import { getUserIdSync } from '@/utils/auth'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { cardGradient } from '@/utils/card-gradient'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -131,6 +132,9 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
     : soldCount >= 1000
     ? `${(soldCount / 1000).toFixed(1).replace(/\.0$/, '')}천`
     : String(soldCount)
+  // 🏭 2026-06-05 (사용자 요청): 홈 교환권 카드도 쇼핑/동네딜처럼 대표색 그라데이션.
+  const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  const grad = cardGradient(cardColor)
   return (
     <button
       type="button"
@@ -138,12 +142,10 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full block flex flex-col"
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full block flex flex-col rounded-2xl overflow-hidden"
+      style={{ backgroundColor: grad.base }}
     >
-      <div
-        className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
-        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
-      >
+      <div className="relative aspect-square w-full overflow-hidden" style={{ backgroundColor: grad.base }}>
         {p.image_url ? (
           <img
             src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
@@ -158,9 +160,10 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
             onLoad={(e) => {
               const el = e.currentTarget as HTMLImageElement
               el.style.opacity = '1'
-              if (!p.dominant_color) {
-                const color = extractDominantColor(el)
-                if (color) reportDominantColor(p.id, color)
+              const color = extractDominantColor(el)
+              if (color) {
+                if (!cardColor) setCardColor(color)
+                if (!p.dominant_color) reportDominantColor(p.id, color)
               }
             }}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
@@ -168,33 +171,35 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Gift className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+            <Gift className="w-10 h-10" style={{ color: grad.sub }} />
           </div>
         )}
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
       </div>
-      <div className="mt-2 flex flex-col flex-1">
+      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
         {p.brand_name && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold leading-none mb-1">[{p.brand_name}]</p>
+          <p className="text-[11px] font-semibold leading-none mb-1" style={{ color: grad.sub }}>[{p.brand_name}]</p>
         )}
-        <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 font-medium">{p.name}</p>
-        <p className={`text-[11px] mt-0.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+        <p className="text-[13px] leading-tight line-clamp-2 font-medium">{p.name}</p>
+        <p className="text-[11px] mt-0.5 leading-none line-through" style={{ color: grad.sub, visibility: hasStrike ? 'visible' : 'hidden' }}>
           {hasStrike ? `${formatNumber(p.original_price!)}딜` : ' '}
         </p>
         <div className="flex items-baseline gap-1 mt-0.5">
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold" style={{ color: grad.accent }}>{discountRate}%</span>
           )}
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatNumber(p.price)}딜</span>
+          <span className="text-[15px] font-extrabold">{formatNumber(p.price)}딜</span>
         </div>
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 mt-1 text-[11px]" style={{ color: grad.sub }}>
           <span className="inline-flex items-center gap-0.5">
-            <span className="text-yellow-500">★</span>
+            <span style={{ color: '#facc15' }}>★</span>
             {rating > 0 ? (
-              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+              <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
             ) : (
-              <span className="font-semibold text-gray-400 dark:text-gray-500">신규</span>
+              <span className="font-semibold">신규</span>
             )}
-            {reviewCount > 0 && <span className="text-gray-400">({reviewCount})</span>}
+            {reviewCount > 0 && <span>({reviewCount})</span>}
           </span>
           {soldCount > 0 && <span>구매 {soldLabel}</span>}
         </div>
