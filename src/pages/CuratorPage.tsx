@@ -19,6 +19,8 @@ import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/feature
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cardGradient } from '@/utils/card-gradient'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
@@ -235,6 +237,9 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
   //   /redirect suffix 는 worker /api/curator/... endpoint 용. SPA fallback 은 CuratorPinClientRedirect 가 자동 호출.
   const redirectUrl = `/u/${handle}/p/${pin.product_id}`
   const [deleting, setDeleting] = useState(false)
+  // 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 통일): 쇼핑/동네딜 카드와 동일한 대표색 번짐.
+  const [cardColor, setCardColor] = useState<string | null>(pin.dominant_color || null)
+  const grad = cardGradient(cardColor)
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
@@ -260,9 +265,9 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
 
   return (
     <div className="relative group">
-      <a href={redirectUrl} className="block bg-white dark:bg-[#0A0A0A] rounded-xl overflow-hidden border border-gray-200 dark:border-[#1A1A1A] hover:border-pink-500/50 transition-colors">
-        {/* 🏭 2026-06-04 (카드 로딩 체감): dominant_color placeholder + fade-in — 그레이→이미지 대신 색→이미지. */}
-        <div className="aspect-square bg-gray-100 dark:bg-[#121212] relative" style={pin.dominant_color ? { backgroundColor: pin.dominant_color } : undefined}>
+      <a href={redirectUrl} className="block rounded-xl overflow-hidden active:scale-[0.98] transition-transform" style={{ backgroundColor: grad.base }}>
+        {/* 🏭 2026-06-05 (사용자 요청 — 그라데이션 통일): 대표색 단색 카드 + 같은 색 번짐(경계 제거). */}
+        <div className="aspect-square relative" style={{ backgroundColor: grad.base }}>
           {/* 🛡️ 2026-05-28: 링크샵 카드 순번 뱃지 (position 순) */}
           <span className="absolute top-1.5 left-1.5 z-10 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-black/70 text-white text-[11px] font-bold flex items-center justify-center backdrop-blur">
             {index + 1}
@@ -276,20 +281,27 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
               loading={aboveFold ? 'eager' : 'lazy'}
               fetchPriority={aboveFold ? 'high' : 'auto'}
               decoding="async"
-              onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '1' }}
-              style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+              onLoad={(e) => {
+                const color = extractDominantColor(e.currentTarget as HTMLImageElement)
+                if (color) {
+                  if (!cardColor) setCardColor(color)
+                  if (!pin.dominant_color) reportDominantColor(pin.product_id, color)
+                }
+              }}
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">no image</div>
+            <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: grad.sub }}>no image</div>
           )}
+          {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
+          <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
         </div>
-        <div className="p-2.5">
-          <p className="text-xs text-gray-900 dark:text-white line-clamp-2 leading-tight">{pin.product_name}</p>
-          <p className="text-sm font-bold text-pink-400 mt-1">{formatWon(pin.price)}</p>
-          {pin.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">💬 {pin.note}</p>}
+        <div className="p-2.5" style={{ color: grad.text }}>
+          <p className="text-xs line-clamp-2 leading-tight font-medium">{pin.product_name}</p>
+          <p className="text-sm font-extrabold mt-1" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
+          {pin.note && <p className="text-[10px] mt-1 line-clamp-1" style={{ color: grad.sub }}>💬 {pin.note}</p>}
           {isOwner && (
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] mt-1" style={{ color: grad.sub }}>
               👆 {pin.click_count.toLocaleString()} {t('curator.clicks', { defaultValue: '클릭' })}
             </p>
           )}
