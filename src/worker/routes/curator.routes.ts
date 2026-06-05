@@ -54,6 +54,9 @@ async function getPinCount(DB: D1Database, userId: number): Promise<number> {
 //   edge-MISS(cold/SSR self-fetch) 경로가 데이터 쿼리 전에 6 라운드트립으로 느려지던 것 해소.
 //   스키마는 migration 0278 + repair-schema(daily cron) 가 보장 — 워커당 첫 호출만 안전망으로 실행.
 let _curatorTablesReady = false
+// 🏭 2026-06-04 (perf 전수조사): users.banner_url 컬럼 존재 여부 모듈 캐시 (group-buy 의 _dominantColorCol 패턴).
+//   null=미확정, true=존재, false=없음. 컬럼 없는 환경에서 매 요청 2회 user 쿼리 도는 것 방지.
+let _bannerUrlCol: boolean | null = null
 async function ensureCuratorTables(DB: D1Database): Promise<void> {
   if (_curatorTablesReady) return
   try {
@@ -93,58 +96,55 @@ curatorRoutes.get('/:handle', async (c) => {
       return c.json({ success: false, error: '잘못된 핸들 형식입니다' }, 400)
     }
     const DB = c.env.DB
-    await ensureCuratorTables(DB)
+    // 🏭 2026-06-04 (perf 전수조사): DDL 6종을 응답 경로에서 분리 — 테이블은 0278 + repair cron 이 보장.
+    try { c.executionCtx?.waitUntil?.(ensureCuratorTables(DB).catch(() => {})) } catch { /* no ctx — skip */ }
 
     // 🛡️ 2026-05-27 (사용자 요청): banner_url 도 반환 — 큐레이터 배경 사진.
-    //   banner_url 신규 컬럼 (repair-schema 적용 전 환경 graceful fallback).
-    let user: {
+    //   🏭 2026-06-04: 컬럼 존재 여부 모듈 캐시(_bannerUrlCol) — 없는 환경에서 매 요청 2회 user 쿼리 방지.
+    type CuratorUser = {
       id: number; handle: string; name: string; bio: string | null;
       profile_image: string | null; linkshop_theme: string; banner_url?: string | null
-    } | null = await DB.prepare(
-      `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url
-       FROM users WHERE handle = ? LIMIT 1`,
-    )
-      .bind(handle)
-      .first<{
-        id: number; handle: string; name: string; bio: string | null;
-        profile_image: string | null; linkshop_theme: string; banner_url: string | null
-      }>().catch(() => null)
-    if (!user) {
-      // banner_url 컬럼 없는 환경 — fallback
+    }
+    let user: CuratorUser | null = null
+    if (_bannerUrlCol !== false) {
+      user = await DB.prepare(
+        `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url
+         FROM users WHERE handle = ? LIMIT 1`,
+      ).bind(handle).first<CuratorUser>().catch(() => null)
+      if (user) _bannerUrlCol = true   // 컬럼 존재 확정
+    }
+    if (!user && _bannerUrlCol !== true) {
+      // banner_url 컬럼 없는 환경 — fallback. 이 쿼리가 행을 반환하면 컬럼이 없다는 뜻 → 기억.
       user = await DB.prepare(
         `SELECT id, handle, name, bio, profile_image, linkshop_theme
          FROM users WHERE handle = ? LIMIT 1`,
-      )
-        .bind(handle)
-        .first<{
-          id: number; handle: string; name: string; bio: string | null;
-          profile_image: string | null; linkshop_theme: string
-        }>()
+      ).bind(handle).first<CuratorUser>().catch(() => null)
+      if (user) _bannerUrlCol = false  // 컬럼 미존재 확정 (다음부터 1쿼리)
     }
 
     if (!user) return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
 
-    // 🛡️ 2026-05-25 (C 옵션): linked seller 매칭 시 셀러 공개페이지 정보 동봉.
-    //   CuratorPage 가 seller 있으면 풍부한 UI (탭 / 라이브 / 상품) 표시.
-    //   일반 user (seller 없음) — 단순 핀 그리드만.
-    const linkedSeller = await DB.prepare(
-      `SELECT id, username, name, status FROM sellers
-       WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-    ).bind(user.id).first<{ id: number; username: string; name: string; status: string }>().catch(() => null)
-
-    const { results: pins } = await DB.prepare(
-      `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
-              p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price,
-              p.category, p.is_active, p.dominant_color,
-              COALESCE(p.referral_commission_rate, 0) AS commission_rate
-       FROM product_pins pp
-       JOIN products p ON p.id = pp.product_id
-       WHERE pp.user_id = ? AND p.is_active = 1
-       ORDER BY pp.position ASC, pp.created_at DESC
-       LIMIT ?`,
-    )
-      .bind(user.id, CURATOR_DEFAULTS.PIN_MAX_PER_USER)
-      .all()
+    // 🛡️ 2026-05-25 (C 옵션): linked seller + pins — 둘 다 user.id 에만 의존 → 병렬(Promise.all).
+    //   🏭 2026-06-04 (perf 전수조사): 기존 순차 2 round-trip → 1 round-trip 으로 단축.
+    const userId = user.id
+    const [linkedSeller, pinsResult] = await Promise.all([
+      DB.prepare(
+        `SELECT id, username, name, status FROM sellers
+         WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+      ).bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null),
+      DB.prepare(
+        `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
+                p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price,
+                p.category, p.is_active, p.dominant_color,
+                COALESCE(p.referral_commission_rate, 0) AS commission_rate
+         FROM product_pins pp
+         JOIN products p ON p.id = pp.product_id
+         WHERE pp.user_id = ? AND p.is_active = 1
+         ORDER BY pp.position ASC, pp.created_at DESC
+         LIMIT ?`,
+      ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
+    ])
+    const pins = pinsResult.results
 
     // 🛡️ 2026-05-31 (링크샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold

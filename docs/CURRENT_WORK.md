@@ -26,6 +26,16 @@
 - 브랜드를 클릭(필터)해도 브랜드 그리드 유지 + 선택 브랜드 강조(ring) + 재클릭 해제.
 - 커피 브랜드 정렬: 스타벅스 → 메가 → 투썸 → 할리스 → 컴포즈 → 빽다방 → 나머지(원본순).
 
+### ✅ 동네딜·링크샵 로딩 전수조사 — 추가 fix 완료 (2026-06-04)
+서브에이전트(Opus) 전수조사 → 코드 대조 검증 후 실효 fix만 적용:
+- **A1** 동네딜 '유저 공구'(community) `GET /list`: `await ensureTables`(DDL 6종) → `waitUntil` 비차단. (seller 탭과 동일 패턴, 누락분)
+- **A2** 만료 sweep `UPDATE`(풀테이블 write)를 응답 경로에서 분리: `waitUntil` + isolate당 60초 throttle. + `community_group_buys` 인덱스 2종(`status,current_count` / `status,expires_at`) 추가(기존 인덱스 0).
+- **A3** community `/list` HOT_PATH 추가(`?status=proposed&sort=popular&limit=20`) — 30s 엣지캐시 organic 만료 → cold D1 방지.
+- **B1** 링크샵 `/api/curator/:handle`: `await ensureCuratorTables`(DDL 6종) → `waitUntil`.
+- **B2** seller + pins 쿼리 순차 2RTT → `Promise.all` 1RTT.
+- **B4** `users.banner_url` 컬럼 존재 모듈캐시(`_bannerUrlCol`) — 컬럼 없는 환경 매요청 2쿼리 방지.
+- 검증으로 기각: **A6**(gift_catalog.gift_code 인덱스)는 `helpers.ts:107` 에 이미 존재(에이전트 오탐). A5/A7/A8·B3/B5/B7 은 LOW + 잠금민감 파일이라 보류.
+
 ### 🟡 결정/운영 필요 (코드로 불가 — 사용자·Cloudflare)
 - [ ] **R2 스토리지 확인** — 등록증 업로드는 `MEDIA_BUCKET`(R2)+`PUBLIC_R2_URL` 바인딩 필요. 미설정 시 업로드 503 → 가입 불가(필수 강제됨). 다른 이미지 업로드와 동일 의존이라 이미 설정됐을 가능성 높음 — 확인 권장.
 - [ ] `utongstart.com` 도메인 → Cloudflare Pages 커스텀 도메인 연결 (코드는 준비됨)

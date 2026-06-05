@@ -92,6 +92,24 @@ async function ensureTables(DB: D1Database) {
   try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN confirmed_price INTEGER").run(); } catch {}
   try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN confirmed_discount_percent INTEGER").run(); } catch {}
   try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN restaurant_seller_id INTEGER").run(); } catch {}
+  // 🏭 2026-06-04 (perf 전수조사): /list 의 COUNT(status=?) + ORDER BY current_count/expires_at +
+  //   만료 sweep(status='proposed' AND expires_at<now) 가 풀스캔이던 것 — status 선두 복합 인덱스로 커버.
+  try { await DB.prepare("CREATE INDEX IF NOT EXISTS idx_cgb_status_count ON community_group_buys(status, current_count DESC)").run(); } catch {}
+  try { await DB.prepare("CREATE INDEX IF NOT EXISTS idx_cgb_status_expires ON community_group_buys(status, expires_at)").run(); } catch {}
+}
+
+// 🏭 2026-06-04 (perf 전수조사): 만료 sweep 을 응답 경로에서 분리 — isolate 당 최대 60초 1회만 실행.
+//   기존: 매 GET /list 마다 풀테이블 UPDATE(write) 가 응답 latency + D1 write 예산 소모.
+//   변경: waitUntil(비차단) + 60초 throttle → 사용자 체감 0, 쓰기 빈도 대폭 감소. CAS 불필요(멱등).
+let _cgbExpirySweepAt = 0
+function sweepExpiredCommunityGroupBuys(DB: D1Database): Promise<unknown> {
+  return executeRun(
+    DB,
+    `UPDATE community_group_buys
+       SET status = 'failed', updated_at = datetime('now')
+     WHERE status = 'proposed' AND expires_at IS NOT NULL AND expires_at < datetime('now')`,
+    [],
+  ).catch(() => { /* ignore — 다음 sweep 이 처리 */ })
 }
 
 // ── 초대 코드 생성 ────────────────────────────────────────────────────
@@ -423,7 +441,9 @@ communityGroupBuyRoutes.get('/detail/:code', async (c) => {
 // ── GET /list — 활성 공동구매 목록 (페이지네이션) ──────────────────────
 communityGroupBuyRoutes.get('/list', async (c) => {
   const { DB } = c.env;
-  await ensureTables(DB);
+  // 🏭 2026-06-04 (perf 전수조사): ensureTables(CREATE×2+ALTER×3+INDEX×2) 를 응답 경로에서 분리.
+  //   테이블은 D1 에 영속 존재 — DDL 은 안전망(첫 배포 시 1회). group-buy-public 과 동일 패턴.
+  try { c.executionCtx?.waitUntil?.(ensureTables(DB).catch(() => {})); } catch { /* no ctx — skip */ }
 
   const status = c.req.query('status') || 'proposed';
   const sort = c.req.query('sort') || 'newest';
@@ -435,16 +455,12 @@ communityGroupBuyRoutes.get('/list', async (c) => {
   if (sort === 'popular') orderBy = 'current_count DESC';
   else if (sort === 'deadline') orderBy = 'expires_at ASC';
 
-  // 만료된 proposed 공동구매 자동 실패 처리
-  try {
-    await executeRun(
-      DB,
-      `UPDATE community_group_buys
-       SET status = 'failed', updated_at = datetime('now')
-       WHERE status = 'proposed' AND expires_at IS NOT NULL AND expires_at < datetime('now')`,
-      [],
-    );
-  } catch { /* ignore */ }
+  // 만료된 proposed 공동구매 자동 실패 처리 — 비차단 + 60초 throttle (응답 latency 0).
+  const nowMs = Date.now();
+  if (nowMs - _cgbExpirySweepAt > 60_000) {
+    _cgbExpirySweepAt = nowMs;
+    try { c.executionCtx?.waitUntil?.(sweepExpiredCommunityGroupBuys(DB)); } catch { /* no ctx */ }
+  }
 
   const total = await queryFirst<{ cnt: number }>(
     DB,
