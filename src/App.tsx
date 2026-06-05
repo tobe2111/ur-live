@@ -5,6 +5,7 @@ import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 import { isUtongstart, isWholesaleAllowedPath } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
+import { ConfirmHost } from './components/ui/confirm-dialog'
 import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
@@ -483,6 +484,7 @@ function AppContent() {
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
           <OfflineBanner />
+          <ConfirmHost />
           <ScrollToTop />
           <Suspense fallback={null}><PushNotificationSetup /></Suspense>
           {/* 🛡️ 2026-06-04 (사용자 신고 — 영구 수정): 모바일 BottomNav(fixed h-14 lg:hidden)가
