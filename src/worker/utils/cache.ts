@@ -40,6 +40,15 @@ function maybeCleanL1() {
  */
 const inFlight = new Map<string, Promise<unknown>>();
 
+// 🛡️ 2026-06-04 (KV 무료한도 보호): L2 KV 레이어 OFF.
+//   배경: /api/products·/api/group-buy/products 등 핫패스가 매 L1-miss 마다 KV.get/put 호출 →
+//   Cloudflare KV 무료한도(읽기 10만/쓰기 1천 일) 소진(50% 경고). CLAUDE.md 로딩최적화 방향이
+//   "edge cache(caches.default) 직접 read, KV 의존성 0" 이고, 이 캐시 함수의 모든 핫 콜러는 이미
+//   publicCache(caches.default) 엣지캐시가 앞단에 있음 → L2 KV 는 중복.
+//   효과: 요청 → 엣지캐시(콜로별, cross-req) → L1(인메모리, isolate내) → D1. KV ops ≈ 0.
+//   복원: true 로 변경.
+const L2_KV_ENABLED = false;
+
 export async function cacheGet<T>(
   KV: KVNamespace | undefined,
   key: string,
@@ -60,21 +69,23 @@ export async function cacheGet<T>(
     l1.delete(fullKey);
   }
 
-  // KV 없으면 바로 fetcher
-  if (!KV) return fetcher();
+  // L2 KV — 🛡️ 기본 OFF (KV 무료한도 보호). 엣지캐시+L1 으로 커버. (L2_KV_ENABLED 참조)
+  const useL2 = !!KV && L2_KV_ENABLED;
 
   // L2: KV hit
-  try {
-    const cached = await KV.get(fullKey, { type: 'json' });
-    if (cached && typeof cached === 'object') {
-      const entry = cached as CacheEntry<T>;
-      if (now < entry.staleUntil) {
-        l1.set(fullKey, entry); // L1에 올려놔서 다음 요청은 KV read도 없음
-        return entry.data;
+  if (useL2) {
+    try {
+      const cached = await KV!.get(fullKey, { type: 'json' });
+      if (cached && typeof cached === 'object') {
+        const entry = cached as CacheEntry<T>;
+        if (now < entry.staleUntil) {
+          l1.set(fullKey, entry); // L1에 올려놔서 다음 요청은 KV read도 없음
+          return entry.data;
+        }
       }
+    } catch {
+      // KV read 실패 — origin fetch
     }
-  } catch {
-    // KV read 실패 — origin fetch
   }
 
   // Stampede 방지: 같은 키 동시 miss는 하나만 fetch
@@ -89,9 +100,9 @@ export async function cacheGet<T>(
       staleUntil: now + (ttl + staleWhileRevalidate) * 1000,
     };
     l1.set(fullKey, entry);
-    if (KV) {
+    if (useL2) {
       try {
-        await KV.put(fullKey, JSON.stringify(entry), {
+        await KV!.put(fullKey, JSON.stringify(entry), {
           expirationTtl: ttl + staleWhileRevalidate,
         });
       } catch {
