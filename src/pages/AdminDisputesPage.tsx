@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -72,21 +73,21 @@ export default function AdminDisputesPage() {
   }, [])
 
   async function approveRefund(d: Dispute) {
-    if (!confirm(`voucher ${d.voucher_code} 환불 승인하시겠습니까?\n\n• voucher → refunded\n• 딜 결제건 자동 환불\n• 유저에게 푸시`)) return
+    if (!(await confirmDialog({ message: `voucher ${d.voucher_code} 환불 승인하시겠습니까?\n\n• voucher → refunded\n• 딜 결제건 자동 환불\n• 유저에게 푸시`, danger: true }))) return
     const notes = window.prompt('어드민 메모 (선택, 500자 내):', '') || ''
     setSubmitting(d.id)
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }
       const res = await api.post(`/api/disputes/admin/${d.id}/approve`, { admin_notes: notes }, { headers })
       if (res.data?.success) {
-        alert('✅ 환불 처리 완료')
+        void alertDialog('✅ 환불 처리 완료')
         loadList(tab)
       } else {
-        alert(`❌ ${res.data?.error || '환불 실패'}`)
+        void alertDialog(`❌ ${res.data?.error || '환불 실패'}`)
       }
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
-      alert(`❌ ${e?.response?.data?.error || '환불 처리 실패'}`)
+      void alertDialog(`❌ ${e?.response?.data?.error || '환불 처리 실패'}`)
     } finally {
       setSubmitting(null)
     }
@@ -100,14 +101,14 @@ export default function AdminDisputesPage() {
       const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }
       const res = await api.post(`/api/disputes/admin/${d.id}/reject`, { admin_notes: notes.trim() }, { headers })
       if (res.data?.success) {
-        alert('✅ 거절 처리 완료')
+        void alertDialog('✅ 거절 처리 완료')
         loadList(tab)
       } else {
-        alert(`❌ ${res.data?.error || '거절 실패'}`)
+        void alertDialog(`❌ ${res.data?.error || '거절 실패'}`)
       }
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
-      alert(`❌ ${e?.response?.data?.error || '거절 처리 실패'}`)
+      void alertDialog(`❌ ${e?.response?.data?.error || '거절 처리 실패'}`)
     } finally {
       setSubmitting(null)
     }

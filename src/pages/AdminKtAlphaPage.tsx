@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Gift, RefreshCw, DollarSign, TrendingUp, AlertTriangle, Settings, Package } from 'lucide-react'
@@ -163,7 +164,7 @@ export default function AdminKtAlphaPage() {
   // 🛡️ 2026-05-27 (사용자 요청 — 가장 이상적): 마진 % 변경 후 기존 상품 가격 일괄 재계산.
   //   default off — 변경 의도 명확히 확인 후 trigger.
   async function recalcPrices() {
-    if (!confirm(`현재 마진 (${edit.consumer_markup_pct}%) 으로 기존 KT Alpha 상품 가격 모두 재계산?\n\n공식: price = real_price × (1 + 마진/100)\n이미 등록된 상품의 표시 가격이 즉시 바뀝니다.`)) return
+    if (!(await confirmDialog(`현재 마진 (${edit.consumer_markup_pct}%) 으로 기존 KT Alpha 상품 가격 모두 재계산?\n\n공식: price = real_price × (1 + 마진/100)\n이미 등록된 상품의 표시 가격이 즉시 바뀝니다.`))) return
     try {
       const r = await api.post('/api/admin/kt-alpha/recalc-prices', {}, { headers: h() })
       if (r.data?.success) {
@@ -178,7 +179,7 @@ export default function AdminKtAlphaPage() {
   }
 
   async function runSync() {
-    if (!confirm('카탈로그 sync 시작? (전체 페이지 fetch, 1-2분 소요)')) return
+    if (!(await confirmDialog('카탈로그 sync 시작? (전체 페이지 fetch, 1-2분 소요)'))) return
     setSyncing(true)
     try {
       const r = await api.post('/api/admin/kt-alpha/sync', {}, { headers: h() })
@@ -229,7 +230,7 @@ export default function AdminKtAlphaPage() {
   const loadCategories = () => categoriesQ.refetch()
 
   async function deleteByCategory(category: string, count: number) {
-    if (!confirm(`'${category}' 카테고리의 ${count}개 상품을 모두 삭제합니다.\n복구 불가 — 계속할까요?`)) return
+    if (!(await confirmDialog({ message: `'${category}' 카테고리의 ${count}개 상품을 모두 삭제합니다.\n복구 불가 — 계속할까요?`, danger: true }))) return
     try {
       const r = await api.post('/api/admin/kt-alpha/products/delete', { category }, { headers: h() })
       if (r.data?.success) {
@@ -243,8 +244,8 @@ export default function AdminKtAlphaPage() {
   }
 
   async function deleteAllKtAlpha() {
-    if (!confirm('⚠️ KT Alpha 상품 전체를 삭제합니다.\n복구 불가 — 정말 계속하시겠습니까?')) return
-    if (!confirm('🚨 한 번 더 확인 — 정말 전체 삭제?')) return
+    if (!(await confirmDialog({ message: '⚠️ KT Alpha 상품 전체를 삭제합니다.\n복구 불가 — 정말 계속하시겠습니까?', danger: true }))) return
+    if (!(await confirmDialog({ message: '🚨 한 번 더 확인 — 정말 전체 삭제?', danger: true }))) return
     try {
       const r = await api.post('/api/admin/kt-alpha/products/delete', { all: true }, { headers: h() })
       if (r.data?.success) {
@@ -260,7 +261,7 @@ export default function AdminKtAlphaPage() {
   // 🛡️ 2026-05-21: 기존 리뷰 user_name 백필 — 카카오 이름 masked 적용 (즉시 실행).
   //   매일 18 UTC cron 도 자동 실행 (영구). 사용자가 바로 보고 싶으면 본 버튼 클릭.
   async function backfillReviewUserNames() {
-    if (!confirm('user_name IS NULL 인 리뷰들에 users.name 마스킹 적용 (정지원 → 정*원).\n계속하시겠습니까?')) return
+    if (!(await confirmDialog('user_name IS NULL 인 리뷰들에 users.name 마스킹 적용 (정지원 → 정*원).\n계속하시겠습니까?'))) return
     try {
       const r = await api.post('/api/admin/reviews/backfill-user-names', {}, { headers: h() })
       if (r.data?.success) {
@@ -281,7 +282,7 @@ export default function AdminKtAlphaPage() {
   //   영구 (v2): /sync-page?start_page=N&page_count=10 반복 호출. 1 호출 ~10초.
   //   진행률 toast 실시간 + 페이지 실패해도 재시작 가능.
   async function fullResyncKtAlpha() {
-    if (!confirm('⚠️ KT Alpha 전체 재싱크 (페이지 분할 progressive).\n시간 ~1-3분. 진행률 실시간 표시. 계속?')) return
+    if (!(await confirmDialog('⚠️ KT Alpha 전체 재싱크 (페이지 분할 progressive).\n시간 ~1-3분. 진행률 실시간 표시. 계속?'))) return
     let page: number | null = 1
     let totalSynced = 0
     let totalReported = 0
@@ -304,7 +305,7 @@ export default function AdminKtAlphaPage() {
         if (d.done) break
       }
       const elapsed = Math.floor((Date.now() - startTime) / 1000)
-      alert(
+      await alertDialog(
         `📦 KT Alpha 전체 재싱크 완료\n\n` +
         `• KT API 보고 total: ${totalReported}개\n` +
         `• DB 저장: ${totalSynced}개\n` +
@@ -323,7 +324,7 @@ export default function AdminKtAlphaPage() {
   // 🛡️ 2026-05-21: "전체 즉시 실행" 메가 버튼 — categorize + brand backfill + review backfill 한 번에.
   //   매일 18 UTC cron 이 자동으로 같은 작업을 하지만, 사용자가 즉시 보고 싶을 때 한 클릭.
   async function runAllBackfills() {
-    if (!confirm('⚡ 전체 즉시 실행:\n• products.category 자동 분류\n• products.brand_name 채움\n• 리뷰 user_name (카카오 이름) 백필\n\n계속하시겠습니까?')) return
+    if (!(await confirmDialog('⚡ 전체 즉시 실행:\n• products.category 자동 분류\n• products.brand_name 채움\n• 리뷰 user_name (카카오 이름) 백필\n\n계속하시겠습니까?'))) return
     try {
       const r = await api.post('/api/admin/kt-alpha/run-all-backfills', {}, { headers: h() })
       if (r.data?.success) {
@@ -374,7 +375,7 @@ export default function AdminKtAlphaPage() {
         `  · 미매칭 ${d.join_status.unmatched}\n\n` +
         `▼ 자동 분류 예상\n  ${d.auto_classify_preview.hint}\n\n` +
         `(상세는 콘솔 F12 → "[KT Alpha 진단]")`
-      alert(summary)
+      await alertDialog(summary)
     } catch (err: unknown) {
       const ax = err as { response?: { status?: number; data?: unknown }; message?: string }
       console.error('[diagnostic] threw:', ax)
@@ -399,7 +400,7 @@ export default function AdminKtAlphaPage() {
       scopeInput.trim() === '2' ? 'admin' : 'all'
     const scopeLabel = { vouchers: '교환권', admin: '어드민 상품', all: '전체 활성 상품' }[scope]
 
-    if (!confirm(`${scopeLabel} 에 허위 리뷰를 대량 생성합니다.\n각 상품마다 5-25개 랜덤 · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n⚠️ 운영자 자체 책임. 계속하시겠습니까?`)) return
+    if (!(await confirmDialog(`${scopeLabel} 에 허위 리뷰를 대량 생성합니다.\n각 상품마다 5-25개 랜덤 · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n⚠️ 운영자 자체 책임. 계속하시겠습니까?`))) return
 
     const reviewsPerInput = prompt('상품당 평균 리뷰 개수 (5-50, 기본 15)', '15')
     if (!reviewsPerInput) return
@@ -494,8 +495,8 @@ export default function AdminKtAlphaPage() {
       scopeInput.trim() === '2' ? 'admin' : 'all'
     const scopeLabel = { vouchers: '교환권 리뷰', admin: '어드민 상품 리뷰', all: '전체 생성 리뷰' }[scope]
 
-    if (!confirm(`${scopeLabel} 일괄 삭제. 복구 불가. 계속하시겠습니까?`)) return
-    if (!confirm('🚨 한 번 더 확인 — 정말 전체 삭제?')) return
+    if (!(await confirmDialog({ message: `${scopeLabel} 일괄 삭제. 복구 불가. 계속하시겠습니까?`, danger: true }))) return
+    if (!(await confirmDialog({ message: '🚨 한 번 더 확인 — 정말 전체 삭제?', danger: true }))) return
     try {
       const r = await api.delete(`/api/admin/reviews/generated-bulk-vouchers?scope=${scope}`, { headers: h() })
       if (r.data?.success) toast.success(`✅ ${scopeLabel} ${r.data.deleted}개 삭제됨`)
@@ -510,7 +511,7 @@ export default function AdminKtAlphaPage() {
   //   gift_catalog.goods_type_detail + brand_name 키워드로 자동 재분류.
   //   bulk-import 시 fallback 으로 'voucher' 로 들어간 상품들도 적절한 카테고리로 재분배.
   async function autoClassifyCategories() {
-    if (!confirm('KT Alpha 상품 전체를 자동 재분류합니다.\n• gift_catalog 의 goods_type_detail 우선\n• 그 다음 브랜드명 키워드 매칭 (스타벅스→카페, GS25→편의점 등)\n계속하시겠습니까?')) return
+    if (!(await confirmDialog('KT Alpha 상품 전체를 자동 재분류합니다.\n• gift_catalog 의 goods_type_detail 우선\n• 그 다음 브랜드명 키워드 매칭 (스타벅스→카페, GS25→편의점 등)\n계속하시겠습니까?'))) return
     toast.info('재분류 중...')
     try {
       const r = await api.post('/api/admin/kt-alpha/categories/auto-classify', {}, { headers: h() })
@@ -544,12 +545,12 @@ export default function AdminKtAlphaPage() {
   }
 
   async function runImport(dryRun: boolean) {
-    if (!dryRun && !confirm(
+    if (!dryRun && !(await confirmDialog(
       '⚠️ KT Alpha 상품을 일반 상품으로 자동 등록합니다.\n' +
       '\n· 마진 20% (kt_alpha_consumer_markup_pct 설정값)\n' +
       '· 딜 결제 전용\n· 노출 상태는 별도 토글로 제어\n\n' +
       'KT Alpha 측 사전 승인 받으셨나요? (B2B 정책 리스크)\n계속 진행하시겠습니까?'
-    )) return
+    ))) return
     setImporting(true)
     setDryRunResult(null)
     try {
@@ -599,10 +600,11 @@ export default function AdminKtAlphaPage() {
   }
 
   async function toggleConsumerVisibility(enabled: boolean) {
-    if (enabled && !confirm(
-      '⚠️ KT Alpha 상품 전체를 일반 사용자에게 노출합니다.\n' +
-      'KT Alpha 측 사전 승인 받으셨나요? (정책 위반 시 Key 회수 위험)\n계속하시겠습니까?'
-    )) return
+    if (enabled && !(await confirmDialog({
+      message: '⚠️ KT Alpha 상품 전체를 일반 사용자에게 노출합니다.\n' +
+      'KT Alpha 측 사전 승인 받으셨나요? (정책 위반 시 Key 회수 위험)\n계속하시겠습니까?',
+      danger: true,
+    }))) return
     try {
       const r = await api.patch('/api/admin/kt-alpha/consumer-products/visibility',
         { enabled }, { headers: h() })

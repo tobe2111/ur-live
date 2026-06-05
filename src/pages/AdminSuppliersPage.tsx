@@ -11,6 +11,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface SupplierRow {
   id: number
@@ -68,7 +69,7 @@ export default function AdminSuppliersPage() {
 
   async function payout(s: SupplierRow) {
     if (s.available_amount <= 0) return
-    if (!window.confirm(t('admin.suppliers.payoutConfirm', { defaultValue: `${s.business_name} 에게 ${formatWon(s.available_amount)} 지급 처리할까요? 실제 계좌이체는 별도로 진행해주세요.` }))) return
+    if (!(await confirmDialog(t('admin.suppliers.payoutConfirm', { defaultValue: `${s.business_name} 에게 ${formatWon(s.available_amount)} 지급 처리할까요? 실제 계좌이체는 별도로 진행해주세요.` })))) return
     setActionId(s.id)
     try {
       const res = await api.post(`/api/admin/suppliers/${s.id}/payout`, {}, { headers: { Authorization: `Bearer ${token()}` } })

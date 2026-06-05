@@ -25,6 +25,7 @@ import {
 import { getUserId, logout as authLogout } from '@/utils/auth'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AccountDeleteWarningPage() {
   const { t } = useTranslation()
@@ -58,9 +59,10 @@ export default function AccountDeleteWarningPage() {
       return
     }
 
-    const finalConfirm = window.confirm(
-      t('accountDeleteWarning.confirmDialog')
-    )
+    const finalConfirm = await confirmDialog({
+      message: t('accountDeleteWarning.confirmDialog'),
+      danger: true,
+    })
     if (!finalConfirm) return
 
     setIsLoading(true)

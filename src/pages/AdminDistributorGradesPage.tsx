@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -276,7 +277,7 @@ export default function AdminDistributorGradesPage() {
     finally { setDemoBusy(false) }
   }
   async function clearDemoProducts() {
-    if (!confirm('데모 상품을 모두 삭제할까요?')) return
+    if (!(await confirmDialog({ message: '데모 상품을 모두 삭제할까요?', danger: true }))) return
     setDemoBusy(true)
     try {
       const r = await api.delete('/api/admin/distributor/seed-demo-products', h)

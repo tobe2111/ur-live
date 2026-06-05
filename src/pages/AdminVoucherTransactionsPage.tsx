@@ -19,6 +19,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, formatWon } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface VoucherTxRow {
   id: number
@@ -72,7 +73,7 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
   const [triggerResult, setTriggerResult] = useState<string | null>(null)
 
   async function triggerResend() {
-    if (!confirm(`Order #${orderId} 에 KT Alpha 자동발송을 수동 trigger 합니다. 진행하시겠습니까?`)) return
+    if (!(await confirmDialog(`Order #${orderId} 에 KT Alpha 자동발송을 수동 trigger 합니다. 진행하시겠습니까?`))) return
     setTriggering(true)
     setTriggerResult(null)
     try {
@@ -487,7 +488,7 @@ function KtAlphaStatusCell({ row, onChange }: { row: VoucherTxRow; onChange: () 
   }
 
   async function resend() {
-    if (!confirm(`Order #${row.order_id} 재발송할까요?`)) return
+    if (!(await confirmDialog(`Order #${row.order_id} 재발송할까요?`))) return
     setTriggering(true)
     try {
       const r = await api.post(`/api/admin/kt-alpha/trigger-order/${row.order_id}`, {})

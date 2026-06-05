@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface ProxyProduct {
   id: number
@@ -36,7 +37,7 @@ export default function SellerProxyProductsPage() {
   const load = () => refetch()
 
   async function act(id: number, action: 'approve' | 'reject') {
-    if (action === 'reject' && !confirm('이 대행 등록을 거부(삭제)할까요?')) return
+    if (action === 'reject' && !(await confirmDialog({ message: '이 대행 등록을 거부(삭제)할까요?', danger: true }))) return
     setBusy(id)
     try {
       const res = await api.post(`/api/seller/analytics/proxy-products/${id}/${action}`, {})

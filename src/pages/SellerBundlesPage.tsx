@@ -9,6 +9,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import { Package, Plus, Trash2, Loader2, Pencil, ToggleLeft, ToggleRight, X, CheckCircle2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface BundleItem { product_id: number; quantity: number }
 interface Bundle {
@@ -87,7 +88,7 @@ export default function SellerBundlesPage() {
   }
 
   async function deleteBundle(id: number) {
-    if (!confirm(t('seller.bundles.deleteConfirm', { defaultValue: '번들을 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('seller.bundles.deleteConfirm', { defaultValue: '번들을 삭제하시겠습니까?' }), danger: true }))) return
     try {
       await api.delete(`/api/seller/bundles/${id}`, { headers })
       toast.success(t('seller.bundles.deleted', { defaultValue: '삭제되었습니다' })); loadData()

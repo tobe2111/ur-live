@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Megaphone, Plus, Check, Building2 } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Advertiser {
   id: number
@@ -92,7 +93,7 @@ export default function AdminCastingsPage() {
   }
 
   async function completeCasting(id: number) {
-    if (!confirm('이 캐스팅을 완료 처리하시겠습니까? (외부 거래 완료 후)')) return
+    if (!(await confirmDialog('이 캐스팅을 완료 처리하시겠습니까? (외부 거래 완료 후)'))) return
     try {
       const token = localStorage.getItem('admin_token')
       await api.patch(`/api/admin/castings/${id}/complete`, {},

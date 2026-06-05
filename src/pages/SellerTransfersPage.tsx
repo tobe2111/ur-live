@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -43,7 +44,7 @@ export default function SellerTransfersPage() {
     const msg = approved
       ? t('seller.transfers.approveConfirm', { defaultValue: '본 에이전시 이전에 동의하시겠습니까? 동의 시 즉시 매핑이 변경되며, 30일간 재이전이 제한됩니다.' })
       : t('seller.transfers.rejectConfirm', { defaultValue: '이전을 거부하시겠습니까?' })
-    if (!confirm(msg)) return
+    if (!(await confirmDialog(msg))) return
     const reason = approved ? undefined : prompt(t('seller.transfers.rejectReasonPrompt', { defaultValue: '거부 사유 (선택):' })) || ''
     setSubmitting(id)
     try {

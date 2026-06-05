@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { Megaphone, Ban, RotateCcw, Handshake } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Blocked { influencer_id: string; reason: string; blocked_at: string }
 interface Recent { influencer_id: string; count: number; total_commission: number }
@@ -48,7 +49,7 @@ function DealsSection() {
     } finally { setProposing(false) }
   }
   async function respond(id: number, action: 'accept' | 'reject') {
-    if (!confirm(action === 'accept' ? '이 deal 수락?' : '거절?')) return
+    if (!(await confirmDialog({ message: action === 'accept' ? '이 deal 수락?' : '거절?', danger: action === 'reject' }))) return
     try {
       await api.post(`/api/seller-marketing/deals/${id}/respond`, { action }, { headers })
       toast.success(action === 'accept' ? '활성화됨' : '거절됨')
@@ -158,7 +159,7 @@ export default function SellerMarketingPage() {
 
   async function toggleMarketing() {
     const next = !marketingEnabled
-    if (!next && !confirm('마케팅 OFF 시 모든 신규 referral commission 이 종료됩니다. 진행할까요?')) return
+    if (!next && !(await confirmDialog({ message: '마케팅 OFF 시 모든 신규 referral commission 이 종료됩니다. 진행할까요?', danger: true }))) return
     try {
       await api.post('/api/seller-marketing/toggle', { enabled: next }, { headers })
       setMarketingEnabled(next)
@@ -182,7 +183,7 @@ export default function SellerMarketingPage() {
   }
 
   async function unblock(influencerId: string) {
-    if (!confirm(`${influencerId} 차단을 해제할까요?`)) return
+    if (!(await confirmDialog({ message: `${influencerId} 차단을 해제할까요?`, danger: true }))) return
     try {
       await api.post('/api/seller-marketing/unblock', { influencer_id: influencerId }, { headers })
       toast.success('차단 해제됨')

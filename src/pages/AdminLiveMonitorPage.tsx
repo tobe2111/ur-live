@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Radio, Eye, Clock, StopCircle, RefreshCw, ExternalLink, Trash2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface LiveStream {
   id: number
@@ -222,7 +223,7 @@ export default function AdminLiveMonitorPage() {
   }
 
   async function forceEnd(stream: LiveStream) {
-    if (!confirm(`"${stream.title}" 방송을 강제 종료하시겠습니까?`)) return
+    if (!(await confirmDialog(`"${stream.title}" 방송을 강제 종료하시겠습니까?`))) return
     try {
       const res = await api.patch(`/api/admin/live-monitor/${stream.id}/end`, {}, h)
       if (res.data.success) {
@@ -236,7 +237,7 @@ export default function AdminLiveMonitorPage() {
   }
 
   async function deleteStream(stream: { id: number; title: string }) {
-    if (!confirm(`"${stream.title}" 방송을 메인 노출에서 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다`)) return
+    if (!(await confirmDialog({ message: `"${stream.title}" 방송을 메인 노출에서 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다`, danger: true }))) return
     try {
       const res = await api.delete(`/api/admin/live-monitor/${stream.id}`, h)
       if (res.data.success) {
@@ -267,7 +268,7 @@ export default function AdminLiveMonitorPage() {
   async function bulkDelete() {
     if (selectedIds.size === 0) return
     const ids = Array.from(selectedIds)
-    if (!confirm(`선택한 ${ids.length}개 방송을 메인 노출에서 일괄 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다`)) return
+    if (!(await confirmDialog({ message: `선택한 ${ids.length}개 방송을 메인 노출에서 일괄 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다`, danger: true }))) return
     setBulkDeleting(true)
     try {
       const res = await api.delete('/api/admin/live-monitor/bulk', { ...h, data: { ids } })

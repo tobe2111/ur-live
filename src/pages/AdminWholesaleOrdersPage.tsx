@@ -7,6 +7,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Package, Loader2, Search, RotateCcw, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // 🏭 2026-06-01 유통스타트 — 어드민 도매주문 모니터 (오버사이트 + 강제환불). 라이트 테마.
 
@@ -64,7 +65,7 @@ export default function AdminWholesaleOrdersPage() {
   }
 
   async function forceRefund(id: number) {
-    if (!window.confirm(`주문 #${id} 을(를) 관리자 강제 전액환불 할까요? 되돌릴 수 없습니다.`)) return
+    if (!(await confirmDialog({ message: `주문 #${id} 을(를) 관리자 강제 전액환불 할까요? 되돌릴 수 없습니다.`, danger: true }))) return
     setRefunding(true)
     try {
       const r = await api.post(`/api/admin/distributor/orders/${id}/refund`, { reason: '관리자 환불' }, h)

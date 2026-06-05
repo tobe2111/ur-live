@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 
 // 🛡️ 2026-05-27 (loading P1): VoucherMap (Kakao Maps SDK ~150KB) 별도 chunk lazy.
@@ -176,7 +177,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
     (Date.now() - new Date(voucher.created_at).getTime()) < 7 * 86400000
   async function handleSelfCancel() {
     if (cancelling) return
-    if (!window.confirm(t('voucher.cancelConfirm', { defaultValue: '이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)' }))) return
+    if (!(await confirmDialog({ message: t('voucher.cancelConfirm', { defaultValue: '이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)' }), danger: true }))) return
     setCancelling(true)
     try {
       const res = await api.post(`/api/group-buy/voucher/${voucher.code}/cancel`)
@@ -774,7 +775,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
   async function resend() {
     if (!v.order_id) return
-    if (!confirm("MMS 를 휴대폰으로 다시 발송할까요?")) return
+    if (!(await confirmDialog("MMS 를 휴대폰으로 다시 발송할까요?"))) return
     setResending(true)
     try {
       const { default: api } = await import("@/lib/api")

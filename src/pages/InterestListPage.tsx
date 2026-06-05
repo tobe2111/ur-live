@@ -3,6 +3,7 @@
  * 다크 테마 (유저 대면 메인)
  */
 import { useNavigate } from 'react-router-dom'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
@@ -16,8 +17,8 @@ export default function InterestListPage() {
   const { data: items = [], isLoading: loading } = useMyInterests()
   const removeMut = useRemoveInterest()
 
-  const handleRemove = (item: InterestItem) => {
-    if (!confirm(t('interestList.removeConfirm', { defaultValue: '관심 목록에서 삭제하시겠습니까?' }))) return
+  const handleRemove = async (item: InterestItem) => {
+    if (!(await confirmDialog({ message: t('interestList.removeConfirm', { defaultValue: '관심 목록에서 삭제하시겠습니까?' }), danger: true }))) return
     removeMut.mutate(item, {
       onSuccess: () => toast.success(t('interestList.removed')),
       onError: () => toast.error(t('interestList.removeError')),

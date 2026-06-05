@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface VoucherOrderRow {
   id: number
@@ -68,7 +69,7 @@ export default function AdminVoucherOrdersPage() {
   const load = () => ordersQ.refetch()
 
   async function handleResend(id: number) {
-    if (!confirm('이 voucher 를 재발송할까요?')) return
+    if (!(await confirmDialog('이 voucher 를 재발송할까요?'))) return
     try {
       const res = await api.post(`/api/admin/voucher-orders/${id}/resend`)
       if (res.data?.success) {

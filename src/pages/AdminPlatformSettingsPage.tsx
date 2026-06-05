@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Settings, Save, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // 🛡️ 2026-04-22: 실제 코드에서 읽는 키로 정정 (UI-코드 매핑 수정).
 // 이전: seller_commission_rate 키가 UI 에만 있고 코드에선 안 읽혀서 어드민 수정이 반영되지 않는 버그.
@@ -136,7 +137,7 @@ function KtAlphaSystemSellerSection() {
   const [error, setError] = useState<string | null>(null)
 
   async function init() {
-    if (!confirm("'유어딜 공식 운영' system seller 자동 생성 + kt_alpha_admin_seller_id 자동 set. 진행하시겠습니까?")) return
+    if (!(await confirmDialog("'유어딜 공식 운영' system seller 자동 생성 + kt_alpha_admin_seller_id 자동 set. 진행하시겠습니까?"))) return
     setLoading(true)
     setError(null)
     try {

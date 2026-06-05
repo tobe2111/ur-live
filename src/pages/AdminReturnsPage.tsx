@@ -16,6 +16,7 @@ import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { ChevronDown, ChevronUp, Loader2, RefreshCw, RotateCw } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface ReturnRecord {
   id: number
@@ -69,7 +70,7 @@ export default function AdminReturnsPage() {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
   async function handleApprove(id: number) {
-    if (!confirm('이 반품을 승인하시겠습니까? (사용자가 회수 송장 등록 가능 상태로 전환)')) return
+    if (!(await confirmDialog('이 반품을 승인하시겠습니까? (사용자가 회수 송장 등록 가능 상태로 전환)'))) return
     try {
       await api.put(`/api/returns/${id}/approve`, {}, h)
       toast.success('승인되었습니다')
@@ -104,7 +105,7 @@ export default function AdminReturnsPage() {
   }
 
   async function handleRefund(id: number) {
-    if (!confirm('환불 처리하시겠습니까? (취소 불가)')) return
+    if (!(await confirmDialog({ message: '환불 처리하시겠습니까? (취소 불가)', danger: true }))) return
     try {
       await api.put(`/api/returns/${id}/refund`, {}, h)
       toast.success('환불 처리되었습니다')

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -88,7 +89,7 @@ export default function SellerStreamEditPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(t('seller.confirmDeleteStream'))) {
+    if (!(await confirmDialog({ message: t('seller.confirmDeleteStream'), danger: true }))) {
       return
     }
 

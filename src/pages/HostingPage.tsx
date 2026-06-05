@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -52,7 +53,7 @@ export default function HostingPage() {
   }
 
   async function handleCancel(id: number) {
-    if (!confirm('이 호스팅을 취소할까요?')) return
+    if (!(await confirmDialog({ message: '이 호스팅을 취소할까요?', danger: true }))) return
     const res = await hostingApi.cancel(id)
     if (res.success) {
       toast.success('취소되었습니다')

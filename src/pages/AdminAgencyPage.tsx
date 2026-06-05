@@ -8,6 +8,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound, Users } from 'lucide-react'
 import { tierLabel, tierBadgeClass } from '@/shared/utils/agency-tier'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Agency {
   id: number
@@ -130,7 +131,7 @@ export default function AdminAgencyPage() {
   }
 
   async function handleReject(a: Agency) {
-    if (!confirm(`"${a.name}" 에이전시 가입을 거절하시겠습니까?`)) return
+    if (!(await confirmDialog({ message: `"${a.name}" 에이전시 가입을 거절하시겠습니까?`, danger: true }))) return
     try {
       await api.patch(`/api/admin/agencies/${a.id}`, { status: 'rejected' }, { headers })
       fetchAgencies()
@@ -167,7 +168,7 @@ export default function AdminAgencyPage() {
   }
 
   async function handleDelete(a: Agency) {
-    if (!confirm(`"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`)) return
+    if (!(await confirmDialog({ message: `"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`, danger: true }))) return
     try {
       await api.delete(`/api/admin/agencies/${a.id}`, { headers })
       fetchAgencies()
@@ -349,7 +350,7 @@ export default function AdminAgencyPage() {
                   {a.tier_locked === 1 && (
                     <button
                       onClick={async () => {
-                        if (!confirm(t('admin.agency.k025', { defaultValue: '자동 평가를 다시 활성화하시겠습니까? 다음 cron 실행 시 등급이 자동 재산정됩니다.' }))) return
+                        if (!(await confirmDialog(t('admin.agency.k025', { defaultValue: '자동 평가를 다시 활성화하시겠습니까? 다음 cron 실행 시 등급이 자동 재산정됩니다.' })))) return
                         await api.patch(`/api/admin/agencies/${a.id}`, { tier_locked: false }, { headers })
                         toast.info(t('admin.agency.k026', { defaultValue: '자동 평가 활성화' }))
                         fetchAgencies()

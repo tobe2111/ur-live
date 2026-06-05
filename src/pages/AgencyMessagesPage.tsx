@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { MessageSquare, Plus, Trash2, Send, X, History } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type Category = 'invite' | 'follow_up' | 'reactivation' | 'announcement' | 'general'
 
@@ -100,7 +101,7 @@ export default function AgencyMessagesPage() {
   }
 
   const deleteTemplate = async (id: number) => {
-    if (!confirm(t('agency.messages.confirmDeactivate', { defaultValue: '이 템플릿을 비활성화하시겠습니까?' }))) return
+    if (!(await confirmDialog(t('agency.messages.confirmDeactivate', { defaultValue: '이 템플릿을 비활성화하시겠습니까?' })))) return
     try {
       await api.delete(`/api/agency/messages/templates/${id}`, { headers })
       toast.info(t('agency.messages.deactivated', { defaultValue: '비활성화됨' }))

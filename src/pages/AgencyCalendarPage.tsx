@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Plus, AlertCircle, MessageCircle, Star, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface CalendarStream {
   id: number
@@ -131,7 +132,7 @@ export default function AgencyCalendarPage() {
   }
 
   const deleteNote = async (id: number) => {
-    if (!confirm(t('agency.calendar.confirmDeleteNote', { defaultValue: '이 노트를 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('agency.calendar.confirmDeleteNote', { defaultValue: '이 노트를 삭제하시겠습니까?' }), danger: true }))) return
     try {
       await api.delete(`/api/agency/calendar/notes/${id}`, { headers })
       toast.info(t('agency.calendar.noteDeleted', { defaultValue: '삭제됨' }))

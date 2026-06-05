@@ -13,6 +13,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface DashboardData {
   quota: {
@@ -35,7 +36,7 @@ export default function AdminYoutubeQuotaPage() {
   const formatNum = (n: number) => n.toLocaleString('ko-KR')
 
   const handleForceEnd = async (streamId: number, title: string) => {
-    if (!confirm(`정말 stream #${streamId} "${title}" 을 강제 종료할까요?\n셀러에게 알림이 발송됩니다.`)) return
+    if (!(await confirmDialog(`정말 stream #${streamId} "${title}" 을 강제 종료할까요?\n셀러에게 알림이 발송됩니다.`))) return
     const reason = prompt('종료 사유 (셀러에게 전송됨):', '좀비 의심 stream — 송출 신호 미감지') || '어드민 수동 종료'
     try {
       const res = await api.post(`/api/youtube/live/${streamId}/admin-force-end?reason=${encodeURIComponent(reason)}`)

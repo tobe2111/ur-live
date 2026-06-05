@@ -5,6 +5,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplier-api'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // 🏭 2026-06-01 유통스타트 — 제조사(공급자) 도매 주문 처리 (Phase 3). 송장 입력 + 반품 승인.
 // 라이트 테마 (대시보드 계열).
@@ -118,7 +119,7 @@ export default function SupplierWholesaleOrdersPage() {
   }
 
   async function refund(item: Line) {
-    if (!window.confirm(`주문 #${item.wholesale_order_id} 을(를) 전액 환불 처리할까요? 되돌릴 수 없습니다.`)) return
+    if (!(await confirmDialog({ message: `주문 #${item.wholesale_order_id} 을(를) 전액 환불 처리할까요? 되돌릴 수 없습니다.`, danger: true }))) return
     setBusy(item.item_id)
     try {
       await supplierApi.post(`/api/supplier/wholesale/orders/${item.wholesale_order_id}/refund`, { reason: '판매자 반품 승인' })

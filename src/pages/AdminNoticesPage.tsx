@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AdminNoticesPage() {
   const { t } = useTranslation()
@@ -24,7 +25,7 @@ export default function AdminNoticesPage() {
 
   const send = async () => {
     if (!title.trim() || !message.trim()) { toast.error('제목과 내용을 입력해주세요'); return }
-    if (!confirm(`"${target === 'all' ? '전체' : target === 'sellers' ? '셀러' : '사용자'}"에게 공지를 발송하시겠습니까?`)) return
+    if (!(await confirmDialog(`"${target === 'all' ? '전체' : target === 'sellers' ? '셀러' : '사용자'}"에게 공지를 발송하시겠습니까?`))) return
     setSending(true)
     try {
       const res = await api.post('/api/admin/tools/notices', { title: title.trim(), message: message.trim(), target }, h)

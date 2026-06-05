@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import ViewerLoyaltyBadge from './ViewerLoyaltyBadge'
 import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🛡️ 2026-04-23 배치 167: 셀러 LiveChatPanel 을 WebSocket DO 기반으로 통합.
@@ -124,7 +125,7 @@ export default function LiveChatPanel({ streamId }: { streamId: number }) {
   }
 
   async function banUser(userId: string) {
-    if (!confirm(t('seller.liveChat.banConfirm', { defaultValue: '이 사용자를 차단하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('seller.liveChat.banConfirm', { defaultValue: '이 사용자를 차단하시겠습니까?' }), danger: true }))) return
     try {
       await api.post(`/api/live/${streamId}/broadcast`,
         { type: 'ban_user', data: { userId } },

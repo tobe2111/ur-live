@@ -8,6 +8,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { UserCog, Plus, Trash2, Key, Edit2, X } from 'lucide-react'
 import { formatKST } from '@/utils/date'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Admin {
   id: number
@@ -95,7 +96,7 @@ export default function AdminAccountsPage() {
     }
     // 역할 변경 시 확인
     if (editForm.role !== showEdit.role) {
-      if (!confirm(t('admin.accounts.confirmRoleChange', { from: showEdit.role, to: editForm.role }))) return
+      if (!(await confirmDialog(t('admin.accounts.confirmRoleChange', { from: showEdit.role, to: editForm.role })))) return
     }
     setSaving(true)
     try {
@@ -125,7 +126,7 @@ export default function AdminAccountsPage() {
         return
       }
     }
-    if (!confirm(t('admin.accounts.confirmDelete', { name: admin.name || admin.email }))) return
+    if (!(await confirmDialog({ message: t('admin.accounts.confirmDelete', { name: admin.name || admin.email }), danger: true }))) return
     try {
       const res = await api.delete(`/api/admin/admins/${admin.id}`, h)
       if (res.data.success) {

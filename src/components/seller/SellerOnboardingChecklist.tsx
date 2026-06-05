@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Circle, ArrowRight, X, Sparkles } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 interface ChecklistItem {
   id: string
@@ -108,7 +109,7 @@ export default function SellerOnboardingChecklist() {
                 // plus친구 추가 후 확인 modal 또는 별도 페이지 — 단순화: 카카오 채널 link 새 탭 + localStorage mark
                 window.open('https://pf.kakao.com/_xXXxXxXx', '_blank')
                 try { localStorage.setItem(PLUS_FRIEND_KEY, '1') } catch { /* ignore */ }
-                alert('카카오 plus친구 추가 후 다시 확인됩니다')
+                void alertDialog('카카오 plus친구 추가 후 다시 확인됩니다')
                 return
               }
               navigate(item.href)

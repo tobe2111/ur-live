@@ -4,6 +4,7 @@ import { Play } from 'lucide-react'
 import api from '@/lib/api'
 import { Capacitor } from '@capacitor/core'
 import { formatNumber } from '@/utils/format'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 interface AdRewardStatus {
   todayCount: number
@@ -34,11 +35,11 @@ export function RewardAdCard() {
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <button onClick={() => alert(t('rewardAd.appPreparing', { defaultValue: '앱이 준비 중입니다 🚀\n조금만 기다려주세요!' }))} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white active:scale-95">
+            <button onClick={() => void alertDialog(t('rewardAd.appPreparing', { defaultValue: '앱이 준비 중입니다 🚀\n조금만 기다려주세요!' }))} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white active:scale-95">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               App Store
             </button>
-            <button onClick={() => alert(t('rewardAd.appPreparing', { defaultValue: '앱이 준비 중입니다 🚀\n조금만 기다려주세요!' }))} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white active:scale-95">
+            <button onClick={() => void alertDialog(t('rewardAd.appPreparing', { defaultValue: '앱이 준비 중입니다 🚀\n조금만 기다려주세요!' }))} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white/10 rounded-xl text-xs font-bold text-gray-900 dark:text-white active:scale-95">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.04L14.55 12 3.18.96C2.58 1.33 2.1 1.96 2.1 2.86v18.28c0 .9.48 1.53 1.08 1.9zm12.89-9.95l2.22-1.26L6.79.56l9.28 12.53zM6.79 23.44l11.5-5.27-2.22-1.26L6.79 23.44zM19.41 10.6l-2.52 1.44L19.41 13.4l2.59-1.4-2.59-1.4z"/></svg>
               Play Store
             </button>
@@ -117,13 +118,13 @@ export function RewardAdCard() {
         // 잔액 갱신 이벤트 발생
         window.dispatchEvent(new CustomEvent('pointsBalanceChanged'))
       } else {
-        alert(res.data.error || t('rewardAd.rewardFailed', { defaultValue: '리워드 지급에 실패했습니다' }))
+        void alertDialog(res.data.error || t('rewardAd.rewardFailed', { defaultValue: '리워드 지급에 실패했습니다' }))
       }
     } catch (err: any) {
       if (err?.response?.status === 429) {
-        alert(err.response.data?.error || t('rewardAd.dailyLimitReached', { defaultValue: '오늘 광고 시청 한도에 도달했습니다' }))
+        void alertDialog(err.response.data?.error || t('rewardAd.dailyLimitReached', { defaultValue: '오늘 광고 시청 한도에 도달했습니다' }))
       } else {
-        alert(t('rewardAd.watchError', { defaultValue: '광고 시청 중 오류가 발생했습니다' }))
+        void alertDialog(t('rewardAd.watchError', { defaultValue: '광고 시청 중 오류가 발생했습니다' }))
       }
     } finally {
       setLoading(false)

@@ -15,6 +15,7 @@ import SEO from '@/components/SEO'
 import AdminLayout from '@/components/AdminLayout'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface CommissionSettings {
   id: number
@@ -70,7 +71,7 @@ export default function AdminMerchantCommissionsPage() {
   const loadPendingBiz = () => pendingBizQ.refetch()
 
   async function actBiz(id: number, action: 'business-approve' | 'business-reject') {
-    if (action === 'business-reject' && !confirm('이 사업자 등록을 거부할까요?')) return
+    if (action === 'business-reject' && !(await confirmDialog({ message: '이 사업자 등록을 거부할까요?', danger: true }))) return
     try {
       const res = await api.post(`/api/admin/users/${id}/${action}`, {})
       if (res.data?.success) { toast.success(action === 'business-approve' ? '승인됨 — 현금 정산 활성' : '거부됨'); pendingBizQ.refetch() }
@@ -115,7 +116,7 @@ export default function AdminMerchantCommissionsPage() {
   }
 
   async function backfill(userId?: number) {
-    if (!confirm(userId ? `유저 #${userId} 영입 commission을 딜로 재적립할까요?` : '전체 영향 유저에게 딜을 재적립할까요? (idempotent)')) return
+    if (!(await confirmDialog(userId ? `유저 #${userId} 영입 commission을 딜로 재적립할까요?` : '전체 영향 유저에게 딜을 재적립할까요? (idempotent)'))) return
     try {
       const res = await api.post('/api/admin/intro-commission-backfill', { confirm: true, user_id: userId })
       if (res.data?.success) { toast.success(`${res.data.reconciled}건 보정 (${formatWon(res.data.total_credited)})`); loadAudit() }

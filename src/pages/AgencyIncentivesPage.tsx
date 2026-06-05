@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Award, Plus, Trash2, Eye, X, BarChart3 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatNumber } from '@/utils/format'
 
 type Metric = 'sales' | 'rating' | 'streams' | 'orders' | 'viewers'
@@ -128,7 +129,7 @@ export default function AgencyIncentivesPage() {
   }
 
   const deleteRule = async (id: number) => {
-    if (!confirm(t('agency.incentives.confirmDeactivate', { defaultValue: '이 규칙을 비활성화하시겠습니까?' }))) return
+    if (!(await confirmDialog(t('agency.incentives.confirmDeactivate', { defaultValue: '이 규칙을 비활성화하시겠습니까?' })))) return
     try {
       await api.delete(`/api/agency/incentives/rules/${id}`, { headers })
       toast.info(t('agency.incentives.deactivated', { defaultValue: '비활성화됨' }))

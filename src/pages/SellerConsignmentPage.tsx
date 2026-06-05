@@ -15,6 +15,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Handshake, CheckCircle2, XCircle, Clock, Loader2, ArrowDown, ArrowUp } from 'lucide-react'
 
 interface Partnership {
@@ -88,7 +89,7 @@ export default function SellerConsignmentPage() {
   }
 
   const handleTerminate = async (id: number) => {
-    if (!confirm(t('seller.consignment.terminateConfirm', { defaultValue: '정말 종료하시겠어요? 종료 후 다시 시작할 수 없습니다.' }))) return
+    if (!(await confirmDialog(t('seller.consignment.terminateConfirm', { defaultValue: '정말 종료하시겠어요? 종료 후 다시 시작할 수 없습니다.' })))) return
     setActingId(id)
     try {
       await api.post(`/api/seller/consignment/${id}/terminate`)

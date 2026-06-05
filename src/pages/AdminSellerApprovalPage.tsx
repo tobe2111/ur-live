@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🛡️ 2026-04-28: 셀러 관리 통합 페이지
@@ -138,7 +139,7 @@ export default function AdminSellerApprovalPage() {
       if (res.data?.success) {
         const d = res.data.data
         // 자격증명을 한번에 노출 — 어드민이 가게에 전달.
-        alert(
+        await alertDialog(
           `✅ 공급자 등록 완료\n\n` +
           `가게: ${d.business_name}\n담당자: ${d.contact_name}\n수수료율: ${d.commission_rate}%\n\n` +
           `[로그인 정보 — 가게에 전달]\n` +
@@ -161,7 +162,7 @@ export default function AdminSellerApprovalPage() {
   const toggleSuspend = async (s: Seller) => {
     const isActivating = s.status === 'suspended'
     const action = isActivating ? '재활성' : '정지'
-    if (!confirm(`${s.name || s.email} 셀러를 ${action} 처리할까요?`)) return
+    if (!(await confirmDialog(`${s.name || s.email} 셀러를 ${action} 처리할까요?`))) return
     setActingId(s.id)
     try {
       if (isActivating) {
@@ -177,7 +178,7 @@ export default function AdminSellerApprovalPage() {
 
   // 🛡️ 2026-05-20: 사업자등록증 검증/반려 — migration 0257 PATCH /sellers/:id/business-registration/verify
   const verifyBizReg = async (id: number) => {
-    if (!confirm('사업자등록증을 승인할까요? (현금 정산 가능 상태로 전환)')) return
+    if (!(await confirmDialog('사업자등록증을 승인할까요? (현금 정산 가능 상태로 전환)'))) return
     setBizActingId(id)
     try {
       await api.patch(`/api/admin/sellers/${id}/business-registration/verify`, { action: 'verify' }, h)

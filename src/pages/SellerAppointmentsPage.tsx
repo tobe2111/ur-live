@@ -10,6 +10,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { CalendarCheck, CheckCircle, XCircle, Phone } from 'lucide-react'
 
 interface Appointment {
@@ -51,7 +52,7 @@ export default function SellerAppointmentsPage() {
   }, [])
 
   async function markComplete(a: Appointment) {
-    if (!confirm(`${a.user_name || a.user_id} 님 이용 완료 처리하시겠습니까?`)) return
+    if (!(await confirmDialog(`${a.user_name || a.user_id} 님 이용 완료 처리하시겠습니까?`))) return
     try {
       const res = await api.patch(`/api/seller/appointments/${a.id}/complete`)
       if (res.data?.success) { toast.success('완료 처리'); load() }
@@ -60,7 +61,7 @@ export default function SellerAppointmentsPage() {
   }
 
   async function markNoShow(a: Appointment) {
-    if (!confirm(`${a.user_name || a.user_id} 님 노쇼 처리하시겠습니까? (취소 불가)`)) return
+    if (!(await confirmDialog({ message: `${a.user_name || a.user_id} 님 노쇼 처리하시겠습니까? (취소 불가)`, danger: true }))) return
     try {
       const res = await api.patch(`/api/seller/appointments/${a.id}/no-show`)
       if (res.data?.success) { toast.success('노쇼 처리'); load() }

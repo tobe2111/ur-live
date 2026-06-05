@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2 } from 'lucide-react'
@@ -345,7 +346,7 @@ export default function GroupBuyDetailPage() {
         const e = err as { response?: { data?: { error?: string; code?: string } } }
         const code = e?.response?.data?.code
         if (code === 'INSUFFICIENT_POINTS') {
-          const charge = window.confirm('딜이 부족합니다. 충전 페이지로 이동할까요?')
+          const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
           if (charge) {
             localStorage.setItem('loginReturnUrl', window.location.pathname)
             navigate('/points/charge')

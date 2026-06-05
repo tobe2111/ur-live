@@ -16,6 +16,7 @@ import { Send, Loader2, MessageCircle } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
   streamId: number | string
@@ -31,7 +32,7 @@ export default function SellerKakaoNotifyButton({ streamId, streamTitle, customM
 
   async function handleSend() {
     if (sent) {
-      if (!confirm(t('seller.kakaoNotify.confirmResend', { defaultValue: '이미 발송했습니다. 다시 발송하시겠습니까?' }))) return
+      if (!(await confirmDialog(t('seller.kakaoNotify.confirmResend', { defaultValue: '이미 발송했습니다. 다시 발송하시겠습니까?' })))) return
     }
     setSending(true)
     try {
@@ -51,7 +52,7 @@ export default function SellerKakaoNotifyButton({ streamId, streamTitle, customM
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
       const errCode = e?.response?.data?.code
       if (errCode === 'KAKAO_REAUTH_REQUIRED') {
-        if (confirm(t('seller.kakaoNotify.reauthRequired', { defaultValue: '카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?' }))) {
+        if (await confirmDialog(t('seller.kakaoNotify.reauthRequired', { defaultValue: '카카오 인증이 만료됐어요. 다시 로그인하시겠습니까?' }))) {
           navigate('/seller/login')
         }
       } else if (errCode === 'KAKAO_SCOPE_MISSING') {

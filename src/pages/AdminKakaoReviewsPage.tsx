@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Star, ExternalLink, CheckCircle, XCircle } from 'lucide-react'
 
@@ -41,7 +42,7 @@ export default function AdminKakaoReviewsPage() {
   const load = () => refetch()
 
   async function approve(id: number) {
-    if (!confirm('승인 + 보너스 지급?')) return
+    if (!(await confirmDialog('승인 + 보너스 지급?'))) return
     setProcessing(id)
     try {
       const res = await api.post(`/api/admin-review-bonus/${id}/approve`)

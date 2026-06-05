@@ -8,6 +8,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Users, Search, ChevronDown, ChevronUp,
   Loader2, ChevronLeft, ChevronRight
@@ -557,7 +558,7 @@ function GiftDealModal({ target, onClose, onSuccess }: { target: { id: number; n
       toast.error("금액을 입력하세요")
       return
     }
-    if (!confirm(`${target.name} 님에게 ${amount.toLocaleString()}딜을 선물할까요?`)) return
+    if (!(await confirmDialog(`${target.name} 님에게 ${amount.toLocaleString()}딜을 선물할까요?`))) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem("admin_token")

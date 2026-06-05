@@ -12,6 +12,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function Admin2FASetupPage() {
   const navigate = useNavigate()
@@ -60,7 +61,7 @@ export default function Admin2FASetupPage() {
 
   async function disable2fa() {
     if (!/^\d{6}$/.test(code)) { toast.error('6자리 숫자 코드'); return }
-    if (!confirm('어드민 2FA 를 비활성화하시겠습니까? 환불/분쟁 처리 보안이 약해집니다.')) return
+    if (!(await confirmDialog({ message: '어드민 2FA 를 비활성화하시겠습니까? 환불/분쟁 처리 보안이 약해집니다.', danger: true }))) return
     setSubmitting(true)
     try {
       const res = await api.post('/api/2fa/disable', { code }, { headers })

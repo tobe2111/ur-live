@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { QrCode, Copy, Plus, Trash2, ExternalLink, Users } from 'lucide-react'
 
 interface InviteCode {
@@ -52,7 +53,7 @@ export default function AgencyInvitesPage() {
   }
 
   async function deactivate(code: string) {
-    if (!confirm(`코드 ${code} 를 비활성화하시겠습니까? (이미 가입한 셀러는 영향 없음)`)) return
+    if (!(await confirmDialog(`코드 ${code} 를 비활성화하시겠습니까? (이미 가입한 셀러는 영향 없음)`))) return
     try {
       const token = localStorage.getItem('agency_token')
       await api.delete(`/api/agency/invites/${code}`, { headers: { Authorization: `Bearer ${token}` } })

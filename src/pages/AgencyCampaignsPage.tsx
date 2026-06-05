@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Megaphone, Plus, Calendar, Target, Users, RefreshCw, X, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Campaign {
   id: number
@@ -132,7 +133,7 @@ export default function AgencyCampaignsPage() {
   }
 
   const cancel = async (id: number) => {
-    if (!confirm(t('agency.campaigns.confirmCancel', { defaultValue: '이 캠페인을 취소하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('agency.campaigns.confirmCancel', { defaultValue: '이 캠페인을 취소하시겠습니까?' }), danger: true }))) return
     try {
       await api.post(`/api/agency/campaigns/${id}/cancel`, {}, { headers })
       toast.info(t('agency.campaigns.cancelled', { defaultValue: '취소됨' }))

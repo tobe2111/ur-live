@@ -14,6 +14,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface PendingSeller {
   id: number
@@ -45,7 +46,7 @@ export default function AdminPendingSellersPage() {
   const load = () => refetch()
 
   async function approve(id: number) {
-    if (!confirm('이 셀러를 승인할까요?')) return
+    if (!(await confirmDialog('이 셀러를 승인할까요?'))) return
     try {
       const r = await api.post(`/api/admin/sellers/${id}/approve`)
       if (r.data?.success) {

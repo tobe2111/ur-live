@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Loader2, Unlink, AlertCircle } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
   /** 'seller' | 'agency' — 어떤 role 의 연동인지 */
@@ -100,7 +101,7 @@ export function KakaoLinkButton({ role }: Props) {
   }
 
   async function unlink() {
-    if (!confirm(t('kakaoLink.unlinkConfirm'))) return
+    if (!(await confirmDialog(t('kakaoLink.unlinkConfirm')))) return
     const pw = prompt(t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)' }))
     if (!pw) return
     setWorking(true)

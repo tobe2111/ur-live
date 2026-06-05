@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Plus, Edit2, Trash2, Eye, EyeOff,
   Loader2, ArrowLeft, Save, Send, FileText
@@ -156,7 +157,7 @@ export default function AdminBlogPage() {
   }
 
   async function deletePost(id: number) {
-    if (!confirm(t('admin.blog.k010', { defaultValue: '정말 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('admin.blog.k010', { defaultValue: '정말 삭제하시겠습니까?' }), danger: true }))) return
     try {
       await api.delete(`/api/admin/blog/${id}`)
       toast.success(t('admin.blog.k011', { defaultValue: '삭제되었습니다.' }))

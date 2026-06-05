@@ -19,6 +19,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface PromoCode {
   id: number
@@ -105,7 +106,7 @@ export default function SellerPromoCodesPage() {
   }
 
   async function deleteCode(id: number, code: string) {
-    if (!confirm(`코드 ${code} 비활성화? (사용 기록은 유지됨)`)) return
+    if (!(await confirmDialog(`코드 ${code} 비활성화? (사용 기록은 유지됨)`))) return
     try {
       await api.delete(`/api/promo/${id}`, { headers })
       toast.success('비활성화 완료')
@@ -135,7 +136,7 @@ export default function SellerPromoCodesPage() {
 
   // 🛡️ 2026-05-15: 단골 전원에게 코드 push 알림 발송 (notify-followers 통합)
   async function pushToFollowers(c: PromoCode) {
-    if (!confirm(`단골 전원에게 "${c.code}" 코드를 push 로 알릴까요?\n\n• 1인당 한도: ${c.per_user_limit}회\n• 만료: ${c.expires_at || '없음'}`)) return
+    if (!(await confirmDialog(`단골 전원에게 "${c.code}" 코드를 push 로 알릴까요?\n\n• 1인당 한도: ${c.per_user_limit}회\n• 만료: ${c.expires_at || '없음'}`))) return
     try {
       const audienceLabel = c.audience === 'followers_only' ? '단골 전용' : c.audience === 'new_users_only' ? '신규 전용' : '모두'
       const res = await api.post('/api/seller-public/notify-followers', {

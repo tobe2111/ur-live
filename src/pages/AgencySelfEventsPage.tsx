@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Trophy, Plus, X, TrendingUp, Users, Eye } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -75,7 +76,7 @@ export default function AgencySelfEventsPage() {
   }
 
   async function cancelEvent(id: number) {
-    if (!confirm(t('agency.selfEvents.confirmCancel', { defaultValue: '이 이벤트를 취소하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('agency.selfEvents.confirmCancel', { defaultValue: '이 이벤트를 취소하시겠습니까?' }), danger: true }))) return
     try {
       const token = localStorage.getItem('agency_token')
       await api.post(`/api/agency/self-events/${id}/cancel`, {},

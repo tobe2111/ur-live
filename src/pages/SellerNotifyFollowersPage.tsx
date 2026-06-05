@@ -20,6 +20,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type Reason = 'new_product' | 'live_start' | 'group_buy' | 'custom'
 
@@ -74,7 +75,7 @@ export default function SellerNotifyFollowersPage() {
   async function handleSubmit() {
     if (title.length < 2) { toast.error('제목 2자+ 입력'); return }
     if (message.length < 5) { toast.error('내용 5자+ 입력'); return }
-    if (!confirm(`단골 전원에게 push 알림을 발송하시겠습니까?\n\n제목: ${title}\n내용: ${message}`)) return
+    if (!(await confirmDialog(`단골 전원에게 push 알림을 발송하시겠습니까?\n\n제목: ${title}\n내용: ${message}`))) return
 
     setSubmitting(true)
     setResult(null)

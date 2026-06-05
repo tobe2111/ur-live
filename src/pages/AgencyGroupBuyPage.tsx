@@ -9,6 +9,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown, MessageCircle, Send } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface GroupBuy {
   id: number
@@ -535,8 +536,8 @@ export default function AgencyGroupBuyPage() {
                       )}
                       {(g.status === 'proposed' || g.status === 'negotiating') && (
                         <button
-                          onClick={() => {
-                            if (window.confirm(t('agency.groupBuy.confirmFail', { defaultValue: '이 공구를 실패 처리하시겠습니까?' }))) {
+                          onClick={async () => {
+                            if (await confirmDialog(t('agency.groupBuy.confirmFail', { defaultValue: '이 공구를 실패 처리하시겠습니까?' }))) {
                               changeStatus(g.id, 'failed')
                             }
                           }}

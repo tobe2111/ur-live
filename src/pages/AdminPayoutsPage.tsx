@@ -15,6 +15,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Payout {
   id: number
@@ -77,7 +78,7 @@ export default function AdminPayoutsPage() {
   const load = () => { if (tab === 'pending_ledger') pendingQ.refetch(); else if (tab === 'payouts') payoutsQ.refetch() }
 
   async function generate() {
-    if (!confirm('지난주 정산 일괄 생성 (10,000원 이상 잔액만)?')) return
+    if (!(await confirmDialog('지난주 정산 일괄 생성 (10,000원 이상 잔액만)?'))) return
     try {
       const res = await api.post('/api/admin/payouts/generate', {})
       if (res.data?.success) {
@@ -91,7 +92,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function approve(p: Payout) {
-    if (!confirm(`${formatWon(p.amount)} 송금 승인하시겠습니까?`)) return
+    if (!(await confirmDialog(`${formatWon(p.amount)} 송금 승인하시겠습니까?`))) return
     try {
       const res = await api.patch(`/api/admin/payouts/${p.id}/approve`)
       if (res.data?.success) { toast.success('승인됨'); load() }
@@ -326,7 +327,7 @@ export default function AdminPayoutsPage() {
           </div>
           <button
             onClick={async () => {
-              if (!confirm('수수료율을 저장하시겠습니까? (즉시 적용)')) return
+              if (!(await confirmDialog('수수료율을 저장하시겠습니까? (즉시 적용)'))) return
               setSavingRates(true)
               try {
                 const res = await api.patch('/api/admin/payouts/commission-rates', {

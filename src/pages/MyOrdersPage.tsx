@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -62,7 +63,7 @@ export default function MyOrdersPage() {
   function loadData() { refetch() }
 
   async function handleConfirmOrder(orderId: number | string, orderNumber: string) {
-    if (!confirm(t('myOrders.confirmPurchasePrompt', { orderNumber, defaultValue: `주문 ${orderNumber}을(를) 구매확정 하시겠습니까?\n구매확정 후에는 취소할 수 없습니다.` }))) return
+    if (!(await confirmDialog({ message: t('myOrders.confirmPurchasePrompt', { orderNumber, defaultValue: `주문 ${orderNumber}을(를) 구매확정 하시겠습니까?\n구매확정 후에는 취소할 수 없습니다.` }), danger: true }))) return
     setProcessing(true)
     try {
       const response = await api.post(`/api/orders/${orderId}/confirm`)

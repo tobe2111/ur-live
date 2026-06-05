@@ -12,6 +12,7 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowLeft, Bell, BellOff, Loader2, Heart, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -43,8 +44,8 @@ export default function MyFollowsPage() {
     )
   }
 
-  function unfollow(sellerId: number) {
-    if (!confirm('단골을 해제하시겠습니까?')) return
+  async function unfollow(sellerId: number) {
+    if (!(await confirmDialog('단골을 해제하시겠습니까?'))) return
     unfollowMut.mutate(sellerId, {
       onSuccess: () => toast.info('단골 해제'),
       onError: () => toast.error('해제 실패'),

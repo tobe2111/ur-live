@@ -7,6 +7,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Megaphone, Check, X, Calendar, DollarSign } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Casting {
   id: number
@@ -45,7 +46,7 @@ export default function SellerCastingsPage() {
 
   async function respond(id: number, response: 'accept' | 'reject') {
     const reason = response === 'reject' ? prompt(t('seller.castings.rejectReasonPrompt', { defaultValue: '거절 사유 (선택):' })) || '' : undefined
-    if (response === 'accept' && !confirm(t('seller.castings.acceptConfirm', { defaultValue: '이 캐스팅을 수락하시겠습니까?' }))) return
+    if (response === 'accept' && !(await confirmDialog(t('seller.castings.acceptConfirm', { defaultValue: '이 캐스팅을 수락하시겠습니까?' })))) return
     try {
       const token = localStorage.getItem('seller_token')
       await api.post(`/api/seller/castings/${id}/respond`,

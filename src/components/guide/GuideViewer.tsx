@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import DOMPurify from 'dompurify'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 운영 가이드 공통 뷰어 — 어드민/셀러/에이전시 모두 사용
@@ -196,7 +197,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
   }
 
   async function deleteSection(sectionKey: string) {
-    if (!confirm('이 섹션을 삭제하시겠습니까?')) return
+    if (!(await confirmDialog({ message: '이 섹션을 삭제하시겠습니까?', danger: true }))) return
     try {
       await api.delete(`/api/guides/${guideType}/${sectionKey}`)
       toast.success('삭제되었습니다')

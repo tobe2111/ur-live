@@ -17,6 +17,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function Seller2FASetupPage() {
   const navigate = useNavigate()
@@ -67,7 +68,7 @@ export default function Seller2FASetupPage() {
 
   async function disable2fa() {
     if (!/^\d{6}$/.test(code)) { toast.error('6자리 숫자 코드 입력'); return }
-    if (!confirm('정말 2FA 를 비활성화하시겠습니까? 보안이 약해집니다.')) return
+    if (!(await confirmDialog({ message: '정말 2FA 를 비활성화하시겠습니까? 보안이 약해집니다.', danger: true }))) return
     setSubmitting(true)
     try {
       const res = await api.post('/api/2fa/disable', { code }, { headers })

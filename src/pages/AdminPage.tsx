@@ -13,6 +13,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { LayoutDashboard } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DeferUntilVisible from './admin-page/DeferUntilVisible'
 import ChartSkeleton from './admin-page/ChartSkeleton'
 import AdminRevenueChart from './admin-page/AdminRevenueChart'
@@ -223,7 +224,7 @@ export default function AdminPage() {
   }
 
   async function approveSeller(sellerId: number) {
-    if (!confirm(t('admin.dashboard.k005', { defaultValue: '이 판매자를 승인하시겠습니까?' }))) return
+    if (!(await confirmDialog(t('admin.dashboard.k005', { defaultValue: '이 판매자를 승인하시겠습니까?' })))) return
     try {
       const response = await api.patch(`/api/admin/sellers/${sellerId}/approve`, {})
       toast.success(response.data.message || t('admin.dashboard.k006', { defaultValue: '판매자 승인 완료!' }))
@@ -293,7 +294,7 @@ export default function AdminPage() {
   }
 
   async function deleteStream(streamId: number) {
-    if (!confirm(t('admin.dashboard.k013', { defaultValue: '정말 이 라이브를 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('admin.dashboard.k013', { defaultValue: '정말 이 라이브를 삭제하시겠습니까?' }), danger: true }))) return
     try {
       await api.delete(`/api/admin/streams/${streamId}`)
       toast.success(t('admin.dashboard.k014', { defaultValue: '라이브 삭제 완료!' }))
@@ -325,7 +326,7 @@ export default function AdminPage() {
   async function toggleManipulateStatsPermission(sellerId: number, currentValue: number) {
     const newValue = currentValue ? 0 : 1
     const action = newValue ? t('admin.dashboard.k016', { defaultValue: '승인' }) : t('admin.dashboard.k017', { defaultValue: '해제' })
-    if (!confirm(`시청자 수 조작 권한을 ${action}하시겠습니까?`)) return
+    if (!(await confirmDialog(`시청자 수 조작 권한을 ${action}하시겠습니까?`))) return
     try {
       await api.patch(`/api/admin/sellers/${sellerId}/permissions`, { can_manipulate_stats: newValue })
       toast.success(`권한이 ${action}되었습니다!`)
@@ -337,7 +338,7 @@ export default function AdminPage() {
   }
 
   async function suspendSeller(sellerId: number) {
-    if (!confirm(t('admin.dashboard.k018', { defaultValue: '이 판매자를 정지(비활성화)하시겠습니까?' }))) return
+    if (!(await confirmDialog(t('admin.dashboard.k018', { defaultValue: '이 판매자를 정지(비활성화)하시겠습니까?' })))) return
     try {
       const response = await api.delete(`/api/admin/sellers/${sellerId}`)
       toast.success(response.data.message || t('admin.dashboard.k019', { defaultValue: '판매자가 정지되었습니다' }))
@@ -466,7 +467,7 @@ export default function AdminPage() {
         </div>
         <button
           onClick={async () => {
-            if (!confirm('신규 상품 (별점 없음) 전체에 허위리뷰 즉시 시드할까요? max 500개.')) return
+            if (!(await confirmDialog('신규 상품 (별점 없음) 전체에 허위리뷰 즉시 시드할까요? max 500개.'))) return
             try {
               const res = await api.post('/api/admin/reviews/auto-seed-missing', { max_batch: 500 })
               if (res.data?.success) {

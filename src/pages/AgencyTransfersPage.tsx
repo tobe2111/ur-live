@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowRightLeft, ArrowRight, Check, X } from 'lucide-react'
 
 interface Transfer {
@@ -65,7 +66,7 @@ export default function AgencyTransfersPage() {
   //   대신 셀러에게 알림이 자동 발송되고, 셀러는 /seller/transfers 에서 직접 응답함.
 
   async function cancelOutgoing(id: number) {
-    if (!confirm(t('agency.transfers.confirmCancel', { defaultValue: '이 신청을 취소하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('agency.transfers.confirmCancel', { defaultValue: '이 신청을 취소하시겠습니까?' }), danger: true }))) return
     try {
       const token = localStorage.getItem('agency_token')
       await api.post(`/api/agency/transfers/${id}/cancel`, {},

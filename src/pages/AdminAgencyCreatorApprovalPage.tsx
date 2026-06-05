@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { UserCheck, UserX, Building2, Mail, Phone } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -57,7 +58,7 @@ export default function AdminAgencyCreatorApprovalPage() {
 
 
   const approve = async (id: number) => {
-    if (!confirm('이 셀러를 승인하시겠습니까? 승인 후 즉시 로그인/판매가 가능해집니다.')) return
+    if (!(await confirmDialog('이 셀러를 승인하시겠습니까? 승인 후 즉시 로그인/판매가 가능해집니다.'))) return
     setActing(id)
     try {
       await api.post(`/api/admin/agency-creator-approvals/${id}/approve`, {}, { headers })

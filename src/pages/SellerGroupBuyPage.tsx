@@ -10,6 +10,7 @@ import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/se
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface GroupBuyProduct {
   id: number; name: string; price: number; image_url?: string
@@ -307,8 +308,8 @@ export default function SellerGroupBuyPage() {
                           <Send className="w-3 h-3" /> 사장님께 알림톡 발송
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm('이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?')) resendStoreLink(p.id, true)
+                          onClick={async () => {
+                            if (await confirmDialog('이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?')) resendStoreLink(p.id, true)
                           }}
                           className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs font-medium flex items-center gap-1"
                           title="새 링크 발급 (이전 링크 무효화)"

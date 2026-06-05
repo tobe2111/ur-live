@@ -10,6 +10,7 @@ import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Package,
   Truck,
@@ -183,7 +184,7 @@ export default function SellerOrdersPage() {
   }
 
   async function handleStatusChange(orderNumber: string, newStatus: string) {
-    if (!confirm(t('seller.confirmStatusChange', { status: getStatusText(newStatus) }))) {
+    if (!(await confirmDialog(t('seller.confirmStatusChange', { status: getStatusText(newStatus) })))) {
       return
     }
 
@@ -216,7 +217,7 @@ export default function SellerOrdersPage() {
 
   // 🛡️ 2026-06-01 머니플로우 감사: 결제완료 주문 정식 취소·환불 (Toss/딜 환불 + 커미션 역전).
   async function handleRefund(orderNumber: string) {
-    if (!confirm(t('seller.confirmRefund', { defaultValue: '이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.' }))) {
+    if (!(await confirmDialog({ message: t('seller.confirmRefund', { defaultValue: '이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.' }), danger: true }))) {
       return
     }
     setUpdating(true)

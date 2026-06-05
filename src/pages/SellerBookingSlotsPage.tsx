@@ -15,6 +15,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Calendar, Plus, Trash2 } from 'lucide-react'
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -80,7 +81,7 @@ export default function SellerBookingSlotsPage() {
   }
 
   async function remove(slotId: number) {
-    if (!confirm('이 슬롯을 삭제하시겠습니까?')) return
+    if (!(await confirmDialog({ message: '이 슬롯을 삭제하시겠습니까?', danger: true }))) return
     try {
       await api.delete(`/api/seller/products/${productId}/booking-slots/${slotId}`)
       load()

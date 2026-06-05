@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Zap, X } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface BoosterStatus {
   id: number
@@ -48,7 +49,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   }, [liveStreamId])
 
   async function startBooster(multiplier: number, durationSec: number) {
-    if (!confirm(t('seller.boosterConfirm', { multiplier, minutes: Math.floor(durationSec / 60), defaultValue: `${multiplier}x 매칭 부스터를 ${Math.floor(durationSec / 60)}분 동안 발동하시겠습니까? 라이브 1회당 1번만 사용 가능합니다.` }))) return
+    if (!(await confirmDialog(t('seller.boosterConfirm', { multiplier, minutes: Math.floor(durationSec / 60), defaultValue: `${multiplier}x 매칭 부스터를 ${Math.floor(durationSec / 60)}분 동안 발동하시겠습니까? 라이브 1회당 1번만 사용 가능합니다.` })))) return
     try {
       const token = localStorage.getItem('seller_token')
       const r = await api.post('/api/donation-boosters', {
@@ -68,7 +69,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
 
   async function cancelBooster() {
     if (!active) return
-    if (!confirm(t('seller.boosterCancelConfirm', { defaultValue: '부스터를 조기 종료하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('seller.boosterCancelConfirm', { defaultValue: '부스터를 조기 종료하시겠습니까?' }), danger: true }))) return
     try {
       const token = localStorage.getItem('seller_token')
       await api.post(`/api/donation-boosters/${active.id}/cancel`, {},

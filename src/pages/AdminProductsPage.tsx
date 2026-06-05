@@ -14,6 +14,7 @@ import {
 import { downloadAdminTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 import { EMPTY_FORM } from './admin-products/types'
 import type { Product, SupplySalesRow, SupplySalesSummary, SampleRequest } from './admin-products/types'
@@ -171,7 +172,7 @@ export default function AdminProductsPage() {
   }
 
   async function handleDelete(productId: number) {
-    if (!confirm(t('admin.products.k011', { defaultValue: '정말 이 상품을 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('admin.products.k011', { defaultValue: '정말 이 상품을 삭제하시겠습니까?' }), danger: true }))) return
     setDeleting(productId)
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -205,7 +206,7 @@ export default function AdminProductsPage() {
     const warn = action === 'delete'
       ? `\n\n· 주문 이력 있는 상품은 자동 비활성화 (이력 보존)\n· 주문 이력 없는 상품은 완전 삭제`
       : ''
-    if (!confirm(`선택한 ${ids.length}개 상품을 일괄 ${label}하시겠습니까?${warn}`)) return
+    if (!(await confirmDialog({ message: `선택한 ${ids.length}개 상품을 일괄 ${label}하시겠습니까?${warn}`, danger: action === 'delete' }))) return
     setBulkAction(action)
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')

@@ -11,6 +11,7 @@
  */
 
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -250,7 +251,7 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
     e.preventDefault()
     e.stopPropagation()
     if (deleting) return
-    const ok = window.confirm('내 링크샵에서 이 핀을 삭제할까요?')
+    const ok = await confirmDialog({ message: '내 링크샵에서 이 핀을 삭제할까요?', danger: true })
     if (!ok) return
     setDeleting(true)
     try {

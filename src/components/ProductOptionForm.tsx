@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, X, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 export interface ProductOption {
   id?: number
@@ -32,11 +33,11 @@ export default function ProductOptionForm({
 
   const handleAddOption = () => {
     if (!newOption.option_type.trim() || !newOption.option_value.trim()) {
-      alert(t('productOption.alertTypeValue', { defaultValue: '옵션 타입과 값을 입력해주세요.' }))
+      void alertDialog(t('productOption.alertTypeValue', { defaultValue: '옵션 타입과 값을 입력해주세요.' }))
       return
     }
     if (newOption.stock < 0) {
-      alert(t('productOption.alertStock', { defaultValue: '재고는 0 이상이어야 합니다.' }))
+      void alertDialog(t('productOption.alertStock', { defaultValue: '재고는 0 이상이어야 합니다.' }))
       return
     }
     onChange([...options, { ...newOption }])

@@ -18,6 +18,7 @@ import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Download, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { formatWon, formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface SellerSummary {
   seller_id: number
@@ -79,7 +80,7 @@ export default function AdminWithholdingPage() {
   }
 
   async function markReported() {
-    if (!confirm(`${year}년도 reportable 행을 모두 '제출 완료' 마킹할까요?\n홈택스 업로드 후에만 실행하세요.`)) return
+    if (!(await confirmDialog(`${year}년도 reportable 행을 모두 '제출 완료' 마킹할까요?\n홈택스 업로드 후에만 실행하세요.`))) return
     setMarking(true)
     try {
       const token = localStorage.getItem('admin_token')

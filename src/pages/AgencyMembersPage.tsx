@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Users, UserPlus, X, Pause, Play, Trash2, Copy, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type Role = 'owner' | 'manager' | 'agent' | 'analyst'
 
@@ -114,7 +115,7 @@ export default function AgencyMembersPage() {
   }
 
   const suspend = async (m: Member) => {
-    if (!confirm(`${m.email} ${t('agency.members.confirmSuspend', { defaultValue: '을 일시 정지하시겠습니까?' })}`)) return
+    if (!(await confirmDialog(`${m.email} ${t('agency.members.confirmSuspend', { defaultValue: '을 일시 정지하시겠습니까?' })}`))) return
     try {
       await api.post(`/api/agency/members/${m.id}/suspend`, {}, { headers })
       toast.info(t('agency.members.suspended', { defaultValue: '정지됨' }))
@@ -131,7 +132,7 @@ export default function AgencyMembersPage() {
   }
 
   const remove = async (m: Member) => {
-    if (!confirm(`${m.email} ${t('agency.members.confirmRemove', { defaultValue: '을 제거하시겠습니까?' })}`)) return
+    if (!(await confirmDialog({ message: `${m.email} ${t('agency.members.confirmRemove', { defaultValue: '을 제거하시겠습니까?' })}`, danger: true }))) return
     try {
       await api.delete(`/api/agency/members/${m.id}`, { headers })
       toast.info(t('agency.members.removed', { defaultValue: '제거됨' }))

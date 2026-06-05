@@ -8,6 +8,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AdminSettlementsBulkPage() {
   const { t } = useTranslation()
@@ -29,7 +30,7 @@ export default function AdminSettlementsBulkPage() {
 
   const process = async () => {
     if (!selected.length) return
-    if (!confirm(`${selected.length}명의 셀러 정산을 처리하시겠습니까?`)) return
+    if (!(await confirmDialog(`${selected.length}명의 셀러 정산을 처리하시겠습니까?`))) return
     setProcessing(true)
     try {
       const res = await api.post('/api/admin/tools/settlements/process', { seller_ids: selected })

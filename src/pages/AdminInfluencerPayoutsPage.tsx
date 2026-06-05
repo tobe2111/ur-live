@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -71,7 +72,7 @@ export default function AdminInfluencerPayoutsPage() {
     const cashCount = targets.filter(r => r.payout_method !== 'deal' && r.bank_name && r.bank_account && r.account_holder).length
     const dealCount = targets.filter(r => r.payout_method === 'deal').length
     const skipCount = targets.length - cashCount - dealCount
-    if (!confirm(`${targets.length}건 일괄 처리:\n- 현금 ${cashCount}건 (송금 후 status='paid')\n- 딜 ${dealCount}건 (즉시 적립)\n- 계좌 누락 ${skipCount}건 (skip)\n진행?`)) return
+    if (!(await confirmDialog(`${targets.length}건 일괄 처리:\n- 현금 ${cashCount}건 (송금 후 status='paid')\n- 딜 ${dealCount}건 (즉시 적립)\n- 계좌 누락 ${skipCount}건 (skip)\n진행?`))) return
     setBulkProcessing(true)
     let ok = 0, fail = 0
     for (const r of targets) {
@@ -94,7 +95,7 @@ export default function AdminInfluencerPayoutsPage() {
     const msg = method === 'deal'
       ? `${row.influencer_id} 에게 딜로 ${row.available_amount.toLocaleString()}원 (+ 보너스) 지급?`
       : `${row.influencer_id} 에게 현금 ${w.net.toLocaleString()}원 (원천징수 ${w.rate}% = ${w.tax.toLocaleString()}원) 송금 완료 처리?\n\n계좌: ${row.bank_name || '-'} ${row.bank_account || '-'} (${row.account_holder || '-'})`
-    if (!confirm(msg)) return
+    if (!(await confirmDialog(msg))) return
     setProcessingId(row.influencer_id)
     try {
       const res = await api.post('/api/admin-payouts/payouts/process', { influencer_id: row.influencer_id, method })

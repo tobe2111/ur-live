@@ -10,6 +10,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { Activity, RefreshCw, Database, Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Metrics {
   active_streams: number | null
@@ -312,7 +313,7 @@ function WebhookFailuresSection() {
   useEffect(() => { load() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [hours])
 
   const retry = async (id: string) => {
-    if (!confirm('이 webhook event 를 재처리 마킹하시겠습니까?')) return
+    if (!(await confirmDialog('이 webhook event 를 재처리 마킹하시겠습니까?'))) return
     try {
       await api.post(`/api/admin/metrics/webhook-failures/${id}/retry`, {}, {
         headers: { Authorization: `Bearer ${adminToken}` }

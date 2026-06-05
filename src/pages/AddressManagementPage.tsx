@@ -13,6 +13,7 @@ import {
 import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
 
 const EMPTY_FORM = {
@@ -124,7 +125,7 @@ export default function AddressManagementPage() {
   }
 
   async function handleDeleteAddress(id: number) {
-    if (!confirm(t('address.deleteConfirm'))) return
+    if (!(await confirmDialog({ message: t('address.deleteConfirm'), danger: true }))) return
     try {
       await api.delete(`/api/shipping-addresses/${id}`)
       refetch()

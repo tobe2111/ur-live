@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Rocket, Zap, Clock } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Boost {
   id: number
@@ -49,10 +50,10 @@ export default function SellerPromoteBoostsPage() {
       return toast.error(t('seller.boost.liveRequired', { defaultValue: '활성 라이브가 필요합니다. 먼저 라이브를 시작하세요.' }))
     }
     const meta = TIER_META[boost.tier]
-    if (!confirm(t('seller.boosts.activateConfirm', {
+    if (!(await confirmDialog(t('seller.boosts.activateConfirm', {
       defaultValue: `{{emoji}} {{tier}} 쿠폰을 "{{liveTitle}}" 라이브에 {{hours}}시간 활성화하시겠습니까?`,
       emoji: meta.emoji, tier: meta.label, liveTitle: activeLive.title, hours: boost.duration_hours,
-    }))) return
+    })))) return
     try {
       const token = localStorage.getItem('seller_token')
       await api.post(`/api/seller/promote-boosts/${boost.id}/activate`,

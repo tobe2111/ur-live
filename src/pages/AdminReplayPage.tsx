@@ -9,6 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Stream {
   id: number; title: string; description?: string; youtube_video_id?: string
@@ -101,7 +102,7 @@ export default function AdminReplayPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('이 다시보기를 삭제하시겠습니까?')) return
+    if (!(await confirmDialog({ message: '이 다시보기를 삭제하시겠습니까?', danger: true }))) return
     try {
       await api.delete(`/api/admin/streams/${id}`, { headers })
       streamsQ.refetch()

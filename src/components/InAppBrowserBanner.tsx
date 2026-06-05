@@ -15,6 +15,7 @@ import {
   isIOS,
   type InAppBrowserName,
 } from '@/lib/in-app-browser'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 const DISMISS_KEY = 'ur_inapp_banner_dismissed_v1'
 
@@ -40,7 +41,7 @@ export default function InAppBrowserBanner() {
     const ok = openInExternalBrowser()
     // iOS Facebook/Instagram 등 자동 redirect 미지원 케이스 → 수동 안내 alert
     if (!ok && isIOS()) {
-      alert('우측 상단 "..." 메뉴 → "Safari 로 열기" 를 선택해주세요.')
+      void alertDialog('우측 상단 "..." 메뉴 → "Safari 로 열기" 를 선택해주세요.')
     }
   }
 

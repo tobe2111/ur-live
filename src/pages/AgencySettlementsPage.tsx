@@ -10,6 +10,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { DollarSign, CheckCircle, Clock, Loader2, ArrowRight, Banknote } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
@@ -30,7 +31,7 @@ export default function AgencySettlementsPage() {
 
   async function requestPayout() {
     if (confirmedCount === 0) { toast.error(t('agency.settlements.noPayableOrders', { defaultValue: '정산 가능한 주문이 없습니다' })); return }
-    if (!confirm(`${formatNumber(payableAmount)}${t('agency.settlements.confirmPayout', { defaultValue: '원 정산을 신청하시겠습니까?' })}`)) return
+    if (!(await confirmDialog(`${formatNumber(payableAmount)}${t('agency.settlements.confirmPayout', { defaultValue: '원 정산을 신청하시겠습니까?' })}`))) return
     setRequesting(true)
     try {
       const res = await api.post('/api/agency/settlements/request')

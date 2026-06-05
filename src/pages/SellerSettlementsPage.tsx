@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Settlement {
   id: number
@@ -146,7 +147,7 @@ export default function SellerSettlementsPage() {
       toast.error(t('seller.bankInfoRequired'))
       return
     }
-    if (!confirm(t('seller.confirmSettlementRequest', { amount: formatNumber(pendingAmount) }))) return
+    if (!(await confirmDialog(t('seller.confirmSettlementRequest', { amount: formatNumber(pendingAmount) })))) return
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
@@ -730,7 +731,7 @@ function DealBalanceCard() {
     if (balance && amount > balance.withdrawable) {
       toast.error(`환급 가능 잔액 부족 (보유: ${balance.withdrawable.toLocaleString()})`); return
     }
-    if (!confirm(`${amount.toLocaleString()}딜 환급 신청? (8.8% 원천징수 차감 후 ${Math.floor(amount * 0.912).toLocaleString()}원 입금 예정)`)) return
+    if (!(await confirmDialog(`${amount.toLocaleString()}딜 환급 신청? (8.8% 원천징수 차감 후 ${Math.floor(amount * 0.912).toLocaleString()}원 입금 예정)`))) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -977,7 +978,7 @@ function VoucherRedeemModal({ totalBalance, onClose, onSuccess }: {
     if (!acceptExpiry || !acceptB2B) { toast.error('약관 동의 필요'); return }
     if (needTaxConsent && !acceptTax) { toast.error('원천징수 동의 필요'); return }
     const taxLine = needTaxConsent ? `\n원천징수: ₩${withholdingAmount.toLocaleString()}` : ''
-    if (!confirm(`${selected.name} × ${qty} → ${phoneMasked}\n총 차감: ₩${totalDeductWithTax.toLocaleString()}${taxLine}\n\n⚠️ 30일 유효기간 / 환불 불가 동의하신 것 맞나요?`)) return
+    if (!(await confirmDialog({ message: `${selected.name} × ${qty} → ${phoneMasked}\n총 차감: ₩${totalDeductWithTax.toLocaleString()}${taxLine}\n\n⚠️ 30일 유효기간 / 환불 불가 동의하신 것 맞나요?`, danger: true }))) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')

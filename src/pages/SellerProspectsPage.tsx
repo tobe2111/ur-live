@@ -15,6 +15,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Prospect {
   id: number
@@ -109,7 +110,7 @@ export default function SellerProspectsPage() {
   }
 
   async function remove(id: number) {
-    if (!confirm('이 prospect 를 회수할까요?')) return
+    if (!(await confirmDialog({ message: '이 prospect 를 회수할까요?', danger: true }))) return
     try {
       const r = await api.delete(`/api/prospects/${id}`)
       if (r.data?.success) {

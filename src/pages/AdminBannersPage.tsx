@@ -6,6 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Banner {
   id: number
@@ -87,7 +88,7 @@ export default function AdminBannersPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm(t('admin.banners.k006', { defaultValue: '정말 이 배너를 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('admin.banners.k006', { defaultValue: '정말 이 배너를 삭제하시겠습니까?' }), danger: true }))) return
     try {
       await api.delete(`/api/admin/banners/${id}`)
       showAlert(t('admin.banners.k007', { defaultValue: '배너가 삭제되었습니다.' }), 'success'); loadBanners()

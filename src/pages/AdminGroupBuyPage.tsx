@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -113,7 +114,7 @@ export default function AdminGroupBuyPage() {
       ''
     )
     if (!reason || reason.trim().length < 5) return
-    if (!window.confirm(`정말 환불하시겠습니까?\n\n• 미사용 voucher 모두 refunded 처리\n• 딜 결제건은 자동 환불\n• 상태 cancelled 변경\n• 참여자 + 셀러에게 알림 발송`)) return
+    if (!(await confirmDialog({ message: `정말 환불하시겠습니까?\n\n• 미사용 voucher 모두 refunded 처리\n• 딜 결제건은 자동 환불\n• 상태 cancelled 변경\n• 참여자 + 셀러에게 알림 발송`, danger: true }))) return
 
     setRefunding(productId)
     try {
@@ -123,14 +124,14 @@ export default function AdminGroupBuyPage() {
         { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` } }
       )
       if (res.data?.success) {
-        alert(`✅ ${res.data.data?.refunded ?? 0}건 환불 완료`)
+        void alertDialog(`✅ ${res.data.data?.refunded ?? 0}건 환불 완료`)
         loadList(filter)
       } else {
-        alert(`❌ ${res.data?.error || '환불 실패'}`)
+        void alertDialog(`❌ ${res.data?.error || '환불 실패'}`)
       }
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
-      alert(`❌ ${e?.response?.data?.error || '환불 처리 중 오류'}`)
+      void alertDialog(`❌ ${e?.response?.data?.error || '환불 처리 중 오류'}`)
     } finally {
       setRefunding(null)
     }

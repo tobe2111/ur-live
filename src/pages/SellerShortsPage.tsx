@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Eye, Heart, Video, Loader2 } from 'lucide-react'
@@ -100,7 +101,7 @@ export default function SellerShortsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm(t('seller.confirmDeleteShorts'))) return
+    if (!(await confirmDialog({ message: t('seller.confirmDeleteShorts'), danger: true }))) return
     try {
       await api.delete(`/api/shorts/${id}`, { headers })
       toast.success(t('seller.deleted'))

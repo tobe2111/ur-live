@@ -4,6 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Swords, Plus, Trophy, X, Play, XCircle } from 'lucide-react'
 
 interface Battle {
@@ -73,7 +74,7 @@ export default function AgencyPKBattlesPage() {
   }
 
   async function startBattle(id: number) {
-    if (!confirm('PK 를 지금 시작하시겠습니까? 두 셀러가 모두 라이브 중이어야 합니다.')) return
+    if (!(await confirmDialog('PK 를 지금 시작하시겠습니까? 두 셀러가 모두 라이브 중이어야 합니다.'))) return
     try {
       const token = localStorage.getItem('agency_token')
       await api.post(`/api/agency/pk/${id}/start`, {}, { headers: { Authorization: `Bearer ${token}` } })
@@ -85,7 +86,7 @@ export default function AgencyPKBattlesPage() {
   }
 
   async function cancelBattle(id: number) {
-    if (!confirm('PK 를 취소하시겠습니까?')) return
+    if (!(await confirmDialog({ message: 'PK 를 취소하시겠습니까?', danger: true }))) return
     try {
       const token = localStorage.getItem('agency_token')
       await api.post(`/api/agency/pk/${id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } })

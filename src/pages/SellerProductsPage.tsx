@@ -27,6 +27,7 @@ import {
 import { downloadSellerTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Product {
   id: number
@@ -75,7 +76,7 @@ export default function SellerProductsPage() {
   }, [])
 
   async function handleToggleActive(productId: number, currentStatus: boolean) {
-    if (!confirm(t('seller.confirmToggleActive', { status: currentStatus ? t('seller.toggleDeactivate') : t('seller.toggleActivate') }))) {
+    if (!(await confirmDialog(t('seller.confirmToggleActive', { status: currentStatus ? t('seller.toggleDeactivate') : t('seller.toggleActivate') })))) {
       return
     }
 
@@ -101,7 +102,7 @@ export default function SellerProductsPage() {
   }
 
   async function handleDelete(productId: number) {
-    if (!confirm(t('seller.confirmDeleteProduct'))) {
+    if (!(await confirmDialog({ message: t('seller.confirmDeleteProduct'), danger: true }))) {
       return
     }
 

@@ -8,6 +8,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Star, Eye, EyeOff, Trash2, MessageSquare, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Review {
   id: number
@@ -80,7 +81,7 @@ export default function AdminReviewModerationPage() {
   }
 
   async function deleteReview(review: Review) {
-    if (!confirm('이 리뷰를 삭제하시겠습니까? 복구할 수 없습니다.')) return
+    if (!(await confirmDialog({ message: '이 리뷰를 삭제하시겠습니까? 복구할 수 없습니다.', danger: true }))) return
     try {
       await api.delete(`/api/admin/reviews/${review.id}`, h)
       toast.success('리뷰가 삭제되었습니다')

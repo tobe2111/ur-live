@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // Recharts lazy load (377KB → 차트 영역만 지연 로드)
 const CombinedTimelineChart = lazy(() => import('@/components/charts/SellerLiveAnalyticsCharts').then(m => ({ default: m.CombinedTimelineChart })))
@@ -100,7 +101,7 @@ function AnalyticsSummary() {
       toast.error(t('seller.cannotDeleteLiveStream', { defaultValue: '진행 중인 라이브는 삭제할 수 없습니다. 먼저 종료해 주세요.' }))
       return
     }
-    if (!confirm(t('seller.confirmDeleteStream', { title: stream.title, defaultValue: `"${stream.title}" 방송을 삭제하시겠습니까?\n\n· 소프트 삭제 (매출/이력 보존)\n· 메인 / 다시보기 피드에서 즉시 제거됩니다` }))) return
+    if (!(await confirmDialog({ message: t('seller.confirmDeleteStream', { title: stream.title, defaultValue: `"${stream.title}" 방송을 삭제하시겠습니까?\n\n· 소프트 삭제 (매출/이력 보존)\n· 메인 / 다시보기 피드에서 즉시 제거됩니다` }), danger: true }))) return
     try {
       setDeletingId(stream.id)
       const res = await api.delete(`/api/seller/streams/${stream.id}`)

@@ -8,6 +8,7 @@ import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Coupon {
   id: number; code: string; name: string; type: string; value: number
@@ -78,7 +79,7 @@ export default function AdminCouponsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm(t('admin.coupons.k006', { defaultValue: '이 쿠폰을 삭제하시겠습니까?' }))) return
+    if (!(await confirmDialog({ message: t('admin.coupons.k006', { defaultValue: '이 쿠폰을 삭제하시겠습니까?' }), danger: true }))) return
     try {
       await api.delete(`/api/admin/coupons/${id}`, { headers })
       toast.success(t('admin.coupons.k007', { defaultValue: '삭제되었습니다' }))

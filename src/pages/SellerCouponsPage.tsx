@@ -7,6 +7,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Ticket, Plus, Trash2, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function SellerCouponsPage() {
   const { t } = useTranslation()
@@ -33,7 +34,7 @@ export default function SellerCouponsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t('seller.coupons.confirmDeactivate'))) return
+    if (!(await confirmDialog(t('seller.coupons.confirmDeactivate')))) return
     try {
       await api.delete(`/api/seller/analytics/coupons/${id}`)
       load()

@@ -5,6 +5,7 @@
  * - 예약 목록 (필터: 상태/기간) + 체크인/체크아웃/노쇼 처리
  */
 import { useEffect, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
@@ -99,7 +100,7 @@ export default function SellerStaysBookingsPage() {
     const checkOut = prompt(`실제 체크아웃 날짜 (YYYY-MM-DD, ${b.nights}박 기준 ${addDays(checkIn, b.nights)})`,
       addDays(checkIn, b.nights))
     if (!checkOut || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) { toast.error('YYYY-MM-DD 형식 필요'); return }
-    if (!confirm(`voucher 사용 처리\n· ${checkIn} → ${checkOut}\n게스트와 협의 완료 후 진행`)) return
+    if (!(await confirmDialog(`voucher 사용 처리\n· ${checkIn} → ${checkOut}\n게스트와 협의 완료 후 진행`))) return
     try {
       const token = localStorage.getItem('seller_token')
       const r = await api.patch(`/api/seller/stays/bookings/${b.id}/use-voucher`,
@@ -114,7 +115,7 @@ export default function SellerStaysBookingsPage() {
 
   async function transition(bookingId: number, action: 'check-in' | 'check-out' | 'no-show') {
     const labels = { 'check-in': '체크인', 'check-out': '체크아웃', 'no-show': '노쇼' } as const
-    if (!confirm(`이 예약을 ${labels[action]} 처리하시겠습니까?`)) return
+    if (!(await confirmDialog(`이 예약을 ${labels[action]} 처리하시겠습니까?`))) return
     try {
       const token = localStorage.getItem('seller_token')
       const r = await api.patch(`/api/seller/stays/bookings/${bookingId}/${action}`, {}, {

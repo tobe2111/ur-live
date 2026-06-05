@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface SettlementStats {
   total_orders: number
@@ -97,7 +98,7 @@ export default function AdminSettlementPage() {
   }
 
   async function batchComplete(orderIds: number[]) {
-    if (!confirm(`${orderIds.length}건을 정산 완료 처리하시겠습니까?`)) return
+    if (!(await confirmDialog(`${orderIds.length}건을 정산 완료 처리하시겠습니까?`))) return
     try {
       await api.post('/api/admin/settlement/batch-complete', { order_ids: orderIds })
       toast.success('일괄 정산 완료!'); loadData()
@@ -105,7 +106,7 @@ export default function AdminSettlementPage() {
   }
 
   async function executeSellerSettlement(sellerId: number, sellerName: string) {
-    if (!confirm(`${sellerName}의 미정산 건을 정산 실행하시겠습니까?`)) return
+    if (!(await confirmDialog(`${sellerName}의 미정산 건을 정산 실행하시겠습니까?`))) return
     try {
       // Find pending records for this seller and batch complete them
       const pendingForSeller = records.filter(r => r.seller_id === sellerId && r.settlement_status === 'pending')

@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKST } from '@/utils/date'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Store, Link2, Unlink, RefreshCw, Loader2,
   CheckCircle, AlertCircle, Package, Clock
@@ -103,7 +104,7 @@ export default function AdminCafe24Page() {
   }
 
   async function handleDisconnect() {
-    if (!confirm('Cafe24 연동을 해제하시겠습니까? 기존 동기화된 상품은 유지됩니다.')) return
+    if (!(await confirmDialog('Cafe24 연동을 해제하시겠습니까? 기존 동기화된 상품은 유지됩니다.'))) return
     try {
       setDisconnecting(true)
       const token = getToken()

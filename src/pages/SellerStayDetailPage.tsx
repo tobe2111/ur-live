@@ -7,6 +7,7 @@
  *   3) 캘린더 — 객실별 날짜 가용 + 가격 override (Bulk UPSERT)
  */
 import { useEffect, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
@@ -281,7 +282,7 @@ function RoomsTab({ productId, rooms, onChanged }: { productId: number; rooms: S
 function RoomDeleteButton({ productId, roomId, onDeleted }: { productId: number; roomId: number; onDeleted: () => void }) {
   const [busy, setBusy] = useState(false)
   async function del() {
-    if (!confirm('이 객실을 삭제하시겠습니까? (활성 예약 있을 시 차단됨)')) return
+    if (!(await confirmDialog({ message: '이 객실을 삭제하시겠습니까? (활성 예약 있을 시 차단됨)', danger: true }))) return
     setBusy(true)
     try {
       const token = localStorage.getItem('seller_token')

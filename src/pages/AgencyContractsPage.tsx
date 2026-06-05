@@ -8,6 +8,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AgencyContractsPage() {
   const { t } = useTranslation()
@@ -47,7 +48,7 @@ export default function AgencyContractsPage() {
   }
 
   const terminate = async (id: number) => {
-    if (!confirm('계약을 종료하시겠습니까?')) return
+    if (!(await confirmDialog('계약을 종료하시겠습니까?'))) return
     try {
       await api.put(`/api/agency/contracts/${id}`, { status: 'terminated' }, { headers })
       load()

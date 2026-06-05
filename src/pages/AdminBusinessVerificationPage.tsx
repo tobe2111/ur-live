@@ -15,6 +15,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Shield, CheckCircle, XCircle, ExternalLink, Phone, Mail } from 'lucide-react'
+import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 
 interface PendingSeller {
   id: number
@@ -45,7 +46,7 @@ export default function AdminBusinessVerificationPage() {
   function h() { return { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
   async function verify(sellerId: number) {
-    if (!confirm('이 셀러의 사업자등록증을 승인하시겠습니까?\n승인 후 현금 정산 + 딜 환급 가능.')) return
+    if (!(await confirmDialog('이 셀러의 사업자등록증을 승인하시겠습니까?\n승인 후 현금 정산 + 딜 환급 가능.'))) return
     try {
       const r = await api.patch(`/api/admin/sellers/${sellerId}/business-registration/verify`,
         { action: 'verify' }, { headers: h() })
@@ -179,17 +180,17 @@ export default function AdminBusinessVerificationPage() {
                     {/* 🛡️ 2026-05-21 Phase D: 사장님 매직링크 재발송 (어드민 1-click) */}
                     <button
                       onClick={async () => {
-                        if (!confirm(`${s.business_name || s.id} 사장님 매장 매직링크 (QR 스캔 페이지) 카톡 발송?`)) return
+                        if (!(await confirmDialog(`${s.business_name || s.id} 사장님 매장 매직링크 (QR 스캔 페이지) 카톡 발송?`))) return
                         try {
                           const r = await api.post(`/api/admin/sellers/${s.id}/notify-magic-link`, {}, { headers: h() })
                           if (r.data?.success) {
-                            alert(`✅ 발송 완료\n링크: ${r.data.data?.stats_url || ''}`)
+                            void alertDialog(`✅ 발송 완료\n링크: ${r.data.data?.stats_url || ''}`)
                           } else {
-                            alert(`❌ ${r.data?.error || '실패'}`)
+                            void alertDialog(`❌ ${r.data?.error || '실패'}`)
                           }
                         } catch (err: unknown) {
                           const ax = err as { response?: { data?: { error?: string } } }
-                          alert(`❌ ${ax.response?.data?.error || '실패'}`)
+                          void alertDialog(`❌ ${ax.response?.data?.error || '실패'}`)
                         }
                       }}
                       className="w-full mt-2 inline-flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100"

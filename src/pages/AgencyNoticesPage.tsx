@@ -7,6 +7,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AgencyNoticesPage() {
   const { t } = useTranslation()
@@ -27,7 +28,7 @@ export default function AgencyNoticesPage() {
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) { toast.error('제목과 내용을 입력해주세요'); return }
-    if (!confirm('소속 셀러 전원에게 공지를 발송하시겠습니까?')) return
+    if (!(await confirmDialog('소속 셀러 전원에게 공지를 발송하시겠습니까?'))) return
     setSending(true)
     try {
       const res = await api.post('/api/agency/notices', { title: title.trim(), message: message.trim() })

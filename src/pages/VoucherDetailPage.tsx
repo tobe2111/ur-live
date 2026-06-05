@@ -9,6 +9,7 @@ import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { formatPhone } from '@/utils/format-phone'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -94,9 +95,10 @@ export default function VoucherDetailPage() {
   async function handleExchange() {
     if (!product) return
     const total = product.price * quantity
-    const ok = window.confirm(
-      `${product.name}\n${quantity}장 × ${formatNumber(product.price)}딜 = ${formatNumber(total)}딜\n\n⚠️ 교환 후 환불 불가\n진행할까요?`
-    )
+    const ok = await confirmDialog({
+      message: `${product.name}\n${quantity}장 × ${formatNumber(product.price)}딜 = ${formatNumber(total)}딜\n\n⚠️ 교환 후 환불 불가\n진행할까요?`,
+      danger: true,
+    })
     if (!ok) return
     setExchanging(true)
     try {
@@ -119,7 +121,7 @@ export default function VoucherDetailPage() {
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
       const code = e?.response?.data?.code
       if (code === 'INSUFFICIENT_POINTS') {
-        const charge = window.confirm('딜이 부족합니다. 충전 페이지로 이동할까요?')
+        const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
         if (charge) {
           localStorage.setItem('loginReturnUrl', window.location.pathname)
           navigate('/points/charge')
