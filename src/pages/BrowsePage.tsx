@@ -320,12 +320,20 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
     if (reset) setLoading(true); else setLoadingMore(true)
     if (reset) setError(null)
+    // 🏭 2026-06-05 (감사 — 정렬/가격 서버사이드화): 클라 정렬키(price_asc/desc) → 서버키(price_low/high) 매핑.
+    const SORT_MAP: Record<SortOption, string> = { popular: 'popular', newest: 'newest', price_asc: 'price_low', price_desc: 'price_high', discount: 'discount' }
     const params = new URLSearchParams({
       page: String(pageNum),
       limit: String(PAGE_SIZE),
       exclude_deal_only: '1',  // 🛡️ 2026-05-19: /browse = 쇼핑만, 교환권 제외.
+      sort: SORT_MAP[sortBy] || 'popular',
     })
     if (category !== 'all') params.set('category', category)
+    // 🏭 2026-06-05 (감사): 가격범위도 서버에서 — 로드된 일부가 아닌 "전체 상품" 기준 필터.
+    if (priceRange === 'under10') params.set('max_price', '10000')
+    else if (priceRange === 'under30') params.set('max_price', '30000')
+    else if (priceRange === 'under50') params.set('max_price', '50000')
+    else if (priceRange === 'over50') params.set('min_price', '50000')
     api.get(`/api/products?${params.toString()}`)
       .then(r => {
         if (r.data.success) {
@@ -343,12 +351,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       .finally(() => {
         if (reset) setLoading(false); else setLoadingMore(false)
       })
-  }, [category, t])
+  }, [category, sortBy, priceRange, t])
 
   useEffect(() => {
     setProducts([])
     // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — category=all 초기 진입 즉시 표시.
-    if (category === 'all') {
+    // 🏭 2026-06-05: SSR(__SSR_INITIAL_BROWSE__)은 기본(popular/전체가격)일 때만 소비 — 정렬/가격 변경 시 서버 refetch.
+    if (category === 'all' && sortBy === 'popular' && priceRange === 'all') {
       try {
         if (typeof document !== 'undefined') {
           const el = document.getElementById('__SSR_INITIAL_BROWSE__')
@@ -390,24 +399,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   }, [showSortDropdown])
 
   const sorted = useMemo(() => {
-    let result = [...products]
-    // 가격 필터
-    if (priceRange === 'under10') result = result.filter(p => (p.current_price || p.price) < 10000)
-    else if (priceRange === 'under30') result = result.filter(p => (p.current_price || p.price) < 30000)
-    else if (priceRange === 'under50') result = result.filter(p => (p.current_price || p.price) < 50000)
-    else if (priceRange === 'over50') result = result.filter(p => (p.current_price || p.price) >= 50000)
-    // 무료배송 필터 (5만원 이상)
-    if (freeShipOnly) result = result.filter(p => (p.current_price || p.price) >= 50000)
-    // 정렬
-    switch (sortBy) {
-      case 'popular': result.sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0)); break
-      case 'price_asc': result.sort((a, b) => (a.current_price || a.price) - (b.current_price || b.price)); break
-      case 'price_desc': result.sort((a, b) => (b.current_price || b.price) - (a.current_price || a.price)); break
-      case 'discount': result.sort((a, b) => b.discount_rate - a.discount_rate); break
-      case 'newest': result.sort((a, b) => b.id - a.id); break
-    }
-    return result
-  }, [products, sortBy, priceRange, freeShipOnly])
+    // 🏭 2026-06-05 (감사 — 근본수정): 정렬·가격범위는 서버(/api/products sort+min/max_price)가 "전체 상품"
+    //   기준으로 적용 → 로드된 일부만 정렬/필터되던 버그 해소. 클라 중복 처리 제거.
+    //   무료배송(5만원↑ 휴리스틱)만 클라 유지(서버에 free-shipping 필드 부재). 향후 base_shipping_fee=0 서버필터로 대체 가능.
+    if (!freeShipOnly) return products
+    return products.filter(p => (p.current_price || p.price) >= 50000)
+  }, [products, freeShipOnly])
 
   const displayed = sorted.slice(0, showCount)
   // showCount < 로드된 항목 OR 백엔드에 더 있음 → "더 있다" 표시.
