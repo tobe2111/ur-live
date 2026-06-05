@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -41,6 +41,141 @@ function readSsrGroupBuy(): GroupBuyProduct[] | null {
     return parsed?.success ? (parsed.data || []) : null
   } catch { return null }
 }
+
+// 🏭 2026-06-04 (사용자 요청): 동네딜 공구 카드 — 대표색 단색 + 사진 자연 번짐.
+//   인라인 .map() 이면 카드별 상태(이미지 추출색)를 못 쓰므로 memo 컴포넌트로 추출.
+//   서버 dominant_color 없으면 이미지 로드 즉시 추출색을 이 카드에 바로 적용(검정 fallback 방지).
+//   (성능: React.memo → 부모 재렌더 시 카드 재조정 0 — 감사 권고 A9 반영.)
+const GroupBuyGridCard = memo(function GroupBuyGridCard({
+  p, idx, interested, onToggleInterest,
+}: {
+  p: GroupBuyProduct
+  idx: number
+  interested: boolean
+  onToggleInterest: (e: React.MouseEvent, productId: number, restaurantName?: string) => void
+}) {
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  const grad = cardGradient(cardColor)
+  const discount = calcDiscountRate(p)
+  const target = p.group_buy_target || 0
+  const current = p.group_buy_current || 0
+  const achieved = target > 0 && current >= target
+  const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0
+  const timeLeft = formatTimeLeft(p.group_buy_deadline)
+  return (
+    <button
+      onClick={() => navigate(`/group-buy/${p.id}`)}
+      className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
+      style={{ backgroundColor: grad.base }}
+    >
+      {/* 이미지 */}
+      <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: grad.base }}>
+        {p.image_url ? (
+          <img
+            src={cfImage(p.image_url, { width: 400, format: 'auto' })}
+            srcSet={cfSrcSet(p.image_url, 400)}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
+            alt={p.name}
+            className="w-full h-full object-cover"
+            loading={idx < 4 ? 'eager' : 'lazy'}
+            fetchPriority={idx < 2 ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={(e) => {
+              const el = e.currentTarget
+              el.style.opacity = '1'
+              const color = extractDominantColor(el)
+              if (color) {
+                if (!cardColor) setCardColor(color)
+                if (!p.dominant_color) reportDominantColor(p.id, color)
+              }
+            }}
+            style={{ opacity: idx < 4 ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+          />
+        ) : (
+          <div className="w-full h-full" />
+        )}
+
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
+
+        {/* 할인 뱃지 */}
+        {discount > 0 && (
+          <span className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
+            {t('groupBuy.maxDiscount', { defaultValue: '최대 -{{rate}}%', rate: discount })}
+          </span>
+        )}
+
+        {/* 달성 뱃지 */}
+        {achieved && (
+          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
+            <CheckCircle2 className="w-3 h-3" />
+            {t('groupBuy.achieved', { defaultValue: '달성' })}
+          </span>
+        )}
+
+        {/* 관심 등록 */}
+        <button
+          onClick={(e) => onToggleInterest(e, p.id, p.restaurant_name)}
+          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
+          aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
+        >
+          <Bell className={`w-3.5 h-3.5 ${interested ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`} />
+        </button>
+      </div>
+
+      {/* 정보 — 카드 대표색 위에 올라가므로 글자색은 grad 로 자동 대비 (내용은 불변) */}
+      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
+        <p className="text-[12px] leading-tight line-clamp-2">{p.name}</p>
+
+        {p.restaurant_name && (
+          <p className="text-[10px] mt-0.5 truncate" style={{ color: grad.sub }}>{p.restaurant_name}</p>
+        )}
+
+        {/* 가격 */}
+        <div className="flex items-baseline gap-1 mt-1">
+          {p.original_price && p.original_price > p.price && (
+            <span className="text-[10px] line-through" style={{ color: grad.sub }}>{formatPrice(p.original_price)}</span>
+          )}
+        </div>
+        <div className="flex items-baseline gap-1">
+          {discount > 0 && (
+            <span className="text-[13px] font-extrabold" style={{ color: grad.accent }}>{discount}%</span>
+          )}
+          <span className="text-[13px] font-extrabold">{formatPrice(p.price)}</span>
+        </div>
+
+        {/* 진행률 */}
+        {target > 0 && (
+          <div className="mt-2">
+            <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: grad.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.20)' }}>
+              <div className={`h-full rounded-full ${achieved ? 'bg-emerald-500' : 'bg-pink-500'}`} style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
+              <Users className="w-3 h-3" style={{ color: grad.sub }} />
+              {achieved ? (
+                <span className="font-semibold" style={{ color: grad.isLight ? '#047857' : '#34d399' }}>
+                  {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
+                </span>
+              ) : (
+                <>{t('groupBuy.currentParticipants', { defaultValue: '현재 {{count}}명 참여중', count: current })}</>
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* 시간 */}
+        {timeLeft && (
+          <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
+            <Clock className="w-3 h-3" style={{ color: grad.sub }} />
+            {timeLeft}
+          </p>
+        )}
+      </div>
+    </button>
+  )
+})
 
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
@@ -623,158 +758,16 @@ export default function GroupBuyListPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
-                {filtered.map((p, idx) => {
-                  const discount = calcDiscountRate(p)
-                  const target = p.group_buy_target || 0
-                  const current = p.group_buy_current || 0
-                  const achieved = target > 0 && current >= target
-                  const progress =
-                    target > 0 ? Math.min(100, (current / target) * 100) : 0
-                  const timeLeft = formatTimeLeft(p.group_buy_deadline)
-                  // 🏭 2026-06-04 (사용자 요청): 대표색 그라데이션 카드 — 사진이 카드색으로 번지고 그 위에 텍스트.
-                  const grad = cardGradient(p.dominant_color)
-
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => navigate(`/group-buy/${p.id}`)}
-                      className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden shadow-sm flex flex-col"
-                      style={{ background: grad.background }}
-                    >
-                      {/* 이미지 */}
-                      {/* 🛡️ 2026-06-04 (사용자 — 카드 로딩 체감): dominant_color placeholder + fade-in.
-                          이미지 로드 전 회색 박스 대신 이미지 실제 색을 즉시 표시 → "툭 뜨는" 느낌 제거.
-                          홈 피드 카드(GroupBuyFeedCard)와 동일 패턴. 서버비용 0(색은 기존 응답에 포함). */}
-                      <div
-                        className="relative aspect-square overflow-hidden"
-                        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
-                      >
-                        {p.image_url ? (
-                          // 🛡️ 2026-05-15: LCP 최적화 — 첫 row (idx < 4) eager + fetchpriority high.
-                          //   CF Image Resizing — 카드 width 400px 기준 1x/2x/3x DPI.
-                          <img
-                            src={cfImage(p.image_url, { width: 400, format: 'auto' })}
-                            srcSet={cfSrcSet(p.image_url, 400)}
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
-                            alt={p.name}
-                            className="w-full h-full object-cover"
-                            loading={idx < 4 ? 'eager' : 'lazy'}
-                            fetchPriority={idx < 2 ? 'high' : 'auto'}
-                            decoding="async"
-                            onLoad={(e) => {
-                              const el = e.currentTarget
-                              el.style.opacity = '1'
-                              if (!p.dominant_color) {
-                                const color = extractDominantColor(el)
-                                if (color) reportDominantColor(p.id, color)
-                              }
-                            }}
-                            style={{ opacity: idx < 4 ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-                          />
-                        ) : (
-                          <div className="w-full h-full" />
-                        )}
-
-                        {/* 사진 하단 → 카드색으로 번지는 그라데이션 */}
-                        <div className="absolute inset-x-0 bottom-0 h-[46%] pointer-events-none" style={{ background: grad.imageFade }} />
-
-                        {/* 할인 뱃지 */}
-                        {discount > 0 && (
-                          <span className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
-                            {t('groupBuy.maxDiscount', { defaultValue: '최대 -{{rate}}%', rate: discount })}
-                          </span>
-                        )}
-
-                        {/* 달성 뱃지 */}
-                        {achieved && (
-                          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {t('groupBuy.achieved', { defaultValue: '달성' })}
-                          </span>
-                        )}
-
-                        {/* 관심 등록 */}
-                        <button
-                          onClick={(e) => toggleInterest(e, p.id, p.restaurant_name)}
-                          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
-                          aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
-                        >
-                          <Bell
-                            className={`w-3.5 h-3.5 ${interestedIds.has(p.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* 정보 — 카드 대표색 위에 올라가므로 글자색은 grad 로 자동 대비 (내용은 불변) */}
-                      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
-                        <p className="text-[12px] leading-tight line-clamp-2">
-                          {p.name}
-                        </p>
-
-                        {p.restaurant_name && (
-                          <p className="text-[10px] mt-0.5 truncate" style={{ color: grad.sub }}>
-                            {p.restaurant_name}
-                          </p>
-                        )}
-
-                        {/* 가격 */}
-                        <div className="flex items-baseline gap-1 mt-1">
-                          {p.original_price && p.original_price > p.price && (
-                            <span className="text-[10px] line-through" style={{ color: grad.sub }}>
-                              {formatPrice(p.original_price)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          {discount > 0 && (
-                            <span className="text-[13px] font-extrabold" style={{ color: grad.accent }}>
-                              {discount}%
-                            </span>
-                          )}
-                          <span className="text-[13px] font-extrabold">
-                            {formatPrice(p.price)}
-                          </span>
-                        </div>
-
-                        {/* 진행률 — 트랙 배경은 카드색에 어울리는 반투명, 채움은 브랜드 핑크/에메랄드 유지 */}
-                        {target > 0 && (
-                          <div className="mt-2">
-                            <div
-                              className="w-full h-2.5 rounded-full overflow-hidden"
-                              style={{ backgroundColor: grad.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.20)' }}
-                            >
-                              <div
-                                className={`h-full rounded-full ${
-                                  achieved ? 'bg-emerald-500' : 'bg-pink-500'
-                                }`}
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
-                              <Users className="w-3 h-3" style={{ color: grad.sub }} />
-                              {achieved ? (
-                                <span className="font-semibold" style={{ color: grad.isLight ? '#047857' : '#34d399' }}>
-                                  {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
-                                </span>
-                              ) : (
-                                <>{t('groupBuy.currentParticipants', { defaultValue: '현재 {{count}}명 참여중', count: current })}</>
-                              )}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* 시간 */}
-                        {timeLeft && (
-                          <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
-                            <Clock className="w-3 h-3" style={{ color: grad.sub }} />
-                            {timeLeft}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4">
+                {filtered.map((p, idx) => (
+                  <GroupBuyGridCard
+                    key={p.id}
+                    p={p}
+                    idx={idx}
+                    interested={interestedIds.has(p.id)}
+                    onToggleInterest={toggleInterest}
+                  />
+                ))}
               </div>
             )}
           </>

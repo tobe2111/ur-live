@@ -613,7 +613,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4">
               {products.map((p, idx) => (
                 <VoucherCard key={p.id} p={p} aboveFold={idx < 4} />
               ))}

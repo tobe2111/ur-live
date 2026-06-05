@@ -1,26 +1,26 @@
 /**
  * 🏭 2026-06-04 (사용자 요청): 상품 카드 그라데이션 디자인 헬퍼.
  *
- *   목적: 사진에서 미리 뽑아둔 dominant_color(대표색)를 카드 배경 그라데이션으로 사용 →
- *         사진이 아래쪽에서 카드색으로 자연스럽게 "번지고", 그 색 블록 위에 제목/가격/평점이 올라감.
- *         (토스/네이버 쇼핑 추천 카드 같은 룩)
+ *   목적: 사진에서 뽑은 대표색을 카드 배경(단색)으로 쓰고, 사진 하단을 "같은 색"으로 자연스럽게
+ *         번지게(투명→불투명) 해서 사진이 카드색 블록으로 녹아들도록. (토스/네이버 추천 카드 룩)
  *
- *   가독성: 대표색의 지각 밝기(perceived luminance)를 계산해 글자색을 자동으로 검정/흰색 대비 →
- *           밝은 사진(베이지 등)은 검정 글씨, 어두운 사진(갈색 등)은 흰 글씨.
+ *   핵심: 번짐(imageFade)을 `rgba(r,g,b,0) → rgb(r,g,b)` 로 같은 색의 투명→불투명으로 처리 →
+ *         검정/회색 안개 없이 사진과 텍스트 블록 사이 경계가 사라짐.
  *
- *   주의: 가격/평점 등 "내용"은 바꾸지 않음 — 순수 디자인(색/배경)만 제공.
+ *   가독성: 대표색 밝기로 글자색을 검정/흰색 자동 대비.
+ *   주의: 가격/평점 등 "내용"은 안 바꿈 — 색/배경만.
  */
 
 export interface CardGradient {
-  /** 카드 전체 배경 (대표색 → 살짝 어두운 세로 그라데이션) */
-  background: string
-  /** 사진 하단 → 카드색으로 번지는 fade 오버레이 (이미지 위에 absolute 로 덮음) */
+  /** 카드 배경 단색 */
+  base: string
+  /** 사진 하단 → base 로 번지는 오버레이 (같은 색 투명→불투명) */
   imageFade: string
   /** 본문 기본 글자색 (대표색 밝기 대비) */
   text: string
-  /** 보조 글자색 (평점/구매수 등) */
+  /** 보조 글자색 */
   sub: string
-  /** 할인율 강조색 (밝은 배경=진한 빨강 / 어두운 배경=밝은 빨강) */
+  /** 할인율 강조색 */
   accent: string
   /** 대표색이 밝은지 여부 */
   isLight: boolean
@@ -33,31 +33,25 @@ function parseHex(hex: string): [number, number, number] | null {
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
 
-// 대표색이 없을 때(아직 미백필) — 중립 다크 그라데이션 fallback.
-const FALLBACK: CardGradient = {
-  background: 'linear-gradient(180deg, #242424 0%, #161616 100%)',
-  imageFade: 'linear-gradient(to bottom, rgba(0,0,0,0) 55%, #242424 100%)',
-  text: '#ffffff',
-  sub: 'rgba(255,255,255,0.66)',
-  accent: '#ff5a5f',
-  isLight: false,
+function build(r: number, g: number, b: number): CardGradient {
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  const isLight = lum > 0.6
+  return {
+    base: `rgb(${r}, ${g}, ${b})`,
+    // 같은 색의 투명 → 불투명 → 경계 없는 자연스러운 번짐.
+    imageFade: `linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 0) 0%, rgba(${r}, ${g}, ${b}, 0.6) 55%, rgb(${r}, ${g}, ${b}) 100%)`,
+    text: isLight ? '#1a1a1a' : '#ffffff',
+    sub: isLight ? 'rgba(0,0,0,0.58)' : 'rgba(255,255,255,0.70)',
+    accent: isLight ? '#e11d48' : '#ff6b6b',
+    isLight,
+  }
 }
+
+// 대표색이 아직 없을 때(이미지 로드 전) — 중립 다크.
+const FALLBACK = build(0x24, 0x24, 0x24)
 
 export function cardGradient(dominant?: string | null): CardGradient {
   const rgb = dominant ? parseHex(dominant) : null
   if (!rgb) return FALLBACK
-  const [r, g, b] = rgb
-  // 지각 밝기 0~1 (sRGB 가중치)
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  const isLight = lum > 0.6
-  const base = `rgb(${r}, ${g}, ${b})`
-  const dark = `rgb(${Math.round(r * 0.78)}, ${Math.round(g * 0.78)}, ${Math.round(b * 0.78)})`
-  return {
-    background: `linear-gradient(180deg, ${base} 0%, ${dark} 100%)`,
-    imageFade: `linear-gradient(to bottom, rgba(0,0,0,0) 52%, ${base} 100%)`,
-    text: isLight ? '#1a1a1a' : '#ffffff',
-    sub: isLight ? 'rgba(0,0,0,0.58)' : 'rgba(255,255,255,0.68)',
-    accent: isLight ? '#e11d48' : '#ff5a5f',
-    isLight,
-  }
+  return build(rgb[0], rgb[1], rgb[2])
 }

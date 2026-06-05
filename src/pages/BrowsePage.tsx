@@ -44,20 +44,22 @@ const BrowseProductCard = memo(function BrowseProductCard({
   const rating = (product as { avg_rating?: number }).avg_rating ?? 0
   const soldCount = product.sold_count ?? 0
   const soldLabel = soldCount >= 10000 ? `${(soldCount / 10000).toFixed(1)}만` : soldCount.toLocaleString('ko-KR')
-  // 🏭 2026-06-04 (사용자 요청): 대표색 그라데이션 카드 — 사진이 카드색으로 번지고 그 위에 텍스트.
-  const grad = cardGradient(product.dominant_color)
+  // 🏭 2026-06-04 (사용자 요청): 대표색 단색 카드 — 사진이 같은 색으로 번져 텍스트 블록과 경계 없이 이어짐.
+  //   서버 dominant_color 없으면 이미지 로드 즉시 추출해 이 카드에 바로 적용(검정 fallback 방지).
+  const [cardColor, setCardColor] = useState<string | null>(product.dominant_color || null)
+  const grad = cardGradient(cardColor)
   return (
     <button
       onClick={() => navigate(`/products/${product.id}`)}
       onMouseEnter={() => prefetchProduct(product.id)}
       onTouchStart={() => prefetchProduct(product.id)}
       onFocus={() => prefetchProduct(product.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full rounded-2xl overflow-hidden shadow-sm"
-      style={{ background: grad.background }}
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full rounded-2xl overflow-hidden"
+      style={{ backgroundColor: grad.base }}
     >
       <div
         className="relative aspect-square w-full overflow-hidden"
-        style={product.dominant_color ? { backgroundColor: product.dominant_color } : undefined}
+        style={{ backgroundColor: grad.base }}
       >
         {product.image_url ? (
           <img
@@ -72,17 +74,18 @@ const BrowseProductCard = memo(function BrowseProductCard({
             fetchPriority={aboveFold ? 'high' : 'auto'}
             decoding="async"
             onLoad={(e) => {
-              if (!product.dominant_color) {
-                const color = extractDominantColor(e.currentTarget as HTMLImageElement)
-                if (color) reportDominantColor(product.id, color)
+              const color = extractDominantColor(e.currentTarget as HTMLImageElement)
+              if (color) {
+                if (!cardColor) setCardColor(color)
+                if (!product.dominant_color) reportDominantColor(product.id, color)
               }
             }}
           />
         ) : (
           <div className="w-full h-full" />
         )}
-        {/* 사진 하단 → 카드색으로 번지는 그라데이션 */}
-        <div className="absolute inset-x-0 bottom-0 h-[46%] pointer-events-none" style={{ background: grad.imageFade }} />
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
         {isMealVoucher && (
           <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
             <Bell
@@ -584,7 +587,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   원인: original_price/discount 가 조건부 렌더 → 카드마다 높이 다름.
                   해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
                   디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8 items-stretch">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 items-stretch">
               {displayed.map((product, idx) => (
                 <BrowseProductCard
                   key={product.id}
