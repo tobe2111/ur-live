@@ -12,7 +12,7 @@
  *   2. 금액권 그리드 (선택 브랜드 또는 전체) — 무한 스크롤
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
-import { useEffect, useState, useRef, useCallback, memo } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
@@ -108,6 +108,10 @@ function getCategoryIcon(category: string): string {
 }
 
 const PAGE_SIZE = 30
+
+// 🏭 2026-06-04 (사용자 요청): 홈(embedded) 기본 카테고리 = '커피/음료' (KT Alpha goods_type_detail).
+//   worker/index.ts MAIN 슬롯 + cache-prewarm HOT_PATH 의 category 값과 반드시 동일해야 SSR 0-RTT 정합.
+const EMBEDDED_DEFAULT_CATEGORY = '커피/음료'
 
 // 🛡️ 2026-06-01 (loading): 피드 카드 React.memo — 부모(스크롤 reveal/잔액 등) 재렌더 시 전체 카드
 //   재조정 방지. GroupBuyFeedCard/ReelCard 와 동일 패턴. 데이터/SSR/정렬/이미지속성 불변(순수 렌더 래퍼).
@@ -207,7 +211,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const prefetchProduct = usePrefetchProduct()
   const [searchParams, setSearchParams] = useSearchParams()
   const brand = searchParams.get('brand') || ''
-  const category = searchParams.get('category') || ''
+  // 🏭 2026-06-04 (사용자 요청): 홈(embedded)은 기본 카테고리를 '커피/음료' 로 — 첫 진입 시 커피 브랜드 먼저.
+  //   MAIN SSR 슬롯도 같은 커피 카테고리로 warm → 0-RTT 유지 (worker/index.ts + cache-prewarm).
+  const category = searchParams.get('category') || (embedded ? EMBEDDED_DEFAULT_CATEGORY : '')
 
   // 🛡️ 2026-05-19: 카테고리 + 브랜드 2단 구조 — 사용자 요청.
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
@@ -317,6 +323,19 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 현재 선택된 카테고리의 브랜드 list.
   const currentSection = sections.find(s => s.category === category)
   const currentBrands = currentSection?.brands || []
+  // 🏭 2026-06-04 (사용자 요청): 커피/음료 브랜드 우선순위. 나머지는 원본 순서 유지.
+  const orderedBrands = useMemo(() => {
+    if (category !== EMBEDDED_DEFAULT_CATEGORY) return currentBrands
+    const PRIORITY = ['스타벅스', '메가', '투썸', '할리스', '컴포즈', '빽다방']
+    const rank = (name: string) => {
+      const i = PRIORITY.findIndex(k => name.includes(k))
+      return i === -1 ? PRIORITY.length + 1 : i
+    }
+    return [...currentBrands]
+      .map((b, i) => ({ b, i }))
+      .sort((x, y) => rank(x.b.brand_name) - rank(y.b.brand_name) || x.i - y.i)
+      .map(x => x.b)
+  }, [currentBrands, category])
 
   // 상품 로드 (페이지 변경 / 필터 변경 시)
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
@@ -347,7 +366,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — no-query 초기 진입 시 즉시 표시.
     //   worker HTMLRewriter 가 /vouchers (no query) 일 때 __SSR_INITIAL_VOUCHERS__ inject.
     //   카테고리/브랜드/sort 변경 시 loadProducts 가 다시 axios fetch (fallback).
-    if (!brand && !category && sort === 'price_low' && page === 1) {
+    // 🏭 2026-06-04: 홈(embedded)은 category='커피/음료' 기본 — MAIN 슬롯이 커피로 warm 됨.
+    //   /vouchers(비embedded)는 기존대로 카테고리 없을 때 VOUCHERS 슬롯 consume.
+    const ssrMatch = embedded
+      ? (category === EMBEDDED_DEFAULT_CATEGORY && !brand && sort === 'price_low' && page === 1)
+      : (!brand && !category && sort === 'price_low' && page === 1)
+    if (ssrMatch) {
       try {
         if (typeof document !== 'undefined') {
           const el = document.getElementById(embedded ? '__SSR_INITIAL_MAIN__' : '__SSR_INITIAL_VOUCHERS__')
@@ -519,31 +543,41 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </select>
       </div>
 
-      {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드 (선택된 카테고리만). */}
-      {!brand && currentBrands.length > 0 && (
+      {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.
+          🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
+      {currentBrands.length > 0 && (
         <div className="ur-content-wide px-4 lg:px-8 py-4">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
             <span>{getCategoryIcon(category)}</span>
             {category} 인기 브랜드
           </h2>
           <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {currentBrands.map(b => (
+            {orderedBrands.map(b => {
+              const selected = b.brand_name === brand
+              return (
               <button
                 key={b.brand_name}
                 type="button"
-                onClick={() => setBrand(b.brand_name)}
+                onClick={() => setBrand(selected ? '' : b.brand_name)}
                 className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
               >
-                <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-500/10 overflow-hidden flex items-center justify-center border border-amber-100 dark:border-amber-500/20">
+                <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center border transition-colors ${
+                  selected
+                    ? 'bg-amber-100 dark:bg-amber-500/20 border-amber-400 dark:border-amber-400/60 ring-2 ring-amber-400'
+                    : 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20'
+                }`}>
                   {b.brand_icon_url ? (
                     <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-10 h-10 object-contain" />
                   ) : (
                     <span className="text-2xl">🎁</span>
                   )}
                 </div>
-                <span className="text-[10px] text-gray-700 dark:text-gray-300 line-clamp-1 max-w-[60px] text-center">{b.brand_name}</span>
+                <span className={`text-[10px] line-clamp-1 max-w-[60px] text-center ${
+                  selected ? 'text-amber-700 dark:text-amber-300 font-bold' : 'text-gray-700 dark:text-gray-300'
+                }`}>{b.brand_name}</span>
               </button>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

@@ -61,6 +61,10 @@ const HOT_PATHS: readonly string[] = [
   // VouchersPage / BrowsePage SSR inject 대응 — first-paint warm 유지.
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',
   '/api/products?page=1&limit=20&exclude_deal_only=1',
+  // 🏭 2026-06-04 [LOADING_ADDITIVE]: 홈(MAIN 슬롯) 기본 카테고리 = '커피/음료' SSR key.
+  //   worker/index.ts MAIN 슬롯 path + 클라(URLSearchParams) 인코딩과 1:1 일치 (%2F/%EC..).
+  //   이 key 를 warm 하지 않으면 홈 첫 사용자 SSR miss → skeleton.
+  '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C',
   // 🛡️ 2026-05-27: VouchersPage 카테고리 칩 — 2번째 endpoint warm 유지.
   '/api/vouchers/categories',
   '/api/group-buy/live-ticker',

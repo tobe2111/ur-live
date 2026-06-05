@@ -460,9 +460,11 @@ app.use('*', async (c, next) => {
 
     if (isMainPage) {
       // 🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권(deal_only) 콘텐츠로 전환 (사용자 승인).
-      //   MAIN 슬롯을 교환권 endpoint 로 변경 — 이 path 는 이미 HOT_PATHS 에 warm 되어 0-RTT 유지.
-      //   (홈에서 임베드한 VouchersPage 가 __SSR_INITIAL_MAIN__ 을 읽음.)
-      ssrTarget = { slot: 'MAIN', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
+      // 🏭 2026-06-04 [UNLOCK_LOADING]: 홈 기본 카테고리 = '커피/음료' (사용자 요청).
+      //   MAIN 슬롯 path 에 category=커피/음료 추가 — VouchersPage(embedded) 가 같은 기본값 사용 →
+      //   __SSR_INITIAL_MAIN__ consume 해 0-RTT 유지. query 문자열은 클라(URLSearchParams) 인코딩과
+      //   1:1 일치해야 cache key 가 맞으므로 %2F/%EC.. 인코딩 그대로 유지. HOT_PATHS 에도 동일 추가.
+      ssrTarget = { slot: 'MAIN', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C' };
     } else if (url.pathname === '/vouchers' && !url.search) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
       //   클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.

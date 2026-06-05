@@ -21,6 +21,11 @@
 - 업로드: 공개 엔드포인트 `POST /api/upload/business-cert`(rate-limit+검증), `<BusinessCertUpload>` 컴포넌트.
 - 관리자 검수: 유통회원=`/admin/seller-approval`(등록증 검증 섹션), 제조회원=`/admin/suppliers`(등록증 썸네일).
 
+### ✅ 홈 기본 = 커피/음료 카테고리 — 구현 완료 (2026-06-04)
+- 홈(`/`) embedded VouchersPage 기본 category = '커피/음료' (URL 무지정 시). MAIN SSR 슬롯 + cache-prewarm HOT_PATH 도 동일 커피 카테고리로 warm → 0-RTT 유지 (`[UNLOCK_LOADING]`, CLAUDE.md audit log).
+- 브랜드를 클릭(필터)해도 브랜드 그리드 유지 + 선택 브랜드 강조(ring) + 재클릭 해제.
+- 커피 브랜드 정렬: 스타벅스 → 메가 → 투썸 → 할리스 → 컴포즈 → 빽다방 → 나머지(원본순).
+
 ### 🟡 결정/운영 필요 (코드로 불가 — 사용자·Cloudflare)
 - [ ] **R2 스토리지 확인** — 등록증 업로드는 `MEDIA_BUCKET`(R2)+`PUBLIC_R2_URL` 바인딩 필요. 미설정 시 업로드 503 → 가입 불가(필수 강제됨). 다른 이미지 업로드와 동일 의존이라 이미 설정됐을 가능성 높음 — 확인 권장.
 - [ ] `utongstart.com` 도메인 → Cloudflare Pages 커스텀 도메인 연결 (코드는 준비됨)
