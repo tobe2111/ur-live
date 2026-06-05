@@ -152,6 +152,8 @@ export const CURATOR_DEFAULTS = {
   HANDLE_PATTERN: /^[a-z0-9_]{3,30}$/,
   /** 핸들 예약어 — 시스템 라우트와 충돌 방지. URL `/u/admin` 같은 case 차단. */
   HANDLE_RESERVED: [
+    // 🏭 2026-06-05: 'user' 예약 — 한글 닉네임이 빈 슬러그가 돼 생기던 generic '@user' 핸들 차단.
+    'user',
     'admin', 'api', 'auth', 'me', 'login', 'logout', 'signup', 'help', 'support',
     'seller', 'agency', 'staff', 'official', 'urteam', 'urdeal', 'live',
     'shop', 'browse', 'cart', 'checkout', 'order', 'orders', 'product', 'products',

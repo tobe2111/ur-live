@@ -205,7 +205,7 @@ productsRoutes.get('/', cors(), async (c) => {
     const rawSearch = c.req.query('search') || c.req.query('q');
     const safeSearch = rawSearch && rawSearch.length <= 200 ? rawSearch : undefined;
     const rawSort = c.req.query('sort');
-    const allowedSorts = ['newest', 'popular', 'price_low', 'price_high', 'rating', 'ranking'] as const;
+    const allowedSorts = ['newest', 'popular', 'price_low', 'price_high', 'rating', 'ranking', 'discount'] as const;
     const sort = rawSort && (allowedSorts as readonly string[]).includes(rawSort)
       ? (rawSort as typeof allowedSorts[number])
       : undefined;

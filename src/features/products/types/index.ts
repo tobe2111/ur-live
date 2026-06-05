@@ -22,7 +22,7 @@ export interface Product {
   updated_at: string;
 }
 
-export type ProductSort = 'newest' | 'popular' | 'price_low' | 'price_high' | 'rating' | 'ranking';
+export type ProductSort = 'newest' | 'popular' | 'price_low' | 'price_high' | 'rating' | 'ranking' | 'discount';
 
 export interface ProductFilter {
   sellerId?: number;

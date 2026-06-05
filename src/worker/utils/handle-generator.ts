@@ -33,9 +33,14 @@ export function slugifyHandle(seed: string | null | undefined): string {
     .slice(0, CURATOR_DEFAULTS.HANDLE_MAX_LEN)
 
   if (cleaned.length >= CURATOR_DEFAULTS.HANDLE_MIN_LEN) return cleaned
-  // 너무 짧으면 user prefix + 원본 (있는 경우)
-  const padded = `user${cleaned}`.slice(0, CURATOR_DEFAULTS.HANDLE_MAX_LEN)
-  return padded.length >= CURATOR_DEFAULTS.HANDLE_MIN_LEN ? padded : 'user'
+  // 🏭 2026-06-05 (사용자 신고 — '@user' generic 핸들): 라틴 글자가 일부라도 있으면 user+slug,
+  //   완전 비라틴(한글/이모지) 닉네임이면 빈 문자열 반환 → caller(generateUniqueHandle)가 user{id}로 폴백.
+  //   기존엔 빈 슬러그도 bare 'user'를 반환해 첫 한글닉 사용자가 '@user'를 영구 점유했음.
+  if (cleaned.length > 0) {
+    const padded = `user${cleaned}`.slice(0, CURATOR_DEFAULTS.HANDLE_MAX_LEN)
+    return padded.length >= CURATOR_DEFAULTS.HANDLE_MIN_LEN ? padded : ''
+  }
+  return ''
 }
 
 /**
@@ -60,10 +65,17 @@ export async function generateUniqueHandle(
   DB: D1Database,
   seed: string | null | undefined,
   excludeUserId?: number,
+  fallbackId?: number,
 ): Promise<string> {
   let base = slugifyHandle(seed)
-  // 예약어와 충돌 시 user prefix
-  if (CURATOR_DEFAULTS.HANDLE_RESERVED.includes(base)) base = `user_${base}`.slice(0, CURATOR_DEFAULTS.HANDLE_MAX_LEN)
+  // 🏭 2026-06-05: 빈 슬러그(비라틴 닉네임) 또는 예약어 → user{id} 로 폴백(고유, generic '@user' 회피).
+  //   userId 없으면 random hex (충돌 방지). 절대 bare 'user' 가 되지 않도록.
+  if (!base || CURATOR_DEFAULTS.HANDLE_RESERVED.includes(base)) {
+    base = fallbackId
+      ? `user${fallbackId}`
+      : `user_${Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0')}`
+    base = base.slice(0, CURATOR_DEFAULTS.HANDLE_MAX_LEN)
+  }
 
   // base 자체 시도
   if (await isHandleAvailable(DB, base, excludeUserId)) return base

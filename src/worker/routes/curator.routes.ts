@@ -310,7 +310,7 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
     let handleJustCreated = false
     let handle = user.handle
     if (!handle) {
-      handle = await generateUniqueHandle(DB, user.name || `user${userId}`)
+      handle = await generateUniqueHandle(DB, user.name, undefined, userId)
       await DB.prepare('UPDATE users SET handle = ?, linkshop_theme = COALESCE(linkshop_theme, ?) WHERE id = ?')
         .bind(handle, 'dark', userId)
         .run()
@@ -550,7 +550,7 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null)
     if (meRow && !meRow.handle) {
       try {
-        const newHandle = await generateUniqueHandle(DB, meRow.name || `user${userId}`, userId)
+        const newHandle = await generateUniqueHandle(DB, meRow.name, userId, userId)
         await DB.prepare('UPDATE users SET handle = ? WHERE id = ?')
           .bind(newHandle, userId).run()
         meRow = { ...meRow, handle: newHandle }

@@ -143,6 +143,10 @@ export class ProductRepository {
       orderBy = 'price ASC, id DESC';
     } else if (filter.sort === 'price_high') {
       orderBy = 'price DESC, id DESC';
+    } else if (filter.sort === 'discount') {
+      // 🏭 2026-06-05 (사용자 신고 — '할인율순' 죽은 컨트롤): 서버 ORDER BY 추가.
+      //   original_price 있으면 실제 할인율, 없으면 discount_rate 컬럼 fallback.
+      orderBy = `CASE WHEN COALESCE(original_price,0) > price THEN (original_price - price) * 100.0 / original_price ELSE COALESCE(discount_rate, 0) END DESC, id DESC`;
     } else if (filter.sort === 'rating') {
       orderBy = 'COALESCE(avg_rating, 0) DESC, COALESCE(review_count, 0) DESC, id DESC';
     } else if (filter.sort === 'ranking') {
