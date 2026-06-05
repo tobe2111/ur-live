@@ -5,6 +5,8 @@ import type { SortOption } from './types'
 
 export const SORT_LABELS: Record<SortOption, string> = {
   popular: '인기순',
+  price_low: '낮은 가격순',
+  price_high: '높은 가격순',
   deadline: '마감임박순',
   newest: '신규순',
   // 🛡️ 2026-05-20: SortOption 에 'discount' 추가됨 — Record 완전성 유지.

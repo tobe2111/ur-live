@@ -52,4 +52,5 @@ export type CategoryFilter =
   | 'health_voucher'
   | 'pet_voucher'
   | 'activity_voucher'
-export type SortOption = 'popular' | 'deadline' | 'newest' | 'discount'
+// 🏭 2026-06-05 (사용자 신고 — 공구 '낮은 가격순' 없음): 가격 정렬 추가.
+export type SortOption = 'popular' | 'deadline' | 'newest' | 'discount' | 'price_low' | 'price_high'

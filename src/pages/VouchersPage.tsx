@@ -24,6 +24,7 @@ import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cardGradient } from '@/utils/card-gradient'
+import { SortMenu } from '@/components/ui/sort-menu'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -545,17 +546,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <span className="text-[12px] text-gray-500 dark:text-gray-400">
           {loading ? '불러오는 중...' : `${products.length}개 교환권`}
         </span>
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value as SortKey)}
-          className="bg-transparent border border-gray-200 dark:border-[#2A2A2A] rounded-full px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
-        >
-          {SORT_OPTIONS.map(o => (
-            // 🏭 2026-06-05 (사용자 신고): 다크 모드에서 option 글자가 흰색→네이티브 흰 드롭다운에서 안 보임.
-            //   네이티브 popup 은 항상 밝은 배경이라 글자색을 진하게 고정.
-            <option key={o.key} value={o.key} style={{ color: '#111827', background: '#fff' }}>{o.label}</option>
-          ))}
-        </select>
+        {/* 🏭 2026-06-05 (사용자 신고 — 정렬 버튼 깨짐): 네이티브 select → 통일 스타일 드롭다운. */}
+        <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
       </div>
 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.

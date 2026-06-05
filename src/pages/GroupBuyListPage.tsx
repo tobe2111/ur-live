@@ -351,6 +351,13 @@ export default function GroupBuyListPage() {
             (a.group_buy_current || a.sold_count || 0)
         )
         break
+      // 🏭 2026-06-05 (사용자 신고 — 공구 낮은 가격순 없음): 가격 정렬(공구가 = current_price ?? price).
+      case 'price_low':
+        result.sort((a, b) => (Number((a as { current_price?: number }).current_price ?? a.price) || 0) - (Number((b as { current_price?: number }).current_price ?? b.price) || 0))
+        break
+      case 'price_high':
+        result.sort((a, b) => (Number((b as { current_price?: number }).current_price ?? b.price) || 0) - (Number((a as { current_price?: number }).current_price ?? a.price) || 0))
+        break
       case 'deadline': {
         const getTs = (p: GroupBuyProduct) =>
           p.group_buy_deadline
@@ -406,6 +413,13 @@ export default function GroupBuyListPage() {
     switch (sortBy) {
       case 'popular':
         result.sort((a, b) => b.current_count - a.current_count)
+        break
+      // 🏭 2026-06-05 (사용자 신고 — 공구 가격 정렬): 커뮤니티 공구가 = confirmed_price ?? proposed_price.
+      case 'price_low':
+        result.sort((a, b) => (Number((a as { confirmed_price?: number }).confirmed_price ?? a.proposed_price) || 0) - (Number((b as { confirmed_price?: number }).confirmed_price ?? b.proposed_price) || 0))
+        break
+      case 'price_high':
+        result.sort((a, b) => (Number((b as { confirmed_price?: number }).confirmed_price ?? b.proposed_price) || 0) - (Number((a as { confirmed_price?: number }).confirmed_price ?? a.proposed_price) || 0))
         break
       case 'deadline': {
         const getTs = (p: CommunityGroupBuy) =>
