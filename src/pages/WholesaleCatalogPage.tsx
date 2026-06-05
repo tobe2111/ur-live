@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard } from 'lucide-react'
 import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
@@ -481,6 +481,7 @@ export default function WholesaleCatalogPage() {
           {loggedIn ? (
             <>
               <nav className="hidden sm:flex items-center gap-4 text-[13px] font-medium" style={{ color: WT.ink2 }}>
+                <button onClick={() => navigate('/wholesale/dashboard')} className="inline-flex items-center gap-1"><LayoutDashboard className="w-4 h-4" /> 대시보드</button>
                 <button onClick={() => navigate('/wholesale/orders')} className="inline-flex items-center gap-1"><ClipboardList className="w-4 h-4" /> 주문내역</button>
                 <button onClick={() => navigate('/wholesale/statement')} className="inline-flex items-center gap-1"><Receipt className="w-4 h-4" /> 거래내역</button>
                 <button onClick={() => navigate('/wholesale/documents')} className="inline-flex items-center gap-1"><FileText className="w-4 h-4" /> 자료</button>
@@ -541,6 +542,7 @@ export default function WholesaleCatalogPage() {
             hidden sm:flex 로 모바일에 안 보이던 문제 → 모바일 전용 가로스크롤 기능 줄 추가(sm:hidden). */}
         {loggedIn && (
           <div className="sm:hidden ur-content-wide px-5 pb-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <button onClick={() => navigate('/wholesale/dashboard')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold text-white" style={{ background: WT.brand }}><LayoutDashboard className="w-3.5 h-3.5" /> 대시보드</button>
             <button onClick={() => navigate('/wholesale/orders')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><ClipboardList className="w-3.5 h-3.5" /> 주문내역</button>
             <button onClick={() => navigate('/wholesale/statement')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><Receipt className="w-3.5 h-3.5" /> 거래내역</button>
             <button onClick={() => navigate('/wholesale/documents')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><FileText className="w-3.5 h-3.5" /> 자료</button>

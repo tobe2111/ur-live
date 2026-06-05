@@ -42,6 +42,7 @@ import { SupplierRoutes } from './routes/supplier.routes'
 //   → 메인 페이지 첫 paint 50-100ms 단축. 다른 페이지 진입 시는 main bundle 약간 커짐 (trade-off OK — 메인 진입 70%+).
 import MainHomePage from './pages/MainHomePage'
 const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
+const WholesaleDashboardPage = lazy(() => import('./pages/WholesaleDashboardPage'))
 const WholesaleProductPage = lazy(() => import('./pages/WholesaleProductPage'))
 const WholesaleCheckoutPage = lazy(() => import('./pages/WholesaleCheckoutPage'))
 const WholesaleCartPage = lazy(() => import('./pages/WholesaleCartPage'))
@@ -501,6 +502,7 @@ function AppContent() {
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
             <Route path="/wholesale" element={<WholesaleCatalogPage />} />
+            <Route path="/wholesale/dashboard" element={<WholesaleDashboardPage />} />
             <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
             <Route path="/wholesale/cart" element={<WholesaleCartPage />} />
             <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />

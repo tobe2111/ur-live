@@ -97,8 +97,8 @@ const BrowseProductCard = memo(function BrowseProductCard({
       </div>
 
       <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
-        <p className="text-[13px] leading-tight line-clamp-2 min-h-[2.4em] font-medium">{product.name}</p>
-        <p className="text-[11px] mt-1 leading-none line-through" style={{ color: grad.sub, visibility: hasStrike ? 'visible' : 'hidden' }}>
+        <p className="text-[13px] leading-tight line-clamp-2 font-medium">{product.name}</p>
+        <p className="text-[11px] mt-0.5 leading-none line-through" style={{ color: grad.sub, visibility: hasStrike ? 'visible' : 'hidden' }}>
           {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
         </p>
         <div className="flex items-baseline gap-1 mt-0.5">
@@ -587,7 +587,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   원인: original_price/discount 가 조건부 렌더 → 카드마다 높이 다름.
                   해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
                   디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 items-stretch">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5 items-stretch">
               {displayed.map((product, idx) => (
                 <BrowseProductCard
                   key={product.id}

@@ -758,7 +758,7 @@ export default function GroupBuyListPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
                 {filtered.map((p, idx) => (
                   <GroupBuyGridCard
                     key={p.id}

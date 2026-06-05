@@ -176,8 +176,8 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
         {p.brand_name && (
           <p className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold leading-none mb-1">[{p.brand_name}]</p>
         )}
-        <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{p.name}</p>
-        <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+        <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 font-medium">{p.name}</p>
+        <p className={`text-[11px] mt-0.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
           {hasStrike ? `${formatNumber(p.original_price!)}딜` : ' '}
         </p>
         <div className="flex items-baseline gap-1 mt-0.5">
@@ -613,7 +613,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {products.map((p, idx) => (
                 <VoucherCard key={p.id} p={p} aboveFold={idx < 4} />
               ))}
