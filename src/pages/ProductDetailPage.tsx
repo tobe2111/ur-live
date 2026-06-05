@@ -75,6 +75,9 @@ export default function ProductDetailPage() {
   const [showAllReviews, setShowAllReviews] = useState(false)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [giftModalOpen, setGiftModalOpen] = useState(false)  // 🛡️ 2026-04-28: 선물하기 모달
+  // 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm → 서비스 내 모달.
+  const [dealConfirm, setDealConfirm] = useState<{ total: number } | null>(null)
+  const [dealBuying, setDealBuying] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [reviewSummary, setReviewSummary] = useState<{ avg_rating: number; total_count: number } | null>(null)
 
@@ -227,45 +230,8 @@ export default function ProductDetailPage() {
     // 🛡️ 2026-05-23: getProductFlow SSOT 사용 (voucher_deal flow → 딜 결제).
     const { flow } = resolveProductFlow(product)
     if (flow === 'voucher_deal') {
-      const total = product.price * quantity
-      const ok = window.confirm(
-        t('groupBuy.confirmJoin', {
-          defaultValue: `공구 참여\n\n${product.name}\n${quantity}장 × ${product.price.toLocaleString('ko-KR')}원 = ${total.toLocaleString('ko-KR')}딜\n\n딜로 결제됩니다. 진행할까요?`
-        })
-      )
-      if (!ok) return
-      try {
-        // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 attribution — sessionStorage 의 ref 전달.
-        //   백엔드 join endpoint 의 기존 'ref' 파라미터 재활용.
-        const { getTrackedSellerId } = await import('@/lib/seller-tracking')
-        const ref = getTrackedSellerId() || undefined
-        const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal', ref })
-        if (res.data?.success) {
-          showToast(t('groupBuy.joinSuccess', { defaultValue: '공구 참여 완료! 바우처가 발급됐어요.' }), 'success')
-          invalidateVouchers()
-          navigate('/my-vouchers')
-        } else {
-          showToast(res.data?.error || t('common.error'), 'error')
-        }
-      } catch (err: unknown) {
-        const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
-        const code = e?.response?.data?.code
-        if (code === 'INSUFFICIENT_POINTS') {
-          const charge = window.confirm(
-            t('groupBuy.insufficientDeal', { defaultValue: '딜이 부족합니다. 충전 페이지로 이동할까요?' })
-          )
-          if (charge) {
-            localStorage.setItem('loginReturnUrl', window.location.pathname)
-            navigate('/points/charge')
-          }
-          return
-        }
-        if (e?.response?.status === 429) {
-          showToast(t('groupBuy.tooManyAttempts', { defaultValue: '잠시 후 다시 시도해주세요.' }), 'error')
-          return
-        }
-        showToast(e?.response?.data?.error || t('common.error'), 'error')
-      }
+      // 🏭 2026-06-05 (사용자 요청 — 네이티브 confirm 이 디자인 해침): 서비스 내 스타일 모달로 확인.
+      setDealConfirm({ total: product.price * quantity })
       return
     }
 
@@ -293,6 +259,42 @@ export default function ProductDetailPage() {
         }]
       }
     })
+  }
+
+  // 🏭 2026-06-05: 딜 교환 실제 실행 (모달 '확인' 시 호출). 기존 join 로직 + 잔액부족은 toast+이동(네이티브 confirm 제거).
+  async function runVoucherDealPurchase() {
+    if (!product || dealBuying) return
+    setDealBuying(true)
+    try {
+      const { getTrackedSellerId } = await import('@/lib/seller-tracking')
+      const ref = getTrackedSellerId() || undefined
+      const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal', ref })
+      if (res.data?.success) {
+        setDealConfirm(null)
+        showToast(t('groupBuy.joinSuccess', { defaultValue: '교환 완료! 바우처가 발급됐어요.' }), 'success')
+        invalidateVouchers()
+        navigate('/my-vouchers')
+      } else {
+        showToast(res.data?.error || t('common.error'), 'error')
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
+      const code = e?.response?.data?.code
+      if (code === 'INSUFFICIENT_POINTS') {
+        setDealConfirm(null)
+        showToast(t('groupBuy.insufficientDeal', { defaultValue: '딜이 부족해요. 충전 페이지로 이동합니다.' }), 'error')
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        setTimeout(() => navigate('/points/charge'), 900)
+        return
+      }
+      if (e?.response?.status === 429) {
+        showToast(t('groupBuy.tooManyAttempts', { defaultValue: '잠시 후 다시 시도해주세요.' }), 'error')
+        return
+      }
+      showToast(e?.response?.data?.error || t('common.error'), 'error')
+    } finally {
+      setDealBuying(false)
+    }
   }
 
   function handleShare() {
@@ -855,6 +857,44 @@ export default function ProductDetailPage() {
             productPrice={product.price}
           />
         </Suspense>
+      )}
+
+      {/* 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm 대체 서비스 내 모달. */}
+      {dealConfirm && (
+        <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !dealBuying && setDealConfirm(null)}>
+          <div className="w-full sm:max-w-sm bg-white dark:bg-[#121212] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              {product.image_url && (
+                <img src={product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="text-[14px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  {quantity}장 × {formatNumber(product.price)}딜
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-baseline justify-between">
+              <span className="text-[13px] text-gray-500 dark:text-gray-400">결제 금액</span>
+              <span className="text-[20px] font-extrabold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
+            </div>
+            <div className="mt-3 flex items-start gap-1.5 rounded-xl px-3 py-2.5 bg-amber-50 dark:bg-amber-500/10">
+              <span className="text-amber-500 text-[13px] leading-none mt-0.5">⚠️</span>
+              <p className="text-[12px] text-amber-700 dark:text-amber-300 leading-snug">교환 후에는 환불이 불가합니다. 딜로 즉시 결제됩니다.</p>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setDealConfirm(null)} disabled={dealBuying}
+                className="flex-1 h-12 rounded-xl text-[14px] font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#1F1F1F] active:scale-[0.98] transition-transform disabled:opacity-50">
+                취소
+              </button>
+              <button onClick={runVoucherDealPurchase} disabled={dealBuying}
+                className="flex-1 h-12 rounded-xl text-[14px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}>
+                {dealBuying ? '처리 중…' : `${formatNumber(dealConfirm.total)}딜로 교환`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast Notification */}
