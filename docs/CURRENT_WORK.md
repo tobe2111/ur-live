@@ -16,7 +16,13 @@
 - 제조회원(Phase B): `/supplier/login` 카카오 버튼 → `POST /api/supplier/become`. 신규=승인대기(어드민 검증 게이트 유지), 승인됨=supplier_token 자동 발급.
 - 카카오 콜백 코어 미변경(안전) — 기존 유저세션 + 별도 become 엔드포인트 패턴.
 
+### ✅ 가입 승인 + 사업자정보/등록증 — 구현 완료 (2026-06-04)
+- 유통회원·제조회원 모두: 사업자번호 필수 + **사업자등록증 이미지 필수(강제)** + status='pending' → 관리자 승인 후 이용.
+- 업로드: 공개 엔드포인트 `POST /api/upload/business-cert`(rate-limit+검증), `<BusinessCertUpload>` 컴포넌트.
+- 관리자 검수: 유통회원=`/admin/seller-approval`(등록증 검증 섹션), 제조회원=`/admin/suppliers`(등록증 썸네일).
+
 ### 🟡 결정/운영 필요 (코드로 불가 — 사용자·Cloudflare)
+- [ ] **R2 스토리지 확인** — 등록증 업로드는 `MEDIA_BUCKET`(R2)+`PUBLIC_R2_URL` 바인딩 필요. 미설정 시 업로드 503 → 가입 불가(필수 강제됨). 다른 이미지 업로드와 동일 의존이라 이미 설정됐을 가능성 높음 — 확인 권장.
 - [ ] `utongstart.com` 도메인 → Cloudflare Pages 커스텀 도메인 연결 (코드는 준비됨)
 - [ ] barobill API 키 (전자세금계산서) — Cloudflare Variables (`BAROBILL_*`)
 - [ ] Scrape Shield → **Email Address Obfuscation OFF** (CSP email-decode 콘솔 노이즈 제거)
