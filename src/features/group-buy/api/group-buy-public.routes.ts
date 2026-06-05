@@ -31,6 +31,34 @@ let _giftCatalogJoinable: boolean | null = null
 let _dominantColorCol: boolean | null = null
 
 export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
+  // 🛡️ 2026-06-04 진단 — /group-buy 카드 로딩 느림 ground truth (추측 금지 룰).
+  //   feed_cache 존재/신선도 + 라이브 쿼리 실측 시간 + 상품 수 + 엣지캐시 키 반환.
+  router.get('/_diag', async (c) => {
+    const { DB } = c.env
+    const out: Record<string, unknown> = {}
+    try {
+      const t0 = Date.now()
+      await ensureTables(DB)
+      out.ensureTables_ms = Date.now() - t0
+    } catch (e) { out.ensureTables_err = String((e as Error)?.message || e) }
+    // feed_cache 상태
+    try {
+      const row = await DB.prepare("SELECT row_count, computed_at FROM group_buy_feed_cache WHERE status='active' AND category='all' LIMIT 1").first<{ row_count: number; computed_at: string }>().catch(() => null)
+      out.feed_cache = row ? { row_count: row.row_count, computed_at: row.computed_at, age_sec: Math.round((Date.now() - new Date(row.computed_at + 'Z').getTime()) / 1000) } : 'EMPTY (cron 미동작/테이블없음 → 매번 라이브쿼리)'
+    } catch (e) { out.feed_cache_err = String((e as Error)?.message || e) }
+    // 라이브 피드 쿼리 실측 (status=active, 전체 카테고리)
+    try {
+      const cats = (VOUCHER_CATEGORIES as readonly string[])
+      const ph = cats.map(() => '?').join(',')
+      const t1 = Date.now()
+      const r = await DB.prepare(`SELECT p.id FROM products p LEFT JOIN sellers s ON p.seller_id=s.id WHERE p.category IN (${ph}) AND p.is_active=1 AND (p.group_buy_status='active' OR 'active'='all') ORDER BY p.created_at DESC LIMIT 50`).bind(...cats).all()
+      out.live_query_ms = Date.now() - t1
+      out.live_query_rows = (r.results || []).length
+    } catch (e) { out.live_query_err = String((e as Error)?.message || e) }
+    out.note = 'live_query_ms 가 크면 인덱스/D1 cold 문제, feed_cache EMPTY 면 cron 문제, 둘 다 정상이면 엣지캐시/이미지 문제'
+    return c.json({ success: true, diag: out })
+  })
+
   // ── GET /products — 공구 목록 ──
   //   ?status=active|achieved|expired|all  (default: active)
   //   ?category=meal_voucher|beauty_voucher|...|all  (default: all)
