@@ -16,6 +16,7 @@ import {
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { cardGradient } from '@/utils/card-gradient'
 import SEO from '@/components/SEO'
 import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
@@ -631,19 +632,22 @@ export default function GroupBuyListPage() {
                   const progress =
                     target > 0 ? Math.min(100, (current / target) * 100) : 0
                   const timeLeft = formatTimeLeft(p.group_buy_deadline)
+                  // 🏭 2026-06-04 (사용자 요청): 대표색 그라데이션 카드 — 사진이 카드색으로 번지고 그 위에 텍스트.
+                  const grad = cardGradient(p.dominant_color)
 
                   return (
                     <button
                       key={p.id}
                       onClick={() => navigate(`/group-buy/${p.id}`)}
-                      className="text-left active:scale-[0.98] transition-transform"
+                      className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden shadow-sm flex flex-col"
+                      style={{ background: grad.background }}
                     >
                       {/* 이미지 */}
                       {/* 🛡️ 2026-06-04 (사용자 — 카드 로딩 체감): dominant_color placeholder + fade-in.
                           이미지 로드 전 회색 박스 대신 이미지 실제 색을 즉시 표시 → "툭 뜨는" 느낌 제거.
                           홈 피드 카드(GroupBuyFeedCard)와 동일 패턴. 서버비용 0(색은 기존 응답에 포함). */}
                       <div
-                        className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] rounded-xl"
+                        className="relative aspect-square overflow-hidden"
                         style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
                       >
                         {p.image_url ? (
@@ -669,8 +673,11 @@ export default function GroupBuyListPage() {
                             style={{ opacity: idx < 4 ? 1 : 0, transition: 'opacity 200ms ease-out' }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
+                          <div className="w-full h-full" />
                         )}
+
+                        {/* 사진 하단 → 카드색으로 번지는 그라데이션 */}
+                        <div className="absolute inset-x-0 bottom-0 h-[46%] pointer-events-none" style={{ background: grad.imageFade }} />
 
                         {/* 할인 뱃지 */}
                         {discount > 0 && (
@@ -699,14 +706,14 @@ export default function GroupBuyListPage() {
                         </button>
                       </div>
 
-                      {/* 정보 */}
-                      <div className="mt-2">
-                        <p className="text-[12px] text-gray-900 dark:text-white leading-tight line-clamp-2">
+                      {/* 정보 — 카드 대표색 위에 올라가므로 글자색은 grad 로 자동 대비 (내용은 불변) */}
+                      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
+                        <p className="text-[12px] leading-tight line-clamp-2">
                           {p.name}
                         </p>
 
                         {p.restaurant_name && (
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                          <p className="text-[10px] mt-0.5 truncate" style={{ color: grad.sub }}>
                             {p.restaurant_name}
                           </p>
                         )}
@@ -714,26 +721,29 @@ export default function GroupBuyListPage() {
                         {/* 가격 */}
                         <div className="flex items-baseline gap-1 mt-1">
                           {p.original_price && p.original_price > p.price && (
-                            <span className="text-[10px] text-gray-400 dark:text-gray-600 line-through">
+                            <span className="text-[10px] line-through" style={{ color: grad.sub }}>
                               {formatPrice(p.original_price)}
                             </span>
                           )}
                         </div>
                         <div className="flex items-baseline gap-1">
                           {discount > 0 && (
-                            <span className="text-[13px] font-extrabold text-pink-500">
+                            <span className="text-[13px] font-extrabold" style={{ color: grad.accent }}>
                               {discount}%
                             </span>
                           )}
-                          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
+                          <span className="text-[13px] font-extrabold">
                             {formatPrice(p.price)}
                           </span>
                         </div>
 
-                        {/* 진행률 */}
+                        {/* 진행률 — 트랙 배경은 카드색에 어울리는 반투명, 채움은 브랜드 핑크/에메랄드 유지 */}
                         {target > 0 && (
                           <div className="mt-2">
-                            <div className="w-full h-2.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
+                            <div
+                              className="w-full h-2.5 rounded-full overflow-hidden"
+                              style={{ backgroundColor: grad.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.20)' }}
+                            >
                               <div
                                 className={`h-full rounded-full ${
                                   achieved ? 'bg-emerald-500' : 'bg-pink-500'
@@ -741,10 +751,10 @@ export default function GroupBuyListPage() {
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
-                            <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1">
-                              <Users className="w-3 h-3 text-gray-400" />
+                            <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
+                              <Users className="w-3 h-3" style={{ color: grad.sub }} />
                               {achieved ? (
-                                <span className="text-emerald-600 font-semibold">
+                                <span className="font-semibold" style={{ color: grad.isLight ? '#047857' : '#34d399' }}>
                                   {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
                                 </span>
                               ) : (
@@ -756,8 +766,8 @@ export default function GroupBuyListPage() {
 
                         {/* 시간 */}
                         {timeLeft && (
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-gray-400" />
+                          <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
+                            <Clock className="w-3 h-3" style={{ color: grad.sub }} />
                             {timeLeft}
                           </p>
                         )}

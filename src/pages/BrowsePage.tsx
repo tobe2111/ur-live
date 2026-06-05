@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { cardGradient } from '@/utils/card-gradient'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import RecentlyViewedSection from './browse/RecentlyViewedSection'
 import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
@@ -43,16 +44,19 @@ const BrowseProductCard = memo(function BrowseProductCard({
   const rating = (product as { avg_rating?: number }).avg_rating ?? 0
   const soldCount = product.sold_count ?? 0
   const soldLabel = soldCount >= 10000 ? `${(soldCount / 10000).toFixed(1)}만` : soldCount.toLocaleString('ko-KR')
+  // 🏭 2026-06-04 (사용자 요청): 대표색 그라데이션 카드 — 사진이 카드색으로 번지고 그 위에 텍스트.
+  const grad = cardGradient(product.dominant_color)
   return (
     <button
       onClick={() => navigate(`/products/${product.id}`)}
       onMouseEnter={() => prefetchProduct(product.id)}
       onTouchStart={() => prefetchProduct(product.id)}
       onFocus={() => prefetchProduct(product.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full"
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col h-full rounded-2xl overflow-hidden shadow-sm"
+      style={{ background: grad.background }}
     >
       <div
-        className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#121212] rounded-xl"
+        className="relative aspect-square w-full overflow-hidden"
         style={product.dominant_color ? { backgroundColor: product.dominant_color } : undefined}
       >
         {product.image_url ? (
@@ -75,10 +79,12 @@ const BrowseProductCard = memo(function BrowseProductCard({
             }}
           />
         ) : (
-          <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
+          <div className="w-full h-full" />
         )}
+        {/* 사진 하단 → 카드색으로 번지는 그라데이션 */}
+        <div className="absolute inset-x-0 bottom-0 h-[46%] pointer-events-none" style={{ background: grad.imageFade }} />
         {isMealVoucher && (
-          <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
+          <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
             <Bell
               onClick={(e: React.MouseEvent) => onToggleInterest(e, product.id, product.name, interested)}
               className={`w-3 h-3 ${interested ? 'text-pink-500 fill-pink-500' : 'text-gray-300 dark:text-gray-600'}`}
@@ -87,24 +93,24 @@ const BrowseProductCard = memo(function BrowseProductCard({
         )}
       </div>
 
-      <div className="mt-2 flex flex-col flex-1">
-        <p className="text-[13px] text-gray-900 dark:text-white leading-tight line-clamp-2 min-h-[2.4em] font-medium">{product.name}</p>
-        <p className={`text-[11px] mt-1.5 leading-none ${hasStrike ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-transparent select-none'}`}>
+      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
+        <p className="text-[13px] leading-tight line-clamp-2 min-h-[2.4em] font-medium">{product.name}</p>
+        <p className="text-[11px] mt-1 leading-none line-through" style={{ color: grad.sub, visibility: hasStrike ? 'visible' : 'hidden' }}>
           {hasStrike ? formatPrice(product.original_price!, { dealOnly: product.deal_only }) : ' '}
         </p>
         <div className="flex items-baseline gap-1 mt-0.5">
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-red-500">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold" style={{ color: grad.accent }}>{discountRate}%</span>
           )}
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
+          <span className="text-[15px] font-extrabold">{formatPrice(displayPrice, { dealOnly: product.deal_only })}</span>
         </div>
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 mt-1 text-[11px]" style={{ color: grad.sub }}>
           <span className="inline-flex items-center gap-0.5">
-            <span className="text-yellow-500">★</span>
+            <span style={{ color: '#facc15' }}>★</span>
             {rating > 0 ? (
-              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+              <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
             ) : (
-              <span className="font-semibold text-gray-400 dark:text-gray-500">신규</span>
+              <span className="font-semibold">신규</span>
             )}
           </span>
           {soldCount > 0 && <span>구매 {soldLabel}</span>}
