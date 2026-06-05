@@ -91,14 +91,38 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ? validCategories
       : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
 
+    // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 필터 근본수정): sort + 페이지네이션 서버사이드.
+    //   기존: 클라가 항상 ?status=active(파라미터 없음)로 받아 최신 50개만 → 카테고리/정렬/검색을 클라에서
+    //   처리 → 활성 공구 50개 초과 시 안 잡힘 + "인기순"이 50개 안에서만 정렬. 이제 서버가 정렬/페이지 적용.
+    //   ⚠️ 기본 요청(파라미터 없음)은 키·쿼리·materialized·LIMIT 50 전부 그대로 → SSR 0-RTT/캐시 불변.
+    //   필터/정렬/페이지가 붙은 요청만 새 캐시키 + 라이브쿼리(정렬/LIMIT/OFFSET)로 분기.
+    const ALLOWED_GB_SORT: Record<string, string> = {
+      popular: 'p.group_buy_current DESC, p.created_at DESC',
+      newest: 'p.created_at DESC',
+      deadline: 'p.group_buy_deadline ASC',
+      discount: 'p.discount_rate DESC, p.created_at DESC',
+    }
+    const sortParam = c.req.query('sort') || ''
+    const orderBy = ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'
+    const pageNum = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+    const pageLimit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50', 10)))
+    const offset = (pageNum - 1) * pageLimit
+    // hasFilters=false 인 "정확한 기본 요청"만 기존 경로(키/materialized/LIMIT 50). 그 외는 분기.
+    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null
+    const limitClause = hasFilters ? `${pageLimit} OFFSET ${offset}` : '50'
+    const cacheKey = hasFilters
+      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}`
+      : `group_buy_products:${status}:${categories.join(',')}`
+
     const results = await cacheGet(
       c.env.SESSION_KV,
-      `group_buy_products:${status}:${categories.join(',')}`,
+      cacheKey,
       async () => {
         // 🛡️ 2026-05-22: KV miss → 1차 fallback: materialized cache table (migration 0277).
         //   group_buy_feed_cache 가 5분마다 cron 으로 갱신됨. D1 SELECT 보다 100-200ms 빠름.
         //   table 미존재 / row 없음 시 graceful → 아래 실시간 쿼리 fallback.
-        try {
+        // 🏭 2026-06-05: materialized 는 status+category 기준(정렬/페이지 무관)이라 기본요청에만 사용.
+        if (!hasFilters) try {
           const cached = await DB.prepare(
             "SELECT product_json, computed_at FROM group_buy_feed_cache WHERE status = ? AND category = ? LIMIT 1"
           ).bind(status, categoryParam).first<{ product_json: string; computed_at: string }>().catch(() => null)
@@ -146,8 +170,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                 LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
                 WHERE p.category IN (${placeholders}) AND p.is_active = 1
                   AND (p.group_buy_status = ? OR ? = 'all')
-                ORDER BY p.created_at DESC
-                LIMIT 50
+                ORDER BY ${orderBy}
+                LIMIT ${limitClause}
               `).bind(...categories, status, status).all()
               if (_giftCatalogJoinable === null) _giftCatalogJoinable = true  // 첫 성공 → 다음부터 try 우선
               return r.results ?? []
@@ -162,8 +186,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             LEFT JOIN sellers s ON p.seller_id = s.id
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND (p.group_buy_status = ? OR ? = 'all')
-            ORDER BY p.created_at DESC
-            LIMIT 50
+            ORDER BY ${orderBy}
+            LIMIT ${limitClause}
           `).bind(...categories, status, status).all()
           return r.results ?? []
         }

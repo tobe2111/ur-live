@@ -262,8 +262,12 @@ export default function GroupBuyListPage() {
     // SSR 주입 데이터로 이미 시드됨(prewarm fresh) → 마운트 cold fetch 스킵(워터폴 제거).
     if (ssrInitialRef.current !== null) { ssrInitialRef.current = null; return }
     setLoading(true)
+    // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 50개 cap 근본수정): limit=200 으로 상향.
+    //   기존: status=active(파라미터 없음) → 서버 LIMIT 50 → 활성 공구 50개 초과분이 카테고리/정렬/검색에
+    //   안 잡힘. 서버가 limit 을 받도록 했으므로(group-buy-public.routes), 200개까지 받아 클라 필터/정렬이
+    //   전체 기준으로 동작. 기본요청(파라미터 없음)인 SSR 첫페인트는 그대로(materialized/50/0-RTT 불변).
     api
-      .get('/api/group-buy/products?status=active')
+      .get('/api/group-buy/products?status=active&limit=200')
       .then((r) => {
         if (r.data?.success) setItems(r.data.data || [])
         else toast.error(t('common.loadFailed'))
