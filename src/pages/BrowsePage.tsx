@@ -12,7 +12,6 @@ import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cardGradient } from '@/utils/card-gradient'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
-import RecentlyViewedSection from './browse/RecentlyViewedSection'
 import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
 import type { Product, SortOption } from './browse/types'
 
@@ -549,8 +548,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
           </div>
         )}
 
-        {/* 최근 본 상품 */}
-        <RecentlyViewedSection />
+        {/* 🏭 2026-06-04 (사용자 요청): '최근 본 상품' 섹션 제거. */}
 
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
