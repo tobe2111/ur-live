@@ -11,6 +11,8 @@ import {
   WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES,
 } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
+import { cardGradient } from '@/utils/card-gradient'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 홈 — Claude Design 시안 구현 (TDS/Toss 라이트).
@@ -81,33 +83,69 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
   const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
   const um = p.retail_price && p.distributor_price != null ? unitMargin(p.distributor_price, p.retail_price) : 0
   const moq = Math.max(1, p.moq || 1)
+  // 🏭 2026-06-05 (사용자 요청): 도매몰 상품카드도 대표색 그라데이션 (소비자 카드와 동일). B2B 데이터는 카드색 대비 적응형.
+  const [cardColor, setCardColor] = useState<string | null>((p as { dominant_color?: string | null }).dominant_color || null)
+  const grad = cardGradient(cardColor)
+  const dr = p.retail_price && p.distributor_price != null ? discountRate(p.distributor_price, p.retail_price) : 0
+  const locked = p.distributor_price == null
   return (
-    <div className="group flex flex-col">
-      <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
-        <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full"><ProductImg p={p} /></button>
+    <div className="group flex flex-col rounded-2xl overflow-hidden" style={{ background: grad.base }}>
+      <div className="relative w-full aspect-square overflow-hidden" style={{ background: grad.base }}>
+        <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full">
+          {p.image_url && (
+            <img
+              src={p.image_url}
+              alt={p.name}
+              draggable={false}
+              loading="lazy"
+              decoding="async"
+              onLoad={(e) => {
+                const c = extractDominantColor(e.currentTarget)
+                if (c) {
+                  if (!cardColor) setCardColor(c)
+                  if (!(p as { dominant_color?: string | null }).dominant_color) reportDominantColor(p.id, c)
+                }
+              }}
+              className="block w-full h-full object-cover"
+            />
+          )}
+        </button>
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
           {p.has_tiers && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: WT.brand }}>수량할인</span>}
           {p.stock > 0 && p.stock < 200 && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span>}
         </div>
+        {/* 사진 하단 → 카드색 번짐 */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
         <QuickAdd p={p} onAdd={onAdd} />
       </div>
-      <button onClick={() => onOpen(p)} className="mt-2.5 text-left text-[14px] leading-[1.4] line-clamp-2 min-h-[39px]" style={{ color: WT.ink2 }}>{p.name}</button>
-      <div className="mt-1"><Price p={p} /></div>
-      {p.retail_price && um > 0 ? (
-        <div className="mt-1.5 flex items-center gap-1.5 text-[12px] tabular-nums whitespace-nowrap">
-          <span className="font-bold" style={{ color: WT.pos }}>마진 +{won(um)}</span>
-          <span style={{ color: WT.ink4 }}>({mr}%)</span>
-          <span style={{ color: WT.line }}>·</span>
-          <span style={{ color: WT.ink4 }}>재고 {comma(p.stock)}</span>
-        </div>
-      ) : (
-        <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>재고 {comma(p.stock)}</div>
-      )}
-      {moq > 1 && (
-        <div className="mt-1 text-[12px] tabular-nums" style={{ color: WT.ink4 }}>
-          최소 {comma(moq)}개{p.distributor_price != null ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
-        </div>
-      )}
+      <div className="px-2.5 pt-1.5 pb-2.5" style={{ color: grad.text }}>
+        <button onClick={() => onOpen(p)} className="text-left text-[13px] leading-[1.35] line-clamp-2 min-h-[36px] block w-full" style={{ color: grad.text }}>{p.name}</button>
+        {locked ? (
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold mt-1" style={{ background: grad.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.15)', color: grad.text }}>
+            <Lock className="w-3 h-3" /> 로그인하고 공급가
+          </span>
+        ) : (
+          <div className="flex items-baseline gap-1.5 mt-1">
+            {dr > 0 && <span className="font-extrabold tabular-nums text-[14px]" style={{ color: grad.accent }}>{dr}%</span>}
+            <span className="font-extrabold tabular-nums tracking-[-0.02em] text-[16px]" style={{ color: grad.text }}>{won(p.distributor_price)}</span>
+          </div>
+        )}
+        {p.retail_price && um > 0 ? (
+          <div className="mt-1 flex items-center gap-1.5 text-[12px] tabular-nums whitespace-nowrap" style={{ color: grad.sub }}>
+            <span className="font-bold" style={{ color: grad.isLight ? '#047857' : '#34d399' }}>마진 +{won(um)}</span>
+            <span>({mr}%)</span>
+            <span>·</span>
+            <span>재고 {comma(p.stock)}</span>
+          </div>
+        ) : (
+          <div className="mt-1 text-[12px] tabular-nums" style={{ color: grad.sub }}>재고 {comma(p.stock)}</div>
+        )}
+        {moq > 1 && (
+          <div className="mt-1 text-[12px] tabular-nums" style={{ color: grad.sub }}>
+            최소 {comma(moq)}개{p.distributor_price != null ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
