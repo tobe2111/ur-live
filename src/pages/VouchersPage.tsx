@@ -362,15 +362,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand, category, sort])
 
+  // 🏭 2026-06-05 (사용자 신고 — 정렬이 안 먹음): SSR(MAIN/VOUCHERS) inject 는 "첫 페인트"에만 소비.
+  //   이후 정렬/카테고리/브랜드 변경은 항상 loadProducts(서버 정렬 적용)로 fresh fetch → 정렬 정상 반영.
+  const ssrConsumedRef = useRef(false)
   useEffect(() => {
     // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — no-query 초기 진입 시 즉시 표시.
-    //   worker HTMLRewriter 가 /vouchers (no query) 일 때 __SSR_INITIAL_VOUCHERS__ inject.
     //   카테고리/브랜드/sort 변경 시 loadProducts 가 다시 axios fetch (fallback).
     // 🏭 2026-06-04: 홈(embedded)은 category='커피/음료' 기본 — MAIN 슬롯이 커피로 warm 됨.
-    //   /vouchers(비embedded)는 기존대로 카테고리 없을 때 VOUCHERS 슬롯 consume.
-    const ssrMatch = embedded
+    const firstPaint = !ssrConsumedRef.current
+    ssrConsumedRef.current = true
+    const ssrMatch = firstPaint && (embedded
       ? (category === EMBEDDED_DEFAULT_CATEGORY && !brand && sort === 'price_low' && page === 1)
-      : (!brand && !category && sort === 'price_low' && page === 1)
+      : (!brand && !category && sort === 'price_low' && page === 1))
     if (ssrMatch) {
       try {
         if (typeof document !== 'undefined') {
@@ -538,7 +541,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           className="bg-transparent border border-gray-200 dark:border-[#2A2A2A] rounded-full px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white focus:outline-none cursor-pointer"
         >
           {SORT_OPTIONS.map(o => (
-            <option key={o.key} value={o.key}>{o.label}</option>
+            // 🏭 2026-06-05 (사용자 신고): 다크 모드에서 option 글자가 흰색→네이티브 흰 드롭다운에서 안 보임.
+            //   네이티브 popup 은 항상 밝은 배경이라 글자색을 진하게 고정.
+            <option key={o.key} value={o.key} style={{ color: '#111827', background: '#fff' }}>{o.label}</option>
           ))}
         </select>
       </div>
