@@ -75,7 +75,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   //   ?category=meal_voucher|beauty_voucher|...|all  (default: all)
   router.get('/products', async (c) => {
     const { DB } = c.env
-    await ensureTables(DB)
+    // 🛡️ 2026-06-04 (근본 perf): ensureTables 가 cold isolate 에서 ~6s 블록(_diag 측정 5972ms) →
+    //   SSR self-fetch(1.5s 제한) 타임아웃 → 동네딜 SSR 미주입 → 카드 콜드 로딩(교환권/쇼핑은 빠른 이유:
+    //   /api/products 는 이미 ensureTables 제거). 핫패스에서 비차단(waitUntil)으로 전환 — 테이블/컬럼은
+    //   production 에 이미 존재(수개월 운영), 누락분은 쿼리 graceful fallback(_dominantColorCol 등)이 처리.
+    try { c.executionCtx?.waitUntil?.(ensureTables(DB).catch(() => {})) } catch { /* no ctx — skip */ }
 
     // 🛡️ 2026-05-04 (perf): 매 요청 UPDATE 제거 (100-300ms latency 절감).
     //   마감된 공동구매 자동 만료는 scheduled-cleanup cron 에서 처리.
