@@ -174,11 +174,31 @@ uploadRoutes.post('/upload/business-cert', cors(), rateLimit({ action: 'biz-cert
       httpMetadata: { contentType: detected, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { kind: 'business-cert', uploaded_at: new Date().toISOString() },
     })
+    // 🏭 2026-06-04: PUBLIC_R2_URL(CDN) 있으면 그걸로, 없으면 same-origin 워커 서빙(/api/media/*).
+    //   → MEDIA_BUCKET 만 있으면 PUBLIC_R2_URL 미설정이어도 등록증 이미지가 항상 보임(운영 의존성 제거).
     const publicBase = c.env.PUBLIC_R2_URL || ''
-    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `r2://${key}`
+    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `/api/media/${key}`
     return c.json({ success: true, data: { key, url, size: file.size, mime: detected } })
   } catch (err) {
     return safeError(c, err, '사업자등록증 업로드 중 오류가 발생했습니다', '[upload]')
+  }
+})
+
+// 🏭 2026-06-04 R2 미디어 same-origin 서빙 — PUBLIC_R2_URL(공개도메인) 미설정 환경에서도 이미지 표시.
+//   uploads/ prefix 만 허용(다른 R2 객체 노출 차단). 업로드는 immutable 이라 장기 캐시.
+uploadRoutes.get('/media/:key{.+}', cors(), async (c) => {
+  try {
+    const key = c.req.param('key')
+    if (!key || !key.startsWith('uploads/')) return c.json({ success: false, error: 'not found' }, 404)
+    if (!c.env.MEDIA_BUCKET) return c.json({ success: false, error: 'R2 미설정' }, 503)
+    const obj = await c.env.MEDIA_BUCKET.get(key)
+    if (!obj) return c.json({ success: false, error: 'not found' }, 404)
+    const headers = new Headers()
+    headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream')
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+    return new Response(obj.body, { headers })
+  } catch (err) {
+    return safeError(c, err, '미디어 조회 중 오류', '[upload]')
   }
 })
 
