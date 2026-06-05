@@ -366,8 +366,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   }, [products, sort])
 
   // 상품 로드 (페이지 변경 / 필터 변경 시)
+  // 🏭 2026-06-05 (사용자 신고 — 정렬이 뒤늦게 반영): 정렬/필터 변경 refetch 가 화면을 스켈레톤으로 비워
+  //   "늦게 되는" 느낌. productsRef 로 "이미 상품 있으면 비우지 않고" 백그라운드 교체 → 즉시 belt 재정렬 + 서버 전체정렬 1페이지 swap.
+  const productsRef = useRef<VoucherProduct[]>([])
+  useEffect(() => { productsRef.current = products }, [products])
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
-    if (reset) setLoading(true); else setLoadingMore(true)
+    if (reset) { if (productsRef.current.length === 0) setLoading(true) }
+    else setLoadingMore(true)
     const params = new URLSearchParams({
       page: String(pageNum),
       limit: String(PAGE_SIZE),

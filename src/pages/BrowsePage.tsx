@@ -317,10 +317,15 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     if (hasMarkers) mapInstanceRef.current.setBounds(bounds)
   }
 
+  // 🏭 2026-06-05: 정렬/필터 변경 refetch 시 화면 비우지 않으려고 현재 products 길이를 ref 로 추적.
+  const productsRef = useRef<Product[]>([])
+  useEffect(() => { productsRef.current = products }, [products])
   // 🛡️ 2026-05-19: page-based cursor pagination (50개씩 누적 로드).
   //   /browse 는 일반 상품만 (deal_only=0). 교환권은 /vouchers 신규 페이지에서.
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
-    if (reset) setLoading(true); else setLoadingMore(true)
+    // 🏭 2026-06-05 (사용자 신고 — 정렬 뒤늦게 반영): 정렬/필터 변경 시 화면 비우지 않고(즉시 클라 정렬) 백그라운드 교체.
+    if (reset) { if (productsRef.current.length === 0) setLoading(true) }
+    else setLoadingMore(true)
     if (reset) setError(null)
     // 🏭 2026-06-05 (감사 — 정렬/가격 서버사이드화): 클라 정렬키(price_asc/desc) → 서버키(price_low/high) 매핑.
     const SORT_MAP: Record<SortOption, string> = { popular: 'popular', newest: 'newest', price_asc: 'price_low', price_desc: 'price_high', discount: 'discount' }

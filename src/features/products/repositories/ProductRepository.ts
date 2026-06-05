@@ -166,15 +166,23 @@ export class ProductRepository {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
       return result.results || [];
     } catch (err) {
-      // 🛡️ 2026-05-24: 컬럼 누락 fallback — 정렬 + SELECT 둘 다 안전 모드로.
-      //   기존: ORDER BY 만 fallback. 신규: SELECT 도 'SELECT *' 로 안전 fallback (legacy DB 호환).
+      // 🏭 2026-06-05 (사용자 신고 — 정렬이 안 먹고 등록순으로만 나옴, 근본수정):
+      //   기존 fallback 은 'no such column'(예: dominant_color 미적용 DB) 시 ORDER BY 를 통째로
+      //   created_at DESC 로 바꿔버려 **모든 정렬(낮은가격순 등)이 무시**됐음. 누락된 건 보통 SELECT 의
+      //   표시 컬럼이지 정렬 컬럼(price/sold_count 등)이 아니므로 → SELECT 만 'SELECT *' 로 바꾸고
+      //   요청한 ORDER BY(정렬)는 보존. 정렬 컬럼까지 누락된 드문 경우에만 created_at 로 최종 폴백.
       const errMsg = (err as Error).message || '';
       if (/no such column/i.test(errMsg)) {
-        const safeQuery = query
-          .replace(/SELECT[\s\S]*?FROM products/, 'SELECT * FROM products')
-          .replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
-        const fallback = await this.db.prepare(safeQuery).bind(...params).all<Product>();
-        return fallback.results || [];
+        const selectStar = query.replace(/SELECT[\s\S]*?FROM products/, 'SELECT * FROM products');
+        try {
+          const r = await this.db.prepare(selectStar).bind(...params).all<Product>();
+          return r.results || [];
+        } catch {
+          // 정렬 컬럼 자체가 없는 드문 경우 → 등록순 최종 폴백.
+          const safeQuery = selectStar.replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
+          const fallback = await this.db.prepare(safeQuery).bind(...params).all<Product>();
+          return fallback.results || [];
+        }
       }
       throw err;
     }
