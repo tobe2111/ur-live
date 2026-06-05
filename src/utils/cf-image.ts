@@ -71,6 +71,11 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'mall.giftishow.com',
   'gift.giftishow.com',
   'static.giftishow.com',
+  // 🏭 2026-06-05 (사용자 신고 — 교환권 카드 그라데이션이 검정으로 귀결): 기프티쇼 이미지가 bizimg.giftishow.com
+  //   호스트라 프록시 누락 → cross-origin → canvas 대표색 추출 실패 → 검정 fallback. giftishow.com 전체 서브도메인
+  //   프록시(same-origin)로 추가 → 추출 성공 → 이미지색 반영(쇼핑 카드와 동일). (ADD only, 제거 금지 룰 준수)
+  'bizimg.giftishow.com',
+  'giftishow.com',
   'gift-img.kt.com',
   'image.kt.com',
   'static.kt.com',
