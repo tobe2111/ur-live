@@ -55,9 +55,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       out.live_query_ms = Date.now() - t1
       out.live_query_rows = (r.results || []).length
     } catch (e) { out.live_query_err = String((e as Error)?.message || e) }
-    // 🏭 활성 동네딜 상품의 실제 image_url + 호스트 (이미지 최적화 화이트리스트 점검용)
+    // 🏭 실제 피드와 동일 필터(category IN VOUCHER_CATEGORIES)로 동네딜 상품의 image_url + 호스트 뽑기.
     try {
-      const imgs = await DB.prepare("SELECT id, name, image_url FROM products WHERE is_active=1 AND group_buy_status='active' ORDER BY created_at DESC LIMIT 10").all<{ id: number; name: string; image_url: string | null }>()
+      const cats2 = (VOUCHER_CATEGORIES as readonly string[])
+      const ph2 = cats2.map(() => '?').join(',')
+      const imgs = await DB.prepare(`SELECT id, name, image_url FROM products p WHERE p.category IN (${ph2}) AND p.is_active=1 AND p.group_buy_status='active' ORDER BY p.created_at DESC LIMIT 10`).bind(...cats2).all<{ id: number; name: string; image_url: string | null }>()
       out.product_images = (imgs.results || []).map(p => {
         let host = ''
         try { host = p.image_url ? new URL(p.image_url).host : '(none)' } catch { host = '(invalid)' }
