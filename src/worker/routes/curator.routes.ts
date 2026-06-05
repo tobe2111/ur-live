@@ -496,6 +496,10 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
 
     const updates: string[] = []
     const binds: (string | number)[] = []
+    // 🏭 2026-06-05 (사용자 신고 — 배경/프로필 사진 저장 400): 업로드 응답이 PUBLIC_R2_URL 미설정 시
+    //   same-origin 상대경로 '/api/media/...' 를 돌려줌(워커 서빙). http(s) 만 허용하던 검증이 이를 거부 → 400.
+    //   → http(s) URL 또는 '/api/media/<key>' 상대경로 허용.
+    const isAllowedImg = (v: string) => /^https?:\/\//i.test(v) || /^\/api\/media\/[A-Za-z0-9._/-]+$/.test(v)
     if (typeof body.name === 'string') {
       const v = body.name.trim().slice(0, 40)
       if (!v) return c.json({ success: false, error: '이름은 최소 1자 필요' }, 400)
@@ -508,14 +512,14 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     }
     if (typeof body.profile_image === 'string') {
       const v = body.profile_image.trim()
-      if (v && !/^https?:\/\//i.test(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      if (v && !isAllowedImg(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
       updates.push('profile_image = ?')
       binds.push(v)
     }
     if (typeof body.banner_url === 'string') {
       const v = body.banner_url.trim()
-      // 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 선택): banner_url 은 http URL 또는 'gradient:<id>' 토큰 허용.
-      if (v && !/^https?:\/\//i.test(v) && !/^gradient:[a-z0-9_-]{1,24}$/i.test(v)) {
+      // 🏭 2026-06-05: banner_url 은 http(s) URL / '/api/media/...' 상대경로 / 'gradient:<id>' 토큰 허용.
+      if (v && !isAllowedImg(v) && !/^gradient:[a-z0-9_-]{1,24}$/i.test(v)) {
         return c.json({ success: false, error: 'URL 형식 오류' }, 400)
       }
       updates.push('banner_url = ?')

@@ -209,11 +209,22 @@ export default function CuratorHeader({
                 </div>
               )}
               {isOwner && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity ${uploading ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
                   <Camera className="w-5 h-5 text-white" />
                 </div>
               )}
             </div>
+            {/* 🏭 2026-06-05 (사용자 요청 — 프로필 사진 변경 노출): 항상 보이는 카메라 뱃지(모바일은 hover 없음). */}
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="프로필 사진 변경"
+                className="absolute -bottom-0.5 -right-0.5 z-10 w-7 h-7 rounded-full bg-pink-500 border-2 border-white dark:border-[#020202] flex items-center justify-center shadow-md active:scale-90 transition-transform"
+              >
+                <Camera className="w-3.5 h-3.5 text-white" />
+              </button>
+            )}
             {isOwner && (
               <input
                 ref={fileInputRef}
