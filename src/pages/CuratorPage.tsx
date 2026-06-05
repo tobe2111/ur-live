@@ -11,7 +11,7 @@
  */
 
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
@@ -222,7 +222,7 @@ export default function CuratorPage() {
                 onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
               />
         )}
-        {tab === 'info' && <InfoTab curator={curator} pinCount={pins.length} totalClicks={totalClicks} />}
+        {tab === 'info' && <InfoTab curator={curator} pinCount={pins.length} totalClicks={totalClicks} isOwner={isOwner} />}
       </div>
     </>
   )
@@ -320,15 +320,71 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
   )
 }
 
-function InfoTab({ curator, pinCount, totalClicks }: { curator: CuratorPageResponse['curator']; pinCount: number; totalClicks: number }) {
+// 🏭 2026-06-05 (사용자 요청 — @user2 같은 핸들 변경): 핸들 편집기(소유자). 저장 시 /u/{새핸들} 로 URL 변경.
+//   백엔드는 이미 존재(PATCH /api/curator/me/handle + checkHandle) — UI 만 없었음.
+function HandleEditor({ handle }: { handle: string }) {
+  const navigate = useNavigate()
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(handle)
+  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'bad' | 'saving'>('idle')
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    if (!editing) return
+    const h = val.trim().toLowerCase()
+    if (h === handle) { setStatus('idle'); setMsg(''); return }
+    if (!/^[a-z0-9_]{3,30}$/.test(h)) { setStatus('bad'); setMsg('영문 소문자/숫자/_ 3~30자'); return }
+    setStatus('checking'); setMsg('확인 중…')
+    const tm = setTimeout(async () => {
+      try {
+        const r = await curatorApi.checkHandle(h)
+        if (r.available) { setStatus('ok'); setMsg('사용 가능합니다') }
+        else { setStatus('bad'); setMsg(r.message || '이미 사용 중입니다') }
+      } catch { setStatus('idle'); setMsg('') }
+    }, 400)
+    return () => clearTimeout(tm)
+  }, [val, editing, handle])
+  const save = async () => {
+    const h = val.trim().toLowerCase()
+    if (h === handle) { setEditing(false); return }
+    if (status !== 'ok') return
+    setStatus('saving')
+    try {
+      const r = await curatorApi.updateHandle(h)
+      if (r.success && r.handle) { navigate(`/u/${r.handle}`, { replace: true }); setEditing(false) }
+      else { setStatus('bad'); setMsg(r.error || '변경에 실패했습니다') }
+    } catch { setStatus('bad'); setMsg('변경에 실패했습니다') }
+  }
+  if (!editing) {
+    return (
+      <dd className="text-white font-mono flex items-center gap-2">
+        @{handle}
+        <button onClick={() => { setEditing(true); setVal(handle); setStatus('idle'); setMsg('') }} className="text-[11px] text-pink-400 font-bold font-sans">변경</button>
+      </dd>
+    )
+  }
+  return (
+    <dd className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1">
+        <span className="text-white/50 font-mono text-sm">@</span>
+        <input value={val} onChange={e => setVal(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())} maxLength={30}
+          className="w-28 bg-transparent border-b border-gray-500 text-white font-mono text-sm focus:outline-none focus:border-pink-400" autoFocus />
+        <button onClick={save} disabled={status !== 'ok'} className="text-[12px] text-pink-400 font-bold disabled:opacity-40">{status === 'saving' ? '저장 중' : '저장'}</button>
+        <button onClick={() => { setEditing(false); setVal(handle); setStatus('idle') }} className="text-[12px] text-gray-500">취소</button>
+      </div>
+      {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>{msg}</span>}
+    </dd>
+  )
+}
+
+function InfoTab({ curator, pinCount, totalClicks, isOwner }: { curator: CuratorPageResponse['curator']; pinCount: number; totalClicks: number; isOwner: boolean }) {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
       <section className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#1A1A1A]">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">📋 활동 정보</h3>
         <dl className="space-y-2 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <dt className="text-gray-400">핸들</dt>
-            <dd className="text-white font-mono">@{curator.handle}</dd>
+            {isOwner ? <HandleEditor handle={curator.handle} /> : <dd className="text-white font-mono">@{curator.handle}</dd>}
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-400">추천 상품</dt>
