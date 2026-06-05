@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gift, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Gift, ChevronRight, ChevronLeft, Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId } from '@/utils/auth'
 import { resolveProductFlow } from '@/shared/product-flow'
@@ -423,7 +423,7 @@ export default function ProductDetailPage() {
         })()}
 
         {/* 상세 정보 */}
-        <div className="mx-5 mt-6 divide-y divide-gray-100 border-t border-gray-100 dark:border-[#1A1A1A]">
+        <div className="mx-5 mt-6 divide-y divide-gray-100 dark:divide-[#1A1A1A] border-t border-gray-100 dark:border-[#1A1A1A]">
           <div className="flex justify-between py-4">
             <span className="text-[14px] text-gray-700 dark:text-gray-200">유효기간</span>
             <span className="text-[14px] font-bold text-gray-900 dark:text-white">30일</span>
@@ -534,7 +534,7 @@ export default function ProductDetailPage() {
         {/* 🛡️ 2026-05-24: 사용자 요청 — 옵션 선택을 상세 정보 위로 이동.
             구매 의도 단계에서 옵션 우선 노출 → 결정 후 상세 정보 확인 패턴. */}
         {/* v4 옵션 선택 */}
-        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-5">
           <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.optionSelect')}</p>
           {options.length > 0 ? (
@@ -568,11 +568,11 @@ export default function ProductDetailPage() {
         </section>
 
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
-        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-5">
           <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
           {detailImages.length > 0 && (
-            <div className="rounded-xl overflow-hidden mb-3" style={{ background: '#F9FAFB' }}>
+            <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#121212]">
               <img src={detailImages[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
             </div>
           )}
@@ -738,7 +738,7 @@ export default function ProductDetailPage() {
 
         {/* v4 리뷰 섹션 (독립) */}
         {/* 🛡️ 2026-05-24: 전체보기 토글 — 클릭 시 limit 100 으로 재요청 (사실상 전체). */}
-        <div style={{ height: 8, background: '#F9FAFB' }} />
+        <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">
@@ -787,33 +787,22 @@ export default function ProductDetailPage() {
         />
       </Suspense>
 
-      {/* 🛡️ 2026-04-28: 선물하기 버튼 — KakaoConsultButton 와 같은 우하단 영역.
-           KakaoConsultButton 이 bottom-20 (80px) 에 위치하므로 그 위 (bottom-36 = 144px) 로
-           배치해 겹침 방지. max-w-[430px] mx-auto 컨테이너로 모바일 정렬도 보존.
-         🛡️ 2026-05-27 사용자 요청: 선물 버튼 + 그 아래 핀 버튼 (담기) — 우하단 stack.
-           선물: bottom-36 (144px), 핀: bottom-24 (96px), KakaoConsult: bottom-20 (80px).
-           로그인 사용자만 핀 버튼 표시 — 비로그인은 의미 없음. */}
-      <div className="fixed bottom-36 left-0 right-0 z-30 px-4 pr-5 pointer-events-none">
-        <div className="ur-content-wide mx-auto flex justify-end">
-          <button
-            onClick={() => setGiftModalOpen(true)}
-            className="pointer-events-auto w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-            aria-label={t('productDetailPage.ariaGift')}
-          >
-            <Gift className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-      {/* 🛡️ 2026-05-27: 핀 버튼 (담기) — 선물 아래. 로그인 사용자만. 라벨로 명확 표시. */}
-      {isLoggedIn && (
-        <div className="fixed bottom-24 left-0 right-0 z-30 px-4 pr-5 pointer-events-none">
-          <div className="ur-content-wide mx-auto flex justify-end">
+      {/* 🏭 2026-06-04 (사용자 요청 — 배치/디자인 정리): 선물·담기 보조 액션을 하나의 그룹으로 통합.
+           기존: 분리된 floating 핑크 원 + 보라 pill 이 하단 바와 겹침(거의 겹쳐짐). 이모지 📌 아이콘.
+           변경: 일관된 라벨 pill(중립 배경 + 컬러 lucide 아이콘) 세로 스택 + 간격 + 바 위로 충분히 띄움.
+           위치는 safe-area + 하단 바 높이(~104px) 위로 계산해 겹침 0. */}
+      <div
+        className="fixed left-0 right-0 z-30 px-4 pr-5 pointer-events-none"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
+      >
+        <div className="ur-content-wide mx-auto flex flex-col items-end gap-2.5">
+          {isLoggedIn && (
             <button
               onClick={async () => {
                 try {
                   const res = await api.post('/api/curator/me/pins', { product_id: product.id })
                   if (res.data?.success) {
-                    showToast('📌 내 링크샵에 담겼어요', 'success')
+                    showToast('내 링크샵에 담겼어요', 'success')
                   }
                 } catch (err: any) {
                   if (err?.response?.data?.code === 'ALREADY_PINNED') {
@@ -823,14 +812,23 @@ export default function ProductDetailPage() {
                   }
                 }
               }}
-              className="pointer-events-auto inline-flex items-center gap-1.5 h-12 px-4 rounded-full bg-violet-600 text-white shadow-lg active:scale-95 transition-transform text-[13px] font-bold"
+              className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] shadow-lg active:scale-95 transition-transform"
               aria-label="내 링크샵에 담기"
             >
-              📌 담기
+              <Bookmark className="w-4 h-4 text-violet-500" />
+              <span className="text-[12px] font-bold text-gray-900 dark:text-white">담기</span>
             </button>
-          </div>
+          )}
+          <button
+            onClick={() => setGiftModalOpen(true)}
+            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] shadow-lg active:scale-95 transition-transform"
+            aria-label={t('productDetailPage.ariaGift')}
+          >
+            <Gift className="w-4 h-4 text-pink-500" />
+            <span className="text-[12px] font-bold text-gray-900 dark:text-white">선물</span>
+          </button>
         </div>
-      )}
+      </div>
 
       {giftModalOpen && (
         <Suspense fallback={null}>
