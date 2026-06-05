@@ -134,8 +134,11 @@ uploadRoutes.post('/upload/image', cors(), async (c) => {
     })
 
     // 5. 공개 URL.
+    // 🏭 2026-06-05 (사용자 신고 — 링크샵 배경 이미지 실패): PUBLIC_R2_URL 미설정 시 'r2://key'(실 URL 아님)를
+    //   반환해 업로드 이미지(배너 등)가 깨졌음. 사업자등록증과 동일하게 same-origin 워커 서빙(/api/media/*)으로.
+    //   key 는 'uploads/...' prefix 라 /media/:key 가 허용·서빙. MEDIA_BUCKET 만 있으면 항상 표시됨.
     const publicBase = c.env.PUBLIC_R2_URL || ''
-    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `r2://${key}`
+    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `/api/media/${key}`
 
     return c.json({
       success: true,
