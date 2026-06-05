@@ -69,18 +69,6 @@ export default function CuratorHeader({
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
-  // 🏭 2026-06-05: 배경 그라데이션 선택기.
-  const [showGradients, setShowGradients] = useState(false)
-  async function setBannerGradient(id: string) {
-    try {
-      const res = await api.patch('/api/curator/me/profile', { banner_url: `gradient:${id}` })
-      if (res.data?.success) {
-        onCuratorUpdate?.({ banner_url: `gradient:${id}` })
-        setShowGradients(false)
-        toast.success('배경 그라데이션 적용됨')
-      } else { toast.error(res.data?.error || '적용 실패') }
-    } catch { toast.error('적용 실패') }
-  }
 
   async function saveField(field: 'name' | 'bio', value: string) {
     if (saving) return
@@ -109,9 +97,11 @@ export default function CuratorHeader({
       const fd = new FormData()
       fd.append('file', file)
       const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      if (res.data?.success && res.data?.url) {
-        await api.patch('/api/curator/me/profile', { profile_image: res.data.url })
-        onCuratorUpdate?.({ profile_image: res.data.url })
+      // 🏭 2026-06-05: 업로드 응답은 { success, data: { url } } — 중첩 data.url 을 읽어야 함(ImageUpload 와 동일).
+      const url = res.data?.data?.url
+      if (res.data?.success && url) {
+        await api.patch('/api/curator/me/profile', { profile_image: url })
+        onCuratorUpdate?.({ profile_image: url })
         toast.success('프로필 사진 변경됨')
       } else {
         toast.error('업로드 실패')
@@ -131,9 +121,10 @@ export default function CuratorHeader({
       const fd = new FormData()
       fd.append('file', file)
       const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      if (res.data?.success && res.data?.url) {
-        await api.patch('/api/curator/me/profile', { banner_url: res.data.url })
-        onCuratorUpdate?.({ banner_url: res.data.url })
+      const url = res.data?.data?.url
+      if (res.data?.success && url) {
+        await api.patch('/api/curator/me/profile', { banner_url: url })
+        onCuratorUpdate?.({ banner_url: url })
         toast.success('배경 사진 변경됨')
       } else {
         toast.error('업로드 실패')
@@ -170,26 +161,14 @@ export default function CuratorHeader({
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white dark:to-[#020202]" />
       </div>
 
-      {/* 🏭 2026-06-05: 소유자 배경 컨트롤 (사진 / 그라데이션) — 백드롭 위 z-20. */}
+      {/* 🏭 2026-06-05 (사용자 요청 — 그라데이션 버튼 제거): 배경은 사진 업로드만. 미설정 시 기본 그라데이션 자동. */}
       {isOwner && (
         <>
           <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
             <button onClick={() => bannerInputRef.current?.click()} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
-              <Camera className="w-3.5 h-3.5" /> 사진
-            </button>
-            <button onClick={() => setShowGradients(v => !v)} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
-              🎨 그라데이션
+              <Camera className="w-3.5 h-3.5" /> 배경 사진
             </button>
           </div>
-          {showGradients && (
-            <div className="absolute top-14 right-3 z-20 p-2.5 rounded-2xl bg-black/60 backdrop-blur flex items-center gap-2 max-w-[calc(100%-1.5rem)] overflow-x-auto scrollbar-hide">
-              {Object.entries(GRADIENT_PRESETS).map(([id, css]) => (
-                <button key={id} onClick={() => setBannerGradient(id)} aria-label={id}
-                  className="shrink-0 w-9 h-9 rounded-full border-2 border-white/70 active:scale-90 transition-transform"
-                  style={{ background: css }} />
-              ))}
-            </div>
-          )}
           <input
             ref={bannerInputRef}
             type="file"

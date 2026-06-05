@@ -61,6 +61,10 @@ import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
+// 🏭 2026-06-05 (사용자 요청 — 라이브 중단 중 cron 낭비 제거): 라이브 전용 cron 게이팅.
+//   LIVE_COMMERCE_SUSPENDED=true 동안 라이브 방송 관련 cron(5분마다 헛도는 DB 조회)을 건너뜀.
+//   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
+import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
 
 export async function handleCronScheduled(
@@ -91,19 +95,19 @@ export async function handleCronScheduled(
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
       return handleScheduled(env)
     }));
-    // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리
-    ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
+    // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리 (라이브 중단 시 skip)
+    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리
-    ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
-    // 🛡️ 2026-05-21: 라이브 썸네일 자동 갱신 (셀러 수동 호출 제거 — YouTube 자동 캡처에 의존)
-    ctx.waitUntil(safeCron('yt-thumbnail-refresh', () => handleYoutubeThumbnailRefresh(env)));
-    // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지
-    ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
+    // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리 (라이브 중단 시 skip)
+    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
+    // 🛡️ 2026-05-21: 라이브 썸네일 자동 갱신 (셀러 수동 호출 제거 — YouTube 자동 캡처에 의존) (라이브 중단 시 skip)
+    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-thumbnail-refresh', () => handleYoutubeThumbnailRefresh(env)));
+    // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지 (라이브 중단 시 skip)
+    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
     // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
     ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
@@ -224,8 +228,8 @@ export async function handleCronScheduled(
           logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
         }
       } catch (e) { logError('[cron] agency-intro-monthly-bonus', { error: String(e) }) }
-      // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일)
-      await handleLiveStreamMetrics(env).catch(e => logError('[cron] live-metrics', { error: String(e) }));
+      // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일) — 라이브 중단 시 skip
+      if (!LIVE_COMMERCE_SUSPENDED) await handleLiveStreamMetrics(env).catch(e => logError('[cron] live-metrics', { error: String(e) }));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
       await handleAgencySelfEventsTick(env).catch(e => logError('[cron] self-events', { error: String(e) }));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)

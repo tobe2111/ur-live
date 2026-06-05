@@ -60,17 +60,29 @@ function randomKey(): string {
 }
 
 async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => string | undefined } }): Promise<{ role: string; id: number } | null> {
+  // 1) Bearer JWT (셀러/어드민/에이전시/유저 토큰).
   const auth = c.req.header('Authorization') || ''
-  if (!auth.startsWith('Bearer ')) return null
+  if (auth.startsWith('Bearer ')) {
+    try {
+      const { verify } = await import('hono/jwt')
+      const p = await verify(auth.substring(7), c.env.JWT_SECRET, 'HS256') as Record<string, unknown>
+      if (p.seller_id) return { role: 'seller', id: Number(p.seller_id) }
+      if (p.admin_id) return { role: 'admin', id: Number(p.admin_id) }
+      if (p.agency_id) return { role: 'agency', id: Number(p.agency_id) }
+      if (p.user_id || p.sub) return { role: 'user', id: Number(p.user_id || p.sub) }
+    } catch { /* Bearer 실패 시 세션 쿠키로 폴백 */ }
+  }
+  // 🏭 2026-06-05 (사용자 신고 — 링크샵 사진 업로드 401): 카카오 유저는 Bearer 없이 httpOnly 세션 쿠키
+  //   (ur_session) 로 인증됨. 기존엔 Bearer 만 검사해 401. requireAuth 와 동일한 parseSessionCookie 로 폴백.
   try {
-    const { verify } = await import('hono/jwt')
-    const p = await verify(auth.substring(7), c.env.JWT_SECRET, 'HS256') as Record<string, unknown>
-    if (p.seller_id) return { role: 'seller', id: Number(p.seller_id) }
-    if (p.admin_id) return { role: 'admin', id: Number(p.admin_id) }
-    if (p.agency_id) return { role: 'agency', id: Number(p.agency_id) }
-    if (p.user_id || p.sub) return { role: 'user', id: Number(p.user_id || p.sub) }
-    return null
-  } catch { return null }
+    const cookieHeader = c.req.header('Cookie')
+    if (cookieHeader) {
+      const { parseSessionCookie } = await import('../../../worker/utils/session')
+      const su = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET)
+      if (su?.userId) return { role: su.type || 'user', id: Number(su.userId) }
+    }
+  } catch { /* 세션 파싱 실패 → 미인증 */ }
+  return null
 }
 
 uploadRoutes.post('/upload/image', cors(), async (c) => {
