@@ -5,6 +5,28 @@ import { WebhookEventRepository } from '@/worker/repositories/webhook.repository
 
 export const adminMetricsRoutes = new Hono<{ Bindings: Env }>()
 
+// 🏭 2026-06-05 (사용자 신고 — /admin/health 의 webhook-failures 500): webhook_events 테이블이
+//   미존재(마이그레이션 미적용)인 환경에서 조회가 500 나던 것 자가치유. 1회 CREATE TABLE IF NOT EXISTS.
+//   webhook.repository 의 INSERT 스키마와 동일 컬럼. 생성 후엔 0건(정상)으로 응답.
+let _webhookTableReady = false
+async function ensureWebhookEventsTable(DB: D1Database): Promise<void> {
+  if (_webhookTableReady) return
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS webhook_events (
+    id TEXT PRIMARY KEY,
+    source TEXT NOT NULL DEFAULT 'toss',
+    event_type TEXT NOT NULL,
+    payload TEXT,
+    status TEXT NOT NULL DEFAULT 'RECEIVED',
+    toss_order_id TEXT,
+    order_number TEXT,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    processed_at TEXT
+  )`).run().catch(() => { /* 이미 존재/권한 — 무시 */ })
+  _webhookTableReady = true
+}
+
 /**
  * GET /api/admin/metrics
  * Real-time system metrics for admin dashboard
@@ -92,6 +114,7 @@ adminMetricsRoutes.get('/webhook-failures', async (c) => {
   const hours = Math.min(Math.max(parseInt(c.req.query('hours') || '24'), 1), 720) // 1~720h (30일)
 
   try {
+    await ensureWebhookEventsTable(DB)
     const repo = new WebhookEventRepository(DB)
     const [stats, recent] = await Promise.all([
       repo.getFailedStats(hours),
@@ -123,6 +146,7 @@ adminMetricsRoutes.post('/webhook-failures/:id/retry', async (c) => {
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
 
   try {
+    await ensureWebhookEventsTable(DB)
     const result = await DB.prepare(
       "UPDATE webhook_events SET status = 'RECEIVED', error_message = error_message || ' (manual retry queued)' WHERE id = ? AND status = 'FAILED'"
     ).bind(id).run()
