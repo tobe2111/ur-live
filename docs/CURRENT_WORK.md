@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-06 — 도매몰 감사 후속 fix (대시보드·등급·로그인·보안)
+세 감사(등급제/제조대시보드/유통대시보드) → 3차(에러처리·등급·대시보드) → 2차(로그인 B2) → 1차(보안) 순 완료.
+- **대시보드·등급 4종** (`f9822d2`): ① 유통사 대시보드 부분 로그아웃(수동 키 삭제) → `clearAuthData('seller')`+full reload. ② 제조 대시보드 `/orders` shipped 필터에 `DONE`/`PARTIAL_REFUNDED` 추가(발송완료·부분환불 주문이 안 보이던 것) + 운송장 입력 시 `PARTIAL_REFUNDED→SHIPPING` 전환 허용. ③ 제조 대시보드 개요탭 `/me` 실패 시 blank null → 에러+재시도 버튼. ④ 유통 카탈로그 `/me` 실패 시 등급 silent C-fall → "등급 로드 실패·재시도" 배지+toast+refetch(B4).
+- **B2 카카오 로그인 UX + 보안 L1/L2** (`781fa9a`): B2=카카오로 도매 로그인 시 기존 유통회원도 user_id 세션만 있어 "신청하기" 배너(=로그인 안 됨처럼) 보이던 것 → 카탈로그 mount 시 `become-distributor` 자동 시도(승인 회원만 토큰+reload, 신규는 배너 유지). L1=distributor-admin 세금계산서 raw `(err).message` 누출→safeError(503). L2=제조사가 `UTONGSTART_ONLY`(관리자 선정 전용) 가시성 self-assign 가능→`normalizeVisibility(v, selfServe=true)` 로 `APPROVED_CHANNEL` 강등(생성/CSV/PATCH 3경로, 관리자 경로 불변).
+- **M1 보안 — 카카오 become verified 게이트** (`b61a660`, 사용자 승인): `become-distributor`/`become` 의 same-email 자동연결이 카카오 email verified 미검사 → 미verified email 로 사전등록(관리자 시드) 승인 계정 takeover 가능. `KakaoAuthService.upsertUser` 가 매 로그인 시 `users.email_verified` 저장(additive) + 두 become 경로가 `email_verified===1` 일 때만 자동연결. CLAUDE.md audit log 기록.
+
 ### ✅ 2026-06-05 (후속) — 정렬 근본수정 · 팝업 전면 인앱화 · 링크샵 영역 그라데이션
 - **정렬/로딩 근본수정** (`3a5bc93`): `ProductRepository.findAll` 이 `dominant_color` 미적용 DB 에서 매 요청 `no such column` 실패→재시도(쿼리 2회+SELECT* 페이로드) → 느린 로딩 + 정렬 무시. 컬럼 존재여부 모듈캐시(`_dominantColorCol`, group-buy 패턴)로 최초 1요청만 재시도 → 이후 1차 성공(빠름+정렬보존+슬림). 옛 폴백의 ORDER BY 덮어쓰기 제거.
 - **네이티브 confirm/alert 전면 인앱화** (`7d7067d`): `confirmDialog`/`alertDialog`(`ConfirmHost` 마운트, 네이티브 fallback) 로 어드민·에이전시·셀러·유저대면 ~95파일 교체(위험액션 danger 빨강). prompt()·로컬 confirm()함수·인프라 fallback 은 보존. 7 Opus 병렬.
