@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -366,7 +366,6 @@ export default function WholesaleCatalogPage() {
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; special_discount_until: string | null } | null
   const home = homeQ.data
   const loading = catalogQ.isLoading
-
   // 클라 필터/정렬 (카테고리·정렬) — 그리드.
   const items = useMemo(() => {
     let list = allItems.filter((p) => cat === 'all' || p.category === cat)
@@ -404,6 +403,11 @@ export default function WholesaleCatalogPage() {
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
   const loggedIn = !!token
+  // 로그인한 유통사의 /me 실패(네트워크 오류 등) — 조용히 C등급 표시하지 않도록 에러 구분.
+  const meLoadFailed = !!(loggedIn && meQ.isFetched && meQ.isError && !me)
+  useEffect(() => {
+    if (meLoadFailed) toast.error('등급 정보를 가져오지 못했어요 — 새로고침해 주세요', { duration: 5000 })
+  }, [meLoadFailed])
   // 🏭 2026-06-04 도매몰 허브 — 제조사(공급사=브랜드사) / 셀러 본인 대시보드로 가는 진입.
   //   제조사는 supplier_token, 셀러는 seller_token(단, 순수 유통사 is_distributor 는 제외).
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
@@ -529,9 +533,15 @@ export default function WholesaleCatalogPage() {
                 <ShoppingCart className="w-5 h-5" />
                 {cart.count > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
               </button>
-              <button onClick={() => setGradeOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0" style={{ background: WT.brandSoft, color: WT.brand }}>
-                <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
-                {GRADE_LABEL[grade] || grade}등급{me ? ` · 마진 ${me.margin_pct}%` : ''}
+              <button onClick={meLoadFailed ? () => meQ.refetch() : () => setGradeOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0"
+                style={{ background: meLoadFailed ? '#FFF0F0' : WT.brandSoft, color: meLoadFailed ? '#CC0000' : WT.brand }}
+                title={meLoadFailed ? '등급 정보 로드 실패 — 클릭해 재시도' : undefined}>
+                <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]"
+                  style={{ background: meLoadFailed ? '#CC0000' : WT.brand }}>
+                  {meLoadFailed ? '!' : (GRADE_LABEL[grade] || grade)}
+                </span>
+                {meLoadFailed ? '등급 로드 실패 · 재시도' : `${GRADE_LABEL[grade] || grade}등급${me ? ` · 마진 ${me.margin_pct}%` : ''}`}
               </button>
               {supplierToken && (
                 <button onClick={() => navigate('/supplier')} className="hidden md:inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동">

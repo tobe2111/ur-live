@@ -14,6 +14,7 @@ import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
 import { useWholesaleMe, useWholesaleOrders, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import { getSupplierToken } from '@/lib/supplier-api'
+import { clearAuthData } from '@/utils/auth'
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: '결제대기', color: WT.ink3, bg: WT.fill },
@@ -208,11 +209,9 @@ export default function WholesaleDashboardPage() {
         <div className="pt-1">
           <button
             onClick={() => {
-              try {
-                localStorage.removeItem('seller_token'); localStorage.removeItem('seller_refresh_token')
-                localStorage.removeItem('is_distributor'); localStorage.removeItem('seller_name')
-              } catch { /* ignore */ }
-              navigate('/wholesale', { replace: true })
+              clearAuthData('seller')
+              try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
+              window.location.assign('/wholesale')
             }}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium"
             style={{ color: WT.ink3 }}

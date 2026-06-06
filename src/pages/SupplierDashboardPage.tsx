@@ -73,6 +73,7 @@ export default function SupplierDashboardPage() {
   const [orderStatus, setOrderStatus] = useState<'to_ship' | 'shipped'>('to_ship')
   const [shipModal, setShipModal] = useState<OrderItem | null>(null)
   const [loading, setLoading] = useState(true)
+  const [meError, setMeError] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [channelItem, setChannelItem] = useState<CatalogItem | null>(null)
 
@@ -81,11 +82,13 @@ export default function SupplierDashboardPage() {
   }, [navigate])
 
   const loadMe = useCallback(async () => {
+    setMeError(false)
     try {
       const res = await supplierApi.get<{ data: Me }>('/api/supplier/me')
       setMe(res.data)
     } catch (err) {
       if (import.meta.env.DEV) console.error(err)
+      setMeError(true)
     } finally {
       setLoading(false)
     }
@@ -166,7 +169,7 @@ export default function SupplierDashboardPage() {
         {loading ? (
           <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : tab === 'overview' ? (
-          <OverviewTab me={me} t={t} />
+          <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} />
         ) : tab === 'orders' ? (
           <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
         ) : tab === 'catalog' ? (
@@ -247,8 +250,16 @@ function ChannelModal({ t, item, onClose }: { t: (k: string, o?: Record<string, 
   )
 }
 
-function OverviewTab({ me, t }: { me: Me | null; t: (k: string, o?: Record<string, unknown>) => string }) {
-  if (!me) return null
+function OverviewTab({ me, meError, onRetry, t }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string }) {
+  if (meError) return (
+    <div className="py-16 text-center">
+      <p className="text-sm text-gray-500 mb-3">{t('supplier.meLoadFailed', { defaultValue: '데이터를 불러오지 못했어요.' })}</p>
+      <button onClick={onRetry} className="px-4 py-2 bg-[#FF0033] text-white rounded-xl text-sm font-semibold">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+    </div>
+  )
+  if (!me) return (
+    <div className="py-16 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
+  )
   const b = me.balance
   const c = me.product_counts
   const cards = [

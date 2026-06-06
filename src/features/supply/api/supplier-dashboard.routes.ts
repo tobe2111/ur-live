@@ -479,7 +479,8 @@ supplierDashboardRoutes.get('/orders', async (c) => {
   const status = c.req.query('status') || 'to_ship';
   try {
     let statusWhere = "o.status IN ('PAID','PREPARING','READY')";
-    if (status === 'shipped') statusWhere = "o.status IN ('SHIPPING','DELIVERED')";
+    // DONE = 결제완료(정산완료 주문), PARTIAL_REFUNDED = 부분환불됐지만 나머지 발송완료 주문
+    if (status === 'shipped') statusWhere = "o.status IN ('SHIPPING','DELIVERED','DONE','PARTIAL_REFUNDED')";
     else if (status === 'all') statusWhere = "o.status NOT IN ('PENDING','CANCELLED','FAILED','REFUNDED')";
 
     // 주문 단위 집계 — 이 공급자 라인이 1개 이상 있는 주문.
@@ -552,7 +553,7 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
       `UPDATE orders
           SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
               shipped_at = COALESCE(shipped_at, datetime('now')),
-              status = CASE WHEN status IN ('PAID','PREPARING','READY') THEN 'SHIPPING' ELSE status END,
+              status = CASE WHEN status IN ('PAID','PREPARING','READY','PARTIAL_REFUNDED') THEN 'SHIPPING' ELSE status END,
               updated_at = datetime('now')
         WHERE id = ?`
     ).bind(tracking, body.courier || null, carrierKey || null, orderId).run();
