@@ -171,7 +171,7 @@ export default function SupplierLoginPage() {
             </div>
             <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/login&intent=user' }}
               className="w-full h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-              카카오로 제조회원 입점·로그인
+              카카오로 제조(브랜드)회원 입점·로그인
             </button>
 
             <p className="mt-6 text-center text-sm text-gray-600">

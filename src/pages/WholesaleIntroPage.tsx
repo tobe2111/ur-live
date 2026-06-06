@@ -37,7 +37,7 @@ export default function WholesaleIntroPage() {
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <button onClick={() => navigate('/seller/login')} className="px-3 py-2 text-[#4E5560] hover:text-[#17181C] font-medium">유통사 로그인</button>
-            <button onClick={() => navigate('/supplier/login')} className="px-3 py-2 text-[#4E5560] hover:text-[#17181C] font-medium hidden sm:inline">제조사 로그인</button>
+            <button onClick={() => navigate('/supplier/login')} className="px-3 py-2 text-[#4E5560] hover:text-[#17181C] font-medium hidden sm:inline">제조(브랜드)회원 로그인</button>
           </div>
         </div>
       </header>

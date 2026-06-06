@@ -550,10 +550,10 @@ export default function WholesaleCatalogPage() {
               </button>
             </>
           ) : (
-            // 비로그인 — 제조회원 / 유통회원 로그인 + 가입 (도매몰 한 곳에서 양쪽 역할 진입).
+            // 비로그인 — 제조(브랜드)회원 / 유통회원 로그인 + 가입 (도매몰 한 곳에서 양쪽 역할 진입).
             <>
-              <button onClick={() => navigate('/supplier/login')} className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조회원(공급사) 로그인">
-                <Factory className="w-4 h-4" /> 제조회원<span className="hidden sm:inline"> 로그인</span>
+              <button onClick={() => navigate('/supplier/login')} className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조(브랜드)회원(공급사) 로그인">
+                <Factory className="w-4 h-4" /> 제조(브랜드)회원<span className="hidden sm:inline"> 로그인</span>
               </button>
               <button onClick={goLogin} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }} title="유통회원(바이어) 로그인">
                 <LogIn className="w-4 h-4" /> 유통회원<span className="hidden sm:inline"> 로그인</span>

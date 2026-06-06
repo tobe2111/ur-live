@@ -103,7 +103,7 @@ export default function WholesaleLoginPage() {
         </div>
         <div className="mt-3 pt-5 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
           제조사(공급사)이신가요?{' '}
-          <button onClick={() => navigate('/supplier/login')} className="text-[#FF0033] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조사 로그인 →</button>
+          <button onClick={() => navigate('/supplier/login')} className="text-[#FF0033] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조(브랜드)회원 로그인 →</button>
         </div>
       </main>
     </div>
