@@ -160,6 +160,9 @@ export default function AdminHealthPage() {
         {/* 🛡️ 2026-06-01: DB 스키마 복구 (curl 없이 버튼 1회) */}
         <SchemaRepairSection />
 
+        {/* 🏭 2026-06-05 (B2): 공구 정산 정합성 점검 (읽기 전용) */}
+        <GroupBuySettlementAuditSection />
+
         {/* 🛡️ 2026-04-26 M7: Webhook 실패 상세 + 재시도 (TD-009) */}
         <WebhookFailuresSection />
 
@@ -281,6 +284,96 @@ function SchemaRepairSection() {
                 {added.map((r, i) => (
                   <li key={i}>{r.desc}</li>
                 ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// 🏭 2026-06-05 (B2): 공구 정산 정합성 점검 — 읽기 전용 (ledger/donations 누락 집계, 돈 미변경)
+interface GBAuditSample { order_number: string; payment_method: string; total_amount: number; created_at: string }
+interface GBAuditData {
+  period_days: number
+  total_orders: number
+  total_amount: number
+  by_method: { method: string; n: number }[]
+  missing_ledger: { available: boolean; n: number; samples: GBAuditSample[] }
+  missing_donation: { available: boolean; n: number; samples: GBAuditSample[] }
+}
+
+function GroupBuySettlementAuditSection() {
+  const [running, setRunning] = useState(false)
+  const [res, setRes] = useState<GBAuditData | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const run = async () => {
+    if (running) return
+    setRunning(true); setErr(null); setRes(null)
+    try {
+      const token = localStorage.getItem('admin_token')
+      const r = await fetch('/api/admin/metrics/groupbuy-settlement-audit?days=30', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      })
+      const j = (await r.json()) as { success?: boolean; error?: string; data?: GBAuditData }
+      if (!r.ok || !j.success || !j.data) {
+        setErr(j.error || (r.status === 401 || r.status === 403 ? '관리자 인증 필요 (다시 로그인 후 시도)' : `HTTP ${r.status}`))
+        return
+      }
+      setRes(j.data)
+    } catch {
+      setErr('점검 요청 실패 (네트워크/파싱)')
+    } finally { setRunning(false) }
+  }
+
+  const won = (n: number) => `₩${(Number.isFinite(n) ? n : 0).toLocaleString('ko-KR')}`
+  const missing = (res?.missing_ledger.n ?? 0) + (res?.missing_donation.n ?? 0)
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-gray-700" />
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">공구 정산 정합성 점검 (읽기 전용)</h2>
+            <p className="text-xs text-gray-500">최근 30일 공구(GB) 결제 중 ledger·정산기록(donations) 누락 건 집계. 돈/상태 미변경.</p>
+          </div>
+        </div>
+        <button onClick={run} disabled={running}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-60">
+          {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+          {running ? '점검 중...' : '정합성 점검'}
+        </button>
+      </div>
+
+      {err && <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">⚠️ {err}</div>}
+
+      {res && (
+        <div className="mt-4 space-y-2 text-xs">
+          <div className={`rounded-md border px-3 py-2 ${missing === 0 ? 'border-green-200 bg-green-50 text-green-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+            {missing === 0
+              ? `✅ 정합 — 최근 ${res.period_days}일 공구 ${res.total_orders}건(${won(res.total_amount)}) 전부 ledger·정산기록 보유`
+              : `⚠️ 누락 발견 — ledger ${res.missing_ledger.n}건 · 정산기록 ${res.missing_donation.n}건 (총 공구 ${res.total_orders}건 중)`}
+          </div>
+          <div className="text-gray-600">결제수단별: {res.by_method.map((m) => `${m.method} ${m.n}`).join(' · ') || '없음'}</div>
+          {!res.missing_ledger.available && <div className="text-gray-400">· ledger_entries 테이블 없음 (점검 불가)</div>}
+          {!res.missing_donation.available && <div className="text-gray-400">· donations 테이블 없음 (점검 불가)</div>}
+          {res.missing_ledger.n > 0 && (
+            <details className="text-gray-600">
+              <summary className="cursor-pointer">ledger 누락 {res.missing_ledger.n}건 샘플</summary>
+              <ul className="mt-1 list-disc pl-4">
+                {res.missing_ledger.samples.map((s, i) => <li key={i}>{s.order_number} · {s.payment_method} · {won(s.total_amount)} · {s.created_at}</li>)}
+              </ul>
+            </details>
+          )}
+          {res.missing_donation.n > 0 && (
+            <details className="text-gray-600">
+              <summary className="cursor-pointer">정산기록 누락 {res.missing_donation.n}건 샘플</summary>
+              <ul className="mt-1 list-disc pl-4">
+                {res.missing_donation.samples.map((s, i) => <li key={i}>{s.order_number} · {s.payment_method} · {won(s.total_amount)} · {s.created_at}</li>)}
               </ul>
             </details>
           )}

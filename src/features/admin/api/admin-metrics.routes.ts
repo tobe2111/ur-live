@@ -159,4 +159,65 @@ adminMetricsRoutes.post('/webhook-failures/:id/retry', async (c) => {
   }
 })
 
+/**
+ * GET /api/admin/metrics/groupbuy-settlement-audit?days=30
+ *
+ * 🏭 2026-06-05 (B2 — 읽기 전용 정산 정합성 점검, 돈 미변경):
+ *   공구(GB-) PAID/DONE 주문 중 ledger_entries(group_buy_join) / donations 정산 기록이 누락된 건을
+ *   집계. confirm-toss(카드)·/join(딜) 둘 다 orderNumber 로 ledger+donations 를 기록하므로(2026-05-31),
+ *   누락이 0 이면 정합, >0 이면 실제 드리프트(실패 swallow·구버전 주문 등) → 후속 수동 보정 판단 근거.
+ *   순수 SELECT — 어떤 돈/상태도 변경하지 않음.
+ */
+adminMetricsRoutes.get('/groupbuy-settlement-audit', async (c) => {
+  const DB = c.env.DB
+  const days = Math.min(Math.max(parseInt(c.req.query('days') || '30'), 1), 365)
+  const since = `-${days} days`
+  const GB = "order_number LIKE 'GB-%' AND status IN ('PAID','DONE') AND created_at > datetime('now', ?)"
+  const GBO = "o.order_number LIKE 'GB-%' AND o.status IN ('PAID','DONE') AND o.created_at > datetime('now', ?)"
+
+  try {
+    const total = await DB.prepare(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(total_amount),0) AS amt FROM orders WHERE ${GB}`
+    ).bind(since).first<{ n: number; amt: number }>().catch(() => ({ n: 0, amt: 0 }))
+
+    const byMethod = await DB.prepare(
+      `SELECT COALESCE(payment_method,'(none)') AS method, COUNT(*) AS n FROM orders WHERE ${GB}
+       GROUP BY payment_method ORDER BY n DESC`
+    ).bind(since).all<{ method: string; n: number }>().catch(() => ({ results: [] as { method: string; n: number }[] }))
+
+    // ledger_entries 누락 (event_type='group_buy_join', reference_id=order_number)
+    let missingLedger: { available: boolean; n: number; samples: unknown[] } = { available: false, n: 0, samples: [] }
+    try {
+      const notExists = `NOT EXISTS (SELECT 1 FROM ledger_entries l WHERE l.reference_id = o.order_number AND l.event_type='group_buy_join')`
+      const cnt = await DB.prepare(`SELECT COUNT(*) AS n FROM orders o WHERE ${GBO} AND ${notExists}`).bind(since).first<{ n: number }>()
+      const samples = await DB.prepare(`SELECT o.order_number, o.payment_method, o.total_amount, o.created_at FROM orders o WHERE ${GBO} AND ${notExists} ORDER BY o.created_at DESC LIMIT 20`).bind(since).all()
+      missingLedger = { available: true, n: cnt?.n ?? 0, samples: samples.results || [] }
+    } catch { missingLedger = { available: false, n: 0, samples: [] } }
+
+    // donations 누락 (order_id=order_number)
+    let missingDonation: { available: boolean; n: number; samples: unknown[] } = { available: false, n: 0, samples: [] }
+    try {
+      const notExists = `NOT EXISTS (SELECT 1 FROM donations d WHERE d.order_id = o.order_number)`
+      const cnt = await DB.prepare(`SELECT COUNT(*) AS n FROM orders o WHERE ${GBO} AND ${notExists}`).bind(since).first<{ n: number }>()
+      const samples = await DB.prepare(`SELECT o.order_number, o.payment_method, o.total_amount, o.created_at FROM orders o WHERE ${GBO} AND ${notExists} ORDER BY o.created_at DESC LIMIT 20`).bind(since).all()
+      missingDonation = { available: true, n: cnt?.n ?? 0, samples: samples.results || [] }
+    } catch { missingDonation = { available: false, n: 0, samples: [] } }
+
+    return c.json({
+      success: true,
+      data: {
+        period_days: days,
+        total_orders: total?.n ?? 0,
+        total_amount: total?.amt ?? 0,
+        by_method: byMethod.results || [],
+        missing_ledger: missingLedger,
+        missing_donation: missingDonation,
+        timestamp: new Date().toISOString(),
+      },
+    })
+  } catch (e) {
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
 export default adminMetricsRoutes
