@@ -390,7 +390,16 @@ export class KakaoAuthService {
         }
         userId = insertedUser.id;
       }
-      
+
+      // 🛡️ 2026-06-06 (보안, 사용자 승인): 카카오 email verified 상태를 users 에 저장 —
+      //   도매(become-distributor)·제조(become) 자동 same-email 연결 게이트의 SSOT.
+      //   미verified email 로 사전등록된(관리자 시드) 승인 계정 takeover 차단용. best-effort
+      //   (컬럼 없으면 repair-schema 후 다음 로그인에 채워짐 — login 자체는 비차단).
+      try {
+        await this.db.prepare(`UPDATE users SET email_verified = ? WHERE id = ?`)
+          .bind(kakaoUser.emailVerified === true ? 1 : 0, userId).run();
+      } catch { /* 컬럼 미존재 — 비치명적, repair-schema 가 컬럼 추가 */ }
+
       // 사용자 정보 다시 조회하여 반환.
       // 🛡️ 2026-05-06: profile_image 컬럼 production 에 없을 수도 있어 fallback 추가.
       let user: User | null = null;

@@ -238,10 +238,13 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
     ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:alter')) }
 
-    const u = await DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(userId)
-      .first<{ id: number; email: string | null; name: string | null }>().catch(() => null)
+    // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
+    await DB.prepare('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0').run().catch(swallow('wholesale:become:add-verified'))
+    const u = await DB.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').bind(userId)
+      .first<{ id: number; email: string | null; name: string | null; email_verified: number | null }>().catch(() => null)
     const email = (authed.email || u?.email || '').trim().toLowerCase()
     const name = (authed.name || u?.name || '유통회원').trim()
+    const emailVerified = u?.email_verified === 1
 
     type SellerRow = { id: number; username: string; email: string | null; name: string | null; status: string; seller_type: string | null; is_distributor: number | null }
     // 1) 이미 이 유저에 연결된 셀러?
@@ -249,7 +252,9 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       'SELECT id, username, email, name, status, seller_type, is_distributor FROM sellers WHERE linked_user_id = ? LIMIT 1'
     ).bind(userId).first<SellerRow>().catch(() => null)
     // 2) 없으면 같은 이메일의 미연결 셀러를 연결.
-    if (!seller && email) {
+    //   🛡️ 2026-06-06 (보안, 사용자 승인): verified 카카오 email 일 때만 자동연결 — 미verified email 로
+    //   사전등록된(관리자 시드) 승인 셀러 행 takeover 차단. KakaoAuthService.upsertUser 의 동일 게이트와 대칭.
+    if (!seller && email && emailVerified) {
       const byEmail = await DB.prepare(
         'SELECT id, username, email, name, status, seller_type, is_distributor FROM sellers WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0) LIMIT 1'
       ).bind(email).first<SellerRow>().catch(() => null)

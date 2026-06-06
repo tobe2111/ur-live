@@ -122,17 +122,22 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
   if (!Number.isFinite(userId) || userId <= 0) return c.json({ success: false, error: '유효하지 않은 사용자입니다' }, 400);
   try {
     await ensureSupplierSchema(DB);
-    const u = await DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(userId)
-      .first<{ id: number; email: string | null; name: string | null }>().catch(() => null);
+    // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
+    await DB.prepare('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0').run().catch(() => {});
+    const u = await DB.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').bind(userId)
+      .first<{ id: number; email: string | null; name: string | null; email_verified: number | null }>().catch(() => null);
     const email = (authed.email || u?.email || '').trim().toLowerCase();
     const name = (authed.name || u?.name || '제조회원').trim();
+    const emailVerified = u?.email_verified === 1;
 
     type SupRow = { id: number; business_name: string; email: string | null; status: string };
     // 1) 이미 연결된 제조회원?
     let sup = await DB.prepare('SELECT id, business_name, email, status FROM suppliers WHERE linked_user_id = ? LIMIT 1')
       .bind(userId).first<SupRow>().catch(() => null);
     // 2) 같은 이메일 미연결 제조회원 → 연결.
-    if (!sup && email) {
+    //   🛡️ 2026-06-06 (보안, 사용자 승인): verified 카카오 email 일 때만 자동연결 — 미verified email 로
+    //   사전등록된(관리자 시드) 승인 제조회원 행 takeover 차단. KakaoAuthService 동일 게이트와 대칭.
+    if (!sup && email && emailVerified) {
       const byEmail = await DB.prepare('SELECT id, business_name, email, status FROM suppliers WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0) LIMIT 1')
         .bind(email).first<SupRow>().catch(() => null);
       if (byEmail) {

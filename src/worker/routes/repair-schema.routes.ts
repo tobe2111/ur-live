@@ -81,6 +81,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   미사용 DB 에서 idempotent ALTER (이미 있으면 SQLite 가 에러 throw → repair-schema 가 swallow).
     { desc: 'users.phone', sql: "ALTER TABLE users ADD COLUMN phone TEXT" },
     { desc: 'users.updated_at', sql: "ALTER TABLE users ADD COLUMN updated_at TEXT" },
+    // 🛡️ 2026-06-06 (보안): 카카오 email verified 플래그 — become(도매/제조) same-email 자동연결 게이트.
+    { desc: 'users.email_verified', sql: "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0" },
     // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 — handle / bio / theme
     { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
     { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },
