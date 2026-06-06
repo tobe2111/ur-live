@@ -118,6 +118,21 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
     opts = { ...opts, quality: 65 }
   }
 
+  // 🏭 2026-06-06 (사용자 신고 — 링크샵 배경/프로필 업로드 후 404): 워커가 R2 에서 서빙하는
+  //   same-origin 업로드 이미지(/api/media/*, /api/upload/*)는 Cloudflare 의 /cdn-cgi/image/ URL
+  //   리사이즈가 워커 서브요청 소스를 못 풀어 404 가 났음. 외부 이미지(Firebase 등)와 동일하게
+  //   검증된 워커 프록시(/api/image/resize, cf.image fetch)로 경유 — 리사이즈가 비활성이어도 원본을
+  //   200 으로 반환(절대 404 안 남). live.ur-team.com/ur-live.pages.dev 는 worker ALLOWED_HOSTS 포함.
+  //   (ADD only — SUPPORTED_HOSTS/EXTERNAL_PROXY_HOSTS·Save-Data 동작 불변)
+  if (src.startsWith('/api/media/') || src.startsWith('/api/upload/')) {
+    if (typeof window !== 'undefined') {
+      const w = opts.width || 400
+      const q = opts.quality || 85
+      return `/api/image/resize?url=${encodeURIComponent(window.location.origin + src)}&w=${w}&q=${q}`
+    }
+    return src  // SSR/비브라우저 — 원본 그대로(R2 same-origin 서빙은 정상)
+  }
+
   // 절대 URL 인지 확인
   const isAbsolute = /^https?:\/\//i.test(src)
   let host = ''
