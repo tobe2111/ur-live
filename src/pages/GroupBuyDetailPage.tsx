@@ -267,6 +267,14 @@ export default function GroupBuyDetailPage() {
     : 0
   const unitPrice = detail ? Math.round(detail.price * (1 - (detail.current_discount_pct || 0) / 100)) : 0
   const total = unitPrice * quantity
+  // 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 정가(있으면) 대비 실제 결제가 절약액 계산.
+  //   기준가 = original_price(정가, MSRP) 가 있고 결제가보다 크면 그것, 없으면 공구 기준가(price).
+  //   순수 파생값 — SSR/폴링/잠금 동작 불변(렌더 카피만 추가).
+  const refPrice = detail
+    ? (detail.original_price && detail.original_price > unitPrice ? detail.original_price : detail.price)
+    : 0
+  const unitSaving = Math.max(0, refPrice - unitPrice)
+  const totalSaving = unitSaving * quantity
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
 
   async function checkPromo() {
@@ -611,11 +619,12 @@ export default function GroupBuyDetailPage() {
             </a>
           )}
 
-          {/* 가격 — 🛡️ 2026-05-19: 공동구매는 소비자 구매라 '원' 단위. (교환권만 '딜') */}
+          {/* 가격 — 🛡️ 2026-05-19: 공동구매는 소비자 구매라 '원' 단위. (교환권만 '딜')
+                🏭 2026-06-06 (사용자 요청): '정가 대비 N,NNN원 절약' 체감 금액 강조 — 전환 설득력 ↑. */}
           <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
             <div className="flex items-baseline gap-2">
-              {detail.current_discount_pct > 0 && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(detail.price)}원</span>
+              {unitSaving > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(refPrice)}원</span>
               )}
               <span className="text-2xl font-extrabold text-pink-500">{formatNumber(unitPrice)}</span>
               <span className="text-sm font-bold text-pink-500">원</span>
@@ -625,8 +634,13 @@ export default function GroupBuyDetailPage() {
                 </span>
               )}
             </div>
-            {detail.original_price && detail.original_price > detail.price && (
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">정가 {formatNumber(detail.original_price)}원 → 공구가 {formatNumber(detail.price)}원</p>
+            {unitSaving > 0 && (
+              <div className="mt-2 inline-flex items-center gap-1.5 bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-500/30 rounded-lg px-2.5 py-1">
+                <Sparkles className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+                <span className="text-xs font-bold text-pink-600 dark:text-pink-400">
+                  정가보다 <span className="text-sm">{formatNumber(unitSaving)}원</span> 절약
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -852,6 +866,17 @@ export default function GroupBuyDetailPage() {
 
       {/* sticky 하단 결제 영역 — BottomNav (z-9999) 위로 올림 + BottomNav 높이만큼 ur-content padding 적용됨 */}
       <footer className="fixed bottom-0 inset-x-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
+        {/* 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 결제 직전 절약액 강조. 수량 변경 시 실시간 갱신. */}
+        {isJoinable && totalSaving > 0 && (
+          <div className="flex items-center justify-between mb-2 px-0.5">
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+              정가 <span className="line-through">{formatNumber(refPrice * quantity)}원</span>
+            </span>
+            <span className="text-[11px] font-bold text-pink-600 dark:text-pink-400">
+              {formatNumber(totalSaving)}원 절약 🎉
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 dark:bg-[#1A1A1A] rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
             <button
