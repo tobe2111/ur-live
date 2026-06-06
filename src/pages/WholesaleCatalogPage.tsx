@@ -414,6 +414,42 @@ export default function WholesaleCatalogPage() {
   // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인됐지만 아직 유통회원(seller_token)이 아닌 상태.
   //   사업자 정보 + 관리자 승인 필요라 1탭 X → 입점 폼(/wholesale/join)으로 유도.
   const userSession = !loggedIn && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
+  // 🏭 2026-06-06 (B2 fix): 카카오로 도매 로그인 → /wholesale 에 user_id 세션만 가지고 도착.
+  //   이미 유통회원(이메일 연결된 승인 셀러)이면 자동으로 seller_token 발급받아야 "로그인 안 됨"처럼
+  //   보이는 UX 가 사라짐. become-distributor 를 빈 body 로 시도 — 기존 승인 회원만 토큰 발급(신규는
+  //   사업자정보 400 → 무시하고 신청 배너 유지). SupplierLoginPage 의 /become 자동시도와 대칭.
+  const [becoming, setBecoming] = useState(false)
+  useEffect(() => {
+    if (!userSession || becoming) return
+    let cancelled = false
+    setBecoming(true)
+    api.post('/api/wholesale/become-distributor', {})
+      .then((r) => {
+        if (cancelled) return
+        const d = r.data
+        if (d?.success && d?.status === 'approved' && d?.data?.accessToken) {
+          const s = d.data.seller || {}
+          localStorage.setItem('seller_token', d.data.accessToken)
+          localStorage.setItem('access_token', d.data.accessToken)
+          localStorage.setItem('seller_refresh_token', d.data.refreshToken || '')
+          localStorage.setItem('user_type', 'seller')
+          localStorage.setItem('active_role', 'seller')
+          localStorage.setItem('seller_id', String(s.id ?? ''))
+          localStorage.setItem('seller_name', s.name || '')
+          localStorage.setItem('seller_email', s.email || '')
+          localStorage.setItem('seller_username', s.username || '')
+          localStorage.setItem('seller_type', s.seller_type || 'influencer')
+          localStorage.setItem('is_distributor', '1')
+          toast.success('유통회원으로 로그인되었어요')
+          window.location.assign('/wholesale')
+        }
+        // status==='pending' 또는 신규(400)면 그대로 신청 배너 유지 — 추가 toast 없음(조용).
+      })
+      .catch(() => { /* 신규 유저(사업자정보 필요) 등 — 배너로 유도, 조용히 무시 */ })
+      .finally(() => { if (!cancelled) setBecoming(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userSession])
   const goLogin = () => navigate('/wholesale/login')
   const logout = () => {
     // 셀러 세션만 정리(유저/어드민 세션 보존) 후 도매몰에 머무름 — full reload 로 토큰/RQ 캐시 깨끗이.

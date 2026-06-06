@@ -141,8 +141,15 @@ export async function recordSupplyPriceChange(
   ).bind(productId, supplierId, oldPrice, newPrice, changedBy.slice(0, 40)).run().catch(swallow('supply-vis:price-history'))
 }
 
-/** 공급 범위 값 정규화 (잘못된 값 → ALL). */
-export function normalizeVisibility(v: unknown): SupplyVisibility {
+/**
+ * 공급 범위 값 정규화 (잘못된 값 → ALL).
+ * @param selfServe 제조사 self-serve 입력이면 true — `UTONGSTART_ONLY`(유통스타트 유통채널 =
+ *   관리자 선정 전용)는 제조사가 직접 설정 못 하도록 `APPROVED_CHANNEL`(본인 승인 채널)로 강등.
+ *   관리자(distributor-admin) 경로는 selfServe 생략 → 3종 모두 허용.
+ */
+export function normalizeVisibility(v: unknown, selfServe = false): SupplyVisibility {
   const s = String(v || '').toUpperCase()
-  return (SUPPLY_VISIBILITY_VALUES as readonly string[]).includes(s) ? (s as SupplyVisibility) : 'ALL'
+  const valid = (SUPPLY_VISIBILITY_VALUES as readonly string[]).includes(s) ? (s as SupplyVisibility) : 'ALL'
+  if (selfServe && valid === 'UTONGSTART_ONLY') return 'APPROVED_CHANNEL'
+  return valid
 }

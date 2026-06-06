@@ -164,7 +164,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
     // 🛡️ is_active=0 (어드민 승인 전 카탈로그 비노출) + supply_approval_status='pending'.
     //   seller_id=NULL (소스 카탈로그 상품 — 셀러가 register 로 자기 스토어에 복제).
-    const visibility = normalizeVisibility(body.supply_visibility);
+    const visibility = normalizeVisibility(body.supply_visibility, true);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
     const isBrand = body.is_brand_product ? 1 : 0;
 
@@ -243,7 +243,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       if (!name) { results.push({ row: i + 2, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(supplyPrice) || supplyPrice <= 0) { results.push({ row: i + 2, name, status: 'error', reason: '공급가 오류' }); continue; }
       const retailFinal = Number.isFinite(retail) && retail >= supplyPrice ? retail : supplyPrice;
-      const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility);
+      const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility, true);
       const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
       const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();
       const isBrand = ['Y', 'YES', '예', '1', 'TRUE', 'O'].includes(brandRaw) ? 1 : 0;
@@ -385,7 +385,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (typeof body.image_url === 'string') { sets.push('image_url = ?'); params.push(body.image_url.slice(0, 1000)); }
     if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
-    if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility)); }
+    if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
     if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
     if (body.is_brand_product != null) { sets.push('is_brand_product = ?'); params.push(body.is_brand_product ? 1 : 0); }
 

@@ -820,7 +820,7 @@ app.post('/tax-documents/:id/issue-nts', rateLimit({ action: 'admin-nts-issue', 
       })
     } catch (e) {
       await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(() => {})
-      return c.json({ success: false, error: e instanceof Error ? e.message : '전자세금계산서 발행 실패' }, 502)
+      return safeError(c, e, '전자세금계산서 발행 실패', '[distributor-admin]', 503)
     }
     if (!result.success) {
       await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(() => {})
