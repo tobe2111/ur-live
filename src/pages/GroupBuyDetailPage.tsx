@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2 } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
@@ -643,6 +643,21 @@ export default function GroupBuyDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* 🏭 2026-06-06 (사용자 요청 — 구매 신뢰도): 안전결제·정품·환불 trust 배지 줄. 정적(데이터 무관). */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { icon: ShieldCheck, label: '안전결제', sub: '토스페이먼츠' },
+            { icon: CheckCircle2, label: '정식 판매', sub: '검증 셀러' },
+            { icon: RefreshCcw, label: '안심 거래', sub: '환불 정책 보장' },
+          ].map(({ icon: Icon, label, sub }) => (
+            <div key={label} className="bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-100 dark:border-[#1A1A1A] py-2.5 px-2 flex flex-col items-center text-center gap-1">
+              <Icon className="w-4 h-4 text-pink-500" />
+              <span className="text-[11px] font-bold text-gray-800 dark:text-gray-100 leading-none">{label}</span>
+              <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-none">{sub}</span>
+            </div>
+          ))}
         </div>
 
         {/* 🛡️ 2026-05-17: 매장 위치 미니 지도 — 매장 기반 voucher 의 위치 발견성 향상.
