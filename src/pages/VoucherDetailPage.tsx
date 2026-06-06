@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Ticket, CalendarDays, ShieldAlert, Info } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -237,11 +237,41 @@ export default function VoucherDetailPage() {
         )}
       </div>
 
-      <div className="mx-4 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-900 space-y-1">
-        <p className="font-bold">📌 교환권 안내</p>
-        <p>• 딜 결제 즉시 교환권이 발급됩니다 (마이 → 교환권 메뉴)</p>
-        <p>• {product.voucher_expiry ? `유효 기간: ${product.voucher_expiry}` : '발급 후 사용 기간 적용'}</p>
-        <p>• 교환권은 환불/취소가 제한될 수 있습니다</p>
+      {/* 🏭 2026-06-05 (사용자 요청 — 교환권 안내 디자인 개선): 평면 amber 박스(다크 미대응) → 아이콘 행 카드. */}
+      <div className="mx-4 mt-4 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-gray-50 dark:bg-[#121212] overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center gap-2">
+          <Info className="w-4 h-4 text-pink-500" />
+          <p className="text-[13px] font-bold text-gray-900 dark:text-white">교환권 안내</p>
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A]">
+          <div className="flex items-start gap-3 px-4 py-3">
+            <div className="shrink-0 w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center">
+              <Ticket className="w-[18px] h-[18px] text-pink-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">즉시 발급</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">딜 결제 즉시 발급돼요 · <span className="font-semibold text-gray-700 dark:text-gray-300">마이 → 교환권</span> 에서 확인</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 px-4 py-3">
+            <div className="shrink-0 w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
+              <CalendarDays className="w-[18px] h-[18px] text-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">유효 기간</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{product.voucher_expiry ? product.voucher_expiry : '발급 후 사용 기간이 적용돼요'}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 px-4 py-3">
+            <div className="shrink-0 w-8 h-8 rounded-xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center">
+              <ShieldAlert className="w-[18px] h-[18px] text-gray-400 dark:text-gray-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">환불 안내</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">발급 후 환불·취소가 제한될 수 있어요</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 🛡️ 2026-05-23: BottomNav (h-14 + safe-area) 위에 표시. z-[10002] = nav (z-9999) 위. */}
