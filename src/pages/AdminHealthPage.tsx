@@ -177,6 +177,8 @@ export default function AdminHealthPage() {
 // 🛡️ 2026-06-01: DB 스키마 복구 섹션 — 신규 migration 컬럼/테이블 즉시 적용 (cron 은 매일 자동)
 interface SchemaRepairResult {
   success: boolean
+  error?: string
+  _clientError?: string
   columns?: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }>
   tables?: Array<{ name: string; status: 'ok' | 'error'; error?: string }>
 }
@@ -191,10 +193,21 @@ function SchemaRepairSection() {
     setResult(null)
     try {
       const token = localStorage.getItem('admin_token')
+      // 🏭 2026-06-05 (사용자 신고 — 버튼 눌러도 결과가 안 나옴): 토큰 없으면 세션 쿠키로 폴백
+      //   (credentials:'include') + res.ok/success 검사. 기존엔 401/403 이어도 columns 없음 →
+      //   added=0/errs=0 → "변경 없음" 으로 거짓 표시됐음.
       const res = await fetch('/api/_internal/repair-schema', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       })
-      const data = (await res.json()) as SchemaRepairResult
+      let data: SchemaRepairResult
+      try { data = (await res.json()) as SchemaRepairResult } catch { data = { success: false } }
+      if (!res.ok || data.success === false) {
+        const msg = data.error || (res.status === 401 || res.status === 403 ? '관리자 인증 필요 (다시 로그인 후 시도)' : `HTTP ${res.status}`)
+        setResult({ success: false, _clientError: msg })
+        toast.error(`스키마 복구 실패: ${msg}`)
+        return
+      }
       setResult(data)
       const added = data.columns?.filter((r) => r.status === 'added').length ?? 0
       const errs =
@@ -203,6 +216,7 @@ function SchemaRepairSection() {
       if (errs > 0) toast.error(`스키마 복구: ${errs}건 오류 — 상세 확인`)
       else toast.success(added > 0 ? `스키마 복구 완료: 컬럼 ${added}개 추가` : '스키마 최신 상태 (변경 없음)')
     } catch {
+      setResult({ success: false, _clientError: '네트워크 오류 또는 응답 파싱 실패' })
       toast.error('스키마 복구 요청 실패')
     } finally {
       setRunning(false)
@@ -210,6 +224,8 @@ function SchemaRepairSection() {
   }
 
   const added = result?.columns?.filter((r) => r.status === 'added') ?? []
+  const existsCount = result?.columns?.filter((r) => r.status === 'exists').length ?? 0
+  const checkedCount = (result?.columns?.length ?? 0) + (result?.tables?.length ?? 0)
   const errs = [
     ...(result?.columns?.filter((r) => r.status === 'error').map((r) => `컬럼: ${r.desc} — ${r.error}`) ?? []),
     ...(result?.tables?.filter((r) => r.status === 'error').map((r) => `테이블: ${r.name} — ${r.error}`) ?? []),
@@ -239,9 +255,14 @@ function SchemaRepairSection() {
 
       {result && (
         <div className="mt-4 space-y-2 text-xs">
-          {errs.length === 0 ? (
+          {result._clientError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+              ⚠️ 실행 실패 — {result._clientError}
+            </div>
+          ) : errs.length === 0 ? (
             <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-700">
-              ✅ 정상 — {added.length > 0 ? `컬럼 ${added.length}개 추가됨` : '추가할 항목 없음 (이미 최신)'}
+              ✅ 완료 — 확인 {checkedCount}개 · 추가 {added.length}개 · 기존 {existsCount}개
+              {added.length === 0 && <span className="block text-green-600 mt-0.5">이미 최신 상태입니다 (추가할 항목 없음)</span>}
             </div>
           ) : (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
