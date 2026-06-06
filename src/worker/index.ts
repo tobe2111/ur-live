@@ -569,7 +569,13 @@ app.use('*', async (c, next) => {
     c.res.headers.append('Link', '<https://cdn.jsdelivr.net>; rel=preconnect; crossorigin, <https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
 
     const ssrSlot = ssrTarget?.slot ?? 'MAIN';
-    const rewritten = new HTMLRewriter()
+    // 🏭 2026-06-05 (사용자 신고 — 도매몰 진입 시 소비자 홈 화면이 잠깐 깜빡임):
+    //   prerender 된 index.html 의 #root 에는 소비자 홈 shell(다크 테마·라이브/동네딜 nav 등)이 구워져 있어
+    //   /wholesale·/supplier 를 hard-load 하면 React 가 도매 페이지로 라우팅하기 전 그 소비자 shell 이 첫 paint 에
+    //   잠깐 보임(다른 업태·다른 테마라 이질적). 해당 surface 에서만 #root 를 도매 라이트 배경 placeholder 로 비워
+    //   깜빡임 제거. createRoot(비-hydrate)라 안전. 소비자 페이지의 0-RTT shell·SSR inject 는 불변(additive).
+    const isWholesaleSurface = /^\/(wholesale|supplier)(\/|$)/.test(url.pathname);
+    let rb = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })
@@ -588,8 +594,15 @@ app.use('*', async (c, next) => {
             );
           }
         },
-      })
-      .transform(c.res);
+      });
+    if (isWholesaleSurface) {
+      rb = rb.on('#root', {
+        element(el) {
+          el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
+        },
+      });
+    }
+    const rewritten = rb.transform(c.res);
     c.res = new Response(rewritten.body, rewritten);
   }
 });
