@@ -402,6 +402,16 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
     // 체크인 코드 생성 (8자리 영숫자).
     const code = generateCheckInCode()
 
+    // 🏭 2026-06-05 (B1 견고화 — 미결제 pending 무제한 누적 방지, anti-abuse):
+    //   재고는 confirm 에서 차감되고 오버부킹은 가드됨(이중예약 X). 여기선 활성 pending 상한만 둔다.
+    //   30분 window = stay-pending-expire cron 의 만료 기준과 동일. 재고 미조작 → 누수 위험 0.
+    const activePending = await c.env.DB.prepare(
+      `SELECT COUNT(*) as n FROM stay_bookings WHERE user_id = ? AND status = 'pending' AND created_at > datetime('now', '-30 minutes')`
+    ).bind(userId).first<{ n: number }>().catch(() => null)
+    if ((activePending?.n ?? 0) >= 8) {
+      return c.json({ success: false, error: '진행 중인 미결제 예약이 많습니다. 기존 예약을 결제하거나 잠시 후 다시 시도해주세요.' }, 429)
+    }
+
     // 예약 INSERT (status='pending', orders 는 별도 흐름에서 매칭).
     //   voucher 모드는 stay_check_in_date / out 가 NULL (사용 시 셀러와 협의).
     const orderResult = await c.env.DB.prepare(
@@ -681,6 +691,14 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
       }
     }
     const totalAmount = grandSubtotal - discountAmount
+
+    // 🏭 2026-06-05 (B1 견고화 — 미결제 pending 무제한 누적 방지, anti-abuse): 활성 pending 상한.
+    const activePendingMulti = await c.env.DB.prepare(
+      `SELECT COUNT(*) as n FROM stay_bookings WHERE user_id = ? AND status = 'pending' AND created_at > datetime('now', '-30 minutes')`
+    ).bind(userId).first<{ n: number }>().catch(() => null)
+    if ((activePendingMulti?.n ?? 0) >= 8) {
+      return c.json({ success: false, error: '진행 중인 미결제 예약이 많습니다. 기존 예약을 결제하거나 잠시 후 다시 시도해주세요.' }, 429)
+    }
 
     // 4. orders INSERT (한 개).
     const totalNights = prepared.reduce((s, p) => s + p.nights, 0)
