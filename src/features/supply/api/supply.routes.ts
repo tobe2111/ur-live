@@ -321,7 +321,8 @@ supplyRoutes.post('/register', async (c) => {
       return c.json({ success: false, error: '이미 등록된 상품입니다' }, 409);
     }
 
-    const stockToUse = body.stock ?? request.stock ?? 0;
+    // 🏭 2026-06-07 (보안 audit, 사용자 승인): 음수/비정상 stock 차단 — 0 이상 정수로 clamp (oversell 계산 보호).
+    const stockToUse = Math.max(0, Math.floor(Number(body.stock ?? request.stock ?? 0)) || 0);
     const slug = `${request.name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 40)}-${Date.now()}`;
 
     // 셀러 스토어에 상품 등록

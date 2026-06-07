@@ -102,7 +102,8 @@ export default function WholesaleCheckoutPage() {
           : /not.*found|404|variant/i.test(raw)
           ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다.'
           : '결제 초기화 실패'
-        setErrorMsg(`${baseMsg}\n\n[SDK]: ${raw.slice(0, 200)}`)
+        // 🏭 2026-06-07 (보안 audit, 사용자 승인): raw SDK 에러는 DEV 에서만 노출 — 구매자에겐 친화 메시지만.
+        setErrorMsg(import.meta.env.DEV ? `${baseMsg}\n\n[SDK]: ${raw.slice(0, 200)}` : baseMsg)
         setState('error')
       }
     })()
