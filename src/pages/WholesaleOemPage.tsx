@@ -110,7 +110,7 @@ export default function WholesaleOemPage() {
       <main className="ur-content-medium px-4 lg:px-8 py-6 space-y-6">
         <section className="bg-white rounded-2xl border border-[#ECEEF1] p-6">
           <h2 className="text-base font-bold text-[#17181C] mb-1">자사 브랜드 제품 제작 신청</h2>
-          <p className="text-xs text-[#F4F5F7]0 mb-4">원하는 제품을 신청하면 유통스타트가 제조사를 찾아 연결하고 생산까지 지원합니다.</p>
+          <p className="text-xs text-[#4E5560] mb-4">원하는 제품을 신청하면 유통스타트가 제조사를 찾아 연결하고 생산까지 지원합니다.</p>
           <form onSubmit={submit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -168,7 +168,7 @@ export default function WholesaleOemPage() {
                       </div>
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
                     </div>
-                    <p className="text-xs text-[#F4F5F7]0">
+                    <p className="text-xs text-[#4E5560]">
                       {r.category && `${r.category} · `}
                       {r.target_qty ? `${r.target_qty.toLocaleString('ko-KR')}개 · ` : ''}
                       {r.target_price ? `희망 ₩${r.target_price.toLocaleString('ko-KR')}` : ''}

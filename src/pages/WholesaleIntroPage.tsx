@@ -77,7 +77,7 @@ export default function WholesaleIntroPage() {
           ].map((s, i) => (
             <div key={i}>
               <div className="text-xl lg:text-2xl font-extrabold text-[#17181C]">{s.n}</div>
-              <div className="text-xs lg:text-sm text-[#F4F5F7]0 mt-1">{s.l}</div>
+              <div className="text-xs lg:text-sm text-[#4E5560] mt-1">{s.l}</div>
             </div>
           ))}
         </div>
@@ -86,7 +86,7 @@ export default function WholesaleIntroPage() {
       {/* 작동 방식 */}
       <section className="ur-content-wide mx-auto px-4 lg:px-8 py-16 lg:py-20">
         <h2 className="text-2xl lg:text-3xl font-extrabold text-center mb-3">어떻게 작동하나요?</h2>
-        <p className="text-center text-[#F4F5F7]0 mb-12">3단계면 충분합니다.</p>
+        <p className="text-center text-[#4E5560] mb-12">3단계면 충분합니다.</p>
         <div className="grid lg:grid-cols-3 gap-6">
           {[
             { icon: Layers, t: '1. 가입 & 등급 부여', d: '유통사는 가입 즉시 C등급으로 시작. 거래 실적에 따라 A·B 상향. 제조사는 상품을 등록(개별/엑셀 대량)합니다.' },
