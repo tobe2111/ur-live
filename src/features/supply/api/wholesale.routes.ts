@@ -339,8 +339,7 @@ app.get('/home', async (c) => {
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
-    const sg = await loadSellerGrade(DB, sellerId)
-    const table = await loadGradeTable(DB)
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
@@ -394,8 +393,7 @@ app.get('/recent-items', async (c) => {
     const ids = [...seen.keys()].slice(0, 12)
     if (!ids.length) return c.json({ success: true, items: [] })
 
-    const sg = await loadSellerGrade(DB, sellerId)
-    const table = await loadGradeTable(DB)
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const ph = ids.map(() => '?').join(',')
     // 현재 구매 가능 + 가시성 통과한 원본 공급상품만 (단종/숨김 제외).
     const prods = await DB.prepare(`
@@ -584,8 +582,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
 
     await ensureSupplyVisibilitySchema(DB)
-    const sg = await loadSellerGrade(DB, sellerId)
-    const table = await loadGradeTable(DB)
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
@@ -809,8 +806,7 @@ app.get('/proposals', async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
       note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
     )`).run().catch(swallow('wholesale:ensure-proposals'))
-    const sg = await loadSellerGrade(DB, sellerId)
-    const table = await loadGradeTable(DB)
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const { results } = await DB.prepare(`
       SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
              COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
@@ -908,8 +904,7 @@ app.get('/catalog-export', async (c) => {
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
-    const sg = await loadSellerGrade(DB, sellerId)
-    const table = await loadGradeTable(DB)
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -938,8 +933,7 @@ app.get('/order-template', async (c) => {
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
-    const sg = await loadSellerGrade(DB, sellerId)
-    const table = await loadGradeTable(DB)
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price,
              COALESCE(p.min_order_qty,1) AS moq, p.supply_margin_override_pct AS margin_override
