@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
@@ -26,7 +27,12 @@ import { ensureTaxDocSchema, splitVat, renderTaxDocHtml, type TaxDocRow } from '
 import { isBarobillConfigured, issueBarobillTaxInvoice, type BarobillEnv } from '@/services/barobill'
 
 const app = new Hono<{ Bindings: Env }>()
+// 🏭 2026-06-07 (보안 audit, 사용자 승인): 이 라우터는 adminApp 밖에 마운트돼 IP 화이트리스트·감사로그가
+//   누락됐었음(환불/세금계산서 발행 등 민감 작업 포함). adminApp(worker/index.ts:278-280)과 동일 체인 적용.
+//   adminIpWhitelist 는 ADMIN_IP_WHITELIST 미설정 시 fail-open(전체 허용)이라 잠김 위험 없음.
+app.use('*', adminIpWhitelist())
 app.use('*', requireAdmin())
+app.use('*', adminAuditMiddleware())
 
 const ASSIGNABLE = ['A', 'B', 'C', 'D', 'OEM'] // SPECIAL 은 직접 배정 X — 특별할인 기간으로만 적용
 

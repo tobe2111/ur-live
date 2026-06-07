@@ -27,10 +27,10 @@ export function safeError(
   const msg = (err as Error)?.message || String(err)
   console.error(`${logTag} ${status} error:`, msg)
 
-  // 🛡️ 2026-05-22 진단성 강화: production 에서도 짧은 _debug 노출 (200자).
-  //   민감 정보 (SQL 전체 스택) 는 길이 제한으로 차단. error type / code 는 노출 → 사용자가 진단 가능.
-  //   - DEV: 500자 (전체 stack).
-  //   - PROD: 200자 (메시지 시작 부분 — code / table name 정도).
+  // 🏭 2026-06-07 (보안 audit, 사용자 승인): production 에서 _debug(원본 에러 메시지) 미노출.
+  //   기존엔 PROD 에서도 200자 노출 → `UNIQUE constraint failed: users.email` 류 메시지로 계정
+  //   enumeration / 내부 스키마 누출 가능했음. 상세는 위 console.error 로 서버 로그(Cloudflare/Sentry)에만
+  //   기록 → 진단성 유지. 응답 _debug 는 DEV 모드에서만 포함.
   const isDev = (() => {
     try {
       const env = (c.env as { ENVIRONMENT?: string; NODE_ENV?: string })
@@ -41,7 +41,7 @@ export function safeError(
     {
       success: false,
       error: userMessage,
-      _debug: msg.slice(0, isDev ? 500 : 200),
+      ...(isDev ? { _debug: msg.slice(0, 500) } : {}),
       _tag: logTag,
     },
     status,

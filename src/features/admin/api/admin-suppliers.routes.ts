@@ -17,8 +17,11 @@ import { matureSupplierSettlements, payoutSupplier } from '@/features/supply/api
 export const adminSuppliersRoutes = new Hono<{ Bindings: Env }>();
 
 function safeAdminError(err: unknown, env: Env): string {
-  const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
-  return isProd ? 'Internal server error' : (err instanceof Error ? err.message : String(err));
+  // 🏭 2026-06-07 (보안 audit, 사용자 승인): DEV 모드에서만 원본 메시지 노출.
+  //   기존엔 production 외 모든 환경(staging/preview)에서 err.message 누출 → SQL/스택 노출 가능했음.
+  const isDev = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'development';
+  if (!isDev) return 'Internal server error';
+  return err instanceof Error ? err.message : String(err);
 }
 
 // ── GET /suppliers — 목록 + 잔고 ──────────────────────────────────────────────
