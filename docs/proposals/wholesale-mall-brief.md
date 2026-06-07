@@ -30,7 +30,11 @@
 | 원천징수 — 기타소득 | **8.8%** (단발성) | `tax-withholding.ts` `WITHHOLDING_RATES.other_income=0.088` |
 | 부가세 처리 | 공급가 = 총액 ÷ 1.1 (10% 분리) | `guide-seed-wholesale.ts` tax 섹션 |
 | MOQ(최소주문수량) | 상품별 설정, 기본 1(낱개), 1~100,000 | `supply-visibility.ts` `min_order_qty`, `supplier-dashboard.routes.ts` |
-| 공급 범위 모드 | ALL / APPROVED_CHANNEL / UTONGSTART_ONLY (3종) | `supply-visibility.ts` `SUPPLY_VISIBILITY_VALUES` |
+| 공급 범위 모드 | ALL / APPROVED_CHANNEL / UTONGSTART_ONLY (3종, self-serve는 UTONGSTART_ONLY→APPROVED 강등) | `supply-visibility.ts` `SUPPLY_VISIBILITY_VALUES`, `normalizeVisibility` |
+| 신규 상품 게이트 | 등록=pending(미노출) → 최저가 검수 후 승인 시 노출 | `supplier-dashboard.routes.ts`, `admin-products.routes.ts` |
+| 판매 중 가격 변경 | 제조사 즉시변경 불가 → `pending_*` 적재(라이브 불변) → 운영 승인 시 반영 + 이력 | `supplier-dashboard.routes.ts` price-change-request, `admin-products.routes.ts` price-change |
+| OEM/ODM | 신청 `open→matching→matched`, OEM 등급 8% | `oem-requests.ts`, `/wholesale/oem` |
+| 전자세금계산서 | 바로빌 키 설정 시 자동 발행, 미설정 시 내부(인쇄용) 발행 | `services/barobill.ts`, `distributor-admin.routes.ts` |
 | 결제 방식 | 선결제(Toss) — 외상/여신 없음(초기) | `wholesale-utongstart.md` D-F |
 | 도메인 | **utongstart.com** (live.ur-team.com 과 같은 코드/DB, 호스트 인식 라우팅) | `wholesale-utongstart.md` Phase 5/6 |
 | 셀러 정산 기본 수수료(소비자 라이브커머스) | 5% (`platform_settings.commission_rate_default`) | `CLAUDE.md` |
@@ -54,6 +58,39 @@
 ### 1-3. 타깃별 핵심 메시지 (한 줄)
 - **제조사**: "만들기만 하세요. 판로·영업·정산은 유통스타트가." (무재고 드랍쉽 + 검증된 유통망 + 빠른 정산)
 - **유통사**: "사입 0원, 재고 0개로 도매 유통을 시작하세요." (등급 공급가 + 무재고 + 자동 정산)
+
+---
+
+## 1-A. 📌 이 소개서의 범위 & 경계 (다른 소개서와 헷갈리지 않게 — 필독)
+
+> **이 소개서 = 유어딜의 B2B(도매·유통) 사업 전부의 단일 소유 문서(SSOT).** 아래 D1~D6(도매 카탈로그·주문, 제조사 대시보드, 유통사 등급제, OEM/ODM, 명세서/세금계산서, B2B 정산)을 **빠짐없이** 다룬다. B2C(소비자 대면) 사업은 별도 소개서가 소유하므로 여기서는 다루지 않는다. (출처: `00-service-overview-and-coverage.md` 카테고리 D + §4-1)
+>
+> **📌 정책 결정 (2026-06-07)**: 4대 소개서 체계는 유지하고, **B2B 도매(유통스타트)의 모든 sub-line(D1~D6)은 본 문서가 흡수·소유**한다. 다른 소개서(온라인 입점·오프라인 공구·링크샵)는 B2B를 다루지 않으며, B2B 관련 질문이 나오면 본 문서로 라우팅한다. 본 문서가 다루는 전면 영역(반드시 포함): **① 도매 카탈로그/주문(§7, §9-B), ② 제조사 대시보드(§5, §7-1), ③ 유통사 등급제(A/B/C/D/OEM/SPECIAL + 상품별 override + volume tier — §6-1, §8-1), ④ OEM/ODM 매칭(§6-A), ⑤ 거래명세서/세금계산서·바로빌·부가세 분리(§8-5), ⑥ B2B 정산(성숙·환불창·1일 한도·환불 역전 — §8-2~8-4), ⑦ 온라인 최저가 검수 + 공급가 변경 승인(§9-A), ⑧ 합배송/드랍쉽/송장 CSV(§9-B), ⑨ 공급 범위 3종 + 유통채널 선정(§9-C), ⑩ 전용 운영 가이드 인계(§11).**
+
+### 1-A-1. B2B(이 소개서) vs B2C(온라인 입점·기타 소개서) 대비표
+
+| 축 | **이 소개서 = B2B 도매몰 (유통스타트)** | 온라인 입점 / 오프라인 공구 / 링크샵 = B2C |
+|---|---|---|
+| **거래 당사자** | 제조사 ↔ (플랫폼) ↔ **유통사** (사업자 간 사입) | 셀러 → **최종 소비자** |
+| **도메인** | **utongstart.com** (루트 진입 시 `/wholesale/intro` 302) | live.ur-team.com |
+| **"주문"의 의미** | **B2B 사입** — 유통사가 도매 공급가로 떼는 도매 발주(`wholesale_orders`) | 소비자 개별 구매·공동구매(`orders`) |
+| **가격** | **등급별 차등 공급가**(원가 비노출) | 단일 소비자 판매가(공개) |
+| **결제 주체** | 유통사(사업자)가 선결제 | 소비자가 결제 |
+| **정산 대상** | 제조사(supplier) — `supplier_settlements` source=`wholesale` | 셀러/매장 — `settlements` |
+| **테마/UI** | **라이트 테마 고정**(B2B 신뢰), 소비자 BottomNav 미표시 | 다크/라이트 토글 등 소비자 UX |
+| **코드 주체** | `suppliers`(제조) + `sellers`+`distributor_grade`(유통) | `sellers`, `users` |
+| **소유 소개서** | **wholesale-mall-brief (본 문서)** | online-listing / offline-groupbuy / linkshop |
+
+### 1-A-2. ⚠️ "공동구매"·"드랍쉽" 용어 충돌 주의 (혼동 차단)
+
+- **도매몰의 "주문/사입" ≠ 소비자 "공동구매".** 소비자 공동구매(A6, 온라인 입점 소유)는 *즉시판매형 단일가* 모델로 최종 소비자가 산다. 도매몰의 주문은 *유통사(사업자)가 재판매 목적으로 떼는* B2B 발주다. **같은 단어라도 경제·당사자·테이블이 다르다.**
+- **드랍쉽도 2종 존재**: (1) **B2B 드랍쉽**(이 소개서) = 유통사가 무재고로 도매 등록, 제조사가 소비자에게 직배송(`wholesale_orders` → 제조사 송장). (2) **소비자 드랍쉽/위탁**(온라인 입점) = 셀러가 공급상품(`products.supply_source_id`)을 복제 등록, 판매 시 원본 제조사에게 즉시 split 적립(`supply-settlement.ts` source=`consumer`, 7일 환불창). **둘은 정산 소스(`wholesale` vs `consumer`)로 코드상 완전 분리**된다.
+
+### 1-A-3. B2B↔B2C 연결 — "판로 2배" 메시지 (제조사 어필)
+
+> 같은 코드베이스/DB이므로, 도매몰에 올린 제조사 공급상품은 **(1) utongstart.com 도매 카탈로그(유통사 사입)** 와 **(2) live.ur-team.com 셀러가 위탁/드랍쉽으로 복제 판매(소비자向)** 두 판로에 동시 노출될 수 있다(`supply_source_id` 연결). 즉 **"한 번 등록 → B2B·B2C 양쪽 판로"**. 단, 본 소개서의 핵심 메시지는 **B2B 도매**이며 B2C 연결은 보조 가치로만 1줄 언급한다. (출처: `00-service-overview` §4-1 "판로 2배", `supply-settlement.ts`)
+
+> **[디자인 지시: 그라데이션]** 1-A-1 대비표의 **헤더행은 시그니처 그라데이션**(흰 글자), B2B 컬럼 셀에 시그니처 포인트·B2C 컬럼은 뉴트럴 회색(`#F4F5F7`). 표 본문 데이터는 흰/뉴트럴 위(가독). 상단 섹션 라벨 칩만 시그니처 띠. 별도 슬라이드로 뽑을 경우 "**B2B vs B2C — 우리가 어느 쪽을 말하나**" 헤드라인.
 
 ---
 
@@ -188,6 +225,22 @@
 
 ---
 
+## 6-A. 🏭 OEM/ODM 매칭 (제조 위탁 — 전용 타깃)
+
+> 단순 사입을 넘어 **"내 브랜드로 만들고 싶다"** 는 유통사를 위한 제조 위탁 매칭. 일반 등급제와 별개 흐름·전용 등급(OEM 8%). (출처: `oem-requests.ts`, `distributor-admin.routes.ts` OEM 관리, `distributor-pricing.ts` `DEFAULT_GRADE_MARGINS.OEM=8`)
+
+### 6-A-1. 흐름 (상태 머신)
+- 유통사 신청(`open`) → 유통스타트 검토/제조사 찾기(`matching`) → 제조사 매칭 완료(`matched`) → 종료(`closed`) / 반려(`rejected`). (`oem-requests.ts` `OEM_STATUSES`)
+- 신청 항목: 종류(OEM/ODM), 상품명, 카테고리, 목표 수량(`target_qty`), 목표 단가(`target_price`), 메모. 매칭 시 `matched_supplier_id` + `admin_memo` 기록. (`oem_requests` 테이블)
+
+### 6-A-2. 가치
+- **유통사**: 좋은 제조사를 직접 못 찾아도 유통스타트가 **제조사 찾기·연결·생산까지 지원**. 제조 위탁 거래는 **OEM 등급(8% — 최저 마진대)** 로 공급.
+- **제조사**: 새 OEM/ODM 생산 물량 수주 채널(자기 브랜드 외 추가 매출).
+
+> **[디자인 지시: 그라데이션]** "**내 브랜드로 만들고 싶다면**" 헤드라인. 신청→매칭→생산 4단계 타임라인(단계 배지 = 시그니처 그라데이션 원, "매칭" 노드 = warm 그라데이션). OEM 8% 배지는 시그니처 그라데이션. 진입: `/wholesale/oem`.
+
+---
+
 ## 7. 작동 방식 (스텝 바이 스텝)
 
 > **[디자인 지시]** 제조사 흐름과 유통사 흐름을 **별도 타임라인**으로. 번호 원형 스텝 + 화살표.
@@ -242,10 +295,14 @@
 > ⚠️ 원천징수는 개인(비사업자) 정산에 적용. 사업자(세금계산서 발행) 거래는 원천징수 없이 세금계산서로 처리. 도매몰 제조사·유통사가 사업자인지/개인인지에 따라 분기 — 소개서에는 "사업자: 세금계산서 / 개인: 원천징수 3.3%" 로 표기 권장.
 
 ### 8-5. 세금계산서 / 거래명세서 (바로빌)
-- **매출 방향**(유통스타트 → 유통사) / **매입 방향**(제조사 → 유통스타트).
+- **2종 문서**: 세금계산서(`tax_invoice`) + 거래명세서(`transaction_statement`). (`tax-documents.ts` `TAX_DOC_TYPES`)
+- **방향**: **매출(sales)** = 유통스타트 → 유통사(`distributor_seller_id` 기준), **매입(purchase)** = 제조사 → 유통스타트(`supplier_id` 기준). (`tax-documents.ts`)
 - 부가세 10% 분리: 공급가 = 총액 ÷ 1.1.
-- 1차 수동 집계·발행 → `BAROBILL_*` 환경변수 + 플랫폼 사업자정보 설정 시 **바로빌 전자세금계산서 자동 발행** 전환.
-- 출처: `tax-documents.ts`, `guide-seed-wholesale.ts` tax §.
+- **2단 발행 구조 (코드 정밀)**:
+  - **(기본/폴백) 내부 발행** — 외부 의존 0으로 발행 기록(`draft→issued/void`) + **인쇄용 HTML**(브라우저 인쇄/PDF 저장) 생성. 단, 이 문서엔 *"정식 전자세금계산서는 별도 발행"* 명시. (`tax-documents.ts`)
+  - **(활성 시) 바로빌 전자세금계산서 자동 발행** — `src/services/barobill.ts` 연동이 이미 구현. `isBarobillConfigured()`(= `BAROBILL_TEST_API_KEY`/`BAROBILL_PROD_API_KEY` 설정 여부)가 true면 `issueBarobillTaxInvoice()` 로 실제 전자세금계산서 발행. 미설정이면 위 내부 발행만. (`distributor-admin.routes.ts` 가 `isBarobillConfigured` 게이트 후 `issueBarobillTaxInvoice` 호출)
+  - 운영서버/테스트서버는 `BAROBILL_ENV` 로 분기. **소개서 표기 권장**: "전자세금계산서 자동발행은 바로빌 키 설정 시 활성 — `[확인 필요]` 현재 운영 활성 여부".
+- 출처: `tax-documents.ts`, `src/services/barobill.ts`, `distributor-admin.routes.ts`, `guide-seed-wholesale.ts` tax §.
 
 > **[디자인 지시]** 정산 타임라인을 가로 타임라인으로: "결제 → (브랜드 익일 / 일반 7일) → 정산 지급". 1억/일 한도와 원천징수율은 작은 각주 표로.
 
@@ -262,6 +319,69 @@
 - **신원·원가 양방향 마스킹** — 제조사 원가/신원 ↔ 유통사 명단 서로 비노출. 직거래 차단.
 - **사업자/이메일 검증** — 카카오 same-email 자동연결은 `email_verified===1` 일 때만(계정 takeover 차단). (`guide-seed-wholesale.ts`)
 - **rate limit** — `/orders`·`/orders/confirm` 30회/60초. (`wholesale-utongstart.md` 견고화)
+
+---
+
+---
+
+## 9-A. 🔍 온라인 최저가 검수 + 공급가 변경 승인 워크플로 (신뢰 축 — 최근 구현, 정밀 상세)
+
+> **이 절은 "가격 질서를 시스템이 지킨다"의 코드 정밀판.** 신규 상품 등록 시 **온라인 최저가 검수**, 판매 중 가격은 **운영 승인 없이는 못 바꾸는** 2단 게이트. (출처: `supply-visibility.ts`(스키마), `supplier-dashboard.routes.ts`(제조사 요청), `admin-products.routes.ts`(운영 승인))
+
+### 9-A-1. 신규 상품 — 온라인 최저가 검수 (등록 시 1회)
+- 제조사가 상품 등록 시 **온라인 최저가 참고 링크(`lowest_price_url`)** 제출. `http(s)` 만 허용, 500자 제한, 비정상 입력은 NULL 처리. (`supplier-dashboard.routes.ts` POST `/products`)
+- 등록 직후 상태 = `supply_approval_status='pending'` + `is_active=0` → **유통사 카탈로그에 아직 안 보임**.
+- 어드민이 `/admin` 상품 검수에서 최저가 링크로 시세 확인 → 승인 시 `action=approve` + **`lowest_price_checked` 체크(1)** → `supply_approval_status='approved'`, `is_active=1` 로 라이브 노출. 반려 시 `rejected` + `is_active=0`. (`admin-products.routes.ts` PATCH `/supplier-products/:id`)
+- 즉 **검수 안 된 상품은 카탈로그에 못 올라온다** → 최저가 출혈/허위 시세 차단.
+
+### 9-A-2. 판매 중 상품 — 공급가 변경 승인 (2단 게이트, 라이브가 불변)
+- **승인된(판매 중) 상품의 가격은 제조사가 즉시 못 바꾼다.** 변경은 **요청만** 적재되고 라이브 `supply_price`/`price`는 **그대로 유지**. (`supplier-dashboard.routes.ts` POST `/products/:id/price-change-request`)
+  - 요청 시 `pending_supply_price`, `pending_retail_price`, `pending_price_url`(근거 링크), `pending_price_reason`(사유), `pending_price_requested_at`(요청 시각)에 적재.
+  - 응답 메시지: **"가격 수정 요청이 접수되었습니다. 운영진 승인 후 반영됩니다. (승인 전까지 기존 가격 유지)"**.
+- 어드민 큐: `status=price_change` 필터 = `pending_supply_price IS NOT NULL` 인 상품만, **요청 시각순(`pending_price_requested_at DESC`)** 정렬. (`admin-products.routes.ts` 목록)
+- 운영 승인 `action=approve` → `pending_*` 를 라이브 `supply_price`/`price` 로 반영 + **공급가 변경 이력 기록**(`supply_price_history`, `changed_by='admin:price-change'`) + `pending_*` 클리어. 거부 `action=reject` → `pending_*` 만 폐기, **라이브 가격 불변**. (`admin-products.routes.ts` PATCH `/supplier-products/:id/price-change`)
+- 결과 알림: 제조사 대시보드에 `supply_price_change_approved` / `_rejected` 발송 + `writeAuditLog`(`supplier_price_change_approve/reject`). 감사 추적 보장.
+
+### 9-A-3. 왜 이게 신뢰인가 (소개서 카피용 요지)
+- **결제 안정** — 승인 전까지 노출가가 안 흔들려, 유통사가 본 가격이 결제 시점과 항상 일치.
+- **시세 보호** — 신규는 최저가 검수, 변경은 운영 승인 → **누구도 임의로 가격을 흔들 수 없다.**
+- **이력 보존** — 모든 공급가 변경은 `supply_price_history` 에 old→new 로 적재(관리자만 열람).
+
+> **[디자인 지시: 그라데이션]** 9-A를 별도 슬라이드로 뽑을 경우 "**가격은 시스템이 지킵니다**" 헤드라인. **2단 게이트 플로우**(신규: 등록→최저가검수→승인노출 / 변경: 요청적재(가격불변)→운영승인→반영)를 좌우 2트랙으로. 단계 번호 배지는 **시그니처 그라데이션 원**, "운영 승인/검수" 게이트 노드만 **warm 그라데이션** + 자물쇠 글리프. "승인 전까지 기존 가격 유지" 문구는 뉴트럴 카드 위 굵게.
+
+---
+
+## 9-B. 📦 합배송 · 드랍쉽 · 송장(CSV 일괄) — 물류 흐름 정밀 상세
+
+> **무재고 드랍쉽의 실제 송장/발송 코드.** 제조사가 소비자에게 직배송하되, 송장은 유통사·구매자 화면에 노출되고 제조사↔유통사 신원은 상호 비노출. (출처: `wholesale-supplier.routes.ts`, `supplier-dashboard.routes.ts` PUT `/orders/:orderId/shipping`)
+
+| 기능 | 동작 | 출처 |
+|---|---|---|
+| **개별 송장 입력** | 라인별 택배사+운송장 입력 → `line_status='SHIPPED'`. 택배사 키 정규화(`normalizeCourierKey`) + `shipping_tracking_events` 기록(기존 셀러 배송 인프라 재사용) | `wholesale-supplier.routes.ts` POST `/items/:id/ship`, `supplier-dashboard.routes.ts` PUT `/orders/:orderId/shipping` |
+| **합배송(ship-all)** | 한 주문 안의 **내(제조사) 미발송(PENDING) 라인 전체를 송장 1개로 일괄 발송** — 소유권+상태 가드를 한 문장으로 원자 처리 | `wholesale-supplier.routes.ts` POST `/orders/:id/ship-all` |
+| **송장 CSV 일괄 업로드** | `item_id, courier, tracking_number` CSV(최대 5,000행) 업로드 → 내 라인만 일괄 `SHIPPED`. 중복 item_id 는 마지막 우선, 누락 행은 skip 사유 반환. SQLite 변수 999 한도 회피(IN 청크) | `wholesale-supplier.routes.ts` POST `/tracking/bulk` |
+| **발송대기 주문 CSV export** | `item_id/주문/상품명/수량/공급가/정산금액/상태/받는분/연락처/주소/우편번호/결제일/courier/tracking_number` 양식 다운 → 외부 처리 후 재업로드 | `wholesale-supplier.routes.ts` GET `/orders/export` |
+| **전 라인 발송 시 주문 SHIPPED** | 한 주문의 모든 라인 발송 완료 시 주문 상태 자동 SHIPPED 승격(한 문장, 청크) | `wholesale-supplier.routes.ts` |
+| **드랍쉽 직배송** | 유통사는 무재고 — 제조사가 받는분(소비자) 주소로 직배송. 받는분/연락처/주소는 **본인(제조사) 라인만** 노출 | `supplier-dashboard.routes.ts` GET `/orders` |
+
+> **[디자인 지시: 그라데이션]** 별도 슬라이드 시 "**송장 한 번에, 발송도 한 번에**" 헤드라인. 개별/합배송/CSV 3개 카드는 **subtle 라이트 그라데이션** + 아이콘 원(시그니처). "합배송 = 송장 1개" 핵심 스탯은 시그니처 그라데이션 텍스트.
+
+---
+
+## 9-C. 🎯 공급 범위(supply_visibility) 3종 + 유통채널 선정 — 거래처 보호 정밀 상세
+
+> 제조사가 **누구에게 공급할지** 통제하는 3단 모드. 가격 질서·거래선 보호의 핵심. (출처: `supply-visibility.ts` `SUPPLY_VISIBILITY_VALUES`, `normalizeVisibility`)
+
+| 모드 | 의미 | 노출 대상 |
+|---|---|---|
+| **ALL** (기본) | 전체공급 | 모든 선별 유통사 |
+| **APPROVED_CHANNEL** | 승인한 유통채널 공급 | 허용목록(`product_distributor_access`)에 등록된 유통사만 |
+| **UTONGSTART_ONLY** | 유통스타트 유통채널 공급 | **관리자가 선정한** 유통사만 (허용목록 동일 사용) |
+
+- **selfServe 강등 가드**: 제조사 self-serve 입력에서는 `UTONGSTART_ONLY`(= 관리자 선정 전용)를 직접 설정 못 함 → 자동으로 `APPROVED_CHANNEL`(본인 승인 채널)로 강등. 관리자(distributor-admin) 경로만 3종 모두 허용. (`normalizeVisibility(v, selfServe)`)
+- **가시성 SQL**: `supply_visibility='ALL'` 이거나 `product_distributor_access` 에 (상품, 유통사) row 존재 시에만 카탈로그 노출(`visibilityWhere`). → 거래처 비공개 공급이 서버 레벨에서 보장.
+
+> ⚠️ MOQ(`min_order_qty`)는 상품별 1~100,000(기본 1, 박스 단위). CSV/개별 등록 모두 클램프, 주문 시 서버가 `qty >= MOQ` 검증. 카탈로그 카드/상세/카트에 박스·개당 단가 병기. (`supply-visibility.ts`, `supplier-dashboard.routes.ts`, `supply.routes.ts`)
 
 ---
 
@@ -292,11 +412,17 @@
 | 제조사 가입 | `/supplier/register` | 어드민 승인 필요 |
 | 도매 카탈로그 | `/wholesale` | 미로그인 시 `/wholesale/intro` 로 유도 |
 | 제조사 대시보드 | `/supplier` | 상품·송장·정산·발송 |
+| 제조사 도매주문 | `/supplier/wholesale-orders` | 도매 주문 접수·발송(개별/합배송/CSV) |
+| OEM/ODM 신청 | `/wholesale/oem` | 유통사 제조 위탁 신청 → 어드민 매칭 |
+| 거래명세서/세금계산서 | `/wholesale/statement`, `/wholesale/documents` | 유통사 문서 조회·인쇄 |
+| 등급 관리(어드민) | `/admin/distributor-grades` | 등급별 마진율 조정·유통사 등급 배정 |
 | 전용 운영 가이드 | `/admin/wholesale-guide` | 운영 SSOT |
 | **도메인** | **utongstart.com** | 같은 코드/DB, 루트 진입 시 `/wholesale/intro` 로 302 |
 
-- **CSV 대량등록**: 제조사 대량 상품등록/주문 export/송장 일괄, 유통사 카탈로그·주문 양식, 어드민 상품정보 엑셀(A/B/C 등급가).
-- **OEM/ODM 신청·매칭** 지원.
+- **CSV 대량등록**: 제조사 대량 상품등록/주문 export/송장 일괄, 유통사 카탈로그·주문 양식(`/order-template`), 어드민 상품정보 엑셀(A/B/C 등급가 — `distributor-admin.routes.ts` GET `.xlsx`).
+- **OEM/ODM 신청·매칭**: 유통사 `/wholesale/oem` 신청 → 어드민 OEM 관리에서 제조사 매칭(§6-A).
+
+> **🛠 운영 인계 — 전용 운영 가이드**: 도매몰(B2B) 전 영역 운영 SSOT 가이드가 **`/admin/wholesale-guide`** 에 존재(라우트 `admin.routes.tsx`, 시드 `guide-seed-wholesale.ts`). 가입 승인·등급 배정·최저가 검수·가격변경 승인·정산·세금계산서·OEM 매칭 등 운영 절차가 여기에 정리됨. 소개서 배포 시 운영팀은 이 가이드를 함께 인계받는다.
 
 ---
 
@@ -331,7 +457,7 @@
 ### S5. 유통사 혜택
 - **헤드라인**: "사입 0원, 재고 0개로 시작"
 - **부제**: 등급 공급가로 검증된 상품만 골라 파세요
-- **불릿**: 무재고 / 등급별 마진(A 10%부터) / 수량 할인 / 합배송 / 자동 정산·세금계산서
+- **불릿**: 무재고 / 등급별 마진(A 10%부터) / 수량 할인 / 합배송·송장 일괄 / 자동 정산·세금계산서 / OEM·ODM 제조 위탁 매칭
 - **[디자인 지시: 그라데이션]** 혜택 카드는 S4와 동일 **subtle 라이트 그라데이션** 카드 + **시그니처 그라데이션 아이콘 원**. "**사입 0원**" "**재고 0개**" 핵심 스탯 숫자는 **시그니처 그라데이션 텍스트**(굵은 탭형 숫자)로 시선 집중. 수익/마진 카드 아이콘은 **warm 그라데이션**(기회·수익). 유통사 트랙 표식 칩은 레드 포인트.
 
 ### S6. 작동 방식
@@ -386,6 +512,12 @@
    - **[그라데이션]** 스크린샷 프레임은 **neutral depth 그라데이션** 카드 테두리(`#FFFFFF→#F4F5F7`)로 감싸고, 캡션 라벨 칩만 시그니처 그라데이션.
 8. **[디자인 지시] 마진 계산 예시 카드** (§6-2) — 원가 1만원 → 등급별 공급가 비교.
    - **[그라데이션]** 카드 = **subtle 라이트 그라데이션**, 결과 공급가 숫자(11,000/12,000원)는 **시그니처 그라데이션 텍스트**로 강조, 본문은 흰 카드 위.
+9. **[디자인 지시] 2단 가격 게이트 다이어그램** (§9-A) — 신규(등록→최저가검수→노출) / 변경(요청적재·가격불변→운영승인→반영) 2트랙. "승인 전까지 기존 가격 유지" 강조.
+   - **[그라데이션]** 단계 배지 = 시그니처 그라데이션 원, 검수/승인 게이트 노드만 **warm 그라데이션** + 자물쇠. 진행선 = 옅음→진함.
+10. **[디자인 지시] 물류 흐름(합배송/드랍쉽/송장 CSV)** (§9-B) — 개별/합배송/CSV 3카드 + 제조사→소비자 직배송 화살표.
+   - **[그라데이션]** 3카드 = subtle 라이트, 아이콘 원(시그니처), "합배송=송장 1개" 스탯은 시그니처 그라데이션 텍스트.
+11. **[디자인 지시] OEM/ODM 매칭 타임라인** (§6-A) — 신청→매칭→생산. "매칭" 노드만 warm 그라데이션, OEM 8% 배지 시그니처.
+12. **[디자인 지시] 공급 범위 3종 모드** (§9-C) — ALL/APPROVED_CHANNEL/UTONGSTART_ONLY 노출 범위 비교. 자물쇠로 배타 공급 표현.
 
 ---
 
@@ -403,7 +535,11 @@
 5. **Q. 특정 유통사에게만 공급하고 싶어요.**
    A. 공급 범위를 **승인한 유통채널(APPROVED_CHANNEL)** 로 설정하면 선정된 유통사만 노출됩니다.
 6. **Q. 세금계산서는 누구에게 발행하나요?**
-   A. **유통스타트 앞**으로 발행합니다(매입 방향). 유통사 대상 발행은 유통스타트가 합니다.
+   A. **유통스타트 앞**으로 발행합니다(매입 방향). 유통사 대상 발행은 유통스타트가 합니다. 전자세금계산서는 바로빌 키 설정 시 자동 발행, 미설정 시 내부 발행(인쇄용)으로 갈음됩니다.
+7. **Q. 가격을 올렸는데 왜 바로 안 바뀌나요?**
+   A. 판매 중 상품 가격은 **운영 승인 전까지 기존 가격이 유지**됩니다(가격 질서·결제 안정 보호). 요청은 접수되어 운영진 검토 후 반영되며, 모든 변경은 이력으로 남습니다.
+8. **Q. 특정 유통사에게만 배타 공급할 수 있나요?**
+   A. **승인한 유통채널(APPROVED_CHANNEL)** 로 설정하면 허용목록의 유통사만, 관리자 선정 전용 **유통스타트 채널(UTONGSTART_ONLY)** 모드도 있습니다(관리자 경로 전용).
 
 ### 14-2. 유통사 FAQ
 1. **Q. 사입 자금이 필요한가요?**
@@ -418,6 +554,10 @@
    A. **유통스타트가 유통사 앞으로** 발행합니다. `/wholesale/documents`·`/wholesale/statement` 에서 조회·인쇄.
 6. **Q. 결제 후 재고가 없으면?**
    A. oversell 가드가 작동해 **자동 전액 환불**됩니다(안전결제).
+7. **Q. 내 브랜드로 직접 만들고 싶어요(OEM/ODM).**
+   A. `/wholesale/oem` 에서 상품명·목표 수량·목표 단가로 신청하면, 유통스타트가 **제조사 찾기·연결·생산까지** 지원합니다(OEM 등급 8% 공급).
+8. **Q. 박스 단위로만 떼야 하나요?**
+   A. 상품별 **최소 주문 수량(MOQ)** 이 설정될 수 있습니다(기본 1, 박스 단위). 카탈로그에 박스·개당 단가가 함께 표시되고, 주문 시 MOQ 미만이면 서버가 차단합니다.
 
 > ⚠️ FAQ 의 마진율(C 20% 등)은 운영자 조정 가능한 기본값. 소개서에는 "예시 기본 마진율" 단서 권장.
 
