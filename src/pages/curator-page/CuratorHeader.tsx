@@ -153,6 +153,12 @@ export default function CuratorHeader({
             loading="eager"
             fetchPriority="high"
             decoding="async"
+            onError={(e) => {
+              // 🏭 2026-06-07 (사용자 신고 — 배경 업로드 표시 실패): resize 프록시가 깨진 응답을 줄 때
+              //   same-origin R2 원본(/api/media/*)으로 1회 폴백 → 깨진 이미지 아이콘 방지.
+              const img = e.currentTarget
+              if (img.dataset.fb !== '1' && curator.banner_url) { img.dataset.fb = '1'; img.src = curator.banner_url }
+            }}
           />
         ) : (
           <div className="w-full h-full" style={{ background: gradientCss }} />
@@ -202,6 +208,12 @@ export default function CuratorHeader({
                   className="w-full h-full object-cover"
                   loading="eager"
                   decoding="async"
+                  onError={(e) => {
+                    // 🏭 2026-06-07 (사용자 신고 — 프로필 업로드 표시 실패): resize 프록시 깨진 응답 시
+                    //   same-origin R2 원본으로 1회 폴백.
+                    const img = e.currentTarget
+                    if (img.dataset.fb !== '1' && curator.profile_image) { img.dataset.fb = '1'; img.src = curator.profile_image }
+                  }}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-2xl font-bold text-white">

@@ -1624,6 +1624,12 @@ app.get('/api/image/resize', async (c) => {
       } as any
     });
 
+    // 🏭 2026-06-07 (사용자 신고 — 링크샵 배경/프로필 업로드 이미지 표시 실패):
+    //   same-zone cf.image 서브요청이 비-2xx(또는 변환 실패)면 에러 본문을 image/webp 로 위장해
+    //   200 으로 스트리밍 → 브라우저가 깨진 이미지로 표시 (throw 아니라 catch redirect 도 안 탐).
+    //   ok 아니면 원본 URL 로 redirect → same-origin R2 서빙(/api/media/*)이 정상 status 로 응답.
+    if (!response.ok) return c.redirect(url);
+
     const headers = new Headers(response.headers);
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
