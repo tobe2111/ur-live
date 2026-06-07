@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MapPin, Phone, Clock, Users, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
@@ -17,10 +17,8 @@ import { useInvalidateMyVouchers } from '@/hooks/queries'
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
 //   - RestaurantMiniMap: 매장 정보 아래 (fold 직후, Kakao Maps SDK 포함)
-//   - ProductReviewsSection: 페이지 맨 아래
 const Confetti = lazy(() => import('@/components/group-buy/Confetti'))
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
-const ProductReviewsSection = lazy(() => import('@/pages/product-detail/ProductReviews'))
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -560,21 +558,21 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        {/* 이미지 + 상태 */}
-        <div className="relative bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
+        {/* 이미지 + 상태 — 🏭 2026-06-07 (사용자 요청): 화면 가득 채우는 full-bleed (당근 스타일). 패딩 밖으로 확장. */}
+        <div className="relative -mx-4 lg:-mx-8 -mt-4 bg-white dark:bg-[#0A0A0A] overflow-hidden">
           {detail.image_url ? (
             <img
               src={detail.image_url}
               alt={detail.name}
-              className="w-full aspect-[4/3] object-cover bg-gradient-to-br from-pink-50 to-rose-100"
+              className="w-full aspect-square object-cover bg-gradient-to-br from-pink-50 to-rose-100"
               width={1200}
-              height={900}
+              height={1200}
               loading="eager"
               decoding="async"
               fetchPriority="high"
             />
           ) : (
-            <div className="w-full aspect-[4/3] bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center text-6xl">
+            <div className="w-full aspect-square bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center text-6xl">
               <CategoryEmoji cat={detail.category} />
             </div>
           )}
@@ -645,6 +643,14 @@ export default function GroupBuyDetailPage() {
           </div>
         </div>
 
+        {/* 🏭 2026-06-07 (사용자 요청): 이 공구를 올린 셀러가 작성한 안내 내용을 안내문구처럼 노출. */}
+        {detail.description && (
+          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A]">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">공구 안내</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{detail.description}</p>
+          </div>
+        )}
+
         {/* 🏭 2026-06-06 (사용자 요청 — 구매 신뢰도): 안전결제·정품·환불 trust 배지 줄. 정적(데이터 무관). */}
         <div className="grid grid-cols-3 gap-2">
           {[
@@ -673,74 +679,8 @@ export default function GroupBuyDetailPage() {
           </Suspense>
         )}
 
-        {/* 진행 현황 + 티어 */}
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-pink-500" />
-              <span className="text-sm font-bold text-gray-900 dark:text-white">진행 현황</span>
-            </div>
-            <span className="text-2xl font-extrabold text-pink-500">{Math.round(progress)}%</span>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mb-1.5">
-              <span><span className="font-bold text-gray-900 dark:text-white">{detail.group_buy_current}</span>명 참여</span>
-              <span>목표 {detail.group_buy_target}명</span>
-            </div>
-            <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-3 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  detail.group_buy_status === 'achieved' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                  progress >= 80 ? 'bg-gradient-to-r from-pink-500 to-rose-500 animate-milestone-pulse' :
-                  progress >= 50 ? 'bg-gradient-to-r from-pink-500 to-rose-500' :
-                  'bg-gradient-to-r from-pink-400 to-rose-400'
-                }`}
-                style={{ width: `${progress}%` }}
-                role="progressbar"
-                aria-valuenow={Math.round(progress)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`공구 진행률 ${Math.round(progress)}%`}
-              />
-            </div>
-
-            {/* 🛡️ 2026-05-30: 즉시판매 단일가 — 인원 기반 "할인 시작!" / 단계별 사다리 제거.
-                공구가는 이미 최대 할인이 적용된 고정가 (design/groupbuy-instant-sale.md). */}
-            {detail.current_discount_pct > 0 && (
-              <p className="text-[11px] text-pink-600 mt-2 flex items-center gap-1 font-medium">
-                <Sparkles className="w-3 h-3" />
-                최대 {detail.current_discount_pct}% 할인된 공구가가 지금 바로 적용돼요
-              </p>
-            )}
-            {detail.group_buy_target > 0 && detail.group_buy_target - detail.group_buy_current === 1 && (
-              <p className="text-[11px] text-red-600 mt-2 font-bold animate-pulse">🔥 1명만 더 모이면 목표 달성!</p>
-            )}
-          </div>
-        </div>
-
-        {/* 참여자 아바타 */}
-        {participants.length > 0 && (
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A]">
-            <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-3">최근 참여자 ({participants.length}명)</p>
-            <div className="flex flex-wrap gap-1.5">
-              {participants.slice(0, 12).map((p, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#121212] rounded-full text-[10px] text-gray-600 dark:text-gray-300"
-                  title={`${p.masked_name} · ${p.quantity}장`}
-                >
-                  {p.avatar ? (
-                    <img src={p.avatar} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover" loading="lazy" decoding="async" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-300 to-rose-300" />
-                  )}
-                  <span>{p.masked_name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* 🏭 2026-06-07 (사용자 요청): 진행 현황(참여율/목표) + 참여자 아바타 제거 —
+            공구는 1인이라도 즉시 구매 가능(즉시판매 단일가)하므로 참여 인원 진척도가 무의미. */}
 
         {/* 🛡️ 2026-05-15: 본인 product 인 경우 셀러 대시보드 진입점 (공구 플로우 활용도 ↑) */}
         {isOwnProduct && (
@@ -759,49 +699,7 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        {/* 🛡️ 2026-05-15: Promo 코드 입력 — 단골/신규 할인 코드 */}
-        {isJoinable && !isOwnProduct && (
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
-            <p className="text-xs font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-1">
-              🎁 할인 코드 (선택)
-            </p>
-            {promoPreview ? (
-              <div className="flex items-center gap-2 p-2.5 bg-pink-50 border border-pink-200 rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-pink-700 font-mono">{promoCode.toUpperCase()}</p>
-                  <p className="text-[11px] text-pink-600 mt-0.5">{promoPreview.discount_pct}% 추가 할인 적용됨</p>
-                </div>
-                <button
-                  onClick={clearPromo}
-                  className="px-2 py-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                >
-                  해제
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={e => { setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)); setPromoError('') }}
-                    placeholder="DANGOL10"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 dark:text-white focus:border-pink-500 focus:outline-none"
-                    maxLength={20}
-                  />
-                  <button
-                    onClick={checkPromo}
-                    disabled={checkingPromo || promoCode.length < 4}
-                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold whitespace-nowrap"
-                  >
-                    {checkingPromo ? '확인…' : '적용'}
-                  </button>
-                </div>
-                {promoError && <p className="text-[11px] text-red-500 mt-1.5">{promoError}</p>}
-              </div>
-            )}
-          </div>
-        )}
+        {/* 🏭 2026-06-07 (사용자 요청): 할인 코드(선택) 입력 제거. */}
 
         {/* 셀러 정보 + SNS — 🛡️ 2026-05-27 사용자 요청: 채팅/매너온도 X, SNS 만 */}
         {detail.seller_name && (() => {
@@ -869,12 +767,7 @@ export default function GroupBuyDetailPage() {
           </p>
         )}
 
-        {/* 🛡️ 2026-05-21: 교환권에도 리뷰 작성/조회 가능 (사용자 요청).
-              product_reviews 테이블은 일반 상품과 공통 — 동일 컴포넌트 재사용.
-              productId 는 number 로 명시 (ProductReviews 내부 일관성 — POST 시 Number(productId) 호출). */}
-        <Suspense fallback={null}>
-          <ProductReviewsSection productId={Number(detail.id)} />
-        </Suspense>
+        {/* 🏭 2026-06-07 (사용자 요청): 공구 상품 상세에서 리뷰 섹션 제거. */}
 
         <div style={{ height: 100 }} />
       </main>
