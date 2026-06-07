@@ -203,6 +203,7 @@
 | **신규 고객 유입** | 동네 노출 + 크리에이터 홍보로 첫 방문 유도. |
 | **노쇼 자동 처리** | 예약형(뷰티/숙소/액티비티)은 `completed/no_show/cancelled` 상태로 관리 (`SellerAppointmentsPage`). |
 | **간편 사용 처리** | 손님 QR → 사장님이 **Magic Link**(PIN 없이 영구 링크)로 스캔 1번. POS 결제 불필요(이미 유어딜에서 결제 완료). |
+| **차액 자동 환불** | 1만원 교환권 중 5천원어치만 썼다면 사장님이 **부분 환불**로 차액(5천원)을 손님에게 즉시 돌려줌 (`/voucher/:code/partial-refund`, 본인 매장 voucher만). |
 | **한 화면 종합** | `/seller/store-dashboard` — 총매출/이번달/미정산/voucher 사용률을 한눈에. |
 
 **구체 기능 목록 (사장님 대시보드)**:
@@ -227,7 +228,8 @@
 | **동네 기반** | 카카오맵 기반 내 주변 맛집/미용/숙소. |
 | **검증된 매장** | 크리에이터가 직접 홍보하고, 다른 참여자 수가 소셜 증거. |
 | **안전한 환불** | 7일 이내 셀프 취소(청약철회), 딜 결제는 즉시 환급. |
-| **딜 적립/추천 보너스** | 친구 추천 시 보너스 딜, 후기 작성 시 보너스 딜. |
+| **딜 적립/추천 보너스** | 친구 추천 시 보너스 딜, 후기 작성 시 보너스 딜(voucher 사용 후 **카카오맵 후기 URL 제출** → 어드민 검증 후 보너스 딜 지급, `review-bonus.routes.ts`). |
+| **입점 요청(수요 신호)** | 아직 입점 안 한 동네 맛집을 지도에서 발견하면 "영입 신청(invite)" 또는 "출시 알림 받기(notify·전화번호)"로 의향 표시 — 어드민이 수요 많은 매장을 우선 영입 (`restaurant-suggestions.routes.ts`, restaurant-map 옵션 B). |
 
 `[디자인 지시]` "할인율 N%" 배지 + 지도 핀 + QR 목업.
 
@@ -252,6 +254,7 @@
 | 만료 | 생성 후 **7일** (`expires_at = now + 7d`) |
 | 흐름(status) | `proposed`(제안) → `negotiating`(매장 협의) → `confirmed`(가격 확정) → `achieved`(달성) / `failed`(실패) / `refunded`(환불) |
 | 자동 상태 전환 | 목표 인원 도달 직전 참여 시 `proposed` → `negotiating` 자동(`current_count + 1 >= target_count`) |
+| 협상 채팅 | `negotiating` 단계에서 **제안자 ↔ 식당 ↔ 에이전시 ↔ 운영자** 가 가격을 메시지 스레드로 협의 (`/:id/messages`, 권한자만 읽기/전송, 최대 1,000자·HTML 제거) |
 | 미달성 시 | **보증금 전액 자동 환불** (만료 후 약 5분 내, `community_group_buy_refunds` 멱등 기록) |
 | 입력값 | 카카오맵으로 맛집 선택 + 희망가 + 1인 보증금 + 목표 인원 + **제안자 소개글(선택)** |
 | 초대 | `invite_code`로 친구 초대 → `/community-group-buy/:code` |
@@ -392,6 +395,7 @@
 - 기본 수수료 **5%**(`DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05`), 월 GMV에 따라 4%/3% 자동(`helpers` GMV tier).
 - 교환권 코드 = crypto 난수 `UR-XXXX-XXXX`(32^8 ≈ 1.1조 조합).
 - 셀프 취소: 본인·미사용·발급 **7일** 이내(`POST /api/group-buy/voucher/:code/cancel`, deal 즉시/카드 3~5영업일).
+- 부분(차액) 환불: 교환권 금액보다 적게 썼을 때 사장님이 차액만 손님에게 환불(`/voucher/:code/partial-refund`, 본인 매장 voucher만).
 - 만료(낙전): 미사용 만료 시 **고객 환불**(즉시판매 정합, `auto-settlement.ts`).
 
 `[디자인 지시: 그라데이션]` 식사권 흐름 미니 타임라인(결제→교환권→QR→정산)은 §8 rail Warm(`90deg #FF0033→#FF7A00`) 재사용, 노드 Primary. 별도 신규 그라데이션 추가 금지(기존 시스템 재사용).
@@ -415,6 +419,9 @@
 | **voucher** (기간 무관) | 날짜 안 정하고 교환권만 먼저 구매 → 나중에 사용 시 날짜 협의 | 달력 무관(유효기간 `voucher_validity_days`) |
 | **both** | 한 상품이 두 모드 모두 노출 | 검색 필터(`sale_mode`)로 양쪽 매칭 |
 
+> **여러 객실 한 번에**: 일행이 많으면 객실 여러 개를 한 결제로 동시 예약 (`/stays/bookings/create-multi`) — 각 객실 달력 재고를 함께 잡고 한 건으로 결제.
+> **매장의 숙소 사용 처리**: 손님이 오면 사장님이 `check-in` → `check-out`(또는 voucher 모드는 `use-voucher`)으로 처리, 예약 노쇼는 `no-show` (`/api/seller/stays/bookings/:id/...`).
+
 ### 🛡️ 오버부킹 reserve-before-charge (핵심 안전장치)
 - **방을 먼저 잡고(달력 차감) → 그 다음 Toss 승인**. 방을 못 잡으면 **청구 자체를 안 함**(STAY_OVERBOOKED 409, 미회수 0). (CLAUDE.md 2026-06-04 audit log)
 - 동시 confirm 이중 차감은 `stay_bookings` status CAS(pending→confirmed)로 이 thread만 예약 보장.
@@ -424,6 +431,7 @@
 - 검색 필터: 지역(sido/sigungu)·체크인/아웃·인원·가격대·숙소유형·정렬(recent/price/rating). (`/stays/search`)
 - 객실 속성: `base_price_weekday`, `max_guests`, `amenities`, 숙소 `star_rating`.
 - 숙박 commission 상한 **20%** `[확인 필요]`(00-coverage §107 "숙박 commission 상한 20%" — 정확 값/적용 위치 사업팀 확인).
+- 자동 리마인더: 체크인 임박/예약 리마인더(`stay-reminder.ts`) + 교환권(voucher 모드) 만료 임박 **D-30 / D-7 / D-1** 알림톡(`stay-voucher-expire.ts` cron) — 미사용 만료 손실 방지.
 
 `[디자인 지시: 그라데이션]` 숙소 전용 슬라이드 1장 권장. 달력 재고 그리드(예약 가능=Primary 칩 / 마감=회색 `#3A3A3F`), reserve-before-charge 3스텝(방 잡기→결제→확정)은 §7-2 Deep 라인이 아니라 **§8 Warm rail** 재사용(긍정 흐름). "방 먼저 잡고 결제" 배지는 §10 신뢰 톤(Dark card + Primary accent edge). 신규 그라데이션 토큰 추가 금지.
 
@@ -452,6 +460,8 @@
 | 취소 무료 환불 | 시작 **12시간 전**까지 무조건 환불 | `REFUND_POLICY.APPOINTMENT_CANCEL_DEADLINE_HOURS = 12` |
 | 12h 이내 취소 | 사용자 셀프 환불 불가 → 매장 연락 후 어드민 처리 | `appointments.routes.ts` 취소 가드 |
 | 노쇼 처리 | 사장님이 `no_show` 마킹(`completed_at` 기록) | `/seller/appointments/:id/no-show` |
+| 노쇼 자동 알림 | 예약 시작 **30분 후**까지 완료 처리 안 되면 자동 알림 | `REFUND_POLICY.APPOINTMENT_NOSHOW_ALERT_MIN`, `appointment-noshow-alert.ts` cron |
+| 예약 D-1 리마인더 | 방문 하루 전 매장+유저 양쪽에 알림톡 자동 발송 | `appointment-reminder.ts` cron |
 | 관리 화면 | `/seller/appointments` — 완료/노쇼 처리 | `SellerAppointmentsPage` |
 
 > 위 §1 카테고리 표의 "💇 미용 = 예약형"이 이 섹션. 식사권(즉시사용)과 **사용 방식이 다르다는 점**을 영업 시 분명히 안내(예약형은 노쇼 정책 적용).
@@ -471,6 +481,7 @@
 | 노쇼 방지 | **선결제로 구조적 해결** | - | 예약금 일부 | - |
 | 크리에이터 홍보 | **O(커미션 연동)** | X | X | X |
 | 동네 공동구매(소비자 제안) | **O(커뮤니티 공구)** | X | X | X |
+| 소비자 입점 요청(수요 신호) | **O(지도에서 미입점 맛집 영입 신청/출시 알림)** | X | 일부 리뷰 | X |
 
 핵심 차별 메시지: **"노출 광고가 아니라 '확정 매출'을 파는 동네 플랫폼 + 크리에이터가 손님을 데려오는 구조"**.
 
@@ -608,7 +619,8 @@
 6. **세금계산서/원천징수는?** — 사업자 등록 인증 시 원천징수 면제(세금계산서 발행), 미등록 시 3.3%(사업소득) 원천징수 후 송금. `[확인 필요]` 세부 정산명세 양식.
 7. **숙소(펜션·호텔)도 되나요?** — 됩니다. 객실을 등록하고 **날짜 지정 예약(date)** 또는 **기간 무관 교환권(voucher)** 모드를 고를 수 있습니다. 손님이 결제할 때 **방을 먼저 잡고 결제**하므로 오버부킹이 구조적으로 차단됩니다(§10-B).
 8. **미용실·필라테스처럼 시간 예약이 필요한 업종은?** — 요일별 가용 시간 슬롯을 등록하면 손님이 결제 후 시간을 골라 예약합니다. 시작 12시간 전까지는 손님이 자유 취소(무조건 환불), 이후 취소는 매장 연락 후 어드민 처리됩니다(§10-C).
-9. **손님이 예약하고 안 오면(노쇼)?** — `/seller/appointments`에서 `노쇼`로 처리합니다. 선결제 구조라 노쇼 손실 자체가 줄어듭니다.
+9. **손님이 예약하고 안 오면(노쇼)?** — `/seller/appointments`에서 `노쇼`로 처리합니다. 선결제 구조라 노쇼 손실 자체가 줄어듭니다. (예약 시작 30분 후 자동 노쇼 알림, 방문 하루 전 자동 리마인더도 발송됩니다.)
+10. **손님이 교환권 금액보다 적게 쓰면?** — 1만원 교환권 중 5천원어치만 드셨다면 **부분 환불**로 차액(5천원)을 손님에게 즉시 돌려드릴 수 있습니다(본인 매장 교환권만).
 
 ### 소비자 FAQ
 1. **인원이 안 모이면 환불되나요?** — 셀러 동네딜은 결제 즉시 교환권이 확정 발급되어 인원과 무관합니다. (소비자가 제안하는 '커뮤니티 공구'만 미달 시 보증금 자동 환불.)
@@ -619,7 +631,8 @@
 6. **유효기간은?** — 교환권마다 `voucher_expiry`로 표시됩니다(발급 알림톡에 명시).
 7. **숙소는 어떻게 예약하나요?** — 지역·날짜·인원·가격대로 검색하고 별점/리뷰를 확인한 뒤 날짜를 골라 예약합니다(date 모드). 날짜를 안 정하고 교환권만 먼저 사두는 voucher 모드도 있습니다.
 8. **미용/예약 업종은 시간을 어떻게 잡나요?** — 결제 후 매장이 열어둔 가용 시간 슬롯에서 원하는 시간을 골라 예약하면 확정 알림톡이 옵니다. 시작 12시간 전까지 자유 취소(무조건 환불) 가능합니다.
-9. **맛집을 제가 직접 제안할 수 있나요?** — 점주·활동 인플루언서라면 `/community-group-buy/new`에서 맛집을 골라 희망가·보증금·목표 인원을 정하고, **직접 소개글**을 써서 친구를 모을 수 있습니다. 목표 미달 시 보증금은 전액 자동 환불됩니다.
+9. **맛집을 제가 직접 제안할 수 있나요?** — 점주·활동 인플루언서라면 `/community-group-buy/new`에서 맛집을 골라 희망가·보증금·목표 인원을 정하고, **직접 소개글**을 써서 친구를 모을 수 있습니다. 목표 미달 시 보증금은 전액 자동 환불됩니다. (목표 인원이 다 모이면 매장과 가격을 협상 채팅으로 확정합니다.)
+10. **아직 입점 안 한 동네 맛집은 어떻게 하나요?** — 지도(`/restaurant-map`)에서 카카오 일반 맛집을 눌러 **"영입 신청"** 하거나 **"출시 알림 받기"**(전화번호 등록)로 의향을 남기면, 운영팀이 수요 많은 매장을 우선 영입합니다.
 
 ---
 
@@ -806,10 +819,17 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (11개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (27개)
 
+- `/admin/deals`
+- `/admin/group-buy`
+- `/admin/restaurant-demand`
+- `/admin/stays`
+- `/admin/voucher-orders`
+- `/admin/voucher-transactions`
 - `/community-group-buy/:code`
 - `/community-group-buy/new`
+- `/g/:invite_code`
 - `/group-buy`
 - `/group-buy/:id`
 - `/group-buy/confirm-payment`
@@ -817,11 +837,33 @@
 - `/my-appointments`
 - `/my-stays`
 - `/restaurant-map`
+- `/seller/appointments`
+- `/seller/meal-voucher/new`
+- `/seller/products/:id/booking-slots`
+- `/seller/stays`
+- `/seller/stays/:id`
+- `/seller/stays/bookings`
+- `/seller/stays/new`
+- `/seller/store-dashboard`
+- `/seller/voucher-orders`
 - `/stays`
 - `/stays/:id`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (42개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (83개)
 
+
+**/api/admin/stays**
+- `GET /api/admin/stays`
+- `GET /api/admin/stays/bookings`
+- `GET /api/admin/stays/bookings/:id`
+- `PATCH /api/admin/stays/bookings/:id/dispute`
+- `PATCH /api/admin/stays/bookings/:id/refund`
+- `GET /api/admin/stays/kpi`
+- `PATCH /api/admin/stays/reviews/:id/hide`
+
+**/api/admin/voucher-orders**
+- `GET /api/admin/voucher-orders`
+- `POST /api/admin/voucher-orders/:id/resend`
 
 **/api/appointments/:id**
 - `PATCH /api/appointments/:id/cancel`
@@ -832,12 +874,76 @@
 **/api/appointments/my**
 - `GET /api/appointments/my`
 
+**/api/community-group-buy/:id**
+- `PATCH /api/community-group-buy/:id/confirm`
+- `GET /api/community-group-buy/:id/messages`
+- `POST /api/community-group-buy/:id/messages`
+- `POST /api/community-group-buy/:id/refund`
+- `PATCH /api/community-group-buy/:id/status`
+
+**/api/community-group-buy/create**
+- `POST /api/community-group-buy/create`
+
+**/api/community-group-buy/detail**
+- `GET /api/community-group-buy/detail/:code`
+
+**/api/community-group-buy/join**
+- `POST /api/community-group-buy/join/:code`
+
+**/api/community-group-buy/list**
+- `GET /api/community-group-buy/list`
+
+**/api/community-group-buy/my**
+- `GET /api/community-group-buy/my`
+
+**/api/community-group-buy/popular**
+- `GET /api/community-group-buy/popular`
+
 **/api/funding**
 - `GET /api/funding/`
 
 **/api/funding/:id**
 - `GET /api/funding/:id`
 - `GET /api/funding/:id/progress`
+
+**/api/group-buy/:code**
+- `POST /api/group-buy/:code/use`
+- `POST /api/group-buy/:code/use-by-seller`
+
+**/api/group-buy/_diag**
+- `GET /api/group-buy/_diag`
+
+**/api/group-buy/admin**
+- `GET /api/group-buy/admin/analytics`
+- `POST /api/group-buy/admin/force-refund/:productId`
+- `GET /api/group-buy/admin/list`
+- `POST /api/group-buy/admin/seller-closure/:sellerId`
+
+**/api/group-buy/commission-rate**
+- `GET /api/group-buy/commission-rate`
+
+**/api/group-buy/confirm-toss**
+- `POST /api/group-buy/confirm-toss`
+
+**/api/group-buy/join**
+- `POST /api/group-buy/join/:id`
+
+**/api/group-buy/live-ticker**
+- `GET /api/group-buy/live-ticker`
+
+**/api/group-buy/my**
+- `GET /api/group-buy/my`
+
+**/api/group-buy/products**
+- `GET /api/group-buy/products`
+- `GET /api/group-buy/products/:id`
+- `GET /api/group-buy/products/:id/participants`
+
+**/api/group-buy/refund**
+- `POST /api/group-buy/refund/:productId`
+
+**/api/group-buy/seller-voucher-stats**
+- `GET /api/group-buy/seller-voucher-stats`
 
 **/api/group-buy/stays**
 - `GET /api/group-buy/stays/:productId`
@@ -851,23 +957,41 @@
 - `GET /api/group-buy/stays/my-bookings`
 - `GET /api/group-buy/stays/search`
 
-**/api/hosting/catalog${params}**
-- `GET /api/hosting/catalog${params}`
+**/api/group-buy/store-stats**
+- `POST /api/group-buy/store-stats/:productId`
+
+**/api/group-buy/verify**
+- `GET /api/group-buy/verify/:code`
+
+**/api/group-buy/voucher**
+- `POST /api/group-buy/voucher/:code/cancel`
+- `POST /api/group-buy/voucher/:code/partial-refund`
+
+**/api/group-buy/voucher-logs**
+- `GET /api/group-buy/voucher-logs`
+
+**/api/hosting/catalog**
+- `GET /api/hosting/catalog`
 
 **/api/hosting/g**
-- `GET /api/hosting/g/${encodeURIComponent(code)}`
+- `GET /api/hosting/g/:invite_code`
 
 **/api/hosting/me**
 - `GET /api/hosting/me`
 - `POST /api/hosting/me`
-- `GET /api/hosting/me/${id}`
-- `PATCH /api/hosting/me/${id}/cancel`
+- `GET /api/hosting/me/:id`
+- `PATCH /api/hosting/me/:id/cancel`
 
 **/api/restaurant-suggestions**
 - `POST /api/restaurant-suggestions/`
 
 **/api/restaurant-suggestions/stats**
 - `GET /api/restaurant-suggestions/stats`
+
+**/api/seller/appointments**
+- `GET /api/seller/appointments`
+- `PATCH /api/seller/appointments/:id/complete`
+- `PATCH /api/seller/appointments/:id/no-show`
 
 **/api/seller/stays**
 - `GET /api/seller/stays`
@@ -885,20 +1009,8 @@
 - `PATCH /api/seller/stays/bookings/:bookingId/no-show`
 - `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
 
-**/api/seller/stays-amenities**
-- `GET /api/seller/stays-amenities`
 
-**/api/seller/stays-bookings**
-- `GET /api/seller/stays-bookings`
-
-**/api/seller/stays-kpi**
-- `GET /api/seller/stays-kpi`
-
-**/api/seller/stays-quota**
-- `GET /api/seller/stays-quota`
-
-
-> 마지막 생성: 2026-06-07T09:17:23.148Z
+> 마지막 생성: 2026-06-07T22:42:02.485Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

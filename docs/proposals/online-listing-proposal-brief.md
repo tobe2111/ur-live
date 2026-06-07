@@ -176,7 +176,10 @@
 ### 채널 ① 쇼핑 (`/browse`)
 - 쇼핑 피드/그리드 형태로 상품 진열 (출처: `src/pages/BrowsePage.tsx`)
 - 카테고리·검색·정렬 필터, 상품 상세(`/products/:id` — `ProductDetailPage.tsx`)
+- 통합 검색(`/search` — 인기검색어/추천 자동완성 `products.routes.ts /search/popular·/search/suggestions`) + 찜/위시리스트(`/wishlist` — 관심상품 저장·재방문 구매)
+- 상품 옵션/변형(`product_options` — 옵션별 가격/재고) 지원 (출처: `GET /api/products/:id/options`)
 - 장바구니(`CartPage`) → 결제(`CheckoutPage`) → 주문(`orders.routes.ts`) 표준 e-commerce 플로우
+- 쿠폰/프로모코드 적용(`coupons.routes.ts`, `promo.routes.ts` — 셀러 발행 할인쿠폰·프로모코드, 서버 재계산으로 클라 할인액 미신뢰)
 - 이미지 자동 최적화(도미넌트 컬러 placeholder, lazy-load, CF 이미지 리사이즈)로 빠른 로딩
 - `[디자인 지시]` 화이트 테마 쇼핑 그리드 목업 (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5`)
 - `[디자인 지시: 그라데이션]` 채널① 헤더 칩에 시그니처 그라데이션 + "쇼핑" 라벨. 목업 프레임(브라우저/폰 베젤) 상단 바를 시그니처 그라데이션으로. 그리드 카드 자체는 흰색(데이터 가독성), 가격 뱃지만 시그니처 그라데이션 pill.
@@ -425,7 +428,11 @@
 - 교환권 상품 구매 → `vouchers` 발급(코드 발행) → 사용 시 `POST /:code/use`(PIN 검증, **원자적 CAS**로 1회만 사용, 사용 로그). 부분 환불(`partial-refund`)도 지원.
 - 카테고리는 동적(식사권/미용/숙소/기타 등 — 하드코딩 제거).
 
-> `[확인 필요]` **KT alpha 등 외부 기프티콘 발행 사업자 연동은 코드 상 없음** — 현재 교환권/기프티콘은 **유어딜 자체 발행·QR 사용 체계**(`vouchers`)입니다. 외부 기프티콘몰 유통 연동은 미구현으로 보임(운영 정책/로드맵 확인 필요).
+### 외부 기프티콘(KT Alpha / 기프티쇼) 연동 — 실 발행 사업자 연동
+- **유어딜 자체 발행 교환권(`vouchers`, QR/코드+PIN)** 외에, **KT Alpha(기프티쇼) 외부 기프티콘 발행사 API 연동**도 구현되어 있습니다. (출처: `admin-kt-alpha.routes.ts` — `kt-alpha/sync`(카탈로그 동기화)·`kt-alpha/balance`(비즈머니 잔액)·`kt-alpha/catalog`(`gift_catalog`)·`voucher-orders/:id/resend`(실패 재발송)).
+- **소비자 직판**: KT Alpha 카탈로그 기프티콘을 마진(`kt_alpha_consumer_markup_pct`, default 20%) 얹어 플랫폼에 상품으로 노출·판매(`kt-alpha/consumer-products`).
+- **셀러 적립금 → 실물 기프티콘 정산**: 미검증 셀러가 적립금(딜)을 **기프티쇼 교환권으로 수령** → 수신 휴대폰으로 MMS 자동 발송, 발송 이력은 `/seller/voucher-orders`(`SellerVoucherOrdersPage`)에서 추적(실패 사유·재발송). (§7 정산 게이팅의 "교환권 수령" 경로의 실체.)
+- `[확인 필요]` 소비자 직판 노출 글로벌 ON/OFF(`kt_alpha_consumer_enabled`) 등 운영 활성 여부는 정책 확인.
 
 `[디자인 지시]` 모바일 교환권 카드(QR + 코드 + PIN) 목업 + "발행→판매→QR 사용" 3스텝. 매장 사장님 아이콘 강조.
 
@@ -440,13 +447,15 @@
 | **대량등록(CSV)** | `BulkUploadModal` — 한글 헤더 매핑, 미리보기, 성공/실패 카운트 + 오류 리포트 |
 | **외부몰 연동** | Cafe24 OAuth 동기화(`cafe24.routes.ts`), `cafe24_product_map` 중복 방지 |
 | **재고 관리** | `SellerInventoryPage`, 옵션별 재고(`옵션재고`), 결제 시 원자적 재고 차감 |
-| **주문 관리** | `SellerOrdersPage`, 배송 추적(tracker.delivery 6시간 sync) |
+| **주문 관리** | `SellerOrdersPage`, 배송 추적(tracker.delivery 6시간 sync), 구매확정(`POST /api/orders/:id/confirm`) + **배송완료 14일 후 자동 구매확정→정산 confirm**(`/internal/auto-confirm`, cron) |
+| **미니샵 / 공개페이지 커스터마이징** | 셀러 공개 페이지를 브랜드에 맞게 커스터마이징(배너/프로필/소개 — `SellerMiniShopPage`, `PUT /api/seller/profile`) — 링크샵 채널③의 셀러측 편집 도구 |
 | **통계 대시보드** | `SellerAnalyticsPage`, `SellerLiveAnalyticsPage`, `SellerRealtimeDashboardPage`, 정산 통계(`/settlements/stats`) |
 | **이미지 최적화** | 도미넌트 컬러 placeholder, lazy-load, CF 이미지 리사이즈/Save-Data quality 조절 (출처 `cf-image.ts`) |
 | **반품/환불 관리** | 반품 접수·처리, 토스 환불 자동(최대 5회 재시도), 환불 시 커미션/공급정산 역전 (출처 `returns.routes.ts`) |
 | **정산 / 원천징수** | 월 단위 정산 신청 → 어드민 승인 → 송금. **현금 정산=사업자 검증 게이팅**(미검증은 교환권/딜 수령). 원천징수(3.3%/8.8%) 자동 (`seller-settlements.routes.ts`, `tax-withholding.ts`) |
 | **리뷰 관리** | 상품/매장 리뷰 관리 + 리뷰 작성 보너스 (`/seller/reviews`, `review-bonus`) |
 | **알림톡 / 마케팅** | 카카오 알림톡 발송, 팔로워 라이브 알림, 마케팅 캠페인 (`/seller/alimtalk`, `/seller/marketing`, `live-notify-followers`) |
+| **할인쿠폰 / 프로모코드 발행** | 셀러가 직접 할인쿠폰·프로모코드 발행·사용이력 관리(서버 재계산으로 클라 할인액 미신뢰) (`SellerCouponsPage`, `SellerPromoCodesPage`, `coupons.routes.ts`, `promo.routes.ts`) |
 | **광고 슬롯 / 부스트** | 셀러 광고 슬롯·노출 부스트로 진열·검색 상단 노출 확대 (`/seller/ad-slots`, `promote-boosts`) |
 | **위탁 / 프록시 판매** | 위탁 상품·프록시(대리) 상품 등록 — 내 재고 없이 타 셀러/공급 상품 판매(위탁 commission 10%) (`/seller/consignment`, `/seller/proxy-products`) |
 | **YouTube 성장 도구** | 유튜브 채널 성장·할당량 관리로 라이브 도달 확대 (`/seller/youtube-growth`, `youtube-growth.routes.ts`) |
@@ -639,7 +648,7 @@
     A. 펀딩 모델(`live_fundings`)이 있습니다. 목표 금액·리워드 등급·마감일을 정하고 진행률을 실시간으로 보여주며, 마감 후 발송합니다. 재고 리스크를 줄이고 수요를 먼저 검증할 수 있습니다. (셀러 직접 생성 UI는 일부 후속 `[확인 필요]`.)
 
 13. **Q. 교환권/기프티콘도 온라인으로 팔 수 있나요?**
-    A. 네. 유어딜 **자체 교환권**(`vouchers`)을 발행·판매하면 구매자가 QR/코드 + PIN으로 사용합니다(원자적 1회 사용, 부분 환불 지원). 선물하기와 결합해 바이럴됩니다. (KT alpha 등 **외부 기프티콘몰 연동은 현재 미구현** `[확인 필요]` — 자체 발행 체계.)
+    A. 네. 유어딜 **자체 교환권**(`vouchers`)을 발행·판매하면 구매자가 QR/코드 + PIN으로 사용합니다(원자적 1회 사용, 부분 환불 지원). 선물하기와 결합해 바이럴됩니다. 또한 **KT Alpha(기프티쇼) 외부 기프티콘 발행사 연동**도 구현되어 있어, 카탈로그 동기화로 실물 기프티콘을 소비자 직판하거나 셀러 적립금을 기프티쇼 교환권(MMS)으로 정산할 수 있습니다(`admin-kt-alpha.routes.ts`, `/seller/voucher-orders`).
 
 14. **Q. 브랜드가 우리 상품을 팔아줄 크리에이터를 직접 섭외할 수 있나요?**
     A. 캐스팅 마켓플레이스(`casting_requests`)로 광고주(브랜드)가 캠페인을 제시하면 어드민 검토 후 적합 셀러에게 제안이 전달되고, 셀러가 수락/거절합니다. 협업 라이브·광고로 확장할 수 있습니다. (제안비 중개 수수료 정책은 `[확인 필요]`.)
@@ -741,7 +750,9 @@
 | 멀티송출 (지원) | YouTube `available` + RTMP/OBS | `multi-platform.routes.ts DESTINATIONS` |
 | 멀티송출 (준비중) | TikTok·치지직 Q3 / SOOP Q4 `[확인 필요]` | `multi-platform.routes.ts (coming_soon, eta)` |
 | 캐스팅 중개 수수료 | `[확인 필요]` (상수 미노출) | `casting.routes.ts proposed_fee` |
-| 외부 기프티콘몰 연동 | 미구현 `[확인 필요]` (자체 `vouchers` 발행) | `group-buy-voucher.routes.ts` |
+| 외부 기프티콘 발행 연동 | KT Alpha(기프티쇼) 연동 구현 — 카탈로그 sync + 소비자 직판 + 셀러 정산 MMS | `admin-kt-alpha.routes.ts`, `/seller/voucher-orders` |
+| 자체 교환권 발행 | QR/코드+PIN, 원자적 1회 사용, 부분환불 | `group-buy-voucher.routes.ts (vouchers)` |
+| KT Alpha 소비자 마진 | 20% (default) | `platform_settings.kt_alpha_consumer_markup_pct` |
 | 최소 출금액 | 10,000원 | `policy.ts WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 딜 충전 비율 | 1원 = 1딜 | `CLAUDE.md` |
 | 부트캠프 완료 보상 | 1만 딜 | `seller-onboarding.routes.ts` |
@@ -769,7 +780,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (11개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
 
 - `/browse`
 - `/cart`
@@ -778,13 +789,101 @@
 - `/live/:streamId`
 - `/live/recap/:id`
 - `/my-orders`
+- `/my-returns`
+- `/my-vouchers`
+- `/product/:id`
 - `/products/:id`
 - `/search`
+- `/seller`
+- `/seller/2fa`
+- `/seller/ad-slots`
+- `/seller/alimtalk`
+- `/seller/analytics`
+- `/seller/bundles`
+- `/seller/business-info`
+- `/seller/consignment`
+- `/seller/coupons`
+- `/seller/dashboard`
+- `/seller/followers`
+- `/seller/forgot-password`
+- `/seller/group-buy`
+- `/seller/guide`
+- `/seller/inventory`
+- `/seller/ledger`
+- `/seller/live`
+- `/seller/live-analytics`
+- `/seller/live-analytics/:streamId`
+- `/seller/live-broadcast`
+- `/seller/live-broadcast/:streamId`
+- `/seller/live-control`
+- `/seller/login`
+- `/seller/marketing`
+- `/seller/notify-followers`
+- `/seller/orders`
+- `/seller/plus-friend-guide`
+- `/seller/products`
+- `/seller/products/:id/edit`
+- `/seller/products/new`
+- `/seller/profile`
+- `/seller/promo-codes`
+- `/seller/promote-boosts`
+- `/seller/proxy-products`
+- `/seller/realtime`
+- `/seller/register`
+- `/seller/register/business`
+- `/seller/reset-password`
+- `/seller/reviews`
+- `/seller/settlements`
+- `/seller/shorts`
+- `/seller/signup`
+- `/seller/streaming-guide`
+- `/seller/streaming-setup`
+- `/seller/streams/:id`
+- `/seller/streams/new`
+- `/seller/tier`
+- `/seller/tiktok-callback`
+- `/seller/transfers`
+- `/seller/verify-whip-proxy`
+- `/seller/waiting`
+- `/seller/youtube-growth`
+- `/seller/youtube-growth/success`
+- `/seller/youtube/callback`
 - `/shorts`
+- `/store/stats/:productId`
+- `/v/:code`
+- `/vouchers`
+- `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (94개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (332개)
 
+
+**/api/admin-review-bonus/:id**
+- `POST /api/admin-review-bonus/:id/approve`
+- `POST /api/admin-review-bonus/:id/reject`
+
+**/api/admin-review-bonus/list**
+- `GET /api/admin-review-bonus/list`
+
+**/api/auction/:id**
+- `GET /api/auction/:id`
+- `POST /api/auction/:id/bid`
+- `POST /api/auction/:id/cancel`
+- `POST /api/auction/:id/end`
+- `POST /api/auction/:id/forfeit-winner`
+- `POST /api/auction/:id/promote-runner-up`
+- `POST /api/auction/:id/purchase`
+- `POST /api/auction/:id/release-hold`
+- `POST /api/auction/:id/winner-paid`
+
+**/api/auction/create**
+- `POST /api/auction/create`
+
+**/api/auction/holds**
+- `GET /api/auction/holds/me`
+
+**/api/auction/stream**
+- `GET /api/auction/stream/:streamId`
 
 **/api/cart**
 - `GET /api/cart/`
@@ -797,14 +896,354 @@
 **/api/cart/clear**
 - `POST /api/cart/clear`
 
+**/api/chat/:liveId**
+- `POST /api/chat/:liveId/messages`
+- `DELETE /api/chat/:liveId/messages/:messageId`
+
+**/api/live/:liveId**
+- `POST /api/live/:liveId/broadcast`
+- `GET /api/live/:liveId/chat/messages`
+- `GET /api/live/:liveId/chat/sse`
+- `GET /api/live/:liveId/sse`
+- `POST /api/live/:liveId/view`
+- `GET /api/live/:liveId/ws`
+
+**/api/orders**
+- `GET /api/orders/`
+- `POST /api/orders/`
+
+**/api/orders/:id**
+- `GET /api/orders/:id`
+- `POST /api/orders/:id/cancel`
+- `POST /api/orders/:id/confirm`
+- `GET /api/orders/:id/tracking`
+
 **/api/orders/:orderId**
 - `GET /api/orders/:orderId/pending-bookings`
 
+**/api/orders/internal**
+- `POST /api/orders/internal/auto-confirm`
+- `POST /api/orders/internal/sync-deliveries`
+
+**/api/orders/refund**
+- `POST /api/orders/refund`
+
+**/api/platforms**
+- `GET /api/platforms`
+
+**/api/platforms/destinations**
+- `GET /api/platforms/destinations`
+
+**/api/platforms/multistream**
+- `GET /api/platforms/multistream`
+
+**/api/platforms/streaming-tools**
+- `GET /api/platforms/streaming-tools`
+- `GET /api/platforms/streaming-tools/:tool/preset`
+
+**/api/products**
+- `GET /api/products/`
+- `POST /api/products/`
+
 **/api/products/:id**
+- `DELETE /api/products/:id`
+- `GET /api/products/:id`
+- `PUT /api/products/:id`
 - `GET /api/products/:id/available-slots`
+- `GET /api/products/:id/options`
+
+**/api/products/dominant-color**
+- `POST /api/products/dominant-color`
+
+**/api/products/search**
+- `GET /api/products/search/popular`
+- `GET /api/products/search/suggestions`
+
+**/api/returns/:id**
+- `PUT /api/returns/:id/approve`
+- `PUT /api/returns/:id/inspect`
+- `PUT /api/returns/:id/refund`
+- `PUT /api/returns/:id/reject`
+- `PUT /api/returns/:id/shipping`
+
+**/api/returns/admin**
+- `GET /api/returns/admin`
+
+**/api/returns/my**
+- `GET /api/returns/my`
+
+**/api/returns/request**
+- `POST /api/returns/request`
+
+**/api/returns/seller**
+- `GET /api/returns/seller`
+
+**/api/review-bonus/my**
+- `GET /api/review-bonus/my`
+
+**/api/review-bonus/submit**
+- `POST /api/review-bonus/submit`
+
+**/api/search**
+- `GET /api/search/`
+- `POST /api/search/`
+
+**/api/search/:id**
+- `DELETE /api/search/:id`
+- `GET /api/search/:id`
+- `PUT /api/search/:id`
+- `GET /api/search/:id/options`
+
+**/api/search/dominant-color**
+- `POST /api/search/dominant-color`
+
+**/api/search/search**
+- `GET /api/search/search/popular`
+- `GET /api/search/search/suggestions`
+
+**/api/seller/:sellerId**
+- `GET /api/seller/:sellerId/products-public`
+
+**/api/seller/ad-slots**
+- `GET /api/seller/ad-slots`
+- `POST /api/seller/ad-slots/:id/bid`
+- `POST /api/seller/ad-slots/:id/cancel-bid`
+- `GET /api/seller/ad-slots/my-bids`
+
+**/api/seller/alimtalk**
+- `GET /api/seller/alimtalk`
+- `POST /api/seller/alimtalk`
+- `GET /api/seller/alimtalk/balance`
+- `POST /api/seller/alimtalk/charge`
+- `GET /api/seller/alimtalk/credits`
+- `POST /api/seller/alimtalk/credits/charge`
+- `POST /api/seller/alimtalk/credits/confirm`
+- `GET /api/seller/alimtalk/logs`
+- `GET /api/seller/alimtalk/messages`
+- `POST /api/seller/alimtalk/send`
+- `POST /api/seller/alimtalk/test`
+
+**/api/seller/analytics**
+- `GET /api/seller/analytics/chart/revenue`
+- `GET /api/seller/analytics/coupons`
+- `POST /api/seller/analytics/coupons`
+- `DELETE /api/seller/analytics/coupons/:id`
+- `GET /api/seller/analytics/customers`
+- `GET /api/seller/analytics/detailed`
+- `POST /api/seller/analytics/orders/bulk-tracking`
+- `POST /api/seller/analytics/products/:id/duplicate`
+- `GET /api/seller/analytics/products/monthly-trend`
+- `GET /api/seller/analytics/products/performance`
+- `GET /api/seller/analytics/proxy-products`
+- `POST /api/seller/analytics/proxy-products/:id/approve`
+- `POST /api/seller/analytics/proxy-products/:id/reject`
+- `GET /api/seller/analytics/referral-commissions/summary`
+- `GET /api/seller/analytics/reviews`
+- `POST /api/seller/analytics/reviews/:id/reply`
+- `GET /api/seller/analytics/revisit`
+- `GET /api/seller/analytics/store-dashboard/stats`
+- `GET /api/seller/analytics/voucher-usage`
+
+**/api/seller/business-info**
+- `GET /api/seller/business-info`
+
+**/api/seller/business-registration**
+- `POST /api/seller/business-registration/ocr-verify`
+- `POST /api/seller/business-registration/submit`
+
+**/api/seller/change-password**
+- `POST /api/seller/change-password`
+
+**/api/seller/consignment**
+- `GET /api/seller/consignment/`
+- `POST /api/seller/consignment/:id/approve`
+- `POST /api/seller/consignment/:id/terminate`
+- `POST /api/seller/consignment/request`
+- `GET /api/seller/consignment/settlements`
+
+**/api/seller/dashboard**
+- `GET /api/seller/dashboard/stats`
+
+**/api/seller/deal-balance**
+- `GET /api/seller/deal-balance`
+
+**/api/seller/deal-withdraw**
+- `POST /api/seller/deal-withdraw`
+
+**/api/seller/forgot-password**
+- `POST /api/seller/forgot-password`
+
+**/api/seller/kakao-link-status**
+- `GET /api/seller/kakao-link-status`
+
+**/api/seller/link-kakao**
+- `POST /api/seller/link-kakao`
+
+**/api/seller/live-notify**
+- `POST /api/seller/live-notify/`
+
+**/api/seller/login**
+- `POST /api/seller/login`
+
+**/api/seller/my-seller-status**
+- `GET /api/seller/my-seller-status`
+
+**/api/seller/onboarding**
+- `GET /api/seller/onboarding/`
+- `POST /api/seller/onboarding/complete/:step_key`
+
+**/api/seller/optimal-time**
+- `GET /api/seller/optimal-time/`
+
+**/api/seller/orders**
+- `GET /api/seller/orders`
+- `POST /api/seller/orders/:id/refund`
+- `PATCH /api/seller/orders/:id/status`
+- `PUT /api/seller/orders/:id/status`
+- `PUT /api/seller/orders/:id/tracking`
+- `PATCH /api/seller/orders/bulk-status`
+
+**/api/seller/personal-info**
+- `GET /api/seller/personal-info`
+
+**/api/seller/pin-status**
+- `GET /api/seller/pin-status`
+
+**/api/seller/platforms**
+- `GET /api/seller/platforms/destinations/:dest/auth-url`
+- `POST /api/seller/platforms/destinations/:dest/live/create`
+
+**/api/seller/products**
+- `GET /api/seller/products`
+- `POST /api/seller/products`
+- `DELETE /api/seller/products/:id`
+- `GET /api/seller/products/:id`
+- `PUT /api/seller/products/:id`
+- `GET /api/seller/products/:id/booking-slots`
+- `POST /api/seller/products/:id/booking-slots`
+- `DELETE /api/seller/products/:id/booking-slots/:slotId`
+- `POST /api/seller/products/:id/link-to-stream`
+- `GET /api/seller/products/:id/options`
+- `POST /api/seller/products/:id/options`
+- `PUT /api/seller/products/:id/pin`
+- `POST /api/seller/products/:id/resend-store-link`
+
+**/api/seller/profile**
+- `GET /api/seller/profile`
+
+**/api/seller/public**
+- `GET /api/seller/public/:sellerId`
+
+**/api/seller/referral-info**
+- `GET /api/seller/referral-info`
+
+**/api/seller/refresh**
+- `POST /api/seller/refresh`
+
+**/api/seller/register**
+- `POST /api/seller/register`
+
+**/api/seller/register-from-user**
+- `POST /api/seller/register-from-user`
+
+**/api/seller/request-kakao-stepup**
+- `POST /api/seller/request-kakao-stepup`
+
+**/api/seller/reset-password**
+- `POST /api/seller/reset-password`
+
+**/api/seller/set-pin**
+- `POST /api/seller/set-pin`
+
+**/api/seller/settlement-options**
+- `GET /api/seller/settlement-options`
+
+**/api/seller/settlements**
+- `GET /api/seller/settlements`
+- `GET /api/seller/settlements/:id/download`
+- `POST /api/seller/settlements/request`
+- `GET /api/seller/settlements/stats`
+- `GET /api/seller/settlements/summary`
+
+**/api/seller/stats**
+- `GET /api/seller/stats`
+
+**/api/seller/stays-amenities**
+- `GET /api/seller/stays-amenities`
+
+**/api/seller/stays-bookings**
+- `GET /api/seller/stays-bookings`
+
+**/api/seller/stays-kpi**
+- `GET /api/seller/stays-kpi`
+
+**/api/seller/stays-quota**
+- `GET /api/seller/stays-quota`
+
+**/api/seller/streams**
+- `GET /api/seller/streams/`
+- `POST /api/seller/streams/`
+- `DELETE /api/seller/streams/:id`
+- `GET /api/seller/streams/:id`
+- `PUT /api/seller/streams/:id`
+- `GET /api/seller/streams/:id/analytics`
+- `POST /api/seller/streams/:id/change-product`
+- `POST /api/seller/streams/:id/heartbeat`
+- `GET /api/seller/streams/:id/live-stats`
+- `PUT /api/seller/streams/:id/product-display`
+- `GET /api/seller/streams/analytics/summary`
+
+**/api/seller/switch-to-seller**
+- `POST /api/seller/switch-to-seller`
+
+**/api/seller/switch-to-user**
+- `POST /api/seller/switch-to-user`
+
+**/api/seller/tax-summary**
+- `GET /api/seller/tax-summary`
+
+**/api/seller/tier**
+- `GET /api/seller/tier`
+
+**/api/seller/tiktok**
+- `GET /api/seller/tiktok/auth-url`
+- `PATCH /api/seller/tiktok/badge`
+- `POST /api/seller/tiktok/callback`
+- `GET /api/seller/tiktok/me`
+- `GET /api/seller/tiktok/seller/:id/videos`
+- `POST /api/seller/tiktok/sync-videos`
+- `DELETE /api/seller/tiktok/unlink`
+
+**/api/seller/transfers**
+- `GET /api/seller/transfers/`
+- `POST /api/seller/transfers/:id/respond`
+
+**/api/seller/unlink-kakao**
+- `POST /api/seller/unlink-kakao`
+
+**/api/seller/upload-image**
+- `POST /api/seller/upload-image`
+- `GET /api/seller/upload-image/health`
+
+**/api/seller/verify-pin**
+- `POST /api/seller/verify-pin`
+
+**/api/seller/viewers**
+- `GET /api/seller/viewers/:user_id/loyalty`
+
+**/api/seller/voucher-catalog**
+- `GET /api/seller/voucher-catalog`
+
+**/api/seller/voucher-orders**
+- `GET /api/seller/voucher-orders`
+
+**/api/seller/voucher-redeem**
+- `POST /api/seller/voucher-redeem`
 
 **/api/seller/youtube**
 - `POST /api/seller/youtube/admin/rotate-all-stream-keys`
+- `GET /api/seller/youtube/auth-url`
+- `GET /api/seller/youtube/channels`
 - `GET /api/seller/youtube/live-readiness`
 - `GET /api/seller/youtube/live/_admin-quota-dashboard`
 - `POST /api/seller/youtube/live/_cleanup-pushes`
@@ -828,7 +1267,10 @@
 - `GET /api/seller/youtube/live/:id/youtube-stats`
 - `POST /api/seller/youtube/live/create`
 - `POST /api/seller/youtube/live/create-webcam`
+- `DELETE /api/seller/youtube/oauth/:id`
+- `POST /api/seller/youtube/oauth/callback`
 - `POST /api/seller/youtube/rotate-stream-key`
+- `GET /api/seller/youtube/shorts/sync`
 - `GET /api/seller/youtube/streaming-setup`
 - `POST /api/seller/youtube/streaming-setup/init`
 - `GET /api/seller/youtube/streaming/health`
@@ -839,26 +1281,16 @@
 - `POST /api/seller/youtube/streaming/whip-proxy/:streamId`
 - `POST /api/seller/youtube/streaming/whip-token`
 
-**/api/seller/youtubeContent-Type**
-- `GET /api/seller/youtubeContent-Type`
+**/api/sellers**
+- `GET /api/sellers/`
 
-**/api/seller/youtubeLocation**
-- `GET /api/seller/youtubeLocation`
+**/api/sellers/:id**
+- `GET /api/sellers/:id`
+- `GET /api/sellers/:id/public`
 
-**/api/seller/youtubecontent-type**
-- `GET /api/seller/youtubecontent-type`
-
-**/api/seller/youtubelive_create_count:${s.seller_id}:${today}**
-- `GET /api/seller/youtubelive_create_count:${s.seller_id}:${today}`
-
-**/api/seller/youtubelocation**
-- `GET /api/seller/youtubelocation`
-
-**/api/seller/youtubetoken**
-- `GET /api/seller/youtubetoken`
-
-**/api/seller/youtubeyt_quota:${yesterday}**
-- `GET /api/seller/youtubeyt_quota:${yesterday}`
+**/api/sellers/:sellerId**
+- `GET /api/sellers/:sellerId/products-public`
+- `GET /api/sellers/:sellerId/streams`
 
 **/api/shipping-addresses**
 - `GET /api/shipping-addresses/`
@@ -868,11 +1300,101 @@
 - `DELETE /api/shipping-addresses/:id`
 - `PUT /api/shipping-addresses/:id`
 
-**/api/shipping-addressesshipping_addresses**
-- `DELETE /api/shipping-addressesshipping_addresses`
+**/api/shipping/admin**
+- `POST /api/shipping/admin/bulk-tracking`
+- `POST /api/shipping/admin/sync`
+
+**/api/shipping/couriers**
+- `GET /api/shipping/couriers`
+
+**/api/shipping/order**
+- `GET /api/shipping/order/:orderId/track`
+
+**/api/shipping/track**
+- `GET /api/shipping/track/:carrier/:trackingNumber`
+
+**/api/shorts**
+- `POST /api/shorts/`
+
+**/api/shorts/:id**
+- `DELETE /api/shorts/:id`
+- `GET /api/shorts/:id`
+- `POST /api/shorts/:id/like`
+- `POST /api/shorts/:id/view`
+
+**/api/shorts/feed**
+- `GET /api/shorts/feed`
+
+**/api/shorts/seller**
+- `GET /api/shorts/seller/list`
+
+**/api/streams**
+- `GET /api/streams/`
+
+**/api/streams/:id**
+- `GET /api/streams/:id`
+- `GET /api/streams/:id/current-product`
+- `POST /api/streams/:id/current-product`
+- `POST /api/streams/:id/fake-cart-notification`
+- `GET /api/streams/:id/product-timestamps`
+- `GET /api/streams/:id/products`
+- `POST /api/streams/:id/restock-notify`
+- `GET /api/streams/:id/viewer-count`
+- `PUT /api/streams/:id/viewer-count`
+- `POST /api/streams/:id/viewer/join`
+- `POST /api/streams/:id/viewer/leave`
+
+**/api/timedeal/:id**
+- `GET /api/timedeal/:id`
+- `POST /api/timedeal/:id/claim`
+
+**/api/timedeal/create**
+- `POST /api/timedeal/create`
+
+**/api/timedeal/stream**
+- `GET /api/timedeal/stream/:streamId`
+
+**/api/vouchers/categories**
+- `GET /api/vouchers/categories`
+
+**/api/vouchers/confirm-toss**
+- `POST /api/vouchers/confirm-toss`
+
+**/api/vouchers/join**
+- `POST /api/vouchers/join/:id`
+
+**/api/youtube-growth/:id**
+- `PUT /api/youtube-growth/:id`
+
+**/api/youtube-growth/admin**
+- `GET /api/youtube-growth/admin`
+
+**/api/youtube-growth/confirm**
+- `POST /api/youtube-growth/confirm`
+
+**/api/youtube-growth/my**
+- `GET /api/youtube-growth/my`
+
+**/api/youtube-growth/packages**
+- `GET /api/youtube-growth/packages`
+
+**/api/youtube-growth/request**
+- `POST /api/youtube-growth/request`
 
 **/api/youtube/admin**
 - `POST /api/youtube/admin/rotate-all-stream-keys`
+
+**/api/youtube/auth-url**
+- `GET /api/youtube/auth-url`
+
+**/api/youtube/channels**
+- `GET /api/youtube/channels`
+
+**/api/youtube/chat**
+- `GET /api/youtube/chat/chat/:streamId`
+- `POST /api/youtube/chat/chat/:streamId`
+- `GET /api/youtube/chat/chat/:streamId/cached`
+- `GET /api/youtube/chat/chat/:streamId/public`
 
 **/api/youtube/live**
 - `GET /api/youtube/live/_admin-quota-dashboard`
@@ -901,8 +1423,15 @@
 **/api/youtube/live-readiness**
 - `GET /api/youtube/live-readiness`
 
+**/api/youtube/oauth**
+- `DELETE /api/youtube/oauth/:id`
+- `POST /api/youtube/oauth/callback`
+
 **/api/youtube/rotate-stream-key**
 - `POST /api/youtube/rotate-stream-key`
+
+**/api/youtube/shorts**
+- `GET /api/youtube/shorts/sync`
 
 **/api/youtube/streaming**
 - `GET /api/youtube/streaming/health`
@@ -917,29 +1446,8 @@
 - `GET /api/youtube/streaming-setup`
 - `POST /api/youtube/streaming-setup/init`
 
-**/api/youtubeContent-Type**
-- `GET /api/youtubeContent-Type`
 
-**/api/youtubeLocation**
-- `GET /api/youtubeLocation`
-
-**/api/youtubecontent-type**
-- `GET /api/youtubecontent-type`
-
-**/api/youtubelive_create_count:${s.seller_id}:${today}**
-- `GET /api/youtubelive_create_count:${s.seller_id}:${today}`
-
-**/api/youtubelocation**
-- `GET /api/youtubelocation`
-
-**/api/youtubetoken**
-- `GET /api/youtubetoken`
-
-**/api/youtubeyt_quota:${yesterday}**
-- `GET /api/youtubeyt_quota:${yesterday}`
-
-
-> 마지막 생성: 2026-06-07T09:17:23.150Z
+> 마지막 생성: 2026-06-07T22:42:02.487Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

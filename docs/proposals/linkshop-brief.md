@@ -161,6 +161,7 @@
 |---|---|---|---|---|
 | **링크샵 내 라이브 노출** | 방송 시작 시 링크샵에 `LIVE` 배지 + 라이브 탭에 카드 자동 표시 | 팔로워가 "지금 방송 중"을 내 링크에서 즉시 인지 | 셀러가 방송 시작 → 페이지가 30초 폴링으로 실시간 감지, 토스트·진동 알림 | `SellerPublicPage.tsx:224-256` (30초 폴링), 라이브 탭 StreamCard |
 | **라이브 예약/지난 방송** | 라이브 탭에 진행/지난 방송 그리드 | 단발 방송이 끝나도 다시보기로 상시 노출 | `streams` 배열 + StreamCard (지난 방송 포함) | `SellerPublicPage` 라이브 탭 |
+| **예약 라이브 배너 + 알림 신청** | scheduled 방송을 상단 배너에 카운트다운 + "알림 신청"(단골 등록 유도) | 오픈 전부터 팬을 모아 동시 시청자 확보 | `GET /api/seller-public/:id/upcoming`(scheduled+live), 카운트다운 표시 | `seller-public/UpcomingStreamsBanner.tsx` |
 | **쇼츠 업로드·피드** | 9:16 숏폼을 링크샵 영상 탭에 노출 | 짧은 영상으로 신규 팔로워 유입 → 상품 태깅으로 전환 | 셀러 쇼츠 업로드 시 `/api/shorts/feed?seller_id=` 로 자동 연결 | `SellerPublicPage` 쇼츠 탭, A2 쇼츠 |
 | **라이브 중 상품/공구/후원 연결** | 방송 화면에서 상품·공동구매·후원을 동시 띄움 | 시청을 즉시 구매·참여·후원으로 전환(이탈 0) | 라이브 카드/탭이 상품·후원 CTA와 같은 페이지에 공존 | 링크샵 6탭 + 후원 CTA(`ProfileHeader`) |
 | **외부 라이브 배지** | 라이브 중 TikTok/Instagram/Facebook 외부 라이브 링크 표시 | 외부 플랫폼 방송도 링크샵 하나로 모아 안내 | 라이브 상태일 때 외부 라이브 링크 노출 | `ProfileHeader.tsx` 외부 라이브 배지 |
@@ -194,7 +195,7 @@
 
 | 항목 | 무엇 | 크리에이터 가치 | 작동 방식 | 코드/수치 근거 |
 |---|---|---|---|---|
-| **팔로우 / 단골 등록** | 방문자가 내 링크샵을 팔로우·단골 등록 | 1회 방문자를 반복 방문 팬으로 고정 | `ProfileHeader` 팔로우/단골 CTA → 알림 수신 대상 등록 | `ProfileHeader.tsx` CTA, G8 social/following |
+| **팔로우 / 단골 등록** | 방문자가 내 링크샵을 팔로우·단골 등록 | 1회 방문자를 반복 방문 팬으로 고정 | `ProfileHeader` 팔로우/단골 CTA → 알림 opt-in(신상품 / 라이브 시작 / 공구 시작 push) | `ProfileHeader.tsx` CTA, `seller-public/RegularBadge.tsx`, G8 social/following |
 | **뷰어 로열티 등급** | 시청자 활동에 따라 로열티 등급 부여 | 충성 팬을 식별·우대 → 후원/구매 전환율↑ | `viewer-loyalty` 로열티 누적, 등급 표시 | B7 `loyalty/`, `viewer-loyalty` [확인 필요: 링크샵 노출 범위] |
 | **라이브 시작 알림** | 팔로워에게 "라이브 시작" 실시간 알림 | 방송 오픈 즉시 팬 재방문 유도 | 페이지 30초 폴링 + 토스트/진동, 팔로워 알림(live-notify-followers) | `SellerPublicPage.tsx:224-256`, C7 `live-notify-followers` |
 
@@ -264,8 +265,12 @@
 - **원천징수**: 출금 시 사업소득 3.3% / 기타소득 8.8% 자동(§7-D).
 - **결제**: 토스페이먼츠 V2 표준(잠긴 SSOT 게이트웨이), 금액 서버 재검증(클라 amount 위변조 차단).
 
-### 7-A.3 수치 요약
-- 최소 **1,000원** · 수수료 **15%(조정 가능)** · 정산 **T+10** · 일 cap **5,000만원**.
+### 7-A.3 후원 부스터 (라이브 N배 매칭)
+- **무엇**: 라이브 방송 중 셀러가 켜는 후원 **N배 매칭 이벤트** — 시청자 후원을 부스터 배수로 증폭 표시해 후원 전환을 끌어올린다. (`donation-booster.routes.ts`)
+- **수치**: 매칭 배수 **1.5 / 2.0 / 3.0배**, 지속 **5 / 10 / 15분**(300/600/900초), **라이브 1회당 1회**. 시청자 화면에 활성 부스터 공개 노출(`GET /api/donation-boosters/live/:id`).
+
+### 7-A.4 수치 요약
+- 최소 **1,000원** · 수수료 **15%(조정 가능)** · 정산 **T+10** · 일 cap **5,000만원** · 라이브 부스터 **1.5/2/3배 × 5/10/15분**.
 
 > [디자인 지시] 7-A는 "후원 → 차감(15%) → T+10 정산 → 출금" 단순 흐름도 + 라이브/링크샵 두 진입점 아이콘.
 >
@@ -292,15 +297,23 @@
 - **무엇**: 일반 유저도 상품을 "핀(추천)"해 자기 큐레이터 페이지(`/u/{handle}`)에 진열 → 그 링크로 팔리면 **1%** 적립.
 - **크리에이터 가치**: 내 상품이 없어도(재고·정산 없이) 추천만으로 수익. 링크샵과 동일 화면(연결된 셀러면 `SellerPublicPage` inline render).
 - **수치/규칙**: 핀 최대 **200개/인**(`PIN_MAX_PER_USER`), 핸들 `[a-z0-9_]{3,30}`, ref 쿠키 **24h**.
+- **클릭 추적/리다이렉트**: 핀 카드 클릭은 `/u/{handle}/p/{productId}/redirect`로 거쳐 ref 부여·클릭 적립(봇 탐지 ip+UA 해시) 후 상품 페이지로 302 — 핀이 없어도 안전 리다이렉트(404 회피). (`curator.routes.ts`)
+- **핀 관리**: 핀 추가/삭제/순서변경(reorder)/수정 + 추천 후보(`/api/curator/recommendations`)로 진열. (`POST·DELETE·PATCH /api/curator/me/pins*`)
 
 ### 7-B.3 매장 영입 (Store Intro) — 크리에이터가 매장을 데려오면
 - **무엇**: 크리에이터가 매장(사장님)을 유어딜로 영입 → 그 매장의 **모든 결제**에서 매출의 **1.5%**를 영입자에게 적립.
 - **작동**: 매장에 `introduced_by_influencer_id` 기록 → 결제 confirm마다 `influencer_attributions(source='store_intro')` 1행 적립(멱등). **T+7 환불창** 성숙(pending→available) 후 influencer-payout cron이 원천징수·송금. 환불 시 자동 역전.
 - **경계**: 같은 매장영입을 **에이전시**가 하면 별도 경로(`agency_store_intro_commissions`, default 2%) — 에이전시 관점은 에이전시 소개서. 이 deck은 **크리에이터 영입(1.5%)**만.
+- **영입 매장 관리/상품 대행**: 영입한 매장 목록 조회(`GET /api/curator/me/introduced-stores`) + 그 매장 상품을 영입자가 **대행 등록**(`POST /api/curator/me/proxy-product`, 영입자 본인만 — IDOR 가드). (`curator.routes.ts`)
 
 ### 7-B.4 추천 트리 / 정산 / 출금
-- **추천 트리**: `referral_tree`(parent / grandparent / great_grandparent, depth) — 다단 구조 추적.
-- **정산**: 적립은 `influencer_attributions`/`user_points`에 쌓이고, 출금 UI에서 최소 1만원부터 출금(원천징수 자동, §7-D).
+- **추천 트리**: `referral_tree`(parent / grandparent / great_grandparent, depth) — 다단 구조 추적. 다단 커미션 기본 tier1 **10%** / tier2 **3%** / tier3 **1%**(`tier{1,2,3}_commission_rate`, tier3는 현재 비활성). (`referral-tree.routes.ts`) [확인 필요: 핀 1%·친구초대 0.5% 경로와의 적용 우선순위]
+- **정산**: 적립은 `influencer_attributions`/`user_points`에 쌓이고, 출금 UI에서 최소 1만원부터 출금(원천징수 자동, §7-D). 추천트리 커미션 출금은 별도(`POST/GET /api/referral-tree/withdrawals`, 어드민 승인).
+
+### 7-B.5 성과 분석 & 큐레이터 대시보드
+- **어필리에이트 성과**: 추천 보상 횟수·카테고리 분포·최근 30일 추이 퍼널(`GET /api/affiliate/funnel`), 통계(`/stats`), 인기 그룹 top(`/top-groups`), 추천 링크 생성(`/link/:type/:id`). (`affiliate.routes.ts`) — 클릭/주문 추적 동선(`/api/ledger/referral/click`, `/api/ledger/seller/funnel-kpi`).
+- **큐레이터 대시보드**: `/u/me/earnings`(CuratorEarningsPage) — 30일 적립 / 클릭 / 구매 / 인기 핀 top3 / 일별 차트 + 출금 모달. (`GET /api/curator/me/dashboard`, `/me/pins/stats`)
+- **크리에이터 사업자 등록**: 큐레이터가 본인 페이지에서 사업자번호(국세청 진위확인 자동) + 정산 은행계좌·세금유형 등록(`GET/POST /api/curator/me/business`) → 승급(50만원) 시 셀러 전환 인지(`/me/seller-upgrade-acknowledge`).
 
 > [디자인 지시] 7-B는 "세 갈래 보상" 3분할 + 가운데 내 링크샵. 0.5%/1%/1.5% 수치를 크게.
 >
@@ -416,7 +429,7 @@
   - 한글 등 비라틴 닉네임은 빈 슬러그 → `user{id}` 폴백 (generic `@user` 점유 방지)
 - **운영 가이드**: 셀러 가이드 `/seller/guide` (DB `operation_guides`)
 - **URL 공유 형태**: `live.ur-team.com/s/{핸들}` (짧음) / `/profile/{핸들}` (전체) / `/u/{핸들}` (큐레이터)
-- **편집/관리**: 본인 페이지 상단 "내 페이지 — 클릭해 바로 편집" 안내 배너 + "전체 설정"(`/seller/profile`) + "대시보드"(`/seller`)
+- **편집/관리**: 본인 페이지 상단 "내 페이지 — 클릭해 바로 편집" 안내 배너 + "전체 설정"(`/seller/profile`) + "대시보드"(`/seller`). `/u/me`는 본인 공개페이지로 자동 redirect, 수익 대시보드는 `/u/me/earnings`(30일 적립/클릭/구매/인기 핀/출금)
 
 > [디자인 지시] 핸들 규칙은 "좋은 예 / 나쁜 예" 칩으로 (예: `@coffeelover` good / `@admin` 예약어 reject).
 >
@@ -682,6 +695,8 @@
 - 플랫폼 수수료 기본 **5%** · 위탁 셀러 **10%**
 - 친구 초대 **0.5%(양쪽)** · 매장 영입 **1.5%** · 큐레이터 핀 **1.0%** · 공구 호스트 **1.0%** · 일반 제휴 fallback **5%**
 - 후원 수수료 기본 **15%(셀러별 조정)** · 최소 후원 **1,000원**(100원 단위) · 단건 상한 1,000만원 · 일 cap **5,000만원** · 정산 **T+10**
+- 후원 부스터: 매칭 **1.5/2/3배** · 지속 **5/10/15분** · 라이브 1회당 1회
+- 추천 트리 다단 커미션 기본 **tier1 10% / tier2 3% / tier3 1%**(tier3 비활성)
 - 친구초대 딜포인트 정액 fallback **1,000딜**(`invite_reward_amount`)
 - 충전 **1원=1딜(수수료 0)**
 - 원천징수 **3.3%(사업)/8.8%(기타)** · 최소 출금 **1만원** · 셀러 승급 안내 **누적 50만원**
@@ -718,7 +733,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (10개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (13개)
 
 - `/host`
 - `/host/new`
@@ -726,12 +741,15 @@
 - `/referral`
 - `/referral/:code`
 - `/s/:sellerId`
+- `/seller/donations`
+- `/seller/mini-shop`
 - `/u/:handle`
 - `/u/:handle/p/:productId`
 - `/u/me`
 - `/u/me/earnings`
+- `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (22개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (58개)
 
 
 **/api/affiliate/funnel**
@@ -749,11 +767,11 @@
 **/api/affiliate/track**
 - `POST /api/affiliate/track`
 
-**/api/curator/${encodeURIComponent(handle)}**
-- `GET /api/curator/${encodeURIComponent(handle)}`
+**/api/curator/:handle**
+- `GET /api/curator/:handle`
 
 **/api/curator/handle**
-- `GET /api/curator/handle/check?q=${encodeURIComponent(handle)}`
+- `GET /api/curator/handle/check`
 
 **/api/curator/me**
 - `GET /api/curator/me/business`
@@ -762,20 +780,104 @@
 - `PATCH /api/curator/me/handle`
 - `GET /api/curator/me/introduced-stores`
 - `POST /api/curator/me/pins`
-- `DELETE /api/curator/me/pins/${pinId}`
-- `PATCH /api/curator/me/pins/${pinId}`
+- `DELETE /api/curator/me/pins/:id`
+- `PATCH /api/curator/me/pins/:id`
 - `PATCH /api/curator/me/pins/reorder`
-- `GET /api/curator/me/pins/stats?range=${range}`
+- `GET /api/curator/me/pins/stats`
+- `PATCH /api/curator/me/profile`
 - `POST /api/curator/me/proxy-product`
 - `POST /api/curator/me/seller-upgrade-acknowledge`
 - `GET /api/curator/me/withdrawal`
 - `POST /api/curator/me/withdrawal`
 
-**/api/curator/recommendations?limit=${limit}**
-- `GET /api/curator/recommendations?limit=${limit}`
+**/api/curator/recommendations**
+- `GET /api/curator/recommendations`
+
+**/api/donation-boosters**
+- `POST /api/donation-boosters/`
+
+**/api/donation-boosters-public/live**
+- `GET /api/donation-boosters-public/live/:live_stream_id`
+
+**/api/donation-boosters/:id**
+- `POST /api/donation-boosters/:id/cancel`
+
+**/api/donations/confirm**
+- `POST /api/donations/confirm`
+
+**/api/donations/init**
+- `POST /api/donations/init`
+
+**/api/donations/stream**
+- `GET /api/donations/stream/:streamId`
+
+**/api/referral-tree/admin**
+- `GET /api/referral-tree/admin/withdrawals`
+- `PATCH /api/referral-tree/admin/withdrawals/:id/approve`
+- `PATCH /api/referral-tree/admin/withdrawals/:id/reject`
+
+**/api/referral-tree/calculate-commission**
+- `POST /api/referral-tree/calculate-commission`
+
+**/api/referral-tree/my-commissions**
+- `GET /api/referral-tree/my-commissions`
+
+**/api/referral-tree/my-network**
+- `GET /api/referral-tree/my-network`
+
+**/api/referral-tree/register**
+- `POST /api/referral-tree/register`
+
+**/api/referral-tree/stats**
+- `GET /api/referral-tree/stats`
+
+**/api/referral-tree/withdrawals**
+- `GET /api/referral-tree/withdrawals`
+- `POST /api/referral-tree/withdrawals`
+
+**/api/referral/:code**
+- `GET /api/referral/:code`
+
+**/api/referral/create**
+- `POST /api/referral/create`
+
+**/api/referral/discount**
+- `GET /api/referral/discount/:productId`
+
+**/api/referral/join**
+- `POST /api/referral/join/:code`
+
+**/api/referral/my**
+- `GET /api/referral/my`
+
+**/api/referral/product**
+- `GET /api/referral/product/:productId`
+
+**/api/seller-public/:sellerId**
+- `DELETE /api/seller-public/:sellerId/follow`
+- `POST /api/seller-public/:sellerId/follow`
+- `GET /api/seller-public/:sellerId/follow/preferences`
+- `PATCH /api/seller-public/:sellerId/follow/preferences`
+- `GET /api/seller-public/:sellerId/is-following`
+- `GET /api/seller-public/:sellerId/upcoming`
+
+**/api/seller-public/my**
+- `GET /api/seller-public/my/follows`
+
+**/api/seller-public/notify-followers**
+- `POST /api/seller-public/notify-followers`
+
+**/api/seller-public/seller**
+- `GET /api/seller-public/seller/analytics`
+
+**/api/seller/donations**
+- `GET /api/seller/donations`
+- `GET /api/seller/donations/settlements`
+- `POST /api/seller/donations/settlements`
+- `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-06-07T09:17:23.151Z
+> 마지막 생성: 2026-06-07T22:42:02.489Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

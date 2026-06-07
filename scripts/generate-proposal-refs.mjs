@@ -49,24 +49,93 @@ const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop', 
 // 페이지 라우트 prefix (App.tsx / src/routes/*.tsx) — 도메인별.
 //   더 구체적인 prefix 가 먼저 매칭되도록 classify 에서 순서대로 검사.
 const PAGE_PREFIXES = {
-  wholesale: ['/wholesale', '/supplier'],
-  'offline-groupbuy': ['/meal-vouchers', '/restaurant-map', '/stays', '/my-stays', '/community-group-buy', '/my-appointments', '/group-buy'],
-  'online-listing': ['/browse', '/products', '/cart', '/checkout', '/my-orders', '/search', '/wishlist', '/live', '/shorts'],
-  linkshop: ['/profile/', '/s/', '/host', '/referral', '/u/', '/curator'],
-  agency: ['/agency'],
+  wholesale: ['/wholesale', '/supplier', '/seller/supply', '/seller/register/supplier'],
+  'offline-groupbuy': [
+    '/meal-vouchers', '/restaurant-map', '/stays', '/my-stays', '/community-group-buy',
+    '/my-appointments', '/group-buy', '/g/',
+    // 매장/오프라인 셀러 도구 (online-listing catch-all `/seller` 보다 길어 우선).
+    '/seller/stays', '/seller/appointments', '/seller/meal-voucher', '/seller/store-dashboard',
+    '/seller/voucher-orders', '/seller/products/:id/booking-slots',
+  ],
+  'online-listing': [
+    '/browse', '/products', '/product', '/cart', '/checkout', '/my-orders', '/my-returns',
+    '/search', '/wishlist', '/live', '/shorts', '/vouchers', '/my-vouchers', '/v', '/store',
+    // 셀러 입점/운영 대시보드 (C1~C11) = 온라인 입점 소개서 소유 (master 문서 §2).
+    //   catch-all `/seller` 는 맨 끝 — 더 구체적 도메인(stays/supply/donations 등)이 우선.
+    '/seller',
+  ],
+  linkshop: ['/profile/', '/s/', '/host', '/referral', '/u/', '/curator', '/user/affiliate', '/seller/donations', '/seller/mini-shop'],
+  agency: ['/agency', '/agency-partner', '/a/', '/influencer', '/seller/castings', '/seller/prospects'],
 }
 // 페이지 prefix 명시 매칭(set) — admin 페이지 등 prefix 로 안 잡히는 것.
+//   ⚠️ 도메인 전용 admin 페이지만. 범용 admin 콘솔(G5)은 공통/인프라 allowlist 로.
 const PAGE_EXACT = {
-  wholesale: new Set(['/admin/suppliers', '/admin/distributor-grades', '/admin/wholesale-orders', '/admin/wholesale-guide']),
+  wholesale: new Set([
+    '/admin/suppliers', '/admin/distributor-grades', '/admin/wholesale-orders', '/admin/wholesale-guide',
+  ]),
+  'offline-groupbuy': new Set([
+    '/admin/stays', '/admin/restaurant-demand', '/admin/voucher-orders', '/admin/voucher-transactions',
+    '/admin/group-buy', '/admin/deals',
+  ]),
+  agency: new Set([
+    '/admin/agencies', '/admin/agency-creator-approval', '/admin/castings',
+    '/admin/influencer-disputes', '/admin/influencer-payouts',
+  ]),
 }
 
 // API 엔드포인트 prefix — 도메인별 (worker 마운트 후 fullPath 기준).
 const API_PREFIXES = {
-  wholesale: ['/api/supplier', '/api/wholesale', '/api/supply', '/api/admin/suppliers', '/api/admin/distributor', '/api/admin/supplier-products'],
-  'offline-groupbuy': ['/api/community-group-buy', '/api/group-buy', '/api/appointments', '/api/seller/stays', '/api/restaurant', '/api/hosting', '/api/funding'],
-  'online-listing': ['/api/products', '/api/orders', '/api/cart', '/api/search', '/api/shipping', '/api/returns', '/api/shorts', '/api/seller/youtube', '/api/youtube', '/api/multi-platform', '/api/cafe24', '/api/streaming', '/api/timedeal', '/api/auction'],
-  linkshop: ['/api/curator', '/api/seller-public', '/api/referral', '/api/affiliate', '/api/donations', '/api/donation-boosters'],
-  agency: ['/api/agency', '/api/admin/castings', '/api/seller/castings', '/api/admin/agencies', '/api/admin/agency-creator-approvals', '/api/pk-public'],
+  wholesale: [
+    '/api/supplier', '/api/wholesale', '/api/supply', '/api/admin/suppliers',
+    '/api/admin/distributor', '/api/admin/supplier-products',
+  ],
+  'offline-groupbuy': [
+    '/api/community-group-buy', '/api/group-buy', '/api/appointments', '/api/restaurant',
+    '/api/restaurant-suggestions', '/api/hosting', '/api/funding', '/api/stays',
+    // 매장/오프라인 셀러 sub-route (online-listing catch-all `/api/seller` 보다 길어 우선).
+    '/api/seller/stays', '/api/seller/appointments', '/api/seller/voucher',
+    '/api/seller/meal-voucher', '/api/seller/store-dashboard',
+    '/api/admin/stays', '/api/admin/voucher-orders', '/api/admin/voucher-transactions',
+  ],
+  'online-listing': [
+    '/api/products', '/api/orders', '/api/cart', '/api/search', '/api/shipping', '/api/returns',
+    '/api/shorts', '/api/seller/youtube', '/api/youtube', '/api/multi-platform', '/api/cafe24',
+    '/api/streaming', '/api/timedeal', '/api/auction', '/api/vouchers',
+    // 리뷰/리뷰보너스 (C6), 배송지 (C3), 유튜브 성장 (C10) — 셀러 운영 = online-listing.
+    '/api/review-bonus', '/api/admin-review-bonus', '/api/shipping-addresses', '/api/youtube-growth',
+    // 라이브커머스 송출/시청/채팅 (A1·A2 판매채널 — online-listing 소유).
+    '/api/streams', '/api/live', '/api/chat', '/api/platforms',
+    // 셀러 입점/운영 대시보드 catch-all (C1~C11) = 온라인 입점 (master §2).
+    //   맨 끝 — longest-prefix-wins 로 위의 도메인 전용 seller sub-route 가 먼저 잡힘.
+    '/api/seller', '/api/sellers',
+  ],
+  linkshop: [
+    '/api/curator', '/api/seller-public', '/api/referral', '/api/referral-tree', '/api/affiliate',
+    '/api/donations', '/api/donation-boosters', '/api/donation-boosters-public',
+    '/api/donation-booster', '/api/seller/donations',
+  ],
+  agency: [
+    '/api/agency', '/api/admin/castings', '/api/seller/castings', '/api/admin/agencies',
+    '/api/admin/agency-creator-approvals', '/api/agency-public', '/api/pk-public', '/api/pk',
+    // 크리에이터 영입/정산/랭킹 (E·F2 — 에이전시/영입 소유).
+    '/api/influencer-discover', '/api/influencer-rankings', '/api/influencer-settlement',
+    '/api/seller-marketing', '/api/admin-payouts', '/api/seller/promote-boosts',
+    '/api/admin/influencer', '/api/admin/agency',
+  ],
+}
+
+// ── 중첩/register-pattern 마운트 override (src/worker/index.ts 만으로는 안 잡힘) ──
+//   일부 라우터는 부모 라우터 내부에서 마운트됨:
+//     group-buy.routes.ts: `groupBuyRoutes.route('/admin', groupBuyAdminRoutes)` +
+//       `registerSellerEndpoints(groupBuyRoutes)` / `registerPublicEndpoints(...)` / `registerVoucherEndpoints(...)`
+//       → 모두 부모 `/api/group-buy` (admin 만 `/api/group-buy/admin`) 아래.
+//   index.ts 파서가 못 보는 이런 케이스만 **명시적**으로 등록. (값=relative path, 키=relative file.)
+//   ⚠️ 새 중첩 마운트 추가 시 여기 등록 — 아니면 UNCOVERED 에 bare path 로 노출되어 즉시 감지됨.
+const NESTED_MOUNT_OVERRIDES = {
+  'src/features/group-buy/api/group-buy-public.routes.ts': ['/api/group-buy'],
+  'src/features/group-buy/api/group-buy-seller.routes.ts': ['/api/group-buy'],
+  'src/features/group-buy/api/group-buy-voucher.routes.ts': ['/api/group-buy'],
+  'src/features/group-buy/api/group-buy-admin.routes.ts': ['/api/group-buy/admin'],
 }
 
 // 도메인 한국어 라벨.
@@ -87,6 +156,112 @@ const FILE_DOMAIN = {
   'agency-brief.md': 'agency',
 }
 const MASTER_FILE = '00-service-overview-and-coverage.md'
+
+// ─────────────────────────────────────────────────────────────
+// 0b. 공통/인프라 allowlist — 어떤 소개서의 "주제"도 아닌 cross-cutting 기능.
+//    여기 매칭되는 페이지/엔드포인트는 "공통/인프라(의도적 제외)" 로 분류되어
+//    UNCOVERED(=빠진 기능) 카운트에 들어가지 않음.
+//
+//    ⚠️ 감사 가능성(auditability): 이 목록은 명시적이고 주석 처리되어야 함.
+//    도메인 관련 기능을 "인프라"로 숨기지 말 것 — 진짜 cross-cutting 만 등록.
+//    UNCOVERED 에 도메인 관련 항목이 남으면 allowlist 가 아니라 버킷 prefix 를 확장.
+// ─────────────────────────────────────────────────────────────
+
+// 공통/인프라 페이지 — prefix 매칭 (path === pre || path startsWith pre + '/').
+const COMMON_PAGE_PREFIXES = [
+  // ── 인증 / 로그인 / OAuth / 카카오 ──
+  '/login', '/register', '/join', '/auth', '/oauth', '/account',
+  // ── 정적/법적/안내 페이지 ──
+  '/about', '/business', '/faq', '/terms', '/privacy', '/privacy-policy',
+  '/gdpr', '/refund', '/refund-policy', '/shipping-policy', '/introduce',
+  '/blog', '/coupon', '/gift', '/following', '/interest-list',
+  // ── 알림 ──
+  '/notifications',
+  // ── 결제 (Toss confirm / 충전 / 성공·실패 콜백) — 공통 결제 인프라 ──
+  '/pay', '/payment', '/points', '/checkout-return',
+  // ── 마이페이지 (개인 계정 — 어느 한 도메인 소유 아님) ──
+  '/mypage', '/user/profile', '/my-coupons', '/my-deal-history',
+  '/my-commissions', '/my-reviews', '/my/digital', '/my/follows',
+  '/u/me',
+  // ── 디버그 / 임베드 / 에러 페이지 (인프라) ──
+  '/kakao-debug', '/toss-debug', '/embed', '/500',
+  // ── 범용 어드민 운영 콘솔 (G5 — master 문서: "소개서 대상 아님(인프라)") ──
+  //    승인/정산/분쟁/모니터링/세무/계정 등 전 도메인 가로지르는 운영 도구.
+  //    ⚠️ 도메인 전용 admin 페이지(suppliers/stays/agencies/castings 등)는 위 PAGE_EXACT 로 버킷됨.
+  '/admin',
+  // ── 약관/법적 (정적) ──
+  '/terms-of-service',
+]
+
+// 공통/인프라 페이지 — 정확 매칭 (prefix 로 잡으면 도메인 페이지까지 끌려오는 경우).
+const COMMON_PAGE_EXACT = new Set([
+  '/', '*', // 루트 + catch-all
+  '/fail', '/success', // 범용 결제 결과 콜백
+  '/seller', // 셀러 대시보드 루트 (개별 도메인 아님)
+  '/admin', // 어드민 대시보드 루트
+  '/orders', // 범용 주문 alias (실제 매핑은 /my-orders)
+])
+
+// 공통/인프라 API — prefix 매칭 (worker 마운트 후 fullPath 기준).
+const COMMON_API_PREFIXES = [
+  // ── 인증 / 세션 / OAuth / 카카오 ──
+  '/api/auth', '/api/login', '/api/oauth', '/api/kakao', '/api/session',
+  '/api/users', '/api/user', '/api/me', '/api/account', '/api/2fa',
+  '/api/firebase', '/api/verify',
+  // ── 알림 / 푸시 / 알림톡(공통 채널) ──
+  '/api/notifications', '/api/dashboard-notifications', '/api/push',
+  '/api/notification-settings', '/api/web-push',
+  // ── 결제 / Toss confirm / 충전 / 환불 게이트웨이 (공통 결제 인프라) ──
+  '/api/payment', '/api/payments', '/api/toss', '/api/points', '/api/charge',
+  '/api/billing', '/api/webhook', '/api/webhooks',
+  // ── 이미지 / 업로드 / 미디어 / R2 ──
+  '/api/image', '/api/images', '/api/upload', '/api/media', '/api/r2',
+  '/api/cdn', '/api/file', '/api/files',
+  // ── 버전 / 헬스 / 진단 / repair-schema / 내부 ──
+  '/api/version', '/api/health', '/api/healthz', '/api/ping', '/api/status',
+  '/api/_internal', '/api/repair-schema', '/api/debug', '/api/diag',
+  '/api/env', '/api/env-check', '/api/metrics',
+  // ── i18n / 지역 / 검색(공통 글로벌) / 설정 ──
+  '/api/i18n', '/api/locale', '/api/translations', '/api/region',
+  '/api/settings', '/api/platform-settings', '/api/config',
+  // ── 공통 유틸 (지도/주소/사업자검증/약관/배너/블로그/FAQ/쿠폰 등) ──
+  '/api/public-utility', '/api/utility', '/api/geocode', '/api/address',
+  '/api/business-verification', '/api/banners', '/api/blog', '/api/faq',
+  '/api/coupons', '/api/coupon', '/api/reviews', '/api/review',
+  '/api/follow', '/api/followers', '/api/following', '/api/wishlist',
+  '/api/interest', '/api/bookmarks', '/api/gift', '/api/terms',
+  '/api/contact', '/api/support', '/api/feedback', '/api/analytics',
+  '/api/admin/audit', '/api/admin/notices', '/api/notices',
+  // ── 인증 (root mount — `/auth/kakao/*` OAuth 콜백/시작) ──
+  '/auth/kakao', '/auth', '/oauth', '/login', '/logout', '/change-password',
+  '/id-token', '/check', '/disable', '/2fa', '/api/2fa',
+  // ── 범용 어드민 운영 콘솔 API (G5 — 소개서 대상 아님, 전 도메인 가로지름) ──
+  //    승인/정산/주문/상품/사용자/리뷰/쿠폰/배너/세무/모니터링/플래그/지급 등.
+  //    ⚠️ 도메인 전용 admin(suppliers/distributor/stays/castings/agencies/influencer)은
+  //       위 API_PREFIXES 에서 longest-prefix-wins 로 먼저 버킷됨 — 여기 안 옴.
+  '/api/admin', '/api/disputes', '/api/flags', '/api/feature-flags', '/api/invite',
+  '/api/dashboard-notifications', '/api/error', '/api/_errors', '/api/_healthcheck',
+  '/api/_selftest', '/api/_bootstrap', '/api/_diag', '/api/csp-report',
+  // ── 외부 supply / 기프티콘 catalog 연동 admin (KT Alpha/기프티쇼 — 외부 통합 운영) ──
+  //    catalog/sync/settings 등 순수 외부연동 운영. 교환권 '주문'(voucher-orders/
+  //    voucher-transactions)은 A4 교환권 도메인이라 offline-groupbuy 로 버킷(위 API_PREFIXES).
+  '/api/admin/kt-alpha',
+  // ── SEO / PWA / 정적 / 문서 (root mount 인프라) ──
+  '/docs', '/api/docs', '/openapi.json', '/api/openapi.json', '/sitemap.xml',
+  '/sw.js', '/manifest.webmanifest', '/robots.txt',
+  '/api/home', '/api/flash-deals', '/api/vouchers/categories',
+  // ── 외부 프록시 / 지도 / OCR / OG 이미지 / 환율 (공통 유틸 인프라) ──
+  '/api/naver', '/api/kakao', '/api/ocr', '/api/og', '/api/currency', '/api/proxy', '/api/geo',
+  // ── 결제/카카오/2fa root mount (worker payment/stripe/twofa) ──
+  '/checkout-session', '/client-key', '/create-intent',
+]
+
+// 공통/인프라 API — 정확 매칭.
+const COMMON_API_EXACT = new Set([
+  '/api', '/', '/health', '/version',
+  // PWA service-worker killer (root mount, 정규식 path).
+  '/workbox-:hash{[a-zA-Z0-9]+}.js',
+])
 
 // ─────────────────────────────────────────────────────────────
 // 1. 핵심 수치 추출 — 코드에서 robust regex. 실패 시 MISSING.
@@ -331,19 +506,31 @@ function extractRoutes() {
   return [...new Set(routes)]
 }
 
+// prefix 매칭: path === pre 또는 path 가 pre 의 하위 경로(pre + '/').
+function prefixMatch(p, pre) {
+  const norm = pre.endsWith('/') ? pre.slice(0, -1) : pre
+  return p === norm || p.startsWith(norm + '/')
+}
+
+// 가장 긴(=가장 구체적인) 매칭 prefix 의 도메인을 반환 — longest-prefix-wins.
+//   예: `/seller`(online-listing) 보다 `/seller/stays`(offline) 가 더 길어 우선.
+//   EXACT 매칭은 무한대 우선순위(가장 구체적).
 function classifyRoute(p) {
-  // EXACT 먼저 (admin 페이지 등).
   for (const d of DOMAINS) {
     if (PAGE_EXACT[d] && PAGE_EXACT[d].has(p)) return d
   }
-  // prefix — 더 구체적 도메인이 먼저 잡히도록 DOMAINS 순서대로.
+  let best = null
+  let bestLen = -1
   for (const d of DOMAINS) {
-    const prefixes = PAGE_PREFIXES[d] || []
-    if (prefixes.some((pre) => p === pre || p.startsWith(pre.endsWith('/') ? pre : pre + '/') || p === pre)) {
-      return d
+    for (const pre of PAGE_PREFIXES[d] || []) {
+      const norm = pre.endsWith('/') ? pre.slice(0, -1) : pre
+      if (prefixMatch(p, pre) && norm.length > bestLen) {
+        best = d
+        bestLen = norm.length
+      }
     }
   }
-  return null
+  return best
 }
 
 // API 라우트 파일 디렉터리 — guide 생성기보다 넓게 (5개 도메인 전부).
@@ -394,21 +581,120 @@ function findRouteFiles() {
   return files
 }
 
+// 파일 내부에서 선언된 Hono 라우터 인스턴스 변수명 집합.
+//   `const X = new Hono(...)` / `let X = new Hono(...)` 둘 다. (export 여부 무관.)
+//   이 집합으로 `.get/.post/...` 의 receiver 를 제한 → context 객체(`c.get('jwtPayload')`,
+//   `c.req.header(...)`) 같은 false-positive 를 추출하지 않음.
+function localRouterVars(src) {
+  const vars = new Set()
+  const re = /\b(?:const|let|var)\s+(\w+)\s*=\s*new\s+Hono\b/g
+  let m
+  while ((m = re.exec(src)) !== null) vars.add(m[1])
+  return vars
+}
+
+// JSDoc / 라인 주석 제거 — 주석 안의 `app.post('/x', ...)` 예시가 endpoint 로 오인되는 것 차단.
+//   (예: agency-role-guard.ts 의 사용법 주석.) 문자열 리터럴 보존은 불필요(우린 메서드 호출만 봄).
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '') // 블록 주석.
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1') // 라인 주석 ('://' URL 오삭제 방지로 직전 문자 보존).
+}
+
 function extractEndpoints(file) {
-  const src = fs.readFileSync(file, 'utf-8')
+  const raw = fs.readFileSync(file, 'utf-8')
+  const src = stripComments(raw)
+  const routerVars = localRouterVars(src)
+  // register-pattern: `export function registerXEndpoints(router: Hono...)` — param 이름을 라우터로.
+  const registerParams = new Set()
+  const regRe = /export\s+function\s+register\w*\s*\(\s*(\w+)\s*:/g
+  let rp
+  while ((rp = regRe.exec(src)) !== null) registerParams.add(rp[1])
+
   const endpoints = []
   const re = /\b(\w+)\.(get|post|put|delete|patch)\(\s*['"`]([^'"`]+)['"`]/g
   let m
   while ((m = re.exec(src)) !== null) {
-    endpoints.push({ method: m[2].toUpperCase(), path: m[3], file: path.relative(ROOT, file) })
+    const receiver = m[1]
+    // 실제 Hono 라우터(또는 register-pattern param)에 대한 호출만.
+    //  context 객체(`c.get(...)`)는 절대 제외.
+    if (receiver === 'c') continue
+    // 라우터/register-param 식별 실패 파일 = util/guard/helper → endpoint 0 (false-positive 차단).
+    if (routerVars.size === 0 && registerParams.size === 0) continue
+    if (!routerVars.has(receiver) && !registerParams.has(receiver)) continue
+    endpoints.push({ method: m[2].toUpperCase(), path: m[3], file: path.relative(ROOT, file), receiver })
   }
   return endpoints
 }
 
+// 파일 내부의 receiver 변수(`app`, `sellerApp`, …) → 외부 export 이름(들) 매핑.
+//   `export { sellerApp as sellerMarketingRoutes }` / `export const fooRoutes = app`.
+//   여러 라우터가 한 파일에서 각각 다른 prefix 로 마운트될 때 receiver 별 정확 해소에 사용.
+function receiverExportAliases(src) {
+  const map = {} // receiverVar → [exportName...]
+  const add = (recv, name) => {
+    if (!map[recv]) map[recv] = []
+    if (!map[recv].includes(name)) map[recv].push(name)
+  }
+  let m
+  // export { recv as alias, recv2 as alias2 }
+  const reBrace = /export\s*\{([^}]+)\}/g
+  while ((m = reBrace.exec(src)) !== null) {
+    for (const part of m[1].split(',')) {
+      const as = part.trim().match(/^(\w+)\s+as\s+(\w+)$/)
+      if (as) add(as[1], as[2])
+    }
+  }
+  // export const alias = recv
+  const reAssign = /export\s+const\s+(\w+)\s*=\s*(\w+)\s*;?\s*$/gm
+  while ((m = reAssign.exec(src)) !== null) add(m[2], m[1])
+  return map
+}
+
+// index.ts 의 `import { x as y } from '...'` 를 파싱해 { localName → 절대 소스 파일 경로 }.
+//   라우터가 mount 시점에 alias(`featureProductsRoutes`)로 불려도 원본 파일로 역추적 가능.
+function parseImports(indexFile, src) {
+  const dir = path.dirname(indexFile)
+  const map = {} // localName → absFile (확장자 .ts 가정)
+  const resolveAbs = (spec) => {
+    let abs = path.resolve(dir, spec)
+    if (!abs.endsWith('.ts')) abs += '.ts'
+    return abs
+  }
+  // (a) named import: import { x, y as z } from '...'
+  const reNamed = /import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g
+  let m
+  while ((m = reNamed.exec(src)) !== null) {
+    const spec = m[2]
+    if (!spec.startsWith('.')) continue
+    const abs = resolveAbs(spec)
+    for (const part of m[1].split(',')) {
+      const seg = part.trim()
+      if (!seg) continue
+      const asMatch = seg.match(/^(\w+)\s+as\s+(\w+)$/)
+      const local = asMatch ? asMatch[2] : (seg.match(/^(\w+)$/) || [])[1]
+      if (local) map[local] = abs
+    }
+  }
+  // (b) default import: import youtubeRoutes from '...'  (export default app 패턴.)
+  const reDefault = /import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/g
+  while ((m = reDefault.exec(src)) !== null) {
+    const spec = m[2]
+    if (!spec.startsWith('.')) continue
+    if (!map[m[1]]) map[m[1]] = resolveAbs(spec)
+  }
+  return map
+}
+
+// worker mount 분석. 반환:
+//   byName: { routerLocalName → [fullPrefix...] }  (기존 호환)
+//   byFile: { absSourceFile → [fullPrefix...] }     (import alias 우회 — 더 견고)
 function extractMountedPrefixes() {
   const file = path.join(ROOT, 'src/worker/index.ts')
-  if (!fs.existsSync(file)) return {}
+  if (!fs.existsSync(file)) return { byName: {}, byFile: {} }
   const src = fs.readFileSync(file, 'utf-8')
+  const imports = parseImports(file, src)
+
   const directMap = {}
   const directRe = /(\w+)\.route\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g
   let m
@@ -417,44 +703,86 @@ function extractMountedPrefixes() {
     if (!directMap[routerName]) directMap[routerName] = []
     directMap[routerName].push({ mountApp, mountPath })
   }
+  // 부모 sub-app(`fooApp`) 자체가 `app.route('/prefix', fooApp)` 로 마운트된 경우의 접두.
   const subAppPrefix = {}
   for (const [routerName, mounts] of Object.entries(directMap)) {
     for (const { mountApp, mountPath } of mounts) {
       if (mountApp === 'app' && /^\w+App$/.test(routerName)) subAppPrefix[routerName] = mountPath
     }
   }
-  const map = {}
+  const byName = {}
+  const byFile = {}
   for (const [routerName, mounts] of Object.entries(directMap)) {
-    if (!map[routerName]) map[routerName] = []
+    if (!byName[routerName]) byName[routerName] = []
     for (const { mountApp, mountPath } of mounts) {
       const parentPrefix = mountApp === 'app' ? '' : (subAppPrefix[mountApp] || '')
       const finalPrefix = (parentPrefix + mountPath).replace(/\/+/g, '/').replace(/\/$/, '') || '/'
-      map[routerName].push(finalPrefix)
+      byName[routerName].push(finalPrefix)
+      const absFile = imports[routerName]
+      if (absFile) {
+        if (!byFile[absFile]) byFile[absFile] = []
+        byFile[absFile].push(finalPrefix)
+      }
     }
   }
-  return map
+  return { byName, byFile }
 }
 
 function extractRouterNames(file) {
   const src = fs.readFileSync(file, 'utf-8')
   const names = []
-  const re1 = /export\s+const\s+(\w+)\s*=\s*new\s+Hono/g
   let m
+  // (a) export const X = new Hono(...)
+  const re1 = /export\s+const\s+(\w+)\s*=\s*new\s+Hono/g
   while ((m = re1.exec(src)) !== null) names.push(m[1])
-  const re2 = /export\s*\{\s*(\w+)\s+as\s+(\w+)\s*\}/g
-  while ((m = re2.exec(src)) !== null) names.push(m[2])
+  // (b) export const X = <identifier>  (예: `export const fooRoutes = app`)
+  const re1b = /export\s+const\s+(\w+)\s*=\s*\w+\s*;?\s*$/gm
+  while ((m = re1b.exec(src)) !== null) names.push(m[1])
+  // (c) export { app as fooRoutes } — alias 형태.
+  const re2 = /export\s*\{\s*([^}]+)\}/g
+  while ((m = re2.exec(src)) !== null) {
+    // 콤마 구분 각 항목: `name` 또는 `orig as alias`. 외부에 노출되는 이름(alias 우선) 수집.
+    for (const part of m[1].split(',')) {
+      const seg = part.trim()
+      if (!seg) continue
+      const asMatch = seg.match(/^(\w+)\s+as\s+(\w+)$/)
+      if (asMatch) names.push(asMatch[2])
+      else {
+        const plain = seg.match(/^(\w+)$/)
+        if (plain) names.push(plain[1]) // `export { curatorRoutes }` — alias 없는 재노출.
+      }
+    }
+  }
   if (/export\s+default\s+\w+/.test(src)) names.push('__default__')
   return [...new Set(names)]
 }
 
+// longest-prefix-wins (classifyRoute 와 동일 원칙).
+//   `/api/seller`(online-listing catch-all) 보다 `/api/seller/stays`(offline) 가 우선.
 function classifyEndpoint(fullPath) {
+  let best = null
+  let bestLen = -1
   for (const d of DOMAINS) {
-    const prefixes = API_PREFIXES[d] || []
-    if (prefixes.some((pre) => fullPath === pre || fullPath.startsWith(pre + '/') || fullPath.startsWith(pre))) {
-      return d
+    for (const pre of API_PREFIXES[d] || []) {
+      if (prefixMatch(fullPath, pre) && pre.length > bestLen) {
+        best = d
+        bestLen = pre.length
+      }
     }
   }
-  return null
+  return best
+}
+
+// ── 공통/인프라 allowlist 매칭 ──
+//    page: COMMON_PAGE_EXACT / COMMON_PAGE_PREFIXES 중 하나라도 매칭.
+function isCommonPage(p) {
+  if (COMMON_PAGE_EXACT.has(p)) return true
+  return COMMON_PAGE_PREFIXES.some((pre) => p === pre || p.startsWith(pre + '/'))
+}
+//    endpoint: COMMON_API_EXACT / COMMON_API_PREFIXES 중 하나라도 매칭.
+function isCommonEndpoint(fullPath) {
+  if (COMMON_API_EXACT.has(fullPath)) return true
+  return COMMON_API_PREFIXES.some((pre) => fullPath === pre || fullPath.startsWith(pre + '/'))
 }
 
 // 전체 인벤토리 계산 (한 번만).
@@ -465,13 +793,33 @@ function computeInventory() {
 
   const allEndpoints = []
   for (const f of routeFiles) {
+    const src = fs.readFileSync(f, 'utf-8')
     const names = extractRouterNames(f)
     const eps = extractEndpoints(f)
-    let prefixes = []
-    for (const n of names) if (mounted[n]) prefixes.push(...mounted[n])
-    if (prefixes.length === 0) prefixes = ['']
+    const relFile = path.relative(ROOT, f)
+    const recvAliases = receiverExportAliases(stripComments(src))
+
+    // 파일 전체 fallback prefix 집합 (per-receiver 해소 실패 시).
+    let filePrefixes = []
+    if (NESTED_MOUNT_OVERRIDES[relFile]) filePrefixes.push(...NESTED_MOUNT_OVERRIDES[relFile])
+    if (mounted.byFile[f]) filePrefixes.push(...mounted.byFile[f])
+    for (const n of names) if (mounted.byName[n]) filePrefixes.push(...mounted.byName[n])
+    filePrefixes = [...new Set(filePrefixes)]
+
+    // 한 파일에 서로 다른 prefix 로 마운트되는 라우터가 ≥2개면 receiver 별 정밀 해소.
+    //   (예: marketing.routes.ts 의 sellerApp/influencerApp/adminApp 등 5개.)
+    //   receiver → export alias → byName[alias] prefix. 해소되면 그것만, 아니면 file fallback.
     for (const ep of eps) {
       if (ep.path === '/*' || ep.path === '*') continue
+      let prefixes = []
+      const aliases = recvAliases[ep.receiver] || []
+      for (const a of aliases) if (mounted.byName[a]) prefixes.push(...mounted.byName[a])
+      // receiver 자신이 직접 마운트 이름인 경우 (`adminApp` 등).
+      if (mounted.byName[ep.receiver]) prefixes.push(...mounted.byName[ep.receiver])
+      prefixes = [...new Set(prefixes)]
+      // override 가 있으면 (register-pattern) 우선.
+      if (NESTED_MOUNT_OVERRIDES[relFile]) prefixes = [...NESTED_MOUNT_OVERRIDES[relFile]]
+      if (prefixes.length === 0) prefixes = filePrefixes.length ? filePrefixes : ['']
       for (const pref of prefixes) {
         const full = (pref + ep.path).replace(/\/+/g, '/')
         allEndpoints.push({ ...ep, fullPath: full })
@@ -502,7 +850,41 @@ function computeInventory() {
       (a, b) => a.fullPath.localeCompare(b.fullPath) || a.method.localeCompare(b.method),
     )
   }
-  return buckets
+
+  // ── 커버리지 검증: 모든 페이지/엔드포인트를 3분류로 나눔 ──
+  //    bucketed(도메인 매칭) / common(인프라 allowlist) / uncovered(둘 다 아님 = 빠진 기능).
+  const allRoutes = [...new Set(routes)].sort()
+  const commonPages = []
+  const uncoveredPages = []
+  for (const r of allRoutes) {
+    if (classifyRoute(r)) continue // bucketed
+    if (isCommonPage(r)) commonPages.push(r)
+    else uncoveredPages.push(r)
+  }
+
+  const commonEndpoints = []
+  const uncoveredEndpoints = []
+  for (const e of uniqueEndpoints) {
+    if (classifyEndpoint(e.fullPath)) continue // bucketed
+    if (isCommonEndpoint(e.fullPath)) commonEndpoints.push(e)
+    else uncoveredEndpoints.push(e)
+  }
+  const epSort = (a, b) => a.fullPath.localeCompare(b.fullPath) || a.method.localeCompare(b.method)
+  commonEndpoints.sort(epSort)
+  uncoveredEndpoints.sort(epSort)
+
+  const coverage = {
+    totalPages: allRoutes.length,
+    totalEndpoints: uniqueEndpoints.length,
+    bucketedPages: allRoutes.length - commonPages.length - uncoveredPages.length,
+    bucketedEndpoints: uniqueEndpoints.length - commonEndpoints.length - uncoveredEndpoints.length,
+    commonPages,
+    commonEndpoints,
+    uncoveredPages,
+    uncoveredEndpoints,
+  }
+
+  return { buckets, coverage }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -554,7 +936,7 @@ function domainBody(domain, bucket) {
 }
 
 // 마스터 블록 본문 (전체 인벤토리 + 커버리지 요약 + 전체 수치).
-function masterBody(buckets) {
+function masterBody(buckets, coverage) {
   let md = '## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지\n\n'
   md += '> 마스터 문서: 전체 도메인 인벤토리 + 버킷별 커버리지 요약. `scripts/generate-proposal-refs.mjs` 자동 생성.\n\n'
 
@@ -573,6 +955,36 @@ function masterBody(buckets) {
     md += `| ${DOMAIN_LABEL[d]} | \`${fileByDomain[d] || '-'}\` | ${b.pages.length} | ${b.endpoints.length} |\n`
   }
   md += `| **합계** | — | **${totalPages}** | **${totalEps}** |\n\n`
+
+  // ── 전체 커버리지 검증 (자동) — 빠진 기능 없음 보증 ──
+  if (coverage) {
+    md += '### 전체 커버리지 검증 (자동 — 빠진 기능 보증)\n\n'
+    md += '> 모든 페이지/엔드포인트를 3분류: **도메인 버킷** / **공통·인프라(의도적 제외)** / **미커버**.\n'
+    md += '> 미커버(allowlist 비포함)가 0 이면 모든 서비스 기능이 5개 소개서에 반영됨을 의미.\n\n'
+    md += '| 분류 | 페이지 | API 엔드포인트 |\n'
+    md += '|---|---|---|\n'
+    md += `| 전체 | ${coverage.totalPages} | ${coverage.totalEndpoints} |\n`
+    md += `| 도메인 버킷 (5개 소개서) | ${coverage.bucketedPages} | ${coverage.bucketedEndpoints} |\n`
+    md += `| 공통/인프라 (의도적 제외) | ${coverage.commonPages.length} | ${coverage.commonEndpoints.length} |\n`
+    md += `| **미커버 (점검 필요)** | **${coverage.uncoveredPages.length}** | **${coverage.uncoveredEndpoints.length}** |\n\n`
+
+    const totalUncovered = coverage.uncoveredPages.length + coverage.uncoveredEndpoints.length
+    if (totalUncovered === 0) {
+      md += '✅ **미커버 0** — 모든 도메인 관련 페이지/엔드포인트가 5개 소개서 버킷에 포함되었습니다. (나머지는 공통/인프라로 의도적 제외.)\n'
+    } else {
+      md += `⚠️ **미커버 ${totalUncovered}건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.\n\n`
+      if (coverage.uncoveredPages.length > 0) {
+        md += '**미커버 페이지**\n'
+        for (const p of coverage.uncoveredPages) md += `- \`${p}\`\n`
+        md += '\n'
+      }
+      if (coverage.uncoveredEndpoints.length > 0) {
+        md += '**미커버 API 엔드포인트**\n'
+        for (const e of coverage.uncoveredEndpoints) md += `- \`${e.method} ${e.fullPath}\` (\`${e.file}\`)\n`
+        md += '\n'
+      }
+    }
+  }
 
   // 전체 핵심 수치 (도메인별 섹션).
   md += '### 핵심 수치 (자동 추출 — 전체)\n\n'
@@ -651,12 +1063,67 @@ function updateFile(filePath, body) {
 // 5. 메인.
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// 5b. --dry / --report 모드 — 파일 안 씀. 커버리지 검증 결과만 stdout 출력.
+// ─────────────────────────────────────────────────────────────
+function reportMode() {
+  const { buckets, coverage } = computeInventory()
+
+  console.log('📑 proposal-refs 커버리지 리포트 (--dry — 파일 미작성)\n')
+  console.log(`전체 페이지:        ${coverage.totalPages}`)
+  console.log(`전체 엔드포인트:    ${coverage.totalEndpoints}\n`)
+
+  console.log('버킷별 카운트 (도메인 — 5개 소개서):')
+  for (const d of DOMAINS) {
+    const b = buckets[d]
+    console.log(`  - ${DOMAIN_LABEL[d]}: ${b.pages.length} pages, ${b.endpoints.length} endpoints`)
+  }
+  console.log(`  = 버킷 합계: ${coverage.bucketedPages} pages, ${coverage.bucketedEndpoints} endpoints\n`)
+
+  console.log(`공통/인프라 (allowlist — 의도적 제외): ${coverage.commonPages.length} pages, ${coverage.commonEndpoints.length} endpoints\n`)
+
+  const totalUncovered = coverage.uncoveredPages.length + coverage.uncoveredEndpoints.length
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+  console.log(`UNCOVERED (버킷 X + allowlist X = 무엇이 빠졌는가): ${totalUncovered}건`)
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+
+  if (totalUncovered === 0) {
+    console.log('✅ UNCOVERED 0 — 모든 도메인 관련 페이지/엔드포인트가 버킷에 포함됨. 나머지는 공통/인프라.')
+  } else {
+    if (coverage.uncoveredPages.length > 0) {
+      console.log(`UNCOVERED 페이지 (${coverage.uncoveredPages.length}):`)
+      for (const p of coverage.uncoveredPages) console.log(`  - ${p}`)
+      console.log('')
+    }
+    if (coverage.uncoveredEndpoints.length > 0) {
+      console.log(`UNCOVERED 엔드포인트 (${coverage.uncoveredEndpoints.length}):`)
+      for (const e of coverage.uncoveredEndpoints) console.log(`  - ${e.method} ${e.fullPath}  (${e.file})`)
+      console.log('')
+    }
+  }
+
+  // 감사용: allowlist 가 무엇을 잡았는지도 출력 (도메인 기능을 인프라로 숨겼는지 점검).
+  if (process.argv.includes('--verbose') || process.argv.includes('-v')) {
+    console.log('\n── 공통/인프라로 분류된 페이지 (감사용) ──')
+    for (const p of coverage.commonPages) console.log(`  · ${p}`)
+    console.log('\n── 공통/인프라로 분류된 엔드포인트 (감사용) ──')
+    for (const e of coverage.commonEndpoints) console.log(`  · ${e.method} ${e.fullPath}`)
+  }
+
+  // 종료 코드: UNCOVERED 있으면 비-0 (orchestrator/CI 가 게이트로 사용 가능).
+  process.exit(totalUncovered === 0 ? 0 : 2)
+}
+
 function main() {
+  if (process.argv.includes('--dry') || process.argv.includes('--report')) {
+    reportMode()
+    return
+  }
   if (!fs.existsSync(PROPOSALS_DIR)) {
     console.error(`❌ ${path.relative(ROOT, PROPOSALS_DIR)} 없음`)
     process.exit(0)
   }
-  const buckets = computeInventory()
+  const { buckets, coverage } = computeInventory()
   const changed = []
   const missingNotes = new Set()
 
@@ -675,7 +1142,7 @@ function main() {
   // 마스터.
   const masterFp = path.join(PROPOSALS_DIR, MASTER_FILE)
   if (fs.existsSync(masterFp)) {
-    const body = masterBody(buckets)
+    const body = masterBody(buckets, coverage)
     if (body.includes(MISSING)) missingNotes.add(MASTER_FILE)
     if (updateFile(masterFp, body)) changed.push(MASTER_FILE)
   } else {

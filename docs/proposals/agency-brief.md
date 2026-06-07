@@ -192,9 +192,9 @@
 | **운영** | 대시보드(`/agency`) · 담당 셀러(`/agency/sellers`) · 내 입점 가게(`/agency/introduced-stores`) · 라이브 현황(`/agency/streams`) · 방송 캘린더(`/agency/schedule`) |
 | **판매 관리** | 주문 현황(`/agency/orders`) · 공동구매(`/agency/group-buy`) · 숙소 운영(`/agency/stays`) · 반품/CS(`/agency/returns`) |
 | **분석 & 성과** | 통계 분석(`/agency/stats`) · 셀러 랭킹(`/agency/ranking`) · 셀러 비교(`/agency/compare`) · 매출 목표(`/agency/targets`) |
-| **캠페인 & 영업** | 캠페인(`/agency/campaigns`) · 인센티브 규칙(`/agency/incentives`) · 메시지 템플릿(`/agency/messages`) · 쿠폰 배포(`/agency/coupons`) · 라이브 캘린더(`/agency/calendar`) · 셀러 영입(`/agency/invites`) · 자동 매칭 제안(`/agency/match-suggestions`) · PK 이벤트(`/agency/pk`) · 자사 챌린지(`/agency/events`) · 노출 부스팅(`/agency/promote-boosts`) · 셀러 이전(`/agency/transfers`) |
+| **캠페인 & 영업** | 캠페인(`/agency/campaigns`) · 인센티브 규칙(`/agency/incentives`) · 메시지 템플릿(`/agency/messages`) · 쿠폰 배포(`/agency/coupons`) · 라이브 캘린더(`/agency/calendar`) · 셀러 영입(`/agency/invites`) · 자동 매칭 제안(`/agency/match-suggestions`) · 매장 영입 영업 리드(`/agency/prospects`) · PK 이벤트(`/agency/pk`) · 자사 챌린지(`/agency/events`) · 노출 부스팅(`/agency/promote-boosts`) · 셀러 이전(`/agency/transfers`) |
 | **팀 운영** | 팀 멤버(`/agency/members`) |
-| **재무 & 설정** | 정산 관리(`/agency/settlements`) · 계약 관리(`/agency/contracts`) · 셀러 공지(`/agency/notices`) · 운영 가이드(`/agency/guide`) · 프로필 설정(`/agency/profile`) |
+| **재무 & 설정** | 정산 관리(`/agency/settlements`) · 적립/분배 내역(`/agency/ledger`) · 계약 관리(`/agency/contracts`) · 셀러 공지(`/agency/notices`) · 운영 가이드(`/agency/guide`) · 프로필 설정(`/agency/profile`) |
 
 > 한 조직이 **소속 셀러 매니징 → 판매 운영 → 성과 분석 → 영입/동기부여 → 정산**까지 전 라이프사이클을 이 6개 그룹으로 처리합니다.
 
@@ -224,6 +224,11 @@
 | **⑫ 메시지/쿠폰/공지/계약** | 메시지 템플릿·쿠폰 배포·셀러 공지·계약 관리로 소속 셀러 일괄 커뮤니케이션 | `agency-messages.routes.ts`, `agency-coupons.routes.ts`, `AgencyNoticesPage`, `AgencyContractsPage` |
 | **⑬ 에이전시 공개 페이지** | `/a/:slug` 공개 프로필 — 로고/커버/bio + (옵션) 소속 셀러·누적 매출 노출 → 파트너 모집 랜딩 | `agency-public.routes.ts`, `AgencyPartnerLandingPage` |
 | **⑭ 팀 멤버 권한 분리** | owner/manager/agent/analyst 4단계 권한으로 팀 운영 | `agency-members.routes.ts` (ROLE_DEFAULTS) |
+| **⑮ 셀러 대신 상품 등록·방송 예약 (대행 운영)** | 소속 셀러의 상품을 에이전시가 직접 등록/수정하고, 셀러 대신 라이브 방송을 예약 — 셀러 재고 현황도 한 화면에서 점검 | `POST/PUT /agency/sellers/:id/products`, `POST /agency/sellers/:id/streams`, `GET /agency/sellers/:id/inventory` (`agency.routes.ts`, `agency-sellers.routes.ts`, `AgencyProductsPage`) |
+| **⑯ 자사 매출 챌린지** | 소속 셀러를 대상으로 매출 목표 챌린지를 열고, 달성 셀러에게 딜 보상(`reward_deal`) 지급 + 실시간 순위표(leaderboard) | `agency-self-events.routes.ts` (`max_winners`, `current_value DESC`, `/agency/events`) |
+| **⑰ 실시간 통계 & CSV 내보내기** | 실시간 매출/라이브 현황 + 일별 시계열·셀러별 일괄 통계, 정산/리포트 CSV 다운로드 | `GET /agency/stats/realtime`·`/stats/daily`·`/stats/batch`, `GET /agency/settlements/csv`·`/report/csv` (`agency-stats.routes.ts`, `agency-ops.routes.ts`) |
+| **⑱ 카카오 계정 연동 & PIN 보안** | 에이전시 계정에 카카오 로그인 연동(연동/해제), 민감 액션은 PIN(15분 세션)·카카오 step-up 추가 인증 | `agency-kakao-link.routes.ts`, `agency-pin.routes.ts` (`set-pin`/`verify-pin`/`request-kakao-stepup`) |
+| **⑲ 월간 의무 작업 & 알림** | 이번 달 의무 작업 3종의 target/actual/진행률 트래킹 + 에이전시 알림(읽음 처리) | `GET /agency/monthly-tasks`, `GET /agency/notifications`·`PUT /notifications/read-all` (`agency-ops.routes.ts`, `agency.routes.ts`) |
 
 `[디자인 지시]` 14개 가치 중 **핵심 6개**(통합 매니징·통합 정산·입점 분배 30%·매장영입 2%·6대 KPI·QR 영입)를 상단 대형 카드로, 나머지는 하단 보조 카드 그리드. "에이전시가 받는 것"을 숫자로 강조.
 
@@ -239,7 +244,7 @@
 2. **팀 멤버 셋업** — owner 가 manager/agent/analyst 멤버 초대(`/agency/members`). role 별 권한 자동 적용(초대·정산·캠페인·메시지·쿠폰·계약·멤버·조회). owner 는 1명(이전은 별도 절차).
 3. **셀러 영입 / 매칭** — QR/링크 영입 코드 발급(`POST /api/agency/invites`, 8자·7일·max 100) → 셀러가 `?invite=<code>`로 가입하면 **자동 소속 매핑**. 또는 자동 매칭 제안(`/agency/match-suggestions`)을 수락해 소속 추가.
 4. **셀러 이전 (전속 이동, 셀러 동의 필수)** — 다른 에이전시 소속 셀러를 데려올 때: ⓐ from_agency 가 신청(`POST /api/agency/transfers`) → ⓑ to_agency(받는 쪽 = 본인)가 수락 → **ⓒ 셀러 본인이 자기 토큰으로 직접 동의**(`POST /api/seller/transfers/:id/respond`) → 매핑 변경. 셀러 동의 없이는 절대 이전 불가(TD-016 보안). 이전 후 **30일 cooldown**.
-5. **캠페인 / 공구 운영** — 캠페인 생성(참여 셀러·기간·인센티브율·KPI) + 동네딜 공구·숙소·방송 캘린더를 에이전시 단위로 운영. PK 배틀·노출 부스팅·쿠폰으로 셀러 동기부여.
+5. **캠페인 / 공구 / 대행 운영** — 캠페인 생성(참여 셀러·기간·인센티브율·KPI) + 동네딜 공구·숙소·방송 캘린더를 에이전시 단위로 운영. 소속 셀러의 **상품을 대신 등록/수정하고 방송을 대신 예약**(`POST /agency/sellers/:id/products`·`/streams`)할 수도 있음. PK 배틀·자사 매출 챌린지·노출 부스팅·쿠폰으로 셀러 동기부여.
 6. **정산 / KPI 관리** — 소속 셀러 주문에 셀러 수수료 + 에이전시 commission(2%) 자동 합산(`/agency/settlements`), 정산 신청(권한 게이팅) → 명세서. 6대 KPI(`/agency/kpi`)·랭킹·목표로 실적 관리.
 
 `[디자인 지시]` **에이전시 운영 타임라인** — 6스텝 가로 타임라인. 4번(셀러 이전)은 3단 동의(from→to→셀러) 미니 분기로 강조하고 "셀러 동의 필수" 보안 배지. 3번(영입)은 QR 아이콘.
@@ -305,6 +310,7 @@
 - **잠긴 Toss 결제/정산 SSOT**: 모든 결제(충전/주문/공구/숙소/교환권)는 단일 SSOT(`toss-gateway.ts confirmTossPayment`) — 금액 서버 재검증·idempotency·circuit breaker 자동. 에이전시 commission 적립은 **결제 흐름을 막지 않는 fail-soft side-effect**(order_id 멱등), 환불 시 자동 역전.
 - **소속 검증 (IDOR)**: 이전 신청·PK 매칭·정산 조회는 모두 `agency_sellers`로 **본 에이전시 소속 셀러인지 검증**. 타 에이전시 셀러에 대한 작업 차단(403).
 - **가입 승인 게이트**: 에이전시 가입은 pending → 어드민 승인 후에만 active. rate limit(시간당 3회) + 비밀번호 복잡도.
+- **민감 액션 추가 인증 (PIN / 카카오 step-up)**: 정산·계약 등 민감 작업은 PIN 인증(`verify-pin`, 15분 세션 쿠키) 또는 카카오 step-up 재인증(`request-kakao-stepup`)을 요구 — 세션 탈취 시에도 민감 작업 차단(`agency-pin.routes.ts`, `agency-kakao-link.routes.ts`).
 - **보안 규칙 일반**: 권한 검증·rate limit·에러 메시지 generic(계정 enumeration 방지).
 
 `[디자인 지시]` "셀러 동의 없이 이전 불가" + "4단계 권한 분리" + "토스 안전결제·자동 역전" 3개 신뢰 배지. 자물쇠/방패/체크 아이콘. 4번(셀러 이전 보안)을 가장 크게.
@@ -345,7 +351,7 @@
 ## 10. 온보딩 & 지원
 
 - **가입 경로**: 에이전시 등록(`/agency/register`, `AgencyRegisterPage`) → 어드민 승인 대기(`AgencyWaitingPage`). 사업자 정보(`AgencyRegisterBusinessPage`). 카카오 유저 → 에이전시 확장(`register-from-user`).
-- **승인 후**: 로그인(`/agency/login`), 비밀번호 찾기/재설정(`AgencyForgotPasswordPage`/`AgencyResetPasswordPage`), PIN 인증(민감 작업, `agency-pin.routes.ts`).
+- **승인 후**: 로그인(`/agency/login`), 비밀번호 찾기/재설정(`AgencyForgotPasswordPage`/`AgencyResetPasswordPage`), PIN 인증(민감 작업, `agency-pin.routes.ts`), 카카오 계정 연동(`link-kakao`/`unlink-kakao` — 카카오로 간편 로그인).
 - **첫 셋업 4스텝**: ① 팀 멤버 초대 → ② 셀러 영입 코드 발급(QR) → ③ 캠페인/인센티브 규칙 설정 → ④ 공개 페이지(`/a/:slug`) 꾸미기.
 - **운영 가이드**: `/agency/guide` (DB `operation_guides` 의 `agency` 가이드, 자동 코드참조 섹션 포함 — `CLAUDE.md` 운영가이드 3종 룰).
 - **지원 채널**: `[확인 필요]` 에이전시 전용 입점/제휴 문의 채널(이메일/카카오 채널) — 운영 연락처 확정 필요.
@@ -432,8 +438,9 @@
 | **매장 영입(store intro)** | 매장을 영입(`introduced_by_agency_id`)하면 매출 2% 영구 + 첫 결제 ₩30,000 | intro 코드 자동 생성, commission ledger(pending/available) | `agency-introduced-stores.routes.ts` |
 | **PK 배틀** | 소속 셀러 2명 라이브 매출 경쟁 → 종료 시 우승 자동 결정 + 보상 | owner/manager 생성, 둘 다 라이브 시작 → ends_at 자동 집계 | `pk-battles.routes.ts` |
 | **노출 부스팅 쿠폰** | 셀러에게 등급별 부스트 쿠폰 발급 → 라이브 시 메인 피드 가중치 | bronze/silver/gold, **30일 유효** | `promote-boosts.routes.ts` |
+| **자사 매출 챌린지** | 소속 셀러 대상 매출 목표 챌린지 → 달성 셀러에게 딜 보상 + 실시간 순위표 | `reward_deal` 지급, `max_winners` 상한, leaderboard(`current_value DESC`) | `agency-self-events.routes.ts` |
 
-`[디자인 지시]` "데려오고(영입) → 매칭하고 → 경쟁시키고(PK) → 띄운다(부스팅)" 4단 영업 엔진 흐름도. PK 는 두 셀러 매출 막대 대결 게이지로 강조.
+`[디자인 지시]` "데려오고(영입) → 매칭하고 → 경쟁시키고(PK/챌린지) → 띄운다(부스팅)" 4단 영업 엔진 흐름도. PK 는 두 셀러 매출 막대 대결 게이지로 강조.
 
 `[디자인 지시: 그라데이션]` 4단 노드 = 시그니처 그라데이션 채움 + 흰 아이콘, 연결선 warm 그라데이션 흐름. PK 게이지는 좌/우 셀러 막대 — 우세 측 시그니처, 열세 측 회색. 영입 commission(2%/₩30,000) 수치는 시그니처 그라데이션 텍스트. QR 코드 흑백+시그니처 프레임.
 
@@ -473,6 +480,18 @@
 
 11. **Q. 외부에 우리 에이전시를 알릴 페이지가 있나요?**
     A. `/a/:slug` 공개 프로필을 제공합니다 — 로고/커버/bio + (옵션) 소속 셀러·누적 매출을 노출해 파트너(셀러) 모집 랜딩으로 쓸 수 있습니다(`agency-public.routes.ts`).
+
+12. **Q. 셀러의 상품 등록·방송을 에이전시가 대신 해줄 수 있나요?**
+    A. 네. 소속 셀러의 **상품을 에이전시가 직접 등록/수정**(`/agency/sellers/:id/products`)하고, **방송도 대신 예약**(`/agency/sellers/:id/streams`)할 수 있으며 셀러 재고 현황도 한 화면에서 점검합니다. 운영을 위임받은 셀러를 풀 대행할 수 있습니다.
+
+13. **Q. PK 말고 소속 셀러 전체를 대상으로 한 챌린지도 있나요?**
+    A. 네. 자사 매출 챌린지(`/agency/events`)를 열어 목표를 달성한 셀러에게 딜 보상(`reward_deal`)을 지급하고 실시간 순위표를 보여줄 수 있습니다(우승자 수 상한 `max_winners`).
+
+14. **Q. 정산·통계를 엑셀로 내려받거나 실시간으로 볼 수 있나요?**
+    A. 정산·리포트를 CSV로 내보낼 수 있고(`/agency/settlements/csv`, `/agency/report/csv`), 실시간 매출/라이브 현황(`/agency/stats/realtime`)과 일별 시계열·셀러별 일괄 통계도 제공합니다.
+
+15. **Q. 매장 영입을 미리 등록해 두고 추적할 수 있나요?**
+    A. 매장 영입 영업 리드 페이지(`/agency/prospects`)에서 사장님 영입을 사전 등록하고 commission 적립을 추적하며, 적립/분배 내역은 적립 장부(`/agency/ledger`)에서 확인합니다.
 
 `[디자인 지시]` FAQ 는 아코디언/Q&A 2열 카드. 2·3·4번(수익·영입·이전 보안)을 강조 박스.
 
@@ -574,6 +593,8 @@
 - 입점 분배 30%의 정확한 적용 대상(전체 매출 vs 영입 귀속) — `[확인 필요]`
 - 에이전시 전용 최소 출금액·정산 주기(셀러와 동일 여부) — `[확인 필요]`
 - PK 배틀 보상 금액·노출 부스팅 쿠폰 발급 비용 정책 — `[확인 필요]`
+- 자사 매출 챌린지(self-events) 보상(`reward_deal`)은 이벤트별 가변 — 발급 재원/한도 정책 `[확인 필요]`
+- 월간 의무 작업 3종의 구체 항목·미달 시 패널티 여부 — `[확인 필요]`
 - 에이전시 제휴/파트너 문의 연락처 — `[확인 필요]`
 - `/a/:slug` 공개 페이지 테마(라이트/다크) — `[확인 필요]`
 - 소속 셀러의 도매몰(B2B) 상품 판매 가능 여부 — `[확인 필요]`
@@ -600,9 +621,16 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (39개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (53개)
 
+- `/a/:slug`
+- `/admin/agencies`
+- `/admin/agency-creator-approval`
+- `/admin/castings`
+- `/admin/influencer-disputes`
+- `/admin/influencer-payouts`
 - `/agency`
+- `/agency-partner`
 - `/agency/calendar`
 - `/agency/campaigns`
 - `/agency/compare`
@@ -641,9 +669,24 @@
 - `/agency/targets`
 - `/agency/transfers`
 - `/agency/waiting`
+- `/influencer`
+- `/influencer/analytics`
+- `/influencer/discover`
+- `/influencer/rankings`
+- `/influencer/settlement`
+- `/seller/castings`
+- `/seller/prospects`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (166개)
 
+
+**/api/admin-payouts/disputes**
+- `GET /api/admin-payouts/disputes`
+- `POST /api/admin-payouts/disputes/:id/resolve`
+
+**/api/admin-payouts/payouts**
+- `GET /api/admin-payouts/payouts`
+- `POST /api/admin-payouts/payouts/process`
 
 **/api/admin/agencies**
 - `GET /api/admin/agencies/`
@@ -656,16 +699,62 @@
 - `DELETE /api/admin/agencies/:id/sellers/:sellerId`
 - `GET /api/admin/agencies/unassigned-sellers`
 
+**/api/admin/agency-creator-approvals**
+- `GET /api/admin/agency-creator-approvals/`
+- `GET /api/admin/agency-creator-approvals/:id`
+- `POST /api/admin/agency-creator-approvals/:id/approve`
+- `POST /api/admin/agency-creator-approvals/:id/reject`
+
+**/api/admin/castings**
+- `GET /api/admin/castings/`
+- `POST /api/admin/castings/`
+- `PATCH /api/admin/castings/:id/complete`
+
+**/api/agency-public/:slug**
+- `GET /api/agency-public/:slug`
+
+**/api/agency/calendar**
+- `GET /api/agency/calendar/`
+- `DELETE /api/agency/calendar/notes/:id`
+- `PATCH /api/agency/calendar/notes/:id`
+- `POST /api/agency/calendar/notes/:id/mark-read`
+- `GET /api/agency/calendar/streams/:id`
+- `POST /api/agency/calendar/streams/:id/notes`
+
+**/api/agency/campaigns**
+- `GET /api/agency/campaigns/`
+- `POST /api/agency/campaigns/`
+- `GET /api/agency/campaigns/:id`
+- `PATCH /api/agency/campaigns/:id`
+- `POST /api/agency/campaigns/:id/cancel`
+- `POST /api/agency/campaigns/:id/participants`
+- `DELETE /api/agency/campaigns/:id/participants/:sid`
+- `PATCH /api/agency/campaigns/:id/participants/:sid`
+- `POST /api/agency/campaigns/:id/refresh`
+
 **/api/agency/contracts**
 - `GET /api/agency/contracts`
 - `POST /api/agency/contracts`
 - `PUT /api/agency/contracts/:id`
+
+**/api/agency/coupons**
+- `POST /api/agency/coupons/distribute`
+- `GET /api/agency/coupons/distributions`
+- `GET /api/agency/coupons/distributions/:parentId/stats`
 
 **/api/agency/dashboard**
 - `GET /api/agency/dashboard/bundle`
 
 **/api/agency/forgot-password**
 - `POST /api/agency/forgot-password`
+
+**/api/agency/incentives**
+- `GET /api/agency/incentives/payouts`
+- `GET /api/agency/incentives/preview`
+- `GET /api/agency/incentives/rules`
+- `POST /api/agency/incentives/rules`
+- `DELETE /api/agency/incentives/rules/:id`
+- `PATCH /api/agency/incentives/rules/:id`
 
 **/api/agency/intro-code**
 - `GET /api/agency/intro-code`
@@ -678,14 +767,16 @@
 **/api/agency/invite-seller**
 - `POST /api/agency/invite-seller`
 
+**/api/agency/invites**
+- `GET /api/agency/invites/`
+- `POST /api/agency/invites/`
+- `DELETE /api/agency/invites/:code`
+
 **/api/agency/kakao-link-status**
 - `GET /api/agency/kakao-link-status`
 
 **/api/agency/kpi**
 - `GET /api/agency/kpi/`
-
-**/api/agency/kpiagency**
-- `GET /api/agency/kpiagency`
 
 **/api/agency/link-kakao**
 - `POST /api/agency/link-kakao`
@@ -697,6 +788,25 @@
 - `GET /api/agency/match-suggestions`
 - `POST /api/agency/match-suggestions/:id/accept`
 - `POST /api/agency/match-suggestions/:id/decline`
+
+**/api/agency/members**
+- `GET /api/agency/members/`
+- `DELETE /api/agency/members/:id`
+- `PATCH /api/agency/members/:id`
+- `POST /api/agency/members/:id/reactivate`
+- `POST /api/agency/members/:id/suspend`
+- `POST /api/agency/members/accept`
+- `POST /api/agency/members/invite`
+
+**/api/agency/messages**
+- `POST /api/agency/messages/preview`
+- `POST /api/agency/messages/send`
+- `GET /api/agency/messages/sends`
+- `GET /api/agency/messages/templates`
+- `POST /api/agency/messages/templates`
+- `DELETE /api/agency/messages/templates/:id`
+- `PATCH /api/agency/messages/templates/:id`
+- `GET /api/agency/messages/variables`
 
 **/api/agency/monthly-tasks**
 - `GET /api/agency/monthly-tasks`
@@ -718,9 +828,23 @@
 **/api/agency/pin-status**
 - `GET /api/agency/pin-status`
 
+**/api/agency/pk**
+- `GET /api/agency/pk/`
+- `POST /api/agency/pk/`
+- `POST /api/agency/pk/:id/cancel`
+- `POST /api/agency/pk/:id/start`
+
 **/api/agency/profile**
 - `GET /api/agency/profile`
 - `PUT /api/agency/profile`
+
+**/api/agency/promote-boosts**
+- `GET /api/agency/promote-boosts/`
+- `POST /api/agency/promote-boosts/`
+
+**/api/agency/public-profile**
+- `GET /api/agency/public-profile/me/public`
+- `PATCH /api/agency/public-profile/me/public`
 
 **/api/agency/ranking**
 - `GET /api/agency/ranking`
@@ -752,9 +876,6 @@
 - `POST /api/agency/self-events/:id/cancel`
 - `POST /api/agency/self-events/:id/join`
 - `GET /api/agency/self-events/:id/leaderboard`
-
-**/api/agency/self-eventsagency**
-- `GET /api/agency/self-eventsagency`
 
 **/api/agency/sellers**
 - `GET /api/agency/sellers`
@@ -805,20 +926,70 @@
 - `POST /api/agency/transfers/:id/respond`
 - `POST /api/agency/transfers/:id/seller-approve`
 
-**/api/agency/transfersagency**
-- `GET /api/agency/transfersagency`
-
 **/api/agency/unlink-kakao**
 - `POST /api/agency/unlink-kakao`
 
 **/api/agency/verify-pin**
 - `POST /api/agency/verify-pin`
 
-**/api/agencyagency**
-- `GET /api/agencyagency`
+**/api/influencer-discover/products**
+- `GET /api/influencer-discover/products`
+
+**/api/influencer-rankings**
+- `GET /api/influencer-rankings/`
+
+**/api/influencer-settlement/analytics**
+- `GET /api/influencer-settlement/analytics`
+
+**/api/influencer-settlement/deals**
+- `POST /api/influencer-settlement/deals/propose`
+
+**/api/influencer-settlement/disputes**
+- `POST /api/influencer-settlement/disputes`
+
+**/api/influencer-settlement/me**
+- `GET /api/influencer-settlement/me`
+- `PUT /api/influencer-settlement/me`
+
+**/api/influencer-settlement/my-rank**
+- `GET /api/influencer-settlement/my-rank`
+
+**/api/influencer-settlement/my-stores**
+- `GET /api/influencer-settlement/my-stores`
+
+**/api/pk-public/live**
+- `GET /api/pk-public/live/:live_id`
+
+**/api/seller-marketing/block**
+- `POST /api/seller-marketing/block`
+
+**/api/seller-marketing/deals**
+- `GET /api/seller-marketing/deals`
+- `POST /api/seller-marketing/deals/:id/respond`
+- `POST /api/seller-marketing/deals/propose`
+
+**/api/seller-marketing/me**
+- `GET /api/seller-marketing/me`
+
+**/api/seller-marketing/realtime-stats**
+- `GET /api/seller-marketing/realtime-stats`
+
+**/api/seller-marketing/toggle**
+- `POST /api/seller-marketing/toggle`
+
+**/api/seller-marketing/unblock**
+- `POST /api/seller-marketing/unblock`
+
+**/api/seller/castings**
+- `GET /api/seller/castings/`
+- `POST /api/seller/castings/:id/respond`
+
+**/api/seller/promote-boosts**
+- `GET /api/seller/promote-boosts/`
+- `POST /api/seller/promote-boosts/:id/activate`
 
 
-> 마지막 생성: 2026-06-07T09:17:23.153Z
+> 마지막 생성: 2026-06-07T22:42:02.491Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

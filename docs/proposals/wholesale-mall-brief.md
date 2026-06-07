@@ -32,10 +32,21 @@
 | MOQ(최소주문수량) | 상품별 설정, 기본 1(낱개), 1~100,000 | `supply-visibility.ts` `min_order_qty`, `supplier-dashboard.routes.ts` |
 | 공급 범위 모드 | ALL / APPROVED_CHANNEL / UTONGSTART_ONLY (3종, self-serve는 UTONGSTART_ONLY→APPROVED 강등) | `supply-visibility.ts` `SUPPLY_VISIBILITY_VALUES`, `normalizeVisibility` |
 | 신규 상품 게이트 | 등록=pending(미노출) → 최저가 검수 후 승인 시 노출 | `supplier-dashboard.routes.ts`, `admin-products.routes.ts` |
+| 가입 심사 | 제조사·유통사 모두 **사업자등록번호 + 사업자등록증 이미지 필수 + 관리자 승인**(status='pending', 승인 전 로그인/이용 불가) | `supplier-auth.routes.ts`, `wholesale.routes.ts` `/register` |
+| 카카오 입점 | 카카오 일반 유저가 제조회원(`/supplier/become`)·유통회원(`/become-distributor`)으로 전환 — same-email 자동연결은 `email_verified===1` 일 때만(takeover 차단) | `supplier-auth.routes.ts` `/become`, `wholesale.routes.ts` `/become-distributor` |
+| 계정 상태 | pending / approved / suspended / rejected (정지·거부 시 대시보드 알림) | `admin-suppliers.routes.ts` PATCH `/suppliers/:id` |
+| 도매 주문 상태 | PENDING → PAID → SHIPPED, 그 외 EXPIRED(미결제 1시간)/FAILED/PARTIAL_REFUNDED/REFUNDED | `wholesale.routes.ts`, `distributor-admin.routes.ts` |
 | 판매 중 가격 변경 | 제조사 즉시변경 불가 → `pending_*` 적재(라이브 불변) → 운영 승인 시 반영 + 이력 | `supplier-dashboard.routes.ts` price-change-request, `admin-products.routes.ts` price-change |
 | OEM/ODM | 신청 `open→matching→matched`, OEM 등급 8% | `oem-requests.ts`, `/wholesale/oem` |
 | 전자세금계산서 | 바로빌 키 설정 시 자동 발행, 미설정 시 내부(인쇄용) 발행 | `services/barobill.ts`, `distributor-admin.routes.ts` |
 | 결제 방식 | 선결제(Toss) — 외상/여신 없음(초기) | `wholesale-utongstart.md` D-F |
+| 도매몰 홈 큐레이션 | 베스트(판매순)·신상품·맞춤 제안·카테고리 큐레이션을 등급가로 묶어 반환 | `wholesale.routes.ts` GET `/home` |
+| 빠른 재주문 | 유통사 본인 최근 사입 상품 + 마지막 주문 수량으로 원클릭 재발주 | `wholesale.routes.ts` GET `/recent-items` |
+| 상품 제안(추천) | 운영자가 특정 유통사에게 상품을 직접 추천(`wholesale_proposals`) → 유통사 홈/목록 노출, 철회(`withdrawn`) 가능 | `distributor-admin.routes.ts` `/proposals`, `wholesale.routes.ts` GET `/proposals` |
+| 비로그인 카탈로그 둘러보기 | 몰-first — 미로그인도 카탈로그·상세 열람 가능, 등급 공급가는 로그인 시에만 노출 | `wholesale.routes.ts` GET `/catalog`(guest) |
+| 제조사 반품 승인(C/S) | 다중 제조사 주문에서 **본인 라인만** 부분환불 → Toss 부분취소 + 정산 역전 + 재고복원, 주문 PARTIAL_REFUNDED | `wholesale-supplier.routes.ts` POST `/orders/:id/refund` |
+| 플랫폼 사업자정보 | 전자세금계산서 발행에 필요한 유통스타트 사업자정보(`platform_settings`) 관리 | `distributor-admin.routes.ts` `/company-info` |
+| SPECIAL 등급 = 기간 한정 | 유통사별 `special_discount_until` 기간 안에서만 SPECIAL(0%) 유효, 만료 시 배정 등급으로 자동 복귀 | `distributor-pricing.ts` `effectiveGrade`, `distributor-admin.routes.ts` PATCH `/distributors/:id` |
 | 도메인 | **utongstart.com** (live.ur-team.com 과 같은 코드/DB, 호스트 인식 라우팅) | `wholesale-utongstart.md` Phase 5/6 |
 | 셀러 정산 기본 수수료(소비자 라이브커머스) | 5% (`platform_settings.commission_rate_default`) | `CLAUDE.md` |
 
@@ -176,9 +187,12 @@
 | **원가·거래처 비노출** | 유통사에는 **등급가만** 노출, 제조사 원가·신원 서버 차단. 제조사도 유통사 명단 못 봄 | `guide-seed-wholesale.ts` onboarding §, `wholesale.routes.ts` |
 | **가격 질서 보호 — 온라인 최저가 검수** | 신규 상품 등록 시 온라인 최저가 참고 링크 제출 → 어드민이 시세 검수 후 승인 | `admin-products.routes.ts` PATCH `/supplier-products/:id` |
 | **가격변경 운영 승인** | 판매 중 상품 가격은 제조사가 임의 변경 불가 → 요청 적재 후 운영 승인 시에만 라이브 반영 | `supplier-dashboard.routes.ts` price-change-request |
-| **공급 범위 선택** | 전체/승인 채널/유통스타트 채널 3종으로 노출 대상 통제 | `supply-visibility.ts` |
+| **공급 범위 선택** | 전체/승인 채널/유통스타트 채널 3종으로 노출 대상 통제. **승인 채널은 제조사가 직접 유통사 지정/해제**(self-serve) | `supply-visibility.ts`, `supplier-dashboard.routes.ts` `/products/:id/channel-access` |
 | **간편 운영 도구** | CSV 대량 상품등록, 주문확인 export, 송장 일괄 업로드, 합배송, 바코드, OEM/ODM | `supply-csv.ts`, `wholesale.routes.ts` |
+| **반품·C/S 직접 처리** | 다중 제조사 주문에서 **본인 라인만** 반품 승인 → Toss 부분취소 + 정산 역전 + 재고복원 (타 제조사 라인 무영향) | `wholesale-supplier.routes.ts` POST `/orders/:id/refund` |
 | **안전한 결제·정산** | Toss 선결제 SSOT, oversell 자동 가드, 1억/일 정산 한도, 환불 자동 역전 | `wholesale.routes.ts`, `supply-settlement.ts` |
+
+> **정산 지급 파이프라인 (코드 정밀)**: 결제완료 시 라인별 공급가가 제조사 `supplier_balances.pending_amount` 에 적립 → 환불창(브랜드 1일/일반 7일) 경과분이 cron·어드민 조회 시 `matureSupplierSettlements()` 로 `available` 성숙 → 어드민이 `/admin/suppliers` 에서 **available 잔고 전액 지급**(`payoutSupplier()`, 1일 1억 한도 검사 + `supplier_payouts` 기록 + 원장 기입). 잔고는 pending/available/paid 3단으로 대시보드(`/supplier`)에 표시. (출처: `supply-settlement.ts`, `admin-suppliers.routes.ts`, `supplier-dashboard.routes.ts` `/me`)
 
 > **[디자인 지시]** 제조사 혜택 슬라이드는 "만들기만 하세요" 카피 아래 **무재고 / 빠른 정산 / 비노출 / 가격질서** 4대 혜택을 카드로.
 
@@ -197,6 +211,10 @@
 | **자동 정산·세금** | 거래명세서/세금계산서/거래내역서 자동, 바로빌 전자세금계산서 | `tax-documents.ts`, `guide-seed-wholesale.ts` |
 | **검증된 상품만** | 선별 제조사 + 최저가 검수 통과 상품 → 출혈 경쟁 완화 | `admin-products.routes.ts` |
 | **선결제 안전** | Toss 즉시결제, 재고 부족 시 자동 전액환불 | `wholesale.routes.ts` confirm |
+| **소싱 큐레이션 홈** | 베스트(판매순)·신상품·맞춤 제안·카테고리를 내 등급가로 한 화면에 | `wholesale.routes.ts` GET `/home` |
+| **빠른 재주문** | 최근 사입 상품 + 마지막 수량을 자동 채워 원클릭 재발주 | `wholesale.routes.ts` GET `/recent-items` |
+| **맞춤 상품 제안** | 운영자가 내 계정에 직접 추천한 상품을 홈/목록에서 확인 | `wholesale.routes.ts` GET `/proposals` |
+| **로그인 전 둘러보기** | 가입 전에도 카탈로그·상세 열람 가능(가격은 로그인 후) | `wholesale.routes.ts` GET `/catalog`(guest) |
 
 ### 6-1. 등급 / 마진 수치표 (실제 기본값)
 
@@ -208,6 +226,8 @@
 | **D** | D등급 | **25%** | 일반 |
 | **OEM** | OEM | **8%** | OEM/ODM 생산 거래 |
 | **SPECIAL** | 특별할인(기간한정) | **0%** | 덤핑/유통기한 임박품, 기간 한정 |
+
+> **SPECIAL = 유통사별 기간 한정 (코드 정밀)**: 관리자가 유통사에 `special_discount_until`(만료일시)을 설정하면 그 기간 안에만 유효 등급이 SPECIAL(0% 마진)로 승격되고, 만료되면 배정 등급(없으면 C)으로 자동 복귀한다. 상품이 아니라 **유통사 계정에 거는 한시 프로모션**. (출처: `distributor-pricing.ts` `effectiveGrade`, `distributor-admin.routes.ts` PATCH `/distributors/:id` `special_discount_until`)
 
 > 출처: `distributor-admin.routes.ts` 시드 `('A',...,10),('B',...,15),('C',...,20),('D',...,25),('OEM',...,8),('SPECIAL',...,0)` + `distributor-pricing.ts` `DEFAULT_GRADE_MARGINS`.
 > ⚠️ 이 값은 **운영자가 `/admin/distributor-grades` 에서 조정 가능한 기본값**. 소개서에 "예시 기본 마진율" 로 표기 권장.
@@ -302,6 +322,9 @@
   - **(기본/폴백) 내부 발행** — 외부 의존 0으로 발행 기록(`draft→issued/void`) + **인쇄용 HTML**(브라우저 인쇄/PDF 저장) 생성. 단, 이 문서엔 *"정식 전자세금계산서는 별도 발행"* 명시. (`tax-documents.ts`)
   - **(활성 시) 바로빌 전자세금계산서 자동 발행** — `src/services/barobill.ts` 연동이 이미 구현. `isBarobillConfigured()`(= `BAROBILL_TEST_API_KEY`/`BAROBILL_PROD_API_KEY` 설정 여부)가 true면 `issueBarobillTaxInvoice()` 로 실제 전자세금계산서 발행. 미설정이면 위 내부 발행만. (`distributor-admin.routes.ts` 가 `isBarobillConfigured` 게이트 후 `issueBarobillTaxInvoice` 호출)
   - 운영서버/테스트서버는 `BAROBILL_ENV` 로 분기. **소개서 표기 권장**: "전자세금계산서 자동발행은 바로빌 키 설정 시 활성 — `[확인 필요]` 현재 운영 활성 여부".
+- **플랫폼 사업자정보 관리**: 전자세금계산서 발행에는 발행자(유통스타트)의 사업자정보가 필요 → 관리자가 사업자등록번호·상호·대표·주소·업태/종목·이메일·전화를 `platform_settings` 에 저장·검증. 미설정이면 NTS 발행이 actionable 에러로 fail-soft. (`distributor-admin.routes.ts` GET/PUT `/company-info`)
+- **월별 세금계산서 집계 (수동 발행 참고)**: 운영자가 `GET /tax-summary?month=YYYY-MM` 으로 유통사별 매출(매입합) + 제조사별 매입(정산합)을 한 번에 집계 → 수기/일괄 발행 기준표. (`distributor-admin.routes.ts` GET `/tax-summary`)
+- **국세청(NTS) 전자세금계산서 발행**: 매출(유통스타트→유통사) 방향만 `POST /tax-documents/:id/issue-nts` 로 바로빌 통해 발행(발행자=유통스타트, 공급받는자=유통사, 30회/60초 rate limit). 매입(제조사→유통스타트)은 제조사가 발행 주체라 플랫폼 계정으로 발행 불가(역발행 별도 — 부록 A). (`distributor-admin.routes.ts` POST `/tax-documents/:id/issue-nts`, PATCH `/tax-documents/:id` 상태 issued/void)
 - 출처: `tax-documents.ts`, `src/services/barobill.ts`, `distributor-admin.routes.ts`, `guide-seed-wholesale.ts` tax §.
 
 > **[디자인 지시]** 정산 타임라인을 가로 타임라인으로: "결제 → (브랜드 익일 / 일반 7일) → 정산 지급". 1억/일 한도와 원천징수율은 작은 각주 표로.
@@ -380,6 +403,8 @@
 
 - **selfServe 강등 가드**: 제조사 self-serve 입력에서는 `UTONGSTART_ONLY`(= 관리자 선정 전용)를 직접 설정 못 함 → 자동으로 `APPROVED_CHANNEL`(본인 승인 채널)로 강등. 관리자(distributor-admin) 경로만 3종 모두 허용. (`normalizeVisibility(v, selfServe)`)
 - **가시성 SQL**: `supply_visibility='ALL'` 이거나 `product_distributor_access` 에 (상품, 유통사) row 존재 시에만 카탈로그 노출(`visibilityWhere`). → 거래처 비공개 공급이 서버 레벨에서 보장.
+- **제조사 self-serve 채널 관리**: `APPROVED_CHANNEL` 상품에 한해 제조사가 대시보드에서 **직접 유통사를 허용목록에 추가/조회/해제**(자기 상품의 access 행만). `UTONGSTART_ONLY` 는 관리자 선정 전용이라 제조사가 직접 못 만짐 → 시도 시 409. (`supplier-dashboard.routes.ts` GET/POST/DELETE `/products/:id/channel-access`)
+- **관리자 채널 관리**: 운영자는 3종 모드 전부 + 허용목록 직접 편집 가능(상품별 visibility 변경, 유통사 access 추가/삭제). (`distributor-admin.routes.ts` PATCH `/products/:id/visibility`, `/product-access`)
 
 > ⚠️ MOQ(`min_order_qty`)는 상품별 1~100,000(기본 1, 박스 단위). CSV/개별 등록 모두 클램프, 주문 시 서버가 `qty >= MOQ` 검증. 카탈로그 카드/상세/카트에 박스·개당 단가 병기. (`supply-visibility.ts`, `supplier-dashboard.routes.ts`, `supply.routes.ts`)
 
@@ -415,12 +440,18 @@
 | 제조사 도매주문 | `/supplier/wholesale-orders` | 도매 주문 접수·발송(개별/합배송/CSV) |
 | OEM/ODM 신청 | `/wholesale/oem` | 유통사 제조 위탁 신청 → 어드민 매칭 |
 | 거래명세서/세금계산서 | `/wholesale/statement`, `/wholesale/documents` | 유통사 문서 조회·인쇄 |
-| 등급 관리(어드민) | `/admin/distributor-grades` | 등급별 마진율 조정·유통사 등급 배정 |
+| 등급 관리(어드민) | `/admin/distributor-grades` | 등급별 마진율 조정·유통사 등급 배정·특별할인 기간 |
+| 제조회원 관리(어드민) | `/admin/suppliers` | 가입 승인/정지/거부, available 정산 지급(`/payout`), 지급 이력(`/payouts`) |
+| 도매주문 관리(어드민) | `/admin/wholesale-orders` | 전체 도매 주문 조회·상세·운영 환불(`/orders/:id/refund`) |
 | 전용 운영 가이드 | `/admin/wholesale-guide` | 운영 SSOT |
 | **도메인** | **utongstart.com** | 같은 코드/DB, 루트 진입 시 `/wholesale/intro` 로 302 |
 
 - **CSV 대량등록**: 제조사 대량 상품등록/주문 export/송장 일괄, 유통사 카탈로그·주문 양식(`/order-template`), 어드민 상품정보 엑셀(A/B/C 등급가 — `distributor-admin.routes.ts` GET `.xlsx`).
 - **OEM/ODM 신청·매칭**: 유통사 `/wholesale/oem` 신청 → 어드민 OEM 관리에서 제조사 매칭(§6-A).
+- **상품 제안(추천) 운영**: 운영자가 특정 유통사 계정에 상품을 직접 추천해 그 유통사 홈/목록에 노출(`wholesale_proposals`, 철회 가능) → 소싱 큐레이션·영업 보조. (`distributor-admin.routes.ts` `/proposals`)
+- **상품별 등급마진 override · 수량구간(qty-tiers) 관리(어드민)**: 운영자가 상품별로 등급마진 override 설정/해제, 수량 구간 할인표 조회·일괄 설정. (`distributor-admin.routes.ts` PATCH `/products/:id/margin-override`, GET/PUT `/products/:id/qty-tiers`)
+- **데모 상품 시드(운영 tooling)**: 데모/테스트 카탈로그 일괄 생성·삭제(슬러그 프리픽스 기준, rate limit). (`distributor-admin.routes.ts` POST/DELETE `/seed-demo-products`)
+- **공급가 변경 이력 조회(어드민)**: 모든 공급가 변경 old→new 이력 열람(`supply_price_history`). (`distributor-admin.routes.ts` GET `/price-history`)
 
 > **🛠 운영 인계 — 전용 운영 가이드**: 도매몰(B2B) 전 영역 운영 SSOT 가이드가 **`/admin/wholesale-guide`** 에 존재(라우트 `admin.routes.tsx`, 시드 `guide-seed-wholesale.ts`). 가입 승인·등급 배정·최저가 검수·가격변경 승인·정산·세금계산서·OEM 매칭 등 운영 절차가 여기에 정리됨. 소개서 배포 시 운영팀은 이 가이드를 함께 인계받는다.
 
@@ -707,12 +738,14 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (21개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
 
 - `/admin/distributor-grades`
 - `/admin/suppliers`
 - `/admin/wholesale-guide`
 - `/admin/wholesale-orders`
+- `/seller/register/supplier`
+- `/seller/supply`
 - `/supplier`
 - `/supplier/login`
 - `/supplier/register`
@@ -731,7 +764,7 @@
 - `/wholesale/statement`
 - `/wholesale/success`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (82개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (83개)
 
 
 **/api/admin/distributor**
@@ -816,11 +849,15 @@
 - `GET /api/supplier/wholesale/orders/export`
 - `POST /api/supplier/wholesale/tracking/bulk`
 
-**/api/supplier/wholesaleuser**
-- `GET /api/supplier/wholesaleuser`
+**/api/supply/products**
+- `GET /api/supply/products`
 
-**/api/supplieruser**
-- `GET /api/supplieruser`
+**/api/supply/register**
+- `POST /api/supply/register`
+
+**/api/supply/sample-requests**
+- `GET /api/supply/sample-requests`
+- `POST /api/supply/sample-requests`
 
 **/api/wholesale/become-distributor**
 - `POST /api/wholesale/become-distributor`
@@ -867,11 +904,8 @@
 **/api/wholesale/statement**
 - `GET /api/wholesale/statement`
 
-**/api/wholesaleuser**
-- `GET /api/wholesaleuser`
 
-
-> 마지막 생성: 2026-06-07T09:17:23.146Z
+> 마지막 생성: 2026-06-07T22:42:02.482Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
