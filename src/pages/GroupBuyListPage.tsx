@@ -11,6 +11,7 @@ import {
   MapPin,
   HandCoins,
   Bell,
+  Store,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -62,8 +63,9 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   const discount = calcDiscountRate(p)
   const target = p.group_buy_target || 0
   const current = p.group_buy_current || 0
+  // 🏭 2026-06-07 (사용자 요청): '현재 N명 참여중' 제거 — 즉시판매 단일가 모델에서 카드 참여 수 무의미.
+  //   '달성' 뱃지(이미지 우상단)는 유지. 진행률 바 + 참여 인원 텍스트 삭제 → 업장명/주소/판매자 노출.
   const achieved = target > 0 && current >= target
-  const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0
   const timeLeft = formatTimeLeft(p.group_buy_deadline)
   return (
     <button
@@ -131,8 +133,15 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
       <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
         <p className="text-[12px] leading-tight line-clamp-2">{p.name}</p>
 
+        {/* 업장명 + 주소 (참여 인원 대신 — 즉시판매 단일가 모델: 참여 수는 카드에서 무의미) */}
         {p.restaurant_name && (
-          <p className="text-[10px] mt-0.5 truncate" style={{ color: grad.sub }}>{p.restaurant_name}</p>
+          <p className="text-[10px] mt-0.5 truncate font-medium" style={{ color: grad.sub }}>{p.restaurant_name}</p>
+        )}
+        {p.restaurant_address && (
+          <p className="text-[10px] mt-0.5 truncate flex items-center gap-0.5" style={{ color: grad.sub }}>
+            <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: grad.sub }} />
+            <span className="truncate">{p.restaurant_address}</span>
+          </p>
         )}
 
         {/* 가격 */}
@@ -148,23 +157,14 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
           <span className="text-[13px] font-extrabold">{formatPrice(p.price)}</span>
         </div>
 
-        {/* 진행률 */}
-        {target > 0 && (
-          <div className="mt-2">
-            <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: grad.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.20)' }}>
-              <div className={`h-full rounded-full ${achieved ? 'bg-emerald-500' : 'bg-pink-500'}`} style={{ width: `${progress}%` }} />
-            </div>
-            <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
-              <Users className="w-3 h-3" style={{ color: grad.sub }} />
-              {achieved ? (
-                <span className="font-semibold" style={{ color: grad.isLight ? '#047857' : '#34d399' }}>
-                  {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
-                </span>
-              ) : (
-                <>{t('groupBuy.currentParticipants', { defaultValue: '현재 {{count}}명 참여중', count: current })}</>
-              )}
-            </p>
-          </div>
+        {/* 판매자 (참여 인원 표기 제거 — 즉시판매 단일가 모델) */}
+        {p.seller_name && (
+          <p className="text-[10px] mt-1.5 truncate flex items-center gap-1" style={{ color: grad.sub }}>
+            <Store className="w-3 h-3 flex-shrink-0" style={{ color: grad.sub }} />
+            <span className="truncate">
+              {t('groupBuy.sellerLabel', { defaultValue: '판매자' })} · {p.seller_name}
+            </span>
+          </p>
         )}
 
         {/* 시간 */}

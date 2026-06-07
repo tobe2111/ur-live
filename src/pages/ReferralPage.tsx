@@ -47,7 +47,34 @@ export default function ReferralPage() {
   const { data, isLoading: loading, refetch } = useReferral(code)
   const group = data?.group ?? null
   const product = data?.product ?? null
+  const community = data?.community ?? null
   const [joining, setJoining] = useState(false)
+  const [joiningCommunity, setJoiningCommunity] = useState(false)
+
+  // 🏭 2026-06-07: 커뮤니티(맛집) 공구 참여 — 보증금 차감 후 refetch.
+  const handleJoinCommunity = async () => {
+    if (!userId) {
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login')
+      return
+    }
+    if (!community?.invite_code) return
+    setJoiningCommunity(true)
+    try {
+      const res = await api.post(`/api/community-group-buy/join/${community.invite_code}`)
+      if (res.data?.success) {
+        toast.success(t('groupbuy.joinSuccess', { defaultValue: '공구에 참여했습니다!' }))
+        await refetch()
+      } else {
+        toast.error(res.data?.error || t('groupbuy.joinFail', { defaultValue: '참여에 실패했습니다' }))
+      }
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string } } }
+      toast.error(err_.response?.data?.error || t('groupbuy.joinFail', { defaultValue: '참여에 실패했습니다' }))
+    } finally {
+      setJoiningCommunity(false)
+    }
+  }
 
   const handleJoin = async () => {
     if (!userId) {
@@ -89,6 +116,105 @@ export default function ReferralPage() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // 🏭 2026-06-07: 커뮤니티(맛집) 공구 — referral 그룹이 아니면 이 분기에서 렌더.
+  //   공구를 유치(제안)한 사람이 작성한 소개글 + 식당 정보 + 참여 현황을 보여줌.
+  if (!group && community) {
+    const cgPrice = community.confirmed_price ?? community.proposed_price
+    const cgExpired = !!community.expires_at && new Date(community.expires_at) < new Date()
+    const cgFull = community.current_count >= community.target_count
+    const cgJoinable = (community.status === 'proposed' || community.status === 'confirmed') && !cgExpired && !cgFull
+    const cgProgress = community.target_count > 0
+      ? Math.min(100, Math.round((community.current_count / community.target_count) * 100))
+      : 0
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
+        <SEO
+          title={t('groupbuy.detailSeoTitle', { defaultValue: `${community.restaurant_name} 맛집 공구` })}
+          description={(community.description || `${community.restaurant_name} 공동구매 · ${community.current_count}/${community.target_count}명 참여 중`).slice(0, 150)}
+          url={`/community-group-buy/${community.invite_code}`}
+        />
+        {/* Header */}
+        <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+          <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
+            <button onClick={() => navigate(-1)} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
+              <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+            </button>
+            <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
+            <div className="w-9" />
+          </div>
+        </div>
+
+        <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
+          {/* 식당 + 가격 */}
+          <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">{community.restaurant_name}</p>
+            {community.restaurant_address && (
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
+            )}
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-xl font-bold text-pink-500">{formatNumber(cgPrice)}원</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
+              <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <span><span className="font-bold text-gray-900 dark:text-white">{community.current_count}</span> / {community.target_count}명 참여</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden">
+              <div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${cgProgress}%` }} />
+            </div>
+          </section>
+
+          {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치한 사람이 작성한 소개글 노출 */}
+          {community.description && (
+            <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center text-[11px] font-bold">
+                  {community.creator_name?.slice(0, 1) || '제'}
+                </div>
+                <p className="text-[13px] font-bold text-gray-900 dark:text-white">
+                  {t('groupbuy.proposerIntro', { name: community.creator_name || '제안자', defaultValue: `${community.creator_name || '제안자'}님의 공구 소개` })}
+                </p>
+              </div>
+              <p className="text-[14px] text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
+                {community.description}
+              </p>
+            </section>
+          )}
+
+          {/* 보증금 안내 */}
+          <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('groupbuy.depositLabel', { defaultValue: '1인당 보증금' })}</span>
+              <span className="text-[14px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
+            </div>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+              {t('groupbuy.warningDeposit', { amount: formatNumber(community.deposit_per_person), defaultValue: `참여 시 ${formatNumber(community.deposit_per_person)}딜이 예치됩니다. 미달성 시 전액 환불됩니다.` })}
+            </p>
+          </section>
+        </div>
+
+        {/* 하단 참여 CTA */}
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-50">
+          <div className="ur-content-narrow">
+            <button
+              onClick={handleJoinCommunity}
+              disabled={!cgJoinable || joiningCommunity}
+              className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
+            >
+              {joiningCommunity
+                ? t('groupbuy.joining', { defaultValue: '참여 중...' })
+                : cgFull
+                  ? t('groupbuy.full', { defaultValue: '모집 마감' })
+                  : cgExpired
+                    ? t('groupbuy.expired', { defaultValue: '마감되었습니다' })
+                    : t('groupbuy.joinBtn', { defaultValue: `${formatNumber(community.deposit_per_person)}딜로 참여하기` })}
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

@@ -106,6 +106,7 @@ export default function UserGroupBuyCreatePage() {
   const [proposedPrice, setProposedPrice] = useState<number | ''>('')
   const [deposit, setDeposit] = useState<number>(5000)
   const [targetCount, setTargetCount] = useState<number>(10)
+  const [description, setDescription] = useState<string>('')
 
   // Step 3
   const [balance, setBalance] = useState<number | null>(null)
@@ -153,6 +154,7 @@ export default function UserGroupBuyCreatePage() {
         proposed_price: proposedPrice,
         deposit_per_person: deposit,
         target_count: targetCount,
+        description: description.trim() || undefined,
       })
       const data = res.data?.data || res.data
       const inviteCode = data?.invite_code
@@ -333,6 +335,24 @@ export default function UserGroupBuyCreatePage() {
                   {t('groupbuy.targetCountMinError', { defaultValue: '최소 3명 이상이어야 합니다' })}
                 </p>
               )}
+            </div>
+
+            {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치하는 사람이 직접 작성하는 소개글/안내문구 */}
+            <div>
+              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                {t('groupbuy.descriptionLabel', { defaultValue: '공구 소개글 (선택)' })}
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
+                rows={4}
+                maxLength={1000}
+                placeholder={t('groupbuy.descriptionPlaceholder', { defaultValue: '이 공구를 소개해주세요. 어떤 메뉴인지, 왜 추천하는지, 참여하면 좋은 이유 등을 적으면 더 많은 분이 함께해요.' })}
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none resize-none leading-relaxed"
+              />
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 text-right">
+                {description.length}/1000
+              </p>
             </div>
 
             {/* Calculation */}

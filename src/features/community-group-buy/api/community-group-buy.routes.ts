@@ -66,6 +66,7 @@ async function ensureTables(DB: D1Database) {
         confirmed_price INTEGER,
         confirmed_discount_percent INTEGER,
         restaurant_seller_id INTEGER,
+        description TEXT,
         expires_at TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
@@ -92,6 +93,8 @@ async function ensureTables(DB: D1Database) {
   try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN confirmed_price INTEGER").run(); } catch {}
   try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN confirmed_discount_percent INTEGER").run(); } catch {}
   try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN restaurant_seller_id INTEGER").run(); } catch {}
+  // 🏭 2026-06-07 (사용자 요청): 공구를 유치(제안)하는 사람이 직접 작성하는 소개글/안내문구.
+  try { await DB.prepare("ALTER TABLE community_group_buys ADD COLUMN description TEXT").run(); } catch {}
   // 🏭 2026-06-04 (perf 전수조사): /list 의 COUNT(status=?) + ORDER BY current_count/expires_at +
   //   만료 sweep(status='proposed' AND expires_at<now) 가 풀스캔이던 것 — status 선두 복합 인덱스로 커버.
   try { await DB.prepare("CREATE INDEX IF NOT EXISTS idx_cgb_status_count ON community_group_buys(status, current_count DESC)").run(); } catch {}
@@ -139,6 +142,7 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
     proposed_price: number;
     deposit_per_person?: number;
     target_count?: number;
+    description?: string;
   }>();
 
   if (!body.restaurant_name || !body.proposed_price) {
@@ -156,6 +160,15 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
   }
   if (body.target_count !== undefined && (!Number.isFinite(body.target_count) || body.target_count < 2 || body.target_count > 10_000)) {
     return c.json({ success: false, error: '목표 인원은 2~10,000명 사이여야 합니다' }, 400);
+  }
+  // 🏭 2026-06-07 (사용자 요청): 제안자 소개글 — 선택, 1000자 이하, HTML 태그 제거(XSS 방어).
+  let description: string | null = null;
+  if (body.description !== undefined && body.description !== null) {
+    if (typeof body.description !== 'string') {
+      return c.json({ success: false, error: '소개글 형식이 올바르지 않습니다' }, 400);
+    }
+    const cleaned = body.description.replace(/<[^>]+>/g, '').trim().slice(0, 1000);
+    description = cleaned || null;
   }
 
   const depositPerPerson = body.deposit_per_person || 5000;
@@ -194,8 +207,8 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
     `INSERT INTO community_group_buys
       (creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone,
        restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count,
-       current_count, total_deposited, invite_code, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+       current_count, total_deposited, invite_code, expires_at, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
     [
       userId,
       user.name || '익명',
@@ -210,6 +223,7 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
       depositPerPerson,
       inviteCode,
       expiresAt,
+      description,
     ],
   );
 
