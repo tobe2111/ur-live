@@ -294,10 +294,10 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     }
     if (!username) username = `dist${Date.now().toString().slice(-8)}`
     const ins = await DB.prepare(`
-      INSERT INTO sellers (username, email, name, business_name, business_number, representative_name, phone,
+      INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
         business_registration_image_url, business_registration_status,
         status, commission_rate, seller_type, distributor_grade, is_distributor, linked_user_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
     `).bind(username, email, name, business_name, business_number, representative || null, phone || null, business_license_url || null, DEFAULT_COMMISSION_RATE, userId).run()
     const sid = Number(ins.meta?.last_row_id)
     if (!sid) return c.json({ success: false, error: '유통회원 신청 중 오류가 발생했습니다' }, 500)
