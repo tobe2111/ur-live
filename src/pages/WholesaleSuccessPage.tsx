@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { WT, won } from './wholesale/wholesale-theme'
+import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
 // 🏭 2026-06-01 유통스타트 도매 결제 성공 → 서버 confirm (Phase 2).
 //   Toss 가 successUrl 에 paymentKey/orderId/amount 를 붙여 redirect.
@@ -14,6 +15,7 @@ export default function WholesaleSuccessPage() {
   const [state, setState] = useState<'confirming' | 'done' | 'error'>('confirming')
   const [errorMsg, setErrorMsg] = useState('')
   const ranRef = useRef(false)
+  const { clear } = useWholesaleCart()
 
   const paymentKey = sp.get('paymentKey') || ''
   const orderId = sp.get('orderId') || ''
@@ -31,7 +33,7 @@ export default function WholesaleSuccessPage() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => {
-        if (r.data.success) setState('done')
+        if (r.data.success) { clear(); setState('done') }  // 🏭 2026-06-07: 결제 성공 후 장바구니 비움(이탈 보존).
         else { setErrorMsg(r.data.error || '결제 확인 실패'); setState('error') }
       })
       .catch((e: unknown) => {

@@ -26,7 +26,8 @@ export default function WholesaleCartPage() {
     try {
       const r = await api.post('/api/wholesale/orders', { items: items.map((x) => ({ product_id: x.id, qty: x.qty })) }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data.success) {
-        clear()
+        // 🏭 2026-06-07 (안정성 — 사용자 승인): 장바구니는 결제 성공(success 페이지) 후 비움.
+        //   기존엔 주문 생성(PENDING) 직후 비워 Toss 위젯 이탈/결제 실패 시 장바구니가 사라졌음.
         navigate(`/wholesale/checkout?order=${r.data.order_id}`, { state: { orderId: r.data.toss_order_id, amount: r.data.amount, orderName: r.data.order_name } })
       } else { toast.error(r.data.error || '주문 생성 실패') }
     } catch (e: unknown) {
