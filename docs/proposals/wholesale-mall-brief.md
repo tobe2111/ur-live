@@ -680,3 +680,198 @@
 - 경쟁사 비교의 경쟁사 측 주장 (§10) — 전부 `[가정]`, 법적 검토 권장.
 - 바로빌 전자세금계산서 자동발행 활성 여부(환경변수·사업자정보 설정 상태) — 운영 시점 확인.
 - 제조사↔유통스타트 매입 세금계산서는 제조사가 발행 주체(플랫폼 자동발행 불가, 별도 역발행 플로우) — `wholesale-b2b-spec.md` 보류 항목.
+
+---
+
+<!-- AUTO-GENERATED:proposal-refs START -->
+
+## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
+
+> 도메인: **도매몰 (유통스타트)**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
+> 값이 코드와 다르면 코드를 수정하고 `npm run generate:proposal-refs` 실행. (수동 편집 금지 — 다음 커밋에 덮어써짐.)
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 유통사 등급 마진율 — A등급 | 10% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — B등급 | 15% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — C등급 | 20% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — D등급 | 25% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — OEM등급 | 8% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — SPECIAL등급 | 0% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통회원 가입 시 기본 등급 | C등급 | `src/lib/distributor-pricing.ts:DEFAULT_UNGRADED` |
+| 공급자 정산 1일 한도 (default) | 100,000,000원 | `src/features/supply/api/supply-settlement.ts:DEFAULT_DAILY_CAP` |
+| 공급자 환불창 (성숙 기간) | 7일 | `src/features/supply/api/supply-settlement.ts:SUPPLIER_REFUND_WINDOW_DAYS` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (21개)
+
+- `/admin/distributor-grades`
+- `/admin/suppliers`
+- `/admin/wholesale-guide`
+- `/admin/wholesale-orders`
+- `/supplier`
+- `/supplier/login`
+- `/supplier/register`
+- `/supplier/wholesale-orders`
+- `/wholesale`
+- `/wholesale/cart`
+- `/wholesale/checkout`
+- `/wholesale/dashboard`
+- `/wholesale/documents`
+- `/wholesale/intro`
+- `/wholesale/join`
+- `/wholesale/login`
+- `/wholesale/oem`
+- `/wholesale/orders`
+- `/wholesale/product/:id`
+- `/wholesale/statement`
+- `/wholesale/success`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (82개)
+
+
+**/api/admin/distributor**
+- `GET /api/admin/distributor/company-info`
+- `PUT /api/admin/distributor/company-info`
+- `GET /api/admin/distributor/distributors`
+- `PATCH /api/admin/distributor/distributors/:id`
+- `GET /api/admin/distributor/grades`
+- `PUT /api/admin/distributor/grades/:grade`
+- `GET /api/admin/distributor/oem-requests`
+- `PATCH /api/admin/distributor/oem-requests/:id`
+- `GET /api/admin/distributor/orders`
+- `GET /api/admin/distributor/orders/:id`
+- `POST /api/admin/distributor/orders/:id/refund`
+- `GET /api/admin/distributor/price-history`
+- `GET /api/admin/distributor/product-access`
+- `POST /api/admin/distributor/product-access`
+- `DELETE /api/admin/distributor/product-access/:id`
+- `PATCH /api/admin/distributor/products/:id/margin-override`
+- `GET /api/admin/distributor/products/:id/qty-tiers`
+- `PUT /api/admin/distributor/products/:id/qty-tiers`
+- `PATCH /api/admin/distributor/products/:id/visibility`
+- `GET /api/admin/distributor/products/export`
+- `GET /api/admin/distributor/proposals`
+- `POST /api/admin/distributor/proposals`
+- `DELETE /api/admin/distributor/proposals/:id`
+- `DELETE /api/admin/distributor/seed-demo-products`
+- `POST /api/admin/distributor/seed-demo-products`
+- `GET /api/admin/distributor/tax-documents`
+- `PATCH /api/admin/distributor/tax-documents/:id`
+- `GET /api/admin/distributor/tax-documents/:id/html`
+- `POST /api/admin/distributor/tax-documents/:id/issue-nts`
+- `POST /api/admin/distributor/tax-documents/issue`
+- `GET /api/admin/distributor/tax-summary`
+
+**/api/admin/supplier-products**
+- `GET /api/admin/supplier-products`
+- `PATCH /api/admin/supplier-products/:id`
+- `PATCH /api/admin/supplier-products/:id/price-change`
+
+**/api/admin/suppliers**
+- `GET /api/admin/suppliers`
+- `PATCH /api/admin/suppliers/:id`
+- `POST /api/admin/suppliers/:id/payout`
+- `GET /api/admin/suppliers/:id/payouts`
+
+**/api/supplier/become**
+- `POST /api/supplier/become`
+
+**/api/supplier/login**
+- `POST /api/supplier/login`
+
+**/api/supplier/me**
+- `GET /api/supplier/me`
+
+**/api/supplier/orders**
+- `GET /api/supplier/orders`
+- `PUT /api/supplier/orders/:orderId/shipping`
+
+**/api/supplier/products**
+- `GET /api/supplier/products`
+- `POST /api/supplier/products`
+- `PATCH /api/supplier/products/:id`
+- `GET /api/supplier/products/:id/channel-access`
+- `POST /api/supplier/products/:id/channel-access`
+- `DELETE /api/supplier/products/:id/channel-access/:accessId`
+- `POST /api/supplier/products/:id/price-change-request`
+- `POST /api/supplier/products/bulk`
+- `GET /api/supplier/products/bulk-template`
+
+**/api/supplier/register**
+- `POST /api/supplier/register`
+
+**/api/supplier/settlements**
+- `GET /api/supplier/settlements`
+
+**/api/supplier/wholesale**
+- `POST /api/supplier/wholesale/items/:id/ship`
+- `GET /api/supplier/wholesale/orders`
+- `POST /api/supplier/wholesale/orders/:id/refund`
+- `POST /api/supplier/wholesale/orders/:id/ship-all`
+- `GET /api/supplier/wholesale/orders/export`
+- `POST /api/supplier/wholesale/tracking/bulk`
+
+**/api/supplier/wholesaleuser**
+- `GET /api/supplier/wholesaleuser`
+
+**/api/supplieruser**
+- `GET /api/supplieruser`
+
+**/api/wholesale/become-distributor**
+- `POST /api/wholesale/become-distributor`
+
+**/api/wholesale/catalog**
+- `GET /api/wholesale/catalog`
+- `GET /api/wholesale/catalog/:id`
+
+**/api/wholesale/catalog-export**
+- `GET /api/wholesale/catalog-export`
+
+**/api/wholesale/documents**
+- `GET /api/wholesale/documents`
+- `GET /api/wholesale/documents/:id/html`
+
+**/api/wholesale/home**
+- `GET /api/wholesale/home`
+
+**/api/wholesale/me**
+- `GET /api/wholesale/me`
+
+**/api/wholesale/oem-requests**
+- `GET /api/wholesale/oem-requests`
+- `POST /api/wholesale/oem-requests`
+
+**/api/wholesale/order-template**
+- `GET /api/wholesale/order-template`
+
+**/api/wholesale/orders**
+- `GET /api/wholesale/orders`
+- `POST /api/wholesale/orders`
+- `GET /api/wholesale/orders/:id`
+- `POST /api/wholesale/orders/confirm`
+
+**/api/wholesale/proposals**
+- `GET /api/wholesale/proposals`
+
+**/api/wholesale/recent-items**
+- `GET /api/wholesale/recent-items`
+
+**/api/wholesale/register**
+- `POST /api/wholesale/register`
+
+**/api/wholesale/statement**
+- `GET /api/wholesale/statement`
+
+**/api/wholesaleuser**
+- `GET /api/wholesaleuser`
+
+
+> 마지막 생성: 2026-06-07T09:17:23.146Z
+> 생성기: `scripts/generate-proposal-refs.mjs`
+
+<!-- AUTO-GENERATED:proposal-refs END -->

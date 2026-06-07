@@ -690,3 +690,92 @@
 - 핸들 규칙 **`[a-z0-9_]{3,30}`** · 이미지 업로드 **최대 5MB**
 - 라이브 실시간 감지 **30초 폴링**
 - URL: `live.ur-team.com/s/{핸들}` · `/profile/{핸들}` · `/u/{핸들}`
+
+---
+
+<!-- AUTO-GENERATED:proposal-refs START -->
+
+## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
+
+> 도메인: **링크샵 / 큐레이터**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
+> 값이 코드와 다르면 코드를 수정하고 `npm run generate:proposal-refs` 실행. (수동 편집 금지 — 다음 커밋에 덮어써짐.)
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 공구 양쪽 추천 보너스 (각각) | 0.5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT` |
+| 큐레이터 핀 어필리에이트 | 1% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT` |
+| 후원 수수료 (default) | 15% | `src/features/donations/api/donations.routes.ts:donation_commission_rate fallback` |
+| 후원 1일 한도 (인당) | 50,000,000원 | `src/features/donations/api/donations.routes.ts:DAILY_CAP` |
+| 큐레이터당 최대 핀 개수 | 200개 | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.PIN_MAX_PER_USER` |
+| 추천 ref 쿠키 TTL | 24시간 | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS` |
+| 큐레이터→셀러 승급 권유 임계 (누적 정산) | 500,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD` |
+| 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
+| 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (10개)
+
+- `/host`
+- `/host/new`
+- `/profile/:sellerId`
+- `/referral`
+- `/referral/:code`
+- `/s/:sellerId`
+- `/u/:handle`
+- `/u/:handle/p/:productId`
+- `/u/me`
+- `/u/me/earnings`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (22개)
+
+
+**/api/affiliate/funnel**
+- `GET /api/affiliate/funnel`
+
+**/api/affiliate/link**
+- `GET /api/affiliate/link/:type/:id`
+
+**/api/affiliate/stats**
+- `GET /api/affiliate/stats`
+
+**/api/affiliate/top-groups**
+- `GET /api/affiliate/top-groups`
+
+**/api/affiliate/track**
+- `POST /api/affiliate/track`
+
+**/api/curator/${encodeURIComponent(handle)}**
+- `GET /api/curator/${encodeURIComponent(handle)}`
+
+**/api/curator/handle**
+- `GET /api/curator/handle/check?q=${encodeURIComponent(handle)}`
+
+**/api/curator/me**
+- `GET /api/curator/me/business`
+- `POST /api/curator/me/business`
+- `GET /api/curator/me/dashboard`
+- `PATCH /api/curator/me/handle`
+- `GET /api/curator/me/introduced-stores`
+- `POST /api/curator/me/pins`
+- `DELETE /api/curator/me/pins/${pinId}`
+- `PATCH /api/curator/me/pins/${pinId}`
+- `PATCH /api/curator/me/pins/reorder`
+- `GET /api/curator/me/pins/stats?range=${range}`
+- `POST /api/curator/me/proxy-product`
+- `POST /api/curator/me/seller-upgrade-acknowledge`
+- `GET /api/curator/me/withdrawal`
+- `POST /api/curator/me/withdrawal`
+
+**/api/curator/recommendations?limit=${limit}**
+- `GET /api/curator/recommendations?limit=${limit}`
+
+
+> 마지막 생성: 2026-06-07T09:17:23.151Z
+> 생성기: `scripts/generate-proposal-refs.mjs`
+
+<!-- AUTO-GENERATED:proposal-refs END -->

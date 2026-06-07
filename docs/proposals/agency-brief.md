@@ -578,3 +578,247 @@
 - `/a/:slug` 공개 페이지 테마(라이트/다크) — `[확인 필요]`
 - 소속 셀러의 도매몰(B2B) 상품 판매 가능 여부 — `[확인 필요]`
 - 경쟁사(MCN/Backstage류) 특성/수치 — 전부 `[가정]`, 공식 자료 검증 필요
+
+---
+
+<!-- AUTO-GENERATED:proposal-refs START -->
+
+## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
+
+> 도메인: **에이전시**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
+> 값이 코드와 다르면 코드를 수정하고 `npm run generate:proposal-refs` 실행. (수동 편집 금지 — 다음 커밋에 덮어써짐.)
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 에이전시 입점 분배 (platform_fee 중) | 30% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
+| 에이전시 본인 commission (매출 기준) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
+| 인플루언서 입점 분배 (platform_fee 중) | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT` |
+| 크리에이터 매장 영입 commission (default) | 1.5% | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (39개)
+
+- `/agency`
+- `/agency/calendar`
+- `/agency/campaigns`
+- `/agency/compare`
+- `/agency/contracts`
+- `/agency/coupons`
+- `/agency/events`
+- `/agency/forgot-password`
+- `/agency/group-buy`
+- `/agency/guide`
+- `/agency/incentives`
+- `/agency/introduced-stores`
+- `/agency/invites`
+- `/agency/ledger`
+- `/agency/login`
+- `/agency/match-suggestions`
+- `/agency/members`
+- `/agency/messages`
+- `/agency/notices`
+- `/agency/orders`
+- `/agency/pk`
+- `/agency/profile`
+- `/agency/promote-boosts`
+- `/agency/prospects`
+- `/agency/ranking`
+- `/agency/register`
+- `/agency/register/business`
+- `/agency/reset-password`
+- `/agency/returns`
+- `/agency/schedule`
+- `/agency/sellers`
+- `/agency/sellers/:sellerId/products`
+- `/agency/settlements`
+- `/agency/stats`
+- `/agency/stays`
+- `/agency/streams`
+- `/agency/targets`
+- `/agency/transfers`
+- `/agency/waiting`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
+
+
+**/api/admin/agencies**
+- `GET /api/admin/agencies/`
+- `POST /api/admin/agencies/`
+- `DELETE /api/admin/agencies/:id`
+- `PATCH /api/admin/agencies/:id`
+- `POST /api/admin/agencies/:id/reset-password`
+- `GET /api/admin/agencies/:id/sellers`
+- `POST /api/admin/agencies/:id/sellers`
+- `DELETE /api/admin/agencies/:id/sellers/:sellerId`
+- `GET /api/admin/agencies/unassigned-sellers`
+
+**/api/agency/contracts**
+- `GET /api/agency/contracts`
+- `POST /api/agency/contracts`
+- `PUT /api/agency/contracts/:id`
+
+**/api/agency/dashboard**
+- `GET /api/agency/dashboard/bundle`
+
+**/api/agency/forgot-password**
+- `POST /api/agency/forgot-password`
+
+**/api/agency/intro-code**
+- `GET /api/agency/intro-code`
+
+**/api/agency/introduced-stores**
+- `GET /api/agency/introduced-stores`
+- `GET /api/agency/introduced-stores/commissions`
+- `GET /api/agency/introduced-stores/summary`
+
+**/api/agency/invite-seller**
+- `POST /api/agency/invite-seller`
+
+**/api/agency/kakao-link-status**
+- `GET /api/agency/kakao-link-status`
+
+**/api/agency/kpi**
+- `GET /api/agency/kpi/`
+
+**/api/agency/kpiagency**
+- `GET /api/agency/kpiagency`
+
+**/api/agency/link-kakao**
+- `POST /api/agency/link-kakao`
+
+**/api/agency/login**
+- `POST /api/agency/login`
+
+**/api/agency/match-suggestions**
+- `GET /api/agency/match-suggestions`
+- `POST /api/agency/match-suggestions/:id/accept`
+- `POST /api/agency/match-suggestions/:id/decline`
+
+**/api/agency/monthly-tasks**
+- `GET /api/agency/monthly-tasks`
+
+**/api/agency/my-agency-status**
+- `GET /api/agency/my-agency-status`
+
+**/api/agency/notices**
+- `GET /api/agency/notices`
+- `POST /api/agency/notices`
+
+**/api/agency/notifications**
+- `GET /api/agency/notifications`
+- `PUT /api/agency/notifications/read-all`
+
+**/api/agency/orders**
+- `GET /api/agency/orders`
+
+**/api/agency/pin-status**
+- `GET /api/agency/pin-status`
+
+**/api/agency/profile**
+- `GET /api/agency/profile`
+- `PUT /api/agency/profile`
+
+**/api/agency/ranking**
+- `GET /api/agency/ranking`
+
+**/api/agency/register**
+- `POST /api/agency/register`
+
+**/api/agency/register-from-user**
+- `POST /api/agency/register-from-user`
+
+**/api/agency/report**
+- `GET /api/agency/report/csv`
+
+**/api/agency/request-kakao-stepup**
+- `POST /api/agency/request-kakao-stepup`
+
+**/api/agency/reset-password**
+- `POST /api/agency/reset-password`
+
+**/api/agency/returns**
+- `GET /api/agency/returns`
+
+**/api/agency/schedule**
+- `GET /api/agency/schedule`
+
+**/api/agency/self-events**
+- `GET /api/agency/self-events/`
+- `POST /api/agency/self-events/`
+- `POST /api/agency/self-events/:id/cancel`
+- `POST /api/agency/self-events/:id/join`
+- `GET /api/agency/self-events/:id/leaderboard`
+
+**/api/agency/self-eventsagency**
+- `GET /api/agency/self-eventsagency`
+
+**/api/agency/sellers**
+- `GET /api/agency/sellers`
+- `GET /api/agency/sellers/:id/inventory`
+- `GET /api/agency/sellers/:id/products`
+- `POST /api/agency/sellers/:id/products`
+- `PUT /api/agency/sellers/:id/products/:productId`
+- `GET /api/agency/sellers/:id/stats`
+- `POST /api/agency/sellers/:id/streams`
+- `GET /api/agency/sellers/compare`
+
+**/api/agency/set-pin**
+- `POST /api/agency/set-pin`
+
+**/api/agency/settlement-invoices**
+- `GET /api/agency/settlement-invoices`
+- `GET /api/agency/settlement-invoices/:id`
+
+**/api/agency/settlements**
+- `GET /api/agency/settlements`
+- `GET /api/agency/settlements/csv`
+- `POST /api/agency/settlements/request`
+
+**/api/agency/stats**
+- `GET /api/agency/stats`
+- `GET /api/agency/stats/batch`
+- `GET /api/agency/stats/daily`
+- `GET /api/agency/stats/kpi`
+- `GET /api/agency/stats/kt-alpha`
+- `GET /api/agency/stats/realtime`
+
+**/api/agency/stays**
+- `GET /api/agency/stays`
+- `GET /api/agency/stays/bookings`
+- `GET /api/agency/stays/kpi`
+
+**/api/agency/streams**
+- `GET /api/agency/streams`
+
+**/api/agency/targets**
+- `GET /api/agency/targets`
+- `PUT /api/agency/targets`
+
+**/api/agency/transfers**
+- `GET /api/agency/transfers/`
+- `POST /api/agency/transfers/`
+- `POST /api/agency/transfers/:id/cancel`
+- `POST /api/agency/transfers/:id/respond`
+- `POST /api/agency/transfers/:id/seller-approve`
+
+**/api/agency/transfersagency**
+- `GET /api/agency/transfersagency`
+
+**/api/agency/unlink-kakao**
+- `POST /api/agency/unlink-kakao`
+
+**/api/agency/verify-pin**
+- `POST /api/agency/verify-pin`
+
+**/api/agencyagency**
+- `GET /api/agencyagency`
+
+
+> 마지막 생성: 2026-06-07T09:17:23.153Z
+> 생성기: `scripts/generate-proposal-refs.mjs`
+
+<!-- AUTO-GENERATED:proposal-refs END -->

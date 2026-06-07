@@ -33,6 +33,7 @@
     "type-check:worker": "tsc --noEmit --project tsconfig.worker.json",
     "validate:routes": "bash scripts/validate-routes.sh",
     "generate:guide-refs": "node scripts/generate-guide-references.mjs",
+    "generate:proposal-refs": "node scripts/generate-proposal-refs.mjs",
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "check:bundle:budget": "node scripts/check-bundle-size.mjs --budget",
     "check:i18n": "node scripts/check-i18n-sync.mjs",

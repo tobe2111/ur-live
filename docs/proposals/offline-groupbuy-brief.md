@@ -777,3 +777,128 @@
 - `src/worker/utils/influencer-store-intro-commission.ts` — 매장영입 1.5% 적립(`creditInfluencerStoreIntroCommission`)
 - `src/pages/StoreOwnerDashboardPage.tsx`, `src/pages/SellerAppointmentsPage.tsx` — 사장님 대시보드/예약
 - `CLAUDE.md` — 수수료·정산·딜 포인트·결제 안전(reserve-before-charge, 잠긴 토스)
+
+---
+
+<!-- AUTO-GENERATED:proposal-refs START -->
+
+## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
+
+> 도메인: **오프라인 공구 / 동네딜**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
+> 값이 코드와 다르면 코드를 수정하고 `npm run generate:proposal-refs` 실행. (수동 편집 금지 — 다음 커밋에 덮어써짐.)
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 식사권 기본 수수료 | 5% | `src/features/group-buy/api/helpers.ts:DEFAULT_MEAL_VOUCHER_COMMISSION_RATE` |
+| 차등 수수료 — 월 GMV 100,000,000원 이상 | 3% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
+| 차등 수수료 — 월 GMV 10,000,000원 이상 | 4% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
+| 커뮤니티 공구 — 기본 보증금/인 | 5,000원 | `src/features/community-group-buy/api/community-group-buy.routes.ts:deposit_per_person` |
+| 커뮤니티 공구 — 기본 목표 인원 | 10명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:target_count` |
+| 커뮤니티 공구 — 인기 그룹 임계 | 50명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:popular` |
+| 호스팅 인센티브 (호스트 적립) | 1% | `src/shared/constants/policy.ts:HOSTING_DEFAULTS.HOST_INCENTIVE_PCT` |
+| 호스팅 기본 모집 기간 | 7일 | `src/shared/constants/policy.ts:HOSTING_DEFAULTS.DEFAULT_DEADLINE_DAYS` |
+| 호스트당 동시 공구 상한 | 10개 | `src/shared/constants/policy.ts:HOSTING_DEFAULTS.MAX_ACTIVE_HOSTINGS` |
+| 예약 노쇼 자동 알림 | 시작 30분 후 | `src/shared/constants/policy.ts:REFUND_POLICY.APPOINTMENT_NOSHOW_ALERT_MIN` |
+| 예약 취소 환불 마감 | 시작 12시간 이내 | `src/shared/constants/policy.ts:REFUND_POLICY.APPOINTMENT_CANCEL_DEADLINE_HOURS` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (11개)
+
+- `/community-group-buy/:code`
+- `/community-group-buy/new`
+- `/group-buy`
+- `/group-buy/:id`
+- `/group-buy/confirm-payment`
+- `/meal-vouchers`
+- `/my-appointments`
+- `/my-stays`
+- `/restaurant-map`
+- `/stays`
+- `/stays/:id`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (42개)
+
+
+**/api/appointments/:id**
+- `PATCH /api/appointments/:id/cancel`
+
+**/api/appointments/book**
+- `POST /api/appointments/book`
+
+**/api/appointments/my**
+- `GET /api/appointments/my`
+
+**/api/funding**
+- `GET /api/funding/`
+
+**/api/funding/:id**
+- `GET /api/funding/:id`
+- `GET /api/funding/:id/progress`
+
+**/api/group-buy/stays**
+- `GET /api/group-buy/stays/:productId`
+- `GET /api/group-buy/stays/:productId/availability`
+- `GET /api/group-buy/stays/:productId/reviews`
+- `PATCH /api/group-buy/stays/bookings/:id/cancel`
+- `POST /api/group-buy/stays/bookings/:id/review`
+- `POST /api/group-buy/stays/bookings/confirm`
+- `POST /api/group-buy/stays/bookings/create`
+- `POST /api/group-buy/stays/bookings/create-multi`
+- `GET /api/group-buy/stays/my-bookings`
+- `GET /api/group-buy/stays/search`
+
+**/api/hosting/catalog${params}**
+- `GET /api/hosting/catalog${params}`
+
+**/api/hosting/g**
+- `GET /api/hosting/g/${encodeURIComponent(code)}`
+
+**/api/hosting/me**
+- `GET /api/hosting/me`
+- `POST /api/hosting/me`
+- `GET /api/hosting/me/${id}`
+- `PATCH /api/hosting/me/${id}/cancel`
+
+**/api/restaurant-suggestions**
+- `POST /api/restaurant-suggestions/`
+
+**/api/restaurant-suggestions/stats**
+- `GET /api/restaurant-suggestions/stats`
+
+**/api/seller/stays**
+- `GET /api/seller/stays`
+- `POST /api/seller/stays`
+- `GET /api/seller/stays/:productId`
+- `PUT /api/seller/stays/:productId`
+- `GET /api/seller/stays/:productId/bookings`
+- `GET /api/seller/stays/:productId/calendar`
+- `PUT /api/seller/stays/:productId/calendar`
+- `POST /api/seller/stays/:productId/rooms`
+- `DELETE /api/seller/stays/:productId/rooms/:roomId`
+- `PUT /api/seller/stays/:productId/rooms/:roomId`
+- `PATCH /api/seller/stays/bookings/:bookingId/check-in`
+- `PATCH /api/seller/stays/bookings/:bookingId/check-out`
+- `PATCH /api/seller/stays/bookings/:bookingId/no-show`
+- `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
+
+**/api/seller/stays-amenities**
+- `GET /api/seller/stays-amenities`
+
+**/api/seller/stays-bookings**
+- `GET /api/seller/stays-bookings`
+
+**/api/seller/stays-kpi**
+- `GET /api/seller/stays-kpi`
+
+**/api/seller/stays-quota**
+- `GET /api/seller/stays-quota`
+
+
+> 마지막 생성: 2026-06-07T09:17:23.148Z
+> 생성기: `scripts/generate-proposal-refs.mjs`
+
+<!-- AUTO-GENERATED:proposal-refs END -->

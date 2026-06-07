@@ -158,6 +158,10 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
+# 📑 소개서(docs/proposals/) 동기화 권고 (warn-only — 절대 차단 X).
+echo "==> Pre-commit: 소개서 동기화 권고 (warn-only)..."
+bash scripts/check-proposal-sync.sh || true
+
 # 🛡️ npm audit — high/critical 취약점 차단 ([SKIP_AUDIT] 커밋 메시지로 우회 가능)
 echo "==> Pre-commit: npm audit (high/critical)..."
 bash scripts/check-npm-audit.sh || {
@@ -175,6 +179,15 @@ if [ -n "$auto_ref_relevant" ]; then
     git add src/features/guides/api/auto-reference.ts
     echo "   ✓ auto-reference.ts 재생성 + staged"
   fi
+fi
+
+# 📑 소개서(docs/proposals/) 자동 동기화 블록 재생성 — 사용자 "무조건" 요구로 매 커밋 실행.
+#   (anti-churn 으로 실질 변경 있을 때만 파일을 다시 쓰고 stage 함.) 절대 차단 X (|| true).
+echo "==> Pre-commit: 소개서 자동 참조 재생성 (매 커밋)..."
+node scripts/generate-proposal-refs.mjs > /dev/null 2>&1 || true
+if ! git diff --quiet docs/proposals 2>/dev/null; then
+  git add docs/proposals/*.md 2>/dev/null || true
+  echo "   ✓ docs/proposals/*.md 재생성 + staged"
 fi
 
 echo "==> Pre-commit: TypeScript check..."
@@ -277,6 +290,7 @@ echo "  2. 대시보드 테마 정책 (dark: variant 금지)"
 echo "  3. Service Worker 등록 코드 차단"
 echo "  4. 운영 가이드 동기화 (warn-only, STRICT_GUIDE_SYNC=1로 차단)"
 echo "  5. npm audit high/critical 취약점 ([SKIP_AUDIT]으로 우회)"
-echo "  6. TypeScript (npx tsc)"
-echo "  7. 파일 중간 import 검출"
-echo "  8. Worker 번들 빌드 (런타임 crash catch)"
+echo "  6. 소개서 동기화 권고 + 자동 참조 재생성 (warn-only, 매 커밋)"
+echo "  7. TypeScript (npx tsc)"
+echo "  8. 파일 중간 import 검출"
+echo "  9. Worker 번들 빌드 (런타임 crash catch)"

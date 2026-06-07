@@ -270,3 +270,833 @@
 - 캐스팅: `src/features/casting/api/casting.routes.ts`(광고주↔셀러 중개)
 - 링크샵/큐레이터: `src/pages/SellerPublicPage.tsx`, `src/features/curator/api/curator-api.ts`, `docs/design/linkshop-pivot.md`
 - 기능 모듈 전수: `src/features/*/api/*.routes.ts` (auction/timedeal/funding/digital/bundles/donations/referral/affiliate/loyalty/hosting/appointments/cafe24/multi-platform/youtube 등)
+
+---
+
+<!-- AUTO-GENERATED:proposal-refs START -->
+
+## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
+
+> 마스터 문서: 전체 도메인 인벤토리 + 버킷별 커버리지 요약. `scripts/generate-proposal-refs.mjs` 자동 생성.
+
+### 커버리지 요약 (자동 — 버킷별 카운트)
+
+| 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
+|---|---|---|---|
+| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 21 | 82 |
+| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 11 | 42 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 11 | 94 |
+| 링크샵 / 큐레이터 | `linkshop-brief.md` | 10 | 22 |
+| 에이전시 | `agency-brief.md` | 39 | 86 |
+| **합계** | — | **92** | **326** |
+
+### 핵심 수치 (자동 추출 — 전체)
+
+#### 도매몰 (유통스타트)
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 유통사 등급 마진율 — A등급 | 10% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — B등급 | 15% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — C등급 | 20% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — D등급 | 25% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — OEM등급 | 8% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통사 등급 마진율 — SPECIAL등급 | 0% | `src/lib/distributor-pricing.ts:DEFAULT_GRADE_MARGINS` |
+| 유통회원 가입 시 기본 등급 | C등급 | `src/lib/distributor-pricing.ts:DEFAULT_UNGRADED` |
+| 공급자 정산 1일 한도 (default) | 100,000,000원 | `src/features/supply/api/supply-settlement.ts:DEFAULT_DAILY_CAP` |
+| 공급자 환불창 (성숙 기간) | 7일 | `src/features/supply/api/supply-settlement.ts:SUPPLIER_REFUND_WINDOW_DAYS` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+#### 오프라인 공구 / 동네딜
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 식사권 기본 수수료 | 5% | `src/features/group-buy/api/helpers.ts:DEFAULT_MEAL_VOUCHER_COMMISSION_RATE` |
+| 차등 수수료 — 월 GMV 100,000,000원 이상 | 3% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
+| 차등 수수료 — 월 GMV 10,000,000원 이상 | 4% | `src/features/group-buy/api/helpers.ts:TIER_COMMISSION` |
+| 커뮤니티 공구 — 기본 보증금/인 | 5,000원 | `src/features/community-group-buy/api/community-group-buy.routes.ts:deposit_per_person` |
+| 커뮤니티 공구 — 기본 목표 인원 | 10명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:target_count` |
+| 커뮤니티 공구 — 인기 그룹 임계 | 50명 | `src/features/community-group-buy/api/community-group-buy.routes.ts:popular` |
+| 호스팅 인센티브 (호스트 적립) | 1% | `src/shared/constants/policy.ts:HOSTING_DEFAULTS.HOST_INCENTIVE_PCT` |
+| 호스팅 기본 모집 기간 | 7일 | `src/shared/constants/policy.ts:HOSTING_DEFAULTS.DEFAULT_DEADLINE_DAYS` |
+| 호스트당 동시 공구 상한 | 10개 | `src/shared/constants/policy.ts:HOSTING_DEFAULTS.MAX_ACTIVE_HOSTINGS` |
+| 예약 노쇼 자동 알림 | 시작 30분 후 | `src/shared/constants/policy.ts:REFUND_POLICY.APPOINTMENT_NOSHOW_ALERT_MIN` |
+| 예약 취소 환불 마감 | 시작 12시간 이내 | `src/shared/constants/policy.ts:REFUND_POLICY.APPOINTMENT_CANCEL_DEADLINE_HOURS` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+#### 온라인 입점 / 라이브커머스
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 플랫폼 fee (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.PLATFORM_FEE_PCT` |
+| 위탁 판매 셀러 commission | 10% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT` |
+| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 외부 카테고리(숙박 등) 수수료 상한 | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT` |
+| 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
+| 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+#### 링크샵 / 큐레이터
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 공구 양쪽 추천 보너스 (각각) | 0.5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT` |
+| 큐레이터 핀 어필리에이트 | 1% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT` |
+| 후원 수수료 (default) | 15% | `src/features/donations/api/donations.routes.ts:donation_commission_rate fallback` |
+| 후원 1일 한도 (인당) | 50,000,000원 | `src/features/donations/api/donations.routes.ts:DAILY_CAP` |
+| 큐레이터당 최대 핀 개수 | 200개 | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.PIN_MAX_PER_USER` |
+| 추천 ref 쿠키 TTL | 24시간 | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS` |
+| 큐레이터→셀러 승급 권유 임계 (누적 정산) | 500,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD` |
+| 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
+| 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+#### 에이전시
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 에이전시 입점 분배 (platform_fee 중) | 30% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
+| 에이전시 본인 commission (매출 기준) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
+| 인플루언서 입점 분배 (platform_fee 중) | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT` |
+| 크리에이터 매장 영입 commission (default) | 1.5% | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+### 전체 도메인 코드 인벤토리 (자동)
+
+#### 도매몰 (유통스타트)
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (21개)
+
+- `/admin/distributor-grades`
+- `/admin/suppliers`
+- `/admin/wholesale-guide`
+- `/admin/wholesale-orders`
+- `/supplier`
+- `/supplier/login`
+- `/supplier/register`
+- `/supplier/wholesale-orders`
+- `/wholesale`
+- `/wholesale/cart`
+- `/wholesale/checkout`
+- `/wholesale/dashboard`
+- `/wholesale/documents`
+- `/wholesale/intro`
+- `/wholesale/join`
+- `/wholesale/login`
+- `/wholesale/oem`
+- `/wholesale/orders`
+- `/wholesale/product/:id`
+- `/wholesale/statement`
+- `/wholesale/success`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (82개)
+
+
+**/api/admin/distributor**
+- `GET /api/admin/distributor/company-info`
+- `PUT /api/admin/distributor/company-info`
+- `GET /api/admin/distributor/distributors`
+- `PATCH /api/admin/distributor/distributors/:id`
+- `GET /api/admin/distributor/grades`
+- `PUT /api/admin/distributor/grades/:grade`
+- `GET /api/admin/distributor/oem-requests`
+- `PATCH /api/admin/distributor/oem-requests/:id`
+- `GET /api/admin/distributor/orders`
+- `GET /api/admin/distributor/orders/:id`
+- `POST /api/admin/distributor/orders/:id/refund`
+- `GET /api/admin/distributor/price-history`
+- `GET /api/admin/distributor/product-access`
+- `POST /api/admin/distributor/product-access`
+- `DELETE /api/admin/distributor/product-access/:id`
+- `PATCH /api/admin/distributor/products/:id/margin-override`
+- `GET /api/admin/distributor/products/:id/qty-tiers`
+- `PUT /api/admin/distributor/products/:id/qty-tiers`
+- `PATCH /api/admin/distributor/products/:id/visibility`
+- `GET /api/admin/distributor/products/export`
+- `GET /api/admin/distributor/proposals`
+- `POST /api/admin/distributor/proposals`
+- `DELETE /api/admin/distributor/proposals/:id`
+- `DELETE /api/admin/distributor/seed-demo-products`
+- `POST /api/admin/distributor/seed-demo-products`
+- `GET /api/admin/distributor/tax-documents`
+- `PATCH /api/admin/distributor/tax-documents/:id`
+- `GET /api/admin/distributor/tax-documents/:id/html`
+- `POST /api/admin/distributor/tax-documents/:id/issue-nts`
+- `POST /api/admin/distributor/tax-documents/issue`
+- `GET /api/admin/distributor/tax-summary`
+
+**/api/admin/supplier-products**
+- `GET /api/admin/supplier-products`
+- `PATCH /api/admin/supplier-products/:id`
+- `PATCH /api/admin/supplier-products/:id/price-change`
+
+**/api/admin/suppliers**
+- `GET /api/admin/suppliers`
+- `PATCH /api/admin/suppliers/:id`
+- `POST /api/admin/suppliers/:id/payout`
+- `GET /api/admin/suppliers/:id/payouts`
+
+**/api/supplier/become**
+- `POST /api/supplier/become`
+
+**/api/supplier/login**
+- `POST /api/supplier/login`
+
+**/api/supplier/me**
+- `GET /api/supplier/me`
+
+**/api/supplier/orders**
+- `GET /api/supplier/orders`
+- `PUT /api/supplier/orders/:orderId/shipping`
+
+**/api/supplier/products**
+- `GET /api/supplier/products`
+- `POST /api/supplier/products`
+- `PATCH /api/supplier/products/:id`
+- `GET /api/supplier/products/:id/channel-access`
+- `POST /api/supplier/products/:id/channel-access`
+- `DELETE /api/supplier/products/:id/channel-access/:accessId`
+- `POST /api/supplier/products/:id/price-change-request`
+- `POST /api/supplier/products/bulk`
+- `GET /api/supplier/products/bulk-template`
+
+**/api/supplier/register**
+- `POST /api/supplier/register`
+
+**/api/supplier/settlements**
+- `GET /api/supplier/settlements`
+
+**/api/supplier/wholesale**
+- `POST /api/supplier/wholesale/items/:id/ship`
+- `GET /api/supplier/wholesale/orders`
+- `POST /api/supplier/wholesale/orders/:id/refund`
+- `POST /api/supplier/wholesale/orders/:id/ship-all`
+- `GET /api/supplier/wholesale/orders/export`
+- `POST /api/supplier/wholesale/tracking/bulk`
+
+**/api/supplier/wholesaleuser**
+- `GET /api/supplier/wholesaleuser`
+
+**/api/supplieruser**
+- `GET /api/supplieruser`
+
+**/api/wholesale/become-distributor**
+- `POST /api/wholesale/become-distributor`
+
+**/api/wholesale/catalog**
+- `GET /api/wholesale/catalog`
+- `GET /api/wholesale/catalog/:id`
+
+**/api/wholesale/catalog-export**
+- `GET /api/wholesale/catalog-export`
+
+**/api/wholesale/documents**
+- `GET /api/wholesale/documents`
+- `GET /api/wholesale/documents/:id/html`
+
+**/api/wholesale/home**
+- `GET /api/wholesale/home`
+
+**/api/wholesale/me**
+- `GET /api/wholesale/me`
+
+**/api/wholesale/oem-requests**
+- `GET /api/wholesale/oem-requests`
+- `POST /api/wholesale/oem-requests`
+
+**/api/wholesale/order-template**
+- `GET /api/wholesale/order-template`
+
+**/api/wholesale/orders**
+- `GET /api/wholesale/orders`
+- `POST /api/wholesale/orders`
+- `GET /api/wholesale/orders/:id`
+- `POST /api/wholesale/orders/confirm`
+
+**/api/wholesale/proposals**
+- `GET /api/wholesale/proposals`
+
+**/api/wholesale/recent-items**
+- `GET /api/wholesale/recent-items`
+
+**/api/wholesale/register**
+- `POST /api/wholesale/register`
+
+**/api/wholesale/statement**
+- `GET /api/wholesale/statement`
+
+**/api/wholesaleuser**
+- `GET /api/wholesaleuser`
+
+
+#### 오프라인 공구 / 동네딜
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (11개)
+
+- `/community-group-buy/:code`
+- `/community-group-buy/new`
+- `/group-buy`
+- `/group-buy/:id`
+- `/group-buy/confirm-payment`
+- `/meal-vouchers`
+- `/my-appointments`
+- `/my-stays`
+- `/restaurant-map`
+- `/stays`
+- `/stays/:id`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (42개)
+
+
+**/api/appointments/:id**
+- `PATCH /api/appointments/:id/cancel`
+
+**/api/appointments/book**
+- `POST /api/appointments/book`
+
+**/api/appointments/my**
+- `GET /api/appointments/my`
+
+**/api/funding**
+- `GET /api/funding/`
+
+**/api/funding/:id**
+- `GET /api/funding/:id`
+- `GET /api/funding/:id/progress`
+
+**/api/group-buy/stays**
+- `GET /api/group-buy/stays/:productId`
+- `GET /api/group-buy/stays/:productId/availability`
+- `GET /api/group-buy/stays/:productId/reviews`
+- `PATCH /api/group-buy/stays/bookings/:id/cancel`
+- `POST /api/group-buy/stays/bookings/:id/review`
+- `POST /api/group-buy/stays/bookings/confirm`
+- `POST /api/group-buy/stays/bookings/create`
+- `POST /api/group-buy/stays/bookings/create-multi`
+- `GET /api/group-buy/stays/my-bookings`
+- `GET /api/group-buy/stays/search`
+
+**/api/hosting/catalog${params}**
+- `GET /api/hosting/catalog${params}`
+
+**/api/hosting/g**
+- `GET /api/hosting/g/${encodeURIComponent(code)}`
+
+**/api/hosting/me**
+- `GET /api/hosting/me`
+- `POST /api/hosting/me`
+- `GET /api/hosting/me/${id}`
+- `PATCH /api/hosting/me/${id}/cancel`
+
+**/api/restaurant-suggestions**
+- `POST /api/restaurant-suggestions/`
+
+**/api/restaurant-suggestions/stats**
+- `GET /api/restaurant-suggestions/stats`
+
+**/api/seller/stays**
+- `GET /api/seller/stays`
+- `POST /api/seller/stays`
+- `GET /api/seller/stays/:productId`
+- `PUT /api/seller/stays/:productId`
+- `GET /api/seller/stays/:productId/bookings`
+- `GET /api/seller/stays/:productId/calendar`
+- `PUT /api/seller/stays/:productId/calendar`
+- `POST /api/seller/stays/:productId/rooms`
+- `DELETE /api/seller/stays/:productId/rooms/:roomId`
+- `PUT /api/seller/stays/:productId/rooms/:roomId`
+- `PATCH /api/seller/stays/bookings/:bookingId/check-in`
+- `PATCH /api/seller/stays/bookings/:bookingId/check-out`
+- `PATCH /api/seller/stays/bookings/:bookingId/no-show`
+- `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
+
+**/api/seller/stays-amenities**
+- `GET /api/seller/stays-amenities`
+
+**/api/seller/stays-bookings**
+- `GET /api/seller/stays-bookings`
+
+**/api/seller/stays-kpi**
+- `GET /api/seller/stays-kpi`
+
+**/api/seller/stays-quota**
+- `GET /api/seller/stays-quota`
+
+
+#### 온라인 입점 / 라이브커머스
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (11개)
+
+- `/browse`
+- `/cart`
+- `/checkout`
+- `/live`
+- `/live/:streamId`
+- `/live/recap/:id`
+- `/my-orders`
+- `/products/:id`
+- `/search`
+- `/shorts`
+- `/wishlist`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (94개)
+
+
+**/api/cart**
+- `GET /api/cart/`
+- `POST /api/cart/`
+
+**/api/cart/:id**
+- `DELETE /api/cart/:id`
+- `PUT /api/cart/:id`
+
+**/api/cart/clear**
+- `POST /api/cart/clear`
+
+**/api/orders/:orderId**
+- `GET /api/orders/:orderId/pending-bookings`
+
+**/api/products/:id**
+- `GET /api/products/:id/available-slots`
+
+**/api/seller/youtube**
+- `POST /api/seller/youtube/admin/rotate-all-stream-keys`
+- `GET /api/seller/youtube/live-readiness`
+- `GET /api/seller/youtube/live/_admin-quota-dashboard`
+- `POST /api/seller/youtube/live/_cleanup-pushes`
+- `GET /api/seller/youtube/live/_health-check`
+- `GET /api/seller/youtube/live/_quota`
+- `POST /api/seller/youtube/live/_verify-whip-proxy`
+- `POST /api/seller/youtube/live/:id/_force-live`
+- `POST /api/seller/youtube/live/:id/admin-force-end`
+- `GET /api/seller/youtube/live/:id/chat`
+- `GET /api/seller/youtube/live/:id/detect-webcam`
+- `GET /api/seller/youtube/live/:id/diagnose`
+- `POST /api/seller/youtube/live/:id/end`
+- `POST /api/seller/youtube/live/:id/end-beacon`
+- `POST /api/seller/youtube/live/:id/force-transition`
+- `PATCH /api/seller/youtube/live/:id/link-broadcast`
+- `POST /api/seller/youtube/live/:id/notify-followers`
+- `POST /api/seller/youtube/live/:id/refresh-thumbnail`
+- `POST /api/seller/youtube/live/:id/reset-zombie`
+- `POST /api/seller/youtube/live/:id/start`
+- `GET /api/seller/youtube/live/:id/status`
+- `GET /api/seller/youtube/live/:id/youtube-stats`
+- `POST /api/seller/youtube/live/create`
+- `POST /api/seller/youtube/live/create-webcam`
+- `POST /api/seller/youtube/rotate-stream-key`
+- `GET /api/seller/youtube/streaming-setup`
+- `POST /api/seller/youtube/streaming-setup/init`
+- `GET /api/seller/youtube/streaming/health`
+- `DELETE /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
+- `PATCH /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
+- `POST /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
+- `DELETE /api/seller/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/seller/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/seller/youtube/streaming/whip-token`
+
+**/api/seller/youtubeContent-Type**
+- `GET /api/seller/youtubeContent-Type`
+
+**/api/seller/youtubeLocation**
+- `GET /api/seller/youtubeLocation`
+
+**/api/seller/youtubecontent-type**
+- `GET /api/seller/youtubecontent-type`
+
+**/api/seller/youtubelive_create_count:${s.seller_id}:${today}**
+- `GET /api/seller/youtubelive_create_count:${s.seller_id}:${today}`
+
+**/api/seller/youtubelocation**
+- `GET /api/seller/youtubelocation`
+
+**/api/seller/youtubetoken**
+- `GET /api/seller/youtubetoken`
+
+**/api/seller/youtubeyt_quota:${yesterday}**
+- `GET /api/seller/youtubeyt_quota:${yesterday}`
+
+**/api/shipping-addresses**
+- `GET /api/shipping-addresses/`
+- `POST /api/shipping-addresses/`
+
+**/api/shipping-addresses/:id**
+- `DELETE /api/shipping-addresses/:id`
+- `PUT /api/shipping-addresses/:id`
+
+**/api/shipping-addressesshipping_addresses**
+- `DELETE /api/shipping-addressesshipping_addresses`
+
+**/api/youtube/admin**
+- `POST /api/youtube/admin/rotate-all-stream-keys`
+
+**/api/youtube/live**
+- `GET /api/youtube/live/_admin-quota-dashboard`
+- `POST /api/youtube/live/_cleanup-pushes`
+- `GET /api/youtube/live/_health-check`
+- `GET /api/youtube/live/_quota`
+- `POST /api/youtube/live/_verify-whip-proxy`
+- `POST /api/youtube/live/:id/_force-live`
+- `POST /api/youtube/live/:id/admin-force-end`
+- `GET /api/youtube/live/:id/chat`
+- `GET /api/youtube/live/:id/detect-webcam`
+- `GET /api/youtube/live/:id/diagnose`
+- `POST /api/youtube/live/:id/end`
+- `POST /api/youtube/live/:id/end-beacon`
+- `POST /api/youtube/live/:id/force-transition`
+- `PATCH /api/youtube/live/:id/link-broadcast`
+- `POST /api/youtube/live/:id/notify-followers`
+- `POST /api/youtube/live/:id/refresh-thumbnail`
+- `POST /api/youtube/live/:id/reset-zombie`
+- `POST /api/youtube/live/:id/start`
+- `GET /api/youtube/live/:id/status`
+- `GET /api/youtube/live/:id/youtube-stats`
+- `POST /api/youtube/live/create`
+- `POST /api/youtube/live/create-webcam`
+
+**/api/youtube/live-readiness**
+- `GET /api/youtube/live-readiness`
+
+**/api/youtube/rotate-stream-key**
+- `POST /api/youtube/rotate-stream-key`
+
+**/api/youtube/streaming**
+- `GET /api/youtube/streaming/health`
+- `DELETE /api/youtube/streaming/whip-proxy-ome/:streamId`
+- `PATCH /api/youtube/streaming/whip-proxy-ome/:streamId`
+- `POST /api/youtube/streaming/whip-proxy-ome/:streamId`
+- `DELETE /api/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/youtube/streaming/whip-token`
+
+**/api/youtube/streaming-setup**
+- `GET /api/youtube/streaming-setup`
+- `POST /api/youtube/streaming-setup/init`
+
+**/api/youtubeContent-Type**
+- `GET /api/youtubeContent-Type`
+
+**/api/youtubeLocation**
+- `GET /api/youtubeLocation`
+
+**/api/youtubecontent-type**
+- `GET /api/youtubecontent-type`
+
+**/api/youtubelive_create_count:${s.seller_id}:${today}**
+- `GET /api/youtubelive_create_count:${s.seller_id}:${today}`
+
+**/api/youtubelocation**
+- `GET /api/youtubelocation`
+
+**/api/youtubetoken**
+- `GET /api/youtubetoken`
+
+**/api/youtubeyt_quota:${yesterday}**
+- `GET /api/youtubeyt_quota:${yesterday}`
+
+
+#### 링크샵 / 큐레이터
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (10개)
+
+- `/host`
+- `/host/new`
+- `/profile/:sellerId`
+- `/referral`
+- `/referral/:code`
+- `/s/:sellerId`
+- `/u/:handle`
+- `/u/:handle/p/:productId`
+- `/u/me`
+- `/u/me/earnings`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (22개)
+
+
+**/api/affiliate/funnel**
+- `GET /api/affiliate/funnel`
+
+**/api/affiliate/link**
+- `GET /api/affiliate/link/:type/:id`
+
+**/api/affiliate/stats**
+- `GET /api/affiliate/stats`
+
+**/api/affiliate/top-groups**
+- `GET /api/affiliate/top-groups`
+
+**/api/affiliate/track**
+- `POST /api/affiliate/track`
+
+**/api/curator/${encodeURIComponent(handle)}**
+- `GET /api/curator/${encodeURIComponent(handle)}`
+
+**/api/curator/handle**
+- `GET /api/curator/handle/check?q=${encodeURIComponent(handle)}`
+
+**/api/curator/me**
+- `GET /api/curator/me/business`
+- `POST /api/curator/me/business`
+- `GET /api/curator/me/dashboard`
+- `PATCH /api/curator/me/handle`
+- `GET /api/curator/me/introduced-stores`
+- `POST /api/curator/me/pins`
+- `DELETE /api/curator/me/pins/${pinId}`
+- `PATCH /api/curator/me/pins/${pinId}`
+- `PATCH /api/curator/me/pins/reorder`
+- `GET /api/curator/me/pins/stats?range=${range}`
+- `POST /api/curator/me/proxy-product`
+- `POST /api/curator/me/seller-upgrade-acknowledge`
+- `GET /api/curator/me/withdrawal`
+- `POST /api/curator/me/withdrawal`
+
+**/api/curator/recommendations?limit=${limit}**
+- `GET /api/curator/recommendations?limit=${limit}`
+
+
+#### 에이전시
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (39개)
+
+- `/agency`
+- `/agency/calendar`
+- `/agency/campaigns`
+- `/agency/compare`
+- `/agency/contracts`
+- `/agency/coupons`
+- `/agency/events`
+- `/agency/forgot-password`
+- `/agency/group-buy`
+- `/agency/guide`
+- `/agency/incentives`
+- `/agency/introduced-stores`
+- `/agency/invites`
+- `/agency/ledger`
+- `/agency/login`
+- `/agency/match-suggestions`
+- `/agency/members`
+- `/agency/messages`
+- `/agency/notices`
+- `/agency/orders`
+- `/agency/pk`
+- `/agency/profile`
+- `/agency/promote-boosts`
+- `/agency/prospects`
+- `/agency/ranking`
+- `/agency/register`
+- `/agency/register/business`
+- `/agency/reset-password`
+- `/agency/returns`
+- `/agency/schedule`
+- `/agency/sellers`
+- `/agency/sellers/:sellerId/products`
+- `/agency/settlements`
+- `/agency/stats`
+- `/agency/stays`
+- `/agency/streams`
+- `/agency/targets`
+- `/agency/transfers`
+- `/agency/waiting`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
+
+
+**/api/admin/agencies**
+- `GET /api/admin/agencies/`
+- `POST /api/admin/agencies/`
+- `DELETE /api/admin/agencies/:id`
+- `PATCH /api/admin/agencies/:id`
+- `POST /api/admin/agencies/:id/reset-password`
+- `GET /api/admin/agencies/:id/sellers`
+- `POST /api/admin/agencies/:id/sellers`
+- `DELETE /api/admin/agencies/:id/sellers/:sellerId`
+- `GET /api/admin/agencies/unassigned-sellers`
+
+**/api/agency/contracts**
+- `GET /api/agency/contracts`
+- `POST /api/agency/contracts`
+- `PUT /api/agency/contracts/:id`
+
+**/api/agency/dashboard**
+- `GET /api/agency/dashboard/bundle`
+
+**/api/agency/forgot-password**
+- `POST /api/agency/forgot-password`
+
+**/api/agency/intro-code**
+- `GET /api/agency/intro-code`
+
+**/api/agency/introduced-stores**
+- `GET /api/agency/introduced-stores`
+- `GET /api/agency/introduced-stores/commissions`
+- `GET /api/agency/introduced-stores/summary`
+
+**/api/agency/invite-seller**
+- `POST /api/agency/invite-seller`
+
+**/api/agency/kakao-link-status**
+- `GET /api/agency/kakao-link-status`
+
+**/api/agency/kpi**
+- `GET /api/agency/kpi/`
+
+**/api/agency/kpiagency**
+- `GET /api/agency/kpiagency`
+
+**/api/agency/link-kakao**
+- `POST /api/agency/link-kakao`
+
+**/api/agency/login**
+- `POST /api/agency/login`
+
+**/api/agency/match-suggestions**
+- `GET /api/agency/match-suggestions`
+- `POST /api/agency/match-suggestions/:id/accept`
+- `POST /api/agency/match-suggestions/:id/decline`
+
+**/api/agency/monthly-tasks**
+- `GET /api/agency/monthly-tasks`
+
+**/api/agency/my-agency-status**
+- `GET /api/agency/my-agency-status`
+
+**/api/agency/notices**
+- `GET /api/agency/notices`
+- `POST /api/agency/notices`
+
+**/api/agency/notifications**
+- `GET /api/agency/notifications`
+- `PUT /api/agency/notifications/read-all`
+
+**/api/agency/orders**
+- `GET /api/agency/orders`
+
+**/api/agency/pin-status**
+- `GET /api/agency/pin-status`
+
+**/api/agency/profile**
+- `GET /api/agency/profile`
+- `PUT /api/agency/profile`
+
+**/api/agency/ranking**
+- `GET /api/agency/ranking`
+
+**/api/agency/register**
+- `POST /api/agency/register`
+
+**/api/agency/register-from-user**
+- `POST /api/agency/register-from-user`
+
+**/api/agency/report**
+- `GET /api/agency/report/csv`
+
+**/api/agency/request-kakao-stepup**
+- `POST /api/agency/request-kakao-stepup`
+
+**/api/agency/reset-password**
+- `POST /api/agency/reset-password`
+
+**/api/agency/returns**
+- `GET /api/agency/returns`
+
+**/api/agency/schedule**
+- `GET /api/agency/schedule`
+
+**/api/agency/self-events**
+- `GET /api/agency/self-events/`
+- `POST /api/agency/self-events/`
+- `POST /api/agency/self-events/:id/cancel`
+- `POST /api/agency/self-events/:id/join`
+- `GET /api/agency/self-events/:id/leaderboard`
+
+**/api/agency/self-eventsagency**
+- `GET /api/agency/self-eventsagency`
+
+**/api/agency/sellers**
+- `GET /api/agency/sellers`
+- `GET /api/agency/sellers/:id/inventory`
+- `GET /api/agency/sellers/:id/products`
+- `POST /api/agency/sellers/:id/products`
+- `PUT /api/agency/sellers/:id/products/:productId`
+- `GET /api/agency/sellers/:id/stats`
+- `POST /api/agency/sellers/:id/streams`
+- `GET /api/agency/sellers/compare`
+
+**/api/agency/set-pin**
+- `POST /api/agency/set-pin`
+
+**/api/agency/settlement-invoices**
+- `GET /api/agency/settlement-invoices`
+- `GET /api/agency/settlement-invoices/:id`
+
+**/api/agency/settlements**
+- `GET /api/agency/settlements`
+- `GET /api/agency/settlements/csv`
+- `POST /api/agency/settlements/request`
+
+**/api/agency/stats**
+- `GET /api/agency/stats`
+- `GET /api/agency/stats/batch`
+- `GET /api/agency/stats/daily`
+- `GET /api/agency/stats/kpi`
+- `GET /api/agency/stats/kt-alpha`
+- `GET /api/agency/stats/realtime`
+
+**/api/agency/stays**
+- `GET /api/agency/stays`
+- `GET /api/agency/stays/bookings`
+- `GET /api/agency/stays/kpi`
+
+**/api/agency/streams**
+- `GET /api/agency/streams`
+
+**/api/agency/targets**
+- `GET /api/agency/targets`
+- `PUT /api/agency/targets`
+
+**/api/agency/transfers**
+- `GET /api/agency/transfers/`
+- `POST /api/agency/transfers/`
+- `POST /api/agency/transfers/:id/cancel`
+- `POST /api/agency/transfers/:id/respond`
+- `POST /api/agency/transfers/:id/seller-approve`
+
+**/api/agency/transfersagency**
+- `GET /api/agency/transfersagency`
+
+**/api/agency/unlink-kakao**
+- `POST /api/agency/unlink-kakao`
+
+**/api/agency/verify-pin**
+- `POST /api/agency/verify-pin`
+
+**/api/agencyagency**
+- `GET /api/agencyagency`
+
+
+
+> 마지막 생성: 2026-06-07T09:17:23.155Z
+> 생성기: `scripts/generate-proposal-refs.mjs`
+
+<!-- AUTO-GENERATED:proposal-refs END -->

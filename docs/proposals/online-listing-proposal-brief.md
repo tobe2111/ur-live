@@ -745,3 +745,201 @@
 | 최소 출금액 | 10,000원 | `policy.ts WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 딜 충전 비율 | 1원 = 1딜 | `CLAUDE.md` |
 | 부트캠프 완료 보상 | 1만 딜 | `seller-onboarding.routes.ts` |
+
+---
+
+<!-- AUTO-GENERATED:proposal-refs START -->
+
+## 🤖 코드 자동 동기화 (수치 SSOT + 기능 인벤토리) — 자동 생성, 수동 수정 금지
+
+> 도메인: **온라인 입점 / 라이브커머스**. 이 블록은 `scripts/generate-proposal-refs.mjs` 가 코드에서 추출해 자동 채웁니다.
+> 값이 코드와 다르면 코드를 수정하고 `npm run generate:proposal-refs` 실행. (수동 편집 금지 — 다음 커밋에 덮어써짐.)
+
+### 핵심 수치 (자동 추출)
+
+| 항목 | 값 | 출처 (파일:심볼) |
+|---|---|---|
+| 플랫폼 fee (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.PLATFORM_FEE_PCT` |
+| 위탁 판매 셀러 commission | 10% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT` |
+| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 외부 카테고리(숙박 등) 수수료 상한 | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT` |
+| 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
+| 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
+| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
+| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
+| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
+
+### 도메인 코드 인벤토리 (자동) — 페이지 (11개)
+
+- `/browse`
+- `/cart`
+- `/checkout`
+- `/live`
+- `/live/:streamId`
+- `/live/recap/:id`
+- `/my-orders`
+- `/products/:id`
+- `/search`
+- `/shorts`
+- `/wishlist`
+
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (94개)
+
+
+**/api/cart**
+- `GET /api/cart/`
+- `POST /api/cart/`
+
+**/api/cart/:id**
+- `DELETE /api/cart/:id`
+- `PUT /api/cart/:id`
+
+**/api/cart/clear**
+- `POST /api/cart/clear`
+
+**/api/orders/:orderId**
+- `GET /api/orders/:orderId/pending-bookings`
+
+**/api/products/:id**
+- `GET /api/products/:id/available-slots`
+
+**/api/seller/youtube**
+- `POST /api/seller/youtube/admin/rotate-all-stream-keys`
+- `GET /api/seller/youtube/live-readiness`
+- `GET /api/seller/youtube/live/_admin-quota-dashboard`
+- `POST /api/seller/youtube/live/_cleanup-pushes`
+- `GET /api/seller/youtube/live/_health-check`
+- `GET /api/seller/youtube/live/_quota`
+- `POST /api/seller/youtube/live/_verify-whip-proxy`
+- `POST /api/seller/youtube/live/:id/_force-live`
+- `POST /api/seller/youtube/live/:id/admin-force-end`
+- `GET /api/seller/youtube/live/:id/chat`
+- `GET /api/seller/youtube/live/:id/detect-webcam`
+- `GET /api/seller/youtube/live/:id/diagnose`
+- `POST /api/seller/youtube/live/:id/end`
+- `POST /api/seller/youtube/live/:id/end-beacon`
+- `POST /api/seller/youtube/live/:id/force-transition`
+- `PATCH /api/seller/youtube/live/:id/link-broadcast`
+- `POST /api/seller/youtube/live/:id/notify-followers`
+- `POST /api/seller/youtube/live/:id/refresh-thumbnail`
+- `POST /api/seller/youtube/live/:id/reset-zombie`
+- `POST /api/seller/youtube/live/:id/start`
+- `GET /api/seller/youtube/live/:id/status`
+- `GET /api/seller/youtube/live/:id/youtube-stats`
+- `POST /api/seller/youtube/live/create`
+- `POST /api/seller/youtube/live/create-webcam`
+- `POST /api/seller/youtube/rotate-stream-key`
+- `GET /api/seller/youtube/streaming-setup`
+- `POST /api/seller/youtube/streaming-setup/init`
+- `GET /api/seller/youtube/streaming/health`
+- `DELETE /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
+- `PATCH /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
+- `POST /api/seller/youtube/streaming/whip-proxy-ome/:streamId`
+- `DELETE /api/seller/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/seller/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/seller/youtube/streaming/whip-token`
+
+**/api/seller/youtubeContent-Type**
+- `GET /api/seller/youtubeContent-Type`
+
+**/api/seller/youtubeLocation**
+- `GET /api/seller/youtubeLocation`
+
+**/api/seller/youtubecontent-type**
+- `GET /api/seller/youtubecontent-type`
+
+**/api/seller/youtubelive_create_count:${s.seller_id}:${today}**
+- `GET /api/seller/youtubelive_create_count:${s.seller_id}:${today}`
+
+**/api/seller/youtubelocation**
+- `GET /api/seller/youtubelocation`
+
+**/api/seller/youtubetoken**
+- `GET /api/seller/youtubetoken`
+
+**/api/seller/youtubeyt_quota:${yesterday}**
+- `GET /api/seller/youtubeyt_quota:${yesterday}`
+
+**/api/shipping-addresses**
+- `GET /api/shipping-addresses/`
+- `POST /api/shipping-addresses/`
+
+**/api/shipping-addresses/:id**
+- `DELETE /api/shipping-addresses/:id`
+- `PUT /api/shipping-addresses/:id`
+
+**/api/shipping-addressesshipping_addresses**
+- `DELETE /api/shipping-addressesshipping_addresses`
+
+**/api/youtube/admin**
+- `POST /api/youtube/admin/rotate-all-stream-keys`
+
+**/api/youtube/live**
+- `GET /api/youtube/live/_admin-quota-dashboard`
+- `POST /api/youtube/live/_cleanup-pushes`
+- `GET /api/youtube/live/_health-check`
+- `GET /api/youtube/live/_quota`
+- `POST /api/youtube/live/_verify-whip-proxy`
+- `POST /api/youtube/live/:id/_force-live`
+- `POST /api/youtube/live/:id/admin-force-end`
+- `GET /api/youtube/live/:id/chat`
+- `GET /api/youtube/live/:id/detect-webcam`
+- `GET /api/youtube/live/:id/diagnose`
+- `POST /api/youtube/live/:id/end`
+- `POST /api/youtube/live/:id/end-beacon`
+- `POST /api/youtube/live/:id/force-transition`
+- `PATCH /api/youtube/live/:id/link-broadcast`
+- `POST /api/youtube/live/:id/notify-followers`
+- `POST /api/youtube/live/:id/refresh-thumbnail`
+- `POST /api/youtube/live/:id/reset-zombie`
+- `POST /api/youtube/live/:id/start`
+- `GET /api/youtube/live/:id/status`
+- `GET /api/youtube/live/:id/youtube-stats`
+- `POST /api/youtube/live/create`
+- `POST /api/youtube/live/create-webcam`
+
+**/api/youtube/live-readiness**
+- `GET /api/youtube/live-readiness`
+
+**/api/youtube/rotate-stream-key**
+- `POST /api/youtube/rotate-stream-key`
+
+**/api/youtube/streaming**
+- `GET /api/youtube/streaming/health`
+- `DELETE /api/youtube/streaming/whip-proxy-ome/:streamId`
+- `PATCH /api/youtube/streaming/whip-proxy-ome/:streamId`
+- `POST /api/youtube/streaming/whip-proxy-ome/:streamId`
+- `DELETE /api/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/youtube/streaming/whip-proxy/:streamId`
+- `POST /api/youtube/streaming/whip-token`
+
+**/api/youtube/streaming-setup**
+- `GET /api/youtube/streaming-setup`
+- `POST /api/youtube/streaming-setup/init`
+
+**/api/youtubeContent-Type**
+- `GET /api/youtubeContent-Type`
+
+**/api/youtubeLocation**
+- `GET /api/youtubeLocation`
+
+**/api/youtubecontent-type**
+- `GET /api/youtubecontent-type`
+
+**/api/youtubelive_create_count:${s.seller_id}:${today}**
+- `GET /api/youtubelive_create_count:${s.seller_id}:${today}`
+
+**/api/youtubelocation**
+- `GET /api/youtubelocation`
+
+**/api/youtubetoken**
+- `GET /api/youtubetoken`
+
+**/api/youtubeyt_quota:${yesterday}**
+- `GET /api/youtubeyt_quota:${yesterday}`
+
+
+> 마지막 생성: 2026-06-07T09:17:23.150Z
+> 생성기: `scripts/generate-proposal-refs.mjs`
+
+<!-- AUTO-GENERATED:proposal-refs END -->
