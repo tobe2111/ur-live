@@ -65,7 +65,7 @@ export default function UserGroupBuyCreatePage() {
         <span className="text-5xl mb-3">🔒</span>
         <h1 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">공구 등록 권한이 필요해요</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 max-w-sm leading-relaxed">
-          공구는 <strong>점주(셀러)</strong> 또는 <strong>인플루언서 (referral commission 받은 경험 있음)</strong> 만 등록 가능합니다.
+          공구는 <strong>점주(셀러)</strong> 또는 <strong>인플루언서</strong> 만 등록 가능합니다.
         </p>
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <button
