@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck } from 'lucide-react'
+import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
@@ -37,6 +37,9 @@ interface CatalogItem {
   id: number; name: string; retail_price: number; supply_price: number; stock: number
   category: string | null; approval_status: string; admin_memo: string | null; created_at: string
   supply_visibility?: string; barcode?: string | null; is_brand_product?: number
+  lowest_price_url?: string | null; lowest_price_checked?: number
+  pending_supply_price?: number | null; pending_retail_price?: number | null
+  pending_price_reason?: string | null
 }
 interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null
@@ -76,6 +79,7 @@ export default function SupplierDashboardPage() {
   const [meError, setMeError] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [channelItem, setChannelItem] = useState<CatalogItem | null>(null)
+  const [priceChangeItem, setPriceChangeItem] = useState<CatalogItem | null>(null)
 
   useEffect(() => {
     if (!isSupplierLoggedIn()) { navigate('/supplier/login', { replace: true }); return }
@@ -173,7 +177,7 @@ export default function SupplierDashboardPage() {
         ) : tab === 'orders' ? (
           <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
         ) : tab === 'catalog' ? (
-          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} />
+          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} />
         ) : (
           <SettlementsTab items={settlements} t={t} />
         )}
@@ -196,6 +200,97 @@ export default function SupplierDashboardPage() {
         />
       )}
       {channelItem && <ChannelModal t={t} item={channelItem} onClose={() => setChannelItem(null)} />}
+      {priceChangeItem && (
+        <PriceChangeModal
+          t={t}
+          item={priceChangeItem}
+          onClose={() => setPriceChangeItem(null)}
+          onDone={() => { setPriceChangeItem(null); loadCatalog() }}
+        />
+      )}
+    </div>
+  )
+}
+
+// 🏭 2026-06-07 (사용자 요청): 판매중(승인) 상품 가격 수정 요청 — 운영진 승인 후 반영.
+//   승인 전까지 기존 노출 가격 유지. 온라인 최저가 참고 링크 함께 제출.
+function PriceChangeModal({ t, item, onClose, onDone }: {
+  t: (k: string, o?: Record<string, unknown>) => string
+  item: CatalogItem
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [supply, setSupply] = useState(String(item.supply_price || ''))
+  const [retail, setRetail] = useState(String(item.retail_price || ''))
+  const [lpUrl, setLpUrl] = useState('')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    const newSupply = Number(supply)
+    const newRetail = Number(retail || supply)
+    if (!Number.isFinite(newSupply) || newSupply <= 0) { setError(t('supplier.errSupply', { defaultValue: '공급가를 올바르게 입력해주세요' })); return }
+    if (newRetail < newSupply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+    setSaving(true)
+    try {
+      await supplierApi.post(`/api/supplier/products/${item.id}/price-change-request`, {
+        new_supply_price: newSupply,
+        new_retail_price: newRetail,
+        lowest_price_url: lpUrl.trim() || undefined,
+        reason: reason.trim() || undefined,
+      })
+      toast.success(t('supplier.priceReqOk', { defaultValue: '가격 수정 요청이 접수되었습니다. 운영진 승인 후 반영됩니다.' }))
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally { setSaving(false) }
+  }
+
+  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  const labelCls = "block text-xs font-medium text-gray-600 mb-1"
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-lg font-bold text-gray-900">{t('supplier.priceChangeTitle', { defaultValue: '가격 수정 요청' })}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">{item.name} · {t('supplier.priceChangeHint', { defaultValue: '판매 중인 상품의 가격은 운영진 승인 후 반영됩니다. 승인 전까지 기존 가격이 유지됩니다.' })}</p>
+        {item.pending_supply_price != null && (
+          <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+            {t('supplier.priceChangePending', { defaultValue: '이미 승인 대기 중인 변경 요청이 있습니다. 새로 제출하면 덮어씁니다.' })}
+            （{formatWon(item.pending_supply_price)}）
+          </div>
+        )}
+        {error && <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+        <form onSubmit={submit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{t('supplier.fieldSupplyPrice', { defaultValue: '공급가(원)' })} <span className="text-red-500">*</span></label>
+              <input required type="number" min={1} disabled={saving} value={supply} onChange={e => setSupply(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>{t('supplier.fieldRetail', { defaultValue: '권장 소비자가(원)' })}</label>
+              <input type="number" min={0} disabled={saving} value={retail} onChange={e => setRetail(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>{t('supplier.fieldLowestUrl', { defaultValue: '온라인 최저가 참고 링크' })}</label>
+            <input disabled={saving} value={lpUrl} onChange={e => setLpUrl(e.target.value)} className={inputCls} placeholder="https://search.shopping.naver.com/..." />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.lowestUrlHint', { defaultValue: '네이버쇼핑 등 온라인 최저가를 확인할 수 있는 링크 (검수용).' })}</p>
+          </div>
+          <div>
+            <label className={labelCls}>{t('supplier.fieldReason', { defaultValue: '변경 사유 (선택)' })}</label>
+            <textarea disabled={saving} value={reason} onChange={e => setReason(e.target.value)} rows={2} className={inputCls} placeholder={t('supplier.reasonPh', { defaultValue: '예: 원자재 가격 인상 반영' })} />
+          </div>
+          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60 mt-2">
+            {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.submitPriceChange', { defaultValue: '가격 수정 요청' })}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -302,7 +397,7 @@ function OverviewTab({ me, meError, onRetry, t }: { me: Me | null; meError: bool
   )
 }
 
-function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void }) {
+function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPriceChange }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void }) {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -355,25 +450,48 @@ function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel }: { items: C
             return (
               <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="font-semibold text-gray-900 truncate">{item.name}</p>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${badge.cls}`}>
                       <Icon className="w-3 h-3" /> {t(`supplier.status_${item.approval_status}`, { defaultValue: badge.label })}
                     </span>
+                    {item.lowest_price_checked === 1 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-medium">
+                        <ShieldCheck className="w-3 h-3" /> {t('supplier.lowestChecked', { defaultValue: '최저가 검수됨' })}
+                      </span>
+                    )}
+                    {item.pending_supply_price != null && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[11px] font-medium">
+                        <Clock className="w-3 h-3" /> {t('supplier.priceChangePendingBadge', { defaultValue: '가격변경 승인 대기' })}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500">
                     {t('supplier.supplyPrice', { defaultValue: '공급가' })} <b className="text-gray-700">{formatWon(item.supply_price)}</b>
                     {' · '}{t('supplier.suggestedRetail', { defaultValue: '권장가' })} {formatWon(item.retail_price)}
                     {' · '}{t('supplier.stock', { defaultValue: '재고' })} {item.stock}
                   </p>
+                  {item.pending_supply_price != null && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      {t('supplier.priceChangeReqLine', { defaultValue: '요청한 공급가' })}: {formatWon(item.pending_supply_price)}
+                      {item.pending_retail_price != null && ` / ${t('supplier.suggestedRetail', { defaultValue: '권장가' })} ${formatWon(item.pending_retail_price)}`}
+                    </p>
+                  )}
                   {item.approval_status === 'rejected' && item.admin_memo && (
                     <p className="text-xs text-red-500 mt-1">{t('supplier.rejectReason', { defaultValue: '거부 사유' })}: {item.admin_memo}</p>
                   )}
-                  {item.supply_visibility === 'APPROVED_CHANNEL' && (
-                    <button onClick={() => onManageChannel(item)} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 border border-gray-300 rounded-lg px-2 py-1 hover:bg-gray-50">
-                      <Package className="w-3 h-3" /> {t('supplier.manageChannel', { defaultValue: '승인 유통사 관리' })}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {item.supply_visibility === 'APPROVED_CHANNEL' && (
+                      <button onClick={() => onManageChannel(item)} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 border border-gray-300 rounded-lg px-2 py-1 hover:bg-gray-50">
+                        <Package className="w-3 h-3" /> {t('supplier.manageChannel', { defaultValue: '승인 유통사 관리' })}
+                      </button>
+                    )}
+                    {item.approval_status === 'approved' && item.pending_supply_price == null && (
+                      <button onClick={() => onRequestPriceChange(item)} className="inline-flex items-center gap-1 text-[11px] font-medium text-[#FF0033] border border-[#FF0033]/30 rounded-lg px-2 py-1 hover:bg-[#FF0033]/5">
+                        <Tag className="w-3 h-3" /> {t('supplier.requestPriceChange', { defaultValue: '가격 수정 요청' })}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[11px] text-gray-400">{t('supplier.marginLabel', { defaultValue: '셀러 마진 여력' })}</p>
@@ -539,7 +657,7 @@ function ShipModal({ t, order, onClose, onShipped }: {
 }
 
 function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -565,6 +683,7 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
         supply_visibility: form.supply_visibility,
         barcode: form.barcode.trim() || undefined,
         is_brand_product: form.is_brand_product,
+        lowest_price_url: form.lowest_price_url.trim() || undefined,
       })
       toast.success(t('supplier.productCreated', { defaultValue: '상품이 등록되었습니다. 승인 후 노출됩니다.' }))
       onCreated()
@@ -629,6 +748,11 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
           <div>
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '대표 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
+          </div>
+          <div>
+            <label className={labelCls}>{t('supplier.fieldLowestUrl', { defaultValue: '온라인 최저가 참고 링크' })}</label>
+            <input disabled={saving} value={form.lowest_price_url} onChange={e => setForm(f => ({ ...f, lowest_price_url: e.target.value }))} className={inputCls} placeholder="https://search.shopping.naver.com/..." />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.lowestUrlSubmitHint', { defaultValue: '운영진이 온라인 최저가 여부를 검수합니다. 네이버쇼핑 등 비교 링크를 입력해주세요.' })}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

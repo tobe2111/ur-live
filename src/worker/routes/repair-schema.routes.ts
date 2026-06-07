@@ -538,6 +538,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.supply_approval_status', sql: "ALTER TABLE products ADD COLUMN supply_approval_status TEXT" },
     // 어드민 승인/거부 사유 메모 (공급자 등록 상품 거부 시 사유 전달).
     { desc: 'products.admin_memo', sql: "ALTER TABLE products ADD COLUMN admin_memo TEXT" },
+    // 🏭 2026-06-07 온라인 최저가 검수 + 공급가 변경 승인 워크플로 (사용자 요청).
+    //   업로드 시 제조사가 최저가 참고 링크 제출 → 어드민 검수(lowest_price_checked).
+    //   판매중 상품 가격 수정은 pending_* 적재 후 어드민 승인 시에만 라이브 반영.
+    { desc: 'products.lowest_price_url', sql: "ALTER TABLE products ADD COLUMN lowest_price_url TEXT" },
+    { desc: 'products.lowest_price_checked', sql: "ALTER TABLE products ADD COLUMN lowest_price_checked INTEGER DEFAULT 0" },
+    { desc: 'products.pending_supply_price', sql: "ALTER TABLE products ADD COLUMN pending_supply_price INTEGER" },
+    { desc: 'products.pending_retail_price', sql: "ALTER TABLE products ADD COLUMN pending_retail_price INTEGER" },
+    { desc: 'products.pending_price_url', sql: "ALTER TABLE products ADD COLUMN pending_price_url TEXT" },
+    { desc: 'products.pending_price_reason', sql: "ALTER TABLE products ADD COLUMN pending_price_reason TEXT" },
+    { desc: 'products.pending_price_requested_at', sql: "ALTER TABLE products ADD COLUMN pending_price_requested_at TEXT" },
 
     // 🛡️ 2026-06-01 [migration 0257 port] 사업자 등록 게이팅 정산 — 프로덕션 미적용 시
     //   seller-settlements.routes.ts:90 게이트가 OFF(현금정산 무제한) 되는 위험 차단. additive/idempotent.

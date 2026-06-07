@@ -40,6 +40,8 @@ export default function AdminProductsPage() {
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
+  // 🏭 2026-06-07 공급상품 최저가 검수 체크 상태 (상품별).
+  const [lowestCheckedMap, setLowestCheckedMap] = useState<Record<number, boolean>>({})
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   // 🛡️ 2026-05-18: 체크박스 선택 상태 — 일괄 삭제/활성화/비활성화.
@@ -125,8 +127,28 @@ export default function AdminProductsPage() {
       await api.patch(`/api/admin/supplier-products/${productId}`, {
         action,
         admin_memo: adminMemoMap[productId] || null,
+        lowest_price_checked: !!lowestCheckedMap[productId],
       }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success(action === 'approve' ? t('admin.products.spApproveOk', { defaultValue: '공급상품이 승인되었습니다.' }) : t('admin.products.spRejectOk', { defaultValue: '공급상품이 거부되었습니다.' }))
+      loadSupplierProducts()
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
+    } finally { setActionLoading(null) }
+  }
+
+  // 🏭 2026-06-07 판매중 상품 공급가 변경 요청 승인/거부.
+  async function handlePriceChangeAction(productId: number, action: 'approve' | 'reject') {
+    setActionLoading(productId)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.patch(`/api/admin/supplier-products/${productId}/price-change`, {
+        action,
+        admin_memo: adminMemoMap[productId] || null,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(action === 'approve'
+        ? t('admin.products.spPriceApproveOk', { defaultValue: '가격 변경이 반영되었습니다.' })
+        : t('admin.products.spPriceRejectOk', { defaultValue: '가격 변경 요청이 거부되었습니다.' }))
       loadSupplierProducts()
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
@@ -772,8 +794,11 @@ export default function AdminProductsPage() {
           setStatusFilter={setSpStatusFilter}
           adminMemoMap={adminMemoMap}
           setAdminMemoMap={setAdminMemoMap}
+          lowestCheckedMap={lowestCheckedMap}
+          setLowestCheckedMap={setLowestCheckedMap}
           actionLoading={actionLoading}
           onAction={handleSupplierProductAction}
+          onPriceChangeAction={handlePriceChangeAction}
         />
       )}
 

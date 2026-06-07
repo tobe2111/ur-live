@@ -76,6 +76,30 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
     //   카드/상세/카트 박스·개당 단가 병기 + 주문 서버 검증(qty >= moq).
     await DB.prepare('ALTER TABLE products ADD COLUMN min_order_qty INTEGER DEFAULT 1').run().catch(swallow('supply-vis:add-moq'))
   }
+  // 🏭 2026-06-07 온라인 최저가 검수 + 가격변경 승인 워크플로 (사용자 요청).
+  //   제조사(브랜드사) 업로드 시 '온라인 최저가' 참고 링크 제출 → 어드민이 최저가 검수(lowest_price_checked).
+  //   승인되어 판매 중인 상품의 가격 수정은 즉시 반영 X → pending_* 에 적재 후 어드민 승인 시에만 라이브 반영.
+  if (!have.has('lowest_price_url')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN lowest_price_url TEXT').run().catch(swallow('supply-vis:add-lp-url'))
+  }
+  if (!have.has('lowest_price_checked')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN lowest_price_checked INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-lp-checked'))
+  }
+  if (!have.has('pending_supply_price')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN pending_supply_price INTEGER').run().catch(swallow('supply-vis:add-pending-supply'))
+  }
+  if (!have.has('pending_retail_price')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN pending_retail_price INTEGER').run().catch(swallow('supply-vis:add-pending-retail'))
+  }
+  if (!have.has('pending_price_url')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN pending_price_url TEXT').run().catch(swallow('supply-vis:add-pending-url'))
+  }
+  if (!have.has('pending_price_reason')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN pending_price_reason TEXT').run().catch(swallow('supply-vis:add-pending-reason'))
+  }
+  if (!have.has('pending_price_requested_at')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN pending_price_requested_at TEXT').run().catch(swallow('supply-vis:add-pending-at'))
+  }
 
   await DB.prepare(`CREATE TABLE IF NOT EXISTS product_distributor_access (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

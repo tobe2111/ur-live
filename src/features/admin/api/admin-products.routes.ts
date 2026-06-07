@@ -19,6 +19,7 @@ import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
+import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -589,7 +590,8 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
 adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const status = String(c.req.query('status') || 'pending'); // pending | approved | rejected | all
+    await ensureSupplyVisibilitySchema(DB);
+    const status = String(c.req.query('status') || 'pending'); // pending | approved | rejected | price_change | all
     const page = Math.max(1, Number(c.req.query('page') || 1));
     const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 50)));
     const offset = (page - 1) * limit;
@@ -600,18 +602,25 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
       where += ' AND p.supply_approval_status = ?'; params.push(status);
     } else if (status === 'approved') {
       where += " AND (p.supply_approval_status = 'approved' OR (p.supply_approval_status IS NULL AND p.is_active = 1))";
+    } else if (status === 'price_change') {
+      // 가격 변경 승인 대기 — 판매중 상품의 가격 수정 요청 큐.
+      where += ' AND p.pending_supply_price IS NOT NULL';
     }
 
+    // price_change 큐는 요청 시각순, 나머지는 등록순.
+    const orderBy = status === 'price_change' ? 'p.pending_price_requested_at DESC' : 'p.created_at DESC';
     const rows = await DB.prepare(
       `SELECT p.id, p.name, p.description, p.price AS retail_price, COALESCE(p.supply_price, 0) AS supply_price,
               p.stock, p.image_url, p.category, p.is_active,
+              p.lowest_price_url, COALESCE(p.lowest_price_checked,0) AS lowest_price_checked,
+              p.pending_supply_price, p.pending_retail_price, p.pending_price_url, p.pending_price_reason, p.pending_price_requested_at,
               COALESCE(p.supply_approval_status, CASE WHEN p.is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
               p.supplier_id, p.admin_memo, p.created_at,
               s.business_name AS supplier_name, s.email AS supplier_email
          FROM products p
          LEFT JOIN suppliers s ON s.id = p.supplier_id
          WHERE ${where}
-         ORDER BY p.created_at DESC LIMIT ? OFFSET ?`
+         ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     ).bind(...params, limit, offset).all();
 
     const total = await DB.prepare(
@@ -630,10 +639,11 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     const { DB } = c.env;
     const pid = c.req.param('id');
     if (!/^\d+$/.test(String(pid))) return c.json({ success: false, error: 'Invalid ID' }, 400);
-    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string }>();
+    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string; lowest_price_checked?: boolean }>();
     if (!body.action || !['approve', 'reject'].includes(body.action)) {
       return c.json({ success: false, error: 'action은 approve 또는 reject이어야 합니다' }, 400);
     }
+    await ensureSupplyVisibilitySchema(DB);
 
     const existing = await DB.prepare(
       `SELECT id, name, supplier_id, supply_approval_status, is_active
@@ -642,9 +652,10 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     if (!existing) return c.json({ success: false, error: '공급자 등록 상품을 찾을 수 없습니다' }, 404);
 
     if (body.action === 'approve') {
+      // 최저가 검수 결과 함께 기록 (체크 시 lowest_price_checked=1).
       await DB.prepare(
-        "UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, updated_at = datetime('now') WHERE id = ?"
-      ).bind(body.admin_memo || null, pid).run();
+        "UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, lowest_price_checked = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(body.admin_memo || null, body.lowest_price_checked ? 1 : 0, pid).run();
     } else {
       await DB.prepare(
         "UPDATE products SET supply_approval_status = 'rejected', is_active = 0, admin_memo = ?, updated_at = datetime('now') WHERE id = ?"
@@ -670,6 +681,74 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] PATCH /supplier-products/:id error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// ── 🏭 2026-06-07 공급가 변경 요청 승인/거부 (사용자 요청) ──────────────────────
+//   PATCH /supplier-products/:id/price-change  body { action: approve|reject, admin_memo? }
+//   approve → pending_* 를 라이브 supply_price/price 로 반영 + 이력 기록 + pending 클리어.
+//   reject  → pending_* 클리어(요청 폐기), 라이브 가격 불변.
+adminProductsRoutes.patch('/supplier-products/:id/price-change', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    await ensureSupplyVisibilitySchema(DB);
+    const pid = c.req.param('id');
+    if (!/^\d+$/.test(String(pid))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string }>();
+    if (!body.action || !['approve', 'reject'].includes(body.action)) {
+      return c.json({ success: false, error: 'action은 approve 또는 reject이어야 합니다' }, 400);
+    }
+
+    const existing = await DB.prepare(
+      `SELECT id, name, supplier_id, supply_price, price, pending_supply_price, pending_retail_price
+         FROM products WHERE id = ? AND is_supply_product = 1 AND supplier_id IS NOT NULL`
+    ).bind(pid).first<{ id: number; name: string; supplier_id: number; supply_price: number; price: number; pending_supply_price: number | null; pending_retail_price: number | null }>();
+    if (!existing) return c.json({ success: false, error: '공급자 등록 상품을 찾을 수 없습니다' }, 404);
+    if (existing.pending_supply_price == null) {
+      return c.json({ success: false, error: '대기 중인 가격 변경 요청이 없습니다' }, 409);
+    }
+
+    if (body.action === 'approve') {
+      const newSupply = Math.floor(Number(existing.pending_supply_price));
+      const newRetail = existing.pending_retail_price != null ? Math.floor(Number(existing.pending_retail_price)) : existing.price;
+      // 라이브 가격 반영 + pending 클리어. (admin_memo 갱신)
+      await DB.prepare(
+        `UPDATE products
+            SET supply_price = ?, price = ?, admin_memo = ?,
+                pending_supply_price = NULL, pending_retail_price = NULL, pending_price_url = NULL,
+                pending_price_reason = NULL, pending_price_requested_at = NULL, updated_at = datetime('now')
+          WHERE id = ?`
+      ).bind(newSupply, newRetail, body.admin_memo || null, pid).run();
+      // 공급가 변경 이력 (관리자만 확인).
+      await recordSupplyPriceChange(DB, Number(pid), existing.supplier_id, existing.supply_price, newSupply, `admin:price-change`);
+    } else {
+      await DB.prepare(
+        `UPDATE products
+            SET admin_memo = ?, pending_supply_price = NULL, pending_retail_price = NULL, pending_price_url = NULL,
+                pending_price_reason = NULL, pending_price_requested_at = NULL, updated_at = datetime('now')
+          WHERE id = ?`
+      ).bind(body.admin_memo || null, pid).run();
+    }
+
+    await writeAuditLog(c, {
+      action: body.action === 'approve' ? 'supplier_price_change_approve' : 'supplier_price_change_reject',
+      targetType: 'product', targetId: String(pid),
+      after: { supplier_id: existing.supplier_id, old_supply_price: existing.supply_price, new_supply_price: existing.pending_supply_price, memo: body.admin_memo || null },
+    }).catch(() => {});
+
+    const notifType = body.action === 'approve' ? 'supply_price_change_approved' : 'supply_price_change_rejected';
+    const notifTitle = body.action === 'approve' ? '공급가 변경 승인됨' : '공급가 변경 거부됨';
+    createDashboardNotification(DB, 'supplier', String(existing.supplier_id), notifType, notifTitle,
+      `상품: ${existing.name}`, '/supplier').catch((_e) => { if (import.meta.env.DEV) console.warn(_e); });
+
+    return c.json({
+      success: true,
+      data: { id: Number(pid), action: body.action },
+      message: body.action === 'approve' ? '가격 변경이 승인되어 반영되었습니다.' : '가격 변경 요청이 거부되었습니다.',
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] PATCH /supplier-products/:id/price-change error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

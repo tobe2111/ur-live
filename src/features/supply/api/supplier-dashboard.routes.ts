@@ -90,6 +90,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | approved | rejected
   try {
+    await ensureSupplyVisibilitySchema(DB);
     let where = 'supplier_id = ? AND is_supply_product = 1';
     const params: (string | number)[] = [sid];
     if (status === 'pending' || status === 'rejected') {
@@ -102,6 +103,8 @@ supplierDashboardRoutes.get('/products', async (c) => {
       `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
               stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product,
               COALESCE(min_order_qty,1) AS min_order_qty,
+              lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
+              pending_supply_price, pending_retail_price, pending_price_url, pending_price_reason, pending_price_requested_at,
               COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
               is_active, admin_memo, created_at, updated_at
          FROM products WHERE ${where}
@@ -136,6 +139,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; min_order_qty?: number;
+      lowest_price_url?: string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -167,13 +171,16 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const visibility = normalizeVisibility(body.supply_visibility, true);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
     const isBrand = body.is_brand_product ? 1 : 0;
+    // 온라인 최저가 참고 링크 (어드민 최저가 검수용). http(s) 만 허용.
+    const lpUrlRaw = (body.lowest_price_url || '').trim().slice(0, 500);
+    const lpUrl = /^https?:\/\//i.test(lpUrlRaw) ? lpUrlRaw : null;
 
     const result = await DB.prepare(
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, lowest_price_url, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -187,6 +194,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       barcode,
       isBrand,
       moq,
+      lpUrl,
       slug,
     ).run();
 
@@ -373,7 +381,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     type EditBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string; is_brand_product?: boolean;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; lowest_price_url?: string;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -382,6 +390,10 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     const params: (string | number)[] = [];
     if (typeof body.name === 'string' && body.name.trim()) { sets.push('name = ?'); params.push(body.name.trim().slice(0, 200)); }
     if (typeof body.description === 'string') { sets.push('description = ?'); params.push(body.description.slice(0, 5000)); }
+    if (typeof body.lowest_price_url === 'string') {
+      const u = body.lowest_price_url.trim().slice(0, 500);
+      sets.push('lowest_price_url = ?'); params.push(/^https?:\/\//i.test(u) ? u : '');
+    }
     if (typeof body.image_url === 'string') { sets.push('image_url = ?'); params.push(body.image_url.slice(0, 1000)); }
     if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
@@ -418,6 +430,77 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     return c.json({ success: true, data: { id: Number(pid), approval_status: 'pending' }, message: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' });
   } catch (err) {
     return safeError(c, err, '상품 수정 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── POST /products/:id/price-change-request — 승인된(판매중) 상품 가격 수정 요청 ────────
+//   🏭 2026-06-07 (사용자 요청): 승인된 상품 가격은 즉시 못 바꿈 → 운영진 승인 필요.
+//   pending_* 에 적재만 하고 라이브 supply_price/price 는 유지(승인 전 노출가 불변).
+//   어드민이 /api/admin/supplier-products/:id/price-change 로 승인 시에만 실제 반영.
+supplierDashboardRoutes.post('/products/:id/price-change-request', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  const pid = c.req.param('id');
+  if (!/^\d+$/.test(String(pid))) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
+  try {
+    await ensureSupplyVisibilitySchema(DB);
+    const existing = await DB.prepare(
+      `SELECT id, name, supplier_id, supply_approval_status, is_active, supply_price, price
+         FROM products WHERE id = ? AND is_supply_product = 1`
+    ).bind(pid).first<{ id: number; name: string; supplier_id: number | null; supply_approval_status: string | null; is_active: number; supply_price: number; price: number }>();
+    if (!existing || existing.supplier_id !== sid) {
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    }
+    // 승인(판매중) 상품만 이 흐름 사용. 대기/거부 상품은 일반 PATCH 로 즉시 수정.
+    const effectiveStatus = existing.supply_approval_status ?? (existing.is_active === 1 ? 'approved' : 'pending');
+    if (effectiveStatus !== 'approved') {
+      return c.json({ success: false, error: '승인 대기/거부 상품은 가격을 바로 수정할 수 있습니다' }, 409);
+    }
+
+    const body = await c.req.json<{ new_supply_price?: number; new_retail_price?: number; lowest_price_url?: string; reason?: string }>()
+      .catch(() => ({} as { new_supply_price?: number; new_retail_price?: number; lowest_price_url?: string; reason?: string }));
+
+    const newSupply = Math.floor(Number(body.new_supply_price));
+    if (!Number.isFinite(newSupply) || newSupply <= 0) {
+      return c.json({ success: false, error: '변경할 공급가는 0원 이상이어야 합니다' }, 400);
+    }
+    // 권장 소비자가는 선택 — 미입력 시 기존 유지. 입력 시 새 공급가 이상이어야 함.
+    let newRetail: number | null = null;
+    if (body.new_retail_price != null && String(body.new_retail_price) !== '') {
+      const r = Math.floor(Number(body.new_retail_price));
+      if (!Number.isFinite(r) || r < newSupply) {
+        return c.json({ success: false, error: '권장 소비자가는 공급가 이상이어야 합니다' }, 400);
+      }
+      newRetail = r;
+    }
+    if (newSupply === existing.supply_price && (newRetail == null || newRetail === existing.price)) {
+      return c.json({ success: false, error: '기존 가격과 동일합니다' }, 400);
+    }
+
+    const lpRaw = (body.lowest_price_url || '').trim().slice(0, 500);
+    const lpUrl = /^https?:\/\//i.test(lpRaw) ? lpRaw : null;
+    const reason = (body.reason || '').trim().slice(0, 300) || null;
+
+    await DB.prepare(
+      `UPDATE products
+          SET pending_supply_price = ?, pending_retail_price = ?, pending_price_url = ?,
+              pending_price_reason = ?, pending_price_requested_at = datetime('now')
+        WHERE id = ? AND supplier_id = ?`
+    ).bind(newSupply, newRetail, lpUrl, reason, pid, sid).run();
+
+    // 어드민 승인 큐 알림.
+    createDashboardNotification(DB, 'admin', null, 'supply_price_change_requested', '공급가 변경 승인 요청',
+      `공급자 #${sid}: ${existing.name} ${existing.supply_price.toLocaleString()}→${newSupply.toLocaleString()}원`, '/admin/products')
+      .catch(swallow('supplier-dashboard'));
+
+    return c.json({
+      success: true,
+      data: { id: Number(pid), pending_supply_price: newSupply, pending_retail_price: newRetail },
+      message: '가격 수정 요청이 접수되었습니다. 운영진 승인 후 반영됩니다. (승인 전까지 기존 가격 유지)',
+    });
+  } catch (err) {
+    return safeError(c, err, '가격 수정 요청 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 
