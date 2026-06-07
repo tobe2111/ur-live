@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -132,6 +132,26 @@ export default function GroupBuyDetailPage() {
   const [promoPreview, setPromoPreview] = useState<{ discount_pct: number; audience: string; description: string | null } | null>(null)
   const [promoError, setPromoError] = useState('')
   const [checkingPromo, setCheckingPromo] = useState(false)
+  // 🏭 2026-06-07 (당근 스타일 hero 재설계): 스크롤-aware 헤더.
+  //   hero 이미지를 지나치면 투명 overlay → solid 테마 바로 전환 + 제목 fade-in.
+  //   passive scroll listener + ref 로 hero 높이 측정 (threshold ≈ heroHeight - headerHeight).
+  const heroRef = useRef<HTMLDivElement | null>(null)
+  const [headerSolid, setHeaderSolid] = useState(false)
+  useEffect(() => {
+    const HEADER_H = 56 // overlay 헤더 대략 높이 (px)
+    const onScroll = () => {
+      const h = heroRef.current?.offsetHeight ?? 0
+      const threshold = Math.max(0, h - HEADER_H)
+      setHeaderSolid(window.scrollY > threshold)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [detail?.id, detail?.image_url])
 
   const productId = Number(id)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
@@ -425,14 +445,18 @@ export default function GroupBuyDetailPage() {
     // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
-        <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5 flex items-center justify-between">
-          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
+        {/* 🏭 2026-06-07: 투명 overlay 헤더 — solid 흰 바 깜빡임 없이 이미지가 최상단까지. */}
+        <div
+          className="fixed top-0 inset-x-0 z-30 px-3 flex items-center justify-between lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2"
+          style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
+        >
+          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
+          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
+        </div>
+        <div className="ur-content-narrow mx-auto">
+          <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A] animate-pulse" />
         </div>
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A]">
-            <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse" />
-          </div>
           <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
             <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
             <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
@@ -526,28 +550,97 @@ export default function GroupBuyDetailPage() {
         본문으로 건너뛰기
       </a>
 
-      {/* 상단 chrome */}
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2.5 flex items-center justify-between" role="banner">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none"
-          aria-label="뒤로가기"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-        </button>
-        <KakaoShareButton
-          title={`${detail.name} 공구 참여하기`}
-          description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-          imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
-          link={shareLink}
-          buttonText="나도 참여하기"
-          compact
-          className="w-9 h-9 rounded-full bg-[#FEE500] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-pink-500"
-        />
+      {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
+            position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
+      <header
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 ${
+          headerSolid
+            ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
+            : 'bg-transparent border-b border-transparent'
+        }`}
+        style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
+        role="banner"
+      >
+        <div className="px-3 flex items-center justify-between gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none ${
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+            }`}
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft className={`w-5 h-5 transition-colors ${headerSolid ? 'text-gray-700 dark:text-gray-200' : 'text-white'}`} />
+          </button>
+          {/* 스크롤 시 fade-in 되는 가운데 제목 */}
+          <h2
+            className={`flex-1 min-w-0 text-center text-sm font-bold text-gray-900 dark:text-white truncate transition-opacity duration-200 ${
+              headerSolid ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-hidden={!headerSolid}
+          >
+            {detail.name}
+          </h2>
+          <KakaoShareButton
+            title={`${detail.name} 공구 참여하기`}
+            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+            imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
+            link={shareLink}
+            buttonText="나도 참여하기"
+            compact
+            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-pink-500 ${
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+            }`}
+          />
+        </div>
       </header>
 
+      {/* 이미지 + 상태 — 🏭 2026-06-07 (당근 스타일): 최상단까지 닿는 full-bleed hero.
+            content flow 의 첫 요소 — overlay 헤더가 그 위에 floating. */}
+      <div ref={heroRef} className="ur-content-narrow mx-auto relative bg-white dark:bg-[#0A0A0A] overflow-hidden">
+        {detail.image_url ? (
+          <img
+            src={detail.image_url}
+            alt={detail.name}
+            className="w-full aspect-square object-cover bg-gradient-to-br from-pink-50 to-rose-100"
+            width={1200}
+            height={1200}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+          />
+        ) : (
+          <div className="w-full aspect-square bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center text-6xl">
+            <CategoryEmoji cat={detail.category} />
+          </div>
+        )}
+        {/* 상단 scrim — 흰 버튼/배지 가독성 보장 (밝은 사진 대응) */}
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
+        {/* 카테고리/상태 배지 — 헤더 버튼과 충돌 방지 위해 좌하단 배치 */}
+        <div className="absolute bottom-3 left-3 flex gap-2">
+          <span className="bg-black/35 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+            <CategoryEmoji cat={detail.category} />
+            <span className="text-white">{detail.category.replace('_voucher', '')}</span>
+          </span>
+          {detail.group_buy_status === 'achieved' && (
+            <span className="bg-green-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> 달성
+            </span>
+          )}
+          {detail.group_buy_status === 'expired' && (
+            <span className="bg-gray-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">마감</span>
+          )}
+          {detail.group_buy_status === 'cancelled' && (
+            <span className="bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">취소</span>
+          )}
+        </div>
+        {/* CountdownRing — 우하단 (우상단 share 버튼과 분리) */}
+        <div className="absolute bottom-3 right-3">
+          <CountdownRing deadline={detail.group_buy_deadline} />
+        </div>
+      </div>
+
       <main id="gb-main" className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4" role="main">
-        {/* 🛡️ 2026-05-15: 인플루언서 attribution 배너 (?ref= 진입 시) */}
+        {/* 🛡️ 2026-05-15: 인플루언서 attribution 배너 (?ref= 진입 시) — hero 아래로 이동 */}
         {isInfluencerLanding && (
           <div className="bg-gradient-to-r from-amber-500 to-pink-500 text-white rounded-2xl p-3 flex items-center gap-3 shadow-lg">
             <Sparkles className="w-5 h-5 shrink-0" />
@@ -557,46 +650,6 @@ export default function GroupBuyDetailPage() {
             </div>
           </div>
         )}
-
-        {/* 이미지 + 상태 — 🏭 2026-06-07 (사용자 요청): 화면 가득 채우는 full-bleed (당근 스타일). 패딩 밖으로 확장. */}
-        <div className="relative -mx-4 lg:-mx-8 -mt-4 bg-white dark:bg-[#0A0A0A] overflow-hidden">
-          {detail.image_url ? (
-            <img
-              src={detail.image_url}
-              alt={detail.name}
-              className="w-full aspect-square object-cover bg-gradient-to-br from-pink-50 to-rose-100"
-              width={1200}
-              height={1200}
-              loading="eager"
-              decoding="async"
-              fetchPriority="high"
-            />
-          ) : (
-            <div className="w-full aspect-square bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center text-6xl">
-              <CategoryEmoji cat={detail.category} />
-            </div>
-          )}
-          <div className="absolute top-3 left-3 flex gap-2">
-            <span className="bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-              <CategoryEmoji cat={detail.category} />
-              <span className="text-gray-700 dark:text-gray-200">{detail.category.replace('_voucher', '')}</span>
-            </span>
-            {detail.group_buy_status === 'achieved' && (
-              <span className="bg-green-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> 달성
-              </span>
-            )}
-            {detail.group_buy_status === 'expired' && (
-              <span className="bg-gray-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">마감</span>
-            )}
-            {detail.group_buy_status === 'cancelled' && (
-              <span className="bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">취소</span>
-            )}
-          </div>
-          <div className="absolute top-3 right-3">
-            <CountdownRing deadline={detail.group_buy_deadline} />
-          </div>
-        </div>
 
         {/* 제품 정보 */}
         <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">

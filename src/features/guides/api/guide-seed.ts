@@ -20,8 +20,12 @@ import type { SeedSection } from './guide-seed-types'
 import { ADMIN_SEED } from './guide-seed-admin'
 import { SELLER_SEED } from './guide-seed-seller'
 import { AGENCY_SEED } from './guide-seed-agency'
+// 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 가이드 — admin 가이드에서 분리.
+import { WHOLESALE_SEED } from './guide-seed-wholesale'
 
-function autoRefSection(role: 'admin' | 'seller' | 'agency'): SeedSection {
+type GuideRole = 'admin' | 'seller' | 'agency' | 'wholesale'
+
+function autoRefSection(role: GuideRole): SeedSection {
   return {
     key: 'auto-reference',
     icon: '🤖',
@@ -31,10 +35,11 @@ function autoRefSection(role: 'admin' | 'seller' | 'agency'): SeedSection {
   }
 }
 
-export const GUIDE_SEEDS: Record<'admin' | 'seller' | 'agency', SeedSection[]> = {
+export const GUIDE_SEEDS: Record<GuideRole, SeedSection[]> = {
   admin: [...ADMIN_SEED, autoRefSection('admin')],
   seller: [...SELLER_SEED, autoRefSection('seller')],
   agency: [...AGENCY_SEED, autoRefSection('agency')],
+  wholesale: [...WHOLESALE_SEED, autoRefSection('wholesale')],
 }
 
 export type { SeedSection }

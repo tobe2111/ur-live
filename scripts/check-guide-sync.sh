@@ -12,6 +12,8 @@
 #  - src/features/agency/api/*.ts        → 에이전시 가이드
 #  - src/features/auth/api/*.ts          → 모든 가이드 (로그인 변경)
 #  - src/worker/routes/*.ts              → 라우트 변경 → 가이드 영향
+#  - src/features/supply/api/*.ts        → 도매몰(wholesale) 가이드 (제조사/유통사/공급)
+#  - src/pages/*Wholesale*/*Supplier*/*Distributor* → 도매몰 가이드
 #
 # 단, 변경이 너무 사소(린트/포맷/주석)할 수 있으므로 BLOCK 대신 WARN.
 # 환경변수 STRICT_GUIDE_SYNC=1 이면 BLOCK.
@@ -37,7 +39,8 @@ if [ -z "$staged" ]; then
 fi
 
 # Patterns that should trigger guide sync
-guide_relevant=$(echo "$staged" | grep -E '^(src/pages/(Seller|Admin|Agency)|src/features/(seller|youtube|donations|agency|auth)/api/|src/worker/routes/)' || true)
+# 🏭 2026-06-07: 도매몰(wholesale) — supply API + Wholesale/Supplier/Distributor 페이지 추가.
+guide_relevant=$(echo "$staged" | grep -E '^(src/pages/(Seller|Admin|Agency|.*Wholesale|.*Supplier|.*Distributor)|src/features/(seller|youtube|donations|agency|auth|supply)/api/|src/worker/routes/)' || true)
 
 if [ -z "$guide_relevant" ]; then
   exit 0
@@ -57,6 +60,8 @@ echo "$guide_relevant" | grep -qE '^src/pages/Seller|src/features/(seller|youtub
 echo "$guide_relevant" | grep -qE '^src/pages/Admin|src/worker/routes/' && buckets="$buckets admin"
 echo "$guide_relevant" | grep -qE '^src/pages/Agency|src/features/agency/api/' && buckets="$buckets agency"
 echo "$guide_relevant" | grep -qE '^src/features/auth/api/' && buckets="$buckets seller admin agency"
+# 🏭 도매몰: supply API 또는 Wholesale/Supplier/Distributor 페이지 변경
+echo "$guide_relevant" | grep -qE '^src/features/supply/api/|^src/pages/.*(Wholesale|Supplier|Distributor)' && buckets="$buckets wholesale"
 buckets=$(echo "$buckets" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
 echo ""
@@ -68,11 +73,17 @@ echo "$guide_relevant" | sed 's/^/  - /'
 echo ""
 echo "영향받는 가이드:"
 for b in $buckets; do
-  echo "  📘 $b 가이드 (${GUIDE_FILE} 의 '${b^^}_SEED' 섹션)"
+  if [ "$b" = "wholesale" ]; then
+    echo "  📘 도매몰(wholesale) 가이드 (src/features/guides/api/guide-seed-wholesale.ts 의 WHOLESALE_SEED)"
+  else
+    echo "  📘 $b 가이드 (${GUIDE_FILE} 의 '${b^^}_SEED' 섹션)"
+  fi
 done
 echo ""
+echo "💡 도매몰: 코드 자동 참조 섹션은 'npm run generate:guide-refs' 로 자동 갱신됩니다(pre-commit 자동 실행)."
+echo ""
 echo "다음 중 하나로 처리하세요:"
-echo "  1. ${GUIDE_FILE} 의 해당 섹션 업데이트 후 다시 커밋"
+echo "  1. 해당 가이드 시드 파일의 섹션 업데이트 후 다시 커밋"
 echo "  2. 사소한 변경(린트/리팩토링 등)이라 가이드 영향 없으면 그대로 진행"
 echo "  3. 별도 PR로 가이드 업데이트 예정이면 커밋 메시지에 'guide-update-pending' 추가"
 echo ""

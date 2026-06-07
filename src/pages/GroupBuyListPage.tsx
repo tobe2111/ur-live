@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useRef, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  ChevronLeft,
   ChevronDown,
   Clock,
   Users,
@@ -497,21 +496,10 @@ export default function GroupBuyListPage() {
         ]}
       />
 
-      {/* 헤더 */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="ur-content-wide flex items-center h-12 px-2 lg:px-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 -ml-1"
-            aria-label={t('common.back', { defaultValue: '뒤로' })}
-          >
-            <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
-          </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
-            {t('groupBuy.title', { defaultValue: '공동구매' })}
-          </h1>
-        </div>
-      </header>
+      {/* 🛡️ 2026-06-07 (사용자 요청): 동네딜 탭은 BottomNav/DesktopTopNav 로 직접 진입하는
+          primary destination 이므로 뒤로가기 + "공동구매" 타이틀 상단바 제거. DesktopTopNav(sticky,
+          md+)가 normal flow 로 상단을 차지하므로 아래 배너가 자연히 그 밑에 위치 — 별도 top offset 불필요.
+          모바일은 배너의 pt-4 로 상단 여백 확보. */}
 
       {/* 배너 — 클릭 시 맛집 공구 시작 */}
       <div className="ur-content-wide px-4 lg:px-8 pt-4">

@@ -35,6 +35,8 @@ const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage')
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
 const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
+// 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
+const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
 const AdminAgencyPage = lazy(() => import('@/pages/AdminAgencyPage'))
@@ -217,6 +219,12 @@ export function AdminRoutes() {
       <Route path="/admin/operations-guide" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminOperationsGuidePage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드 */}
+      <Route path="/admin/wholesale-guide" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleGuidePage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/cafe24" element={

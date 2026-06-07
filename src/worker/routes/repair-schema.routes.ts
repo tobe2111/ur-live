@@ -815,7 +815,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-04-23 배치 174: 운영 가이드 테이블 (어드민/셀러/에이전시)
     { name: 'operation_guides', sql: `CREATE TABLE IF NOT EXISTS operation_guides (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guide_type TEXT NOT NULL CHECK(guide_type IN ('admin', 'seller', 'agency')),
+      guide_type TEXT NOT NULL CHECK(guide_type IN ('admin', 'seller', 'agency', 'wholesale')),
       section_key TEXT NOT NULL,
       section_icon TEXT,
       section_title TEXT NOT NULL,
@@ -1278,6 +1278,44 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     } catch (e: any) {
       tableResults.push({ name, status: 'error', error: String(e?.message || e).slice(0, 200) });
     }
+  }
+
+  // 🏭 2026-06-07: operation_guides CHECK 제약 확장 — guide_type 에 'wholesale' 추가.
+  //   기존 프로덕션 테이블은 CHECK(guide_type IN ('admin','seller','agency')) 라서
+  //   'wholesale' INSERT 가 거부됨. 표(컬럼/sql.text) 검사 후 'wholesale' 가
+  //   미포함일 때만 테이블 재생성(rows 보존). 멱등 — 이미 포함이면 no-op.
+  //   ※ 위 tables 루프가 fresh DB 에 신규 CHECK 로 테이블을 만들므로, 여기선
+  //     이미 존재하는 구버전 테이블만 마이그레이션 대상.
+  try {
+    const meta = await DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='operation_guides'"
+    ).first<{ sql: string }>();
+    const ddl = meta?.sql || '';
+    // CHECK 절이 있고 'wholesale' 가 빠진 경우에만 재생성.
+    if (ddl && /guide_type/i.test(ddl) && /CHECK/i.test(ddl) && !/wholesale/i.test(ddl)) {
+      // 외래키 없음(독립 테이블) → 안전하게 rename → 신규 생성 → copy → drop.
+      await DB.prepare("ALTER TABLE operation_guides RENAME TO operation_guides_old").run();
+      await DB.prepare(`CREATE TABLE operation_guides (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guide_type TEXT NOT NULL CHECK(guide_type IN ('admin', 'seller', 'agency', 'wholesale')),
+        section_key TEXT NOT NULL,
+        section_icon TEXT,
+        section_title TEXT NOT NULL,
+        section_order INTEGER DEFAULT 0,
+        content_md TEXT NOT NULL,
+        updated_by INTEGER,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(guide_type, section_key)
+      )`).run();
+      await DB.prepare(`INSERT INTO operation_guides
+        (id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at)
+        SELECT id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at
+        FROM operation_guides_old`).run();
+      await DB.prepare("DROP TABLE operation_guides_old").run();
+      tableResults.push({ name: 'operation_guides:check-migration', status: 'ok' });
+    }
+  } catch (e: any) {
+    tableResults.push({ name: 'operation_guides:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
   }
 
   return { columns: results, tables: tableResults };

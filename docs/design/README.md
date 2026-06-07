@@ -30,3 +30,4 @@
 | **🚢 배송 시스템 재설계** | 2026-05-25 | ⏳ 컨셉 / 정책 결정 대기 | [shipping-redesign.md](./shipping-redesign.md) |
 | **🛒 공동구매 = 즉시판매 모델** | 2026-05-30 | 🟡 설계 확정 대기 (A1/A2 + UNLOCK) | [groupbuy-instant-sale.md](./groupbuy-instant-sale.md) |
 | **🏭 유통스타트 도매몰 — 제조사↔플랫폼↔유통사 등급제** | 2026-06-01 | 🟡 스펙 박제 / 결정(D-A~F) 대기 | [wholesale-utongstart.md](./wholesale-utongstart.md) |
+| **🥕 공구 상세 hero — 당근 스타일 full-bleed + 스크롤 헤더** | 2026-06-07 | ✅ 구현 완료 | [groupbuy-detail-karrot.md](./groupbuy-detail-karrot.md) |

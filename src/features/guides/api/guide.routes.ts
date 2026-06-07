@@ -16,7 +16,10 @@ import { executeQuery } from '@/worker/utils/database'
 
 export const guideRoutes = new Hono<{ Bindings: Env }>()
 
-type GuideType = 'admin' | 'seller' | 'agency'
+// 🏭 2026-06-07: 'wholesale' 추가 — 도매몰 전용 가이드. 어드민 전용(읽기+편집).
+type GuideType = 'admin' | 'seller' | 'agency' | 'wholesale'
+
+const VALID_GUIDE_TYPES: GuideType[] = ['admin', 'seller', 'agency', 'wholesale']
 
 interface GuideSection {
   id?: number
@@ -66,15 +69,16 @@ async function ensureSeeded(DB: D1Database, guideType: GuideType): Promise<void>
 // ── GET /api/guides/:type — 역할별 가이드 조회 (읽기) ─────────────
 guideRoutes.get('/:type', cors(), async (c) => {
   const type = c.req.param('type') as GuideType
-  if (!['admin', 'seller', 'agency'].includes(type)) {
+  if (!VALID_GUIDE_TYPES.includes(type)) {
     return c.json({ success: false, error: 'Invalid guide type' }, 400)
   }
 
-  // 권한 체크: 어드민은 모두 / 셀러는 seller / 에이전시는 agency 만
+  // 권한 체크: 어드민은 모두 / 셀러는 seller / 에이전시는 agency / 도매몰은 어드민 전용
   const allowedRoles: Record<GuideType, string[]> = {
     admin: ['admin'],
     seller: ['admin', 'seller'],
     agency: ['admin', 'agency'],
+    wholesale: ['admin'],
   }
   const user = await requireRole(c, allowedRoles[type])
   if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401)
@@ -96,7 +100,7 @@ guideRoutes.get('/:type', cors(), async (c) => {
 guideRoutes.patch('/:type/:sectionKey', async (c) => {
   const type = c.req.param('type') as GuideType
   const sectionKey = c.req.param('sectionKey')
-  if (!['admin', 'seller', 'agency'].includes(type)) {
+  if (!VALID_GUIDE_TYPES.includes(type)) {
     return c.json({ success: false, error: 'Invalid guide type' }, 400)
   }
 

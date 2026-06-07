@@ -33,19 +33,50 @@ const OUT_FILE = path.join(ROOT, 'src/features/guides/api/auto-reference.ts')
 // ─────────────────────────────────────────────────────────────
 
 function extractRoutes() {
-  const appFile = path.join(ROOT, 'src/App.tsx')
-  const src = fs.readFileSync(appFile, 'utf-8')
   // <Route path="..." element={...} />
+  // 🏭 2026-06-07: App.tsx 외에 src/routes/*.tsx 도 스캔 — 도매(supplier.routes.tsx)·
+  //   admin(admin.routes.tsx) 라우트가 분리 파일에 있어 페이지 목록 누락을 보강.
+  //   (admin/seller/agency 버킷에도 누락분이 채워지지만 분류 규칙은 동일 — additive.)
+  const files = [path.join(ROOT, 'src/App.tsx')]
+  const routesDir = path.join(ROOT, 'src/routes')
+  if (fs.existsSync(routesDir)) {
+    for (const name of fs.readdirSync(routesDir)) {
+      if (name.endsWith('.tsx') && !name.endsWith('.test.tsx')) {
+        files.push(path.join(routesDir, name))
+      }
+    }
+  }
   const routes = []
   const routeRe = /<Route\s+path=["']([^"']+)["']/g
-  let m
-  while ((m = routeRe.exec(src)) !== null) {
-    routes.push(m[1])
+  for (const file of files) {
+    if (!fs.existsSync(file)) continue
+    const src = fs.readFileSync(file, 'utf-8')
+    let m
+    while ((m = routeRe.exec(src)) !== null) {
+      routes.push(m[1])
+    }
   }
-  return routes
+  return [...new Set(routes)]
+}
+
+// 🏭 2026-06-07: 도매몰(wholesale) 버킷 추가. 도매 surface 는 admin/seller 보다
+//   먼저 검사해 가로채야 함 (예: /admin/suppliers 는 admin 이 아니라 wholesale).
+const WHOLESALE_PAGE_PREFIXES = ['/wholesale', '/supplier']
+const WHOLESALE_ADMIN_PAGES = new Set([
+  '/admin/suppliers',
+  '/admin/distributor-grades',
+  '/admin/wholesale-orders',
+  '/admin/wholesale-guide',
+])
+
+function isWholesalePage(p) {
+  if (WHOLESALE_PAGE_PREFIXES.some(pre => p === pre || p.startsWith(pre + '/'))) return true
+  if (WHOLESALE_ADMIN_PAGES.has(p)) return true
+  return false
 }
 
 function classifyRoute(p) {
+  if (isWholesalePage(p)) return 'wholesale'
   if (p.startsWith('/admin')) return 'admin'
   if (p.startsWith('/seller')) return 'seller'
   if (p.startsWith('/agency')) return 'agency'
@@ -66,6 +97,8 @@ function findRouteFiles() {
     'src/features/donations/api',
     'src/features/restaurant-map/api',
     'src/features/alimtalk/api',
+    // 🏭 2026-06-07: 도매몰(유통스타트 B2B) — 제조사/유통사/공급 API.
+    'src/features/supply/api',
     'src/worker/routes',
   ]
   const files = []
@@ -158,7 +191,23 @@ function extractRouterNames(file) {
 // 4. 엔드포인트를 역할별로 분류
 // ─────────────────────────────────────────────────────────────
 
+// 🏭 2026-06-07: 도매몰 엔드포인트 분류. admin/seller 보다 먼저 검사(가로채기).
+//   - /api/supplier·/api/wholesale·/api/supply (제조사/유통사/공급 라우터)
+//   - /api/admin/suppliers·/api/admin/distributor (도매 어드민)
+//   - /api/admin/supplier-products (admin-products.routes.ts 의 공급자 상품 검수)
+function isWholesaleEndpoint(fullPath) {
+  return (
+    fullPath.startsWith('/api/supplier') ||
+    fullPath.startsWith('/api/wholesale') ||
+    fullPath.startsWith('/api/supply') ||
+    fullPath.startsWith('/api/admin/suppliers') ||
+    fullPath.startsWith('/api/admin/distributor') ||
+    fullPath.startsWith('/api/admin/supplier-products')
+  )
+}
+
 function classifyEndpoint(fullPath) {
+  if (isWholesaleEndpoint(fullPath)) return 'wholesale'
   if (fullPath.startsWith('/api/admin')) return 'admin'
   if (fullPath.startsWith('/api/seller')) return 'seller'
   if (fullPath.startsWith('/api/agency')) return 'agency'
@@ -208,7 +257,8 @@ function main() {
   })
 
   // Bucket by role
-  const buckets = { admin: { pages: [], endpoints: [] }, seller: { pages: [], endpoints: [] }, agency: { pages: [], endpoints: [] } }
+  const buckets = { admin: { pages: [], endpoints: [] }, seller: { pages: [], endpoints: [] }, agency: { pages: [], endpoints: [] }, wholesale: { pages: [], endpoints: [] } }
+  const ROLES = ['admin', 'seller', 'agency', 'wholesale']
   for (const r of routes) {
     const role = classifyRoute(r)
     if (role) buckets[role].pages.push(r)
@@ -219,7 +269,7 @@ function main() {
   }
 
   // Sort
-  for (const role of ['admin', 'seller', 'agency']) {
+  for (const role of ROLES) {
     buckets[role].pages = [...new Set(buckets[role].pages)].sort()
     buckets[role].endpoints = buckets[role].endpoints.sort((a, b) =>
       a.fullPath.localeCompare(b.fullPath) || a.method.localeCompare(b.method))
@@ -227,7 +277,7 @@ function main() {
 
   // Generate markdown content per role
   const sections = {}
-  for (const role of ['admin', 'seller', 'agency']) {
+  for (const role of ROLES) {
     const b = buckets[role]
     let md = `### 자동 생성 — 페이지 (${b.pages.length}개)\n`
     md += b.pages.map(p => `- \`${p}\``).join('\n')
@@ -273,13 +323,15 @@ export const AUTO_REFERENCE = {
   admin: ${JSON.stringify(sections.admin)},
   seller: ${JSON.stringify(sections.seller)},
   agency: ${JSON.stringify(sections.agency)},
+  wholesale: ${JSON.stringify(sections.wholesale)},
 } as const
 `
   fs.writeFileSync(OUT_FILE, ts)
   console.log(`✅ Generated ${path.relative(ROOT, OUT_FILE)}`)
-  console.log(`   admin:  ${buckets.admin.pages.length} pages, ${buckets.admin.endpoints.length} endpoints`)
-  console.log(`   seller: ${buckets.seller.pages.length} pages, ${buckets.seller.endpoints.length} endpoints`)
-  console.log(`   agency: ${buckets.agency.pages.length} pages, ${buckets.agency.endpoints.length} endpoints`)
+  console.log(`   admin:     ${buckets.admin.pages.length} pages, ${buckets.admin.endpoints.length} endpoints`)
+  console.log(`   seller:    ${buckets.seller.pages.length} pages, ${buckets.seller.endpoints.length} endpoints`)
+  console.log(`   agency:    ${buckets.agency.pages.length} pages, ${buckets.agency.endpoints.length} endpoints`)
+  console.log(`   wholesale: ${buckets.wholesale.pages.length} pages, ${buckets.wholesale.endpoints.length} endpoints`)
 }
 
 main()

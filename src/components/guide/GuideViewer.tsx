@@ -15,7 +15,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface GuideSection {
   id?: number
-  guide_type: 'admin' | 'seller' | 'agency'
+  guide_type: 'admin' | 'seller' | 'agency' | 'wholesale'
   section_key: string
   section_icon: string
   section_title: string
@@ -25,7 +25,7 @@ interface GuideSection {
 }
 
 interface Props {
-  guideType: 'admin' | 'seller' | 'agency'
+  guideType: 'admin' | 'seller' | 'agency' | 'wholesale'
   /**
    * @deprecated 2026-04-30: api interceptor 가 path :type 으로 자동 token 결정.
    *   하위 호환을 위해 prop 은 유지하되 무시됨.
