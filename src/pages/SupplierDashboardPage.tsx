@@ -200,7 +200,7 @@ export default function SupplierDashboardPage() {
         {loading ? (
           <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : tab === 'overview' ? (
-          <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} />
+          <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} />
         ) : tab === 'analytics' ? (
           <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
         ) : tab === 'orders' ? (
@@ -627,7 +627,7 @@ function BulkPriceModal({ t, items, onClose, onDone }: {
   )
 }
 
-function OverviewTab({ me, meError, onRetry, t }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string }) {
+function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onGoTab: (tab: Tab) => void }) {
   if (meError) return (
     <div className="py-16 text-center">
       <p className="text-sm text-gray-500 mb-3">{t('supplier.meLoadFailed', { defaultValue: '데이터를 불러오지 못했어요.' })}</p>
@@ -639,28 +639,88 @@ function OverviewTab({ me, meError, onRetry, t }: { me: Me | null; meError: bool
   )
   const b = me.balance
   const c = me.product_counts
+  const approved = me.profile.status === 'approved'
+  const noProducts = (c.total ?? 0) === 0
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
     { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: b.available_amount, cls: 'text-blue-600' },
     { label: t('supplier.balPaid', { defaultValue: '지급 완료(누적)' }), value: b.paid_amount, cls: 'text-green-600' },
   ]
+  const actions: { label: string; desc: string; Icon: typeof Package; on: () => void; primary?: boolean; disabled?: boolean }[] = [
+    { label: t('supplier.qaAddProduct', { defaultValue: '상품 등록' }), desc: t('supplier.qaAddProductDesc', { defaultValue: '도매몰에 올릴 공급상품' }), Icon: Plus, on: onAdd, primary: true, disabled: !approved },
+    { label: t('supplier.qaBulk', { defaultValue: '대량 등록' }), desc: t('supplier.qaBulkDesc', { defaultValue: 'CSV로 한번에' }), Icon: Upload, on: () => onGoTab('catalog'), disabled: !approved },
+    { label: t('supplier.qaCatalog', { defaultValue: '내 카탈로그' }), desc: t('supplier.qaCatalogDesc', { defaultValue: '등록 상품 관리' }), Icon: Package, on: () => onGoTab('catalog') },
+    { label: t('supplier.qaShip', { defaultValue: '발송 관리' }), desc: t('supplier.qaShipDesc', { defaultValue: '주문 송장 입력' }), Icon: Truck, on: () => onGoTab('orders') },
+    { label: t('supplier.qaSettle', { defaultValue: '정산 내역' }), desc: t('supplier.qaSettleDesc', { defaultValue: '매출·지급 내역' }), Icon: Receipt, on: () => onGoTab('settlements') },
+    { label: t('supplier.qaAnalytics', { defaultValue: '매출 분석' }), desc: t('supplier.qaAnalyticsDesc', { defaultValue: '추이·베스트셀러' }), Icon: BarChart3, on: () => onGoTab('analytics') },
+  ]
   return (
     <div className="space-y-6">
-      {me.profile.status !== 'approved' && (
-        <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-          {t('supplier.notApprovedYet', { defaultValue: '아직 승인 대기 중인 계정입니다. 승인 후 상품 등록·정산이 활성화됩니다.' })}
+      {/* 승인 상태 */}
+      {!approved ? (
+        <div className="px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-900">{t('supplier.pendingTitle', { defaultValue: '승인 대기 중' })}</p>
+            <p className="text-xs text-amber-700 mt-0.5">{t('supplier.pendingDesc', { defaultValue: '관리자 승인 후 상품 등록·정산이 활성화됩니다. 보통 1영업일 이내 처리돼요.' })}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="px-4 py-3.5 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+          <ShieldCheck className="w-5 h-5 text-green-600 shrink-0" />
+          <p className="text-sm font-semibold text-green-800">{t('supplier.approvedDesc', { defaultValue: '승인 완료 — 등록한 상품은 검수 후 전국 유통사에게 노출됩니다.' })}</p>
         </div>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {cards.map(card => (
-          <div key={card.label} className="bg-white rounded-2xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 mb-1">{card.label}</p>
-            <p className={`text-2xl font-bold ${card.cls}`}>{formatWon(card.value)}</p>
-          </div>
-        ))}
+
+      {/* 빈 상태 히어로 or 상단 등록 CTA */}
+      {approved && noProducts ? (
+        <div className="rounded-2xl p-6 text-white" style={{ background: 'linear-gradient(135deg,#FF0033,#FF4D77)' }}>
+          <h3 className="text-lg font-bold">{t('supplier.emptyHeroTitle', { defaultValue: '첫 공급상품을 등록하세요' })}</h3>
+          <p className="text-sm text-white/85 mt-1 mb-4">{t('supplier.emptyHeroDesc', { defaultValue: '등록 → 관리자 검수 → 도매몰 노출. 전국 유통사가 내 등급 공급가로 사입합니다.' })}</p>
+          <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#FF0033] font-bold text-sm">
+            <Plus className="w-4 h-4" /> {t('supplier.addProductBtn', { defaultValue: '상품 등록하기' })}
+          </button>
+        </div>
+      ) : approved ? (
+        <button onClick={onAdd} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#FF0033] text-white font-bold text-sm">
+          <Plus className="w-4 h-4" /> {t('supplier.addProductNew', { defaultValue: '새 상품 등록' })}
+        </button>
+      ) : null}
+
+      {/* 빠른 작업 */}
+      <div>
+        <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.quickActions', { defaultValue: '빠른 작업' })}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {actions.map(a => (
+            <button key={a.label} onClick={a.disabled ? undefined : a.on} disabled={a.disabled}
+              className={`text-left rounded-2xl border p-4 transition-colors ${a.disabled ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed' : a.primary ? 'border-[#FF0033]/30 bg-[#FF0033]/5 hover:bg-[#FF0033]/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+              <a.Icon className={`w-5 h-5 mb-2 ${a.primary ? 'text-[#FF0033]' : 'text-gray-500'}`} />
+              <p className="text-sm font-bold text-gray-900">{a.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{a.desc}</p>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* 정산 요약 */}
+      <div>
+        <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settleSummary', { defaultValue: '정산 요약' })}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {cards.map(card => (
+            <div key={card.label} className="bg-white rounded-2xl border border-gray-200 p-5">
+              <p className="text-xs text-gray-500 mb-1">{card.label}</p>
+              <p className={`text-2xl font-bold ${card.cls}`}>{formatWon(card.value)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 공급상품 현황 */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <p className="text-sm font-semibold text-gray-900 mb-4">{t('supplier.productSummary', { defaultValue: '공급상품 현황' })}</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold text-gray-900">{t('supplier.productSummary', { defaultValue: '공급상품 현황' })}</p>
+          <button onClick={() => onGoTab('catalog')} className="text-xs font-bold text-[#FF0033]">{t('supplier.viewAll', { defaultValue: '전체 보기 →' })}</button>
+        </div>
         <div className="grid grid-cols-4 gap-3 text-center">
           {[
             { label: t('supplier.cntTotal', { defaultValue: '전체' }), v: c.total, cls: 'text-gray-900' },

@@ -7,7 +7,7 @@ import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck, BellRing, BellOff } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { queryKeys } from '@/hooks/queries/queryKeys'
-import { getSupplierToken } from '@/lib/supplier-api'
+import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import {
@@ -561,9 +561,11 @@ export default function WholesaleCatalogPage() {
   }, [userSession])
   const goLogin = () => navigate('/wholesale/login')
   const logout = () => {
-    // 셀러 세션만 정리(유저/어드민 세션 보존) 후 도매몰에 머무름 — full reload 로 토큰/RQ 캐시 깨끗이.
+    // 🏭 2026-06-08: 도매몰 로그아웃 — 유통사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존).
+    //   둘 중 어느 역할로 들어왔든 한 버튼으로 로그아웃. full reload 로 토큰/RQ 캐시 깨끗이.
     clearAuthData('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
+    try { clearSupplierSession() } catch { /* noop */ }
     toast.success('로그아웃되었어요')
     if (typeof window !== 'undefined') window.location.assign('/wholesale')
   }
@@ -752,10 +754,13 @@ export default function WholesaleCatalogPage() {
               </button>
             </>
           ) : supplierToken ? (
-            // 제조사(공급사=브랜드사)가 도매몰 둘러보는 중 — 본인 제조사 대시보드 진입 제공.
+            // 제조사(공급사=브랜드사)가 도매몰 둘러보는 중 — 본인 제조사 대시보드 진입 + 로그아웃.
             <>
               <button onClick={() => navigate('/supplier')} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.ink, color: '#fff' }} title="제조사 대시보드로 이동">
                 <Factory className="w-4 h-4" /> 제조사 대시보드
+              </button>
+              <button onClick={logout} aria-label="로그아웃" title="로그아웃" className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink3 }}>
+                <LogOut className="w-4 h-4" /><span className="hidden sm:inline">로그아웃</span>
               </button>
             </>
           ) : (
