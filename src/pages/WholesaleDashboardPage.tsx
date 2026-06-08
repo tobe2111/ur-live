@@ -4,10 +4,11 @@
 //   서버 신규 엔드포인트 없이 기존 /me + /orders 재사용(클라 집계). WT 라이트 고정 B2B 서피스.
 // ──────────────────────────────────────────────────────────────
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles,
+  LayoutDashboard,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
@@ -15,6 +16,7 @@ import { useWholesaleMe, useWholesaleOrders, type WholesaleOrderRow } from '@/ho
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
+import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: '결제대기', color: WT.ink3, bg: WT.fill },
@@ -28,6 +30,7 @@ const PAID_STATUSES = ['PAID', 'SHIPPED']
 
 export default function WholesaleDashboardPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
   const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
@@ -60,6 +63,50 @@ export default function WholesaleDashboardPage() {
 
   const company = localStorage.getItem('seller_name') || '유통사'
 
+  // 🏭 2026-06-08: 유통사 섹션은 별도 라우트 → 사이드바 nav 가 navigate. 대시보드 항목이 활성.
+  const navItems: WholesaleNavItem[] = [
+    { key: 'dashboard', label: '대시보드', icon: LayoutDashboard, active: location.pathname === '/wholesale/dashboard', onClick: () => navigate('/wholesale/dashboard') },
+    { key: 'catalog', label: '카탈로그', icon: ShoppingBag, active: location.pathname === '/wholesale', onClick: () => navigate('/wholesale') },
+    { key: 'orders', label: '주문내역', icon: ClipboardList, active: location.pathname.startsWith('/wholesale/orders'), onClick: () => navigate('/wholesale/orders') },
+    { key: 'statement', label: '거래내역', icon: Receipt, active: location.pathname.startsWith('/wholesale/statement'), onClick: () => navigate('/wholesale/statement') },
+    { key: 'documents', label: '자료', icon: FileText, active: location.pathname.startsWith('/wholesale/documents'), onClick: () => navigate('/wholesale/documents') },
+    { key: 'quotes', label: '견적', icon: ClipboardList, active: location.pathname.startsWith('/wholesale/quotes'), onClick: () => navigate('/wholesale/quotes') },
+    { key: 'oem', label: 'OEM/ODM', icon: Factory, active: location.pathname.startsWith('/wholesale/oem'), onClick: () => navigate('/wholesale/oem') },
+  ]
+
+  const logout = () => {
+    clearAuthData('seller')
+    try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
+    window.location.assign('/wholesale')
+  }
+
+  const headerRight = (
+    <>
+      <span
+        className="hidden sm:inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold"
+        style={{ background: WT.brandSoft, color: WT.brand }}
+      >
+        {GRADE_LABEL[grade] || grade}등급
+      </span>
+      <button
+        onClick={() => navigate('/wholesale/cart')}
+        aria-label="장바구니"
+        className="relative shrink-0 p-1.5 rounded-lg hover:bg-gray-100"
+        style={{ color: WT.ink2 }}
+      >
+        <ShoppingCart className="w-5 h-5" />
+        {cart.count > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>
+            {cart.count}
+          </span>
+        )}
+      </button>
+      <button onClick={logout} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+        <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">로그아웃</span>
+      </button>
+    </>
+  )
+
   const stats = [
     { label: '이번달 매입액', value: won(thisMonthSpend), icon: TrendingUp, accent: WT.brand },
     { label: '진행중 주문', value: `${comma(activeCount)}건`, icon: Box, accent: WT.ink },
@@ -77,28 +124,16 @@ export default function WholesaleDashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen" style={{ background: WT.fill }}>
+    <WholesaleDashboardShell
+      brand="유통스타트"
+      brandSubtitle={company}
+      navItems={navItems}
+      title="유통사 대시보드"
+      headerRight={headerRight}
+    >
       <SEO title="유통사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
 
-      {/* 헤더 */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-wide px-5 lg:px-8 h-14 flex items-center gap-3">
-          <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2 shrink-0">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg text-white font-extrabold text-[13px]" style={{ background: WT.brand }}>유</span>
-            <span className="text-[15px] font-extrabold" style={{ color: WT.ink }}>유통사 대시보드</span>
-          </button>
-          <div className="flex-1" />
-          <button onClick={() => navigate('/wholesale')} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }}>
-            <ShoppingBag className="w-4 h-4" /> 카탈로그
-          </button>
-          <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative shrink-0 p-1.5" style={{ color: WT.ink2 }}>
-            <ShoppingCart className="w-5 h-5" />
-            {cart.count > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
-          </button>
-        </div>
-      </header>
-
-      <main className="ur-content-wide px-5 lg:px-8 py-5 space-y-5">
+      <div className="space-y-5">
         {/* 등급 히어로 */}
         <section className="rounded-2xl p-5 flex items-center gap-4" style={{ background: WT.ink, boxShadow: WT.shCard }}>
           <span className="flex h-12 w-12 items-center justify-center rounded-full text-[18px] font-extrabold text-white shrink-0" style={{ background: WT.brand }}>
@@ -208,21 +243,7 @@ export default function WholesaleDashboardPage() {
           )}
         </section>
 
-        {/* 로그아웃 */}
-        <div className="pt-1">
-          <button
-            onClick={() => {
-              clearAuthData('seller')
-              try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
-              window.location.assign('/wholesale')
-            }}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium"
-            style={{ color: WT.ink3 }}
-          >
-            <LogOut className="w-4 h-4" /> 로그아웃
-          </button>
-        </div>
-      </main>
-    </div>
+      </div>
+    </WholesaleDashboardShell>
   )
 }

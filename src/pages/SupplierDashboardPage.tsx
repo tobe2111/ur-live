@@ -9,11 +9,11 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload, ChevronRight } from 'lucide-react'
 import SEO from '@/components/SEO'
-import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession, getSupplierToken } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
+import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 
 // 인증 헤더로 CSV 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
 async function downloadSupplierCsv(path: string, filename: string) {
@@ -172,59 +172,58 @@ export default function SupplierDashboardPage() {
     { key: 'settlements', label: t('supplier.tabSettlements', { defaultValue: '정산' }), Icon: Receipt },
   ]
 
+  // 탭 → 사이드바 nav 항목. active = 현재 tab, onClick = setTab. 발송대기 배지는 주문 탭에.
+  const navItems: WholesaleNavItem[] = tabs.map(({ key, label, Icon }) => ({
+    key,
+    label,
+    icon: Icon,
+    active: tab === key,
+    onClick: () => setTab(key),
+    badge: key === 'orders' ? pendingShipCount : undefined,
+  }))
+
+  const activeTabLabel = tabs.find(tb => tb.key === tab)?.label ?? t('supplier.dashTitle', { defaultValue: '공급자 대시보드' })
+
+  const headerRight = (
+    <>
+      <span className="text-sm text-gray-600 hidden sm:inline max-w-[160px] truncate">{me?.profile.business_name}</span>
+      <button onClick={() => navigate('/supplier/wholesale-orders')} className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900 font-medium">
+        <Truck className="w-4 h-4" /> <span className="hidden sm:inline">{t('supplier.wholesaleOrders', { defaultValue: '도매 주문' })}</span>
+      </button>
+      <button onClick={logout} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+        <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">{t('supplier.logout', { defaultValue: '로그아웃' })}</span>
+      </button>
+    </>
+  )
+
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
+    <WholesaleDashboardShell
+      brand={t('supplier.studio', { defaultValue: 'SUPPLIER' })}
+      brandSubtitle={me?.profile.business_name}
+      navItems={navItems}
+      title={activeTabLabel}
+      headerRight={headerRight}
+    >
       <SEO title={t('supplier.dashTitle', { defaultValue: '공급자 대시보드' }) + ' - 유어딜'} description="유어딜 도매 공급자 대시보드" url="/supplier" />
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <UrDealLogo size={14} forceLight />
-            <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">{t('supplier.studio', { defaultValue: 'SUPPLIER' })}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 hidden sm:inline">{me?.profile.business_name}</span>
-            <button onClick={() => navigate('/supplier/wholesale-orders')} className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900 font-medium">
-              <Truck className="w-4 h-4" /> {t('supplier.wholesaleOrders', { defaultValue: '도매 주문' })}
-            </button>
-            <button onClick={logout} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
-              <LogOut className="w-4 h-4" /> {t('supplier.logout', { defaultValue: '로그아웃' })}
-            </button>
+      {loading ? (
+        <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
+      ) : tab === 'overview' ? (
+        <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} pendingShipCount={pendingShipCount} />
+      ) : tab === 'orders' ? (
+        <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
+      ) : tab === 'catalog' ? (
+        <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
+      ) : (
+        <div className="space-y-6">
+          {/* 정산 탭 상단: 매출 추이 + 베스트셀러(분석 요약). 아래는 정산 내역 리스트. 한 스크롤. */}
+          <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
+            <SettlementsTab items={settlements} t={t} />
           </div>
         </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 lg:px-8 py-6">
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-white rounded-xl p-1 border border-gray-200 w-fit">
-          {tabs.map(({ key, label, Icon }) => (
-            <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === key ? 'bg-[#FF0033] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
-              <Icon className="w-4 h-4" /> {label}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
-        ) : tab === 'overview' ? (
-          <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} pendingShipCount={pendingShipCount} />
-        ) : tab === 'orders' ? (
-          <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
-        ) : tab === 'catalog' ? (
-          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
-        ) : (
-          <div className="space-y-6">
-            {/* 정산 탭 상단: 매출 추이 + 베스트셀러(분석 요약). 아래는 정산 내역 리스트. 한 스크롤. */}
-            <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
-            <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
-              <SettlementsTab items={settlements} t={t} />
-            </div>
-          </div>
-        )}
-      </main>
+      )}
 
       {shipModal && (
         <ShipModal
@@ -259,7 +258,7 @@ export default function SupplierDashboardPage() {
           onDone={() => { setPriceChangeItem(null); loadCatalog() }}
         />
       )}
-    </div>
+    </WholesaleDashboardShell>
   )
 }
 
