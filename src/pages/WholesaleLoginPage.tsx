@@ -17,9 +17,10 @@ export default function WholesaleLoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // 이미 유통사(셀러) 로그인 상태면 바로 카탈로그로.
+  // 이미 유통사 로그인 상태면 대시보드로(유통사 아닌 셀러면 카탈로그).
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
-  useEffect(() => { if (alreadyIn) navigate('/wholesale', { replace: true }) }, [alreadyIn, navigate])
+  const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
+  useEffect(() => { if (alreadyIn) navigate(isDistributor ? '/wholesale/dashboard' : '/wholesale', { replace: true }) }, [alreadyIn, isDistributor, navigate])
   if (alreadyIn) return null // 리다이렉트 중 로그인폼 깜빡임 방지
 
   async function submit(e: React.FormEvent) {
@@ -44,7 +45,8 @@ export default function WholesaleLoginPage() {
       localStorage.setItem('seller_type', s.seller_type || 'influencer')
       if (s.is_distributor) localStorage.setItem('is_distributor', '1')
       else localStorage.removeItem('is_distributor')
-      window.location.assign('/wholesale') // full reload → 토큰/세션 깨끗이 반영
+      // 유통사면 대시보드로, 아직 유통사 아닌 셀러면 카탈로그(전환 CTA)로. full reload → 토큰/세션 반영.
+      window.location.assign(s.is_distributor ? '/wholesale/dashboard' : '/wholesale')
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '로그인 중 오류가 발생했어요')
     } finally { setLoading(false) }

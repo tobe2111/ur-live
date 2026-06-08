@@ -30,11 +30,14 @@ export default function WholesaleDashboardPage() {
   const navigate = useNavigate()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
+  const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
 
-  // 유통사(seller_token) 전용 — 미로그인 시 도매몰 홈으로.
+  // 🏭 2026-06-08: 유통사(seller_token + is_distributor) 전용 — 역할 엄격화(제조사 가드와 대칭).
+  //   미로그인 → 유통사 로그인. 셀러지만 유통사 아님 → 카탈로그(유통사 전환 CTA).
   useEffect(() => {
-    if (!token) navigate('/wholesale', { replace: true })
-  }, [token, navigate])
+    if (!token) { navigate('/wholesale/login', { replace: true }); return }
+    if (!isDistributor) { navigate('/wholesale', { replace: true }); return }
+  }, [token, isDistributor, navigate])
 
   const meQ = useWholesaleMe()
   const ordersQ = useWholesaleOrders()
