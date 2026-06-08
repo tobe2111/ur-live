@@ -390,6 +390,12 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     }
 
     // 3) 신규 → 사업자 정보 필수 + status='pending'(어드민 승인). 토큰 미발급.
+    //   🏭 2026-06-08: 빈 body 자동 probe(카탈로그/로그인 후 '기존 유통사 자동연결' 시도)는 에러가 아니라
+    //   '가입 필요' 상태 — 신규 유저에게 400(콘솔 에러·"가입 안됨" 오해) 대신 needs_registration(200) 반환.
+    //   사업자 정보가 하나라도 들어온 실제 신청만 아래 필드 검증으로 400 처리.
+    if (!business_name && !business_number && !business_license_url) {
+      return c.json({ success: true, status: 'needs_registration', message: '유통회원 가입(사업자 정보 입력)이 필요합니다.' })
+    }
     if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
     if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400)
     if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)

@@ -179,7 +179,7 @@ export default function WholesaleJoinPage() {
               <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
               <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
             </div>
-            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale&intent=user' }}
+            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale/join&intent=user' }}
               className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
               카카오로 시작하기
             </button>
