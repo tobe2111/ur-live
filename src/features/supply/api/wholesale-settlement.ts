@@ -163,33 +163,59 @@ export async function reverseSupplierOnWholesaleRefund(
   await ensureSourceColumn(DB)
   const scoped = Number.isFinite(supplierId) && (supplierId as number) > 0
   // 🛡️ PAY-1: paid 도 함께 조회(클로백 대상). 이미 클로백된 row(note='clawback')는 제외(멱등).
+  // 🛡️ 2026-06-08 PAY-6(b): retail_amount 도 조회 — 환불되는 라인의 플랫폼 마진
+  //   (retail − supply)을 wholesale_orders.margin_total 에서 비례 차감하기 위함.
   const rows = await DB.prepare(
-    `SELECT id, supplier_id, product_id, supply_amount, status FROM supplier_settlements
+    `SELECT id, supplier_id, product_id, supply_amount, retail_amount, status FROM supplier_settlements
      WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available','paid') AND note IS NOT 'clawback'
      ${scoped ? 'AND supplier_id = ?' : ''}`
   ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]))
-    .all<{ id: number; supplier_id: number; product_id: number; supply_amount: number; status: string }>()
-    .catch(() => ({ results: [] as { id: number; supplier_id: number; product_id: number; supply_amount: number; status: string }[] }))
+    .all<{ id: number; supplier_id: number; product_id: number; supply_amount: number; retail_amount: number; status: string }>()
+    .catch(() => ({ results: [] as { id: number; supplier_id: number; product_id: number; supply_amount: number; retail_amount: number; status: string }[] }))
 
   let reversed = 0
+  let marginReversed = 0 // PAY-6(b): 역전 라인들의 플랫폼 마진 합(비례 차감용)
   const touchedSuppliers = new Set<number>()
   for (const a of rows.results || []) {
     const amt = Math.max(0, Math.floor(Number(a.supply_amount) || 0))
+    // PAY-6(b): 이 라인의 플랫폼 마진 기여분 = retail − supply (적립 시 동일 산식으로 기록됨). 음수 클램프.
+    const retail = Math.max(0, Math.floor(Number(a.retail_amount) || 0))
+    const lineMargin = Math.max(0, retail - amt)
+    // 🛡️ 2026-06-08 PAY-6(1) 원장 대칭: 적립 시 `debit platform:wholesale → credit supplier:N`.
+    //   역전 시 대칭 반대 entry(debit supplier:N → credit platform:wholesale)로 공급자 외상을 상쇄 →
+    //   getAccountBalance('supplier:N')=Σcredit−Σdebit 가 잔고 캐시(settlements SUM)와 다시 정합.
+    //   amount 음수 불가(helper 거부)이므로 부호 대신 account swap. cancel/clawback 모두 동일 1회 기록.
+    //   ⚠️ 멱등: ledger reverse entry + margin 차감 모두 *실제 상태 전환이 일어난 row* 에만 반영한다.
+    //   paid row 는 환불 2회 호출 시 원본이 status='paid'(note≠'clawback')로 계속 재선택되므로,
+    //   무조건 기록하면 ledger over-reverse + margin 이중 차감으로 Σ-invariant/마진 정합이 깨진다.
+    //   clawback INSERT 가 실제 삽입(ON CONFLICT no-op 아님) 또는 cancel UPDATE 가 실제 변경일 때만.
+    let effected = false
     if (a.status === 'paid') {
       // 🛡️ PAY-1 클로백: 음수 보정 row(available). product_id 음수로 기록 → 원본 라인과 별도 +
       //   idx_supplier_settle_unique(order_id, -product_id, 'wholesale') 로 재호출 시 중복 차단.
-      await DB.prepare(
+      const cb = await DB.prepare(
         `INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
          VALUES (?, ?, ?, NULL, 0, ?, 'available', datetime('now','-1 second'), 'wholesale', 'clawback')
          ON CONFLICT(order_id, product_id, source) DO NOTHING`
-      ).bind(a.supplier_id, wholesaleOrderId, -Math.abs(a.product_id || 0), -amt).run().catch(() => { /* 멱등/best-effort */ })
-      reversed++
-      touchedSuppliers.add(a.supplier_id)
+      ).bind(a.supplier_id, wholesaleOrderId, -Math.abs(a.product_id || 0), -amt).run().catch(() => null)
+      effected = (cb?.meta?.changes ?? 0) > 0
     } else {
-      await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ? AND status IN ('pending','available')").bind(reason, a.id).run()
-      reversed++
-      touchedSuppliers.add(a.supplier_id)
+      const upd = await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ? AND status IN ('pending','available')").bind(reason, a.id).run()
+      effected = (upd.meta?.changes ?? 0) > 0
     }
+    if (!effected) continue // 멱등 no-op (이미 역전된 row) — ledger/margin/카운트/잔고 무영향.
+    marginReversed += lineMargin // 실제 역전된 라인의 마진만 누산(부분/반복 환불 비례 정합).
+    if (amt > 0) {
+      try {
+        await recordLedger(DB, {
+          event_type: 'supplier_wholesale_reversal', reference_id: `whs-${wholesaleOrderId}`, amount: amt,
+          debit_account: `supplier:${a.supplier_id}`, credit_account: 'platform:wholesale',
+          metadata: { product_id: a.product_id, prior_status: a.status, wholesale_order_id: wholesaleOrderId, reason },
+        })
+      } catch { /* ledger best-effort */ }
+    }
+    reversed++
+    touchedSuppliers.add(a.supplier_id)
   }
 
   // 🛡️ PAY-4: 영향받은 제조사별 잔고 SUM 재계산 + 클로백 부족분 어드민 알림.
@@ -209,6 +235,19 @@ export async function reverseSupplierOnWholesaleRefund(
         )
       } catch { /* 알림 best-effort */ }
     }
+  }
+
+  // 🛡️ 2026-06-08 PAY-6(b) 마진 비례 역전: 주문 생성 시 wholesale_orders.margin_total = subtotal − supply_total
+  //   (플랫폼 B2B 총마진)을 기록만 하고 환불 시 줄이지 않아, 부분/전액 환불 후에도 마진이 과대 집계됐다.
+  //   이번 역전 라인들의 마진 기여분(Σ retail − supply, 위 루프에서 누산)만큼 차감 → 환불 비례 정합.
+  //   - 멱등: 역전된 settlement row 는 cancelled/clawback 으로 마킹돼 재호출 시 재선택 안 됨(marginReversed=0).
+  //   - 음수 클램프 MAX(0, …): 반올림/혼합 환불로 누적 차감이 원금 초과해도 margin_total 음수 방지.
+  //   - retail/supply 분리 컬럼을 그대로 사용 — split/VAT/반올림 산식 미변경(차감액=기존 적립 산식의 역).
+  //   best-effort(집계 필드, 정산 자체는 settlements/balances 가 권위) — 실패해도 역전은 유효.
+  if (reversed > 0 && marginReversed > 0) {
+    await DB.prepare(
+      "UPDATE wholesale_orders SET margin_total = MAX(0, COALESCE(margin_total,0) - ?) WHERE id = ?"
+    ).bind(marginReversed, wholesaleOrderId).run().catch(() => { /* best-effort: 집계 필드 */ })
   }
   return reversed
 }

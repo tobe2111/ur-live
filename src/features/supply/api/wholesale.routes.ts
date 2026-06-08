@@ -75,6 +75,21 @@ async function ensureOrderTables(DB: D1Database) {
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)`).run().catch(swallow('wholesale:idx3'))
 }
 
+// ── BIZ-8 (2026-06-08) MOQ/단가 고도화 — pack_size / order_multiple 컬럼 멱등 ensure. ───
+//   pack_size      = 1 박스에 든 낱개 수(표시용 — "1박스 = N개").
+//   order_multiple = 주문 수량이 반드시 이 배수여야 함(박스 배수 강제). 1 = 제약 없음(낱개).
+//   min_order_qty 는 기존 컬럼(최소 주문 수량) 재사용. ⚠️ 가격 산식 불변 — 수량 제약만 추가.
+//   self-contained(repair-schema 미의존). best-effort ADD COLUMN — 이미 있으면 swallow.
+const _biz8Ensured = new WeakSet<object>()
+async function ensureQtyConstraintSchema(DB: D1Database) {
+  if (_biz8Ensured.has(DB)) return
+  _biz8Ensured.add(DB)
+  for (const sql of [
+    'ALTER TABLE products ADD COLUMN pack_size INTEGER DEFAULT 1',
+    'ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1',
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:biz8:alter')) }
+}
+
 // ── BIZ-2 v1 (2026-06-08) 여신/외상(credit terms) — 멱등 ensure. ─────────────────
 //   "사입 0원" 핵심 모순(현재 100% Toss 선결제) 해소를 위한 ADDITIVE 외상 경로.
 //   sellers 에 여신 한도/미수금/동결 3컬럼 + 감사가능 미수금 원장(wholesale_credit_ledger).
@@ -555,6 +570,7 @@ app.get('/catalog', async (c) => {
     }
 
     await ensureSupplyVisibilitySchema(DB)
+    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
     const sg = guest ? { distributor_grade: null, special_discount_until: null } : await loadSellerGrade(DB, sellerId!)
     const table = await loadGradeTable(DB)
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
@@ -592,6 +608,7 @@ app.get('/catalog', async (c) => {
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
              COALESCE(p.supply_price, 0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
+             COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
              EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers,
              COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -600,7 +617,7 @@ app.get('/catalog', async (c) => {
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; has_tiers: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; has_tiers: number; sold_count: number; margin_override: number | null
     }>()
 
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
@@ -617,7 +634,10 @@ app.get('/catalog', async (c) => {
       return {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
-        retail_price: guest ? null : (r.retail_price || null), moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
+        retail_price: guest ? null : (r.retail_price || null), moq: Math.max(1, r.moq || 1),
+        // BIZ-8: pack_size(박스당 낱개 — 표시용) / order_multiple(주문 배수 강제). 둘 다 최소 1.
+        pack_size: Math.max(1, r.pack_size || 1), order_multiple: Math.max(1, r.order_multiple || 1),
+        has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
         requires_login: guest,
       }
     })
@@ -638,10 +658,12 @@ app.get('/catalog/:id', async (c) => {
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
   try {
     await ensureSupplyVisibilitySchema(DB)
+    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
     const r = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
+             COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
              COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id = ? AND p.is_supply_product = 1 AND p.is_active = 1
@@ -649,18 +671,21 @@ app.get('/catalog/:id', async (c) => {
         AND ${visibilityWhere('p')}
     `).bind(id, sellerId ?? -1).first<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
     }>()
     if (!r) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
     const moq = Math.max(1, r.moq || 1)
+    const packSize = Math.max(1, r.pack_size || 1)
+    const orderMultiple = Math.max(1, r.order_multiple || 1)
     if (guest) {
       return c.json({
         success: true,
         item: {
           id: r.id, name: r.name, description: r.description, image_url: r.image_url,
           category: r.category, stock: r.stock, distributor_price: null,
-          retail_price: null, moq, sold_count: r.sold_count || 0, tiers: [], requires_login: true,
+          retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
+          sold_count: r.sold_count || 0, tiers: [], requires_login: true,
         },
         grade: null, requires_login: true,
       })
@@ -686,7 +711,8 @@ app.get('/catalog/:id', async (c) => {
       item: {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
-        retail_price: r.retail_price || null, moq, sold_count: r.sold_count || 0,
+        retail_price: r.retail_price || null, moq, pack_size: packSize, order_multiple: orderMultiple,
+        sold_count: r.sold_count || 0,
         tiers,
       },
       grade,
@@ -726,18 +752,19 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
 
     await ensureSupplyVisibilitySchema(DB)
+    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
     const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
     const prods = await DB.prepare(`
-      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.min_order_qty,1) AS moq, p.supply_margin_override_pct AS margin_override
+      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; margin_override: number | null }>()
+    `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       // 어떤 상품이 주문 불가인지 이름으로 안내(카트 부분 불가 UX) — 비노출 정보 없이 name 만.
@@ -758,7 +785,14 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       // 🏭 2026-06-04 MOQ 검증 — 최소 주문 수량 미만 차단(서버 방어; 클라 UI 도 동일 강제).
       const moq = Math.max(1, p.moq || 1)
       if (qty < moq) {
-        return c.json({ success: false, error: `최소 주문 수량은 ${moq}개입니다: ${p.name}` }, 400)
+        // BIZ-8: MOQ 미달 — 명시 코드 + 상품명/요구값 포함(부분불가 UX). ⚠️ 가격산식/Toss 미경유 — 청구 전 차단.
+        return c.json({ success: false, error: `최소 주문 수량은 ${moq}개입니다: ${p.name}`, code: 'MOQ_NOT_MET', product_id: p.id, min_order_qty: moq }, 400)
+      }
+      // 🏭 BIZ-8 (2026-06-08) 주문 배수(박스 단위) 강제 — order_multiple>1 이면 그 배수여야 주문 가능.
+      //   ⚠️ 가격 산식 불변 — 수량 제약만. Toss/amount-validation 블록보다 앞(이 루프는 subtotal 누적 전 검증).
+      const orderMultiple = Math.max(1, p.order_multiple || 1)
+      if (orderMultiple > 1 && qty % orderMultiple !== 0) {
+        return c.json({ success: false, error: `${orderMultiple}개 단위로만 주문할 수 있습니다: ${p.name} (요청 ${qty}개)`, code: 'ORDER_MULTIPLE_VIOLATION', product_id: p.id, order_multiple: orderMultiple }, 400)
       }
       if (p.stock != null && p.stock < qty) {
         return c.json({ success: false, error: `재고가 부족합니다: ${p.name}` }, 400)
@@ -1179,6 +1213,40 @@ app.get('/catalog-export', async (c) => {
     return xlsxResponse(buildXlsx(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (err) {
     return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── BIZ-8 (2026-06-08) GET /catalog/export?format=csv — 유통사 등급가 단가표 CSV ──────
+//   엑셀로 바로 여는 단가표. 컬럼: 상품명/바코드/공급가(등급가)/MOQ/박스단위(order_multiple)/재고.
+//   ⚠️ 가격 = 카탈로그가 보여주는 것과 동일한 서버계산 등급가(resolveDistributorPrice) — 다른 등급가
+//      누출 절대 없음(내 등급 1개만 계산). supply_price(제조사 원가)/supplier_id(신원) 미노출.
+//   PDF 는 범위 밖(follow-up). format 파라미터는 csv 만 지원(미지정/그외 → csv).
+app.get('/catalog/export', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureSupplyVisibilitySchema(DB)
+    await ensureQtyConstraintSchema(DB) // pack_size / order_multiple 컬럼 보장(SELECT 전).
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
+    const rows = await DB.prepare(`
+      SELECT p.id, p.name, p.barcode, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+             COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
+             p.supply_margin_override_pct AS margin_override
+      FROM products p
+      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
+        AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+      ORDER BY p.category, p.name LIMIT 10000
+    `).bind(sellerId).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    const header = ['상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
+    const out = (rows.results || []).map(r => {
+      // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      return [r.name, r.barcode || '', price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), r.stock]
+    })
+    return csvResponse(buildCsv(header, out), `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`)
+  } catch (err) {
+    return safeError(c, err, '단가표 내보내기 중 오류가 발생했습니다', '[wholesale]')
   }
 })
 

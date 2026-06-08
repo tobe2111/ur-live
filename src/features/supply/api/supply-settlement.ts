@@ -173,6 +173,18 @@ export async function reverseSupplierOnRefund(
   const touchedSuppliers = new Set<number>();
   for (const a of rows.results || []) {
     const amt = Math.max(0, Math.floor(Number(a.supply_amount) || 0));
+    // 🛡️ 2026-06-08 PAY-6(1) 원장 대칭: 적립 시 `debit seller → credit supplier:N` 로 기록한 공급자
+    //   외상을, 역전(취소/클로백) 시 *대칭 반대 entry*(debit supplier:N → credit platform:refund)로
+    //   기록한다. ledger_entries.amount 는 음수 불가(helper 가 거부)이므로 부호 대신 account 를
+    //   swap — getAccountBalance('supplier:N') = Σcredit − Σdebit 이 그만큼 순감해 잔고 캐시
+    //   (supplier_balances, settlements SUM 재계산)와 다시 정합(Σ-invariant 회복).
+    //   cancel/clawback 모두 공급자 순채무가 amt 만큼 줄므로 동일하게 1회 reverse entry 기록.
+    //   ⚠️ 멱등: 이 reverse entry 는 *실제 상태 전환이 일어난 row* 에만 기록한다. paid row 는 환불
+    //   2회 호출 시 원본이 계속 status='paid'(note≠'clawback')라 재선택되므로, ledger 를 무조건
+    //   기록하면 over-reverse 로 Σ-invariant 가 깨진다. 따라서 clawback INSERT 가 *실제 삽입*됐을
+    //   때(ON CONFLICT no-op 아님) 또는 cancel UPDATE 가 *실제 변경*됐을 때만 entry 를 남긴다.
+    //   best-effort(audit-only) — 본 역전 트랜잭션은 ledger 실패와 무관하게 진행.
+    let effected = false;
     if (a.status === 'paid') {
       // 🛡️ PAY-1 클로백: 이미 지급된 정산은 취소(과거 지급 사실 보존)하지 않고, 음수 보정 row 를 추가.
       //   status='available' + 음수 supply_amount → available SUM 이 순감 → 다음 payout 이 그만큼
@@ -180,19 +192,30 @@ export async function reverseSupplierOnRefund(
       //   멱등: 같은 환불 2회 호출 시 원본 paid row 가 다시 잡히지만(note≠'clawback'), 클로백 INSERT 의
       //   product_id 를 음수로 두어 idx_supplier_settle_unique(order_id, -product_id, source) 가 동일 →
       //   ON CONFLICT DO NOTHING 으로 중복 차단(이중 차감 방지).
-      await DB.prepare(
+      const cb = await DB.prepare(
         `INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
          VALUES (?, ?, ?, NULL, 0, ?, 'available', datetime('now','-1 second'), ?, 'clawback')
          ON CONFLICT(order_id, product_id, source) DO NOTHING`
-      ).bind(a.supplier_id, orderId, -Math.abs(a.product_id || 0), -amt, a.source).run().catch(() => { /* 멱등/best-effort */ });
-      reversed++;
-      touchedSuppliers.add(a.supplier_id);
+      ).bind(a.supplier_id, orderId, -Math.abs(a.product_id || 0), -amt, a.source).run().catch(() => null);
+      effected = (cb?.meta?.changes ?? 0) > 0; // 신규 클로백 삽입 시에만 reverse entry/카운트.
     } else {
       // pending/available 미지급분 — 단순 취소.
-      await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ? AND status IN ('pending','available')").bind(reason, a.id).run();
-      reversed++;
-      touchedSuppliers.add(a.supplier_id);
+      const upd = await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ? AND status IN ('pending','available')").bind(reason, a.id).run();
+      effected = (upd.meta?.changes ?? 0) > 0; // 실제 취소된 경우에만.
     }
+    if (!effected) continue; // 멱등 no-op (이미 처리된 row) — ledger/카운트/잔고 무영향.
+    // 대칭 reverse entry — 실제 상태 전환이 일어난 이 호출에서만 1회.
+    if (amt > 0) {
+      try {
+        await recordLedger(DB, {
+          event_type: 'supplier_commission_reversal', reference_id: String(orderId), amount: amt,
+          debit_account: `supplier:${a.supplier_id}`, credit_account: 'platform:refund',
+          metadata: { product_id: a.product_id, source: a.source, prior_status: a.status, reason },
+        });
+      } catch { /* ledger best-effort */ }
+    }
+    reversed++;
+    touchedSuppliers.add(a.supplier_id);
   }
 
   // 🛡️ PAY-4: 영향받은 공급자별 잔고를 SUM 으로 재계산(레이스 없는 단일 진실).
