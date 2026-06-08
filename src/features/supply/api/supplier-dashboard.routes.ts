@@ -607,8 +607,45 @@ supplierDashboardRoutes.get('/orders', async (c) => {
   }
 });
 
+// ── order_items 라인별 배송 컬럼 멱등 ensure ───────────────────────────────────
+//   🛡️ 2026-06-07 SEC-1: 위탁(dropship) 발송은 주문 전체가 아니라 공급자 본인 라인만
+//     발송 처리돼야 함. 소비자 order_items 테이블엔 라인별 courier/tracking/shipped 컬럼이
+//     없으므로 wholesale_order_items(line_status/courier/...) 와 동일한 라인 스코프를 위해
+//     order_items 에 per-line 컬럼을 멱등 추가. (D1 은 ADD COLUMN IF NOT EXISTS 미지원.)
+const _orderItemsShipEnsuring = new WeakMap<object, Promise<void>>();
+async function ensureOrderItemsShipSchema(DB: D1Database): Promise<void> {
+  const existing = _orderItemsShipEnsuring.get(DB);
+  if (existing) return existing;
+  const p = (async () => {
+    const cols = await DB.prepare("SELECT name FROM pragma_table_info('order_items')")
+      .all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }));
+    const have = new Set((cols.results || []).map(r => r.name));
+    if (!have.has('shipped_at')) {
+      await DB.prepare("ALTER TABLE order_items ADD COLUMN shipped_at DATETIME").run().catch(swallow('order-items:add-shipped-at'));
+    }
+    if (!have.has('courier')) {
+      await DB.prepare("ALTER TABLE order_items ADD COLUMN courier TEXT").run().catch(swallow('order-items:add-courier'));
+    }
+    if (!have.has('tracking_number')) {
+      await DB.prepare("ALTER TABLE order_items ADD COLUMN tracking_number TEXT").run().catch(swallow('order-items:add-tracking'));
+    }
+    if (!have.has('tracking_carrier_code')) {
+      await DB.prepare("ALTER TABLE order_items ADD COLUMN tracking_carrier_code TEXT").run().catch(swallow('order-items:add-carrier-code'));
+    }
+  })();
+  _orderItemsShipEnsuring.set(DB, p);
+  try {
+    await p;
+  } catch {
+    _orderItemsShipEnsuring.delete(DB);
+  }
+}
+
 // ── PUT /orders/:orderId/shipping — 공급자 운송장 입력 (INC-8) ─────────────────
 //   기존 셀러 배송 인프라(courier 정규화 + tracking_carrier_code + shipping_tracking_events) 재사용.
+//   🛡️ SEC-1 fix: 공급자 본인 라인(order_items whose product.supply_source_id → src.supplier_id=sid)
+//     만 발송 처리. 혼합 주문(타 공급자/일반 셀러 라인 포함)에선 공유 orders 행의
+//     tracking/courier 를 절대 덮어쓰지 않음 — 라인 레벨에만 기록.
 supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -629,17 +666,63 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
     ).bind(orderId, sid).first().catch(() => null);
     if (!owns) return c.json({ success: false, error: '해당 주문을 찾을 수 없습니다' }, 404);
 
+    await ensureOrderItemsShipSchema(DB);
+
     const { normalizeCourierKey } = await import('../../../worker/utils/courier-codes');
     const carrierKey = normalizeCourierKey(body.courier);
 
+    // 1) 라인 레벨 발송 기록 — 본인(공급자) 라인만. 다른 공급자/셀러 라인은 절대 미변경.
+    //    아직 발송 안 된(shipped_at IS NULL) 라인만 채움(멱등).
+    await DB.prepare(
+      `UPDATE order_items
+          SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
+              shipped_at = datetime('now')
+        WHERE order_id = ?
+          AND shipped_at IS NULL
+          AND product_id IN (
+            SELECT sp.id FROM products sp
+              JOIN products src ON src.id = sp.supply_source_id
+             WHERE src.supplier_id = ?
+          )`
+    ).bind(tracking, body.courier || null, carrierKey || null, orderId, sid).run();
+
+    // 2) 주문 상태 승급 — 주문 내 미발송 라인이 하나도 남지 않았을 때만 'SHIPPING'.
+    //    (wholesale-supplier.routes 의 NOT EXISTS(unshipped) 패턴과 동일.)
+    //    CANCELLED/REFUNDED 라인은 발송 대상이 아니므로 미발송 집계에서 제외.
+    await DB.prepare(
+      `UPDATE orders
+          SET shipped_at = COALESCE(shipped_at, datetime('now')),
+              status = 'SHIPPING',
+              updated_at = datetime('now')
+        WHERE id = ?
+          AND status IN ('PAID','PREPARING','READY','PARTIAL_REFUNDED')
+          AND NOT EXISTS (
+            SELECT 1 FROM order_items oi
+             WHERE oi.order_id = ?
+               AND oi.shipped_at IS NULL
+               AND (oi.status IS NULL OR oi.status NOT IN ('CANCELLED','REFUNDED'))
+          )`
+    ).bind(orderId, orderId).run();
+
+    // 3) 공유 orders 행의 tracking/courier 는 이 공급자가 주문의 "모든" 발송대상 라인을
+    //    소유할 때만 설정(순수 단일 공급자 주문). 혼합 주문이면 미설정 — 타 당사자 데이터 보호.
     await DB.prepare(
       `UPDATE orders
           SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
-              shipped_at = COALESCE(shipped_at, datetime('now')),
-              status = CASE WHEN status IN ('PAID','PREPARING','READY','PARTIAL_REFUNDED') THEN 'SHIPPING' ELSE status END,
               updated_at = datetime('now')
-        WHERE id = ?`
-    ).bind(tracking, body.courier || null, carrierKey || null, orderId).run();
+        WHERE id = ?
+          AND (tracking_number IS NULL OR tracking_number = '')
+          AND NOT EXISTS (
+            SELECT 1 FROM order_items oi
+             WHERE oi.order_id = ?
+               AND (oi.status IS NULL OR oi.status NOT IN ('CANCELLED','REFUNDED'))
+               AND oi.product_id NOT IN (
+                 SELECT sp.id FROM products sp
+                   JOIN products src ON src.id = sp.supply_source_id
+                  WHERE src.supplier_id = ?
+               )
+          )`
+    ).bind(tracking, body.courier || null, carrierKey || null, orderId, orderId, sid).run();
 
     // 배송 추적 이벤트 audit (셀러 흐름과 동일 — 테이블 없으면 무시).
     await DB.prepare(

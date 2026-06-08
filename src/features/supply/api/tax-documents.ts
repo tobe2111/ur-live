@@ -15,11 +15,25 @@ export const TAX_DOC_DIRECTIONS = ['sales', 'purchase'] as const
 export type TaxDocType = (typeof TAX_DOC_TYPES)[number]
 export type TaxDocDirection = (typeof TAX_DOC_DIRECTIONS)[number]
 
-const _ensured = new WeakSet<object>()
+// 🛡️ 완료된 ensure 만 캐시(promise 기반) — add 를 await 전에 하면 첫 ensure 가
+//   transient D1 에러로 throw 돼도 DB 가 영구 done 표시 → 이후 모든 호출이 미존재
+//   tax_documents 를 참조해 isolate recycle 까지 영구 500. in-flight promise 를
+//   공유해 동시 호출이 같은 완료를 기다리고, 실패 시 캐시를 지워 다음 호출이 재시도.
+const _ensuring = new WeakMap<object, Promise<void>>()
 
 export async function ensureTaxDocSchema(DB: D1Database): Promise<void> {
-  if (_ensured.has(DB)) return
-  _ensured.add(DB)
+  const existing = _ensuring.get(DB)
+  if (existing) return existing
+  const p = _ensureTaxDocSchema(DB)
+  _ensuring.set(DB, p)
+  try {
+    await p
+  } catch {
+    _ensuring.delete(DB) // 실패 시 다음 호출이 재시도하도록 캐시 제거
+  }
+}
+
+async function _ensureTaxDocSchema(DB: D1Database): Promise<void> {
   await DB.prepare(`CREATE TABLE IF NOT EXISTS tax_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     doc_type TEXT NOT NULL,

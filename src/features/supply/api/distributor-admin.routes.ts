@@ -14,7 +14,7 @@ import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
-import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
+import { adminIpWhitelist, adminAuditMiddleware, writeAuditLog } from '@/worker/middleware/admin-security'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
@@ -81,10 +81,21 @@ app.put('/grades/:grade', async (c) => {
     }
     const label = typeof body.label === 'string' ? body.label.slice(0, 40) : null
     const active = body.active === false ? 0 : 1
+    // 변경 전 값 캡처 (감사로그 before).
+    const prevGrade = await c.env.DB.prepare(
+      'SELECT margin_pct, label, active FROM distributor_grades WHERE grade = ?'
+    ).bind(grade).first<{ margin_pct: number; label: string | null; active: number }>().catch(() => null)
     const res = await c.env.DB.prepare(
       `UPDATE distributor_grades SET margin_pct=?, label=COALESCE(?,label), active=?, updated_at=datetime('now') WHERE grade=?`
     ).bind(margin, label, active, grade).run()
     if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 등급입니다' }, 404)
+    await writeAuditLog(c, {
+      action: 'wholesale_grade_margin_change',
+      targetType: 'distributor_grade',
+      targetId: grade,
+      before: { margin_pct: prevGrade?.margin_pct ?? null, label: prevGrade?.label ?? null, active: prevGrade?.active ?? null },
+      after: { margin_pct: margin, label: label ?? prevGrade?.label ?? null, active },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '등급 수정 중 오류가 발생했습니다', '[distributor-admin]')
@@ -140,10 +151,21 @@ app.patch('/distributors/:id', async (c) => {
       special = d.toISOString()
     }
 
+    // 변경 전 값 캡처 (감사로그 before) — 전 주문 마진을 좌우하는 최고 레버리지라 추적 필수.
+    const prevSeller = await c.env.DB.prepare(
+      'SELECT distributor_grade, special_discount_until FROM sellers WHERE id = ?'
+    ).bind(id).first<{ distributor_grade: string | null; special_discount_until: string | null }>().catch(() => null)
     const res = await c.env.DB.prepare(
       `UPDATE sellers SET distributor_grade=?, special_discount_until=?, updated_at=datetime('now') WHERE id=?`
     ).bind(grade, special, id).run()
     if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+    await writeAuditLog(c, {
+      action: 'wholesale_distributor_grade_change',
+      targetType: 'seller',
+      targetId: String(id),
+      before: { grade: prevSeller?.distributor_grade ?? null, special_discount_until: prevSeller?.special_discount_until ?? null },
+      after: { grade, special_discount_until: special },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '유통사 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
@@ -560,13 +582,21 @@ app.patch('/products/:id/margin-override', async (c) => {
       val = Math.round(m * 100) / 100
     }
     // 공급상품 원본(supplier 직등록)만 대상 — 셀러 복제본/일반상품 제외.
+    //   변경 전 override 값도 함께 캡처 (감사로그 before).
     const prod = await c.env.DB.prepare(
-      "SELECT id FROM products WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL"
-    ).bind(id).first<{ id: number }>().catch(() => null)
+      "SELECT id, supply_margin_override_pct FROM products WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL"
+    ).bind(id).first<{ id: number; supply_margin_override_pct: number | null }>().catch(() => null)
     if (!prod) return c.json({ success: false, error: '공급상품을 찾을 수 없습니다' }, 404)
     await c.env.DB.prepare(
       "UPDATE products SET supply_margin_override_pct = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(val, id).run()
+    await writeAuditLog(c, {
+      action: 'wholesale_margin_override_change',
+      targetType: 'product',
+      targetId: String(id),
+      before: { supply_margin_override_pct: prod.supply_margin_override_pct ?? null },
+      after: { supply_margin_override_pct: val },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
     return c.json({ success: true, product_id: id, margin_override_pct: val })
   } catch (err) {
     return safeError(c, err, '상품별 마진 설정 중 오류가 발생했습니다', '[distributor-admin]')

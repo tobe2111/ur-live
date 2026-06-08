@@ -1193,6 +1193,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-06-01 도매몰 INC-4: 공급자별 카탈로그 조회 + 어드민 승인 큐 인덱스.
     { name: 'idx_products_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_products_supplier ON products(supplier_id, supply_approval_status, created_at DESC)` },
     { name: 'idx_supplier_settle_mature', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_mature ON supplier_settlements(status, available_at)` },
+    // 🛡️ 2026-06-07 도매몰 정산 성능/멱등 backstop (IDX-1a/1b, SCHEMA-2). 모두 additive·best-effort.
+    // IDX-1a: creditSupplierOnOrder 의 공급라인 조인(products src ON sp.supply_source_id=src.id) 풀스캔 제거.
+    { name: 'idx_products_supply_source', sql: `CREATE INDEX IF NOT EXISTS idx_products_supply_source ON products(supply_source_id) WHERE supply_source_id IS NOT NULL` },
+    // IDX-1b: 월별 세금 집계(status 필터 + strftime('%Y-%m', paid_at)) 가속.
+    { name: 'idx_wholesale_orders_status_paid', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_orders_status_paid ON wholesale_orders(status, paid_at)` },
+    // SCHEMA-2: 공급자 정산 멱등 backstop UNIQUE(order_id, product_id, source).
+    // ⚠️ 운영 테이블에 이미 중복 (order_id, product_id, source) 행이 있으면 이 생성은 FAIL 한다(best-effort, swallowed → 무시).
+    //   그 경우 인덱스가 적용되려면 1회성 dedup(중복 정리)이 먼저 필요하며, 이후 머니 정산 코드는
+    //   이 UNIQUE 에 의존하도록 `INSERT ... ON CONFLICT DO NOTHING` 로 전환할 것.
+    { name: 'idx_supplier_settle_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_settle_unique ON supplier_settlements(order_id, product_id, source)` },
 
     // 🛡️ 2026-06-01 도매몰 지급 실행: 공급자 지급(payout) 이력. available_amount → paid_amount 이동 기록.
     { name: 'supplier_payouts', sql: `CREATE TABLE IF NOT EXISTS supplier_payouts (

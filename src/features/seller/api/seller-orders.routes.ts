@@ -22,6 +22,7 @@ import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/a
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
+import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -451,6 +452,11 @@ sellerOrdersRoutes.get('/products', async (c) => {
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const db = c.env.DB;
+    // SCHEMA-1 cold-start guard: the query below references p.is_supply_product,
+    // which only exists after the supply schema ALTERs have run. On a fresh
+    // isolate / fresh D1 the column may be missing → "no such column" 500.
+    // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
+    await ensureSupplyVisibilitySchema(db);
     const limit = Math.min(parseInt(c.req.query('limit') || '100'), 500);
     const offset = parseInt(c.req.query('offset') || '0');
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';

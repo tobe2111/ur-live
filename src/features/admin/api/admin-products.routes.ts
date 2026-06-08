@@ -646,22 +646,36 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     await ensureSupplyVisibilitySchema(DB);
 
     const existing = await DB.prepare(
-      `SELECT id, name, supplier_id, supply_approval_status, is_active
+      `SELECT id, name, supplier_id, supply_approval_status, is_active, lowest_price_url
          FROM products WHERE id = ? AND is_supply_product = 1 AND supplier_id IS NOT NULL`
-    ).bind(pid).first<{ id: number; name: string; supplier_id: number; supply_approval_status: string | null; is_active: number }>();
+    ).bind(pid).first<{ id: number; name: string; supplier_id: number; supply_approval_status: string | null; is_active: number; lowest_price_url: string | null }>();
     if (!existing) return c.json({ success: false, error: '공급자 등록 상품을 찾을 수 없습니다' }, 404);
 
     if (body.action === 'approve') {
+      // GATE: 온라인 최저가 검수를 게시 차단 게이트로 강제 (사용자 확인 2026-06-07).
+      //   최저가 확인(lowest_price_checked) + 최저가 URL(lowest_price_url) 둘 다 있어야 승인/게시 가능.
+      if (!body.lowest_price_checked || !existing.lowest_price_url) {
+        return c.json({ success: false, error: '온라인 최저가 검수가 필요합니다. 최저가 확인 후 승인하세요.' }, 400);
+      }
       // 최저가 검수 결과 함께 기록 (체크 시 lowest_price_checked=1).
-      await DB.prepare(
-        "UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, lowest_price_checked = ?, updated_at = datetime('now') WHERE id = ?"
+      // CAS: pending → approved 원자 전이만 허용 (중복 승인/이중 audit·알림 방지).
+      const upd = await DB.prepare(
+        "UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, lowest_price_checked = ?, updated_at = datetime('now') WHERE id = ? AND supply_approval_status = 'pending'"
       ).bind(body.admin_memo || null, body.lowest_price_checked ? 1 : 0, pid).run();
+      if ((upd.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);
+      }
     } else {
-      await DB.prepare(
-        "UPDATE products SET supply_approval_status = 'rejected', is_active = 0, admin_memo = ?, updated_at = datetime('now') WHERE id = ?"
+      // CAS: pending/rejected 상태에서만 거부 (이미 승인된 건 거부로 되돌리지 않음 + 이중 audit 방지).
+      const upd = await DB.prepare(
+        "UPDATE products SET supply_approval_status = 'rejected', is_active = 0, admin_memo = ?, updated_at = datetime('now') WHERE id = ? AND supply_approval_status IN ('pending','rejected')"
       ).bind(body.admin_memo || null, pid).run();
+      if ((upd.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);
+      }
     }
 
+    // 상태 전이 성공(changes===1) 시에만 side-effect 실행.
     await writeAuditLog(c, {
       action: body.action === 'approve' ? 'supplier_product_approve' : 'supplier_product_reject',
       targetType: 'product', targetId: String(pid),
@@ -713,24 +727,33 @@ adminProductsRoutes.patch('/supplier-products/:id/price-change', cors(), async (
       const newSupply = Math.floor(Number(existing.pending_supply_price));
       const newRetail = existing.pending_retail_price != null ? Math.floor(Number(existing.pending_retail_price)) : existing.price;
       // 라이브 가격 반영 + pending 클리어. (admin_memo 갱신)
-      await DB.prepare(
+      // CAS: pending_supply_price 가 아직 살아있을 때만 처리 (동시 승인/거부 중복 방지).
+      const upd = await DB.prepare(
         `UPDATE products
             SET supply_price = ?, price = ?, admin_memo = ?,
                 pending_supply_price = NULL, pending_retail_price = NULL, pending_price_url = NULL,
                 pending_price_reason = NULL, pending_price_requested_at = NULL, updated_at = datetime('now')
-          WHERE id = ?`
+          WHERE id = ? AND pending_supply_price IS NOT NULL`
       ).bind(newSupply, newRetail, body.admin_memo || null, pid).run();
+      if ((upd.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '이미 처리된 요청' }, 409);
+      }
       // 공급가 변경 이력 (관리자만 확인).
       await recordSupplyPriceChange(DB, Number(pid), existing.supplier_id, existing.supply_price, newSupply, `admin:price-change`);
     } else {
-      await DB.prepare(
+      // CAS: pending 요청이 살아있을 때만 폐기 (동시 처리 중복 방지).
+      const upd = await DB.prepare(
         `UPDATE products
             SET admin_memo = ?, pending_supply_price = NULL, pending_retail_price = NULL, pending_price_url = NULL,
                 pending_price_reason = NULL, pending_price_requested_at = NULL, updated_at = datetime('now')
-          WHERE id = ?`
+          WHERE id = ? AND pending_supply_price IS NOT NULL`
       ).bind(body.admin_memo || null, pid).run();
+      if ((upd.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '이미 처리된 요청' }, 409);
+      }
     }
 
+    // 상태 전이 성공(changes===1) 시에만 side-effect(audit·알림) 실행.
     await writeAuditLog(c, {
       action: body.action === 'approve' ? 'supplier_price_change_approve' : 'supplier_price_change_reject',
       targetType: 'product', targetId: String(pid),
