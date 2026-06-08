@@ -11,6 +11,7 @@ import {
   WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES,
 } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
+import WholesaleFooter from './wholesale/WholesaleFooter'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 
@@ -770,6 +771,8 @@ export default function WholesaleCatalogPage() {
           </div>
         </section>
       </main>
+
+      <WholesaleFooter />
 
       {gradeOpen && <GradeSheet current={grade} onClose={() => setGradeOpen(false)} />}
     </div>
