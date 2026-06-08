@@ -41,9 +41,12 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
   // 지수 백오프 — 연속 실패 시 폴링 간격을 30s → 60s → 120s → 240s 최대로 증가
   // 성공하면 즉시 30s 로 복귀. 백엔드 장애 시 클라이언트 대량 호출로 인한 D1 quota 소진 방지.
   const fetchNotifications = useCallback(async (): Promise<boolean> => {
-    if (!localStorage.getItem(tokenKey)) return true
+    // 🛡️ 2026-06-08: 벨의 컨텍스트 토큰(tokenKey)을 명시적으로 첨부 — 인터셉터의 agency>admin>seller
+    //   우선순위가 다른 역할 토큰을 붙여 '어드민 알림이 안 옴'(다른 역할로 인증)하던 버그 수정.
+    const tk = localStorage.getItem(tokenKey)
+    if (!tk) return true
     try {
-      const res = await api.get('/api/dashboard-notifications?unread_only=false&limit=10')
+      const res = await api.get('/api/dashboard-notifications?unread_only=false&limit=10', { headers: { Authorization: `Bearer ${tk}` } })
       if (res.data?.notifications) {
         setNotifications(res.data.notifications)
         setUnreadCount(res.data.unread_count || 0)
@@ -102,18 +105,20 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
   }, [])
 
   async function markAllRead() {
-    if (!localStorage.getItem(tokenKey)) return
+    const tk = localStorage.getItem(tokenKey)
+    if (!tk) return
     try {
-      await api.put('/api/dashboard-notifications/read-all')
+      await api.put('/api/dashboard-notifications/read-all', null, { headers: { Authorization: `Bearer ${tk}` } })
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
       setUnreadCount(0)
     } catch { /* ignore */ }
   }
 
   async function markRead(id: number) {
-    if (!localStorage.getItem(tokenKey)) return
+    const tk = localStorage.getItem(tokenKey)
+    if (!tk) return
     try {
-      await api.put(`/api/dashboard-notifications/${id}/read`)
+      await api.put(`/api/dashboard-notifications/${id}/read`, null, { headers: { Authorization: `Bearer ${tk}` } })
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
     } catch { /* ignore */ }
