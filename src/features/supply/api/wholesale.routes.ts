@@ -137,6 +137,46 @@ async function loadQtyTiers(DB: D1Database, productIds: number[]): Promise<Map<n
   return map
 }
 
+// ── BIZ-4 (2026-06-08) 카탈로그 검색/정렬/필터 헬퍼 ──────────────────────────────
+//   모두 query-param 게이트 — 파라미터 없는 기본 요청은 기존 SQL/ORDER BY 와 byte-identical.
+
+/**
+ * FTS5(products_fts) 가용 여부 module-memo. 소비자몰과 동일 virtual table(migration 0080:
+ * name/description/category, content=products, content_rowid=id) 재사용. 없는 환경(미마이그레이션)
+ * 이면 1회 probe 후 false 기억 → LIKE fallback. ProductRepository 의 graceful-degradation 패턴 답습.
+ */
+let _ftsAvail: boolean | null = null
+async function ftsAvailable(DB: D1Database): Promise<boolean> {
+  if (_ftsAvail !== null) return _ftsAvail
+  try {
+    await DB.prepare("SELECT 1 FROM products_fts WHERE products_fts MATCH 'a' LIMIT 1").all()
+    _ftsAvail = true
+  } catch {
+    _ftsAvail = false
+  }
+  return _ftsAvail
+}
+
+/**
+ * FTS5 MATCH 질의 문자열 sanitize — 특수문자 제거 + prefix wildcard(`"스타"*` → "스타벅스" 매칭).
+ * ProductRepository.searchProductsFts 의 토큰화와 동일 컨벤션(동의어 확장은 생략 — B2B 카탈로그).
+ * 토큰 0개면 null → 호출측이 검색 skip.
+ */
+function buildFtsMatch(raw: string): string | null {
+  const tokens = raw.trim().replace(/["*^():~+\-]/g, ' ').replace(/\s+/g, ' ').split(' ').filter(t => t.length >= 1)
+  if (!tokens.length) return null
+  return tokens.map(t => `"${t}"*`).join(' ')
+}
+
+/** sort 파라미터 → 안전한 ORDER BY (화이트리스트만; injection 불가). 미지정/미허용 = popular(현행 정렬). */
+const CATALOG_SORT_ORDER: Record<string, string> = {
+  popular:    'COALESCE(p.sold_count,0) DESC, p.created_at DESC', // = 기본(현행) 정렬 — 변경 금지
+  price_low:  'COALESCE(p.supply_price,0) ASC, p.created_at DESC',
+  price_high: 'COALESCE(p.supply_price,0) DESC, p.created_at DESC',
+  discount:   'COALESCE(p.discount_rate,0) DESC, p.created_at DESC',
+  newest:     'p.created_at DESC, p.id DESC',
+}
+
 // ── POST /register — 유통사(도매 바이어) 경량 전용 가입 ─────────────────────────────
 //   라이브커머스 셀러 온보딩(유튜브·NTS·seller_type)과 분리. seller 계정을 재사용하되
 //   distributor_grade='C' + is_distributor=1 로 표시 → /seller 대시보드 대신 /wholesale 에서 완결.
@@ -433,6 +473,8 @@ app.get('/recent-items', async (c) => {
 })
 
 // ── GET /catalog ────────────────────────────────────────────────────────────
+//   🔭 향후(BIZ-4 후속, OUT OF SCOPE): 품절 상품 '재입고 알림 구독'(restock-alert) — 별도 구독 테이블 +
+//      재고 0→N 전환 감지 cron + 알림 발송 필요. 이번 작업 범위 아님(검색/정렬/필터만).
 app.get('/catalog', async (c) => {
   // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
   //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
@@ -441,10 +483,18 @@ app.get('/catalog', async (c) => {
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-  const limit = Math.min(parseInt(c.req.query('limit') || '24', 10), 100)
+  const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '24', 10) || 24, 1), 100)
   const offset = (page - 1) * limit
-  const search = c.req.query('search') || ''
-  const category = c.req.query('category') || ''
+  const search = (c.req.query('search') || '').slice(0, 100)
+  const category = (c.req.query('category') || '').slice(0, 80)
+  // ── BIZ-4 추가 파라미터 (모두 optional, 기본 미지정이면 현행 동작 불변) ──
+  const sortParam = c.req.query('sort') || ''
+  const sortKey = Object.prototype.hasOwnProperty.call(CATALOG_SORT_ORDER, sortParam) ? sortParam : ''
+  const minPriceQ = Number(c.req.query('min_price'))
+  const maxPriceQ = Number(c.req.query('max_price'))
+  const minPrice = Number.isFinite(minPriceQ) && minPriceQ >= 0 ? Math.floor(minPriceQ) : null
+  const maxPrice = Number.isFinite(maxPriceQ) && maxPriceQ >= 0 ? Math.floor(maxPriceQ) : null
+  const inStock = c.req.query('in_stock') === '1'
 
   try {
     const hasCol = await DB.prepare(
@@ -463,8 +513,30 @@ app.get('/catalog', async (c) => {
     // + 공급 범위(supply_visibility) 가시성: ALL 이거나 허용목록(선정된 유통회원)에 포함.
     let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
     const params: (string | number)[] = [visBind]
-    if (search) { where += ' AND p.name LIKE ?'; params.push(`%${search}%`) }
+    // ── 검색: FTS5(products_fts) 가용 시 name/description/category 전문검색, 아니면 LIKE 다컬럼 fallback.
+    //   visibilityWhere 는 항상 AND-ed (FROM products p 구조 불변 — FTS 는 rowid subquery 로 합류).
+    //   ⚠️ products 스키마에 brand_name/barcode 컬럼이 없어 그 두 컬럼 검색은 생략(있는 컬럼만).
+    if (search) {
+      const useFts = await ftsAvailable(DB)
+      const match = useFts ? buildFtsMatch(search) : null
+      if (useFts && match) {
+        where += ' AND p.id IN (SELECT rowid FROM products_fts WHERE products_fts MATCH ?)'
+        params.push(match)
+      } else {
+        where += ' AND (p.name LIKE ? OR p.description LIKE ?)'
+        params.push(`%${search}%`, `%${search}%`)
+      }
+    }
     if (category) { where += ' AND p.category = ?'; params.push(category) }
+    // ── 가격대 필터: distributor_price 는 등급별 서버 계산값이라 SQL 에서 직접 못 씀.
+    //   supply_price(제조사 공급원가) 는 distributor_price 와 단조증가 관계(등급마진 적용) → 합리적 proxy.
+    //   ⚠️ 비노출 컬럼이지만 필터 조건(WHERE)에만 사용, 응답엔 노출 X. 단위: 원(KRW).
+    if (minPrice !== null) { where += ' AND COALESCE(p.supply_price,0) >= ?'; params.push(minPrice) }
+    if (maxPrice !== null) { where += ' AND COALESCE(p.supply_price,0) <= ?'; params.push(maxPrice) }
+    if (inStock) { where += ' AND COALESCE(p.stock,0) > 0' }
+
+    // 정렬: 화이트리스트만(injection 불가). 미지정 = 현행 popular 정렬과 동일 리터럴.
+    const orderBy = CATALOG_SORT_ORDER[sortKey] || CATALOG_SORT_ORDER.popular
 
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
@@ -474,7 +546,7 @@ app.get('/catalog', async (c) => {
              COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE ${where}
-      ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC
+      ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;

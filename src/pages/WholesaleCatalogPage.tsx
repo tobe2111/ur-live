@@ -1,9 +1,12 @@
 import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard } from 'lucide-react'
-import { useWholesaleCatalog, useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck } from 'lucide-react'
+import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
@@ -345,17 +348,72 @@ function GradeSheet({ current, onClose }: { current: string; onClose: () => void
   )
 }
 
+// ── BIZ-4 (2026-06-08) 카탈로그 검색/정렬/필터 컨트롤 정의 ──────────────────────
+//   서버 `/catalog` 파라미터(sort/category/in_stock/min_price/max_price)에 1:1 매핑.
+//   ⚠️ 기본값('popular'/cat 'all'/재고off/가격 미설정)은 쿼리스트링에서 생략 → 기본 요청 URL 불변.
+type CatalogSort = 'popular' | 'price_low' | 'price_high' | 'discount' | 'newest'
+const CATALOG_SORTS: { id: CatalogSort; label: string; defaultLabel: string }[] = [
+  { id: 'popular', label: 'wholesale.sort.popular', defaultLabel: '인기순' },
+  { id: 'price_low', label: 'wholesale.sort.priceLow', defaultLabel: '가격 낮은순' },
+  { id: 'price_high', label: 'wholesale.sort.priceHigh', defaultLabel: '가격 높은순' },
+  { id: 'discount', label: 'wholesale.sort.discount', defaultLabel: '할인율순' },
+  { id: 'newest', label: 'wholesale.sort.newest', defaultLabel: '신상품순' },
+]
+// 가격대 프리셋(원, supply_price proxy 기준 — 서버 주석 참조). null = 상한 없음.
+const PRICE_BANDS: { id: string; label: string; min: number | null; max: number | null }[] = [
+  { id: 'p1', label: '~1만원', min: null, max: 10000 },
+  { id: 'p2', label: '1~3만원', min: 10000, max: 30000 },
+  { id: 'p3', label: '3~5만원', min: 30000, max: 50000 },
+  { id: 'p4', label: '5만원~', min: 50000, max: null },
+]
+
 export default function WholesaleCatalogPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
 
   const [search, setSearch] = useState('')
   const [committedSearch, setCommittedSearch] = useState('')
   const [cat, setCat] = useState('all')
-  const [sort, setSort] = useState<'rec' | 'low' | 'margin'>('rec')
+  const [sort, setSort] = useState<CatalogSort>('popular')
+  const [inStock, setInStock] = useState(false)
+  const [priceBand, setPriceBand] = useState<string>('')   // PRICE_BANDS.id | ''
   const [gradeOpen, setGradeOpen] = useState(false)
 
-  const catalogQ = useWholesaleCatalog(committedSearch)
+  // 검색 디바운스(300ms) — 타이핑마다 fetch 폭주 방지. form submit 도 즉시 커밋.
+  useEffect(() => {
+    const id = setTimeout(() => setCommittedSearch(search.trim()), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  // 활성 가격대 → min/max (원). 미선택이면 둘 다 null.
+  const band = useMemo(() => PRICE_BANDS.find(b => b.id === priceBand) ?? null, [priceBand])
+
+  // ── 서버사이드 카탈로그 쿼리(BIZ-4) — 모든 컨트롤을 `/catalog` 파라미터에 위임.
+  //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
+  //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
+  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}`
+  const catalogQ = useQuery<CatalogItem[]>({
+    queryKey: queryKeys.wholesale('catalog', catalogKey),
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (committedSearch) params.set('search', committedSearch)
+      if (cat !== 'all') params.set('category', cat)
+      if (sort !== 'popular') params.set('sort', sort)
+      if (inStock) params.set('in_stock', '1')
+      if (band?.min != null) params.set('min_price', String(band.min))
+      if (band?.max != null) params.set('max_price', String(band.max))
+      const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+      const qs = params.toString()
+      return api
+        .get(`/api/wholesale/catalog${qs ? `?${qs}` : '?'}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+        .then((r) => (r.data?.success ? ((r.data.items || []) as CatalogItem[]) : []))
+        .catch(() => [])
+    },
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
   const meQ = useWholesaleMe()
   const homeQ = useWholesaleHome()
   // 이번달 사입액 (거래내역서 summary 재사용).
@@ -367,27 +425,30 @@ export default function WholesaleCatalogPage() {
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; special_discount_until: string | null } | null
   const home = homeQ.data
   const loading = catalogQ.isLoading
-  // 클라 필터/정렬 (카테고리·정렬) — 그리드.
-  const items = useMemo(() => {
-    let list = allItems.filter((p) => cat === 'all' || p.category === cat)
-    list = [...list].sort((a, b) =>
-      sort === 'low' ? (a.distributor_price ?? 0) - (b.distributor_price ?? 0) :
-      sort === 'margin' ? marginRate(b.distributor_price ?? 0, b.retail_price || 0) - marginRate(a.distributor_price ?? 0, a.retail_price || 0) :
-      (b.sold_count || 0) - (a.sold_count || 0))
-    return list
-  }, [allItems, cat, sort])
+  // 그리드 = 서버가 이미 검색/카테고리/정렬/필터 적용한 결과 그대로(클라 재정렬/재필터 없음).
+  const items = allItems
 
+  // 카테고리 칩/카운트 = 홈 endpoint 의 전체 카테고리 분포(서버 카테고리 필터와 무관하게 안정).
+  //   홈 데이터 없으면(비로그인 등) 현재 로드된 아이템에서 파생 — 기존 동작 보존.
   const catCounts = useMemo(() => {
-    const m: Record<string, number> = { all: allItems.length }
-    for (const p of allItems) if (p.category) m[p.category] = (m[p.category] || 0) + 1
+    const m: Record<string, number> = {}
+    if (home?.categories?.length) {
+      let total = 0
+      for (const c2 of home.categories) { m[c2.key] = c2.count; total += c2.count }
+      m.all = total
+    } else {
+      m.all = allItems.length
+      for (const p of allItems) if (p.category) m[p.category] = (m[p.category] || 0) + 1
+    }
     return m
-  }, [allItems])
+  }, [home?.categories, allItems])
 
   // 카테고리 칩/사이드바 = 실제 상품에 존재하는 카테고리만(데이터 기반). 알려진 id 는 한글 라벨,
   // 모르는 값은 원본 문자열 그대로 — 공급자가 자유 입력해도 필터가 항상 동작.
   const cats = useMemo<CatOpt[]>(() => {
     const present = new Set<string>()
-    for (const p of allItems) if (p.category) present.add(p.category)
+    if (home?.categories?.length) { for (const c2 of home.categories) if (c2.key) present.add(c2.key) }
+    else { for (const p of allItems) if (p.category) present.add(p.category) }
     const labelOf = new Map(WHOLESALE_CATEGORIES.map(c => [c.id, c.label]))
     const known = WHOLESALE_CATEGORIES
       .filter(c => c.id !== 'all' && present.has(c.id))
@@ -398,7 +459,7 @@ export default function WholesaleCatalogPage() {
       .sort((a, b) => (catCounts[b] || 0) - (catCounts[a] || 0))
       .map(id => ({ id, label: labelOf.get(id) || id }))
     return [{ id: 'all', label: '전체' }, ...known, ...unknown]
-  }, [allItems, catCounts])
+  }, [home?.categories, allItems, catCounts])
 
   const recentQ = useWholesaleRecentItems()
   const recent = (recentQ.data ?? []) as ReorderItem[]
@@ -539,7 +600,6 @@ export default function WholesaleCatalogPage() {
     } finally { setBulkBusy(false) }
   }
 
-  const SORTS: [typeof sort, string][] = [['rec', '인기순'], ['low', '낮은 공급가'], ['margin', '높은 마진']]
   const monthSpend = stmtQ.data?.summary?.total_paid ?? 0
   const orderCount = stmtQ.data?.summary?.count ?? 0
   const grade = me?.grade || home?.grade || 'C'
@@ -613,14 +673,20 @@ export default function WholesaleCatalogPage() {
         </div>
         {/* 검색 */}
         <div className="ur-content-wide px-5 lg:px-8 pb-3">
-          <form onSubmit={e => { e.preventDefault(); setCommittedSearch(search) }} className="relative max-w-2xl">
+          <form onSubmit={e => { e.preventDefault(); setCommittedSearch(search.trim()) }} className="relative max-w-2xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: WT.ink4 }} />
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="상품명으로 검색"
-              className="w-full pl-10 pr-3 h-11 rounded-xl text-[14px] outline-none"
+              placeholder={t('wholesale.searchPlaceholder', { defaultValue: '상품명·설명으로 검색' })}
+              className="w-full pl-10 pr-10 h-11 rounded-xl text-[14px] outline-none"
               style={{ background: WT.fill, color: WT.ink }}
             />
+            {search && (
+              <button type="button" onClick={() => { setSearch(''); setCommittedSearch('') }} aria-label={t('common.clear', { defaultValue: '지우기' })}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full" style={{ color: WT.ink4 }}>
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </form>
         </div>
         {/* 🏭 2026-06-04 (사용자 신고 — 모바일 기능버튼 누락): 로그인 유통회원의 핵심 메뉴가 헤더에서
@@ -725,13 +791,48 @@ export default function WholesaleCatalogPage() {
         <section className="pt-6 pb-10">
           <SectionHead title={cat === 'all' ? '전체 상품' : (cats.find(c => c.id === cat)?.label || '상품')} sub={comma(items.length) + '개'} />
           <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex gap-1.5">
-              {SORTS.map(([k, l]) => (
-                <button key={k} onClick={() => setSort(k)} className="rounded-full px-3 h-8 text-[12px] font-bold whitespace-nowrap"
-                  style={sort === k ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink3 }}>{l}</button>
-              ))}
+          {/* ── BIZ-4 정렬/필터 컨트롤바 (서버사이드 /catalog 파라미터에 위임) ── */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {/* 정렬 드롭다운 */}
+            <div className="relative shrink-0">
+              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: WT.ink3 }} />
+              <select
+                value={sort} onChange={e => setSort(e.target.value as CatalogSort)}
+                aria-label={t('wholesale.sortLabel', { defaultValue: '정렬' })}
+                className="appearance-none h-9 pl-8 pr-7 rounded-full text-[13px] font-bold outline-none cursor-pointer"
+                style={{ background: WT.fill, color: WT.ink }}>
+                {CATALOG_SORTS.map(s => (
+                  <option key={s.id} value={s.id}>{t(s.label, { defaultValue: s.defaultLabel })}</option>
+                ))}
+              </select>
+              <ChevronRight className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rotate-90" style={{ color: WT.ink3 }} />
             </div>
+            {/* 재고있음 토글 */}
+            <button onClick={() => setInStock(v => !v)} aria-pressed={inStock}
+              className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-bold whitespace-nowrap transition-colors"
+              style={inStock ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink3 }}>
+              <PackageCheck className="w-3.5 h-3.5" />{t('wholesale.inStock', { defaultValue: '재고있음' })}
+            </button>
+            {/* 가격대 칩 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {PRICE_BANDS.map(b => {
+                const on = priceBand === b.id
+                return (
+                  <button key={b.id} onClick={() => setPriceBand(on ? '' : b.id)} aria-pressed={on}
+                    className="shrink-0 rounded-full px-3 h-9 text-[13px] font-bold whitespace-nowrap transition-colors"
+                    style={on ? { background: WT.brand, color: '#fff' } : { background: WT.fill, color: WT.ink3 }}>
+                    {b.label}
+                  </button>
+                )
+              })}
+            </div>
+            {/* 필터 초기화 (활성 필터 있을 때만) */}
+            {(inStock || priceBand || cat !== 'all' || sort !== 'popular' || committedSearch) && (
+              <button onClick={() => { setInStock(false); setPriceBand(''); setCat('all'); setSort('popular'); setSearch(''); setCommittedSearch('') }}
+                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: WT.ink3 }}>
+                <X className="w-3.5 h-3.5" />{t('wholesale.resetFilters', { defaultValue: '필터 초기화' })}
+              </button>
+            )}
           </div>
           {loggedIn && (
             <div className="mb-4 rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: WT.fill2 }}>
