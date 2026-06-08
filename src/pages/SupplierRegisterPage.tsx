@@ -11,6 +11,7 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
+import { isSupplierLoggedIn } from '@/lib/supplier-api'
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
@@ -19,9 +20,13 @@ export default function SupplierRegisterPage() {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 🏭 2026-06-08 카카오 통합 (유통회원 WholesaleJoinPage 와 대칭):
+  //   카카오로 로그인된 유저(아직 제조회원 아님) → 이메일/비번 없이 사업자 정보만 입력 후 /api/supplier/become.
+  const kakaoUser = typeof window !== 'undefined' && !isSupplierLoggedIn() && !!localStorage.getItem('user_id')
   const [form, setForm] = useState({
     business_name: '', business_number: '', representative: '',
-    email: '', phone: '', password: '',
+    email: (typeof window !== 'undefined' && localStorage.getItem('user_email')) || '',
+    phone: '', password: '',
     bank_name: '', bank_account: '', account_holder: '',
   })
 
@@ -43,28 +48,45 @@ export default function SupplierRegisterPage() {
     if (!form.business_name.trim()) { fail(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
     if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { fail(t('supplier.errBizNum', { defaultValue: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' })); return }
     if (!licenseUrl) { fail(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
-    if (form.password.length < 8) { fail(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
-    if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { fail(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
+    // 카카오 가입은 이메일/비번 불필요 — 일반(이메일) 가입만 비번 검증.
+    if (!kakaoUser) {
+      if (form.password.length < 8) { fail(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
+      if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { fail(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
+    }
     setLoading(true)
     try {
-      const res = await fetch('/api/supplier/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          business_name: form.business_name.trim(),
-          business_number: form.business_number.trim(),
-          representative: form.representative.trim() || undefined,
-          email: form.email.trim(),
-          phone: form.phone.trim() || undefined,
-          password: form.password,
-          bank_name: form.bank_name.trim() || undefined,
-          bank_account: form.bank_account.trim() || undefined,
-          account_holder: form.account_holder.trim() || undefined,
-          business_license_url: licenseUrl || undefined,
-        }),
-      })
-      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string }
+      // 카카오 유저 → /become(세션 인증, 사업자 정보만), 그 외 → /register(이메일/비번).
+      const url = kakaoUser ? '/api/supplier/become' : '/api/supplier/register'
+      const payload = kakaoUser
+        ? {
+            business_name: form.business_name.trim(),
+            business_number: form.business_number.trim(),
+            representative: form.representative.trim() || undefined,
+            phone: form.phone.trim() || undefined,
+            business_license_url: licenseUrl || undefined,
+          }
+        : {
+            business_name: form.business_name.trim(),
+            business_number: form.business_number.trim(),
+            representative: form.representative.trim() || undefined,
+            email: form.email.trim(),
+            phone: form.phone.trim() || undefined,
+            password: form.password,
+            bank_name: form.bank_name.trim() || undefined,
+            bank_account: form.bank_account.trim() || undefined,
+            account_holder: form.account_holder.trim() || undefined,
+            business_license_url: licenseUrl || undefined,
+          }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      // /become 는 requireAuth — 카카오 유저 세션 토큰(있으면) 첨부.
+      if (kakaoUser && typeof window !== 'undefined') {
+        const tok = localStorage.getItem('access_token') || localStorage.getItem('token')
+        if (tok) headers.Authorization = `Bearer ${tok}`
+      }
+      const res = await fetch(url, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) })
+      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; status?: string }
       if (!res.ok || !data.success) throw new Error(data.error || t('supplier.registerFailed', { defaultValue: '가입에 실패했습니다' }))
+      // 카카오 가입(/become) 신규 신청 → status==='pending'. (needs_registration 은 빈 body probe 응답이라 여기 안 옴.)
       setDone(true)
       toast.success(t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' }))
     } catch (err) {
@@ -110,6 +132,13 @@ export default function SupplierRegisterPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('supplier.registerTitle', { defaultValue: '공급자 가입' })}</h1>
           <p className="text-sm text-gray-500 mb-6">{t('supplier.registerSubtitle', { defaultValue: '도매 공급상품을 등록하고 정산받으세요. 관리자 승인 후 이용 가능합니다.' })}</p>
 
+          {/* 🏭 2026-06-08 카카오 통합 (WholesaleJoinPage 와 대칭): 카카오로 로그인된 유저는 사업자 정보만 입력. */}
+          {kakaoUser && (
+            <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: '#FEF6D9', color: '#7A5C00' }}>
+              {t('supplier.kakaoModeNotice', { defaultValue: '카카오 계정으로 진행 중 — 사업자 정보만 입력하면 승인 심사로 넘어갑니다.' })}
+            </div>
+          )}
+
           {error && (
             <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-sm text-red-700">{error}</p>
@@ -133,34 +162,61 @@ export default function SupplierRegisterPage() {
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
             <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
-            <div>
-              <label className={labelCls}>{t('common.email', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
-              <input required type="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* 카카오 유저는 이메일/비번/정산계좌 불필요 (세션 인증 + 나중 등록). 일반 가입만 노출. */}
+            {!kakaoUser && (
+              <>
+                <div>
+                  <label className={labelCls}>{t('common.email', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
+                  <input required type="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>{t('supplier.fieldPhone', { defaultValue: '연락처' })}</label>
+                    <input disabled={loading} value={form.phone} onChange={set('phone')} className={inputCls} placeholder="010-0000-0000" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('common.password', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
+                    <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 mb-3 mt-3">{t('supplier.settlementInfo', { defaultValue: '정산 계좌 (선택 — 나중에 등록 가능)' })}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <input disabled={loading} value={form.bank_name} onChange={set('bank_name')} className={inputCls} placeholder={t('supplier.phBank', { defaultValue: '은행' })} />
+                    <input disabled={loading} value={form.bank_account} onChange={set('bank_account')} className={`${inputCls} col-span-2`} placeholder={t('supplier.phAccount', { defaultValue: '계좌번호' })} />
+                  </div>
+                  <input disabled={loading} value={form.account_holder} onChange={set('account_holder')} className={`${inputCls} mt-3`} placeholder={t('supplier.phHolder', { defaultValue: '예금주' })} />
+                </div>
+              </>
+            )}
+            {/* 카카오 유저: 연락처(선택)만 별도 노출 (이메일/비번 대신). */}
+            {kakaoUser && (
               <div>
                 <label className={labelCls}>{t('supplier.fieldPhone', { defaultValue: '연락처' })}</label>
                 <input disabled={loading} value={form.phone} onChange={set('phone')} className={inputCls} placeholder="010-0000-0000" />
               </div>
-              <div>
-                <label className={labelCls}>{t('common.password', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
-                <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-500 mb-3 mt-3">{t('supplier.settlementInfo', { defaultValue: '정산 계좌 (선택 — 나중에 등록 가능)' })}</p>
-              <div className="grid grid-cols-3 gap-3">
-                <input disabled={loading} value={form.bank_name} onChange={set('bank_name')} className={inputCls} placeholder={t('supplier.phBank', { defaultValue: '은행' })} />
-                <input disabled={loading} value={form.bank_account} onChange={set('bank_account')} className={`${inputCls} col-span-2`} placeholder={t('supplier.phAccount', { defaultValue: '계좌번호' })} />
-              </div>
-              <input disabled={loading} value={form.account_holder} onChange={set('account_holder')} className={`${inputCls} mt-3`} placeholder={t('supplier.phHolder', { defaultValue: '예금주' })} />
-            </div>
+            )}
 
             <button type="submit" disabled={loading} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#FF0033] to-pink-500 text-white font-semibold text-sm disabled:opacity-60 mt-2">
               {loading ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.registerButton', { defaultValue: '가입 신청' })}
             </button>
           </form>
+
+          {/* 🏭 2026-06-08 카카오로 간편 가입 — 비-카카오 사용자에게만 노출 (사업자 정보는 동일 입력). WholesaleJoinPage 와 대칭. */}
+          {!kakaoUser && (
+            <>
+              <div className="relative my-5 flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400">{t('common.or', { defaultValue: '또는' })}</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+              <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/register&intent=user' }}
+                className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
+                {t('supplier.kakaoStart', { defaultValue: '카카오로 시작하기' })}
+              </button>
+            </>
+          )}
 
           <p className="mt-6 text-center text-sm text-gray-600">
             {t('supplier.haveAccount', { defaultValue: '이미 계정이 있으신가요?' })}{' '}

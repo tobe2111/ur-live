@@ -14,6 +14,10 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { maskEmail } from '@/lib/mask';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+
+// fail-soft 알림 발송 (가입 흐름이 알림 실패로 깨지지 않도록).
+const swallowNotify = (tag: string) => (err: unknown) => { if (import.meta.env.DEV) console.warn(`[supplier-auth] ${tag}`, err); };
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; ENVIRONMENT?: string };
 
@@ -114,6 +118,9 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 // ── POST /become — 카카오(일반 유저) → 제조회원 입점/로그인 ──────────────────────────
 //   카카오 통합: 유저 세션으로 제조회원 행을 생성/연결(linked_user_id). 제조회원은 어드민 승인 필요라
 //   신규/미승인은 status='pending'(토큰 X), 승인됨이면 supplier_token 발급. 카카오 콜백 코어는 미변경.
+//   🏭 2026-06-08: 유통회원(/become-distributor)과 대칭으로 카카오 회원가입(create-from-kakao) 지원.
+//     선택 body { business_name, business_number, representative, phone, business_license_url } 를 받아
+//     신규 유저면 suppliers 행을 status='pending' 으로 생성(+어드민 알림). 빈 body probe → needs_registration(200).
 supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_become', max: 10, windowSec: 600 }), async (c) => {
   const { DB } = c.env;
   const authed = c.get('user' as never) as { id?: string | number; email?: string; name?: string; type?: string } | undefined;
@@ -121,6 +128,16 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
   const userId = Number(authed.id);
   if (!Number.isFinite(userId) || userId <= 0) return c.json({ success: false, error: '유효하지 않은 사용자입니다' }, 400);
   try {
+    const body = await c.req.json<{
+      business_name?: string; business_number?: string; representative?: string;
+      phone?: string; business_license_url?: string;
+    }>().catch(() => ({} as Record<string, never>));
+    const business_name = String(body.business_name || '').trim();
+    const business_number = String(body.business_number || '').trim();
+    const representative = String(body.representative || '').trim();
+    const phone = String(body.phone || '').trim();
+    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500);
+
     await ensureSupplierSchema(DB);
     // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
     await DB.prepare('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0').run().catch(() => {});
@@ -145,9 +162,40 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
         sup = byEmail;
       }
     }
-    // 3) 없으면 — 사업자 정보(상호·사업자번호 등) 입점 신청 필요. 자동 생성 X → 입점 폼으로 유도.
+    // 3) 신규 유저 — 사업자 정보로 제조회원 행 생성(status='pending', 어드민 승인 대기).
+    //   🏭 2026-06-08: 빈 body 자동 probe(로그인/카탈로그 후 '기존 제조회원 자동연결' 시도)는 에러가 아니라
+    //   '가입 필요' 상태 — 신규 유저에게 400(콘솔 에러·오해) 대신 needs_registration(200) 반환.
+    //   사업자 정보가 하나라도 들어온 실제 신청만 아래 필드 검증으로 400 처리. (유통회원 /become-distributor 와 대칭)
     if (!sup) {
-      return c.json({ success: true, status: 'needs_registration', message: '제조회원 입점 신청(사업자 정보)이 필요합니다' });
+      if (!business_name && !business_number && !business_license_url) {
+        return c.json({ success: true, status: 'needs_registration', message: '제조회원 입점 신청(사업자 정보)이 필요합니다' });
+      }
+      if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400);
+      if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400);
+      if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400);
+      if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400);
+
+      // 같은 이메일로 이미 가입된(연결 안 된) 제조회원이 있으나 미verified 라 위 자동연결을 못 탄 경우 → 중복 생성 방지.
+      const dupe = await DB.prepare('SELECT id FROM suppliers WHERE email = ? LIMIT 1').bind(email).first<{ id: number }>().catch(() => null);
+      if (dupe) return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409);
+
+      // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
+      const ins = await DB.prepare(`
+        INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
+          business_license_url, linked_user_id, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, '', ?, ?, 'pending', datetime('now'), datetime('now'))
+      `).bind(
+        business_name, business_number, representative || null, email, phone || null,
+        business_license_url || null, userId,
+      ).run();
+      const sid = Number(ins.meta?.last_row_id);
+      if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);
+
+      // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.
+      createDashboardNotification(DB, 'admin', null, 'supplier_pending', '제조회원 승인 요청',
+        `${business_name} (${business_number})`, '/admin/suppliers').catch(swallowNotify('become:notify'));
+
+      return c.json({ success: true, status: 'pending', message: '제조회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' });
     }
     // 승인 전이면 토큰 없이 대기 안내.
     if (sup.status !== 'approved') {
