@@ -4,7 +4,7 @@
  *   제조회원(제조사) → /supplier/register, 유통회원(유통사) → /wholesale/join.
  */
 import { useNavigate } from 'react-router-dom'
-import SEO from '@/components/SEO'
+import SEO, { wholesaleStoreJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/components/SEO'
 import { Factory, Store, ArrowRight, PackageCheck, TrendingDown, FileSpreadsheet, ShieldCheck, Boxes, Layers } from 'lucide-react'
 
 export default function WholesaleIntroPage() {
@@ -13,18 +13,33 @@ export default function WholesaleIntroPage() {
   return (
     <div className="min-h-screen bg-white text-[#17181C]">
       <SEO
-        title="유통스타트 — B2B 도매몰 | 제조사·유통사 직거래 플랫폼"
-        description="제조사와 유통사를 직접 잇는 B2B 도매 플랫폼. 등급별 공급가, OEM/ODM 제작, 대량 주문·송장 엑셀, 위탁배송까지. 제조사 입점·유통사 가입 무료."
+        domain="wholesale"
+        title="도매사이트 유통스타트 — 제조사 직거래 B2B 도매가 사입·무재고 위탁판매"
+        description="제조사와 유통사를 직접 잇는 B2B 도매사이트. 등급별 도매가(공급가) 사입, OEM/ODM 제작, 무재고 위탁판매·대량 주문 엑셀까지. 제조사 입점·유통사 도매 회원가입 무료."
         url="/wholesale/intro"
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'Service',
-          name: '유통스타트 B2B 도매몰',
-          serviceType: 'B2B 도매 유통 플랫폼',
-          description: '제조사와 유통사를 직접 잇는 B2B 도매 플랫폼 — 등급별 공급가, OEM/ODM 제작 매칭, 대량 주문·송장 엑셀, 위탁배송.',
-          areaServed: 'KR',
-          provider: { '@type': 'Organization', name: '유통스타트', url: 'https://utongstart.com' },
-        }}
+        jsonLd={[
+          wholesaleStoreJsonLd,
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Service',
+            name: '유통스타트 B2B 도매몰',
+            serviceType: 'B2B 도매 유통 플랫폼',
+            description: '제조사와 유통사를 직접 잇는 B2B 도매사이트 — 등급별 도매가 사입, OEM/ODM 제작 매칭, 무재고 위탁판매·대량 주문 엑셀, 위탁배송.',
+            areaServed: 'KR',
+            provider: { '@type': 'Organization', name: '유통스타트', url: 'https://utongstart.com' },
+          },
+          breadcrumbJsonLd([
+            { name: '유통스타트', url: 'https://utongstart.com/wholesale' },
+            { name: '도매몰 소개', url: 'https://utongstart.com/wholesale/intro' },
+          ]),
+          faqJsonLd([
+            { q: '유통스타트는 어떤 도매사이트인가요?', a: '제조사와 유통사(사입 바이어)를 직접 잇는 B2B 도매 플랫폼입니다. 유통사는 검증된 제조사 상품을 등급별 도매가(공급가)로 사입할 수 있고, 제조사는 영업 없이 전국 유통 채널에 상품을 공급할 수 있어요.' },
+            { q: '가입비나 월 고정비가 있나요?', a: '없습니다. 가입비·월 고정비 0원으로, 실제 거래가 일어나는 만큼만 부담합니다. 유통사는 가입 즉시 C등급 도매가가 적용되고 거래 실적에 따라 A·B 등급으로 상향됩니다.' },
+            { q: '무재고 위탁판매도 가능한가요?', a: '가능합니다. 제조사가 운송장을 입력해 직배송하므로 유통사는 재고를 보유하지 않고도 사입·판매할 수 있어요. 대량 주문은 주문서 엑셀 업로드로 한 번에 처리됩니다.' },
+            { q: 'OEM/ODM 자사 브랜드 제작도 되나요?', a: '됩니다. 유통사가 OEM/ODM을 신청하면 유통스타트가 적합한 제조사를 매칭하고 생산까지 지원합니다.' },
+            { q: '도매가(공급가)는 어떻게 확인하나요?', a: '도매가는 승인된 유통회원 로그인 후에만 열람할 수 있습니다. 제조사 신원과 원가는 비공개로, 회원 등급에 맞는 공급가만 표시돼요.' },
+          ]),
+        ]}
       />
 
       {/* 헤더 */}

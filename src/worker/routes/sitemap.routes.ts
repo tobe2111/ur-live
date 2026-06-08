@@ -10,8 +10,40 @@ import type { Env } from '@/worker/types/env';
 
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
+// 🏭 2026-06-08 도매몰(유통스타트) 정규 도메인 — utongstart.com 호스트면 도매 전용 sitemap 발행.
+//   소비자(live.ur-team.com) sitemap 과 분리: 도매 페이지는 utongstart.com loc 로, 소비자 페이지는 섞지 않음.
+const WHOLESALE_HOSTS = ['utongstart.com', 'www.utongstart.com'];
+const WHOLESALE_BASE = 'https://utongstart.com';
+
 sitemapRoutes.get('/sitemap.xml', async (c) => {
-  const origin = new URL(c.req.url).origin;
+  const reqUrl = new URL(c.req.url);
+  const origin = reqUrl.origin;
+  const host = reqUrl.hostname.toLowerCase();
+  // 호스트 우선, fallback 으로 Host 헤더(프록시) 검사 — 둘 중 하나라도 utongstart 면 도매 sitemap.
+  const hdrHost = (c.req.header('host') || '').toLowerCase().split(':')[0];
+  const isWholesaleHost = WHOLESALE_HOSTS.includes(host) || host.includes('utongstart')
+    || WHOLESALE_HOSTS.includes(hdrHost) || hdrHost.includes('utongstart');
+
+  // ── 도매(유통스타트) 전용 sitemap ─────────────────────────────────────────
+  //   ⚠️ 개별 /wholesale/product/* 는 noindex/로그인 게이트 → sitemap 에 절대 포함하지 않음(공급가 비노출).
+  //   공개 랜딩(소개/카탈로그/가입/OEM)만 utongstart.com loc 로 발행.
+  if (isWholesaleHost) {
+    const wholesaleUrls: Array<{ loc: string; priority: number; changefreq: string }> = [
+      { loc: '/wholesale', priority: 1.0, changefreq: 'daily' },        // 카탈로그(도매 인덱스 루트)
+      { loc: '/wholesale/intro', priority: 0.9, changefreq: 'weekly' }, // 마케팅 랜딩
+      { loc: '/wholesale/join', priority: 0.8, changefreq: 'monthly' }, // 유통사 입점/도매 회원가입
+      { loc: '/wholesale/oem', priority: 0.7, changefreq: 'monthly' },  // OEM/ODM 상품제휴
+    ];
+    const wxml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`).join('\n')}
+</urlset>`;
+    return c.body(wxml, 200, {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+    });
+  }
+
   const DB = c.env.DB as D1Database | undefined;
   const urls: Array<{ loc: string; priority: number; changefreq: string; image?: string; lastmod?: string }> = [
     // 정적 페이지

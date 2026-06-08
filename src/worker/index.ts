@@ -600,11 +600,28 @@ app.use('*', async (c, next) => {
         },
       });
     if (isWholesaleSurface) {
-      rb = rb.on('#root', {
-        element(el) {
-          el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
-        },
-      });
+      // 🏭 2026-06-08 도매 surface 서버측 OG/canonical 주입 — JS 안 도는 소셜 스크래퍼(카톡/페북/슬랙)·일부 봇은
+      //   react-helmet(클라 렌더)을 못 보고 index.html 의 소비자 기본 메타만 봄. utongstart 정식 도메인 육성을 위해
+      //   도매 surface 응답의 head 메타를 도매 브랜드값으로 rewrite + utongstart canonical append.
+      //   (Googlebot 은 JS 렌더해 react-helmet 의 페이지별 정밀 메타를 봄 — 본 주입은 비-JS 크롤러용 fallback.)
+      const wsTitle = '유통스타트 도매몰 — 제조사 직거래 B2B 도매사이트';
+      const wsDesc = '검증 제조사 상품을 유통사 등급별 도매 공급가로. 무재고 위탁판매·OEM·사입까지, 도매가 거래 B2B 플랫폼.';
+      const wsCanonical = `https://utongstart.com${url.pathname}`;
+      rb = rb
+        .on('title', { element(el) { el.setInnerContent(wsTitle); } })
+        .on('meta[name="description"]', { element(el) { el.setAttribute('content', wsDesc); } })
+        .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
+        .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
+        .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', wsCanonical); } })
+        .on('meta[property="og:site_name"]', { element(el) { el.setAttribute('content', '유통스타트'); } })
+        .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
+        .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
+        .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } })
+        .on('#root', {
+          element(el) {
+            el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
+          },
+        });
     }
     const rewritten = rb.transform(c.res);
     c.res = new Response(rewritten.body, rewritten);
@@ -638,6 +655,25 @@ app.get('/health', (c) => c.json({
 //   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
 app.route('/', killerSwRoutes);
 app.route('/', sitemapRoutes);
+
+// 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
+//   SSOT 는 public/robots.txt(ASSETS). utongstart 호스트일 때만 Sitemap 라인을 도매 도메인으로 치환.
+//   live.ur-team.com 등 다른 호스트는 원본 그대로(회귀 0).
+app.get('/robots.txt', async (c) => {
+  const host = new URL(c.req.url).hostname.toLowerCase();
+  const isWholesaleHost = host === 'utongstart.com' || host === 'www.utongstart.com';
+  let body = '';
+  try {
+    const assetUrl = new URL('/robots.txt', c.req.url);
+    const res = await (c.env as { ASSETS?: { fetch?: (u: string) => Promise<Response> } }).ASSETS?.fetch?.(assetUrl.toString());
+    if (res && res.ok) body = await res.text();
+  } catch { /* ASSETS 미바인딩 — 아래 fallback */ }
+  if (!body) body = 'User-agent: *\nAllow: /\nSitemap: https://live.ur-team.com/sitemap.xml\n';
+  if (isWholesaleHost) {
+    body = body.replace(/Sitemap:\s*https?:\/\/\S+/i, 'Sitemap: https://utongstart.com/sitemap.xml');
+  }
+  return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+});
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);

@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import SEO from '@/components/SEO'
+import SEO, { wholesaleStoreJsonLd, breadcrumbJsonLd } from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Store, ArrowRight, CheckCircle2, Boxes, Loader2, Factory } from 'lucide-react'
@@ -90,7 +90,7 @@ export default function WholesaleJoinPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#17181C]">
-      <SEO title="유통사 가입 — 유통스타트 B2B 도매몰" description="유통사로 가입하고 검증된 제조사 상품을 등급 공급가로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원." url="/wholesale/join" />
+      <SEO domain="wholesale" title="유통사 입점·도매 회원가입 — 유통스타트 B2B 도매몰" description="유통사로 도매 회원가입하고 검증된 제조사 상품을 등급별 도매가(공급가)로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원 — 무재고 위탁판매·대량 사입까지." url="/wholesale/join" jsonLd={[wholesaleStoreJsonLd, breadcrumbJsonLd([{ name: '유통스타트', url: 'https://utongstart.com/wholesale' }, { name: '유통사 도매 회원가입', url: 'https://utongstart.com/wholesale/join' }])]} />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">

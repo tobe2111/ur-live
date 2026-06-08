@@ -24,4 +24,20 @@ Disallow: /embed/
 Disallow: /debug/
 Disallow: /search
 
+# 🏭 도매몰(유통스타트) — 게이트/거래성 경로 인덱싱 차단 (호스트 무관, 공급가/거래정보 비노출).
+#   공개 인덱스 대상: /wholesale, /wholesale/intro, /wholesale/join, /wholesale/oem (위 Allow: / 로 허용).
+#   아래는 로그인/결제/대시보드/정산 등 비공개 경로.
+Disallow: /wholesale/product
+Disallow: /wholesale/cart
+Disallow: /wholesale/checkout
+Disallow: /wholesale/orders
+Disallow: /wholesale/dashboard
+Disallow: /wholesale/statement
+Disallow: /wholesale/login
+Disallow: /supplier
+
 Sitemap: https://live.ur-team.com/sitemap.xml
+
+# NOTE(orchestrator → worker/index.ts): utongstart.com 은 호스트별 robots 를 서빙하는 것이 이상적.
+#   utongstart.com 요청 시 'Sitemap: https://utongstart.com/sitemap.xml' 로 교체(현재 sitemap.routes.ts
+#   는 이미 호스트 인식해 utongstart 도매 sitemap 발행). 이 정적 robots.txt 는 live.ur-team.com 기준.

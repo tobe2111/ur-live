@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import SEO from '@/components/SEO'
+import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -428,6 +428,23 @@ export default function WholesaleCatalogPage() {
   // 그리드 = 서버가 이미 검색/카테고리/정렬/필터 적용한 결과 그대로(클라 재정렬/재필터 없음).
   const items = allItems
 
+  // 🏭 2026-06-08 SEO: 카탈로그 상품 ItemList JSON-LD — 이름·이미지·utongstart URL 만(공급가 절대 제외).
+  //   기본(검색/필터 없는) 카탈로그에서만 노출 → 정규 도매 인덱스 시그널. 상위 24개로 제한.
+  const catalogJsonLd = useMemo(() => {
+    const base: Record<string, unknown>[] = [wholesaleStoreJsonLd]
+    if (items.length > 0) {
+      base.push(itemListJsonLd(
+        items.slice(0, 24).map((p, i) => ({
+          position: i + 1,
+          name: p.name,
+          url: `https://utongstart.com/wholesale/product/${p.id}`,
+          ...(p.image_url ? { image: p.image_url } : {}),
+        })),
+      ))
+    }
+    return base
+  }, [items])
+
   // 카테고리 칩/카운트 = 홈 endpoint 의 전체 카테고리 분포(서버 카테고리 필터와 무관하게 안정).
   //   홈 데이터 없으면(비로그인 등) 현재 로드된 아이템에서 파생 — 기존 동작 보존.
   const catCounts = useMemo(() => {
@@ -606,7 +623,13 @@ export default function WholesaleCatalogPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="유통스타트 도매몰" description="검증 제조사 상품을 내 등급 공급가로 사입하는 B2B 도매 플랫폼" url="/wholesale" />
+      <SEO
+        domain="wholesale"
+        title="유통스타트 도매몰 — 제조사 직거래 도매가 사입 B2B 도매사이트"
+        description="검증된 제조사 상품을 도매가로 사입하는 B2B 도매사이트. 식품·생활·뷰티 등 카테고리별 도매 상품, 무재고 위탁판매·대량 사입·OEM/ODM까지 유통스타트에서."
+        url="/wholesale"
+        jsonLd={catalogJsonLd}
+      />
 
       {/* 헤더 */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
