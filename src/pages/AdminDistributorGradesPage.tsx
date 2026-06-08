@@ -5,8 +5,9 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
-import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X, Wallet, Snowflake, BadgeDollarSign } from 'lucide-react'
+import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X, Wallet, Snowflake, BadgeDollarSign, TrendingUp, Play, RotateCcw } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatWon, formatNumber } from '@/utils/format'
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급/마진 설정 (Phase 1b).
 // 도매몰 한정: distributor_grade 는 도매 카탈로그 가격 계산에서만 쓰임.
@@ -38,6 +39,10 @@ interface CreditDetail {
 interface LedgerRow {
   id: number; order_id: number | null; type: string; amount: number; balance_after: number; memo: string | null; created_at: string
 }
+
+// 🏭 BIZ-7 자동등급 임계값 — GMV 가 min_gmv 이상이면 그 등급으로 승급(promote-only).
+interface AutoGradeThreshold { grade: string; min_gmv: number }
+const AUTO_GRADE_GRADES = ['A', 'B', 'C', 'D']
 
 const ASSIGNABLE = ['A', 'B', 'C', 'D', 'OEM']
 
@@ -110,6 +115,30 @@ export default function AdminDistributorGradesPage() {
   const [repayInput, setRepayInput] = useState('')
   const [repayMemo, setRepayMemo] = useState('')
 
+  // 🏭 BIZ-7 (2026-06-08) 등급 자동화 (GMV 기반 auto-grade) — cron(wholesale-grade-eval) 설정 + 수동 실행.
+  const [agEnabled, setAgEnabled] = useState(false)
+  const [agThresholds, setAgThresholds] = useState<AutoGradeThreshold[]>([])
+  const [agWindowDays, setAgWindowDays] = useState(90)
+  const [agLastRun, setAgLastRun] = useState<string | null>(null)
+  const [agLoading, setAgLoading] = useState(true)
+  const [agSaving, setAgSaving] = useState(false)
+  const [agRunning, setAgRunning] = useState(false)
+
+  const loadAutoGrade = useCallback(() => {
+    setAgLoading(true)
+    api.get('/api/admin/distributor/auto-grade/settings', h)
+      .then(r => {
+        if (r.data?.success) {
+          setAgEnabled(!!r.data.enabled)
+          setAgThresholds(Array.isArray(r.data.thresholds) ? r.data.thresholds : [])
+          setAgWindowDays(Number(r.data.window_days) || 90)
+          setAgLastRun(r.data.last_run ?? null)
+        }
+      })
+      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
+      .finally(() => setAgLoading(false))
+  }, [])
+
   const loadCredit = useCallback((id: string) => {
     const sid = Number(id)
     if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
@@ -172,7 +201,62 @@ export default function AdminDistributorGradesPage() {
     api.get('/api/admin/distributor/company-info', h)
       .then(r => { if (r.data.success) setCompany(r.data.company || {}) })
       .catch(e => { if (import.meta.env.DEV) console.warn(e) })
-  }, [])
+    loadAutoGrade()
+  }, [loadAutoGrade])
+
+  // 🏭 BIZ-7 자동등급 핸들러 ──────────────────────────────────────────────────
+  function updateThreshold(idx: number, field: 'grade' | 'min_gmv', value: string) {
+    setAgThresholds(prev => prev.map((t, i) => i === idx
+      ? { ...t, [field]: field === 'min_gmv' ? Math.max(0, Math.floor(Number(value) || 0)) : value }
+      : t))
+  }
+  function addThreshold() {
+    const used = new Set(agThresholds.map(t => t.grade))
+    const next = AUTO_GRADE_GRADES.find(g => !used.has(g)) || 'A'
+    setAgThresholds(prev => [...prev, { grade: next, min_gmv: 0 }])
+  }
+  function removeThreshold(idx: number) {
+    setAgThresholds(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function saveAutoGrade() {
+    // 클라 1차 검증 — 중복 등급 / 빈 임계값 방지 (서버도 재검증).
+    const seen = new Set<string>()
+    for (const t of agThresholds) {
+      if (!AUTO_GRADE_GRADES.includes(t.grade)) { toast.error('등급은 A/B/C/D 만 가능합니다'); return }
+      if (seen.has(t.grade)) { toast.error(`등급 ${t.grade} 가 중복되었습니다`); return }
+      if (!Number.isFinite(t.min_gmv) || t.min_gmv < 0) { toast.error(`${t.grade}등급 최소 GMV 값이 올바르지 않습니다`); return }
+      seen.add(t.grade)
+    }
+    if (agThresholds.length === 0) { toast.error('최소 1개 이상의 등급 임계값이 필요합니다'); return }
+    if (!Number.isFinite(agWindowDays) || agWindowDays < 1 || agWindowDays > 365) { toast.error('집계 기간은 1~365일이어야 합니다'); return }
+    setAgSaving(true)
+    try {
+      const r = await api.patch('/api/admin/distributor/auto-grade/settings', {
+        enabled: agEnabled,
+        thresholds: agThresholds,
+        window_days: agWindowDays,
+      }, h)
+      if (r.data?.success) { toast.success('자동등급 설정 저장됨'); loadAutoGrade() }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '저장 실패')
+    } finally { setAgSaving(false) }
+  }
+
+  async function runAutoGradeNow() {
+    if (!(await confirmDialog({ message: '지금 전체 유통사 등급을 평가하시겠습니까? (승급만 적용 — 강등 없음)' }))) return
+    setAgRunning(true)
+    try {
+      const r = await api.post('/api/admin/distributor/auto-grade/run', {}, h)
+      if (r.data?.success) {
+        toast.success(`평가 완료 — ${formatNumber(r.data.evaluated)}곳 평가, ${formatNumber(r.data.promoted)}곳 승급`)
+        loadAutoGrade()
+      } else toast.error(r.data?.error || '실행 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '실행 실패')
+    } finally { setAgRunning(false) }
+  }
 
   async function saveCompany() {
     setCompanyBusy(true)
@@ -450,6 +534,110 @@ export default function AdminDistributorGradesPage() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* ── 🏭 BIZ-7 등급 자동화 (GMV 기반 auto-grade) ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+            <TrendingUp className="w-4 h-4 text-indigo-600" /> 등급 자동화 (거래액 기반 자동 승급)
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            유통사의 최근 거래액(GMV)이 임계값을 넘으면 매주 자동으로 <b>상위 등급으로 승급</b>합니다.
+            안전을 위해 <b>승급만</b> 자동 적용되고, 강등은 위 &ldquo;유통사 등급 배정&rdquo;에서 수동으로만 가능합니다.
+            (가격 산식은 변경되지 않고, 등급만 자동 설정됩니다.)
+          </p>
+
+          {agLoading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-4"><Loader2 className="w-4 h-4 animate-spin" /> 설정 불러오는 중…</div>
+          ) : (
+            <div className="space-y-5">
+              {/* enable 토글 + 마지막 실행 */}
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={agEnabled} onChange={e => setAgEnabled(e.target.checked)} className="w-4 h-4" />
+                  <span className="text-sm font-semibold text-gray-900">자동 승급 활성화</span>
+                </label>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${agEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {agEnabled ? 'ON — 매주 월요일 자동 평가' : 'OFF — 자동 평가 안 함'}
+                </span>
+                <span className="text-xs text-gray-400 ml-auto">
+                  마지막 실행: <b className="text-gray-600">{agLastRun ? agLastRun.slice(0, 16).replace('T', ' ') : '없음'}</b>
+                </span>
+              </div>
+
+              {/* 집계 기간 */}
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">집계 기간 (최근 N일 거래액)</label>
+                  <div className="relative">
+                    <input type="number" min={1} max={365} value={agWindowDays}
+                      onChange={e => setAgWindowDays(Math.max(1, Math.min(365, Math.floor(Number(e.target.value) || 0))))}
+                      className="w-28 pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-gray-900" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">일</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 임계값 테이블 */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-700">등급별 최소 거래액 (GMV)</h3>
+                  <button onClick={addThreshold} className="inline-flex items-center gap-1 px-2.5 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50">
+                    <Plus className="w-3.5 h-3.5" /> 구간 추가
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mb-2">최근 {formatNumber(agWindowDays)}일 거래액이 해당 금액 이상이면 그 등급으로 승급됩니다. (D등급은 보통 0원 = 기본)</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-500 border-b border-gray-100">
+                        <th className="py-2 pr-4 font-medium">등급</th>
+                        <th className="py-2 pr-4 font-medium">최소 거래액 (원)</th>
+                        <th className="py-2 pr-4 font-medium">표시</th>
+                        <th className="py-2 font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {agThresholds.length === 0 ? (
+                        <tr><td colSpan={4} className="py-3 text-gray-400 text-center">구간이 없습니다. &ldquo;구간 추가&rdquo;로 등록하세요.</td></tr>
+                      ) : agThresholds.map((t, idx) => (
+                        <tr key={idx} className="border-b border-gray-50">
+                          <td className="py-2 pr-4">
+                            <select value={t.grade} onChange={e => updateThreshold(idx, 'grade', e.target.value)} className="px-2 py-1 border border-gray-200 rounded text-gray-900">
+                              {AUTO_GRADE_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                          </td>
+                          <td className="py-2 pr-4">
+                            <input type="number" min={0} step={1000000} value={t.min_gmv}
+                              onChange={e => updateThreshold(idx, 'min_gmv', e.target.value)}
+                              className="w-40 px-2 py-1 border border-gray-200 rounded text-gray-900 tabular-nums" />
+                          </td>
+                          <td className="py-2 pr-4 text-gray-600 tabular-nums">{formatWon(t.min_gmv)}</td>
+                          <td className="py-2">
+                            <button onClick={() => removeThreshold(idx)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 액션 */}
+              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
+                <button onClick={saveAutoGrade} disabled={agSaving} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+                  {agSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 설정 저장
+                </button>
+                <button onClick={runAutoGradeNow} disabled={agRunning} className="inline-flex items-center gap-1 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50 disabled:opacity-50">
+                  {agRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} 지금 평가 실행
+                </button>
+                <button onClick={loadAutoGrade} disabled={agLoading} className="inline-flex items-center gap-1 px-3 py-2 text-gray-500 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50">
+                  <RotateCcw className="w-4 h-4" /> 새로고침
+                </button>
+                <span className="text-[11px] text-gray-400 ml-auto">&ldquo;지금 실행&rdquo;은 활성화 OFF 여도 강제 평가합니다 (승급만).</span>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ── 유통사 등급 배정 ── */}

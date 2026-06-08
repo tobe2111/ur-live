@@ -7,11 +7,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck } from 'lucide-react'
+import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
-import { formatWon } from '@/utils/format'
+import { formatWon, formatNumber } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession, getSupplierToken } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
@@ -26,7 +26,7 @@ async function downloadSupplierCsv(path: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-type Tab = 'overview' | 'orders' | 'catalog' | 'settlements'
+type Tab = 'overview' | 'analytics' | 'orders' | 'catalog' | 'settlements'
 
 interface Me {
   profile: { business_name: string; email: string; status: string }
@@ -44,6 +44,18 @@ interface CatalogItem {
 interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null
   retail_amount: number; supply_amount: number; status: string; created_at: string; available_at: string | null
+}
+type AnalyticsPeriod = '30d' | '90d' | '12m'
+interface AnalyticsData {
+  period: AnalyticsPeriod
+  granularity: 'daily' | 'monthly'
+  series: { bucket: string; revenue: number; orders: number }[]
+  summary: {
+    total_revenue: number; order_count: number; avg_order_value: number
+    settle_pending: number; settle_available: number; settle_paid: number
+  }
+  best_sellers: { product_id: number; name: string; image_url: string | null; revenue: number; orders: number }[]
+  stock: { total: number; out_of_stock: number; low_stock: number }
 }
 interface OrderItem {
   order_id: number; order_number: string | null; status: string; created_at: string
@@ -73,6 +85,9 @@ export default function SupplierDashboardPage() {
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [settlements, setSettlements] = useState<SettlementItem[]>([])
   const [orders, setOrders] = useState<OrderItem[]>([])
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>('30d')
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [orderStatus, setOrderStatus] = useState<'to_ship' | 'shipped'>('to_ship')
   const [shipModal, setShipModal] = useState<OrderItem | null>(null)
   const [loading, setLoading] = useState(true)
@@ -80,6 +95,7 @@ export default function SupplierDashboardPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [channelItem, setChannelItem] = useState<CatalogItem | null>(null)
   const [priceChangeItem, setPriceChangeItem] = useState<CatalogItem | null>(null)
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false)
 
   useEffect(() => {
     if (!isSupplierLoggedIn()) { navigate('/supplier/login', { replace: true }); return }
@@ -119,10 +135,20 @@ export default function SupplierDashboardPage() {
     } catch (err) { if (import.meta.env.DEV) console.error(err) }
   }, [orderStatus])
 
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true)
+    try {
+      const res = await supplierApi.get<{ data: AnalyticsData }>(`/api/supplier/analytics?period=${analyticsPeriod}`)
+      setAnalytics(res.data)
+    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+    finally { setAnalyticsLoading(false) }
+  }, [analyticsPeriod])
+
   useEffect(() => { loadMe() }, [loadMe])
   useEffect(() => { if (tab === 'catalog') loadCatalog() }, [tab, loadCatalog])
   useEffect(() => { if (tab === 'settlements') loadSettlements() }, [tab, loadSettlements])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
+  useEffect(() => { if (tab === 'analytics') loadAnalytics() }, [tab, loadAnalytics])
 
   const logout = () => {
     clearSupplierSession()
@@ -131,6 +157,7 @@ export default function SupplierDashboardPage() {
 
   const tabs: { key: Tab; label: string; Icon: typeof Wallet }[] = [
     { key: 'overview', label: t('supplier.tabOverview', { defaultValue: '개요' }), Icon: Wallet },
+    { key: 'analytics', label: t('supplier.tabAnalytics', { defaultValue: '분석' }), Icon: BarChart3 },
     { key: 'orders', label: t('supplier.tabOrders', { defaultValue: '발송 관리' }), Icon: Truck },
     { key: 'catalog', label: t('supplier.tabCatalog', { defaultValue: '내 카탈로그' }), Icon: Package },
     { key: 'settlements', label: t('supplier.tabSettlements', { defaultValue: '정산 내역' }), Icon: Receipt },
@@ -174,10 +201,12 @@ export default function SupplierDashboardPage() {
           <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : tab === 'overview' ? (
           <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} />
+        ) : tab === 'analytics' ? (
+          <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
         ) : tab === 'orders' ? (
           <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
         ) : tab === 'catalog' ? (
-          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} />
+          <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
         ) : (
           <SettlementsTab items={settlements} t={t} />
         )}
@@ -197,6 +226,14 @@ export default function SupplierDashboardPage() {
           t={t}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); loadMe(); if (tab === 'catalog') loadCatalog() }}
+        />
+      )}
+      {bulkPriceOpen && (
+        <BulkPriceModal
+          t={t}
+          items={catalog.filter(i => i.approval_status === 'approved')}
+          onClose={() => setBulkPriceOpen(false)}
+          onDone={() => { setBulkPriceOpen(false); loadCatalog() }}
         />
       )}
       {channelItem && <ChannelModal t={t} item={channelItem} onClose={() => setChannelItem(null)} />}
@@ -345,6 +382,251 @@ function ChannelModal({ t, item, onClose }: { t: (k: string, o?: Record<string, 
   )
 }
 
+// 🏭 BIZ-6 (2026-06-08): 분석 탭 — 매출 시계열(CSS 막대) + 요약 카드 + 베스트셀러 + 재고 경고.
+//   차트 라이브러리 미사용(critical path 보호) — inline CSS bar.
+//   매출은 net(환불 클로백 음수 포함) 집계 — 서버 응답 그대로 표시.
+function AnalyticsTab({ data, loading, period, setPeriod, t }: {
+  data: AnalyticsData | null
+  loading: boolean
+  period: AnalyticsPeriod
+  setPeriod: (p: AnalyticsPeriod) => void
+  t: (k: string, o?: Record<string, unknown>) => string
+}) {
+  const periods: { key: AnalyticsPeriod; label: string }[] = [
+    { key: '30d', label: t('supplier.period30d', { defaultValue: '최근 30일' }) },
+    { key: '90d', label: t('supplier.period90d', { defaultValue: '최근 90일' }) },
+    { key: '12m', label: t('supplier.period12m', { defaultValue: '최근 12개월' }) },
+  ]
+  const s = data?.summary
+  const maxRev = Math.max(1, ...((data?.series || []).map(p => Math.abs(p.revenue))))
+
+  const cards = [
+    { label: t('supplier.aTotalRevenue', { defaultValue: '총 매출(기간)' }), value: formatWon(s?.total_revenue ?? 0), cls: 'text-gray-900' },
+    { label: t('supplier.aOrderCount', { defaultValue: '주문 수' }), value: formatNumber(s?.order_count ?? 0), cls: 'text-gray-900' },
+    { label: t('supplier.aAvgOrder', { defaultValue: '객단가' }), value: formatWon(s?.avg_order_value ?? 0), cls: 'text-gray-900' },
+    { label: t('supplier.aSettlePending', { defaultValue: '정산 대기' }), value: formatWon(s?.settle_pending ?? 0), cls: 'text-amber-600' },
+    { label: t('supplier.aSettleAvailable', { defaultValue: '출금 가능' }), value: formatWon(s?.settle_available ?? 0), cls: 'text-blue-600' },
+    { label: t('supplier.aSettlePaid', { defaultValue: '지급 완료(누적)' }), value: formatWon(s?.settle_paid ?? 0), cls: 'text-green-600' },
+  ]
+
+  return (
+    <div className="space-y-6">
+      {/* 기간 선택 */}
+      <div className="flex gap-1 bg-white rounded-xl p-1 border border-gray-200 w-fit">
+        {periods.map(p => (
+          <button key={p.key} onClick={() => setPeriod(p.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${period === p.key ? 'bg-[#FF0033] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && !data ? (
+        <div className="py-16 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
+      ) : (
+        <>
+          {/* 요약 카드 */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {cards.map(c => (
+              <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4">
+                <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+                <p className={`text-lg lg:text-xl font-bold ${c.cls}`}>{c.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 재고 경고 */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+              <p className="text-xs text-gray-500 mb-1">{t('supplier.aStockTotal', { defaultValue: '공급상품' })}</p>
+              <p className="text-xl font-bold text-gray-900">{formatNumber(data?.stock.total ?? 0)}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+              <p className="text-xs text-gray-500 mb-1 inline-flex items-center gap-1 justify-center"><XCircle className="w-3 h-3 text-red-500" />{t('supplier.aStockOut', { defaultValue: '품절' })}</p>
+              <p className="text-xl font-bold text-red-500">{formatNumber(data?.stock.out_of_stock ?? 0)}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+              <p className="text-xs text-gray-500 mb-1 inline-flex items-center gap-1 justify-center"><AlertTriangle className="w-3 h-3 text-amber-500" />{t('supplier.aStockLow', { defaultValue: '저재고' })}</p>
+              <p className="text-xl font-bold text-amber-600">{formatNumber(data?.stock.low_stock ?? 0)}</p>
+            </div>
+          </div>
+
+          {/* 매출 시계열 (CSS 막대) */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <p className="text-sm font-semibold text-gray-900 mb-4 inline-flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-[#FF0033]" />{t('supplier.aRevenueTrend', { defaultValue: '매출 추이' })}</p>
+            {(data?.series || []).length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-10">{t('supplier.aNoData', { defaultValue: '해당 기간 매출 데이터가 없습니다.' })}</p>
+            ) : (
+              <div className="flex items-end gap-1 h-40 overflow-x-auto pb-1" role="img" aria-label={t('supplier.aRevenueTrend', { defaultValue: '매출 추이' })}>
+                {(data?.series || []).map(p => {
+                  const h = Math.max(2, Math.round((Math.abs(p.revenue) / maxRev) * 100))
+                  const neg = p.revenue < 0
+                  return (
+                    <div key={p.bucket} className="flex-1 min-w-[8px] flex flex-col items-center justify-end h-full group relative">
+                      <div className={`w-full rounded-t ${neg ? 'bg-red-300' : 'bg-[#FF0033]/70'} group-hover:bg-[#FF0033] transition-colors`} style={{ height: `${h}%` }} />
+                      <div className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-gray-900 text-white text-[10px] rounded px-1.5 py-1 z-10">
+                        {p.bucket}<br />{formatWon(p.revenue)} · {formatNumber(p.orders)}{t('supplier.aOrdersUnit', { defaultValue: '건' })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-[11px] text-gray-400 mt-2">
+              {data?.granularity === 'monthly'
+                ? t('supplier.aMonthly', { defaultValue: '월별 순매출 (환불 반영)' })
+                : t('supplier.aDaily', { defaultValue: '일별 순매출 (환불 반영)' })}
+            </p>
+          </div>
+
+          {/* 베스트셀러 top 10 */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <p className="text-sm font-semibold text-gray-900 mb-4">{t('supplier.aBestSellers', { defaultValue: '베스트셀러 TOP 10' })}</p>
+            {(data?.best_sellers || []).length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">{t('supplier.aNoBest', { defaultValue: '판매 데이터가 없습니다.' })}</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {(data?.best_sellers || []).map((b, i) => (
+                  <li key={b.product_id} className="flex items-center gap-3 py-2.5">
+                    <span className="w-5 text-center text-sm font-bold text-gray-400 shrink-0">{i + 1}</span>
+                    {b.image_url
+                      ? <img src={b.image_url} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 shrink-0" loading="lazy" />
+                      : <div className="w-9 h-9 rounded-lg bg-gray-100 shrink-0 flex items-center justify-center"><Package className="w-4 h-4 text-gray-300" /></div>}
+                    <span className="flex-1 min-w-0 text-sm text-gray-900 truncate">{b.name}</span>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-gray-900">{formatWon(b.revenue)}</p>
+                      <p className="text-[11px] text-gray-400">{formatNumber(b.orders)}{t('supplier.aOrdersUnit', { defaultValue: '건' })}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// 🏭 BIZ-6 (2026-06-08): 가격 일괄변경 — 승인(판매중) 상품을 선택해 새 공급가/권장가를 일괄 제출.
+//   라이브 가격은 직접 안 바뀜 — 어드민 승인 큐(pending_*)에 적재. 승인 전까지 기존 가격 유지.
+function BulkPriceModal({ t, items, onClose, onDone }: {
+  t: (k: string, o?: Record<string, unknown>) => string
+  items: CatalogItem[]
+  onClose: () => void
+  onDone: () => void
+}) {
+  // 선택된 상품의 새 가격 입력값. 기본값은 기존 가격으로 프리필.
+  const [edits, setEdits] = useState<Record<number, { selected: boolean; supply: string; retail: string }>>(() => {
+    const init: Record<number, { selected: boolean; supply: string; retail: string }> = {}
+    for (const it of items) init[it.id] = { selected: false, supply: String(it.supply_price || ''), retail: String(it.retail_price || '') }
+    return init
+  })
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const toggle = (id: number) => setEdits(e => ({ ...e, [id]: { ...e[id], selected: !e[id].selected } }))
+  const setSupply = (id: number, v: string) => setEdits(e => ({ ...e, [id]: { ...e[id], supply: v } }))
+  const setRetail = (id: number, v: string) => setEdits(e => ({ ...e, [id]: { ...e[id], retail: v } }))
+  const selectedCount = Object.values(edits).filter(e => e.selected).length
+
+  const submit = async () => {
+    setError('')
+    const payload: { product_id: number; supply_price: number; retail_price?: number; reason?: string }[] = []
+    for (const it of items) {
+      const e = edits[it.id]
+      if (!e?.selected) continue
+      const supply = Number(e.supply)
+      if (!Number.isFinite(supply) || supply <= 0) { setError(t('supplier.bulkErrSupply', { defaultValue: '선택한 상품의 공급가를 올바르게 입력해주세요' })); return }
+      const retailNum = Number(e.retail)
+      const item: { product_id: number; supply_price: number; retail_price?: number; reason?: string } = { product_id: it.id, supply_price: supply }
+      if (e.retail !== '' && Number.isFinite(retailNum)) {
+        if (retailNum < supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+        item.retail_price = retailNum
+      }
+      if (reason.trim()) item.reason = reason.trim()
+      payload.push(item)
+    }
+    if (payload.length === 0) { setError(t('supplier.bulkErrNone', { defaultValue: '변경할 상품을 선택해주세요' })); return }
+    setSaving(true)
+    try {
+      const res = await supplierApi.post<{ summary?: { queued: number; skipped: number } }>('/api/supplier/products/bulk-price-change', { items: payload })
+      const sm = res.summary
+      toast.success(t('supplier.bulkPriceDone', { defaultValue: '{{q}}건 접수, {{s}}건 제외', q: sm?.queued ?? 0, s: sm?.skipped ?? 0 })
+        .replace('{{q}}', String(sm?.queued ?? 0)).replace('{{s}}', String(sm?.skipped ?? 0)))
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally { setSaving(false) }
+  }
+
+  const cellCls = "w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-lg font-bold text-gray-900">{t('supplier.bulkPriceChange', { defaultValue: '가격 일괄변경' })}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">{t('supplier.bulkPriceHint', { defaultValue: '판매 중(승인) 상품만 변경할 수 있습니다. 운영진 승인 후 반영되며, 승인 전까지 기존 가격이 유지됩니다.' })}</p>
+        {error && <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+        {items.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-10">{t('supplier.bulkNoApproved', { defaultValue: '가격 변경 가능한 승인 상품이 없습니다.' })}</p>
+        ) : (
+          <>
+            <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-xs">
+                  <tr>
+                    <th className="px-2 py-2 w-8"></th>
+                    <th className="text-left font-medium px-2 py-2">{t('supplier.colProduct', { defaultValue: '상품' })}</th>
+                    <th className="text-right font-medium px-2 py-2">{t('supplier.fieldSupplyPrice', { defaultValue: '공급가(원)' })}</th>
+                    <th className="text-right font-medium px-2 py-2">{t('supplier.fieldRetail', { defaultValue: '권장가(원)' })}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {items.map(it => {
+                    const e = edits[it.id]
+                    return (
+                      <tr key={it.id} className={e?.selected ? 'bg-[#FF0033]/5' : ''}>
+                        <td className="px-2 py-2 text-center">
+                          <input type="checkbox" checked={!!e?.selected} onChange={() => toggle(it.id)} disabled={saving} className="w-4 h-4" />
+                        </td>
+                        <td className="px-2 py-2 text-gray-900 truncate max-w-[180px]">{it.name}</td>
+                        <td className="px-2 py-2 text-right">
+                          <input type="number" min={1} value={e?.supply ?? ''} disabled={saving || !e?.selected}
+                            onChange={ev => setSupply(it.id, ev.target.value)} className={`${cellCls} text-right disabled:bg-gray-50 disabled:text-gray-400`} />
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <input type="number" min={0} value={e?.retail ?? ''} disabled={saving || !e?.selected}
+                            onChange={ev => setRetail(it.id, ev.target.value)} className={`${cellCls} text-right disabled:bg-gray-50 disabled:text-gray-400`} />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('supplier.fieldReason', { defaultValue: '변경 사유 (선택)' })}</label>
+              <input value={reason} onChange={e => setReason(e.target.value)} disabled={saving}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+                placeholder={t('supplier.reasonPh', { defaultValue: '예: 원자재 가격 인상 반영' })} />
+            </div>
+            <button onClick={submit} disabled={saving || selectedCount === 0}
+              className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60">
+              {saving
+                ? t('common.loading', { defaultValue: '처리 중...' })
+                : t('supplier.submitBulkPrice', { defaultValue: '{{n}}개 가격 변경 요청', n: selectedCount }).replace('{{n}}', String(selectedCount))}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function OverviewTab({ me, meError, onRetry, t }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string }) {
   if (meError) return (
     <div className="py-16 text-center">
@@ -397,9 +679,11 @@ function OverviewTab({ me, meError, onRetry, t }: { me: Me | null; meError: bool
   )
 }
 
-function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPriceChange }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void }) {
+function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPriceChange, onBulkPrice }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void; onBulkPrice: () => void }) {
   const [uploading, setUploading] = useState(false)
+  const [stockImporting, setStockImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const stockFileRef = useRef<HTMLInputElement>(null)
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -418,11 +702,38 @@ function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPri
     } finally { setUploading(false) }
   }
 
+  // 재고 CSV 가져오기 (바코드,재고) — 즉시 반영(재고는 승인 대상 아님).
+  const onStockFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setStockImporting(true)
+    try {
+      const csv = await file.text()
+      const res = await supplierApi.post<{ summary?: { updated: number; skipped: number } }>('/api/supplier/products/stock-import', { csv })
+      const s = res.summary
+      toast.success(t('supplier.stockImportDone', { defaultValue: '{{u}}건 반영, {{s}}건 건너뜀', u: s?.updated ?? 0, s: s?.skipped ?? 0 })
+        .replace('{{u}}', String(s?.updated ?? 0)).replace('{{s}}', String(s?.skipped ?? 0)))
+      onBulkDone()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '재고 가져오기 실패')
+    } finally { setStockImporting(false) }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <p className="text-sm text-gray-600">{t('supplier.catalogCount', { defaultValue: '총 {{n}}개', n: items.length }).replace('{{n}}', String(items.length))}</p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={onBulkPrice}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50">
+            <Tag className="w-4 h-4" /> {t('supplier.bulkPriceChange', { defaultValue: '가격 일괄변경' })}
+          </button>
+          <button onClick={() => stockFileRef.current?.click()} disabled={stockImporting}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60">
+            <Upload className="w-4 h-4" /> {stockImporting ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.stockImport', { defaultValue: '재고 CSV 가져오기' })}
+          </button>
+          <input ref={stockFileRef} type="file" accept=".csv,text/csv" hidden onChange={onStockFile} />
           <button onClick={() => downloadSupplierCsv('/api/supplier/products/bulk-template', 'supply-products-template.csv')}
             className="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50">
             {t('supplier.dlTemplate', { defaultValue: '양식 다운' })}
@@ -437,6 +748,7 @@ function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPri
           </button>
         </div>
       </div>
+      <p className="text-[11px] text-gray-400 mb-3">{t('supplier.stockImportHint', { defaultValue: '재고 CSV: 헤더 "바코드,재고" — 바코드로 내 공급상품을 매칭해 재고를 즉시 반영합니다.' })}</p>
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-gray-400 text-sm">
           {t('supplier.noProducts', { defaultValue: '등록된 공급상품이 없습니다. 첫 상품을 등록해보세요.' })}

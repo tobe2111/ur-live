@@ -892,10 +892,13 @@
 - `/wholesale/statement`
 - `/wholesale/success`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (101개)
 
 
 **/api/admin/distributor**
+- `POST /api/admin/distributor/auto-grade/run`
+- `GET /api/admin/distributor/auto-grade/settings`
+- `PATCH /api/admin/distributor/auto-grade/settings`
 - `GET /api/admin/distributor/company-info`
 - `PUT /api/admin/distributor/company-info`
 - `GET /api/admin/distributor/distributors`
@@ -942,6 +945,9 @@
 - `POST /api/admin/suppliers/:id/payout`
 - `GET /api/admin/suppliers/:id/payouts`
 
+**/api/supplier/analytics**
+- `GET /api/supplier/analytics`
+
 **/api/supplier/become**
 - `POST /api/supplier/become`
 
@@ -964,7 +970,9 @@
 - `DELETE /api/supplier/products/:id/channel-access/:accessId`
 - `POST /api/supplier/products/:id/price-change-request`
 - `POST /api/supplier/products/bulk`
+- `POST /api/supplier/products/bulk-price-change`
 - `GET /api/supplier/products/bulk-template`
+- `POST /api/supplier/products/stock-import`
 
 **/api/supplier/register**
 - `POST /api/supplier/register`
@@ -1051,7 +1059,7 @@
 - `GET /api/wholesale/statement`
 
 
-> 마지막 생성: 2026-06-08T01:27:26.477Z
+> 마지막 생성: 2026-06-08T02:01:43.542Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

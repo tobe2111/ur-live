@@ -34,6 +34,7 @@ import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
+import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
 import { handleAgencySellerMatch } from './cron/agency-seller-match';
@@ -308,6 +309,9 @@ export async function handleCronScheduled(
       if (dayOfMonth <= 7) {
         await handleSellerTierEval(env).catch(e => logError('[cron] seller-tier-eval', { error: String(e) }));
       }
+      // 🏭 BIZ-7 (2026-06-08): 유통사 도매 등급 자동 평가 (GMV 기반 승급 전용).
+      //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
+      await handleWholesaleGradeEval(env).catch(e => logError('[cron] wholesale-grade-eval', { error: String(e) }));
       if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
         await handleAgencyMonthlyInvoices(env as any).catch(e => logError('[cron] invoices', { error: String(e) }));
       }

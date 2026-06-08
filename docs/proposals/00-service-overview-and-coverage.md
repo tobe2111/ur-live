@@ -283,12 +283,12 @@
 
 | 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
 |---|---|---|---|
-| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 24 | 95 |
+| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 24 | 101 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 27 | 83 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 332 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 58 |
 | 에이전시 | `agency-brief.md` | 53 | 166 |
-| **합계** | — | **189** | **734** |
+| **합계** | — | **189** | **740** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,9 +297,9 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 304 | 1039 |
-| 도메인 버킷 (5개 소개서) | 189 | 734 |
-| 공통/인프라 (의도적 제외) | 115 | 305 |
+| 전체 | 304 | 1046 |
+| 도메인 버킷 (5개 소개서) | 189 | 740 |
+| 공통/인프라 (의도적 제외) | 115 | 306 |
 | **미커버 (점검 필요)** | **0** | **0** |
 
 ✅ **미커버 0** — 모든 도메인 관련 페이지/엔드포인트가 5개 소개서 버킷에 포함되었습니다. (나머지는 공통/인프라로 의도적 제외.)
@@ -426,10 +426,13 @@
 - `/wholesale/statement`
 - `/wholesale/success`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (101개)
 
 
 **/api/admin/distributor**
+- `POST /api/admin/distributor/auto-grade/run`
+- `GET /api/admin/distributor/auto-grade/settings`
+- `PATCH /api/admin/distributor/auto-grade/settings`
 - `GET /api/admin/distributor/company-info`
 - `PUT /api/admin/distributor/company-info`
 - `GET /api/admin/distributor/distributors`
@@ -476,6 +479,9 @@
 - `POST /api/admin/suppliers/:id/payout`
 - `GET /api/admin/suppliers/:id/payouts`
 
+**/api/supplier/analytics**
+- `GET /api/supplier/analytics`
+
 **/api/supplier/become**
 - `POST /api/supplier/become`
 
@@ -498,7 +504,9 @@
 - `DELETE /api/supplier/products/:id/channel-access/:accessId`
 - `POST /api/supplier/products/:id/price-change-request`
 - `POST /api/supplier/products/bulk`
+- `POST /api/supplier/products/bulk-price-change`
 - `GET /api/supplier/products/bulk-template`
+- `POST /api/supplier/products/stock-import`
 
 **/api/supplier/register**
 - `POST /api/supplier/register`
@@ -1964,7 +1972,7 @@
 
 
 
-> 마지막 생성: 2026-06-08T01:27:26.488Z
+> 마지막 생성: 2026-06-08T02:01:43.553Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
