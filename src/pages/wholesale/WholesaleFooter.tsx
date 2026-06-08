@@ -26,7 +26,6 @@ const BUSINESS_INFO = {
 const INFO_LINKS: { label: string; href: string; todo?: boolean }[] = [
   { label: '회사소개', href: '/wholesale/intro' },
   { label: '이용약관', href: '/terms' },
-  { label: '쇼핑몰이용안내', href: '/wholesale/intro#guide', todo: true }, // TODO route: 도매몰 이용안내 전용 페이지
   { label: '개인정보처리방침', href: '/privacy' },
 ]
 
@@ -34,7 +33,6 @@ const ACTION_LINKS: { label: string; href: string; todo?: boolean }[] = [
   { label: '입점매장안내', href: '/wholesale/intro' },
   { label: '상품제휴', href: '/wholesale/oem' }, // OEM/ODM = 상품제휴/제조
   { label: '입점신청', href: '/supplier/register' }, // 제조(브랜드)회원 입점
-  { label: '촬영 · 디자인의뢰', href: '/wholesale/oem#design', todo: true }, // TODO route: 촬영/디자인 의뢰 전용 페이지
 ]
 
 // PG / 에스크로 / 배송 / 신뢰 배지 — 실제 배지 이미지가 assets 에 없어 텍스트 칩으로 대체.
