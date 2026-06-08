@@ -189,10 +189,10 @@ uploadRoutes.post('/upload/business-cert', cors(), rateLimit({ action: 'biz-cert
       httpMetadata: { contentType: detected, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { kind: 'business-cert', uploaded_at: new Date().toISOString() },
     })
-    // 🏭 2026-06-04: PUBLIC_R2_URL(CDN) 있으면 그걸로, 없으면 same-origin 워커 서빙(/api/media/*).
-    //   → MEDIA_BUCKET 만 있으면 PUBLIC_R2_URL 미설정이어도 등록증 이미지가 항상 보임(운영 의존성 제거).
-    const publicBase = c.env.PUBLIC_R2_URL || ''
-    const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `/api/media/${key}`
+    // 🏭 2026-06-08: 사업자등록증은 내부 심사용 저빈도 문서 → PUBLIC_R2_URL(CDN 도메인) 설정/오류와 무관하게
+    //   항상 same-origin 워커 서빙(/api/media/*)로 고정. 워커가 R2 를 직접 읽어 응답하므로 객체가 있으면 절대 404 안 남.
+    //   (CDN 미구성/오설정 시 가입 미리보기·어드민 '사업자등록증 보기' 404 사고 방지 — 사용자 신고)
+    const url = `/api/media/${key}`
     return c.json({ success: true, data: { key, url, size: file.size, mime: detected } })
   } catch (err) {
     return safeError(c, err, '사업자등록증 업로드 중 오류가 발생했습니다', '[upload]')

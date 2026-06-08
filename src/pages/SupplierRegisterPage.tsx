@@ -28,14 +28,23 @@ export default function SupplierRegisterPage() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
+  // 🏭 2026-06-08: 에러를 상단 박스 + 토스트 팝업 동시 노출(상단 박스만 있으면 스크롤 위라 못 봄 — 사용자 신고).
+  const fail = (m: string) => { setError(m); toast.error(m) }
+  // 사업자등록번호 자동 양식(000-00-00000) — 숫자만 추출 후 하이픈 자동 삽입.
+  const onBizNum = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const d = e.target.value.replace(/\D/g, '').slice(0, 10)
+    const v = d.length <= 3 ? d : d.length <= 5 ? `${d.slice(0, 3)}-${d.slice(3)}` : `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`
+    setForm(f => ({ ...f, business_number: v }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!form.business_name.trim()) { setError(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { setError(t('supplier.errBizNum', { defaultValue: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' })); return }
-    if (!licenseUrl) { setError(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
-    if (form.password.length < 8) { setError(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
-    if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
+    if (!form.business_name.trim()) { fail(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
+    if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { fail(t('supplier.errBizNum', { defaultValue: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' })); return }
+    if (!licenseUrl) { fail(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
+    if (form.password.length < 8) { fail(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
+    if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { fail(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
     setLoading(true)
     try {
       const res = await fetch('/api/supplier/register', {
@@ -59,7 +68,7 @@ export default function SupplierRegisterPage() {
       setDone(true)
       toast.success(t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' }))
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      fail(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
@@ -115,7 +124,7 @@ export default function SupplierRegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })} <span className="text-[#FF0033]">*</span></label>
-                <input required disabled={loading} value={form.business_number} onChange={set('business_number')} className={inputCls} placeholder="000-00-00000" />
+                <input required disabled={loading} value={form.business_number} onChange={onBizNum} inputMode="numeric" maxLength={12} className={inputCls} placeholder="000-00-00000" />
               </div>
               <div>
                 <label className={labelCls}>{t('supplier.fieldRepresentative', { defaultValue: '대표자명' })}</label>

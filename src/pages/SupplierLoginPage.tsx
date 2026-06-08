@@ -69,7 +69,9 @@ export default function SupplierLoginPage() {
       toast.success(t('supplier.loginSuccess', { defaultValue: '로그인되었습니다' }))
       navigate('/supplier', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      // 🏭 2026-06-08: 로그인 실패 에러를 토스트 팝업으로도 노출(상단 박스만 있으면 안 보여 버튼만 반복 클릭 — 사용자 신고).
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg); toast.error(msg)
     } finally {
       setLoading(false)
     }
