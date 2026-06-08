@@ -297,12 +297,24 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 301 | 1027 |
+| 전체 | 302 | 1036 |
 | 도메인 버킷 (5개 소개서) | 188 | 722 |
-| 공통/인프라 (의도적 제외) | 113 | 305 |
-| **미커버 (점검 필요)** | **0** | **0** |
+| 공통/인프라 (의도적 제외) | 114 | 305 |
+| **미커버 (점검 필요)** | **0** | **9** |
 
-✅ **미커버 0** — 모든 도메인 관련 페이지/엔드포인트가 5개 소개서 버킷에 포함되었습니다. (나머지는 공통/인프라로 의도적 제외.)
+⚠️ **미커버 9건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+
+**미커버 API 엔드포인트**
+- `GET /admin/claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
+- `PATCH /admin/claims/:id` (`src/features/supply/api/wholesale-claims.routes.ts`)
+- `GET /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
+- `POST /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
+- `GET /quotes` (`src/features/supply/api/wholesale-quotes.routes.ts`)
+- `POST /quotes` (`src/features/supply/api/wholesale-quotes.routes.ts`)
+- `POST /quotes/:id/accept` (`src/features/supply/api/wholesale-quotes.routes.ts`)
+- `POST /quotes/:id/reject` (`src/features/supply/api/wholesale-quotes.routes.ts`)
+- `PATCH /quotes/:id/respond` (`src/features/supply/api/wholesale-quotes.routes.ts`)
+
 ### 핵심 수치 (자동 추출 — 전체)
 
 #### 도매몰 (유통스타트)
@@ -1945,7 +1957,7 @@
 
 
 
-> 마지막 생성: 2026-06-07T22:42:02.495Z
+> 마지막 생성: 2026-06-08T00:45:20.812Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
