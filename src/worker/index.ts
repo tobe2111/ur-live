@@ -124,6 +124,8 @@ import { supplierDashboardRoutes } from '../features/supply/api/supplier-dashboa
 import { distributorAdminRoutes } from '../features/supply/api/distributor-admin.routes';
 import { wholesaleRoutes } from '../features/supply/api/wholesale.routes';
 import { wholesaleSupplierRoutes } from '../features/supply/api/wholesale-supplier.routes';
+import { wholesaleClaimsRoutes } from '../features/supply/api/wholesale-claims.routes';
+import { wholesaleQuotesRoutes } from '../features/supply/api/wholesale-quotes.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
 import { donationsRoutes } from '../features/donations/api/donations.routes';
@@ -1248,6 +1250,8 @@ app.route('/api/supplier', supplierDashboardRoutes); // 도매몰 INC-4/6: 공�
 app.route('/api/admin/distributor', distributorAdminRoutes); // 유통스타트: 유통사 등급/마진 설정 (Phase 1b)
 app.route('/api/wholesale', wholesaleRoutes); // 유통스타트: 유통사 도매 카탈로그 + B2B 주문 (Phase 2)
 app.route('/api/supplier/wholesale', wholesaleSupplierRoutes); // 유통스타트: 제조사 도매주문 송장/반품 (Phase 3)
+app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 클레임/RMA + admin 검수
+app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));

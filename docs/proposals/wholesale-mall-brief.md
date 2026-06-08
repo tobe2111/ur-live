@@ -738,7 +738,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (24개)
 
 - `/admin/distributor-grades`
 - `/admin/suppliers`
@@ -761,10 +761,11 @@
 - `/wholesale/oem`
 - `/wholesale/orders`
 - `/wholesale/product/:id`
+- `/wholesale/quotes`
 - `/wholesale/statement`
 - `/wholesale/success`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (83개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (92개)
 
 
 **/api/admin/distributor**
@@ -859,6 +860,10 @@
 - `GET /api/supply/sample-requests`
 - `POST /api/supply/sample-requests`
 
+**/api/wholesale/admin**
+- `GET /api/wholesale/admin/claims`
+- `PATCH /api/wholesale/admin/claims/:id`
+
 **/api/wholesale/become-distributor**
 - `POST /api/wholesale/become-distributor`
 
@@ -868,6 +873,10 @@
 
 **/api/wholesale/catalog-export**
 - `GET /api/wholesale/catalog-export`
+
+**/api/wholesale/claims**
+- `GET /api/wholesale/claims`
+- `POST /api/wholesale/claims`
 
 **/api/wholesale/documents**
 - `GET /api/wholesale/documents`
@@ -895,6 +904,13 @@
 **/api/wholesale/proposals**
 - `GET /api/wholesale/proposals`
 
+**/api/wholesale/quotes**
+- `GET /api/wholesale/quotes`
+- `POST /api/wholesale/quotes`
+- `POST /api/wholesale/quotes/:id/accept`
+- `POST /api/wholesale/quotes/:id/reject`
+- `PATCH /api/wholesale/quotes/:id/respond`
+
 **/api/wholesale/recent-items**
 - `GET /api/wholesale/recent-items`
 
@@ -905,7 +921,7 @@
 - `GET /api/wholesale/statement`
 
 
-> 마지막 생성: 2026-06-07T22:42:02.482Z
+> 마지막 생성: 2026-06-08T00:52:41.268Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -1,10 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Package, Truck } from 'lucide-react'
+import { ArrowLeft, Loader2, Package, Truck, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 import { WT, won } from './wholesale/wholesale-theme'
+import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
+
+// 🏭 BIZ-1: 클레임(RMA) 제기 가능한 주문 상태 — 결제완료 이후.
+const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'])
 
 // 🏭 2026-06-04 유통스타트 도매 주문 내역 — TDS 라이트 시안 정비. 라이트 고정 B2B.
 
@@ -23,7 +27,8 @@ const STATUS: Record<string, { t: string; c: string; bg: string }> = {
 export default function WholesaleOrdersPage() {
   const navigate = useNavigate()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const { data: orders = [], isLoading: loading } = useWholesaleOrders()
+  const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
+  const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
 
   useEffect(() => { if (!token) navigate('/seller/login') }, [token, navigate])
 
@@ -70,12 +75,21 @@ export default function WholesaleOrdersPage() {
                       <span className="text-[13px] font-bold tabular-nums" style={{ color: WT.ink }}>{o.tracking_number} <span className="text-[11px] font-medium" style={{ color: WT.ink4 }}>복사</span></span>
                     </button>
                   )}
+                  {CLAIMABLE.has(o.status) && (
+                    <button onClick={() => setClaimOrderId(o.id)} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
+                      <AlertTriangle className="w-4 h-4" style={{ color: WT.brand }} /> 클레임 제기
+                    </button>
+                  )}
                 </div>
               )
             })}
           </div>
         )}
       </main>
+
+      {claimOrderId != null && (
+        <WholesaleClaimModal orderId={claimOrderId} onClose={() => setClaimOrderId(null)} onSubmitted={() => refetch()} />
+      )}
     </div>
   )
 }

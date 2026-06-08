@@ -242,18 +242,21 @@ export async function reverseSupplierOnRefund(
  * @returns 성숙된 라인 수
  */
 export async function matureSupplierSettlements(DB: D1Database): Promise<number> {
-  // 성숙 대상(환불창 경과) 공급자별 합계.
+  // 🏭 BIZ-1 (2026-06-08): 클레임/분쟁으로 HOLD 된 정산은 성숙에서 제외(분쟁 중 공급자 지급 보류).
+  //   held_at 컬럼이 없는 cold DB 도 안전하도록 best-effort ADD COLUMN(이미 있으면 무시) 후 가드 적용.
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 — 무시 */ });
+  // 성숙 대상(환불창 경과 + HOLD 아님) 공급자별 합계.
   const due = await DB.prepare(
-    "SELECT supplier_id, SUM(supply_amount) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') GROUP BY supplier_id"
+    "SELECT supplier_id, SUM(supply_amount) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') AND held_at IS NULL GROUP BY supplier_id"
   ).all<{ supplier_id: number; amt: number; cnt: number }>().catch(() => ({ results: [] as { supplier_id: number; amt: number; cnt: number }[] }));
 
   let matured = 0;
   for (const d of due.results || []) {
     const amt = Math.max(0, Math.floor(Number(d.amt) || 0));
     if (amt <= 0) continue;
-    // 상태 전환 먼저(멱등 보장) → 잔고 이동.
+    // 상태 전환 먼저(멱등 보장) → 잔고 이동. HOLD 된 row 는 제외(held_at IS NULL).
     const upd = await DB.prepare(
-      "UPDATE supplier_settlements SET status = 'available' WHERE supplier_id = ? AND status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now')"
+      "UPDATE supplier_settlements SET status = 'available' WHERE supplier_id = ? AND status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') AND held_at IS NULL"
     ).bind(d.supplier_id).run();
     const changed = upd.meta?.changes ?? 0;
     if (changed <= 0) continue;

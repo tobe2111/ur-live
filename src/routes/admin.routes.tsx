@@ -22,6 +22,9 @@ const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
+// 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
+const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
+const AdminWholesaleQuotesPage = lazy(() => import('@/pages/admin/AdminWholesaleQuotesPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
@@ -194,6 +197,18 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-orders" element={
         <ProtectedRoute requireAdmin>
           <AdminWholesaleOrdersPage />
+        </ProtectedRoute>
+      } />
+      {/* 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 */}
+      <Route path="/admin/wholesale-claims" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleClaimsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏭 BIZ-3 (2026-06-08): 도매 견적/발주(Quote/PO) */}
+      <Route path="/admin/wholesale-quotes" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleQuotesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/alimtalk" element={
