@@ -17,11 +17,25 @@ const REFUND_WINDOW_DAYS = 7
 // 🛡️ 브랜드제품: '거의 당일' 정산이되 최소 환불 클로백 안전창(1일) 확보 — 지급 후 환불로 인한 미회수 방지.
 const BRAND_REFUND_WINDOW_DAYS = 1
 
-const _sourceEnsured = new WeakSet<object>()
+// 🛡️ 2026-06-08 OPS-2: 완료된 ensure 만 promise 로 캐시(supply-visibility.ts 패턴).
+//   기존 WeakSet 는 add 를 await *전* 에 해서, 첫 호출의 ALTER 가 일시 실패(락/타임아웃)하면
+//   DB 가 '완료됨'으로 영구 마킹돼 컬럼 없는 채 모든 후속 호출이 통과 → source 쿼리 500 영구화.
+//   in-flight promise 를 공유하고, 실패 시 캐시를 delete 해 다음 호출이 재시도하도록 한다.
+const _sourceEnsuring = new WeakMap<object, Promise<void>>()
 /** supplier_settlements.source 컬럼 보장 (repair-schema CI 불안정 대비). */
 async function ensureSourceColumn(DB: D1Database): Promise<void> {
-  if (_sourceEnsured.has(DB)) return
-  _sourceEnsured.add(DB)
+  const existing = _sourceEnsuring.get(DB)
+  if (existing) return existing
+  const p = _doEnsureSourceColumn(DB)
+  _sourceEnsuring.set(DB, p)
+  try {
+    await p
+  } catch {
+    _sourceEnsuring.delete(DB) // 실패 시 다음 호출이 재시도
+  }
+}
+async function _doEnsureSourceColumn(DB: D1Database): Promise<void> {
+  // CREATE/ALTER 문은 기존과 동일 — 이미 존재하면 무시(컬럼 추가는 1회).
   await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'")
     .run().catch(() => { /* 이미 존재 — 무시 */ })
 }
@@ -105,9 +119,39 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
 }
 
 /**
- * 도매 주문 환불 시 제조사 적립 역전 (pending/available 만, paid 제외). 멱등.
+ * 🛡️ 2026-06-08 PAY-4: 제조사 잔고 캐시를 settlements(권위 출처) status별 SUM 으로 재계산(자가치유).
+ *   (supply-settlement.ts 의 recomputeSupplierBalance 와 동일 패턴 — 파일 분리상 로컬 재정의.)
+ *   consumer/wholesale 정산이 같은 supplier_settlements 테이블을 공유하므로 SUM 은 source 무관 전체 합 —
+ *   supplier_balances 도 source 구분 없는 단일 잔고이므로 일관(기존 increment 도 동일 단일 잔고였음).
+ */
+async function recomputeSupplierBalance(DB: D1Database, supplierId: number): Promise<void> {
+  await DB.prepare(
+    `INSERT INTO supplier_balances (supplier_id, pending_amount, available_amount, paid_amount, updated_at)
+     VALUES (
+       ?,
+       COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status = 'pending'), 0),
+       COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status = 'available'), 0),
+       COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status = 'paid'), 0),
+       datetime('now')
+     )
+     ON CONFLICT(supplier_id) DO UPDATE SET
+       pending_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = supplier_balances.supplier_id AND status = 'pending'), 0),
+       available_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = supplier_balances.supplier_id AND status = 'available'), 0),
+       paid_amount = COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = supplier_balances.supplier_id AND status = 'paid'), 0),
+       updated_at = datetime('now')`
+  ).bind(supplierId, supplierId, supplierId, supplierId).run()
+}
+
+/**
+ * 도매 주문 환불 시 제조사 적립 역전. 멱등.
+ * 🛡️ 2026-06-08 PAY-1(클로백) + PAY-4(SUM 재계산):
+ *   - pending/available(미지급): 기존처럼 'cancelled' 취소.
+ *   - **이미 paid 된 정산**: 기존엔 SKIP → 플랫폼 손실. 이제 음수 클로백 row(status='available',
+ *     supply_amount 음수, source='wholesale', note='clawback')를 추가 → available SUM 순감 →
+ *     다음 payout 이 그만큼 적게 지급(net-out). 미래 잔고 부족(음수)이면 어드민 ops 알림.
+ *   - 잔고는 per-row 버킷 감산 대신 supplier별 SUM 재계산(만기 레이스 제거).
  * @param supplierId 지정 시 해당 제조사 라인만 역전(부분환불). 미지정 시 주문 전체.
- * @returns 역전된 라인 수
+ * @returns 역전된 라인 수 (취소 + 클로백 합산)
  */
 export async function reverseSupplierOnWholesaleRefund(
   DB: D1Database,
@@ -118,21 +162,53 @@ export async function reverseSupplierOnWholesaleRefund(
   if (!wholesaleOrderId) return 0
   await ensureSourceColumn(DB)
   const scoped = Number.isFinite(supplierId) && (supplierId as number) > 0
+  // 🛡️ PAY-1: paid 도 함께 조회(클로백 대상). 이미 클로백된 row(note='clawback')는 제외(멱등).
   const rows = await DB.prepare(
-    `SELECT id, supplier_id, supply_amount, status FROM supplier_settlements
-     WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND paid_at IS NULL
+    `SELECT id, supplier_id, product_id, supply_amount, status FROM supplier_settlements
+     WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available','paid') AND note IS NOT 'clawback'
      ${scoped ? 'AND supplier_id = ?' : ''}`
   ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]))
-    .all<{ id: number; supplier_id: number; supply_amount: number; status: string }>()
-    .catch(() => ({ results: [] as { id: number; supplier_id: number; supply_amount: number; status: string }[] }))
+    .all<{ id: number; supplier_id: number; product_id: number; supply_amount: number; status: string }>()
+    .catch(() => ({ results: [] as { id: number; supplier_id: number; product_id: number; supply_amount: number; status: string }[] }))
 
   let reversed = 0
+  const touchedSuppliers = new Set<number>()
   for (const a of rows.results || []) {
-    await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ?").bind(reason, a.id).run()
-    const col = a.status === 'pending' ? 'pending_amount' : 'available_amount'
-    await DB.prepare(`UPDATE supplier_balances SET ${col} = MAX(0, ${col} - ?), updated_at = datetime('now') WHERE supplier_id = ?`)
-      .bind(a.supply_amount, a.supplier_id).run()
-    reversed++
+    const amt = Math.max(0, Math.floor(Number(a.supply_amount) || 0))
+    if (a.status === 'paid') {
+      // 🛡️ PAY-1 클로백: 음수 보정 row(available). product_id 음수로 기록 → 원본 라인과 별도 +
+      //   idx_supplier_settle_unique(order_id, -product_id, 'wholesale') 로 재호출 시 중복 차단.
+      await DB.prepare(
+        `INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
+         VALUES (?, ?, ?, NULL, 0, ?, 'available', datetime('now','-1 second'), 'wholesale', 'clawback')
+         ON CONFLICT(order_id, product_id, source) DO NOTHING`
+      ).bind(a.supplier_id, wholesaleOrderId, -Math.abs(a.product_id || 0), -amt).run().catch(() => { /* 멱등/best-effort */ })
+      reversed++
+      touchedSuppliers.add(a.supplier_id)
+    } else {
+      await DB.prepare("UPDATE supplier_settlements SET status = 'cancelled', note = ? WHERE id = ? AND status IN ('pending','available')").bind(reason, a.id).run()
+      reversed++
+      touchedSuppliers.add(a.supplier_id)
+    }
+  }
+
+  // 🛡️ PAY-4: 영향받은 제조사별 잔고 SUM 재계산 + 클로백 부족분 어드민 알림.
+  for (const sid of touchedSuppliers) {
+    await recomputeSupplierBalance(DB, sid).catch(() => { /* best-effort */ })
+    const bal = await DB.prepare(
+      "SELECT COALESCE((SELECT SUM(supply_amount) FROM supplier_settlements WHERE supplier_id = ? AND status = 'available'), 0) AS avail"
+    ).bind(sid).first<{ avail: number }>().catch(() => null)
+    const avail = Math.floor(Number(bal?.avail) || 0)
+    if (avail < 0) {
+      try {
+        await createDashboardNotification(
+          DB, 'admin', null, 'supplier_clawback_shortfall',
+          '제조사 클로백 잔고 부족',
+          `제조사 #${sid} 의 지급 후 도매 환불 클로백을 향후 정산으로 상계하지 못했습니다(부족 ₩${Math.abs(avail).toLocaleString()}). 직접 회수가 필요합니다. (도매주문 #${wholesaleOrderId})`,
+          '/admin/suppliers',
+        )
+      } catch { /* 알림 best-effort */ }
+    }
   }
   return reversed
 }
