@@ -8,13 +8,14 @@ import { WT, won } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
 
 // 🏭 BIZ-1: 클레임(RMA) 제기 가능한 주문 상태 — 결제완료 이후.
-const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'])
+const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CREDIT'])
 
 // 🏭 2026-06-04 유통스타트 도매 주문 내역 — TDS 라이트 시안 정비. 라이트 고정 B2B.
 
 const STATUS: Record<string, { t: string; c: string; bg: string }> = {
   PENDING: { t: '결제대기', c: '#9A6B00', bg: '#FFF6E6' },
   PAID: { t: '결제완료', c: '#11875A', bg: '#EAF6EF' },
+  ON_CREDIT: { t: '여신(외상)', c: '#0E8A6E', bg: '#E6F6F1' },
   SHIPPED: { t: '배송중', c: '#1B64DA', bg: '#EAF1FE' },
   PARTIAL_REFUNDED: { t: '부분환불', c: '#C2620C', bg: '#FFF1E6' },
   REFUNDED: { t: '환불완료', c: '#D63A4E', bg: '#FDECEF' },

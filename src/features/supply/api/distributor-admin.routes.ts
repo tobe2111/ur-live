@@ -115,8 +115,13 @@ app.get('/distributors', async (c) => {
       const like = `%${search}%`
       binds.push(like, like, like, like)
     }
+    // 🏭 BIZ-2: 여신 컬럼 보강(없는 환경 self-heal) 후 함께 반환 — UI 가 한도/미수금/동결 인라인 표시.
+    await ensureCreditSchemaAdmin(c.env.DB)
     const { results } = await c.env.DB.prepare(
-      `SELECT id, username, name, business_name, email, seller_type, distributor_grade, special_discount_until
+      `SELECT id, username, name, business_name, email, seller_type, distributor_grade, special_discount_until,
+              COALESCE(distributor_credit_limit,0) AS distributor_credit_limit,
+              COALESCE(outstanding_balance,0) AS outstanding_balance,
+              COALESCE(credit_frozen,0) AS credit_frozen
        FROM sellers WHERE ${where}
        ORDER BY (distributor_grade IS NOT NULL) DESC, id DESC LIMIT 100`
     ).bind(...binds).all()
@@ -169,6 +174,136 @@ app.patch('/distributors/:id', async (c) => {
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '유통사 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// ── BIZ-2 v1 (2026-06-08) 여신/외상(credit terms) 관리 ─────────────────────────
+//   sellers 의 distributor_credit_limit / outstanding_balance / credit_frozen + 미수금 원장.
+//   ⚠️ wholesale.routes ensureCreditSchema 와 동일 스키마 — cold isolate 대비 여기서도 멱등 보장.
+const _creditEnsuredAdmin = new WeakSet<object>()
+async function ensureCreditSchemaAdmin(DB: D1Database) {
+  if (_creditEnsuredAdmin.has(DB)) return
+  _creditEnsuredAdmin.add(DB)
+  for (const sql of [
+    'ALTER TABLE sellers ADD COLUMN distributor_credit_limit INTEGER DEFAULT 0',
+    'ALTER TABLE sellers ADD COLUMN outstanding_balance INTEGER DEFAULT 0',
+    'ALTER TABLE sellers ADD COLUMN credit_frozen INTEGER DEFAULT 0',
+  ]) { await DB.prepare(sql).run().catch(swallow('distributor-admin:credit:alter')) }
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_credit_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    distributor_seller_id INTEGER NOT NULL,
+    order_id INTEGER,
+    type TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 0,
+    balance_after INTEGER NOT NULL DEFAULT 0,
+    memo TEXT,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(swallow('distributor-admin:credit:ledger'))
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)`).run().catch(swallow('distributor-admin:credit:idx'))
+}
+
+// GET /distributors/:id/credit — 여신 한도/미수금/원장 (어드민 UI)
+app.get('/distributors/:id/credit', async (c) => {
+  try {
+    await ensureCreditSchemaAdmin(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+    const seller = await c.env.DB.prepare(
+      'SELECT id, business_name, name, username, status, COALESCE(distributor_credit_limit,0) AS limit, COALESCE(outstanding_balance,0) AS outstanding, COALESCE(credit_frozen,0) AS frozen FROM sellers WHERE id = ?'
+    ).bind(id).first<{ id: number; business_name: string | null; name: string | null; username: string | null; status: string | null; limit: number; outstanding: number; frozen: number }>()
+    if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, order_id, type, amount, balance_after, memo, created_at FROM wholesale_credit_ledger WHERE distributor_seller_id = ? ORDER BY created_at DESC, id DESC LIMIT 100'
+    ).bind(id).all().catch(() => ({ results: [] }))
+    const available = Math.max(0, (seller.limit || 0) - (seller.outstanding || 0))
+    return c.json({ success: true, credit: { ...seller, available }, ledger: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '여신 정보 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// PATCH /distributors/:id/credit — 여신 한도 설정 + 동결 토글 (감사로그)
+app.patch('/distributors/:id/credit', async (c) => {
+  try {
+    await ensureCreditSchemaAdmin(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const sets: string[] = []
+    const params: (string | number)[] = []
+    let nextLimit: number | undefined
+    let nextFrozen: number | undefined
+    if (body.distributor_credit_limit !== undefined) {
+      const lim = Math.floor(Number(body.distributor_credit_limit))
+      if (!Number.isFinite(lim) || lim < 0 || lim > 1_000_000_000) {
+        return c.json({ success: false, error: '여신 한도는 0 이상 10억 이하여야 합니다' }, 400)
+      }
+      nextLimit = lim
+      sets.push('distributor_credit_limit = ?'); params.push(lim)
+    }
+    if (body.credit_frozen !== undefined) {
+      nextFrozen = body.credit_frozen === true || body.credit_frozen === 1 || body.credit_frozen === '1' ? 1 : 0
+      sets.push('credit_frozen = ?'); params.push(nextFrozen)
+    }
+    if (!sets.length) return c.json({ success: false, error: '변경할 내용이 없습니다 (한도 또는 동결)' }, 400)
+
+    const prev = await c.env.DB.prepare(
+      'SELECT COALESCE(distributor_credit_limit,0) AS limit, COALESCE(credit_frozen,0) AS frozen FROM sellers WHERE id = ?'
+    ).bind(id).first<{ limit: number; frozen: number }>().catch(() => null)
+    sets.push("updated_at = datetime('now')")
+    const res = await c.env.DB.prepare(`UPDATE sellers SET ${sets.join(', ')} WHERE id = ?`).bind(...params, id).run()
+    if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+    await writeAuditLog(c, {
+      action: 'wholesale_credit_terms_change',
+      targetType: 'seller',
+      targetId: String(id),
+      before: { credit_limit: prev?.limit ?? null, credit_frozen: prev?.frozen ?? null },
+      after: { credit_limit: nextLimit ?? prev?.limit ?? null, credit_frozen: nextFrozen ?? prev?.frozen ?? null },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '여신 설정 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// POST /distributors/:id/credit-repayment — 미수금 상환 기록 (outstanding 차감 + 원장 + 감사)
+//   v1 수동. (월별 자동 청구서/명세 + 연체 자동 동결 cron = 향후 follow-up.)
+app.post('/distributors/:id/credit-repayment', rateLimit({ action: 'admin-credit-repayment', max: 30, windowSec: 60 }), async (c) => {
+  try {
+    await ensureCreditSchemaAdmin(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const amount = Math.floor(Number(body.amount))
+    if (!Number.isFinite(amount) || amount <= 0) return c.json({ success: false, error: '상환 금액이 올바르지 않습니다' }, 400)
+    const memo = typeof body.memo === 'string' ? body.memo.slice(0, 200) : null
+
+    const seller = await c.env.DB.prepare(
+      'SELECT COALESCE(outstanding_balance,0) AS outstanding FROM sellers WHERE id = ?'
+    ).bind(id).first<{ outstanding: number }>()
+    if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+    const prevOut = Math.max(0, seller.outstanding || 0)
+    // 미수금 초과 상환은 잔액까지만(clamp ≥0). 실제 차감액 = min(amount, prevOut).
+    const applied = Math.min(amount, prevOut)
+    const newOut = prevOut - applied
+
+    const batch = await c.env.DB.batch([
+      c.env.DB.prepare("UPDATE sellers SET outstanding_balance = ?, updated_at = datetime('now') WHERE id = ?").bind(newOut, id),
+      c.env.DB.prepare(
+        "INSERT INTO wholesale_credit_ledger (distributor_seller_id, order_id, type, amount, balance_after, memo) VALUES (?, NULL, 'repayment', ?, ?, ?)"
+      ).bind(id, applied, newOut, memo || `미수금 상환 ${applied.toLocaleString('ko-KR')}원`),
+    ])
+    if ((batch[0]?.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '상환 처리에 실패했습니다' }, 500)
+    await writeAuditLog(c, {
+      action: 'wholesale_credit_repayment',
+      targetType: 'seller',
+      targetId: String(id),
+      before: { outstanding_balance: prevOut },
+      after: { outstanding_balance: newOut, repaid: applied, requested: amount },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
+    return c.json({ success: true, repaid: applied, outstanding: newOut })
+  } catch (err) {
+    return safeError(c, err, '미수금 상환 처리 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 
@@ -278,7 +413,7 @@ app.get('/orders', async (c) => {
     const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
     const limit = Math.min(parseInt(c.req.query('limit') || '30', 10), 100)
     const offset = (page - 1) * limit
-    const VALID = ['PENDING', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED', 'FAILED']
+    const VALID = ['PENDING', 'PAID', 'ON_CREDIT', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED', 'FAILED']
     const binds: unknown[] = []
     let where = '1=1'
     if (VALID.includes(status)) { where += ' AND o.status = ?'; binds.push(status) }

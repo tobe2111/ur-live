@@ -5,7 +5,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
-import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X } from 'lucide-react'
+import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X, Wallet, Snowflake, BadgeDollarSign } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급/마진 설정 (Phase 1b).
@@ -28,6 +28,15 @@ interface DistributorRow {
   seller_type: string | null
   distributor_grade: string | null
   special_discount_until: string | null
+}
+
+// 🏭 BIZ-2 v1 여신/외상.
+interface CreditDetail {
+  id: number; business_name: string | null; name: string | null; username: string | null; status: string | null
+  limit: number; outstanding: number; available: number; frozen: number
+}
+interface LedgerRow {
+  id: number; order_id: number | null; type: string; amount: number; balance_after: number; memo: string | null; created_at: string
 }
 
 const ASSIGNABLE = ['A', 'B', 'C', 'D', 'OEM']
@@ -92,6 +101,64 @@ export default function AdminDistributorGradesPage() {
   // 🏭 2026-06-04 플랫폼 사업자정보(전자세금계산서 발행 전제) — platform_settings.
   const [company, setCompany] = useState<Record<string, string>>({})
   const [companyBusy, setCompanyBusy] = useState(false)
+
+  // 🏭 BIZ-2 v1 여신/외상 관리 — 유통사 한도/미수금/동결 + 상환.
+  const [creditSellerId, setCreditSellerId] = useState('')
+  const [creditData, setCreditData] = useState<{ credit: CreditDetail; ledger: LedgerRow[] } | null>(null)
+  const [creditBusy, setCreditBusy] = useState(false)
+  const [creditLimitInput, setCreditLimitInput] = useState('')
+  const [repayInput, setRepayInput] = useState('')
+  const [repayMemo, setRepayMemo] = useState('')
+
+  const loadCredit = useCallback((id: string) => {
+    const sid = Number(id)
+    if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
+    setCreditBusy(true)
+    api.get(`/api/admin/distributor/distributors/${sid}/credit`, h)
+      .then(r => {
+        if (r.data?.success) {
+          setCreditData({ credit: r.data.credit, ledger: r.data.ledger || [] })
+          setCreditLimitInput(String(r.data.credit.limit ?? 0))
+        } else toast.error(r.data?.error || '조회 실패')
+      })
+      .catch((e: unknown) => toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '조회 실패'))
+      .finally(() => setCreditBusy(false))
+  }, [])
+
+  async function saveCreditLimit() {
+    const sid = Number(creditSellerId)
+    const lim = Number(creditLimitInput)
+    if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
+    if (!Number.isFinite(lim) || lim < 0) { toast.error('여신 한도는 0 이상이어야 합니다'); return }
+    setCreditBusy(true)
+    try {
+      const r = await api.patch(`/api/admin/distributor/distributors/${sid}/credit`, { distributor_credit_limit: Math.floor(lim) }, h)
+      if (r.data?.success) { toast.success(`여신 한도 ${Math.floor(lim).toLocaleString('ko-KR')}원 저장`); loadCredit(creditSellerId) }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '저장 실패') } finally { setCreditBusy(false) }
+  }
+  async function toggleFreeze(frozen: boolean) {
+    const sid = Number(creditSellerId)
+    if (!Number.isFinite(sid) || sid <= 0) return
+    setCreditBusy(true)
+    try {
+      const r = await api.patch(`/api/admin/distributor/distributors/${sid}/credit`, { credit_frozen: frozen }, h)
+      if (r.data?.success) { toast.success(frozen ? '여신 동결됨' : '여신 동결 해제됨'); loadCredit(creditSellerId) }
+      else toast.error(r.data?.error || '처리 실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '처리 실패') } finally { setCreditBusy(false) }
+  }
+  async function recordRepayment() {
+    const sid = Number(creditSellerId)
+    const amt = Number(repayInput)
+    if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error('상환 금액을 입력하세요'); return }
+    setCreditBusy(true)
+    try {
+      const r = await api.post(`/api/admin/distributor/distributors/${sid}/credit-repayment`, { amount: Math.floor(amt), memo: repayMemo }, h)
+      if (r.data?.success) { toast.success(`상환 ${Number(r.data.repaid).toLocaleString('ko-KR')}원 기록 — 미수금 ${Number(r.data.outstanding).toLocaleString('ko-KR')}원`); setRepayInput(''); setRepayMemo(''); loadCredit(creditSellerId) }
+      else toast.error(r.data?.error || '상환 실패')
+    } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '상환 실패') } finally { setCreditBusy(false) }
+  }
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -432,6 +499,101 @@ export default function AdminDistributorGradesPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </section>
+
+        {/* ── 여신/외상 관리 (BIZ-2 v1) ── */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+            <Wallet className="w-4 h-4 text-emerald-600" /> 여신 · 외상 관리
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            유통사에 <b>여신 한도</b>를 부여하면 도매 주문 시 선결제 대신 <b>외상(ON_CREDIT)</b>으로 주문할 수 있습니다.
+            (가용 한도 = 한도 − 미수금. 연체 시 동결.) 한도 0 = 외상 불가(선결제 전용).
+          </p>
+          <div className="flex flex-wrap items-end gap-2 mb-4">
+            <input type="number" value={creditSellerId} onChange={e => setCreditSellerId(e.target.value)} placeholder="유통사 ID" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <button onClick={() => loadCredit(creditSellerId)} disabled={creditBusy} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{creditBusy ? '처리중…' : '여신 조회'}</button>
+          </div>
+
+          {creditData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500">유통사</div>
+                  <div className="text-sm font-semibold text-gray-900 truncate">{creditData.credit.business_name || creditData.credit.name || `#${creditData.credit.id}`}</div>
+                  <div className="text-[11px] text-gray-400">{creditData.credit.status || '-'}</div>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500">여신 한도</div>
+                  <div className="text-sm font-bold text-gray-900 tabular-nums">{Number(creditData.credit.limit).toLocaleString('ko-KR')}원</div>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500">미수금</div>
+                  <div className="text-sm font-bold text-rose-600 tabular-nums">{Number(creditData.credit.outstanding).toLocaleString('ko-KR')}원</div>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500">가용 한도</div>
+                  <div className="text-sm font-bold text-emerald-700 tabular-nums">{Number(creditData.credit.available).toLocaleString('ko-KR')}원</div>
+                  {creditData.credit.frozen === 1 && <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-sky-700"><Snowflake className="w-3 h-3" />동결됨</span>}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">여신 한도 설정</label>
+                  <input type="number" min={0} value={creditLimitInput} onChange={e => setCreditLimitInput(e.target.value)} placeholder="한도(원)" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+                </div>
+                <button onClick={saveCreditLimit} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                  <Save className="w-4 h-4" /> 한도 저장
+                </button>
+                {creditData.credit.frozen === 1 ? (
+                  <button onClick={() => toggleFreeze(false)} disabled={creditBusy} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">동결 해제</button>
+                ) : (
+                  <button onClick={() => toggleFreeze(true)} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 border border-sky-300 text-sky-700 rounded-lg text-sm font-medium disabled:opacity-50">
+                    <Snowflake className="w-4 h-4" /> 여신 동결
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-end gap-2 pt-3 border-t border-gray-100">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">미수금 상환 기록</label>
+                  <input type="number" min={0} value={repayInput} onChange={e => setRepayInput(e.target.value)} placeholder="상환액(원)" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+                </div>
+                <input type="text" value={repayMemo} onChange={e => setRepayMemo(e.target.value)} placeholder="메모(선택)" maxLength={200} className="flex-1 min-w-[160px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+                <button onClick={recordRepayment} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                  <BadgeDollarSign className="w-4 h-4" /> 상환 기록
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">미수금 원장 (최근 100건)</h3>
+                {creditData.ledger.length === 0 ? (
+                  <p className="text-sm text-gray-400">원장 내역이 없습니다.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead><tr className="text-left text-gray-500 border-b border-gray-100"><th className="py-2">일시</th><th>유형</th><th>주문</th><th className="text-right">금액</th><th className="text-right">잔액</th><th>메모</th></tr></thead>
+                      <tbody>
+                        {creditData.ledger.map((l) => (
+                          <tr key={l.id} className="border-b border-gray-50">
+                            <td className="py-1.5 text-gray-600 whitespace-nowrap">{(l.created_at || '').slice(0, 16).replace('T', ' ')}</td>
+                            <td className={l.type === 'repayment' ? 'text-emerald-700 font-medium' : l.type === 'charge' ? 'text-rose-600 font-medium' : 'text-gray-600'}>
+                              {l.type === 'charge' ? '청구(외상)' : l.type === 'repayment' ? '상환' : '조정'}
+                            </td>
+                            <td className="text-gray-500">{l.order_id ? `#${l.order_id}` : '-'}</td>
+                            <td className="text-right tabular-nums">{l.type === 'repayment' ? '−' : '+'}{Number(l.amount).toLocaleString('ko-KR')}</td>
+                            <td className="text-right tabular-nums text-gray-900 font-medium">{Number(l.balance_after).toLocaleString('ko-KR')}</td>
+                            <td className="text-gray-500 truncate max-w-[160px]">{l.memo || ''}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>

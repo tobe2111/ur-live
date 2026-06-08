@@ -283,12 +283,12 @@
 
 | 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
 |---|---|---|---|
-| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 24 | 92 |
+| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 24 | 95 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 27 | 83 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 332 |
 | 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 58 |
 | 에이전시 | `agency-brief.md` | 53 | 166 |
-| **합계** | — | **189** | **731** |
+| **합계** | — | **189** | **734** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,8 +297,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 304 | 1036 |
-| 도메인 버킷 (5개 소개서) | 189 | 731 |
+| 전체 | 304 | 1039 |
+| 도메인 버킷 (5개 소개서) | 189 | 734 |
 | 공통/인프라 (의도적 제외) | 115 | 305 |
 | **미커버 (점검 필요)** | **0** | **0** |
 
@@ -426,7 +426,7 @@
 - `/wholesale/statement`
 - `/wholesale/success`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (92개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
 
 
 **/api/admin/distributor**
@@ -434,6 +434,9 @@
 - `PUT /api/admin/distributor/company-info`
 - `GET /api/admin/distributor/distributors`
 - `PATCH /api/admin/distributor/distributors/:id`
+- `GET /api/admin/distributor/distributors/:id/credit`
+- `PATCH /api/admin/distributor/distributors/:id/credit`
+- `POST /api/admin/distributor/distributors/:id/credit-repayment`
 - `GET /api/admin/distributor/grades`
 - `PUT /api/admin/distributor/grades/:grade`
 - `GET /api/admin/distributor/oem-requests`
@@ -1961,7 +1964,7 @@
 
 
 
-> 마지막 생성: 2026-06-08T00:52:41.279Z
+> 마지막 생성: 2026-06-08T01:27:26.488Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -20,12 +20,18 @@ export default function WholesaleSuccessPage() {
   const paymentKey = sp.get('paymentKey') || ''
   const orderId = sp.get('orderId') || ''
   const amount = Number(sp.get('amount') || '0')
+  // 🏭 BIZ-2 v1: 여신(외상) 주문은 Toss 미경유 — 서버에서 이미 ON_CREDIT 로 확정됨. confirm 불필요.
+  const isCredit = sp.get('credit') === '1'
 
   useEffect(() => {
     if (ranRef.current) return
     ranRef.current = true
     const token = localStorage.getItem('seller_token')
     if (!token) { navigate('/seller/login'); return }
+    if (isCredit) {
+      // 외상 주문은 cart 에서 이미 생성·확정·장바구니 비움 완료 → 안내만.
+      setState('done'); return
+    }
     if (!paymentKey || !orderId || !Number.isFinite(amount) || amount <= 0) {
       setErrorMsg('결제 정보가 올바르지 않습니다.'); setState('error'); return
     }
@@ -52,7 +58,9 @@ export default function WholesaleSuccessPage() {
         <>
           <CheckCircle2 className="w-14 h-14 mb-4" style={{ color: WT.pos }} />
           <h1 className="text-xl font-bold mb-1" style={{ color: WT.ink }}>주문이 완료되었습니다</h1>
-          <p className="mb-6 tabular-nums" style={{ color: WT.ink2 }}>{won(amount)} 결제 완료</p>
+          <p className="tabular-nums" style={{ color: WT.ink2 }}>{won(amount)} {isCredit ? '여신(외상) 주문 완료' : '결제 완료'}</p>
+          {isCredit && <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>미수금은 정산일에 정산됩니다. 거래내역에서 확인하세요.</p>}
+          <div className="mb-6" />
           <div className="flex gap-3">
             <button onClick={() => navigate('/wholesale/orders')} className="px-5 h-12 rounded-xl font-bold text-white" style={{ background: WT.ink }}>주문 내역</button>
             <button onClick={() => navigate('/wholesale')} className="px-5 h-12 rounded-xl font-bold" style={{ background: WT.fill, color: WT.ink }}>계속 쇼핑</button>

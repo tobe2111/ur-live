@@ -75,6 +75,45 @@ async function ensureOrderTables(DB: D1Database) {
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)`).run().catch(swallow('wholesale:idx3'))
 }
 
+// ── BIZ-2 v1 (2026-06-08) 여신/외상(credit terms) — 멱등 ensure. ─────────────────
+//   "사입 0원" 핵심 모순(현재 100% Toss 선결제) 해소를 위한 ADDITIVE 외상 경로.
+//   sellers 에 여신 한도/미수금/동결 3컬럼 + 감사가능 미수금 원장(wholesale_credit_ledger).
+//   ⚠️ 선결제(prepay) 경로는 byte-identical 보존 — credit 은 별도 status 'ON_CREDIT' 분기.
+const _creditEnsured = new WeakSet<object>()
+async function ensureCreditSchema(DB: D1Database) {
+  if (_creditEnsured.has(DB)) return
+  _creditEnsured.add(DB)
+  for (const sql of [
+    'ALTER TABLE sellers ADD COLUMN distributor_credit_limit INTEGER DEFAULT 0',   // 0 = 여신 없음(선결제 전용)
+    'ALTER TABLE sellers ADD COLUMN outstanding_balance INTEGER DEFAULT 0',        // 현재 미상환 외상 잔액(플랫폼이 보유한 채권)
+    'ALTER TABLE sellers ADD COLUMN credit_frozen INTEGER DEFAULT 0',              // 1 = 여신 동결(연체 등)
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:credit:alter')) }
+  // 미수금 원장 — 청구(charge)/상환(repayment)/조정(adjust) 감사 이력.
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_credit_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    distributor_seller_id INTEGER NOT NULL,
+    order_id INTEGER,
+    type TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 0,
+    balance_after INTEGER NOT NULL DEFAULT 0,
+    memo TEXT,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(swallow('wholesale:credit:ledger'))
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:credit:idx'))
+}
+
+/** 유통사 여신 상태 로드(미배정/컬럼 없는 환경은 0). */
+interface SellerCreditRow { distributor_credit_limit: number | null; outstanding_balance: number | null; credit_frozen: number | null; status: string | null }
+async function loadSellerCredit(DB: D1Database, sellerId: number): Promise<{ limit: number; outstanding: number; frozen: boolean; available: number; status: string | null }> {
+  const row = await DB.prepare(
+    'SELECT distributor_credit_limit, outstanding_balance, credit_frozen, status FROM sellers WHERE id = ?'
+  ).bind(sellerId).first<SellerCreditRow>().catch(() => null)
+  const limit = Math.max(0, Math.floor(Number(row?.distributor_credit_limit) || 0))
+  const outstanding = Math.max(0, Math.floor(Number(row?.outstanding_balance) || 0))
+  const frozen = Number(row?.credit_frozen) === 1
+  return { limit, outstanding, frozen, available: Math.max(0, limit - outstanding), status: row?.status ?? null }
+}
+
 // ── 셀러(유통사) JWT → seller_id ──────────────────────────────────────────────
 async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
@@ -368,10 +407,13 @@ app.get('/me', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   try {
+    await ensureCreditSchema(c.env.DB)
     const sg = await loadSellerGrade(c.env.DB, sellerId)
     const table = await loadGradeTable(c.env.DB)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const marginPct = marginForGrade(grade, table)
+    // 🏭 BIZ-2 v1: 여신(외상) 상태 — UI 가 '여신 결제' 옵션 노출/한도 표시에 사용.
+    const credit = await loadSellerCredit(c.env.DB, sellerId)
     return c.json({
       success: true,
       grade,
@@ -379,6 +421,14 @@ app.get('/me', async (c) => {
       margin_pct: marginPct,
       special_active: grade === 'SPECIAL',
       special_discount_until: sg.special_discount_until,
+      credit: {
+        limit: credit.limit,
+        outstanding: credit.outstanding,
+        available: credit.available,
+        frozen: credit.frozen,
+        // 여신 사용 가능 = 한도>0 + 미동결 + 가용액>0. (주문 가능 여부는 서버가 주문 시 최종 재검증)
+        enabled: credit.limit > 0 && !credit.frozen && credit.available > 0,
+      },
     })
   } catch (err) {
     return safeError(c, err, '등급 조회 중 오류가 발생했습니다', '[wholesale]')
@@ -660,6 +710,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const rawItems = Array.isArray(body.items) ? body.items : []
     if (!rawItems.length) return c.json({ success: false, error: '주문 항목이 없습니다' }, 400)
+    // 🏭 BIZ-2 v1: 결제수단 — 'prepay'(기본, 기존 Toss 선결제 경로 byte-identical) | 'credit'(외상).
+    //   credit 분기는 아래 subtotal 재계산(prepay 와 동일) 직후 갈라짐. 기본값은 절대 'prepay'.
+    const payMethod = body.payment_method === 'credit' ? 'credit' : 'prepay'
 
     // product_id → qty 합산 + 검증
     const reqMap = new Map<number, number>()
@@ -739,6 +792,121 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const shipAddr = String(ship.address || shipFromProfile?.shipping_address || '').slice(0, 300) || null
     const shipPostal = String(ship.postal || shipFromProfile?.shipping_postal_code || '').slice(0, 20) || null
 
+    const orderName = lines.length === 1
+      ? lines[0].name.slice(0, 90)
+      : `${lines[0].name.slice(0, 40)} 외 ${lines.length - 1}건`
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 🏭 BIZ-2 v1 (2026-06-08) 여신(외상) 결제 분기 — ADDITIVE. Toss 미경유.
+    //   ⚠️ subtotal 은 위에서 prepay 와 동일하게 서버 재계산됨(클라 금액 불신). 여기서 게이트+원자 청구만.
+    //   결정사항: 제조사 정산은 prepay 와 동일하게 즉시 적립(creditSupplierOnWholesaleOrder) — 플랫폼이 채권을
+    //   떠안고, 유통사가 외상을 갚지 않아도 제조사는 기존 파이프라인대로 지급됨. (open question: 상환 시점 정산으로
+    //   바꿀지 — v1 은 '제조사 즉시 지급, 플랫폼 채권 보유'. 운영 리스크는 한도/동결로 통제.)
+    if (payMethod === 'credit') {
+      await ensureCreditSchema(DB)
+      const credit = await loadSellerCredit(DB, sellerId)
+      // 게이트 1: 승인/활성 유통사만 (가입 직후 pending 은 외상 불가).
+      if (credit.status !== 'approved' && credit.status !== 'active') {
+        return c.json({ success: false, error: '여신 결제는 승인된 유통회원만 이용할 수 있습니다', code: 'CREDIT_NOT_APPROVED' }, 403)
+      }
+      // 게이트 2: 동결.
+      if (credit.frozen) {
+        return c.json({ success: false, error: '여신이 동결되어 외상 결제를 이용할 수 없습니다. 미수금 상환 후 관리자에게 문의해주세요', code: 'CREDIT_FROZEN' }, 403)
+      }
+      // 게이트 3: 가용 한도(= 한도 − 미수금) ≥ 이번 주문 금액. (한도 0 = 여신 미부여)
+      if (credit.limit <= 0) {
+        return c.json({ success: false, error: '여신 한도가 부여되지 않았습니다. 관리자에게 여신 신청을 문의해주세요', code: 'CREDIT_NO_LIMIT' }, 403)
+      }
+      if (subtotal > credit.available) {
+        return c.json({
+          success: false,
+          error: `여신 한도를 초과했습니다 (가용 ${credit.available.toLocaleString('ko-KR')}원, 주문 ${subtotal.toLocaleString('ko-KR')}원)`,
+          code: 'CREDIT_LIMIT_EXCEEDED',
+          available: credit.available,
+        }, 409)
+      }
+
+      // 주문 생성 — status='ON_CREDIT' (PENDING/Toss 미경유). margin_total 동일 산식.
+      const creditOrderId = `WHS-CR-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+      const insC = await DB.prepare(`
+        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, paid_at)
+        VALUES (?, ?, 'ON_CREDIT', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).bind(sellerId, creditOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shipName, shipPhone, shipAddr, shipPostal).run()
+      const cOrderId = Number(insC.meta?.last_row_id)
+      if (!cOrderId) return c.json({ success: false, error: '주문 생성 중 오류가 발생했습니다' }, 500)
+
+      for (const l of lines) {
+        await DB.prepare(`
+          INSERT INTO wholesale_order_items (wholesale_order_id, product_id, supplier_id, name, qty, base_supply_price, distributor_unit_price, line_total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(cOrderId, l.product_id, l.supplier_id ?? null, l.name, l.qty, l.base, l.unit, l.line_total).run()
+      }
+
+      // 재고 원자적 차감 (oversell 가드 — prepay confirm 과 동일 가드). 실패 시 주문 FAILED + 청구 없음(롤백).
+      const cDecremented: Array<{ product_id: number; qty: number }> = []
+      let cOversold = false
+      for (const l of lines) {
+        const upd = await DB.prepare(
+          "UPDATE products SET stock = stock - ?, sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ? AND (stock IS NULL OR stock >= ?)"
+        ).bind(l.qty, l.qty, l.product_id, l.qty).run().catch(() => ({ meta: { changes: 0 } }))
+        if ((upd.meta?.changes ?? 0) === 0) { cOversold = true; break }
+        cDecremented.push({ product_id: l.product_id, qty: l.qty })
+      }
+      if (cOversold) {
+        for (const d of cDecremented) {
+          await DB.prepare(
+            "UPDATE products SET stock = stock + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
+          ).bind(d.qty, d.qty, d.product_id).run().catch(() => { /* best-effort */ })
+        }
+        await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(cOrderId).run().catch(() => {})
+        return c.json({ success: false, error: '재고가 부족하여 주문이 취소되었습니다. 다시 시도해주세요.', code: 'OVERSOLD' }, 409)
+      }
+
+      // 원자적 외상 청구: outstanding_balance += subtotal + 원장(charge) 기록 (D1.batch).
+      //   가드 WHERE 로 동결/한도초과를 재검증(체크아웃 사이 한도 변경 race 차단) — changes=0 이면 롤백.
+      const newOutstanding = credit.outstanding + subtotal
+      const charge = await DB.batch([
+        DB.prepare(
+          "UPDATE sellers SET outstanding_balance = COALESCE(outstanding_balance,0) + ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(credit_frozen,0) = 0 AND COALESCE(distributor_credit_limit,0) - COALESCE(outstanding_balance,0) >= ?"
+        ).bind(subtotal, sellerId, subtotal),
+        DB.prepare(
+          "INSERT INTO wholesale_credit_ledger (distributor_seller_id, order_id, type, amount, balance_after, memo) VALUES (?, ?, 'charge', ?, ?, ?)"
+        ).bind(sellerId, cOrderId, subtotal, newOutstanding, `도매 외상주문 #${cOrderId}`),
+      ])
+      if ((charge[0]?.meta?.changes ?? 0) === 0) {
+        // 청구 실패(동결/한도 변경 race) → 재고 복원 + 주문 FAILED + 원장 청구 되돌림. 미회수 0.
+        for (const d of cDecremented) {
+          await DB.prepare(
+            "UPDATE products SET stock = stock + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
+          ).bind(d.qty, d.qty, d.product_id).run().catch(() => { /* best-effort */ })
+        }
+        await DB.prepare("DELETE FROM wholesale_credit_ledger WHERE order_id = ? AND type = 'charge'").bind(cOrderId).run().catch(() => {})
+        await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(cOrderId).run().catch(() => {})
+        return c.json({ success: false, error: '여신 한도가 변경되어 외상 결제를 완료할 수 없습니다. 다시 확인해주세요', code: 'CREDIT_LIMIT_EXCEEDED' }, 409)
+      }
+
+      // 제조사 정산 적립 (prepay 와 동일 — 멱등, fail-soft). 공급자 알림 포함.
+      try { await creditSupplierOnWholesaleOrder(DB, cOrderId) } catch { /* best-effort */ }
+      // 어드민 알림 — 외상 발생(채권 증가) 추적.
+      createDashboardNotification(
+        DB, 'admin', null, 'wholesale_credit_order', '여신(외상) 주문 발생',
+        `유통사 #${sellerId} · ${orderName} · ${subtotal.toLocaleString('ko-KR')}원 (미수금 누계 ${newOutstanding.toLocaleString('ko-KR')}원)`,
+        '/admin/distributor-grades',
+      ).catch(swallow('wholesale:credit:notify-admin'))
+
+      return c.json({
+        success: true,
+        order_id: cOrderId,
+        payment_method: 'credit',
+        on_credit: true,
+        amount: subtotal,
+        order_name: orderName,
+        outstanding: newOutstanding,
+        available: Math.max(0, credit.limit - newOutstanding),
+      })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const tossOrderId = `WHS-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     const ins = await DB.prepare(`
       INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
@@ -752,10 +920,6 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(orderId, l.product_id, l.supplier_id ?? null, l.name, l.qty, l.base, l.unit, l.line_total).run()
     }
-
-    const orderName = lines.length === 1
-      ? lines[0].name.slice(0, 90)
-      : `${lines[0].name.slice(0, 40)} 외 ${lines.length - 1}건`
 
     return c.json({ success: true, order_id: orderId, toss_order_id: tossOrderId, amount: subtotal, order_name: orderName })
   } catch (err) {

@@ -253,6 +253,23 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
     { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
+    // 🏭 BIZ-2 v1 (2026-06-08) 여신/외상(credit terms): 도매 주문 100% 선결제 모순 해소용 ADDITIVE 외상 경로.
+    //   distributor_credit_limit: 0=여신 없음(선결제 전용). outstanding_balance: 미상환 외상(플랫폼 채권). credit_frozen: 1=동결.
+    //   원장(wholesale_credit_ledger)은 wholesale.routes ensureCreditSchema 가 CREATE — 여기선 sellers 3컬럼만 보강.
+    { desc: 'sellers.distributor_credit_limit', sql: "ALTER TABLE sellers ADD COLUMN distributor_credit_limit INTEGER DEFAULT 0" },
+    { desc: 'sellers.outstanding_balance', sql: "ALTER TABLE sellers ADD COLUMN outstanding_balance INTEGER DEFAULT 0" },
+    { desc: 'sellers.credit_frozen', sql: "ALTER TABLE sellers ADD COLUMN credit_frozen INTEGER DEFAULT 0" },
+    { desc: 'wholesale_credit_ledger', sql: `CREATE TABLE IF NOT EXISTS wholesale_credit_ledger (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      distributor_seller_id INTEGER NOT NULL,
+      order_id INTEGER,
+      type TEXT NOT NULL,
+      amount INTEGER NOT NULL DEFAULT 0,
+      balance_after INTEGER NOT NULL DEFAULT 0,
+      memo TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_wholesale_credit_ledger_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).

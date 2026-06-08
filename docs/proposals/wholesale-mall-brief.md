@@ -765,7 +765,7 @@
 - `/wholesale/statement`
 - `/wholesale/success`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (92개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
 
 
 **/api/admin/distributor**
@@ -773,6 +773,9 @@
 - `PUT /api/admin/distributor/company-info`
 - `GET /api/admin/distributor/distributors`
 - `PATCH /api/admin/distributor/distributors/:id`
+- `GET /api/admin/distributor/distributors/:id/credit`
+- `PATCH /api/admin/distributor/distributors/:id/credit`
+- `POST /api/admin/distributor/distributors/:id/credit-repayment`
 - `GET /api/admin/distributor/grades`
 - `PUT /api/admin/distributor/grades/:grade`
 - `GET /api/admin/distributor/oem-requests`
@@ -921,7 +924,7 @@
 - `GET /api/wholesale/statement`
 
 
-> 마지막 생성: 2026-06-08T00:52:41.268Z
+> 마지막 생성: 2026-06-08T01:27:26.477Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
