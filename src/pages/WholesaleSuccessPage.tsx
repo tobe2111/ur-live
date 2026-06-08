@@ -27,7 +27,7 @@ export default function WholesaleSuccessPage() {
     if (ranRef.current) return
     ranRef.current = true
     const token = localStorage.getItem('seller_token')
-    if (!token) { navigate('/seller/login'); return }
+    if (!token) { navigate('/wholesale/login'); return }
     if (isCredit) {
       // 외상 주문은 cart 에서 이미 생성·확정·장바구니 비움 완료 → 안내만.
       setState('done'); return

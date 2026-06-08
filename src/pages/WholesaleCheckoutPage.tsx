@@ -54,7 +54,7 @@ export default function WholesaleCheckoutPage() {
       return
     }
     const sellerId = getSellerId()
-    if (!sellerId) { navigate('/seller/login'); return }
+    if (!sellerId) { navigate('/wholesale/login'); return }
     initializedRef.current = true
 
     const STEP_TIMEOUT_MS = 8000

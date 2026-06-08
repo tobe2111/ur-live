@@ -144,7 +144,7 @@ export default function WholesaleOrdersPage() {
   const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
 
-  useEffect(() => { if (!token) navigate('/seller/login') }, [token, navigate])
+  useEffect(() => { if (!token) navigate('/wholesale/login') }, [token, navigate])
 
   function copyTrack(track: string) {
     navigator.clipboard?.writeText(track).then(() => toast.success('운송장 번호를 복사했어요')).catch(() => { /* noop */ })

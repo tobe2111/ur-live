@@ -83,7 +83,7 @@ export default function WholesaleOemPage() {
         />
         <Factory className="w-12 h-12 text-[#D1D6DB] mb-4" />
         <p className="text-[#4E5560] mb-6">유통사 로그인 후 이용할 수 있습니다.</p>
-        <button onClick={() => navigate('/seller/login')} className="px-6 py-3 bg-[#17181C] text-white rounded-lg font-semibold">유통사 로그인</button>
+        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 bg-[#17181C] text-white rounded-lg font-semibold">유통사 로그인</button>
       </div>
     )
   }

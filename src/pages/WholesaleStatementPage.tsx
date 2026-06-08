@@ -23,7 +23,7 @@ export default function WholesaleStatementPage() {
   const summary = data?.summary ?? null
   const load = () => setQ({ from, to })
 
-  useEffect(() => { if (!token) navigate('/seller/login') }, [token, navigate])
+  useEffect(() => { if (!token) navigate('/wholesale/login') }, [token, navigate])
 
   const inputCls = 'ml-2 px-2.5 h-9 rounded-lg text-[14px] outline-none'
   const inputStyle = { background: WT.fill, color: WT.ink }
