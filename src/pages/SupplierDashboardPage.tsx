@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload } from 'lucide-react'
+import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload, ChevronRight } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
@@ -26,7 +26,7 @@ async function downloadSupplierCsv(path: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-type Tab = 'overview' | 'analytics' | 'orders' | 'catalog' | 'settlements'
+type Tab = 'overview' | 'catalog' | 'orders' | 'settlements'
 
 interface Me {
   profile: { business_name: string; email: string; status: string }
@@ -89,6 +89,8 @@ export default function SupplierDashboardPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>('30d')
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [orderStatus, setOrderStatus] = useState<'to_ship' | 'shipped'>('to_ship')
+  // 홈 '할 일' — 발송 대기(to_ship) 주문 건수. orders 탭 토글(orderStatus)과 독립적으로 집계.
+  const [pendingShipCount, setPendingShipCount] = useState(0)
   const [shipModal, setShipModal] = useState<OrderItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [meError, setMeError] = useState(false)
@@ -135,6 +137,14 @@ export default function SupplierDashboardPage() {
     } catch (err) { if (import.meta.env.DEV) console.error(err) }
   }, [orderStatus])
 
+  // 발송 대기(to_ship) 건수만 별도 집계 — OrdersTab 가 to_ship 상태에서 onShip(운송장 입력) 을 노출하는 것과 동일 기준.
+  const loadPendingShipCount = useCallback(async () => {
+    try {
+      const res = await supplierApi.get<{ data: { items: OrderItem[] } }>('/api/supplier/orders?status=to_ship&limit=100')
+      setPendingShipCount((res.data.items ?? []).length)
+    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+  }, [])
+
   const loadAnalytics = useCallback(async () => {
     setAnalyticsLoading(true)
     try {
@@ -146,9 +156,9 @@ export default function SupplierDashboardPage() {
 
   useEffect(() => { loadMe() }, [loadMe])
   useEffect(() => { if (tab === 'catalog') loadCatalog() }, [tab, loadCatalog])
-  useEffect(() => { if (tab === 'settlements') loadSettlements() }, [tab, loadSettlements])
+  useEffect(() => { if (tab === 'settlements') { loadSettlements(); loadAnalytics() } }, [tab, loadSettlements, loadAnalytics])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
-  useEffect(() => { if (tab === 'analytics') loadAnalytics() }, [tab, loadAnalytics])
+  useEffect(() => { if (tab === 'overview') loadPendingShipCount() }, [tab, loadPendingShipCount])
 
   const logout = () => {
     clearSupplierSession()
@@ -156,11 +166,10 @@ export default function SupplierDashboardPage() {
   }
 
   const tabs: { key: Tab; label: string; Icon: typeof Wallet }[] = [
-    { key: 'overview', label: t('supplier.tabOverview', { defaultValue: '개요' }), Icon: Wallet },
-    { key: 'analytics', label: t('supplier.tabAnalytics', { defaultValue: '분석' }), Icon: BarChart3 },
-    { key: 'orders', label: t('supplier.tabOrders', { defaultValue: '발송 관리' }), Icon: Truck },
-    { key: 'catalog', label: t('supplier.tabCatalog', { defaultValue: '내 카탈로그' }), Icon: Package },
-    { key: 'settlements', label: t('supplier.tabSettlements', { defaultValue: '정산 내역' }), Icon: Receipt },
+    { key: 'overview', label: t('supplier.tabHome', { defaultValue: '홈' }), Icon: Wallet },
+    { key: 'catalog', label: t('supplier.tabProducts', { defaultValue: '상품' }), Icon: Package },
+    { key: 'orders', label: t('supplier.tabOrdersShip', { defaultValue: '주문/발송' }), Icon: Truck },
+    { key: 'settlements', label: t('supplier.tabSettlements', { defaultValue: '정산' }), Icon: Receipt },
   ]
 
   return (
@@ -200,15 +209,20 @@ export default function SupplierDashboardPage() {
         {loading ? (
           <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
         ) : tab === 'overview' ? (
-          <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} />
-        ) : tab === 'analytics' ? (
-          <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
+          <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} pendingShipCount={pendingShipCount} />
         ) : tab === 'orders' ? (
           <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
         ) : tab === 'catalog' ? (
           <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
         ) : (
-          <SettlementsTab items={settlements} t={t} />
+          <div className="space-y-6">
+            {/* 정산 탭 상단: 매출 추이 + 베스트셀러(분석 요약). 아래는 정산 내역 리스트. 한 스크롤. */}
+            <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
+              <SettlementsTab items={settlements} t={t} />
+            </div>
+          </div>
         )}
       </main>
 
@@ -627,7 +641,7 @@ function BulkPriceModal({ t, items, onClose, onDone }: {
   )
 }
 
-function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onGoTab: (tab: Tab) => void }) {
+function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, pendingShipCount }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onGoTab: (tab: Tab) => void; pendingShipCount: number }) {
   if (meError) return (
     <div className="py-16 text-center">
       <p className="text-sm text-gray-500 mb-3">{t('supplier.meLoadFailed', { defaultValue: '데이터를 불러오지 못했어요.' })}</p>
@@ -641,6 +655,14 @@ function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab }: { me: Me | nul
   const c = me.product_counts
   const approved = me.profile.status === 'approved'
   const noProducts = (c.total ?? 0) === 0
+  const shipN = formatNumber(pendingShipCount)
+  const rejectedN = formatNumber(c.rejected ?? 0)
+  const pendingN = formatNumber(c.pending ?? 0)
+  // '할 일' 카드 — 가용 데이터로 actionable. 발송 대기(primary) > 반려 > 검수 대기 순.
+  const todos: { key: string; label: string; count: string; Icon: typeof Package; on: () => void; tone: 'danger' | 'info' }[] = []
+  if ((pendingShipCount ?? 0) > 0) todos.push({ key: 'ship', label: t('supplier.todoShip', { defaultValue: '발송 대기 {{n}}건', n: shipN }).replace('{{n}}', shipN), count: shipN, Icon: Truck, on: () => onGoTab('orders'), tone: 'danger' })
+  if ((c.rejected ?? 0) > 0) todos.push({ key: 'rejected', label: t('supplier.todoRejected', { defaultValue: '반려된 상품 {{n}}건 · 수정 후 재등록', n: rejectedN }).replace('{{n}}', rejectedN), count: rejectedN, Icon: XCircle, on: () => onGoTab('catalog'), tone: 'danger' })
+  if ((c.pending ?? 0) > 0) todos.push({ key: 'pending', label: t('supplier.todoPending', { defaultValue: '검수 대기 {{n}}건 (관리자 승인 중)', n: pendingN }).replace('{{n}}', pendingN), count: pendingN, Icon: Clock, on: () => onGoTab('catalog'), tone: 'info' })
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
     { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: b.available_amount, cls: 'text-blue-600' },
@@ -652,7 +674,7 @@ function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab }: { me: Me | nul
     { label: t('supplier.qaCatalog', { defaultValue: '내 카탈로그' }), desc: t('supplier.qaCatalogDesc', { defaultValue: '등록 상품 관리' }), Icon: Package, on: () => onGoTab('catalog') },
     { label: t('supplier.qaShip', { defaultValue: '발송 관리' }), desc: t('supplier.qaShipDesc', { defaultValue: '주문 송장 입력' }), Icon: Truck, on: () => onGoTab('orders') },
     { label: t('supplier.qaSettle', { defaultValue: '정산 내역' }), desc: t('supplier.qaSettleDesc', { defaultValue: '매출·지급 내역' }), Icon: Receipt, on: () => onGoTab('settlements') },
-    { label: t('supplier.qaAnalytics', { defaultValue: '매출 분석' }), desc: t('supplier.qaAnalyticsDesc', { defaultValue: '추이·베스트셀러' }), Icon: BarChart3, on: () => onGoTab('analytics') },
+    { label: t('supplier.qaSalesSettle', { defaultValue: '매출·정산' }), desc: t('supplier.qaSalesSettleDesc', { defaultValue: '추이·베스트셀러' }), Icon: BarChart3, on: () => onGoTab('settlements') },
   ]
   return (
     <div className="space-y-6">
@@ -686,6 +708,30 @@ function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab }: { me: Me | nul
           <Plus className="w-4 h-4" /> {t('supplier.addProductNew', { defaultValue: '새 상품 등록' })}
         </button>
       ) : null}
+
+      {/* 할 일 — actionable. 발송 대기 / 반려 / 검수 대기. 빈 상태 히어로(첫 상품 등록)는 위에서 별도 처리. */}
+      {approved && !noProducts && (
+        <div>
+          <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.todoTitle', { defaultValue: '할 일' })}</p>
+          {todos.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 px-4 py-4 flex items-center gap-2 text-sm text-gray-500">
+              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+              {t('supplier.todoClear', { defaultValue: '✓ 처리할 일이 없어요' })}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todos.map(td => (
+                <button key={td.key} onClick={td.on}
+                  className={`w-full text-left rounded-2xl border px-4 py-3.5 flex items-center gap-3 transition-colors ${td.tone === 'danger' ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-blue-200 bg-blue-50 hover:bg-blue-100'}`}>
+                  <td.Icon className={`w-5 h-5 shrink-0 ${td.tone === 'danger' ? 'text-amber-600' : 'text-blue-600'}`} />
+                  <p className={`flex-1 min-w-0 text-sm font-semibold ${td.tone === 'danger' ? 'text-amber-900' : 'text-blue-900'}`}>{td.label}</p>
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${td.tone === 'danger' ? 'text-amber-500' : 'text-blue-500'}`} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 빠른 작업 */}
       <div>
