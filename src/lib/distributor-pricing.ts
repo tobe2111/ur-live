@@ -98,9 +98,46 @@ export function qtyTierDiscount(qty: number, tiers?: QtyTier[] | null): number {
   return best
 }
 
+/**
+ * 🛡️ PRC-1 (2026-06-08) — 수량구간 할인의 "최소 플랫폼 마진" 하한 산출.
+ *
+ * 배경: tierUnitPrice 는 floor=공급원가(supply_price) 로 역마진은 막지만, 마진이 정확히 0 까지
+ *   붕괴할 수 있음 → Toss PG 수수료(~2-3%) 차감 후 깊은 수량할인 주문에서 플랫폼 순손실 발생.
+ *   따라서 하한을 `supply_price × (1 + minPlatformMarginPct/100)` 로 끌어올려 원가+최소마진 미만으로
+ *   내려가지 못하게 한다. (예: minPlatformMarginPct=3 → PG 수수료 커버.)
+ *
+ * ⚠️ 가격 인상 버그 방지 불변식: 유효 하한은 절대 gradePrice(비-tier 등급가) 를 넘지 않아야 한다.
+ *   저등급 마진/SPECIAL(0%) 처럼 supply_price×(1+minMargin%) > gradePrice 인 경우 그대로 두면
+ *   하한이 등급가보다 높아져 "수량할인을 받았는데 등급가보다 비싸지는" 역전이 난다. 따라서:
+ *       effectiveFloor = min(gradePrice, round(supply_price × (1 + minMargin/100)))
+ *   tierUnitPrice 는 max(effectiveFloor, discounted) 이고 discounted <= gradePrice 이므로
+ *   결과는 항상 [effectiveFloor, gradePrice] 구간 안에 머문다 → 등급가 초과 불가, 원가+최소마진 미만 불가.
+ *
+ * 기본 동작 보존: minPlatformMarginPct 의 기본값은 0 (어드민이 명시 설정하기 전까지 현행 가격 불변).
+ *   minMargin=0 이면 effectiveFloor = min(gradePrice, round(supply_price)) = supply_price
+ *   (등급가 = supply_price×(1+등급마진) >= supply_price 이므로 항상 supply_price 가 작거나 같음)
+ *   → 기존(floor=supply_price) 와 정확히 동일.
+ *
+ * 어드민 설정: 값은 platform_settings.wholesale_min_platform_margin_pct 에서 읽는다.
+ *   설정 UI 는 유통 어드민 설정 페이지(distributor-admin)에 두는 것이 적절 (여기서는 UI 미구현, note only).
+ *
+ * @param gradePrice 등급 적용 단가 (수량할인 적용 전, 비-tier 가)
+ * @param supplyPrice 제조사 공급원가 (products.supply_price)
+ * @param minPlatformMarginPct 최소 플랫폼 마진율(%) — 기본 0(현행 동작 보존)
+ */
+export function effectiveTierFloor(gradePrice: number, supplyPrice: number, minPlatformMarginPct = 0): number {
+  const grade = Math.max(0, Math.round(gradePrice || 0))
+  const supply = Math.max(0, Math.round(supplyPrice || 0))
+  const m = Number.isFinite(minPlatformMarginPct) ? Math.max(0, minPlatformMarginPct) : 0
+  const withMargin = Math.round(supply * (1 + m / 100))
+  // 등급가 초과 금지 — 하한이 등급가보다 크면 수량할인이 가격을 올리게 됨(불변식 위반) → clamp.
+  return Math.min(grade, withMargin)
+}
+
 /** 등급가 + 수량구간 할인 적용 최종 단가 (원 반올림).
- *  floor: 공급원가(base_supply_price). 수량할인이 원가 이하로 내려가 플랫폼이 손해보는 것을 방지
- *  (마진 하한 0 — 많이 사도 원가까지만 할인). 미지정(0)이면 하한 없음(하위호환). */
+ *  floor: 단가 하한. 기본은 공급원가(supply_price) 를 넘기지만, PRC-1 이후엔 호출부에서
+ *  effectiveTierFloor(등급가, 공급원가, 최소마진%) 로 계산해 전달(원가+최소마진 하한, 등급가 clamp).
+ *  수량할인이 하한 이하로 내려가 플랫폼이 손해보는 것을 방지. 미지정(0)이면 하한 없음(하위호환). */
 export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[] | null, floor = 0): number {
   const base = Math.max(0, Math.round(gradePrice || 0))
   const d = qtyTierDiscount(qty, tiers)

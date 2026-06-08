@@ -16,7 +16,7 @@ import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import {
-  resolveDistributorPrice, marginForGrade, effectiveGrade, tierUnitPrice, qtyTierDiscount,
+  resolveDistributorPrice, marginForGrade, effectiveGrade, tierUnitPrice, effectiveTierFloor, qtyTierDiscount,
   type GradeMargin, type DistributorGrade, type QtyTier,
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
@@ -97,6 +97,21 @@ async function loadGradeTable(DB: D1Database): Promise<GradeMargin[]> {
     'SELECT grade, margin_pct, is_special FROM distributor_grades WHERE active = 1'
   ).all<{ grade: string; margin_pct: number; is_special: number }>().catch(() => ({ results: [] as { grade: string; margin_pct: number; is_special: number }[] }))
   return (results || []).map(r => ({ grade: r.grade, margin_pct: r.margin_pct, is_special: !!r.is_special }))
+}
+
+/**
+ * 🛡️ PRC-1 (2026-06-08) — 수량구간 할인의 최소 플랫폼 마진율(%) 읽기.
+ *   platform_settings.wholesale_min_platform_margin_pct (어드민 설정). 미설정/잘못된 값이면 0.
+ *   기본 0 = 현행 동작 보존(어드민이 명시 설정하기 전엔 실가격 불변). 3 정도면 Toss PG 수수료(~2-3%) 커버.
+ *   ⚠️ DISPLAY(카탈로그)·CHARGE(주문) 가 동일 floor 를 쓰도록 요청당 1회만 읽어 양쪽에 전달할 것.
+ *   설정 UI 는 유통 어드민 설정 페이지(distributor-admin)에 두는 것이 적절 — 여기선 값 읽기만.
+ */
+async function loadMinPlatformMarginPct(DB: D1Database): Promise<number> {
+  const row = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'wholesale_min_platform_margin_pct'"
+  ).first<{ value: string }>().catch(() => null)
+  const n = Number(row?.value)
+  return Number.isFinite(n) && n > 0 ? n : 0
 }
 
 async function loadSellerGrade(DB: D1Database, sellerId: number): Promise<SellerGradeRow> {
@@ -531,6 +546,8 @@ app.get('/catalog/:id', async (c) => {
 
     const sg = await loadSellerGrade(DB, sellerId!)
     const table = await loadGradeTable(DB)
+    // 🛡️ PRC-1: 최소 플랫폼 마진율(%) — DISPLAY 와 CHARGE 가 동일 floor 를 쓰도록 요청당 1회 읽음(기본 0=현행 불변).
+    const minMarginPct = await loadMinPlatformMarginPct(DB)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
@@ -538,8 +555,10 @@ app.get('/catalog/:id', async (c) => {
     // 수량 구간 할인 tier — 등급가 위에 적용한 구간별 단가 노출(없으면 빈 배열).
     const tierMap = await loadQtyTiers(DB, [r.id])
     const rawTiers = tierMap.get(r.id) || []
-    // floor=공급원가(supply_price): 수량할인이 원가 이하로 내려가 플랫폼 역마진 나는 것 방지(표시=결제 동일).
-    const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers, r.supply_price) }))
+    // 🛡️ PRC-1: floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).
+    //   원가+최소마진(PG 수수료 커버) 하한 + 등급가 초과 금지 clamp. 기본(minMargin=0)이면 = 공급가(현행 동작).
+    const tierFloor = effectiveTierFloor(price, r.supply_price, minMarginPct)
+    const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers, tierFloor) }))
     return c.json({
       success: true,
       item: {
@@ -582,7 +601,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
 
     await ensureSupplyVisibilitySchema(DB)
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
+    const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
@@ -622,8 +642,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         baseSupplyPrice: p.supply_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
       })
-      // 등급가 위에 수량 구간 할인 적용 → 최종 authoritative 단가. floor=공급원가(역마진 차단).
-      const unit = tierUnitPrice(price, qty, tierMap.get(p.id), p.supply_price)
+      // 🛡️ PRC-1: CHARGE 도 DISPLAY(카탈로그 /catalog/:id) 와 동일 floor 사용 — display==charge 정합 필수.
+      //   floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).
+      //   원가+최소마진(PG 수수료 커버) 하한 + 등급가 초과 금지 clamp. 기본(minMargin=0)이면 = 공급가(현행 역마진 차단 동작 불변).
+      const tierFloor = effectiveTierFloor(price, p.supply_price, minMarginPct)
+      // 등급가 위에 수량 구간 할인 적용 → 최종 authoritative 단가.
+      const unit = tierUnitPrice(price, qty, tierMap.get(p.id), tierFloor)
       const lineTotal = unit * qty
       subtotal += lineTotal
       supplyTotal += p.supply_price * qty
