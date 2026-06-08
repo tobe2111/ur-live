@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck, BellRing, BellOff } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken } from '@/lib/supplier-api'
@@ -85,7 +85,8 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 }
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void }) {
+function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean }) {
+  const soldOut = p.stock <= 0
   const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
   const um = p.retail_price && p.distributor_price != null ? unitMargin(p.distributor_price, p.retail_price) : 0
   const moq = Math.max(1, p.moq || 1)
@@ -117,12 +118,26 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
           )}
         </button>
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
+          {soldOut && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.88)', backdropFilter: 'blur(4px)' }}>품절</span>}
           {p.has_tiers && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: WT.brand }}>수량할인</span>}
           {p.stock > 0 && p.stock < 200 && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span>}
         </div>
         {/* 사진 하단 → 카드색 번짐 */}
         <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-        <QuickAdd p={p} onAdd={onAdd} />
+        {soldOut ? (
+          onRestock && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRestock(p) }}
+              disabled={restockBusy}
+              aria-label={p.name + ' 재입고 알림'}
+              className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center transition-colors disabled:opacity-60"
+              style={subbed ? { background: WT.ink, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { background: '#fff', color: WT.ink, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+              {subbed ? <BellOff className="w-[18px] h-[18px]" strokeWidth={2.4} /> : <BellRing className="w-[18px] h-[18px]" strokeWidth={2.2} />}
+            </button>
+          )
+        ) : (
+          <QuickAdd p={p} onAdd={onAdd} />
+        )}
       </div>
       <div className="px-2.5 pt-1.5 pb-2.5" style={{ color: grad.text }}>
         <button onClick={() => onOpen(p)} className="text-left text-[13px] leading-[1.35] line-clamp-2 min-h-[36px] block w-full" style={{ color: grad.text }}>{p.name}</button>
@@ -152,6 +167,17 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
             {Math.max(1, p.order_multiple || 1) > 1 ? `${moq > 1 ? ' · ' : ''}${comma(Math.max(1, p.order_multiple || 1))}개 단위` : ''}
             {p.distributor_price != null && moq > 1 ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
           </div>
+        )}
+        {soldOut && onRestock && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRestock(p) }}
+            disabled={restockBusy}
+            className="mt-2 w-full inline-flex items-center justify-center gap-1 rounded-xl h-9 text-[12px] font-bold transition-colors disabled:opacity-60"
+            style={subbed
+              ? { background: grad.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.15)', color: grad.text }
+              : { background: grad.isLight ? '#17181C' : '#fff', color: grad.isLight ? '#fff' : '#17181C' }}>
+            {subbed ? <><BellOff className="w-3.5 h-3.5" /> 알림 신청됨</> : <><BellRing className="w-3.5 h-3.5" /> 재입고 알림 신청</>}
+          </button>
         )}
       </div>
     </div>
@@ -541,6 +567,42 @@ export default function WholesaleCatalogPage() {
     toast.success('로그아웃되었어요')
     if (typeof window !== 'undefined') window.location.assign('/wholesale')
   }
+  // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 — 내 구독 product_id 집합 + 토글 핸들러.
+  const [restockSubs, setRestockSubs] = useState<Set<number>>(new Set())
+  const [restockBusyId, setRestockBusyId] = useState<number | null>(null)
+  useEffect(() => {
+    if (!token) { setRestockSubs(new Set()); return }
+    let cancelled = false
+    api.get('/api/wholesale/restock/subscriptions', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => {
+        if (cancelled) return
+        const subs = (r.data?.subscriptions ?? []) as { product_id: number }[]
+        setRestockSubs(new Set(subs.map((s) => Number(s.product_id))))
+      })
+      .catch(() => { /* 조용히 무시 */ })
+    return () => { cancelled = true }
+  }, [token])
+
+  async function toggleRestock(p: CatalogItem) {
+    if (restockBusyId != null) return
+    if (!loggedIn) { toast.info('로그인하면 재입고 알림을 받을 수 있어요'); goLogin(); return }
+    const subbed = restockSubs.has(p.id)
+    setRestockBusyId(p.id)
+    try {
+      if (subbed) {
+        await api.delete(`/api/wholesale/restock/subscribe/${p.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        setRestockSubs((prev) => { const n = new Set(prev); n.delete(p.id); return n })
+        toast.success('재입고 알림을 해제했어요')
+      } else {
+        const r = await api.post('/api/wholesale/restock/subscribe', { product_id: p.id }, { headers: { Authorization: `Bearer ${token}` } })
+        if (r.data?.success) { setRestockSubs((prev) => new Set(prev).add(p.id)); toast.success('재입고되면 알림으로 알려드릴게요') }
+        else toast.error(r.data?.error || '재입고 알림 신청에 실패했어요')
+      }
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '재입고 알림 처리 중 오류가 발생했어요')
+    } finally { setRestockBusyId(null) }
+  }
+
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
     if (!loggedIn || p.distributor_price == null) {
@@ -841,7 +903,8 @@ export default function WholesaleCatalogPage() {
                 aria-label={t('wholesale.sortLabel', { defaultValue: '정렬' })}
                 className="appearance-none h-9 pl-8 pr-7 rounded-full text-[13px] font-bold outline-none cursor-pointer"
                 style={{ background: WT.fill, color: WT.ink }}>
-                {CATALOG_SORTS.map(s => (
+                {/* 🏭 가격/할인율 정렬은 공급가가 보이는 로그인 유통사에게만 (비로그인엔 무의미) */}
+                {CATALOG_SORTS.filter(s => loggedIn || !['price_low', 'price_high', 'discount'].includes(s.id)).map(s => (
                   <option key={s.id} value={s.id}>{t(s.label, { defaultValue: s.defaultLabel })}</option>
                 ))}
               </select>
@@ -853,7 +916,8 @@ export default function WholesaleCatalogPage() {
               style={inStock ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink3 }}>
               <PackageCheck className="w-3.5 h-3.5" />{t('wholesale.inStock', { defaultValue: '재고있음' })}
             </button>
-            {/* 가격대 칩 */}
+            {/* 가격대 칩 — 공급가는 로그인 시에만 보이므로 비로그인엔 숨김 */}
+            {loggedIn && (
             <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {PRICE_BANDS.map(b => {
                 const on = priceBand === b.id
@@ -866,6 +930,7 @@ export default function WholesaleCatalogPage() {
                 )
               })}
             </div>
+            )}
             {/* 필터 초기화 (활성 필터 있을 때만) */}
             {(inStock || priceBand || cat !== 'all' || sort !== 'popular' || committedSearch) && (
               <button onClick={() => { setInStock(false); setPriceBand(''); setCat('all'); setSort('popular'); setSearch(''); setCommittedSearch('') }}
@@ -910,7 +975,7 @@ export default function WholesaleCatalogPage() {
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
-                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} />)}
+                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} />)}
                 </div>
               )}
             </div>

@@ -1230,6 +1230,26 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       checks_json TEXT NOT NULL
     )` },
     { name: 'idx_wholesale_integrity_run', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_integrity_run ON wholesale_integrity_reports(run_at DESC)` },
+    // 🏭 2026-06-08 NOTI-1: 재입고 알림 구독 + 주문 메모 스레드.
+    { name: 'wholesale_restock_subscriptions', sql: `CREATE TABLE IF NOT EXISTS wholesale_restock_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      distributor_seller_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT (datetime('now')),
+      notified_at DATETIME,
+      UNIQUE(distributor_seller_id, product_id)
+    )` },
+    { name: 'idx_wh_restock_distributor', sql: `CREATE INDEX IF NOT EXISTS idx_wh_restock_distributor ON wholesale_restock_subscriptions(distributor_seller_id)` },
+    { name: 'idx_wh_restock_pending', sql: `CREATE INDEX IF NOT EXISTS idx_wh_restock_pending ON wholesale_restock_subscriptions(product_id, notified_at)` },
+    { name: 'wholesale_order_notes', sql: `CREATE TABLE IF NOT EXISTS wholesale_order_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wholesale_order_id INTEGER NOT NULL,
+      author_type TEXT NOT NULL,
+      author_id INTEGER,
+      body TEXT NOT NULL,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wh_order_notes_order', sql: `CREATE INDEX IF NOT EXISTS idx_wh_order_notes_order ON wholesale_order_notes(wholesale_order_id, created_at)` },
     { name: 'idx_supplier_settle_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_supplier ON supplier_settlements(supplier_id, status, created_at DESC)` },
     { name: 'idx_supplier_settle_order', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_order ON supplier_settlements(order_id)` },
     // 🛡️ 2026-06-01 도매몰 INC-4: 공급자별 카탈로그 조회 + 어드민 승인 큐 인덱스.

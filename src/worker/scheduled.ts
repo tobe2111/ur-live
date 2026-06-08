@@ -37,6 +37,7 @@ import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
 import { handleWholesaleSettleTick } from './cron/wholesale-settle-tick';
 import { handleWholesaleOrphanSweep } from './cron/wholesale-orphan-sweep';
+import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
 import { handleAgencySellerMatch } from './cron/agency-seller-match';
@@ -145,6 +146,8 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
+    // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 유통사 알림.
+    ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
   }
 
   if (cron === '0 18 * * *') {

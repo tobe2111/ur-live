@@ -26,6 +26,7 @@ const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrders
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
 const AdminWholesaleIntegrityPage = lazy(() => import('@/pages/admin/AdminWholesaleIntegrityPage'))
+const AdminBusinessMetricsPage = lazy(() => import('@/pages/admin/AdminBusinessMetricsPage'))
 const AdminWholesaleQuotesPage = lazy(() => import('@/pages/admin/AdminWholesaleQuotesPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
@@ -223,6 +224,12 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-integrity" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminWholesaleIntegrityPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 📊 (2026-06-08): 비즈니스 지표 대시보드 (GMV·순수익률·반복구매) */}
+      <Route path="/admin/business-metrics" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminBusinessMetricsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/alimtalk" element={

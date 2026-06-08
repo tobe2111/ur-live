@@ -130,6 +130,8 @@ import { supplierAnalyticsRoutes } from '../features/supply/api/supplier-analyti
 import { wholesalePriceReferenceRoutes } from '../features/supply/api/wholesale-price-reference.routes';
 import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
 import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
+import { wholesaleNotificationsRoutes } from '../features/supply/api/wholesale-notifications.routes';
+import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
 import { donationsRoutes } from '../features/donations/api/donations.routes';
@@ -1215,6 +1217,7 @@ adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 adminApp.route('/tools', adminToolsRoutes);
 // Admin real-time health metrics (active streams, orders/min, stuck orders, webhooks)
 adminApp.route('/metrics', adminMetricsRoutes);
+adminApp.route('/business-metrics', platformMetricsRoutes); // 비즈니스 지표(GMV·순수익률·반복구매·여신미수)
 // 🛡️ 2026-05-07: Cron / 알림톡 실패 모니터링 (admin 가시성)
 adminApp.route('/', adminSystemMonitoringRoutes);
 adminApp.route('/', adminManagementRoutes);
@@ -1292,6 +1295,7 @@ app.route('/api/wholesale', wholesaleRoutes); // 유통스타트: 유통사 도�
 app.route('/api/supplier/wholesale', wholesaleSupplierRoutes); // 유통스타트: 제조사 도매주문 송장/반품 (Phase 3)
 app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 클레임/RMA + admin 검수
 app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
+app.route('/api/wholesale', wholesaleNotificationsRoutes); // NOTI-1: 재입고 알림 + 주문 메모 스레드
 app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 + 가격일괄/재고import
 app.route('/api/admin/wholesale', wholesalePriceReferenceRoutes); // BIZ-5: 네이버 최저가 참고값(어드민 검수)
 app.route('/api/admin/wholesale', wholesaleTaxRoutes); // TAX-1: 미수/미지급 aging + 매입 역발행(수동)

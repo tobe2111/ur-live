@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Check, Lock } from 'lucide-react'
+import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
@@ -76,6 +76,43 @@ export default function WholesaleProductPage() {
   const [ordering, setOrdering] = useState(false)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
   const cart = useWholesaleCart()
+
+  // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 상태.
+  //   로그인 + 품절일 때만 노출. 내 구독 목록(/restock/subscriptions)에서 이 상품 포함 여부로 초기화.
+  const [restockSubbed, setRestockSubbed] = useState(false)
+  const [restockBusy, setRestockBusy] = useState(false)
+  useEffect(() => {
+    if (!token || !item || item.stock > 0) { setRestockSubbed(false); return }
+    let cancelled = false
+    api.get('/api/wholesale/restock/subscriptions', h)
+      .then((r) => {
+        if (cancelled) return
+        const subs = (r.data?.subscriptions ?? []) as { product_id: number }[]
+        setRestockSubbed(subs.some((s) => Number(s.product_id) === Number(item.id)))
+      })
+      .catch(() => { /* 조용히 무시 — 미구독으로 표시 */ })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, item?.id, item?.stock])
+
+  async function toggleRestock() {
+    if (!item || restockBusy) return
+    if (!token) { toast.info('로그인하면 재입고 알림을 받을 수 있어요'); goLogin(); return }
+    setRestockBusy(true)
+    try {
+      if (restockSubbed) {
+        await api.delete(`/api/wholesale/restock/subscribe/${item.id}`, h)
+        setRestockSubbed(false)
+        toast.success('재입고 알림을 해제했어요')
+      } else {
+        const r = await api.post('/api/wholesale/restock/subscribe', { product_id: item.id }, h)
+        if (r.data?.success) { setRestockSubbed(true); toast.success('재입고되면 알림으로 알려드릴게요') }
+        else toast.error(r.data?.error || '재입고 알림 신청에 실패했어요')
+      }
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '재입고 알림 처리 중 오류가 발생했어요')
+    } finally { setRestockBusy(false) }
+  }
 
   // 🏭 2026-06-04 몰-first: 비로그인도 상세 열람 가능(가격은 가림). 강제 로그인 redirect 제거.
   const goLogin = () => navigate('/wholesale/login')
@@ -248,13 +285,22 @@ export default function WholesaleProductPage() {
                 <span className="text-[20px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(total)}</span>
               </div>
             </div>
-            <div className="mt-3 flex gap-2.5">
-              <button onClick={addToCart} disabled={item.stock <= 0} className="px-7 h-14 rounded-2xl text-[16px] font-bold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink }}>담기</button>
-              <button onClick={placeOrder} disabled={ordering || item.stock <= 0}
-                className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-                {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
+            {item.stock <= 0 ? (
+              <button onClick={toggleRestock} disabled={restockBusy}
+                className="mt-3 w-full h-14 rounded-2xl text-[16px] font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                style={restockSubbed ? { background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line } : { background: WT.ink, color: '#fff' }}>
+                {restockBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : restockSubbed ? <BellOff className="w-5 h-5" /> : <BellRing className="w-5 h-5" />}
+                {restockSubbed ? '재입고 알림 해제' : '재입고 알림 신청'}
               </button>
-            </div>
+            ) : (
+              <div className="mt-3 flex gap-2.5">
+                <button onClick={addToCart} className="px-7 h-14 rounded-2xl text-[16px] font-bold" style={{ background: WT.fill, color: WT.ink }}>담기</button>
+                <button onClick={placeOrder} disabled={ordering}
+                  className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
+                  {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : '바로 주문'}
+                </button>
+              </div>
+            )}
             </>)}
           </div>
         </div>
@@ -284,6 +330,13 @@ export default function WholesaleProductPage() {
           <button onClick={goLogin} className="w-full h-14 rounded-2xl text-[16px] font-bold text-white flex items-center justify-center gap-2" style={{ background: WT.brand }}>
             <Lock className="w-5 h-5" /> 로그인하고 공급가 확인
           </button>
+        ) : item.stock <= 0 ? (
+          <button onClick={toggleRestock} disabled={restockBusy}
+            className="w-full h-14 rounded-2xl text-[16px] font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+            style={restockSubbed ? { background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line } : { background: WT.ink, color: '#fff' }}>
+            {restockBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : restockSubbed ? <BellOff className="w-5 h-5" /> : <BellRing className="w-5 h-5" />}
+            {restockSubbed ? '재입고 알림 해제' : '재입고 알림 신청'}
+          </button>
         ) : (<>
         <div className="flex items-center justify-between mb-2.5 px-1">
           <div className="inline-flex items-center rounded-full h-10" style={{ background: WT.fill }}>
@@ -297,10 +350,10 @@ export default function WholesaleProductPage() {
           </div>
         </div>
         <div className="flex gap-2.5">
-          <button onClick={addToCart} disabled={item.stock <= 0} className="px-6 h-14 rounded-2xl text-[16px] font-bold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink }}>담기</button>
-          <button onClick={placeOrder} disabled={ordering || item.stock <= 0}
+          <button onClick={addToCart} className="px-6 h-14 rounded-2xl text-[16px] font-bold" style={{ background: WT.fill, color: WT.ink }}>담기</button>
+          <button onClick={placeOrder} disabled={ordering}
             className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-            {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : item.stock <= 0 ? '품절' : '바로 주문'}
+            {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : '바로 주문'}
           </button>
         </div>
         </>)}
