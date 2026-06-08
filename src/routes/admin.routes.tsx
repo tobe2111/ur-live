@@ -24,6 +24,8 @@ const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGr
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
+const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
+const AdminWholesaleIntegrityPage = lazy(() => import('@/pages/admin/AdminWholesaleIntegrityPage'))
 const AdminWholesaleQuotesPage = lazy(() => import('@/pages/admin/AdminWholesaleQuotesPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
@@ -209,6 +211,18 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-quotes" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminWholesaleQuotesPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏭 TAX-1 (2026-06-08): 도매 세무/정산 (미수·미지급 aging + 매입 역발행) */}
+      <Route path="/admin/wholesale-tax" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleTaxPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏭 DATA-1 (2026-06-08): 도매 데이터 무결성 (고아행 스윕) */}
+      <Route path="/admin/wholesale-integrity" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleIntegrityPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/alimtalk" element={

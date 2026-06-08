@@ -16,7 +16,7 @@ interface QtyTierView { min_qty: number; discount_pct: number; unit_price: numbe
 interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
   category: string | null; stock: number; distributor_price: number | null
-  retail_price?: number | null; moq?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
+  retail_price?: number | null; moq?: number; pack_size?: number; order_multiple?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
 }
 
 // 수량 구간별 단가표 (등급가 위 volume 할인 — 많이 살수록 ↓). 현재 수량 구간 강조.
@@ -79,11 +79,28 @@ export default function WholesaleProductPage() {
 
   // 🏭 2026-06-04 몰-first: 비로그인도 상세 열람 가능(가격은 가림). 강제 로그인 redirect 제거.
   const goLogin = () => navigate('/wholesale/login')
-  useEffect(() => { setQty(Math.max(1, item?.moq || 1)); setTab('desc') }, [item?.id, item?.moq])
+  // 🏭 BIZ-8: 초기 수량 = MOQ 를 만족하는 최소 order_multiple 배수(서버 검증과 일치).
+  useEffect(() => {
+    const m = Math.max(1, item?.moq || 1)
+    const om = Math.max(1, item?.order_multiple || 1)
+    setQty(om > 1 ? Math.ceil(m / om) * om : m)
+    setTab('desc')
+  }, [item?.id, item?.moq, item?.order_multiple])
+
+  // 🏭 BIZ-8: 수량 제약 검증 — MOQ 이상 + order_multiple 배수. 위반 시 친절한 안내 toast(서버 검증과 일치).
+  function validateQty(): boolean {
+    if (!item) return false
+    const m = Math.max(1, item.moq || 1)
+    const om = Math.max(1, item.order_multiple || 1)
+    if (qty < m) { toast.error(`최소 ${comma(m)}개부터 주문할 수 있어요`); return false }
+    if (om > 1 && qty % om !== 0) { toast.error(`${comma(om)}개 단위로만 주문할 수 있어요`); return false }
+    return true
+  }
 
   function addToCart() {
     if (!item) return
     if (item.distributor_price == null) { toast.info('로그인하면 등급 공급가로 담을 수 있어요'); goLogin(); return }
+    if (!validateQty()) return
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
@@ -94,6 +111,7 @@ export default function WholesaleProductPage() {
   async function placeOrder() {
     if (!item || ordering) return
     if (item.distributor_price == null) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
+    if (!validateQty()) return
     setOrdering(true)
     try {
       const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }] }, h)
@@ -116,6 +134,9 @@ export default function WholesaleProductPage() {
   }
 
   const moq = Math.max(1, item.moq || 1)
+  // 🏭 BIZ-8: 주문 배수(박스 단위). step = order_multiple(없으면 moq fallback 으로 기존 박스단위 UX 유지).
+  const orderMultiple = Math.max(1, item.order_multiple || 1)
+  const step = orderMultiple > 1 ? orderMultiple : moq
   const tiers = item.tiers || []
   const locked = item.distributor_price == null // 비로그인 → 가격 가림 + 로그인 유도
   // 현재 수량에 적용되는 단가 — qty 이상 만족하는 최대 min_qty tier(없으면 등급가). 서버 /orders 와 동일 규칙.
@@ -179,6 +200,13 @@ export default function WholesaleProductPage() {
                 {item.retail_price ? <>권장 소비자가 <span className="line-through">{won(item.retail_price)}</span></> : null}
                 {moq > 1 && <>{item.retail_price ? <span className="mx-2" style={{ color: WT.line }}>|</span> : null}박스 {comma(moq)}개 <span className="font-semibold" style={{ color: WT.ink2 }}>{won((item.distributor_price ?? 0) * moq)}</span></>}
               </div>
+              {/* 🏭 BIZ-8: 주문 수량 제약 배지 — 최소 N개 · M개 단위 */}
+              {(moq > 1 || orderMultiple > 1) && (
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
+                  {moq > 1 ? `최소 ${comma(moq)}개` : ''}
+                  {orderMultiple > 1 ? `${moq > 1 ? ' · ' : ''}${comma(orderMultiple)}개 단위` : ''}
+                </div>
+              )}
 
               {/* 마진 여력 */}
               {um > 0 && (
@@ -211,9 +239,9 @@ export default function WholesaleProductPage() {
             ) : (<>
             <div className="mt-5 flex items-center gap-3">
               <div className="inline-flex items-center rounded-full h-11" style={{ background: WT.fill }}>
-                <button className="h-11 w-11 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - moq))} disabled={qty <= moq}>−</button>
+                <button className="h-11 w-11 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - step))} disabled={qty <= moq}>−</button>
                 <span className="w-12 text-center text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(qty)}</span>
-                <button className="h-11 w-11 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + moq)}>+</button>
+                <button className="h-11 w-11 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + step)}>+</button>
               </div>
               <div className="flex-1 text-right">
                 <span className="text-[13px] mr-2" style={{ color: WT.ink3 }}>합계</span>
@@ -259,9 +287,9 @@ export default function WholesaleProductPage() {
         ) : (<>
         <div className="flex items-center justify-between mb-2.5 px-1">
           <div className="inline-flex items-center rounded-full h-10" style={{ background: WT.fill }}>
-            <button className="h-10 w-10 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - moq))} disabled={qty <= moq}>−</button>
+            <button className="h-10 w-10 text-[20px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(q => Math.max(moq, q - step))} disabled={qty <= moq}>−</button>
             <span className="w-11 text-center text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(qty)}</span>
-            <button className="h-10 w-10 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + moq)}>+</button>
+            <button className="h-10 w-10 text-[20px]" style={{ color: WT.ink2 }} onClick={() => setQty(q => q + step)}>+</button>
           </div>
           <div className="text-right">
             <span className="text-[12px] mr-1.5" style={{ color: WT.ink3 }}>합계</span>

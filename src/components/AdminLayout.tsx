@@ -48,6 +48,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
+      { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
+      { path: '/admin/wholesale-integrity', label: '도매 무결성',   icon: Shield },
       { path: '/admin/wholesale-guide',    label: '도매몰 운영 가이드', icon: BookOpen },
     ],
   },

@@ -35,6 +35,8 @@ interface CatalogItem {
   distributor_price: number | null
   retail_price?: number | null
   moq?: number
+  pack_size?: number
+  order_multiple?: number
   has_tiers?: boolean
   sold_count?: number
   requires_login?: boolean
@@ -144,9 +146,11 @@ function ProductCard({ p, onOpen, onAdd }: { p: CatalogItem; onOpen: (p: Catalog
         ) : (
           <div className="mt-1 text-[12px] tabular-nums" style={{ color: grad.sub }}>재고 {comma(p.stock)}</div>
         )}
-        {moq > 1 && (
+        {(moq > 1 || Math.max(1, p.order_multiple || 1) > 1) && (
           <div className="mt-1 text-[12px] tabular-nums" style={{ color: grad.sub }}>
-            최소 {comma(moq)}개{p.distributor_price != null ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
+            {moq > 1 ? `최소 ${comma(moq)}개` : ''}
+            {Math.max(1, p.order_multiple || 1) > 1 ? `${moq > 1 ? ' · ' : ''}${comma(Math.max(1, p.order_multiple || 1))}개 단위` : ''}
+            {p.distributor_price != null && moq > 1 ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
           </div>
         )}
       </div>
@@ -545,8 +549,11 @@ export default function WholesaleCatalogPage() {
       return
     }
     const moq = Math.max(1, p.moq || 1)
-    cart.add({ id: p.id, qty: moq, name: p.name, image_url: p.image_url, price: p.distributor_price, moq })
-    toast.success(moq > 1 ? `장바구니에 ${comma(moq)}개 담았어요` : '장바구니에 담았어요')
+    // 🏭 BIZ-8: 초기 담기 수량 = MOQ 를 만족하는 최소 order_multiple 배수(서버 검증과 일치).
+    const om = Math.max(1, p.order_multiple || 1)
+    const initQty = om > 1 ? Math.ceil(moq / om) * om : moq
+    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq })
+    toast.success(initQty > 1 ? `장바구니에 ${comma(initQty)}개 담았어요` : '장바구니에 담았어요')
   }
   const reorder = (r: ReorderItem) => {
     const moq = Math.max(1, (r as ReorderItem & { moq?: number }).moq || 1)
@@ -559,6 +566,16 @@ export default function WholesaleCatalogPage() {
     fetch('/api/wholesale/catalog-export', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
       .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
       .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`; a.click(); URL.revokeObjectURL(url) })
+      .catch(() => toast.error('단가표 다운로드에 실패했어요'))
+  }
+
+  // 🏭 BIZ-8 (2026-06-08) 단가표 CSV — 내 등급가 + MOQ/박스단위/재고 (엑셀로 바로 열림).
+  //   서버 /catalog/export?format=csv 가 내 등급 단가만 계산(타 등급가 누출 없음).
+  function exportPriceListCsv() {
+    const t = localStorage.getItem('seller_token')
+    fetch('/api/wholesale/catalog/export?format=csv', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
+      .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
+      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) })
       .catch(() => toast.error('단가표 다운로드에 실패했어요'))
   }
 
@@ -873,9 +890,14 @@ export default function WholesaleCatalogPage() {
                 </button>
                 <input ref={bulkInputRef} type="file" accept=".csv,text/csv" onChange={onBulkFile} className="hidden" />
               </div>
-              <button onClick={exportCatalog} className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
-                <FileSpreadsheet className="w-3.5 h-3.5" /> 단가표만 받기 (.xlsx)
-              </button>
+              <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                <button onClick={exportCatalog} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> 단가표 (.xlsx)
+                </button>
+                <button onClick={exportPriceListCsv} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
+                  <Download className="w-3.5 h-3.5" /> 단가표 다운로드 (CSV)
+                </button>
+              </div>
             </div>
           )}
 

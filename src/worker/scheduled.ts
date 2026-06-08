@@ -35,6 +35,8 @@ import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
+import { handleWholesaleSettleTick } from './cron/wholesale-settle-tick';
+import { handleWholesaleOrphanSweep } from './cron/wholesale-orphan-sweep';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleSellerDailyReport } from './cron/seller-daily-report';
 import { handleAgencySellerMatch } from './cron/agency-seller-match';
@@ -141,6 +143,8 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.
     //   신규 활성 상품이 들어오면 최대 1시간 안에 ★ 노출. idempotent (review_count>0 skip).
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
+    // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
+    ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
   }
 
   if (cron === '0 18 * * *') {
@@ -152,6 +156,8 @@ export async function handleCronScheduled(
       await matureSupplierSettlements(env.DB);
     }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
+    // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
+    ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.
     ctx.waitUntil(safeCron('ledger-integrity-check', () => handleLedgerIntegrityCheck(env)));
     // 🛡️ 2026-05-21 Phase E-4: 분쟁 자동 escalation (24시간 미처리 + 재발 매장 + 어뷰징 사용자).

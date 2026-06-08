@@ -128,6 +128,8 @@ import { wholesaleClaimsRoutes } from '../features/supply/api/wholesale-claims.r
 import { wholesaleQuotesRoutes } from '../features/supply/api/wholesale-quotes.routes';
 import { supplierAnalyticsRoutes } from '../features/supply/api/supplier-analytics.routes';
 import { wholesalePriceReferenceRoutes } from '../features/supply/api/wholesale-price-reference.routes';
+import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
+import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
 import { donationsRoutes } from '../features/donations/api/donations.routes';
@@ -1292,6 +1294,8 @@ app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 �
 app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
 app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 + 가격일괄/재고import
 app.route('/api/admin/wholesale', wholesalePriceReferenceRoutes); // BIZ-5: 네이버 최저가 참고값(어드민 검수)
+app.route('/api/admin/wholesale', wholesaleTaxRoutes); // TAX-1: 미수/미지급 aging + 매입 역발행(수동)
+app.route('/api/admin/wholesale/integrity', wholesaleIntegrityRoutes); // DATA-1: 고아행 무결성 리포트
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));

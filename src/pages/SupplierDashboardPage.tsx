@@ -969,7 +969,7 @@ function ShipModal({ t, order, onClose, onShipped }: {
 }
 
 function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, lowest_price_url: '' })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -990,6 +990,8 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
         suggested_retail_price: retail,
         stock: Number(form.stock) || 0,
         min_order_qty: Number(form.min_order_qty) || 1,
+        pack_size: Number(form.pack_size) || 1,
+        order_multiple: Number(form.order_multiple) || 1,
         category: form.category,
         image_url: form.image_url.trim() || undefined,
         supply_visibility: form.supply_visibility,
@@ -1052,11 +1054,22 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
               </select>
             </div>
           </div>
-          <div>
-            <label className={labelCls}>{t('supplier.fieldMoq', { defaultValue: '최소 주문 수량 (MOQ)' })}</label>
-            <input type="number" min={1} disabled={saving} value={form.min_order_qty} onChange={e => setForm(f => ({ ...f, min_order_qty: e.target.value }))} className={inputCls} placeholder="1" />
-            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.moqHint', { defaultValue: '박스 단위 최소 주문 수량. 비우면 1(낱개 주문 가능).' })}</p>
+          {/* 🏭 BIZ-8 (2026-06-08) MOQ / 박스당 수량 / 주문 배수 — 수량 제약(가격과 무관). */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelCls}>{t('supplier.fieldMoq', { defaultValue: '최소 주문 수량 (MOQ)' })}</label>
+              <input type="number" min={1} disabled={saving} value={form.min_order_qty} onChange={e => setForm(f => ({ ...f, min_order_qty: e.target.value }))} className={inputCls} placeholder="1" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('supplier.fieldPackSize', { defaultValue: '박스당 수량' })}</label>
+              <input type="number" min={1} disabled={saving} value={form.pack_size} onChange={e => setForm(f => ({ ...f, pack_size: e.target.value }))} className={inputCls} placeholder="1" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('supplier.fieldOrderMultiple', { defaultValue: '주문 단위(배수)' })}</label>
+              <input type="number" min={1} disabled={saving} value={form.order_multiple} onChange={e => setForm(f => ({ ...f, order_multiple: e.target.value }))} className={inputCls} placeholder="1" />
+            </div>
           </div>
+          <p className="text-[11px] text-gray-400 -mt-1">{t('supplier.qtyConstraintHint', { defaultValue: 'MOQ=최소 주문 수량 · 박스당 수량=1박스 낱개 수(표시용) · 주문 단위=이 배수로만 주문 가능(예: 12면 12·24·36…). 비우면 모두 1.' })}</p>
           <div>
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '대표 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />

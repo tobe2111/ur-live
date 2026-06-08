@@ -112,6 +112,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.registered_by_user_id', sql: "ALTER TABLE products ADD COLUMN registered_by_user_id INTEGER" },
     { desc: 'products.registered_by_agency_id', sql: "ALTER TABLE products ADD COLUMN registered_by_agency_id INTEGER" },
     { desc: 'products.registration_approved', sql: "ALTER TABLE products ADD COLUMN registration_approved INTEGER DEFAULT 1" }, // 대행 등록 시 0, 매장 승인 시 1
+    { desc: 'products.pack_size', sql: "ALTER TABLE products ADD COLUMN pack_size INTEGER DEFAULT 1" },        // BIZ-8: 1박스 낱개수(표시용)
+    { desc: 'products.order_multiple', sql: "ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1" }, // BIZ-8: 주문 수량 배수 강제
     // 🛡️ 2026-05-25 (migration 0281): 합배송 인프라 (Phase 6 deferred — ENABLE_BUNDLING=false)
     { desc: 'products.bundling_key', sql: "ALTER TABLE products ADD COLUMN bundling_key TEXT" },
     { desc: 'orders.consolidated_with', sql: "ALTER TABLE orders ADD COLUMN consolidated_with TEXT" },
@@ -1205,6 +1207,29 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       note TEXT,
       source TEXT DEFAULT 'consumer'
     )` },
+    // 🏭 2026-06-08 TAX-1: 매입(제조사→플랫폼) 역발행 세금계산서 기록 (수동·멱등).
+    { name: 'wholesale_purchase_invoices', sql: `CREATE TABLE IF NOT EXISTS wholesale_purchase_invoices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier_id INTEGER NOT NULL,
+      period TEXT NOT NULL,
+      supply_amount INTEGER NOT NULL DEFAULT 0,
+      vat_amount INTEGER NOT NULL DEFAULT 0,
+      total_amount INTEGER NOT NULL DEFAULT 0,
+      settlement_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      barobill_ref TEXT, note TEXT, created_by TEXT,
+      created_at DATETIME DEFAULT (datetime('now')), issued_at DATETIME,
+      UNIQUE(supplier_id, period)
+    )` },
+    { name: 'idx_wholesale_purchase_inv_period', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_purchase_inv_period ON wholesale_purchase_invoices(period, supplier_id)` },
+    // 🏭 2026-06-08 DATA-1: 고아행(FK 부재) 일일 스윕 리포트 (flag-only).
+    { name: 'wholesale_integrity_reports', sql: `CREATE TABLE IF NOT EXISTS wholesale_integrity_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_at DATETIME DEFAULT (datetime('now')),
+      total_orphans INTEGER NOT NULL DEFAULT 0,
+      checks_json TEXT NOT NULL
+    )` },
+    { name: 'idx_wholesale_integrity_run', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_integrity_run ON wholesale_integrity_reports(run_at DESC)` },
     { name: 'idx_supplier_settle_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_supplier ON supplier_settlements(supplier_id, status, created_at DESC)` },
     { name: 'idx_supplier_settle_order', sql: `CREATE INDEX IF NOT EXISTS idx_supplier_settle_order ON supplier_settlements(order_id)` },
     // 🛡️ 2026-06-01 도매몰 INC-4: 공급자별 카탈로그 조회 + 어드민 승인 큐 인덱스.

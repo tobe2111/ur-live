@@ -32,6 +32,19 @@ function supplierId(c: { get: (k: string) => unknown }): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+// ── BIZ-8 (2026-06-08) MOQ/단가 고도화 — pack_size / order_multiple 컬럼 멱등 ensure. ───
+//   pack_size = 1박스 낱개 수(표시용), order_multiple = 주문 배수 강제(1=제약 없음). min_order_qty 는 기존 컬럼.
+//   wholesale.routes 의 ensureQtyConstraintSchema 와 동일 — 제조사가 catalog 조회 전 먼저 등록할 수도 있어 양쪽 self-ensure.
+const _qtyConstraintEnsured = new WeakSet<object>();
+async function ensureQtyConstraintSchema(DB: D1Database) {
+  if (_qtyConstraintEnsured.has(DB)) return;
+  _qtyConstraintEnsured.add(DB);
+  for (const sql of [
+    'ALTER TABLE products ADD COLUMN pack_size INTEGER DEFAULT 1',
+    'ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1',
+  ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:biz8:alter')); }
+}
+
 // ── GET /me — 프로필 + 잔고 요약 ─────────────────────────────────────────────
 supplierDashboardRoutes.get('/me', async (c) => {
   const sid = supplierId(c);
@@ -91,6 +104,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
   const status = c.req.query('status') || ''; // pending | approved | rejected
   try {
     await ensureSupplyVisibilitySchema(DB);
+    await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
     let where = 'supplier_id = ? AND is_supply_product = 1';
     const params: (string | number)[] = [sid];
     if (status === 'pending' || status === 'rejected') {
@@ -103,6 +117,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
       `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
               stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product,
               COALESCE(min_order_qty,1) AS min_order_qty,
+              COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
               lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
               pending_supply_price, pending_retail_price, pending_price_url, pending_price_reason, pending_price_requested_at,
               COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
@@ -139,10 +154,12 @@ supplierDashboardRoutes.post('/products', async (c) => {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; min_order_qty?: number;
+      pack_size?: number; order_multiple?: number;
       lowest_price_url?: string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
+    await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(INSERT 전).
 
     const name = (body.name || '').trim();
     const supplyPrice = Number(body.supply_price);
@@ -150,6 +167,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const stock = Number.isFinite(Number(body.stock)) ? Math.max(0, Math.floor(Number(body.stock))) : 0;
     // MOQ — 최소 주문 수량(박스 단위). 1~100000, 기본 1.
     const moq = Number.isFinite(Number(body.min_order_qty)) ? Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty)))) : 1;
+    // 🏭 BIZ-8 (2026-06-08) pack_size(1박스 낱개 — 표시용) / order_multiple(주문 배수 강제). 정수 ≥1, 기본 1.
+    const packSize = Number.isFinite(Number(body.pack_size)) ? Math.min(100000, Math.max(1, Math.floor(Number(body.pack_size)))) : 1;
+    const orderMultiple = Number.isFinite(Number(body.order_multiple)) ? Math.min(100000, Math.max(1, Math.floor(Number(body.order_multiple)))) : 1;
 
     if (!name) return c.json({ success: false, error: '상품명은 필수입니다' }, 400);
     if (name.length > 200) return c.json({ success: false, error: '상품명은 200자 이하여야 합니다' }, 400);
@@ -179,8 +199,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, lowest_price_url, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, pack_size, order_multiple, lowest_price_url, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -194,6 +214,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       barcode,
       isBrand,
       moq,
+      packSize,
+      orderMultiple,
       lpUrl,
       slug,
     ).run();
@@ -382,9 +404,11 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; lowest_price_url?: string;
+      min_order_qty?: number; pack_size?: number; order_multiple?: number;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     await ensureSupplyVisibilitySchema(DB);
+    await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(UPDATE 전).
 
     const sets: string[] = [];
     const params: (string | number)[] = [];
@@ -400,6 +424,10 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
     if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
     if (body.is_brand_product != null) { sets.push('is_brand_product = ?'); params.push(body.is_brand_product ? 1 : 0); }
+    // 🏭 BIZ-8 (2026-06-08) MOQ/박스단위 수정 — 정수 ≥1, 1~100000 clamp. (가격 산식 무관 — 수량 제약만.)
+    if (body.min_order_qty != null && Number.isFinite(Number(body.min_order_qty))) { sets.push('min_order_qty = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty))))); }
+    if (body.pack_size != null && Number.isFinite(Number(body.pack_size))) { sets.push('pack_size = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.pack_size))))); }
+    if (body.order_multiple != null && Number.isFinite(Number(body.order_multiple))) { sets.push('order_multiple = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.order_multiple))))); }
 
     let newSupply = existing.supply_price;
     let supplyChanged = false;
