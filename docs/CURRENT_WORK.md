@@ -9,6 +9,14 @@
 - **운영 기능**: 대량주문 엑셀(`ad9cce3`, 즉시결제 버그→미리보기/검증/장바구니) · 어드민 단체메일(`9198d05`, Resend 재사용 — **큐화 진행 중**) · 세금계산서 자동(`93b4216`, 매출 플랫폼→유통사 / 매입역발행 제조사→플랫폼, `issueTaxInvoice` 재사용 env-gated, `wholesale_tax_invoices`).
 - **채팅** (`f439592`, `060b77a`): 유통사↔제조사 **D1 폴링**(무비용, lazy chunk, adaptive). `/api/wholesale/chat` (cheap `/unread`, threads, messages?after, send+멱등알림). 제조사 신원 **마스킹**(유통사 뷰='제조사'). 유통사발 상품 문의(by-product, 서버가 supplier 해석).
 - **대시보드/UX**: 제조사 4탭+액션홈(`dfd2ffe`) · 제조/유통 사이드바 셸 통일(`e61f21a`) · 어드민 알림 벨 fix(`8cb412e`, tokenKey 명시) · 제조 카카오가입(`5bc2d14`) · **perf 패스**(`93d106c`, 스켈레톤·cfImage·prefetch·memo·guest 캐싱) · 어드민 프리미엄토글+대표/담당자 표시(`78d49a1`).
+- **머니-안전 강화** (`8e4cc52`, `5186c9e`): 예치금 reconcile cron(`0 * * * *`) — 차감 후 PAID 직전 크래시로 묶인 주문 자동 환불(미회수 0). `compensateDepositOrderOnce`(refunded_amount CAS=신뢰 마커, 이중환불 불가). **머니 코어 회귀 테스트 12개**(`src/tests/unit/wholesale-deposit-core.test.ts`·`wholesale-vat.test.ts`, vitest).
+- **🏬 멀티몰 테넌시 Phase 1** (`927908d`, `0640d20`): 카테고리별 도매몰 복제(식품/패션…, **같은 사업자, model B=몰별 가입**). 핵심: 몰별 가입이라 seller_id/supplier_id 가 몰-유니크 → **예치금·정산·세금·채팅·주문 자동 격리(미변경)**. `wholesale_malls` 테이블(id=1=유통스타트 시드) + `mall_id`(DEFAULT 1) on sellers/suppliers/products/banners/proposals. `resolveMallId`(계정몰→`?mall`→host→1) / `registrationMallId`(host). 카탈로그·배너·제안 `COALESCE(mall_id,1)=?` 스코프. host 브랜딩(`GET /api/wholesale/mall` + `useWholesaleMall`, CSS변수 `--ud-brand`, fallback 유통스타트/#FF0033). 어드민 몰 관리(`/admin/wholesale-malls` CRUD) + `AdminMallSelect`(≤1몰 자동숨김) 필터(배너/제안/상품). **불변식: 기본몰+단일host = byte-identical**(검증: 머니테스트 회귀, /orders 불변).
+
+**🏬 새 카테고리 몰 추가 런북 (멀티몰)**:
+1. `/admin/wholesale-malls` 에서 몰 생성(slug·상호·**host**·브랜드색·로고·카테고리·입금계좌).
+2. Cloudflare: 그 host(예: food.도메인)를 **같은 Pages 프로젝트(ur-live)** Custom Domain 으로 연결. (DNS 전엔 `?mall=slug` 로 테스트.)
+3. 미들웨어가 host→mall 자동 판별 → 그 몰 카탈로그/브랜딩/가입. 가입자는 그 몰 전용(model B). 끝.
+- **Phase 2 (선택)**: 어드민 예치금/세금 뷰 몰 필터(거의 완료) · 카테고리별 통합 회계 뷰. (개별 장부는 model B 로 이미 격리됨 — 뷰만.)
 
 **⚠️ 운영 반영 전 (SSOT — 다음 세션/배포 담당 필독)**:
 - env: `RESEND_API_KEY`(단체메일) · `TAX_INVOICE_API_KEY`(+`TAX_INVOICE_SENDER_BIZ_NO`, 세금계산서 실발행 — 미설정 시 draft) · `RATE_LIMIT_KV`.
@@ -17,8 +25,9 @@
 - E2E 권장: 충전→입금확인→주문→환불 / 세금계산서 / 채팅 / 대량주문 / 단체메일(테스트 먼저).
 
 **진행 중 / 후속**:
-- 🔄 단체메일 **cron 큐화**(in-request→큐, 재시도 이중발송 #5 방지) · 운영가이드 갱신 — 에이전트 작업 중.
-- 후속: 세금 역발행 sender/receiver 매핑(실 provider 연동 시) · 도매몰 i18n 6개 언어(현 defaultValue fallback) · 단체메일 HTML 감지 휴리스틱(#6).
+- ✅ 단체메일 **cron 큐화**(`4d1a1ba`, claim-before-send CAS=at-most-once) · 운영가이드(`cef96e3`) — 완료.
+- 🔄 멀티몰 어드민 예치금/세금 뷰 몰 필터 — 에이전트 작업 중.
+- 후속: 멀티몰 Phase 2(통합 회계 뷰) · 세금 역발행 sender/receiver 매핑(실 provider 연동 시) · 도매몰 i18n 6개 언어(현 defaultValue fallback) · 단체메일 HTML 감지 휴리스틱(#6).
 - **확인 요망**: 채팅 제조사 신원 — 현재 '비공개' 모델에 맞춰 **마스킹**. 노출 원하면 변경.
 
 ### ✅ 2026-06-06 — 도매몰 감사 후속 fix (대시보드·등급·로그인·보안)
