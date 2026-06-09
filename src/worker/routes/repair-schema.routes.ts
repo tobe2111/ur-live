@@ -310,6 +310,30 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { desc: 'idx_wholesale_deposit_txns_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_txns_seller ON wholesale_deposit_txns(seller_id, id DESC)" },
     { desc: 'idx_wholesale_deposit_requests_status', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_requests_status ON wholesale_deposit_requests(status, id DESC)" },
+    // ── 💬 Wave 4a: 유통사↔제조사 채팅 (D1 polling, websocket/DO 없음) ──────────
+    { desc: 'wholesale_chat_threads', sql: `CREATE TABLE IF NOT EXISTS wholesale_chat_threads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      distributor_seller_id INTEGER NOT NULL,
+      supplier_id INTEGER NOT NULL,
+      last_message_id INTEGER DEFAULT 0,
+      last_message_at TEXT,
+      last_preview TEXT,
+      distributor_unread INTEGER DEFAULT 0,
+      supplier_unread INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(distributor_seller_id, supplier_id)
+    )` },
+    { desc: 'wholesale_chat_messages', sql: `CREATE TABLE IF NOT EXISTS wholesale_chat_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      thread_id INTEGER NOT NULL,
+      sender_role TEXT NOT NULL,
+      sender_id INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
+    { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
+    { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).

@@ -5497,6 +5497,22 @@
   },
   "supplier": {
     "areYouSeller": "ライブ/店舗セラーの方ですか？",
-    "goSeller": "セラーログイン →"
+    "goSeller": "セラーログイン →",
+    "tabChat": "チャット"
+  },
+  "wholesaleChat": {
+    "title": "お問い合わせ",
+    "open": "チャットを開く",
+    "openAria": "チャットを開く（未読{{n}}件）",
+    "supplierLabel": "メーカー",
+    "distributorLabel": "流通会社",
+    "empty": "会話はまだありません",
+    "emptySupplier": "流通会社からの問い合わせがここに表示されます。",
+    "emptyDistributor": "商品詳細からメーカーに問い合わせできます。",
+    "noPreview": "会話を始めましょう",
+    "threadEmpty": "最初のメッセージを送りましょう。",
+    "composerPh": "メッセージを入力",
+    "send": "送信",
+    "justNow": "たった今"
   }
 }

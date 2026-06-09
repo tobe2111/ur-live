@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, memo, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, memo, lazy, Suspense, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +20,10 @@ import WholesaleFooter from './wholesale/WholesaleFooter'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cfImage } from '@/utils/cf-image'
+
+// 🏭 2026-06-09 Wave 4b: 채팅 floating 버튼 — lazy(채팅 코드 0 byte in 초기 번들).
+//   버튼 자체는 unread 배지 폴링만, 무거운 위젯은 버튼 클릭 시 한 번 더 lazy 로드.
+const WholesaleChatButton = lazy(() => import('@/components/wholesale/WholesaleChatButton'))
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 홈 — Claude Design 시안 구현 (TDS/Toss 라이트).
@@ -1199,6 +1203,13 @@ export default function WholesaleCatalogPage() {
       </main>
 
       <WholesaleFooter />
+
+      {/* 🏭 Wave 4b: 로그인 유통사에게만 채팅 floating 버튼 — lazy chunk(비로그인은 청크 fetch 안 함). */}
+      {loggedIn && (
+        <Suspense fallback={null}>
+          <WholesaleChatButton />
+        </Suspense>
+      )}
 
       {gradeOpen && <GradeSheet current={grade} onClose={() => setGradeOpen(false)} />}
       {proposalOpen && <WholesaleProposalModal onClose={() => setProposalOpen(false)} />}

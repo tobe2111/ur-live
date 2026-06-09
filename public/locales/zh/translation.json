@@ -5497,6 +5497,22 @@
   },
   "supplier": {
     "areYouSeller": "您是直播/门店卖家吗？",
-    "goSeller": "卖家登录 →"
+    "goSeller": "卖家登录 →",
+    "tabChat": "聊天"
+  },
+  "wholesaleChat": {
+    "title": "咨询聊天",
+    "open": "打开聊天",
+    "openAria": "打开聊天（{{n}}条未读）",
+    "supplierLabel": "制造商",
+    "distributorLabel": "分销商",
+    "empty": "暂无对话",
+    "emptySupplier": "分销商的咨询会显示在此处。",
+    "emptyDistributor": "可在商品详情页向制造商咨询。",
+    "noPreview": "开始对话",
+    "threadEmpty": "发送第一条消息。",
+    "composerPh": "输入消息",
+    "send": "发送",
+    "justNow": "刚刚"
   }
 }

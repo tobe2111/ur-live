@@ -5492,6 +5492,22 @@
   },
   "supplier": {
     "areYouSeller": "라이브/매장 셀러이신가요?",
-    "goSeller": "셀러 로그인 →"
+    "goSeller": "셀러 로그인 →",
+    "tabChat": "채팅"
+  },
+  "wholesaleChat": {
+    "title": "문의 채팅",
+    "open": "채팅 열기",
+    "openAria": "채팅 열기 ({{n}}개 안읽음)",
+    "supplierLabel": "제조사",
+    "distributorLabel": "유통사",
+    "empty": "아직 대화가 없어요",
+    "emptySupplier": "유통사가 문의하면 여기에 표시됩니다.",
+    "emptyDistributor": "상품 상세에서 제조사에게 문의해보세요.",
+    "noPreview": "대화를 시작하세요",
+    "threadEmpty": "첫 메시지를 보내보세요.",
+    "composerPh": "메시지를 입력하세요",
+    "send": "보내기",
+    "justNow": "방금"
   }
 }

@@ -4,16 +4,20 @@
  *   self-guard: supplier_token 없으면 /supplier/login.
  *   라이트 테마 (대시보드 계열) + i18n.
  */
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload, ChevronRight } from 'lucide-react'
+import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload, ChevronRight, MessageCircle, Loader2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession, getSupplierToken } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
+// 🏭 2026-06-09 Wave 4b: 채팅 — adaptive 폴링(배지) + lazy 위젯(탭 열 때만 chunk fetch).
+import { useChatPoll } from '@/hooks/useChatPoll'
+import { wholesaleChatApi, hasChatToken } from '@/hooks/queries/useWholesaleChat'
+const WholesaleChatWidget = lazy(() => import('./wholesale/WholesaleChatWidget'))
 
 // 인증 헤더로 CSV 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
 async function downloadSupplierCsv(path: string, filename: string) {
@@ -26,7 +30,7 @@ async function downloadSupplierCsv(path: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-type Tab = 'overview' | 'catalog' | 'orders' | 'settlements'
+type Tab = 'overview' | 'catalog' | 'orders' | 'settlements' | 'chat'
 
 interface Me {
   profile: { business_name: string; email: string; status: string }
@@ -104,10 +108,20 @@ export default function SupplierDashboardPage() {
   const [channelItem, setChannelItem] = useState<CatalogItem | null>(null)
   const [priceChangeItem, setPriceChangeItem] = useState<CatalogItem | null>(null)
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false)
+  // 🏭 Wave 4b: 채팅 unread 배지 — 가벼운 폴링(탭 숨김이면 중단). 채팅 탭 열려도 다른 스레드 unread 계속 추적.
+  const [chatUnread, setChatUnread] = useState(0)
 
   useEffect(() => {
     if (!isSupplierLoggedIn()) { navigate('/supplier/login', { replace: true }); return }
   }, [navigate])
+
+  // 배지 폴링 — base 25s, 백오프 120s. supplier_token 없으면 비활성.
+  useChatPoll(
+    async () => {
+      try { setChatUnread((await wholesaleChatApi.unread()).unread); return true } catch { return false }
+    },
+    { baseInterval: 25_000, maxInterval: 120_000, enabled: hasChatToken() },
+  )
 
   const loadMe = useCallback(async () => {
     setMeError(false)
@@ -184,16 +198,17 @@ export default function SupplierDashboardPage() {
     { key: 'catalog', label: t('supplier.tabProducts', { defaultValue: '상품' }), Icon: Package },
     { key: 'orders', label: t('supplier.tabOrdersShip', { defaultValue: '주문/발송' }), Icon: Truck },
     { key: 'settlements', label: t('supplier.tabSettlements', { defaultValue: '정산' }), Icon: Receipt },
+    { key: 'chat', label: t('supplier.tabChat', { defaultValue: '채팅' }), Icon: MessageCircle },
   ]
 
-  // 탭 → 사이드바 nav 항목. active = 현재 tab, onClick = setTab. 발송대기 배지는 주문 탭에.
+  // 탭 → 사이드바 nav 항목. active = 현재 tab, onClick = setTab. 발송대기 배지는 주문, 안읽음 배지는 채팅 탭에.
   const navItems: WholesaleNavItem[] = tabs.map(({ key, label, Icon }) => ({
     key,
     label,
     icon: Icon,
     active: tab === key,
     onClick: () => setTab(key),
-    badge: key === 'orders' ? pendingShipCount : undefined,
+    badge: key === 'orders' ? pendingShipCount : key === 'chat' ? chatUnread : undefined,
   }))
 
   const activeTabLabel = tabs.find(tb => tb.key === tab)?.label ?? t('supplier.dashTitle', { defaultValue: '공급자 대시보드' })
@@ -228,6 +243,11 @@ export default function SupplierDashboardPage() {
         <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
       ) : tab === 'catalog' ? (
         <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
+      ) : tab === 'chat' ? (
+        <Suspense fallback={<div className="py-20 text-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300 mx-auto" /></div>}>
+          {/* embedded — slide-in 없이 콘텐츠 채움. onClose 는 임베드에선 미사용. */}
+          <WholesaleChatWidget embedded onClose={() => { /* embedded */ }} onUnreadChange={setChatUnread} />
+        </Suspense>
       ) : (
         <div className="space-y-6">
           {/* 정산 탭 상단: 매출 추이 + 베스트셀러(분석 요약). 아래는 정산 내역 리스트. 한 스크롤. */}

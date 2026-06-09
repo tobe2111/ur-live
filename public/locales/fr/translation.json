@@ -5497,6 +5497,22 @@
   },
   "supplier": {
     "areYouSeller": "Vous êtes vendeur live/boutique ?",
-    "goSeller": "Connexion vendeur →"
+    "goSeller": "Connexion vendeur →",
+    "tabChat": "Chat"
+  },
+  "wholesaleChat": {
+    "title": "Chat",
+    "open": "Ouvrir le chat",
+    "openAria": "Ouvrir le chat ({{n}} non lus)",
+    "supplierLabel": "Fabricant",
+    "distributorLabel": "Distributeur",
+    "empty": "Pas encore de conversations",
+    "emptySupplier": "Les demandes des distributeurs apparaîtront ici.",
+    "emptyDistributor": "Contactez le fabricant depuis une fiche produit.",
+    "noPreview": "Démarrer une conversation",
+    "threadEmpty": "Envoyez le premier message.",
+    "composerPh": "Saisir un message",
+    "send": "Envoyer",
+    "justNow": "maintenant"
   }
 }
