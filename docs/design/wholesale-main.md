@@ -76,5 +76,15 @@
 - 반응형: 모바일 우선 + `lg:` 그리드(시안은 PC 4열).
 - 성능: 배너/카드 cfImage, 캐시 헤더, 회원공개 게이트 유지.
 
-## ✅ 구현 완료
-(미구현 — Wave 2에서 진행. 완료 시 commit hash 추가)
+## ✅ 구현 완료 (Wave 2 FRONTEND — 2026-06-09, v1 리뷰 대기)
+프론트엔드 재구성 완료 (백엔드 엔드포인트 병행 작업, 계약 기준). commit hash 는 머지 후 추가.
+
+- [x] 헤더 재구성 (`WholesaleCatalogPage.tsx`): 유틸바(로그인/가입/장바구니/마이·로그아웃) + 로고 + **중앙 큰 검색바**(기존 search 와이어 유지) + 우측 3아이콘(처음이세요?→`/wholesale/intro` · 제안/신고→모달 · 예치금→`/wholesale/deposits`, 로그인 시 잔액 표시 `useWholesaleDeposit`).
+- [x] 카테고리 네비 바: `[≡ 전체카테고리]`(레드, 메가드롭다운=기존 `cats` 재활용) · 브랜드 전시관 · 월간 베스트(sort popular) · 신상품(newest) · 판매마진 40%(discount) · **프리미엄 전용관**(premium=1). 기존 cat/sort/필터/SSR 그대로 재스킨.
+- [x] 메인 배너 캐러셀 (`WholesaleBannerCarousel.tsx`): `GET /api/wholesale/banners`, 자동슬라이드 5s(hover/visibility pause), 좌우 화살표 + 도트, cfImage, 내부링크 `safeInternalPath`/외부 `_blank`. 배너 0개 시 자동 숨김.
+- [x] BEST PRODUCT 섹션 헤딩 + 기존 ProductCard(memo+cfImage) 유지. **상품코드(P0000xxx)** 라인 추가(`product.code` 우선, 없으면 `P`+7자리 id). **회원공개(locked) 가격 게이트 그대로**.
+- [x] 프리미엄 전용관 뷰: premium nav 활성 시 catalog `?premium=1` + 프리미엄 헤더/뱃지.
+- [x] 제안/신고: `WholesaleProposalModal.tsx`(헤더 아이콘 모달) + `WholesaleProposalsPage.tsx`(`/wholesale/proposals`). 타입 토글(제안/신고)·대상·제목·내용 → `POST /api/wholesale/proposals` + 내 내역 `GET`. 비로그인 → 로그인 유도.
+- [x] 어드민: `AdminWholesaleBannersPage.tsx`(`/admin/wholesale-banners`, ImageUpload + 순서/노출/삭제) + `AdminWholesaleProposalsPage.tsx`(`/admin/wholesale-proposals`, 상태필터 + 처리/반려 + 메모).
+- [x] 라우트(App.tsx `/wholesale/proposals`, admin.routes.tsx 2개) + AdminLayout 도매몰 그룹 nav 2개(도매 배너 / 도매 제안·신고) + 훅(`useWholesale.ts`: banners/premium/feedbacks/feedback mutation).
+- [ ] **(follow-up)** 프리미엄 상품 토글 (`POST /api/admin/wholesale-products/:id/premium`): 기존 어드민에 도매 카탈로그 상품 리스트 화면이 없어 trivial inline host 부재 → 별도 도매 상품 관리 화면 또는 공급자 상품 화면에 토글 추가 필요. 백엔드 엔드포인트는 계약대로 가정.
