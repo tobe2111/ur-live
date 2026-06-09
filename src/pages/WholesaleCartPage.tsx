@@ -1,6 +1,7 @@
 import { useNavigate, Navigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Trash2, ShoppingCart } from 'lucide-react'
+import { cfImage } from '@/utils/cf-image'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 
@@ -51,7 +52,7 @@ export default function WholesaleCartPage() {
                 return (
                 <div key={it.id} className="flex gap-3 rounded-2xl bg-white p-3" style={{ border: '1px solid ' + WT.line, background: '#fff' }}>
                   <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="w-16 h-16 shrink-0 rounded-xl overflow-hidden" style={{ background: WT.fill }}>
-                    {it.image_url && <img src={it.image_url} alt={it.name || ''} className="w-full h-full object-cover" loading="lazy" />}
+                    {it.image_url && <img src={cfImage(it.image_url, { width: 128, format: 'auto' }) || it.image_url} alt={it.name || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
                   </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">

@@ -216,7 +216,7 @@ app.post('/quotes/:id/accept', async (c) => {
     await createDashboardNotification(
       DB, 'admin', null, 'wholesale_quote_accepted',
       '견적 수락됨 — 발주 생성 필요', `${row.title}`, '/admin/wholesale-quotes',
-    ).catch(() => {})
+    ).catch(swallow('quotes:notify-accepted'))
 
     return c.json({ success: true, message: '견적을 수락했습니다. 운영자가 발주를 진행합니다.' })
   } catch (err) {
@@ -250,7 +250,7 @@ app.post('/quotes/:id/reject', async (c) => {
     await createDashboardNotification(
       DB, 'admin', null, 'wholesale_quote_rejected',
       '견적 반려됨', `${row.title}`, '/admin/wholesale-quotes',
-    ).catch(() => {})
+    ).catch(swallow('quotes:notify-rejected'))
 
     return c.json({ success: true, message: '견적을 반려했습니다.' })
   } catch (err) {
@@ -343,7 +343,7 @@ admin.patch('/quotes/:id/respond', async (c) => {
     await createDashboardNotification(
       c.env.DB, 'seller', String(row.distributor_seller_id), 'wholesale_quote_quoted',
       '견적이 회신되었습니다', `${row.title} — 단가 ₩${quotedUnitPrice.toLocaleString('ko-KR')}`, '/wholesale/quotes',
-    ).catch(() => {})
+    ).catch(swallow('quotes:notify-quoted'))
 
     await writeAuditLog(c, {
       action: 'wholesale_quote_respond',

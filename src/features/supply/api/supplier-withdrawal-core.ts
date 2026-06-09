@@ -21,6 +21,8 @@
  *   요청/승인/반려 row 상태전환은 wholesale_settlement_withdrawals.status CAS 로 1회만.
  */
 
+import { swallow } from '@/worker/utils/swallow'
+
 const _withdrawalEnsured = new WeakSet<object>()
 
 /** 출금 신청 테이블 + reserved_amount 컬럼 멱등 ensure (ensureDepositSchema 패턴). */
@@ -42,10 +44,10 @@ export async function ensureWithdrawalSchema(DB: D1Database): Promise<void> {
   )`).run().catch(() => { /* best-effort (cold isolate concurrent create) */ })
   await DB.prepare(
     'CREATE INDEX IF NOT EXISTS idx_wholesale_settlement_withdrawals_supplier ON wholesale_settlement_withdrawals(supplier_id, id DESC)'
-  ).run().catch(() => {})
+  ).run().catch(swallow('withdrawal:idx-supplier'))
   await DB.prepare(
     'CREATE INDEX IF NOT EXISTS idx_wholesale_settlement_withdrawals_status ON wholesale_settlement_withdrawals(status, id DESC)'
-  ).run().catch(() => {})
+  ).run().catch(swallow('withdrawal:idx-status'))
   // supplier_balances.reserved_amount — 출금 예약 락(미지급 출금이 잠근 금액). recompute 가 안 건드리는 컬럼.
   await DB.prepare('ALTER TABLE supplier_balances ADD COLUMN reserved_amount INTEGER NOT NULL DEFAULT 0')
     .run().catch(() => { /* 이미 존재 — 무시 */ })

@@ -141,7 +141,7 @@ app.post('/tracking/bulk', async (c) => {
         `UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now')
          WHERE id IN (${ph}) AND status='PAID'
            AND NOT EXISTS (SELECT 1 FROM wholesale_order_items wi WHERE wi.wholesale_order_id = wholesale_orders.id AND wi.line_status != 'SHIPPED')`
-      ).bind(...chunk).run().catch(() => {})
+      ).bind(...chunk).run().catch(swallow('supplier:ship-all-order-status'))
     }
     const ok = results.filter(r => r.status === 'ok').length
     return c.json({ success: true, summary: { total: results.length, ok, skipped: results.filter(r => r.status === 'skip').length, failed: results.filter(r => r.status === 'error').length }, results })

@@ -76,6 +76,9 @@ async function ensureOrderTables(DB: D1Database) {
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:idx1'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)`).run().catch(swallow('wholesale:idx2'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)`).run().catch(swallow('wholesale:idx3'))
+  // 🛡️ 2026-06-09 perf: 결제확인(confirm)의 toss_order_id 조회 + 정산 멱등확인(order_id,source) — 주문 누적 시 풀스캔 방지.
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_toss ON wholesale_orders(toss_order_id)`).run().catch(swallow('wholesale:idx4'))
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_supplier_settlements_order_source ON supplier_settlements(order_id, source)`).run().catch(swallow('wholesale:idx5'))
   // 🚚 2026-06-09 배송정책: wholesale_orders.shipping_total — 주문에 합산된 (제조사별) 배송비 총액.
   //   grand total = subtotal + shipping_total. 보상환불은 (subtotal+shipping_total) 전액 환불.
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-total'))
@@ -1188,16 +1191,18 @@ app.get('/catalog/:id', async (c) => {
       })
     }
 
-    const sg = await loadSellerGrade(DB, sellerId!)
-    const table = await loadGradeTable(DB)
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) — DISPLAY 와 CHARGE 가 동일 floor 를 쓰도록 요청당 1회 읽음(기본 0=현행 불변).
-    const minMarginPct = await loadMinPlatformMarginPct(DB)
+    //   네 쿼리 모두 독립 → 병렬(3 RTT 절약, 카탈로그 리스트와 동일 패턴).
+    const [sg, table, minMarginPct, tierMap] = await Promise.all([
+      loadSellerGrade(DB, sellerId!),
+      loadGradeTable(DB),
+      loadMinPlatformMarginPct(DB),
+      loadQtyTiers(DB, [id]),
+    ])
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
     })
-    // 수량 구간 할인 tier — 등급가 위에 적용한 구간별 단가 노출(없으면 빈 배열).
-    const tierMap = await loadQtyTiers(DB, [r.id])
     const rawTiers = tierMap.get(r.id) || []
     // 🛡️ PRC-1: floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).
     //   원가+최소마진(PG 수수료 커버) 하한 + 등급가 초과 금지 clamp. 기본(minMargin=0)이면 = 공급가(현행 동작).
@@ -1397,7 +1402,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const deduct = await deductDeposit(DB, sellerId, chargeTotal)
     if (!deduct.ok) {
       // 잔액 부족 — 돈 미이동. PENDING 예약 삭제(idemKey 해제 → 충전 후 동일 체크아웃 재시도 가능) 후 402.
-      await DB.prepare("DELETE FROM wholesale_orders WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(() => {})
+      await DB.prepare("DELETE FROM wholesale_orders WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(swallow('wholesale:pending-release'))
       return c.json({
         success: false,
         error: '예치금이 부족합니다',
@@ -1450,7 +1455,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
 
     // 재고 확보 완료 → PENDING→PAID 확정(CAS). 주문은 결제+재고 확보가 모두 된 시점에만 PAID.
-    await DB.prepare("UPDATE wholesale_orders SET status='PAID', paid_at=datetime('now') WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(() => {})
+    await DB.prepare("UPDATE wholesale_orders SET status='PAID', paid_at=datetime('now') WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(swallow('wholesale:paid-cas'))
 
     // 제조사 정산 적립(Toss/credit 주문과 동일 — 멱등, fail-soft). 정산 실패가 결제완료를 막지 않음.
     try { await creditSupplierOnWholesaleOrder(DB, dOrderId) } catch { /* best-effort */ }
@@ -1551,7 +1556,7 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
       try {
         await cancelTossPayment({ env: c.env, paymentKey, cancelReason: '재고 부족(동시주문) 자동 환불', idempotencyKey: `whs-oversell-${order.id}` })
       } catch { /* best-effort */ }
-      await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(order.id).run().catch(() => {})
+      await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(order.id).run().catch(swallow('wholesale:fail-mark'))
       return c.json({ success: false, error: '재고가 부족하여 자동 환불되었습니다. 다시 시도해주세요.', code: 'OVERSOLD' }, 409)
     }
 

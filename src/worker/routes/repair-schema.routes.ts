@@ -272,6 +272,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🏦 2026-06-09 예치금 주문 멱등 — 더블클릭/재시도 이중차감 방지(ensureDepositSchema 와 동일, repair 일관성).
     { desc: 'wholesale_orders.idempotency_key', sql: "ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT" },
     { desc: 'idx_wholesale_orders_idem', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL" },
+    // 🛡️ 2026-06-09 perf: confirm 의 toss_order_id 조회 + 정산 멱등확인(order_id,source) 풀스캔 방지 (ensureOrderTables 와 동일).
+    { desc: 'idx_wholesale_orders_toss', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_orders_toss ON wholesale_orders(toss_order_id)" },
+    { desc: 'idx_supplier_settlements_order_source', sql: "CREATE INDEX IF NOT EXISTS idx_supplier_settlements_order_source ON supplier_settlements(order_id, source)" },
     // 🏭 BIZ-2 v1 (2026-06-08) 여신/외상(credit terms): 도매 주문 100% 선결제 모순 해소용 ADDITIVE 외상 경로.
     //   distributor_credit_limit: 0=여신 없음(선결제 전용). outstanding_balance: 미상환 외상(플랫폼 채권). credit_frozen: 1=동결.
     //   원장(wholesale_credit_ledger)은 wholesale.routes ensureCreditSchema 가 CREATE — 여기선 sellers 3컬럼만 보강.

@@ -1029,11 +1029,11 @@ app.post('/tax-documents/:id/issue-nts', rateLimit({ action: 'admin-nts-issue', 
         memo: `유통스타트 도매 ${doc.period_month}`,
       })
     } catch (e) {
-      await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(() => {})
+      await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(swallow('distributor-admin:tax-mark-failed'))
       return safeError(c, e, '전자세금계산서 발행 실패', '[distributor-admin]', 503)
     }
     if (!result.success) {
-      await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(() => {})
+      await c.env.DB.prepare("UPDATE tax_documents SET external_status='failed' WHERE id=?").bind(id).run().catch(swallow('distributor-admin:tax-mark-failed'))
       return c.json({ success: false, error: result.message || '전자세금계산서 발행 실패' }, 502)
     }
     await c.env.DB.prepare(

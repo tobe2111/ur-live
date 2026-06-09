@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-09 — 서비스 전체 분석 + 도매몰 perf/관측성 개선 (`claude/service-analysis-optimization-whpu0f`)
+**분석 결론**: 잠금 최적화 회귀 0 · critical path 228→257KB gzip(+13%, 유기적 성장 — 모니터 권장) · 도매 페이지 chunk 분리/스켈레톤/캐시헤더는 기적용 확인(서브에이전트 오탐 다수 직접검증으로 기각).
+**적용 fix (전부 비잠금·additive)**:
+- `wholesale.routes.ts` GET /catalog/:id — 등급/테이블/최소마진/qty-tier 4쿼리 순차→`Promise.all`(3 RTT 절약, 리스트와 동일 패턴).
+- 인덱스 2종: `idx_wholesale_orders_toss`(confirm 조회) + `idx_supplier_settlements_order_source`(정산 멱등) — ensureOrderTables + repair-schema 양쪽.
+- silent catch `.catch(()=>{})` → `swallow(label)` 관측성 통일(~20곳): deposit-core(차감 CAS·환불 복원 — 환불 UPDATE 무음실패=유통사 손실이라 최우선), withdrawal-core, tax-invoices(issued 마킹 실패=이중발행 위험), quotes 알림, supplier-auth same-email 연결, ship-all, distributor-admin. 동작 불변 — 로그만 추가.
+- `WholesaleCartPage` 썸네일 cfImage(width 128) 적용.
+**보류(의도)**: 도매 14페이지 i18n 전면 전환 — 국내 사업자 전용 B2B(사업자등록 필수)라 실효 낮음, 기존 후속 backlog 유지.
+검증: tsc 0 · unit 1528/1528 · `npm run build` 전체 체인 OK · schema-refs OK.
+
 ### ✅ 2026-06-09 — 도매몰 대개편 (예치금 결제·메인·운영기능·채팅) + 코드리뷰 fix
 **대장정 1세션. 사용자 요구 11종 전부 구현 + 검증. 전부 `claude/service-tech-debt-analysis-d1KOx` 브랜치 커밋·푸시.**
 

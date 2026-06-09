@@ -8,6 +8,8 @@
  *   amount 는 signed: +적립 / -차감. balance_after 는 적용 직후 잔액 스냅샷.
  */
 
+import { swallow } from '@/worker/utils/swallow'
+
 const _depositEnsured = new WeakSet<object>()
 
 /** 예치금 3 테이블 멱등 ensure (ensureCreditSchema 패턴). */
@@ -19,7 +21,7 @@ export async function ensureDepositSchema(DB: D1Database): Promise<void> {
     seller_id INTEGER PRIMARY KEY,
     balance INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT DEFAULT (datetime('now'))
-  )`).run().catch(() => { /* best-effort (cold isolate concurrent create) */ })
+  )`).run().catch(swallow('deposit:create-balances'))
   // 거래 원장(감사 이력).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_deposit_txns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +32,7 @@ export async function ensureDepositSchema(DB: D1Database): Promise<void> {
     ref_id TEXT,
     memo TEXT,
     created_at TEXT DEFAULT (datetime('now'))
-  )`).run().catch(() => {})
+  )`).run().catch(swallow('deposit:create-txns'))
   // 무통장입금 충전 요청(어드민 확인 대상).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_deposit_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,13 +43,13 @@ export async function ensureDepositSchema(DB: D1Database): Promise<void> {
     admin_memo TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     confirmed_at TEXT
-  )`).run().catch(() => {})
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_txns_seller ON wholesale_deposit_txns(seller_id, id DESC)').run().catch(() => {})
-  await DB.prepare("CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_requests_status ON wholesale_deposit_requests(status, id DESC)").run().catch(() => {})
+  )`).run().catch(swallow('deposit:create-requests'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_txns_seller ON wholesale_deposit_txns(seller_id, id DESC)').run().catch(swallow('deposit:idx-txns'))
+  await DB.prepare("CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_requests_status ON wholesale_deposit_requests(status, id DESC)").run().catch(swallow('deposit:idx-requests'))
   // 🔁 주문 멱등 — 같은 체크아웃 재시도(더블클릭/네트워크 retry)가 예치금 이중차감·이중주문 안 하도록.
   //   부분 UNIQUE: 동시 경쟁이면 2번째 INSERT 가 충돌 → 호출측 보상환불(자금 안전). 순차 재시도는 사전조회로 기존 주문 반환.
-  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT').run().catch(() => { /* 이미 있으면 무시 */ })
-  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL').run().catch(() => {})
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT').run().catch(() => { /* 이미 있으면 무시 (duplicate column 정상) */ })
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL').run().catch(swallow('deposit:idx-idem'))
 }
 
 /** 현재 잔액(행 없으면 0). */
@@ -79,11 +81,12 @@ export async function deductDeposit(DB: D1Database, sellerId: number, amount: nu
     return { ok: false, balance: bal }
   }
   // 행 보장(없으면 0) — 차감은 절대 행을 만들지 않음(아래 CAS 가 changes=0 → 부족 처리).
-  await DB.prepare('INSERT OR IGNORE INTO wholesale_deposits (seller_id, balance) VALUES (?, 0)').bind(sellerId).run().catch(() => {})
+  await DB.prepare('INSERT OR IGNORE INTO wholesale_deposits (seller_id, balance) VALUES (?, 0)').bind(sellerId).run().catch(swallow('deposit:deduct-ensure-row'))
   // CAS — balance >= amount 일 때만 차감(동시 주문이 잔액 동시 소진하는 것 차단).
+  //   쿼리 에러는 changes=0(부족) 으로 fail-closed — 돈 미이동. 단, 무음이면 진단 불가라 로그.
   const up = await DB.prepare(
     "UPDATE wholesale_deposits SET balance = balance - ?, updated_at = datetime('now') WHERE seller_id = ? AND balance >= ?"
-  ).bind(amt, sellerId, amt).run().catch(() => ({ meta: { changes: 0 } }))
+  ).bind(amt, sellerId, amt).run().catch((e) => { swallow('deposit:deduct-cas')(e); return { meta: { changes: 0 } } })
   if ((up.meta?.changes ?? 0) === 0) {
     const bal = await loadDepositBalance(DB, sellerId)
     return { ok: false, balance: bal }
@@ -99,10 +102,11 @@ export async function deductDeposit(DB: D1Database, sellerId: number, amount: nu
 export async function refundDeposit(DB: D1Database, sellerId: number, amount: number): Promise<number> {
   const amt = Math.floor(amount)
   if (!Number.isFinite(amt) || amt <= 0) return loadDepositBalance(DB, sellerId)
-  await DB.prepare('INSERT OR IGNORE INTO wholesale_deposits (seller_id, balance) VALUES (?, 0)').bind(sellerId).run().catch(() => {})
+  await DB.prepare('INSERT OR IGNORE INTO wholesale_deposits (seller_id, balance) VALUES (?, 0)').bind(sellerId).run().catch(swallow('deposit:refund-ensure-row'))
+  // 💰 복원 UPDATE 실패 = 환불 누락(유통사 손실) — 무음 금지, 로그로 추적(reconcile/어드민 보정 근거).
   await DB.prepare(
     "UPDATE wholesale_deposits SET balance = balance + ?, updated_at = datetime('now') WHERE seller_id = ?"
-  ).bind(amt, sellerId).run().catch(() => {})
+  ).bind(amt, sellerId).run().catch(swallow('deposit:refund-credit'))
   return loadDepositBalance(DB, sellerId)
 }
 

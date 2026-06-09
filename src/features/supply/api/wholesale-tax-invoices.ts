@@ -20,6 +20,7 @@
  *    서버 재계산 금액만 사용(클라이언트 값 미신뢰).
  */
 import { issueTaxInvoice } from '@/features/admin/api/admin-tax.routes'
+import { swallow } from '@/worker/utils/swallow'
 
 /** 🏭 도매 가격(주문 subtotal / 라인 공급가)을 부가세 포함(공급대가)으로 취급한다. */
 export const WHOLESALE_PRICE_VAT_INCLUSIVE = true
@@ -355,14 +356,15 @@ export async function reissueInvoice(DB: D1Database, env: unknown, id: number): 
       service_description: `유어딜 도매 ${rec.type === 'purchase' ? '매입' : '매출'} 재발행 (주문 #${rec.order_id})`,
     })
     if (result.success && result.invoice_id) {
-      await DB.prepare("UPDATE wholesale_tax_invoices SET status = 'issued', provider_ref = ?, issued_at = datetime('now') WHERE id = ?").bind(result.invoice_id, id).run().catch(() => {})
+      // ⚠️ provider 발행 성공 후 DB 마킹 실패 = 재시도 시 이중발행 위험 — 무음 금지.
+      await DB.prepare("UPDATE wholesale_tax_invoices SET status = 'issued', provider_ref = ?, issued_at = datetime('now') WHERE id = ?").bind(result.invoice_id, id).run().catch(swallow('tax-inv:mark-issued'))
       return { ok: true, status: 'issued', provider_ref: result.invoice_id }
     }
     if (result.skipped) {
       return { ok: false, status: rec.status, provider_ref: null, skipped: true, error: result.error }
     }
     // provider 거부(형식 오류 등) → 'failed' 로 마킹(재시도 가능).
-    await DB.prepare("UPDATE wholesale_tax_invoices SET status = 'failed' WHERE id = ? AND status != 'issued'").bind(id).run().catch(() => {})
+    await DB.prepare("UPDATE wholesale_tax_invoices SET status = 'failed' WHERE id = ? AND status != 'issued'").bind(id).run().catch(swallow('tax-inv:mark-failed'))
     return { ok: false, status: 'failed', provider_ref: null, error: result.error }
   } catch (e) {
     logSoft('reissue', e)

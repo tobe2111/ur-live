@@ -13,6 +13,7 @@ import { hashPassword, verifyPassword } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
+import { swallow } from '@/worker/utils/swallow';
 import { maskEmail } from '@/lib/mask';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { registrationMallId } from './wholesale-malls';
@@ -62,8 +63,8 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
   ]) {
     await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
   }
-  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL').run().catch(() => {});
-  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_linked_user ON suppliers(linked_user_id) WHERE linked_user_id IS NOT NULL').run().catch(() => {});
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL').run().catch(swallow('supplier-auth:idx-email'));
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_linked_user ON suppliers(linked_user_id) WHERE linked_user_id IS NOT NULL').run().catch(swallow('supplier-auth:idx-linked-user'));
 }
 
 // ── POST /register — 도매상 가입 ──────────────────────────────────────────────
@@ -180,7 +181,8 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       const byEmail = await DB.prepare('SELECT id, business_name, email, status FROM suppliers WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0) LIMIT 1')
         .bind(email).first<SupRow>().catch(() => null);
       if (byEmail) {
-        await DB.prepare("UPDATE suppliers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?").bind(userId, byEmail.id).run().catch(() => {});
+        // 연결 UPDATE 실패 시에도 sup 은 할당돼 토큰이 발급됨 — 실패가 무음이면 '연결 안 된 로그인' 원인 추적 불가.
+        await DB.prepare("UPDATE suppliers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?").bind(userId, byEmail.id).run().catch(swallow('supplier-auth:link-user'));
         sup = byEmail;
       }
     }
