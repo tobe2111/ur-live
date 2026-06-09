@@ -55,8 +55,16 @@ dist.get('/deposits/me', async (c) => {
     await ensureDepositSchema(DB)
     const balance = await loadDepositBalance(DB, auth.sellerId)
     const recent = await recentDepositTxns(DB, auth.sellerId, 20)
-    // 🏭 Wave 2: 어드민 설정 입금계좌(platform_settings) — 입금 안내 박스가 실제 계좌를 표시(없으면 '').
-    const deposit_account = await loadWholesaleDepositAccount(DB).catch(() => '')
+    // 🏬 멀티몰: 이 유통사 계정이 속한 몰의 입금계좌 우선(없으면 글로벌 platform_settings fallback).
+    //   기본몰(mall_id=1)에 몰 계좌 미설정이면 글로벌로 폴백 → 단일몰 기존 동작 byte-identical.
+    let deposit_account = ''
+    try {
+      const m = await DB.prepare(
+        "SELECT COALESCE(NULLIF(TRIM(wm.deposit_account),''),'') AS acct FROM sellers s LEFT JOIN wholesale_malls wm ON wm.id = COALESCE(s.mall_id,1) WHERE s.id = ?"
+      ).bind(auth.sellerId).first<{ acct: string }>().catch(() => null)
+      deposit_account = (m?.acct || '').trim()
+    } catch { /* 테이블/컬럼 미존재 환경 — 아래 글로벌 폴백 */ }
+    if (!deposit_account) deposit_account = await loadWholesaleDepositAccount(DB).catch(() => '')
     return c.json({ success: true, balance, recent_txns: recent, deposit_account })
   } catch (err) {
     return safeError(c, err, '예치금 조회 중 오류가 발생했습니다', '[wholesale-deposit]')

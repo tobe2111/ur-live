@@ -1902,13 +1902,43 @@ function isWholesaleAllowedPath(pathname: string): boolean {
   return false;
 }
 
+// 🏬 2026-06-09 멀티몰: wholesale_malls 에 등록된 host 도 '도매몰 전용'으로 인식(루트→/wholesale).
+//   ⚠️ 소비자 호스트는 fast-path 로 DB 조회 skip(핫패스 byte-identical). 미지 호스트만 캐시된 몰-호스트 set 조회.
+const CONSUMER_FAST_PATH = new Set(['live.ur-team.com', 'ur-live.pages.dev', 'localhost']);
+let _mallHostCache: { hosts: Set<string>; at: number } | null = null;
+async function getWholesaleMallHosts(env: unknown): Promise<Set<string>> {
+  const now = Date.now();
+  if (_mallHostCache && now - _mallHostCache.at < 300_000) return _mallHostCache.hosts; // 5분 isolate 캐시
+  const set = new Set<string>();
+  try {
+    const DB = (env as { DB?: D1Database }).DB;
+    if (DB) {
+      const { results } = await DB.prepare("SELECT host FROM wholesale_malls WHERE active = 1 AND host IS NOT NULL AND host != ''").all<{ host: string }>();
+      for (const r of (results || [])) {
+        for (const h of String(r.host).split(',')) {        // host 컬럼은 콤마 다중 호스트 허용
+          const hh = h.trim().toLowerCase().replace(/^www\./, '');
+          if (hh) { set.add(hh); set.add('www.' + hh); }
+        }
+      }
+    }
+  } catch { /* 테이블 미존재 환경 — 빈 set(폴백: 정적 WHOLESALE_HOSTS 만) */ }
+  _mallHostCache = { hosts: set, at: now };
+  return set;
+}
+
 export default {
-  fetch: (request: Request, env: unknown, ctx: unknown) => {
+  fetch: async (request: Request, env: unknown, ctx: unknown) => {
     try {
       const url = new URL(request.url);
-      if (WHOLESALE_HOSTS.has(url.hostname.toLowerCase()) && !isWholesaleAllowedPath(url.pathname || '/')) {
-        // 🏭 2026-06-04 몰-first: 도매몰 도메인 비-도매몰 경로 → 카탈로그(/wholesale)로 302.
-        //   (기존 /wholesale/intro 소개 랜딩 대신 바로 상품 몰. intro 는 링크로만 접근.)
+      const host = url.hostname.toLowerCase();
+      let isWhHost = WHOLESALE_HOSTS.has(host);
+      // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
+      if (!isWhHost && !CONSUMER_FAST_PATH.has(host)) {
+        const mallHosts = await getWholesaleMallHosts(env);
+        isWhHost = mallHosts.has(host);
+      }
+      if (isWhHost && !isWholesaleAllowedPath(url.pathname || '/')) {
+        // 🏭 몰-first: 도매몰 도메인 비-도매몰 경로 → 카탈로그(/wholesale)로 302. (utongstart + 등록 몰 호스트)
         return Response.redirect(`${url.origin}/wholesale`, 302);
       }
     } catch { /* URL 파싱 실패 시 통과 */ }
