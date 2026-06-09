@@ -1562,6 +1562,55 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
   }
 })
 
+// ── GET /orders/export — 도매 주문 내역 .xlsx 다운로드 (유통사 본인 것만, IDOR 가드) ─────
+//   컬럼: 주문번호/주문일/결제일/상태/등급/상품합계/배송비/총결제/운송장. 최신 5000건.
+//   Rate limit: 10건/분 — 반복 대량 추출 방지.
+app.get('/orders/export', rateLimit({ action: 'wholesale-orders-export', max: 10, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    await ensureOrderTables(DB)
+    const { results } = await DB.prepare(`
+      SELECT id, toss_order_id, status, grade,
+             COALESCE(subtotal, 0) AS subtotal,
+             COALESCE(shipping_total, 0) AS shipping_total,
+             (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
+             courier, tracking_number,
+             COALESCE(paid_at, '') AS paid_at,
+             COALESCE(created_at, '') AS created_at
+      FROM wholesale_orders
+      WHERE distributor_seller_id = ?
+      ORDER BY created_at DESC LIMIT 5000
+    `).bind(sellerId).all<{
+      id: number; toss_order_id: string | null; status: string; grade: string | null
+      subtotal: number; shipping_total: number; grand_total: number
+      courier: string | null; tracking_number: string | null; paid_at: string; created_at: string
+    }>()
+    const headers = ['주문번호', '주문일', '결제일', '상태', '등급', '상품합계', '배송비', '총결제', '택배사', '운송장번호']
+    const STATUS_KO: Record<string, string> = {
+      PENDING: '결제대기', PAID: '결제완료', ON_CREDIT: '여신(외상)', SHIPPED: '배송중',
+      PARTIAL_REFUNDED: '부분환불', REFUNDED: '환불완료', CANCELLED: '취소', DONE: '구매확정', FAILED: '실패', EXPIRED: '만료',
+    }
+    const rows = (results || []).map(o => [
+      o.toss_order_id || `W-${o.id}`,
+      (o.created_at || '').slice(0, 19).replace('T', ' '),
+      (o.paid_at || '').slice(0, 19).replace('T', ' '),
+      STATUS_KO[o.status] || o.status,
+      o.grade || '-',
+      o.subtotal,
+      o.shipping_total,
+      o.grand_total,
+      o.courier || '',
+      o.tracking_number || '',
+    ])
+    const date = new Date().toISOString().slice(0, 10)
+    return xlsxResponse(buildXlsx(headers, rows, '도매주문내역'), `wholesale-orders-${date}.xlsx`)
+  } catch (err) {
+    return safeError(c, err, '주문 내보내기 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
 // ── GET /orders — 내 도매 주문 목록 ──────────────────────────────────────────
 app.get('/orders', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)

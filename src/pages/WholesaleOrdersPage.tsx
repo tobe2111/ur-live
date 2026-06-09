@@ -2,12 +2,23 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send } from 'lucide-react'
+import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send, Download } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 import { WT, won } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
+
+// 인증 헤더로 xlsx 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
+async function downloadWholesaleXlsx(path: string, filename: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) { toast.error('다운로드 실패'); return }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
 
 // 🏭 NOTI-1 (2026-06-08): 주문별 메모/문의 스레드 — 유통사 ↔ 공급자 ↔ 어드민 소통.
 //   서버: GET/POST /api/wholesale/orders/:id/notes (당사자 검증 + 작성 시 상대 통지).
@@ -156,7 +167,16 @@ export default function WholesaleOrdersPage() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>주문 내역</h1>
+          <h1 className="text-[15px] font-bold flex-1" style={{ color: WT.ink }}>주문 내역</h1>
+          <button
+            onClick={() => downloadWholesaleXlsx('/api/wholesale/orders/export', `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)}
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl border text-[13px] font-medium"
+            style={{ borderColor: WT.line, color: WT.ink2, background: WT.fill }}
+            title="엑셀 다운로드"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">엑셀 다운로드</span>
+          </button>
         </div>
       </header>
 

@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload, ChevronRight, MessageCircle, Loader2 } from 'lucide-react'
+import { Package, Wallet, Receipt, Plus, LogOut, Clock, CheckCircle, XCircle, X, Truck, Tag, ShieldCheck, BarChart3, AlertTriangle, Upload, ChevronRight, MessageCircle, Loader2, Download } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
@@ -279,7 +279,16 @@ export default function SupplierDashboardPage() {
             onRequest={() => setShowWithdraw(true)}
           />
           <div>
-            <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-gray-900">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
+              <button
+                onClick={() => downloadSupplierCsv('/api/supplier/settlements/export', `supplier-settlements-${new Date().toISOString().slice(0, 10)}.xlsx`)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-medium hover:bg-gray-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {t('supplier.exportSettlements', { defaultValue: '엑셀 다운로드' })}
+              </button>
+            </div>
             <SettlementsTab items={settlements} t={t} />
           </div>
           <div>

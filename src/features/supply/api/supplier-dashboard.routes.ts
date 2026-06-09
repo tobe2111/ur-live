@@ -20,6 +20,8 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
+import { buildXlsx, xlsxResponse } from './xlsx';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
@@ -671,6 +673,46 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
     });
   } catch (err) {
     return safeError(c, err, '정산 내역 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── GET /settlements/export — 정산 내역 .xlsx 다운로드 (공급자 본인 것만, IDOR 가드) ──────
+//   컬럼: 일자/주문번호/상품명/공급가액/상태/출금일. 최신 5000건.
+//   Rate limit: 10건/분 — 반복 대량 추출 방지.
+supplierDashboardRoutes.get('/settlements/export', rateLimit({ action: 'supplier-settlements-export', max: 10, windowSec: 60 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const { results } = await DB.prepare(
+      `SELECT ss.id, ss.order_id, ss.supply_amount, ss.status,
+              ss.created_at, ss.available_at, ss.paid_at,
+              p.name AS product_name
+         FROM supplier_settlements ss
+         LEFT JOIN products p ON p.id = ss.product_id
+        WHERE ss.supplier_id = ?
+        ORDER BY ss.created_at DESC LIMIT 5000`
+    ).bind(sid).all<{
+      id: number; order_id: number | null; supply_amount: number; status: string
+      created_at: string; available_at: string | null; paid_at: string | null; product_name: string | null
+    }>();
+    const STATUS_KO: Record<string, string> = {
+      pending: '정산 대기', available: '출금 가능', paid: '지급 완료', cancelled: '취소(환불)',
+    };
+    const headers = ['일자', '주문번호', '상품명', '공급가액', '상태', '출금 가능일', '지급일'];
+    const rows = (results || []).map(s => [
+      (s.created_at || '').slice(0, 10),
+      s.order_id != null ? `#${s.order_id}` : '-',
+      s.product_name || '-',
+      s.supply_amount,
+      STATUS_KO[s.status] || s.status,
+      (s.available_at || '').slice(0, 10) || '-',
+      (s.paid_at || '').slice(0, 10) || '-',
+    ]);
+    const date = new Date().toISOString().slice(0, 10);
+    return xlsxResponse(buildXlsx(headers, rows, '정산내역'), `supplier-settlements-${date}.xlsx`);
+  } catch (err) {
+    return safeError(c, err, '정산 내역 내보내기 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 
