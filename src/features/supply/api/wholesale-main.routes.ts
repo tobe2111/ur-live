@@ -404,6 +404,9 @@ adminProduct.get('/', async (c) => {
     if (premiumQ === '1') where += ' AND COALESCE(p.is_premium, 0) = 1'
     else if (premiumQ === '0') where += ' AND COALESCE(p.is_premium, 0) = 0'
     if (q) { where += ' AND (p.name LIKE ? OR s.business_name LIKE ?)'; const like = `%${q}%`; params.push(like, like) }
+    // 🏬 멀티-몰: ?mall_id= 가 주어진 경우에만 해당 몰로 필터(옵션). 미지정 = 전 몰(기존 무필터 뷰 보존).
+    const mallQ = c.req.query('mall_id')
+    if (mallQ != null && mallQ !== '') { where += ' AND COALESCE(p.mall_id, 1) = ?'; params.push(adminMallIdFromQuery(mallQ)) }
 
     const rows = await DB.prepare(
       `SELECT p.id, p.name, p.category, p.supply_price, p.is_active,

@@ -14,6 +14,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
+import AdminMallSelect from '@/components/admin/AdminMallSelect'
 
 interface WholesaleProductRow {
   id: number
@@ -32,6 +33,8 @@ export default function AdminWholesaleProductsPage() {
   const [premiumFilter, setPremiumFilter] = useState<'' | '1' | '0'>('')
   const [searchInput, setSearchInput] = useState('')
   const [query, setQuery] = useState('')
+  // 🏬 멀티-몰: '' = 전 몰(기존 무필터 뷰 보존). 특정 몰 선택 시 ?mall_id= 로 스코프.
+  const [mallId, setMallId] = useState('')
   const [togglingId, setTogglingId] = useState<number | null>(null)
   // 낙관적 업데이트용 로컬 오버라이드 (id → is_premium).
   const [optimistic, setOptimistic] = useState<Record<number, number>>({})
@@ -41,9 +44,10 @@ export default function AdminWholesaleProductsPage() {
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
   const { data, isLoading: loading, refetch } = useApiQuery<{ items: WholesaleProductRow[]; premium_count: number }>(
-    ['admin', 'wholesale-products', premiumFilter, query], '/api/admin/wholesale-products',
+    ['admin', 'wholesale-products', premiumFilter, query, mallId], '/api/admin/wholesale-products',
     {
-      params: { premium: premiumFilter, q: query, limit: 200 },
+      params: { premium: premiumFilter, q: query, limit: 200, ...(mallId ? { mall_id: mallId } : {}) },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       select: (r: any) => (r?.success ? { items: r.data?.items ?? [], premium_count: r.data?.premium_count ?? 0 } : { items: [], premium_count: 0 }),
     },
   )
@@ -110,6 +114,7 @@ export default function AdminWholesaleProductsPage() {
                 {f.label}
               </button>
             ))}
+            <AdminMallSelect value={mallId} onChange={setMallId} />
             <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-amber-600">
               <Crown className="w-3.5 h-3.5" />
               {t('admin.wholesaleProducts.premiumCount', { defaultValue: '프리미엄' })} {premiumCount}

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { Loader2, Search, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, Lock, LogIn, LogOut, Upload, Download, ArrowDownUp, PackageCheck, BellRing, BellOff, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Sparkles } from 'lucide-react'
-import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
@@ -333,7 +333,7 @@ function Dashboard({ grade, marginPct, company, monthSpend, orderCount, depositB
           <span className="text-[12px] shrink-0" style={{ color: WT.ink3 }}>예치금 잔액</span>
           <span className="text-[17px] font-extrabold tabular-nums truncate" style={{ color: WT.ink }}>{won(depositBalance)}</span>
         </div>
-        <button onClick={onCharge} className="shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ background: WT.brand }}>충전하기</button>
+        <button onClick={onCharge} className="shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ background: 'var(--ud-brand, #FF0033)' }}>충전하기</button>
       </div>
     </div>
   )
@@ -496,6 +496,13 @@ export default function WholesaleCatalogPage() {
   const meQ = useWholesaleMe()
   const depositQ = useWholesaleDeposit()
   const homeQ = useWholesaleHome()
+  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (없으면 유통스타트/#FF0033 기본 → byte-identical).
+  //   헤더 워드마크(name+logo) + 브랜드 색(CSS 변수 --ud-brand). 기본 몰이면 모든 값이 현 디폴트와 동일.
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
+  // 도매 서피스에서 문서 타이틀을 몰 이름으로(선택). 기본 몰이면 '유통스타트' → 동작 불변.
+  useEffect(() => {
+    if (typeof document !== 'undefined' && mallName) document.title = `${mallName} 도매몰`
+  }, [mallName])
   // 이번달 사입액 (거래내역서 summary 재사용).
   const monthFrom = useMemo(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }, [])
   const monthTo = useMemo(() => new Date().toISOString().slice(0, 10), [])
@@ -808,7 +815,8 @@ export default function WholesaleCatalogPage() {
   const grade = me?.grade || home?.grade || 'C'
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FF0033 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
+    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
       <SEO
         domain="wholesale"
         title="유통스타트 도매몰 — 제조사 직거래 도매가 사입 B2B 도매사이트"
@@ -863,9 +871,14 @@ export default function WholesaleCatalogPage() {
         {/* 2. 메인 헤더 — 로고 + 중앙 큰 검색 + 우측 3아이콘 */}
         <div className="ur-content-wide px-5 lg:px-8 py-3 flex items-center gap-3 lg:gap-6">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2 shrink-0">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white font-extrabold text-[14px]" style={{ background: WT.brand }}>유</span>
+            {/* 🏬 로고 있으면 로고, 없으면 브랜드 색 박스 + 몰 이름 첫 글자(기본 몰 → '유') */}
+            {mallLogo ? (
+              <img src={mallLogo} alt={mallName} className="h-8 w-8 rounded-lg object-cover" />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white font-extrabold text-[14px]" style={{ background: 'var(--ud-brand, #FF0033)' }}>{(mallName || '유통스타트').slice(0, 1)}</span>
+            )}
             <div className="leading-tight text-left">
-              <div className="text-[16px] font-extrabold" style={{ color: WT.ink }}>유통스타트</div>
+              <div className="text-[16px] font-extrabold" style={{ color: WT.ink }}>{mallName}</div>
               <div className="text-[10px] -mt-0.5" style={{ color: WT.ink4 }}>도매몰</div>
             </div>
           </button>
@@ -876,7 +889,7 @@ export default function WholesaleCatalogPage() {
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder={t('wholesale.searchPlaceholder', { defaultValue: '상품명·브랜드로 검색' })}
               className="w-full pl-4 pr-24 h-11 lg:h-12 rounded-full text-[14px] outline-none"
-              style={{ background: WT.fill, color: WT.ink, border: '1.5px solid ' + WT.brand }}
+              style={{ background: WT.fill, color: WT.ink, border: '1.5px solid var(--ud-brand, #FF0033)' }}
             />
             {search && (
               <button type="button" onClick={() => { setSearch(''); setCommittedSearch('') }} aria-label={t('common.clear', { defaultValue: '지우기' })}
@@ -885,7 +898,7 @@ export default function WholesaleCatalogPage() {
               </button>
             )}
             <button type="submit" aria-label={t('common.search', { defaultValue: '검색' })}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 lg:h-9 px-4 rounded-full inline-flex items-center justify-center text-white" style={{ background: WT.brand }}>
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 lg:h-9 px-4 rounded-full inline-flex items-center justify-center text-white" style={{ background: 'var(--ud-brand, #FF0033)' }}>
               <Search className="w-4 h-4" />
             </button>
           </form>
@@ -924,7 +937,7 @@ export default function WholesaleCatalogPage() {
             {/* ≡ 전체카테고리 (레드 박스 → 메가메뉴) */}
             <button onClick={() => setMegaOpen(v => !v)} aria-expanded={megaOpen}
               className="shrink-0 inline-flex items-center gap-1.5 px-4 h-11 text-[14px] font-bold text-white"
-              style={{ background: WT.brand }}>
+              style={{ background: 'var(--ud-brand, #FF0033)' }}>
               <Menu className="w-4 h-4" /> {t('wholesale.nav.allCategories', { defaultValue: '전체카테고리' })}
             </button>
             {/* 브랜드 전시관 → 브랜드 필터(데모: 검색 초기화 + 전체) */}

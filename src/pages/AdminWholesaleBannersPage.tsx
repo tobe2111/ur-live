@@ -7,6 +7,7 @@ import ImageUpload from '@/components/upload/ImageUpload'
 import { Image as ImageIcon, Loader2, Plus, Edit, Trash2, Eye, EyeOff, X, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import AdminMallSelect from '@/components/admin/AdminMallSelect'
 
 // 🏭 2026-06-09 Wave 2 — 어드민 도매 메인 배너 관리.
 //   /wholesale 히어로 캐러셀 CRUD (이미지/링크/제목/순서/노출). 라이트 테마.
@@ -30,16 +31,18 @@ export default function AdminWholesaleBannersPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
+  // 🏬 멀티-몰: 어드민이 볼/스탬프할 몰. '' = 미지정(백엔드 기본 몰 1 — 기존 뷰와 동일).
+  const [mallId, setMallId] = useState('')
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
   const load = useCallback(() => {
     setLoading(true)
-    api.get('/api/admin/wholesale-banners')
+    api.get('/api/admin/wholesale-banners', mallId ? { params: { mall_id: mallId } } : undefined)
       .then((r) => setBanners(r.data?.success ? (r.data.banners || []) : []))
       .catch(() => setBanners([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [mallId])
 
   useEffect(() => { load() }, [load])
 
@@ -70,7 +73,8 @@ export default function AdminWholesaleBannersPage() {
         await api.patch(`/api/admin/wholesale-banners/${editing.id}`, body)
         toast.success('배너가 수정되었습니다')
       } else {
-        await api.post('/api/admin/wholesale-banners', body)
+        // 🏬 멀티-몰: 선택된 몰에 배너 생성(미선택 시 백엔드 기본 몰 1 — 기존 동작 동일).
+        await api.post('/api/admin/wholesale-banners', mallId ? { ...body, mall_id: Number(mallId) } : body)
         toast.success('배너가 등록되었습니다')
       }
       setShowForm(false)
@@ -115,9 +119,12 @@ export default function AdminWholesaleBannersPage() {
       <div className="ur-content-full px-4 lg:px-8 py-6">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <DashboardPageHeader icon={<ImageIcon className="w-5 h-5" />} title="도매 메인 배너" subtitle="도매몰(/wholesale) 메인 히어로 캐러셀 배너를 관리합니다." />
-          <button onClick={openNew} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold shrink-0">
-            <Plus className="w-4 h-4" /> 배너 추가
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <AdminMallSelect value={mallId} onChange={setMallId} allLabel="기본 몰" />
+            <button onClick={openNew} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+              <Plus className="w-4 h-4" /> 배너 추가
+            </button>
+          </div>
         </div>
 
         {loading ? (

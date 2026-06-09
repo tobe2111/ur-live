@@ -44,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
     // 🏭 도매몰 (유통스타트 B2B)
     title: '🏭 도매몰',
     items: [
+      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/suppliers',          label: '공급자 관리',   icon: Store },
       { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },

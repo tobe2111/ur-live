@@ -28,7 +28,7 @@ import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
-import { resolveMallId, registrationMallId } from './wholesale-malls'
+import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -97,6 +97,40 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
   ]) { await DB.prepare(sql).run().catch(swallow('wholesale:biz8:alter')) }
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_products_mall_supply ON products(mall_id) WHERE is_supply_product = 1').run().catch(swallow('wholesale:biz8:idx-mall'))
 }
+
+// ── GET /mall — PUBLIC 현재 몰(브랜딩) 조회 ─────────────────────────────────────
+//   🏬 2026-06-09 멀티-몰 테넌시: host → mall(없으면 기본 몰 id=1). 프런트 헤더 브랜드명/로고/색/카테고리용.
+//   ⚠️ 공개 브랜딩 필드만 반환 — deposit_account / commission_rate 절대 비노출.
+//   캐시: per-host. 기본 몰 단일 호스트면 항상 유통스타트 브랜드값 → 동작 불변.
+app.get('/mall', async (c) => {
+  const { DB } = c.env
+  try {
+    let host: string | null = null
+    try { host = new URL(c.req.url).hostname } catch { host = c.req.header('Host') || null }
+    const mall = await loadMallByHost(DB, host)
+    // categories_json 서버 parse → 배열(파싱 실패 시 null). 클라 JSON.parse 부담 제거.
+    let categories: unknown = null
+    if (mall?.categories_json) {
+      try { categories = JSON.parse(mall.categories_json) } catch { categories = null }
+    }
+    c.header('Cache-Control', 'public, max-age=60')
+    c.header('CDN-Cache-Control', 'max-age=300')
+    return c.json({
+      success: true,
+      mall: {
+        slug: mall?.slug ?? 'default',
+        name: mall?.name ?? '유통스타트',
+        brand_name: mall?.brand_name ?? null,
+        brand_color: mall?.brand_color ?? null,
+        logo_url: mall?.logo_url ?? null,
+        categories: Array.isArray(categories) ? categories : null,
+      },
+    })
+  } catch (err) {
+    // 브랜딩 조회 실패 시에도 기본 몰 값으로 graceful — 헤더가 절대 비지 않도록.
+    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null } })
+  }
+})
 
 // ── BIZ-2 v1 (2026-06-08) 여신/외상(credit terms) — 멱등 ensure. ─────────────────
 //   "사입 0원" 핵심 모순(현재 100% Toss 선결제) 해소를 위한 ADDITIVE 외상 경로.

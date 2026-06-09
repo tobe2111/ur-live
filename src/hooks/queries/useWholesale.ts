@@ -41,6 +41,53 @@ export interface WholesaleCatalogItem {
   [k: string]: unknown
 }
 
+// ── 🏬 2026-06-09 멀티-몰 테넌시 — 현재 호스트의 몰 브랜딩 (PUBLIC) ────────────────
+//   host → mall (없으면 기본 몰 '유통스타트'/#FF0033). 헤더 브랜드명·로고·색·카테고리에 사용.
+//   per-host 라서 staleTime 길게(어차피 한 도메인은 한 몰). deposit_account/commission 미노출.
+export interface WholesaleMallBrand {
+  slug: string
+  name: string
+  brand_name: string | null
+  brand_color: string | null
+  logo_url: string | null
+  categories: { id: string; label: string }[] | null
+}
+
+/** 기본 몰 fallback — config 없거나 로딩 전이면 항상 유통스타트/#FF0033 (default 몰 byte-identical). */
+export const DEFAULT_MALL_BRAND: WholesaleMallBrand = {
+  slug: 'default',
+  name: '유통스타트',
+  brand_name: '유통스타트',
+  brand_color: '#FF0033',
+  logo_url: null,
+  categories: null,
+}
+
+export function useWholesaleMall() {
+  const q = useQuery<WholesaleMallBrand>({
+    queryKey: queryKeys.wholesale('mall'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/mall')
+        .then((r) => (r.data?.success && r.data.mall ? (r.data.mall as WholesaleMallBrand) : DEFAULT_MALL_BRAND))
+        .catch(() => DEFAULT_MALL_BRAND),
+    staleTime: 30 * 60 * 1000, // per-host — 한 도메인은 한 몰. 길게 캐시.
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+  // 항상 sensible fallback (로딩 중/에러여도 유통스타트 기본값) — 헤더가 절대 비지 않음.
+  const mall = q.data ?? DEFAULT_MALL_BRAND
+  return {
+    mall,
+    // 표시용 편의 — brand_name 우선, 없으면 name, 둘 다 없으면 유통스타트.
+    displayName: mall.brand_name || mall.name || '유통스타트',
+    brandColor: mall.brand_color || '#FF0033',
+    logoUrl: mall.logo_url || null,
+    categories: mall.categories || null,
+    isLoading: q.isLoading,
+  }
+}
+
 export function useWholesaleOrders() {
   return useQuery<WholesaleOrderRow[]>({
     queryKey: queryKeys.wholesale('orders'),

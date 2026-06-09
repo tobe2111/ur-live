@@ -16,7 +16,7 @@ import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
 import { buildWholesaleNav } from './wholesale/wholesale-nav'
 import {
   useWholesaleMe, useWholesaleDeposit, useWholesaleChargeRequests,
-  useWholesaleChargeRequestMutation,
+  useWholesaleChargeRequestMutation, useWholesaleMall,
   type WholesaleDepositTxn, type WholesaleChargeStatus,
 } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
@@ -54,6 +54,8 @@ export default function WholesaleDepositPage() {
   const depositQ = useWholesaleDeposit()
   const requestsQ = useWholesaleChargeRequests()
   const chargeMut = useWholesaleChargeRequestMutation()
+  // 🏬 멀티-몰 브랜딩 — 셸 워드마크(기본 몰 → 유통스타트 → 동작 불변).
+  const { displayName: mallName } = useWholesaleMall()
   const cart = useWholesaleCart()
 
   const me = (meQ.data ?? null) as { grade: string } | null
@@ -132,7 +134,7 @@ export default function WholesaleDepositPage() {
 
   return (
     <WholesaleDashboardShell
-      brand="유통스타트"
+      brand={mallName}
       brandSubtitle={company}
       navItems={navItems}
       title={t('wholesale.deposit.title', { defaultValue: '예치금' })}

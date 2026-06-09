@@ -5,6 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { MessageSquareWarning, Loader2, Check, X, Lightbulb, Flag } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import AdminMallSelect from '@/components/admin/AdminMallSelect'
 
 // 🏭 2026-06-09 Wave 2 — 어드민 도매 제안/신고 처리 큐.
 //   유통사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
@@ -47,16 +48,21 @@ export default function AdminWholesaleProposalsPage() {
   const [rows, setRows] = useState<FeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
+  // 🏬 멀티-몰: '' = 전 몰(기존 무필터 뷰 보존). 특정 몰 선택 시 ?mall_id= 로 스코프.
+  const [mallId, setMallId] = useState('')
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
   const load = useCallback(() => {
     setLoading(true)
-    api.get('/api/admin/wholesale-proposals', { params: filter === 'all' ? {} : { status: filter } })
+    const params: Record<string, string> = {}
+    if (filter !== 'all') params.status = filter
+    if (mallId) params.mall_id = mallId
+    api.get('/api/admin/wholesale-proposals', { params })
       .then((r) => setRows(r.data?.success ? (r.data.proposals || r.data.items || []) : []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false))
-  }, [filter])
+  }, [filter, mallId])
 
   useEffect(() => { load() }, [load])
 
@@ -88,6 +94,7 @@ export default function AdminWholesaleProposalsPage() {
               {f.label}
             </button>
           ))}
+          <div className="ml-auto"><AdminMallSelect value={mallId} onChange={setMallId} /></div>
         </div>
 
         {loading ? (

@@ -10,12 +10,15 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Boxes, Loader2, Factory, ArrowRight } from 'lucide-react'
+import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 
 export default function WholesaleLoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical). 조기 return 전에 호출.
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
 
   // 이미 유통사 로그인 상태면 대시보드로(유통사 아닌 셀러면 카탈로그).
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
@@ -60,7 +63,8 @@ export default function WholesaleLoginPage() {
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
-            <Boxes className="w-6 h-6 text-[#FF0033]" /><span className="text-lg font-extrabold">유통스타트</span>
+            {mallLogo ? <img src={mallLogo} alt={mallName} className="w-6 h-6 rounded object-cover" /> : <Boxes className="w-6 h-6" style={{ color: mallBrand }} />}
+            <span className="text-lg font-extrabold">{mallName}</span>
           </button>
           <button onClick={() => navigate('/wholesale/join')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">유통사 가입</button>
         </div>

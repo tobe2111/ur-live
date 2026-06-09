@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
-import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, useWholesaleMall, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import { buildWholesaleNav } from './wholesale/wholesale-nav'
 import { getSupplierToken } from '@/lib/supplier-api'
@@ -34,6 +34,8 @@ export default function WholesaleDashboardPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
   const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
+  // 🏬 멀티-몰 브랜딩 — 셸 워드마크를 몰 이름으로(기본 몰 → 유통스타트 → 동작 불변).
+  const { displayName: mallName } = useWholesaleMall()
 
   // 🏭 2026-06-08: 유통사(seller_token + is_distributor) 전용 — 역할 엄격화(제조사 가드와 대칭).
   //   미로그인 → 유통사 로그인. 셀러지만 유통사 아님 → 카탈로그(유통사 전환 CTA).
@@ -120,7 +122,7 @@ export default function WholesaleDashboardPage() {
 
   return (
     <WholesaleDashboardShell
-      brand="유통스타트"
+      brand={mallName}
       brandSubtitle={company}
       navItems={navItems}
       title="유통사 대시보드"

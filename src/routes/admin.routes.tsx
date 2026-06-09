@@ -29,6 +29,8 @@ const AdminWholesaleBannersPage = lazy(() => import('@/pages/AdminWholesaleBanne
 const AdminWholesaleProposalsPage = lazy(() => import('@/pages/AdminWholesaleProposalsPage'))
 // 🏭 Wave 2 (2026-06-09): 도매 프리미엄 전용관 상품 토글.
 const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesaleProductsPage'))
+// 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리.
+const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
@@ -233,6 +235,12 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-products" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminWholesaleProductsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리 */}
+      <Route path="/admin/wholesale-malls" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleMallsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 */}
