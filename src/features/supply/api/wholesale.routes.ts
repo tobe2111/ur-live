@@ -27,7 +27,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
-import { ensureDepositSchema, deductDeposit, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
+import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -961,18 +961,15 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
             "UPDATE products SET stock = stock + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
           ).bind(d.qty, d.qty, d.product_id).run().catch(() => { /* best-effort */ })
         }
-        await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(dOrderId).run().catch(() => {})
-        // 💰 보상 환불 — 차감액 복원 + refund 원장(ref_id=order.id 로 멱등).
-        const bal = await refundDeposit(DB, sellerId, subtotal)
-        await recordDepositTxn(DB, sellerId, 'refund', subtotal, bal, String(dOrderId), `재고부족 자동 환불 #${dOrderId}`)
+        // 💰 멱등 보상환불 — refunded_amount CAS 로 1회만(이중환불·reconcile cron 중복 차단).
+        await compensateDepositOrderOnce(DB, dOrderId, sellerId, subtotal, `재고부족 자동 환불 #${dOrderId}`)
         return c.json({ success: false, error: '재고가 부족하여 주문이 취소되었습니다. 예치금은 환불되었습니다.', code: 'OVERSOLD' }, 409)
       }
     } catch (innerErr) {
       // 항목/재고 단계 예외 → 주문 FAILED + 보상 환불. (이미 차감된 재고는 best-effort 미복원 —
       //   드문 케이스이며 oversell 가드 경로에서만 복원. 여기선 예외 발생 시 자금 안전 최우선.)
-      await DB.prepare("UPDATE wholesale_orders SET status='FAILED' WHERE id=?").bind(dOrderId).run().catch(() => {})
-      const bal = await refundDeposit(DB, sellerId, subtotal)
-      await recordDepositTxn(DB, sellerId, 'refund', subtotal, bal, String(dOrderId), `주문 처리 오류 자동 환불 #${dOrderId}`)
+      // 💰 멱등 보상환불 — refunded_amount CAS 로 1회만.
+      await compensateDepositOrderOnce(DB, dOrderId, sellerId, subtotal, `주문 처리 오류 자동 환불 #${dOrderId}`)
       return safeError(c, innerErr, '주문 처리 중 오류가 발생했습니다. 예치금은 환불되었습니다.', '[wholesale]')
     }
 

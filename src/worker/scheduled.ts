@@ -147,6 +147,11 @@ export async function handleCronScheduled(
       const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
       return handleStayPendingExpire(env)
     }));
+    // 🏦 2026-06-09: 미완료 예치금 주문 reconcile(크래시 복구) — 차감됐는데 PAID 도달 못 한 주문 자동 환불(미회수 0).
+    ctx.waitUntil(safeCron('wholesale-deposit-reconcile', async () => {
+      const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
+      return reconcileOrphanedDepositOrders(env.DB)
+    }));
     // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
     ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.

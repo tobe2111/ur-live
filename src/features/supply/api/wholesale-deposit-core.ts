@@ -128,3 +128,48 @@ export async function hasDepositRefundTxn(DB: D1Database, orderId: number): Prom
   ).bind(String(orderId)).first<{ x: number }>().catch(() => null)
   return !!row
 }
+
+/**
+ * 💰 멱등 보상환불 (미완료/실패 예치금 주문) — 신뢰 마커 = wholesale_orders.refunded_amount CAS.
+ *   best-effort 인 refund 원장(txt)과 무관하게 '주문행 1회 환불'을 원자적으로 보장 → 동시/재시도/cron
+ *   어디서 호출해도 이중환불 불가. 보상(주문 미완료)용이라 status='FAILED'. (관리자 사후환불=REFUNDED 은 별도 경로.)
+ *   반환: true=이번 호출이 실제 환불 수행 / false=이미 환불됨(또는 PAID/REFUNDED, 금액부적합).
+ */
+export async function compensateDepositOrderOnce(
+  DB: D1Database, orderId: number, sellerId: number, amount: number, memo: string,
+): Promise<boolean> {
+  const amt = Math.floor(amount)
+  if (!Number.isFinite(amt) || amt <= 0) return false
+  const cas = await DB.prepare(
+    "UPDATE wholesale_orders SET refunded_amount = ?, status = 'FAILED', updated_at = datetime('now') WHERE id = ? AND COALESCE(refunded_amount,0) = 0 AND status NOT IN ('REFUNDED','PAID')"
+  ).bind(amt, orderId).run().catch(() => ({ meta: { changes: 0 } }))
+  if (((cas as { meta?: { changes?: number } }).meta?.changes ?? 0) === 0) return false
+  const bal = await refundDeposit(DB, sellerId, amt)
+  await recordDepositTxn(DB, sellerId, 'refund', amt, bal, String(orderId), memo)
+  return true
+}
+
+/**
+ * 💰 미완료 예치금 주문 reconcile(크래시 복구, cron) — 차감('order' txn)은 됐는데 PAID 도달 못 하고
+ *   환불도 안 된 주문(PENDING/EXPIRED/FAILED, refunded_amount=0, 15분 경과)을 멱등 보상환불.
+ *   윈도우: 차감 후 PAID 전환 직전 isolate 종료/CPU 한도 크래시 → 돈 묶임 → 자동 복구(미회수 0).
+ */
+export async function reconcileOrphanedDepositOrders(DB: D1Database): Promise<{ refunded: number; scanned: number }> {
+  let refunded = 0
+  const { results } = await DB.prepare(
+    `SELECT o.id AS id, o.distributor_seller_id AS seller_id, o.subtotal AS subtotal
+       FROM wholesale_orders o
+      WHERE o.payment_key = 'deposit'
+        AND o.status IN ('PENDING','EXPIRED','FAILED')
+        AND COALESCE(o.refunded_amount,0) = 0
+        AND o.created_at < datetime('now','-15 minutes')
+        AND EXISTS (SELECT 1 FROM wholesale_deposit_txns t WHERE t.type = 'order' AND t.ref_id = CAST(o.id AS TEXT))
+      LIMIT 100`
+  ).all<{ id: number; seller_id: number; subtotal: number }>().catch(() => ({ results: [] as Array<{ id: number; seller_id: number; subtotal: number }> }))
+  const rows = results || []
+  for (const r of rows) {
+    const ok = await compensateDepositOrderOnce(DB, r.id, r.seller_id, r.subtotal, `미완료 주문 자동 복구 환불 #${r.id}`).catch(() => false)
+    if (ok) refunded++
+  }
+  return { refunded, scanned: rows.length }
+}
