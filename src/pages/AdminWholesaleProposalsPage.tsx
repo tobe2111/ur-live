@@ -1,0 +1,142 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { MessageSquareWarning, Loader2, Check, X, Lightbulb, Flag } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
+
+// 🏭 2026-06-09 Wave 2 — 어드민 도매 제안/신고 처리 큐.
+//   유통사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
+
+type FeedbackType = 'proposal' | 'report'
+type FeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
+
+interface FeedbackRow {
+  id: number
+  seller_id: number
+  business_name: string | null
+  type: FeedbackType
+  target: string | null
+  subject: string
+  body: string
+  status: FeedbackStatus
+  admin_memo: string | null
+  created_at: string
+  resolved_at: string | null
+}
+
+const STATUS: Record<FeedbackStatus, { t: string; c: string }> = {
+  open: { t: '접수', c: 'bg-amber-50 text-amber-700' },
+  in_review: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
+  resolved: { t: '처리완료', c: 'bg-emerald-50 text-emerald-700' },
+  rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
+}
+
+const FILTERS: { id: string; label: string }[] = [
+  { id: 'open', label: '접수' },
+  { id: 'in_review', label: '검토중' },
+  { id: 'resolved', label: '처리완료' },
+  { id: 'rejected', label: '반려' },
+  { id: 'all', label: '전체' },
+]
+
+export default function AdminWholesaleProposalsPage() {
+  const navigate = useNavigate()
+  const [filter, setFilter] = useState('open')
+  const [rows, setRows] = useState<FeedbackRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actingId, setActingId] = useState<number | null>(null)
+
+  useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
+
+  const load = useCallback(() => {
+    setLoading(true)
+    api.get('/api/admin/wholesale-proposals', { params: filter === 'all' ? {} : { status: filter } })
+      .then((r) => setRows(r.data?.success ? (r.data.proposals || r.data.items || []) : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false))
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+
+  async function resolve(row: FeedbackRow, status: FeedbackStatus) {
+    const memo = window.prompt(status === 'rejected' ? '반려 사유(선택)' : '처리 메모(선택, 유통사에게 표시)', row.admin_memo || '')
+    if (memo === null) return
+    setActingId(row.id)
+    try {
+      const r = await api.post(`/api/admin/wholesale-proposals/${row.id}/resolve`, { status, memo: memo || undefined })
+      if (r.data?.success) {
+        toast.success(status === 'rejected' ? '반려 처리했습니다' : status === 'resolved' ? '처리 완료했습니다' : '상태를 변경했습니다')
+        if (filter !== 'all') load()
+        else setRows((prev) => prev.map((x) => x.id === row.id ? { ...x, status, admin_memo: memo || x.admin_memo } : x))
+      } else { toast.error(r.data?.error || '처리 실패') }
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류가 발생했습니다')
+    } finally { setActingId(null) }
+  }
+
+  return (
+    <AdminLayout title="도매 제안/신고">
+      <div className="ur-content-full px-4 lg:px-8 py-6">
+        <DashboardPageHeader icon={<MessageSquareWarning className="w-5 h-5" />} title="도매 제안 / 신고" subtitle="유통사가 보낸 상품 제안과 문제 신고를 검토하고 처리합니다." />
+
+        <div className="flex items-center gap-2 my-4 flex-wrap">
+          {FILTERS.map((f) => (
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f.id ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : rows.length === 0 ? (
+          <p className="text-center text-gray-400 py-20">해당 상태의 제안/신고가 없습니다.</p>
+        ) : (
+          <div className="grid gap-3">
+            {rows.map((row) => (
+              <div key={row.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${row.type === 'report' ? 'bg-rose-50 text-rose-700' : 'bg-pink-50 text-pink-700'}`}>
+                    {row.type === 'report' ? <Flag className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
+                    {row.type === 'report' ? '신고' : '제안'}
+                  </span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[row.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[row.status]?.t || row.status}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{row.created_at ? new Date(row.created_at).toLocaleString('ko-KR') : ''}</span>
+                </div>
+                <div className="text-sm font-bold text-gray-900">{row.subject}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{row.business_name || `유통사 #${row.seller_id}`}{row.target ? ` · 대상: ${row.target}` : ''}</div>
+                <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{row.body}</p>
+                {row.admin_memo && (
+                  <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <span className="font-bold text-gray-800">운영팀 메모: </span>{row.admin_memo}
+                  </div>
+                )}
+                {(row.status === 'open' || row.status === 'in_review') && (
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    {row.status === 'open' && (
+                      <button onClick={() => resolve(row, 'in_review')} disabled={actingId === row.id}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50">
+                        검토 시작
+                      </button>
+                    )}
+                    <button onClick={() => resolve(row, 'resolved')} disabled={actingId === row.id}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium disabled:opacity-50">
+                      {actingId === row.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} 처리 완료
+                    </button>
+                    <button onClick={() => resolve(row, 'rejected')} disabled={actingId === row.id}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs font-medium disabled:opacity-50">
+                      <X className="w-3.5 h-3.5" /> 반려
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  )
+}

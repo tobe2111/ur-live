@@ -296,3 +296,93 @@ export function useWholesaleProposals() {
     refetchOnWindowFocus: false,
   })
 }
+
+// ──────────────────────────────────────────────────────────────
+// 🏭 2026-06-09 Wave 2 도매몰 메인 리디자인 — 배너 캐러셀 / 프리미엄 전용관 / 제안·신고.
+//   배너: 공개 GET. 프리미엄: catalog?premium=1. 제안·신고: 유통사 본인 작성/조회.
+// ──────────────────────────────────────────────────────────────
+
+export interface WholesaleBanner {
+  id: number
+  image_url: string
+  link: string | null
+  title: string | null
+  sort: number
+}
+
+/** 메인 배너 캐러셀 — 공개(비로그인 노출). active 배너만 서버가 반환. */
+export function useWholesaleBanners() {
+  return useQuery<WholesaleBanner[]>({
+    queryKey: queryKeys.wholesale('banners'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/banners')
+        .then((r) => (r.data?.success ? ((r.data.banners || []) as WholesaleBanner[]) : []))
+        .catch(() => []),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** 프리미엄 전용관 카탈로그 — is_premium=1 필터. catalog 와 동일 응답 shape. */
+export function useWholesalePremiumCatalog(enabled = true) {
+  return useQuery<WholesaleCatalogItem[]>({
+    queryKey: queryKeys.wholesale('catalog', 'premium'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/catalog?premium=1', sellerAuth())
+        .then((r) => (r.data?.success ? ((r.data.items || []) as WholesaleCatalogItem[]) : []))
+        .catch(() => []),
+    enabled,
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export type WholesaleFeedbackType = 'proposal' | 'report'
+export type WholesaleFeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
+export interface WholesaleFeedback {
+  id: number
+  type: WholesaleFeedbackType
+  target: string | null
+  subject: string
+  body: string
+  status: WholesaleFeedbackStatus
+  admin_memo: string | null
+  created_at: string
+  resolved_at: string | null
+}
+
+/** 내 제안/신고 내역 — 유통사 본인 작성분만. */
+export function useWholesaleFeedbacks() {
+  return useQuery<WholesaleFeedback[]>({
+    queryKey: queryKeys.wholesale('feedbacks'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/proposal-tickets', sellerAuth())
+        .then((r) => (r.data?.success ? ((r.data.proposals || r.data.items || []) as WholesaleFeedback[]) : []))
+        .catch(() => []),
+    enabled: hasSellerToken(),
+    staleTime: 30 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** 제안/신고 제출. 성공 후 내 내역 invalidate. */
+export function useWholesaleFeedbackMutation() {
+  const qc = useQueryClient()
+  return useMutation<
+    { success: boolean; error?: string },
+    unknown,
+    { type: WholesaleFeedbackType; target?: string; subject: string; body: string }
+  >({
+    mutationFn: (body) =>
+      api.post('/api/wholesale/proposal-tickets', body, sellerAuth()).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.wholesale('feedbacks') })
+    },
+  })
+}

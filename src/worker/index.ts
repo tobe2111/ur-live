@@ -132,6 +132,7 @@ import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
 import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
 import { wholesaleNotificationsRoutes } from '../features/supply/api/wholesale-notifications.routes';
 import { wholesaleDepositRoutes, adminWholesaleDepositRoutes } from '../features/supply/api/wholesale-deposit.routes';
+import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesaleProposalRoutes, adminWholesaleProductRoutes, adminWholesaleDepositAccountRoutes } from '../features/supply/api/wholesale-main.routes';
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
@@ -1303,6 +1304,12 @@ app.route('/api/admin/wholesale', wholesaleTaxRoutes); // TAX-1: 미수/미지�
 app.route('/api/admin/wholesale/integrity', wholesaleIntegrityRoutes); // DATA-1: 고아행 무결성 리포트
 app.route('/api/wholesale', wholesaleDepositRoutes); // 🏦 예치금(선불) 결제 — 유통사 잔액/충전요청
 app.route('/api/admin/wholesale-deposits', adminWholesaleDepositRoutes); // 🏦 예치금 입금확인/거절/보정 (어드민)
+// 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 배너/제안·신고/프리미엄/입금계좌
+app.route('/api/wholesale', wholesaleMainPublicRoutes); // 공개 배너 캐러셀(GET /banners, 캐시) + 유통사 제안·신고(POST/GET /proposals)
+app.route('/api/admin/wholesale-banners', adminWholesaleBannerRoutes); // 어드민 배너 CRUD
+app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // 어드민 제안·신고 큐/처리
+app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes); // 어드민 프리미엄 전용관 토글
+app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));

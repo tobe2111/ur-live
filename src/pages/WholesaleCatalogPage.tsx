@@ -4,8 +4,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck, BellRing, BellOff } from 'lucide-react'
+import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck, BellRing, BellOff, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Sparkles } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit } from '@/hooks/queries/useWholesale'
+import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
+import WholesaleProposalModal from './wholesale/WholesaleProposalModal'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
@@ -41,6 +43,14 @@ interface CatalogItem {
   has_tiers?: boolean
   sold_count?: number
   requires_login?: boolean
+  is_premium?: boolean | number
+  code?: string | null
+}
+
+// 🏭 Wave 2: 상품코드 — product.code 우선, 없으면 P + 7자리 zero-pad id (시안 P0000xxx).
+function productCode(p: { id: number; code?: string | null }): string {
+  if (p.code && String(p.code).trim()) return String(p.code).trim()
+  return 'P' + String(p.id).padStart(7, '0')
 }
 
 // ── 가격 라인 (할인% + 공급가 앵커) ── 비로그인 → 도매가 숨김 + 로그인 유도.
@@ -142,6 +152,8 @@ const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRest
       </div>
       <div className="px-2.5 pt-1.5 pb-2.5" style={{ color: grad.text }}>
         <button onClick={() => onOpen(p)} className="text-left text-[13px] leading-[1.35] line-clamp-2 min-h-[36px] block w-full" style={{ color: grad.text }}>{p.name}</button>
+        {/* 🏭 Wave 2: 상품코드 (P0000xxx) — 시안 카드 사양. */}
+        <div className="mt-0.5 text-[11px] font-mono tabular-nums tracking-tight" style={{ color: grad.sub }}>{productCode(p)}</div>
         {locked ? (
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold mt-1" style={{ background: grad.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.15)', color: grad.text }}>
             <Lock className="w-3 h-3" /> 로그인하고 공급가
@@ -418,6 +430,11 @@ export default function WholesaleCatalogPage() {
   const [inStock, setInStock] = useState(false)
   const [priceBand, setPriceBand] = useState<string>('')   // PRICE_BANDS.id | ''
   const [gradeOpen, setGradeOpen] = useState(false)
+  // 🏭 Wave 2 — Sellpie형 카테고리 네비 + 메가메뉴 + 제안/신고 모달 + 프리미엄 전용관.
+  const [megaOpen, setMegaOpen] = useState(false)
+  const [proposalOpen, setProposalOpen] = useState(false)
+  // 네비 항목(브랜드/베스트/신상품/마진/프리미엄)은 기존 sort/cat 필터를 재활용 — 새 상태 아님.
+  const [premiumView, setPremiumView] = useState(false)
 
   // 검색 디바운스(300ms) — 타이핑마다 fetch 폭주 방지. form submit 도 즉시 커밋.
   useEffect(() => {
@@ -431,7 +448,7 @@ export default function WholesaleCatalogPage() {
   // ── 서버사이드 카탈로그 쿼리(BIZ-4) — 모든 컨트롤을 `/catalog` 파라미터에 위임.
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
-  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}`
+  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}`
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
     queryFn: () => {
@@ -442,6 +459,8 @@ export default function WholesaleCatalogPage() {
       if (inStock) params.set('in_stock', '1')
       if (band?.min != null) params.set('min_price', String(band.min))
       if (band?.max != null) params.set('max_price', String(band.max))
+      // 🏭 Wave 2: 프리미엄 전용관 — is_premium=1 필터. 기본 요청 URL 불변(premiumView false 시 생략).
+      if (premiumView) params.set('premium', '1')
       const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
       const qs = params.toString()
       return api
@@ -722,107 +741,169 @@ export default function WholesaleCatalogPage() {
         jsonLd={catalogJsonLd}
       />
 
-      {/* 헤더 */}
+      {/* 🏭 Wave 2 헤더 — Sellpie형: 유틸바 + (로고·중앙검색·3아이콘) + 카테고리 네비. */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-wide px-5 lg:px-8 h-14 flex items-center gap-4">
-          <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2 shrink-0">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg text-white font-extrabold text-[13px]" style={{ background: WT.brand }}>유</span>
-            <span className="text-[15px] font-extrabold" style={{ color: WT.ink }}>유통스타트</span>
-            <span className="text-[13px]" style={{ color: WT.ink4 }}>도매몰</span>
-          </button>
-          <div className="flex-1" />
-          {loggedIn ? (
-            <>
-              <nav className="hidden sm:flex items-center gap-4 text-[13px] font-medium" style={{ color: WT.ink2 }}>
-                <button onClick={() => navigate('/wholesale/dashboard')} className="inline-flex items-center gap-1"><LayoutDashboard className="w-4 h-4" /> 대시보드</button>
-                <button onClick={() => navigate('/wholesale/orders')} className="inline-flex items-center gap-1"><ClipboardList className="w-4 h-4" /> 주문내역</button>
-                <button onClick={() => navigate('/wholesale/statement')} className="inline-flex items-center gap-1"><Receipt className="w-4 h-4" /> 거래내역</button>
-                <button onClick={() => navigate('/wholesale/documents')} className="inline-flex items-center gap-1"><FileText className="w-4 h-4" /> 자료</button>
-                <button onClick={() => navigate('/wholesale/oem')} className="inline-flex items-center gap-1"><Factory className="w-4 h-4" /> OEM/ODM</button>
-              </nav>
-              <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative shrink-0 p-1.5" style={{ color: WT.ink2 }}>
-                <ShoppingCart className="w-5 h-5" />
-                {cart.count > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
-              </button>
-              <button onClick={meLoadFailed ? () => meQ.refetch() : () => setGradeOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold shrink-0"
-                style={{ background: meLoadFailed ? '#FFF0F0' : WT.brandSoft, color: meLoadFailed ? '#CC0000' : WT.brand }}
-                title={meLoadFailed ? '등급 정보 로드 실패 — 클릭해 재시도' : undefined}>
-                <span className="flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px]"
-                  style={{ background: meLoadFailed ? '#CC0000' : WT.brand }}>
-                  {meLoadFailed ? '!' : (GRADE_LABEL[grade] || grade)}
-                </span>
-                {meLoadFailed ? '등급 로드 실패 · 재시도' : `${GRADE_LABEL[grade] || grade}등급${me ? ` · 마진 ${me.margin_pct}%` : ''}`}
-              </button>
-              {supplierToken && (
-                <button onClick={() => navigate('/supplier')} className="hidden md:inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동">
-                  <Factory className="w-4 h-4" /> 제조사 대시보드
+        {/* 1. 유틸 바 (우측 정렬, 작은 텍스트) */}
+        <div style={{ borderBottom: '1px solid ' + WT.line }}>
+          <div className="ur-content-wide px-5 lg:px-8 h-8 flex items-center justify-end gap-3 text-[12px]" style={{ color: WT.ink3 }}>
+            {loggedIn ? (
+              <>
+                <button onClick={() => navigate('/wholesale/dashboard')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>{t('wholesale.util.my', { defaultValue: '마이' })}</button>
+                <span style={{ color: WT.line }}>·</span>
+                <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
+                  {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cart.count > 0 ? ` (${cart.count})` : ''}
                 </button>
-              )}
-              <button onClick={logout} aria-label="로그아웃" title="로그아웃" className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink3 }}>
-                <LogOut className="w-4 h-4" /><span className="hidden sm:inline">로그아웃</span>
-              </button>
-            </>
-          ) : supplierToken ? (
-            // 제조사(공급사=브랜드사)가 도매몰 둘러보는 중 — 본인 제조사 대시보드 진입 + 로그아웃.
-            <>
-              <button onClick={() => navigate('/supplier')} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.ink, color: '#fff' }} title="제조사 대시보드로 이동">
-                <Factory className="w-4 h-4" /> 제조사 대시보드
-              </button>
-              <button onClick={logout} aria-label="로그아웃" title="로그아웃" className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink3 }}>
-                <LogOut className="w-4 h-4" /><span className="hidden sm:inline">로그아웃</span>
-              </button>
-            </>
-          ) : (
-            // 비로그인 — 제조(브랜드)회원 / 유통회원 로그인 + 가입 (도매몰 한 곳에서 양쪽 역할 진입).
-            <>
-              <button onClick={() => navigate('/supplier/login')} className="inline-flex items-center gap-1 text-[13px] font-medium shrink-0" style={{ color: WT.ink2 }} title="제조(브랜드)회원(공급사) 로그인">
-                <Factory className="w-4 h-4" /> 제조(브랜드)회원<span className="hidden sm:inline"> 로그인</span>
-              </button>
-              <button onClick={goLogin} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold shrink-0" style={{ background: WT.fill, color: WT.ink }} title="유통회원(바이어) 로그인">
-                <LogIn className="w-4 h-4" /> 유통회원<span className="hidden sm:inline"> 로그인</span>
-              </button>
-              <button onClick={() => navigate('/wholesale/join')} className="inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-bold text-white shrink-0" style={{ background: WT.brand }}>
-                가입
-              </button>
-            </>
-          )}
+                {supplierToken && (
+                  <>
+                    <span style={{ color: WT.line }}>·</span>
+                    <button onClick={() => navigate('/supplier')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사</button>
+                  </>
+                )}
+                <span style={{ color: WT.line }}>·</span>
+                <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
+              </>
+            ) : supplierToken ? (
+              <>
+                <button onClick={() => navigate('/supplier')} className="inline-flex items-center gap-1 font-bold" style={{ color: WT.ink }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사 대시보드</button>
+                <span style={{ color: WT.line }}>·</span>
+                <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => navigate('/supplier/login')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조(브랜드)회원(공급사) 로그인"><Factory className="w-3.5 h-3.5" /> 제조회원</button>
+                <span className="hidden sm:inline" style={{ color: WT.line }}>·</span>
+                <button onClick={goLogin} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}><LogIn className="w-3.5 h-3.5" /> {t('wholesale.util.login', { defaultValue: '로그인' })}</button>
+                <span style={{ color: WT.line }}>·</span>
+                <button onClick={() => navigate('/wholesale/join')} className="inline-flex items-center font-bold" style={{ color: WT.brand }}>{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
+                <span style={{ color: WT.line }}>·</span>
+                <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
+                  {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cart.count > 0 ? ` (${cart.count})` : ''}
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        {/* 검색 */}
-        <div className="ur-content-wide px-5 lg:px-8 pb-3">
-          <form onSubmit={e => { e.preventDefault(); setCommittedSearch(search.trim()) }} className="relative max-w-2xl">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: WT.ink4 }} />
+
+        {/* 2. 메인 헤더 — 로고 + 중앙 큰 검색 + 우측 3아이콘 */}
+        <div className="ur-content-wide px-5 lg:px-8 py-3 flex items-center gap-3 lg:gap-6">
+          <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2 shrink-0">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white font-extrabold text-[14px]" style={{ background: WT.brand }}>유</span>
+            <div className="leading-tight text-left">
+              <div className="text-[16px] font-extrabold" style={{ color: WT.ink }}>유통스타트</div>
+              <div className="text-[10px] -mt-0.5" style={{ color: WT.ink4 }}>도매몰</div>
+            </div>
+          </button>
+
+          {/* 중앙 큰 검색바 (기존 검색 와이어링) */}
+          <form onSubmit={e => { e.preventDefault(); setCommittedSearch(search.trim()); setPremiumView(false) }} className="flex-1 max-w-2xl relative">
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={t('wholesale.searchPlaceholder', { defaultValue: '상품명·설명으로 검색' })}
-              className="w-full pl-10 pr-10 h-11 rounded-xl text-[14px] outline-none"
-              style={{ background: WT.fill, color: WT.ink }}
+              placeholder={t('wholesale.searchPlaceholder', { defaultValue: '상품명·브랜드로 검색' })}
+              className="w-full pl-4 pr-24 h-11 lg:h-12 rounded-full text-[14px] outline-none"
+              style={{ background: WT.fill, color: WT.ink, border: '1.5px solid ' + WT.brand }}
             />
             {search && (
               <button type="button" onClick={() => { setSearch(''); setCommittedSearch('') }} aria-label={t('common.clear', { defaultValue: '지우기' })}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full" style={{ color: WT.ink4 }}>
+                className="absolute right-14 top-1/2 -translate-y-1/2 p-0.5 rounded-full" style={{ color: WT.ink4 }}>
                 <X className="w-4 h-4" />
               </button>
             )}
+            <button type="submit" aria-label={t('common.search', { defaultValue: '검색' })}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 lg:h-9 px-4 rounded-full inline-flex items-center justify-center text-white" style={{ background: WT.brand }}>
+              <Search className="w-4 h-4" />
+            </button>
           </form>
-        </div>
-        {/* 🏭 2026-06-04 (사용자 신고 — 모바일 기능버튼 누락): 로그인 유통회원의 핵심 메뉴가 헤더에서
-            hidden sm:flex 로 모바일에 안 보이던 문제 → 모바일 전용 가로스크롤 기능 줄 추가(sm:hidden). */}
-        {loggedIn && (
-          <div className="sm:hidden ur-content-wide px-5 pb-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            <button onClick={() => navigate('/wholesale/dashboard')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold text-white" style={{ background: WT.brand }}><LayoutDashboard className="w-3.5 h-3.5" /> 대시보드</button>
-            <button onClick={() => navigate('/wholesale/orders')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><ClipboardList className="w-3.5 h-3.5" /> 주문내역</button>
-            <button onClick={() => navigate('/wholesale/statement')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><Receipt className="w-3.5 h-3.5" /> 거래내역</button>
-            <button onClick={() => navigate('/wholesale/documents')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><FileText className="w-3.5 h-3.5" /> 자료</button>
-            <button onClick={() => navigate('/wholesale/oem')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}><Factory className="w-3.5 h-3.5" /> OEM/ODM</button>
-            {supplierToken && (
-              <button onClick={() => navigate('/supplier')} className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: WT.ink, color: '#fff' }}><Factory className="w-3.5 h-3.5" /> 제조사 대시보드</button>
-            )}
+
+          {/* 우측 3 아이콘 — 처음이세요? / 제안·신고 / 예치금신청 */}
+          <div className="hidden md:flex items-center gap-1 shrink-0">
+            <button onClick={() => navigate('/wholesale/intro')} className="flex flex-col items-center gap-0.5 px-2.5 py-1" style={{ color: WT.ink2 }} title="처음이세요?">
+              <HelpCircle className="w-5 h-5" />
+              <span className="text-[11px] font-medium whitespace-nowrap">{t('wholesale.icon.firstTime', { defaultValue: '처음이세요?' })}</span>
+            </button>
+            <button onClick={() => setProposalOpen(true)} className="flex flex-col items-center gap-0.5 px-2.5 py-1" style={{ color: WT.ink2 }} title="제안/신고">
+              <MessageSquareWarning className="w-5 h-5" />
+              <span className="text-[11px] font-medium whitespace-nowrap">{t('wholesale.icon.proposal', { defaultValue: '제안/신고' })}</span>
+            </button>
+            <button onClick={() => navigate('/wholesale/deposits')} className="flex flex-col items-center gap-0.5 px-2.5 py-1 relative" style={{ color: WT.ink2 }} title="예치금신청">
+              <Wallet className="w-5 h-5" />
+              <span className="text-[11px] font-medium whitespace-nowrap">
+                {loggedIn ? won(Number(depositQ.data?.balance) || 0) : t('wholesale.icon.deposit', { defaultValue: '예치금' })}
+              </span>
+            </button>
           </div>
-        )}
+          {/* 모바일 우측 아이콘 (라벨 생략) */}
+          <div className="flex md:hidden items-center gap-2 shrink-0" style={{ color: WT.ink2 }}>
+            <button onClick={() => setProposalOpen(true)} aria-label="제안/신고" className="p-1.5"><MessageSquareWarning className="w-5 h-5" /></button>
+            <button onClick={() => navigate('/wholesale/deposits')} aria-label="예치금신청" className="p-1.5"><Wallet className="w-5 h-5" /></button>
+            <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative p-1.5">
+              <ShoppingCart className="w-5 h-5" />
+              {cart.count > 0 && <span className="absolute top-0 right-0 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* 3. 카테고리 네비 바 (가로 풀바) — 기존 cat/sort 필터 재활용 (재스킨) */}
+        <div style={{ borderTop: '1px solid ' + WT.line }}>
+          <div className="ur-content-wide px-5 lg:px-8 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* ≡ 전체카테고리 (레드 박스 → 메가메뉴) */}
+            <button onClick={() => setMegaOpen(v => !v)} aria-expanded={megaOpen}
+              className="shrink-0 inline-flex items-center gap-1.5 px-4 h-11 text-[14px] font-bold text-white"
+              style={{ background: WT.brand }}>
+              <Menu className="w-4 h-4" /> {t('wholesale.nav.allCategories', { defaultValue: '전체카테고리' })}
+            </button>
+            {/* 브랜드 전시관 → 브랜드 필터(데모: 검색 초기화 + 전체) */}
+            <button onClick={() => { setPremiumView(false); setCat('all'); setSort('popular'); setCommittedSearch(''); setSearch('') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: WT.ink2 }}>
+              {t('wholesale.nav.brands', { defaultValue: '브랜드 전시관' })}
+            </button>
+            {/* 월간 베스트 → 판매량 정렬 */}
+            <button onClick={() => { setPremiumView(false); setSort('popular'); setCat('all') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'popular' && !premiumView ? WT.brand : WT.ink2 }}>
+              {t('wholesale.nav.best', { defaultValue: '월간 베스트' })}
+            </button>
+            {/* 신상품 → 최신순 */}
+            <button onClick={() => { setPremiumView(false); setSort('newest'); setCat('all') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'newest' && !premiumView ? WT.brand : WT.ink2 }}>
+              {t('wholesale.nav.new', { defaultValue: '신상품' })}
+            </button>
+            {/* 판매마진 40% → 할인율 정렬(마진 높은 상품) */}
+            <button onClick={() => { setPremiumView(false); setSort('discount'); setCat('all') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'discount' && !premiumView ? WT.brand : WT.ink2 }}>
+              {t('wholesale.nav.highMargin', { defaultValue: '판매마진 40%' })}
+            </button>
+            {/* 프리미엄 전용관 → premium=1 */}
+            <button onClick={() => { setPremiumView(true); setCat('all') }}
+              className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-bold whitespace-nowrap"
+              style={{ color: premiumView ? WT.brand : WT.ink }}>
+              <Crown className="w-4 h-4" /> {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
+            </button>
+          </div>
+          {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}
+          {megaOpen && (
+            <div className="ur-content-wide px-5 lg:px-8 pb-4">
+              <div className="rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: '#fff', boxShadow: WT.shCard }}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {cats.map((c) => (
+                    <button key={c.id} onClick={() => { setCat(c.id); setPremiumView(false); setMegaOpen(false) }}
+                      className="flex items-center justify-between rounded-xl px-3.5 h-10 text-[14px] transition-colors"
+                      style={cat === c.id && !premiumView ? { background: WT.brandSoft, color: WT.brand, fontWeight: 700 } : { background: WT.fill, color: WT.ink2 }}>
+                      <span className="truncate">{c.label}</span>
+                      <span className="text-[12px] tabular-nums shrink-0 ml-1" style={{ color: WT.ink4 }}>{catCounts[c.id] ?? ''}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </header>
 
       <main className="ur-content-wide px-5 lg:px-8">
+        {/* 🏭 Wave 2: 메인 배너 캐러셀 (어드민 관리, 배너 없으면 자동 숨김) */}
+        <div className="pt-4">
+          <WholesaleBannerCarousel />
+        </div>
+
         {/* 히어로 + 대시보드 + OEM */}
         <div className="pt-4 pb-5 space-y-3">
           <BrandHero loggedIn={loggedIn} />
@@ -904,9 +985,31 @@ export default function WholesaleCatalogPage() {
           </section>
         )}
 
-        {/* 전체 상품 */}
+        {/* 🏭 Wave 2: 프리미엄 전용관 헤더 (premiumView 활성 시) */}
+        {premiumView && (
+          <section className="pt-6">
+            <div className="rounded-2xl p-5 lg:p-6 flex items-center gap-4" style={{ background: WT.ink, color: '#fff' }}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                <Crown className="w-6 h-6" style={{ color: '#FFD166' }} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[18px] lg:text-[20px] font-extrabold">{t('wholesale.premium.title', { defaultValue: '프리미엄 전용관' })}</h2>
+                  <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: WT.brand, color: '#fff' }}><Sparkles className="w-3 h-3" /> PREMIUM</span>
+                </div>
+                <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>{t('wholesale.premium.desc', { defaultValue: '엄선된 프리미엄 공급 상품만 모았어요' })}</p>
+              </div>
+              <button onClick={() => setPremiumView(false)} className="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>{t('wholesale.premium.exit', { defaultValue: '전체보기' })}</button>
+            </div>
+          </section>
+        )}
+
+        {/* BEST PRODUCT / 전체 상품 */}
         <section className="pt-6 pb-10">
-          <SectionHead title={cat === 'all' ? '전체 상품' : (cats.find(c => c.id === cat)?.label || '상품')} sub={comma(items.length) + '개'} />
+          <SectionHead
+            title={premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? 'BEST PRODUCT' : (cats.find(c => c.id === cat)?.label || '상품'))}
+            sub={comma(items.length) + '개'}
+          />
           <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
           {/* ── BIZ-4 정렬/필터 컨트롤바 (서버사이드 /catalog 파라미터에 위임) ── */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -1001,6 +1104,7 @@ export default function WholesaleCatalogPage() {
       <WholesaleFooter />
 
       {gradeOpen && <GradeSheet current={grade} onClose={() => setGradeOpen(false)} />}
+      {proposalOpen && <WholesaleProposalModal onClose={() => setProposalOpen(false)} />}
     </div>
   )
 }

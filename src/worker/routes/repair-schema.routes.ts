@@ -622,6 +622,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
 
     // 🏭 2026-06-07 (사용자 요청): 커뮤니티 공구 제안자(공구를 유치하는 사람)가 작성하는 소개글/안내문구.
     { desc: 'community_group_buys.description', sql: "ALTER TABLE community_group_buys ADD COLUMN description TEXT" },
+
+    // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 프리미엄 전용관 플래그.
+    //   products.is_premium=1 인 상품만 /api/wholesale/catalog?premium=1 에 노출. 어드민 토글로 설정.
+    { desc: 'products.is_premium', sql: "ALTER TABLE products ADD COLUMN is_premium INTEGER DEFAULT 0" },
+    // 🏭 2026-06-09 도매몰 예치금 입금계좌 — 어드민이 설정하는 무통장입금 안내 계좌(은행/계좌/예금주 한 문자열).
+    { desc: 'seed: wholesale_deposit_account', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('wholesale_deposit_account', '', '도매몰 예치금 무통장입금 안내 계좌 (은행/계좌번호/예금주)', datetime('now'))" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1382,6 +1388,37 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_tax_withholding_seller_year', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_seller_year ON tax_withholding_log(seller_id, payout_year, payout_month)` },
     { name: 'idx_tax_withholding_reportable', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_reportable ON tax_withholding_log(payout_year, reportable)` },
+
+    // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 메인 배너 캐러셀(어드민 CRUD).
+    { name: 'wholesale_banners', sql: `CREATE TABLE IF NOT EXISTS wholesale_banners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_url TEXT NOT NULL,
+      link TEXT,
+      title TEXT,
+      sort INTEGER DEFAULT 0,
+      active INTEGER DEFAULT 1,
+      start_at TEXT,
+      end_at TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wholesale_banners_active', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_banners_active ON wholesale_banners(active, sort, id)` },
+
+    // 🏭 2026-06-09 도매몰 제안/신고 티켓(유통사→어드민). ⚠️ 기존 wholesale_proposals(어드민→유통사 상품제안)
+    //   와 용도/스키마가 달라 별도 테이블명(wholesale_proposal_tickets) 사용 — 충돌 회피.
+    { name: 'wholesale_proposal_tickets', sql: `CREATE TABLE IF NOT EXISTS wholesale_proposal_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT 'proposal',
+      target TEXT,
+      subject TEXT NOT NULL,
+      body TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      admin_memo TEXT,
+      created_at DATETIME DEFAULT (datetime('now')),
+      resolved_at DATETIME
+    )` },
+    { name: 'idx_wholesale_proposal_tickets_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_seller ON wholesale_proposal_tickets(seller_id, id DESC)` },
+    { name: 'idx_wholesale_proposal_tickets_status', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_status ON wholesale_proposal_tickets(status, id DESC)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

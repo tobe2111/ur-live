@@ -88,6 +88,8 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
   for (const sql of [
     'ALTER TABLE products ADD COLUMN pack_size INTEGER DEFAULT 1',
     'ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1',
+    // 🏭 2026-06-09 Wave 2 프리미엄 전용관 플래그(ensure-on-use — repair-schema 와 멱등 동일).
+    'ALTER TABLE products ADD COLUMN is_premium INTEGER DEFAULT 0',
   ]) { await DB.prepare(sql).run().catch(swallow('wholesale:biz8:alter')) }
 }
 
@@ -591,6 +593,8 @@ app.get('/catalog', async (c) => {
   const minPrice = Number.isFinite(minPriceQ) && minPriceQ >= 0 ? Math.floor(minPriceQ) : null
   const maxPrice = Number.isFinite(maxPriceQ) && maxPriceQ >= 0 ? Math.floor(maxPriceQ) : null
   const inStock = c.req.query('in_stock') === '1'
+  // 🏭 2026-06-09 Wave 2 프리미엄 전용관 — ?premium=1 이면 is_premium=1 만(additive WHERE). 미지정=현행 불변.
+  const premiumOnly = c.req.query('premium') === '1'
 
   try {
     const hasCol = await DB.prepare(
@@ -631,6 +635,8 @@ app.get('/catalog', async (c) => {
     if (minPrice !== null) { where += ' AND COALESCE(p.supply_price,0) >= ?'; params.push(minPrice) }
     if (maxPrice !== null) { where += ' AND COALESCE(p.supply_price,0) <= ?'; params.push(maxPrice) }
     if (inStock) { where += ' AND COALESCE(p.stock,0) > 0' }
+    // 🏭 2026-06-09 Wave 2: 프리미엄 전용관 필터(additive — 미지정 시 조건 미추가로 현행 동작 불변).
+    if (premiumOnly) { where += ' AND COALESCE(p.is_premium,0) = 1' }
 
     // 정렬: 화이트리스트만(injection 불가). 미지정 = 현행 popular 정렬과 동일 리터럴.
     const orderBy = CATALOG_SORT_ORDER[sortKey] || CATALOG_SORT_ORDER.popular
@@ -640,6 +646,7 @@ app.get('/catalog', async (c) => {
              COALESCE(p.supply_price, 0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
              COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
+             COALESCE(p.is_premium,0) AS is_premium,
              EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers,
              COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -648,7 +655,7 @@ app.get('/catalog', async (c) => {
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; has_tiers: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; has_tiers: number; sold_count: number; margin_override: number | null
     }>()
 
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
@@ -668,6 +675,7 @@ app.get('/catalog', async (c) => {
         retail_price: guest ? null : (r.retail_price || null), moq: Math.max(1, r.moq || 1),
         // BIZ-8: pack_size(박스당 낱개 — 표시용) / order_multiple(주문 배수 강제). 둘 다 최소 1.
         pack_size: Math.max(1, r.pack_size || 1), order_multiple: Math.max(1, r.order_multiple || 1),
+        is_premium: !!r.is_premium,
         has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
         requires_login: guest,
       }

@@ -25,6 +25,7 @@ import {
   loadDepositBalance,
   recentDepositTxns,
 } from './wholesale-deposit-core'
+import { loadWholesaleDepositAccount } from './wholesale-main.routes'
 
 // ── 셀러(유통사) JWT → { sellerId, isDistributor } ───────────────────────────
 //   wholesale.routes sellerIdFrom 미러 + is_distributor 플래그 추가(예치금 게이트).
@@ -54,7 +55,9 @@ dist.get('/deposits/me', async (c) => {
     await ensureDepositSchema(DB)
     const balance = await loadDepositBalance(DB, auth.sellerId)
     const recent = await recentDepositTxns(DB, auth.sellerId, 20)
-    return c.json({ success: true, balance, recent_txns: recent })
+    // 🏭 Wave 2: 어드민 설정 입금계좌(platform_settings) — 입금 안내 박스가 실제 계좌를 표시(없으면 '').
+    const deposit_account = await loadWholesaleDepositAccount(DB).catch(() => '')
+    return c.json({ success: true, balance, recent_txns: recent, deposit_account })
   } catch (err) {
     return safeError(c, err, '예치금 조회 중 오류가 발생했습니다', '[wholesale-deposit]')
   }
