@@ -3,8 +3,15 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, FileText, Printer } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { useWholesaleDocuments, type WholesaleDocRow } from '@/hooks/queries/useWholesale'
+import { useWholesaleDocuments, useWholesaleTaxInvoices, type WholesaleDocRow } from '@/hooks/queries/useWholesale'
 import { WT, won, comma } from './wholesale/wholesale-theme'
+
+// 🏭 Wave 3c: 거래단위 자동 전자세금계산서(매출) 상태 라벨.
+const TAX_STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
+  issued: { t: '발행완료', c: '#11875A', bg: '#EAF6EF' },
+  draft: { t: '발행대기', c: '#9A6B00', bg: '#FFF6E6' },
+  failed: { t: '발행실패', c: '#D63A4E', bg: '#FDECEF' },
+}
 
 // 🏭 2026-06-04 유통스타트 도매몰 — 유통사 자료(거래명세서/세금계산서) 조회·인쇄. 라이트 고정 B2B.
 //   관리자가 발행(distributor-admin)한 sales 방향 문서를 본인 것만 조회. HTML 은 서버 IDOR 가드.
@@ -20,6 +27,7 @@ export default function WholesaleDocsPage() {
   const navigate = useNavigate()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: docs = [], isLoading: loading } = useWholesaleDocuments()
+  const { data: taxInvoices = [] } = useWholesaleTaxInvoices()
   const [tab, setTab] = useState<'all' | 'tax_invoice' | 'transaction_statement'>('all')
 
   if (!token) return <Navigate to="/wholesale/intro" replace />
@@ -101,6 +109,42 @@ export default function WholesaleDocsPage() {
               )
             })}
           </div>
+        )}
+
+        {/* 🏭 Wave 3c: 거래단위 자동 전자세금계산서(매출) — 주문 결제완료 시 발행. */}
+        {taxInvoices.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-[14px] font-bold mb-1" style={{ color: WT.ink }}>전자세금계산서</h2>
+            <p className="text-[12px] mb-3" style={{ color: WT.ink3 }}>주문 결제 완료 시 거래별로 자동 발행되는 매출 세금계산서예요.</p>
+            <div className="space-y-2.5">
+              {taxInvoices.map((inv) => {
+                const st = TAX_STATUS_LABEL[inv.status] || { t: inv.status, c: WT.ink2, bg: WT.fill }
+                return (
+                  <div key={inv.id} className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-bold" style={{ color: WT.ink }}>주문 #{comma(inv.order_id)}</span>
+                        <span className="text-[12px] tabular-nums" style={{ color: WT.ink4 }}>{(inv.issued_at || inv.created_at || '').slice(0, 10)}</span>
+                      </div>
+                      <span className="text-[12px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ color: st.c, background: st.bg }}>{st.t}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { k: '공급가액', v: won(inv.supply_amount) },
+                        { k: '부가세', v: won(inv.vat_amount) },
+                        { k: '합계', v: won(inv.total_amount) },
+                      ].map((m, i) => (
+                        <div key={m.k} className={i ? 'pl-3' : ''} style={i ? { borderLeft: '1px solid ' + WT.line } : {}}>
+                          <div className="text-[11px]" style={{ color: WT.ink3 }}>{m.k}</div>
+                          <div className="text-[14px] font-extrabold mt-0.5 tabular-nums" style={{ color: i === 2 ? WT.ink : WT.ink2 }}>{m.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
         )}
       </main>
     </div>

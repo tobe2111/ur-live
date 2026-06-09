@@ -25,6 +25,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
+import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 
@@ -966,6 +967,11 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     // 제조사 정산 적립(Toss/credit 주문과 동일 — 멱등, fail-soft). 정산 실패가 결제완료를 막지 않음.
     try { await creditSupplierOnWholesaleOrder(DB, dOrderId) } catch { /* best-effort */ }
 
+    // 🏭 Wave 3c: 전자세금계산서 자동발행 레코드(매출=플랫폼→유통사 / 매입=제조사→플랫폼 역발행).
+    //   멱등·fail-soft·additive — 세금레코드 실패가 결제/정산을 절대 막지 않음. provider 발행은 env-gated.
+    try { await generateWholesaleSalesInvoice(DB, c.env, dOrderId) } catch { /* best-effort */ }
+    try { await generateWholesalePurchaseInvoices(DB, c.env, dOrderId) } catch { /* best-effort */ }
+
     return c.json({
       success: true,
       order_id: dOrderId,
@@ -1062,6 +1068,10 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
     // 제조사 정산 적립 (멱등, fail-soft — 정산 실패가 결제완료를 막지 않음).
     try { await creditSupplierOnWholesaleOrder(DB, order.id) } catch { /* best-effort */ }
 
+    // 🏭 Wave 3c: 전자세금계산서 자동발행 레코드(멱등·fail-soft·additive — env-gated provider 발행).
+    try { await generateWholesaleSalesInvoice(DB, c.env, order.id) } catch { /* best-effort */ }
+    try { await generateWholesalePurchaseInvoices(DB, c.env, order.id) } catch { /* best-effort */ }
+
     return c.json({ success: true, order_id: order.id })
   } catch (err) {
     return safeError(c, err, '결제 확인 중 오류가 발생했습니다', '[wholesale]')
@@ -1083,6 +1093,19 @@ app.get('/orders', async (c) => {
     return c.json({ success: true, orders: results ?? [] })
   } catch (err) {
     return safeError(c, err, '주문 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── GET /tax-invoices — 내(유통사) 매출 세금계산서 목록 (플랫폼→유통사) ─────────────
+//   🏭 Wave 3c: 주문 결제완료 시 자동발행된 sales 레코드를 본인 것만 조회. 공급가액/세액/합계/상태.
+app.get('/tax-invoices', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  try {
+    const invoices = await listDistributorSalesInvoices(c.env.DB, sellerId)
+    return c.json({ success: true, invoices })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 조회 중 오류가 발생했습니다', '[wholesale]')
   }
 })
 

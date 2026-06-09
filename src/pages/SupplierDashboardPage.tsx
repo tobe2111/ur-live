@@ -45,6 +45,11 @@ interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null
   retail_amount: number; supply_amount: number; status: string; created_at: string; available_at: string | null
 }
+// 🏭 Wave 3c: 매입 역발행 전자세금계산서(제조사→플랫폼).
+interface SupplierTaxInvoiceRow {
+  id: number; order_id: number; supply_amount: number; vat_amount: number; total_amount: number
+  status: string; provider_ref: string | null; issued_at: string | null; created_at: string
+}
 type AnalyticsPeriod = '30d' | '90d' | '12m'
 interface AnalyticsData {
   period: AnalyticsPeriod
@@ -84,6 +89,7 @@ export default function SupplierDashboardPage() {
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [settlements, setSettlements] = useState<SettlementItem[]>([])
+  const [taxInvoices, setTaxInvoices] = useState<SupplierTaxInvoiceRow[]>([])
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>('30d')
@@ -130,6 +136,14 @@ export default function SupplierDashboardPage() {
     } catch (err) { if (import.meta.env.DEV) console.error(err) }
   }, [])
 
+  // 🏭 Wave 3c: 매입 역발행 전자세금계산서(제조사→플랫폼) — 도매 주문 정산 시 자동발행.
+  const loadTaxInvoices = useCallback(async () => {
+    try {
+      const res = await supplierApi.get<{ invoices: SupplierTaxInvoiceRow[] }>('/api/supplier/tax-invoices')
+      setTaxInvoices(res.invoices ?? [])
+    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+  }, [])
+
   const loadOrders = useCallback(async () => {
     try {
       const res = await supplierApi.get<{ data: { items: OrderItem[] } }>(`/api/supplier/orders?status=${orderStatus}&limit=100`)
@@ -156,7 +170,7 @@ export default function SupplierDashboardPage() {
 
   useEffect(() => { loadMe() }, [loadMe])
   useEffect(() => { if (tab === 'catalog') loadCatalog() }, [tab, loadCatalog])
-  useEffect(() => { if (tab === 'settlements') { loadSettlements(); loadAnalytics() } }, [tab, loadSettlements, loadAnalytics])
+  useEffect(() => { if (tab === 'settlements') { loadSettlements(); loadAnalytics(); loadTaxInvoices() } }, [tab, loadSettlements, loadAnalytics, loadTaxInvoices])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
   useEffect(() => { if (tab === 'overview') loadPendingShipCount() }, [tab, loadPendingShipCount])
 
@@ -221,6 +235,11 @@ export default function SupplierDashboardPage() {
           <div>
             <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
             <SettlementsTab items={settlements} t={t} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">{t('supplier.taxInvoiceList', { defaultValue: '세금계산서' })}</p>
+            <p className="text-xs text-gray-500 mb-3">{t('supplier.taxInvoiceDesc', { defaultValue: '도매 주문 정산 시 자동 발행되는 매입 역발행 세금계산서예요.' })}</p>
+            <SupplierTaxInvoicesTab items={taxInvoices} t={t} />
           </div>
         </div>
       )}
@@ -949,6 +968,49 @@ function SettlementsTab({ items, t }: { items: SettlementItem[]; t: (k: string, 
                   <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{t(`supplier.settle_${s.status}`, { defaultValue: st.label })}</span>
                 </td>
                 <td className="px-4 py-3 text-right text-gray-400 text-xs hidden sm:table-cell">{(s.created_at || '').slice(0, 10)}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// 🏭 Wave 3c: 매입 역발행 전자세금계산서 목록(제조사→플랫폼). 공급가액/부가세/합계/상태.
+const TAX_INV_STATUS: Record<string, { label: string; cls: string }> = {
+  issued: { label: '발행완료', cls: 'bg-emerald-50 text-emerald-700' },
+  draft: { label: '발행대기', cls: 'bg-amber-50 text-amber-700' },
+  failed: { label: '발행실패', cls: 'bg-red-50 text-red-700' },
+}
+function SupplierTaxInvoicesTab({ items, t }: { items: SupplierTaxInvoiceRow[]; t: (k: string, o?: Record<string, unknown>) => string }) {
+  if (items.length === 0) {
+    return <div className="bg-white rounded-2xl border border-gray-200 py-12 text-center text-gray-400 text-sm">{t('supplier.noTaxInvoices', { defaultValue: '아직 발행된 세금계산서가 없습니다.' })}</div>
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-gray-500 text-xs">
+          <tr>
+            <th className="text-left font-medium px-4 py-3">{t('supplier.colOrder', { defaultValue: '주문' })}</th>
+            <th className="text-right font-medium px-4 py-3">{t('supplier.colSupplyValue', { defaultValue: '공급가액' })}</th>
+            <th className="text-right font-medium px-4 py-3 hidden sm:table-cell">{t('supplier.colVat', { defaultValue: '부가세' })}</th>
+            <th className="text-right font-medium px-4 py-3">{t('supplier.colTotal', { defaultValue: '합계' })}</th>
+            <th className="text-center font-medium px-4 py-3">{t('supplier.colStatus', { defaultValue: '상태' })}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {items.map(inv => {
+            const st = TAX_INV_STATUS[inv.status] || TAX_INV_STATUS.draft
+            return (
+              <tr key={inv.id}>
+                <td className="px-4 py-3 text-gray-900">#{inv.order_id}</td>
+                <td className="px-4 py-3 text-right text-gray-700">{formatWon(inv.supply_amount)}</td>
+                <td className="px-4 py-3 text-right text-gray-500 hidden sm:table-cell">{formatWon(inv.vat_amount)}</td>
+                <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatWon(inv.total_amount)}</td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{t(`supplier.taxinv_${inv.status}`, { defaultValue: st.label })}</span>
+                </td>
               </tr>
             )
           })}

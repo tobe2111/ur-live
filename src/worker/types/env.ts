@@ -113,6 +113,14 @@ export interface Env {
   NAVER_CLIENT_ID?: string;
   NAVER_CLIENT_SECRET?: string;
 
+  // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
+  // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
+  //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.
+  //   실제 국세청(NTS) 발행은 두 값 모두 설정 + 계약 후 활성화.
+  TAX_INVOICE_API_KEY?: string;
+  TAX_INVOICE_API_URL?: string;
+  TAX_INVOICE_SENDER_BIZ_NO?: string; // 플랫폼(공급자) 사업자등록번호 (123-45-67890)
+
   // ---- App Config ----
   ENVIRONMENT: string;
   FRONTEND_URL: string;

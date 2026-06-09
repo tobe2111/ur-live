@@ -1281,6 +1281,30 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       UNIQUE(supplier_id, period)
     )` },
     { name: 'idx_wholesale_purchase_inv_period', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_purchase_inv_period ON wholesale_purchase_invoices(period, supplier_id)` },
+    // 🏭 2026-06-09 Wave 3c: 도매 거래별(per-order) 전자세금계산서 자동발행 레코드.
+    //   매출(sales: 플랫폼→유통사) = 주문당 1행 / 매입(purchase: 제조사→플랫폼 역발행) = (주문,제조사)당 1행.
+    //   VAT 포함 공급대가에서 공급가액/세액 분리. provider 발행은 env-gated(TAX_INVOICE_API_KEY) — 미설정 시 'draft'.
+    //   ⚠️ 기존 period 집계용 wholesale_purchase_invoices(수동·멱등) 와 별개 — 이건 거래단위 자동 레코드.
+    { name: 'wholesale_tax_invoices', sql: `CREATE TABLE IF NOT EXISTS wholesale_tax_invoices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      supplier_id INTEGER,
+      distributor_seller_id INTEGER,
+      supply_amount INTEGER NOT NULL DEFAULT 0,
+      vat_amount INTEGER NOT NULL DEFAULT 0,
+      total_amount INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'draft',
+      provider_ref TEXT,
+      note TEXT,
+      issued_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    // 멱등: 매출=(order_id,'sales',0) / 매입=(order_id,'purchase',supplier_id). supplier_id 0 sentinel(매출).
+    { name: 'idx_wholesale_tax_inv_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_tax_inv_unique ON wholesale_tax_invoices(order_id, type, supplier_id)` },
+    { name: 'idx_wholesale_tax_inv_distributor', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_distributor ON wholesale_tax_invoices(distributor_seller_id, type, created_at DESC)` },
+    { name: 'idx_wholesale_tax_inv_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_supplier ON wholesale_tax_invoices(supplier_id, type, created_at DESC)` },
+    { name: 'idx_wholesale_tax_inv_status', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_status ON wholesale_tax_invoices(status, type, created_at DESC)` },
     // 🏭 2026-06-08 DATA-1: 고아행(FK 부재) 일일 스윕 리포트 (flag-only).
     { name: 'wholesale_integrity_reports', sql: `CREATE TABLE IF NOT EXISTS wholesale_integrity_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

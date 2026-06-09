@@ -193,6 +193,33 @@ export function useWholesaleDocuments() {
   })
 }
 
+// 🏭 2026-06-09 Wave 3c: 거래단위 자동 전자세금계산서(매출 — 플랫폼→유통사).
+export interface WholesaleTaxInvoiceRow {
+  id: number
+  order_id: number
+  type: string
+  supply_amount: number
+  vat_amount: number
+  total_amount: number
+  status: string // draft | issued | failed
+  provider_ref: string | null
+  issued_at: string | null
+  created_at: string
+}
+
+/** 유통사 본인 매출 세금계산서(주문 결제완료 시 자동발행). */
+export function useWholesaleTaxInvoices() {
+  return useQuery<WholesaleTaxInvoiceRow[]>({
+    queryKey: queryKeys.wholesale('tax-invoices'),
+    queryFn: () =>
+      api.get('/api/wholesale/tax-invoices', sellerAuth()).then((r) => (r.data?.success ? (r.data.invoices || []) : [])).catch(() => []),
+    enabled: hasSellerToken(),
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 // ──────────────────────────────────────────────────────────────
 // 🏦 2026-06-09 도매몰 예치금(선불 충전) — Toss 대체 결제수단.
 //   잔액 + 거래내역 + 충전신청내역. seller_token Bearer.

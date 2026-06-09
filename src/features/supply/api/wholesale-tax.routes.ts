@@ -23,6 +23,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware, writeAuditLog } from '@/worker/middleware/admin-security'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
+import { listAdminInvoices, reissueInvoice } from './wholesale-tax-invoices'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -346,6 +347,53 @@ app.post('/tax/purchase-invoices/issue', rateLimit({ action: 'wholesale-purchase
     })
   } catch (err) {
     return safeError(c, err, '역발행 기록 중 오류가 발생했습니다', '[wholesale-tax]')
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🏭 Wave 3c — 거래단위(per-order) 자동 전자세금계산서 어드민 뷰 + 재발행.
+//   매출(sales: 플랫폼→유통사) / 매입(purchase: 제조사→플랫폼 역발행). status: draft|issued|failed.
+//   provider 발행은 env-gated(TAX_INVOICE_API_KEY) — 미설정 시 'draft' 로 남아 재발행 대기.
+//   경로: GET  /api/admin/wholesale/wholesale-tax-invoices?status=&type=
+//         POST /api/admin/wholesale/wholesale-tax-invoices/:id/reissue
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/wholesale-tax-invoices', async (c) => {
+  try {
+    const status = (c.req.query('status') || '').slice(0, 16)
+    const type = (c.req.query('type') || '').slice(0, 16)
+    const invoices = await listAdminInvoices(c.env.DB, { status, type, limit: 500 })
+    return c.json({ success: true, invoices })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 목록 조회 중 오류가 발생했습니다', '[wholesale-tax]')
+  }
+})
+
+app.post('/wholesale-tax-invoices/:id/reissue', rateLimit({ action: 'wholesale-tax-invoice-reissue', max: 60, windowSec: 60 }), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    const result = await reissueInvoice(c.env.DB, c.env, id)
+    if (!result) return c.json({ success: false, error: '세금계산서를 찾을 수 없습니다' }, 404)
+    await writeAuditLog(c, {
+      action: 'wholesale_tax_invoice_reissue',
+      targetType: 'wholesale_tax_invoice',
+      targetId: id,
+      after: { status: result.status, provider_ref: result.provider_ref, skipped: result.skipped },
+    }).catch(() => { /* audit best-effort */ })
+    // skipped(env 미설정) 도 200 — 어드민에게 '발행 연동 미설정' 을 명확히 안내.
+    return c.json({
+      success: result.ok,
+      status: result.status,
+      provider_ref: result.provider_ref,
+      skipped: result.skipped || false,
+      message: result.ok
+        ? '세금계산서가 발행되었습니다'
+        : result.skipped
+          ? '발행 연동(TAX_INVOICE_API_KEY)이 설정되지 않아 임시저장 상태로 유지됩니다'
+          : (result.error || '발행에 실패했습니다'),
+    })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 재발행 중 오류가 발생했습니다', '[wholesale-tax]')
   }
 })
 

@@ -20,6 +20,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
+import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -573,6 +574,19 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
     });
   } catch (err) {
     return safeError(c, err, '정산 내역 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── GET /tax-invoices — 내(제조사) 매입 역발행 세금계산서 목록 (제조사→플랫폼) ─────────
+//   🏭 Wave 3c: 도매 주문 정산 적립 시 자동발행된 purchase 레코드를 본인 것만 조회. 공급가액/세액/합계/상태.
+supplierDashboardRoutes.get('/tax-invoices', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  try {
+    const invoices = await listSupplierPurchaseInvoices(c.env.DB, sid);
+    return c.json({ success: true, invoices });
+  } catch (err) {
+    return safeError(c, err, '세금계산서 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 
