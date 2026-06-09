@@ -11,10 +11,13 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import { setSupplierSession, isSupplierLoggedIn } from '@/lib/supplier-api'
+import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 
 export default function SupplierLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical).
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -85,8 +88,10 @@ export default function SupplierLoginPage() {
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
           <div className="flex items-center gap-2">
-            <UrDealLogo size={14} forceDark />
-            <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
+            {mallLogo
+              ? <img src={mallLogo} alt={mallName} className="w-7 h-7 rounded object-cover" />
+              : <UrDealLogo size={14} forceDark />}
+            <span className="text-[9px] font-bold tracking-wider" style={{ color: mallBrand }}>
               {t('supplier.studio', { defaultValue: 'SUPPLIER' })}
             </span>
           </div>
@@ -109,15 +114,17 @@ export default function SupplierLoginPage() {
           </div>
         </div>
         <div className="px-10 pb-8">
-          <p className="text-xs text-gray-600">&copy; 2026 {t('supplier.copyright', { defaultValue: '유어딜. 도매 공급자 서비스' })}</p>
+          <p className="text-xs text-gray-600">&copy; 2026 {mallName} — {t('supplier.copyright', { defaultValue: '도매 공급자 서비스' })}</p>
         </div>
       </div>
 
       {/* Right form */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="lg:hidden mb-8 flex items-center gap-2">
-          <UrDealLogo size={14} forceLight />
-          <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">{t('supplier.studio', { defaultValue: 'SUPPLIER' })}</span>
+          {mallLogo
+            ? <img src={mallLogo} alt={mallName} className="w-7 h-7 rounded object-cover" />
+            : <UrDealLogo size={14} forceLight />}
+          <span className="text-[9px] font-bold tracking-wider" style={{ color: mallBrand }}>{mallName}</span>
         </div>
 
         <div className="w-full max-w-sm md:max-w-md">
@@ -177,7 +184,8 @@ export default function SupplierLoginPage() {
               </div>
 
               <button type="submit" disabled={loading}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#FF0033] to-pink-500 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-all">
+                className="w-full py-3.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-all"
+                style={{ background: mallBrand }}>
                 {loading ? t('common.loading', { defaultValue: '처리 중...' }) : (<>{t('supplier.loginButton', { defaultValue: '로그인' })} <ArrowRight className="w-4 h-4" /></>)}
               </button>
             </form>

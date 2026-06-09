@@ -47,6 +47,8 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
     'ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1',
     // 🏷️ 2026-06-09 브랜드 전시관 — brand_name(브랜드제품 라벨, is_brand_product=1 일 때만 의미). repair-schema 와 멱등 동일.
     'ALTER TABLE products ADD COLUMN brand_name TEXT',
+    // 🏷️ 2026-06-09 브랜드 전시관 로고 — brand_logo_url(선택 이미지 URL). 없으면 기존 텍스트 칩 불변.
+    'ALTER TABLE products ADD COLUMN brand_logo_url TEXT',
   ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:biz8:alter')); }
 }
 
@@ -206,7 +208,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
 
     const rows = await DB.prepare(
       `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
-              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name,
+              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
               COALESCE(min_order_qty,1) AS min_order_qty,
               COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
               lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
@@ -244,7 +246,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
     type ProductBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; min_order_qty?: number;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; min_order_qty?: number;
       pack_size?: number; order_multiple?: number;
       lowest_price_url?: string;
     };
@@ -284,6 +286,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const isBrand = body.is_brand_product ? 1 : 0;
     // 🏷️ 브랜드명 — 브랜드제품(is_brand_product=1)일 때만 저장. 일반제품이면 무시(null).
     const brandName = isBrand ? ((body.brand_name || '').trim().slice(0, 120) || null) : null;
+    // 🏷️ 브랜드 로고 URL — 브랜드제품일 때만 저장. http(s) 또는 /api/... 상대경로(≤1000자).
+    const brandLogoRaw = (body.brand_logo_url || '').trim().slice(0, 1000);
+    const brandLogoUrl = isBrand && (/^https?:\/\//i.test(brandLogoRaw) || /^\//.test(brandLogoRaw)) ? brandLogoRaw : null;
     // 온라인 최저가 참고 링크 (어드민 최저가 검수용). http(s) 만 허용.
     const lpUrlRaw = (body.lowest_price_url || '').trim().slice(0, 500);
     const lpUrl = /^https?:\/\//i.test(lpUrlRaw) ? lpUrlRaw : null;
@@ -292,8 +297,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, min_order_qty, pack_size, order_multiple, lowest_price_url, mall_id, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url, min_order_qty, pack_size, order_multiple, lowest_price_url, mall_id, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -307,6 +312,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       barcode,
       isBrand,
       brandName,
+      brandLogoUrl,
       moq,
       packSize,
       orderMultiple,
@@ -501,7 +507,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     type EditBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; lowest_price_url?: string;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; lowest_price_url?: string;
       min_order_qty?: number; pack_size?: number; order_multiple?: number;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
@@ -524,6 +530,12 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (body.is_brand_product != null) { sets.push('is_brand_product = ?'); params.push(body.is_brand_product ? 1 : 0); }
     // 🏷️ 브랜드명 수정 — 문자열 들어오면 120자 cap(빈 문자열이면 null 로 해제).
     if (typeof body.brand_name === 'string') { sets.push('brand_name = ?'); params.push(body.brand_name.trim().slice(0, 120) || null); }
+    // 🏷️ 브랜드 로고 URL 수정 — http(s) 또는 /api/... 상대경로만 허용(≤1000자). 빈 문자열이면 null 로 해제.
+    if (typeof body.brand_logo_url === 'string') {
+      const raw = body.brand_logo_url.trim().slice(0, 1000);
+      const safe = (/^https?:\/\//i.test(raw) || /^\//.test(raw)) ? raw : null;
+      sets.push('brand_logo_url = ?'); params.push(safe);
+    }
     // 🏭 BIZ-8 (2026-06-08) MOQ/박스단위 수정 — 정수 ≥1, 1~100000 clamp. (가격 산식 무관 — 수량 제약만.)
     if (body.min_order_qty != null && Number.isFinite(Number(body.min_order_qty))) { sets.push('min_order_qty = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty))))); }
     if (body.pack_size != null && Number.isFinite(Number(body.pack_size))) { sets.push('pack_size = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.pack_size))))); }

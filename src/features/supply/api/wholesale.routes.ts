@@ -178,6 +178,8 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
     // 🏷️ 2026-06-09 브랜드 전시관 — products.brand_name(브랜드제품 라벨, is_brand_product=1 일 때만 의미).
     //   repair-schema 에도 동일 ADD COLUMN 존재(멱등). 없는 환경(미마이그레이션) self-heal — 카탈로그 SELECT/필터 전 보장.
     'ALTER TABLE products ADD COLUMN brand_name TEXT',
+    // 🏷️ 2026-06-09 브랜드 전시관 로고 — 브랜드 로고 이미지 URL(선택). 없으면 기존 텍스트 칩 불변.
+    'ALTER TABLE products ADD COLUMN brand_logo_url TEXT',
   ]) { await DB.prepare(sql).run().catch(swallow('wholesale:biz8:alter')) }
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_products_mall_supply ON products(mall_id) WHERE is_supply_product = 1').run().catch(swallow('wholesale:biz8:idx-mall'))
 }
@@ -1038,13 +1040,14 @@ app.get('/catalog', async (c) => {
     if (brandsMode) {
       const brandWhere = `${where} AND COALESCE(p.is_brand_product,0) = 1 AND p.brand_name IS NOT NULL AND TRIM(p.brand_name) <> ''`
       const brandRows = await DB.prepare(`
-        SELECT p.brand_name AS brand_name, COUNT(*) AS product_count
+        SELECT p.brand_name AS brand_name, COUNT(*) AS product_count,
+               MAX(p.brand_logo_url) AS brand_logo_url
         FROM products p
         WHERE ${brandWhere}
         GROUP BY p.brand_name
         ORDER BY product_count DESC, p.brand_name ASC
         LIMIT 200
-      `).bind(...params).all<{ brand_name: string; product_count: number }>().catch(() => ({ results: [] as { brand_name: string; product_count: number }[] }))
+      `).bind(...params).all<{ brand_name: string; product_count: number; brand_logo_url: string | null }>().catch(() => ({ results: [] as { brand_name: string; product_count: number; brand_logo_url: string | null }[] }))
       // guest(가격 비노출) → 공유캐시 / 로그인 → private(브랜드 목록 자체는 등급 무관이나 일관성 위해 동일 정책).
       if (guest) {
         c.header('Cache-Control', 'public, max-age=60')
@@ -1052,7 +1055,7 @@ app.get('/catalog', async (c) => {
       } else {
         c.header('Cache-Control', 'private, no-store')
       }
-      return c.json({ success: true, brands: (brandRows.results || []).map(r => ({ name: r.brand_name, product_count: r.product_count })) })
+      return c.json({ success: true, brands: (brandRows.results || []).map(r => ({ name: r.brand_name, product_count: r.product_count, logo_url: r.brand_logo_url || null })) })
     }
 
     // 정렬: 화이트리스트만(injection 불가). 미지정 = 현행 popular 정렬과 동일 리터럴.
@@ -1063,7 +1066,7 @@ app.get('/catalog', async (c) => {
              COALESCE(p.supply_price, 0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
              COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
-             COALESCE(p.is_premium,0) AS is_premium, COALESCE(p.is_brand_product,0) AS is_brand_product, p.brand_name,
+             COALESCE(p.is_premium,0) AS is_premium, COALESCE(p.is_brand_product,0) AS is_brand_product, p.brand_name, p.brand_logo_url,
              EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers,
              COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -1072,7 +1075,7 @@ app.get('/catalog', async (c) => {
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; is_brand_product: number; brand_name: string | null; has_tiers: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; is_brand_product: number; brand_name: string | null; brand_logo_url: string | null; has_tiers: number; sold_count: number; margin_override: number | null
     }>()
 
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
@@ -1100,9 +1103,10 @@ app.get('/catalog', async (c) => {
         // BIZ-8: pack_size(박스당 낱개 — 표시용) / order_multiple(주문 배수 강제). 둘 다 최소 1.
         pack_size: Math.max(1, r.pack_size || 1), order_multiple: Math.max(1, r.order_multiple || 1),
         is_premium: !!r.is_premium,
-        // 🏷️ 브랜드 전시관 — 브랜드제품이면 brand_name 노출(카드/필터 표시용). 일반제품은 null.
+        // 🏷️ 브랜드 전시관 — 브랜드제품이면 brand_name/brand_logo_url 노출(카드/필터 표시용). 일반제품은 null.
         is_brand_product: !!r.is_brand_product,
         brand_name: (r.is_brand_product && r.brand_name) ? r.brand_name : null,
+        brand_logo_url: (r.is_brand_product && r.brand_logo_url) ? r.brand_logo_url : null,
         has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
         // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
         supplier_group: supId != null ? `s${supId}` : null,

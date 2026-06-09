@@ -708,6 +708,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_suppliers_mall', sql: "CREATE INDEX IF NOT EXISTS idx_suppliers_mall ON suppliers(mall_id)" },
     { desc: 'idx_wholesale_banners_mall', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_banners_mall ON wholesale_banners(mall_id, active, sort, id)" },
     { desc: 'idx_wholesale_proposal_tickets_mall', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_mall ON wholesale_proposal_tickets(mall_id, id DESC)" },
+    // 🏷️ 2026-06-09 브랜드 전시관 로고 — 브랜드제품(is_brand_product=1)에 브랜드 로고 URL 저장(선택).
+    //   브랜드 전시관 그리드에서 텍스트 칩 대신 로고 이미지 표시. 미설정 시 기존 텍스트 칩 동작 불변.
+    { desc: 'products.brand_logo_url', sql: "ALTER TABLE products ADD COLUMN brand_logo_url TEXT" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];

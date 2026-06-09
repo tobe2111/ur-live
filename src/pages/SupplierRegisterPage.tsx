@@ -12,10 +12,13 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
+import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical).
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
@@ -142,7 +145,7 @@ export default function SupplierRegisterPage() {
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">{t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' })}</h2>
           <p className="text-sm text-gray-600 mb-6">{t('supplier.registerPendingDesc', { defaultValue: '관리자 승인 후 로그인할 수 있습니다. 승인까지 영업일 기준 1~2일 소요될 수 있습니다.' })}</p>
-          <Link to="/supplier/login" className="inline-block w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm">
+          <Link to="/supplier/login" className="inline-block w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ background: mallBrand }}>
             {t('supplier.goLogin', { defaultValue: '로그인 페이지로' })}
           </Link>
         </div>
@@ -162,8 +165,12 @@ export default function SupplierRegisterPage() {
         </button>
 
         <div className="flex items-center gap-2 mb-6">
-          <UrDealLogo size={16} forceLight />
-          <span className="text-[10px] font-bold tracking-wider text-[#FF0033]">{t('supplier.studio', { defaultValue: 'SUPPLIER' })}</span>
+          {mallLogo
+            ? <img src={mallLogo} alt={mallName} className="w-7 h-7 rounded object-cover" />
+            : <UrDealLogo size={16} forceLight />}
+          <span className="text-[10px] font-bold tracking-wider" style={{ color: mallBrand }}>
+            {t('supplier.studio', { defaultValue: 'SUPPLIER' })}
+          </span>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
@@ -256,7 +263,7 @@ export default function SupplierRegisterPage() {
                 </div>
               </>
             )}
-            <button type="submit" disabled={loading} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#FF0033] to-pink-500 text-white font-semibold text-sm disabled:opacity-60 mt-2">
+            <button type="submit" disabled={loading} className="w-full py-3.5 rounded-xl text-white font-semibold text-sm disabled:opacity-60 mt-2" style={{ background: mallBrand }}>
               {loading ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.registerButton', { defaultValue: '가입 신청' })}
             </button>
           </form>
@@ -278,7 +285,7 @@ export default function SupplierRegisterPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600">
             {t('supplier.haveAccount', { defaultValue: '이미 계정이 있으신가요?' })}{' '}
-            <Link to="/supplier/login" className="font-bold text-[#FF0033] hover:underline">{t('supplier.loginButton', { defaultValue: '로그인' })}</Link>
+            <Link to="/supplier/login" className="font-bold hover:underline" style={{ color: mallBrand }}>{t('supplier.loginButton', { defaultValue: '로그인' })}</Link>
           </p>
         </div>
       </div>

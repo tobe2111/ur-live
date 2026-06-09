@@ -55,8 +55,8 @@ interface CatalogItem {
   code?: string | null
 }
 
-// 🏷️ 2026-06-09 브랜드 전시관 — 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 (?brands=1 응답).
-interface BrandEntry { name: string; product_count: number }
+// 🏷️ 2026-06-09 브랜드 전시관 — 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 + 로고 (?brands=1 응답).
+interface BrandEntry { name: string; product_count: number; logo_url?: string | null }
 
 // 🏭 Wave 2: 상품코드 — product.code 우선, 없으면 P + 7자리 zero-pad id (시안 P0000xxx).
 function productCode(p: { id: number; code?: string | null }): string {
@@ -444,8 +444,9 @@ const PRICE_BANDS: { id: string; label: string; min: number | null; max: number 
   { id: 'p4', label: '5만원~', min: 50000, max: null },
 ]
 
-// ── 🏷️ 브랜드 전시관 — 브랜드 칩 그리드 (distinct brand_name + 상품수). 로고가 없으므로 텍스트 칩. ──
-//   클릭 시 그 브랜드로 카탈로그 필터(?brand=<name>). 라이트 테마(WT) 고정 — B2B 대시보드 서피스.
+// ── 🏷️ 브랜드 전시관 — 브랜드 칩 그리드 (distinct brand_name + 상품수 + 선택적 로고). ──
+//   로고(logo_url) 있으면 cfImage 이미지로, 없으면 기존 텍스트 칩. 클릭 시 ?brand=<name> 카탈로그 필터.
+//   라이트 테마(WT) 고정 — B2B 대시보드 서피스.
 function BrandShowcaseGrid({ brands, loading, onPick, t: tr }: {
   brands: BrandEntry[]; loading: boolean; onPick: (name: string) => void; t: (k: string, o?: Record<string, unknown>) => string
 }) {
@@ -476,7 +477,18 @@ function BrandShowcaseGrid({ brands, loading, onPick, t: tr }: {
         <button key={b.name} onClick={() => onPick(b.name)}
           className="group flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-6 transition-colors"
           style={{ border: '1px solid ' + WT.line, background: '#fff', boxShadow: WT.shSoft }}>
-          <span className="text-[16px] font-extrabold tracking-[-0.01em] text-center line-clamp-2" style={{ color: WT.ink }}>{b.name}</span>
+          {b.logo_url ? (
+            <img
+              src={cfImage(b.logo_url, { width: 80, format: 'auto' }) || b.logo_url}
+              alt={b.name}
+              className="w-14 h-14 object-contain rounded-xl"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <span className="text-[16px] font-extrabold tracking-[-0.01em] text-center line-clamp-2" style={{ color: WT.ink }}>{b.name}</span>
+          )}
+          <span className="text-[12px] font-semibold text-center line-clamp-1" style={{ color: WT.ink }}>{b.name}</span>
           <span className="text-[12px] font-semibold tabular-nums rounded-full px-2.5 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>
             {comma(b.product_count)}{tr('wholesale.brand.countSuffix', { defaultValue: '개 상품' })}
           </span>

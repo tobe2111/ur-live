@@ -1401,7 +1401,7 @@ function ShipModal({ t, order, onClose, onShipped }: {
 }
 
 function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', lowest_price_url: '' })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -1430,6 +1430,7 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
         barcode: form.barcode.trim() || undefined,
         is_brand_product: form.is_brand_product,
         brand_name: form.is_brand_product ? (form.brand_name.trim() || undefined) : undefined,
+        brand_logo_url: form.is_brand_product ? (form.brand_logo_url.trim() || undefined) : undefined,
         lowest_price_url: form.lowest_price_url.trim() || undefined,
       })
       toast.success(t('supplier.productCreated', { defaultValue: '상품이 등록되었습니다. 승인 후 노출됩니다.' }))
@@ -1533,10 +1534,17 @@ function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<
           <p className="text-[11px] text-gray-400 -mt-1">{t('supplier.brandHint', { defaultValue: '체크 시 판매 후 당일 정산, 미체크 시 일반제품(7일 환불창 후 정산).' })}</p>
           {/* 🏷️ 브랜드 전시관 — 브랜드제품 체크 시에만 브랜드명 입력(브랜드 전시관 그리드에 노출). */}
           {form.is_brand_product && (
-            <div>
-              <label className={labelCls}>{t('supplier.fieldBrandName', { defaultValue: '브랜드명' })}</label>
-              <input disabled={saving} value={form.brand_name} onChange={e => setForm(f => ({ ...f, brand_name: e.target.value }))} className={inputCls} placeholder={t('supplier.fieldBrandNamePh', { defaultValue: '예: 코카콜라, 농심' })} maxLength={120} />
-              <p className="text-[11px] text-gray-400 mt-1">{t('supplier.brandNameHint', { defaultValue: '도매몰 브랜드 전시관에 이 브랜드로 묶여 노출됩니다.' })}</p>
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>{t('supplier.fieldBrandName', { defaultValue: '브랜드명' })}</label>
+                <input disabled={saving} value={form.brand_name} onChange={e => setForm(f => ({ ...f, brand_name: e.target.value }))} className={inputCls} placeholder={t('supplier.fieldBrandNamePh', { defaultValue: '예: 코카콜라, 농심' })} maxLength={120} />
+                <p className="text-[11px] text-gray-400 mt-1">{t('supplier.brandNameHint', { defaultValue: '도매몰 브랜드 전시관에 이 브랜드로 묶여 노출됩니다.' })}</p>
+              </div>
+              <div>
+                <label className={labelCls}>{t('supplier.fieldBrandLogoUrl', { defaultValue: '브랜드 로고 URL (선택)' })}</label>
+                <input disabled={saving} value={form.brand_logo_url} onChange={e => setForm(f => ({ ...f, brand_logo_url: e.target.value }))} className={inputCls} placeholder="https://..." maxLength={1000} />
+                <p className="text-[11px] text-gray-400 mt-1">{t('supplier.brandLogoUrlHint', { defaultValue: '브랜드 전시관 그리드에 텍스트 대신 로고 이미지로 표시됩니다. 비워두면 텍스트 칩으로 표시.' })}</p>
+              </div>
             </div>
           )}
           <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60 mt-2">
