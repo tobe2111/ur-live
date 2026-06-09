@@ -17,6 +17,16 @@
 2. Cloudflare: 그 host(예: food.도메인)를 **같은 Pages 프로젝트(ur-live)** Custom Domain 으로 연결. (DNS 전엔 `?mall=slug` 로 테스트.)
 3. 미들웨어가 host→mall 자동 판별 → 그 몰 카탈로그/브랜딩/가입. 가입자는 그 몰 전용(model B). 끝.
 - **Phase 2 (선택)**: 어드민 예치금/세금 뷰 몰 필터(거의 완료) · 카테고리별 통합 회계 뷰. (개별 장부는 model B 로 이미 격리됨 — 뷰만.)
+- **멀티몰 Phase 2 통합 관제**(`58bb3cc`): `/admin/wholesale-overview` 몰별+합산(GMV·예치금 부채·대기 입금/제안). 어드민 예치금/세금 몰 필터(`12e614a`). 상품 mall stamp(`91f330a`). **복제 매끄럽게**(`413d8df`): 새 몰 host 루트→/wholesale(소비자 host fast-path skip) + 몰별 입금계좌(/deposits/me 가 sellers.mall_id→wholesale_malls.deposit_account 우선).
+
+- **B2B 운영 공백 4종 + 감사 (2026-06-09 후반)**:
+  - **#1 제조사 정산 출금**(`1886ed7`): 출금 신청→어드민 송금확인. `reserved_amount`(recompute 불간섭) 원자 reserve CAS, 승인=음수 settlement+available 순감, 반려=복원. 머니 테스트 7(`38949c9`).
+  - **#2 최소주문금액+배송비**(`a0fcbb3`): 제조사별 정책(suppliers.min_order_amount/shipping_fee/free_ship_threshold) + wholesale_orders.shipping_total. /orders 게이트=PENDING insert 전, chargeTotal=subtotal+shipping(deduct/보상환불 전액).
+  - **#3 직원 서브계정**(`51d1b89`): wholesale_sub_accounts(role admin/staff/viewer). sub-login=부모 seller_id 토큰. viewer 주문 차단. 인증 불변.
+  - **#4 브랜드 전시관**(`47c8892`) + **주문/정산 엑셀 export**(`4114d05`).
+  - **🔍 전체 감사 → 수정**(`85233b1`,`0a7727a`): 🔴 배송비 환불 누락(reconcile+어드민환불) · 🟡 크로스몰 주문 차단(mall_id) · 채팅 supplier_id 누출 차단 · viewer 게이트 확대(충전신청/클레임/견적) · 배송비 세금계산서. **머니/테넌시/채팅 테스트 72**. **i18n 410키×6언어**(`53f1e78`).
+  - **결정됨 🟡#6**: `suppliers.email` 글로벌 UNIQUE 유지(제조사=1몰 본성, (a)). 여러 몰 가입 원하면 `(email,mall_id)` 복합으로 전환.
+  - **확인要 🟡#7**: 배송비를 과세 공급으로 처리(매출 세금계산서에 포함). 비과세면 되돌릴 것.
 
 **⚠️ 운영 반영 전 (SSOT — 다음 세션/배포 담당 필독)**:
 - env: `RESEND_API_KEY`(단체메일) · `TAX_INVOICE_API_KEY`(+`TAX_INVOICE_SENDER_BIZ_NO`, 세금계산서 실발행 — 미설정 시 draft) · `RATE_LIMIT_KV`.
