@@ -17,16 +17,40 @@ export default function WholesaleJoinPage() {
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   // 카카오로 로그인된 유저(아직 유통회원 아님) — 이메일/비번 없이 사업자 정보만 입력.
   const kakaoUser = !hasSeller && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
+  const loginEmail = (typeof window !== 'undefined' && localStorage.getItem('user_email')) || ''
   const [form, setForm] = useState({
     name: (typeof window !== 'undefined' && localStorage.getItem('user_name')) || '',
     business_name: '', representative: '',
-    email: (typeof window !== 'undefined' && localStorage.getItem('user_email')) || '',
+    email: loginEmail,
     password: '', phone: '', business_number: '',
+    // 🏭 2026-06-09 대표자/담당자 분리 — 대표자 연락처 + 담당자 정보(성명/연락처/이메일).
+    representative_phone: '',
+    manager_name: (typeof window !== 'undefined' && localStorage.getItem('user_name')) || '',
+    manager_phone: '',
+    manager_email: loginEmail,
   })
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 담당자가 대표자와 동일 — 체크 시 대표자(성명/연락처)를 담당자에 즉시 복사.
+  const [sameAsRep, setSameAsRep] = useState(false)
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
+  // 대표자 → 담당자 복사(성명+연락처). 토글 ON 이면 대표자 입력이 담당자에 실시간 반영.
+  const setRep = (k: 'representative' | 'representative_phone') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    setForm(f => {
+      const next = { ...f, [k]: v }
+      if (sameAsRep) {
+        if (k === 'representative') next.manager_name = v
+        if (k === 'representative_phone') next.manager_phone = v
+      }
+      return next
+    })
+  }
+  const toggleSame = (on: boolean) => {
+    setSameAsRep(on)
+    if (on) setForm(f => ({ ...f, manager_name: f.representative, manager_phone: f.representative_phone }))
+  }
 
   // 이미 유통사(셀러) 로그인 상태면 카탈로그로 바로.
   useEffect(() => { if (hasSeller) navigate('/wholesale', { replace: true }) }, [hasSeller, navigate])
@@ -38,12 +62,20 @@ export default function WholesaleJoinPage() {
     if (!form.business_name.trim()) { toast.error('상호(회사명)를 입력해주세요'); return }
     if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { toast.error('사업자등록번호를 정확히 입력해주세요 (000-00-00000)'); return }
     if (!licenseUrl) { toast.error('사업자등록증 이미지를 업로드해주세요'); return }
-    if (!kakaoUser && (!form.name.trim() || !form.email.trim() || !form.password)) { toast.error('담당자명·이메일·비밀번호를 입력해주세요'); return }
+    if (!form.representative.trim() || !form.representative_phone.trim()) { toast.error('대표자 성명·연락처를 입력해주세요'); return }
+    if (!form.manager_name.trim() || !form.manager_phone.trim()) { toast.error('담당자 성명·연락처를 입력해주세요'); return }
+    if (!kakaoUser && (!form.email.trim() || !form.password)) { toast.error('로그인 이메일·비밀번호를 입력해주세요'); return }
     setLoading(true)
     try {
+      // 담당자 이메일 — 미입력 시 로그인 이메일을 비즈니스 연락 이메일로 사용.
+      const managerEmail = (form.manager_email.trim() || form.email.trim())
       const payload = {
-        name: form.name.trim(), business_name: form.business_name.trim(), business_number: form.business_number.trim(),
-        representative: form.representative.trim(), phone: form.phone.trim(), business_license_url: licenseUrl,
+        // name(담당자명) 은 기존 백엔드 호환 — 담당자 성명으로 채움.
+        name: form.manager_name.trim(), business_name: form.business_name.trim(), business_number: form.business_number.trim(),
+        representative: form.representative.trim(), phone: form.representative_phone.trim() || form.manager_phone.trim(),
+        representative_phone: form.representative_phone.trim(),
+        manager_name: form.manager_name.trim(), manager_phone: form.manager_phone.trim(), manager_email: managerEmail,
+        business_license_url: licenseUrl,
       }
       // 카카오 유저 → become-distributor(세션 인증), 그 외 → register(이메일/비번).
       const res = kakaoUser
@@ -128,26 +160,59 @@ export default function WholesaleJoinPage() {
           </div>
         )}
         <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-[13px] font-semibold mb-1.5">담당자명 <span className="text-[#FF0033]">*</span></label>
-            <input value={form.name} onChange={set('name')} disabled={loading} className={inputCls} placeholder="예: 홍길동" />
-          </div>
+          {/* 사업자 정보 */}
           <div>
             <label className="block text-[13px] font-semibold mb-1.5">상호(회사명) <span className="text-[#FF0033]">*</span></label>
             <input value={form.business_name} onChange={set('business_name')} disabled={loading} className={inputCls} placeholder="예: (주)유통상사" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FF0033]">*</span></label>
-              <input value={form.business_number} onChange={set('business_number')} disabled={loading} className={inputCls} placeholder="000-00-00000" />
-            </div>
-            <div>
-              <label className="block text-[13px] font-semibold mb-1.5">대표자명 <span className="text-[#B6BCC4] font-normal">(선택)</span></label>
-              <input value={form.representative} onChange={set('representative')} disabled={loading} className={inputCls} placeholder="예: 홍길동" />
+          <div>
+            <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FF0033]">*</span></label>
+            <input value={form.business_number} onChange={set('business_number')} disabled={loading} className={inputCls} placeholder="000-00-00000" />
+          </div>
+
+          {/* 대표자 정보 */}
+          <div className="pt-3 mt-3 border-t border-[#ECEEF1]">
+            <p className="text-[13px] font-bold text-[#17181C] mb-2.5">대표자 정보</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-semibold mb-1.5">대표자 성명 <span className="text-[#FF0033]">*</span></label>
+                <input value={form.representative} onChange={setRep('representative')} disabled={loading} className={inputCls} placeholder="예: 홍길동" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold mb-1.5">대표자 연락처 <span className="text-[#FF0033]">*</span></label>
+                <input value={form.representative_phone} onChange={setRep('representative_phone')} disabled={loading} className={inputCls} placeholder="010-0000-0000" />
+              </div>
             </div>
           </div>
+
+          {/* 담당자 정보 */}
+          <div className="pt-3 mt-3 border-t border-[#ECEEF1]">
+            <div className="flex items-center justify-between mb-2.5">
+              <p className="text-[13px] font-bold text-[#17181C]">담당자 정보</p>
+              <label className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#4E5560] cursor-pointer select-none">
+                <input type="checkbox" checked={sameAsRep} onChange={(e) => toggleSame(e.target.checked)} disabled={loading} className="w-4 h-4 rounded accent-[#FF0033]" />
+                대표자와 동일
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-semibold mb-1.5">담당자 성명 <span className="text-[#FF0033]">*</span></label>
+                <input value={form.manager_name} onChange={set('manager_name')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="예: 김담당" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold mb-1.5">담당자 연락처 <span className="text-[#FF0033]">*</span></label>
+                <input value={form.manager_phone} onChange={set('manager_phone')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="010-0000-0000" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-[13px] font-semibold mb-1.5">담당자 이메일 <span className="text-[#B6BCC4] font-normal">(선택)</span></label>
+              <input type="email" value={form.manager_email} onChange={set('manager_email')} disabled={loading} className={inputCls} placeholder={kakaoUser ? '연락용 이메일' : '미입력 시 로그인 이메일'} autoComplete="off" />
+            </div>
+          </div>
+
           {!kakaoUser && (
-            <>
+            <div className="pt-3 mt-3 border-t border-[#ECEEF1] space-y-3">
+              <p className="text-[13px] font-bold text-[#17181C]">로그인 계정</p>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">이메일 <span className="text-[#FF0033]">*</span></label>
                 <input type="email" value={form.email} onChange={set('email')} disabled={loading} className={inputCls} placeholder="login@email.com" autoComplete="email" />
@@ -156,12 +221,8 @@ export default function WholesaleJoinPage() {
                 <label className="block text-[13px] font-semibold mb-1.5">비밀번호 <span className="text-[#FF0033]">*</span></label>
                 <input type="password" value={form.password} onChange={set('password')} disabled={loading} className={inputCls} placeholder="10자 이상, 대/소문자+숫자" autoComplete="new-password" />
               </div>
-            </>
+            </div>
           )}
-          <div>
-            <label className="block text-[13px] font-semibold mb-1.5">연락처 <span className="text-[#B6BCC4] font-normal">(선택)</span></label>
-            <input value={form.phone} onChange={set('phone')} disabled={loading} className={inputCls} placeholder="010-0000-0000" />
-          </div>
           <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
           <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보(사업자등록증 포함)를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
 

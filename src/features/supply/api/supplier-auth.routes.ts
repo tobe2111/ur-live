@@ -55,6 +55,8 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     "status TEXT NOT NULL DEFAULT 'pending'", 'created_at DATETIME', 'updated_at DATETIME',
     'linked_user_id INTEGER', // 🏭 2026-06-04 카카오 통합 — 카카오 유저 ↔ 제조회원 연결
     'business_license_url TEXT', // 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용)
+    'representative_phone TEXT', // 🏭 2026-06-09 대표자 연락처
+    'manager_name TEXT', 'manager_phone TEXT', 'manager_email TEXT', // 🏭 2026-06-09 담당자(성명/연락처/이메일)
   ]) {
     await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
   }
@@ -71,9 +73,15 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       email?: string; phone?: string; password?: string;
       bank_name?: string; bank_account?: string; account_holder?: string;
       business_license_url?: string;
+      representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     };
     const body = await c.req.json<RegBody>().catch(() => ({} as RegBody));
     const bizLicenseUrl = (body.business_license_url || '').trim().slice(0, 500);
+    // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
+    const representativePhone = (body.representative_phone || '').trim().slice(0, 40);
+    const managerName = (body.manager_name || '').trim().slice(0, 80);
+    const managerPhone = (body.manager_phone || '').trim().slice(0, 40);
+    const managerEmail = (body.manager_email || '').trim().slice(0, 160);
 
     const email = (body.email || '').trim().toLowerCase();
     const password = body.password || '';
@@ -98,11 +106,14 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     const passwordHash = await hashPassword(password);
     const result = await DB.prepare(`
       INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-        bank_name, bank_account, account_holder, business_license_url, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        bank_name, bank_account, account_holder, business_license_url,
+        representative_phone, manager_name, manager_phone, manager_email,
+        status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
     `).bind(
       businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
       body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
+      representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
     ).run();
 
     return c.json({
@@ -131,12 +142,18 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
     const body = await c.req.json<{
       business_name?: string; business_number?: string; representative?: string;
       phone?: string; business_license_url?: string;
+      representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     }>().catch(() => ({} as Record<string, never>));
     const business_name = String(body.business_name || '').trim();
     const business_number = String(body.business_number || '').trim();
     const representative = String(body.representative || '').trim();
     const phone = String(body.phone || '').trim();
     const business_license_url = String(body.business_license_url || '').trim().slice(0, 500);
+    // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
+    const representative_phone = String(body.representative_phone || '').trim().slice(0, 40);
+    const manager_name = String(body.manager_name || '').trim().slice(0, 80);
+    const manager_phone = String(body.manager_phone || '').trim().slice(0, 40);
+    const manager_email = String(body.manager_email || '').trim().slice(0, 160);
 
     await ensureSupplierSchema(DB);
     // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
@@ -182,11 +199,13 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const ins = await DB.prepare(`
         INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-          business_license_url, linked_user_id, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '', ?, ?, 'pending', datetime('now'), datetime('now'))
+          business_license_url, representative_phone, manager_name, manager_phone, manager_email,
+          linked_user_id, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
       `).bind(
         business_name, business_number, representative || null, email, phone || null,
-        business_license_url || null, userId,
+        business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
+        userId,
       ).run();
       const sid = Number(ins.meta?.last_row_id);
       if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);

@@ -252,6 +252,15 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   distributor_grade: A/B/C/D/OEM (NULL=미배정→기본 D). special_discount_until: 이 시각 전까지 SPECIAL 등급가 적용.
     { desc: 'sellers.distributor_grade', sql: "ALTER TABLE sellers ADD COLUMN distributor_grade TEXT" },
     { desc: 'sellers.special_discount_until', sql: "ALTER TABLE sellers ADD COLUMN special_discount_until DATETIME" },
+    // 🏭 2026-06-09 도매몰 가입 — 대표자 연락처 + 담당자(성명/연락처/이메일) 분리 수집. (유통사=sellers, 제조사=suppliers 양쪽)
+    { desc: 'sellers.representative_phone', sql: "ALTER TABLE sellers ADD COLUMN representative_phone TEXT" },
+    { desc: 'sellers.manager_name', sql: "ALTER TABLE sellers ADD COLUMN manager_name TEXT" },
+    { desc: 'sellers.manager_phone', sql: "ALTER TABLE sellers ADD COLUMN manager_phone TEXT" },
+    { desc: 'sellers.manager_email', sql: "ALTER TABLE sellers ADD COLUMN manager_email TEXT" },
+    { desc: 'suppliers.representative_phone', sql: "ALTER TABLE suppliers ADD COLUMN representative_phone TEXT" },
+    { desc: 'suppliers.manager_name', sql: "ALTER TABLE suppliers ADD COLUMN manager_name TEXT" },
+    { desc: 'suppliers.manager_phone', sql: "ALTER TABLE suppliers ADD COLUMN manager_phone TEXT" },
+    { desc: 'suppliers.manager_email', sql: "ALTER TABLE suppliers ADD COLUMN manager_email TEXT" },
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
     { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
