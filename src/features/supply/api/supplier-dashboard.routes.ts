@@ -43,6 +43,8 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
   for (const sql of [
     'ALTER TABLE products ADD COLUMN pack_size INTEGER DEFAULT 1',
     'ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1',
+    // 🏷️ 2026-06-09 브랜드 전시관 — brand_name(브랜드제품 라벨, is_brand_product=1 일 때만 의미). repair-schema 와 멱등 동일.
+    'ALTER TABLE products ADD COLUMN brand_name TEXT',
   ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:biz8:alter')); }
 }
 
@@ -202,7 +204,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
 
     const rows = await DB.prepare(
       `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
-              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product,
+              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name,
               COALESCE(min_order_qty,1) AS min_order_qty,
               COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
               lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
@@ -240,13 +242,13 @@ supplierDashboardRoutes.post('/products', async (c) => {
     type ProductBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; min_order_qty?: number;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; min_order_qty?: number;
       pack_size?: number; order_multiple?: number;
       lowest_price_url?: string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
-    await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(INSERT 전).
+    await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(INSERT 전). (+ brand_name)
 
     const name = (body.name || '').trim();
     const supplyPrice = Number(body.supply_price);
@@ -278,6 +280,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const visibility = normalizeVisibility(body.supply_visibility, true);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
     const isBrand = body.is_brand_product ? 1 : 0;
+    // 🏷️ 브랜드명 — 브랜드제품(is_brand_product=1)일 때만 저장. 일반제품이면 무시(null).
+    const brandName = isBrand ? ((body.brand_name || '').trim().slice(0, 120) || null) : null;
     // 온라인 최저가 참고 링크 (어드민 최저가 검수용). http(s) 만 허용.
     const lpUrlRaw = (body.lowest_price_url || '').trim().slice(0, 500);
     const lpUrl = /^https?:\/\//i.test(lpUrlRaw) ? lpUrlRaw : null;
@@ -286,8 +290,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, pack_size, order_multiple, lowest_price_url, mall_id, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, min_order_qty, pack_size, order_multiple, lowest_price_url, mall_id, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -300,6 +304,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       visibility,
       barcode,
       isBrand,
+      brandName,
       moq,
       packSize,
       orderMultiple,
@@ -324,9 +329,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
 // ── GET /products/bulk-template — 대량등록 표준 양식 CSV ───────────────────────
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
-  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '최소주문수량', '설명']
-  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '1', '상품 설명']
-  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '20', '선정 유통사만 노출(20개 단위)']
+  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '설명']
+  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '상품 설명']
+  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '브랜드제품(브랜드명 입력)·선정 유통사만 노출(20개 단위)']
   return csvResponse(buildCsv(headers, [example, example2]), 'supply-products-template.csv')
 })
 
@@ -337,6 +342,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
   const { DB } = c.env;
   try {
     await ensureSupplyVisibilitySchema(DB);
+    await ensureQtyConstraintSchema(DB); // 🏷️ brand_name 컬럼 보장(bulk INSERT 전).
     const sup = await DB.prepare('SELECT status FROM suppliers WHERE id = ?').bind(sid).first<{ status: string }>();
     if (!sup || sup.status !== 'approved') {
       return c.json({ success: false, error: '승인된 공급자만 상품을 등록할 수 있습니다' }, 403);
@@ -350,8 +356,8 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     // 🛡️ 유효 행만 INSERT statement 로 모아 DB.batch 청크 실행 (행별 순차 .run() 은 Cloudflare subrequest 한도 초과).
     const stmts: D1PreparedStatement[] = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
-       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, mall_id, slug, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, min_order_qty, mall_id, slug, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const name = String(r['상품명'] || r.name || '').trim();
@@ -365,12 +371,14 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
       const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();
       const isBrand = ['Y', 'YES', '예', '1', 'TRUE', 'O'].includes(brandRaw) ? 1 : 0;
+      // 🏷️ 브랜드명 — 브랜드제품일 때만 저장(일반제품이면 null). 120자 cap.
+      const brandName = isBrand ? (String(r['브랜드명'] || r.brand_name || '').trim().slice(0, 120) || null) : null;
       const moq = Math.min(100000, Math.max(1, Math.floor(Number(String(r['최소주문수량'] || r.min_order_qty || '1').replace(/[,\s]/g, '')) || 1)));
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
         Math.floor(retailFinal), Math.floor(supplyPrice), stock,
-        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, moq, sid, slug,
+        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, brandName, moq, sid, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });
     }
@@ -491,7 +499,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     type EditBody = {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
-      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; lowest_price_url?: string;
+      supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; lowest_price_url?: string;
       min_order_qty?: number; pack_size?: number; order_multiple?: number;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
@@ -499,7 +507,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(UPDATE 전).
 
     const sets: string[] = [];
-    const params: (string | number)[] = [];
+    const params: (string | number | null)[] = [];
     if (typeof body.name === 'string' && body.name.trim()) { sets.push('name = ?'); params.push(body.name.trim().slice(0, 200)); }
     if (typeof body.description === 'string') { sets.push('description = ?'); params.push(body.description.slice(0, 5000)); }
     if (typeof body.lowest_price_url === 'string') {
@@ -512,6 +520,8 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
     if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
     if (body.is_brand_product != null) { sets.push('is_brand_product = ?'); params.push(body.is_brand_product ? 1 : 0); }
+    // 🏷️ 브랜드명 수정 — 문자열 들어오면 120자 cap(빈 문자열이면 null 로 해제).
+    if (typeof body.brand_name === 'string') { sets.push('brand_name = ?'); params.push(body.brand_name.trim().slice(0, 120) || null); }
     // 🏭 BIZ-8 (2026-06-08) MOQ/박스단위 수정 — 정수 ≥1, 1~100000 clamp. (가격 산식 무관 — 수량 제약만.)
     if (body.min_order_qty != null && Number.isFinite(Number(body.min_order_qty))) { sets.push('min_order_qty = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty))))); }
     if (body.pack_size != null && Number.isFinite(Number(body.pack_size))) { sets.push('pack_size = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.pack_size))))); }

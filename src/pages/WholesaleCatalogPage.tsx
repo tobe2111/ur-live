@@ -50,8 +50,13 @@ interface CatalogItem {
   sold_count?: number
   requires_login?: boolean
   is_premium?: boolean | number
+  is_brand_product?: boolean | number
+  brand_name?: string | null
   code?: string | null
 }
+
+// 🏷️ 2026-06-09 브랜드 전시관 — 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 (?brands=1 응답).
+interface BrandEntry { name: string; product_count: number }
 
 // 🏭 Wave 2: 상품코드 — product.code 우선, 없으면 P + 7자리 zero-pad id (시안 P0000xxx).
 function productCode(p: { id: number; code?: string | null }): string {
@@ -439,6 +444,48 @@ const PRICE_BANDS: { id: string; label: string; min: number | null; max: number 
   { id: 'p4', label: '5만원~', min: 50000, max: null },
 ]
 
+// ── 🏷️ 브랜드 전시관 — 브랜드 칩 그리드 (distinct brand_name + 상품수). 로고가 없으므로 텍스트 칩. ──
+//   클릭 시 그 브랜드로 카탈로그 필터(?brand=<name>). 라이트 테마(WT) 고정 — B2B 대시보드 서피스.
+function BrandShowcaseGrid({ brands, loading, onPick, t: tr }: {
+  brands: BrandEntry[]; loading: boolean; onPick: (name: string) => void; t: (k: string, o?: Record<string, unknown>) => string
+}) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: WT.fill }} />
+        ))}
+      </div>
+    )
+  }
+  if (!brands.length) {
+    // 친절한 빈 상태 — 브랜드제품이 아직 없을 때(페이지 안 깨짐).
+    return (
+      <div className="rounded-2xl px-6 py-14 text-center" style={{ border: '1px dashed ' + WT.line, background: WT.fill2 }}>
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: WT.brandSoft }}>
+          <Sparkles className="w-6 h-6" style={{ color: WT.brand }} />
+        </div>
+        <p className="text-[15px] font-bold" style={{ color: WT.ink }}>{tr('wholesale.brand.emptyTitle', { defaultValue: '아직 등록된 브랜드가 없어요' })}</p>
+        <p className="text-[13px] mt-1" style={{ color: WT.ink3 }}>{tr('wholesale.brand.emptyDesc', { defaultValue: '제조사가 브랜드제품을 등록하면 여기에 브랜드별로 모아 보여드려요.' })}</p>
+      </div>
+    )
+  }
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {brands.map((b) => (
+        <button key={b.name} onClick={() => onPick(b.name)}
+          className="group flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-6 transition-colors"
+          style={{ border: '1px solid ' + WT.line, background: '#fff', boxShadow: WT.shSoft }}>
+          <span className="text-[16px] font-extrabold tracking-[-0.01em] text-center line-clamp-2" style={{ color: WT.ink }}>{b.name}</span>
+          <span className="text-[12px] font-semibold tabular-nums rounded-full px-2.5 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>
+            {comma(b.product_count)}{tr('wholesale.brand.countSuffix', { defaultValue: '개 상품' })}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function WholesaleCatalogPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -454,8 +501,12 @@ export default function WholesaleCatalogPage() {
   // 🏭 Wave 2 — Sellpie형 카테고리 네비 + 메가메뉴 + 제안/신고 모달 + 프리미엄 전용관.
   const [megaOpen, setMegaOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
-  // 네비 항목(브랜드/베스트/신상품/마진/프리미엄)은 기존 sort/cat 필터를 재활용 — 새 상태 아님.
+  // 네비 항목(베스트/신상품/마진/프리미엄)은 기존 sort/cat 필터를 재활용 — 새 상태 아님.
   const [premiumView, setPremiumView] = useState(false)
+  // 🏷️ 2026-06-09 브랜드 전시관 — brandView(브랜드 그리드 모드) + selectedBrand(특정 브랜드 클릭 시 필터).
+  //   selectedBrand 가 있으면 catalog 가 ?brand=<name> 으로 그 브랜드 상품만; 없으면 브랜드 그리드를 보여줌.
+  const [brandView, setBrandView] = useState(false)
+  const [selectedBrand, setSelectedBrand] = useState<string>('')
 
   // 검색 디바운스(300ms) — 타이핑마다 fetch 폭주 방지. form submit 도 즉시 커밋.
   useEffect(() => {
@@ -469,7 +520,7 @@ export default function WholesaleCatalogPage() {
   // ── 서버사이드 카탈로그 쿼리(BIZ-4) — 모든 컨트롤을 `/catalog` 파라미터에 위임.
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
-  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}`
+  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}`
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
     queryFn: () => {
@@ -482,6 +533,8 @@ export default function WholesaleCatalogPage() {
       if (band?.max != null) params.set('max_price', String(band.max))
       // 🏭 Wave 2: 프리미엄 전용관 — is_premium=1 필터. 기본 요청 URL 불변(premiumView false 시 생략).
       if (premiumView) params.set('premium', '1')
+      // 🏷️ 브랜드 전시관 — 특정 브랜드 선택 시 그 브랜드 상품만. 미선택이면 생략(기본 요청 URL 불변).
+      if (selectedBrand) params.set('brand', selectedBrand)
       const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
       const qs = params.toString()
       return api
@@ -490,6 +543,22 @@ export default function WholesaleCatalogPage() {
         .catch(() => [])
     },
     staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+  // 🏷️ 2026-06-09 브랜드 전시관 — ?brands=1 로 현재 몰의 브랜드 distinct 목록(이름+상품수) 로드.
+  //   브랜드 전시관 진입(brandView) + 특정 브랜드 미선택일 때만 활성(enabled) → 그 외엔 fetch 안 함.
+  const brandsQ = useQuery<BrandEntry[]>({
+    queryKey: queryKeys.wholesale('catalog-brands', ''),
+    queryFn: () => {
+      const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+      return api
+        .get('/api/wholesale/catalog?brands=1', { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+        .then((r) => (r.data?.success ? ((r.data.brands || []) as BrandEntry[]) : []))
+        .catch(() => [])
+    },
+    enabled: brandView,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
@@ -940,28 +1009,28 @@ export default function WholesaleCatalogPage() {
               style={{ background: 'var(--ud-brand, #FF0033)' }}>
               <Menu className="w-4 h-4" /> {t('wholesale.nav.allCategories', { defaultValue: '전체카테고리' })}
             </button>
-            {/* 브랜드 전시관 → 브랜드 필터(데모: 검색 초기화 + 전체) */}
-            <button onClick={() => { setPremiumView(false); setCat('all'); setSort('popular'); setCommittedSearch(''); setSearch('') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: WT.ink2 }}>
+            {/* 브랜드 전시관 → 브랜드 그리드 모드(?brands=1). 클릭 시 검색/카테고리/프리미엄 초기화. */}
+            <button onClick={() => { setBrandView(true); setSelectedBrand(''); setPremiumView(false); setCat('all'); setSort('popular'); setCommittedSearch(''); setSearch('') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: brandView ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.brands', { defaultValue: '브랜드 전시관' })}
             </button>
             {/* 월간 베스트 → 판매량 정렬 */}
-            <button onClick={() => { setPremiumView(false); setSort('popular'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'popular' && !premiumView ? WT.brand : WT.ink2 }}>
+            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('popular'); setCat('all') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'popular' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.best', { defaultValue: '월간 베스트' })}
             </button>
             {/* 신상품 → 최신순 */}
-            <button onClick={() => { setPremiumView(false); setSort('newest'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'newest' && !premiumView ? WT.brand : WT.ink2 }}>
+            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('newest'); setCat('all') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'newest' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.new', { defaultValue: '신상품' })}
             </button>
             {/* 판매마진 40% → 할인율 정렬(마진 높은 상품) */}
-            <button onClick={() => { setPremiumView(false); setSort('discount'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'discount' && !premiumView ? WT.brand : WT.ink2 }}>
+            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('discount'); setCat('all') }}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'discount' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.highMargin', { defaultValue: '판매마진 40%' })}
             </button>
             {/* 프리미엄 전용관 → premium=1 */}
-            <button onClick={() => { setPremiumView(true); setCat('all') }}
+            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(true); setCat('all') }}
               className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-bold whitespace-nowrap"
               style={{ color: premiumView ? WT.brand : WT.ink }}>
               <Crown className="w-4 h-4" /> {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
@@ -973,7 +1042,7 @@ export default function WholesaleCatalogPage() {
               <div className="rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: '#fff', boxShadow: WT.shCard }}>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                   {cats.map((c) => (
-                    <button key={c.id} onClick={() => { setCat(c.id); setPremiumView(false); setMegaOpen(false) }}
+                    <button key={c.id} onClick={() => { setCat(c.id); setPremiumView(false); setBrandView(false); setSelectedBrand(''); setMegaOpen(false) }}
                       className="flex items-center justify-between rounded-xl px-3.5 h-10 text-[14px] transition-colors"
                       style={cat === c.id && !premiumView ? { background: WT.brandSoft, color: WT.brand, fontWeight: 700 } : { background: WT.fill, color: WT.ink2 }}>
                       <span className="truncate">{c.label}</span>
@@ -1093,10 +1162,38 @@ export default function WholesaleCatalogPage() {
           </section>
         )}
 
-        {/* BEST PRODUCT / 전체 상품 */}
+        {/* 🏷️ 브랜드 전시관 — 브랜드 그리드(특정 브랜드 미선택 시). 헤더 + 그리드 + 빈 상태. */}
+        {brandView && !selectedBrand && (
+          <section className="pt-6 pb-10">
+            <div className="rounded-2xl p-5 lg:p-6 flex items-center gap-4 mb-5" style={{ background: WT.ink, color: '#fff' }}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                <Sparkles className="w-6 h-6" style={{ color: '#FFD166' }} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-[18px] lg:text-[20px] font-extrabold">{t('wholesale.brand.title', { defaultValue: '브랜드 전시관' })}</h2>
+                <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>{t('wholesale.brand.desc', { defaultValue: '브랜드별로 모아 둘러보세요. 브랜드를 누르면 해당 상품만 볼 수 있어요.' })}</p>
+              </div>
+              <button onClick={() => { setBrandView(false); setSelectedBrand('') }} className="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>{t('wholesale.brand.exit', { defaultValue: '전체보기' })}</button>
+            </div>
+            <BrandShowcaseGrid brands={(brandsQ.data ?? []) as BrandEntry[]} loading={brandsQ.isLoading} onPick={(name) => setSelectedBrand(name)} t={t} />
+          </section>
+        )}
+
+        {/* BEST PRODUCT / 전체 상품 — 브랜드 그리드 모드(브랜드 미선택)에서는 숨김 */}
+        {!(brandView && !selectedBrand) && (
         <section className="pt-6 pb-10">
+          {/* 🏷️ 특정 브랜드 선택 시 브랜드 헤더(뒤로 = 브랜드 그리드) */}
+          {selectedBrand && (
+            <div className="mb-4 flex items-center gap-2.5">
+              <button onClick={() => setSelectedBrand('')} aria-label={t('wholesale.brand.back', { defaultValue: '브랜드 목록' })}
+                className="inline-flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
+                <ChevronRight className="w-4 h-4 rotate-180" /> {t('wholesale.brand.back', { defaultValue: '브랜드 목록' })}
+              </button>
+              <span className="text-[16px] font-extrabold" style={{ color: WT.ink }}>{selectedBrand}</span>
+            </div>
+          )}
           <SectionHead
-            title={premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? 'BEST PRODUCT' : (cats.find(c => c.id === cat)?.label || '상품'))}
+            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? 'BEST PRODUCT' : (cats.find(c => c.id === cat)?.label || '상품')))}
             sub={comma(items.length) + '개'}
           />
           <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
@@ -1260,6 +1357,7 @@ export default function WholesaleCatalogPage() {
             </div>
           </div>
         </section>
+        )}
       </main>
 
       <WholesaleFooter />
