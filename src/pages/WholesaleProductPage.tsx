@@ -5,6 +5,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
+import { cfImage } from '@/utils/cf-image'
 import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
@@ -160,7 +161,28 @@ export default function WholesaleProductPage() {
     } finally { setOrdering(false) }
   }
 
-  if (loading) return <div className="min-h-screen flex justify-center items-center" style={{ background: '#fff' }}><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+  // 🏭 perf: 풀스크린 스피너 대신 상세 레이아웃 스켈레톤(빈 화면 X — 체감 로딩 ↓).
+  if (loading) return (
+    <div className="min-h-screen pb-28" style={{ background: '#fff' }}>
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
+        <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
+          <ArrowLeft className="w-5 h-5" style={{ color: WT.ink4 }} />
+          <div className="h-4 w-40 rounded animate-pulse" style={{ background: WT.fill }} />
+        </div>
+      </header>
+      <main className="ur-content-wide px-5 lg:px-8 py-5 lg:flex lg:gap-8">
+        <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
+          <div className="aspect-square rounded-2xl animate-pulse" style={{ background: WT.fill }} />
+        </div>
+        <div className="flex-1 min-w-0 space-y-3">
+          <div className="h-5 w-20 rounded-full animate-pulse" style={{ background: WT.fill }} />
+          <div className="h-7 w-3/4 rounded animate-pulse" style={{ background: WT.fill }} />
+          <div className="h-24 w-full rounded-2xl animate-pulse" style={{ background: WT.fill }} />
+          <div className="h-12 w-full rounded-xl animate-pulse" style={{ background: WT.fill }} />
+        </div>
+      </main>
+    </div>
+  )
   if (!item) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#fff' }}>
@@ -202,7 +224,7 @@ export default function WholesaleProductPage() {
         {/* 갤러리 */}
         <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
           <div className="aspect-square rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-            {item.image_url && <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />}
+            {item.image_url && <img src={cfImage(item.image_url, { width: 800, format: 'auto' }) || item.image_url} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" />}
           </div>
         </div>
 

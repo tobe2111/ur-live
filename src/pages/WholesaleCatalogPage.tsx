@@ -1,13 +1,12 @@
-import { useState, useMemo, useRef, useEffect, memo, lazy, Suspense, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback, memo, lazy, Suspense, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { Loader2, Search, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, Lock, LogIn, LogOut, Upload, Download, ArrowDownUp, PackageCheck, BellRing, BellOff, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Sparkles } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
-import WholesaleProposalModal from './wholesale/WholesaleProposalModal'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
@@ -24,6 +23,9 @@ import { cfImage } from '@/utils/cf-image'
 // 🏭 2026-06-09 Wave 4b: 채팅 floating 버튼 — lazy(채팅 코드 0 byte in 초기 번들).
 //   버튼 자체는 unread 배지 폴링만, 무거운 위젯은 버튼 클릭 시 한 번 더 lazy 로드.
 const WholesaleChatButton = lazy(() => import('@/components/wholesale/WholesaleChatButton'))
+// 🏭 perf: 제안/신고 모달 — 헤더 아이콘 클릭 시에만 필요. lazy 로 카탈로그 초기 청크에서 제외
+//   (제안 폼 + useWholesaleFeedbacks 훅 코드를 첫 페인트 번들 밖으로).
+const WholesaleProposalModal = lazy(() => import('./wholesale/WholesaleProposalModal'))
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 홈 — Claude Design 시안 구현 (TDS/Toss 라이트).
@@ -100,7 +102,20 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 }
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean }) {
+const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void }) {
+  // 🏭 perf: viewport 진입 시 상세 prefetch(rootMargin 100px — 소비자 GroupBuyFeedCard 패턴). hover/focus/touch 도 prefetch.
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!onPrefetch || typeof IntersectionObserver === 'undefined') return
+    const el = wrapRef.current
+    if (!el) return
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) { if (e.isIntersecting) { onPrefetch(p.id); io.disconnect(); break } }
+    }, { rootMargin: '100px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [onPrefetch, p.id])
+  const prefetch = () => onPrefetch?.(p.id)
   const soldOut = p.stock <= 0
   const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
   const um = p.retail_price && p.distributor_price != null ? unitMargin(p.distributor_price, p.retail_price) : 0
@@ -111,7 +126,7 @@ const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRest
   const dr = p.retail_price && p.distributor_price != null ? discountRate(p.distributor_price, p.retail_price) : 0
   const locked = p.distributor_price == null
   return (
-    <div className="group flex flex-col rounded-2xl overflow-hidden" style={{ background: grad.base }}>
+    <div ref={wrapRef} onMouseEnter={prefetch} onTouchStart={prefetch} onFocusCapture={prefetch} className="group flex flex-col rounded-2xl overflow-hidden" style={{ background: grad.base }}>
       <div className="relative w-full aspect-square overflow-hidden" style={{ background: grad.base }}>
         <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full">
           {p.image_url && (
@@ -201,10 +216,11 @@ const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRest
   )
 })
 
-// ── 가로 레일 미니 카드 ──
-function MiniCard({ p, onOpen, onAdd, tag }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; tag?: string }) {
+// ── 가로 레일 미니 카드 ── (React.memo — 부모 재렌더 시 레일 카드 reconcile 방지)
+const MiniCard = memo(function MiniCard({ p, onOpen, onAdd, tag, onPrefetch }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; tag?: string; onPrefetch?: (id: number) => void }) {
+  const prefetch = () => onPrefetch?.(p.id)
   return (
-    <div className="group shrink-0 w-[150px] lg:w-[166px] flex flex-col snap-start">
+    <div onMouseEnter={prefetch} onTouchStart={prefetch} onFocusCapture={prefetch} className="group shrink-0 w-[150px] lg:w-[166px] flex flex-col snap-start">
       <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
         <button onClick={() => onOpen(p)} className="block w-full h-full"><ProductImg p={p} /></button>
         {tag && <div className="absolute top-2.5 left-2.5 z-10"><span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white whitespace-nowrap" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>{tag}</span></div>}
@@ -214,14 +230,15 @@ function MiniCard({ p, onOpen, onAdd, tag }: { p: CatalogItem; onOpen: (p: Catal
       <div className="mt-0.5"><Price p={p} size={17} /></div>
     </div>
   )
-}
+})
 
 // ── 빠른 재주문 카드 (최근 사입 상품 → 같은 수량 재담기) ──
 interface ReorderItem { id: number; name: string; image_url: string | null; stock: number; distributor_price: number; last_qty: number; last_date: string }
-function ReorderCard({ r, onOpen, onReorder }: { r: ReorderItem; onOpen: (id: number) => void; onReorder: (r: ReorderItem) => void }) {
+// React.memo — 부모 재렌더(필터/검색/무한스크롤) 시 재주문 레일 카드 reconcile 방지.
+const ReorderCard = memo(function ReorderCard({ r, onOpen, onReorder, onPrefetch }: { r: ReorderItem; onOpen: (id: number) => void; onReorder: (r: ReorderItem) => void; onPrefetch?: (id: number) => void }) {
   const [done, setDone] = useState(false)
   return (
-    <div className="shrink-0 w-[230px] flex flex-col rounded-2xl bg-white p-3 snap-start" style={{ border: '1px solid ' + WT.line, boxShadow: WT.shSoft }}>
+    <div onMouseEnter={() => onPrefetch?.(r.id)} onTouchStart={() => onPrefetch?.(r.id)} className="shrink-0 w-[230px] flex flex-col rounded-2xl bg-white p-3 snap-start" style={{ border: '1px solid ' + WT.line, boxShadow: WT.shSoft }}>
       <div className="flex gap-3">
         <button onClick={() => onOpen(r.id)} className="w-12 h-12 shrink-0 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
           {r.image_url && <img src={cfImage(r.image_url, { width: 120, format: 'auto' }) || r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
@@ -238,7 +255,7 @@ function ReorderCard({ r, onOpen, onReorder }: { r: ReorderItem; onOpen: (id: nu
       </button>
     </div>
   )
-}
+})
 
 function SectionHead({ title, sub, onMore }: { title: string; sub?: string; onMore?: () => void }) {
   return (
@@ -638,6 +655,24 @@ export default function WholesaleCatalogPage() {
     } finally { setRestockBusyId(null) }
   }
 
+  // 🏭 perf: 상세 prefetch — useWholesaleProduct 와 동일 키/fetch(GET /catalog/:id). 카드 hover/focus/touch/viewport 진입 시 1회.
+  //   이미 캐시(fresh)면 RQ 가 재요청 안 함 → 익명 트래픽 최소. detail 라우트 청크는 App.tsx idle prefetch 와 별개로 캐시 워밍.
+  const qc = useQueryClient()
+  const prefetchProduct = useCallback((id: number) => {
+    if (!id) return
+    qc.prefetchQuery({
+      queryKey: queryKeys.wholesale('product', String(id)),
+      queryFn: () => {
+        const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+        return api
+          .get(`/api/wholesale/catalog/${id}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+          .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' }))
+          .catch(() => ({ item: null, grade: '' }))
+      },
+      staleTime: 60 * 1000,
+    })
+  }, [qc])
+
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
     if (!loggedIn || p.distributor_price == null) {
@@ -994,7 +1029,7 @@ export default function WholesaleCatalogPage() {
         {recent.length > 0 && (
           <section className="py-6">
             <SectionHead title="빠른 재주문" sub="최근 사입한 상품" />
-            <Rail>{recent.map((r) => <ReorderCard key={r.id} r={r} onOpen={(id) => navigate(`/wholesale/product/${id}`)} onReorder={reorder} />)}</Rail>
+            <Rail>{recent.map((r) => <ReorderCard key={r.id} r={r} onOpen={(id) => navigate(`/wholesale/product/${id}`)} onReorder={reorder} onPrefetch={prefetchProduct} />)}</Rail>
           </section>
         )}
 
@@ -1006,7 +1041,7 @@ export default function WholesaleCatalogPage() {
               <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: WT.ink, color: '#fff' }}>선정 회원 전용</span>
             </div>
             <p className="text-[13px] mb-3.5" style={{ color: WT.ink3 }}>유통스타트가 회원님께만 공개하는 상품이에요</p>
-            <Rail>{(home.proposals as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} tag="전용" />)}</Rail>
+            <Rail>{(home.proposals as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} tag="전용" onPrefetch={prefetchProduct} />)}</Rail>
           </section>
         )}
 
@@ -1014,7 +1049,7 @@ export default function WholesaleCatalogPage() {
         {home && home.best.length > 0 && (
           <section className="py-6">
             <SectionHead title="베스트셀러" sub="많이 사입한 상품" />
-            <Rail>{(home.best as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} />)}</Rail>
+            <Rail>{(home.best as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />)}</Rail>
           </section>
         )}
 
@@ -1022,7 +1057,7 @@ export default function WholesaleCatalogPage() {
         {home && home.new.length > 0 && (
           <section className="py-6">
             <SectionHead title="신규 입고" sub="이번 주" />
-            <Rail>{(home.new as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} />)}</Rail>
+            <Rail>{(home.new as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />)}</Rail>
           </section>
         )}
 
@@ -1189,12 +1224,24 @@ export default function WholesaleCatalogPage() {
             <Sidebar cat={cat} setCat={setCat} counts={catCounts} cats={cats} />
             <div className="flex-1">
               {loading ? (
-                <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+                // 🏭 perf: 풀스크린 스피너 대신 카드 스켈레톤 그리드(빈 화면/긴 스피너 X — 체감 로딩 ↓).
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="flex flex-col rounded-2xl overflow-hidden" style={{ background: WT.fill2 }}>
+                      <div className="w-full aspect-square animate-pulse" style={{ background: WT.fill }} />
+                      <div className="px-2.5 pt-2 pb-2.5 space-y-1.5">
+                        <div className="h-3.5 w-5/6 rounded animate-pulse" style={{ background: WT.fill }} />
+                        <div className="h-3 w-1/3 rounded animate-pulse" style={{ background: WT.fill }} />
+                        <div className="h-4 w-1/2 rounded animate-pulse mt-1" style={{ background: WT.fill }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : items.length === 0 ? (
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
-                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} />)}
+                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} />)}
                 </div>
               )}
             </div>
@@ -1212,7 +1259,11 @@ export default function WholesaleCatalogPage() {
       )}
 
       {gradeOpen && <GradeSheet current={grade} onClose={() => setGradeOpen(false)} />}
-      {proposalOpen && <WholesaleProposalModal onClose={() => setProposalOpen(false)} />}
+      {proposalOpen && (
+        <Suspense fallback={null}>
+          <WholesaleProposalModal onClose={() => setProposalOpen(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }
