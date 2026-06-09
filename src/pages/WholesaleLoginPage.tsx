@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Boxes, Loader2, Factory, ArrowRight } from 'lucide-react'
+import { Boxes, Loader2, Factory, ArrowRight, Users } from 'lucide-react'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 
 export default function WholesaleLoginPage() {
@@ -102,6 +102,12 @@ export default function WholesaleLoginPage() {
           className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
           카카오로 계속하기
         </button>
+
+        {/* 👥 직원(서브계정) 로그인 입구 — 회사 owner 와 분리. */}
+        <div className="mt-4 text-center text-sm text-[#8A929E]">
+          직원이신가요?{' '}
+          <button onClick={() => navigate('/wholesale/staff-login')} className="text-[#FF0033] font-semibold inline-flex items-center gap-1"><Users className="w-4 h-4" /> 직원 로그인 →</button>
+        </div>
 
         <div className="mt-6 text-center text-sm text-[#8A929E]">
           아직 유통사가 아니신가요?{' '}

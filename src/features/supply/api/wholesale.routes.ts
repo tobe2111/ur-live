@@ -11,7 +11,7 @@
  */
 import { Hono } from 'hono'
 import { sign } from 'hono/jwt'
-import { hashPassword, validatePasswordComplexity } from '@/lib/password'
+import { hashPassword, validatePasswordComplexity, verifyPassword } from '@/lib/password'
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -262,6 +262,63 @@ async function sellerIdFrom(authorization: string | undefined, jwtSecret: string
   } catch {
     return null
   }
+}
+
+// ── 👥 2026-06-09 유통사 직원 서브계정 ────────────────────────────────────────
+//   회사(유통사 owner) 1계정에 여러 직원 로그인. 서브계정 토큰의 seller_id = PARENT(회사) seller_id →
+//   기존 예치금/주문/카탈로그/정산 코드는 회사 계정 위에서 byte-identical 동작(전혀 인지 못함).
+//   토큰에 sub_account_id / sub_role 추가 클레임만 얹어 (a) 직원 식별 (b) 권한 게이트에 사용.
+//   ⚠️ 서브계정 없는 기존 유통사는 토큰/로그인/동작 전부 불변 — 이 코드 경로를 절대 타지 않음.
+export type SubRole = 'admin' | 'staff' | 'viewer'
+const SUB_ROLES: readonly SubRole[] = ['admin', 'staff', 'viewer'] as const
+
+/** 서브계정 클레임 추출 — owner 토큰(서브계정 X)이면 sub_account_id/sub_role = null. seller_id 는 항상 PARENT. */
+async function subClaimsFrom(authorization: string | undefined, jwtSecret: string): Promise<{ sellerId: number | null; subAccountId: number | null; subRole: SubRole | null }> {
+  if (!authorization?.startsWith('Bearer ')) return { sellerId: null, subAccountId: null, subRole: null }
+  try {
+    const { verify } = await import('hono/jwt')
+    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number; sub_account_id?: number; sub_role?: string }
+    const subRole = SUB_ROLES.includes(payload.sub_role as SubRole) ? (payload.sub_role as SubRole) : null
+    const subAccountId = Number.isFinite(payload.sub_account_id as number) && (payload.sub_account_id as number) > 0 ? (payload.sub_account_id as number) : null
+    return { sellerId: payload.seller_id ?? null, subAccountId: subRole ? subAccountId : null, subRole }
+  } catch {
+    return { sellerId: null, subAccountId: null, subRole: null }
+  }
+}
+
+// 서브계정 테이블 멱등 ensure (repair-schema 와 동일 정의).
+const _subAcctEnsured = new WeakSet<object>()
+async function ensureSubAccountSchema(DB: D1Database) {
+  if (_subAcctEnsured.has(DB)) return
+  _subAcctEnsured.add(DB)
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_sub_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_seller_id INTEGER NOT NULL,
+    email TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT,
+    role TEXT NOT NULL DEFAULT 'staff',
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT (datetime('now')),
+    last_login_at DATETIME
+  )`).run().catch(swallow('wholesale:subacct:create'))
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_wh_sub_accounts_email ON wholesale_sub_accounts(email)').run().catch(swallow('wholesale:subacct:idx-email'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wh_sub_accounts_parent ON wholesale_sub_accounts(parent_seller_id)').run().catch(swallow('wholesale:subacct:idx-parent'))
+}
+
+const SUB_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * 직원 계정 관리 권한 게이트 — owner(서브계정 클레임 X) OR sub_role='admin' 만 허용.
+ * 반환: 통과 시 { sellerId }, 차단 시 { error, status }.
+ * IDOR: sellerId 는 항상 토큰의 PARENT seller_id → 호출자는 본인 회사 서브계정만 관리.
+ */
+async function requireSubAdmin(c: { req: { header: (k: string) => string | undefined }; env: { JWT_SECRET: string } }): Promise<{ sellerId: number } | { error: string; status: 401 | 403 }> {
+  const { sellerId, subRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return { error: '로그인이 필요합니다', status: 401 }
+  // owner(subRole=null) 또는 admin 서브계정만 직원 관리 가능. staff/viewer 는 차단.
+  if (subRole && subRole !== 'admin') return { error: '직원 계정을 관리할 권한이 없습니다', status: 403 }
+  return { sellerId }
 }
 
 interface SellerGradeRow {
@@ -576,9 +633,200 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
   }
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// 👥 직원 서브계정 — 회사(owner) 관리 엔드포인트 + 직원 로그인
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── POST /sub-accounts — 직원 계정 생성 (owner/admin 만) ───────────────────────
+app.post('/sub-accounts', rateLimit({ action: 'wholesale-subacct-create', max: 20, windowSec: 600 }), async (c) => {
+  const gate = await requireSubAdmin(c)
+  if ('error' in gate) return c.json({ success: false, error: gate.error }, gate.status)
+  const { DB } = c.env
+  try {
+    await ensureSubAccountSchema(DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const email = String(body.email || '').trim().toLowerCase()
+    const password = String(body.password || '')
+    const name = String(body.name || '').trim().slice(0, 80)
+    const role = String(body.role || 'staff') as SubRole
+    if (!SUB_EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400)
+    if (!SUB_ROLES.includes(role)) return c.json({ success: false, error: '역할이 올바르지 않습니다' }, 400)
+    // 비밀번호: 도매(공급자/유통)와 동일 완화 정책(영문+숫자 8자+). 해시는 동일 hashPassword 재사용.
+    if (password.length < 8 || password.length > 128 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return c.json({ success: false, error: '비밀번호는 영문과 숫자를 포함해 8자 이상이어야 합니다' }, 400)
+    }
+    // 이메일 전역 UNIQUE(서브계정) — 충돌 시 409. (회사 owner 이메일과 충돌해도 생성 자체는 별 테이블이라 무방하나
+    //   로그인 혼선 방지를 위해 서브계정끼리만 UNIQUE 강제.)
+    const dupe = await DB.prepare('SELECT id FROM wholesale_sub_accounts WHERE email = ? LIMIT 1').bind(email).first<{ id: number }>().catch(() => null)
+    if (dupe) return c.json({ success: false, error: '이미 등록된 이메일입니다' }, 409)
+    const passwordHash = await hashPassword(password)
+    const ins = await DB.prepare(
+      `INSERT INTO wholesale_sub_accounts (parent_seller_id, email, password_hash, name, role, active, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, datetime('now'))`
+    ).bind(gate.sellerId, email, passwordHash, name || null, role).run()
+    return c.json({ success: true, data: { id: Number(ins.meta?.last_row_id), email, name, role, active: 1 } }, 201)
+  } catch (err) {
+    return safeError(c, err, '직원 계정 생성 중 오류가 발생했습니다', '[wholesale:subacct]')
+  }
+})
+
+// ── GET /sub-accounts — 본 회사 직원 목록 (owner/admin 만) ──────────────────────
+app.get('/sub-accounts', async (c) => {
+  const gate = await requireSubAdmin(c)
+  if ('error' in gate) return c.json({ success: false, error: gate.error }, gate.status)
+  const { DB } = c.env
+  try {
+    await ensureSubAccountSchema(DB)
+    // ⚠️ password_hash 절대 미노출.
+    const rows = await DB.prepare(
+      `SELECT id, email, name, role, active, created_at, last_login_at
+         FROM wholesale_sub_accounts WHERE parent_seller_id = ? ORDER BY created_at DESC LIMIT 200`
+    ).bind(gate.sellerId).all<{ id: number; email: string; name: string | null; role: string; active: number; created_at: string; last_login_at: string | null }>()
+      .catch(() => ({ results: [] as Array<{ id: number; email: string; name: string | null; role: string; active: number; created_at: string; last_login_at: string | null }> }))
+    return c.json({ success: true, items: rows.results || [] })
+  } catch (err) {
+    return safeError(c, err, '직원 목록 조회 중 오류가 발생했습니다', '[wholesale:subacct]')
+  }
+})
+
+// ── PATCH /sub-accounts/:id — 역할/활성 변경 (owner/admin 만, 본 회사 한정 IDOR 가드) ──
+app.patch('/sub-accounts/:id', rateLimit({ action: 'wholesale-subacct-update', max: 40, windowSec: 600 }), async (c) => {
+  const gate = await requireSubAdmin(c)
+  if ('error' in gate) return c.json({ success: false, error: gate.error }, gate.status)
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  try {
+    await ensureSubAccountSchema(DB)
+    // IDOR: parent_seller_id 일치 행만 조회/수정.
+    const row = await DB.prepare('SELECT id, role, active FROM wholesale_sub_accounts WHERE id = ? AND parent_seller_id = ? LIMIT 1')
+      .bind(id, gate.sellerId).first<{ id: number; role: string; active: number }>().catch(() => null)
+    if (!row) return c.json({ success: false, error: '직원 계정을 찾을 수 없습니다' }, 404)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const sets: string[] = []
+    const binds: unknown[] = []
+    if (body.role !== undefined) {
+      const role = String(body.role) as SubRole
+      if (!SUB_ROLES.includes(role)) return c.json({ success: false, error: '역할이 올바르지 않습니다' }, 400)
+      sets.push('role = ?'); binds.push(role)
+    }
+    if (body.active !== undefined) {
+      const active = body.active === true || body.active === 1 || body.active === '1' ? 1 : 0
+      sets.push('active = ?'); binds.push(active)
+    }
+    if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
+    binds.push(id, gate.sellerId)
+    await DB.prepare(`UPDATE wholesale_sub_accounts SET ${sets.join(', ')} WHERE id = ? AND parent_seller_id = ?`).bind(...binds).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '직원 계정 변경 중 오류가 발생했습니다', '[wholesale:subacct]')
+  }
+})
+
+// ── DELETE /sub-accounts/:id — 직원 계정 삭제 (owner/admin 만, 본 회사 한정) ─────
+app.delete('/sub-accounts/:id', rateLimit({ action: 'wholesale-subacct-delete', max: 40, windowSec: 600 }), async (c) => {
+  const gate = await requireSubAdmin(c)
+  if ('error' in gate) return c.json({ success: false, error: gate.error }, gate.status)
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  try {
+    await ensureSubAccountSchema(DB)
+    const res = await DB.prepare('DELETE FROM wholesale_sub_accounts WHERE id = ? AND parent_seller_id = ?').bind(id, gate.sellerId).run()
+    if (!res.meta?.changes) return c.json({ success: false, error: '직원 계정을 찾을 수 없습니다' }, 404)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '직원 계정 삭제 중 오류가 발생했습니다', '[wholesale:subacct]')
+  }
+})
+
+// ── POST /sub-login — 직원 로그인 → PARENT seller_id 로 seller 토큰 발급 ──────────
+//   ⚠️ 발급 토큰의 seller_id = parent_seller_id → 모든 기존 미들웨어/예치금/주문/카탈로그가
+//   회사 계정 위에서 byte-identical 동작. sub_account_id/sub_role 추가 클레임만 얹음.
+app.post('/sub-login', rateLimit({ action: 'wholesale-sub-login', max: 10, windowSec: 300 }), async (c) => {
+  const { DB, JWT_SECRET } = c.env
+  if (!JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류' }, 500)
+  try {
+    await ensureSubAccountSchema(DB)
+    const body = await c.req.json<{ email?: string; password?: string }>().catch(() => ({} as { email?: string; password?: string }))
+    const email = (body.email || '').trim().toLowerCase()
+    const password = body.password || ''
+    if (!email || !password) return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400)
+
+    const sub = await DB.prepare(
+      'SELECT id, parent_seller_id, email, password_hash, name, role, active FROM wholesale_sub_accounts WHERE email = ? LIMIT 1'
+    ).bind(email).first<{ id: number; parent_seller_id: number; email: string; password_hash: string | null; name: string | null; role: string; active: number }>().catch(() => null)
+
+    // 타이밍 공격 방어 — 계정 없어도 더미 검증 1회 (supplier-auth 와 동일 패턴).
+    if (!sub || !sub.password_hash) {
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(() => null)
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401)
+    }
+    const { valid } = await verifyPassword(password, sub.password_hash)
+    if (!valid) return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401)
+    if (sub.active !== 1) return c.json({ success: false, error: '비활성화된 계정입니다. 관리자에게 문의하세요' }, 403)
+
+    // 부모(회사) 유통사 계정이 여전히 유효(유통사 + 승인/활성)한지 확인.
+    const parent = await DB.prepare(
+      'SELECT id, name, username, email, status, seller_type, is_distributor FROM sellers WHERE id = ? LIMIT 1'
+    ).bind(sub.parent_seller_id).first<{ id: number; name: string | null; username: string | null; email: string | null; status: string | null; seller_type: string | null; is_distributor: number | null }>().catch(() => null)
+    if (!parent || !parent.is_distributor) return c.json({ success: false, error: '회사 계정을 사용할 수 없습니다. 관리자에게 문의하세요' }, 403)
+    if (parent.status !== 'approved' && parent.status !== 'active') {
+      return c.json({ success: false, error: '회사 계정이 아직 승인되지 않았습니다' }, 403)
+    }
+
+    const subRole = SUB_ROLES.includes(sub.role as SubRole) ? (sub.role as SubRole) : 'staff'
+    const nowSec = Math.floor(Date.now() / 1000)
+    // ⚠️ seller_id = PARENT. 직원이름/이메일은 sub 의 것을 노출하되, 회사 계정 위에서 동작.
+    const payload = {
+      sub: String(parent.id),
+      seller_id: parent.id,
+      email: sub.email,
+      name: sub.name || parent.name || '직원',
+      username: parent.username || undefined,
+      type: 'seller',
+      status: parent.status || 'approved',
+      seller_type: parent.seller_type || 'influencer',
+      is_distributor: 1,
+      sub_account_id: sub.id,
+      sub_role: subRole,
+      iat: nowSec,
+      exp: nowSec + 30 * 24 * 60 * 60,
+    }
+    const token = await sign(payload, JWT_SECRET)
+    const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+
+    // last_login_at 갱신(best-effort).
+    await DB.prepare("UPDATE wholesale_sub_accounts SET last_login_at = datetime('now') WHERE id = ?").bind(sub.id).run().catch(swallow('wholesale:sub-login:last-login'))
+
+    return c.json({
+      success: true,
+      data: {
+        accessToken: token,
+        refreshToken,
+        token,
+        // seller 객체 shape 은 일반 seller login 과 동일 — 클라 저장 로직 byte-identical.
+        seller: {
+          id: parent.id,
+          username: parent.username || '',
+          email: sub.email,
+          name: sub.name || parent.name || '직원',
+          status: parent.status || 'approved',
+          seller_type: parent.seller_type || 'influencer',
+          is_distributor: 1,
+          sub_account_id: sub.id,
+          sub_role: subRole,
+        },
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '직원 로그인 중 오류가 발생했습니다', '[wholesale:sub-login]')
+  }
+})
+
 // ── GET /me ───────────────────────────────────────────────────────────────────
 app.get('/me', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  const { sellerId, subAccountId, subRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   try {
     await ensureCreditSchema(c.env.DB)
@@ -603,6 +851,12 @@ app.get('/me', async (c) => {
         // 여신 사용 가능 = 한도>0 + 미동결 + 가용액>0. (주문 가능 여부는 서버가 주문 시 최종 재검증)
         enabled: credit.limit > 0 && !credit.frozen && credit.available > 0,
       },
+      // 👥 직원 서브계정 컨텍스트 — owner(서브계정 X)면 null. UI 가 직원 배지/권한 분기에 사용.
+      //   sub_role='viewer' 면 주문 불가(서버가 /orders 에서 최종 강제). owner/admin 만 직원 관리 메뉴 노출.
+      sub_account_id: subAccountId,
+      sub_role: subRole,
+      can_order: subRole !== 'viewer',
+      can_manage_staff: !subRole || subRole === 'admin',
     })
   } catch (err) {
     return safeError(c, err, '등급 조회 중 오류가 발생했습니다', '[wholesale]')
@@ -930,6 +1184,10 @@ app.get('/catalog/:id', async (c) => {
 app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 👥 ADDITIVE 권한 게이트: 'viewer' 직원은 주문 불가(조회만). owner/admin/staff/일반 유통사는 영향 없음.
+  //   ⚠️ JWT 클레임만 읽는 추가 검사 — money-CAS/reserve-before-charge/결제 로직은 절대 미변경.
+  const { subRole: orderSubRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (orderSubRole === 'viewer') return c.json({ success: false, error: '주문 권한이 없는 계정(뷰어)입니다' }, 403)
   const { DB } = c.env
   try {
     await ensureOrderTables(DB)
@@ -1523,6 +1781,9 @@ const BULK_MAX_ROWS = 5000
 app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', max: 60, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 👥 ADDITIVE 권한 게이트: 'viewer' 직원은 대량주문 미리보기(주문 흐름)도 차단. 그 외 영향 없음.
+  const { subRole: bulkSubRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (bulkSubRole === 'viewer') return c.json({ success: false, error: '주문 권한이 없는 계정(뷰어)입니다' }, 403)
   const { DB } = c.env
   try {
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))

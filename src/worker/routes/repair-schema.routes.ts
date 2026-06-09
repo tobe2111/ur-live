@@ -289,6 +289,22 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { desc: 'idx_wholesale_credit_ledger_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)" },
+    // 👥 2026-06-09 유통사 직원 서브계정 — 회사(parent_seller_id) 1계정 아래 직원 로그인.
+    //   서브계정 토큰의 seller_id = parent_seller_id → 예치금/주문/카탈로그 byte-identical. role: admin/staff/viewer.
+    //   (wholesale.routes ensureSubAccountSchema 가 런타임 CREATE — repair 일관성 위해 동일 정의 보강.)
+    { desc: 'wholesale_sub_accounts', sql: `CREATE TABLE IF NOT EXISTS wholesale_sub_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      parent_seller_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT,
+      role TEXT NOT NULL DEFAULT 'staff',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT (datetime('now')),
+      last_login_at DATETIME
+    )` },
+    { desc: 'idx_wh_sub_accounts_email', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wh_sub_accounts_email ON wholesale_sub_accounts(email)" },
+    { desc: 'idx_wh_sub_accounts_parent', sql: "CREATE INDEX IF NOT EXISTS idx_wh_sub_accounts_parent ON wholesale_sub_accounts(parent_seller_id)" },
     // 🏦 2026-06-09 예치금(선불 deposit) 결제 — 도매 Toss 대체. (wholesale-deposit-core ensureDepositSchema 가 런타임 CREATE — 여기선 best-effort 보강.)
     //   wholesale_deposits: 유통사별 잔액(seller_id PK). txns: 거래원장. requests: 무통장입금 충전요청(어드민 확인 대상).
     { desc: 'wholesale_deposits', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposits (

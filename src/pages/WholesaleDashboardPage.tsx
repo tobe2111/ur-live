@@ -49,8 +49,12 @@ export default function WholesaleDashboardPage() {
   const depositQ = useWholesaleDeposit()
   const cart = useWholesaleCart()
 
-  const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean } | null
+  const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; sub_role?: string | null; can_manage_staff?: boolean } | null
   const grade = me?.grade || 'C'
+  // 👥 직원 서브계정 컨텍스트 — owner(sub_role 없음)면 직원관리 노출. 직원이면 역할 배지 표시.
+  const canManageStaff = me ? me.can_manage_staff !== false : true
+  const subRole = me?.sub_role || null
+  const SUB_ROLE_LABEL: Record<string, string> = { admin: '관리자', staff: '직원', viewer: '뷰어' }
   const orders: WholesaleOrderRow[] = ordersQ.data ?? []
 
   // 클라 집계 (이번달/누적 매입, 진행중 주문).
@@ -69,7 +73,7 @@ export default function WholesaleDashboardPage() {
 
   // 🏭 2026-06-08: 유통사 섹션은 별도 라우트 → 사이드바 nav 가 navigate. 대시보드 항목이 활성.
   // 🏦 2026-06-09: 예치금 항목 포함(공유 nav 단일 출처).
-  const navItems = buildWholesaleNav(location.pathname, navigate)
+  const navItems = buildWholesaleNav(location.pathname, navigate, canManageStaff)
 
   const logout = () => {
     clearAuthData('seller')
@@ -79,6 +83,15 @@ export default function WholesaleDashboardPage() {
 
   const headerRight = (
     <>
+      {subRole && (
+        <span
+          className="hidden sm:inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold"
+          style={{ background: WT.fill, color: WT.ink2 }}
+          title={`${company} · ${SUB_ROLE_LABEL[subRole] || subRole}`}
+        >
+          {company} · {SUB_ROLE_LABEL[subRole] || subRole}
+        </span>
+      )}
       <span
         className="hidden sm:inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold"
         style={{ background: WT.brandSoft, color: WT.brand }}

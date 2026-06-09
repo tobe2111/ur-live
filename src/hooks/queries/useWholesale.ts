@@ -460,3 +460,63 @@ export function useWholesaleFeedbackMutation() {
     },
   })
 }
+
+// ── 👥 2026-06-09 직원 서브계정 ────────────────────────────────────────────────
+export type WholesaleSubRole = 'admin' | 'staff' | 'viewer'
+export interface WholesaleSubAccount {
+  id: number
+  email: string
+  name: string | null
+  role: WholesaleSubRole
+  active: number
+  created_at: string
+  last_login_at: string | null
+}
+
+/** 본 회사 직원 목록 (owner/admin 토큰만 200, staff/viewer 는 403 → []). */
+export function useWholesaleSubAccounts(enabled = true) {
+  return useQuery<WholesaleSubAccount[]>({
+    queryKey: queryKeys.wholesale('sub-accounts'),
+    queryFn: () =>
+      api.get('/api/wholesale/sub-accounts', sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
+    enabled: enabled && hasSellerToken(),
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** 직원 계정 생성. */
+export function useCreateWholesaleSubAccount() {
+  const qc = useQueryClient()
+  return useMutation<
+    { success: boolean; error?: string },
+    unknown,
+    { email: string; password: string; name: string; role: WholesaleSubRole }
+  >({
+    mutationFn: (body) => api.post('/api/wholesale/sub-accounts', body, sellerAuth()).then((r) => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.wholesale('sub-accounts') }) },
+  })
+}
+
+/** 직원 역할/활성 변경. */
+export function useUpdateWholesaleSubAccount() {
+  const qc = useQueryClient()
+  return useMutation<
+    { success: boolean; error?: string },
+    unknown,
+    { id: number; role?: WholesaleSubRole; active?: number }
+  >({
+    mutationFn: ({ id, ...body }) => api.patch(`/api/wholesale/sub-accounts/${id}`, body, sellerAuth()).then((r) => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.wholesale('sub-accounts') }) },
+  })
+}
+
+/** 직원 계정 삭제. */
+export function useDeleteWholesaleSubAccount() {
+  const qc = useQueryClient()
+  return useMutation<{ success: boolean; error?: string }, unknown, number>({
+    mutationFn: (id) => api.delete(`/api/wholesale/sub-accounts/${id}`, sellerAuth()).then((r) => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.wholesale('sub-accounts') }) },
+  })
+}

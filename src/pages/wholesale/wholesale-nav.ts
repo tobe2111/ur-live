@@ -4,16 +4,20 @@
 //   예치금(선불 충전) 항목 포함.
 // ──────────────────────────────────────────────────────────────
 import {
-  ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet, LayoutDashboard,
+  ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet, LayoutDashboard, Users,
 } from 'lucide-react'
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 
-/** 유통사 라우트-기반 사이드바 nav. navigate 주입. */
+/**
+ * 유통사 라우트-기반 사이드바 nav. navigate 주입.
+ * @param canManageStaff owner/admin 만 직원관리 메뉴 노출(기본 false → 기존 항목 byte-identical).
+ */
 export function buildWholesaleNav(
   pathname: string,
   navigate: (to: string) => void,
+  canManageStaff = false,
 ): WholesaleNavItem[] {
-  return [
+  const items: WholesaleNavItem[] = [
     { key: 'dashboard', label: '대시보드', icon: LayoutDashboard, active: pathname === '/wholesale/dashboard', onClick: () => navigate('/wholesale/dashboard') },
     { key: 'catalog', label: '카탈로그', icon: ShoppingBag, active: pathname === '/wholesale', onClick: () => navigate('/wholesale') },
     { key: 'deposits', label: '예치금', icon: Wallet, active: pathname.startsWith('/wholesale/deposits'), onClick: () => navigate('/wholesale/deposits') },
@@ -23,4 +27,9 @@ export function buildWholesaleNav(
     { key: 'quotes', label: '견적', icon: ClipboardList, active: pathname.startsWith('/wholesale/quotes'), onClick: () => navigate('/wholesale/quotes') },
     { key: 'oem', label: 'OEM/ODM', icon: Factory, active: pathname.startsWith('/wholesale/oem'), onClick: () => navigate('/wholesale/oem') },
   ]
+  // 👥 직원 계정 관리 — owner/admin 만. (viewer/staff 는 미노출 + 서버가 403.)
+  if (canManageStaff) {
+    items.push({ key: 'staff', label: '직원 계정', icon: Users, active: pathname.startsWith('/wholesale/staff'), onClick: () => navigate('/wholesale/staff') })
+  }
+  return items
 }
