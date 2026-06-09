@@ -31,6 +31,8 @@ const AdminWholesaleProposalsPage = lazy(() => import('@/pages/AdminWholesalePro
 const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesaleProductsPage'))
 // 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리.
 const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
+// 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
+const AdminWholesaleOverviewPage = lazy(() => import('@/pages/admin/AdminWholesaleOverviewPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
@@ -235,6 +237,12 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-products" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminWholesaleProductsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩) */}
+      <Route path="/admin/wholesale-overview" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminWholesaleOverviewPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리 */}

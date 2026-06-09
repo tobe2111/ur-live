@@ -136,6 +136,7 @@ import { wholesaleDepositRoutes, adminWholesaleDepositRoutes } from '../features
 import { wholesaleChatRoutes } from '../features/supply/api/wholesale-chat.routes';
 import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesaleProposalRoutes, adminWholesaleProductRoutes, adminWholesaleDepositAccountRoutes } from '../features/supply/api/wholesale-main.routes';
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
+import { adminWholesaleOverviewRoutes } from '../features/supply/api/wholesale-overview-admin.routes';
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
@@ -1318,6 +1319,7 @@ app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // �
 app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes); // 어드민 프리미엄 전용관 토글
 app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정
 app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes); // 🏬 어드민 멀티-몰 관리 CRUD (식품/패션 등 카테고리별 도매몰)
+app.route('/api/admin/wholesale-overview', adminWholesaleOverviewRoutes); // 🏬 어드민 도매 통합 현황 (크로스-몰 read-only 집계)
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));
