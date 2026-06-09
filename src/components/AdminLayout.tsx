@@ -47,6 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/suppliers',          label: '공급자 관리',   icon: Store },
       { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
+      { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
       { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },

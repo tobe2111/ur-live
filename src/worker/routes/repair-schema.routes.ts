@@ -272,6 +272,35 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { desc: 'idx_wholesale_credit_ledger_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)" },
+    // 🏦 2026-06-09 예치금(선불 deposit) 결제 — 도매 Toss 대체. (wholesale-deposit-core ensureDepositSchema 가 런타임 CREATE — 여기선 best-effort 보강.)
+    //   wholesale_deposits: 유통사별 잔액(seller_id PK). txns: 거래원장. requests: 무통장입금 충전요청(어드민 확인 대상).
+    { desc: 'wholesale_deposits', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposits (
+      seller_id INTEGER PRIMARY KEY,
+      balance INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT DEFAULT (datetime('now'))
+    )` },
+    { desc: 'wholesale_deposit_txns', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposit_txns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      balance_after INTEGER NOT NULL,
+      ref_id TEXT,
+      memo TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    { desc: 'wholesale_deposit_requests', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposit_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      depositor_name TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      admin_memo TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      confirmed_at TEXT
+    )` },
+    { desc: 'idx_wholesale_deposit_txns_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_txns_seller ON wholesale_deposit_txns(seller_id, id DESC)" },
+    { desc: 'idx_wholesale_deposit_requests_status', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_requests_status ON wholesale_deposit_requests(status, id DESC)" },
     // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
     //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).

@@ -44,6 +44,7 @@ import { SupplierRoutes } from './routes/supplier.routes'
 import MainHomePage from './pages/MainHomePage'
 const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
 const WholesaleDashboardPage = lazy(() => import('./pages/WholesaleDashboardPage'))
+const WholesaleDepositPage = lazy(() => import('./pages/WholesaleDepositPage'))
 const WholesaleProductPage = lazy(() => import('./pages/WholesaleProductPage'))
 const WholesaleCheckoutPage = lazy(() => import('./pages/WholesaleCheckoutPage'))
 const WholesaleCartPage = lazy(() => import('./pages/WholesaleCartPage'))
@@ -506,6 +507,7 @@ function AppContent() {
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
             <Route path="/wholesale" element={<WholesaleCatalogPage />} />
             <Route path="/wholesale/dashboard" element={<WholesaleDashboardPage />} />
+            <Route path="/wholesale/deposits" element={<WholesaleDepositPage />} />
             <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
             <Route path="/wholesale/cart" element={<WholesaleCartPage />} />
             <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />

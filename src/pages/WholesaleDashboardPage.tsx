@@ -8,15 +8,15 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles,
-  LayoutDashboard,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
-import { useWholesaleMe, useWholesaleOrders, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
+import { buildWholesaleNav } from './wholesale/wholesale-nav'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
-import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
+import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: '결제대기', color: WT.ink3, bg: WT.fill },
@@ -44,6 +44,7 @@ export default function WholesaleDashboardPage() {
 
   const meQ = useWholesaleMe()
   const ordersQ = useWholesaleOrders()
+  const depositQ = useWholesaleDeposit()
   const cart = useWholesaleCart()
 
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean } | null
@@ -62,17 +63,11 @@ export default function WholesaleDashboardPage() {
   const recent = orders.slice(0, 5)
 
   const company = localStorage.getItem('seller_name') || '유통사'
+  const depositBalance = Number(depositQ.data?.balance) || 0
 
   // 🏭 2026-06-08: 유통사 섹션은 별도 라우트 → 사이드바 nav 가 navigate. 대시보드 항목이 활성.
-  const navItems: WholesaleNavItem[] = [
-    { key: 'dashboard', label: '대시보드', icon: LayoutDashboard, active: location.pathname === '/wholesale/dashboard', onClick: () => navigate('/wholesale/dashboard') },
-    { key: 'catalog', label: '카탈로그', icon: ShoppingBag, active: location.pathname === '/wholesale', onClick: () => navigate('/wholesale') },
-    { key: 'orders', label: '주문내역', icon: ClipboardList, active: location.pathname.startsWith('/wholesale/orders'), onClick: () => navigate('/wholesale/orders') },
-    { key: 'statement', label: '거래내역', icon: Receipt, active: location.pathname.startsWith('/wholesale/statement'), onClick: () => navigate('/wholesale/statement') },
-    { key: 'documents', label: '자료', icon: FileText, active: location.pathname.startsWith('/wholesale/documents'), onClick: () => navigate('/wholesale/documents') },
-    { key: 'quotes', label: '견적', icon: ClipboardList, active: location.pathname.startsWith('/wholesale/quotes'), onClick: () => navigate('/wholesale/quotes') },
-    { key: 'oem', label: 'OEM/ODM', icon: Factory, active: location.pathname.startsWith('/wholesale/oem'), onClick: () => navigate('/wholesale/oem') },
-  ]
+  // 🏦 2026-06-09: 예치금 항목 포함(공유 nav 단일 출처).
+  const navItems = buildWholesaleNav(location.pathname, navigate)
 
   const logout = () => {
     clearAuthData('seller')
@@ -108,19 +103,19 @@ export default function WholesaleDashboardPage() {
   )
 
   const stats = [
+    { label: '예치금 잔액', value: won(depositBalance), icon: Wallet, accent: WT.brand },
     { label: '이번달 매입액', value: won(thisMonthSpend), icon: TrendingUp, accent: WT.brand },
     { label: '진행중 주문', value: `${comma(activeCount)}건`, icon: Box, accent: WT.ink },
     { label: '누적 매입액', value: won(totalSpend), icon: Wallet, accent: WT.pos },
-    { label: '장바구니', value: `${comma(cart.count)}개`, icon: ShoppingCart, accent: WT.ink },
   ]
 
   const actions = [
-    { label: '카탈로그 둘러보기', desc: '내 등급 공급가로 사입', icon: ShoppingBag, to: '/wholesale', primary: true },
+    { label: '예치금 충전', desc: '선불 충전 후 주문 결제', icon: Wallet, to: '/wholesale/deposits', primary: true },
+    { label: '카탈로그 둘러보기', desc: '내 등급 공급가로 사입', icon: ShoppingBag, to: '/wholesale' },
     { label: '주문내역', desc: '주문·배송 추적', icon: ClipboardList, to: '/wholesale/orders' },
     { label: '거래내역', desc: '매입 거래명세', icon: Receipt, to: '/wholesale/statement' },
     { label: '자료', desc: '거래명세서·세금계산서', icon: FileText, to: '/wholesale/documents' },
     { label: 'OEM/ODM', desc: '제조 의뢰', icon: Factory, to: '/wholesale/oem' },
-    { label: '장바구니', desc: '담은 상품 주문', icon: ShoppingCart, to: '/wholesale/cart' },
   ]
 
   return (

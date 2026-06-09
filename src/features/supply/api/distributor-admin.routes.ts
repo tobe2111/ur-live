@@ -19,6 +19,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
 import { buildXlsx, xlsxResponse } from './xlsx'
@@ -475,8 +476,8 @@ app.post('/orders/:id/refund', rateLimit({ action: 'admin-wholesale-refund', max
     const reason = String(body.reason || '관리자 환불').slice(0, 100)
 
     const order = await c.env.DB.prepare(
-      'SELECT id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
-    ).bind(id).first<{ id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
+      'SELECT id, distributor_seller_id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
+    ).bind(id).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (order.status === 'REFUNDED') return c.json({ success: true, already: true })
     if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
@@ -485,22 +486,34 @@ app.post('/orders/:id/refund', rateLimit({ action: 'admin-wholesale-refund', max
     // 남은 환불 가능액 = subtotal - 이미 환불액.
     const remaining = Math.max(0, (order.subtotal || 0) - (order.refunded_amount || 0))
     if (remaining <= 0) return c.json({ success: false, error: '환불할 잔액이 없습니다' }, 400)
+    const isDeposit = order.payment_key === 'deposit'
 
-    // CAS claim.
+    // CAS claim — PAID/SHIPPED/PARTIAL_REFUNDED → REFUNDED. changes=0 이면 이미 처리됨(멱등).
     const claim = await c.env.DB.prepare(
       "UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal WHERE id = ? AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')"
     ).bind(id).run()
     if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
 
-    const res = await cancelTossPayment({
-      env: c.env, paymentKey: order.payment_key, cancelReason: reason,
-      cancelAmount: remaining, idempotencyKey: `whs-admin-refund-${id}`,
-    })
-    if (!res.ok) {
-      // 롤백.
-      await c.env.DB.prepare("UPDATE wholesale_orders SET status='PAID', refunded_amount=? WHERE id=? AND status='REFUNDED'")
-        .bind(order.refunded_amount || 0, id).run().catch(swallow('admin:refund-rollback'))
-      return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
+    if (isDeposit) {
+      // 💰 예치금 주문 — Toss 미경유. 잔액 복원(원자 +) + refund 원장(ref_id=order.id 멱등 가드).
+      await ensureDepositSchema(c.env.DB)
+      const already = await hasDepositRefundTxn(c.env.DB, id)
+      if (!already) {
+        const bal = await refundDeposit(c.env.DB, order.distributor_seller_id, remaining)
+        await recordDepositTxn(c.env.DB, order.distributor_seller_id, 'refund', remaining, bal, String(id), `관리자 환불 #${id} (${reason})`)
+      }
+    } else {
+      // 레거시 Toss 주문 — 기존 cancelTossPayment 경로 유지.
+      const res = await cancelTossPayment({
+        env: c.env, paymentKey: order.payment_key, cancelReason: reason,
+        cancelAmount: remaining, idempotencyKey: `whs-admin-refund-${id}`,
+      })
+      if (!res.ok) {
+        // 롤백.
+        await c.env.DB.prepare("UPDATE wholesale_orders SET status='PAID', refunded_amount=? WHERE id=? AND status='REFUNDED'")
+          .bind(order.refunded_amount || 0, id).run().catch(swallow('admin:refund-rollback'))
+        return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
+      }
     }
 
     // 남은 모든 라인 REFUNDED + 정산 역전(전체) + 재고복원.

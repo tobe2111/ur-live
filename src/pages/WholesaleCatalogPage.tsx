@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { Loader2, Search, ClipboardList, Receipt, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, FileText, Lock, LogIn, LogOut, Upload, Download, LayoutDashboard, ArrowDownUp, PackageCheck, BellRing, BellOff } from 'lucide-react'
-import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
@@ -268,8 +268,8 @@ function BrandHero({ loggedIn }: { loggedIn: boolean }) {
 }
 
 // ── 사입 현황 대시보드 ──
-function Dashboard({ grade, marginPct, company, monthSpend, orderCount, onGrade }: {
-  grade: string; marginPct: number; company: string; monthSpend: number; orderCount: number; onGrade: () => void
+function Dashboard({ grade, marginPct, company, monthSpend, orderCount, depositBalance, onGrade, onCharge }: {
+  grade: string; marginPct: number; company: string; monthSpend: number; orderCount: number; depositBalance: number; onGrade: () => void; onCharge: () => void
 }) {
   const metrics = [
     { k: '이번달 사입액', v: won(monthSpend) },
@@ -293,6 +293,14 @@ function Dashboard({ grade, marginPct, company, monthSpend, orderCount, onGrade 
             <div className="text-[15px] font-extrabold mt-1 tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{m.v}</div>
           </div>
         ))}
+      </div>
+      {/* 🏦 예치금 잔액 — 도매 결제는 예치금 차감. 로그인 유통사에게 카탈로그에서 바로 노출. */}
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span className="text-[12px] shrink-0" style={{ color: WT.ink3 }}>예치금 잔액</span>
+          <span className="text-[17px] font-extrabold tabular-nums truncate" style={{ color: WT.ink }}>{won(depositBalance)}</span>
+        </div>
+        <button onClick={onCharge} className="shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ background: WT.brand }}>충전하기</button>
       </div>
     </div>
   )
@@ -446,6 +454,7 @@ export default function WholesaleCatalogPage() {
     refetchOnWindowFocus: false,
   })
   const meQ = useWholesaleMe()
+  const depositQ = useWholesaleDeposit()
   const homeQ = useWholesaleHome()
   // 이번달 사입액 (거래내역서 summary 재사용).
   const monthFrom = useMemo(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }, [])
@@ -819,7 +828,7 @@ export default function WholesaleCatalogPage() {
           <BrandHero loggedIn={loggedIn} />
           {loggedIn ? (
             <>
-              <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} onGrade={() => setGradeOpen(true)} />
+              <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} depositBalance={Number(depositQ.data?.balance) || 0} onGrade={() => setGradeOpen(true)} onCharge={() => navigate('/wholesale/deposits')} />
               {me?.special_active && me.special_discount_until && (
                 <div className="px-4 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: WT.brandSoft, color: WT.brand }}>
                   특별가 적용 중 — {new Date(me.special_discount_until).toLocaleDateString('ko-KR')}까지 최저 공급가로 구매할 수 있어요

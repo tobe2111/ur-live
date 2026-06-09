@@ -131,6 +131,7 @@ import { wholesalePriceReferenceRoutes } from '../features/supply/api/wholesale-
 import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
 import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
 import { wholesaleNotificationsRoutes } from '../features/supply/api/wholesale-notifications.routes';
+import { wholesaleDepositRoutes, adminWholesaleDepositRoutes } from '../features/supply/api/wholesale-deposit.routes';
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
@@ -1300,6 +1301,8 @@ app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 
 app.route('/api/admin/wholesale', wholesalePriceReferenceRoutes); // BIZ-5: 네이버 최저가 참고값(어드민 검수)
 app.route('/api/admin/wholesale', wholesaleTaxRoutes); // TAX-1: 미수/미지급 aging + 매입 역발행(수동)
 app.route('/api/admin/wholesale/integrity', wholesaleIntegrityRoutes); // DATA-1: 고아행 무결성 리포트
+app.route('/api/wholesale', wholesaleDepositRoutes); // 🏦 예치금(선불) 결제 — 유통사 잔액/충전요청
+app.route('/api/admin/wholesale-deposits', adminWholesaleDepositRoutes); // 🏦 예치금 입금확인/거절/보정 (어드민)
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
 app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));

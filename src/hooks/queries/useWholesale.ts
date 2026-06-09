@@ -3,7 +3,7 @@
  * seller_token Bearer 인증. 주문/거래내역서/카탈로그/내정보/제안.
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
 
@@ -190,6 +190,91 @@ export function useWholesaleDocuments() {
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+  })
+}
+
+// ──────────────────────────────────────────────────────────────
+// 🏦 2026-06-09 도매몰 예치금(선불 충전) — Toss 대체 결제수단.
+//   잔액 + 거래내역 + 충전신청내역. seller_token Bearer.
+// ──────────────────────────────────────────────────────────────
+export type WholesaleDepositTxnType = 'charge' | 'order' | 'refund' | 'adjust'
+export interface WholesaleDepositTxn {
+  type: WholesaleDepositTxnType
+  amount: number // signed
+  balance_after: number
+  memo: string | null
+  created_at: string
+}
+export interface WholesaleDepositMe {
+  balance: number
+  deposit_account: string | null
+  recent_txns: WholesaleDepositTxn[]
+}
+
+/** 내 예치금 잔액 + 입금계좌 + 최근 거래내역. */
+export function useWholesaleDeposit() {
+  return useQuery<WholesaleDepositMe>({
+    queryKey: queryKeys.wholesale('deposit-me'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/deposits/me', sellerAuth())
+        .then((r) =>
+          r.data?.success
+            ? {
+                balance: Number(r.data.balance) || 0,
+                deposit_account: r.data.deposit_account ?? null,
+                recent_txns: (r.data.recent_txns || []) as WholesaleDepositTxn[],
+              }
+            : { balance: 0, deposit_account: null, recent_txns: [] },
+        )
+        .catch(() => ({ balance: 0, deposit_account: null, recent_txns: [] })),
+    enabled: hasSellerToken(),
+    staleTime: 30 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export type WholesaleChargeStatus = 'pending' | 'confirmed' | 'rejected'
+export interface WholesaleChargeRequest {
+  id: number
+  amount: number
+  depositor_name: string
+  status: WholesaleChargeStatus
+  created_at: string
+  confirmed_at: string | null
+}
+
+/** 내 충전 신청 내역. */
+export function useWholesaleChargeRequests() {
+  return useQuery<WholesaleChargeRequest[]>({
+    queryKey: queryKeys.wholesale('deposit-requests'),
+    queryFn: () =>
+      api
+        .get('/api/wholesale/deposits/requests', sellerAuth())
+        .then((r) => (r.data?.success ? (r.data.requests || []) : []))
+        .catch(() => []),
+    enabled: hasSellerToken(),
+    staleTime: 30 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** 충전 신청(입금 예정). 성공 후 잔액/신청내역 invalidate. */
+export function useWholesaleChargeRequestMutation() {
+  const qc = useQueryClient()
+  return useMutation<
+    { success: boolean; request_id?: number; status?: string },
+    unknown,
+    { amount: number; depositor_name: string }
+  >({
+    mutationFn: (body) =>
+      api.post('/api/wholesale/deposits/charge-request', body, sellerAuth()).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-requests') })
+      qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
+    },
   })
 }
 

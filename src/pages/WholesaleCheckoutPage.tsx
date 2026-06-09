@@ -1,172 +1,177 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { ArrowLeft, Loader2, Wallet, AlertTriangle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
-import { getSellerId } from '@/lib/seller-auth'
-import { WT, won } from './wholesale/wholesale-theme'
+import { WT, won, comma } from './wholesale/wholesale-theme'
+import { useWholesaleDeposit } from '@/hooks/queries/useWholesale'
+import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
-// 🏭 2026-06-01 유통스타트 도매 B2B 선결제 (Phase 2). 셀러(유통사) 컨텍스트 Toss 위젯.
-//   TossWidgetPayPage 의 검증된 시퀀스를 셀러용으로 복제 (customerKey = wseller_<id>).
+// 🏦 2026-06-09 유통스타트 도매 — 예치금(선불) 결제 체크아웃.
+//   Toss 위젯 흐름을 REPLACE → 주문 확인 + 예치금 결제. (여신/외상 옵션 제거 — 예치금 전용)
+//   결제: POST /api/wholesale/orders → status:PAID (paid_by:deposit) | 402 INSUFFICIENT_DEPOSIT.
 
-type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
-
-interface OrderState { orderId: string; amount: number; orderName: string }
+interface InsufficientInfo { balance: number; required: number; shortfall: number }
 
 export default function WholesaleCheckoutPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
-  const location = useLocation()
-  const [sp] = useSearchParams()
-  const stateOrder = (location.state || null) as OrderState | null
+  const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const { items, subtotal, totalQty, clear } = useWholesaleCart()
+  const depositQ = useWholesaleDeposit()
 
-  const [order, setOrder] = useState<OrderState | null>(stateOrder)
-  const [state, setState] = useState<'loading' | 'ready' | 'processing' | 'error'>('loading')
+  const [paying, setPaying] = useState(false)
+  const [insufficient, setInsufficient] = useState<InsufficientInfo | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
-  const initializedRef = useRef(false)
-  const widgetsRef = useRef<TossWidgets | null>(null)
+  // 🔁 멱등키 — 이 체크아웃 1회당 고정(더블클릭/네트워크 재시도가 예치금 이중차감·이중주문 안 하도록).
+  const idemKeyRef = useRef<string>(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
-  // 새로고침 등으로 navigation state 유실 시 ?order=<id> 로 주문 재조회해 복구.
+  const balance = Number(depositQ.data?.balance) || 0
+
+  // 빈 카트 진입 가드 — 결제 직후 clear 로 인한 리다이렉트는 paying 으로 회피.
   useEffect(() => {
-    if (stateOrder?.orderId) return
-    const oid = sp.get('order')
-    if (!oid) return
-    const token = localStorage.getItem('seller_token')
-    api.get(`/api/wholesale/orders/${oid}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (!r.data.success) { setErrorMsg('주문을 찾을 수 없습니다.'); setState('error'); return }
-        const o = r.data.order as { toss_order_id: string; subtotal: number; status: string }
-        if (o.status !== 'PENDING') { setErrorMsg('이미 처리된 주문입니다.'); setState('error'); return }
-        const items = (r.data.items || []) as Array<{ name: string }>
-        const orderName = items.length <= 1
-          ? (items[0]?.name || '도매 주문').slice(0, 90)
-          : `${items[0].name.slice(0, 40)} 외 ${items.length - 1}건`
-        setOrder({ orderId: o.toss_order_id, amount: o.subtotal, orderName })
-      })
-      .catch(() => { setErrorMsg('주문 정보를 불러오지 못했습니다.'); setState('error') })
-  }, [stateOrder, sp])
+    if (!paying && items.length === 0) navigate('/wholesale/cart', { replace: true })
+  }, [items.length, paying, navigate])
 
-  useEffect(() => {
-    if (initializedRef.current) return
-    if (!order || !order.orderId || !Number.isFinite(order.amount) || order.amount <= 0 || !order.orderName) {
-      // state 없고 ?order 재조회도 불가할 때만 에러 — 재조회 대기 중에는 단정하지 않음.
-      if (!sp.get('order') && !stateOrder) { setErrorMsg('주문 정보가 올바르지 않습니다. 카탈로그에서 다시 주문해주세요.'); setState('error') }
-      return
-    }
-    const sellerId = getSellerId()
-    if (!sellerId) { navigate('/wholesale/login'); return }
-    initializedRef.current = true
+  if (!token) return <Navigate to="/wholesale/intro" replace />
 
-    const STEP_TIMEOUT_MS = 8000
-    const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
-      Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`[TIMEOUT:${label}]`)), STEP_TIMEOUT_MS))])
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        const clientKey = getTossClientKey()
-        const sdk = await withTimeout(getTossPayments(clientKey), 'SDK_LOAD')
-        if (cancelled) return
-        const sanitized = String(sellerId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 40)
-        const widgets = sdk.widgets({ customerKey: `wseller_${sanitized}`.substring(0, 50) })
-        if (!widgets) throw new Error('widgets() returned null')
-        await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(order.amount) }), 'SET_AMOUNT')
-
-        let svPayment = '', svAgreement = ''
-        try {
-          const r = await fetch('/api/payments/client-key', { cache: 'no-store' })
-          const j = await r.json() as { data?: { variant_payment?: string; variant_agreement?: string } }
-          svPayment = String(j?.data?.variant_payment || '')
-          svAgreement = String(j?.data?.variant_agreement || '')
-        } catch { /* fallback */ }
-        const VK_PAYMENT = svPayment || ((import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || '')
-        const VK_AGREEMENT = svAgreement || ((import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || '')
-
-        const tryRender = async (method: 'renderPaymentMethods' | 'renderAgreement', selector: string, preferred: string) => {
-          if (preferred) {
-            try { await withTimeout(widgets[method]({ selector, variantKey: preferred }) as unknown as Promise<void>, `${method}:${preferred}`); return } catch { /* fall through */ }
-          }
-          await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
-        }
-        await tryRender('renderPaymentMethods', '#wholesale-pay-method', VK_PAYMENT)
-        await tryRender('renderAgreement', '#wholesale-pay-agreement', VK_AGREEMENT)
-
-        if (cancelled) return
-        widgetsRef.current = widgets
-        setState('ready')
-      } catch (err: unknown) {
-        if (cancelled) return
-        const raw = err instanceof Error ? err.message : String(err)
-        const baseMsg = /TIMEOUT/i.test(raw)
-          ? '결제 위젯 로딩이 지연됩니다. 새로고침해주세요.'
-          : /not.*found|404|variant/i.test(raw)
-          ? '결제 수단이 Toss 콘솔에 등록되어 있지 않습니다.'
-          : '결제 초기화 실패'
-        // 🏭 2026-06-07 (보안 audit, 사용자 승인): raw SDK 에러는 DEV 에서만 노출 — 구매자에겐 친화 메시지만.
-        setErrorMsg(import.meta.env.DEV ? `${baseMsg}\n\n[SDK]: ${raw.slice(0, 200)}` : baseMsg)
-        setState('error')
-      }
-    })()
-    return () => { cancelled = true }
-  }, [order, navigate])
-
-  async function handlePay() {
-    if (!widgetsRef.current || state !== 'ready' || !order) return
-    setState('processing')
+  async function payWithDeposit() {
+    if (!items.length || paying) return
+    setPaying(true)
+    setInsufficient(null)
+    setErrorMsg('')
     try {
-      await widgetsRef.current.requestPayment({
-        orderId: order.orderId,
-        orderName: order.orderName.length > 100 ? order.orderName.slice(0, 97) + '...' : order.orderName,
-        successUrl: `${window.location.origin}/wholesale/success`,
-        failUrl: `${window.location.origin}/wholesale/checkout`,
-      })
-    } catch (err: unknown) {
-      const e = err as { code?: string; message?: string }
-      if (e?.code === 'USER_CANCEL') { setState('ready'); return }
-      setErrorMsg(e?.message || '결제 요청 실패')
-      setState('error')
+      const r = await api.post('/api/wholesale/orders', {
+        items: items.map((x) => ({ product_id: x.id, qty: x.qty })),
+        idempotency_key: idemKeyRef.current,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      if (r.data?.success && r.data?.status === 'PAID') {
+        clear()
+        navigate(`/wholesale/success?credit=0&order=${r.data.order_id}`)
+      } else {
+        setErrorMsg(r.data?.error || t('wholesale.checkout.payFailed', { defaultValue: '결제에 실패했습니다' }))
+        setPaying(false)
+      }
+    } catch (e: unknown) {
+      const resp = (e as { response?: { status?: number; data?: Record<string, unknown> } })?.response
+      const data = resp?.data || {}
+      if (resp?.status === 402 && data.code === 'INSUFFICIENT_DEPOSIT') {
+        setInsufficient({
+          balance: Number(data.balance) || 0,
+          required: Number(data.required) || subtotal,
+          shortfall: Number(data.shortfall) || Math.max(0, (Number(data.required) || subtotal) - (Number(data.balance) || 0)),
+        })
+      } else {
+        setErrorMsg(String(data.error || t('wholesale.checkout.payError', { defaultValue: '주문 결제 중 오류가 발생했습니다' })))
+      }
+      setPaying(false)
     }
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="도매 결제 - 유통스타트" description="유통사 도매 결제" url="/wholesale/checkout" noindex />
+    <div className="min-h-screen pb-32" style={{ background: '#fff', color: WT.ink }}>
+      <SEO title="도매 결제 - 유통스타트" description="예치금으로 도매 주문 결제" url="/wholesale/checkout" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
-          <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>도매 결제</h1>
+          <button onClick={() => navigate(-1)} aria-label={t('common.back', { defaultValue: '뒤로' })}><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>{t('wholesale.checkout.title', { defaultValue: '주문 확인' })}</h1>
           <div className="w-9" />
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4 pb-32">
+      <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
+        {/* 주문 상품 요약 */}
         <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
-          <p className="text-[12px] mb-1" style={{ color: WT.ink3 }}>주문 상품</p>
-          <p className="text-[15px] font-bold" style={{ color: WT.ink }}>{order?.orderName || '—'}</p>
+          <p className="text-[12px] mb-2 font-bold" style={{ color: WT.ink3 }}>{t('wholesale.checkout.items', { defaultValue: '주문 상품' })}</p>
+          <ul className="space-y-2">
+            {items.map((it) => (
+              <li key={it.id} className="flex items-center gap-3">
+                <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden" style={{ background: WT.fill }}>
+                  {it.image_url && <img src={it.image_url} alt={it.name || ''} className="w-full h-full object-cover" loading="lazy" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</div>
+                  <div className="text-[12px] tabular-nums" style={{ color: WT.ink3 }}>{won(it.price || 0)} × {comma(it.qty)}</div>
+                </div>
+                <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: WT.ink }}>{won((it.price || 0) * it.qty)}</span>
+              </li>
+            ))}
+          </ul>
           <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
-            <span className="text-[13px]" style={{ color: WT.ink3 }}>결제 금액</span>
-            <span className="text-[20px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{order ? won(order.amount) : '—'}</span>
+            <span className="text-[13px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.subtotal', { defaultValue: '총 {{qty}}개 상품 금액', qty: comma(totalQty) })}</span>
+            <span className="text-[20px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(subtotal)}</span>
+          </div>
+          <p className="mt-1 text-[11px]" style={{ color: WT.ink4 }}>{t('wholesale.checkout.serverRecalc', { defaultValue: '실제 결제 금액은 주문 시 서버에서 등급 공급가로 재계산됩니다.' })}</p>
+        </section>
+
+        {/* 배송지 안내 */}
+        <section className="rounded-2xl p-4" style={{ background: WT.fill2 }}>
+          <p className="text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>{t('wholesale.checkout.shipping', { defaultValue: '배송지' })}</p>
+          <p className="text-[12px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.shippingNote', { defaultValue: '사업자 등록 주소지로 배송됩니다. 변경이 필요하면 관리자에게 문의하세요.' })}</p>
+        </section>
+
+        {/* 예치금 잔액 vs 주문액 */}
+        <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: WT.ink2 }}>
+              <Wallet className="w-4 h-4" style={{ color: WT.brand }} />{t('wholesale.deposit.balanceLabel', { defaultValue: '현재 예치금 잔액' })}
+            </span>
+            <span className="text-[15px] font-extrabold tabular-nums" style={{ color: balance >= subtotal ? WT.ink : '#B3253B' }}>{won(balance)}</span>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[13px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.orderAmount', { defaultValue: '주문 금액' })}</span>
+            <span className="text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{won(subtotal)}</span>
+          </div>
+          <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
+            <span className="text-[13px] font-bold" style={{ color: WT.ink2 }}>{t('wholesale.checkout.balanceAfter', { defaultValue: '결제 후 잔액' })}</span>
+            <span className="text-[15px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(Math.max(0, balance - subtotal))}</span>
           </div>
         </section>
 
-        <div id="wholesale-pay-method" className="min-h-[180px] rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid ' + WT.line }} />
-        <div id="wholesale-pay-agreement" className="min-h-[60px] rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid ' + WT.line }} />
+        {/* 잔액 부족 배너 */}
+        {insufficient && (
+          <section className="rounded-2xl p-4" style={{ background: '#FDECEF', border: '1px solid #F8C9D2' }}>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 shrink-0" style={{ color: '#B3253B' }} />
+              <div className="min-w-0">
+                <p className="text-[14px] font-bold" style={{ color: '#B3253B' }}>
+                  {t('wholesale.checkout.insufficient', { defaultValue: '예치금이 {{amount}} 부족합니다', amount: won(insufficient.shortfall) })}
+                </p>
+                <p className="text-[12px] mt-0.5 tabular-nums" style={{ color: WT.ink3 }}>
+                  {t('wholesale.checkout.insufficientDetail', { defaultValue: '필요 {{required}} · 잔액 {{balance}}', required: won(insufficient.required), balance: won(insufficient.balance) })}
+                </p>
+                <button
+                  onClick={() => navigate('/wholesale/deposits')}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 h-10 rounded-xl text-[13px] font-bold text-white"
+                  style={{ background: WT.brand }}
+                >
+                  <Wallet className="w-4 h-4" />{t('wholesale.deposit.charge', { defaultValue: '충전하기' })}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
-        {state === 'error' && errorMsg && (
+        {/* 일반 오류 */}
+        {errorMsg && !insufficient && (
           <div className="p-4 rounded-2xl" style={{ background: '#FDECEF', border: '1px solid #F8C9D2' }}>
-            <p className="text-[13px] font-medium whitespace-pre-wrap" style={{ color: '#B3253B' }}>{errorMsg}</p>
-            <button onClick={() => navigate('/wholesale')} className="mt-2 text-[12px] underline font-medium" style={{ color: WT.ink2 }}>카탈로그로 돌아가기</button>
+            <p className="text-[13px] font-medium" style={{ color: '#B3253B' }}>{errorMsg}</p>
           </div>
         )}
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white z-30" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="ur-content-narrow px-4 pt-3">
-          <button onClick={handlePay} disabled={state !== 'ready'} className="w-full h-14 text-[16px] font-bold rounded-2xl text-white disabled:opacity-50" style={{ background: WT.brand }}>
-            {state === 'loading' && <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />결제 시스템 로딩 중...</span>}
-            {state === 'processing' && <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />결제 진행 중...</span>}
-            {state === 'ready' && order && `${won(order.amount)} 결제하기`}
-            {state === 'error' && '결제 시스템 오류'}
+          <button
+            onClick={payWithDeposit}
+            disabled={paying || items.length === 0}
+            className="w-full h-14 text-[16px] font-bold rounded-2xl text-white disabled:opacity-50"
+            style={{ background: WT.brand }}
+          >
+            {paying
+              ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('wholesale.checkout.paying', { defaultValue: '결제 진행 중...' })}</span>
+              : t('wholesale.checkout.payWithDeposit', { defaultValue: '{{amount}} 예치금으로 결제', amount: won(subtotal) })}
           </button>
         </div>
       </div>

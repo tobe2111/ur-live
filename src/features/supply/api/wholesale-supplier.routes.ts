@@ -16,6 +16,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { requireSupplier } from '@/worker/middleware/auth'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { parseCsv } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
 
@@ -243,12 +244,13 @@ app.post('/orders/:id/refund', async (c) => {
     const reason = String(body.reason || '판매자 반품 승인').slice(0, 100)
 
     const order = await DB.prepare(
-      'SELECT id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
-    ).bind(orderId).first<{ id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
+      'SELECT id, distributor_seller_id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
+    ).bind(orderId).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
       return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
     }
+    const isDeposit = order.payment_key === 'deposit'
 
     // 내 라인 중 아직 환불 안 된 것. (line_status 도 조회 — Toss 실패 시 정확 롤백용)
     const myLines = await DB.prepare(
@@ -269,23 +271,32 @@ app.post('/orders/:id/refund', async (c) => {
     const claimed = claim.meta?.changes ?? 0
     if (claimed === 0) return c.json({ success: true, already: true })
 
-    // Toss 부분 취소 — 잠긴 SSOT helper. 제조사별 stable idempotency-key.
-    const res = await cancelTossPayment({
-      env: c.env, paymentKey: order.payment_key, cancelReason: reason,
-      cancelAmount: refundAmount,
-      idempotencyKey: `whs-refund-${orderId}-sup${sid}`,
-    })
-    if (!res.ok) {
-      // 롤백 — 각 라인을 환불 전 상태(PENDING/SHIPPED)로 정확히 복구. PENDING 라인이 SHIPPED 로 둔갑하던 버그 fix.
-      const pendingIds = lines.filter(l => l.line_status === 'PENDING').map(l => l.id)
-      const shippedIds = lines.filter(l => l.line_status === 'SHIPPED').map(l => l.id)
-      if (pendingIds.length) {
-        await DB.prepare(`UPDATE wholesale_order_items SET line_status='PENDING' WHERE id IN (${pendingIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...pendingIds).run().catch(swallow('wholesale-supplier:refund-rollback-pending'))
+    if (isDeposit) {
+      // 💰 예치금 주문 — Toss 미경유. 유통사 잔액에 내 라인 합계 복원.
+      //   라인-status CAS(위)가 이미 멱등 — claimed>0 인 이 thread 만 복원하므로 이중복원 없음.
+      //   ref_id 는 주문-제조사-claim 단위로 기록(부분환불 추적). 실패해도 자금은 복원되도록 best-effort.
+      await ensureDepositSchema(DB)
+      const bal = await refundDeposit(DB, order.distributor_seller_id, refundAmount)
+      await recordDepositTxn(DB, order.distributor_seller_id, 'refund', refundAmount, bal, `${orderId}-sup${sid}`, `제조사 환불 #${orderId} (${reason})`)
+    } else {
+      // 레거시 Toss 주문 — 부분 취소(잠긴 SSOT helper). 제조사별 stable idempotency-key.
+      const res = await cancelTossPayment({
+        env: c.env, paymentKey: order.payment_key, cancelReason: reason,
+        cancelAmount: refundAmount,
+        idempotencyKey: `whs-refund-${orderId}-sup${sid}`,
+      })
+      if (!res.ok) {
+        // 롤백 — 각 라인을 환불 전 상태(PENDING/SHIPPED)로 정확히 복구. PENDING 라인이 SHIPPED 로 둔갑하던 버그 fix.
+        const pendingIds = lines.filter(l => l.line_status === 'PENDING').map(l => l.id)
+        const shippedIds = lines.filter(l => l.line_status === 'SHIPPED').map(l => l.id)
+        if (pendingIds.length) {
+          await DB.prepare(`UPDATE wholesale_order_items SET line_status='PENDING' WHERE id IN (${pendingIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...pendingIds).run().catch(swallow('wholesale-supplier:refund-rollback-pending'))
+        }
+        if (shippedIds.length) {
+          await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${shippedIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...shippedIds).run().catch(swallow('wholesale-supplier:refund-rollback-shipped'))
+        }
+        return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
       }
-      if (shippedIds.length) {
-        await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${shippedIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...shippedIds).run().catch(swallow('wholesale-supplier:refund-rollback-shipped'))
-      }
-      return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
     }
 
     // 제조사 정산 역전 (내 라인만, fail-soft).
