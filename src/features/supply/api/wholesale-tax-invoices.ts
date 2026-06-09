@@ -122,7 +122,10 @@ async function upsertAndFile(
   const row = await DB.prepare(
     'SELECT id, status FROM wholesale_tax_invoices WHERE order_id = ? AND type = ? AND supplier_id = ?'
   ).bind(orderId, type, supplierId).first<{ id: number; status: string }>().catch(() => null)
-  const recId = row?.id ?? Number(ins?.meta?.last_row_id) ?? null
+  // 🛠️ 2026-06-09 코드리뷰 #4: last_row_id 는 실제 INSERT(changes===1)일 때만 신뢰 — ON CONFLICT no-op 시
+  //   last_row_id 가 직전 무관 행을 가리켜 엉뚱한 세금레코드를 issued 처리할 수 있음. SELECT 우선, fallback gated.
+  const insertedId = ins?.meta?.changes === 1 ? Number(ins.meta.last_row_id) : 0
+  const recId = row?.id ?? (insertedId > 0 ? insertedId : null)
   if (!recId) return null
   // 이미 발행(issued)된 레코드면 재발행하지 않음(멱등).
   if (row?.status === 'issued') return recId

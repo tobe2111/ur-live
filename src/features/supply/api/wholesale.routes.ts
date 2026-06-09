@@ -890,17 +890,38 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     void payMethod
     await ensureDepositSchema(DB)
 
-    // 🔁 멱등 — 같은 체크아웃 재시도(더블클릭/네트워크)면 기존 주문 반환(예치금 재차감 방지).
+    // 🔁💰 reserve-before-charge (2026-06-09 코드리뷰 #1·#2 수정): 주문을 PENDING 으로 먼저 생성 →
+    //   UNIQUE(distributor_seller_id, idempotency_key) 가 동시/재시도 race 를 단독 중재. 차감은 이 INSERT 를
+    //   '이긴' 요청만 1회 수행 → 이중차감 불가. 차감 전 주문 행이 존재하므로 차감↔주문 사이 크래시에도
+    //   '잔액만 빠지고 주문 없음'(무음 손실) 불가 — PENDING 주문이 감사추적 + EXPIRED 스윕 대상으로 남음.
     const idemKey = String(body.idempotency_key || '').slice(0, 64)
-    if (idemKey) {
-      const exist = await DB.prepare('SELECT id, status FROM wholesale_orders WHERE distributor_seller_id = ? AND idempotency_key = ? LIMIT 1')
-        .bind(sellerId, idemKey).first<{ id: number; status: string }>().catch(() => null)
-      if (exist) return c.json({ success: true, order_id: exist.id, status: exist.status, paid_by: 'deposit', already: true })
+    // 합성 toss_order_id — wholesale_orders.toss_order_id 는 NOT NULL/UNIQUE.
+    const depOrderId = `DEP-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+
+    // STEP 1 — 주문 PENDING INSERT (차감 전). idemKey 충돌(동시/재시도) → 기존 주문 반환(재차감 X).
+    let dOrderId = 0
+    let idemConflict = false
+    try {
+      const insD = await DB.prepare(`
+        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
+        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?)
+      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
+      dOrderId = Number(insD.meta?.last_row_id)
+    } catch { idemConflict = true }
+    if (idemConflict || !dOrderId) {
+      if (idemKey) {
+        const exist = await DB.prepare('SELECT id, status FROM wholesale_orders WHERE distributor_seller_id = ? AND idempotency_key = ? LIMIT 1')
+          .bind(sellerId, idemKey).first<{ id: number; status: string }>().catch(() => null)
+        if (exist) return c.json({ success: true, order_id: exist.id, status: exist.status, paid_by: 'deposit', already: true })
+      }
+      return c.json({ success: false, error: '주문 생성 중 오류가 발생했습니다' }, 500)
     }
 
-    // 💰 STEP 1 — 예치금 원자 차감(CAS: balance>=subtotal 일 때만). 부족 시 402, 잔액 안내.
+    // STEP 2 — 예치금 원자 차감(CAS). 이 요청이 주문을 소유(INSERT 승리) → 단 1회만 차감.
     const deduct = await deductDeposit(DB, sellerId, subtotal)
     if (!deduct.ok) {
+      // 잔액 부족 — 돈 미이동. PENDING 예약 삭제(idemKey 해제 → 충전 후 동일 체크아웃 재시도 가능) 후 402.
+      await DB.prepare("DELETE FROM wholesale_orders WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(() => {})
       return c.json({
         success: false,
         error: '예치금이 부족합니다',
@@ -910,30 +931,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         shortfall: Math.max(0, subtotal - deduct.balance),
       }, 402)
     }
-    // 이 시점부터 잔액은 이미 차감됨 → 이후 단계 실패 시 반드시 환불(보상) 해야 함.
     const balanceAfterDeduct = deduct.balanceAfter
 
-    // 합성 toss_order_id — wholesale_orders.toss_order_id 는 NOT NULL/UNIQUE 라 deposit 주문도 채워야 함.
-    const depOrderId = `DEP-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-
-    // 💰 STEP 2 — 주문 생성: status='PAID', paid_at=now, payment_key='deposit'.
-    //   생성 실패(예외/주문ID 없음) 시 차감액 환불(보상).
-    let dOrderId = 0
-    try {
-      const insD = await DB.prepare(`
-        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, paid_at)
-        VALUES (?, ?, 'PAID', ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?, datetime('now'))
-      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
-      dOrderId = Number(insD.meta?.last_row_id)
-    } catch { dOrderId = 0 }
-    if (!dOrderId) {
-      // 보상 환불 — 주문이 안 생겼으므로 ref_id 없는 일반 보상 원장.
-      const bal = await refundDeposit(DB, sellerId, subtotal)
-      await recordDepositTxn(DB, sellerId, 'refund', subtotal, bal, null, '주문 생성 실패 자동 환불')
-      return c.json({ success: false, error: '주문 생성 중 오류가 발생했습니다' }, 500)
-    }
-
-    // 차감 원장(order) 기록 — ref_id = order.id (환불 멱등 가드가 이 ref_id 로 매칭).
+    // STEP 3 — 차감 원장(ref_id=order.id, 환불 멱등 가드가 이 ref_id 로 매칭). PAID 확정은 재고 확보 후(아래).
     await recordDepositTxn(DB, sellerId, 'order', -subtotal, balanceAfterDeduct, String(dOrderId), `도매 예치금 주문 #${dOrderId}`)
 
     // 주문 항목 + 재고 차감(oversell 가드) — 실패 시 주문 FAILED + 예치금 환불(보상).
@@ -975,6 +975,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       await recordDepositTxn(DB, sellerId, 'refund', subtotal, bal, String(dOrderId), `주문 처리 오류 자동 환불 #${dOrderId}`)
       return safeError(c, innerErr, '주문 처리 중 오류가 발생했습니다. 예치금은 환불되었습니다.', '[wholesale]')
     }
+
+    // 재고 확보 완료 → PENDING→PAID 확정(CAS). 주문은 결제+재고 확보가 모두 된 시점에만 PAID.
+    await DB.prepare("UPDATE wholesale_orders SET status='PAID', paid_at=datetime('now') WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(() => {})
 
     // 제조사 정산 적립(Toss/credit 주문과 동일 — 멱등, fail-soft). 정산 실패가 결제완료를 막지 않음.
     try { await creditSupplierOnWholesaleOrder(DB, dOrderId) } catch { /* best-effort */ }
