@@ -264,6 +264,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
     { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
+    // 🏦 2026-06-09 예치금 주문 멱등 — 더블클릭/재시도 이중차감 방지(ensureDepositSchema 와 동일, repair 일관성).
+    { desc: 'wholesale_orders.idempotency_key', sql: "ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT" },
+    { desc: 'idx_wholesale_orders_idem', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL" },
     // 🏭 BIZ-2 v1 (2026-06-08) 여신/외상(credit terms): 도매 주문 100% 선결제 모순 해소용 ADDITIVE 외상 경로.
     //   distributor_credit_limit: 0=여신 없음(선결제 전용). outstanding_balance: 미상환 외상(플랫폼 채권). credit_frozen: 1=동결.
     //   원장(wholesale_credit_ledger)은 wholesale.routes ensureCreditSchema 가 CREATE — 여기선 sellers 3컬럼만 보강.
