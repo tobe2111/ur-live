@@ -361,7 +361,11 @@ app.get('/wholesale-tax-invoices', async (c) => {
   try {
     const status = (c.req.query('status') || '').slice(0, 16)
     const type = (c.req.query('type') || '').slice(0, 16)
-    const invoices = await listAdminInvoices(c.env.DB, { status, type, limit: 500 })
+    // 🏬 멀티-몰: ?mall_id= 가 주어진 경우에만 귀속 몰로 필터(미지정=전 몰, 기존 동작 byte-identical).
+    const mallQ = c.req.query('mall_id')
+    const mallN = Math.floor(Number(mallQ))
+    const mallId = (mallQ != null && mallQ !== '' && Number.isFinite(mallN) && mallN > 0) ? mallN : undefined
+    const invoices = await listAdminInvoices(c.env.DB, { status, type, mallId, limit: 500 })
     return c.json({ success: true, invoices })
   } catch (err) {
     return safeError(c, err, '세금계산서 목록 조회 중 오류가 발생했습니다', '[wholesale-tax]')

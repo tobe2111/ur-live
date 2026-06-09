@@ -9,6 +9,7 @@ import { Receipt, Loader2, FileText, AlertCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import AdminMallSelect, { useAdminMalls } from '@/components/admin/AdminMallSelect'
 
 // 🏭 TAX-1 (2026-06-08) 어드민 도매 세무 — 미수/미지급 aging 리포트 + 매입(역발행) 세금계산서.
 //   라이트 고정 대시보드 테마(dark: 미사용). 역발행은 수동 1회 기록(자동 발사 X).
@@ -48,6 +49,7 @@ interface AutoInvoiceRow {
   provider_ref: string | null
   issued_at: string | null
   created_at: string
+  mall_id?: number
 }
 const AUTO_STATUS_BADGE: Record<string, string> = {
   issued: 'bg-emerald-50 text-emerald-700',
@@ -95,6 +97,14 @@ export default function AdminWholesaleTaxPage() {
   const [autoStatus, setAutoStatus] = useState<'' | 'draft' | 'issued' | 'failed'>('')
   const [autoType, setAutoType] = useState<'' | 'sales' | 'purchase'>('')
   const [reissuing, setReissuing] = useState<number | null>(null)
+  // 🏬 멀티-몰: 거래별 세금계산서 몰 필터('' = 전 몰, 기존 동작 불변). 몰 ≤1개면 셀렉트 자동 숨김.
+  const [autoMallId, setAutoMallId] = useState('')
+  const { data: malls = [] } = useAdminMalls()
+  const mallNameById = useMemo(() => {
+    const m: Record<number, string> = {}
+    for (const x of malls) m[x.id] = x.name
+    return m
+  }, [malls])
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
@@ -109,8 +119,8 @@ export default function AdminWholesaleTaxPage() {
   )
 
   const { data: autoInvoices = [], isLoading: autoLoading, refetch: refetchAuto } = useApiQuery<AutoInvoiceRow[]>(
-    ['admin', 'wholesale-tax-invoices', autoStatus, autoType], '/api/admin/wholesale/wholesale-tax-invoices',
-    { params: { status: autoStatus, type: autoType }, headers: h.headers, select: (r: any) => (r?.success ? r.invoices || [] : []), enabled: tab === 'auto' },
+    ['admin', 'wholesale-tax-invoices', autoStatus, autoType, autoMallId], '/api/admin/wholesale/wholesale-tax-invoices',
+    { params: { status: autoStatus, type: autoType, ...(autoMallId ? { mall_id: autoMallId } : {}) }, headers: h.headers, select: (r: any) => (r?.success ? r.invoices || [] : []), enabled: tab === 'auto' },
   )
 
   const payableSum = aging?.payable?.summary
@@ -354,6 +364,8 @@ export default function AdminWholesaleTaxPage() {
                 <option value="issued">{t('admin.wsTax.stIssued', { defaultValue: '발행완료' })}</option>
                 <option value="failed">{t('admin.wsTax.stFailed', { defaultValue: '발행실패' })}</option>
               </select>
+              {/* 🏬 몰 선택 — 몰이 ≤1개면 자동으로 숨김(단일 몰 환경 UI 불변). */}
+              <AdminMallSelect value={autoMallId} onChange={setAutoMallId} allLabel={t('admin.wsTax.allMalls', { defaultValue: '전체 몰' })} />
             </div>
 
             <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
@@ -382,7 +394,12 @@ export default function AdminWholesaleTaxPage() {
                   <tbody>
                     {autoInvoices.map(inv => (
                       <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-2.5 px-4 text-gray-900">#{inv.order_id}</td>
+                        <td className="py-2.5 px-4 text-gray-900">
+                          #{inv.order_id}
+                          {inv.mall_id != null && mallNameById[inv.mall_id] && malls.length > 1 && (
+                            <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">{mallNameById[inv.mall_id]}</span>
+                          )}
+                        </td>
                         <td className="py-2.5 px-4 text-gray-600">{inv.type === 'purchase' ? t('admin.wsTax.typePurchaseShort', { defaultValue: '매입(역발행)' }) : t('admin.wsTax.typeSalesShort', { defaultValue: '매출' })}</td>
                         <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">{formatWon(inv.supply_amount)}</td>
                         <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">{formatWon(inv.vat_amount)}</td>

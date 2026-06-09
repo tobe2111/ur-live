@@ -280,20 +280,33 @@ export async function listSupplierPurchaseInvoices(DB: D1Database, supplierId: n
   return res.results || []
 }
 
-/** 어드민 전체 목록 (status/type 필터). */
-export async function listAdminInvoices(DB: D1Database, opts: { status?: string; type?: string; limit?: number } = {}): Promise<TaxInvoiceRow[]> {
+/**
+ * 어드민 전체 목록 (status/type 필터).
+ * 🏬 멀티-몰: opts.mallId 가 주어지면 각 행이 속한 몰로 필터(미지정=전 몰, 기존 동작 byte-identical).
+ *   몰 귀속 = 매출(sales)→유통사(distributor_seller_id→sellers.mall_id) / 매입(purchase)→제조사(supplier_id→suppliers.mall_id).
+ *   COALESCE(...,1) 로 기본 몰 fallback(기존 데이터 전 행 1 → 단일 몰 환경 동작 불변).
+ *   각 행에 mall_id(귀속 몰) 도 함께 반환(UI 표기용).
+ */
+export async function listAdminInvoices(DB: D1Database, opts: { status?: string; type?: string; mallId?: number; limit?: number } = {}): Promise<(TaxInvoiceRow & { mall_id?: number })[]> {
   await ensureSchema(DB)
   const where: string[] = ['1=1']
   const binds: unknown[] = []
-  if (opts.status && ['draft', 'issued', 'failed'].includes(opts.status)) { where.push('status = ?'); binds.push(opts.status) }
-  if (opts.type && ['sales', 'purchase'].includes(opts.type)) { where.push('type = ?'); binds.push(opts.type) }
+  if (opts.status && ['draft', 'issued', 'failed'].includes(opts.status)) { where.push('ti.status = ?'); binds.push(opts.status) }
+  if (opts.type && ['sales', 'purchase'].includes(opts.type)) { where.push('ti.type = ?'); binds.push(opts.type) }
+  // 행의 귀속 몰 = sales: distributor(sellers.mall_id) / purchase: supplier(suppliers.mall_id). 둘 중 적용되는 쪽(COALESCE).
+  const accountMallExpr = "COALESCE(COALESCE(s.mall_id, sup.mall_id), 1)"
+  const mallId = (opts.mallId != null && Number.isFinite(opts.mallId) && opts.mallId > 0) ? Math.floor(opts.mallId) : null
+  if (mallId != null) { where.push(`${accountMallExpr} = ?`); binds.push(mallId) }
   const limit = Math.min(Math.max(opts.limit || 300, 1), 1000)
   const res = await DB.prepare(
-    `SELECT id, order_id, type, supplier_id, distributor_seller_id, supply_amount, vat_amount, total_amount, status, provider_ref, issued_at, created_at
-       FROM wholesale_tax_invoices
+    `SELECT ti.id, ti.order_id, ti.type, ti.supplier_id, ti.distributor_seller_id, ti.supply_amount, ti.vat_amount, ti.total_amount, ti.status, ti.provider_ref, ti.issued_at, ti.created_at,
+            ${accountMallExpr} AS mall_id
+       FROM wholesale_tax_invoices ti
+       LEFT JOIN sellers s ON s.id = ti.distributor_seller_id
+       LEFT JOIN suppliers sup ON sup.id = ti.supplier_id
       WHERE ${where.join(' AND ')}
-      ORDER BY created_at DESC LIMIT ?`
-  ).bind(...binds, limit).all<TaxInvoiceRow>().catch(() => ({ results: [] as TaxInvoiceRow[] }))
+      ORDER BY ti.created_at DESC LIMIT ?`
+  ).bind(...binds, limit).all<TaxInvoiceRow & { mall_id?: number }>().catch(() => ({ results: [] as (TaxInvoiceRow & { mall_id?: number })[] }))
   return res.results || []
 }
 

@@ -128,20 +128,31 @@ admin.use('*', requireAdmin())
 admin.use('*', adminAuditMiddleware())
 
 // ── GET / — 충전 요청 목록(상호명 join) ──────────────────────────────────────
+//   🏬 멀티-몰: ?mall_id= 가 주어진 경우에만 해당 몰(요청 유통사 계정의 sellers.mall_id)로 필터.
+//   미지정 = 전 몰(기존 무필터 뷰 보존 — byte-identical). 각 행에 mall_id(+몰 이름)도 반환.
 admin.get('/', async (c) => {
   const { DB } = c.env
   try {
     await ensureDepositSchema(DB)
     const status = c.req.query('status') === 'all' ? 'all' : 'pending'
-    const where = status === 'all' ? '' : "WHERE r.status = 'pending'"
+    const mallQ = c.req.query('mall_id')
+    const mallN = Math.floor(Number(mallQ))
+    const mallId = (mallQ != null && mallQ !== '' && Number.isFinite(mallN) && mallN > 0) ? mallN : null
+    const conds: string[] = []
+    const binds: (string | number)[] = []
+    if (status !== 'all') conds.push("r.status = 'pending'")
+    if (mallId != null) { conds.push('COALESCE(s.mall_id,1) = ?'); binds.push(mallId) }
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : ''
     const { results } = await DB.prepare(
       `SELECT r.id, r.seller_id, s.name AS business_name, r.amount, r.depositor_name,
-              r.status, r.admin_memo, r.created_at, r.confirmed_at
+              r.status, r.admin_memo, r.created_at, r.confirmed_at,
+              COALESCE(s.mall_id,1) AS mall_id, m.name AS mall_name
        FROM wholesale_deposit_requests r
        LEFT JOIN sellers s ON s.id = r.seller_id
+       LEFT JOIN wholesale_malls m ON m.id = COALESCE(s.mall_id,1)
        ${where}
        ORDER BY r.id DESC LIMIT 200`
-    ).all()
+    ).bind(...binds).all()
     return c.json({ success: true, requests: results ?? [] })
   } catch (err) {
     return safeError(c, err, '충전 요청 조회 중 오류가 발생했습니다', '[admin-wholesale-deposit]')

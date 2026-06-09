@@ -7,9 +7,11 @@ import { Wallet, Loader2, Check, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import AdminMallSelect from '@/components/admin/AdminMallSelect'
 
 // 🏦 2026-06-09 유통스타트 — 어드민 도매 예치금 입금확인.
 //   유통사 충전 신청(은행 송금 대기) → 관리자 입금 확인 시 잔액 충전 / 반려. 라이트 테마.
+//   🏬 멀티-몰: 몰 선택 시 ?mall_id= 로 해당 몰 유통사 신청만 필터(미선택=전 몰, 기존 동작 불변).
 
 interface DepositRequest {
   id: number
@@ -20,6 +22,8 @@ interface DepositRequest {
   status: 'pending' | 'confirmed' | 'rejected'
   created_at: string
   confirmed_at: string | null
+  mall_id?: number
+  mall_name?: string | null
 }
 
 const STATUS: Record<DepositRequest['status'], { t: string; c: string }> = {
@@ -31,6 +35,7 @@ const STATUS: Record<DepositRequest['status'], { t: string; c: string }> = {
 export default function AdminWholesaleDepositsPage() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'pending' | 'all'>('pending')
+  const [mallId, setMallId] = useState('') // '' = 전 몰(기존 무필터 동작 불변)
   const [requests, setRequests] = useState<DepositRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
@@ -39,11 +44,13 @@ export default function AdminWholesaleDepositsPage() {
 
   const load = useCallback(() => {
     setLoading(true)
-    api.get('/api/admin/wholesale-deposits', { params: { status: filter } })
+    const params: Record<string, string> = { status: filter }
+    if (mallId) params.mall_id = mallId
+    api.get('/api/admin/wholesale-deposits', { params })
       .then((r) => { setRequests(r.data?.success ? (r.data.requests || []) : []) })
       .catch(() => setRequests([]))
       .finally(() => setLoading(false))
-  }, [filter])
+  }, [filter, mallId])
 
   useEffect(() => { load() }, [load])
 
@@ -84,7 +91,7 @@ export default function AdminWholesaleDepositsPage() {
       <div className="ur-content-full px-4 lg:px-8 py-6">
         <DashboardPageHeader icon={<Wallet className="w-5 h-5" />} title="도매 예치금 입금확인" subtitle="유통사 예치금 충전 신청을 확인하고 입금 완료 시 잔액을 충전합니다." />
 
-        <div className="flex items-center gap-2 my-4">
+        <div className="flex flex-wrap items-center gap-2 my-4">
           {([['pending', '입금 대기'], ['all', '전체']] as const).map(([f, label]) => (
             <button
               key={f}
@@ -94,6 +101,8 @@ export default function AdminWholesaleDepositsPage() {
               {label}
             </button>
           ))}
+          {/* 🏬 몰 선택 — 몰이 ≤1개면 자동으로 숨김(단일 몰 환경 UI 불변). */}
+          <AdminMallSelect value={mallId} onChange={setMallId} allLabel="전체 몰" className="ml-auto" />
         </div>
 
         {loading ? (
@@ -116,7 +125,10 @@ export default function AdminWholesaleDepositsPage() {
               <tbody>
                 {requests.map((req) => (
                   <tr key={req.id} className="border-b border-gray-50">
-                    <td className="py-2.5 px-4 text-gray-900">{req.business_name || `#${req.seller_id}`}</td>
+                    <td className="py-2.5 px-4 text-gray-900">
+                      {req.business_name || `#${req.seller_id}`}
+                      {req.mall_name && <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">{req.mall_name}</span>}
+                    </td>
                     <td className="py-2.5 px-4 text-right font-bold text-gray-900">{formatWon(req.amount)}</td>
                     <td className="py-2.5 px-4 text-gray-700">{req.depositor_name}</td>
                     <td className="py-2.5 px-4 text-gray-500">{req.created_at ? new Date(req.created_at).toLocaleDateString('ko-KR') : '-'}</td>
