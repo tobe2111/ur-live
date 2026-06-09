@@ -1273,29 +1273,141 @@ app.get('/catalog/export', async (c) => {
 //   유통사는 '주문수량' 칸만 채워 업로드. 비로그인은 빈 양식(헤더만).
 app.get('/order-template', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  const header = ['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '주문수량']
+  // BIZ-9 (2026-06-09): 박스단위(order_multiple) 열 추가 — 유통사가 양식에서 주문 배수 제약을 바로 보고 입력.
+  //   product_id 가 robust 매칭 키(상품명 변경에도 안전). 주문수량 = 유통사 입력칸(빈칸).
+  const header = ['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '박스단위', '주문수량']
   if (!sellerId) {
-    return csvResponse(buildCsv(header, [['예: 123', '상품명(참고용)', '식품', '500', '9000', '1', '10']]), 'wholesale-order-template.csv')
+    return csvResponse(buildCsv(header, [['예: 123', '상품명(참고용)', '식품', '500', '9000', '1', '1', '10']]), 'wholesale-order-template.csv')
   }
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
+    await ensureQtyConstraintSchema(DB) // order_multiple 컬럼 보장(SELECT 전).
     const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price,
-             COALESCE(p.min_order_qty,1) AS moq, p.supply_margin_override_pct AS margin_override
+             COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
+             p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; margin_override: number | null }>()
+    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), ''] // 주문수량은 빈칸 — 유통사가 입력
+      return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), ''] // 주문수량은 빈칸 — 유통사가 입력
     })
     return csvResponse(buildCsv(header, out), `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`)
   } catch (err) {
     return safeError(c, err, '주문 양식 생성 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── POST /orders/bulk-preview — 대량주문(엑셀/CSV) 검증·미리보기 (결제 X) ───────────
+//   BIZ-9 (2026-06-09): 작성본 업로드 → 서버가 product_id 로 매칭 + MOQ/박스단위/재고 검증 →
+//   유효 라인(카트에 담을 항목 + 등급 단가) + 오류행(사유) + subtotal 반환. 절대 청구하지 않음.
+//   유효 라인은 클라가 도매 카트에 담아 기존 예치금 체크아웃(/wholesale/checkout)으로 결제.
+const BULK_MAX_ROWS = 5000
+app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const rawItems = Array.isArray(body.items) ? body.items : Array.isArray(body.rows) ? body.rows : []
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return c.json({ success: false, error: '주문 항목이 없습니다' }, 400)
+    }
+    if (rawItems.length > BULK_MAX_ROWS) {
+      return c.json({ success: false, error: `한 번에 처리 가능한 행은 최대 ${BULK_MAX_ROWS}개입니다 (현재 ${rawItems.length}개)`, code: 'TOO_MANY_ROWS' }, 400)
+    }
+
+    // 행 정규화 — product_id 로 합산(같은 상품 여러 줄). qty<=0/비숫자/blank 는 오류로 분류.
+    type ErrRow = { row?: number; product_id?: number | null; name?: string; qty?: number; reason: string }
+    const errors: ErrRow[] = []
+    const reqMap = new Map<number, number>()
+    const lineNoMap = new Map<number, number>() // product_id → 첫 등장 행번호(오류 표시용)
+    rawItems.forEach((it: unknown, idx: number) => {
+      const o = (it && typeof it === 'object') ? it as Record<string, unknown> : {}
+      const pid = Math.floor(Number(o.product_id))
+      const qty = Math.floor(Number(o.qty))
+      const rowNo = Number.isFinite(Number(o.row)) ? Math.floor(Number(o.row)) : idx + 1
+      if (!Number.isFinite(pid) || pid <= 0) {
+        errors.push({ row: rowNo, product_id: null, reason: '상품코드(product_id)가 올바르지 않습니다' })
+        return
+      }
+      if (!Number.isFinite(qty) || qty <= 0) {
+        errors.push({ row: rowNo, product_id: pid, qty: 0, reason: '주문수량이 비어있거나 0 이하입니다' })
+        return
+      }
+      reqMap.set(pid, (reqMap.get(pid) || 0) + qty)
+      if (!lineNoMap.has(pid)) lineNoMap.set(pid, rowNo)
+    })
+
+    const ids = [...reqMap.keys()]
+    if (ids.length === 0) {
+      return c.json({ success: true, items: [], subtotal: 0, matched: 0, error_count: errors.length, errors })
+    }
+
+    await ensureSupplyVisibilitySchema(DB)
+    await ensureQtyConstraintSchema(DB)
+    const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])
+    const placeholders = ids.map(() => '?').join(',')
+    const prods = await DB.prepare(`
+      SELECT p.id, p.name, p.image_url, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+             COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
+             p.supply_margin_override_pct AS margin_override
+      FROM products p
+      WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
+        AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
+        AND ${visibilityWhere('p')}
+    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    const found = new Map((prods.results || []).map(p => [p.id, p]))
+    const tierMap = await loadQtyTiers(DB, ids)
+
+    const items: Array<{ product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }> = []
+    let subtotal = 0
+    for (const pid of ids) {
+      const qty = reqMap.get(pid) || 0
+      const rowNo = lineNoMap.get(pid)
+      const p = found.get(pid)
+      if (!p) {
+        errors.push({ row: rowNo, product_id: pid, qty, reason: '주문할 수 없는 상품입니다 (품절·중지·열람권한 없음)' })
+        continue
+      }
+      const moq = Math.max(1, p.moq || 1)
+      const orderMultiple = Math.max(1, p.order_multiple || 1)
+      if (qty < moq) {
+        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `최소 주문 수량 ${moq}개 미만 (요청 ${qty}개)` })
+        continue
+      }
+      if (orderMultiple > 1 && qty % orderMultiple !== 0) {
+        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `${orderMultiple}개 단위로만 주문 가능 (요청 ${qty}개)` })
+        continue
+      }
+      if (p.stock != null && p.stock < qty) {
+        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `재고 부족 (재고 ${p.stock}개, 요청 ${qty}개)` })
+        continue
+      }
+      // 등급 단가 → tier floor → 수량구간 할인 적용 (주문 생성과 동일 산식 — 표시 정합).
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      const tierFloor = effectiveTierFloor(price, p.supply_price, minMarginPct)
+      const unit = tierUnitPrice(price, qty, tierMap.get(pid), tierFloor)
+      const lineTotal = unit * qty
+      subtotal += lineTotal
+      items.push({ product_id: pid, name: p.name, image_url: p.image_url, qty, unit_price: unit, line_total: lineTotal, moq, order_multiple: orderMultiple })
+    }
+
+    return c.json({
+      success: true,
+      items,
+      subtotal,
+      matched: items.length,
+      error_count: errors.length,
+      errors: errors.slice(0, 500), // 응답 비대 방지 — 오류 500개 cap.
+    })
+  } catch (err) {
+    return safeError(c, err, '주문서 미리보기 중 오류가 발생했습니다', '[wholesale]')
   }
 })
 
