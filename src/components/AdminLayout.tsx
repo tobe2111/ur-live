@@ -53,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
       { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
+      { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
       { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },

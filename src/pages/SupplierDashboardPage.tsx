@@ -49,6 +49,12 @@ interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null
   retail_amount: number; supply_amount: number; status: string; created_at: string; available_at: string | null
 }
+// 🏦 2026-06-09: 정산금 출금 신청.
+interface WithdrawalItem {
+  id: number; amount: number; status: 'requested' | 'approved' | 'paid' | 'rejected'
+  bank_name: string | null; bank_account: string | null; account_holder: string | null
+  admin_memo: string | null; requested_at: string; processed_at: string | null
+}
 // 🏭 Wave 3c: 매입 역발행 전자세금계산서(제조사→플랫폼).
 interface SupplierTaxInvoiceRow {
   id: number; order_id: number; supply_amount: number; vat_amount: number; total_amount: number
@@ -93,6 +99,10 @@ export default function SupplierDashboardPage() {
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [settlements, setSettlements] = useState<SettlementItem[]>([])
+  // 🏦 출금: 신청 내역 + 실가용(spendable) 잔액 + 출금 모달.
+  const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([])
+  const [spendable, setSpendable] = useState(0)
+  const [showWithdraw, setShowWithdraw] = useState(false)
   const [taxInvoices, setTaxInvoices] = useState<SupplierTaxInvoiceRow[]>([])
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
@@ -150,6 +160,15 @@ export default function SupplierDashboardPage() {
     } catch (err) { if (import.meta.env.DEV) console.error(err) }
   }, [])
 
+  // 🏦 2026-06-09: 정산금 출금 신청 내역 + 실가용 잔액(available - reserved).
+  const loadWithdrawals = useCallback(async () => {
+    try {
+      const res = await supplierApi.get<{ withdrawals: WithdrawalItem[]; spendable: number }>('/api/supplier/withdrawals')
+      setWithdrawals(res.withdrawals ?? [])
+      setSpendable(Number(res.spendable) || 0)
+    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+  }, [])
+
   // 🏭 Wave 3c: 매입 역발행 전자세금계산서(제조사→플랫폼) — 도매 주문 정산 시 자동발행.
   const loadTaxInvoices = useCallback(async () => {
     try {
@@ -184,7 +203,7 @@ export default function SupplierDashboardPage() {
 
   useEffect(() => { loadMe() }, [loadMe])
   useEffect(() => { if (tab === 'catalog') loadCatalog() }, [tab, loadCatalog])
-  useEffect(() => { if (tab === 'settlements') { loadSettlements(); loadAnalytics(); loadTaxInvoices() } }, [tab, loadSettlements, loadAnalytics, loadTaxInvoices])
+  useEffect(() => { if (tab === 'settlements') { loadSettlements(); loadAnalytics(); loadTaxInvoices(); loadWithdrawals() } }, [tab, loadSettlements, loadAnalytics, loadTaxInvoices, loadWithdrawals])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
   useEffect(() => { if (tab === 'overview') loadPendingShipCount() }, [tab, loadPendingShipCount])
 
@@ -252,6 +271,13 @@ export default function SupplierDashboardPage() {
         <div className="space-y-6">
           {/* 정산 탭 상단: 매출 추이 + 베스트셀러(분석 요약). 아래는 정산 내역 리스트. 한 스크롤. */}
           <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
+          {/* 🏦 출금 신청 + 신청 내역 */}
+          <WithdrawalSection
+            spendable={spendable}
+            items={withdrawals}
+            t={t}
+            onRequest={() => setShowWithdraw(true)}
+          />
           <div>
             <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
             <SettlementsTab items={settlements} t={t} />
@@ -270,6 +296,15 @@ export default function SupplierDashboardPage() {
           order={shipModal}
           onClose={() => setShipModal(null)}
           onShipped={() => { setShipModal(null); loadOrders() }}
+        />
+      )}
+
+      {showWithdraw && (
+        <WithdrawModal
+          t={t}
+          spendable={spendable}
+          onClose={() => setShowWithdraw(false)}
+          onDone={() => { setShowWithdraw(false); loadWithdrawals(); loadMe() }}
         />
       )}
 
@@ -993,6 +1028,129 @@ function SettlementsTab({ items, t }: { items: SettlementItem[]; t: (k: string, 
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// 🏦 2026-06-09: 정산금 출금 — 실가용 잔액 + 출금 신청 버튼 + 신청 내역.
+const WD_STATUS: Record<string, { label: string; cls: string }> = {
+  requested: { label: '처리 대기', cls: 'bg-amber-50 text-amber-700' },
+  approved: { label: '승인', cls: 'bg-emerald-50 text-emerald-700' },
+  paid: { label: '송금 완료', cls: 'bg-emerald-50 text-emerald-700' },
+  rejected: { label: '반려', cls: 'bg-gray-100 text-gray-500' },
+}
+function WithdrawalSection({ spendable, items, t, onRequest }: {
+  spendable: number
+  items: WithdrawalItem[]
+  t: (k: string, o?: Record<string, unknown>) => string
+  onRequest: () => void
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <p className="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><Wallet className="w-4 h-4 text-blue-600" />{t('supplier.withdrawTitle', { defaultValue: '정산금 출금' })}</p>
+          <p className="text-xs text-gray-500 mt-1">{t('supplier.withdrawAvail', { defaultValue: '출금 가능' })}: <span className="font-bold text-blue-600">{formatWon(spendable)}</span></p>
+        </div>
+        <button
+          onClick={onRequest}
+          disabled={spendable < 10000}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FF0033] text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Wallet className="w-4 h-4" /> {t('supplier.withdrawBtn', { defaultValue: '출금 신청' })}
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-6">{t('supplier.withdrawEmpty', { defaultValue: '출금 신청 내역이 없습니다.' })}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-gray-500 text-xs">
+              <tr>
+                <th className="text-left font-medium py-2">{t('supplier.colDate', { defaultValue: '일시' })}</th>
+                <th className="text-right font-medium py-2">{t('supplier.withdrawAmount', { defaultValue: '금액' })}</th>
+                <th className="text-center font-medium py-2">{t('supplier.colStatus', { defaultValue: '상태' })}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {items.map(w => {
+                const st = WD_STATUS[w.status] || WD_STATUS.requested
+                return (
+                  <tr key={w.id}>
+                    <td className="py-2.5 text-gray-500 text-xs">{(w.requested_at || '').slice(0, 10)}</td>
+                    <td className="py-2.5 text-right font-semibold text-gray-900">{formatWon(w.amount)}</td>
+                    <td className="py-2.5 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{st.label}</span>
+                      {w.admin_memo && <span className="block text-[10px] text-gray-400 mt-0.5">{w.admin_memo}</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function WithdrawModal({ t, spendable, onClose, onDone }: {
+  t: (k: string, o?: Record<string, unknown>) => string
+  spendable: number
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [amount, setAmount] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    const amt = Math.floor(Number(amount))
+    if (!Number.isFinite(amt) || amt < 10000) { setError(t('supplier.withdrawMin', { defaultValue: '최소 출금 금액은 10,000원입니다' })); return }
+    if (amt > spendable) { setError(t('supplier.withdrawOver', { defaultValue: '출금 가능 잔액을 초과했습니다' })); return }
+    setSaving(true)
+    try {
+      await supplierApi.post('/api/supplier/withdrawals/request', { amount: amt })
+      toast.success(t('supplier.withdrawOk', { defaultValue: '출금 신청이 접수되었습니다. 영업일 기준 처리됩니다.' }))
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally { setSaving(false) }
+  }
+
+  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">{t('supplier.withdrawBtn', { defaultValue: '출금 신청' })}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+            {t('supplier.withdrawAvail', { defaultValue: '출금 가능' })}: <span className="font-bold">{formatWon(spendable)}</span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplier.withdrawAmount', { defaultValue: '금액' })}</label>
+            <input
+              type="number" inputMode="numeric" min={10000} step={1000}
+              value={amount} onChange={e => setAmount(e.target.value)}
+              placeholder="10000" className={inputCls}
+            />
+            <button type="button" onClick={() => setAmount(String(spendable))} className="mt-1.5 text-xs font-medium text-[#FF0033]">
+              {t('supplier.withdrawAll', { defaultValue: '전액 신청' })}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">{t('supplier.withdrawNote', { defaultValue: '등록된 정산 계좌로 송금됩니다. 신청 후 관리자 송금 확인 시 처리 완료됩니다.' })}</p>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <button type="submit" disabled={saving} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#FF0033] text-white font-bold text-sm disabled:opacity-50">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {t('supplier.withdrawSubmit', { defaultValue: '출금 신청하기' })}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

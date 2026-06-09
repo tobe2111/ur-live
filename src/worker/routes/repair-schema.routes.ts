@@ -313,6 +313,23 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { desc: 'idx_wholesale_deposit_txns_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_txns_seller ON wholesale_deposit_txns(seller_id, id DESC)" },
     { desc: 'idx_wholesale_deposit_requests_status', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_deposit_requests_status ON wholesale_deposit_requests(status, id DESC)" },
+    // 🏦 2026-06-09 제조사 정산금 출금 신청(어드민 송금확인 대상). (supplier-withdrawal-core ensureWithdrawalSchema 가 런타임 ensure — 여기선 best-effort 보강.)
+    //   reserved_amount: 미지급 출금이 잠근 금액(supplier_balances). 실가용 = available_amount - reserved_amount.
+    { desc: 'wholesale_settlement_withdrawals', sql: `CREATE TABLE IF NOT EXISTS wholesale_settlement_withdrawals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'requested',
+      bank_name TEXT,
+      bank_account TEXT,
+      account_holder TEXT,
+      admin_memo TEXT,
+      requested_at TEXT DEFAULT (datetime('now')),
+      processed_at TEXT
+    )` },
+    { desc: 'idx_wholesale_settlement_withdrawals_supplier', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_settlement_withdrawals_supplier ON wholesale_settlement_withdrawals(supplier_id, id DESC)" },
+    { desc: 'idx_wholesale_settlement_withdrawals_status', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_settlement_withdrawals_status ON wholesale_settlement_withdrawals(status, id DESC)" },
+    { desc: 'supplier_balances.reserved_amount', sql: "ALTER TABLE supplier_balances ADD COLUMN reserved_amount INTEGER NOT NULL DEFAULT 0" },
     // ── 💬 Wave 4a: 유통사↔제조사 채팅 (D1 polling, websocket/DO 없음) ──────────
     { desc: 'wholesale_chat_threads', sql: `CREATE TABLE IF NOT EXISTS wholesale_chat_threads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

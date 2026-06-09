@@ -133,6 +133,7 @@ import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
 import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
 import { wholesaleNotificationsRoutes } from '../features/supply/api/wholesale-notifications.routes';
 import { wholesaleDepositRoutes, adminWholesaleDepositRoutes } from '../features/supply/api/wholesale-deposit.routes';
+import { supplierWithdrawalRoutes, adminWholesaleWithdrawalRoutes } from '../features/supply/api/supplier-withdrawal.routes';
 import { wholesaleChatRoutes } from '../features/supply/api/wholesale-chat.routes';
 import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesaleProposalRoutes, adminWholesaleProductRoutes, adminWholesaleDepositAccountRoutes } from '../features/supply/api/wholesale-main.routes';
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
@@ -1244,6 +1245,8 @@ adminApp.route('/', adminSellersRoutes);
 adminApp.route('/', adminProductsRoutes);
 // 🛡️ 2026-06-01 도매몰: 공급자 계정 관리 + 지급 실행
 adminApp.route('/', adminSuppliersRoutes);
+// 🏦 2026-06-09 도매몰: 제조사 정산금 출금 신청 승인/반려 (requireAdmin + IP whitelist + audit 체인)
+adminApp.route('/', adminWholesaleWithdrawalRoutes);
 // 🛡️ 2026-05-18: 숙소 공구 어드민 (PR 1 Foundation).
 adminApp.route('/', adminStaysRoutes);
 // 🛡️ 2026-05-19: KT Alpha 관리 (catalog sync, markup, biz money 잔액).
@@ -1306,6 +1309,7 @@ app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 �
 app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
 app.route('/api/wholesale', wholesaleNotificationsRoutes); // NOTI-1: 재입고 알림 + 주문 메모 스레드
 app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 + 가격일괄/재고import
+app.route('/api/supplier', supplierWithdrawalRoutes); // 🏦 제조사 정산금 출금 신청/내역 (requireSupplier)
 app.route('/api/admin/wholesale', wholesalePriceReferenceRoutes); // BIZ-5: 네이버 최저가 참고값(어드민 검수)
 app.route('/api/admin/wholesale', wholesaleTaxRoutes); // TAX-1: 미수/미지급 aging + 매입 역발행(수동)
 app.route('/api/admin/wholesale/integrity', wholesaleIntegrityRoutes); // DATA-1: 고아행 무결성 리포트
