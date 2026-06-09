@@ -18,6 +18,7 @@
  *   → 유통회원: /api/wholesale/quotes*, 어드민: /api/wholesale/admin/quotes*
  */
 import { Hono } from 'hono'
+import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
@@ -112,6 +113,10 @@ function intOrNull(v: unknown, min = 0): number | null {
 app.post('/quotes', rateLimit({ action: 'wholesale-quote', max: 30, windowSec: 3600 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 🛡️ 감사 🟡#5: 조회 전용(viewer) 직원 계정은 견적 요청 불가.
+  if (await isViewerToken(c.req.header('Authorization'), c.env.JWT_SECRET)) {
+    return c.json({ success: false, error: '조회 전용 직원 계정은 이 작업을 할 수 없습니다' }, 403)
+  }
   const { DB } = c.env
   try {
     await ensureWholesaleQuotesSchema(DB)

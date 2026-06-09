@@ -170,8 +170,9 @@ app.get('/threads', async (c) => {
     const masked = me.role === 'distributor'
     const threads = (results ?? []).map((r) => ({
       id: r.id,
-      // 🛡️ distributor 는 상대(제조사) 신원/이름을 중립 라벨로만 봄(business_name 미노출).
-      counterpart_id: r.counterpart_id,
+      // 🛡️ distributor 는 상대(제조사) 신원을 일절 못 봄 — 이름 중립 라벨 + 숫자 supplier_id 도 미노출(감사 🟡#4).
+      //   유통사는 스레드를 thread.id 로만 열므로 counterpart_id 불필요. supplier 뷰는 distributor_id 노출 OK(비공개 아님).
+      counterpart_id: masked ? null : r.counterpart_id,
       counterpart_name: masked
         ? '제조사'
         : (r.counterpart_name || `유통사 #${r.counterpart_id}`),

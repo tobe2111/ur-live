@@ -26,6 +26,7 @@ import {
   recentDepositTxns,
 } from './wholesale-deposit-core'
 import { loadWholesaleDepositAccount } from './wholesale-main.routes'
+import { isViewerToken } from './sub-account-gate'
 
 // ── 셀러(유통사) JWT → { sellerId, isDistributor } ───────────────────────────
 //   wholesale.routes sellerIdFrom 미러 + is_distributor 플래그 추가(예치금 게이트).
@@ -76,6 +77,10 @@ dist.get('/deposits/me', async (c) => {
 dist.post('/deposits/charge-request', rateLimit({ action: 'wholesale-deposit-request', max: 10, windowSec: 60 }), async (c) => {
   const auth = await distributorFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!auth) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 🛡️ 감사 🟡#5: 조회 전용(viewer) 직원 계정은 충전 신청 불가(read-only 계약).
+  if (await isViewerToken(c.req.header('Authorization'), c.env.JWT_SECRET)) {
+    return c.json({ success: false, error: '조회 전용 직원 계정은 충전 신청을 할 수 없습니다' }, 403)
+  }
   const { DB } = c.env
   try {
     await ensureDepositSchema(DB)

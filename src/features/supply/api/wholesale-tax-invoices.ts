@@ -162,10 +162,11 @@ export async function generateWholesaleSalesInvoice(DB: D1Database, env: unknown
   try {
     await ensureSchema(DB)
     const order = await DB.prepare(
-      'SELECT id, distributor_seller_id, subtotal, status FROM wholesale_orders WHERE id = ?'
-    ).bind(orderId).first<{ id: number; distributor_seller_id: number; subtotal: number; status: string }>().catch(() => null)
+      'SELECT id, distributor_seller_id, subtotal, COALESCE(shipping_total,0) AS shipping_total, status FROM wholesale_orders WHERE id = ?'
+    ).bind(orderId).first<{ id: number; distributor_seller_id: number; subtotal: number; shipping_total: number; status: string }>().catch(() => null)
     if (!order) return
-    const split = splitWholesaleVat(Number(order.subtotal) || 0)
+    // 🧾 감사 🟡#7: 매출 세금계산서 공급대가 = 실제 청구액(subtotal + 배송비). 배송비도 과세 공급(예치금 차감됨).
+    const split = splitWholesaleVat((Number(order.subtotal) || 0) + (Number(order.shipping_total) || 0))
     if (split.total <= 0) return
 
     // 유통사(공급받는 자) 사업자번호 — 표기/발행 payee 용.
