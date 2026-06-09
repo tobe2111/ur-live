@@ -200,8 +200,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       `INSERT INTO products (
          name, description, price, supply_price, stock,
          image_url, category, product_type, is_active, is_supply_product,
-         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, pack_size, order_multiple, lowest_price_url, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+         supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, pack_size, order_multiple, lowest_price_url, mall_id, slug, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -218,6 +218,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       packSize,
       orderMultiple,
       lpUrl,
+      sid, // 🏬 mall_id = 공급자 소속 몰(서브쿼리 바인드) — 신규 몰 제조사 상품이 그 몰 카탈로그에 노출
       slug,
     ).run();
 
@@ -263,8 +264,8 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     // 🛡️ 유효 행만 INSERT statement 로 모아 DB.batch 청크 실행 (행별 순차 .run() 은 Cloudflare subrequest 한도 초과).
     const stmts: D1PreparedStatement[] = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
-       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, slug, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`;
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, min_order_qty, mall_id, slug, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const name = String(r['상품명'] || r.name || '').trim();
@@ -283,7 +284,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
         Math.floor(retailFinal), Math.floor(supplyPrice), stock,
-        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, moq, slug,
+        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, moq, sid, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });
     }
