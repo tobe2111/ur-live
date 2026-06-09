@@ -3,6 +3,15 @@
  *
  * 어드민이 역할/등급/상태 필터로 수신자를 고르고 이메일 일괄 발송.
  *
+ * 🛡️ 2026-06-09 HARDENING — 요청 안에서 직접 발송하던 것을 **큐 + cron drainer** 로 전환.
+ *   기존: POST /bulk-email 가 수천 명을 한 요청 안에서 배치 발송 → Workers CPU/wall 한도 초과
+ *         + 재시도 시 per-recipient 멱등 없음 → 중복발송 위험.
+ *   변경: POST /bulk-email 는 수신자를 서버에서 해석 → bulk_email_jobs(1행) + bulk_email_job_recipients
+ *         (수신자별 'pending' 행)만 INSERT 하고 즉시 반환. 실제 발송은
+ *         cron drainer(`src/worker/cron/bulk-email-drain.ts`)가 1~2분마다 한 batch 씩 처리.
+ *         수신자 행이 'pending' 일 때만 CAS(pending→sent) 후 발송 → cron 재실행이 중복발송 안 함.
+ *   test:true 는 그대로 본인에게 즉시 1건 발송(인라인 OK — 단일 건).
+ *
  * 🔁 기존 인프라 재사용 (신규 유료 서비스 추가 X):
  *   - 발송: `sendEmail()` (src/services/email.ts) — Resend API.
  *     · 크론(seller-daily-report / agency-monthly-report)이 쓰는 동일 provider.
@@ -11,11 +20,13 @@
  *
  * 엔드포인트 (adminApp 에 마운트 → /api/admin/bulk-email):
  *   - POST /bulk-email/preview  → 필터 해석 후 수신자 수 + 샘플 미리보기
- *   - POST /bulk-email          → 실제 발송 (배치 + fail-soft) / test:true 면 본인에게만
- *   - GET  /bulk-email/log      → 최근 발송 로그
+ *   - POST /bulk-email          → 작업 큐잉(enqueue) / test:true 면 본인에게 즉시 1건
+ *   - GET  /bulk-email/jobs      → 최근 작업 + 진행상황 (큐 drainer 진척)
+ *   - GET  /bulk-email/jobs/:id  → 작업 상세 (sent/failed/total)
+ *   - GET  /bulk-email/log      → 최근 발송 요약 로그 (작업 완료 시 1행 기록)
  *
  * 보안: adminApp 에 이미 IP whitelist + requireAdmin() + audit middleware 적용됨.
- *       추가로 발송 endpoint 에 rate limit.
+ *       추가로 enqueue endpoint 에 rate limit.
  *
  * 수신자 목록은 절대 클라이언트에서 받지 않고 서버에서 필터로만 해석.
  */
@@ -46,8 +57,7 @@ interface Recipient {
 const MAX_SUBJECT = 200;
 const MAX_BODY = 50_000;
 const HARD_RECIPIENT_CAP = 5000; // 안전 상한 (실수로 대량 발송 방지)
-const BATCH_SIZE = 20;           // Resend rate limit (기본 2 req/s 안전) 보호용 청크
-const BATCH_DELAY_MS = 1100;     // 청크 간 지연
+const ENQUEUE_CHUNK = 200;       // 수신자 행 bulk-insert 청크 (D1 bind 변수 한도 보호)
 
 // ── 필터 정규화 + 검증 ──────────────────────────────────────────────────────────
 function parseFilter(raw: unknown): { filter: BulkEmailFilter } | { error: string } {
@@ -183,7 +193,9 @@ function maskEmail(email: string): string {
   return `${local[0] ?? '*'}***@${domain}`;
 }
 
-// ── POST /bulk-email — 발송 ─────────────────────────────────────────────────────
+// ── POST /bulk-email — 작업 큐잉(enqueue) / test 는 즉시 1건 ──────────────────────
+//   ⚠️ 수천 명을 요청 안에서 발송하면 Workers CPU/wall 한도 + 중복발송 위험 →
+//   수신자 행만 'pending' 으로 insert 하고 cron drainer 가 멱등하게 비운다.
 adminBulkEmailRoutes.post(
   '/bulk-email',
   cors(),
@@ -217,76 +229,115 @@ adminBulkEmailRoutes.post(
         | { id?: string | number; email?: string }
         | undefined;
 
-      // 발송 대상 결정 — test 면 본인 이메일에만.
-      let recipients: Recipient[];
+      // ── 테스트 발송 — 본인에게 즉시 1건 (인라인 OK, 단일 건이라 한도 무관) ──
       if (isTest) {
         const adminEmail = String(user?.email ?? '').trim();
         if (!adminEmail || !EMAIL_RE.test(adminEmail)) {
           return c.json({ success: false, error: '관리자 본인 이메일을 확인할 수 없어 테스트 발송이 불가합니다' }, 400);
         }
-        recipients = [{ email: adminEmail, name: '관리자(테스트)' }];
-      } else {
-        recipients = await resolveRecipients(c.env.DB, parsed.filter);
-        if (recipients.length === 0) {
-          return c.json({ success: false, error: '조건에 맞는 수신자(이메일 보유)가 없습니다' }, 400);
+        const fromTitled = resendFrom || '유어딜 <onboarding@resend.dev>';
+        const res = await sendEmail({ to: adminEmail, subject, html }, apiKey, fromTitled, c.env.DB);
+        if (!res.success && res.error !== 'suppressed') {
+          return c.json({ success: false, error: '테스트 메일 발송에 실패했습니다' }, 502);
         }
+        return c.json({ success: true, data: { test: true, sent: res.success ? 1 : 0 } });
       }
 
-      // 배치 발송 — fail-soft (한 건 실패가 전체를 막지 않음).
-      let sent = 0;
-      let failed = 0;
-      let skipped = 0;
-      const fromTitled = resendFrom || '유어딜 <onboarding@resend.dev>';
-
-      for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-        const chunk = recipients.slice(i, i + BATCH_SIZE);
-        const settled = await Promise.allSettled(
-          chunk.map((r) =>
-            sendEmail({ to: r.email, subject, html }, apiKey, fromTitled, c.env.DB),
-          ),
-        );
-        for (const s of settled) {
-          if (s.status === 'fulfilled') {
-            if (s.value.success) sent++;
-            else if (s.value.error === 'suppressed') skipped++;
-            else failed++;
-          } else {
-            failed++;
-          }
-        }
-        // 마지막 청크가 아니면 잠깐 쉼 (provider rate limit 보호).
-        if (i + BATCH_SIZE < recipients.length) {
-          await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
-        }
+      // ── 실제 발송 — 수신자 해석 후 작업 큐잉 (발송은 cron drainer 가) ──
+      const recipients = await resolveRecipients(c.env.DB, parsed.filter);
+      if (recipients.length === 0) {
+        return c.json({ success: false, error: '조건에 맞는 수신자(이메일 보유)가 없습니다' }, 400);
       }
 
-      // 발송 요약 로그 (ensure-on-use → 마이그레이션 누락에도 안전).
-      await ensureLogTable(c.env.DB);
-      await c.env.DB.prepare(`
-        INSERT INTO bulk_email_log
-          (admin_id, admin_email, filter_json, subject, recipient_count, sent_count, failed_count, skipped_count, is_test)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      await ensureJobTables(c.env.DB);
+
+      // 1) 작업 행 INSERT (status 'pending').
+      const jobRes = await c.env.DB.prepare(`
+        INSERT INTO bulk_email_jobs
+          (admin_id, admin_email, filter_json, subject, body_html, status, total, sent, failed)
+        VALUES (?, ?, ?, ?, ?, 'pending', ?, 0, 0)
       `).bind(
         user?.id != null ? String(user.id) : null,
         user?.email ?? null,
         JSON.stringify(parsed.filter).slice(0, 1000),
         subject.slice(0, MAX_SUBJECT),
+        html,
         recipients.length,
-        sent,
-        failed,
-        skipped,
-        isTest ? 1 : 0,
-      ).run().catch(() => { /* 로그 실패가 발송 결과를 막지 않음 */ });
+      ).run();
+
+      const jobId = Number(jobRes.meta.last_row_id);
+      if (!Number.isFinite(jobId) || jobId <= 0) {
+        return c.json({ success: false, error: '작업 생성에 실패했습니다' }, 500);
+      }
+
+      // 2) 수신자 행 bulk-insert ('pending'). UNIQUE(job_id,email) → 멱등 가드.
+      //    청크로 나눠 D1 bind 변수 한도(~100 변수/문) 안전하게.
+      for (let i = 0; i < recipients.length; i += ENQUEUE_CHUNK) {
+        const chunk = recipients.slice(i, i + ENQUEUE_CHUNK);
+        const values = chunk.map(() => '(?, ?, ?, \'pending\')').join(',');
+        const binds: unknown[] = [];
+        for (const r of chunk) {
+          binds.push(jobId, r.email, r.name || null);
+        }
+        await c.env.DB.prepare(
+          `INSERT OR IGNORE INTO bulk_email_job_recipients (job_id, email, name, status) VALUES ${values}`,
+        ).bind(...binds).run();
+      }
 
       return c.json({
         success: true,
-        data: { recipient_count: recipients.length, sent, failed, skipped, test: isTest },
+        data: { job_id: jobId, total: recipients.length, status: 'pending' },
       });
     } catch (err) {
-      return safeError(c, err, '단체메일 발송 중 오류가 발생했습니다', '[admin-bulk-email:send]');
+      return safeError(c, err, '단체메일 작업 등록 중 오류가 발생했습니다', '[admin-bulk-email:enqueue]');
     }
   },
 );
+
+// ── GET /bulk-email/jobs — 최근 작업 + 진행상황 ─────────────────────────────────
+adminBulkEmailRoutes.get('/bulk-email/jobs', cors(), async (c) => {
+  try {
+    await ensureJobTables(c.env.DB);
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, admin_email, filter_json, subject, status, total, sent, failed, created_at, updated_at
+      FROM bulk_email_jobs
+      ORDER BY id DESC
+      LIMIT 30
+    `).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) {
+    return safeError(c, err, '작업 목록 조회 중 오류가 발생했습니다', '[admin-bulk-email:jobs]');
+  }
+});
+
+// ── GET /bulk-email/jobs/:id — 작업 상세 ────────────────────────────────────────
+adminBulkEmailRoutes.get('/bulk-email/jobs/:id', cors(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) {
+      return c.json({ success: false, error: '잘못된 작업 ID 입니다' }, 400);
+    }
+    await ensureJobTables(c.env.DB);
+    const job = await c.env.DB.prepare(`
+      SELECT id, admin_email, filter_json, subject, status, total, sent, failed, created_at, updated_at
+      FROM bulk_email_jobs WHERE id = ?
+    `).bind(id).first();
+    if (!job) return c.json({ success: false, error: '작업을 찾을 수 없습니다' }, 404);
+
+    // 상태별 수신자 수 집계 (pending/sent/failed/skipped).
+    const { results: counts } = await c.env.DB.prepare(`
+      SELECT status, COUNT(*) AS cnt
+      FROM bulk_email_job_recipients WHERE job_id = ?
+      GROUP BY status
+    `).bind(id).all<{ status: string; cnt: number }>();
+    const breakdown: Record<string, number> = { pending: 0, sent: 0, failed: 0, skipped: 0 };
+    for (const r of counts ?? []) breakdown[r.status] = Number(r.cnt) || 0;
+
+    return c.json({ success: true, data: { ...job, breakdown } });
+  } catch (err) {
+    return safeError(c, err, '작업 상세 조회 중 오류가 발생했습니다', '[admin-bulk-email:job-detail]');
+  }
+});
 
 // ── GET /bulk-email/log — 최근 발송 로그 ────────────────────────────────────────
 adminBulkEmailRoutes.get('/bulk-email/log', cors(), async (c) => {
@@ -324,4 +375,53 @@ async function ensureLogTable(DB: D1Database): Promise<void> {
       created_at DATETIME DEFAULT (datetime('now'))
     )
   `).run().catch(() => { /* exists */ });
+}
+
+// ensure-on-use — 큐 테이블 (repair-schema 와 동일 스키마, 미실행 환경 대비).
+//   exported → cron drainer 도 동일 보장 후 작업 처리.
+const _ensuredJobs = new WeakSet<object>();
+export async function ensureBulkEmailJobTables(DB: D1Database): Promise<void> {
+  if (_ensuredJobs.has(DB as unknown as object)) return;
+  _ensuredJobs.add(DB as unknown as object);
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS bulk_email_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT,
+      admin_email TEXT,
+      filter_json TEXT,
+      subject TEXT NOT NULL,
+      body_html TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      total INTEGER NOT NULL DEFAULT 0,
+      sent INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )
+  `).run().catch(() => { /* exists */ });
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS bulk_email_job_recipients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
+      name TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error TEXT,
+      sent_at DATETIME
+    )
+  `).run().catch(() => { /* exists */ });
+  await DB.prepare(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_bulk_email_job_recipients_unique ON bulk_email_job_recipients(job_id, email)`,
+  ).run().catch(() => { /* exists */ });
+  await DB.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_bulk_email_job_recipients_pending ON bulk_email_job_recipients(job_id, status)`,
+  ).run().catch(() => { /* exists */ });
+  await DB.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_bulk_email_jobs_status ON bulk_email_jobs(status, id)`,
+  ).run().catch(() => { /* exists */ });
+}
+
+// 라우트 내부에서 쓰는 짧은 alias.
+async function ensureJobTables(DB: D1Database): Promise<void> {
+  return ensureBulkEmailJobTables(DB);
 }

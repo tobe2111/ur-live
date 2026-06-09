@@ -1485,6 +1485,36 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_wholesale_proposal_tickets_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_seller ON wholesale_proposal_tickets(seller_id, id DESC)` },
     { name: 'idx_wholesale_proposal_tickets_status', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_status ON wholesale_proposal_tickets(status, id DESC)` },
+
+    // 🛡️ 2026-06-09: 어드민 단체메일 큐 (요청 안에서 발송 X → cron drainer + per-recipient 멱등).
+    //   bulk_email_jobs = 작업 1행(필터/제목/본문/진행상황), bulk_email_job_recipients = 수신자별 행.
+    //   recipient 행이 'pending' 일 때만 발송(CAS pending→sent) → cron 재실행이 중복발송 안 함.
+    { name: 'bulk_email_jobs', sql: `CREATE TABLE IF NOT EXISTS bulk_email_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT,
+      admin_email TEXT,
+      filter_json TEXT,
+      subject TEXT NOT NULL,
+      body_html TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      total INTEGER NOT NULL DEFAULT 0,
+      sent INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_bulk_email_jobs_status', sql: `CREATE INDEX IF NOT EXISTS idx_bulk_email_jobs_status ON bulk_email_jobs(status, id)` },
+    { name: 'bulk_email_job_recipients', sql: `CREATE TABLE IF NOT EXISTS bulk_email_job_recipients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      email TEXT NOT NULL,
+      name TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error TEXT,
+      sent_at DATETIME
+    )` },
+    { name: 'idx_bulk_email_job_recipients_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_bulk_email_job_recipients_unique ON bulk_email_job_recipients(job_id, email)` },
+    { name: 'idx_bulk_email_job_recipients_pending', sql: `CREATE INDEX IF NOT EXISTS idx_bulk_email_job_recipients_pending ON bulk_email_job_recipients(job_id, status)` },
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];
   for (const { name, sql } of tables) {

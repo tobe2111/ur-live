@@ -4,10 +4,10 @@
  * 역할/등급/상태 필터로 수신자를 고르고 → 미리보기(수신자 수) → 작성 → 테스트발송 → 발송.
  * 기존 이메일 인프라(Resend) 재사용. 라이트 테마 고정(대시보드).
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Mail, Send, Users, FlaskConical, RefreshCw } from 'lucide-react'
+import { Mail, Send, Users, FlaskConical, RefreshCw, Clock } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -36,6 +36,18 @@ interface LogRow {
   created_at: string
 }
 
+interface JobRow {
+  id: number
+  admin_email: string | null
+  subject: string
+  status: 'pending' | 'sending' | 'done' | 'failed'
+  total: number
+  sent: number
+  failed: number
+  created_at: string
+  updated_at: string
+}
+
 const DISTRIBUTOR_GRADES = ['all', 'A', 'B', 'C', 'D']
 
 export default function AdminBulkEmailPage() {
@@ -52,6 +64,7 @@ export default function AdminBulkEmailPage() {
   const [previewing, setPreviewing] = useState(false)
   const [sending, setSending] = useState(false)
   const [log, setLog] = useState<LogRow[]>([])
+  const [jobs, setJobs] = useState<JobRow[]>([])
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
 
@@ -93,9 +106,30 @@ export default function AdminBulkEmailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const loadJobs = useCallback(async () => {
+    try {
+      const res = await api.get('/api/admin/bulk-email/jobs', { headers })
+      if (res.data?.success) setJobs((res.data.data as JobRow[]) || [])
+    } catch { /* noop */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 필터 변경 시 미리보기 자동 갱신.
   useEffect(() => { loadPreview() }, [loadPreview])
   useEffect(() => { loadLog() }, [loadLog])
+  useEffect(() => { loadJobs() }, [loadJobs])
+
+  // 큐 처리 중(pending/sending) 작업이 있으면 5초마다 진척 자동 갱신.
+  const hasActiveJob = jobs.some((j) => j.status === 'pending' || j.status === 'sending')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => {
+    if (!hasActiveJob) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      return
+    }
+    pollRef.current = setInterval(() => { loadJobs() }, 5000)
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+  }, [hasActiveJob, loadJobs])
 
   async function handleSend(test: boolean) {
     if (!subject.trim()) {
@@ -132,10 +166,12 @@ export default function AdminBulkEmailPage() {
         toast.success(
           test
             ? t('admin.bulkEmail.testSent', { defaultValue: '테스트 메일을 본인에게 발송했습니다' })
-            : t('admin.bulkEmail.sentSummary', {
-                defaultValue: `발송 완료 · 성공 ${d.sent} / 실패 ${d.failed} / 건너뜀 ${d.skipped}`,
+            : t('admin.bulkEmail.enqueued', {
+                defaultValue: `발송 작업이 등록되었습니다 (큐 처리 중 · ${formatNumber(d.total)}명)`,
               }),
         )
+        if (!test) { setSubject(''); setBodyText('') }
+        loadJobs()
         loadLog()
       } else {
         toast.error(res.data?.error || t('admin.bulkEmail.sendFail', { defaultValue: '발송 실패' }))
@@ -304,7 +340,83 @@ export default function AdminBulkEmailPage() {
           </div>
         </div>
 
-        {/* 우: 최근 발송 로그 */}
+        {/* 우: 발송 작업 진행 + 최근 발송 로그 */}
+        <div className="space-y-5">
+
+        {/* 발송 작업 큐 (진행상황) — pending/sending 이면 자동 갱신 */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-gray-900">
+              <Clock className="h-4 w-4 text-blue-600" />
+              {t('admin.bulkEmail.jobsTitle', { defaultValue: '발송 작업 (큐)' })}
+            </h2>
+            <button onClick={loadJobs} className="text-gray-400 hover:text-gray-600" aria-label="새로고침">
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+          {jobs.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-400">
+              {t('admin.bulkEmail.noJobs', { defaultValue: '진행 중인 작업이 없습니다' })}
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {jobs.map((job) => {
+                const processed = (job.sent ?? 0) + (job.failed ?? 0)
+                const pct = job.total > 0 ? Math.min(100, Math.round((processed / job.total) * 100)) : 0
+                const active = job.status === 'pending' || job.status === 'sending'
+                const statusLabel =
+                  job.status === 'done'
+                    ? t('admin.bulkEmail.jobDone', { defaultValue: '완료' })
+                    : job.status === 'failed'
+                      ? t('admin.bulkEmail.jobFailed', { defaultValue: '실패' })
+                      : job.status === 'sending'
+                        ? t('admin.bulkEmail.jobSending', { defaultValue: '발송 중' })
+                        : t('admin.bulkEmail.jobPending', { defaultValue: '대기 중' })
+                const badgeCls =
+                  job.status === 'done'
+                    ? 'bg-green-100 text-green-700'
+                    : job.status === 'failed'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-blue-100 text-blue-700'
+                return (
+                  <li key={job.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-1 text-sm font-semibold text-gray-900">{job.subject}</p>
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${badgeCls}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className={`h-full rounded-full transition-all ${job.status === 'failed' ? 'bg-red-400' : 'bg-blue-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                      <span className="text-green-600">
+                        {t('admin.bulkEmail.logSent', { defaultValue: '성공' })} {formatNumber(job.sent)}
+                      </span>
+                      {job.failed > 0 && (
+                        <span className="text-red-500">
+                          {t('admin.bulkEmail.logFailed', { defaultValue: '실패' })} {formatNumber(job.failed)}
+                        </span>
+                      )}
+                      <span>/ {formatNumber(job.total)}</span>
+                      <span className="ml-auto text-gray-400">{pct}%</span>
+                    </div>
+                    {active && (
+                      <p className="mt-1 text-[11px] text-blue-500">
+                        {t('admin.bulkEmail.jobAutoRefresh', { defaultValue: '큐 처리 중 — 자동 갱신됩니다' })}
+                      </p>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* 최근 발송 로그 (완료 요약) */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900">
@@ -354,6 +466,7 @@ export default function AdminBulkEmailPage() {
               ))}
             </ul>
           )}
+        </div>
         </div>
       </div>
     </AdminLayout>
