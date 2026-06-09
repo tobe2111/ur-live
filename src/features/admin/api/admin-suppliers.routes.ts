@@ -42,9 +42,10 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
       where = 's.status = ?'; params.push(status);
     }
 
-    const rows = await DB.prepare(
-      `SELECT s.id, s.business_name, s.business_number, s.representative, s.email, s.phone,
-              s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
+    // 🏭 2026-06-09 Wave 1: 대표자(representative)/담당자(manager_*) 인적사항 surface.
+    //   repair-schema 미적용 isolate 대비 — 새 컬럼 없으면 fallback 쿼리로 재시도(기존 동작 보존).
+    const baseTail =
+      `      s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
               COALESCE(b.pending_amount, 0)   AS pending_amount,
               COALESCE(b.available_amount, 0) AS available_amount,
               COALESCE(b.paid_amount, 0)      AS paid_amount,
@@ -53,8 +54,20 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
          LEFT JOIN supplier_balances b ON b.supplier_id = s.id
          WHERE ${where}
          ORDER BY (s.status = 'pending') DESC, s.created_at DESC
-         LIMIT ? OFFSET ?`
-    ).bind(...params, limit, offset).all();
+         LIMIT ? OFFSET ?`;
+    let rows;
+    try {
+      rows = await DB.prepare(
+        `SELECT s.id, s.business_name, s.business_number, s.representative, s.email, s.phone,
+                s.representative_phone, s.manager_name, s.manager_phone, s.manager_email,
+${baseTail}`
+      ).bind(...params, limit, offset).all();
+    } catch {
+      rows = await DB.prepare(
+        `SELECT s.id, s.business_name, s.business_number, s.representative, s.email, s.phone,
+${baseTail}`
+      ).bind(...params, limit, offset).all();
+    }
 
     const total = await DB.prepare(`SELECT COUNT(*) AS count FROM suppliers s WHERE ${where}`).bind(...params).first<{ count: number }>();
     const pendingCount = await DB.prepare("SELECT COUNT(*) AS count FROM suppliers WHERE status = 'pending'").first<{ count: number }>().catch(() => null);

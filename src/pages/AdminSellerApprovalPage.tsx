@@ -32,6 +32,12 @@ type Seller = {
   business_registration_image_url?: string | null
   business_registration_status?: BizRegStatus | string | null
   business_registration_reject_reason?: string | null
+  // 🏭 2026-06-09 Wave 1: 대표자/담당자 인적사항
+  representative_name?: string | null
+  representative_phone?: string | null
+  manager_name?: string | null
+  manager_phone?: string | null
+  manager_email?: string | null
 }
 
 const STATUS_OPTIONS = [
@@ -303,6 +309,13 @@ export default function AdminSellerApprovalPage() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 truncate">{s.email} · {s.phone || '-'} · 사업자 {s.business_number || '-'}</p>
+                  {(s.representative_name || s.manager_name) && (
+                    <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                      {s.representative_name && <>대표자 {s.representative_name}{s.representative_phone ? ` (${s.representative_phone})` : ''}</>}
+                      {s.representative_name && s.manager_name && <span className="text-gray-300"> · </span>}
+                      {s.manager_name && <>담당자 {s.manager_name}{s.manager_phone ? ` (${s.manager_phone})` : ''}</>}
+                    </p>
+                  )}
                   <p className="text-[10px] text-gray-400 mt-0.5">가입일: {new Date(s.created_at).toLocaleDateString('ko-KR')}</p>
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
@@ -351,6 +364,42 @@ export default function AdminSellerApprovalPage() {
               {/* 🛡️ 2026-05-20: 상세 — 정산 계좌 + 사업자등록증 (어드민 검증) */}
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-gray-100 grid gap-4 md:grid-cols-2">
+                  {/* 🏭 2026-06-09 Wave 1: 대표자 / 담당자 인적사항 */}
+                  <div className="bg-gray-50 rounded-lg p-3 md:col-span-2">
+                    <p className="text-xs font-bold text-gray-700 mb-2">대표자 / 담당자</p>
+                    {(s.representative_name || s.representative_phone || s.manager_name || s.manager_phone || s.manager_email) ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <dl className="text-xs text-gray-700 space-y-1">
+                          <p className="text-[11px] font-semibold text-gray-500 mb-1">대표자</p>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">성명</dt>
+                            <dd className="font-medium text-gray-900">{s.representative_name || '-'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">연락처</dt>
+                            <dd className="font-medium text-gray-900">{s.representative_phone || '-'}</dd>
+                          </div>
+                        </dl>
+                        <dl className="text-xs text-gray-700 space-y-1">
+                          <p className="text-[11px] font-semibold text-gray-500 mb-1">담당자</p>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">성명</dt>
+                            <dd className="font-medium text-gray-900">{s.manager_name || '-'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">연락처</dt>
+                            <dd className="font-medium text-gray-900">{s.manager_phone || '-'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">이메일</dt>
+                            <dd className="font-medium text-gray-900 break-all">{s.manager_email || '-'}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">대표자/담당자 인적사항이 입력되지 않았습니다.</p>
+                    )}
+                  </div>
                   {/* 정산 계좌 */}
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs font-bold text-gray-700 mb-2">정산 계좌 정보</p>

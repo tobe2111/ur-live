@@ -4,7 +4,7 @@
  *
  * 본 파일이 담는 것:
  *   1. 메인 배너 캐러셀 — 공개 GET(캐시) + 어드민 CRUD.
- *   2. 프리미엄 전용관 — 어드민 상품 토글(POST). (카탈로그 필터/응답은 wholesale.routes 카탈로그에 이미 배선.)
+ *   2. 프리미엄 전용관 — 어드민 상품 목록(GET) + 토글(POST). (카탈로그 필터/응답은 wholesale.routes 카탈로그에 이미 배선.)
  *   3. 제안/신고(proposals/reports) — 유통사 POST/GET + 어드민 큐/처리.
  *   4. 예치금 입금계좌(admin-settable) — 어드민 GET/PUT (platform_settings key/value).
  *
@@ -354,6 +354,49 @@ adminProposal.post('/:id/resolve', rateLimit({ action: 'admin-wholesale-proposal
 // 어드민 — 프리미엄 전용관 토글  /api/admin/wholesale-products/*
 // ════════════════════════════════════════════════════════════════════════════
 const adminProduct = adminApp()
+
+// GET /api/admin/wholesale-products?premium=&q=&page=&limit= — 도매(공급) 상품 목록 + 프리미엄 플래그.
+//   어드민이 프리미엄 전용관 토글 + 검색용. is_supply_product=1 (도매 카탈로그) 만.
+adminProduct.get('/', async (c) => {
+  const { DB } = c.env
+  try {
+    await ensurePremiumColumn(DB)
+    const premiumQ = String(c.req.query('premium') || '').trim() // '' | '0' | '1'
+    const q = String(c.req.query('q') || '').trim().slice(0, 100)
+    const page = Math.max(1, Number(c.req.query('page') || 1))
+    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)))
+    const offset = (page - 1) * limit
+
+    // 도매(공급) 카탈로그 = supplier 가 등록한 원본 상품(리셀 복사본 supply_source_id 제외).
+    let where = 'p.is_supply_product = 1 AND p.supply_source_id IS NULL'
+    const params: (string | number)[] = []
+    if (premiumQ === '1') where += ' AND COALESCE(p.is_premium, 0) = 1'
+    else if (premiumQ === '0') where += ' AND COALESCE(p.is_premium, 0) = 0'
+    if (q) { where += ' AND (p.name LIKE ? OR s.business_name LIKE ?)'; const like = `%${q}%`; params.push(like, like) }
+
+    const rows = await DB.prepare(
+      `SELECT p.id, p.name, p.category, p.supply_price, p.is_active,
+              COALESCE(p.is_premium, 0) AS is_premium,
+              p.supplier_id, s.business_name AS supplier_name
+         FROM products p
+         LEFT JOIN suppliers s ON s.id = p.supplier_id
+         WHERE ${where}
+         ORDER BY COALESCE(p.is_premium, 0) DESC, p.created_at DESC, p.id DESC
+         LIMIT ? OFFSET ?`
+    ).bind(...params, limit, offset).all()
+
+    const totalRow = await DB.prepare(
+      `SELECT COUNT(*) AS cnt FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id WHERE ${where}`
+    ).bind(...params).first<{ cnt: number }>().catch(() => null)
+    const premiumRow = await DB.prepare(
+      'SELECT COUNT(*) AS cnt FROM products p WHERE p.is_supply_product = 1 AND p.supply_source_id IS NULL AND COALESCE(p.is_premium, 0) = 1'
+    ).first<{ cnt: number }>().catch(() => null)
+
+    return c.json({ success: true, data: { items: rows.results ?? [], total: totalRow?.cnt ?? 0, premium_count: premiumRow?.cnt ?? 0, page, limit } })
+  } catch (err) {
+    return safeError(c, err, '도매 상품 목록 조회 중 오류가 발생했습니다', '[admin-wholesale-products]')
+  }
+})
 
 adminProduct.post('/:id/premium', rateLimit({ action: 'admin-wholesale-premium-toggle', max: 60, windowSec: 60 }), async (c) => {
   const { DB } = c.env

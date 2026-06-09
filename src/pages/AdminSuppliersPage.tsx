@@ -21,6 +21,11 @@ interface SupplierRow {
   business_license_url?: string | null
   email: string
   phone: string | null
+  // 🏭 2026-06-09 Wave 1: 대표자 연락처 + 담당자 인적사항
+  representative_phone?: string | null
+  manager_name?: string | null
+  manager_phone?: string | null
+  manager_email?: string | null
   bank_name: string | null
   bank_account: string | null
   account_holder: string | null
@@ -122,9 +127,16 @@ export default function AdminSuppliersPage() {
                       <span className="text-xs text-gray-400">{t('admin.suppliers.products', { defaultValue: '상품' })} {s.product_count}</span>
                     </div>
                     <p className="text-xs text-gray-500">
-                      {s.representative && <>{s.representative} · </>}{s.email}{s.phone && <> · {s.phone}</>}
+                      {s.representative && <>{t('admin.suppliers.ceo', { defaultValue: '대표자' })} {s.representative}{s.representative_phone ? ` (${s.representative_phone})` : ''} · </>}{s.email}{s.phone && <> · {s.phone}</>}
                       {s.business_number && <> · {t('admin.suppliers.bizNo', { defaultValue: '사업자' })} {s.business_number}</>}
                     </p>
+                    {(s.manager_name || s.manager_phone || s.manager_email) && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {t('admin.suppliers.manager', { defaultValue: '담당자' })}: {s.manager_name || '-'}
+                        {s.manager_phone && <> · {s.manager_phone}</>}
+                        {s.manager_email && <> · {s.manager_email}</>}
+                      </p>
+                    )}
                     {/* 🏭 2026-06-04 사업자등록증 — 승인 심사용 (클릭 시 원본 확인) */}
                     {s.business_license_url && (
                       <a href={s.business_license_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">

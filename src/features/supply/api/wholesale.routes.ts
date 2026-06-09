@@ -682,6 +682,14 @@ app.get('/catalog', async (c) => {
       }
     })
 
+    // 🏭 캐시 분리: guest(가격 비노출 → grade 무관 동일 응답)만 공유캐시. 로그인 응답은 등급가 개인화라 private/no-store.
+    //   guest 카탈로그는 banners 와 동일 분리 헤더(브라우저 60s + edge 300s). KV write 미사용(edge only).
+    if (guest) {
+      c.header('Cache-Control', 'public, max-age=60')
+      c.header('CDN-Cache-Control', 'public, max-age=300')
+    } else {
+      c.header('Cache-Control', 'private, no-store')
+    }
     return c.json({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade: guest ? null : grade, requires_login: guest })
   } catch (err) {
     return safeError(c, err, '카탈로그 조회 중 오류가 발생했습니다', '[wholesale]')
@@ -719,6 +727,9 @@ app.get('/catalog/:id', async (c) => {
     const packSize = Math.max(1, r.pack_size || 1)
     const orderMultiple = Math.max(1, r.order_multiple || 1)
     if (guest) {
+      // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s, banners 와 동일 분리). KV 미사용.
+      c.header('Cache-Control', 'public, max-age=60')
+      c.header('CDN-Cache-Control', 'public, max-age=300')
       return c.json({
         success: true,
         item: {
@@ -746,6 +757,7 @@ app.get('/catalog/:id', async (c) => {
     //   원가+최소마진(PG 수수료 커버) 하한 + 등급가 초과 금지 clamp. 기본(minMargin=0)이면 = 공급가(현행 동작).
     const tierFloor = effectiveTierFloor(price, r.supply_price, minMarginPct)
     const tiers = rawTiers.map(t => ({ min_qty: t.min_qty, discount_pct: t.discount_pct, unit_price: tierUnitPrice(price, t.min_qty, rawTiers, tierFloor) }))
+    c.header('Cache-Control', 'private, no-store') // 등급가 개인화 — 공유캐시 금지
     return c.json({
       success: true,
       item: {

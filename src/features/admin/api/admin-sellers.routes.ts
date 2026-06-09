@@ -52,6 +52,12 @@ interface SellerRow {
   business_registration_image_url?: string | null;
   business_registration_status?: string | null;
   business_registration_reject_reason?: string | null;
+  // 🏭 2026-06-09 Wave 1: 대표자/담당자 인적사항 (가입 시 저장)
+  representative_name?: string | null;
+  representative_phone?: string | null;
+  manager_name?: string | null;
+  manager_phone?: string | null;
+  manager_email?: string | null;
 }
 
 interface IdRow {
@@ -77,7 +83,9 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
                linked_user_id,
                bank_name, bank_account, account_holder,
                business_registration_image_url, business_registration_status,
-               business_registration_reject_reason
+               business_registration_reject_reason,
+               representative_name, representative_phone,
+               manager_name, manager_phone, manager_email
         FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
       `, [limit, offset]);
     } catch {
@@ -145,7 +153,9 @@ adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
              COALESCE(s.can_manipulate_stats, 0) AS can_manipulate_stats,
              s.bank_name, s.bank_account, s.account_holder,
              s.business_registration_image_url, s.business_registration_status,
-             s.business_registration_reject_reason
+             s.business_registration_reject_reason,
+             s.representative_name, s.representative_phone,
+             s.manager_name, s.manager_phone, s.manager_email
       FROM sellers s WHERE s.id = ?
     `).bind(sellerId).first().catch(() => null);
 
