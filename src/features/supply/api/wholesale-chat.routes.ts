@@ -92,6 +92,25 @@ function myThreadCol(role: ChatIdentity['role']): 'distributor_seller_id' | 'sup
   return role === 'distributor' ? 'distributor_seller_id' : 'supplier_id'
 }
 
+/** @internal exported for unit-testing only — pure masking label selection. */
+export function maskCounterpartName(
+  role: ChatIdentity['role'],
+  rawName: string | null | undefined,
+  counterpartId: number,
+): string {
+  if (role === 'distributor') return '제조사'
+  return rawName || `유통사 #${counterpartId}`
+}
+
+/** @internal exported for unit-testing only — ownership/IDOR predicate. */
+export function threadBelongsToMe(
+  thread: { distributor_seller_id: number; supplier_id: number },
+  me: ChatIdentity,
+): boolean {
+  if (me.role === 'distributor') return thread.distributor_seller_id === me.id
+  return thread.supplier_id === me.id
+}
+
 const app = new Hono<{ Bindings: Env }>()
 
 // ════════════════════════════════════════════════════════════════════════════

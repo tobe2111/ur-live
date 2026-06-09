@@ -492,21 +492,21 @@ app.post('/orders/:id/refund', rateLimit({ action: 'admin-wholesale-refund', max
     const reason = String(body.reason || '관리자 환불').slice(0, 100)
 
     const order = await c.env.DB.prepare(
-      'SELECT id, distributor_seller_id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
-    ).bind(id).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
+      'SELECT id, distributor_seller_id, status, payment_key, subtotal, COALESCE(shipping_total,0) AS shipping_total, refunded_amount FROM wholesale_orders WHERE id = ?'
+    ).bind(id).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; shipping_total: number; refunded_amount: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (order.status === 'REFUNDED') return c.json({ success: true, already: true })
     if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
       return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
     }
-    // 남은 환불 가능액 = subtotal - 이미 환불액.
-    const remaining = Math.max(0, (order.subtotal || 0) - (order.refunded_amount || 0))
+    // 남은 환불 가능액 = (상품합 + 배송비) - 이미 환불액. (감사 🔴#2: 청구액=subtotal+shipping 전액 환불)
+    const remaining = Math.max(0, (order.subtotal || 0) + (order.shipping_total || 0) - (order.refunded_amount || 0))
     if (remaining <= 0) return c.json({ success: false, error: '환불할 잔액이 없습니다' }, 400)
     const isDeposit = order.payment_key === 'deposit'
 
     // CAS claim — PAID/SHIPPED/PARTIAL_REFUNDED → REFUNDED. changes=0 이면 이미 처리됨(멱등).
     const claim = await c.env.DB.prepare(
-      "UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal WHERE id = ? AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')"
+      "UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal + COALESCE(shipping_total,0) WHERE id = ? AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')"
     ).bind(id).run()
     if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
 

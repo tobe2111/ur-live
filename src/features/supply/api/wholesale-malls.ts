@@ -82,7 +82,8 @@ interface MallCache { byHost: Map<string, WholesaleMall>; byId: Map<number, Whol
 const _mallCache = new WeakMap<object, MallCache>()
 const MALL_CACHE_TTL_MS = 60_000 // 1분 — 어드민이 몰 추가/수정해도 1분 내 반영. 트래픽 대비 충분.
 
-function normHost(host: string | null | undefined): string {
+/** @internal exported for unit-testing only — normalise a hostname: lower, strip www./ port. */
+export function normHost(host: string | null | undefined): string {
   return String(host || '').trim().toLowerCase().replace(/^www\./, '').replace(/:\d+$/, '')
 }
 

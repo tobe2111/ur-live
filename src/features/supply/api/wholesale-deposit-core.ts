@@ -157,7 +157,7 @@ export async function compensateDepositOrderOnce(
 export async function reconcileOrphanedDepositOrders(DB: D1Database): Promise<{ refunded: number; scanned: number }> {
   let refunded = 0
   const { results } = await DB.prepare(
-    `SELECT o.id AS id, o.distributor_seller_id AS seller_id, o.subtotal AS subtotal
+    `SELECT o.id AS id, o.distributor_seller_id AS seller_id, (o.subtotal + COALESCE(o.shipping_total,0)) AS subtotal
        FROM wholesale_orders o
       WHERE o.payment_key = 'deposit'
         AND o.status IN ('PENDING','EXPIRED','FAILED')

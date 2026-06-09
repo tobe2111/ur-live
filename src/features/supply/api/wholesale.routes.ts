@@ -1257,13 +1257,15 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
+    // 🏬 감사 🟡#3: mall 스코프 — 카탈로그처럼 주문도 요청 유통사의 몰로 제한(크로스몰 주문 차단).
+    const orderMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
       SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
-        AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+        AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
+    `).bind(...ids, orderMallId, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       // 어떤 상품이 주문 불가인지 이름으로 안내(카트 부분 불가 UX) — 비노출 정보 없이 name 만.
@@ -1912,6 +1914,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
     await ensureQtyConstraintSchema(DB)
     const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])
     const placeholders = ids.map(() => '?').join(',')
+    // 🏬 감사 🟡#3: 미리보기도 주문과 동일 mall 스코프(크로스몰 차단).
+    const previewMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
       SELECT p.id, p.name, p.image_url, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -1919,8 +1923,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       FROM products p
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
-        AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+        AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
+    `).bind(...ids, previewMallId, sellerId).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = new Map((prods.results || []).map(p => [p.id, p]))
     const tierMap = await loadQtyTiers(DB, ids)
 
