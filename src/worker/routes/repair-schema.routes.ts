@@ -832,6 +832,21 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_referral_clicks_seller', sql: `CREATE INDEX IF NOT EXISTS idx_referral_clicks_seller ON referral_clicks(seller_id, created_at DESC)` },
     { name: 'idx_referral_clicks_product', sql: `CREATE INDEX IF NOT EXISTS idx_referral_clicks_product ON referral_clicks(product_id, created_at DESC) WHERE product_id IS NOT NULL` },
+    // 📧 2026-06-09 Wave 3b: 어드민 단체메일 발송 로그 (filtered bulk email)
+    { name: 'bulk_email_log', sql: `CREATE TABLE IF NOT EXISTS bulk_email_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT,
+      admin_email TEXT,
+      filter_json TEXT,
+      subject TEXT NOT NULL,
+      recipient_count INTEGER DEFAULT 0,
+      sent_count INTEGER DEFAULT 0,
+      failed_count INTEGER DEFAULT 0,
+      skipped_count INTEGER DEFAULT 0,
+      is_test INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_bulk_email_log_created', sql: `CREATE INDEX IF NOT EXISTS idx_bulk_email_log_created ON bulk_email_log(created_at DESC)` },
     // 🚀 인덱스 추가 (2026-04-22 static audit 결과 — 셀러 대시보드 쿼리 500ms → 50ms)
     { name: 'idx_orders_seller_status_v2', sql: `CREATE INDEX IF NOT EXISTS idx_orders_seller_status_v2 ON orders(seller_id, status)` },
     { name: 'idx_donations_seller_payment_status', sql: `CREATE INDEX IF NOT EXISTS idx_donations_seller_payment_status ON donations(seller_id, payment_status)` },

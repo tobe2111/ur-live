@@ -46,6 +46,7 @@ import { edgeCache, publicCache } from './middleware/edge-cache';
 import { accountRoutes } from '../features/account/api/account.routes';
 import { adminManagementRoutes, adminBannersRoutes, adminFlagsRoutes } from '../features/admin/api/index';
 import { adminCouponsRoutes } from '../features/admin/api/admin-coupons.routes';
+import { adminBulkEmailRoutes } from '../features/admin/api/admin-bulk-email.routes';
 import { adminSideBannersRoutes } from '../features/admin/api/admin-side-banners.routes';
 import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.routes';
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
@@ -1225,6 +1226,9 @@ adminApp.route('/', adminSystemMonitoringRoutes);
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);
+
+// 📧 2026-06-09 Wave 3b: 어드민 단체메일 (filtered bulk email) — /api/admin/bulk-email
+adminApp.route('/', adminBulkEmailRoutes);
 // 🛡️ 2026-04-22 배치 141 (TD-006 부분): admin-side-banners 분리
 adminApp.route('/', adminSideBannersRoutes);
 // 🛡️ 2026-04-22 배치 143 (TD-006 부분): admin-settlements 분리 (가장 큰 섹션 ~296줄)

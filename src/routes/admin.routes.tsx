@@ -93,6 +93,8 @@ const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
 const Admin2FASetupPage = lazy(() => import('@/pages/Admin2FASetupPage'))
 const AdminCommissionWithdrawalsPage = lazy(() => import('@/pages/AdminCommissionWithdrawalsPage'))
 const AdminPayoutsPage = lazy(() => import('@/pages/AdminPayoutsPage'))
+// 📧 2026-06-09 Wave 3b: 어드민 단체메일 (filtered bulk email)
+const AdminBulkEmailPage = lazy(() => import('@/pages/AdminBulkEmailPage'))
 
 export function AdminRoutes() {
   return (
@@ -486,6 +488,12 @@ export function AdminRoutes() {
       <Route path="/admin/review-moderation" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminReviewModerationPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 📧 2026-06-09 Wave 3b: 어드민 단체메일 (filtered bulk email) */}
+      <Route path="/admin/bulk-email" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminBulkEmailPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
     </>

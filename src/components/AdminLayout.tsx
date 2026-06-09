@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers,
+  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -110,6 +110,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
+      { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
     ],
   },
   {
