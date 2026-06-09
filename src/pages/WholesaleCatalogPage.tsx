@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, memo, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import WholesaleFooter from './wholesale/WholesaleFooter'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { cfImage } from '@/utils/cf-image'
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 홈 — Claude Design 시안 구현 (TDS/Toss 라이트).
@@ -64,7 +65,7 @@ function ProductImg({ p, className = '' }: { p: CatalogItem; className?: string 
   return (
     <div className="w-full h-full" style={{ background: WT.fill }}>
       {p.image_url
-        ? <img src={p.image_url} alt={p.name} draggable={false} loading="lazy" className={'block w-full h-full object-cover ' + className} />
+        ? <img src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url} alt={p.name} draggable={false} loading="lazy" decoding="async" className={'block w-full h-full object-cover ' + className} />
         : null}
     </div>
   )
@@ -85,7 +86,7 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 }
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean }) {
+const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean }) {
   const soldOut = p.stock <= 0
   const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
   const um = p.retail_price && p.distributor_price != null ? unitMargin(p.distributor_price, p.retail_price) : 0
@@ -101,7 +102,7 @@ function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy }: { p: 
         <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full">
           {p.image_url && (
             <img
-              src={p.image_url}
+              src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url}
               alt={p.name}
               draggable={false}
               loading="lazy"
@@ -182,7 +183,7 @@ function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy }: { p: 
       </div>
     </div>
   )
-}
+})
 
 // ── 가로 레일 미니 카드 ──
 function MiniCard({ p, onOpen, onAdd, tag }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; tag?: string }) {
@@ -207,7 +208,7 @@ function ReorderCard({ r, onOpen, onReorder }: { r: ReorderItem; onOpen: (id: nu
     <div className="shrink-0 w-[230px] flex flex-col rounded-2xl bg-white p-3 snap-start" style={{ border: '1px solid ' + WT.line, boxShadow: WT.shSoft }}>
       <div className="flex gap-3">
         <button onClick={() => onOpen(r.id)} className="w-12 h-12 shrink-0 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-          {r.image_url && <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" />}
+          {r.image_url && <img src={cfImage(r.image_url, { width: 120, format: 'auto' }) || r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
         </button>
         <div className="flex-1 min-w-0">
           <button onClick={() => onOpen(r.id)} className="block text-left text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{r.name}</button>
