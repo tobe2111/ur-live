@@ -4,7 +4,7 @@
 //   위젯(WholesaleChatWidget) 은 React.lazy → 열기 전엔 채팅 코드 0 byte.
 //   유통사 카탈로그(/wholesale)에서만 사용 — seller_token 컨텍스트.
 // ──────────────────────────────────────────────────────────────
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { MessageCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useChatPoll } from '@/hooks/useChatPoll'
@@ -16,16 +16,30 @@ const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWi
 interface Props {
   /** 위젯 자동으로 특정 제조사 스레드를 열고 싶을 때(상품 상세의 "제조사 문의"). */
   initialCounterpartId?: number | null
+  /**
+   * 상품 기준으로 제조사 스레드를 열고 싶을 때(상품 상세 "제조사에 문의").
+   * 🛡️ 서버가 product_id → 제조사를 서버사이드로 해석 — 클라는 제조사 신원/ID 를 모름.
+   */
+  initialProductId?: number | null
+  /** 이미 아는 thread_id 로 바로 진입. */
+  initialThreadId?: number | null
   /** 외부에서 강제로 열기 제어할 때(상품 상세 버튼). */
   autoOpen?: boolean
+  /** 위젯이 닫힐 때 부모에 통지(상품 상세에서 버튼 트리거 상태 리셋). */
+  onClose?: () => void
 }
 
-export default function WholesaleChatButton({ initialCounterpartId = null, autoOpen = false }: Props) {
+export default function WholesaleChatButton({ initialCounterpartId = null, initialProductId = null, initialThreadId = null, autoOpen = false, onClose }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(autoOpen)
   const [unread, setUnread] = useState(0)
 
   const loggedIn = hasChatToken()
+
+  // 외부(상품 상세 "제조사에 문의")에서 autoOpen 을 true 로 토글하면 위젯 열기.
+  useEffect(() => { if (autoOpen) setOpen(true) }, [autoOpen])
+
+  const close = () => { setOpen(false); onClose?.() }
 
   // 배지 폴링 — 가벼운 unread만. 탭 숨김이면 중단(useChatPoll 내부). 위젯 열려도 계속(다른 스레드 unread).
   useChatPoll(
@@ -67,8 +81,10 @@ export default function WholesaleChatButton({ initialCounterpartId = null, autoO
       {open && (
         <Suspense fallback={null}>
           <WholesaleChatWidget
-            onClose={() => setOpen(false)}
+            onClose={close}
             initialCounterpartId={initialCounterpartId}
+            initialProductId={initialProductId}
+            initialThreadId={initialThreadId}
             onUnreadChange={setUnread}
           />
         </Suspense>

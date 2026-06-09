@@ -22,6 +22,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+import { visibilityWhere } from './supply-visibility'
 
 // ── 신원 해석: supplier 토큰 우선 → distributor JWT ─────────────────────────────
 //   supplier: JWT payload { type:'supplier', supplier_id } (supplier-auth.routes/login).
@@ -127,11 +128,14 @@ app.get('/threads', async (c) => {
     await ensureChatSchema(DB)
     const col = myUnreadCol(me.role)
     const filter = myThreadCol(me.role)
-    // 상대 이름: 내가 distributor 면 상대=supplier(suppliers.business_name),
-    //            내가 supplier 면 상대=distributor 셀러(sellers.business_name/name).
+    // 상대 이름:
+    //   • supplier 뷰 — 상대=유통사(셀러). business_name/name 정상 노출.
+    //   • distributor 뷰 — 🛡️ 제조사 신원 비공개 모델: suppliers.business_name 절대 노출 X.
+    //       중립 라벨('제조사')만 반환(아래 매핑). DB 에서 이름 join 안 함(누출 차단).
     const counterIdCol = me.role === 'distributor' ? 't.supplier_id' : 't.distributor_seller_id'
+    // distributor 뷰는 이름 SELECT 자체를 생략 → 제조사 business_name 이 결과에 들어오지 않음.
     const nameSelect = me.role === 'distributor'
-      ? '(SELECT business_name FROM suppliers WHERE id = t.supplier_id)'
+      ? 'NULL'
       : '(SELECT COALESCE(business_name, name) FROM sellers WHERE id = t.distributor_seller_id)'
     const { results } = await DB.prepare(
       `SELECT t.id AS id,
@@ -144,10 +148,15 @@ app.get('/threads', async (c) => {
         WHERE t.${filter} = ?
         ORDER BY t.last_message_at DESC`
     ).bind(me.id).all<{ id: number; counterpart_id: number; counterpart_name: string | null; last_preview: string | null; last_message_at: string | null; unread: number }>()
+    const masked = me.role === 'distributor'
     const threads = (results ?? []).map((r) => ({
       id: r.id,
+      // 🛡️ distributor 는 상대(제조사) 신원/이름을 중립 라벨로만 봄(business_name 미노출).
       counterpart_id: r.counterpart_id,
-      counterpart_name: r.counterpart_name || (me.role === 'distributor' ? `제조사 #${r.counterpart_id}` : `유통사 #${r.counterpart_id}`),
+      counterpart_name: masked
+        ? '제조사'
+        : (r.counterpart_name || `유통사 #${r.counterpart_id}`),
+      counterpart_masked: masked,
       last_preview: r.last_preview || '',
       last_message_at: r.last_message_at,
       unread: Number(r.unread || 0),
@@ -203,6 +212,64 @@ app.post('/threads', rateLimit({ action: 'wholesale-chat-thread', max: 30, windo
   }
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// POST /threads/by-product — 상품 기준 스레드 get-or-create (유통사 전용)
+//   body { product_id } — 서버가 상품 → supplier_id 를 서버사이드로 해석.
+//   🛡️ 제조사 신원 비공개 모델: supplier_id/이름 을 절대 응답에 넣지 않음(thread_id 만).
+//   IDOR-safe: 상품이 (1) 도매 공급상품이고 (2) 이 유통사에게 가시(visibilityWhere)할 때만.
+// ════════════════════════════════════════════════════════════════════════════
+app.post('/threads/by-product', rateLimit({ action: 'wholesale-chat-by-product', max: 30, windowSec: 60 }), async (c) => {
+  const me = await chatIdentityFrom(c)
+  if (!me) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 유통사만 상품 기준으로 문의를 시작할 수 있음(제조사는 상대 유통사를 상품으로 특정 못 함).
+  if (me.role !== 'distributor') return c.json({ success: false, error: '유통사만 제조사에 문의할 수 있습니다' }, 403)
+  const { DB } = c.env
+  try {
+    await ensureChatSchema(DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const productId = Math.floor(Number(body.product_id))
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return c.json({ success: false, error: '상품 ID가 올바르지 않습니다' }, 400)
+    }
+
+    // 🛡️ 서버사이드 supplier 해석 — 상품이 이 유통사에게 가시한 도매 공급상품일 때만.
+    //   visibilityWhere('p') 는 sellerId 1개 bind 필요(catalog 가시성과 동일 규칙).
+    //   supplier_id 는 서버 내부에서만 사용 — 응답/클라에 노출 X.
+    const prod = await DB.prepare(
+      `SELECT p.supplier_id AS supplier_id
+         FROM products p
+        WHERE p.id = ?
+          AND p.is_supply_product = 1 AND p.is_active = 1
+          AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
+          AND ${visibilityWhere('p')}
+        LIMIT 1`
+    ).bind(productId, me.id).first<{ supplier_id: number | null }>().catch(() => null)
+    if (!prod) return c.json({ success: false, error: '문의할 수 있는 상품을 찾을 수 없습니다' }, 404)
+
+    const supplierId = Math.floor(Number(prod.supplier_id))
+    if (!Number.isFinite(supplierId) || supplierId <= 0) {
+      return c.json({ success: false, error: '제조사 정보를 확인할 수 없는 상품입니다' }, 404)
+    }
+    // 제조사 활성(승인) 검증 — 탈퇴/미승인 제조사로 스레드 생성 차단.
+    const sup = await DB.prepare("SELECT id FROM suppliers WHERE id = ? AND status = 'approved' LIMIT 1").bind(supplierId).first<{ id: number }>().catch(() => null)
+    if (!sup) return c.json({ success: false, error: '승인된 제조사를 찾을 수 없습니다' }, 404)
+
+    // get-or-create (UNIQUE(distributor_seller_id, supplier_id)).
+    await DB.prepare(
+      'INSERT OR IGNORE INTO wholesale_chat_threads (distributor_seller_id, supplier_id) VALUES (?, ?)'
+    ).bind(me.id, supplierId).run()
+    const thread = await DB.prepare(
+      'SELECT id FROM wholesale_chat_threads WHERE distributor_seller_id = ? AND supplier_id = ? LIMIT 1'
+    ).bind(me.id, supplierId).first<{ id: number }>()
+    if (!thread?.id) return c.json({ success: false, error: '대화방 생성 중 오류가 발생했습니다' }, 500)
+
+    // 🛡️ supplier_id/이름 미반환 — thread_id 만(제조사 신원 비공개 유지).
+    return c.json({ success: true, thread_id: thread.id })
+  } catch (err) {
+    return safeError(c, err, '대화방 생성 중 오류가 발생했습니다', '[wholesale-chat]')
+  }
+})
+
 // 내 스레드 로드 (소유권 검증 — IDOR-safe). 없으면 null.
 async function loadOwnThread(DB: D1Database, me: ChatIdentity, threadId: number) {
   const filter = myThreadCol(me.role)
@@ -212,10 +279,11 @@ async function loadOwnThread(DB: D1Database, me: ChatIdentity, threadId: number)
 }
 
 // 상대 이름 helper.
+//   🛡️ distributor 뷰는 제조사 신원 비공개 모델 — suppliers.business_name 을 절대 조회/노출하지 않고
+//      중립 라벨('제조사')만 반환(스레드 헤더). supplier 뷰는 유통사(셀러) 이름 정상 노출.
 async function counterpartName(DB: D1Database, me: ChatIdentity, thread: { distributor_seller_id: number; supplier_id: number }): Promise<string> {
   if (me.role === 'distributor') {
-    const r = await DB.prepare('SELECT business_name FROM suppliers WHERE id = ?').bind(thread.supplier_id).first<{ business_name: string | null }>().catch(() => null)
-    return r?.business_name || `제조사 #${thread.supplier_id}`
+    return '제조사'
   }
   const r = await DB.prepare('SELECT COALESCE(business_name, name) AS nm FROM sellers WHERE id = ?').bind(thread.distributor_seller_id).first<{ nm: string | null }>().catch(() => null)
   return r?.nm || `유통사 #${thread.distributor_seller_id}`
@@ -258,7 +326,7 @@ app.get('/threads/:id/messages', async (c) => {
     await DB.prepare(`UPDATE wholesale_chat_threads SET ${col} = 0 WHERE id = ?`).bind(threadId).run().catch(swallow('wholesale-chat:mark-read'))
 
     const name = await counterpartName(DB, me, thread)
-    return c.json({ success: true, messages, thread: { counterpart_name: name } })
+    return c.json({ success: true, messages, thread: { counterpart_name: name, counterpart_masked: me.role === 'distributor' } })
   } catch (err) {
     return safeError(c, err, '메시지 조회 중 오류가 발생했습니다', '[wholesale-chat]')
   }

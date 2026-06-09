@@ -24,6 +24,13 @@ interface Props {
   onClose: () => void
   /** 열자마자 특정 제조사 스레드를 get-or-create 후 진입(상품 상세 "제조사 문의"). */
   initialCounterpartId?: number | null
+  /**
+   * 열자마자 특정 상품 기준으로 스레드를 get-or-create 후 진입(상품 상세 "제조사에 문의").
+   * 🛡️ 서버가 product_id → 제조사를 서버사이드로 해석 — 클라는 제조사 신원/ID 를 모름.
+   */
+  initialProductId?: number | null
+  /** 열자마자 특정 스레드(이미 알고 있는 thread_id)로 바로 진입. */
+  initialThreadId?: number | null
   /** 부모 배지 동기화 — 읽음 처리 직후 unread 갱신 유도. */
   onUnreadChange?: (n: number) => void
   /** 제조사 대시보드 탭 임베드 모드 — slide-in 대신 컨테이너 채움. */
@@ -44,7 +51,7 @@ function timeAgo(dateStr: string, fallback: string): string {
   return `${Math.floor(h / 24)}일 전`
 }
 
-export default function WholesaleChatWidget({ onClose, initialCounterpartId = null, onUnreadChange, embedded = false }: Props) {
+export default function WholesaleChatWidget({ onClose, initialCounterpartId = null, initialProductId = null, initialThreadId = null, onUnreadChange, embedded = false }: Props) {
   const { t } = useTranslation()
   const [role, setRole] = useState<ChatRole | null>(null)
   const [threads, setThreads] = useState<ChatThread[]>([])
@@ -64,15 +71,26 @@ export default function WholesaleChatWidget({ onClose, initialCounterpartId = nu
 
   useEffect(() => { loadThreads() }, [loadThreads])
 
-  // ── 특정 제조사로 바로 진입(get-or-create) ──
+  // ── 특정 제조사/상품/스레드로 바로 진입 ──
+  //   우선순위: 이미 아는 thread_id > 상품 기준(서버가 제조사 해석) > 상대 id 기준.
+  //   🛡️ 상품 기준은 product_id 만 보냄 — 제조사 신원/ID 는 클라가 모른 채 스레드 진입.
   useEffect(() => {
-    if (initialCounterpartId == null) return
     let cancelled = false
-    wholesaleChatApi.openThread(initialCounterpartId).then((id) => {
+    if (initialThreadId != null && initialThreadId > 0) {
+      setActiveId(initialThreadId)
+      return () => { cancelled = true }
+    }
+    const resolve = initialProductId != null && initialProductId > 0
+      ? wholesaleChatApi.openThreadByProduct(initialProductId)
+      : initialCounterpartId != null
+        ? wholesaleChatApi.openThread(initialCounterpartId)
+        : null
+    if (!resolve) return
+    resolve.then((id) => {
       if (!cancelled && id != null) setActiveId(id)
     }).catch(() => { /* noop */ })
     return () => { cancelled = true }
-  }, [initialCounterpartId])
+  }, [initialThreadId, initialProductId, initialCounterpartId])
 
   const openThread = (th: ChatThread) => {
     setActiveId(th.id)

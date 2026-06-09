@@ -107,6 +107,16 @@ export const wholesaleChatApi = {
     return d?.success && d.thread_id != null ? Number(d.thread_id) : null
   },
 
+  /**
+   * 상품 기준 get-or-create → thread_id. (유통사가 상품 상세에서 "제조사에 문의")
+   * 🛡️ 서버가 product_id → supplier_id 를 서버사이드로 해석. 클라는 제조사 신원/ID 를 모름.
+   */
+  async openThreadByProduct(productId: number): Promise<number | null> {
+    const r = await api.post('/api/wholesale/chat/threads/by-product', { product_id: productId }, { headers: authHeaders() })
+    const d = r.data
+    return d?.success && d.thread_id != null ? Number(d.thread_id) : null
+  },
+
   /** 메시지 목록 (after=lastId 증분). 이 GET 이 읽음 처리도 함. */
   async messages(threadId: number, after?: number): Promise<ChatMessagesResult> {
     const qs = after != null && after > 0 ? `?after=${after}` : ''

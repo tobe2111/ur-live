@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff } from 'lucide-react'
+import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { cfImage } from '@/utils/cf-image'
 import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
+
+// 💬 채팅 위젯은 lazy — 상품 상세 초기 청크에 채팅 코드 0 byte(버튼 클릭 시에만 fetch).
+//   (floating FAB 없이 위젯만 직접 mount — 상품 상세는 인라인 "제조사에 문의" 버튼이 트리거)
+const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWidget'))
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
 //   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 수량 구간별 단가표(volume tier) + 하단 고정 CTA.
@@ -77,6 +81,10 @@ export default function WholesaleProductPage() {
   const [ordering, setOrdering] = useState(false)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
   const cart = useWholesaleCart()
+
+  // 💬 "제조사에 문의" — 로그인 유통사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
+  //   버튼 클릭 시에만 lazy 위젯 mount + 상품 기준 스레드 자동 진입.
+  const [chatOpen, setChatOpen] = useState(false)
 
   // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 상태.
   //   로그인 + 품절일 때만 노출. 내 구독 목록(/restock/subscriptions)에서 이 상품 포함 여부로 초기화.
@@ -289,6 +297,19 @@ export default function WholesaleProductPage() {
             <KV label="공급사" value="검증 제조사 (신원 비공개)" />
           </div>
 
+          {/* 💬 제조사에 문의 — 로그인 유통사만. 서버가 상품→제조사를 해석(신원 비공개 유지). */}
+          {!locked && token && (
+            <button
+              type="button"
+              onClick={() => setChatOpen(true)}
+              className="mt-3 w-full h-12 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2"
+              style={{ background: WT.fill, color: WT.ink, border: '1px solid ' + WT.line }}
+            >
+              <MessageCircle className="w-4.5 h-4.5" style={{ color: WT.brand }} />
+              제조사에 문의
+            </button>
+          )}
+
           {/* 데스크톱 인라인 CTA */}
           <div className="hidden lg:block">
             {locked ? (
@@ -380,6 +401,14 @@ export default function WholesaleProductPage() {
         </div>
         </>)}
       </div>
+
+      {/* 💬 "제조사에 문의" 위젯 — 클릭 시에만 lazy mount, 상품 기준 스레드 자동 진입.
+          🛡️ 서버가 product_id → 제조사를 서버사이드 해석 — 클라는 제조사 신원/ID 를 모름. */}
+      {chatOpen && (
+        <Suspense fallback={null}>
+          <WholesaleChatWidget onClose={() => setChatOpen(false)} initialProductId={item.id} />
+        </Suspense>
+      )}
     </div>
   )
 }
