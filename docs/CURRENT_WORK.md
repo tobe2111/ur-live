@@ -1,5 +1,26 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-09 — 도매몰 대개편 (예치금 결제·메인·운영기능·채팅) + 코드리뷰 fix
+**대장정 1세션. 사용자 요구 11종 전부 구현 + 검증. 전부 `claude/service-tech-debt-analysis-d1KOx` 브랜치 커밋·푸시.**
+
+- **예치금(선불) 결제 전환** (`e962f94`, `9e4a2f3`): 도매 결제 **토스 제거 → 예치금**. 유통사 입금 → 관리자 입금확인(`/admin/wholesale-deposits`, CAS pending→confirmed 이중적립 차단) → 충전 → 주문 시 원자 차감. 여신(외상) 제거. `wholesale-deposit-core.ts`(머니 CAS) + `wholesale-deposit.routes.ts`. 입금계좌 어드민 설정(`/admin/wholesale-deposit-account`, platform_settings). **코드리뷰 후 reserve-before-charge 재구성**: 주문 PENDING INSERT(UNIQUE idempotency_key 가 race 단독 중재) → 이긴 요청만 1회 차감 → 재고확보 후 PAID. (🔴 무음손실·이중차감 근본수정.) `/wholesale/deposits` 충전 UI, 카탈로그·대시보드 잔액 노출.
+- **가입 대표자/담당자** (`df694ed`): 가입에 대표자(성명·연락처)+담당자(성명·연락처·이메일) 분리 + '동일' 원클릭 복사. sellers/suppliers 컬럼(representative_phone/manager_*). 승인→가격노출 게이트 검증.
+- **메인 Sellpie형 개편** (`ccf3c85`): 배너 캐러셀(어드민 CRUD `/admin/wholesale-banners`) · 프리미엄 전용관(`products.is_premium`+토글 `/admin/wholesale-products`) · 제안/신고(`wholesale_proposal_tickets`, 경로 **/proposal-tickets** — /proposals 는 기존 추천) · 카테고리 네비 · BEST PRODUCT/상품코드. 시안: `docs/design/wholesale-main.md`.
+- **운영 기능**: 대량주문 엑셀(`ad9cce3`, 즉시결제 버그→미리보기/검증/장바구니) · 어드민 단체메일(`9198d05`, Resend 재사용 — **큐화 진행 중**) · 세금계산서 자동(`93b4216`, 매출 플랫폼→유통사 / 매입역발행 제조사→플랫폼, `issueTaxInvoice` 재사용 env-gated, `wholesale_tax_invoices`).
+- **채팅** (`f439592`, `060b77a`): 유통사↔제조사 **D1 폴링**(무비용, lazy chunk, adaptive). `/api/wholesale/chat` (cheap `/unread`, threads, messages?after, send+멱등알림). 제조사 신원 **마스킹**(유통사 뷰='제조사'). 유통사발 상품 문의(by-product, 서버가 supplier 해석).
+- **대시보드/UX**: 제조사 4탭+액션홈(`dfd2ffe`) · 제조/유통 사이드바 셸 통일(`e61f21a`) · 어드민 알림 벨 fix(`8cb412e`, tokenKey 명시) · 제조 카카오가입(`5bc2d14`) · **perf 패스**(`93d106c`, 스켈레톤·cfImage·prefetch·memo·guest 캐싱) · 어드민 프리미엄토글+대표/담당자 표시(`78d49a1`).
+
+**⚠️ 운영 반영 전 (SSOT — 다음 세션/배포 담당 필독)**:
+- env: `RESEND_API_KEY`(단체메일) · `TAX_INVOICE_API_KEY`(+`TAX_INVOICE_SENDER_BIZ_NO`, 세금계산서 실발행 — 미설정 시 draft) · `RATE_LIMIT_KV`.
+- **`/api/_internal/repair-schema` 1회 트리거** (새 테이블·컬럼·인덱스 생성 — D1 migration CI 미작동).
+- 어드민이 `/admin/wholesale-deposit-account` 에서 **입금 계좌** 설정해야 유통사 입금 안내 표시.
+- E2E 권장: 충전→입금확인→주문→환불 / 세금계산서 / 채팅 / 대량주문 / 단체메일(테스트 먼저).
+
+**진행 중 / 후속**:
+- 🔄 단체메일 **cron 큐화**(in-request→큐, 재시도 이중발송 #5 방지) · 운영가이드 갱신 — 에이전트 작업 중.
+- 후속: 세금 역발행 sender/receiver 매핑(실 provider 연동 시) · 도매몰 i18n 6개 언어(현 defaultValue fallback) · 단체메일 HTML 감지 휴리스틱(#6).
+- **확인 요망**: 채팅 제조사 신원 — 현재 '비공개' 모델에 맞춰 **마스킹**. 노출 원하면 변경.
+
 ### ✅ 2026-06-06 — 도매몰 감사 후속 fix (대시보드·등급·로그인·보안)
 세 감사(등급제/제조대시보드/유통대시보드) → 3차(에러처리·등급·대시보드) → 2차(로그인 B2) → 1차(보안) 순 완료.
 - **대시보드·등급 4종** (`f9822d2`): ① 유통사 대시보드 부분 로그아웃(수동 키 삭제) → `clearAuthData('seller')`+full reload. ② 제조 대시보드 `/orders` shipped 필터에 `DONE`/`PARTIAL_REFUNDED` 추가(발송완료·부분환불 주문이 안 보이던 것) + 운송장 입력 시 `PARTIAL_REFUNDED→SHIPPING` 전환 허용. ③ 제조 대시보드 개요탭 `/me` 실패 시 blank null → 에러+재시도 버튼. ④ 유통 카탈로그 `/me` 실패 시 등급 silent C-fall → "등급 로드 실패·재시도" 배지+toast+refetch(B4).
