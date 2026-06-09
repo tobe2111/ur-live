@@ -22,6 +22,9 @@ interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
   category: string | null; stock: number; distributor_price: number | null
   retail_price?: number | null; moq?: number; pack_size?: number; order_multiple?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
+  // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
+  supplier_group?: string | null
+  supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
 }
 
 // 수량 구간별 단가표 (등급가 위 volume 할인 — 많이 살수록 ↓). 현재 수량 구간 강조.
@@ -150,7 +153,7 @@ export default function WholesaleProductPage() {
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1) })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 

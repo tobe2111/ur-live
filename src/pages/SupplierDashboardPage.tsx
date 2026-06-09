@@ -854,6 +854,84 @@ function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, pendingShipCount
           ))}
         </div>
       </div>
+
+      {/* 🚚 배송/주문 정책 — 제조사별 최소주문금액 + 배송비 + 무료배송 기준 */}
+      <ShippingPolicyCard t={t} />
+    </div>
+  )
+}
+
+// ── 🚚 2026-06-09 배송/주문 정책 설정 카드 (self-contained 로드/저장) ──────────────
+//   min_order_amount(최소주문금액) / shipping_fee(배송비) / free_ship_threshold(무료배송 기준).
+//   유통사 장바구니에서 이 제조사 라인 합이 최소주문금액 미만이면 주문 불가 + 배송비 자동 합산.
+function ShippingPolicyCard({ t }: { t: (k: string, o?: Record<string, unknown>) => string }) {
+  const [minOrder, setMinOrder] = useState('')
+  const [shipFee, setShipFee] = useState('')
+  const [freeShip, setFreeShip] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    supplierApi.get<{ data: { min_order_amount: number; shipping_fee: number; free_ship_threshold: number } }>('/api/supplier/shipping-policy')
+      .then(r => {
+        if (!alive) return
+        setMinOrder(String(r.data?.min_order_amount ?? 0))
+        setShipFee(String(r.data?.shipping_fee ?? 0))
+        setFreeShip(String(r.data?.free_ship_threshold ?? 0))
+      })
+      .catch(err => { if (import.meta.env.DEV) console.error(err) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [])
+
+  const save = async () => {
+    const toNum = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0 }
+    setSaving(true)
+    try {
+      await supplierApi.patch('/api/supplier/shipping-policy', {
+        min_order_amount: toNum(minOrder),
+        shipping_fee: toNum(shipFee),
+        free_ship_threshold: toNum(freeShip),
+      })
+      toast.success(t('supplier.shipPolicySaved', { defaultValue: '배송 정책이 저장되었습니다' }))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('supplier.shipPolicySaveErr', { defaultValue: '저장에 실패했습니다' }))
+    } finally { setSaving(false) }
+  }
+
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none'
+  const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Truck className="w-4 h-4 text-[#FF0033]" />
+        <p className="text-sm font-semibold text-gray-900">{t('supplier.shipPolicyTitle', { defaultValue: '배송/주문 정책' })}</p>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">{t('supplier.shipPolicyDesc', { defaultValue: '유통사 장바구니에서 우리 상품 합계가 최소주문금액 미만이면 주문할 수 없어요. 배송비는 주문 시 자동 합산됩니다. (0 = 제한/배송비/무료배송 없음)' })}</p>
+      {loading ? (
+        <div className="py-6 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className={labelCls}>{t('supplier.minOrderAmount', { defaultValue: '최소 주문 금액(원)' })}</label>
+              <input type="number" min={0} value={minOrder} disabled={saving} onChange={e => setMinOrder(e.target.value)} className={inputCls} placeholder="0" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('supplier.shippingFee', { defaultValue: '배송비(원)' })}</label>
+              <input type="number" min={0} value={shipFee} disabled={saving} onChange={e => setShipFee(e.target.value)} className={inputCls} placeholder="0" />
+            </div>
+            <div>
+              <label className={labelCls}>{t('supplier.freeShipThreshold', { defaultValue: '무료배송 기준(원)' })}</label>
+              <input type="number" min={0} value={freeShip} disabled={saving} onChange={e => setFreeShip(e.target.value)} className={inputCls} placeholder="0" />
+            </div>
+          </div>
+          <button onClick={save} disabled={saving} className="mt-4 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60">
+            {saving ? t('common.loading', { defaultValue: '저장 중...' }) : t('supplier.savePolicy', { defaultValue: '정책 저장' })}
+          </button>
+        </>
+      )}
     </div>
   )
 }

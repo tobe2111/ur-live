@@ -76,6 +76,87 @@ async function ensureOrderTables(DB: D1Database) {
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:idx1'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)`).run().catch(swallow('wholesale:idx2'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)`).run().catch(swallow('wholesale:idx3'))
+  // 🚚 2026-06-09 배송정책: wholesale_orders.shipping_total — 주문에 합산된 (제조사별) 배송비 총액.
+  //   grand total = subtotal + shipping_total. 보상환불은 (subtotal+shipping_total) 전액 환불.
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-total'))
+}
+
+// ── 🚚 2026-06-09 제조사(공급자)별 배송/주문 정책 — suppliers 3컬럼 멱등 ensure. ──────
+//   min_order_amount     = 이 제조사 라인 합이 이 금액 미만이면 주문 거부(0=제한 없음).
+//   shipping_fee         = 이 제조사 배송비(0=무료/미설정).
+//   free_ship_threshold  = 이 제조사 라인 합이 이 금액 이상이면 배송비 무료(0=무료배송 없음).
+//   self-contained(repair-schema 와 멱등 동일). best-effort ADD COLUMN — 이미 있으면 swallow.
+const _supPolicyEnsured = new WeakSet<object>()
+async function ensureSupplierPolicySchema(DB: D1Database) {
+  if (_supPolicyEnsured.has(DB)) return
+  _supPolicyEnsured.add(DB)
+  for (const sql of [
+    'ALTER TABLE suppliers ADD COLUMN min_order_amount INTEGER DEFAULT 0',
+    'ALTER TABLE suppliers ADD COLUMN shipping_fee INTEGER DEFAULT 0',
+    'ALTER TABLE suppliers ADD COLUMN free_ship_threshold INTEGER DEFAULT 0',
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:supplier-policy:alter')) }
+}
+
+// 제조사별 배송/주문 정책 일괄 로드 — supplier_id → { min_order_amount, shipping_fee, free_ship_threshold }.
+//   ⚠️ supplier_id(제조사 신원)는 유통사 응답에 절대 노출 X — 정책 숫자만 그룹 계산에 사용.
+type SupplierPolicy = { min_order_amount: number; shipping_fee: number; free_ship_threshold: number }
+async function loadSupplierPolicies(DB: D1Database, supplierIds: number[]): Promise<Map<number, SupplierPolicy>> {
+  const out = new Map<number, SupplierPolicy>()
+  const ids = [...new Set(supplierIds.filter((x) => Number.isFinite(x) && x > 0))]
+  if (!ids.length) return out
+  await ensureSupplierPolicySchema(DB)
+  const ph = ids.map(() => '?').join(',')
+  const rows = await DB.prepare(
+    `SELECT id, COALESCE(min_order_amount,0) AS min_order_amount, COALESCE(shipping_fee,0) AS shipping_fee, COALESCE(free_ship_threshold,0) AS free_ship_threshold
+       FROM suppliers WHERE id IN (${ph})`
+  ).bind(...ids).all<{ id: number; min_order_amount: number; shipping_fee: number; free_ship_threshold: number }>().catch(() => ({ results: [] as Array<{ id: number; min_order_amount: number; shipping_fee: number; free_ship_threshold: number }> }))
+  for (const r of rows.results || []) {
+    out.set(r.id, {
+      min_order_amount: Math.max(0, Math.floor(r.min_order_amount || 0)),
+      shipping_fee: Math.max(0, Math.floor(r.shipping_fee || 0)),
+      free_ship_threshold: Math.max(0, Math.floor(r.free_ship_threshold || 0)),
+    })
+  }
+  return out
+}
+
+// 🚚 제조사별 그룹 정산 — 라인 배열 → { perSupplier[], shippingTotal, shortfalls[] }.
+//   min-order: supplier.min_order_amount>0 && 그 제조사 라인합 < min_order_amount → shortfall(부족액).
+//   shipping : (free_ship_threshold>0 && 라인합>=threshold) ? 0 : shipping_fee. 제조사별 합산.
+//   ⚠️ 청구 전 검증/계산용 — 절대 클라 금액 신뢰 X. supplier_group 은 비식별 그룹키(s{id}).
+interface SupplierShipResult {
+  perSupplier: Array<{ supplier_id: number | null; supplier_group: string; subtotal: number; min_order_amount: number; shipping_fee: number; free_ship_threshold: number; shipping: number; meets_min: boolean; shortfall: number; free_ship_remaining: number }>
+  shippingTotal: number
+  shortfalls: Array<{ supplier_group: string; min_order_amount: number; subtotal: number; shortfall: number }>
+}
+function computeSupplierShipping(
+  lines: Array<{ supplier_id: number | null; line_total: number }>,
+  policies: Map<number, SupplierPolicy>,
+): SupplierShipResult {
+  // 제조사별 subtotal 합산. supplier_id 없는(NULL) 라인은 단일 'no-supplier' 그룹(정책 없음 → 배송비 0, min 0).
+  const bySupplier = new Map<string, { supplier_id: number | null; subtotal: number; policy: SupplierPolicy }>()
+  for (const l of lines) {
+    const sid = (Number.isFinite(l.supplier_id as number) && (l.supplier_id as number) > 0) ? (l.supplier_id as number) : null
+    const key = sid != null ? `s${sid}` : 'none'
+    const pol = sid != null ? (policies.get(sid) || { min_order_amount: 0, shipping_fee: 0, free_ship_threshold: 0 }) : { min_order_amount: 0, shipping_fee: 0, free_ship_threshold: 0 }
+    const cur = bySupplier.get(key) || { supplier_id: sid, subtotal: 0, policy: pol }
+    cur.subtotal += Math.max(0, Math.floor(l.line_total || 0))
+    bySupplier.set(key, cur)
+  }
+  const perSupplier: SupplierShipResult['perSupplier'] = []
+  const shortfalls: SupplierShipResult['shortfalls'] = []
+  let shippingTotal = 0
+  for (const [key, g] of bySupplier) {
+    const { min_order_amount, shipping_fee, free_ship_threshold } = g.policy
+    const meetsMin = !(min_order_amount > 0 && g.subtotal < min_order_amount)
+    const shortfall = meetsMin ? 0 : Math.max(0, min_order_amount - g.subtotal)
+    const shipping = (free_ship_threshold > 0 && g.subtotal >= free_ship_threshold) ? 0 : shipping_fee
+    const freeShipRemaining = (free_ship_threshold > 0 && g.subtotal < free_ship_threshold) ? Math.max(0, free_ship_threshold - g.subtotal) : 0
+    shippingTotal += shipping
+    perSupplier.push({ supplier_id: g.supplier_id, supplier_group: key, subtotal: g.subtotal, min_order_amount, shipping_fee, free_ship_threshold, shipping, meets_min: meetsMin, shortfall, free_ship_remaining: freeShipRemaining })
+    if (!meetsMin) shortfalls.push({ supplier_group: key, min_order_amount, subtotal: g.subtotal, shortfall })
+  }
+  return { perSupplier, shippingTotal, shortfalls }
 }
 
 // ── BIZ-8 (2026-06-08) MOQ/단가 고도화 — pack_size / order_multiple 컬럼 멱등 ensure. ───
@@ -690,7 +771,7 @@ app.get('/catalog', async (c) => {
     const orderBy = CATALOG_SORT_ORDER[sortKey] || CATALOG_SORT_ORDER.popular
 
     const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
+      SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock, p.supplier_id,
              COALESCE(p.supply_price, 0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
              COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -703,12 +784,17 @@ app.get('/catalog', async (c) => {
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; has_tiers: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; has_tiers: number; sold_count: number; margin_override: number | null
     }>()
 
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
       .bind(...params).first<{ c: number }>().catch(() => ({ c: 0 }))
     const total = totalRow?.c ?? 0
+
+    // 🚚 제조사별 배송/주문 정책 일괄 로드 — 카트가 제조사별 최소주문금액/배송비 그룹 계산하도록 정책 첨부.
+    //   ⚠️ supplier_id(신원) 비노출 — 비식별 group key(s{id}) + 정책 숫자만 반환.
+    const catSupplierIds = (rows.results || []).map(r => r.supplier_id).filter((x): x is number => Number.isFinite(x as number) && (x as number) > 0)
+    const catPolicies = catSupplierIds.length ? await loadSupplierPolicies(DB, catSupplierIds) : new Map<number, SupplierPolicy>()
 
     // ⚠️ supply_price/supplier_id 비노출 — 등급가 + 권장소비자가(마진 산출용)만 반환.
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
@@ -717,6 +803,8 @@ app.get('/catalog', async (c) => {
         baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
       }).price
+      const supId = (Number.isFinite(r.supplier_id as number) && (r.supplier_id as number) > 0) ? (r.supplier_id as number) : null
+      const supPol = supId != null ? catPolicies.get(supId) : undefined
       return {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
@@ -725,6 +813,9 @@ app.get('/catalog', async (c) => {
         pack_size: Math.max(1, r.pack_size || 1), order_multiple: Math.max(1, r.order_multiple || 1),
         is_premium: !!r.is_premium,
         has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0,
+        // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
+        supplier_group: supId != null ? `s${supId}` : null,
+        supplier_policy: supId != null ? { min_order_amount: supPol?.min_order_amount ?? 0, shipping_fee: supPol?.shipping_fee ?? 0, free_ship_threshold: supPol?.free_ship_threshold ?? 0 } : null,
         requires_login: guest,
       }
     })
@@ -757,7 +848,7 @@ app.get('/catalog/:id', async (c) => {
     // 🏬 멀티-몰: 요청 몰 스코핑(기본 1 → 기존 데이터 전 행 1 → byte-identical).
     const mallId = await resolveMallId(c)
     const r = await DB.prepare(`
-      SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
+      SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock, p.supplier_id,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
              COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -769,9 +860,18 @@ app.get('/catalog/:id', async (c) => {
         AND ${visibilityWhere('p')}
     `).bind(id, mallId, sellerId ?? -1).first<{
       id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
+      category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
     }>()
     if (!r) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+
+    // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자만 — supplier_id 신원 비노출).
+    //   카트/체크아웃이 제조사별 최소주문금액·배송비 진행을 표시하도록 상품에 정책 첨부.
+    const supId = (Number.isFinite(r.supplier_id as number) && (r.supplier_id as number) > 0) ? (r.supplier_id as number) : null
+    const supPol = supId != null ? (await loadSupplierPolicies(DB, [supId])).get(supId) : undefined
+    const supplierGroup = supId != null ? `s${supId}` : null
+    const supplierPolicy = supId != null
+      ? { min_order_amount: supPol?.min_order_amount ?? 0, shipping_fee: supPol?.shipping_fee ?? 0, free_ship_threshold: supPol?.free_ship_threshold ?? 0 }
+      : null
 
     const moq = Math.max(1, r.moq || 1)
     const packSize = Math.max(1, r.pack_size || 1)
@@ -787,6 +887,7 @@ app.get('/catalog/:id', async (c) => {
           category: r.category, stock: r.stock, distributor_price: null,
           retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
+          supplier_group: supplierGroup, supplier_policy: supplierPolicy,
         },
         grade: null, requires_login: true,
       })
@@ -816,6 +917,7 @@ app.get('/catalog/:id', async (c) => {
         retail_price: r.retail_price || null, moq, pack_size: packSize, order_multiple: orderMultiple,
         sold_count: r.sold_count || 0,
         tiers,
+        supplier_group: supplierGroup, supplier_policy: supplierPolicy,
       },
       grade,
     })
@@ -916,6 +1018,28 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
 
+    // ── 🚚 2026-06-09 제조사별 최소주문금액 게이트 + 배송비 (청구 *전* 서버 계산·검증) ──────────
+    //   ⚠️ MONEY GATE: PENDING insert/deduct 보다 *앞*. min-order 미달이면 청구 자체 안 함(돈 미이동).
+    //   shipping_total 은 제조사별 정책으로 서버 계산 → 청구액 = subtotal + shipping_total.
+    const supplierIds = lines.map((l) => l.supplier_id).filter((x): x is number => Number.isFinite(x as number) && (x as number) > 0)
+    const policies = await loadSupplierPolicies(DB, supplierIds)
+    const shipCalc = computeSupplierShipping(lines, policies)
+    if (shipCalc.shortfalls.length > 0) {
+      // 최소주문금액 미달 — 어느 제조사가 얼마 부족한지 안내(청구 전 차단). supplier_id(신원) 미노출 — group key 만.
+      const krw = (n: number) => `${(Math.max(0, Math.floor(n || 0))).toLocaleString('ko-KR')}원`
+      const detail = shipCalc.shortfalls
+        .map((s) => `${krw(s.shortfall)} 더 담아야 주문 가능 (현재 ${krw(s.subtotal)} / 최소 ${krw(s.min_order_amount)})`)
+        .join(', ')
+      return c.json({
+        success: false,
+        error: `최소 주문 금액을 채우지 못한 공급처가 있습니다: ${detail}`,
+        code: 'MIN_ORDER_NOT_MET',
+        shortfalls: shipCalc.shortfalls,
+      }, 422)
+    }
+    const shippingTotal = Math.max(0, Math.floor(shipCalc.shippingTotal || 0))
+    const chargeTotal = subtotal + shippingTotal // 💰 실제 청구액(예치금 차감액) — 상품합 + 배송비.
+
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
 
     // 배송지 스냅샷 — body 우선, 없으면 셀러 프로필. 제조사(공급자) 직배송에 사용.
@@ -953,9 +1077,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     let idemConflict = false
     try {
       const insD = await DB.prepare(`
-        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
-        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?)
-      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
+        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
+        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?)
+      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
       dOrderId = Number(insD.meta?.last_row_id)
     } catch { idemConflict = true }
     if (idemConflict || !dOrderId) {
@@ -968,7 +1092,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
 
     // STEP 2 — 예치금 원자 차감(CAS). 이 요청이 주문을 소유(INSERT 승리) → 단 1회만 차감.
-    const deduct = await deductDeposit(DB, sellerId, subtotal)
+    //   💰 차감액 = chargeTotal(상품합 + 제조사별 배송비). 클라 금액 불신 — 전부 서버 재계산값.
+    const deduct = await deductDeposit(DB, sellerId, chargeTotal)
     if (!deduct.ok) {
       // 잔액 부족 — 돈 미이동. PENDING 예약 삭제(idemKey 해제 → 충전 후 동일 체크아웃 재시도 가능) 후 402.
       await DB.prepare("DELETE FROM wholesale_orders WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(() => {})
@@ -977,14 +1102,14 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         error: '예치금이 부족합니다',
         code: 'INSUFFICIENT_DEPOSIT',
         balance: deduct.balance,
-        required: subtotal,
-        shortfall: Math.max(0, subtotal - deduct.balance),
+        required: chargeTotal,
+        shortfall: Math.max(0, chargeTotal - deduct.balance),
       }, 402)
     }
     const balanceAfterDeduct = deduct.balanceAfter
 
     // STEP 3 — 차감 원장(ref_id=order.id, 환불 멱등 가드가 이 ref_id 로 매칭). PAID 확정은 재고 확보 후(아래).
-    await recordDepositTxn(DB, sellerId, 'order', -subtotal, balanceAfterDeduct, String(dOrderId), `도매 예치금 주문 #${dOrderId}`)
+    await recordDepositTxn(DB, sellerId, 'order', -chargeTotal, balanceAfterDeduct, String(dOrderId), `도매 예치금 주문 #${dOrderId}`)
 
     // 주문 항목 + 재고 차감(oversell 가드) — 실패 시 주문 FAILED + 예치금 환불(보상).
     try {
@@ -1011,15 +1136,15 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
             "UPDATE products SET stock = stock + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
           ).bind(d.qty, d.qty, d.product_id).run().catch(() => { /* best-effort */ })
         }
-        // 💰 멱등 보상환불 — refunded_amount CAS 로 1회만(이중환불·reconcile cron 중복 차단).
-        await compensateDepositOrderOnce(DB, dOrderId, sellerId, subtotal, `재고부족 자동 환불 #${dOrderId}`)
+        // 💰 멱등 보상환불 — refunded_amount CAS 로 1회만(이중환불·reconcile cron 중복 차단). 배송비 포함 전액(chargeTotal) 환불.
+        await compensateDepositOrderOnce(DB, dOrderId, sellerId, chargeTotal, `재고부족 자동 환불 #${dOrderId}`)
         return c.json({ success: false, error: '재고가 부족하여 주문이 취소되었습니다. 예치금은 환불되었습니다.', code: 'OVERSOLD' }, 409)
       }
     } catch (innerErr) {
       // 항목/재고 단계 예외 → 주문 FAILED + 보상 환불. (이미 차감된 재고는 best-effort 미복원 —
       //   드문 케이스이며 oversell 가드 경로에서만 복원. 여기선 예외 발생 시 자금 안전 최우선.)
-      // 💰 멱등 보상환불 — refunded_amount CAS 로 1회만.
-      await compensateDepositOrderOnce(DB, dOrderId, sellerId, subtotal, `주문 처리 오류 자동 환불 #${dOrderId}`)
+      // 💰 멱등 보상환불 — refunded_amount CAS 로 1회만. 배송비 포함 전액(chargeTotal) 환불.
+      await compensateDepositOrderOnce(DB, dOrderId, sellerId, chargeTotal, `주문 처리 오류 자동 환불 #${dOrderId}`)
       return safeError(c, innerErr, '주문 처리 중 오류가 발생했습니다. 예치금은 환불되었습니다.', '[wholesale]')
     }
 
@@ -1040,7 +1165,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       status: 'PAID',
       paid_by: 'deposit',
       balance_after: balanceAfterDeduct,
-      amount: subtotal,
+      amount: chargeTotal, // 실제 청구액 = 상품합 + 배송비
+      subtotal,
+      shipping_total: shippingTotal,
       order_name: orderName,
     })
   } catch (err) {
@@ -1439,18 +1566,20 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
     const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])
     const placeholders = ids.map(() => '?').join(',')
     const prods = await DB.prepare(`
-      SELECT p.id, p.name, p.image_url, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+      SELECT p.id, p.name, p.image_url, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
              p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = new Map((prods.results || []).map(p => [p.id, p]))
     const tierMap = await loadQtyTiers(DB, ids)
 
     const items: Array<{ product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }> = []
+    // 🚚 제조사별 min-order/배송비 계산용 라인(검증/표시 only — 청구 X). supplier_id 는 응답에 비노출.
+    const previewLines: Array<{ supplier_id: number | null; line_total: number }> = []
     let subtotal = 0
     for (const pid of ids) {
       const qty = reqMap.get(pid) || 0
@@ -1481,12 +1610,28 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       const lineTotal = unit * qty
       subtotal += lineTotal
       items.push({ product_id: pid, name: p.name, image_url: p.image_url, qty, unit_price: unit, line_total: lineTotal, moq, order_multiple: orderMultiple })
+      previewLines.push({ supplier_id: p.supplier_id, line_total: lineTotal })
     }
+
+    // 🚚 제조사별 최소주문금액 충족 여부 + 배송비 + 총 청구 예상액(결제 X). supplier_id 미노출(group key 만).
+    const previewSupplierIds = previewLines.map((l) => l.supplier_id).filter((x): x is number => Number.isFinite(x as number) && (x as number) > 0)
+    const previewPolicies = await loadSupplierPolicies(DB, previewSupplierIds)
+    const previewShip = computeSupplierShipping(previewLines, previewPolicies)
+    const shippingTotal = Math.max(0, Math.floor(previewShip.shippingTotal || 0))
 
     return c.json({
       success: true,
       items,
       subtotal,
+      shipping_total: shippingTotal,
+      grand_total: subtotal + shippingTotal,
+      // 제조사별 최소주문금액/배송비 진행 상황 — UI 안내용(비식별 group key). meets_min=false 면 주문 불가.
+      suppliers: previewShip.perSupplier.map((s) => ({
+        supplier_group: s.supplier_group, subtotal: s.subtotal, min_order_amount: s.min_order_amount,
+        meets_min: s.meets_min, shortfall: s.shortfall, shipping: s.shipping,
+        free_ship_threshold: s.free_ship_threshold, free_ship_remaining: s.free_ship_remaining,
+      })),
+      all_min_met: previewShip.shortfalls.length === 0,
       matched: items.length,
       error_count: errors.length,
       errors: errors.slice(0, 500), // 응답 비대 방지 — 오류 500개 cap.

@@ -264,6 +264,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
     { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
+    // 🚚 2026-06-09 제조사별 배송/주문 정책 — suppliers 3컬럼(0=제한/배송비/무료배송 없음) + 주문 배송비 합계.
+    { desc: 'suppliers.min_order_amount', sql: "ALTER TABLE suppliers ADD COLUMN min_order_amount INTEGER DEFAULT 0" },
+    { desc: 'suppliers.shipping_fee', sql: "ALTER TABLE suppliers ADD COLUMN shipping_fee INTEGER DEFAULT 0" },
+    { desc: 'suppliers.free_ship_threshold', sql: "ALTER TABLE suppliers ADD COLUMN free_ship_threshold INTEGER DEFAULT 0" },
+    { desc: 'wholesale_orders.shipping_total', sql: "ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0" },
     // 🏦 2026-06-09 예치금 주문 멱등 — 더블클릭/재시도 이중차감 방지(ensureDepositSchema 와 동일, repair 일관성).
     { desc: 'wholesale_orders.idempotency_key', sql: "ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT" },
     { desc: 'idx_wholesale_orders_idem', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL" },

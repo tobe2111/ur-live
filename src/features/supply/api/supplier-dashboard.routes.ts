@@ -94,6 +94,92 @@ supplierDashboardRoutes.get('/me', async (c) => {
   }
 });
 
+// ── 🚚 2026-06-09 제조사별 배송/주문 정책 — suppliers 3컬럼 멱등 ensure. ──────────────
+//   min_order_amount / shipping_fee / free_ship_threshold (0 = 제한/배송비/무료배송 없음).
+//   wholesale.routes 의 ensureSupplierPolicySchema 와 동일 — 제조사가 정책을 먼저 저장할 수도 있어 양쪽 self-ensure.
+const _supPolicyEnsured = new WeakSet<object>();
+async function ensureSupplierPolicySchema(DB: D1Database) {
+  if (_supPolicyEnsured.has(DB)) return;
+  _supPolicyEnsured.add(DB);
+  for (const sql of [
+    'ALTER TABLE suppliers ADD COLUMN min_order_amount INTEGER DEFAULT 0',
+    'ALTER TABLE suppliers ADD COLUMN shipping_fee INTEGER DEFAULT 0',
+    'ALTER TABLE suppliers ADD COLUMN free_ship_threshold INTEGER DEFAULT 0',
+  ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:policy:alter')); }
+}
+
+// ── GET /shipping-policy — 내 배송/주문 정책 조회 ──────────────────────────────
+supplierDashboardRoutes.get('/shipping-policy', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    await ensureSupplierPolicySchema(DB);
+    const row = await DB.prepare(
+      `SELECT COALESCE(min_order_amount,0) AS min_order_amount, COALESCE(shipping_fee,0) AS shipping_fee, COALESCE(free_ship_threshold,0) AS free_ship_threshold
+         FROM suppliers WHERE id = ?`
+    ).bind(sid).first<{ min_order_amount: number; shipping_fee: number; free_ship_threshold: number }>().catch(() => null);
+    return c.json({
+      success: true,
+      data: {
+        min_order_amount: Math.max(0, Math.floor(row?.min_order_amount ?? 0)),
+        shipping_fee: Math.max(0, Math.floor(row?.shipping_fee ?? 0)),
+        free_ship_threshold: Math.max(0, Math.floor(row?.free_ship_threshold ?? 0)),
+      },
+    });
+  } catch (err) {
+    return safeError(c, err, '배송 정책 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── PATCH /shipping-policy — 내 배송/주문 정책 저장 ────────────────────────────
+//   min_order_amount(최소주문금액) / shipping_fee(배송비) / free_ship_threshold(무료배송 기준).
+//   모두 0 이상 정수. 상식적 상한(1억원) clamp. 미지정 필드는 기존값 유지.
+const POLICY_MAX = 100_000_000; // 1억원 — 비현실 값/오타 방어 상한.
+supplierDashboardRoutes.patch('/shipping-policy', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    await ensureSupplierPolicySchema(DB);
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+    // 입력 검증 — finite + 0 이상 + 상한 clamp. 미지정(undefined)은 그대로 두고 갱신 안 함.
+    const sanitize = (v: unknown): number | undefined => {
+      if (v === undefined || v === null || v === '') return undefined;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return undefined;
+      return Math.min(POLICY_MAX, Math.floor(n));
+    };
+    const minOrder = sanitize(body.min_order_amount);
+    const shipFee = sanitize(body.shipping_fee);
+    const freeShip = sanitize(body.free_ship_threshold);
+    if (minOrder === undefined && shipFee === undefined && freeShip === undefined) {
+      return c.json({ success: false, error: '변경할 값이 없습니다' }, 400);
+    }
+    const sets: string[] = [];
+    const params: number[] = [];
+    if (minOrder !== undefined) { sets.push('min_order_amount = ?'); params.push(minOrder); }
+    if (shipFee !== undefined) { sets.push('shipping_fee = ?'); params.push(shipFee); }
+    if (freeShip !== undefined) { sets.push('free_ship_threshold = ?'); params.push(freeShip); }
+    await DB.prepare(`UPDATE suppliers SET ${sets.join(', ')} WHERE id = ?`).bind(...params, sid).run();
+    const row = await DB.prepare(
+      `SELECT COALESCE(min_order_amount,0) AS min_order_amount, COALESCE(shipping_fee,0) AS shipping_fee, COALESCE(free_ship_threshold,0) AS free_ship_threshold
+         FROM suppliers WHERE id = ?`
+    ).bind(sid).first<{ min_order_amount: number; shipping_fee: number; free_ship_threshold: number }>().catch(() => null);
+    return c.json({
+      success: true,
+      message: '배송 정책이 저장되었습니다',
+      data: {
+        min_order_amount: Math.max(0, Math.floor(row?.min_order_amount ?? 0)),
+        shipping_fee: Math.max(0, Math.floor(row?.shipping_fee ?? 0)),
+        free_ship_threshold: Math.max(0, Math.floor(row?.free_ship_threshold ?? 0)),
+      },
+    });
+  } catch (err) {
+    return safeError(c, err, '배송 정책 저장 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
 // ── GET /products — 내 카탈로그 ───────────────────────────────────────────────
 supplierDashboardRoutes.get('/products', async (c) => {
   const sid = supplierId(c);

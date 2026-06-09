@@ -6,7 +6,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleDeposit } from '@/hooks/queries/useWholesale'
-import { useWholesaleCart } from './wholesale/useWholesaleCart'
+import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 
 // 🏦 2026-06-09 유통스타트 도매 — 예치금(선불) 결제 체크아웃.
 //   Toss 위젯 흐름을 REPLACE → 주문 확인 + 예치금 결제. (여신/외상 옵션 제거 — 예치금 전용)
@@ -29,6 +29,13 @@ export default function WholesaleCheckoutPage() {
 
   const balance = Number(depositQ.data?.balance) || 0
 
+  // 🚚 제조사별 최소주문금액/배송비 (표시용 — 서버가 청구 시 재계산 = SSOT). 청구액 = 상품합 + 배송비.
+  const grouped = groupBySupplier(items)
+  const shippingTotal = grouped.shippingTotal
+  const grandTotal = subtotal + shippingTotal
+  const hasMultiSupplier = grouped.groups.length > 1
+  const canOrder = grouped.allMinMet
+
   // 빈 카트 진입 가드 — 결제 직후 clear 로 인한 리다이렉트는 paying 으로 회피.
   useEffect(() => {
     if (!paying && items.length === 0) navigate('/wholesale/cart', { replace: true })
@@ -38,6 +45,10 @@ export default function WholesaleCheckoutPage() {
 
   async function payWithDeposit() {
     if (!items.length || paying) return
+    if (!canOrder) {
+      setErrorMsg(t('wholesale.checkout.minOrderNotMet', { defaultValue: '최소 주문 금액을 채우지 못한 공급처가 있습니다. 장바구니에서 확인해주세요.' }))
+      return
+    }
     setPaying(true)
     setInsufficient(null)
     setErrorMsg('')
@@ -59,9 +70,12 @@ export default function WholesaleCheckoutPage() {
       if (resp?.status === 402 && data.code === 'INSUFFICIENT_DEPOSIT') {
         setInsufficient({
           balance: Number(data.balance) || 0,
-          required: Number(data.required) || subtotal,
-          shortfall: Number(data.shortfall) || Math.max(0, (Number(data.required) || subtotal) - (Number(data.balance) || 0)),
+          required: Number(data.required) || grandTotal,
+          shortfall: Number(data.shortfall) || Math.max(0, (Number(data.required) || grandTotal) - (Number(data.balance) || 0)),
         })
+      } else if (resp?.status === 422 && data.code === 'MIN_ORDER_NOT_MET') {
+        // 서버 최소주문금액 게이트 — 청구 전 차단됨(돈 미이동). 장바구니로 안내.
+        setErrorMsg(String(data.error || t('wholesale.checkout.minOrderNotMet', { defaultValue: '최소 주문 금액을 채우지 못한 공급처가 있습니다.' })))
       } else {
         setErrorMsg(String(data.error || t('wholesale.checkout.payError', { defaultValue: '주문 결제 중 오류가 발생했습니다' })))
       }
@@ -100,10 +114,36 @@ export default function WholesaleCheckoutPage() {
           </ul>
           <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
             <span className="text-[13px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.subtotal', { defaultValue: '총 {{qty}}개 상품 금액', qty: comma(totalQty) })}</span>
-            <span className="text-[20px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(subtotal)}</span>
+            <span className="text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{won(subtotal)}</span>
           </div>
-          <p className="mt-1 text-[11px]" style={{ color: WT.ink4 }}>{t('wholesale.checkout.serverRecalc', { defaultValue: '실제 결제 금액은 주문 시 서버에서 등급 공급가로 재계산됩니다.' })}</p>
+          <div className="mt-1.5 flex items-center justify-between">
+            <span className="text-[13px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.shippingFee', { defaultValue: '배송비' })}</span>
+            <span className="text-[14px] font-bold tabular-nums" style={{ color: shippingTotal === 0 ? WT.pos : WT.ink }}>{shippingTotal === 0 ? t('wholesale.checkout.freeShip', { defaultValue: '무료' }) : won(shippingTotal)}</span>
+          </div>
+          <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
+            <span className="text-[13px] font-bold" style={{ color: WT.ink2 }}>{t('wholesale.checkout.grandTotal', { defaultValue: '총 결제 금액' })}</span>
+            <span className="text-[20px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(grandTotal)}</span>
+          </div>
+          <p className="mt-1 text-[11px]" style={{ color: WT.ink4 }}>{t('wholesale.checkout.serverRecalc', { defaultValue: '실제 결제 금액은 주문 시 서버에서 등급 공급가·배송비로 재계산됩니다.' })}</p>
         </section>
+
+        {/* 🚚 제조사별 최소주문금액/배송비 (정책 설정 그룹만 / 다중 공급처 시 분리 표시) */}
+        {grouped.groups.some((g) => g.minOrderAmount > 0 || g.shipping > 0 || g.freeShipRemaining > 0) && (
+          <section className="rounded-2xl bg-white p-4 space-y-2.5" style={{ border: '1px solid ' + WT.line }}>
+            <p className="text-[12px] font-bold" style={{ color: WT.ink3 }}>{t('wholesale.checkout.supplierPolicy', { defaultValue: '공급처별 배송·최소주문' })}</p>
+            {grouped.groups.map((g, gi) => {
+              if (!(g.minOrderAmount > 0 || g.shipping > 0 || g.freeShipRemaining > 0)) return null
+              return (
+                <div key={g.group} className="rounded-xl p-3" style={{ background: g.meetsMin ? WT.fill2 : '#FDECEF' }}>
+                  {hasMultiSupplier && <div className="text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>{t('wholesale.checkout.supplierN', { defaultValue: '공급처 {{n}}', n: gi + 1 })} <span className="font-medium" style={{ color: WT.ink4 }}>· {won(g.subtotal)}</span></div>}
+                  {!g.meetsMin && <p className="text-[12px] font-bold" style={{ color: '#B3253B' }}>{t('wholesale.checkout.shortBy', { defaultValue: '{{amount}} 더 담아야 주문 가능 (최소 {{min}})', amount: won(g.shortfall), min: won(g.minOrderAmount) })}</p>}
+                  <div className="flex items-center justify-between text-[12px]"><span style={{ color: WT.ink3 }}>{t('wholesale.checkout.shippingFee', { defaultValue: '배송비' })}</span><span className="tabular-nums font-semibold" style={{ color: g.shipping === 0 ? WT.pos : WT.ink }}>{g.shipping === 0 ? t('wholesale.checkout.freeShip', { defaultValue: '무료' }) : won(g.shipping)}</span></div>
+                  {g.freeShipRemaining > 0 && <p className="text-[11px] mt-0.5" style={{ color: WT.ink4 }}>{t('wholesale.checkout.freeShipRemain', { defaultValue: '{{amount}} 더 담으면 무료배송', amount: won(g.freeShipRemaining) })}</p>}
+                </div>
+              )
+            })}
+          </section>
+        )}
 
         {/* 배송지 안내 */}
         <section className="rounded-2xl p-4" style={{ background: WT.fill2 }}>
@@ -117,15 +157,15 @@ export default function WholesaleCheckoutPage() {
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: WT.ink2 }}>
               <Wallet className="w-4 h-4" style={{ color: WT.brand }} />{t('wholesale.deposit.balanceLabel', { defaultValue: '현재 예치금 잔액' })}
             </span>
-            <span className="text-[15px] font-extrabold tabular-nums" style={{ color: balance >= subtotal ? WT.ink : '#B3253B' }}>{won(balance)}</span>
+            <span className="text-[15px] font-extrabold tabular-nums" style={{ color: balance >= grandTotal ? WT.ink : '#B3253B' }}>{won(balance)}</span>
           </div>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[13px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.orderAmount', { defaultValue: '주문 금액' })}</span>
-            <span className="text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{won(subtotal)}</span>
+            <span className="text-[15px] font-bold tabular-nums" style={{ color: WT.ink }}>{won(grandTotal)}</span>
           </div>
           <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
             <span className="text-[13px] font-bold" style={{ color: WT.ink2 }}>{t('wholesale.checkout.balanceAfter', { defaultValue: '결제 후 잔액' })}</span>
-            <span className="text-[15px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(Math.max(0, balance - subtotal))}</span>
+            <span className="text-[15px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(Math.max(0, balance - grandTotal))}</span>
           </div>
         </section>
 
@@ -165,13 +205,15 @@ export default function WholesaleCheckoutPage() {
         <div className="ur-content-narrow px-4 pt-3">
           <button
             onClick={payWithDeposit}
-            disabled={paying || items.length === 0}
+            disabled={paying || items.length === 0 || !canOrder}
             className="w-full h-14 text-[16px] font-bold rounded-2xl text-white disabled:opacity-50"
             style={{ background: WT.brand }}
           >
             {paying
               ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('wholesale.checkout.paying', { defaultValue: '결제 진행 중...' })}</span>
-              : t('wholesale.checkout.payWithDeposit', { defaultValue: '{{amount}} 예치금으로 결제', amount: won(subtotal) })}
+              : !canOrder
+                ? t('wholesale.checkout.minOrderShort', { defaultValue: '최소 주문 금액 부족' })
+                : t('wholesale.checkout.payWithDeposit', { defaultValue: '{{amount}} 예치금으로 결제', amount: won(grandTotal) })}
           </button>
         </div>
       </div>
