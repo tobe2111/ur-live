@@ -15,6 +15,7 @@ import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { maskEmail } from '@/lib/mask';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { registrationMallId } from './wholesale-malls';
 
 // fail-soft 알림 발송 (가입 흐름이 알림 실패로 깨지지 않도록).
 const swallowNotify = (tag: string) => (err: unknown) => { if (import.meta.env.DEV) console.warn(`[supplier-auth] ${tag}`, err); };
@@ -57,6 +58,7 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     'business_license_url TEXT', // 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용)
     'representative_phone TEXT', // 🏭 2026-06-09 대표자 연락처
     'manager_name TEXT', 'manager_phone TEXT', 'manager_email TEXT', // 🏭 2026-06-09 담당자(성명/연락처/이메일)
+    'mall_id INTEGER DEFAULT 1', // 🏬 2026-06-09 멀티-몰 테넌시 — 가입 시 어느 몰에 가입했는지(기본 1)
   ]) {
     await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
   }
@@ -104,16 +106,19 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     if (dupe) return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 409);
 
     const passwordHash = await hashPassword(password);
+    // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
+    const mallId = await registrationMallId(c);
     const result = await DB.prepare(`
       INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
         bank_name, bank_account, account_holder, business_license_url,
         representative_phone, manager_name, manager_phone, manager_email,
-        status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        mall_id, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
     `).bind(
       businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
       body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
       representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
+      mallId,
     ).run();
 
     return c.json({
@@ -196,16 +201,18 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       const dupe = await DB.prepare('SELECT id FROM suppliers WHERE email = ? LIMIT 1').bind(email).first<{ id: number }>().catch(() => null);
       if (dupe) return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409);
 
+      // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
+      const mallId = await registrationMallId(c);
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const ins = await DB.prepare(`
         INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
           business_license_url, representative_phone, manager_name, manager_phone, manager_email,
-          linked_user_id, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+          linked_user_id, mall_id, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
       `).bind(
         business_name, business_number, representative || null, email, phone || null,
         business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-        userId,
+        userId, mallId,
       ).run();
       const sid = Number(ins.meta?.last_row_id);
       if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);

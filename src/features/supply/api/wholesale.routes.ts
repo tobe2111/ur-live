@@ -28,6 +28,7 @@ import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
+import { resolveMallId, registrationMallId } from './wholesale-malls'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -91,7 +92,10 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
     'ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1',
     // 🏭 2026-06-09 Wave 2 프리미엄 전용관 플래그(ensure-on-use — repair-schema 와 멱등 동일).
     'ALTER TABLE products ADD COLUMN is_premium INTEGER DEFAULT 0',
+    // 🏬 2026-06-09 멀티-몰 테넌시 — products.mall_id(DEFAULT 1). 기본 몰만 있으면 전 행 1 → 카탈로그 동작 불변.
+    'ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1',
   ]) { await DB.prepare(sql).run().catch(swallow('wholesale:biz8:alter')) }
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_products_mall_supply ON products(mall_id) WHERE is_supply_product = 1').run().catch(swallow('wholesale:biz8:idx-mall'))
 }
 
 // ── BIZ-2 v1 (2026-06-08) 여신/외상(credit terms) — 멱등 ensure. ─────────────────
@@ -286,6 +290,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
       'ALTER TABLE sellers ADD COLUMN manager_name TEXT',
       'ALTER TABLE sellers ADD COLUMN manager_phone TEXT',
       'ALTER TABLE sellers ADD COLUMN manager_email TEXT',
+      'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 가입 시 어느 몰에 가입했는지
     ]) { await DB.prepare(sql).run().catch(swallow('wholesale:register:alter')) }
 
     const dup = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first()
@@ -302,16 +307,18 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     if (!username) username = `dist${Date.now().toString().slice(-8)}`
 
     const passwordHash = await hashPassword(password)
+    // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
+    const mallId = await registrationMallId(c)
     // status='pending' — 관리자 승인 전까지 로그인 불가(seller login 이 pending 차단). 토큰 미발급.
     const ins = await DB.prepare(`
       INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
         representative_phone, manager_name, manager_phone, manager_email,
         business_registration_image_url, business_registration_status,
-        status, commission_rate, seller_type, distributor_grade, is_distributor, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, datetime('now'), datetime('now'))
+        status, commission_rate, seller_type, distributor_grade, is_distributor, mall_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
     `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null,
       representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-      business_license_url || null, DEFAULT_COMMISSION_RATE).run()
+      business_license_url || null, DEFAULT_COMMISSION_RATE, mallId).run()
     const sellerId = Number(ins.meta?.last_row_id)
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
 
@@ -370,6 +377,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       'ALTER TABLE sellers ADD COLUMN manager_phone TEXT',
       'ALTER TABLE sellers ADD COLUMN manager_email TEXT',
       'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
+      'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 가입 시 어느 몰에 가입했는지
     ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:alter')) }
 
     // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
@@ -433,15 +441,17 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       if (!ex) { username = cand; break }
     }
     if (!username) username = `dist${Date.now().toString().slice(-8)}`
+    // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
+    const mallId = await registrationMallId(c)
     const ins = await DB.prepare(`
       INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
         representative_phone, manager_name, manager_phone, manager_email,
         business_registration_image_url, business_registration_status,
-        status, commission_rate, seller_type, distributor_grade, is_distributor, linked_user_id, created_at, updated_at)
-      VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, ?, datetime('now'), datetime('now'))
+        status, commission_rate, seller_type, distributor_grade, is_distributor, linked_user_id, mall_id, created_at, updated_at)
+      VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, 'influencer', 'C', 1, ?, ?, datetime('now'), datetime('now'))
     `).bind(username, email, name, business_name, business_number, representative || null, phone || null,
       representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-      business_license_url || null, DEFAULT_COMMISSION_RATE, userId).run()
+      business_license_url || null, DEFAULT_COMMISSION_RATE, userId, mallId).run()
     const sid = Number(ins.meta?.last_row_id)
     if (!sid) return c.json({ success: false, error: '유통회원 신청 중 오류가 발생했습니다' }, 500)
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청', `${business_name} (${business_number})`, '/admin/seller-approval').catch(swallow('wholesale:become:notify'))
@@ -606,15 +616,18 @@ app.get('/catalog', async (c) => {
     }
 
     await ensureSupplyVisibilitySchema(DB)
-    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
+    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전). (+ products.mall_id 보장)
     const sg = guest ? { distributor_grade: null, special_discount_until: null } : await loadSellerGrade(DB, sellerId!)
     const table = await loadGradeTable(DB)
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
+    // 🏬 멀티-몰: 로그인 유통사 → 본인 계정 몰 / 비로그인 → host 몰 / 기본 1. 기본 몰만 있으면 항상 1 → 동일 rows.
+    const mallId = await resolveMallId(c)
 
     // 도매 가능 = 제조사 공급상품(공급자 직등록 원본). supply_source_id IS NULL = 원본(셀러 복제본 제외).
     // + 공급 범위(supply_visibility) 가시성: ALL 이거나 허용목록(선정된 유통회원)에 포함.
-    let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
-    const params: (string | number)[] = [visBind]
+    // + 몰 스코핑: p.mall_id = 요청 몰(기본 1 → 기존 데이터 전 행 1 → byte-identical).
+    let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}`
+    const params: (string | number)[] = [mallId, visBind]
     // ── 검색: FTS5(products_fts) 가용 시 name/description/category 전문검색, 아니면 LIKE 다컬럼 fallback.
     //   visibilityWhere 는 항상 AND-ed (FROM products p 구조 불변 — FTS 는 rowid subquery 로 합류).
     //   ⚠️ products 스키마에 brand_name/barcode 컬럼이 없어 그 두 컬럼 검색은 생략(있는 컬럼만).
@@ -706,7 +719,9 @@ app.get('/catalog/:id', async (c) => {
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
   try {
     await ensureSupplyVisibilitySchema(DB)
-    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
+    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전). (+ products.mall_id 보장)
+    // 🏬 멀티-몰: 요청 몰 스코핑(기본 1 → 기존 데이터 전 행 1 → byte-identical).
+    const mallId = await resolveMallId(c)
     const r = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
@@ -716,8 +731,9 @@ app.get('/catalog/:id', async (c) => {
       FROM products p
       WHERE p.id = ? AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
+        AND COALESCE(p.mall_id,1) = ?
         AND ${visibilityWhere('p')}
-    `).bind(id, sellerId ?? -1).first<{
+    `).bind(id, mallId, sellerId ?? -1).first<{
       id: number; name: string; description: string | null; image_url: string | null;
       category: string | null; stock: number; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
     }>()

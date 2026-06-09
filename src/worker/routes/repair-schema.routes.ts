@@ -655,6 +655,21 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.is_premium', sql: "ALTER TABLE products ADD COLUMN is_premium INTEGER DEFAULT 0" },
     // 🏭 2026-06-09 도매몰 예치금 입금계좌 — 어드민이 설정하는 무통장입금 안내 계좌(은행/계좌/예금주 한 문자열).
     { desc: 'seed: wholesale_deposit_account', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('wholesale_deposit_account', '', '도매몰 예치금 무통장입금 안내 계좌 (은행/계좌번호/예금주)', datetime('now'))" },
+    // 🏬 2026-06-09 도매몰 멀티-몰 테넌시 — mall_id 컬럼(DEFAULT 1 → 기존 데이터 = 기본 몰 1, 동작 불변).
+    //   모델 B(몰별 회원가입): products/sellers/suppliers/wholesale_banners/wholesale_proposal_tickets 에만 추가.
+    //   예치금/주문/세금/채팅은 이미 per-mall account id(sellers.id/suppliers.id) 에 매달려 몰-격리 → mall_id 미추가.
+    //   🔒 INVARIANT: DEFAULT 1 → 기존 전 행이 기본 몰 1 에 속함 → 기본 몰만 있으면 모든 필터가 1=동일 rows.
+    { desc: 'sellers.mall_id', sql: "ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    { desc: 'suppliers.mall_id', sql: "ALTER TABLE suppliers ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    { desc: 'products.mall_id', sql: "ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    // 필터에 쓰는 컬럼 인덱스(카탈로그/배너/제안 스코핑 — products 는 도매 카탈로그 부분 인덱스).
+    { desc: 'idx_products_mall_supply', sql: "CREATE INDEX IF NOT EXISTS idx_products_mall_supply ON products(mall_id) WHERE is_supply_product = 1" },
+    { desc: 'idx_sellers_mall', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_mall ON sellers(mall_id)" },
+    { desc: 'idx_suppliers_mall', sql: "CREATE INDEX IF NOT EXISTS idx_suppliers_mall ON suppliers(mall_id)" },
+    { desc: 'idx_wholesale_banners_mall', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_banners_mall ON wholesale_banners(mall_id, active, sort, id)" },
+    { desc: 'idx_wholesale_proposal_tickets_mall', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_mall ON wholesale_proposal_tickets(mall_id, id DESC)" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1454,6 +1469,27 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_tax_withholding_seller_year', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_seller_year ON tax_withholding_log(seller_id, payout_year, payout_month)` },
     { name: 'idx_tax_withholding_reportable', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_reportable ON tax_withholding_log(payout_year, reportable)` },
+
+    // 🏬 2026-06-09 도매몰 멀티-몰 테넌시 — 몰 설정 테이블 + 기본 몰(id=1) 시드.
+    //   한 운영자가 카테고리별 분리 몰(식품/패션 등) 운영. 기본 몰 = 기존 유통스타트(slug='default', host=utongstart.com).
+    //   🔒 INVARIANT: 행이 없을 때만 id=1 시드 → 단일 몰 환경은 항상 mall 1 = 오늘과 동일.
+    { name: 'wholesale_malls', sql: `CREATE TABLE IF NOT EXISTS wholesale_malls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT UNIQUE,
+      name TEXT,
+      host TEXT,
+      brand_name TEXT,
+      brand_color TEXT,
+      logo_url TEXT,
+      deposit_account TEXT,
+      commission_rate REAL,
+      categories_json TEXT,
+      active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wholesale_malls_host', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL` },
+    { name: 'idx_wholesale_malls_active', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)` },
+    { name: 'seed: wholesale_malls default (id=1)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at) VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#2563EB', 1, datetime('now'))` },
 
     // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 메인 배너 캐러셀(어드민 CRUD).
     { name: 'wholesale_banners', sql: `CREATE TABLE IF NOT EXISTS wholesale_banners (

@@ -32,6 +32,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+import { resolveMallId, DEFAULT_MALL_ID } from './wholesale-malls'
 
 // ── 멱등 ensure (repair-schema 와 동일 DDL — cold isolate self-heal) ────────────
 const _bannerEnsured = new WeakSet<object>()
@@ -50,6 +51,9 @@ async function ensureBannerSchema(DB: D1Database): Promise<void> {
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(swallow('wholesale-banners:ensure'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_banners_active ON wholesale_banners(active, sort, id)').run().catch(swallow('wholesale-banners:idx'))
+  // 🏬 멀티-몰 테넌시 — mall_id(DEFAULT 1). repair-schema 와 멱등 동일. 기본 몰만 있으면 전 행 1 → 동작 불변.
+  await DB.prepare('ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1').run().catch(swallow('wholesale-banners:mall_id'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_banners_mall ON wholesale_banners(mall_id, active, sort, id)').run().catch(swallow('wholesale-banners:idx-mall'))
 }
 
 const _proposalEnsured = new WeakSet<object>()
@@ -71,6 +75,9 @@ async function ensureProposalSchema(DB: D1Database): Promise<void> {
   )`).run().catch(swallow('wholesale-proposals:ensure'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_seller ON wholesale_proposal_tickets(seller_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-seller'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_status ON wholesale_proposal_tickets(status, id DESC)').run().catch(swallow('wholesale-proposals:idx-status'))
+  // 🏬 멀티-몰 테넌시 — mall_id(DEFAULT 1). repair-schema 와 멱등 동일. 기본 몰만 있으면 전 행 1 → 동작 불변.
+  await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1').run().catch(swallow('wholesale-proposals:mall_id'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_mall ON wholesale_proposal_tickets(mall_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-mall'))
 }
 
 const _premiumEnsured = new WeakSet<object>()
@@ -103,6 +110,13 @@ function cleanUrl(raw: unknown, max = 1000): string | null {
 const VALID_PROPOSAL_STATUS = new Set(['open', 'in_progress', 'resolved', 'rejected'])
 const VALID_PROPOSAL_TYPE = new Set(['proposal', 'report'])
 
+// 🏬 멀티-몰: 어드민이 어느 몰을 보는지/스탬프할지 — ?mall_id= 쿼리 또는 body.mall_id. 미지정=기본 1.
+//   슈퍼-어드민이 몰을 선택 가능. 음수/NaN 은 기본 1 로 clamp. (단일 몰 환경은 항상 1 → 동작 불변.)
+function adminMallIdFromQuery(raw: unknown): number {
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_MALL_ID
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // 공개(+유통사) — /api/wholesale/*
 // ════════════════════════════════════════════════════════════════════════════
@@ -115,15 +129,18 @@ pub.get('/banners', async (c) => {
   const { DB } = c.env
   try {
     await ensureBannerSchema(DB)
+    // 🏬 멀티-몰: 요청 몰의 배너만(기본 1 → 기존 데이터 전 행 1 → byte-identical). guest=host 몰 / 로그인=계정 몰.
+    const mallId = await resolveMallId(c)
     const { results } = await DB.prepare(
       `SELECT id, image_url, link, title, sort
        FROM wholesale_banners
        WHERE active = 1
+         AND COALESCE(mall_id,1) = ?
          AND (start_at IS NULL OR start_at = '' OR start_at <= datetime('now'))
          AND (end_at   IS NULL OR end_at   = '' OR end_at   >= datetime('now'))
        ORDER BY sort ASC, id ASC
        LIMIT 30`
-    ).all<{ id: number; image_url: string; link: string | null; title: string | null; sort: number }>()
+    ).bind(mallId).all<{ id: number; image_url: string; link: string | null; title: string | null; sort: number }>()
       .catch(() => ({ results: [] as { id: number; image_url: string; link: string | null; title: string | null; sort: number }[] }))
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'public, max-age=900')
@@ -151,9 +168,11 @@ pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', m
     if (!subject) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
     if (!text) return c.json({ success: false, error: '내용을 입력해주세요' }, 400)
 
+    // 🏬 멀티-몰: 작성자(유통사) 계정 몰을 스탬프(기본 1). 로그인 토큰 → 계정 mall_id.
+    const mallId = await resolveMallId(c)
     const ins = await DB.prepare(
-      "INSERT INTO wholesale_proposal_tickets (seller_id, type, target, subject, body, status) VALUES (?, ?, ?, ?, ?, 'open')"
-    ).bind(sellerId, type, target, subject, text).run()
+      "INSERT INTO wholesale_proposal_tickets (seller_id, type, target, subject, body, status, mall_id) VALUES (?, ?, ?, ?, ?, 'open', ?)"
+    ).bind(sellerId, type, target, subject, text, mallId).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '등록 중 오류가 발생했습니다' }, 500)
 
@@ -209,11 +228,13 @@ adminBanner.get('/', async (c) => {
   const { DB } = c.env
   try {
     await ensureBannerSchema(DB)
+    // 🏬 멀티-몰: ?mall_id= 로 특정 몰 배너만(미지정=기본 1). 슈퍼-어드민 몰 선택.
+    const mallId = adminMallIdFromQuery(c.req.query('mall_id'))
     const { results } = await DB.prepare(
-      `SELECT id, image_url, link, title, sort, active, start_at, end_at, created_at
-       FROM wholesale_banners ORDER BY sort ASC, id ASC LIMIT 200`
-    ).all()
-    return c.json({ success: true, banners: results ?? [] })
+      `SELECT id, image_url, link, title, sort, active, start_at, end_at, created_at, COALESCE(mall_id,1) AS mall_id
+       FROM wholesale_banners WHERE COALESCE(mall_id,1) = ? ORDER BY sort ASC, id ASC LIMIT 200`
+    ).bind(mallId).all()
+    return c.json({ success: true, banners: results ?? [], mall_id: mallId })
   } catch (err) {
     return safeError(c, err, '배너 목록 조회 중 오류가 발생했습니다', '[admin-wholesale-banners]')
   }
@@ -232,9 +253,11 @@ adminBanner.post('/', rateLimit({ action: 'admin-wholesale-banner-create', max: 
     const active = Number(body.active) === 0 ? 0 : 1
     const start_at = String(body.start_at || '').trim().slice(0, 40) || null
     const end_at = String(body.end_at || '').trim().slice(0, 40) || null
+    // 🏬 멀티-몰: 어드민이 지정한 몰에 배너 생성(body.mall_id 또는 ?mall_id=, 미지정=기본 1).
+    const mallId = adminMallIdFromQuery((body as { mall_id?: unknown }).mall_id ?? c.req.query('mall_id'))
     const ins = await DB.prepare(
-      'INSERT INTO wholesale_banners (image_url, link, title, sort, active, start_at, end_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(image_url, link, title, sort, active, start_at, end_at).run()
+      'INSERT INTO wholesale_banners (image_url, link, title, sort, active, start_at, end_at, mall_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(image_url, link, title, sort, active, start_at, end_at, mallId).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '배너 생성 중 오류가 발생했습니다' }, 500)
     return c.json({ success: true, id })
@@ -297,16 +320,24 @@ adminProposal.get('/', async (c) => {
   try {
     await ensureProposalSchema(DB)
     const statusQ = String(c.req.query('status') || '').trim()
-    const where = VALID_PROPOSAL_STATUS.has(statusQ) ? 'WHERE wp.status = ?' : ''
-    const stmt = DB.prepare(
+    // 🏬 멀티-몰: ?mall_id= 가 주어진 경우에만 해당 몰로 필터(옵션). 미지정 = 전 몰(기존 무필터 뷰 보존).
+    const mallQ = c.req.query('mall_id')
+    const mallId = (mallQ != null && mallQ !== '') ? adminMallIdFromQuery(mallQ) : null
+    const conds: string[] = []
+    const binds: (string | number)[] = []
+    if (VALID_PROPOSAL_STATUS.has(statusQ)) { conds.push('wp.status = ?'); binds.push(statusQ) }
+    if (mallId != null) { conds.push('COALESCE(wp.mall_id,1) = ?'); binds.push(mallId) }
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : ''
+    const { results } = await DB.prepare(
       `SELECT wp.id, wp.seller_id, s.name AS seller_name, s.business_name AS business_name,
+              COALESCE(wp.mall_id,1) AS mall_id, m.name AS mall_name,
               wp.type, wp.target, wp.subject, wp.body, wp.status, wp.admin_memo, wp.created_at, wp.resolved_at
        FROM wholesale_proposal_tickets wp
        LEFT JOIN sellers s ON s.id = wp.seller_id
+       LEFT JOIN wholesale_malls m ON m.id = COALESCE(wp.mall_id,1)
        ${where}
        ORDER BY wp.id DESC LIMIT 200`
-    )
-    const { results } = where ? await stmt.bind(statusQ).all() : await stmt.all()
+    ).bind(...binds).all()
     return c.json({ success: true, proposals: results ?? [] })
   } catch (err) {
     return safeError(c, err, '제안/신고 조회 중 오류가 발생했습니다', '[admin-wholesale-proposals]')

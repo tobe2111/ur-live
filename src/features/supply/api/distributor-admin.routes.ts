@@ -120,21 +120,30 @@ app.get('/distributors', async (c) => {
     const onlyAssigned = c.req.query('assigned') === '1'
     const binds: unknown[] = []
     let where = '1=1'
-    if (onlyAssigned) where += ' AND distributor_grade IS NOT NULL'
+    if (onlyAssigned) where += ' AND s.distributor_grade IS NOT NULL'
     if (search) {
-      where += ' AND (username LIKE ? OR name LIKE ? OR business_name LIKE ? OR email LIKE ?)'
+      where += ' AND (s.username LIKE ? OR s.name LIKE ? OR s.business_name LIKE ? OR s.email LIKE ?)'
       const like = `%${search}%`
       binds.push(like, like, like, like)
+    }
+    // 🏬 멀티-몰: ?mall_id= 가 주어지면 해당 몰만(옵션 — 기존 무필터 뷰 보존). mall name 도 join 해 표시.
+    const mallQ = c.req.query('mall_id')
+    if (mallQ != null && mallQ !== '') {
+      const mid = Math.floor(Number(mallQ))
+      if (Number.isFinite(mid) && mid > 0) { where += ' AND COALESCE(s.mall_id,1) = ?'; binds.push(mid) }
     }
     // 🏭 BIZ-2: 여신 컬럼 보강(없는 환경 self-heal) 후 함께 반환 — UI 가 한도/미수금/동결 인라인 표시.
     await ensureCreditSchemaAdmin(c.env.DB)
     const { results } = await c.env.DB.prepare(
-      `SELECT id, username, name, business_name, email, seller_type, distributor_grade, special_discount_until,
-              COALESCE(distributor_credit_limit,0) AS distributor_credit_limit,
-              COALESCE(outstanding_balance,0) AS outstanding_balance,
-              COALESCE(credit_frozen,0) AS credit_frozen
-       FROM sellers WHERE ${where}
-       ORDER BY (distributor_grade IS NOT NULL) DESC, id DESC LIMIT 100`
+      `SELECT s.id, s.username, s.name, s.business_name, s.email, s.seller_type, s.distributor_grade, s.special_discount_until,
+              COALESCE(s.distributor_credit_limit,0) AS distributor_credit_limit,
+              COALESCE(s.outstanding_balance,0) AS outstanding_balance,
+              COALESCE(s.credit_frozen,0) AS credit_frozen,
+              COALESCE(s.mall_id,1) AS mall_id, m.name AS mall_name
+       FROM sellers s
+       LEFT JOIN wholesale_malls m ON m.id = COALESCE(s.mall_id,1)
+       WHERE ${where}
+       ORDER BY (s.distributor_grade IS NOT NULL) DESC, s.id DESC LIMIT 100`
     ).bind(...binds).all()
     return c.json({ success: true, distributors: results ?? [] })
   } catch (err) {
@@ -199,7 +208,14 @@ async function ensureCreditSchemaAdmin(DB: D1Database) {
     'ALTER TABLE sellers ADD COLUMN distributor_credit_limit INTEGER DEFAULT 0',
     'ALTER TABLE sellers ADD COLUMN outstanding_balance INTEGER DEFAULT 0',
     'ALTER TABLE sellers ADD COLUMN credit_frozen INTEGER DEFAULT 0',
+    'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 목록 JOIN/필터 안전 보장
   ]) { await DB.prepare(sql).run().catch(swallow('distributor-admin:credit:alter')) }
+  // 🏬 멀티-몰: wholesale_malls 테이블/기본 몰 보장(목록 LEFT JOIN m.name 안전). 없으면 cold-isolate self-heal.
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_malls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT UNIQUE, name TEXT, host TEXT, brand_name TEXT,
+    brand_color TEXT, logo_url TEXT, deposit_account TEXT, commission_rate REAL, categories_json TEXT,
+    active INTEGER DEFAULT 1, created_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(swallow('distributor-admin:malls:ensure'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_credit_ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     distributor_seller_id INTEGER NOT NULL,

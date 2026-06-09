@@ -41,9 +41,17 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
     if (['pending', 'approved', 'suspended', 'rejected'].includes(status)) {
       where = 's.status = ?'; params.push(status);
     }
+    // 🏬 2026-06-09 멀티-몰: ?mall_id= 가 주어지면 해당 몰만(옵션 — 기존 무필터 뷰 보존).
+    //   COALESCE(s.mall_id,1) — 컬럼 미존재 isolate 에선 이 필터가 throw 할 수 있어 쿼리/카운트 모두 try-catch 로 fallback.
+    const mallQ = c.req.query('mall_id');
+    let mallId: number | null = null;
+    if (mallQ != null && mallQ !== '') { const m = Math.floor(Number(mallQ)); if (Number.isFinite(m) && m > 0) mallId = m; }
+    const whereWithMall = mallId != null ? `${where} AND COALESCE(s.mall_id,1) = ?` : where;
+    const mallParams = mallId != null ? [...params, mallId] : params;
 
     // 🏭 2026-06-09 Wave 1: 대표자(representative)/담당자(manager_*) 인적사항 surface.
     //   repair-schema 미적용 isolate 대비 — 새 컬럼 없으면 fallback 쿼리로 재시도(기존 동작 보존).
+    //   🏬 멀티-몰: mall_id + mall name join 도 primary 쿼리에만(컬럼 없으면 fallback 으로 강등).
     const baseTail =
       `      s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
               COALESCE(b.pending_amount, 0)   AS pending_amount,
@@ -52,7 +60,7 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
               (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id AND p.is_supply_product = 1) AS product_count
          FROM suppliers s
          LEFT JOIN supplier_balances b ON b.supplier_id = s.id
-         WHERE ${where}
+         WHERE ${whereWithMall}
          ORDER BY (s.status = 'pending') DESC, s.created_at DESC
          LIMIT ? OFFSET ?`;
     let rows;
@@ -60,12 +68,14 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
       rows = await DB.prepare(
         `SELECT s.id, s.business_name, s.business_number, s.representative, s.email, s.phone,
                 s.representative_phone, s.manager_name, s.manager_phone, s.manager_email,
-${baseTail}`
-      ).bind(...params, limit, offset).all();
+                COALESCE(s.mall_id,1) AS mall_id, m.name AS mall_name,
+${baseTail.replace('FROM suppliers s\n         LEFT JOIN supplier_balances b ON b.supplier_id = s.id', "FROM suppliers s\n         LEFT JOIN supplier_balances b ON b.supplier_id = s.id\n         LEFT JOIN wholesale_malls m ON m.id = COALESCE(s.mall_id,1)")}`
+      ).bind(...mallParams, limit, offset).all();
     } catch {
+      // fallback: mall_id/manager 컬럼 없는 isolate — 몰 필터 제외(기존 무필터 동작 보존).
       rows = await DB.prepare(
         `SELECT s.id, s.business_name, s.business_number, s.representative, s.email, s.phone,
-${baseTail}`
+${baseTail.replace(whereWithMall, where)}`
       ).bind(...params, limit, offset).all();
     }
 
