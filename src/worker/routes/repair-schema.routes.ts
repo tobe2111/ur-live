@@ -44,7 +44,7 @@ export type SchemaRepairResult = {
 export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResult> {
   await ensureMigrationTrackingTable(DB);
 
-  const stmts: Array<{ desc: string; sql: string }> = [
+  const stmts: Array<{ desc: string; sql: string; requiresTable?: string }> = [
     // ── sellers ────────────────────────────────────
     { desc: 'sellers.commission_rate', sql: "ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00" },
     { desc: 'sellers.seller_type', sql: "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'" },
@@ -180,9 +180,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'live_streams.disconnected_at', sql: "ALTER TABLE live_streams ADD COLUMN disconnected_at DATETIME" },
     // 2026-05-13: YouTube WHIP direct ingest URL — webrtc ingestion 시 저장. Worker proxy 가 forward.
     { desc: 'live_streams.whip_url', sql: "ALTER TABLE live_streams ADD COLUMN whip_url TEXT" },
-    { desc: 'live_stream_views.last_heartbeat', sql: "ALTER TABLE live_stream_views ADD COLUMN last_heartbeat TEXT" },
-    { desc: 'idx_lsv_stream_session', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_lsv_stream_session ON live_stream_views(live_stream_id, session_id)" },
-    { desc: 'idx_lsv_stream_heartbeat', sql: "CREATE INDEX IF NOT EXISTS idx_lsv_stream_heartbeat ON live_stream_views(live_stream_id, last_heartbeat, left_at)" },
+    { desc: 'live_stream_views.last_heartbeat', sql: "ALTER TABLE live_stream_views ADD COLUMN last_heartbeat TEXT", requiresTable: 'live_stream_views' },
+    { desc: 'idx_lsv_stream_session', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_lsv_stream_session ON live_stream_views(live_stream_id, session_id)", requiresTable: 'live_stream_views' },
+    { desc: 'idx_lsv_stream_heartbeat', sql: "CREATE INDEX IF NOT EXISTS idx_lsv_stream_heartbeat ON live_stream_views(live_stream_id, last_heartbeat, left_at)", requiresTable: 'live_stream_views' },
 
     // ── chat_messages 복합 인덱스 (live_stream_id + id) ──
     // live-sse polling: WHERE live_stream_id=? AND id>? ORDER BY id ASC 쿼리 최적화
@@ -529,13 +529,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     ` },
     // 🛡️ backfill — 트리거 적용 이전에 INSERT 된 reviews 일괄 정합화.
     //   idempotent — 매번 실행해도 같은 결과. schema-repair daily cron 으로 안전 반복.
+    // 🛡️ 2026-06-10 (D1 CPU 한도 초과 fix): 기존 버전은 '전 상품 × 상관 서브쿼리 4개' 풀스캔이라
+    //   상품/리뷰가 늘며 'D1 DB exceeded its CPU time limit' 로 죽었음. product_reviews 를 GROUP BY 로
+    //   1패스 집계해 count 가 어긋난 상품만 배치(1000행)로 보정 — 멱등, 반복 실행(버튼/일일 cron)으로 수렴.
+    //   (트리거 v2 가 신규 리뷰는 실시간 유지 — 이 백필은 레거시 드리프트 전용.)
     { desc: 'backfill: products review aggregate from product_reviews', sql: `
       UPDATE products SET
-        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id), 0),
+        review_count = (SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id),
         avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0)
-      WHERE EXISTS (SELECT 1 FROM product_reviews WHERE product_id = products.id)
-        AND (COALESCE(review_count, 0) != (SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id)
-             OR COALESCE(avg_rating, 0) != COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0))
+      WHERE id IN (
+        SELECT pr.product_id FROM product_reviews pr
+        GROUP BY pr.product_id
+        HAVING COUNT(*) != COALESCE((SELECT review_count FROM products px WHERE px.id = pr.product_id), 0)
+        LIMIT 1000
+      )
     ` },
     // 🛡️ 2026-05-27 (사용자 요청): sold_count >= review_count × 3 보장.
     //   기존 데이터에 review_count > sold_count 인 상품 발견 시 sold_count 자동 보정.
@@ -717,19 +724,33 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
-  for (const { desc, sql } of stmts) {
+  // 🛡️ 2026-06-10 (no such table 8건 fix): 컬럼 ALTER 가 CREATE TABLE(아래 tables 루프)보다 먼저 돌아
+  //   fresh 테이블(wholesale_banners 등)의 mall_id ALTER 가 실패하던 순서 버그 → 테이블 생성 후 실행.
+  //   requiresTable 가드: 생성 루트가 없는 선택 테이블(라이브 등)은 부재 시 조용히 스킵('exists' 표기).
+  const runColumnSteps = async () => {
+    let existingTables: Set<string> | null = null;
     try {
-      await DB.prepare(sql).run();
-      results.push({ desc, status: 'added' });
-    } catch (e: any) {
-      const msg = String(e?.message || e);
-      if (/duplicate column|already exists/i.test(msg)) {
-        results.push({ desc, status: 'exists' });
-      } else {
-        results.push({ desc, status: 'error', error: msg.slice(0, 200) });
+      const r = await DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+      existingTables = new Set(((r.results || []) as Array<{ name: string }>).map((t) => t.name));
+    } catch { /* 조회 실패 시 가드 비활성 — 기존 동작 */ }
+    for (const { desc, sql, requiresTable } of stmts) {
+      if (requiresTable && existingTables && !existingTables.has(requiresTable)) {
+        results.push({ desc, status: 'exists' }); // 미사용 기능 테이블 부재 — 스킵
+        continue;
+      }
+      try {
+        await DB.prepare(sql).run();
+        results.push({ desc, status: 'added' });
+      } catch (e: any) {
+        const msg = String(e?.message || e);
+        if (/duplicate column|already exists/i.test(msg)) {
+          results.push({ desc, status: 'exists' });
+        } else {
+          results.push({ desc, status: 'error', error: msg.slice(0, 200) });
+        }
       }
     }
-  }
+  };
 
   // 부수적: 자주 사용되는 보조 테이블 보장 (static code audit 확장)
   const tables: Array<{ name: string; sql: string }> = [
@@ -1605,6 +1626,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       tableResults.push({ name, status: 'error', error: String(e?.message || e).slice(0, 200) });
     }
   }
+
+  // 🛡️ 2026-06-10: 테이블 보장 후 컬럼/인덱스/백필 실행 (위 runColumnSteps 참조).
+  await runColumnSteps();
 
   // 🏭 2026-06-07: operation_guides CHECK 제약 확장 — guide_type 에 'wholesale' 추가.
   //   기존 프로덕션 테이블은 CHECK(guide_type IN ('admin','seller','agency')) 라서
