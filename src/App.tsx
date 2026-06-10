@@ -352,6 +352,9 @@ function AppContent() {
   useMultiTabSync()
 
   const location = useLocation()
+  // 🧭 2026-06-10 페이지 전환 페이드 — 첫 로드(LCP)는 제외, 라우트 이동부터 적용.
+  const initialLocationKeyRef = useRef(location.key)
+  const pageEnterCls = location.key === initialLocationKeyRef.current ? undefined : 'ur-page-enter'
 
   // 🛡️ 2026-05-27 v5 [UNLOCK_LOADING] (Lighthouse 100점 시도, 사용자 명령):
   //   idle prefetch 전체 제거 — Lighthouse 메인 페이지 측정 시 lazy chunk 동시 fetch → 점수 ↓.
@@ -500,6 +503,7 @@ function AppContent() {
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
           {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale" replace />}
+          <div key={location.key} className={pageEnterCls}>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
@@ -811,6 +815,7 @@ function AppContent() {
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </div>
           </ErrorBoundary>
           </main>
           </div>

@@ -822,3 +822,18 @@ html.dark .mobile-app-container {
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;
 }
+
+/* 🧭 2026-06-10 (사용자 신고 — "부드럽게 넘어가질 않아"): SPA 라우트 전환 진입 페이드.
+   v7_startTransition 이 이전 화면을 유지해주지만 교체 자체가 즉시(하드 스왑)라 거칠게 느껴짐.
+   ⚠️ opacity 만 사용 — transform/filter 는 자손 position:fixed(페이지 하단 CTA·모달)를 깨뜨림.
+   첫 로드는 App.tsx 가 클래스를 안 붙임(LCP 잠금 표면 불변) — 라우트 이동 시에만. */
+@keyframes ur-page-fade {
+  from { opacity: 0.001; }
+  to { opacity: 1; }
+}
+.ur-page-enter {
+  animation: ur-page-fade 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ur-page-enter { animation: none; }
+}
