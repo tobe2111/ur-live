@@ -3,7 +3,7 @@
  * 데이터 접근 계층 - DB 쿼리만 담당
  */
 
-import { productDetailCols } from '@/shared/db/product-columns';
+import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 
@@ -63,10 +63,13 @@ export class ProductRepository {
    * 상품 ID로 조회
    */
   async findById(id: number): Promise<Product | null> {
-    const result = await this.db.prepare(`
-      SELECT ${productDetailCols('products')} FROM products WHERE id = ? AND is_active = 1
-    `).bind(id).first<Product>();
-    
+    // 🛡️ 2026-06-10 (사용자 신고 — GET /api/products/:id 500): 교환권 상세와 동일 자가치유.
+    //   프로덕션에 없는 컬럼이 명시 목록에 섞이면 'no such column' → 해당 컬럼 prune 후 재시도
+    //   (모듈 캐시 — repair-schema 가 컬럼 생성하면 새 isolate 부터 전체 복귀).
+    const result = await withColumnPruning(() => this.db.prepare(`
+      SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND is_active = 1
+    `).bind(id).first<Product>());
+
     return result || null;
   }
   
@@ -197,12 +200,13 @@ export class ProductRepository {
         }
         // 🛡️ 2026-06-10: SELECT * 는 products 컬럼 한도 초과(D1 too many columns)로 그 자체가 실패 →
         //   명시 코어 컬럼 폴백 (LIST_COLUMNS 의 누락 컬럼 회피 + 한도 안전).
-        const selectStar = query.replace(/SELECT[\s\S]*?FROM products/, `SELECT ${productDetailCols('products')} FROM products`);
+        //   healed + withColumnPruning: 폴백 목록에도 미존재 컬럼 있으면 prune 후 재시도(자가치유).
+        const buildFallback = () => query.replace(/SELECT[\s\S]*?FROM products/, `SELECT ${productDetailColsHealed('products')} FROM products`);
         try {
-          const r = await this.db.prepare(selectStar).bind(...params).all<Product>();
+          const r = await withColumnPruning(() => this.db.prepare(buildFallback()).bind(...params).all<Product>());
           return r.results || [];
         } catch {
-          const safeQuery = selectStar.replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
+          const safeQuery = buildFallback().replace(/ORDER BY[\s\S]*?LIMIT/, 'ORDER BY created_at DESC, id DESC LIMIT');
           const fallback = await this.db.prepare(safeQuery).bind(...params).all<Product>();
           return fallback.results || [];
         }
@@ -404,7 +408,7 @@ export class ProductRepository {
     //   기존 `fts.product_id` 컬럼은 존재하지 않아 항상 빈 결과 → LIKE fallback 으로 떨어졌음.
     //   영구 수정: rowid 명시.
     let ftsQuery = `
-      SELECT ${productDetailCols('p')}
+      SELECT ${productDetailColsHealed('p')}
       FROM products_fts fts
       JOIN products p ON p.id = fts.rowid
       WHERE products_fts MATCH ?
