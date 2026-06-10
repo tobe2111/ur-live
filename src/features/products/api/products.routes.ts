@@ -316,6 +316,35 @@ productsRoutes.get('/', cors(), async (c) => {
 });
 
 /**
+ * GET /api/products/count
+ * 🧭 2026-06-10 (사용자 요청 — 홈 '교환권 더보기 (1/14)' 표시): 필터별 정확한 전체 개수.
+ *   list 응답의 total 은 COUNT 제거 최적화(2026-05-30)로 추정치 — 핫패스는 그대로 두고
+ *   이 전용 endpoint 만 가끔 COUNT (브라우저 5분 + CF edge 15분 캐시 → 실 COUNT 빈도 미미).
+ *   ⚠️ '/:id' 보다 먼저 등록 (라우트 매칭 순서).
+ */
+productsRoutes.get('/count', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    // list(findAll)와 동일 가시성 기준: is_active=1 + 정지 셀러 상품 제외.
+    const conds = ['is_active = 1', 'NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)'];
+    const binds: unknown[] = [];
+    if (c.req.query('deal_only') === '1') conds.push('deal_only = 1');
+    if (c.req.query('exclude_deal_only') === '1') conds.push('COALESCE(deal_only, 0) = 0');
+    const cat = c.req.query('category');
+    if (cat && cat.length <= 100) { conds.push('category = ?'); binds.push(cat); }
+    const brand = c.req.query('brand');
+    if (brand && brand.length <= 100) { conds.push('brand_name = ?'); binds.push(brand); }
+    const row = await DB.prepare(`SELECT COUNT(*) AS n FROM products WHERE ${conds.join(' AND ')}`)
+      .bind(...binds).first<{ n: number }>();
+    c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=300');
+    c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=300');
+    return c.json({ success: true, total: row?.n ?? 0 });
+  } catch (error) {
+    return safeError(c, error, '상품 수 조회 중 오류가 발생했습니다', '[products]');
+  }
+});
+
+/**
  * GET /api/products/:id/options
  * 상품 옵션 목록 조회 (useProduct.ts, OptionSelectModal.tsx에서 호출)
  */

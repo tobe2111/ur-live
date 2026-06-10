@@ -437,6 +437,20 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const EMBED_INITIAL = 12
   const [embedVisible, setEmbedVisible] = useState(EMBED_INITIAL)
   const embeddedCapped = embedded
+  // 🧭 2026-06-10 (사용자 요청): '교환권 더보기 (1/14)' 단계 표시 — 전용 /count (엣지 캐시).
+  //   list 응답 total 은 추정치(COUNT 제거 최적화)라 사용 불가. 실패 시 표시 생략(graceful).
+  const [dealTotal, setDealTotal] = useState<number | null>(null)
+  useEffect(() => {
+    if (!embedded) return
+    const params = new URLSearchParams({ deal_only: '1' })
+    if (category) params.set('category', category)
+    if (brand) params.set('brand', brand)
+    api.get(`/api/products/count?${params.toString()}`)
+      .then(r => { if (r.data?.success && Number.isFinite(r.data.total)) setDealTotal(r.data.total) })
+      .catch(() => setDealTotal(null))
+  }, [embedded, category, brand])
+  const embedStep = 1 + Math.ceil(Math.max(0, embedVisible - EMBED_INITIAL) / 20)
+  const embedTotalSteps = dealTotal ? Math.max(embedStep, 1 + Math.ceil(Math.max(0, dealTotal - EMBED_INITIAL) / 20)) : null
   useEffect(() => {
     if (!loadMoreRef.current || !hasMore || loadingMore || loading || embeddedCapped) return
     const observer = new IntersectionObserver(([entry]) => {
@@ -681,7 +695,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                   }}
                   className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
-                  {t('home.moreVouchers', { defaultValue: '교환권 더보기' })} <ChevronDown className="w-4 h-4" />
+                  {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
+                  {embedTotalSteps && embedTotalSteps > 1 && (
+                    <span className="text-gray-400 dark:text-gray-500 font-semibold">({embedStep}/{embedTotalSteps})</span>
+                  )}
+                  <ChevronDown className="w-4 h-4" />
                 </button>
               </div>
             )}
