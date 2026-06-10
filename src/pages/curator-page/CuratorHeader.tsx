@@ -96,6 +96,8 @@ export default function CuratorHeader({
     if (uploading) return
     setUploading(true)
     try {
+      const preview = URL.createObjectURL(file)
+      setAvatarPreview(preview)
       const toSend = await compressForUpload(file, { maxSizeMB: 1, maxWidthOrHeight: 1024 }).catch(() => file)
       const fd = new FormData()
       fd.append('file', toSend)
@@ -110,6 +112,7 @@ export default function CuratorHeader({
         toast.error(res.data?.error || '업로드 실패')
       }
     } catch (err) {
+      setAvatarPreview(null)
       const e = err as { response?: { status?: number; data?: { error?: string } } }
       toast.error(e.response?.data?.error || `업로드 실패 (${e.response?.status ?? '네트워크'})`)
     } finally {
@@ -117,6 +120,13 @@ export default function CuratorHeader({
     }
   }
 
+  // 🛡️ 2026-06-10 (사용자 신고 — 프로필 사진도 깨짐): 배너와 동일 3중 방어를 아바타에도.
+  const normalizedAvatar = curator.profile_image?.startsWith('r2://')
+    ? `/api/media/${curator.profile_image.slice(5)}`
+    : curator.profile_image
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarBroken, setAvatarBroken] = useState(false)
+  useEffect(() => { setAvatarBroken(false) }, [normalizedAvatar])
   const [bgPickerOpen, setBgPickerOpen] = useState(false)
   // 🎨 그라데이션 원터치 적용 — 업로드 없이 항상 성공 (배경사진 의존 제거의 핵심)
   async function applyGradient(id: string) {
@@ -262,10 +272,10 @@ export default function CuratorHeader({
               className={`w-20 h-20 rounded-full border-4 border-white dark:border-[#020202] bg-gray-100 dark:bg-[#121212] overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && fileInputRef.current?.click()}
             >
-              {curator.profile_image ? (
+              {(avatarPreview || normalizedAvatar) && !avatarBroken ? (
                 <img
-                  src={cfImage(curator.profile_image, { width: 160, format: 'auto' }) || curator.profile_image}
-                  alt={curator.name}
+                  src={avatarPreview || cfImage(normalizedAvatar!, { width: 160, format: 'auto' }) || normalizedAvatar!}
+                  alt=""
                   className="w-full h-full object-cover"
                   loading="eager"
                   decoding="async"
@@ -273,7 +283,8 @@ export default function CuratorHeader({
                     // 🏭 2026-06-07 (사용자 신고 — 프로필 업로드 표시 실패): resize 프록시 깨진 응답 시
                     //   same-origin R2 원본으로 1회 폴백.
                     const img = e.currentTarget
-                    if (img.dataset.fb !== '1' && curator.profile_image) { img.dataset.fb = '1'; img.src = curator.profile_image }
+                    if (img.dataset.fb !== '1' && normalizedAvatar && !avatarPreview) { img.dataset.fb = '1'; img.src = normalizedAvatar }
+                    else setAvatarBroken(true)
                   }}
                 />
               ) : (
