@@ -1688,6 +1688,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
   return { columns: results, tables: tableResults, column_counts: columnCounts, column_warnings: columnWarnings };
 }
 
+// 🛡️ 2026-06-10 (드리프트 창 제거): 배포 파이프라인용 자동 트리거 — secret 헤더 인증.
+//   "코드는 배포됐는데 스키마는 수동 버튼 대기" 가 '없던 에러' 류(no such column 등)의 구조적 원인.
+//   REPAIR_SCHEMA_TOKEN(Cloudflare Variables) 미설정 시 403 fail-closed — 기존 admin 경로 불변.
+repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
+  const expected = (c.env as { REPAIR_SCHEMA_TOKEN?: string }).REPAIR_SCHEMA_TOKEN
+  const got = c.req.header('X-Repair-Token') || ''
+  if (!expected || got !== expected) return c.json({ success: false, error: 'unauthorized' }, 403)
+  const DB = (c.env as { DB?: D1Database }).DB
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500)
+  const result = await runSchemaRepair(DB)
+  const errs = result.columns.filter((r) => r.status === 'error').length
+  return c.json({ success: true, errors: errs, warnings: result.column_warnings || [], counts: result.column_counts || {} })
+})
+
 // HTTP wrapper — admin auth + JSON response.
 repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
   const env = c.env as any;

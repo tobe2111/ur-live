@@ -11,7 +11,7 @@ set -e
 
 TARGETS=(src/features src/worker)
 VIOLATIONS=$(grep -rn --include='*.ts' -E "SELECT \* FROM products|SELECT p\.\*|SELECT products\.\*" "${TARGETS[@]}" 2>/dev/null \
-  | grep -v -E "^\s*//|^\s*\*|//.*SELECT" \
+  | grep -v -E ':[0-9]+:[[:space:]]*(//|\*)' \
   | grep -v "check-no-select-star" || true)
 
 if [ -n "$VIOLATIONS" ]; then

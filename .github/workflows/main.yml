@@ -183,6 +183,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # 🛡️ 2026-06-10 (드리프트 창 제거): 배포 직후 스키마 자동 동기화 — '코드 먼저, 스키마는 수동 대기'
+      #   가 no-such-column 류 '없던 에러'의 구조적 원인이었음. REPAIR_SCHEMA_TOKEN 미설정 시 skip(안내만).
+      #   설정: 같은 값을 ① Cloudflare Pages Variables ② GitHub repo Secrets 양쪽에 등록.
+      - name: Auto schema repair after deploy
+        run: |
+          if [ -z "${{ secrets.REPAIR_SCHEMA_TOKEN }}" ]; then
+            echo "::notice::REPAIR_SCHEMA_TOKEN 미설정 — 스키마 자동복구 skip (Cloudflare+GitHub 양쪽에 같은 값 등록 시 활성화)"
+            exit 0
+          fi
+          sleep 10
+          RES=$(curl -s --max-time 60 -X POST "https://live.ur-team.com/api/_internal/repair-schema/auto" \
+            -H "X-Repair-Token: ${{ secrets.REPAIR_SCHEMA_TOKEN }}" || echo '{}')
+          echo "repair-schema 응답: $RES"
+          if echo "$RES" | grep -q '"success":true'; then
+            ERRS=$(echo "$RES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('errors',0))" 2>/dev/null || echo "?")
+            echo "✅ 스키마 자동복구 완료 (오류 $ERRS건)"
+            echo "$RES" | grep -q '컬럼.*임박' && echo "::warning::넓은 테이블 컬럼 한도 임박 — column_warnings 확인" || true
+          else
+            echo "::warning::스키마 자동복구 실패 — /admin/health 에서 수동 실행 필요"
+          fi
+
       - name: Post-deploy verification (smoke test)
         # 🛡️ 2026-04-22 강화: 주요 엔드포인트가 "응답은 한다"는 것만 확인.
         # worker 자체가 부팅 실패면 5xx 또는 타임아웃. 2xx/3xx/4xx는 worker 살아있음.

@@ -115,6 +115,12 @@ jobs:
         run: bash scripts/check-no-select-star-products.sh
         continue-on-error: false
 
+      # 🛡️ 2026-06-10: products 컬럼 예산제 — 새 ALTER 는 baseline 등록(의식적 결정) 또는
+      #   product_supply_meta 사이드테이블 사용 강제. god-table 증식 차단.
+      - name: Products column budget
+        run: node scripts/check-products-column-budget.mjs
+        continue-on-error: false
+
       - name: API auth check
         run: bash scripts/check-api-auth.sh
         # 기존 워닝 있어 fail 하지 않음
