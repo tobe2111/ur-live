@@ -10,7 +10,7 @@
  * - POST /api/seller/products                 - 셀러 상품 등록
  */
 
-import { productDetailCols } from '@/shared/db/product-columns';
+import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
@@ -654,7 +654,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
     const db = (c.env as Bindings).DB;
     const row = await db.prepare(
-      `SELECT ${productDetailCols('products')} FROM products WHERE id = ? AND seller_id = ? LIMIT 1`
+      `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND seller_id = ? LIMIT 1`
     ).bind(id, sellerId).first<Record<string, unknown>>();
     if (!row) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     return c.json({ success: true, data: row });

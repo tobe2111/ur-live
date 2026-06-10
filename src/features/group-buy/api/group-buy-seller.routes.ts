@@ -13,7 +13,7 @@
  *   - GET  /voucher-logs              (본인 가게 voucher 사용 시도 로그)
  */
 
-import { productDetailCols } from '@/shared/db/product-columns'
+import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { auditLog } from '@/worker/middleware/audit-log'
@@ -44,7 +44,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
 
     try {
       const product = await DB.prepare(
-        `SELECT ${productDetailCols('products')} FROM products WHERE id = ? AND category = 'meal_voucher'`
+        `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND category = 'meal_voucher'`
       ).bind(productId).first<GroupBuyProductRow>()
 
       if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)

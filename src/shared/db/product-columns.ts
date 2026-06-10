@@ -22,3 +22,32 @@ export const PRODUCT_DETAIL_FIELDS = [
 export function productDetailCols(alias = 'p'): string {
   return PRODUCT_DETAIL_FIELDS.map((c) => `${alias}.${c}`).join(', ')
 }
+
+// 🛡️ 2026-06-10 자가치유: 프로덕션 products 에 없는 컬럼이 목록에 섞이면 'no such column' 으로
+//   상세가 통째로 500 (스모크가 검출). 환경별 스키마 편차를 추측하지 않고 — 에러에서 컬럼명을
+//   추출해 목록에서 제외(모듈 캐시) 후 재시도. repair-schema 가 컬럼을 만들면 새 isolate 부터 전체 복귀.
+const _missingCols = new Set<string>()
+
+export function productDetailColsHealed(alias = 'p'): string {
+  return PRODUCT_DETAIL_FIELDS.filter((c) => !_missingCols.has(c)).map((c) => `${alias}.${c}`).join(', ')
+}
+
+/** 'no such column' 에러면 해당 컬럼을 prune 하고 true(재시도 가능) 반환. */
+export function pruneMissingProductColumn(err: unknown): boolean {
+  const msg = String((err as { message?: string })?.message ?? err)
+  const m = msg.match(/no such column:?\s*(?:[A-Za-z_]+\.)?([A-Za-z_0-9]+)/i)
+  if (!m) return false
+  const col = m[1]
+  if (!(PRODUCT_DETAIL_FIELDS as readonly string[]).includes(col) || _missingCols.has(col)) return false
+  _missingCols.add(col)
+  console.error('[product-columns] 프로덕션 미존재 컬럼 자동 제외:', col, '— repair-schema 등록 필요')
+  return true
+}
+
+/** 컬럼 prune 재시도 래퍼 — fn 은 productDetailColsHealed() 로 SQL 을 만들 것. */
+export async function withColumnPruning<T>(fn: () => Promise<T>): Promise<T> {
+  for (let i = 0; i <= PRODUCT_DETAIL_FIELDS.length; i++) {
+    try { return await fn() } catch (e) { if (!pruneMissingProductColumn(e)) throw e }
+  }
+  return fn()
+}

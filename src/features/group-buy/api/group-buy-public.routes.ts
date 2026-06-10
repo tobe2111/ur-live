@@ -18,7 +18,7 @@ import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/a
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { safeError } from '@/worker/utils/safe-error'
-import { productDetailCols } from '@/shared/db/product-columns'
+import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
@@ -285,7 +285,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return r ? 'row' : 'null'
     })
     await tryStep('q3_minimal', async () => {
-      const r = await DB.prepare(`SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar, s.bio as seller_bio, s.sns_instagram as seller_instagram FROM products p LEFT JOIN sellers s ON p.seller_id = s.id ${baseWhere}`).bind(id).first()
+      const r = await DB.prepare(`SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar, s.bio as seller_bio, s.sns_instagram as seller_instagram FROM products p LEFT JOIN sellers s ON p.seller_id = s.id ${baseWhere}`).bind(id).first()
       if (!r) return 'null'
       return { keys: Object.keys(r).length, tiers_type: typeof (r as Record<string, unknown>).group_buy_tiers }
     })
@@ -325,8 +325,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         OR p.deal_only = 1
         OR p.group_buy_status = 'active'
       )`
-    let product = await DB.prepare(`
-      SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
+    // 🛡️ 2026-06-10 자가치유: 명시 목록 중 prod 미존재 컬럼('no such column')을 자동 제외 후 재시도.
+    //   스모크가 잡은 잔여 500 의 영구 해결 — 어떤 환경 편차에도 상세가 죽지 않음.
+    const product = await withColumnPruning(async (): Promise<(GroupBuyProductRow & SellerDetail) | null> => {
+    let prod: (GroupBuyProductRow & SellerDetail) | null = null
+    prod = await DB.prepare(`
+      SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
              s.bio as seller_bio,
              s.sns_instagram as seller_instagram, s.sns_youtube as seller_youtube,
              s.sns_tiktok as seller_tiktok, s.sns_facebook as seller_facebook
@@ -336,9 +340,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     `).bind(id).first<GroupBuyProductRow & SellerDetail>().catch(() => null)
 
     // 🛡️ 신규 컬럼 (sns_tiktok) 누락 환경 fallback — repair-schema 적용 전 즉시 안전.
-    if (!product) {
-      product = await DB.prepare(`
-        SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
+    if (!prod) {
+      prod = await DB.prepare(`
+        SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
                s.bio as seller_bio,
                s.sns_instagram as seller_instagram, s.sns_youtube as seller_youtube,
                s.sns_facebook as seller_facebook
@@ -347,16 +351,18 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ${baseWhere}
       `).bind(id).first<GroupBuyProductRow & SellerDetail>().catch(() => null)
     }
-    if (!product) {
+    if (!prod) {
       // 최후 fallback — SNS 전혀 없이 (sns_youtube/facebook 누락 환경 대응)
-      product = await DB.prepare(`
-        SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
+      prod = await DB.prepare(`
+        SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar,
                s.bio as seller_bio, s.sns_instagram as seller_instagram
         FROM products p
         LEFT JOIN sellers s ON p.seller_id = s.id
         ${baseWhere}
       `).bind(id).first<GroupBuyProductRow & SellerDetail>()
     }
+    return prod
+    })
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
