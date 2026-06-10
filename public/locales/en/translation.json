@@ -5863,7 +5863,16 @@
     "aNoData": "No revenue data for this period.",
     "period30d": "Last 30 days",
     "period90d": "Last 90 days",
-    "period12m": "Last 12 months"
+    "period12m": "Last 12 months",
+    "onboardTitle": "Ready to list your first product?",
+    "onboardSub": "Approved products are shown to distributors nationwide at tiered prices",
+    "onboardStep1": "Add a product",
+    "onboardStep1Desc": "Name, supply price, stock — 1 minute",
+    "onboardStep2": "Many items? Use CSV",
+    "onboardStep2Desc": "Use the 'CSV upload' button above — template provided",
+    "onboardStep3": "Auto-listed after approval",
+    "onboardStep3Desc": "New orders appear in the Home tab as pending shipment",
+    "bulkFailedRows": "Failed rows:\n{{d}}{{more}}"
   },
   "wholesaleChat": {
     "title": "Chat",

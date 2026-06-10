@@ -5863,7 +5863,16 @@
     "aNoData": "Sin datos de ingresos para este período.",
     "period30d": "Últimos 30 días",
     "period90d": "Últimos 90 días",
-    "period12m": "Últimos 12 meses"
+    "period12m": "Últimos 12 meses",
+    "onboardTitle": "¿Listo para tu primer producto?",
+    "onboardSub": "Los productos aprobados se muestran a distribuidores con precios por nivel",
+    "onboardStep1": "Registrar producto",
+    "onboardStep1Desc": "Nombre, precio y stock — 1 minuto",
+    "onboardStep2": "¿Varios? Usa CSV",
+    "onboardStep2Desc": "Botón 'Subir CSV' arriba — plantilla incluida",
+    "onboardStep3": "Publicación automática tras aprobación",
+    "onboardStep3Desc": "Los pedidos aparecen en Inicio como pendientes",
+    "bulkFailedRows": "Filas con error:\n{{d}}{{more}}"
   },
   "wholesaleChat": {
     "title": "Chat",

@@ -5863,7 +5863,16 @@
     "aNoData": "该期间没有收入数据。",
     "period30d": "最近30天",
     "period90d": "最近90天",
-    "period12m": "最近12个月"
+    "period12m": "最近12个月",
+    "onboardTitle": "上架您的第一个商品吧",
+    "onboardSub": "审核通过后将以等级供货价展示给全国分销商",
+    "onboardStep1": "直接登记商品",
+    "onboardStep1Desc": "只需名称·供货价·库存,1分钟",
+    "onboardStep2": "多个商品用CSV",
+    "onboardStep2Desc": "使用上方\"CSV上传\"— 提供模板",
+    "onboardStep3": "审核后自动上架",
+    "onboardStep3Desc": "有订单时会显示在首页待发货",
+    "bulkFailedRows": "失败行:\n{{d}}{{more}}"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

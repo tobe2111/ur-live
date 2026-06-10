@@ -5858,7 +5858,16 @@
     "aNoData": "해당 기간 매출 데이터가 없습니다.",
     "period30d": "최근 30일",
     "period90d": "최근 90일",
-    "period12m": "최근 12개월"
+    "period12m": "최근 12개월",
+    "onboardTitle": "첫 상품을 올려볼까요?",
+    "onboardSub": "상품이 승인되면 전국 유통사에게 등급 공급가로 노출됩니다",
+    "onboardStep1": "상품 직접 등록",
+    "onboardStep1Desc": "상품명·공급가·재고만 있으면 1분",
+    "onboardStep2": "여러 개면 CSV 한 번에",
+    "onboardStep2Desc": "위 'CSV 업로드' 버튼 — 템플릿 제공",
+    "onboardStep3": "승인 후 자동 노출",
+    "onboardStep3Desc": "주문이 오면 홈 탭에 발송 대기로 떠요",
+    "bulkFailedRows": "실패 행:\n{{d}}{{more}}"
   },
   "wholesaleChat": {
     "title": "문의 채팅",

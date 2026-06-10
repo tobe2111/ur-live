@@ -5863,7 +5863,16 @@
     "aNoData": "該当期間の売上データがありません。",
     "period30d": "過去30日",
     "period90d": "過去90日",
-    "period12m": "過去12ヶ月"
+    "period12m": "過去12ヶ月",
+    "onboardTitle": "最初の商品を登録しましょう",
+    "onboardSub": "承認された商品は全国の流通会社に等級供給価格で表示されます",
+    "onboardStep1": "商品を直接登録",
+    "onboardStep1Desc": "商品名・供給価格・在庫だけで1分",
+    "onboardStep2": "複数ならCSVで一括",
+    "onboardStep2Desc": "上の「CSVアップロード」— テンプレート提供",
+    "onboardStep3": "承認後に自動掲載",
+    "onboardStep3Desc": "注文が入るとホームタブに発送待ちが表示",
+    "bulkFailedRows": "失敗行:\n{{d}}{{more}}"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

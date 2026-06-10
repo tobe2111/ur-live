@@ -958,10 +958,19 @@ function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPri
     setUploading(true)
     try {
       const csv = await file.text()
-      const res = await supplierApi.post<{ summary?: { created: number; failed: number } }>('/api/supplier/products/bulk', { csv })
+      // 🧭 2026-06-10 (생애주기 감사 갭): 서버는 행별 결과(results)를 이미 반환 — 합계만 보여주던 것을
+      //   실패 행 상세("3행: 공급가 오류")로 표시. 제조사가 어느 행을 고칠지 즉시 알 수 있게.
+      const res = await supplierApi.post<{ summary?: { created: number; failed: number }; results?: Array<{ row: number; name?: string; status: string; reason?: string }> }>('/api/supplier/products/bulk', { csv })
       const s = res.summary
       toast.success(t('supplier.bulkDone', { defaultValue: '{{c}}건 등록, {{f}}건 실패', c: s?.created ?? 0, f: s?.failed ?? 0 })
         .replace('{{c}}', String(s?.created ?? 0)).replace('{{f}}', String(s?.failed ?? 0)))
+      const failedRows = (res.results || []).filter(r => r.status === 'error')
+      if (failedRows.length > 0) {
+        const detail = failedRows.slice(0, 8).map(r => `${r.row}행${r.name ? `(${r.name})` : ''}: ${r.reason || '오류'}`).join('\n')
+        toast.error(t('supplier.bulkFailedRows', { defaultValue: '실패 행:\n{{d}}{{more}}' })
+          .replace('{{d}}', detail)
+          .replace('{{more}}', failedRows.length > 8 ? `\n…외 ${failedRows.length - 8}건` : ''), { duration: 12000 } as never)
+      }
       onBulkDone()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '대량 등록 실패')
@@ -1016,8 +1025,24 @@ function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPri
       </div>
       <p className="text-[11px] text-gray-400 mb-3">{t('supplier.stockImportHint', { defaultValue: '재고 CSV: 헤더 "바코드,재고" — 바코드로 내 공급상품을 매칭해 재고를 즉시 반영합니다.' })}</p>
       {items.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-gray-400 text-sm">
-          {t('supplier.noProducts', { defaultValue: '등록된 공급상품이 없습니다. 첫 상품을 등록해보세요.' })}
+        /* 🧭 2026-06-10 (생애주기 감사 갭#5): 첫 상품 온보딩 — 빈 문구 한 줄 → 3단계 시작 카드 (NewSellerSteps 패턴) */
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <h3 className="text-sm font-extrabold text-gray-900">👋 {t('supplier.onboardTitle', { defaultValue: '첫 상품을 올려볼까요?' })}</h3>
+          <p className="text-xs text-gray-500 mt-0.5 mb-4">{t('supplier.onboardSub', { defaultValue: '상품이 승인되면 전국 유통사에게 등급 공급가로 노출됩니다' })}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button onClick={onAdd} className="text-left rounded-xl border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
+              <p className="text-[13px] font-bold text-gray-900">1. {t('supplier.onboardStep1', { defaultValue: '상품 직접 등록' })}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{t('supplier.onboardStep1Desc', { defaultValue: '상품명·공급가·재고만 있으면 1분' })}</p>
+            </button>
+            <div className="rounded-xl border border-gray-200 p-3">
+              <p className="text-[13px] font-bold text-gray-900">2. {t('supplier.onboardStep2', { defaultValue: '여러 개면 CSV 한 번에' })}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{t('supplier.onboardStep2Desc', { defaultValue: '위 \'CSV 업로드\' 버튼 — 템플릿 제공' })}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3">
+              <p className="text-[13px] font-bold text-gray-900">3. {t('supplier.onboardStep3', { defaultValue: '승인 후 자동 노출' })}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{t('supplier.onboardStep3Desc', { defaultValue: '주문이 오면 홈 탭에 발송 대기로 떠요' })}</p>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
