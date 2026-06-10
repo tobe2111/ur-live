@@ -24,3 +24,17 @@ export interface BankInfo {
   bank_account: string
   account_holder: string
 }
+
+// 🛡️ 2026-06-10: 탭화 분해 — 사업자 정보 폼 입력값 (동작 변화 0, 순수 이동).
+export interface BusinessFormData {
+  business_number: string
+  business_name: string
+  ceo_name: string
+  business_type: string
+  business_category: string
+  postal_code: string
+  address: string
+  address_detail: string
+  phone: string
+  email: string
+}
