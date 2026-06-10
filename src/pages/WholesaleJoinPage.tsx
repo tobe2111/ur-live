@@ -51,6 +51,8 @@ export default function WholesaleJoinPage() {
     manager_email: loginEmail,
   })
   const [loading, setLoading] = useState(false)
+  // 🏭 2026-06-10: 이용약관 동의 (필수) — /wholesale/terms
+  const [agreeTerms, setAgreeTerms] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [licenseUrl, setLicenseUrl] = useState('')
   // 담당자가 대표자와 동일 — 체크 시 대표자(성명/연락처)를 담당자에 즉시 복사.
@@ -264,7 +266,16 @@ export default function WholesaleJoinPage() {
           <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
           <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보(사업자등록증 포함)를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
 
-          <button type="submit" disabled={loading}
+          {/* 🏭 2026-06-10 (사용자 요청 — 약관): 가입 = 도매몰 이용약관 동의 (필수 체크) */}
+          <label className="flex items-start gap-2.5 rounded-xl p-3.5 cursor-pointer" style={{ background: '#F8F9FB', border: '1px solid #ECEEF1' }}>
+            <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} className="w-4 h-4 mt-0.5 shrink-0" />
+            <span className="text-[12.5px] leading-relaxed text-[#4E5560]">
+              <a href="/wholesale/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline text-[#17181C]">도매몰 이용약관</a>
+              에 동의합니다. (가격 정책·최저가 준수, 예치금 결제, 상품 자료 사용 조건 포함) <span className="text-[#FF0033]">*</span>
+            </span>
+          </label>
+
+          <button type="submit" disabled={loading || !agreeTerms}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FF0033] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>유통회원 가입 신청 <ArrowRight className="w-5 h-5" /></>}
           </button>

@@ -55,6 +55,7 @@ const WholesaleDocsPage = lazy(() => import('./pages/WholesaleDocsPage'))
 const WholesaleOemPage = lazy(() => import('./pages/WholesaleOemPage'))
 const WholesaleQuotesPage = lazy(() => import('./pages/wholesale/WholesaleQuotesPage'))
 const WholesaleBoardPage = lazy(() => import('./pages/wholesale/WholesaleBoardPage'))
+const WholesaleTermsPage = lazy(() => import('./pages/wholesale/WholesaleTermsPage'))
 const WholesaleWishlistPage = lazy(() => import('./pages/wholesale/WholesaleWishlistPage'))
 const WholesaleProposalsPage = lazy(() => import('./pages/wholesale/WholesaleProposalsPage'))
 const WholesaleStaffPage = lazy(() => import('./pages/wholesale/WholesaleStaffPage'))
@@ -527,6 +528,7 @@ function AppContent() {
             <Route path="/wholesale/oem" element={<WholesaleOemPage />} />
             <Route path="/wholesale/quotes" element={<WholesaleQuotesPage />} />
             <Route path="/wholesale/board" element={<WholesaleBoardPage />} />
+            <Route path="/wholesale/terms" element={<WholesaleTermsPage />} />
             <Route path="/wholesale/wishlist" element={<WholesaleWishlistPage />} />
             <Route path="/wholesale/proposals" element={<WholesaleProposalsPage />} />
             <Route path="/wholesale/staff" element={<WholesaleStaffPage />} />

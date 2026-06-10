@@ -25,7 +25,7 @@ const BUSINESS_INFO = {
 // 실존 라우트는 그대로 연결, 없으면 placeholder(#) + TODO.
 const INFO_LINKS: { label: string; href: string; todo?: boolean }[] = [
   { label: '회사소개', href: '/wholesale/intro' },
-  { label: '이용약관', href: '/terms' },
+  { label: '이용약관', href: '/wholesale/terms' },
   { label: '개인정보처리방침', href: '/privacy' },
 ]
 
