@@ -20,6 +20,24 @@ export default function WholesaleJoinPage() {
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   // 카카오로 로그인된 유저(아직 유통회원 아님) — 이메일/비번 없이 사업자 정보만 입력.
   const kakaoUser = !hasSeller && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
+  // 🧭 2026-06-10 (생애주기 감사 갭#3): 신청 후 재방문 시 '승인 대기 중' 상태 화면 — 폼 재노출 대신 현황 안내.
+  //   빈 body 프로브: 기존 신청자(pending)면 status='pending', 미신청이면 needs_registration(폼 유지).
+  const [pendingStatus, setPendingStatus] = useState(false)
+  useEffect(() => {
+    if (!kakaoUser) return
+    api.post('/api/wholesale/become-distributor', {})
+      .then((r) => {
+        const d = r.data || {}
+        if (d.status === 'pending') setPendingStatus(true)
+        else if (d.status === 'approved' && d.data?.accessToken) {
+          localStorage.setItem('seller_token', d.data.accessToken)
+          localStorage.setItem('is_distributor', '1')
+          window.location.href = '/wholesale'
+        }
+      })
+      .catch(() => { /* 프로브 실패 — 폼 유지 */ })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const loginEmail = (typeof window !== 'undefined' && localStorage.getItem('user_email')) || ''
   const [form, setForm] = useState({
     name: (typeof window !== 'undefined' && localStorage.getItem('user_name')) || '',
@@ -106,6 +124,22 @@ export default function WholesaleJoinPage() {
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '신청 중 오류가 발생했어요')
     } finally { setLoading(false) }
+  }
+
+  if (pendingStatus) {
+    return (
+      <div className="min-h-screen bg-white text-[#17181C] flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-5"><span className="text-2xl">⏳</span></div>
+          <h1 className="text-xl font-extrabold mb-2">승인 심사 중이에요</h1>
+          <p className="text-[#4E5560] text-[14px] leading-relaxed">제출하신 <b>사업자 정보</b>를 확인하고 있어요. (영업일 기준 1~2일)<br/>승인되면 카카오 로그인만으로 바로 등급 공급가가 열립니다.</p>
+          <div className="mt-6 flex gap-2 justify-center">
+            <button onClick={() => window.location.reload()} className="px-5 h-11 rounded-xl font-bold border border-[#ECEEF1] text-[#17181C]">승인 다시 확인</button>
+            <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#17181C' }}>도매몰 둘러보기</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (submitted) {

@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 import { WT, won } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
+import { courierTrackingUrl } from '@/utils/courier-tracking'
 
 // 인증 헤더로 xlsx 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
 async function downloadWholesaleXlsx(path: string, filename: string) {
@@ -155,6 +156,24 @@ export default function WholesaleOrdersPage() {
   const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
 
+  // 🧭 2026-06-10 (생애주기 감사 갭#2): 내가 제기한 클레임 상태 추적 — 제기만 되고 볼 곳이 없던 갭.
+  type MyClaim = { id: number; wholesale_order_id: number; reason_code: string; reason_text: string | null; status: string; admin_memo: string | null; created_at: string }
+  const [claims, setClaims] = useState<MyClaim[]>([])
+  const [claimsOpen, setClaimsOpen] = useState(false)
+  const loadClaims = () => {
+    const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+    if (!tk) return
+    api.get('/api/wholesale/claims', { headers: { Authorization: `Bearer ${tk}` } })
+      .then((r) => { if (r.data?.success) setClaims(r.data.claims || []) })
+      .catch(() => { /* 표시 전용 — 실패 시 섹션 미노출 */ })
+  }
+  useEffect(() => { loadClaims() }, [])
+  const CLAIM_STATUS: Record<string, { t: string; c: string; bg: string }> = {
+    open: { t: '접수됨 · 심사 중', c: '#B45309', bg: '#FEF3C7' },
+    approved: { t: '승인 — 환불 처리', c: '#047857', bg: '#D1FAE5' },
+    rejected: { t: '반려', c: '#B91C1C', bg: '#FEE2E2' },
+  }
+
   useEffect(() => { if (!token) navigate('/wholesale/login') }, [token, navigate])
 
   function copyTrack(track: string) {
@@ -181,6 +200,34 @@ export default function WholesaleOrdersPage() {
       </header>
 
       <main className="ur-content-narrow px-5 lg:px-8 py-6">
+        {claims.length > 0 && (
+          <div className="mb-4 rounded-2xl bg-white" style={{ border: '1px solid ' + WT.line }}>
+            <button onClick={() => setClaimsOpen(v => !v)} className="w-full flex items-center justify-between px-4 h-12">
+              <span className="text-[13px] font-bold" style={{ color: WT.ink }}>
+                내 클레임 {claims.length}건
+                {claims.some(cl => cl.status === 'open') && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#B45309' }}>· 심사 중 {claims.filter(cl => cl.status === 'open').length}</span>}
+              </span>
+              <span className="text-[12px]" style={{ color: WT.ink4 }}>{claimsOpen ? '접기' : '펼치기'}</span>
+            </button>
+            {claimsOpen && (
+              <div className="px-4 pb-3 space-y-2">
+                {claims.map(cl => {
+                  const cs = CLAIM_STATUS[cl.status] || { t: cl.status, c: WT.ink2, bg: WT.fill }
+                  return (
+                    <div key={cl.id} className="rounded-xl px-3 py-2.5" style={{ background: WT.fill2 }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[12px] font-medium truncate" style={{ color: WT.ink2 }}>주문 #{cl.wholesale_order_id} · {cl.reason_text || cl.reason_code}</span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ color: cs.c, background: cs.bg }}>{cs.t}</span>
+                      </div>
+                      {cl.admin_memo && <p className="text-[11px] mt-1" style={{ color: WT.ink3 }}>운영자: {cl.admin_memo}</p>}
+                      <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>{new Date(cl.created_at).toLocaleString('ko-KR')}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
         ) : orders.length === 0 ? (
@@ -204,10 +251,21 @@ export default function WholesaleOrdersPage() {
                     <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
                   </div>
                   {o.tracking_number && (
-                    <button onClick={() => copyTrack(o.tracking_number!)} className="mt-3 w-full flex items-center justify-between rounded-xl px-3.5 h-11" style={{ background: WT.fill2 }}>
-                      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: WT.ink2 }}><Truck className="w-4 h-4" /> {o.courier || '택배'}</span>
-                      <span className="text-[13px] font-bold tabular-nums" style={{ color: WT.ink }}>{o.tracking_number} <span className="text-[11px] font-medium" style={{ color: WT.ink4 }}>복사</span></span>
-                    </button>
+                    <div className="mt-3 flex items-stretch gap-2">
+                      <button onClick={() => copyTrack(o.tracking_number!)} className="flex-1 flex items-center justify-between rounded-xl px-3.5 h-11" style={{ background: WT.fill2 }}>
+                        <span className="inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: WT.ink2 }}><Truck className="w-4 h-4" /> {o.courier || '택배'}</span>
+                        <span className="text-[13px] font-bold tabular-nums" style={{ color: WT.ink }}>{o.tracking_number} <span className="text-[11px] font-medium" style={{ color: WT.ink4 }}>복사</span></span>
+                      </button>
+                      {/* 🚚 2026-06-10 갭#4: 택배사 매칭되면 1탭 배송조회 (외부 새 탭) */}
+                      {courierTrackingUrl(o.courier, o.tracking_number) && (
+                        <a
+                          href={courierTrackingUrl(o.courier, o.tracking_number)!}
+                          target="_blank" rel="noopener noreferrer"
+                          className="shrink-0 inline-flex items-center px-3.5 rounded-xl text-[13px] font-bold"
+                          style={{ background: WT.ink, color: '#fff' }}
+                        >배송조회</a>
+                      )}
+                    </div>
                   )}
                   {CLAIMABLE.has(o.status) && (
                     <button onClick={() => setClaimOrderId(o.id)} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
@@ -223,7 +281,7 @@ export default function WholesaleOrdersPage() {
       </main>
 
       {claimOrderId != null && (
-        <WholesaleClaimModal orderId={claimOrderId} onClose={() => setClaimOrderId(null)} onSubmitted={() => refetch()} />
+        <WholesaleClaimModal orderId={claimOrderId} onClose={() => setClaimOrderId(null)} onSubmitted={() => { refetch(); loadClaims(); setClaimsOpen(true) }} />
       )}
     </div>
   )
