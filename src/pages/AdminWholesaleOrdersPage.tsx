@@ -8,6 +8,7 @@ import { Package, Loader2, Search, RotateCcw, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import AdminDataTable, { type AdminDataTableColumn } from '@/components/admin/AdminDataTable'
 
 // 🏭 2026-06-01 유통스타트 — 어드민 도매주문 모니터 (오버사이트 + 강제환불). 라이트 테마.
 
@@ -40,6 +41,17 @@ const STATUS: Record<string, { t: string; c: string }> = {
   FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500' },
 }
 const FILTERS = ['', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED']
+
+// 🧱 2026-06-10: 공통 AdminDataTable 레퍼런스 적용 — 기존 셀 마크업/클래스 그대로 컬럼 정의로 이동.
+const ORDER_COLUMNS: Array<AdminDataTableColumn<OrderRow>> = [
+  { key: 'order', label: '주문', render: o => <>#{o.id} <span className="text-gray-400">({o.item_count})</span></> },
+  { key: 'distributor', label: '유통사', render: o => <span className="text-gray-900">{o.business_name || o.seller_name || o.username || `#${o.distributor_seller_id}`}</span> },
+  { key: 'grade', label: '등급', render: o => <span className="text-gray-600">{o.grade || '-'}</span> },
+  { key: 'status', label: '상태', render: o => <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[o.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[o.status]?.t || o.status}</span> },
+  { key: 'subtotal', label: '결제액', className: 'text-right', render: o => <span className="font-medium text-gray-900">{formatWon(o.subtotal)}</span> },
+  { key: 'margin_total', label: '마진', className: 'text-right', render: o => <span className="text-gray-600">{formatWon(o.margin_total)}</span> },
+  { key: 'created_at', label: '일자', render: o => <span className="text-gray-500">{new Date(o.created_at).toLocaleDateString('ko-KR')}</span> },
+]
 
 export default function AdminWholesaleOrdersPage() {
   const navigate = useNavigate()
@@ -92,40 +104,14 @@ export default function AdminWholesaleOrdersPage() {
           </form>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
-        ) : orders.length === 0 ? (
-          <p className="text-center text-gray-400 py-20">주문이 없습니다.</p>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b border-gray-100">
-                  <th className="py-2.5 px-4 font-medium">주문</th>
-                  <th className="py-2.5 px-4 font-medium">유통사</th>
-                  <th className="py-2.5 px-4 font-medium">등급</th>
-                  <th className="py-2.5 px-4 font-medium">상태</th>
-                  <th className="py-2.5 px-4 font-medium text-right">결제액</th>
-                  <th className="py-2.5 px-4 font-medium text-right">마진</th>
-                  <th className="py-2.5 px-4 font-medium">일자</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map(o => (
-                  <tr key={o.id} onClick={() => openDetail(o.id)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
-                    <td className="py-2.5 px-4 text-gray-700">#{o.id} <span className="text-gray-400">({o.item_count})</span></td>
-                    <td className="py-2.5 px-4 text-gray-900">{o.business_name || o.seller_name || o.username || `#${o.distributor_seller_id}`}</td>
-                    <td className="py-2.5 px-4 text-gray-600">{o.grade || '-'}</td>
-                    <td className="py-2.5 px-4"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[o.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[o.status]?.t || o.status}</span></td>
-                    <td className="py-2.5 px-4 text-right font-medium text-gray-900">{formatWon(o.subtotal)}</td>
-                    <td className="py-2.5 px-4 text-right text-gray-600">{formatWon(o.margin_total)}</td>
-                    <td className="py-2.5 px-4 text-gray-500">{new Date(o.created_at).toLocaleDateString('ko-KR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <AdminDataTable<OrderRow>
+          columns={ORDER_COLUMNS}
+          rows={orders}
+          loading={loading}
+          empty="주문이 없습니다."
+          rowKey={o => o.id}
+          onRowClick={o => openDetail(o.id)}
+        />
       </div>
 
       {/* 상세 모달 */}
