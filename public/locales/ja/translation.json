@@ -4054,7 +4054,8 @@
     "my": "マイ",
     "linkshop": "リンクショップ",
     "vouchers": "クーポン",
-    "dongnedeal": "ご近所ディール"
+    "dongnedeal": "ご近所ディール",
+    "create": "作成"
   },
   "bulkUpload": {
     "title": "商品一括登録",
@@ -4204,7 +4205,10 @@
     "registerAsAgency": "エージェンシーとして登録する →",
     "loginDesc": "セラーアカウントでログインしてください。",
     "sellerLogin": "セラーログイン",
-    "sellerSignup": "セラー会員登録"
+    "sellerSignup": "セラー会員登録",
+    "sheetTitleCreate": "作成",
+    "proposeDeal": "近所の共同購入を提案",
+    "proposeDealDesc": "お店を提案すると人を集めて開催します"
   },
   "broadcastNotify": {
     "loginRequired": "ログインが必要です",

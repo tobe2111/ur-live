@@ -9,7 +9,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, Radio, Compass, ShoppingBag, Ticket, Utensils, Globe, Sparkles, Sofa, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
@@ -89,7 +89,11 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMenu', { defaultValue: 'Menu' })}
           </p>
-          {MENU_ITEMS.filter(item => !(LIVE_COMMERCE_SUSPENDED && item.path === '/live')).map(item => (
+          {/* 🛡️ 2026-06-10 [UNLOCK_LOADING]: 쇼핑(/browse) 잠정 숨김 — SHOPPING_TAB_HIDDEN 플래그 가역 */}
+          {MENU_ITEMS.filter(item =>
+            !(LIVE_COMMERCE_SUSPENDED && item.path === '/live') &&
+            !(SHOPPING_TAB_HIDDEN && item.path === '/browse')
+          ).map(item => (
             <NavBtn
               key={item.path}
               item={item}
@@ -99,12 +103,12 @@ export default function DesktopLiveSidebar() {
           ))}
         </section>
 
-        {/* CATEGORY */}
+        {/* CATEGORY — 쇼핑 숨김 동안 식사권 외 /browse 카테고리 비노출 (라우트는 보존) */}
         <section>
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionCategory', { defaultValue: 'Category' })}
           </p>
-          {CATEGORY_ITEMS.map(cat => {
+          {CATEGORY_ITEMS.filter(cat => !SHOPPING_TAB_HIDDEN || cat.slug === 'meal_voucher').map(cat => {
             const Icon = cat.icon
             const catPath = cat.slug === 'meal_voucher' ? '/meal-vouchers' : `/browse?category=${cat.slug}`
             const isActive = cat.slug === 'meal_voucher'

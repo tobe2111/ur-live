@@ -5,10 +5,11 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap } from 'lucide-react'
+import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function DesktopTopNav() {
@@ -23,11 +24,14 @@ export default function DesktopTopNav() {
   const { data: unreadCount = 0 } = useUnreadCount()
   const { data: cartCount = 0 } = useCartCount()
 
+  // 🛡️ 2026-06-10 [UNLOCK_LOADING] (사용자 결정): 라이브 영구 중단 + 쇼핑 잠정 숨김 — 플래그 가역.
+  //   링크샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    { icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' },
+    ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' }]),
     { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
-    { icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' },
+    ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
+    { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: '/host/new' },
   ]
 
   const isActivePath = (path: string) => {
@@ -87,7 +91,7 @@ export default function DesktopTopNav() {
               type="search"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('search.placeholder', { defaultValue: '라이브, 식사권, 상품 검색' })}
+              placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
               className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-pink-400/30"
             />
           </div>
@@ -95,7 +99,8 @@ export default function DesktopTopNav() {
 
         {/* 우측 액션 */}
         <div className="flex items-center gap-1 shrink-0 ml-auto">
-          {/* LIVE 배지 */}
+          {/* LIVE 배지 — 라이브 영구 중단 동안 숨김 (플래그 가역) */}
+          {!LIVE_COMMERCE_SUSPENDED && (
           <button
             onClick={() => navigate('/live')}
             className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 transition-colors"
@@ -103,6 +108,7 @@ export default function DesktopTopNav() {
             <Zap className="w-3.5 h-3.5" />
             LIVE
           </button>
+          )}
 
           {/* 판매자센터 */}
           <button

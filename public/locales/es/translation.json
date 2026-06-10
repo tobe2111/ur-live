@@ -3383,7 +3383,8 @@
     "my": "Mi",
     "linkshop": "Linkshop",
     "vouchers": "Cupones",
-    "dongnedeal": "Ofertas locales"
+    "dongnedeal": "Ofertas locales",
+    "create": "Crear"
   },
   "bulkUpload": {
     "title": "Carga masiva de productos",
@@ -3533,7 +3534,10 @@
     "registerAsAgency": "Registrarse como agencia →",
     "loginDesc": "Inicia sesión con una cuenta de vendedor.",
     "sellerLogin": "Inicio de sesión vendedor",
-    "sellerSignup": "Registro de vendedor"
+    "sellerSignup": "Registro de vendedor",
+    "sheetTitleCreate": "Crear",
+    "proposeDeal": "Proponer compra grupal local",
+    "proposeDealDesc": "Sugiere una tienda y reuniremos gente para abrirla"
   },
   "broadcastNotify": {
     "loginRequired": "Inicio de sesión requerido",

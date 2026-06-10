@@ -19,6 +19,7 @@ import type { Env } from '@/worker/types/env';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -236,6 +237,17 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
      VALUES (?, ?, ?, ?)`,
     [groupBuyId, userId, user.name || '익명', depositPerPerson],
   );
+
+  // 🧲 2026-06-10 수요 신호 루프: 새 제안 → 어드민 벨 알림 (fail-soft — 제안 생성을 막지 않음).
+  //   하단바 ➕ 로 들어온 제안을 운영자가 즉시 보고 매장 영입(수요 신호) 후속으로 연결.
+  try {
+    await createDashboardNotification(
+      DB, 'admin', null, 'community_gb_proposed',
+      `동네 공구 제안: ${body.restaurant_name}`,
+      `${user.name || '익명'} · 제안가 ${body.proposed_price.toLocaleString('ko-KR')}원 · 목표 ${targetCount}명`,
+      '/admin/restaurant-demand',
+    );
+  } catch { /* best-effort */ }
 
   return c.json({
     success: true,
@@ -594,6 +606,27 @@ communityGroupBuyRoutes.patch('/:id/confirm', requireAuth(), async (c) => {
   if (!confirmRes.meta?.changes) {
     return c.json({ success: false, error: '확정할 수 없는 상태입니다' }, 409);
   }
+
+  // 🧲 2026-06-10 수요 신호 루프 마감: 제안이 확정(공구 열림)되면 참여자 전원에게 알림.
+  //   "제안하신 공구가 열렸어요" — ➕ 제안이 데드엔드가 아님을 체감시키는 핵심 한 줄. fail-soft.
+  try {
+    const members = await executeQuery<{ user_id: string }>(
+      DB,
+      "SELECT DISTINCT user_id FROM community_group_buy_members WHERE group_buy_id = ? AND status = 'deposited'",
+      [group.id],
+    );
+    for (const m of members) {
+      await DB.prepare(`
+        INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+        VALUES (?, 'user', 'group_buy_confirmed', ?, ?, ?, CURRENT_TIMESTAMP)
+      `).bind(
+        m.user_id,
+        `🎉 ${group.restaurant_name} 공구가 확정됐어요!`,
+        `확정가 ${Number(confirmed_price).toLocaleString('ko-KR')}원${confirmed_discount_percent > 0 ? ` (${confirmed_discount_percent}% 할인)` : ''}`,
+        `/community-group-buy/${group.id}/messages`,
+      ).run().catch(() => { /* notifications 테이블 없으면 skip (메시지 알림과 동일 패턴) */ });
+    }
+  } catch { /* best-effort */ }
 
   return c.json({
     success: true,

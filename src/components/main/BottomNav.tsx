@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
@@ -187,10 +187,15 @@ export default function BottomNav() {
   // 🛡️ 2026-06-04: lazy 라우트 청크를 "누르려는 순간(pointerdown/hover)" 미리 받기 → 클릭 후 청크 대기 제거.
   //   홈(eager)과 달리 동네딜·쇼핑·마이는 lazy 라 클릭 시 청크 다운로드 동안 PageLoader 스피너가 떴음(카드 늦게 뜸).
   //   intent 시에만 발화 → 홈 초기로딩(Lighthouse) 영향 0. Vite 가 App.tsx 의 동일 청크로 dedup.
+  // 🛡️ 2026-06-10 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 쇼핑 탭 잠정 숨김 → 가운데 ➕(만들기).
+  //   SHOPPING_TAB_HIDDEN=false 로 바꾸면 쇼핑 탭 즉시 복원(가역). /browse 라우트·prefetch 코드는 보존.
+  //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 공구권 등록으로 분기 — 수요 신호 수집기.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage') },
-    { icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') },
+    ...(SHOPPING_TAB_HIDDEN
+      ? [{ icon: Plus, label: t('nav.create', { defaultValue: '만들기' }), path: '__create__' as const, prefetch: () => import('@/pages/UserGroupBuyCreatePage') }]
+      : [{ icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') }]),
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
     { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => import('@/pages/UserProfilePage') },
   ]
@@ -217,10 +222,31 @@ export default function BottomNav() {
   }
 
   const renderItem = ({ icon: Icon, label, path, prefetch }: typeof navItems[0] & { prefetch?: () => Promise<unknown> }) => {
-    const active = isActivePath(path)
+    // ➕(만들기) — 경로 이동 대신 생성 시트 오픈 (기존 sheet 재활용).
+    const isCreate = path === '__create__'
+    const active = !isCreate && isActivePath(path)
     const isMyTab = path === '/user/profile'
     // intent(hover/press) 시 lazy 청크 prefetch — dedup 되므로 다중 호출 안전, 실패 무시.
     const warm = prefetch ? () => { try { prefetch().catch(() => {}) } catch { /* noop */ } } : undefined
+
+    if (isCreate) {
+      return (
+        <button
+          key={label}
+          onClick={() => setSheetOpen(true)}
+          onPointerDown={warm}
+          onMouseEnter={warm}
+          className="flex-1 flex flex-col items-center justify-center h-full"
+          aria-label={label}
+          aria-haspopup="dialog"
+        >
+          <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-gray-900 dark:bg-white">
+            <Icon size={20} className="text-white dark:text-[#020202]" strokeWidth={2.25} />
+          </span>
+          <span className="text-[9px] mt-0.5 text-gray-500">{label}</span>
+        </button>
+      )
+    }
 
     return (
       <button
@@ -305,24 +331,30 @@ export default function BottomNav() {
                 </div>
 
                 <div className="px-6 pb-6">
-                  {/* Close */}
+                  {/* Close — 🛡️ 2026-06-10: 시트의 유일한 진입이 ➕(만들기)가 되어 타이틀 통일 */}
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                      {/* 🛡️ 2026-05-01: linked seller 있는 user 는 "전환" 으로 안내 (등록 X) */}
-                      {isSeller
-                        ? t('bottomNav.sheetTitleLive', { defaultValue: '라이브 방송' })
-                        : isAgency
-                        ? t('bottomNav.sheetTitleAgency', { defaultValue: '에이전시' })
-                        : !isLoggedIn
-                        ? t('bottomNav.sheetTitleLoginRequired', { defaultValue: '로그인이 필요합니다' })
-                        : hasSellerToken
-                        ? t('bottomNav.sheetTitleSellerDashboard', { defaultValue: '셀러 대시보드' })
-                        : t('bottomNav.sheetTitleStartSeller', { defaultValue: '셀러로 시작하기' })}
+                      {t('bottomNav.sheetTitleCreate', { defaultValue: '만들기' })}
                     </h3>
                     <button onClick={() => setSheetOpen(false)} aria-label={t('bottomNav.closeSheetAria', { defaultValue: '시트 닫기' })} className="p-1 rounded-full hover:bg-white/10">
                       <X className="w-5 h-5 text-gray-500" />
                     </button>
                   </div>
+
+                  {/* 🧲 2026-06-10: 동네 공구 제안 — 수요 신호 수집 (모든 사용자에게 최상단 노출).
+                       제안 → 어드민/에이전시 검토 → 매장 영입 → 공구 오픈 시 제안자에게 알림(루프). */}
+                  <button
+                    onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="text-[15px] font-bold text-white">{t('bottomNav.proposeDeal', { defaultValue: '우리 동네 공구 제안하기' })}</p>
+                      <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.proposeDealDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
+                    </div>
+                  </button>
 
                   {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도) */}
                   {isSeller && (

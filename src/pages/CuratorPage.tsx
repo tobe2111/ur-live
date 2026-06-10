@@ -106,6 +106,9 @@ export default function CuratorPage() {
     }
   }, [data])
 
+  // 🧭 2026-06-10 (동네딜 집중 재정향): 홈 탭 = 교환권/공구 핀 우선 노출 (그룹 내 기존 순서 유지).
+  const homePins = useMemo(() => [...voucherPins, ...shopPins], [voucherPins, shopPins])
+
   async function copyLink() {
     const fullUrl = `${window.location.origin}/u/${handle}`
     try {
@@ -188,7 +191,7 @@ export default function CuratorPage() {
           pins.length === 0
             ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} />
             : <PinGrid
-                pins={pins}
+                pins={homePins}
                 handle={curator.handle}
                 isOwner={isOwner}
                 onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}

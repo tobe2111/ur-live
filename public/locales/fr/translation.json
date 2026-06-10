@@ -3383,7 +3383,8 @@
     "my": "Mon",
     "linkshop": "Linkshop",
     "vouchers": "Bons",
-    "dongnedeal": "Offres locales"
+    "dongnedeal": "Offres locales",
+    "create": "Créer"
   },
   "bulkUpload": {
     "title": "Import de produits en masse",
@@ -3533,7 +3534,10 @@
     "registerAsAgency": "S'inscrire comme agence →",
     "loginDesc": "Connectez-vous avec un compte vendeur.",
     "sellerLogin": "Connexion vendeur",
-    "sellerSignup": "Inscription vendeur"
+    "sellerSignup": "Inscription vendeur",
+    "sheetTitleCreate": "Créer",
+    "proposeDeal": "Proposer un achat groupé local",
+    "proposeDealDesc": "Suggérez un commerce, on réunit du monde pour l’ouvrir"
   },
   "broadcastNotify": {
     "loginRequired": "Connexion requise",

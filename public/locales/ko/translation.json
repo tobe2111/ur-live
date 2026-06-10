@@ -4054,7 +4054,8 @@
     "search": "검색",
     "restaurants": "맛집",
     "groupBuy": "공구",
-    "dongnedeal": "동네딜"
+    "dongnedeal": "동네딜",
+    "create": "만들기"
   },
   "bulkUpload": {
     "title": "상품 대량등록",
@@ -4204,7 +4205,10 @@
     "registerAsAgency": "에이전시로 등록하기 →",
     "loginDesc": "셀러 계정으로 로그인하세요.",
     "sellerLogin": "셀러 로그인",
-    "sellerSignup": "셀러 회원가입"
+    "sellerSignup": "셀러 회원가입",
+    "sheetTitleCreate": "만들기",
+    "proposeDeal": "우리 동네 공구 제안하기",
+    "proposeDealDesc": "원하는 가게를 제안하면 모아서 열어드려요"
   },
   "broadcastNotify": {
     "loginRequired": "로그인이 필요합니다",

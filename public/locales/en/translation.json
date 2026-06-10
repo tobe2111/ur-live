@@ -4054,7 +4054,8 @@
     "my": "My",
     "linkshop": "Linkshop",
     "vouchers": "Vouchers",
-    "dongnedeal": "Local Deals"
+    "dongnedeal": "Local Deals",
+    "create": "Create"
   },
   "bulkUpload": {
     "title": "Bulk Product Upload",
@@ -4204,7 +4205,10 @@
     "registerAsAgency": "Register as Agency →",
     "loginDesc": "Log in with a seller account.",
     "sellerLogin": "Seller Login",
-    "sellerSignup": "Seller Sign Up"
+    "sellerSignup": "Seller Sign Up",
+    "sheetTitleCreate": "Create",
+    "proposeDeal": "Propose a local group buy",
+    "proposeDealDesc": "Suggest a shop and we’ll gather people to open it"
   },
   "broadcastNotify": {
     "loginRequired": "Login required",

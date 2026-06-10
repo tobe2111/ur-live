@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-10 — 하단바 ➕(공구 제안) + 쇼핑 잠정 숨김 + 라이브 잔재 정리 (`claude/service-analysis-optimization-whpu0f`)
+**사용자 결정: 라이브커머스 영구 중단 / 쇼핑 잠정 보류(가역) / 동네딜 집중. CLAUDE.md `[UNLOCK_LOADING]` audit log 기록.**
+- 하단바: 홈·동네딜·**➕(만들기)**·링크샵·마이 — `SHOPPING_TAB_HIDDEN` 플래그(false=쇼핑 탭 즉시 복원). ➕ 시트: 유저=동네 공구 제안(`/community-group-buy/new`), 셀러=공구권 등록/대시보드(기존 휴면 시트 재활용).
+- **수요 신호 루프 마감**: 제안 생성 → 어드민 벨 알림(`/admin/restaurant-demand` 링크) · 공구 확정 → 참여자 전원 알림("공구가 확정됐어요"). ➕가 데드엔드가 아니게 하는 핵심.
+- PC: DesktopTopNav 라이브 탭/LIVE 배지 숨김(LIVE_COMMERCE_SUSPENDED) + 쇼핑 탭 숨김 + 링크샵 탭 추가. DesktopLiveSidebar 둘러보기·쇼핑 카테고리 숨김(식사권 유지). index.html Speculation Rules `/live/*` 제거.
+- 링크샵 재정향(동네딜 유통 채널화): 식사권 탭을 상품 앞으로 + 홈 탭 교환권/공구 핀 우선 정렬.
+- i18n 4키×6언어(nav.create, bottomNav.sheetTitleCreate/proposeDeal/proposeDealDesc). tsc 0 · build OK.
+- **30일 판정 지표**: ① ➕ 제안 수 ② 제안→공구 오픈 전환율(0이면 ➕를 동네딜 FAB로 강등) ③ 동네딜 전환.
+
 ### ✅ 2026-06-10 — 어드민·셀러 대시보드 IA/코드 개편 (`claude/service-analysis-optimization-whpu0f`)
 **사용자 불만 "복잡한 상태" → IA(정보구조) 중심 개편. 라우트 전부 보존(북마크/딥링크 안전), 동작 변화 0 원칙.**
 - **어드민**: ① nav 그룹 접기/펼치기(localStorage `admin_nav_collapsed_v1`, 활성 그룹 강제 펼침) ② 고아 라우트 18개 nav 등재(반품검수/원천징수/인플송금/교환권추적/에이전시셀러심사 등) + **🔧 개발자 도구 그룹 신설**(health/errors/env-check/kakao-test/youtube-quota — 기본 접힘) ③ 정산 4페이지(개별/일괄/Ledger/추천출금) `AdminFinanceTabs` 상단 탭 — nav '정산 센터' 1항목(`also` 활성매칭) ④ `AdminDataTable` 공통 테이블(데스크톱 table+모바일 카드 자동, 도매주문/무결성 2페이지 레퍼런스 적용) ⑤ 잔여 수동 fetch 9페이지 → `useApiQuery`(낙관 업데이트=setQueryData, 폴링=refetchInterval, 수동헤더 보존. 못 옮기는 페이지 사유는 commit 참조: env-check 503-body 시맨틱, live-monitor 사운드 사이드이펙트 등) ⑥ AdminBulkEmail native confirm→confirmDialog.
