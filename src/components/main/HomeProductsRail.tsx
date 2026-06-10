@@ -7,10 +7,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ShoppingBag, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
-import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
+import HomeMiniCard from './HomeMiniCard'
 
-type Item = { id: number; name: string; price: number; image_url?: string | null }
+type Item = { id: number; name: string; price: number; image_url?: string | null; dominant_color?: string | null }
 
 export default function HomeProductsRail() {
   const { t } = useTranslation()
@@ -58,29 +58,15 @@ export default function HomeProductsRail() {
       ) : items.length === 0 ? null : (
         <div className="grid grid-cols-3 gap-2">
           {items.map((p) => (
-            <button
+            <HomeMiniCard
               key={p.id}
+              id={p.id}
+              imageUrl={p.image_url}
+              title={p.name}
+              priceText={`${formatNumber(p.price)}원`}
+              dominantColor={p.dominant_color}
               onClick={() => navigate(`/products/${p.id}`)}
-              className="text-left rounded-xl overflow-hidden bg-gray-100 dark:bg-[#121212] active:scale-[0.98] transition-transform"
-            >
-              <div className="aspect-square bg-gray-200 dark:bg-[#1A1A1A]">
-                {p.image_url && (
-                  <img
-                    src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
-                    alt={p.name}
-                    width={200}
-                    height={200}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-              <div className="p-2">
-                <p className="text-[11px] text-gray-900 dark:text-white leading-tight line-clamp-1">{p.name}</p>
-                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-0.5">{formatNumber(p.price)}원</p>
-              </div>
-            </button>
+            />
           ))}
         </div>
       )}
