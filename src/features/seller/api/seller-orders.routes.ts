@@ -10,6 +10,7 @@
  * - POST /api/seller/products                 - 셀러 상품 등록
  */
 
+import { productDetailCols } from '@/shared/db/product-columns';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
@@ -643,6 +644,25 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
 });
 
 // ─── POST /api/seller/products ─────────────────────────────────────────────
+// 🧭 2026-06-10 (재발행 복사): 본인 소유 상품 1건 전체 필드 — SellerMealVoucherNewPage 프리필용.
+//   공개 상세(/api/group-buy/products/:id)는 active 만 매칭이라 종료/만료 공구 복사가 안 됨 → 소유자 전용.
+sellerOrdersRoutes.get('/products/:id', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
+    const db = (c.env as Bindings).DB;
+    const row = await db.prepare(
+      `SELECT ${productDetailCols('products')} FROM products WHERE id = ? AND seller_id = ? LIMIT 1`
+    ).bind(id, sellerId).first<Record<string, unknown>>();
+    if (!row) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    return c.json({ success: true, data: row });
+  } catch (err) {
+    return safeError(c, err, '상품 조회 중 오류가 발생했습니다', '[seller-products]');
+  }
+});
+
 sellerOrdersRoutes.post('/products', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
@@ -789,8 +809,12 @@ sellerOrdersRoutes.post('/products', async (c) => {
       const { notifyFollowers, sendKakaoToFollowers } = await import('../../../lib/notifications');
       const productName = (newProduct as any).name;
       const productId = (newProduct as any).id;
-      notifyFollowers(db, Number(sellerId), 'new_product', `🛍️ 새 상품 등록!`, productName, `/products/${productId}`).catch(swallow('seller:api:seller-orders'));
-      sendKakaoToFollowers(db, Number(sellerId), `🛍️ 새 상품이 등록되었어요!`, productName, `/products/${productId}`, '상품 보기').catch(swallow('seller:api:seller-orders'));
+      // 🧭 2026-06-10 (재방문 루프): 공구권(voucher)이면 공구 문구 + 공구 상세 링크 — 단골 알림 전환율 ↑.
+      const isVoucherProduct = !!(category && VOUCHER_CATEGORY_SET.has(category));
+      const notifTitle = isVoucherProduct ? `🍽️ 단골 매장이 새 공구를 열었어요!` : `🛍️ 새 상품 등록!`;
+      const notifLink = isVoucherProduct ? `/group-buy/${productId}` : `/products/${productId}`;
+      notifyFollowers(db, Number(sellerId), isVoucherProduct ? 'new_group_buy' : 'new_product', notifTitle, productName, notifLink).catch(swallow('seller:api:seller-orders'));
+      sendKakaoToFollowers(db, Number(sellerId), notifTitle, productName, notifLink, isVoucherProduct ? '공구 보기' : '상품 보기').catch(swallow('seller:api:seller-orders'));
     }
 
     // 🛡️ 2026-05-16: voucher 카테고리 상품 등록 시 공구 목록 캐시 무효화

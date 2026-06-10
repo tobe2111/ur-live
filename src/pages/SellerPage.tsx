@@ -483,12 +483,17 @@ export default function SellerPage() {
             <div className="flex items-start gap-3">
               <span className="text-2xl">🏪</span>
               <div className="flex-1">
-                <p className="text-sm font-bold text-emerald-900">매장 사장님 — QR 스캔 빠른 안내</p>
+                <p className="text-sm font-bold text-emerald-900">{t('seller.scan.homeCardTitle', { defaultValue: '매장 사장님 — 손님 바우처는 여기서 스캔' })}</p>
                 <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
-                  • 손님이 매장 방문 시 QR / PIN 보여주면 카메라로 스캔하세요<br />
-                  • 매직링크는 카톡으로 받은 링크 클릭 (로그인 불요)<br />
-                  • 매출 정산: <a href="/seller/ledger" className="underline">/seller/ledger</a>
+                  {t('seller.scan.homeCardDesc', { defaultValue: '손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)' })}
                 </p>
+                {/* 🧭 2026-06-10 (현장 동선 갭): 문구만 있고 누를 곳이 없던 것 → 스캔 화면 직행 버튼 */}
+                <button
+                  onClick={() => navigate('/seller/scan')}
+                  className="mt-2.5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold active:scale-[0.98] transition-transform"
+                >
+                  📷 {t('seller.scan.homeCardBtn', { defaultValue: '바우처 스캔 열기' })}
+                </button>
               </div>
             </div>
           </div>

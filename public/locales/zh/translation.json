@@ -2170,7 +2170,10 @@
       "storeOwnerStatsLink": "店主统计链接",
       "linkCopied": "链接已复制！请分享给店主。",
       "linkRotated": "已用新链接重新发送 (旧链接已过期)",
-      "alimtalkSent": "已向商家发送Alimtalk"
+      "alimtalkSent": "已向商家发送Alimtalk",
+      "reissue": "按相同内容重新发布",
+      "copyLoaded": "已载入上次团购 — 确认日期后发布!",
+      "copyFailed": "无法载入上次团购"
     },
     "voucher": {
       "categoryTitle": "团购券类型",
@@ -2364,7 +2367,8 @@
       "supply": "批发采购",
       "hosting": "团购托管",
       "curatorEarnings": "策展人收益",
-      "prospects": "招募门店"
+      "prospects": "招募门店",
+      "voucherScan": "扫描兑换券"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2720,6 +2724,22 @@
       "step2StoreDesc": "为您的店铺创建团购兑换券",
       "step3": "阅读运营指南",
       "step3Desc": "从订单处理到结算一目了然"
+    },
+    "scan": {
+      "title": "扫描兑换券",
+      "subtitle": "对准顾客二维码即可自动核销(可连续扫描)",
+      "usedOk": "核销完成",
+      "usedFail": "核销失败",
+      "networkError": "网络错误 — 请重试",
+      "cameraError": "无法打开相机。请在下方输入代码。",
+      "cameraStarting": "相机启动中…",
+      "processing": "处理中…",
+      "noDetector": "此浏览器不支持自动识别 — 请在下方输入代码。",
+      "manualPlaceholder": "直接输入兑换码",
+      "useBtn": "核销",
+      "homeCardTitle": "店主 — 在这里扫描顾客兑换券",
+      "homeCardDesc": "对准二维码一键核销 · 魔法链接无需登录",
+      "homeCardBtn": "打开扫描器"
     }
   },
   "admin": {

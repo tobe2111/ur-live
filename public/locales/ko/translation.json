@@ -2201,7 +2201,10 @@
       "storeOwnerStatsLink": "식당 사장 통계 링크",
       "linkCopied": "링크 복사됨! 식당 사장에게 공유하세요.",
       "linkRotated": "새 링크로 재발송되었습니다 (이전 링크 만료)",
-      "alimtalkSent": "사장님께 알림톡이 발송되었습니다"
+      "alimtalkSent": "사장님께 알림톡이 발송되었습니다",
+      "reissue": "같은 내용으로 재발행",
+      "copyLoaded": "이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!",
+      "copyFailed": "이전 공구를 불러오지 못했어요"
     },
     "voucher": {
       "categoryTitle": "공구권 종류",
@@ -2404,7 +2407,8 @@
       "notifyFollowers": "팔로워 알림",
       "stays": "숙소 공구",
       "staysBookings": "예약 관리",
-      "supply": "도매 소싱"
+      "supply": "도매 소싱",
+      "voucherScan": "바우처 스캔"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -2720,6 +2724,22 @@
       "step2StoreDesc": "우리 매장 공동구매 교환권을 만들어요",
       "step3": "운영 가이드 읽기",
       "step3Desc": "주문 처리부터 정산까지 한눈에"
+    },
+    "scan": {
+      "title": "바우처 스캔",
+      "subtitle": "손님 QR을 비추면 자동으로 사용 처리돼요 (연속 스캔 가능)",
+      "usedOk": "사용 처리 완료",
+      "usedFail": "사용 처리 실패",
+      "networkError": "네트워크 오류 — 다시 시도해주세요",
+      "cameraError": "카메라를 열 수 없어요. 아래에 코드를 직접 입력해주세요.",
+      "cameraStarting": "카메라 시작 중…",
+      "processing": "사용 처리 중…",
+      "noDetector": "이 브라우저는 자동 인식을 지원하지 않아요 — 아래에 코드를 직접 입력해주세요.",
+      "manualPlaceholder": "바우처 코드 직접 입력",
+      "useBtn": "사용 처리",
+      "homeCardTitle": "매장 사장님 — 손님 바우처는 여기서 스캔",
+      "homeCardDesc": "손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)",
+      "homeCardBtn": "바우처 스캔 열기"
     }
   },
   "admin": {

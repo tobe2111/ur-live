@@ -2171,7 +2171,10 @@
       "storeOwnerStatsLink": "Store owner stats link",
       "linkCopied": "Link copied! Share it with the store owner.",
       "linkRotated": "Resent with new link (previous link expired)",
-      "alimtalkSent": "Alimtalk sent to the merchant"
+      "alimtalkSent": "Alimtalk sent to the merchant",
+      "reissue": "Reissue with same details",
+      "copyLoaded": "Loaded previous deal — just check the dates and publish!",
+      "copyFailed": "Failed to load previous deal"
     },
     "voucher": {
       "categoryTitle": "Voucher Category",
@@ -2374,7 +2377,8 @@
       "supply": "Wholesale Sourcing",
       "hosting": "Group Buy Hosting",
       "curatorEarnings": "Curator Earnings",
-      "prospects": "Recruit Stores"
+      "prospects": "Recruit Stores",
+      "voucherScan": "Scan voucher"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -2720,6 +2724,22 @@
       "step2StoreDesc": "Create a group-buy voucher for your store",
       "step3": "Read the operations guide",
       "step3Desc": "From orders to settlement at a glance"
+    },
+    "scan": {
+      "title": "Scan voucher",
+      "subtitle": "Point at the customer QR to redeem automatically (continuous scan)",
+      "usedOk": "Redeemed",
+      "usedFail": "Redeem failed",
+      "networkError": "Network error — please retry",
+      "cameraError": "Cannot open camera. Enter the code below.",
+      "cameraStarting": "Starting camera…",
+      "processing": "Processing…",
+      "noDetector": "This browser cannot auto-detect — enter the code below.",
+      "manualPlaceholder": "Enter voucher code",
+      "useBtn": "Redeem",
+      "homeCardTitle": "Store owners — scan customer vouchers here",
+      "homeCardDesc": "Point at the QR to redeem in one tap · Magic link works without login",
+      "homeCardBtn": "Open voucher scanner"
     }
   },
   "admin": {

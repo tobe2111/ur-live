@@ -49,6 +49,7 @@ const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
 const SellerCouponsPage = lazy(() => import('@/pages/SellerCouponsPage'))
 const SellerSupplyPage = lazy(() => import('@/pages/SellerSupplyPage'))
 const SellerGroupBuyPage = lazy(() => import('@/pages/SellerGroupBuyPage'))
+const SellerVoucherScanPage = lazy(() => import('@/pages/SellerVoucherScanPage'))
 const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
 const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
 const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
@@ -240,6 +241,12 @@ export function SellerRoutes() {
       <Route path="/seller/group-buy" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🧭 2026-06-10: 계산대용 바우처 스캔 — 현장 1탭 사용처리 */}
+      <Route path="/seller/scan" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerVoucherScanPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-18: 숙소 공구 — PR 2/6 */}

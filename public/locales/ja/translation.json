@@ -2170,7 +2170,10 @@
       "storeOwnerStatsLink": "店舗オーナー統計リンク",
       "linkCopied": "リンクがコピーされました！店舗オーナーに共有してください。",
       "linkRotated": "新しいリンクで再送信されました (以前のリンクは期限切れ)",
-      "alimtalkSent": "オーナーにアリムトークが送信されました"
+      "alimtalkSent": "オーナーにアリムトークが送信されました",
+      "reissue": "同じ内容で再発行",
+      "copyLoaded": "前回の内容を読み込みました — 日付を確認して発行!",
+      "copyFailed": "前回の内容を読み込めませんでした"
     },
     "voucher": {
       "categoryTitle": "クーポンカテゴリ",
@@ -2380,7 +2383,8 @@
       "supply": "卸仕入れ",
       "hosting": "共同購入ホスティング",
       "curatorEarnings": "キュレーター収益",
-      "prospects": "店舗勧誘"
+      "prospects": "店舗勧誘",
+      "voucherScan": "バウチャースキャン"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -2720,6 +2724,22 @@
       "step2StoreDesc": "店舗の共同購入クーポンを作成します",
       "step3": "運営ガイドを読む",
       "step3Desc": "注文処理から精算まで一目で"
+    },
+    "scan": {
+      "title": "バウチャースキャン",
+      "subtitle": "お客様のQRをかざすと自動で使用処理されます(連続スキャン可)",
+      "usedOk": "使用処理完了",
+      "usedFail": "使用処理失敗",
+      "networkError": "ネットワークエラー — 再試行してください",
+      "cameraError": "カメラを開けません。下にコードを入力してください。",
+      "cameraStarting": "カメラ起動中…",
+      "processing": "処理中…",
+      "noDetector": "このブラウザは自動認識非対応 — 下にコードを入力してください。",
+      "manualPlaceholder": "コードを直接入力",
+      "useBtn": "使用処理",
+      "homeCardTitle": "店舗オーナー様 — お客様のバウチャーはここでスキャン",
+      "homeCardDesc": "QRをかざすと1タップで使用処理 · マジックリンクはログイン不要",
+      "homeCardBtn": "スキャナーを開く"
     }
   },
   "admin": {

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Phone, Users, Utensils, CheckCircle, Camera, Sparkles, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
@@ -15,6 +15,42 @@ export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
+  // 🧭 2026-06-10 (재방문 루프 — 재발행 복사): ?copyFrom=<productId> 면 본인 소유 공구를 불러와 프리필.
+  //   마감/만료일은 오늘 기준 기본값으로 리셋(과거 날짜 복사 방지), PIN 은 동일 매장이므로 유지.
+  const [searchParams] = useSearchParams()
+  useEffect(() => {
+    const copyFrom = Number(searchParams.get('copyFrom'))
+    if (!Number.isFinite(copyFrom) || copyFrom <= 0) return
+    const token = getSellerToken()
+    api.get(`/api/seller/products/${copyFrom}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => {
+        if (!r.data?.success || !r.data.data) return
+        const src = r.data.data as Record<string, unknown>
+        const str = (v: unknown) => (typeof v === 'string' ? v : '')
+        const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+        setForm((f) => ({
+          ...f,
+          name: str(src.name) || f.name,
+          description: str(src.description),
+          price: num(src.price) || f.price,
+          original_price: num(src.original_price),
+          image_url: str(src.image_url),
+          category: (str(src.category) || f.category) as typeof f.category,
+          restaurant_name: str(src.restaurant_name),
+          restaurant_address: str(src.restaurant_address),
+          restaurant_phone: str(src.restaurant_phone),
+          restaurant_lat: src.restaurant_lat != null ? String(src.restaurant_lat) : '',
+          restaurant_lng: src.restaurant_lng != null ? String(src.restaurant_lng) : '',
+          voucher_terms: str(src.voucher_terms),
+          group_buy_target: num(src.group_buy_target) || f.group_buy_target,
+          stock: num(src.stock) || f.stock,
+          // 마감(group_buy_deadline)/만료(voucher_expiry)는 기본값 유지 — 새 공구 기준 재계산.
+        }))
+        toast.success(t('seller.groupBuy.copyLoaded', { defaultValue: '이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!' }))
+      })
+      .catch(() => toast.error(t('seller.groupBuy.copyFailed', { defaultValue: '이전 공구를 불러오지 못했어요' })))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 🛡️ 2026-05-21: UX 단순화 — 마감 7일 후, 만료 90일 후 기본값.
   //   기존엔 사용자가 두 날짜를 매번 입력해야 했음.

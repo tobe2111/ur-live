@@ -1499,7 +1499,10 @@
       "storeOwnerStatsLink": "Lien statistiques du propriétaire",
       "linkCopied": "Lien copié ! Partagez-le avec le propriétaire du restaurant.",
       "linkRotated": "Renvoyé avec un nouveau lien (ancien lien expiré)",
-      "alimtalkSent": "Alimtalk envoyé au commerçant"
+      "alimtalkSent": "Alimtalk envoyé au commerçant",
+      "reissue": "Rééditer à l’identique",
+      "copyLoaded": "Contenu précédent chargé — vérifiez les dates et publiez !",
+      "copyFailed": "Impossible de charger le précédent"
     },
     "voucher": {
       "categoryTitle": "Catégorie de Bon",
@@ -1693,7 +1696,8 @@
       "supply": "Sourcing en gros",
       "hosting": "Hébergement d'achat groupé",
       "curatorEarnings": "Revenus du curateur",
-      "prospects": "Recruter magasins"
+      "prospects": "Recruter magasins",
+      "voucherScan": "Scanner un bon"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2049,6 +2053,22 @@
       "step2StoreDesc": "Créez un bon d’achat groupé pour votre boutique",
       "step3": "Lisez le guide d’exploitation",
       "step3Desc": "Des commandes au règlement en un coup d’œil"
+    },
+    "scan": {
+      "title": "Scanner un bon",
+      "subtitle": "Visez le QR du client pour valider automatiquement (scan continu)",
+      "usedOk": "Validé",
+      "usedFail": "Échec de validation",
+      "networkError": "Erreur réseau — réessayez",
+      "cameraError": "Impossible d’ouvrir la caméra. Saisissez le code ci-dessous.",
+      "cameraStarting": "Démarrage de la caméra…",
+      "processing": "Traitement…",
+      "noDetector": "Ce navigateur ne détecte pas automatiquement — saisissez le code.",
+      "manualPlaceholder": "Saisir le code",
+      "useBtn": "Valider",
+      "homeCardTitle": "Commerçants — scannez les bons clients ici",
+      "homeCardDesc": "Visez le QR pour valider en un geste · Magic link sans connexion",
+      "homeCardBtn": "Ouvrir le scanner"
     }
   },
   "admin": {

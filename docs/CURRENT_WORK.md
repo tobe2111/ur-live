@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-10 — 오프라인 공구 운영 루프 마감 3종 (현장 스캔·재발행·단골 알림) (`claude/service-analysis-optimization-whpu0f`)
+**플로우 감사(8단계) 결과**: 6단계 이상적(발행 OCR 5분·결제·청약철회·자동정산·지역필터·NTS자동승인은 키만 대기) — 감사 에이전트 오탐 4건 직접 검증 기각. 진짜 갭 2개 구현:
+- **현장 사용 1탭**: `/seller/scan` 계산대용 스캔 화면 신설(BarcodeDetector 네이티브, QR `/v/<code>` 파싱 → use-by-seller 1탭, 연속 스캔+세션 이력+진동 피드백+수동입력 폴백). 셀러 nav 공구그룹 최상단 + 대시보드 홈 안내카드에 직행 버튼(문구만 있고 누를 곳 없던 갭).
+- **재발행 복사**: 공구 카드 "같은 내용으로 재발행" → `?copyFrom=` 프리필(`GET /api/seller/products/:id` 소유자 전용 신설 — 공개 상세는 active만 매칭이라 종료 공구 복사 불가했음). 날짜는 새 기본값 리셋.
+- **단골 알림 문구**: 발행 시 팔로워 알림은 기존 구현 확인(notifyFollowers+카카오) — voucher 면 "단골 매장이 새 공구를 열었어요!"+`/group-buy/:id` 링크로 분기(전환율).
+- i18n 18키×6언어. tsc 0 · unit 1528 · build OK. **운영 대기: NTS_API_KEY 등록(가입 즉시 자동승인 활성화).**
+
 ### 🔴→🟢 2026-06-10 — 교환권 상세 전사 500 인시던트 + 4중 방어선 + 구조적 후속 (`claude/service-analysis-optimization-whpu0f`)
 **원인(_diag 실측 확정)**: products 컬럼 누적(94 ALTER+)이 **D1 결과셋 한도(100) 초과** → `SELECT p.*`+JOIN 전부 `too many columns in result set`. 어제 도매몰 컬럼 추가가 한도를 넘기며 '없던 500' 발생.
 - **즉각 수정**: `productDetailCols()` 명시목록 SSOT(`shared/db/product-columns.ts`) — star-select 9곳 교체(교환권/공구 상세·join 구매경로·상품 리포지토리·FTS·에이전시). 부수: `store_verify_pin` 공개 누출 보안홀 동반 차단.

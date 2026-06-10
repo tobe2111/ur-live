@@ -274,6 +274,14 @@ export default function SellerGroupBuyPage() {
                     )}
                   </div>
 
+                  {/* 🧭 2026-06-10 (재방문 루프 갭): 종료/진행 공구를 1탭으로 복사 재발행 — 매번 처음부터 입력하던 마찰 제거 */}
+                  <button
+                    onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${p.id}`)}
+                    className="mt-3 w-full px-3 py-2 rounded-lg bg-pink-50 border border-pink-200 text-pink-600 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}
+                  </button>
+
                   {/* 식당 사장 공유 링크 (Magic Link 우선) */}
                   <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">

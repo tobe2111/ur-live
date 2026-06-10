@@ -1499,7 +1499,10 @@
       "storeOwnerStatsLink": "Enlace de estadísticas del dueño",
       "linkCopied": "¡Enlace copiado! Compártelo con el dueño de la tienda.",
       "linkRotated": "Reenviado con nuevo enlace (enlace anterior expirado)",
-      "alimtalkSent": "Alimtalk enviado al comerciante"
+      "alimtalkSent": "Alimtalk enviado al comerciante",
+      "reissue": "Reemitir con los mismos datos",
+      "copyLoaded": "Cargado el anterior — ¡revisa las fechas y publica!",
+      "copyFailed": "No se pudo cargar el anterior"
     },
     "voucher": {
       "categoryTitle": "Categoría de Vale",
@@ -1693,7 +1696,8 @@
       "supply": "Abastecimiento mayorista",
       "hosting": "Alojamiento de compra grupal",
       "curatorEarnings": "Ganancias del curador",
-      "prospects": "Captar tiendas"
+      "prospects": "Captar tiendas",
+      "voucherScan": "Escanear vale"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2049,6 +2053,22 @@
       "step2StoreDesc": "Crea un cupón de compra grupal para tu tienda",
       "step3": "Lee la guía de operación",
       "step3Desc": "De pedidos a liquidación de un vistazo"
+    },
+    "scan": {
+      "title": "Escanear vale",
+      "subtitle": "Apunta al QR del cliente para canjear automáticamente (escaneo continuo)",
+      "usedOk": "Canjeado",
+      "usedFail": "Error al canjear",
+      "networkError": "Error de red — reintenta",
+      "cameraError": "No se puede abrir la cámara. Ingresa el código abajo.",
+      "cameraStarting": "Iniciando cámara…",
+      "processing": "Procesando…",
+      "noDetector": "Este navegador no detecta automáticamente — ingresa el código abajo.",
+      "manualPlaceholder": "Ingresar código",
+      "useBtn": "Canjear",
+      "homeCardTitle": "Dueños — escanea los vales de clientes aquí",
+      "homeCardDesc": "Apunta al QR y canjea en un toque · Magic link sin iniciar sesión",
+      "homeCardBtn": "Abrir escáner"
     }
   },
   "admin": {

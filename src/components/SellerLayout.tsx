@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import { getRoleShortLabel } from '@/shared/seller-roles'
@@ -65,6 +65,8 @@ const NAV_GROUPS: {
     mode: 'store',
     items: [
       // group-buy(교환권/공구) 는 매장·크리에이터 공통 (둘 다 발행).
+      // 🧭 2026-06-10: 계산대 스캔 — 현장에서 가장 자주 쓰는 동선이라 그룹 최상단.
+      { path: '/seller/scan', labelKey: 'seller.nav.voucherScan', icon: ScanLine, mode: 'store' },
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
       // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
       { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },
