@@ -522,7 +522,8 @@ navigate(returnUrl)
    {formatNumber(value)}                    // → 1,234 (null → 0)
    formatNumber(safeNum(a) * safeNum(b))    // 산술 후 포매팅 — NaN 방지
    ```
-7. **검증**: `bash scripts/quality-check.sh`
+7. **첫 페인트 표준**: 리스트/상세 등 데이터 페이지는 `docs/LOADING_ARCHITECTURE.md` 의 "첫 페인트 표준" 표 적용 (SSR 슬롯 or prewarm or placeholder — 스피너-온리 첫 화면 금지)
+8. **검증**: `bash scripts/quality-check.sh`
 
 ## 🚀 배포 아키텍처
 

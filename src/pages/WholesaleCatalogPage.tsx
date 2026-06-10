@@ -107,7 +107,7 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 }
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish, aboveFold }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void; aboveFold?: boolean }) {
+const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish, aboveFold, priceLoading }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void; aboveFold?: boolean; priceLoading?: boolean }) {
   // 🏭 perf: viewport 진입 시 상세 prefetch(rootMargin 100px — 소비자 GroupBuyFeedCard 패턴). hover/focus/touch 도 prefetch.
   const wrapRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -190,9 +190,14 @@ const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRest
         {/* 🏭 Wave 2: 상품코드 (P0000xxx) — 시안 카드 사양. */}
         <div className="mt-0.5 text-[11px] font-mono tabular-nums tracking-tight" style={{ color: grad.sub }}>{productCode(p)}</div>
         {locked ? (
+          priceLoading ? (
+            /* 🏭 등급가 도착 전(placeholder) — 잠금 칩 오표시 대신 가격 스켈레톤 */
+            <span className="block h-5 w-20 rounded mt-1 animate-pulse" style={{ background: grad.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)' }} />
+          ) : (
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold mt-1" style={{ background: grad.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.15)', color: grad.text }}>
             <Lock className="w-3 h-3" /> 로그인하고 공급가
           </span>
+          )
         ) : (
           <div className="flex items-baseline gap-1.5 mt-1">
             {dr > 0 && <span className="font-extrabold tabular-nums text-[14px]" style={{ color: grad.accent }}>{dr}%</span>}
@@ -509,6 +514,24 @@ function BrandShowcaseGrid({ brands, loading, onPick, t: tr }: {
   )
 }
 
+// 🏭 2026-06-10: SSR 주입 데이터 1회 읽기 (모듈 캐시 — initialData/placeholderData 양쪽 공유).
+let _ssrWholesale: CatalogItem[] | null | undefined
+function readSsrWholesale(): CatalogItem[] | null {
+  if (_ssrWholesale !== undefined) return _ssrWholesale
+  _ssrWholesale = null
+  if (typeof document !== 'undefined') {
+    const el = document.getElementById('__SSR_INITIAL_WHOLESALE__')
+    if (el?.textContent) {
+      try {
+        const parsed = JSON.parse(el.textContent) as { success?: boolean; items?: CatalogItem[] }
+        if (parsed?.success && Array.isArray(parsed.items)) _ssrWholesale = parsed.items as CatalogItem[]
+      } catch { /* 손상 — fetch 로 진행 */ }
+      el.remove()
+    }
+  }
+  return _ssrWholesale
+}
+
 export default function WholesaleCatalogPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -565,21 +588,23 @@ export default function WholesaleCatalogPage() {
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
   const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}`
-  // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 상품 느림): worker SSR 주입(__SSR_INITIAL_WHOLESALE__)
-  //   즉시 소비 — guest + 기본 파라미터에서만(개인화 등급가는 fetch). consume-once(el.remove).
+  // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — "로드되자마자 상품이 안 떠"): worker SSR 주입
+  //   (__SSR_INITIAL_WHOLESALE__) 즉시 소비. 기본 파라미터에서만.
+  //   - guest: initialData — fetch 자체가 없음 (0-RTT 완결)
+  //   - 로그인: placeholderData — 카드(사진/이름/재고)는 즉시 그리고, 등급가 fetch 가 도착하면 가격 교체.
+  //     (가격 영역은 isPlaceholderData 동안 스켈레톤 — 잠금 칩 오표시 방지)
   const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
     initialData: () => {
-      if (!isDefaultCatalog || typeof document === 'undefined') return undefined
+      if (!isDefaultCatalog) return undefined
       if (typeof window !== 'undefined' && localStorage.getItem('seller_token')) return undefined // 로그인 = 등급가 fetch 필수
-      const el = document.getElementById('__SSR_INITIAL_WHOLESALE__')
-      if (!el?.textContent) return undefined
-      try {
-        const parsed = JSON.parse(el.textContent) as { success?: boolean; items?: CatalogItem[] }
-        el.remove()
-        return parsed?.success ? ((parsed.items || []) as CatalogItem[]) : undefined
-      } catch { return undefined }
+      return readSsrWholesale() ?? undefined
+    },
+    placeholderData: () => {
+      if (!isDefaultCatalog) return undefined
+      if (typeof window === 'undefined' || !localStorage.getItem('seller_token')) return undefined
+      return readSsrWholesale() ?? undefined
     },
     queryFn: () => {
       const params = new URLSearchParams()
@@ -1439,7 +1464,7 @@ export default function WholesaleCatalogPage() {
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
-                  {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} />)}
+                  {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
                 </div>
               )}
             </div>

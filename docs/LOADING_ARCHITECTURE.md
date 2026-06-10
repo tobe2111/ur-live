@@ -50,3 +50,23 @@
 2. **라이브 송출 검토** — 미감사 영역(WebRTC/OME/YouTube).
 
 **금지**: KV 기반 캐시 활성화(useKv:true), per-request KV write, edge TTL 약화. 모두 비용/회귀 직결.
+
+## 🏁 첫 페인트 표준 (First-Paint Doctrine — 2026-06-10 확정)
+
+**원칙: 모든 사용자 대면 페이지는 "로드되자마자 콘텐츠가 보여야" 한다. 스피너만 보이는 첫 화면 금지.**
+
+페이지 유형별 필수 적용 (새 페이지 만들 때 이 표 따라갈 것):
+
+| 상황 | 표준 장치 | 예 |
+|---|---|---|
+| hard-load (URL 직접 진입) | worker SSR 슬롯 (`__SSR_INITIAL_<SLOT>__`) + HOT_PATHS prewarm | 홈/vouchers/browse/group-buy/wholesale/상세/셀러/큐레이터 |
+| SPA 탭 전환 | RQ gcTime 캐시 + pointerdown/hover 데이터 워밍 + 모듈 메모리 캐시 | 동네딜(warmGroupBuyList)/링크샵(warmCurator) |
+| 개인화 데이터(가격/잔액) | **공유 데이터로 골격 즉시(placeholderData) + 개인화 값만 fetch 후 교체** — 개인화를 이유로 전체를 기다리게 하지 말 것 | 도매 카탈로그 (guest SSR → 로그인 placeholder + 가격 스켈레톤) |
+| 서버 응답 | 독립 쿼리 Promise.all / 존재체크·ensure 메모이즈 / 같은-키 응답은 등급·세그먼트 단위 엣지캐시 | /api/wholesale/catalog (9 RTT→1~3) |
+| 이미지 | above-fold 4개 eager+fetchPriority high, 나머지 lazy + dominant_color placeholder | 모든 카드 그리드 |
+| 부가 데이터 | 첫 페인트와 경쟁 금지 — requestIdleCallback 이후 enabled (헤더 필수값만 즉시) | 도매 월통계/재주문 레일 |
+| 다음 행동 | idle 에 다음 페이지 chunk + 상세 데이터 prefetch | 카드 hover/viewport prefetch |
+
+**위반 신호**: 페이지 진입 → 스피너/스켈레톤만 1초+ → 콘텐츠. 이러면 위 표에서 빠진 장치를 찾을 것.
+**현재 준수**: 홈/교환권/쇼핑/동네딜/라이브/상세 3종/셀러/큐레이터/도매 카탈로그.
+**잔여 (가벼운 페이지 — 후순위)**: /wholesale/board(공지 prewarm 적용)·wishlist·딜내역 — 단일 목록이라 1-fetch, 필요 시 동일 표준 적용.

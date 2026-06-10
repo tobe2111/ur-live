@@ -64,6 +64,7 @@ const HOT_PATHS: readonly string[] = [
   '/api/wholesale/catalog',
   '/api/wholesale/banners',
   '/api/wholesale/mall',
+  '/api/wholesale/board/posts?type=notice',
   // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
   //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
   '/api/group-buy/products?status=active&category=meal_voucher',
