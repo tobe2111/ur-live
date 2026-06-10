@@ -2708,7 +2708,19 @@
     "cancelRefund": "주문 취소·환불",
     "confirmRefund": "이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.",
     "refundDone": "취소·환불 처리되었습니다",
-    "refundFailed": "환불 처리에 실패했습니다"
+    "refundFailed": "환불 처리에 실패했습니다",
+    "newSteps": {
+      "title": "시작해 볼까요?",
+      "subtitle": "세 단계만 마치면 판매를 시작할 수 있어요",
+      "step1": "사업자·정산 정보 입력",
+      "step1Desc": "정산 받을 계좌와 사업자 정보를 등록해요",
+      "step2": "첫 상품 등록",
+      "step2Desc": "판매할 상품을 올려요",
+      "step2Store": "첫 공구권 발행",
+      "step2StoreDesc": "우리 매장 공동구매 교환권을 만들어요",
+      "step3": "운영 가이드 읽기",
+      "step3Desc": "주문 처리부터 정산까지 한눈에"
+    }
   },
   "admin": {
     "login": {

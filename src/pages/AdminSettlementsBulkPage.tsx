@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
+import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -43,6 +44,7 @@ export default function AdminSettlementsBulkPage() {
 
   return (
     <AdminLayout title={t('admin.pages.settlementsBulk')}>
+      <AdminFinanceTabs />
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.settlementsBulk')}

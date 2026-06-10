@@ -2708,7 +2708,19 @@
     "cancelRefund": "注文キャンセル·返金",
     "confirmRefund": "この注文をキャンセルして返金しますか？元に戻せません。",
     "refundDone": "キャンセル·返金が完了しました",
-    "refundFailed": "返金処理に失敗しました"
+    "refundFailed": "返金処理に失敗しました",
+    "newSteps": {
+      "title": "始めましょう",
+      "subtitle": "3つのステップで販売を開始できます",
+      "step1": "事業者・精算情報を入力",
+      "step1Desc": "精算口座と事業者情報を登録します",
+      "step2": "最初の商品を登録",
+      "step2Desc": "販売する商品を登録します",
+      "step2Store": "最初の共同購入券を発行",
+      "step2StoreDesc": "店舗の共同購入クーポンを作成します",
+      "step3": "運営ガイドを読む",
+      "step3Desc": "注文処理から精算まで一目で"
+    }
   },
   "admin": {
     "login": {

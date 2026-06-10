@@ -2037,7 +2037,19 @@
     "cancelRefund": "Annuler et rembourser",
     "confirmRefund": "Annuler cette commande et rembourser le paiement ? Irréversible.",
     "refundDone": "Commande annulée et remboursée",
-    "refundFailed": "Échec du remboursement"
+    "refundFailed": "Échec du remboursement",
+    "newSteps": {
+      "title": "On commence ?",
+      "subtitle": "Trois étapes pour commencer à vendre",
+      "step1": "Infos entreprise et règlement",
+      "step1Desc": "Enregistrez votre compte de règlement et vos infos",
+      "step2": "Ajoutez votre premier produit",
+      "step2Desc": "Mettez un produit en vente",
+      "step2Store": "Émettez votre premier bon d’achat groupé",
+      "step2StoreDesc": "Créez un bon d’achat groupé pour votre boutique",
+      "step3": "Lisez le guide d’exploitation",
+      "step3Desc": "Des commandes au règlement en un coup d’œil"
+    }
   },
   "admin": {
     "login": {

@@ -6,6 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { isSellerAuthenticated, getSellerToken } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import SellerProductTabs from '@/components/seller/SellerProductTabs'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import { Package, Plus, Trash2, Loader2, Pencil, ToggleLeft, ToggleRight, X, CheckCircle2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -105,6 +106,7 @@ export default function SellerBundlesPage() {
 
   return (
     <SellerLayout title={t('seller.nav.bundles', '번들 상품')}>
+      <SellerProductTabs />
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.nav.bundles', '번들 상품')}

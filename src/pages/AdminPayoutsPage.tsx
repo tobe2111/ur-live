@@ -12,6 +12,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
@@ -125,6 +126,7 @@ export default function AdminPayoutsPage() {
 
   return (
     <AdminLayout title="통합 정산">
+      <AdminFinanceTabs />
       <DashboardPageHeader
         icon={<Wallet className="w-5 h-5" />}
         title="통합 정산 (Payouts)"

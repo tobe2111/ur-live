@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useSellerMode } from '@/hooks/useSellerMode'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
 import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
@@ -24,6 +25,7 @@ import { formatNumber } from '@/utils/format'
 import { swallow } from '@/shared/utils/swallow'
 import LazyChart from './seller-page/LazyChart'
 import MonthlyGoalCard from './seller-page/MonthlyGoalCard'
+import NewSellerSteps from './seller-page/NewSellerSteps'
 import ConversionFunnel from './seller-page/ConversionFunnel'
 import QuickActions from './seller-page/QuickActions'
 import AlertsGrid from './seller-page/AlertsGrid'
@@ -443,7 +445,9 @@ export default function SellerPage() {
           </button>
         ))}
       </div>
-      {isInfluencer && (
+      {/* 🏭 라이브 잠정 중단 동안 송출 버튼 숨김 — nav 는 mode 필터로 숨겨졌는데
+          이 버튼만 역할(isInfluencer) 게이트라 도달불가 페이지로 유도하던 잔재. 재개 시 자동 복원. */}
+      {!LIVE_COMMERCE_SUSPENDED && isInfluencer && (
         <button
           onClick={() => navigate('/seller/live-broadcast')}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
@@ -598,6 +602,11 @@ export default function SellerPage() {
               </div>
             ))}
           </div>
+
+          {/* 🧭 2026-06-09: 신규 셀러(상품 0·주문 0) 3단계 시작 안내 — 데이터 생기면 자동 소멸 */}
+          {(stats.totalProducts ?? -1) === 0 && (stats.totalOrders || 0) === 0 && (
+            <NewSellerSteps isStoreOwner={!isInfluencer} />
+          )}
 
           {/* 🛡️ 2026-05-20: 큰 CTA 카드 그리드 (사용자 요청 — 작은 link 보다 명확) */}
           <PrimaryActions

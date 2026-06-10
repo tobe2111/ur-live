@@ -2708,7 +2708,19 @@
     "cancelRefund": "Cancel & Refund",
     "confirmRefund": "Cancel this order and refund the payment? This cannot be undone.",
     "refundDone": "Order cancelled and refunded",
-    "refundFailed": "Refund failed"
+    "refundFailed": "Refund failed",
+    "newSteps": {
+      "title": "Ready to start?",
+      "subtitle": "Complete three steps to start selling",
+      "step1": "Add business & payout info",
+      "step1Desc": "Register your payout account and business details",
+      "step2": "Add your first product",
+      "step2Desc": "List a product to sell",
+      "step2Store": "Issue your first group-buy voucher",
+      "step2StoreDesc": "Create a group-buy voucher for your store",
+      "step3": "Read the operations guide",
+      "step3Desc": "From orders to settlement at a glance"
+    }
   },
   "admin": {
     "login": {

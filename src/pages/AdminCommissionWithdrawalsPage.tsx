@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Wallet, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { formatWon } from '@/utils/format'
@@ -98,6 +99,7 @@ export default function AdminCommissionWithdrawalsPage() {
 
   return (
     <AdminLayout title="추천 Commission 출금 관리">
+      <AdminFinanceTabs />
       <DashboardPageHeader
         icon={<Wallet className="w-5 h-5" />}
         title="추천 Commission 출금 관리"

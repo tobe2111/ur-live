@@ -37,6 +37,8 @@ const NAV_GROUPS: {
     highlight?: boolean
     hideFor?: SellerType[]
     mode?: SellerMode
+    /** 🧭 탭으로 묶인 형제 라우트 — 이 경로들에서도 본 항목을 활성 표시. */
+    also?: string[]
   }[]
   mode?: SellerMode
 }[] = [
@@ -51,11 +53,11 @@ const NAV_GROUPS: {
     // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
     labelKey: 'seller.layout.products',
     items: [
-      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' },
+      // 🧭 2026-06-09 IA 정리: 묶음/재고는 상품 페이지 상단 SellerProductTabs 로 이동 — nav 1항목.
+      //   라우트는 보존(딥링크 안전), also 로 탭 형제 라우트에서도 활성 표시.
+      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common', also: ['/seller/bundles', '/seller/inventory'] },
       // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
       { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' },
-      { path: '/seller/bundles', labelKey: 'seller.nav.bundles', icon: Package, mode: 'common' },
-      { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3, mode: 'common' },
     ],
   },
   {
@@ -211,7 +213,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     setLangOpen(false)
   }
 
-  function isActive(path: string, exact?: boolean) {
+  function isActive(path: string, exact?: boolean, also?: string[]) {
+    if (also?.some((p) => location.pathname.startsWith(p))) return true
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
@@ -316,7 +319,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
               const exact = (rest as any).exact as boolean | undefined
               const highlight = (rest as any).highlight as boolean | undefined
-              const active = isActive(path, exact)
+              const active = isActive(path, exact, (rest as any).also as string[] | undefined)
               const label = t(labelKey)
               return (
                 <Link

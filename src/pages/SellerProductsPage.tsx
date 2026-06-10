@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
+import SellerProductTabs from '@/components/seller/SellerProductTabs'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
 import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
 import { getSellerId } from '@/lib/seller-auth'
@@ -135,6 +136,7 @@ export default function SellerProductsPage() {
 
   return (
     <SellerLayout title={t('seller.nav.products')}>
+      <SellerProductTabs />
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 127: 디자인 시스템 적용 */}
         <DashboardPageHeader

@@ -13,6 +13,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type Role = 'seller' | 'distributor' | 'supplier'
 type StatusFilter = 'all' | 'approved' | 'pending'
@@ -146,11 +147,12 @@ export default function AdminBulkEmailPage() {
         toast.error(t('admin.bulkEmail.noRecipients', { defaultValue: '수신자가 없습니다' }))
         return
       }
-      const ok = window.confirm(
-        t('admin.bulkEmail.confirmSend', {
+      const ok = await confirmDialog({
+        message: t('admin.bulkEmail.confirmSend', {
           defaultValue: `${formatNumber(n)}명에게 단체메일을 발송합니다. 진행할까요?`,
         }) as string,
-      )
+        danger: true, // 대량 발송 = 회수 불가 외부 액션
+      })
       if (!ok) return
     }
 

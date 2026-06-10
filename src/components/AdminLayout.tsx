@@ -5,6 +5,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
+  ChevronDown, Wrench, RotateCcw,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -18,11 +19,15 @@ interface NavItem {
   label: string
   icon: LucideIcon
   exact?: boolean
+  /** 🧭 탭으로 묶인 형제 라우트 — 이 경로들에서도 본 항목을 활성 표시. */
+  also?: string[]
 }
 
 interface NavGroup {
   title: string
   items: NavItem[]
+  /** 🔧 진단성 그룹 등 평소 접어둘 그룹 (사용자 토글이 항상 우선). */
+  defaultCollapsed?: boolean
 }
 
 // 🏭 2026-06-04 (사용자 결정): 3개 사업라인 중심 IA — 도매몰 / 오프라인 공구 / 온라인 쇼핑 + 공통.
@@ -79,7 +84,11 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/products',         label: '상품 관리',     icon: Package },
       { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
+      // 🧭 2026-06-09 IA 정리: nav 미노출 고아 라우트 등재 — 반품/교환권 추적은 주문 운영 실무 페이지.
+      { path: '/admin/returns',          label: '반품 검수',     icon: RotateCcw },
       { path: '/admin/kt-alpha',         label: 'KT Alpha (교환권)', icon: Gift },
+      { path: '/admin/voucher-orders',   label: 'KT 발송 추적',  icon: Send },
+      { path: '/admin/voucher-transactions', label: '교환권 거래', icon: Ticket },
       { path: '/admin/banners',          label: '배너 관리',     icon: Image },
     ],
   },
@@ -88,25 +97,33 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/users',           label: '유저 관리',     icon: Users },
       { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
+      { path: '/admin/agency-creator-approval', label: '에이전시 셀러 심사', icon: UserCheck },
       { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
       { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
     ],
   },
   {
-    title: '정산/재무',
+    title: '💰 정산/재무',
     items: [
-      { path: '/admin/settlement',       label: '정산',          icon: DollarSign },
-      { path: '/admin/settlements-bulk', label: '정산 일괄',     icon: CreditCard },
-      { path: '/admin/payouts',          label: '💸 통합 정산 (ledger)', icon: Wallet },
-      { path: '/admin/commission-withdrawals', label: '추천 출금 승인', icon: DollarSign },
+      // 🧭 2026-06-09 IA 정리: 정산 4페이지(개별/일괄/Ledger/추천출금)는 페이지 상단 AdminFinanceTabs 로
+      //   상호 이동 — nav 는 진입점 1개만. 라우트는 전부 보존(북마크 안전).
+      { path: '/admin/settlement',       label: '정산 센터',     icon: DollarSign, also: ['/admin/settlements-bulk', '/admin/payouts', '/admin/commission-withdrawals'] },
+      // 돈 관련 고아 라우트를 재무 그룹으로 — URL 직접 입력 없이 도달 가능하게.
+      { path: '/admin/influencer-payouts', label: '인플루언서 송금', icon: Wallet },
+      { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
+      { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
+      { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
     ],
   },
   {
     title: '검증/CS',
     items: [
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
+      { path: '/admin/influencer-disputes', label: '인플루언서 분쟁', icon: AlertOctagon },
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
+      { path: '/admin/kakao-reviews',    label: '카카오맵 후기 검증', icon: MessageSquare },
+      { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },
     ],
   },
   {
@@ -115,6 +132,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
       { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
+      { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },
     ],
   },
   {
@@ -138,8 +156,21 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
       { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
       { path: '/admin/sample-requests',   label: '샘플 신청',     icon: ClipboardList },
-      { path: '/admin/kv-monitoring',     label: 'KV 모니터링',   icon: Monitor },
       { path: '/admin/cafe24',            label: 'Cafe24 연동',   icon: Store },
+    ],
+  },
+  {
+    // 🔧 2026-06-09 IA 정리: 진단/디버그성 고아 라우트 — 평소엔 접어두는 개발자 도구 그룹.
+    title: '🔧 개발자 도구',
+    defaultCollapsed: true,
+    items: [
+      { path: '/admin/system-monitoring', label: '시스템 모니터링', icon: Monitor },
+      { path: '/admin/kv-monitoring',     label: 'KV 모니터링',   icon: Monitor },
+      { path: '/admin/health',            label: '헬스 체크',     icon: Shield },
+      { path: '/admin/errors',            label: '에러 로그',     icon: AlertTriangle },
+      { path: '/admin/env-check',         label: 'ENV 점검',      icon: Settings },
+      { path: '/admin/kakao-test',        label: '카카오 연동 테스트', icon: Wrench },
+      { path: '/admin/youtube-quota',     label: 'YouTube 쿼터',  icon: Play },
     ],
   },
 ]
@@ -165,6 +196,24 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const location = useLocation()
   const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // 🧭 2026-06-09 IA 정리: nav 그룹 접기/펼치기 — 가시 항목 60+개 과부하 해소.
+  //   localStorage 영속(세션 간 유지). 활성 페이지가 속한 그룹은 접혀 있어도 강제 펼침(길 잃지 않게).
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('admin_nav_collapsed_v1') || '{}') as Record<string, boolean>
+      const init: Record<string, boolean> = {}
+      for (const g of VISIBLE_NAV_GROUPS) init[g.title] = saved[g.title] ?? !!g.defaultCollapsed
+      return init
+    } catch { return {} }
+  })
+  const toggleGroup = (title: string) => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [title]: !prev[title] }
+      try { localStorage.setItem('admin_nav_collapsed_v1', JSON.stringify(next)) } catch { /* quota */ }
+      return next
+    })
+  }
 
   // 🛡️ 2026-04-30: admin 세션 만료 5분 전 자동 refresh
   useTokenAutoRefresh('admin')
@@ -195,7 +244,8 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     navigate('/admin/login')
   }
 
-  function isActive(path: string, exact?: boolean) {
+  function isActive(path: string, exact?: boolean, also?: string[]) {
+    if (also?.some((p) => location.pathname.startsWith(p))) return true
     return exact ? location.pathname === path : location.pathname.startsWith(path)
   }
 
@@ -249,18 +299,28 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
         </div>
       </form>
 
-      {/* Grouped navigation */}
+      {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {VISIBLE_NAV_GROUPS.map((group) => (
+        {VISIBLE_NAV_GROUPS.map((group) => {
+          const hasActive = group.items.some((it) => isActive(it.path, it.exact, it.also))
+          const collapsed = !!collapsedGroups[group.title] && !hasActive
+          return (
           <div key={group.title} className="mt-3 first:mt-1">
-            <div
-              className="px-4 py-1.5 font-extrabold uppercase text-white/30"
+            <button
+              type="button"
+              onClick={() => toggleGroup(group.title)}
+              aria-expanded={!collapsed}
+              className="w-full flex items-center justify-between px-4 py-1.5 font-extrabold uppercase text-white/30 hover:text-white/60 transition-colors"
               style={{ fontSize: '9px', letterSpacing: '0.12em' }}
             >
-              {group.title}
-            </div>
-            {group.items.map(({ path, label, icon: Icon, exact }) => {
-              const active = isActive(path, exact)
+              <span>{group.title}</span>
+              <span className="flex items-center gap-1">
+                {collapsed && <span className="font-bold normal-case tracking-normal text-white/25">{group.items.length}</span>}
+                <ChevronDown size={11} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+              </span>
+            </button>
+            {!collapsed && group.items.map(({ path, label, icon: Icon, exact, also }) => {
+              const active = isActive(path, exact, also)
               return (
                 <Link
                   key={path}
@@ -285,7 +345,8 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
               )
             })}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Bottom user profile */}

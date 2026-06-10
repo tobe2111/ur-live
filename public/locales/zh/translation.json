@@ -2708,7 +2708,19 @@
     "cancelRefund": "取消订单·退款",
     "confirmRefund": "取消该订单并退款？此操作无法撤销。",
     "refundDone": "已取消并退款",
-    "refundFailed": "退款处理失败"
+    "refundFailed": "退款处理失败",
+    "newSteps": {
+      "title": "开始吧",
+      "subtitle": "完成三个步骤即可开始销售",
+      "step1": "填写商家与结算信息",
+      "step1Desc": "登记结算账户和商家信息",
+      "step2": "上架首个商品",
+      "step2Desc": "登记要销售的商品",
+      "step2Store": "发行首张团购券",
+      "step2StoreDesc": "为您的店铺创建团购兑换券",
+      "step3": "阅读运营指南",
+      "step3Desc": "从订单处理到结算一目了然"
+    }
   },
   "admin": {
     "login": {

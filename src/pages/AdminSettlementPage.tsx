@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -157,6 +158,7 @@ export default function AdminSettlementPage() {
 
   return (
     <AdminLayout title={t('admin.pages.settlement')}>
+      <AdminFinanceTabs />
       {/* 정산 되돌리기 사유 입력 모달 */}
       {revertModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">

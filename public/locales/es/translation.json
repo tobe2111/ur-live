@@ -2037,7 +2037,19 @@
     "cancelRefund": "Cancelar y reembolsar",
     "confirmRefund": "¿Cancelar este pedido y reembolsar el pago? No se puede deshacer.",
     "refundDone": "Pedido cancelado y reembolsado",
-    "refundFailed": "Error al reembolsar"
+    "refundFailed": "Error al reembolsar",
+    "newSteps": {
+      "title": "¿Empezamos?",
+      "subtitle": "Completa tres pasos para empezar a vender",
+      "step1": "Datos de negocio y liquidación",
+      "step1Desc": "Registra tu cuenta de cobro y datos del negocio",
+      "step2": "Registra tu primer producto",
+      "step2Desc": "Publica un producto para vender",
+      "step2Store": "Emite tu primer cupón de compra grupal",
+      "step2StoreDesc": "Crea un cupón de compra grupal para tu tienda",
+      "step3": "Lee la guía de operación",
+      "step3Desc": "De pedidos a liquidación de un vistazo"
+    }
   },
   "admin": {
     "login": {
