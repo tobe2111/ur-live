@@ -1,22 +1,21 @@
 /**
  * 🧭 2026-06-10 (사용자 결정 — 홈 재구성): 일반상품 6개 레일 — 교환권/동네딜 아래.
  * 뷰포트 600px 선행 진입 시에만 fetch (홈 첫 페인트/LCP 불변). 쇼핑 전체 탐색은 /browse.
+ * 🎨 2026-06-10 (사용자 요청): 카드는 쇼핑 페이지(BrowseProductCard) 그대로 —
+ *   할인%·취소선 원가·별점·리뷰 수·구매 수까지 동일. 별도 미니카드 사용 금지.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ShoppingBag, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
-import { formatNumber } from '@/utils/format'
-import HomeMiniCard from './HomeMiniCard'
-
-type Item = { id: number; name: string; price: number; image_url?: string | null; dominant_color?: string | null }
+import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+import type { Product } from '@/pages/browse/types'
 
 export default function HomeProductsRail() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
-  const [items, setItems] = useState<Item[] | null>(null)
+  const [items, setItems] = useState<Product[] | null>(null)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
@@ -50,23 +49,16 @@ export default function HomeProductsRail() {
       </div>
 
       {items === null ? (
-        <div className="grid grid-cols-3 gap-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? null : (
-        <div className="grid grid-cols-3 gap-2">
+        /* /browse 본 페이지와 동일 그리드 (2열 기본) — 카드 컴포넌트 자체도 동일 */
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-2 gap-y-2.5 items-stretch">
           {items.map((p) => (
-            <HomeMiniCard
-              key={p.id}
-              id={p.id}
-              imageUrl={p.image_url}
-              title={p.name}
-              priceText={`${formatNumber(p.price)}원`}
-              dominantColor={p.dominant_color}
-              onClick={() => navigate(`/products/${p.id}`)}
-            />
+            <BrowseProductCard key={p.id} product={p} aboveFold={false} />
           ))}
         </div>
       )}
