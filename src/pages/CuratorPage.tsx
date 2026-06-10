@@ -430,10 +430,12 @@ function InfoTab({ curator, pinCount, totalClicks, isOwner }: { curator: Curator
 function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher' }) {
   const { t } = useTranslation()
   const browseLink = emptyType === 'voucher' ? '/vouchers' : '/browse'
-  const browseLabel = emptyType === 'voucher' ? '교환권 둘러보기' : '상품 둘러보기'
+  const browseLabel = emptyType === 'voucher'
+    ? t('curator.browseVouchers', { defaultValue: '교환권 둘러보기' })
+    : t('curator.browseProducts', { defaultValue: '상품 둘러보기' })
   const emoji = emptyType === 'voucher' ? '🎁' : '📌'
-  const emptyMessage = emptyType === 'shop' ? '아직 담은 상품이 없어요'
-    : emptyType === 'voucher' ? '아직 담은 교환권이 없어요'
+  const emptyMessage = emptyType === 'shop' ? t('curator.emptyShop', { defaultValue: '아직 담은 상품이 없어요' })
+    : emptyType === 'voucher' ? t('curator.emptyVoucher', { defaultValue: '아직 담은 교환권이 없어요' })
     : t('curator.emptyTitle', { defaultValue: '아직 핀이 없어요' })
   return (
     <div className="max-w-3xl mx-auto px-4 py-16 text-center">

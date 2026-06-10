@@ -26,6 +26,7 @@ import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortO
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
+import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
@@ -438,6 +439,24 @@ export default function GroupBuyListPage() {
     return result
   }, [items, category, sortBy, searchQuery, regionKey, districtKey])
 
+  // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 카드 로딩 체감): 점진 렌더.
+  //   limit=200 데이터를 한 번에 200카드 마운트 → 중저가 폰 TBT/버벅임(데이터는 빨라졌지만 렌더가 병목).
+  //   첫 30개만 마운트 → 하단 sentinel 600px 선행 감지로 +30씩 — 스크롤 도달 전에 미리 붙어 끊김 없음.
+  //   필터/탭/검색 변경 시 30으로 리셋. 데이터는 이미 메모리에 있어 네트워크 0.
+  const GB_PAGE = 30
+  const [visibleCount, setVisibleCount] = useState(GB_PAGE)
+  useEffect(() => { setVisibleCount(GB_PAGE) }, [category, sortBy, searchQuery, regionKey, districtKey, mainTab])
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const ob = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setVisibleCount((c) => c + GB_PAGE)
+    }, { rootMargin: '600px' })
+    ob.observe(el)
+    return () => ob.disconnect()
+  }, [loading, mainTab])
+
   // 🛡️ 2026-06-04: 큐레이션 3종 — filtered 변경 시에만 재계산(매 렌더/스크롤 재계산 방지).
   const curation = useMemo(() => {
     const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)
@@ -803,17 +822,20 @@ export default function GroupBuyListPage() {
                   >
                     <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '내 동네 공구 제안' })}
                   </button>
+                  {/* 🧭 2026-06-10: 쇼핑 잠정 숨김 동안엔 숨겨진 표면으로 보내지 않음 — 홈(교환권)으로 */}
                   <button
-                    onClick={() => navigate('/browse')}
+                    onClick={() => navigate(SHOPPING_TAB_HIDDEN ? '/' : '/browse')}
                     className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
                   >
-                    {t('groupBuy.ctaShop', { defaultValue: '쇼핑하러 가기' })}
+                    {SHOPPING_TAB_HIDDEN
+                      ? t('groupBuy.ctaVouchers', { defaultValue: '교환권 보러가기' })
+                      : t('groupBuy.ctaShop', { defaultValue: '쇼핑하러 가기' })}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
-                {filtered.map((p, idx) => (
+                {filtered.slice(0, visibleCount).map((p, idx) => (
                   <GroupBuyGridCard
                     key={p.id}
                     p={p}
