@@ -178,6 +178,9 @@ curatorRoutes.get('/:handle', async (c) => {
         name: user.name,
         bio: user.bio,
         profile_image: user.profile_image,
+        // 🛡️ 2026-06-10 (사용자 신고 — 배경이미지 저장 안 됨): SELECT 는 하면서 응답에서 누락되던 핵심 버그.
+        //   CuratorHeader 가 curator.banner_url 을 읽는데 항상 undefined → 저장돼도 절대 표시 안 됐음.
+        banner_url: user.banner_url ?? null,
         theme: user.linkshop_theme || 'dark',
       },
       pins: pins ?? [],
@@ -551,6 +554,20 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     await c.env.DB.prepare(
       `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
     ).bind(...binds).run()
+
+    // 🛡️ 2026-06-10 (사용자 신고 — 저장 후 새로고침하면 옛 모습): GET /api/curator/:handle 은
+    //   edge 900s 캐시(로딩 잠금 — TTL 약화 금지). 대신 저장 성공 시 본인 공개 응답을 현재 colo 에서
+    //   purge(best-effort) → 같은 지역 재방문/SSR inject 이 즉시 신선본. 실패해도 저장은 이미 완료.
+    try {
+      const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ handle: string | null }>()
+      if (me?.handle) {
+        const url = new URL(c.req.url)
+        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>
+        c.executionCtx.waitUntil(purge.then(() => undefined))
+      }
+    } catch { /* best-effort — purge 실패해도 저장 완료 */ }
 
     return c.json({ success: true })
   } catch (err) {

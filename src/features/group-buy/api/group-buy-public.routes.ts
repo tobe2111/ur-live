@@ -17,6 +17,7 @@ import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
+import { safeError } from '@/worker/utils/safe-error'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
@@ -265,6 +266,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
     }
     const id = idNum
+    // 🛡️ 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 특정 상품 상세 500): 핸들러 전체 try/catch.
+    //   이 라우트만 무가드(타 라우트는 전부 catch) → 마지막 fallback SELECT 가 던지면 원인 안 보이는 500.
+    //   실제 에러를 콘솔(wrangler tail/Logpush)에 남기고 generic 응답 — 캐시/tiers parse 로직 불변.
+    try {
 
     // 🛡️ 2026-05-23 v2: SSOT product-flow.ts 와 정합 + 존재하는 컬럼만 사용.
     //   v1 fix 가 존재하지 않는 group_buy_active 컬럼 참조 → 500.
@@ -343,6 +348,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         next_tier_remaining: null,
       },
     })
+    } catch (err) {
+      console.error('[group-buy-detail] product', id, err)
+      return safeError(c, err, '상품 조회 중 오류가 발생했습니다', '[group-buy-detail]')
+    }
   })
 
   // ── GET /live-ticker — 전체 공구 최근 참여 (SNS 스타일 ticker) ──

@@ -53,24 +53,21 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     )
   }
 
+  // 🎨 2026-06-10 (사용자 요청 — ➕ 시트 디자인 통일): 떠 있는 아이콘+문구 블록(라이브 잔재 Radio) 제거,
+  //   '동네 공구 제안' 카드와 같은 그라데이션 카드 리스트로 통일. 동작 동일(경로 불변).
   return (
-    <div className="space-y-4">
-      <div className="text-center py-2">
-        <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
-          <Radio className="w-7 h-7 text-red-500" />
-        </div>
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-          {t('bottomNav.sellerNoToken', { defaultValue: '지금 카카오 계정에 셀러 권한을 추가합니다' })}<br />
-          <span className="text-gray-500 text-xs">{t('bottomNav.sellerNoTokenSub', { defaultValue: '별도 가입·로그인 없이 한 번에' })}</span>
-        </p>
-      </div>
-
+    <div className="space-y-3">
       <button
         onClick={() => { onDone(); navigate('/seller/register/business?from=kakao') }}
-        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
       >
-        <UserPlus className="w-5 h-5" />
-        {t('bottomNav.startAsSeller', { defaultValue: '셀러로 시작하기' })}
+        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+          <UserPlus className="w-6 h-6 text-white" />
+        </div>
+        <div className="text-left flex-1">
+          <p className="text-[15px] font-bold text-white">{t('bottomNav.startAsSeller', { defaultValue: '셀러로 시작하기' })}</p>
+          <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.sellerNoTokenSub', { defaultValue: '카카오 계정으로 가입·로그인 없이 한 번에' })}</p>
+        </div>
       </button>
 
       {!hasAgencyToken && (
