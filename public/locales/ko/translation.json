@@ -6009,13 +6009,16 @@
     "shopEntryTitle": "일반 상품 쇼핑",
     "shopEntryDesc": "배송 상품 둘러보기 — 도매 직공급 상품 포함",
     "shopEntryCta": "보러가기 →",
-    "allVouchers": "교환권 전체보기",
+    "allVouchers": "전체보기",
     "dongneTitle": "우리 동네딜",
     "dongneMore": "더보기",
     "dongneEmptyTitle": "아직 우리 동네 공구가 없어요",
     "dongneEmptyDesc": "원하는 가게를 제안하면 모아서 열어드려요",
     "dongnePropose": "제안하기 →",
-    "tagline": "우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️"
+    "tagline": "우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️",
+    "moreVouchers": "교환권 더보기",
+    "shopRailTitle": "일반 상품",
+    "shopRailMore": "쇼핑 전체보기"
   },
   "groupBuy": {
     "tabSeller": "동네 공구",

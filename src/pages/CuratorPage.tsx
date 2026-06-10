@@ -171,7 +171,7 @@ export default function CuratorPage() {
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '😢 링크샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
-        <Link to="/" className="px-6 py-3 bg-pink-500 rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
+        <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
     )
   }
@@ -203,7 +203,7 @@ export default function CuratorPage() {
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
         {/* 🛡️ 2026-05-27 (셀러 페이지 통일): owner sticky 안내 배너 — 셀러 페이지와 같은 패턴. */}
         {isOwner && (
-          <div className="sticky top-0 z-30 bg-pink-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
+          <div className="sticky top-0 z-30 bg-gray-900 dark:bg-white text-white dark:text-[#020202] px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
             <span>✏️ 내 링크샵 — 이름/소개/이미지/배경 클릭해 바로 편집</span>
             <Link
               to="/u/me/earnings"
@@ -267,7 +267,7 @@ export default function CuratorPage() {
             <div className="max-w-3xl mx-auto px-4">
               <Link
                 to="/u/me"
-                className="pointer-events-auto flex items-center justify-center gap-2 h-12 rounded-2xl bg-pink-500 text-white text-[14px] font-bold shadow-lg active:scale-[0.98] transition-transform"
+                className="pointer-events-auto flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold shadow-lg active:scale-[0.98] transition-transform"
               >
                 ✨ {t('curator.makeMine', { defaultValue: '나도 내 링크샵 만들기 — 추천하면 적립' })}
               </Link>
@@ -421,7 +421,7 @@ function HandleEditor({ handle }: { handle: string }) {
     return (
       <dd className="text-white font-mono flex items-center gap-2">
         @{handle}
-        <button onClick={() => { setEditing(true); setVal(handle); setStatus('idle'); setMsg('') }} className="text-[11px] text-pink-400 font-bold font-sans">변경</button>
+        <button onClick={() => { setEditing(true); setVal(handle); setStatus('idle'); setMsg('') }} className="text-[11px] text-gray-900 dark:text-white font-bold font-sans">변경</button>
       </dd>
     )
   }
@@ -430,8 +430,8 @@ function HandleEditor({ handle }: { handle: string }) {
       <div className="flex items-center gap-1">
         <span className="text-white/50 font-mono text-sm">@</span>
         <input value={val} onChange={e => setVal(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())} maxLength={30}
-          className="w-28 bg-transparent border-b border-gray-500 text-white font-mono text-sm focus:outline-none focus:border-pink-400" autoFocus />
-        <button onClick={save} disabled={status !== 'ok'} className="text-[12px] text-pink-400 font-bold disabled:opacity-40">{status === 'saving' ? '저장 중' : '저장'}</button>
+          className="w-28 bg-transparent border-b border-gray-500 text-white font-mono text-sm focus:outline-none focus:border-gray-900 dark:border-white" autoFocus />
+        <button onClick={save} disabled={status !== 'ok'} className="text-[12px] text-gray-900 dark:text-white font-bold disabled:opacity-40">{status === 'saving' ? '저장 중' : '저장'}</button>
         <button onClick={() => { setEditing(false); setVal(handle); setStatus('idle') }} className="text-[12px] text-gray-500">취소</button>
       </div>
       {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>{msg}</span>}
@@ -467,14 +467,14 @@ function InfoTab({ curator, pinCount, totalClicks, isOwner }: { curator: Curator
         </section>
       )}
 
-      <section className="bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-xl p-5 border border-pink-500/30">
+      <section className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 rounded-xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">🔗 친구에게 추천</h3>
         <p className="text-xs text-gray-300 mb-3">
           이 페이지에서 친구가 상품을 구매하면 큐레이터에게 적립이 돌아갑니다.
         </p>
         <Link
           to="/host/new"
-          className="block text-center py-2 bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold rounded-lg"
+          className="block text-center py-2 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#020202] text-xs font-bold rounded-lg"
         >
           나도 링크샵 만들기
         </Link>
@@ -504,7 +504,7 @@ function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner
       </p>
       <Link
         to={browseLink}
-        className="inline-block px-6 py-3 bg-pink-500 hover:bg-pink-600 rounded-xl font-bold text-white transition-colors"
+        className="inline-block px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 rounded-xl font-bold text-white transition-colors"
       >
         {isOwner ? browseLabel : t('curator.exploreShop', { defaultValue: '쇼핑 둘러보기' })}
       </Link>

@@ -41,7 +41,7 @@ export default function CuratorTabs({ tab, onChange, pinCount, shopCount = 0, vo
             >
               {tInfo.label}
               {tInfo.badge && <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({tInfo.badge})</span>}
-              {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-pink-500" />}
+              {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-gray-900 dark:bg-white" />}
             </button>
           )
         })}

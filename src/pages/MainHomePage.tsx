@@ -28,6 +28,7 @@ import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import DealEarnStrip from '@/components/main/DealEarnStrip'
 import HomeDongneDealSection from '@/components/main/HomeDongneDealSection'
+import HomeProductsRail from '@/components/main/HomeProductsRail'
 import VouchersPage from './VouchersPage'
 
 export default function MainHomePage() {
@@ -99,6 +100,9 @@ export default function MainHomePage() {
       {/* ═══ 🍽️ 우리 동네딜 (주력 사업 홈 첫 노출) — 2026-06-10 포털형 홈.
           교환권 40개 캡 아래 위치 — 뷰포트 진입 시에만 fetch (홈 LCP/SSR 잠금 불변, additive). */}
       <HomeDongneDealSection />
+
+      {/* ═══ 🛍️ 일반 상품 레일 — 2026-06-10 사용자 결정: 교환권/동네딜 아래 실제 상품 미리보기 */}
+      <HomeProductsRail />
 
       {/* ═══ 💰 딜 모으는 법 — 🧭 2026-06-10: 신규 방문자 첫 콘텐츠로 부적합(기존 사용자용) → 하단 이동 */}
       <DealEarnStrip />

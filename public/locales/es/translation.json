@@ -6017,13 +6017,16 @@
     "shopEntryTitle": "Tienda de productos",
     "shopEntryDesc": "Productos con envío — incl. suministro mayorista",
     "shopEntryCta": "Ver →",
-    "allVouchers": "Ver todos los vales",
+    "allVouchers": "Ver todo",
     "dongneTitle": "Ofertas locales",
     "dongneMore": "Más",
     "dongneEmptyTitle": "Aún no hay ofertas en tu zona",
     "dongneEmptyDesc": "Sugiere una tienda y reuniremos gente",
     "dongnePropose": "Proponer →",
-    "tagline": "Locales y vales del barrio — más barato juntos 🍽️"
+    "tagline": "Locales y vales del barrio — más barato juntos 🍽️",
+    "moreVouchers": "Más vales",
+    "shopRailTitle": "Productos",
+    "shopRailMore": "Ver tienda"
   },
   "my": {
     "earningsGroupTitle": "Mis ganancias",

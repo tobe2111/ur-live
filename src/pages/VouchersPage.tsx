@@ -15,7 +15,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo, memo, Fragment } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
+import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -238,6 +238,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  useEffect(() => { if (embedded) setEmbedVisible(12) }, [embedded, category, brand])
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
@@ -431,9 +432,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     loadProducts(1, true)
   }, [brand, category, sort, loadProducts])
 
-  // 무한 스크롤 — 🧭 2026-06-10 [LOADING_ADDITIVE] (포털형 홈): embedded(홈)는 2페이지(40개)에서 캡.
-  //   무한이 홈 하단(동네딜 섹션/쇼핑/푸터)을 영원히 밀어내던 것 → 전체 탐색은 /vouchers 전담.
-  const embeddedCapped = embedded && page >= 2
+  // 🧭 2026-06-10 v2 (사용자 결정): 홈은 12개 + '더보기' 버튼 확장(+20) — 무한 IO 완전 비활성.
+  //   홈 하단(동네딜/일반상품/푸터)이 항상 한 호흡에 닿고, 원하는 사람만 버튼으로 확장.
+  const EMBED_INITIAL = 12
+  const [embedVisible, setEmbedVisible] = useState(EMBED_INITIAL)
+  const embeddedCapped = embedded
   useEffect(() => {
     if (!loadMoreRef.current || !hasMore || loadingMore || loading || embeddedCapped) return
     const observer = new IntersectionObserver(([entry]) => {
@@ -592,7 +595,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧭 2026-06-10 (UI 100점 패스): 홈(embedded)은 1행 가로 스크롤 — 도구단이 상품을 fold 아래로 밀던 것 압축.
               /vouchers 전체 페이지는 기존 그리드 유지. 클릭 유지/ring 강조 동작 불변. */}
           <div className={embedded
-            ? 'flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1'
+            ? 'flex gap-3 overflow-x-auto scrollbar-hide py-1.5 -mx-1 px-1'
             : 'grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3'}>
             {orderedBrands.map(b => {
               const selected = b.brand_name === brand
@@ -603,10 +606,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 onClick={() => setBrand(selected ? '' : b.brand_name)}
                 className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform shrink-0"
               >
-                <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center border transition-colors ${
+                {/* 🎨 2026-06-10 (사용자 요청 — 세련화+잘림): 앰버 박스 → 화이트 로고 타일.
+                    선택 = 모노크롬 ring(라이트 검정/다크 흰색) + 살짝 확대 — 로고 본연 색 발색, B&W 톤 정합 */}
+                <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-white border transition-all ${
                   selected
-                    ? 'bg-amber-100 dark:bg-amber-500/20 border-amber-400 dark:border-amber-400/60 ring-2 ring-amber-400'
-                    : 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20'
+                    ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
+                    : 'border-gray-200 dark:border-white/10 opacity-90'
                 }`}>
                   {b.brand_icon_url ? (
                     <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-10 h-10 object-contain" />
@@ -615,7 +620,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                   )}
                 </div>
                 <span className={`text-[10px] line-clamp-1 max-w-[60px] text-center ${
-                  selected ? 'text-amber-700 dark:text-amber-300 font-bold' : 'text-gray-700 dark:text-gray-300'
+                  selected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'
                 }`}>{b.brand_name}</span>
               </button>
               )
@@ -656,34 +661,35 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
-              {displayProducts.map((p, idx) => (
+              {(embedded ? displayProducts.slice(0, embedVisible) : displayProducts).map((p, idx) => (
                 <Fragment key={p.id}>
                   <VoucherCard p={p} aboveFold={idx < 4} />
-                  {/* 🛍️ 2026-06-10 (사용자 지적 — 무한스크롤이라 피드 하단은 도달 불가): 홈 한정,
-                      12번째 카드 뒤 인피드 쇼핑 진입 카드(전폭). SSR consume/sort 잠금 불변 — 표시만 삽입. */}
-                  {embedded && idx === 11 && (
-                    <Link
-                      to="/browse"
-                      className="col-span-full flex items-center justify-between rounded-2xl px-5 py-4 bg-[#121212] border border-[#1A1A1A] active:scale-[0.99] transition-transform"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-bold text-white">🛍️ {t('home.shopEntryTitle', { defaultValue: '일반 상품 쇼핑' })}</p>
-                        <p className="text-[12px] text-gray-400 mt-0.5">{t('home.shopEntryDesc', { defaultValue: '배송 상품 둘러보기 — 도매 직공급 상품 포함' })}</p>
-                      </div>
-                      <span className="shrink-0 text-[12px] font-bold text-gray-300">{t('home.shopEntryCta', { defaultValue: '보러가기 →' })}</span>
-                    </Link>
-                  )}
                 </Fragment>
               ))}
             </div>
-            {/* 🧭 홈 캡 도달 — 전체 탐색은 /vouchers 로 */}
-            {embeddedCapped && hasMore && (
-              <Link
-                to="/vouchers"
-                className="mt-4 flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
-              >
-                {t('home.allVouchers', { defaultValue: '교환권 전체보기' })} <ArrowRight className="w-4 h-4" />
-              </Link>
+            {/* 🧭 홈: '더보기' 인라인 확장 + '전체보기' 병행 */}
+            {embedded && (embedVisible < displayProducts.length || hasMore) && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = embedVisible + 20
+                    setEmbedVisible(next)
+                    if (next >= products.length && hasMore && !loadingMore) {
+                      const np = page + 1; setPage(np); loadProducts(np, false)
+                    }
+                  }}
+                  className="flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                >
+                  {t('home.moreVouchers', { defaultValue: '교환권 더보기' })} <ChevronDown className="w-4 h-4" />
+                </button>
+                <Link
+                  to="/vouchers"
+                  className="flex items-center justify-center gap-1.5 h-12 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                >
+                  {t('home.allVouchers', { defaultValue: '전체보기' })} <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             )}
             {/* 무한 스크롤 sentinel */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">

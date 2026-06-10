@@ -6017,13 +6017,16 @@
     "shopEntryTitle": "Boutique produits",
     "shopEntryDesc": "Produits livrés — incl. approvisionnement direct",
     "shopEntryCta": "Voir →",
-    "allVouchers": "Tous les bons",
+    "allVouchers": "Tout voir",
     "dongneTitle": "Offres locales",
     "dongneMore": "Plus",
     "dongneEmptyTitle": "Pas encore d’offres près de chez vous",
     "dongneEmptyDesc": "Suggérez un commerce, on réunit du monde",
     "dongnePropose": "Proposer →",
-    "tagline": "Restos et bons du quartier — moins cher ensemble 🍽️"
+    "tagline": "Restos et bons du quartier — moins cher ensemble 🍽️",
+    "moreVouchers": "Plus de bons",
+    "shopRailTitle": "Produits",
+    "shopRailMore": "Boutique"
   },
   "my": {
     "earningsGroupTitle": "Mes gains",
