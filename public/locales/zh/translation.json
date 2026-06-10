@@ -6012,6 +6012,12 @@
   "home": {
     "shopEntryTitle": "普通商品购物",
     "shopEntryDesc": "浏览配送商品 — 含批发直供商品",
-    "shopEntryCta": "去看看 →"
+    "shopEntryCta": "去看看 →",
+    "allVouchers": "查看全部兑换券",
+    "dongneTitle": "社区团购",
+    "dongneMore": "更多",
+    "dongneEmptyTitle": "附近还没有团购",
+    "dongneEmptyDesc": "推荐店铺，我们召集人一起开团",
+    "dongnePropose": "去提议 →"
   }
 }

@@ -431,9 +431,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     loadProducts(1, true)
   }, [brand, category, sort, loadProducts])
 
-  // 무한 스크롤
+  // 무한 스크롤 — 🧭 2026-06-10 [LOADING_ADDITIVE] (포털형 홈): embedded(홈)는 2페이지(40개)에서 캡.
+  //   무한이 홈 하단(동네딜 섹션/쇼핑/푸터)을 영원히 밀어내던 것 → 전체 탐색은 /vouchers 전담.
+  const embeddedCapped = embedded && page >= 2
   useEffect(() => {
-    if (!loadMoreRef.current || !hasMore || loadingMore || loading) return
+    if (!loadMoreRef.current || !hasMore || loadingMore || loading || embeddedCapped) return
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         const next = page + 1
@@ -443,7 +445,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     }, { threshold: 0.1 })
     observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
-  }, [hasMore, loadingMore, loading, page, loadProducts])
+  }, [hasMore, loadingMore, loading, page, loadProducts, embeddedCapped])
 
   const setBrand = (next: string) => {
     const params = new URLSearchParams(searchParams)
@@ -670,6 +672,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 </Fragment>
               ))}
             </div>
+            {/* 🧭 홈 캡 도달 — 전체 탐색은 /vouchers 로 */}
+            {embeddedCapped && hasMore && (
+              <Link
+                to="/vouchers"
+                className="mt-4 flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+              >
+                {t('home.allVouchers', { defaultValue: '교환권 전체보기' })} <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
             {/* 무한 스크롤 sentinel */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
               {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}

@@ -6012,6 +6012,12 @@
   "home": {
     "shopEntryTitle": "一般商品ショッピング",
     "shopEntryDesc": "配送商品を見る — 卸直供給商品を含む",
-    "shopEntryCta": "見に行く →"
+    "shopEntryCta": "見に行く →",
+    "allVouchers": "交換券をすべて見る",
+    "dongneTitle": "ご近所ディール",
+    "dongneMore": "もっと見る",
+    "dongneEmptyTitle": "まだ近所の共同購入がありません",
+    "dongneEmptyDesc": "お店を提案すると人を集めて開催します",
+    "dongnePropose": "提案する →"
   }
 }

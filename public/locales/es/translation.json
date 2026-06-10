@@ -6012,6 +6012,12 @@
   "home": {
     "shopEntryTitle": "Tienda de productos",
     "shopEntryDesc": "Productos con envío — incl. suministro mayorista",
-    "shopEntryCta": "Ver →"
+    "shopEntryCta": "Ver →",
+    "allVouchers": "Ver todos los vales",
+    "dongneTitle": "Ofertas locales",
+    "dongneMore": "Más",
+    "dongneEmptyTitle": "Aún no hay ofertas en tu zona",
+    "dongneEmptyDesc": "Sugiere una tienda y reuniremos gente",
+    "dongnePropose": "Proponer →"
   }
 }

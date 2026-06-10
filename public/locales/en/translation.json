@@ -6012,6 +6012,12 @@
   "home": {
     "shopEntryTitle": "Shop products",
     "shopEntryDesc": "Browse shipped products — incl. wholesale-direct items",
-    "shopEntryCta": "Browse →"
+    "shopEntryCta": "Browse →",
+    "allVouchers": "View all vouchers",
+    "dongneTitle": "Local deals",
+    "dongneMore": "More",
+    "dongneEmptyTitle": "No local deals in your area yet",
+    "dongneEmptyDesc": "Suggest a shop and we’ll gather people to open it",
+    "dongnePropose": "Propose →"
   }
 }

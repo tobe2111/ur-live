@@ -27,6 +27,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import DealEarnStrip from '@/components/main/DealEarnStrip'
+import HomeDongneDealSection from '@/components/main/HomeDongneDealSection'
 import VouchersPage from './VouchersPage'
 
 export default function MainHomePage() {
@@ -92,6 +93,10 @@ export default function MainHomePage() {
           VouchersPage 를 embedded 로 재사용 — SSR 는 worker MAIN 슬롯(deal_only) 에서 0-RTT 로 읽음.
           오프라인 공구는 동네딜(/group-buy) 탭이 전담. */}
       <VouchersPage embedded />
+
+      {/* ═══ 🍽️ 우리 동네딜 (주력 사업 홈 첫 노출) — 2026-06-10 포털형 홈.
+          교환권 40개 캡 아래 위치 — 뷰포트 진입 시에만 fetch (홈 LCP/SSR 잠금 불변, additive). */}
+      <HomeDongneDealSection />
 
 
       <SiteFooter />

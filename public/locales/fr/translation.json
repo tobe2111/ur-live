@@ -6012,6 +6012,12 @@
   "home": {
     "shopEntryTitle": "Boutique produits",
     "shopEntryDesc": "Produits livrés — incl. approvisionnement direct",
-    "shopEntryCta": "Voir →"
+    "shopEntryCta": "Voir →",
+    "allVouchers": "Tous les bons",
+    "dongneTitle": "Offres locales",
+    "dongneMore": "Plus",
+    "dongneEmptyTitle": "Pas encore d’offres près de chez vous",
+    "dongneEmptyDesc": "Suggérez un commerce, on réunit du monde",
+    "dongnePropose": "Proposer →"
   }
 }
