@@ -25,7 +25,9 @@ export default function HomeProductsRail() {
     const ob = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting) || fetchedRef.current) return
       fetchedRef.current = true
-      api.get('/api/products', { params: { limit: 6 } })
+      // 🛡️ 2026-06-10 (사용자 신고 — 기프트카드 뒤죽박죽): /browse 와 동일 필터 미러.
+      //   exclude_deal_only=1 = 교환권/딜 제외(실물 배송 상품만), sort=popular = 인기순.
+      api.get('/api/products', { params: { limit: 6, exclude_deal_only: '1', sort: 'popular' } })
         .then((r) => {
           const arr = Array.isArray(r.data?.data) ? r.data.data : []
           setItems(arr.slice(0, 6))
@@ -39,10 +41,10 @@ export default function HomeProductsRail() {
   return (
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[16px] font-extrabold text-white flex items-center gap-1.5">
-          <ShoppingBag className="w-4 h-4 text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '일반 상품' })}
+        <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
+          <ShoppingBag className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '일반 상품' })}
         </h2>
-        <Link to="/browse" className="text-[12px] font-bold text-gray-400 flex items-center gap-0.5">
+        <Link to="/browse" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
           {t('home.shopRailMore', { defaultValue: '쇼핑 전체보기' })} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -50,7 +52,7 @@ export default function HomeProductsRail() {
       {items === null ? (
         <div className="grid grid-cols-3 gap-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-[#121212] animate-pulse" />
+            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? null : (
@@ -59,9 +61,9 @@ export default function HomeProductsRail() {
             <button
               key={p.id}
               onClick={() => navigate(`/products/${p.id}`)}
-              className="text-left rounded-xl overflow-hidden bg-[#121212] active:scale-[0.98] transition-transform"
+              className="text-left rounded-xl overflow-hidden bg-gray-100 dark:bg-[#121212] active:scale-[0.98] transition-transform"
             >
-              <div className="aspect-square bg-[#1A1A1A]">
+              <div className="aspect-square bg-gray-200 dark:bg-[#1A1A1A]">
                 {p.image_url && (
                   <img
                     src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
@@ -75,8 +77,8 @@ export default function HomeProductsRail() {
                 )}
               </div>
               <div className="p-2">
-                <p className="text-[11px] text-white leading-tight line-clamp-1">{p.name}</p>
-                <p className="text-[12px] font-extrabold text-white mt-0.5">{formatNumber(p.price)}원</p>
+                <p className="text-[11px] text-gray-900 dark:text-white leading-tight line-clamp-1">{p.name}</p>
+                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-0.5">{formatNumber(p.price)}원</p>
               </div>
             </button>
           ))}

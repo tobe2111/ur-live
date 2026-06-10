@@ -46,10 +46,10 @@ export default function HomeDongneDealSection() {
   return (
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[16px] font-extrabold text-white flex items-center gap-1.5">
+        <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
           <MapPin className="w-4 h-4 text-emerald-400" /> {t('home.dongneTitle', { defaultValue: '우리 동네딜' })}
         </h2>
-        <Link to="/group-buy" className="text-[12px] font-bold text-gray-400 flex items-center gap-0.5">
+        <Link to="/group-buy" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
           {t('home.dongneMore', { defaultValue: '더보기' })} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -57,7 +57,7 @@ export default function HomeDongneDealSection() {
       {items === null ? (
         <div className="grid grid-cols-3 gap-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-[#121212] animate-pulse" />
+            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (
@@ -66,8 +66,8 @@ export default function HomeDongneDealSection() {
           className="flex items-center justify-between rounded-2xl px-5 py-4 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/20"
         >
           <div>
-            <p className="text-[13px] font-bold text-white">{t('home.dongneEmptyTitle', { defaultValue: '아직 우리 동네 공구가 없어요' })}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{t('home.dongneEmptyDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
+            <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('home.dongneEmptyTitle', { defaultValue: '아직 우리 동네 공구가 없어요' })}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('home.dongneEmptyDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
           </div>
           <span className="text-[12px] font-bold text-emerald-400">{t('home.dongnePropose', { defaultValue: '제안하기 →' })}</span>
         </Link>
@@ -77,9 +77,9 @@ export default function HomeDongneDealSection() {
             <button
               key={p.id}
               onClick={() => navigate(`/group-buy/${p.id}`)}
-              className="text-left rounded-xl overflow-hidden bg-[#121212] active:scale-[0.98] transition-transform"
+              className="text-left rounded-xl overflow-hidden bg-gray-100 dark:bg-[#121212] active:scale-[0.98] transition-transform"
             >
-              <div className="aspect-square bg-[#1A1A1A]">
+              <div className="aspect-square bg-gray-200 dark:bg-[#1A1A1A]">
                 {p.image_url && (
                   <img
                     src={cfImage(p.image_url, { width: 200, format: 'auto' }) || p.image_url}
@@ -93,8 +93,8 @@ export default function HomeDongneDealSection() {
                 )}
               </div>
               <div className="p-2">
-                <p className="text-[11px] text-white leading-tight line-clamp-1">{p.restaurant_name || p.name}</p>
-                <p className="text-[12px] font-extrabold text-white mt-0.5">
+                <p className="text-[11px] text-gray-900 dark:text-white leading-tight line-clamp-1">{p.restaurant_name || p.name}</p>
+                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-0.5">
                   {(p.current_price ?? p.price).toLocaleString('ko-KR')}원
                 </p>
               </div>
