@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -12,6 +12,119 @@ import { walletTokens } from '@/components/wallet/walletTokens'
 import { useTheme } from '@/shared/stores/useTheme'
 import { formatNumber } from '@/utils/format'
 import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
+import { cfImage } from '@/utils/cf-image'
+import { cardGradient } from '@/utils/card-gradient'
+import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+
+// 🎨 2026-06-10 (사용자 요청): 쇼핑(BrowseProductCard)과 동일한 대표색 그라데이션 카드.
+//   사진 하단이 카드색으로 번져 텍스트 블록과 경계 없이 이어짐 + 글자색 밝기 자동대비.
+//   React.memo — 토글/refetch 시 전체 카드 reconcile 방지 (기존 피드 카드 패턴).
+const WishlistCard = memo(function WishlistCard({
+  item, userId, onOpen, onAddToCart, onToggle, t,
+}: {
+  item: WishlistItem
+  userId: number | null
+  onOpen: (productId: number) => void
+  onAddToCart: (item: WishlistItem, e: React.MouseEvent) => void
+  onToggle: (productId: number, isWishlisted: boolean) => void
+  t: (key: string, opts?: Record<string, unknown>) => string
+}) {
+  const [cardColor, setCardColor] = useState<string | null>(item.dominant_color || null)
+  const grad = cardGradient(cardColor)
+  const unit = Number(item.deal_only) === 1 ? ' 딜' : '원'
+  return (
+    <div
+      onClick={() => onOpen(item.product_id)}
+      className="rounded-2xl overflow-hidden cursor-pointer group transition-all active:scale-[0.99] flex flex-col"
+      style={{ background: grad.base }}
+    >
+      <div className="relative aspect-square" style={{ background: grad.base }}>
+        <img
+          src={cfImage(item.image_url, { width: 300, format: 'auto' }) || item.image_url || '/placeholder.png'}
+          alt={item.product_name}
+          width={300}
+          height={300}
+          loading="lazy" decoding="async"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onLoad={(e) => {
+            const color = extractDominantColor(e.currentTarget as HTMLImageElement)
+            if (color) {
+              if (!cardColor) setCardColor(color)
+              if (!item.dominant_color) reportDominantColor(item.product_id, color)
+            }
+          }}
+          onError={(e) => {
+            const target = e.target as HTMLImageElement
+            target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23F2F2F7" width="200" height="200"/%3E%3Ctext fill="%23C7C7CC" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+          }}
+        />
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
+
+        <div className="absolute top-2 right-2 z-10">
+          <WishlistButton
+            productId={item.product_id}
+            userId={userId}
+            initialWishlisted={true}
+            size="md"
+            className="rounded-full p-2 backdrop-blur-sm shadow-sm bg-black/55"
+            onToggle={(isWishlisted) => onToggle(item.product_id, isWishlisted)}
+          />
+        </div>
+
+        {item.stock === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+            <span className="px-4 py-2 rounded-full font-semibold text-sm bg-white text-gray-900">{t('product.outOfStock')}</span>
+          </div>
+        )}
+
+        {item.discount_rate > 0 && (
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md"
+            style={{ background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800 }}>
+            -{item.discount_rate}%
+          </div>
+        )}
+      </div>
+
+      <div className="px-3 pt-1 pb-3 flex flex-col flex-1" style={{ color: grad.text }}>
+        <p style={{ fontSize: 10, color: grad.sub }} className="mb-1">@{item.seller_name}</p>
+        <h3 className="line-clamp-2 leading-tight" style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>
+          {item.product_name}
+        </h3>
+
+        <div className="mb-3">
+          {item.discount_rate > 0 ? (
+            <>
+              <p style={{ fontSize: 10, color: grad.sub, textDecoration: 'line-through' }}>
+                {formatNumber(item.original_price)}{unit}
+              </p>
+              <div className="flex items-baseline gap-1">
+                <span style={{ fontSize: 13, fontWeight: 800, color: grad.accent }}>{item.discount_rate}%</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{formatNumber(item.price)}{unit}</span>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize: 13, fontWeight: 800 }}>
+              {formatNumber(item.price)}{unit}
+            </p>
+          )}
+        </div>
+
+        <button
+          onClick={(e) => onAddToCart(item, e)}
+          disabled={item.stock === 0}
+          className="w-full mt-auto py-2 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
+          style={{
+            background: item.stock === 0 ? 'rgba(127,127,127,0.25)' : (grad.isLight ? '#1a1a1a' : '#ffffff'),
+            color: item.stock === 0 ? grad.sub : (grad.isLight ? '#ffffff' : '#1a1a1a'),
+          }}
+        >
+          {item.stock === 0 ? t('product.outOfStock') : t('wishlist.addToCart')}
+        </button>
+      </div>
+    </div>
+  )
+})
 
 const WishlistPage: React.FC = () => {
   const { t } = useTranslation()
@@ -134,90 +247,15 @@ const WishlistPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {wishlists.map((item) => (
-              <div
+              <WishlistCard
                 key={item.id}
-                onClick={() => handleProductClick(item.product_id)}
-                className="rounded-2xl overflow-hidden cursor-pointer group transition-all active:scale-[0.99]"
-                style={{ background: tk.card }}
-              >
-                <div className="relative aspect-square" style={{ background: tk.cardSub }}>
-                  <img
-                    src={item.image_url || '/placeholder.png'}
-                    alt={item.product_name}
-                    loading="lazy" decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23F2F2F7" width="200" height="200"/%3E%3Ctext fill="%23C7C7CC" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
-                    }}
-                  />
-
-                  <div className="absolute top-2 right-2 z-10">
-                    <WishlistButton
-                      productId={item.product_id}
-                      userId={userId}
-                      initialWishlisted={true}
-                      size="md"
-                      className="rounded-full p-2 backdrop-blur-sm shadow-sm bg-black/55"
-                      onToggle={(isWishlisted) => handleWishlistToggle(item.product_id, isWishlisted)}
-                    />
-                  </div>
-
-                  {item.stock === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-                      <span className="px-4 py-2 rounded-full font-semibold text-sm" style={{ background: tk.label, color: tk.bg }}>{t('product.outOfStock')}</span>
-                    </div>
-                  )}
-
-                  {item.discount_rate > 0 && (
-                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md"
-                      style={{ background: '#EF4444', color: '#fff', fontSize: 10, fontWeight: 800 }}>
-                      -{item.discount_rate}%
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-3">
-                  <p style={{ fontSize: 10, color: tk.tertiary }} className="mb-1">@{item.seller_name}</p>
-                  <h3 className="line-clamp-2 leading-tight"
-                    style={{ fontSize: 12, fontWeight: 500, color: tk.label, marginBottom: 6, minHeight: '2.5rem' }}>
-                    {item.product_name}
-                  </h3>
-
-                  <div className="mb-3">
-                    {(() => {
-                      const unit = Number(item.deal_only) === 1 ? ' 딜' : '원'
-                      return item.discount_rate > 0 ? (
-                        <>
-                          <p style={{ fontSize: 10, color: tk.tertiary, textDecoration: 'line-through' }}>
-                            {formatNumber(item.original_price)}{unit}
-                          </p>
-                          <div className="flex items-baseline gap-1">
-                            <span style={{ fontSize: 13, fontWeight: 800, color: '#EF4444' }}>{item.discount_rate}%</span>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>{formatNumber(item.price)}{unit}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <p style={{ fontSize: 13, fontWeight: 800, color: tk.label }}>
-                          {formatNumber(item.price)}{unit}
-                        </p>
-                      )
-                    })()}
-                  </div>
-
-                  <button
-                    onClick={(e) => handleAddToCart(item, e)}
-                    disabled={item.stock === 0}
-                    className="w-full py-2 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
-                    style={{
-                      background: item.stock === 0 ? tk.fillSoft : tk.label,
-                      color: item.stock === 0 ? tk.tertiary : tk.bg,
-                    }}
-                  >
-                    {item.stock === 0 ? t('product.outOfStock') : t('wishlist.addToCart')}
-                  </button>
-                </div>
-              </div>
+                item={item}
+                userId={userId}
+                onOpen={handleProductClick}
+                onAddToCart={handleAddToCart}
+                onToggle={handleWishlistToggle}
+                t={t}
+              />
             ))}
           </div>
         )}

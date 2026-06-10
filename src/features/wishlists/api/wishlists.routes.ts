@@ -62,6 +62,9 @@ async function ensureTable(DB: D1Database) {
   _ensureTableDone = true
 }
 
+// products.dominant_color 존재 여부 모듈 캐시 (null=미확인 / true=있음 / false=없음 — isolate 수명)
+let _wishlistDominantCol: boolean | null = null;
+
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────
 wishlistRoutes.get('/', requireAuth(), async (c) => {
   const { DB } = c.env;
@@ -72,10 +75,13 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
     const userId = String(authUser.id);
     const limit = parseInt(c.req.query('limit') || '50');
     const offset = parseInt(c.req.query('offset') || '0');
-    const { results } = await DB.prepare(`
+    // 🎨 2026-06-10: dominant_color 포함(카드 그라데이션). 컬럼 미적용 DB 는 1회 실패 후 제외 재시도
+    //   (ProductRepository `_dominantColorCol` 모듈캐시 패턴 — 매 요청 2쿼리 방지).
+    const listSql = (withColor: boolean) => `
       SELECT w.id, w.user_id, w.product_id, w.created_at,
              p.name as product_name, p.price, p.original_price,
              p.discount_rate, p.image_url, p.stock, p.category, p.deal_only,
+             ${withColor ? 'p.dominant_color,' : ''}
              s.name as seller_name
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
@@ -83,7 +89,21 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
       WHERE w.user_id = ? AND p.is_active = 1
       ORDER BY w.created_at DESC
       LIMIT ? OFFSET ?
-    `).bind(userId, limit, offset).all();
+    `;
+    let results: Record<string, unknown>[];
+    if (_wishlistDominantCol !== false) {
+      try {
+        results = (await DB.prepare(listSql(true)).bind(userId, limit, offset).all()).results as Record<string, unknown>[];
+        _wishlistDominantCol = true;
+      } catch (e) {
+        if (String(e).includes('no such column')) {
+          _wishlistDominantCol = false;
+          results = (await DB.prepare(listSql(false)).bind(userId, limit, offset).all()).results as Record<string, unknown>[];
+        } else { throw e; }
+      }
+    } else {
+      results = (await DB.prepare(listSql(false)).bind(userId, limit, offset).all()).results as Record<string, unknown>[];
+    }
     const countResult = await DB.prepare('SELECT COUNT(*) as count FROM wishlists WHERE user_id = ?')
       .bind(userId).first<{ count: number }>();
     return c.json({ success: true, data: { items: results, total: countResult?.count || 0 } });

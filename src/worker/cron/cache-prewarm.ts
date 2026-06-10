@@ -52,6 +52,9 @@ const HOT_PATHS: readonly string[] = [
   '/api/group-buy/products?status=active&category=all',
   // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜(/group-buy) SSR 슬롯 key — 클라 요청과 정확히 일치.
   '/api/group-buy/products?status=active',
+  // 🏭 2026-06-10 [LOADING_ADDITIVE]: SPA 진입(하단바 탭) 시 클라가 쏘는 실제 key — limit=200 라이브쿼리.
+  //   SSR 미주입 경로(대부분의 탭 진입)가 이 key 로 fetch → cron warm 으로 cold D1 제거.
+  '/api/group-buy/products?status=active&limit=200',
   // 🏭 2026-06-04 [LOADING_ADDITIVE]: 동네딜 '유저 공구'(community) 탭 — 클라 요청과 정확히 일치.
   //   30s 엣지캐시라 organic 방문 사이 만료 → cold D1. 5분 cron warm 으로 탭 전환 즉시 응답.
   '/api/community-group-buy/list?status=proposed&sort=popular&limit=20',

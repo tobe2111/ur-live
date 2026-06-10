@@ -5487,7 +5487,7 @@
     "accessFailed": "[TODO:fr] 접근 실패"
   },
   "shopping": {
-    "sectionTitle": "[TODO:fr] 쇼핑",
+    "sectionTitle": "Mon activité",
     "wishlist": "[TODO:fr] 찜한 상품",
     "voucher": "[TODO:fr] 내 바우처",
     "voucherSub": "[TODO:fr] 식사권·이용권",

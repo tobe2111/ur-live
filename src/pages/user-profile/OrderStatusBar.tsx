@@ -29,6 +29,11 @@ export default function OrderStatusBar() {
     })
   }, [])
 
+  // 🧭 2026-06-10 (쇼핑 잠정 보류): 배송 주문이 하나도 없으면 바 자체를 숨김 —
+  //   동네딜/교환권 중심 사용자에게 빈 배송 현황(0 0 0 0 0)을 보여주지 않음. 주문 있으면 기존 그대로.
+  const hasAnyOrder = Object.values(counts).some((n) => n > 0)
+  if (!hasAnyOrder) return null
+
   const items = [
     { label: t('orderStatus.paid', { defaultValue: '결제완료' }), key: 'paid', path: '/my-orders' },
     { label: t('orderStatus.preparing', { defaultValue: '배송준비' }), key: 'preparing', path: '/my-orders' },

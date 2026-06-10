@@ -29,6 +29,39 @@ import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/const
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
+// 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — "동네딜 카드 로딩 고질적"): 모듈 메모리 캐시 + 진입 전 워밍.
+//   문제: 하단바 탭 진입은 SPA 라우팅이라 SSR 주입이 없음 → 매 마운트 cold fetch + 스켈레톤 재노출(탭 왕복마다).
+//   해법: (1) 같은 세션 재진입은 메모리 캐시로 0ms 페인트(+60s 넘으면 백그라운드 갱신만, 스켈레톤 X)
+//        (2) 하단바 pointerdown(누르는 순간) `warmGroupBuyList()` 가 데이터를 선요청 — 클릭→마운트 사이 ~200ms 선점.
+//        in-flight 공유로 중복 요청 0. SSR 주입 경로/기존 fetch 동작 불변(additive).
+const GB_LIST_URL = '/api/group-buy/products?status=active&limit=200'
+const GB_CACHE_TTL = 60_000
+let _gbListCache: { items: GroupBuyProduct[]; at: number } | null = null
+let _gbListInflight: Promise<GroupBuyProduct[] | null> | null = null
+
+function fetchGroupBuyList(): Promise<GroupBuyProduct[] | null> {
+  if (_gbListInflight) return _gbListInflight
+  _gbListInflight = api
+    .get(GB_LIST_URL)
+    .then((r) => {
+      if (r.data?.success) {
+        const items = (r.data.data || []) as GroupBuyProduct[]
+        _gbListCache = { items, at: Date.now() }
+        return items
+      }
+      return null
+    })
+    .catch(() => null)
+    .finally(() => { _gbListInflight = null })
+  return _gbListInflight
+}
+
+/** 하단바 prefetch 에서 호출 — 누르는 순간 데이터 선요청 (신선하면 no-op). */
+export function warmGroupBuyList(): void {
+  if (_gbListCache && Date.now() - _gbListCache.at < GB_CACHE_TTL) return
+  void fetchGroupBuyList()
+}
+
 // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜 SSR 주입(__SSR_INITIAL_GROUPBUY__) 즉시 소비 → 마운트 fetch 워터폴 제거.
 //   consume-once(el.remove) — 클라 재진입 시엔 script 없음 → 정상 fetch.
 function readSsrGroupBuy(): GroupBuyProduct[] | null {
@@ -262,19 +295,31 @@ export default function GroupBuyListPage() {
   // 셀러 공구 로딩
   useEffect(() => {
     // SSR 주입 데이터로 이미 시드됨(prewarm fresh) → 마운트 cold fetch 스킵(워터폴 제거).
-    if (ssrInitialRef.current !== null) { ssrInitialRef.current = null; return }
+    //   + 2026-06-10: SSR 50개는 첫페인트용 — 메모리 캐시에 안 넣고 백그라운드로 limit=200 전체본 갱신
+    //     (50개 cap 이 필터/정렬에 다시 생기는 것 방지, 화면은 SSR 본으로 이미 그려져 스켈레톤 X).
+    if (ssrInitialRef.current !== null) {
+      ssrInitialRef.current = null
+      void fetchGroupBuyList().then((fresh) => { if (fresh) setItems(fresh) })
+      return
+    }
+    // 🏭 2026-06-10 [LOADING_ADDITIVE]: 메모리 캐시 즉시 페인트 — 탭 왕복 시 스켈레톤 재노출 제거.
+    //   신선(<60s)하면 그대로, 오래됐으면 화면 유지 + 백그라운드 갱신.
+    if (_gbListCache) {
+      setItems(_gbListCache.items)
+      setLoading(false)
+      if (Date.now() - _gbListCache.at >= GB_CACHE_TTL) {
+        void fetchGroupBuyList().then((fresh) => { if (fresh) setItems(fresh) })
+      }
+      return
+    }
+    // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 50개 cap 근본수정): limit=200.
+    //   하단바 pointerdown 워밍(warmGroupBuyList)과 in-flight 공유 — 중복 요청 0.
     setLoading(true)
-    // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 50개 cap 근본수정): limit=200 으로 상향.
-    //   기존: status=active(파라미터 없음) → 서버 LIMIT 50 → 활성 공구 50개 초과분이 카테고리/정렬/검색에
-    //   안 잡힘. 서버가 limit 을 받도록 했으므로(group-buy-public.routes), 200개까지 받아 클라 필터/정렬이
-    //   전체 기준으로 동작. 기본요청(파라미터 없음)인 SSR 첫페인트는 그대로(materialized/50/0-RTT 불변).
-    api
-      .get('/api/group-buy/products?status=active&limit=200')
-      .then((r) => {
-        if (r.data?.success) setItems(r.data.data || [])
-        else toast.error(t('common.loadFailed'))
+    void fetchGroupBuyList()
+      .then((items) => {
+        if (items) setItems(items)
+        else toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' }))
       })
-      .catch(() => toast.error(t('common.networkError', { defaultValue: '네트워크 오류가 발생했습니다' })))
       .finally(() => setLoading(false))
   }, [])
 

@@ -5487,7 +5487,7 @@
     "accessFailed": "[TODO:zh] 접근 실패"
   },
   "shopping": {
-    "sectionTitle": "[TODO:zh] 쇼핑",
+    "sectionTitle": "我的使用记录",
     "wishlist": "[TODO:zh] 찜한 상품",
     "voucher": "[TODO:zh] 내 바우처",
     "voucherSub": "[TODO:zh] 식사권·이용권",

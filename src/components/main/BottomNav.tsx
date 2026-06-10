@@ -192,7 +192,8 @@ export default function BottomNav() {
   //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 공구권 등록으로 분기 — 수요 신호 수집기.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
-    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage') },
+    // 🏭 2026-06-10: 동네딜은 청크 + 데이터 동시 워밍 — 누르는 순간 카드 데이터 선요청 (클릭→마운트 ~200ms 선점).
+    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage').then((m) => { m.warmGroupBuyList?.() }) },
     ...(SHOPPING_TAB_HIDDEN
       ? [{ icon: Plus, label: t('nav.create', { defaultValue: '만들기' }), path: '__create__' as const, prefetch: () => import('@/pages/UserGroupBuyCreatePage') }]
       : [{ icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') }]),

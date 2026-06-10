@@ -25,6 +25,8 @@ export interface WishlistItem {
   seller_name: string
   seller_id: number
   deal_only?: number
+  /** 🎨 카드 그라데이션용 대표색 (서버 컬럼 — 없으면 클라이언트가 이미지에서 추출) */
+  dominant_color?: string | null
 }
 
 const CACHE_KEY = 'wishlist'
