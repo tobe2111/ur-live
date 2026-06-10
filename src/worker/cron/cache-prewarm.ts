@@ -58,6 +58,12 @@ const HOT_PATHS: readonly string[] = [
   // 🏭 2026-06-04 [LOADING_ADDITIVE]: 동네딜 '유저 공구'(community) 탭 — 클라 요청과 정확히 일치.
   //   30s 엣지캐시라 organic 방문 사이 만료 → cold D1. 5분 cron warm 으로 탭 전환 즉시 응답.
   '/api/community-group-buy/list?status=proposed&sort=popular&limit=20',
+  // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 도매몰 상품 느림): guest 카탈로그/배너/몰 브랜딩 warm.
+  //   카탈로그 클라 기본 요청은 trailing '?' (`/api/wholesale/catalog?`) — 캐시키 정확 일치 위해 두 형태 모두.
+  '/api/wholesale/catalog?',
+  '/api/wholesale/catalog',
+  '/api/wholesale/banners',
+  '/api/wholesale/mall',
   // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
   //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
   '/api/group-buy/products?status=active&category=meal_voucher',

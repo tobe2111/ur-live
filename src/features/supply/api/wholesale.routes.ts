@@ -168,6 +168,8 @@ function computeSupplierShipping(
 //   min_order_qty 는 기존 컬럼(최소 주문 수량) 재사용. ⚠️ 가격 산식 불변 — 수량 제약만 추가.
 //   self-contained(repair-schema 미의존). best-effort ADD COLUMN — 이미 있으면 swallow.
 const _biz8Ensured = new WeakSet<object>()
+// 🏭 2026-06-10 (카탈로그 전수조사): is_supply_product pragma 존재 체크 — isolate 당 1회(양성만 캐시).
+const _supplyCatalogReady = new WeakSet<object>()
 async function ensureQtyConstraintSchema(DB: D1Database) {
   if (_biz8Ensured.has(DB)) return
   _biz8Ensured.add(DB)
@@ -999,20 +1001,27 @@ app.get('/catalog', async (c) => {
   const brandsMode = c.req.query('brands') === '1'
 
   try {
-    const hasCol = await DB.prepare(
-      "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
-    ).first<{ c: number }>().catch(() => null)
-    if (!hasCol || hasCol.c === 0) {
-      return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
+    // 🏭 2026-06-10 (사용자 신고 — 카탈로그 느림, 전수조사): pragma 존재 체크를 isolate 당 1회로.
+    //   기존: 매 요청 pragma_table_info 쿼리(+1 RTT). 양성(컬럼 있음)만 캐시 — 음성은 repair 후 즉시 복귀.
+    if (!_supplyCatalogReady.has(DB)) {
+      const hasCol = await DB.prepare(
+        "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
+      ).first<{ c: number }>().catch(() => null)
+      if (!hasCol || hasCol.c === 0) {
+        return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
+      }
+      _supplyCatalogReady.add(DB)
     }
 
-    await ensureSupplyVisibilitySchema(DB)
-    await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전). (+ products.mall_id 보장)
-    const sg = guest ? { distributor_grade: null, special_discount_until: null } : await loadSellerGrade(DB, sellerId!)
-    const table = await loadGradeTable(DB)
+    // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
+    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB)])
+    // 🏭 등급/등급표/몰 — 상호 독립 쿼리 3개 순차 await(3 RTT) → 병렬(1 RTT).
+    const [sg, table, mallId] = await Promise.all([
+      guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
+      loadGradeTable(DB),
+      resolveMallId(c),
+    ])
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
-    // 🏬 멀티-몰: 로그인 유통사 → 본인 계정 몰 / 비로그인 → host 몰 / 기본 1. 기본 몰만 있으면 항상 1 → 동일 rows.
-    const mallId = await resolveMallId(c)
 
     // 도매 가능 = 제조사 공급상품(공급자 직등록 원본). supply_source_id IS NULL = 원본(셀러 복제본 제외).
     // + 공급 범위(supply_visibility) 가시성: ALL 이거나 허용목록(선정된 유통회원)에 포함.
@@ -1073,7 +1082,9 @@ app.get('/catalog', async (c) => {
     // 정렬: 화이트리스트만(injection 불가). 미지정 = 현행 popular 정렬과 동일 리터럴.
     const orderBy = CATALOG_SORT_ORDER[sortKey] || CATALOG_SORT_ORDER.popular
 
-    const rows = await DB.prepare(`
+    // 🏭 2026-06-10 (전수조사): 목록 + COUNT 동일 WHERE — 순차(2 RTT) → 병렬(1 RTT).
+    const [rows, totalRow] = await Promise.all([
+      DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock, p.supplier_id,
              COALESCE(p.supply_price, 0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
@@ -1086,12 +1097,12 @@ app.get('/catalog', async (c) => {
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
-      id: number; name: string; description: string | null; image_url: string | null;
-      category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; is_brand_product: number; brand_name: string | null; brand_logo_url: string | null; has_tiers: number; sold_count: number; margin_override: number | null
-    }>()
-
-    const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
-      .bind(...params).first<{ c: number }>().catch(() => ({ c: 0 }))
+        id: number; name: string; description: string | null; image_url: string | null;
+        category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; is_brand_product: number; brand_name: string | null; brand_logo_url: string | null; has_tiers: number; sold_count: number; margin_override: number | null
+      }>(),
+      DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
+        .bind(...params).first<{ c: number }>().catch(() => ({ c: 0 })),
+    ])
     const total = totalRow?.c ?? 0
 
     // 🚚 제조사별 배송/주문 정책 일괄 로드 — 카트가 제조사별 최소주문금액/배송비 그룹 계산하도록 정책 첨부.
@@ -1127,13 +1138,15 @@ app.get('/catalog', async (c) => {
       }
     })
 
-    // 🏭 캐시 분리: guest(가격 비노출 → grade 무관 동일 응답)만 공유캐시. 로그인 응답은 등급가 개인화라 private/no-store.
+    // 🏭 캐시 분리: guest(가격 비노출 → grade 무관 동일 응답)만 공유캐시. 로그인 응답은 등급가 개인화라 private.
     //   guest 카탈로그는 banners 와 동일 분리 헤더(브라우저 60s + edge 300s). KV write 미사용(edge only).
+    // 🏭 2026-06-10 (전수조사): 로그인도 no-store → private+max-age=30 — 같은 사용자 브라우저만 30초 재사용
+    //   (탭 이동/뒤로가기 즉시). 등급 변경 반영 지연 최대 30초 — 허용 범위. 공유캐시는 여전히 금지(private).
     if (guest) {
       c.header('Cache-Control', 'public, max-age=60')
       c.header('CDN-Cache-Control', 'public, max-age=300')
     } else {
-      c.header('Cache-Control', 'private, no-store')
+      c.header('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
     }
     return c.json({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade: guest ? null : grade, requires_login: guest })
   } catch (err) {
