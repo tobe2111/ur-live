@@ -29,6 +29,35 @@ import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
 const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
 
+// 🧭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 링크샵 로딩 김): 모듈 메모리 캐시 + 진입 전 워밍.
+//   SPA 탭 진입은 SSR 미주입 → 매 마운트 cold fetch. 동네딜(warmGroupBuyList)과 동일 패턴:
+//   재진입 0ms 페인트(+60s 초과는 백그라운드 갱신), 하단바 pointerdown 이 데이터 선요청.
+const CURATOR_CACHE_TTL = 60_000
+const _curatorCache = new Map<string, { data: CuratorPageResponse; at: number }>()
+const _curatorInflight = new Map<string, Promise<CuratorPageResponse | null>>()
+
+function fetchCuratorPage(handle: string): Promise<CuratorPageResponse | null> {
+  const inflight = _curatorInflight.get(handle)
+  if (inflight) return inflight
+  const p = curatorApi.getPage(handle)
+    .then((res) => {
+      if (res?.success) { _curatorCache.set(handle, { data: res, at: Date.now() }); return res }
+      return res ?? null
+    })
+    .catch(() => null)
+    .finally(() => { _curatorInflight.delete(handle) })
+  _curatorInflight.set(handle, p)
+  return p
+}
+
+/** 하단바 pointerdown 워밍 — 누르는 순간 데이터 선요청 (신선하면 no-op). */
+export function warmCurator(handle: string): void {
+  if (!handle || handle === 'me') return
+  const hit = _curatorCache.get(handle)
+  if (hit && Date.now() - hit.at < CURATOR_CACHE_TTL) return
+  void fetchCuratorPage(handle)
+}
+
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
   const { t } = useTranslation()
@@ -44,6 +73,9 @@ export default function CuratorPage() {
         }
       }
     } catch { /* SSR 누락 — fallback */ }
+    // 메모리 캐시(워밍/재진입) — 신선하면 즉시 페인트, stale 이어도 화면 먼저 + 백그라운드 갱신
+    const hit = _curatorCache.get(handle)
+    if (hit) return hit.data
     return null
   })
   const [loading, setLoading] = useState(!data)
@@ -69,12 +101,11 @@ export default function CuratorPage() {
     //   SSR 즉시 paint 유지(깜빡임 방지, 잠긴 GroupBuyDetail 패턴). 다른 handle 로 이동 시에만 로딩.
     if (data?.curator?.handle !== handle) setLoading(true)
     setError(null)
-    curatorApi
-      .getPage(handle)
+    fetchCuratorPage(handle)
       .then((res) => {
         if (!alive) return
-        if (!res.success) {
-          setError(res.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
+        if (!res || !res.success) {
+          setError(res?.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
           return
         }
         // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있어도 redirect X.
@@ -82,7 +113,6 @@ export default function CuratorPage() {
         //   아래 if 분기 — data 만 set, render 시 SellerPublicPage 사용.
         setData(res)
       })
-      .catch(() => alive && setError(t('curator.fetchError', { defaultValue: '불러오기 실패' })))
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [handle, t])

@@ -1134,6 +1134,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
 
     // ── 큐레이터 링크샵 (migration 0278, 2026-05-25) ─────────
     { name: 'idx_users_handle_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL` },
+    // 🧭 2026-06-10 (사용자 신고 — 링크샵 영구 슬로우패스): 레거시 generic/예약 핸들('user' 등, 한글 닉네임
+    //   빈 슬러그 시절 산물)을 user{id} 로 백필. 예약 핸들은 BottomNav 가드가 캐시를 매번 purge →
+    //   매 탭 /u/me 홉 + cold fetch 의 자기파괴 루프였음. UNIQUE 충돌 시 해당 행만 skip(다음 실행 수렴).
+    { name: 'backfill: users.handle reserved rename', sql: `UPDATE users SET handle = 'user' || id
+      WHERE handle IN ('user','admin','me','api','host','new','login','seller','shop')
+        AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.handle = 'user' || users.id AND u2.id != users.id)` },
     { name: 'product_pins', sql: `CREATE TABLE IF NOT EXISTS product_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

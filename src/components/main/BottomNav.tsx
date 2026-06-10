@@ -194,7 +194,14 @@ export default function BottomNav() {
     ...(SHOPPING_TAB_HIDDEN
       ? [{ icon: Plus, label: t('nav.create', { defaultValue: '만들기' }), path: '__create__' as const, prefetch: () => import('@/pages/UserGroupBuyCreatePage') }]
       : [{ icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') }]),
-    { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
+    // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
+    { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
+      if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
+        return import('@/pages/CuratorPage').then((m) => { m.warmCurator?.(linkshopPath.slice(3)) })
+      }
+      if (linkshopPath.startsWith('/profile/')) return import('@/pages/SellerPublicPage')
+      return import('@/pages/UMeRedirectPage')
+    } },
     { icon: User,        label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => import('@/pages/UserProfilePage') },
   ]
 
