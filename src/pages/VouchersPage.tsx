@@ -667,9 +667,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 </Fragment>
               ))}
             </div>
-            {/* 🧭 홈: '더보기' 인라인 확장 + '전체보기' 병행 */}
+            {/* 🧭 홈: '교환권 더보기' 단일 버튼 (2026-06-10 사용자 — '전체보기'와 역할 중복 → 통일) */}
             {embedded && (embedVisible < displayProducts.length || hasMore) && (
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -679,16 +679,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       const np = page + 1; setPage(np); loadProducts(np, false)
                     }
                   }}
-                  className="flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
                   {t('home.moreVouchers', { defaultValue: '교환권 더보기' })} <ChevronDown className="w-4 h-4" />
                 </button>
-                <Link
-                  to="/vouchers"
-                  className="flex items-center justify-center gap-1.5 h-12 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
-                >
-                  {t('home.allVouchers', { defaultValue: '전체보기' })} <ArrowRight className="w-4 h-4" />
-                </Link>
               </div>
             )}
             {/* 무한 스크롤 sentinel */}
