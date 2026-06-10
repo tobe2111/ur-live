@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { MessageSquare, DollarSign, Users, TrendingUp, Edit2, Save, X, Plus, Eye, EyeOff } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface AlimtalkPackage {
   id: number
@@ -45,10 +46,6 @@ interface EditState {
 export default function AdminAlimtalkPricingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [packages, setPackages] = useState<AlimtalkPackage[]>([])
-  const [accounts, setAccounts] = useState<SellerCreditRow[]>([])
-  const [stats, setStats] = useState<AlimtalkStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editState, setEditState] = useState<EditState>({ label: '', credits: 0, price: 0, is_active: true, sort_order: 0 })
   const [showAdd, setShowAdd] = useState(false)
@@ -56,32 +53,39 @@ export default function AdminAlimtalkPricingPage() {
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
-    const userType = localStorage.getItem('user_type')
-    if (!sessionToken) { navigate('/admin/login'); return }
-    loadAllData()
-  }, [])
+    if (!sessionToken) { navigate('/admin/login') }
+  }, [navigate])
 
-  async function loadAllData() {
-    try {
-      setLoading(true)
-      const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
-      const headers = { 'Authorization': `Bearer ${sessionToken}` }
-      const [pricingRes, accountsRes, statsRes] = await Promise.all([
-        api.get('/api/admin/alimtalk/pricing', { headers }),
-        api.get('/api/admin/alimtalk/accounts', { headers }),
-        api.get('/api/admin/alimtalk/statistics', { headers }),
-      ])
-      setPackages(pricingRes.data.data ?? [])
-      setAccounts(accountsRes.data.data ?? [])
-      setStats(statsRes.data.data ?? null)
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      if (err_.response?.status === 401) { /* lib/api.ts interceptor 처리 */ }
-      else toast.error('데이터를 불러오지 못했습니다')
-    } finally {
-      setLoading(false)
-    }
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+Promise.all(api.get×3) → useApiQuery ×3 (RQ SSOT).
+  //   수동 Authorization 헤더(admin_token || admin_session_token)는 기존 그대로 보존.
+  const authHeaders = {
+    Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')}`,
   }
+  const pricingQ = useApiQuery<AlimtalkPackage[]>(
+    ['admin', 'alimtalk', 'pricing'], '/api/admin/alimtalk/pricing',
+    { headers: authHeaders, select: (r) => (r as { data?: AlimtalkPackage[] })?.data ?? [] },
+  )
+  const accountsQ = useApiQuery<SellerCreditRow[]>(
+    ['admin', 'alimtalk', 'accounts'], '/api/admin/alimtalk/accounts',
+    { headers: authHeaders, select: (r) => (r as { data?: SellerCreditRow[] })?.data ?? [] },
+  )
+  const statsQ = useApiQuery<AlimtalkStats | null>(
+    ['admin', 'alimtalk', 'statistics'], '/api/admin/alimtalk/statistics',
+    { headers: authHeaders, select: (r) => (r as { data?: AlimtalkStats })?.data ?? null },
+  )
+  const packages = pricingQ.data ?? []
+  const accounts = accountsQ.data ?? []
+  const stats = statsQ.data ?? null
+  const loading = pricingQ.isLoading || accountsQ.isLoading || statsQ.isLoading
+  const anyError = pricingQ.isError || accountsQ.isError || statsQ.isError
+  const loadAllData = () => {
+    void pricingQ.refetch(); void accountsQ.refetch(); void statsQ.refetch()
+  }
+
+  useEffect(() => {
+    // 401 은 lib/api.ts interceptor 가 처리 — 그 외 실패만 기존과 동일하게 토스트.
+    if (anyError) toast.error('데이터를 불러오지 못했습니다')
+  }, [anyError])
 
   function startEdit(pkg: AlimtalkPackage) {
     setEditingId(pkg.id)

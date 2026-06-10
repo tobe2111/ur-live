@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Wallet, Loader2, Check, X } from 'lucide-react'
@@ -36,23 +38,28 @@ export default function AdminWholesaleDepositsPage() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'pending' | 'all'>('pending')
   const [mallId, setMallId] = useState('') // '' = 전 몰(기존 무필터 동작 불변)
-  const [requests, setRequests] = useState<DepositRequest[]>([])
-  const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const load = useCallback(() => {
-    setLoading(true)
-    const params: Record<string, string> = { status: filter }
-    if (mallId) params.mall_id = mallId
-    api.get('/api/admin/wholesale-deposits', { params })
-      .then((r) => { setRequests(r.data?.success ? (r.data.requests || []) : []) })
-      .catch(() => setRequests([]))
-      .finally(() => setLoading(false))
-  }, [filter, mallId])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   인증=api 인터셉터 자동(admin_token). filter/mallId 변경 시 queryKey 로 자동 재조회.
+  const queryClient = useQueryClient()
+  const queryKey = ['admin', 'wholesale-deposits', filter, mallId] as const
+  const { data: requests = [], isLoading: loading, refetch } = useApiQuery<DepositRequest[]>(
+    queryKey,
+    '/api/admin/wholesale-deposits',
+    {
+      params: { status: filter, mall_id: mallId || undefined },
+      select: (raw) => {
+        const r = raw as { success?: boolean; requests?: DepositRequest[] }
+        return r?.success ? (r.requests || []) : []
+      },
+    },
+  )
+  const load = () => { void refetch() }
+  const setRequests = (updater: (prev: DepositRequest[]) => DepositRequest[]) =>
+    queryClient.setQueryData<DepositRequest[]>(queryKey, (prev) => updater(prev ?? []))
 
   async function confirm(req: DepositRequest) {
     if (!(await confirmDialog({ message: `${req.business_name || `#${req.seller_id}`} 의 ${formatWon(req.amount)} 입금을 확인하고 예치금을 충전할까요?` }))) return

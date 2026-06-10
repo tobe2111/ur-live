@@ -11,6 +11,7 @@ import {
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatKSTDate } from '@/utils/date'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
 interface SampleRequest {
   id: number
@@ -39,40 +40,41 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
 export default function AdminSampleRequestsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [items, setItems] = useState<SampleRequest[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState('')
-  const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<number | null>(null)
   const [memoModal, setMemoModal] = useState<{ id: number; action: 'approve' | 'reject' } | null>(null)
   const [adminMemo, setAdminMemo] = useState('')
 
   const limit = 20
-  const totalPages = Math.ceil(total / limit)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
-    if (!token) { navigate('/admin/login', { replace: true }); return }
-    loadData()
-  }, [page, filter])
+    if (!token) { navigate('/admin/login', { replace: true }) }
+  }, [navigate])
 
-  async function loadData() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
-      if (filter) params.set('status', filter)
-      const res = await api.get(`/api/admin/sample-requests?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-      })
-      if (res.data.success) {
-        setItems(res.data.data.items ?? [])
-        setTotal(res.data.data.total ?? 0)
-      }
-    } catch {
-      toast.error('샘플 신청 목록을 불러올 수 없습니다')
-    } finally { setLoading(false) }
-  }
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   page/filter 변경 시 queryKey 로 자동 재조회. 수동 Authorization 헤더는 기존 그대로 보존.
+  const { data, isLoading: loading, isError, refetch } = useApiQuery<{ items: SampleRequest[]; total: number }>(
+    ['admin', 'sample-requests', page, filter],
+    '/api/admin/sample-requests',
+    {
+      params: { page, limit, status: filter || undefined },
+      headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+      select: (raw) => {
+        const r = raw as { success?: boolean; data?: { items?: SampleRequest[]; total?: number } }
+        return r?.success ? { items: r.data?.items ?? [], total: r.data?.total ?? 0 } : { items: [], total: 0 }
+      },
+    },
+  )
+  const items = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.ceil(total / limit)
+  const loadData = () => { void refetch() }
+
+  useEffect(() => {
+    if (isError) toast.error('샘플 신청 목록을 불러올 수 없습니다')
+  }, [isError])
 
   async function handleAction(id: number, action: 'approve' | 'reject', memo?: string) {
     setActionId(id)

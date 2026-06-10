@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import api from '@/lib/api'
+import { useState } from 'react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { RefreshCw, Activity, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
@@ -16,40 +16,28 @@ interface KVUsageData {
 }
 
 export default function KVMonitoringPage() {
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<KVUsageData | null>(null)
-  const [error, setError] = useState('')
   const [autoRefresh, setAutoRefresh] = useState(false)
 
-  async function fetchKVUsage() {
-    setLoading(true)
-    setError('')
-    
-    try {
-      const response = await api.get('/api/debug/kv-usage')
-      if (response.data.success) {
-        setData(response.data.data)
-      } else {
-        setError(response.data.error || '데이터 로드 실패')
-      }
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      setError(err_.response?.data?.error || '데이터 로드 실패')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchKVUsage()
-  }, [])
-
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(fetchKVUsage, 30000) // 30초마다 갱신
-      return () => clearInterval(interval)
-    }
-  }, [autoRefresh])
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+setInterval 폴링 → useApiQuery refetchInterval (RQ SSOT).
+  //   자동 갱신 ON 시 30초 폴링(foreground 만) — 기존 setInterval 30000 과 동일 주기.
+  const { data = null, isFetching: loading, error: queryError, refetch } = useApiQuery<KVUsageData | null>(
+    ['admin', 'kv-usage'],
+    '/api/debug/kv-usage',
+    {
+      select: (raw) => {
+        const r = raw as { success?: boolean; data?: KVUsageData; error?: string }
+        if (!r?.success) throw new Error(r?.error || '데이터 로드 실패')
+        return r.data ?? null
+      },
+      refetchInterval: autoRefresh ? 30000 : undefined,
+    },
+  )
+  const error = queryError
+    ? ((queryError as { response?: { data?: { error?: string } } })?.response?.data?.error
+      || (queryError as Error)?.message
+      || '데이터 로드 실패')
+    : ''
+  const fetchKVUsage = () => { void refetch() }
 
   function getStatusColor(percent: number) {
     if (percent < 50) return 'text-green-600 bg-green-50'

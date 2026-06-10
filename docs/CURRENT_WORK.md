@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+### ✅ 2026-06-10 — 어드민·셀러 대시보드 IA/코드 개편 (`claude/service-analysis-optimization-whpu0f`)
+**사용자 불만 "복잡한 상태" → IA(정보구조) 중심 개편. 라우트 전부 보존(북마크/딥링크 안전), 동작 변화 0 원칙.**
+- **어드민**: ① nav 그룹 접기/펼치기(localStorage `admin_nav_collapsed_v1`, 활성 그룹 강제 펼침) ② 고아 라우트 18개 nav 등재(반품검수/원천징수/인플송금/교환권추적/에이전시셀러심사 등) + **🔧 개발자 도구 그룹 신설**(health/errors/env-check/kakao-test/youtube-quota — 기본 접힘) ③ 정산 4페이지(개별/일괄/Ledger/추천출금) `AdminFinanceTabs` 상단 탭 — nav '정산 센터' 1항목(`also` 활성매칭) ④ `AdminDataTable` 공통 테이블(데스크톱 table+모바일 카드 자동, 도매주문/무결성 2페이지 레퍼런스 적용) ⑤ 잔여 수동 fetch 9페이지 → `useApiQuery`(낙관 업데이트=setQueryData, 폴링=refetchInterval, 수동헤더 보존. 못 옮기는 페이지 사유는 commit 참조: env-check 503-body 시맨틱, live-monitor 사운드 사이드이펙트 등) ⑥ AdminBulkEmail native confirm→confirmDialog.
+- **셀러**: ① `SellerPage` "라이브 시작" 버튼 `LIVE_COMMERCE_SUSPENDED` 게이트(중단 기능 노출 잔재 — 역할 게이트만 있었음) ② 상품/묶음/재고 `SellerProductTabs` 탭 통합(nav 3→1) ③ 신규 셀러(상품0·주문0) `NewSellerSteps` 3단계 시작 카드 + i18n 6언어(`seller.newSteps.*`) ④ `SellerSettlementsPage` 1,172→419줄(`seller-settlements/` 7파일 추출) ⑤ `SellerBusinessInfoPage` 797→514줄 3탭화(`?tab=`, `#bank-info-section` 해시 호환 유지).
+- 검증: tsc 0 · unit 1528 · `npm run build` OK. commits `613c6d8`(IA) `3aa0740`(DataTable) `6d27cdb`(셀러 분해) + useApiQuery 마이그레이션.
+
 ### ✅ 2026-06-09 — 서비스 전체 분석 + 도매몰 perf/관측성 개선 (`claude/service-analysis-optimization-whpu0f`)
 **분석 결론**: 잠금 최적화 회귀 0 · critical path 228→257KB gzip(+13%, 유기적 성장 — 모니터 권장) · 도매 페이지 chunk 분리/스켈레톤/캐시헤더는 기적용 확인(서브에이전트 오탐 다수 직접검증으로 기각).
 **적용 fix (전부 비잠금·additive)**:

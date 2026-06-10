@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Banknote, Loader2, Check, X } from 'lucide-react'
@@ -37,21 +39,28 @@ const STATUS: Record<WithdrawalRequest['status'], { t: string; c: string }> = {
 export default function AdminWholesaleWithdrawalsPage() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'requested' | 'all'>('requested')
-  const [requests, setRequests] = useState<WithdrawalRequest[]>([])
-  const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/api/admin/wholesale-withdrawals', { params: { status: filter } })
-      .then((r) => { setRequests(r.data?.success ? (r.data.withdrawals || []) : []) })
-      .catch(() => setRequests([]))
-      .finally(() => setLoading(false))
-  }, [filter])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   인증=api 인터셉터 자동(admin_token). filter 변경 시 queryKey 로 자동 재조회.
+  const queryClient = useQueryClient()
+  const queryKey = ['admin', 'wholesale-withdrawals', filter] as const
+  const { data: requests = [], isLoading: loading, refetch } = useApiQuery<WithdrawalRequest[]>(
+    queryKey,
+    '/api/admin/wholesale-withdrawals',
+    {
+      params: { status: filter },
+      select: (raw) => {
+        const r = raw as { success?: boolean; withdrawals?: WithdrawalRequest[] }
+        return r?.success ? (r.withdrawals || []) : []
+      },
+    },
+  )
+  const load = () => { void refetch() }
+  const setRequests = (updater: (prev: WithdrawalRequest[]) => WithdrawalRequest[]) =>
+    queryClient.setQueryData<WithdrawalRequest[]>(queryKey, (prev) => updater(prev ?? []))
 
   async function approve(req: WithdrawalRequest) {
     if (!(await confirmDialog({ message: `${req.business_name || `#${req.supplier_id}`} 에게 ${formatWon(req.amount)} 을(를) 등록 계좌(${req.bank_name || '-'} ${req.account_holder || '-'})로 송금 완료하셨나요? 승인하면 출금 가능 잔액에서 차감됩니다.` }))) return

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -30,8 +32,6 @@ function getToken() {
 export default function AdminCafe24Page() {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState<Cafe24Status | null>(null)
-  const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -48,25 +48,20 @@ export default function AdminCafe24Page() {
     }
   }, [])
 
-  useEffect(() => {
-    loadStatus()
-  }, [])
-
-  async function loadStatus() {
-    try {
-      setLoading(true)
-      const token = getToken()
-      const res = await api.get('/api/admin/cafe24/status', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      setStatus(res.data.data)
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('[Cafe24] Status load failed:', err)
-      setStatus({ connected: false })
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   수동 Authorization 헤더(getToken)는 기존 그대로 보존. 실패 시 기존 catch 와 동일하게 미연결 표시.
+  const queryClient = useQueryClient()
+  const queryKey = ['admin', 'cafe24', 'status'] as const
+  const { data: statusData, isLoading: loading, isError, refetch } = useApiQuery<Cafe24Status | null>(
+    queryKey,
+    '/api/admin/cafe24/status',
+    {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      select: (raw) => (raw as { data?: Cafe24Status })?.data ?? null,
+    },
+  )
+  const status: Cafe24Status | null = isError ? { connected: false } : (statusData ?? null)
+  const loadStatus = () => refetch()
 
   async function handleConnect() {
     try {
@@ -112,7 +107,7 @@ export default function AdminCafe24Page() {
         headers: { Authorization: `Bearer ${token}` },
       })
       toast.success('Cafe24 연동 해제 완료')
-      setStatus({ connected: false })
+      queryClient.setQueryData<Cafe24Status>(queryKey, { connected: false })
     } catch (err) {
       if (import.meta.env.DEV) console.error('[Cafe24] Disconnect failed:', err)
       toast.error('연동 해제 실패')

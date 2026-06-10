@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { MessageSquareWarning, Loader2, Check, X, Lightbulb, Flag } from 'lucide-react'
@@ -45,26 +47,33 @@ const FILTERS: { id: string; label: string }[] = [
 export default function AdminWholesaleProposalsPage() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState('open')
-  const [rows, setRows] = useState<FeedbackRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
   // 🏬 멀티-몰: '' = 전 몰(기존 무필터 뷰 보존). 특정 몰 선택 시 ?mall_id= 로 스코프.
   const [mallId, setMallId] = useState('')
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const load = useCallback(() => {
-    setLoading(true)
-    const params: Record<string, string> = {}
-    if (filter !== 'all') params.status = filter
-    if (mallId) params.mall_id = mallId
-    api.get('/api/admin/wholesale-proposals', { params })
-      .then((r) => setRows(r.data?.success ? (r.data.proposals || r.data.items || []) : []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [filter, mallId])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   인증=api 인터셉터 자동(admin_token). filter/mallId 변경 시 queryKey 로 자동 재조회.
+  const queryClient = useQueryClient()
+  const queryKey = ['admin', 'wholesale-proposals', filter, mallId] as const
+  const { data: rows = [], isLoading: loading, refetch } = useApiQuery<FeedbackRow[]>(
+    queryKey,
+    '/api/admin/wholesale-proposals',
+    {
+      params: {
+        status: filter !== 'all' ? filter : undefined,
+        mall_id: mallId || undefined,
+      },
+      select: (raw) => {
+        const r = raw as { success?: boolean; proposals?: FeedbackRow[]; items?: FeedbackRow[] }
+        return r?.success ? (r.proposals || r.items || []) : []
+      },
+    },
+  )
+  const load = () => { void refetch() }
+  const setRows = (updater: (prev: FeedbackRow[]) => FeedbackRow[]) =>
+    queryClient.setQueryData<FeedbackRow[]>(queryKey, (prev) => updater(prev ?? []))
 
   async function resolve(row: FeedbackRow, status: FeedbackStatus) {
     const memo = window.prompt(status === 'rejected' ? '반려 사유(선택)' : '처리 메모(선택, 유통사에게 표시)', row.admin_memo || '')

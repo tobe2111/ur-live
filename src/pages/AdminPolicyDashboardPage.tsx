@@ -12,12 +12,10 @@
  * 이 페이지는 읽기 전용 — 어드민이 "지금 어떤 정책이 적용 중인지" 한눈에 확인용.
  */
 
-import { useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import { DashboardPageHeader } from '@/components/dashboard'
-import api from '@/lib/api'
-import { swallow } from '@/shared/utils/swallow'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import {
   REFUND_POLICY,
   COMMISSION_DEFAULTS,
@@ -74,24 +72,24 @@ function PolicyTable({ title, rows }: {
 }
 
 export default function AdminPolicyDashboardPage() {
-  const [dynamicSettings, setDynamicSettings] = useState<Record<string, string>>({})
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    api
-      .get('/api/admin/payouts/commission-rates')
-      .then((res) => {
-        const data = res.data?.data || {}
-        setDynamicSettings({
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   인증=api 인터셉터 자동(admin_token). 에러 시 data 없음 → 기존 swallow 와 동일하게 fallback 상수만 표시.
+  const { data: dynamicSettings = {}, isLoading } = useApiQuery<Record<string, string>>(
+    ['admin', 'policy-dashboard', 'commission-rates'],
+    '/api/admin/payouts/commission-rates',
+    {
+      select: (raw) => {
+        const data = (raw as { data?: Record<string, unknown> })?.data || {}
+        return {
           platform_fee_pct: String(data.platform_fee_pct ?? ''),
           seller_commission_pct: String(data.seller_commission_pct ?? ''),
           agency_share_pct: String(data.agency_share_pct ?? ''),
           influencer_intro_share_pct: String(data.influencer_intro_share_pct ?? ''),
-        })
-      })
-      .catch(swallow('admin-policy-dashboard:fetch'))
-      .finally(() => setLoaded(true))
-  }, [])
+        }
+      },
+    },
+  )
+  const loaded = !isLoading
 
   const refundRows = [
     { key: 'APPOINTMENT_NOSHOW_ALERT_MIN', value: REFUND_POLICY.APPOINTMENT_NOSHOW_ALERT_MIN, unit: '분', desc: '예약 노쇼 자동 알림 — 시작 후 N분' },

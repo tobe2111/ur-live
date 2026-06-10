@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import ImageUpload from '@/components/upload/ImageUpload'
@@ -25,8 +27,6 @@ const EMPTY = { image_url: '', link: '', title: '', sort: 0, is_active: true }
 
 export default function AdminWholesaleBannersPage() {
   const navigate = useNavigate()
-  const [banners, setBanners] = useState<WholesaleBannerRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<WholesaleBannerRow | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY)
@@ -36,15 +36,24 @@ export default function AdminWholesaleBannersPage() {
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/api/admin/wholesale-banners', mallId ? { params: { mall_id: mallId } } : undefined)
-      .then((r) => setBanners(r.data?.success ? (r.data.banners || []) : []))
-      .catch(() => setBanners([]))
-      .finally(() => setLoading(false))
-  }, [mallId])
-
-  useEffect(() => { load() }, [load])
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+api.get → useApiQuery (RQ SSOT).
+  //   인증=api 인터셉터 자동(admin_token). mallId 변경 시 queryKey 로 자동 재조회.
+  const queryClient = useQueryClient()
+  const queryKey = ['admin', 'wholesale-banners', mallId] as const
+  const { data: banners = [], isLoading: loading, refetch } = useApiQuery<WholesaleBannerRow[]>(
+    queryKey,
+    '/api/admin/wholesale-banners',
+    {
+      params: mallId ? { mall_id: mallId } : undefined,
+      select: (raw) => {
+        const r = raw as { success?: boolean; banners?: WholesaleBannerRow[] }
+        return r?.success ? (r.banners || []) : []
+      },
+    },
+  )
+  const load = () => { void refetch() }
+  const setBanners = (updater: (prev: WholesaleBannerRow[]) => WholesaleBannerRow[]) =>
+    queryClient.setQueryData<WholesaleBannerRow[]>(queryKey, (prev) => updater(prev ?? []))
 
   function openNew() {
     setEditing(null)
