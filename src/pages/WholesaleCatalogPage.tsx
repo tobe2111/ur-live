@@ -564,8 +564,22 @@ export default function WholesaleCatalogPage() {
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
   const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}`
+  // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 상품 느림): worker SSR 주입(__SSR_INITIAL_WHOLESALE__)
+  //   즉시 소비 — guest + 기본 파라미터에서만(개인화 등급가는 fetch). consume-once(el.remove).
+  const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
+    initialData: () => {
+      if (!isDefaultCatalog || typeof document === 'undefined') return undefined
+      if (typeof window !== 'undefined' && localStorage.getItem('seller_token')) return undefined // 로그인 = 등급가 fetch 필수
+      const el = document.getElementById('__SSR_INITIAL_WHOLESALE__')
+      if (!el?.textContent) return undefined
+      try {
+        const parsed = JSON.parse(el.textContent) as { success?: boolean; items?: CatalogItem[] }
+        el.remove()
+        return parsed?.success ? ((parsed.items || []) as CatalogItem[]) : undefined
+      } catch { return undefined }
+    },
     queryFn: () => {
       const params = new URLSearchParams()
       if (committedSearch) params.set('search', committedSearch)

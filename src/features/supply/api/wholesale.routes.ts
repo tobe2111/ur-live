@@ -170,6 +170,21 @@ function computeSupplierShipping(
 const _biz8Ensured = new WeakSet<object>()
 // 🏭 2026-06-10 (카탈로그 전수조사): is_supply_product pragma 존재 체크 — isolate 당 1회(양성만 캐시).
 const _supplyCatalogReady = new WeakSet<object>()
+
+// 🏭 2026-06-10 (카탈로그 최속화): 허용목록(per-seller 가시성) 제한 상품 존재 여부 — 60s TTL.
+//   제한 상품 0건이면 응답은 (등급, 몰, 쿼리) 에만 의존 → 등급 단위 엣지 캐시 공유 가능.
+//   제한 상품이 생기면 60s 내 자동으로 per-seller 라이브 쿼리 복귀(유출 0). 캐시 TTL(60s)도 동일 상한.
+let _visRestricted: { val: boolean; ts: number } | null = null
+async function hasRestrictedVisibility(DB: D1Database): Promise<boolean> {
+  const now = Date.now()
+  if (_visRestricted && now - _visRestricted.ts < 60_000) return _visRestricted.val
+  const row = await DB.prepare(
+    "SELECT 1 AS x FROM products WHERE is_supply_product = 1 AND supply_visibility IS NOT NULL AND supply_visibility <> 'ALL' LIMIT 1"
+  ).first<{ x: number }>().catch(() => null)
+  _visRestricted = { val: !!row, ts: now }
+  return _visRestricted.val
+}
+
 async function ensureQtyConstraintSchema(DB: D1Database) {
   if (_biz8Ensured.has(DB)) return
   _biz8Ensured.add(DB)
@@ -1014,14 +1029,38 @@ app.get('/catalog', async (c) => {
     }
 
     // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
-    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB)])
-    // 🏭 등급/등급표/몰 — 상호 독립 쿼리 3개 순차 await(3 RTT) → 병렬(1 RTT).
-    const [sg, table, mallId] = await Promise.all([
+    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB)])
+    // 🏭 등급/등급표/몰/가시성제한 — 상호 독립 쿼리 4개 순차 await → 병렬(1 RTT).
+    const [sg, table, mallId, visRestricted] = await Promise.all([
       guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
       loadGradeTable(DB),
       resolveMallId(c),
+      hasRestrictedVisibility(DB),
     ])
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
+
+    // 🏭 2026-06-10 (최속화): 등급 단위 엣지 캐시 — 같은 (등급, 몰, 쿼리)는 같은 응답이므로
+    //   로그인 사용자끼리 60초 공유. 단, 허용목록 제한 상품이 1개라도 있으면 per-seller 응답이라 비활성.
+    //   guest 는 기존 CDN-Cache-Control 공유캐시 경로 그대로(이 캐시 미사용).
+    let gradeCacheKey: Request | null = null
+    if (!guest && !brandsMode && !visRestricted) {
+      try {
+        const u = new URL(c.req.url)
+        u.searchParams.set('__g', grade)
+        u.searchParams.set('__m', String(mallId))
+        gradeCacheKey = new Request(u.toString(), { method: 'GET' })
+        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
+        const hit = (await caches.default.match(gradeCacheKey).catch(() => null)) as Response | null
+        if (hit) {
+          const body = await hit.text()
+          return c.body(body, 200, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+            'X-Grade-Cache': 'HIT',
+          })
+        }
+      } catch { gradeCacheKey = null /* caches 미지원 환경 — 라이브 쿼리로 진행 */ }
+    }
 
     // 도매 가능 = 제조사 공급상품(공급자 직등록 원본). supply_source_id IS NULL = 원본(셀러 복제본 제외).
     // + 공급 범위(supply_visibility) 가시성: ALL 이거나 허용목록(선정된 유통회원)에 포함.
@@ -1083,6 +1122,7 @@ app.get('/catalog', async (c) => {
     const orderBy = CATALOG_SORT_ORDER[sortKey] || CATALOG_SORT_ORDER.popular
 
     // 🏭 2026-06-10 (전수조사): 목록 + COUNT 동일 WHERE — 순차(2 RTT) → 병렬(1 RTT).
+    //   제조사 배송정책도 별도 쿼리(loadSupplierPolicies, +1 RTT) → suppliers LEFT JOIN 으로 합침.
     const [rows, totalRow] = await Promise.all([
       DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock, p.supplier_id,
@@ -1091,24 +1131,22 @@ app.get('/catalog', async (c) => {
              COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
              COALESCE(p.is_premium,0) AS is_premium, COALESCE(p.is_brand_product,0) AS is_brand_product, p.brand_name, p.brand_logo_url,
              EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers,
-             COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override
+             COALESCE(p.sold_count,0) AS sold_count, p.supply_margin_override_pct AS margin_override,
+             COALESCE(sup.min_order_amount,0) AS sup_min_order, COALESCE(sup.shipping_fee,0) AS sup_ship_fee, COALESCE(sup.free_ship_threshold,0) AS sup_free_ship
       FROM products p
+      LEFT JOIN suppliers sup ON sup.id = p.supplier_id
       WHERE ${where}
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<{
         id: number; name: string; description: string | null; image_url: string | null;
-        category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; is_brand_product: number; brand_name: string | null; brand_logo_url: string | null; has_tiers: number; sold_count: number; margin_override: number | null
+        category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; is_premium: number; is_brand_product: number; brand_name: string | null; brand_logo_url: string | null; has_tiers: number; sold_count: number; margin_override: number | null;
+        sup_min_order: number; sup_ship_fee: number; sup_free_ship: number
       }>(),
       DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${where}`)
         .bind(...params).first<{ c: number }>().catch(() => ({ c: 0 })),
     ])
     const total = totalRow?.c ?? 0
-
-    // 🚚 제조사별 배송/주문 정책 일괄 로드 — 카트가 제조사별 최소주문금액/배송비 그룹 계산하도록 정책 첨부.
-    //   ⚠️ supplier_id(신원) 비노출 — 비식별 group key(s{id}) + 정책 숫자만 반환.
-    const catSupplierIds = (rows.results || []).map(r => r.supplier_id).filter((x): x is number => Number.isFinite(x as number) && (x as number) > 0)
-    const catPolicies = catSupplierIds.length ? await loadSupplierPolicies(DB, catSupplierIds) : new Map<number, SupplierPolicy>()
 
     // ⚠️ supply_price/supplier_id 비노출 — 등급가 + 권장소비자가(마진 산출용)만 반환.
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
@@ -1118,7 +1156,8 @@ app.get('/catalog', async (c) => {
         specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
       }).price
       const supId = (Number.isFinite(r.supplier_id as number) && (r.supplier_id as number) > 0) ? (r.supplier_id as number) : null
-      const supPol = supId != null ? catPolicies.get(supId) : undefined
+      // 🚚 정책은 JOIN 으로 동봉됨 (loadSupplierPolicies 별도 RTT 제거) — 동일 값.
+      const supPol = supId != null ? { min_order_amount: Math.max(0, Math.floor(r.sup_min_order || 0)), shipping_fee: Math.max(0, Math.floor(r.sup_ship_fee || 0)), free_ship_threshold: Math.max(0, Math.floor(r.sup_free_ship || 0)) } : undefined
       return {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         category: r.category, stock: r.stock, distributor_price: price,
@@ -1142,13 +1181,24 @@ app.get('/catalog', async (c) => {
     //   guest 카탈로그는 banners 와 동일 분리 헤더(브라우저 60s + edge 300s). KV write 미사용(edge only).
     // 🏭 2026-06-10 (전수조사): 로그인도 no-store → private+max-age=30 — 같은 사용자 브라우저만 30초 재사용
     //   (탭 이동/뒤로가기 즉시). 등급 변경 반영 지연 최대 30초 — 허용 범위. 공유캐시는 여전히 금지(private).
+    const payload = JSON.stringify({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade: guest ? null : grade, requires_login: guest })
     if (guest) {
       c.header('Cache-Control', 'public, max-age=60')
       c.header('CDN-Cache-Control', 'public, max-age=300')
     } else {
       c.header('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
+      // 🏭 등급 단위 엣지 캐시 저장 (60s) — 같은 등급의 다음 사용자/요청은 D1 0회.
+      if (gradeCacheKey && c.executionCtx) {
+        c.executionCtx.waitUntil(
+          // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
+          caches.default.put(gradeCacheKey, new Response(payload, {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
+          })).catch(swallow('wholesale:grade-cache-put')),
+        )
+      }
     }
-    return c.json({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade: guest ? null : grade, requires_login: guest })
+    c.header('Content-Type', 'application/json')
+    return c.body(payload)
   } catch (err) {
     return safeError(c, err, '카탈로그 조회 중 오류가 발생했습니다', '[wholesale]')
   }
