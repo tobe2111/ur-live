@@ -107,7 +107,7 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 }
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void }) {
+const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish, aboveFold }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void; aboveFold?: boolean }) {
   // 🏭 perf: viewport 진입 시 상세 prefetch(rootMargin 100px — 소비자 GroupBuyFeedCard 패턴). hover/focus/touch 도 prefetch.
   const wrapRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -139,7 +139,8 @@ const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRest
               src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url}
               alt={p.name}
               draggable={false}
-              loading="lazy"
+              loading={aboveFold ? 'eager' : 'lazy'}
+              fetchPriority={aboveFold ? 'high' : 'auto'}
               decoding="async"
               onLoad={(e) => {
                 const c = extractDominantColor(e.currentTarget)
@@ -619,6 +620,22 @@ export default function WholesaleCatalogPage() {
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
+  // 🏭 2026-06-10 (최속화): 부가 데이터(월 통계/재주문 레일)는 첫 페인트와 대역폭 경쟁하지 않게
+  //   idle 이후로 지연 — 카탈로그(상품)가 항상 최우선. 헤더 필수(me/예치금/카테고리)는 즉시.
+  const [deferredReady, setDeferredReady] = useState(false)
+  useEffect(() => {
+    const fire = () => setDeferredReady(true)
+    type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+    const w = window as IdleWindow
+    if (typeof w.requestIdleCallback === 'function') { w.requestIdleCallback(fire, { timeout: 1500 }) }
+    else { setTimeout(fire, 600) }
+  }, [])
+  // 🏭 idle 에 상세/장바구니 chunk 도 예열 — 카드 클릭/담기 시 chunk fetch 대기 0.
+  useEffect(() => {
+    if (!deferredReady) return
+    import('./WholesaleProductPage').catch(() => {})
+    import('./WholesaleCartPage').catch(() => {})
+  }, [deferredReady])
   const meQ = useWholesaleMe()
   const depositQ = useWholesaleDeposit()
   const homeQ = useWholesaleHome()
@@ -632,7 +649,7 @@ export default function WholesaleCatalogPage() {
   // 이번달 사입액 (거래내역서 summary 재사용).
   const monthFrom = useMemo(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }, [])
   const monthTo = useMemo(() => new Date().toISOString().slice(0, 10), [])
-  const stmtQ = useWholesaleStatement(monthFrom, monthTo)
+  const stmtQ = useWholesaleStatement(monthFrom, monthTo, { enabled: deferredReady })
 
   const allItems = (catalogQ.data ?? []) as unknown as CatalogItem[]
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; special_discount_until: string | null } | null
@@ -691,7 +708,7 @@ export default function WholesaleCatalogPage() {
     return [{ id: 'all', label: '전체' }, ...known, ...unknown]
   }, [home?.categories, allItems, catCounts])
 
-  const recentQ = useWholesaleRecentItems()
+  const recentQ = useWholesaleRecentItems({ enabled: deferredReady })
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
   const loggedIn = !!token
@@ -1422,7 +1439,7 @@ export default function WholesaleCatalogPage() {
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
-                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} />)}
+                  {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} />)}
                 </div>
               )}
             </div>

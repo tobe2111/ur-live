@@ -105,7 +105,7 @@ export interface WholesaleStatementData {
   summary: WholesaleSummary | null
 }
 
-export function useWholesaleStatement(from: string, to: string) {
+export function useWholesaleStatement(from: string, to: string, opts?: { enabled?: boolean }) {
   return useQuery<WholesaleStatementData>({
     queryKey: queryKeys.wholesale('statement', `${from}~${to}`),
     queryFn: () =>
@@ -113,7 +113,8 @@ export function useWholesaleStatement(from: string, to: string) {
         .get(`/api/wholesale/statement?from=${from}&to=${to}`, sellerAuth())
         .then((r) => (r.data?.success ? { orders: r.data.orders || [], summary: r.data.summary ?? null } : { orders: [], summary: null }))
         .catch(() => ({ orders: [], summary: null })),
-    enabled: hasSellerToken(),
+    // 🏭 2026-06-10 (카탈로그 최속화): idle 이후 지연 가능 — 기본 true(기존 동작 불변).
+    enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -209,12 +210,13 @@ export interface WholesaleReorderItem {
 }
 
 /** 빠른 재주문 — 최근 사입한 상품 + 마지막 수량. */
-export function useWholesaleRecentItems() {
+export function useWholesaleRecentItems(opts?: { enabled?: boolean }) {
   return useQuery<WholesaleReorderItem[]>({
     queryKey: queryKeys.wholesale('recent-items'),
     queryFn: () =>
       api.get('/api/wholesale/recent-items', sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
-    enabled: hasSellerToken(),
+    // 🏭 2026-06-10 (카탈로그 최속화): 호출부가 idle 이후로 미룰 수 있게 enabled 옵션 — 기본 true(기존 동작 불변).
+    enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
