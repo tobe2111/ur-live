@@ -6008,5 +6008,10 @@
       "desc": "Envíe propuestas de productos o reportes de problemas al equipo",
       "loginNeeded": "Inicie sesión para enviar una propuesta o reporte"
     }
+  },
+  "home": {
+    "shopEntryTitle": "Tienda de productos",
+    "shopEntryDesc": "Productos con envío — incl. suministro mayorista",
+    "shopEntryCta": "Ver →"
   }
 }

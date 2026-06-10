@@ -6008,5 +6008,10 @@
       "desc": "Send product proposals or issue reports to the operations team",
       "loginNeeded": "Log in to submit a proposal or report"
     }
+  },
+  "home": {
+    "shopEntryTitle": "Shop products",
+    "shopEntryDesc": "Browse shipped products — incl. wholesale-direct items",
+    "shopEntryCta": "Browse →"
   }
 }

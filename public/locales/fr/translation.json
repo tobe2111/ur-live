@@ -6008,5 +6008,10 @@
       "desc": "Transmettez vos propositions de produits ou signalements à l'équipe",
       "loginNeeded": "Connectez-vous pour soumettre une proposition ou un signalement"
     }
+  },
+  "home": {
+    "shopEntryTitle": "Boutique produits",
+    "shopEntryDesc": "Produits livrés — incl. approvisionnement direct",
+    "shopEntryCta": "Voir →"
   }
 }

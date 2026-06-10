@@ -93,6 +93,22 @@ export default function MainHomePage() {
           오프라인 공구는 동네딜(/group-buy) 탭이 전담. */}
       <VouchersPage embedded />
 
+      {/* ═══ 🛍️ 쇼핑(일반 상품) 진입 — 2026-06-10 (사용자 결정): 쇼핑 탭 잠정 숨김 동안
+          홈 교환권 아래 '섹션'으로 유지 — 트래픽은 동네딜/교환권에 집중하되 /browse 도달 경로 보존.
+          쇼핑 부활 시 SHOPPING_TAB_HIDDEN=false 로 탭 복원 (이 섹션은 그대로 둬도 무해). */}
+      <section className="ur-content-wide px-4 lg:px-8 mt-8 mb-6">
+        <Link
+          to="/browse"
+          className="flex items-center justify-between rounded-2xl px-5 py-4 bg-[#121212] border border-[#1A1A1A] active:scale-[0.99] transition-transform"
+        >
+          <div className="min-w-0">
+            <p className="text-[14px] font-bold text-white">🛍️ {t('home.shopEntryTitle', { defaultValue: '일반 상품 쇼핑' })}</p>
+            <p className="text-[12px] text-gray-400 mt-0.5">{t('home.shopEntryDesc', { defaultValue: '배송 상품 둘러보기 — 도매 직공급 상품 포함' })}</p>
+          </div>
+          <span className="shrink-0 text-[12px] font-bold text-gray-300">{t('home.shopEntryCta', { defaultValue: '보러가기 →' })}</span>
+        </Link>
+      </section>
+
       <SiteFooter />
     </>
   )

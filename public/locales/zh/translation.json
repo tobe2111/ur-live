@@ -6008,5 +6008,10 @@
       "desc": "请向运营团队提交商品提案或问题报告",
       "loginNeeded": "登录后可发送提案/举报"
     }
+  },
+  "home": {
+    "shopEntryTitle": "普通商品购物",
+    "shopEntryDesc": "浏览配送商品 — 含批发直供商品",
+    "shopEntryCta": "去看看 →"
   }
 }
