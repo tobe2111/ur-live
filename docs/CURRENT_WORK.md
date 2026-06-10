@@ -1,5 +1,25 @@
 # 🚧 진행 중 작업
 
+## 📌 운영 액션 TODO (사용자가 직접 — 코드 아님)
+
+| # | 액션 | 소요 | 효과 | 상태 |
+|---|---|---|---|---|
+| 1 | **`REPAIR_SCHEMA_TOKEN` 등록** — ① 긴 랜덤 문자열 1개 생성(40자+) ② Cloudflare Dashboard → Workers & Pages → ur-live → Settings → Variables and Secrets 에 `REPAIR_SCHEMA_TOKEN`(Secret) ③ GitHub `tobe2111/ur-live` → Settings → Secrets and variables → Actions 에 **같은 값** 등록 | 5분 | 배포할 때마다 스키마 자동복구 → `/admin/health` 수동 클릭 영구 졸업 (미설정 시 매일 새벽 3시 cron 만) | ⬜ |
+| 2 | (1번 전까지 1회) `/admin/health` 스키마 복구 실행 — 2026-06-10 등록한 products 컬럼 14개 수렴 | 10초 | 상품 상세 자가치유 prune 상태 → 완전 복귀 | ⬜ |
+| 3 | `NTS_API_KEY` 등록 (Cloudflare Variables) | 5분 | 셀러/도매 가입 시 사업자번호 국세청 자동검증 → 자동승인 | ⬜ |
+| 4 | `/admin/wholesale-deposit-account` 에서 도매 입금계좌 설정 | 2분 | 유통사 충전 입금 안내 표시 | ⬜ |
+| 5 | `TAX_INVOICE_API_KEY` + `TAX_INVOICE_SENDER_BIZ_NO` (바로빌) | 10분 | 세금계산서 실발행 (미설정 시 draft 저장만) | ⬜ |
+| 6 | `RESEND_API_KEY` | 5분 | 어드민 단체메일 발송 | ⬜ |
+| 7 | **숙소 실결제 E2E 1회** (소액 결제→취소) | 10분 | reserve-before-charge 재구성(06-04) 실결제 미검증 ⚠️ | ⬜ |
+
+## ✅ 2026-06-10 (오후) — 홈 v2 마감 + products 500 영구화 + 링크샵 구조개편 (`claude/service-analysis-optimization-whpu0f`)
+- **products 'no such column' 500 영구 해결 (`356e8c2`,`07de4ee`)**: `/api/products/:id` findById 자가치유 누락분 적용 + **전수조사** — 소비자 SELECT 전부 healed+pruning, 에이전시 2곳 오적용 버그 수정(비-products 테이블에 products 컬럼 헬퍼), 명시목록에서 미존재 컬럼(shipping_fee/base_shipping_fee) 제거, repair-schema 에 14컬럼 등록, **신규 CI strict `check-product-detail-fields-repairable.mjs`**(명시목록 컬럼은 base∪repair 로 반드시 복구 가능해야 머지).
+- **홈 v2 (`cc7112e`,`93fcf47`,`1ea848c`,`4ddb38f`)**: 상품 레일 = 쇼핑 카드(BrowseProductCard) 그대로 공유(할인%·별점·리뷰·구매수) + 알약형 카테고리 칩(전체/식품/패션/뷰티/리빙/디지털, 선택=검정) + '우리 동네딜' 섹션 제거(하단바 탭 전담, 컴포넌트 보존) + 교환권 '더보기/전체보기' → '교환권 더보기' 단일 버튼.
+- **링크샵 구조개편 (`e1df59c`)**: 배경(사진/그라데이션/꾸미기 시트) **완전 제거** → 프로필 카드형(아바타+이름+소개+CTA 가운데 정렬). 인라인 편집·사진 업로드 3중 방어 유지. banner_url 은 레거시 무시(DB 불변 — 가역).
+- **/my-deal-history (`5e6baa2`)**: 핑크→B&W(차콜 hero·검정 칩), '쇼핑'→'교환권 쓰기', 다크모드 구분선 fix.
+- 멀티몰 어드민 예치금 몰 필터는 적용 확인됨(AdminMallSelect in AdminWholesaleDepositsPage) — 이전 '진행 중' 표기 해소.
+
+
 ### ✅ 2026-06-10 — 오프라인 공구 운영 루프 마감 3종 (현장 스캔·재발행·단골 알림) (`claude/service-analysis-optimization-whpu0f`)
 **플로우 감사(8단계) 결과**: 6단계 이상적(발행 OCR 5분·결제·청약철회·자동정산·지역필터·NTS자동승인은 키만 대기) — 감사 에이전트 오탐 4건 직접 검증 기각. 진짜 갭 2개 구현:
 - **현장 사용 1탭**: `/seller/scan` 계산대용 스캔 화면 신설(BarcodeDetector 네이티브, QR `/v/<code>` 파싱 → use-by-seller 1탭, 연속 스캔+세션 이력+진동 피드백+수동입력 폴백). 셀러 nav 공구그룹 최상단 + 대시보드 홈 안내카드에 직행 버튼(문구만 있고 누를 곳 없던 갭).
