@@ -33,7 +33,8 @@ const GRADIENT_PRESETS: Record<string, string> = {
   night: 'linear-gradient(135deg, #232526 0%, #414345 100%)',
   flamingo: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
 }
-const DEFAULT_GRADIENT = 'linear-gradient(135deg, #fb7185 0%, #f43f5e 50%, #a855f7 100%)'
+// 🎨 2026-06-10 (B&W 정합): 기본 그라데이션 핑크/퍼플 → 모노크롬 차콜.
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #2b2b2e 0%, #161618 60%, #0a0a0b 100%)'
 function gradientFor(banner: string | null | undefined): string | null {
   if (banner && banner.startsWith('gradient:')) return GRADIENT_PRESETS[banner.slice(9)] || DEFAULT_GRADIENT
   return null
@@ -109,10 +110,24 @@ export default function CuratorHeader({
         toast.error(res.data?.error || '업로드 실패')
       }
     } catch (err) {
-      const e = err as { response?: { data?: { error?: string } } }
+      const e = err as { response?: { status?: number; data?: { error?: string } } }
       toast.error(e.response?.data?.error || `업로드 실패 (${e.response?.status ?? '네트워크'})`)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const [bgPickerOpen, setBgPickerOpen] = useState(false)
+  // 🎨 그라데이션 원터치 적용 — 업로드 없이 항상 성공 (배경사진 의존 제거의 핵심)
+  async function applyGradient(id: string) {
+    try {
+      setLocalPreview(null)
+      await api.patch('/api/curator/me/profile', { banner_url: `gradient:${id}` })
+      onCuratorUpdate?.({ banner_url: `gradient:${id}` })
+      setBgPickerOpen(false)
+      toast.success('배경이 변경됐어요')
+    } catch {
+      toast.error('변경 실패 — 다시 시도해주세요')
     }
   }
 
@@ -140,7 +155,7 @@ export default function CuratorHeader({
       }
     } catch (err) {
       setLocalPreview(null)
-      const e = err as { response?: { data?: { error?: string } } }
+      const e = err as { response?: { status?: number; data?: { error?: string } } }
       toast.error(e.response?.data?.error || `업로드 실패 (${e.response?.status ?? '네트워크'})`)
     } finally {
       setUploadingBanner(false)
@@ -188,14 +203,39 @@ export default function CuratorHeader({
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white dark:to-[#020202]" />
       </div>
 
-      {/* 🏭 2026-06-05 (사용자 요청 — 그라데이션 버튼 제거): 배경은 사진 업로드만. 미설정 시 기본 그라데이션 자동. */}
+      {/* 🎨 2026-06-10 (사용자 결정 — 배경사진에 연연하지 않는 디자인): '배경 꾸미기' 시트.
+          그라데이션 프리셋 원터치(업로드 불필요, 항상 성공) 가 기본 경험 — 사진 업로드는 보조 옵션. */}
       {isOwner && (
         <>
           <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
-            <button onClick={() => bannerInputRef.current?.click()} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
-              <Camera className="w-3.5 h-3.5" /> 배경 사진
+            <button onClick={() => setBgPickerOpen(v => !v)} className="inline-flex items-center gap-1 bg-black/55 hover:bg-black/70 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full backdrop-blur">
+              <Camera className="w-3.5 h-3.5" /> 배경 꾸미기
             </button>
           </div>
+          {bgPickerOpen && (
+            <div className="absolute top-12 right-3 z-30 w-[232px] rounded-2xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] shadow-xl p-3">
+              <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-2">그라데이션 — 한 번에 적용</p>
+              <div className="grid grid-cols-4 gap-2">
+                {Object.entries(GRADIENT_PRESETS).map(([id, css]) => (
+                  <button
+                    key={id}
+                    onClick={() => applyGradient(id)}
+                    aria-label={id}
+                    className={`h-10 rounded-xl border-2 transition-transform active:scale-95 ${
+                      curator.banner_url === `gradient:${id}` ? 'border-gray-900 dark:border-white' : 'border-transparent'
+                    }`}
+                    style={{ background: css }}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() => { setBgPickerOpen(false); bannerInputRef.current?.click() }}
+                className="mt-3 w-full h-9 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] text-[11px] font-bold text-gray-700 dark:text-gray-200"
+              >
+                📷 사진 업로드 (선택)
+              </button>
+            </div>
+          )}
           <input
             ref={bannerInputRef}
             type="file"
