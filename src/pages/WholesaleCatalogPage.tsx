@@ -1041,12 +1041,14 @@ export default function WholesaleCatalogPage() {
               className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'discount' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.highMargin', { defaultValue: '판매마진 40%' })}
             </button>
-            {/* 프리미엄 전용관 → premium=1 */}
+            {/* 프리미엄 전용관 → premium=1. 👑 2026-06-10 (사용자 요청): 로그인(유통회원)만 노출 — 서버도 guest 차단(이중 게이트) */}
+            {!!token && (
             <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(true); setCat('all') }}
               className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-bold whitespace-nowrap"
               style={{ color: premiumView ? WT.brand : WT.ink }}>
               <Crown className="w-4 h-4" /> {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
             </button>
+            )}
           </div>
           {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}
           {megaOpen && (

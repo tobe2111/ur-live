@@ -983,6 +983,12 @@ app.get('/catalog', async (c) => {
   const inStock = c.req.query('in_stock') === '1'
   // 🏭 2026-06-09 Wave 2 프리미엄 전용관 — ?premium=1 이면 is_premium=1 만(additive WHERE). 미지정=현행 불변.
   const premiumOnly = c.req.query('premium') === '1'
+  // 👑 2026-06-10 (사용자 요청): 프리미엄 전용관은 로그인(유통회원)만 — guest 는 빈 목록 + requires_login.
+  //   클라(nav 버튼 숨김)와 이중 게이트 — URL 파라미터 직접 조작으로도 미노출.
+  if (premiumOnly && guest) {
+    c.header('Cache-Control', 'private, no-store')
+    return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: null, requires_login: true, premium_locked: true })
+  }
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brand=<name> 이면 brand_name 정확 일치 + is_brand_product=1 만(additive WHERE).
   //   ?brands=1 이면 상품 목록 대신 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 반환(브랜드 그리드용).
   //   둘 다 미지정 = 현행 동작 완전 불변(byte-identical 요청).
