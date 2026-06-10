@@ -2,7 +2,9 @@
 // Product Repository
 // ============================================================
 
-import { productDetailCols } from '@/shared/db/product-columns';
+// 🛡️ 2026-06-10 (전수조사 — 상품 상세 500 영구화): 정적 productDetailCols → healed + withColumnPruning.
+//   프로덕션에 없는 컬럼이 명시 목록에 섞이면 'no such column' → prune 후 재시도 (자가치유).
+import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import type { D1Database } from '@cloudflare/workers-types';
 import { QueryBuilder } from './query-builder';
 import type { Product, ProductStatus } from '../../shared/types';
@@ -17,13 +19,13 @@ export class ProductRepository {
 
   async findById(id: string): Promise<Product | null> {
     // Production `sellers` uses `username` instead of `slug`
-    const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_slug
+    const row = await withColumnPruning(() => this.qb.queryOne<Record<string, unknown>>(
+      `SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id = ? AND p.is_active = 1`,
       [id]
-    );
+    ));
     return row ? this.mapProduct(row) : null;
   }
 
@@ -69,8 +71,8 @@ export class ProductRepository {
 
     // avg_rating / review_count: correlated subquery (N+1) → derived table JOIN (O(1) scan)
     // product_reviews 한 번 GROUP BY → products 에 LEFT JOIN. NULL = 리뷰 없음.
-    const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_slug,
+    const rows = await withColumnPruning(() => this.qb.queryMany<Record<string, unknown>>(
+      `SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_slug,
               rv.avg_rating, rv.review_count
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
@@ -86,7 +88,7 @@ export class ProductRepository {
        ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,
       [...queryParams, limit, offset]
-    );
+    ));
 
     return { products: rows.map(r => this.mapProduct(r)), total };
   }
@@ -94,13 +96,13 @@ export class ProductRepository {
   async findByIds(ids: string[]): Promise<Product[]> {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(', ');
-    const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_slug
+    const rows = await withColumnPruning(() => this.qb.queryMany<Record<string, unknown>>(
+      `SELECT ${productDetailColsHealed('p')}, s.name as seller_name, s.username as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id IN (${placeholders}) AND (p.is_active = 1 OR p.status = 'ACTIVE')`,
       ids
-    );
+    ));
     return rows.map(r => this.mapProduct(r));
   }
 

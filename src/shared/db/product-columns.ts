@@ -14,7 +14,9 @@ export const PRODUCT_DETAIL_FIELDS = [
   'group_buy_target', 'group_buy_current', 'group_buy_status', 'group_buy_deadline', 'group_buy_tiers',
   'restaurant_name', 'restaurant_address', 'restaurant_phone', 'restaurant_lat', 'restaurant_lng',
   'voucher_expiry', 'voucher_terms', 'referral_commission_rate',
-  'shipping_fee', 'base_shipping_fee',
+  // ⚠️ shipping_fee/base_shipping_fee 는 orders/sellers 컬럼 — products 에 존재하지 않음.
+  //   2026-06-10 사고 정리 때 잘못 포함 → 모든 상세 쿼리가 'no such column' 1차 실패하던 진짜 원인.
+  //   (검증: scripts/check-product-detail-fields-repairable.mjs 가 CI 에서 차단)
   'created_at', 'updated_at',
 ] as const
 

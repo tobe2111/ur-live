@@ -133,6 +133,24 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.slug', sql: "ALTER TABLE products ADD COLUMN slug TEXT" },
     { desc: 'products.is_active', sql: "ALTER TABLE products ADD COLUMN is_active INTEGER DEFAULT 1" },
     { desc: 'products.thumbnail', sql: "ALTER TABLE products ADD COLUMN thumbnail TEXT" },
+    // 🛡️ 2026-06-10 (상품 상세 500 전수조사 — 수렴 보장): PRODUCT_DETAIL_FIELDS 의 모든 컬럼은
+    //   repair-schema 로 복구 가능해야 함 (CI: check-product-detail-fields-repairable.mjs strict).
+    //   group-buy/restaurant/voucher 계열은 helpers.ts ensureTables 도 생성하지만, repair 가
+    //   단일 수렴 지점이 되도록 여기에도 등록 (멱등 — 이미 있으면 no-op).
+    { desc: 'products.seller_id', sql: "ALTER TABLE products ADD COLUMN seller_id INTEGER" },
+    { desc: 'products.deal_only', sql: "ALTER TABLE products ADD COLUMN deal_only INTEGER DEFAULT 0" },
+    { desc: 'products.group_buy_target', sql: "ALTER TABLE products ADD COLUMN group_buy_target INTEGER DEFAULT 0" },
+    { desc: 'products.group_buy_current', sql: "ALTER TABLE products ADD COLUMN group_buy_current INTEGER DEFAULT 0" },
+    { desc: 'products.group_buy_status', sql: "ALTER TABLE products ADD COLUMN group_buy_status TEXT DEFAULT 'active'" },
+    { desc: 'products.group_buy_deadline', sql: "ALTER TABLE products ADD COLUMN group_buy_deadline DATETIME" },
+    { desc: 'products.group_buy_tiers', sql: "ALTER TABLE products ADD COLUMN group_buy_tiers TEXT" },
+    { desc: 'products.restaurant_name', sql: "ALTER TABLE products ADD COLUMN restaurant_name TEXT" },
+    { desc: 'products.restaurant_address', sql: "ALTER TABLE products ADD COLUMN restaurant_address TEXT" },
+    { desc: 'products.restaurant_phone', sql: "ALTER TABLE products ADD COLUMN restaurant_phone TEXT" },
+    { desc: 'products.restaurant_lat', sql: "ALTER TABLE products ADD COLUMN restaurant_lat REAL" },
+    { desc: 'products.restaurant_lng', sql: "ALTER TABLE products ADD COLUMN restaurant_lng REAL" },
+    { desc: 'products.voucher_expiry', sql: "ALTER TABLE products ADD COLUMN voucher_expiry DATE" },
+    { desc: 'products.voucher_terms', sql: "ALTER TABLE products ADD COLUMN voucher_terms TEXT" },
 
     // ── orders ─────────────────────────────────────
     { desc: 'orders.recipient_name', sql: "ALTER TABLE orders ADD COLUMN recipient_name TEXT" },

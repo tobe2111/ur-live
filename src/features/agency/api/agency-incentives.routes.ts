@@ -18,7 +18,6 @@
  * 참조: docs/AGENCY_BACKSTAGE_GAP_ANALYSIS.md (P0 #5)
  */
 
-import { productDetailCols } from '@/shared/db/product-columns';
 import { Hono, type Next } from 'hono'
 import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
@@ -182,19 +181,19 @@ app.get('/payouts', async (c) => {
     return c.json({ success: false, error: 'month 형식: YYYY-MM' }, 400)
   }
 
-  let where = 'agency_id = ?'
+  let where = 'ap.agency_id = ?'
   const binds: unknown[] = [agencyId]
-  if (month) { where += ' AND month = ?'; binds.push(month) }
+  if (month) { where += ' AND ap.month = ?'; binds.push(month) }
 
   try {
     const { results } = await c.env.DB.prepare(`
-      SELECT ${productDetailCols('p')}, s.name AS seller_name, s.email AS seller_email,
+      SELECT ap.*, s.name AS seller_name, s.email AS seller_email,
         r.name AS rule_name, r.metric AS rule_metric, r.bonus_rate AS rule_bonus_rate
-      FROM agency_incentive_payouts p
-      LEFT JOIN sellers s ON s.id = p.seller_id
-      LEFT JOIN agency_incentive_rules r ON r.id = p.rule_id
+      FROM agency_incentive_payouts ap
+      LEFT JOIN sellers s ON s.id = ap.seller_id
+      LEFT JOIN agency_incentive_rules r ON r.id = ap.rule_id
       WHERE ${where}
-      ORDER BY p.month DESC, p.total DESC
+      ORDER BY ap.month DESC, ap.total DESC
     `).bind(...binds).all()
     return c.json({ success: true, data: results || [] })
   } catch {

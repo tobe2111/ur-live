@@ -121,6 +121,13 @@ jobs:
         run: node scripts/check-products-column-budget.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-06-10 (전수조사): PRODUCT_DETAIL_FIELDS 의 모든 컬럼이 프로덕션에서 복구 가능
+      #   (base CREATE TABLE ∪ repair-schema ALTER) 함을 강제 — 'no such column' 상세 500 의
+      #   구조적 차단 (자가치유 prune 은 응급, 이 검사가 수렴 보장). strict.
+      - name: Product detail fields repairable
+        run: node scripts/check-product-detail-fields-repairable.mjs
+        continue-on-error: false
+
       - name: API auth check
         run: bash scripts/check-api-auth.sh
         # 기존 워닝 있어 fail 하지 않음
