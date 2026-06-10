@@ -608,7 +608,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               >
                 {/* 🎨 2026-06-10 (사용자 요청 — 세련화+잘림): 앰버 박스 → 화이트 로고 타일.
                     선택 = 모노크롬 ring(라이트 검정/다크 흰색) + 살짝 확대 — 로고 본연 색 발색, B&W 톤 정합 */}
-                <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-white border transition-all ${
+                <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
                   selected
                     ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
                     : 'border-gray-200 dark:border-white/10 opacity-90'
