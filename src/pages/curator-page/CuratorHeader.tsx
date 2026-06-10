@@ -19,6 +19,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { compressForUpload } from '@/lib/image-compress'
 
 // 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 선택): 배경 그라데이션 프리셋.
 //   banner_url 에 'gradient:<id>' 토큰으로 저장 (백엔드 curator.routes 가 허용).
@@ -94,8 +95,9 @@ export default function CuratorHeader({
     if (uploading) return
     setUploading(true)
     try {
+      const toSend = await compressForUpload(file, { maxSizeMB: 1, maxWidthOrHeight: 1024 }).catch(() => file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', toSend)
       const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       // 🏭 2026-06-05: 업로드 응답은 { success, data: { url } } — 중첩 data.url 을 읽어야 함(ImageUpload 와 동일).
       const url = res.data?.data?.url
@@ -108,7 +110,7 @@ export default function CuratorHeader({
       }
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '업로드 실패 — 네트워크/서버 오류')
+      toast.error(e.response?.data?.error || `업로드 실패 (${e.response?.status ?? '네트워크'})`)
     } finally {
       setUploading(false)
     }
@@ -119,8 +121,11 @@ export default function CuratorHeader({
     if (uploadingBanner) return
     setUploadingBanner(true)
     try {
+      // 🛡️ 2026-06-10 (사용자 신고 — '네트워크/서버 오류'): 폰 원본(8~15MB)이 서버 10MB 한도/
+      //   모바일 대용량 전송에서 깨지던 근본 원인 → 클라 압축(기존 lazy 라이브러리, 배너 2560px·~1.5MB).
+      const toSend = await compressForUpload(file, { maxSizeMB: 1.5, maxWidthOrHeight: 2560 }).catch(() => file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', toSend)
       // 즉시 미리보기 — 업로드/저장과 무관하게 방금 고른 사진이 바로 보임
       const preview = URL.createObjectURL(file)
       setLocalPreview(preview)
@@ -136,7 +141,7 @@ export default function CuratorHeader({
     } catch (err) {
       setLocalPreview(null)
       const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '업로드 실패 — 네트워크/서버 오류')
+      toast.error(e.response?.data?.error || `업로드 실패 (${e.response?.status ?? '네트워크'})`)
     } finally {
       setUploadingBanner(false)
     }
