@@ -419,6 +419,21 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       UNIQUE(seller_id, product_id)
     )` },
     { desc: 'idx_wholesale_wishlists_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_wishlists_seller ON wholesale_wishlists(seller_id, id DESC)" },
+    // 🤝 2026-06-10: 광고/제휴 문의 접수함 (partnership.routes lazy DDL 과 동일)
+    { desc: 'partnership_inquiries', sql: `CREATE TABLE IF NOT EXISTS partnership_inquiries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL DEFAULT 'partnership',
+      company TEXT,
+      name TEXT NOT NULL,
+      phone TEXT,
+      email TEXT,
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'new',
+      admin_memo TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT
+    )` },
+    { desc: 'idx_partnership_inquiries_status', sql: "CREATE INDEX IF NOT EXISTS idx_partnership_inquiries_status ON partnership_inquiries(status, id DESC)" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },

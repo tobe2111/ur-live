@@ -33,6 +33,7 @@ const ACTION_LINKS: { label: string; href: string; todo?: boolean }[] = [
   { label: '입점매장안내', href: '/wholesale/intro' },
   { label: '상품제휴', href: '/wholesale/oem' }, // OEM/ODM = 상품제휴/제조
   { label: '입점신청', href: '/supplier/register' }, // 제조(브랜드)회원 입점
+  { label: '광고/제휴문의', href: '/partnership' },
 ]
 
 // PG / 에스크로 / 배송 / 신뢰 배지 — 실제 배지 이미지가 assets 에 없어 텍스트 칩으로 대체.

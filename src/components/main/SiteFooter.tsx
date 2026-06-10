@@ -25,7 +25,7 @@ export default function SiteFooter() {
 
         {/* Contact */}
         <p className="text-gray-500 dark:text-gray-400">
-          제휴 | 입점 문의 : jiwon@ur-team.com
+          제휴 | 입점 문의 : <a href="/partnership" className="underline">광고/제휴 문의하기</a> · jiwon@ur-team.com
         </p>
 
         {/* Links */}

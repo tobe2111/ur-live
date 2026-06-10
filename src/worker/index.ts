@@ -137,6 +137,7 @@ import { supplierWithdrawalRoutes, adminWholesaleWithdrawalRoutes } from '../fea
 import { wholesaleChatRoutes } from '../features/supply/api/wholesale-chat.routes';
 import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesaleProposalRoutes, adminWholesaleProductRoutes, adminWholesaleDepositAccountRoutes } from '../features/supply/api/wholesale-main.routes';
 import { wholesaleBoardPublicRoutes, wholesaleWishlistRoutes, adminWholesaleBoardRoutes } from '../features/supply/api/wholesale-board.routes';
+import { partnershipPublicRoutes, adminPartnershipRoutes } from './routes/partnership.routes';
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminWholesaleOverviewRoutes } from '../features/supply/api/wholesale-overview-admin.routes';
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
@@ -1323,6 +1324,8 @@ app.route('/api/admin/wholesale-banners', adminWholesaleBannerRoutes); // 어드
 app.route('/api/wholesale/board', wholesaleBoardPublicRoutes); // 🏭 통합 게시판(공지/자료실) 공개 읽기
 app.route('/api/wholesale/wishlist', wholesaleWishlistRoutes); // 🏭 유통사 찜리스트 (로그인)
 app.route('/api/admin/wholesale-board', adminWholesaleBoardRoutes); // 어드민 게시글 CRUD
+app.route('/api/partnership', partnershipPublicRoutes); // 🤝 광고/제휴 문의 (공개 접수)
+app.route('/api/admin/partnership-inquiries', adminPartnershipRoutes); // 어드민 접수함
 app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // 어드민 제안·신고 큐/처리
 app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes); // 어드민 프리미엄 전용관 토글
 app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정
