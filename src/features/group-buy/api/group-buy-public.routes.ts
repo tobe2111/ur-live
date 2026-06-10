@@ -14,7 +14,7 @@
  */
 
 import type { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { safeError } from '@/worker/utils/safe-error'
@@ -255,6 +255,44 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     })
 
     return c.json({ success: true, data: mapped })
+  })
+
+  // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
+  //   프로덕션 로그 접근 없이 브라우저 콘솔에서 원인 즉시 식별용. 각 SELECT 의 실제 에러 문자열 반환
+  //   (requireAdmin 게이트 — 공개 누출 없음). 원인 확정 후 제거 가능.
+  router.get('/products/:id/_diag', requireAdmin(), async (c) => {
+    const { DB } = c.env
+    const id = Number(c.req.param('id'))
+    const out: Record<string, unknown> = { id }
+    const tryStep = async (name: string, fn: () => Promise<unknown>) => {
+      const t0 = Date.now()
+      try { out[name] = { ok: true, ms: Date.now() - t0, value: await fn() } }
+      catch (e) { out[name] = { ok: false, ms: Date.now() - t0, error: String((e as Error)?.message || e) } }
+    }
+    const baseWhere = `WHERE p.id = ?
+      AND (
+        p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+        OR p.deal_only = 1
+        OR p.group_buy_status = 'active'
+      )`
+    await tryStep('q1_full_sns', async () => {
+      const r = await DB.prepare(`SELECT p.id, s.sns_tiktok FROM products p LEFT JOIN sellers s ON p.seller_id = s.id ${baseWhere}`).bind(id).first()
+      return r ? 'row' : 'null'
+    })
+    await tryStep('q2_no_tiktok', async () => {
+      const r = await DB.prepare(`SELECT p.id, s.sns_youtube, s.sns_facebook FROM products p LEFT JOIN sellers s ON p.seller_id = s.id ${baseWhere}`).bind(id).first()
+      return r ? 'row' : 'null'
+    })
+    await tryStep('q3_minimal', async () => {
+      const r = await DB.prepare(`SELECT p.*, s.name as seller_name, s.username as seller_username, s.profile_image as seller_avatar, s.bio as seller_bio, s.sns_instagram as seller_instagram FROM products p LEFT JOIN sellers s ON p.seller_id = s.id ${baseWhere}`).bind(id).first()
+      if (!r) return 'null'
+      return { keys: Object.keys(r).length, tiers_type: typeof (r as Record<string, unknown>).group_buy_tiers }
+    })
+    await tryStep('q4_product_only', async () => {
+      const r = await DB.prepare('SELECT id, category, deal_only, group_buy_status, seller_id FROM products WHERE id = ?').bind(id).first()
+      return r || 'null'
+    })
+    return c.json({ success: true, diag: out })
   })
 
   // ── GET /products/:id — 상세 ──
