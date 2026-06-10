@@ -17,6 +17,7 @@
 
 | 에러 메시지 | 발생 위치 | 진짜 원인 | 해결 |
 |---|---|---|---|
+| `D1_ERROR: too many columns in result set` — 특정/전체 상세 500 | `SELECT p.*` + JOIN 하는 모든 라우트 (교환권/공구 상세 등) | products 컬럼 누적(ALTER 90+개)이 **D1 결과셋 컬럼 한도(100)** 초과 — 새 컬럼 추가 commit 이 배포되는 순간 '없던 500' 발생 | star-select 금지 → `productDetailCols()` 명시 목록(src/shared/db/product-columns.ts). CI `check-no-select-star-products.sh` 가 차단, repair-schema 가 85개+ 시 column_warnings 경보, 배포 smoke 가 실 id 상세 검증 (2026-06-10) |
 | `no such column: orders.commission_rate` | order.repository createOrder | repair-schema 미적용 / 새 컬럼 ALTER 안 됨 | dual-path INSERT (with/without column) + repair-schema 등록 (commit `f69b5e2c`) |
 | `no such column: address at offset NN` | OrderRepository.findByIdempotencyKey | SELECT 가 존재하지 않는 컬럼 (`address`, `address_detail`, `notes`) 참조 — production 스키마 컬럼은 `shipping_address` (JSON), `shipping_name`, `shipping_phone`, `shipping_memo` | SELECT 컬럼을 production-schema 기준 정합 (commit `cc60adce`) |
 | `GET /api/group-buy/products/<id> 500` (직전 fix 회귀) | `/api/group-buy/products/:id` | SQL WHERE 에 추가한 `group_buy_active` 컬럼이 production 스키마에 존재하지 않음 — `group_buy_status='active'` 만 정합 | SQL 에서 `group_buy_active` 제거, `group_buy_status='active'` 만 유지. product-flow.ts SSOT 도 동일 정합. 교훈: 컬럼 추가 시 production-schema.ts 와 group-buy-types.ts 양쪽 확인 필수 |

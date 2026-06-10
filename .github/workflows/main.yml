@@ -222,6 +222,22 @@ jobs:
           check "/api/payments/client-key" "Payments client-key"
           check "/toss-debug"     "Toss debug page"
 
+          # 🛡️ 2026-06-10 (교환권 상세 500 사고): 데이터 의존 상세 엔드포인트 — 실제 상품 id 로 검증.
+          #   list 는 멀쩡한데 detail 만 깨지는 회귀(SELECT p.* 컬럼 한도 등)는 정적 경로 체크로 못 잡음.
+          GB_ID=$(curl -s --max-time 10 "$PROD/api/group-buy/products?status=active" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d.get('data') or [];print(items[0]['id'] if items else '')" 2>/dev/null || echo "")
+          if [ -n "$GB_ID" ]; then
+            check "/api/group-buy/products/$GB_ID" "GroupBuy/교환권 detail (id=$GB_ID)"
+          else
+            echo "⚠️ 활성 공구 없음 — 공구 상세 smoke skip"
+          fi
+          P_ID=$(curl -s --max-time 10 "$PROD/api/products?limit=1" | python3 -c "import sys,json;d=json.load(sys.stdin);items=(d.get('data') or {}).get('products') or d.get('data') or d.get('products') or [];print(items[0]['id'] if isinstance(items,list) and items else '')" 2>/dev/null || echo "")
+          if [ -n "$P_ID" ]; then
+            check "/api/products/$P_ID" "Product detail (id=$P_ID)"
+          else
+            echo "⚠️ 상품 목록 파싱 실패 — 상품 상세 smoke skip"
+          fi
+          check "/api/wholesale/mall" "Wholesale mall info"
+
           # 결제 healthcheck — 503 (env mismatch) 은 fail 처리 안 함, 별도 curl + 본문 파싱.
           PAY_HEALTH=$(curl -s --max-time 10 "$PROD/api/_healthcheck/payments" || echo '{}')
           if echo "$PAY_HEALTH" | grep -q '"healthy":false'; then

@@ -39,6 +39,9 @@ async function ensureMigrationTrackingTable(DB: D1Database) {
 export type SchemaRepairResult = {
   columns: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }>
   tables: Array<{ name: string; status: 'ok' | 'error'; error?: string }>
+  /** 🛡️ 2026-06-10: D1 결과셋 컬럼 한도(100) 사전 경보 — 85 이상이면 column_warnings 에 표시. */
+  column_counts?: Record<string, number>
+  column_warnings?: string[]
 }
 
 export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResult> {
@@ -1668,7 +1671,21 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     tableResults.push({ name: 'operation_guides:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
   }
 
-  return { columns: results, tables: tableResults };
+  // 🛡️ 2026-06-10 (교환권 500 사고 — D1 'too many columns in result set' 한도 100):
+  //   넓은 테이블의 컬럼 수를 매 실행 보고 + 85 이상이면 경보. 한도 도달 전에 컬럼 다이어트/
+  //   사이드테이블 분리를 결정할 수 있게 하는 조기 경보선. star-select 는 CI 가 별도 차단.
+  const columnCounts: Record<string, number> = {};
+  const columnWarnings: string[] = [];
+  for (const tbl of ['products', 'users', 'sellers', 'orders', 'suppliers']) {
+    try {
+      const row = await DB.prepare(`SELECT COUNT(*) AS c FROM pragma_table_info('${tbl}')`).first<{ c: number }>();
+      const cnt = Number(row?.c || 0);
+      columnCounts[tbl] = cnt;
+      if (cnt >= 85) columnWarnings.push(`⚠️ ${tbl} 컬럼 ${cnt}개 — D1 결과셋 한도(100) 임박. 컬럼 분리(사이드테이블) 검토 필요`);
+    } catch { /* 테이블 없으면 skip */ }
+  }
+
+  return { columns: results, tables: tableResults, column_counts: columnCounts, column_warnings: columnWarnings };
 }
 
 // HTTP wrapper — admin auth + JSON response.

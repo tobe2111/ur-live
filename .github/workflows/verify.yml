@@ -109,6 +109,12 @@ jobs:
         run: bash scripts/check-schema-refs.sh
         continue-on-error: false
 
+      # 🛡️ 2026-06-10: products star-select 차단 — D1 결과셋 컬럼 한도(100) 초과로
+      #   교환권/공구 상세 전체 500 났던 사고 재발 방지. strict.
+      - name: No SELECT * on products
+        run: bash scripts/check-no-select-star-products.sh
+        continue-on-error: false
+
       - name: API auth check
         run: bash scripts/check-api-auth.sh
         # 기존 워닝 있어 fail 하지 않음
