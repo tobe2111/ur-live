@@ -171,7 +171,7 @@ export default function CuratorPage() {
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '😢 링크샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
-        <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
+        <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white dark:text-[#020202] font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
     )
   }
@@ -504,7 +504,7 @@ function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner
       </p>
       <Link
         to={browseLink}
-        className="inline-block px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 rounded-xl font-bold text-white transition-colors"
+        className="inline-block px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 rounded-xl font-bold text-white dark:text-[#020202] transition-colors"
       >
         {isOwner ? browseLabel : t('curator.exploreShop', { defaultValue: '쇼핑 둘러보기' })}
       </Link>
