@@ -198,6 +198,9 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400);
       if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400);
       if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400);
+      // 🛡️ 2026-06-10 (인적사항 게이트 보강): 대표자/담당자 서버 필수 — 유통 become-distributor 와 대칭.
+      if (!representative || !representative_phone) return c.json({ success: false, error: '대표자 성명·연락처를 입력해주세요' }, 400);
+      if (!manager_name || !manager_phone) return c.json({ success: false, error: '담당자 성명·연락처를 입력해주세요' }, 400);
 
       // 같은 이메일로 이미 가입된(연결 안 된) 제조회원이 있으나 미verified 라 위 자동연결을 못 탄 경우 → 중복 생성 방지.
       const dupe = await DB.prepare('SELECT id FROM suppliers WHERE email = ? LIMIT 1').bind(email).first<{ id: number }>().catch(() => null);
