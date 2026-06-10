@@ -8,6 +8,7 @@
 - i18n 18키×6언어. tsc 0 · unit 1528 · build OK. **운영 대기: NTS_API_KEY 등록(가입 즉시 자동승인 활성화).**
 
 ### 🔴→🟢 2026-06-10 — 교환권 상세 전사 500 인시던트 + 4중 방어선 + 구조적 후속 (`claude/service-analysis-optimization-whpu0f`)
+**✅ 해결 확정 (7a7ff8c — CI 스모크가 prod 실상품 상세 호출 GREEN)**: 1차 명시목록 중 prod 미존재 컬럼이 잔여 500 → `withColumnPruning` 자가치유(누락컬럼 자동 prune+재시도)로 영구 마감. prune 된 컬럼명은 wrangler tail `[product-columns]` 로그 → repair-schema 등록 시 완전 복귀(선택).
 **원인(_diag 실측 확정)**: products 컬럼 누적(94 ALTER+)이 **D1 결과셋 한도(100) 초과** → `SELECT p.*`+JOIN 전부 `too many columns in result set`. 어제 도매몰 컬럼 추가가 한도를 넘기며 '없던 500' 발생.
 - **즉각 수정**: `productDetailCols()` 명시목록 SSOT(`shared/db/product-columns.ts`) — star-select 9곳 교체(교환권/공구 상세·join 구매경로·상품 리포지토리·FTS·에이전시). 부수: `store_verify_pin` 공개 누출 보안홀 동반 차단.
 - **4중 방어선**: ① star-select CI 차단(`check-no-select-star-products.sh`, strict) ② repair-schema `column_counts/warnings`(85+ 경보) ③ 배포 smoke 에 실 상품ID 상세 검증 ④ KNOWN_ERRORS/CLAUDE.md 등재.
