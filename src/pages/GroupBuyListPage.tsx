@@ -598,7 +598,7 @@ export default function GroupBuyListPage() {
                 : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
-            {t('groupBuy.tabSeller', { defaultValue: '셀러 공구' })}
+            {t('groupBuy.tabSeller', { defaultValue: '동네 공구' })}
           </button>
           <button
             onClick={() => { setMainTab('community'); setCategory('all'); setSortBy('popular') }}
@@ -608,7 +608,7 @@ export default function GroupBuyListPage() {
                 : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
-            {t('groupBuy.tabCommunity', { defaultValue: '유저 공구' })}
+            {t('groupBuy.tabCommunity', { defaultValue: '같이 모으기' })}
           </button>
         </div>
       </div>

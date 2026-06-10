@@ -85,8 +85,10 @@ export default function MainHomePage() {
         </div>
       </div>
 
-      {/* ═══ 💰 딜 모으는 법 (정적, 즉시 렌더) ═══ */}
-      <DealEarnStrip />
+      {/* 🧭 2026-06-10 (UI 100점 패스): 첫 화면 가치 제안 — '이게 무슨 서비스인지' 한 줄 */}
+      <p className="ur-content-wide px-4 lg:px-8 pt-1 pb-2 text-[13px] text-gray-400">
+        {t('home.tagline', { defaultValue: '우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️' })}
+      </p>
 
       {/* ═══ 🎟️ 교환권 (홈 메인 콘텐츠) ═══
           🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권 + 딜모으는법 (사용자 승인).
@@ -97,6 +99,9 @@ export default function MainHomePage() {
       {/* ═══ 🍽️ 우리 동네딜 (주력 사업 홈 첫 노출) — 2026-06-10 포털형 홈.
           교환권 40개 캡 아래 위치 — 뷰포트 진입 시에만 fetch (홈 LCP/SSR 잠금 불변, additive). */}
       <HomeDongneDealSection />
+
+      {/* ═══ 💰 딜 모으는 법 — 🧭 2026-06-10: 신규 방문자 첫 콘텐츠로 부적합(기존 사용자용) → 하단 이동 */}
+      <DealEarnStrip />
 
 
       <SiteFooter />

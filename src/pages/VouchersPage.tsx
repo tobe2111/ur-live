@@ -589,7 +589,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <span>{getCategoryIcon(category)}</span>
             {category} 인기 브랜드
           </h2>
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          {/* 🧭 2026-06-10 (UI 100점 패스): 홈(embedded)은 1행 가로 스크롤 — 도구단이 상품을 fold 아래로 밀던 것 압축.
+              /vouchers 전체 페이지는 기존 그리드 유지. 클릭 유지/ring 강조 동작 불변. */}
+          <div className={embedded
+            ? 'flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1'
+            : 'grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3'}>
             {orderedBrands.map(b => {
               const selected = b.brand_name === brand
               return (
@@ -597,7 +601,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 key={b.brand_name}
                 type="button"
                 onClick={() => setBrand(selected ? '' : b.brand_name)}
-                className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+                className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform shrink-0"
               >
                 <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center border transition-colors ${
                   selected

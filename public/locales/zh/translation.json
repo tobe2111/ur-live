@@ -5516,7 +5516,7 @@
   "shopping": {
     "sectionTitle": "我的使用记录",
     "wishlist": "[TODO:zh] 찜한 상품",
-    "voucher": "[TODO:zh] 내 바우처",
+    "voucher": "我的兑换券",
     "voucherSub": "[TODO:zh] 식사권·이용권",
     "digitalLibrary": "[TODO:zh] 디지털 보관함",
     "digitalLibrarySub": "[TODO:zh] 전자책·강의·가이드",
@@ -5619,7 +5619,10 @@
     "convRate": "转化率"
   },
   "cancelOrder": {},
-  "groupBuy": {},
+  "groupBuy": {
+    "tabSeller": "社区团购",
+    "tabCommunity": "一起拼"
+  },
   "blogDetail": {},
   "liveWs": {},
   "curator": {
@@ -5646,7 +5649,8 @@
       "dailyChart": "每日收益 (30天)",
       "noData": "暂无数据。和朋友分享你的Pin!"
     },
-    "dashboardError": "仪表板加载失败"
+    "dashboardError": "仪表板加载失败",
+    "makeMine": "我也要开链接小店 — 推荐即赚"
   },
   "shipping": {
     "trackingTitle": "配送追踪",
@@ -6018,6 +6022,11 @@
     "dongneMore": "更多",
     "dongneEmptyTitle": "附近还没有团购",
     "dongneEmptyDesc": "推荐店铺，我们召集人一起开团",
-    "dongnePropose": "去提议 →"
+    "dongnePropose": "去提议 →",
+    "tagline": "社区美食·兑换券,拼着买更便宜 🍽️"
+  },
+  "my": {
+    "earningsGroupTitle": "我的收益·推荐",
+    "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请"
   }
 }

@@ -5516,7 +5516,7 @@
   "shopping": {
     "sectionTitle": "Mon activité",
     "wishlist": "[TODO:fr] 찜한 상품",
-    "voucher": "[TODO:fr] 내 바우처",
+    "voucher": "Mes bons",
     "voucherSub": "[TODO:fr] 식사권·이용권",
     "digitalLibrary": "[TODO:fr] 디지털 보관함",
     "digitalLibrarySub": "[TODO:fr] 전자책·강의·가이드",
@@ -5619,7 +5619,10 @@
     "convRate": "Conversion"
   },
   "cancelOrder": {},
-  "groupBuy": {},
+  "groupBuy": {
+    "tabSeller": "Offres locales",
+    "tabCommunity": "Se regrouper"
+  },
   "blogDetail": {},
   "liveWs": {},
   "curator": {
@@ -5646,7 +5649,8 @@
       "dailyChart": "Gains quotidiens (30j)",
       "noData": "Pas encore de données. Partagez vos épingles avec des amis !"
     },
-    "dashboardError": "Échec du chargement du tableau de bord"
+    "dashboardError": "Échec du chargement du tableau de bord",
+    "makeMine": "Créer mon linkshop — gagnez en recommandant"
   },
   "shipping": {
     "trackingTitle": "Suivi de livraison",
@@ -6018,6 +6022,11 @@
     "dongneMore": "Plus",
     "dongneEmptyTitle": "Pas encore d’offres près de chez vous",
     "dongneEmptyDesc": "Suggérez un commerce, on réunit du monde",
-    "dongnePropose": "Proposer →"
+    "dongnePropose": "Proposer →",
+    "tagline": "Restos et bons du quartier — moins cher ensemble 🍽️"
+  },
+  "my": {
+    "earningsGroupTitle": "Mes gains",
+    "earningsGroupSub": "Parrainage · Linkshop · Invitations"
   }
 }

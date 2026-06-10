@@ -5136,7 +5136,7 @@
   "shopping": {
     "sectionTitle": "나의 이용 내역",
     "wishlist": "찜한 상품",
-    "voucher": "내 바우처",
+    "voucher": "내 교환권",
     "voucherSub": "식사권·이용권",
     "digitalLibrary": "디지털 보관함",
     "digitalLibrarySub": "전자책·강의·가이드",
@@ -5641,7 +5641,8 @@
       "dailyChart": "일별 적립 (30일)",
       "noData": "아직 데이터가 없어요. 친구에게 핀을 공유해보세요!"
     },
-    "dashboardError": "대시보드 로딩 실패"
+    "dashboardError": "대시보드 로딩 실패",
+    "makeMine": "나도 내 링크샵 만들기 — 추천하면 적립"
   },
   "shipping": {
     "trackingTitle": "배송 추적",
@@ -6013,6 +6014,15 @@
     "dongneMore": "더보기",
     "dongneEmptyTitle": "아직 우리 동네 공구가 없어요",
     "dongneEmptyDesc": "원하는 가게를 제안하면 모아서 열어드려요",
-    "dongnePropose": "제안하기 →"
+    "dongnePropose": "제안하기 →",
+    "tagline": "우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️"
+  },
+  "groupBuy": {
+    "tabSeller": "동네 공구",
+    "tabCommunity": "같이 모으기"
+  },
+  "my": {
+    "earningsGroupTitle": "내 수익·추천",
+    "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대"
   }
 }

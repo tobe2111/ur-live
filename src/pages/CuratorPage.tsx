@@ -259,6 +259,21 @@ export default function CuratorPage() {
               />
         )}
         {tab === 'info' && <InfoTab curator={curator} pinCount={pins.length} totalClicks={totalClicks} isOwner={isOwner} />}
+
+        {/* 🧭 2026-06-10 (UI 100점 패스 — 방문자 전환): 비소유자 성장 루프 CTA.
+            링크트리식 — 방문자가 1탭으로 자기 링크샵 시작(적립 루프 신규 큐레이터 유입). */}
+        {!isOwner && (
+          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 inset-x-0 z-30 pointer-events-none">
+            <div className="max-w-3xl mx-auto px-4">
+              <Link
+                to="/u/me"
+                className="pointer-events-auto flex items-center justify-center gap-2 h-12 rounded-2xl bg-pink-500 text-white text-[14px] font-bold shadow-lg active:scale-[0.98] transition-transform"
+              >
+                ✨ {t('curator.makeMine', { defaultValue: '나도 내 링크샵 만들기 — 추천하면 적립' })}
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

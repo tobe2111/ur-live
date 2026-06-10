@@ -5564,7 +5564,7 @@
   "shopping": {
     "sectionTitle": "My activity",
     "wishlist": "[TODO:en] 찜한 상품",
-    "voucher": "[TODO:en] 내 바우처",
+    "voucher": "My vouchers",
     "voucherSub": "[TODO:en] 식사권·이용권",
     "digitalLibrary": "[TODO:en] 디지털 보관함",
     "digitalLibrarySub": "[TODO:en] 전자책·강의·가이드",
@@ -5619,7 +5619,10 @@
     "convRate": "Conversion"
   },
   "cancelOrder": {},
-  "groupBuy": {},
+  "groupBuy": {
+    "tabSeller": "Local deals",
+    "tabCommunity": "Group up"
+  },
   "blogDetail": {},
   "liveWs": {},
   "curator": {
@@ -5646,7 +5649,8 @@
       "dailyChart": "Daily earnings (30d)",
       "noData": "No data yet. Share your pins with friends!"
     },
-    "dashboardError": "Failed to load dashboard"
+    "dashboardError": "Failed to load dashboard",
+    "makeMine": "Make my own linkshop — earn by recommending"
   },
   "shipping": {
     "trackingTitle": "Shipping Tracking",
@@ -6018,6 +6022,11 @@
     "dongneMore": "More",
     "dongneEmptyTitle": "No local deals in your area yet",
     "dongneEmptyDesc": "Suggest a shop and we’ll gather people to open it",
-    "dongnePropose": "Propose →"
+    "dongnePropose": "Propose →",
+    "tagline": "Local favorites & vouchers — cheaper together 🍽️"
+  },
+  "my": {
+    "earningsGroupTitle": "My earnings & referrals",
+    "earningsGroupSub": "Referral rewards · Linkshop income · Invites"
   }
 }

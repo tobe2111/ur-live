@@ -13,7 +13,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   // 🧭 2026-06-10 (쇼핑 잠정 보류 — 동네딜 집중): 동네딜 자산(바우처/숙소/쿠폰)을 위로,
   //   쇼핑성 항목(찜/주문/디지털)을 아래로 재정렬. 전 항목 유지 — 구매 이력/자산은 CS 상 제거 불가.
   const items = [
-    { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 바우처' }), sub: t('shopping.voucherSub', { defaultValue: '식사권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
+    { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 교환권' }), sub: t('shopping.voucherSub', { defaultValue: '식사권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
     { icon: '🏨', label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / voucher 유효기간' }), path: '/my-stays' },
     { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
     { icon: '⭐', label: t('shopping.myFollows', { defaultValue: '내 단골 셀러' }), sub: t('shopping.myFollowsSub', { defaultValue: '셀러별 알림 설정' }), path: '/my/follows' },

@@ -10,6 +10,7 @@ import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
+import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
 import MyReferralCard from '@/components/MyReferralCard'
@@ -165,6 +166,9 @@ export default function UserProfilePage() {
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
+      {/* 🧭 2026-06-10 (UI 100점 패스 — 마이 최하점 원인): 수익·추천 3카드 도배 → 접이식 그룹.
+          첫 화면은 자산(딜 잔액·이용 내역) 중심, 수익 탐색은 1탭 뒤로. 카드 로직/데이터 불변. */}
+      <EarningsGroup>
       {/* 🛡️ 2026-05-18: referral 적립 카드 (인플 대시보드 entry point) */}
       <ReferralEarnedCard />
 
@@ -174,6 +178,7 @@ export default function UserProfilePage() {
 
       {/* 🛡️ 2026-05-27 (P2 referral 완성): 친구 가입 초대 카드 (invite_rewards — 상품 추천과 별개) */}
       <MyReferralCard />
+      </EarningsGroup>
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}

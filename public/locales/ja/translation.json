@@ -5516,7 +5516,7 @@
   "shopping": {
     "sectionTitle": "利用履歴",
     "wishlist": "[TODO:ja] 찜한 상품",
-    "voucher": "[TODO:ja] 내 바우처",
+    "voucher": "交換券",
     "voucherSub": "[TODO:ja] 식사권·이용권",
     "digitalLibrary": "[TODO:ja] 디지털 보관함",
     "digitalLibrarySub": "[TODO:ja] 전자책·강의·가이드",
@@ -5619,7 +5619,10 @@
     "convRate": "転換率"
   },
   "cancelOrder": {},
-  "groupBuy": {},
+  "groupBuy": {
+    "tabSeller": "ご近所共同購入",
+    "tabCommunity": "みんなで集める"
+  },
   "blogDetail": {},
   "liveWs": {},
   "curator": {
@@ -5646,7 +5649,8 @@
       "dailyChart": "日別収益 (30日)",
       "noData": "まだデータがありません。友達にピンをシェアしましょう!"
     },
-    "dashboardError": "ダッシュボード読み込み失敗"
+    "dashboardError": "ダッシュボード読み込み失敗",
+    "makeMine": "私もリンクショップを作る — 紹介で獲得"
   },
   "shipping": {
     "trackingTitle": "配送追跡",
@@ -6018,6 +6022,11 @@
     "dongneMore": "もっと見る",
     "dongneEmptyTitle": "まだ近所の共同購入がありません",
     "dongneEmptyDesc": "お店を提案すると人を集めて開催します",
-    "dongnePropose": "提案する →"
+    "dongnePropose": "提案する →",
+    "tagline": "近所のグルメ・交換券、一緒に買えばもっと安い 🍽️"
+  },
+  "my": {
+    "earningsGroupTitle": "収益・紹介",
+    "earningsGroupSub": "紹介報酬 · リンクショップ収益 · 招待"
   }
 }
