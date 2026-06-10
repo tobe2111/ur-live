@@ -80,19 +80,20 @@ export default function MyDealHistoryPage() {
         </div>
       </div>
 
-      {/* Hero — 현재 잔액 */}
+      {/* Hero — 현재 잔액. 🎨 2026-06-10: 핑크 → 모노크롬 차콜 (B&W 디자인 정합, 링크샵과 동일 톤) */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <div className="rounded-2xl p-5 bg-gradient-to-br from-pink-500 to-rose-500 text-white">
-          <p className="text-[11px] font-medium opacity-90">현재 딜 잔액</p>
-          <p className="text-3xl font-extrabold mt-1">{formatNumber(balance)}<span className="text-base ml-1 font-bold opacity-90">딜</span></p>
+        <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #2b2b2e 0%, #161618 60%, #0a0a0b 100%)' }}>
+          <p className="text-[11px] font-medium opacity-80">현재 딜 잔액</p>
+          <p className="text-3xl font-extrabold mt-1">{formatNumber(balance)}<span className="text-base ml-1 font-bold opacity-80">딜</span></p>
           <div className="mt-3 flex gap-2">
             <button onClick={() => navigate('/points/charge')}
-              className="flex-1 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-[12px] font-bold transition-colors">
+              className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
               충전
             </button>
-            <button onClick={() => navigate('/browse')}
-              className="flex-1 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-[12px] font-bold transition-colors">
-              쇼핑
+            {/* 🧭 2026-06-10: '쇼핑'(잠정 숨김 탭) → '교환권' — 딜의 실제 사용처로 유도 */}
+            <button onClick={() => navigate('/vouchers')}
+              className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
+              교환권 쓰기
             </button>
           </div>
         </div>
@@ -107,7 +108,7 @@ export default function MyDealHistoryPage() {
               onClick={() => { setPage(0); setFilter(opt.value) }}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                 filter === opt.value
-                  ? 'bg-pink-500 text-white'
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                   : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.12]'
               }`}
             >
@@ -121,13 +122,13 @@ export default function MyDealHistoryPage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-4">
         {loading ? (
           <div className="py-16 text-center">
-            <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-2 border-gray-900 dark:border-white border-t-transparent dark:border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         ) : error ? (
           <div className="py-16 text-center">
             <p className="text-4xl mb-3">⚠️</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
-            <button onClick={() => refetch()} className="mt-3 text-xs text-pink-500 font-bold">다시 시도 →</button>
+            <button onClick={() => refetch()} className="mt-3 text-xs font-bold text-gray-900 dark:text-white underline">다시 시도 →</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
@@ -135,7 +136,7 @@ export default function MyDealHistoryPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역이 없어요</p>
             {filter && (
               <button onClick={() => { setFilter(''); setPage(0) }}
-                className="mt-3 text-xs text-pink-500 font-bold">전체 보기 →</button>
+                className="mt-3 text-xs font-bold text-gray-900 dark:text-white underline">전체 보기 →</button>
             )}
           </div>
         ) : (
@@ -149,8 +150,7 @@ export default function MyDealHistoryPage() {
                 <button
                   key={tx.id}
                   onClick={() => onItemClick(tx)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors"
-                  style={{ borderTop: i ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors ${i ? 'border-t border-gray-100 dark:border-[#1A1A1A]' : ''}`}
                 >
                   <span className="text-xl flex-shrink-0">{emoji}</span>
                   <div className="flex-1 min-w-0">
