@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { Loader2, Search, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, Lock, LogIn, LogOut, Upload, Download, ArrowDownUp, PackageCheck, BellRing, BellOff, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Sparkles } from 'lucide-react'
+import { Loader2, Search, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, Lock, LogIn, LogOut, Upload, Download, ArrowDownUp, PackageCheck, BellRing, BellOff, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Sparkles, Heart, Megaphone } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -107,7 +107,7 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 }
 
 // ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void }) {
+const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void }) {
   // 🏭 perf: viewport 진입 시 상세 prefetch(rootMargin 100px — 소비자 GroupBuyFeedCard 패턴). hover/focus/touch 도 prefetch.
   const wrapRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -157,6 +157,16 @@ const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRest
           {p.has_tiers && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: WT.brand }}>수량할인</span>}
           {p.stock > 0 && p.stock < 200 && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span>}
         </div>
+        {/* 🏭 2026-06-10 (사용자 요청): 찜 토글 — 우상단 하트 */}
+        {onWish && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onWish(p) }}
+            aria-label={p.name + (wished ? ' 찜 해제' : ' 찜')}
+            className="absolute top-2.5 right-2.5 z-10 h-8 w-8 rounded-full flex items-center justify-center transition-transform active:scale-90"
+            style={{ background: 'rgba(255,255,255,0.92)', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+            <Heart className="w-4 h-4" style={wished ? { color: WT.brand, fill: WT.brand } : { color: WT.ink2 }} />
+          </button>
+        )}
         {/* 사진 하단 → 카드색 번짐 */}
         <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
         {soldOut ? (
@@ -502,6 +512,27 @@ export default function WholesaleCatalogPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  // 🏭 2026-06-10 (사용자 요청): 찜리스트 — 로그인 시 1회 로드, 카드 하트 토글(낙관 업데이트).
+  const [wishedIds, setWishedIds] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+    if (!tk) return
+    api.get('/api/wholesale/wishlist', { headers: { Authorization: `Bearer ${tk}` } })
+      .then(r => {
+        if (r.data?.success) setWishedIds(new Set((r.data.items || []).map((i: { product_id: number }) => Number(i.product_id))))
+      })
+      .catch(() => { /* graceful */ })
+  }, [])
+  const toggleWish = useCallback((p: CatalogItem) => {
+    const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+    if (!tk) { toast.error('찜은 유통회원 전용이에요 — 로그인해주세요'); navigate('/wholesale/login'); return }
+    setWishedIds(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n })
+    api.post(`/api/wholesale/wishlist/${p.id}/toggle`, {}, { headers: { Authorization: `Bearer ${tk}` } })
+      .catch(() => {
+        setWishedIds(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n })
+        toast.error('찜 처리 실패 — 다시 시도해주세요')
+      })
+  }, [navigate])
 
   const [search, setSearch] = useState('')
   const [committedSearch, setCommittedSearch] = useState('')
@@ -1005,6 +1036,7 @@ export default function WholesaleCatalogPage() {
           <div className="flex md:hidden items-center gap-2 shrink-0" style={{ color: WT.ink2 }}>
             <button onClick={() => setProposalOpen(true)} aria-label="제안/신고" className="p-1.5"><MessageSquareWarning className="w-5 h-5" /></button>
             <button onClick={() => navigate('/wholesale/deposits')} aria-label="예치금신청" className="p-1.5"><Wallet className="w-5 h-5" /></button>
+            <button onClick={() => navigate('/wholesale/wishlist')} aria-label="찜리스트" className="p-1.5"><Heart className="w-5 h-5" /></button>
             <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative p-1.5">
               <ShoppingCart className="w-5 h-5" />
               {cart.count > 0 && <span className="absolute top-0 right-0 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
@@ -1053,6 +1085,12 @@ export default function WholesaleCatalogPage() {
               className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-bold whitespace-nowrap"
               style={{ color: premiumView ? WT.brand : WT.ink }}>
               <Crown className="w-4 h-4" /> {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
+            </button>
+            {/* 🏭 2026-06-10: 통합 게시판 (공지/자료실/배송안내/신고·제안) */}
+            <button onClick={() => navigate('/wholesale/board')}
+              className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-semibold whitespace-nowrap"
+              style={{ color: WT.ink2 }}>
+              <Megaphone className="w-4 h-4" /> {t('wholesale.nav.board', { defaultValue: '공지·자료실' })}
             </button>
           </div>
           {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}
@@ -1370,7 +1408,7 @@ export default function WholesaleCatalogPage() {
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
-                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} />)}
+                  {items.map((p) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} />)}
                 </div>
               )}
             </div>

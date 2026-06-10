@@ -396,6 +396,29 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       body TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     )` },
+    // 🏭 2026-06-10: 도매 통합 게시판(공지/자료실) + 찜리스트 (wholesale-board.routes lazy DDL 과 동일)
+    { desc: 'wholesale_board_posts', sql: `CREATE TABLE IF NOT EXISTS wholesale_board_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      board_type TEXT NOT NULL DEFAULT 'notice',
+      mall_id INTEGER DEFAULT 1,
+      title TEXT NOT NULL,
+      body TEXT,
+      product_id INTEGER,
+      is_pinned INTEGER DEFAULT 0,
+      view_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT
+    )` },
+    { desc: 'idx_wholesale_board_type', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_board_type ON wholesale_board_posts(board_type, is_pinned DESC, id DESC)" },
+    { desc: 'wholesale_wishlists', sql: `CREATE TABLE IF NOT EXISTS wholesale_wishlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      mall_id INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(seller_id, product_id)
+    )` },
+    { desc: 'idx_wholesale_wishlists_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_wishlists_seller ON wholesale_wishlists(seller_id, id DESC)" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },

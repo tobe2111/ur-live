@@ -55,6 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
+      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
       { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
