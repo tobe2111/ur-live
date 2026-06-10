@@ -137,9 +137,12 @@ jobs:
       # 🛡️ 2026-05-31: 다크/라이트 테마 일관성 — 유저 대면 화이트-토글 페이지의
       #   라이트 색상(bg-white/text-gray-900 등)에 dark: variant 누락 검출.
       #   기존 backlog(공유 컴포넌트 다수) 존재 → warn-only. backlog 정리 후 STRICT_THEME=1 승격 예정.
-      - name: Dark/Light theme consistency (warn)
+      # 🛡️ 2026-06-10: 백로그 0 달성 → strict 승격 (2026-05-31 예고대로). 위반 = 머지 차단.
+      - name: Dark/Light theme consistency (strict)
         run: node scripts/check-theme-consistency.mjs
-        continue-on-error: true
+        env:
+          STRICT_THEME: '1'
+        continue-on-error: false
 
       # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
       #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
