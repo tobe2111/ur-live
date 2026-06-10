@@ -12,8 +12,8 @@
  *   2. 금액권 그리드 (선택 브랜드 또는 전체) — 무한 스크롤
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
-import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, useRef, useCallback, useMemo, memo, Fragment } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
@@ -651,7 +651,23 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {displayProducts.map((p, idx) => (
-                <VoucherCard key={p.id} p={p} aboveFold={idx < 4} />
+                <Fragment key={p.id}>
+                  <VoucherCard p={p} aboveFold={idx < 4} />
+                  {/* 🛍️ 2026-06-10 (사용자 지적 — 무한스크롤이라 피드 하단은 도달 불가): 홈 한정,
+                      12번째 카드 뒤 인피드 쇼핑 진입 카드(전폭). SSR consume/sort 잠금 불변 — 표시만 삽입. */}
+                  {embedded && idx === 11 && (
+                    <Link
+                      to="/browse"
+                      className="col-span-full flex items-center justify-between rounded-2xl px-5 py-4 bg-[#121212] border border-[#1A1A1A] active:scale-[0.99] transition-transform"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-bold text-white">🛍️ {t('home.shopEntryTitle', { defaultValue: '일반 상품 쇼핑' })}</p>
+                        <p className="text-[12px] text-gray-400 mt-0.5">{t('home.shopEntryDesc', { defaultValue: '배송 상품 둘러보기 — 도매 직공급 상품 포함' })}</p>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-bold text-gray-300">{t('home.shopEntryCta', { defaultValue: '보러가기 →' })}</span>
+                    </Link>
+                  )}
+                </Fragment>
               ))}
             </div>
             {/* 무한 스크롤 sentinel */}
