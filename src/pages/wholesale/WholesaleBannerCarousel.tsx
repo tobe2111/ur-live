@@ -41,7 +41,35 @@ export default function WholesaleBannerCarousel() {
   // idx 가 배너 수 변동으로 범위를 벗어나면 보정.
   useEffect(() => { if (idx >= n && n > 0) setIdx(0) }, [n, idx])
 
-  if (n === 0) return null
+  // 🏭 2026-06-10 (사용자 요청 — "배너가 어딨어?"): 등록된 배너 0건이면 영역이 통째로 사라져
+  //   배너 기능이 없는 것처럼 보였음 → 기본 히어로(목업, 이미지 불필요·CSS 전용) 표시.
+  //   어드민이 /admin/wholesale-banners 에 실제 배너를 등록하면 자동 교체.
+  if (n === 0) {
+    return (
+      <div className="relative w-full overflow-hidden rounded-2xl select-none">
+        <div className="relative aspect-[16/6] min-h-[150px] flex items-center"
+          style={{ background: 'linear-gradient(115deg, #14161c 0%, #1c2230 55%, #283452 100%)' }}>
+          {/* 장식 — 브랜드 컬러 글로우 + 그리드 */}
+          <div className="absolute -right-16 -top-24 w-72 h-72 rounded-full opacity-25 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, var(--ud-brand, #FF0033) 0%, transparent 70%)' }} />
+          <div className="absolute right-12 bottom-[-60px] w-56 h-56 rounded-full opacity-15 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #5b7bd5 0%, transparent 70%)' }} />
+          <div className="relative z-10 px-6 lg:px-10 py-5">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
+              style={{ background: 'var(--ud-brand, #FF0033)' }}>
+              B2B 전용 도매몰
+            </span>
+            <h2 className="mt-2.5 text-[20px] lg:text-[28px] font-extrabold text-white leading-tight">
+              검증된 제조사와 직거래,<br className="lg:hidden" /> 마진은 그대로 내 것
+            </h2>
+            <p className="mt-1.5 text-[12px] lg:text-[14px] text-gray-300">
+              사업자 인증 후 등급별 도매가 공개 · 예치금 간편결제 · 세금계산서 자동 발행
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   function onBannerClick(b: WholesaleBanner) {
     const link = b.link || ''
