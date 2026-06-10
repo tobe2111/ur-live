@@ -18,6 +18,7 @@
  * 참조: docs/AGENCY_BACKSTAGE_GAP_ANALYSIS.md (P0 #5)
  */
 
+import { productDetailCols } from '@/shared/db/product-columns';
 import { Hono, type Next } from 'hono'
 import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
@@ -187,7 +188,7 @@ app.get('/payouts', async (c) => {
 
   try {
     const { results } = await c.env.DB.prepare(`
-      SELECT p.*, s.name AS seller_name, s.email AS seller_email,
+      SELECT ${productDetailCols('p')}, s.name AS seller_name, s.email AS seller_email,
         r.name AS rule_name, r.metric AS rule_metric, r.bonus_rate AS rule_bonus_rate
       FROM agency_incentive_payouts p
       LEFT JOIN sellers s ON s.id = p.seller_id

@@ -221,7 +221,7 @@
     "passwordPlaceholder": "비밀번호를 입력하세요",
     "showPassword": "비밀번호 보기",
     "hidePassword": "비밀번호 숨기기",
-    "tagline": "라이브 쇼핑의 새로운 경험",
+    "tagline": "우리 동네 공동구매 & 교환권",
     "kakaoQuickStart": "카카오로 3초 만에 시작하기",
     "resetPasswordDesc": "가입한 이메일을 입력하시면\n비밀번호 재설정 링크를 보내드립니다.",
     "pin": {
@@ -5519,7 +5519,14 @@
   },
   "login": {
     "seoTitle": "로그인 - 유어딜",
-    "seoDesc": "유어딜에 로그인하세요."
+    "seoDesc": "유어딜에 로그인하세요.",
+    "heroTitle": "우리 동네 맛집, 같이 사면 더 싸다",
+    "heroSub": "동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜",
+    "chipDongne": "동네딜 공동구매",
+    "chipVoucher": "교환권·기프티콘",
+    "chipWholesale": "사장님 도매몰",
+    "kakaoHint": "복잡한 가입 절차 없이 바로 시작할 수 있어요",
+    "aboutLink": "유어딜이 처음이세요? 서비스 알아보기 →"
   },
   "guide": {
     "sectionTitlePlaceholder": "섹션 제목",

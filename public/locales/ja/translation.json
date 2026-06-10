@@ -196,7 +196,7 @@
     "loginWithGoogle": "Googleでログイン",
     "loginWithEmail": "メールでログイン",
     "sessionExpired": "セッションが期限切れです。再度ログインしてください。",
-    "tagline": "ライブショッピングの新体験",
+    "tagline": "ご近所の共同購入＆クーポン",
     "alreadyHaveAccount": "既にアカウントをお持ちですか？",
     "createAccount": "アカウント作成",
     "emailPlaceholder": "メールアドレス",
@@ -5281,7 +5281,14 @@
   },
   "login": {
     "seoTitle": "ログイン - Ur-Deal",
-    "seoDesc": "Ur-Dealにログインしてください。"
+    "seoDesc": "Ur-Dealにログインしてください。",
+    "heroTitle": "ご近所のお店、みんなで買えばもっとお得",
+    "heroSub": "地域の共同購入クーポンから人気ギフト券まで、毎日新しいディール",
+    "chipDongne": "ご近所共同購入",
+    "chipVoucher": "クーポン・ギフト券",
+    "chipWholesale": "卸売モール (B2B)",
+    "kakaoHint": "面倒な登録なしで、すぐに始められます",
+    "aboutLink": "Ur-Dealは初めてですか？サービスを見る →"
   },
   "guide": {
     "sectionTitlePlaceholder": "セクションタイトル",

@@ -3625,7 +3625,7 @@
     "resetPasswordSuccess": "Password reset email sent",
     "showPassword": "Show password",
     "signupSuccess": "Account created successfully",
-    "tagline": "A new way to shop live",
+    "tagline": "Compras grupales y vales de tu barrio",
     "pin": {
       "invalidFormat": "El PIN debe tener entre 4 y 6 dígitos",
       "verified": "PIN verificado. Acciones sensibles disponibles durante 15 minutos",
@@ -5281,7 +5281,14 @@
   },
   "login": {
     "seoTitle": "Inicio de sesión - Ur-Deal",
-    "seoDesc": "Inicia sesión en Ur-Deal."
+    "seoDesc": "Inicia sesión en Ur-Deal.",
+    "heroTitle": "Los mejores locales de tu barrio, más baratos en grupo",
+    "heroSub": "Desde vales de compra grupal local hasta tarjetas regalo populares — nuevas ofertas cada día",
+    "chipDongne": "Compras grupales locales",
+    "chipVoucher": "Vales y tarjetas regalo",
+    "chipWholesale": "Mayorista (B2B)",
+    "kakaoHint": "Sin registros complicados — empieza al instante",
+    "aboutLink": "¿Nuevo en Ur-Deal? Conoce el servicio →"
   },
   "guide": {
     "sectionTitlePlaceholder": "Título de sección",

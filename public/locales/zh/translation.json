@@ -196,7 +196,7 @@
     "loginWithGoogle": "Google登录",
     "loginWithEmail": "邮箱登录",
     "sessionExpired": "会话已过期。请重新登录。",
-    "tagline": "直播购物新体验",
+    "tagline": "社区团购与兑换券",
     "alreadyHaveAccount": "已有账号？",
     "createAccount": "创建账号",
     "emailPlaceholder": "邮箱地址",
@@ -5281,7 +5281,14 @@
   },
   "login": {
     "seoTitle": "登录 - Ur-Deal",
-    "seoDesc": "登录Ur-Deal。"
+    "seoDesc": "登录Ur-Deal。",
+    "heroTitle": "街坊好店，拼着买更便宜",
+    "heroSub": "从社区团购兑换券到热门礼品卡，每天都有新优惠",
+    "chipDongne": "社区团购",
+    "chipVoucher": "兑换券·礼品卡",
+    "chipWholesale": "批发商城 (B2B)",
+    "kakaoHint": "无需繁琐注册，立即开始",
+    "aboutLink": "第一次使用Ur-Deal？了解服务 →"
   },
   "guide": {
     "sectionTitlePlaceholder": "章节标题",

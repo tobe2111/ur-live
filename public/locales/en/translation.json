@@ -221,7 +221,7 @@
     "passwordPlaceholder": "Enter your password",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "tagline": "A new way to shop live",
+    "tagline": "Neighborhood group buys & vouchers",
     "kakaoQuickStart": "Start in 3 seconds with Kakao",
     "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link.",
     "pin": {
@@ -5329,7 +5329,14 @@
   },
   "login": {
     "seoTitle": "Login - Ur-Deal",
-    "seoDesc": "Log in to Ur-Deal."
+    "seoDesc": "Log in to Ur-Deal.",
+    "heroTitle": "Your neighborhood's best spots, cheaper together",
+    "heroSub": "From local group-buy vouchers to popular gift cards — new deals every day",
+    "chipDongne": "Local group buys",
+    "chipVoucher": "Vouchers & gift cards",
+    "chipWholesale": "B2B wholesale",
+    "kakaoHint": "No complicated sign-up — start right away",
+    "aboutLink": "New to Ur-Deal? Learn about the service →"
   },
   "guide": {
     "sectionTitlePlaceholder": "Section title",

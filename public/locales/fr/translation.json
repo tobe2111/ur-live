@@ -3625,7 +3625,7 @@
     "resetPasswordSuccess": "Password reset email sent",
     "showPassword": "Show password",
     "signupSuccess": "Account created successfully",
-    "tagline": "A new way to shop live",
+    "tagline": "Achats groupés et bons du quartier",
     "pin": {
       "invalidFormat": "Le code PIN doit comporter 4 à 6 chiffres",
       "verified": "PIN vérifié. Actions sensibles disponibles pendant 15 minutes",
@@ -5281,7 +5281,14 @@
   },
   "login": {
     "seoTitle": "Connexion - Ur-Deal",
-    "seoDesc": "Connectez-vous à Ur-Deal."
+    "seoDesc": "Connectez-vous à Ur-Deal.",
+    "heroTitle": "Les bonnes adresses du quartier, moins chères à plusieurs",
+    "heroSub": "Des bons d'achat groupé locaux aux cartes cadeaux populaires — de nouvelles offres chaque jour",
+    "chipDongne": "Achats groupés locaux",
+    "chipVoucher": "Bons et cartes cadeaux",
+    "chipWholesale": "Grossiste (B2B)",
+    "kakaoHint": "Pas d'inscription compliquée — commencez tout de suite",
+    "aboutLink": "Nouveau sur Ur-Deal ? Découvrir le service →"
   },
   "guide": {
     "sectionTitlePlaceholder": "Titre de section",

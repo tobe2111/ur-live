@@ -2,6 +2,7 @@
 // Product Repository
 // ============================================================
 
+import { productDetailCols } from '@/shared/db/product-columns';
 import type { D1Database } from '@cloudflare/workers-types';
 import { QueryBuilder } from './query-builder';
 import type { Product, ProductStatus } from '../../shared/types';
@@ -17,7 +18,7 @@ export class ProductRepository {
   async findById(id: string): Promise<Product | null> {
     // Production `sellers` uses `username` instead of `slug`
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.username as seller_slug
+      `SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id = ? AND p.is_active = 1`,
@@ -69,7 +70,7 @@ export class ProductRepository {
     // avg_rating / review_count: correlated subquery (N+1) → derived table JOIN (O(1) scan)
     // product_reviews 한 번 GROUP BY → products 에 LEFT JOIN. NULL = 리뷰 없음.
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.username as seller_slug,
+      `SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_slug,
               rv.avg_rating, rv.review_count
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
@@ -94,7 +95,7 @@ export class ProductRepository {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(', ');
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.username as seller_slug
+      `SELECT ${productDetailCols('p')}, s.name as seller_name, s.username as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id IN (${placeholders}) AND (p.is_active = 1 OR p.status = 'ACTIVE')`,

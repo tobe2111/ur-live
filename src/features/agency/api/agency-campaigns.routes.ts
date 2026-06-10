@@ -20,6 +20,7 @@
  * 참조: docs/AGENCY_BACKSTAGE_GAP_ANALYSIS.md (P0 #4)
  */
 
+import { productDetailCols } from '@/shared/db/product-columns';
 import { Hono, type Next } from 'hono'
 import { verify } from 'hono/jwt'
 import { parseSessionCookie } from '@/worker/utils/session'
@@ -244,7 +245,7 @@ app.get('/:id', async (c) => {
   if (!campaign) return c.json({ success: false, error: 'not found' }, 404)
 
   const { results: participants } = await c.env.DB.prepare(`
-    SELECT p.*, s.name AS seller_name, s.email AS seller_email
+    SELECT ${productDetailCols('p')}, s.name AS seller_name, s.email AS seller_email
     FROM agency_campaign_participants p
     LEFT JOIN sellers s ON s.id = p.seller_id
     WHERE p.campaign_id = ?

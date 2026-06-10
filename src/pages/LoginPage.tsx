@@ -8,8 +8,9 @@ import { toast } from '@/hooks/useToast'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, MapPin, Ticket, Store } from 'lucide-react'
 import SEO from '@/components/SEO'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 
@@ -257,25 +258,41 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
+    <div className="relative min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12 overflow-hidden">
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
-      {/* 🛡️ 2026-05-14: 태블릿/PC 에서 form 너비 자연스럽게 — 모바일 360px / 태블릿+ 420px */}
-      <div className="w-full max-w-[360px] md:max-w-[420px]">
 
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-16">
-          <div className="flex items-center gap-2">
-            <svg viewBox="0 0 40 36" fill="none" className="h-10 w-auto">
-              <path d="M8 8h2l1.5 3H34a1 1 0 01.96 1.28l-3.5 12A1 1 0 0130.5 25H14.5a1 1 0 01-.96-.72L9.8 10H8V8z" stroke="#EF4444" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="16" cy="31" r="2.5" fill="#EF4444"/>
-              <circle cx="29" cy="31" r="2.5" fill="#EF4444"/>
-              <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
-            </svg>
-            <span className="text-[28px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜</span>
-          </div>
-          <p className="text-[14px] text-gray-600 dark:text-gray-400 mt-3 font-light">
-            {t('auth.tagline')}
+      {/* 은은한 에메랄드→틸 그라데이션 포인트 (장식 — 본문 가독성 영향 없음) */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-28 -left-28 w-[380px] h-[380px] rounded-full bg-gradient-to-br from-emerald-400/15 to-teal-400/5 dark:from-emerald-500/10 dark:to-teal-500/[0.04] blur-3xl" />
+        <div className="absolute -bottom-32 -right-28 w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-teal-400/10 to-emerald-300/5 dark:from-teal-500/[0.08] dark:to-emerald-400/[0.03] blur-3xl" />
+      </div>
+
+      {/* 🛡️ 2026-05-14: 태블릿/PC 에서 form 너비 자연스럽게 — 모바일 360px / 태블릿+ 420px */}
+      <div className="relative w-full max-w-[360px] md:max-w-[420px]">
+
+        {/* Brand + 가치 제안 (동네딜 / 교환권 / 도매몰) */}
+        <div className="flex flex-col items-center mb-12">
+          <UrDealLogo size={34} />
+          <h1 className="mt-6 text-[20px] md:text-[22px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+            {t('login.heroTitle', { defaultValue: '우리 동네 맛집, 같이 사면 더 싸다' })}
+          </h1>
+          <p className="mt-2 text-[13px] text-gray-600 dark:text-gray-400 text-center font-light leading-relaxed">
+            {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+              {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+              <Ticket className="w-3.5 h-3.5 text-emerald-500" />
+              {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+              <Store className="w-3.5 h-3.5 text-emerald-500" />
+              {t('login.chipWholesale', { defaultValue: '사장님 도매몰' })}
+            </span>
+          </div>
         </div>
 
         {/* Error/Success Messages */}
@@ -301,6 +318,8 @@ export default function LoginPage() {
         {/* Main Login */}
         {!showEmailLogin && !showForgotPassword && (
           <div>
+            {/* 주 CTA 카드 — 카카오(KR)/구글(GLOBAL) 로그인. 버튼 로직/마크업 불변, 배치만 강조 */}
+            <div className="rounded-2xl bg-gray-50/80 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] p-5 shadow-sm">
             {/* ✅ Region-based Primary Login Button */}
             {isKR ? (
               /* Kakao Login Button (KR) */
@@ -356,6 +375,10 @@ export default function LoginPage() {
                 )}
               </button>
             )}
+              <p className="mt-3 text-center text-[11px] text-gray-500 dark:text-gray-500 font-light">
+                {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
+              </p>
+            </div>
 
             {/* Email Login Link */}
             <div className="text-center mt-8">
@@ -377,7 +400,7 @@ export default function LoginPage() {
             {/* Service intro link */}
             <div className="text-center text-[12px] text-[#888] mt-3 font-light">
               <Link to="/about" className="hover:underline underline-offset-4 decoration-1">
-                유어딜이 처음이세요? 서비스 알아보기 →
+                {t('login.aboutLink', { defaultValue: '유어딜이 처음이세요? 서비스 알아보기 →' })}
               </Link>
             </div>
           </div>
