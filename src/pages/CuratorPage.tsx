@@ -118,9 +118,20 @@ export default function CuratorPage() {
   }
 
   if (loading) {
+    // 🧭 2026-06-10 (사용자 신고 — 링크샵 로딩 김): 빈 화면+텍스트 → 레이아웃 스켈레톤 (체감 즉시 개선).
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
+      <div className="min-h-screen bg-white dark:bg-[#020202]">
+        <div className="h-[220px] bg-gray-100 dark:bg-[#121212] animate-pulse" />
+        <div className="max-w-3xl mx-auto px-4 -mt-12">
+          <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-[#1A1A1A] animate-pulse border-4 border-white dark:border-[#020202]" />
+          <div className="h-5 w-40 mt-3 rounded bg-gray-200 dark:bg-[#1A1A1A] animate-pulse" />
+          <div className="h-3.5 w-24 mt-2 rounded bg-gray-100 dark:bg-[#121212] animate-pulse" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

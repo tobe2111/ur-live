@@ -270,6 +270,28 @@ export async function clawbackVoucherCommission(
     } catch (e) { if (import.meta.env?.DEV) console.warn('[agency intro clawback]', e) }
   }
 
+  // 🧭 2026-06-10 (링크샵×교환권 적립 루프): 유저-큐레이터 레일(affiliate_earnings)도 동일 비례 역전.
+  //   /track 이 적립 시 user_points 즉시 충전하므로 회수도 포인트 차감 + 권위행 감액(물리상품 returns 패턴).
+  if (orderId) {
+    try {
+      const aff = await DB.prepare(
+        "SELECT id, referrer_id, commission FROM affiliate_earnings WHERE order_id = ? AND COALESCE(status,'pending') IN ('pending','granted')"
+      ).bind(orderId).all<{ id: number; referrer_id: string; commission: number }>()
+      for (const row of aff.results || []) {
+        const share = Math.min(row.commission, Math.max(1, Math.floor(row.commission / denom)))
+        await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
+          .bind(share, row.referrer_id).run().catch(() => null)
+        const remaining = row.commission - share
+        if (remaining <= 0) {
+          await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded', commission = 0 WHERE id = ?").bind(row.id).run()
+        } else {
+          await DB.prepare("UPDATE affiliate_earnings SET commission = ? WHERE id = ?").bind(remaining, row.id).run()
+        }
+        clawed += share
+      }
+    } catch { /* affiliate 테이블 없거나 미적립 — best-effort */ }
+  }
+
   return clawed
 }
 

@@ -249,7 +249,17 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       })(),
     )
 
-    // ?ref= 로 redirect — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
+    // 🧭 2026-06-10 (링크샵×교환권 적립 루프 단절 fix): 교환권/공구 상품 핀은 공구 상세로 —
+    //   기존엔 무조건 /products(물리상품 레일)로 보내 교환권 핀 구매가 적립 0 이었음.
+    //   ?aff= 는 GroupBuy/Voucher 상세가 localStorage.affiliate_ref 로 저장(물리 ?ref= 와 동일 키).
+    try {
+      const prod = await DB.prepare(
+        "SELECT deal_only, category, group_buy_status FROM products WHERE id = ? LIMIT 1"
+      ).bind(productId).first<{ deal_only: number | null; category: string | null; group_buy_status: string | null }>()
+      const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || /voucher/i.test(prod.category || '') || prod.group_buy_status === 'active')
+      if (isVoucherFlow) return c.redirect(`/group-buy/${productId}?aff=${pin.user_id}`, 302)
+    } catch { /* 판별 실패 — 기존 경로 */ }
+    // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
     return c.redirect(`/products/${productId}?ref=${pin.user_id}`, 302)
   } catch (err) {
     return safeError(c, err, '리다이렉트 처리 중 오류가 발생했습니다', '[curator:redirect]')

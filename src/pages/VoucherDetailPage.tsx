@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Ticket, CalendarDays, ShieldAlert, Info } from 'lucide-react'
 import api from '@/lib/api'
+import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
@@ -56,6 +57,11 @@ export default function VoucherDetailPage() {
   const [showPhoneModal, setShowPhoneModal] = useState(false)
   const [phoneInput, setPhoneInput] = useState('')
   const [phoneConsent, setPhoneConsent] = useState(false)
+
+  // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff= → affiliate_ref 저장 (물리 ?ref= 와 동일 키)
+  useEffect(() => {
+    try { storeAffiliateRef(new URLSearchParams(window.location.search).get('aff')) } catch { /* noop */ }
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -112,6 +118,7 @@ export default function VoucherDetailPage() {
       })
       if (res.data?.success) {
         toast.success('🎁 교환권 발급 완료')
+        fireAffiliateTrack(res.data?.data?.order_id, product.id, product.name) // 큐레이터 적립 (fail-soft)
         invalidateVouchers()
         navigate('/my-vouchers')
       } else {

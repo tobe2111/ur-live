@@ -6,6 +6,7 @@ import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, I
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
+import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { toast } from '@/hooks/useToast'
@@ -120,6 +121,8 @@ export default function GroupBuyDetailPage() {
   }, [])
   // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
   const refUserId = searchParams.get('ref')
+  // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
+  useEffect(() => { storeAffiliateRef(searchParams.get('aff')) }, [searchParams])
   const isInfluencerLanding = !!refUserId
   const [detail, setDetail] = useState<GroupBuyDetail | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -363,6 +366,7 @@ export default function GroupBuyDetailPage() {
         })
         if (res.data?.success) {
           toast.success('🎁 교환권 발급 완료')
+          fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           navigate('/my-vouchers')
         } else {

@@ -849,6 +849,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       success: true,
       data: {
         order_number: orderNumber,
+        order_id: newOrderId, // 🧭 2026-06-10: 클라 affiliate /track 용 (additive)
         amount: totalAmount,
         unit_price: unitPrice,
         applied_discount_pct: appliedDiscountPct,
@@ -1088,7 +1089,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
 
     return c.json({
       success: true,
-      data: { order_number: orderNumber, qty, amount: expectedAmount },
+      data: { order_number: orderNumber, order_id: newOrderId, qty, amount: expectedAmount },
     })
   } catch (err) {
     // 🛡️ 2026-05-31 M1: 주문 미생성 → 예약했던 재고 롤백(예약은 try 진입 전 차감됨).

@@ -11,6 +11,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import api from '@/lib/api'
+import { fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
 
@@ -41,6 +42,7 @@ export default function GroupBuyConfirmPaymentPage() {
       .then((r) => {
         if (r.data?.success) {
           setState('success')
+          fireAffiliateTrack(r.data?.data?.order_id, Number(productId), undefined) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           try {
             localStorage.setItem('gb_just_joined', JSON.stringify({
