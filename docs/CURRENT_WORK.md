@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+### 🔴→🟢 2026-06-10 — 교환권 상세 전사 500 인시던트 + 4중 방어선 + 구조적 후속 (`claude/service-analysis-optimization-whpu0f`)
+**원인(_diag 실측 확정)**: products 컬럼 누적(94 ALTER+)이 **D1 결과셋 한도(100) 초과** → `SELECT p.*`+JOIN 전부 `too many columns in result set`. 어제 도매몰 컬럼 추가가 한도를 넘기며 '없던 500' 발생.
+- **즉각 수정**: `productDetailCols()` 명시목록 SSOT(`shared/db/product-columns.ts`) — star-select 9곳 교체(교환권/공구 상세·join 구매경로·상품 리포지토리·FTS·에이전시). 부수: `store_verify_pin` 공개 누출 보안홀 동반 차단.
+- **4중 방어선**: ① star-select CI 차단(`check-no-select-star-products.sh`, strict) ② repair-schema `column_counts/warnings`(85+ 경보) ③ 배포 smoke 에 실 상품ID 상세 검증 ④ KNOWN_ERRORS/CLAUDE.md 등재.
+- **구조적 후속**: products **컬럼 예산제**(baseline 94 고정, 신규 ALTER CI 차단) + `product_supply_meta` K-V 사이드테이블(미래 도매/전시 메타) + **배포 후 스키마 자동복구**(`POST /api/_internal/repair-schema/auto`, X-Repair-Token — ⚠️ 활성화하려면 같은 값을 Cloudflare Variables + GitHub Secrets 양쪽 `REPAIR_SCHEMA_TOKEN` 등록).
+- repair-schema 8건 오류 근본수정(실행순서/라이브 가드/백필 CPU 배치). 링크샵 banner_url 응답 누락+저장 후 캐시 purge. 로그인 페이지 라이브 잔재 제거+개편. 도매 become 대표자/담당자 서버 필수. 프리미엄 전용관 로그인 게이트. 위시리스트 그라데이션 카드. 동네딜 카드 메모리캐시+pointerdown 워밍.
+- **사용자 확인 대기**: ① 교환권 상세 정상화 확인 ② `/admin/health` 스키마복구 재실행(오류 0 기대) ③ REPAIR_SCHEMA_TOKEN 등록(선택).
+
 ### ✅ 2026-06-10 — 하단바 ➕(공구 제안) + 쇼핑 잠정 숨김 + 라이브 잔재 정리 (`claude/service-analysis-optimization-whpu0f`)
 **사용자 결정: 라이브커머스 영구 중단 / 쇼핑 잠정 보류(가역) / 동네딜 집중. CLAUDE.md `[UNLOCK_LOADING]` audit log 기록.**
 - 하단바: 홈·동네딜·**➕(만들기)**·링크샵·마이 — `SHOPPING_TAB_HIDDEN` 플래그(false=쇼핑 탭 즉시 복원). ➕ 시트: 유저=동네 공구 제안(`/community-group-buy/new`), 셀러=공구권 등록/대시보드(기존 휴면 시트 재활용).
