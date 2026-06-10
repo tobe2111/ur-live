@@ -180,7 +180,8 @@ curatorRoutes.get('/:handle', async (c) => {
         profile_image: user.profile_image,
         // 🛡️ 2026-06-10 (사용자 신고 — 배경이미지 저장 안 됨): SELECT 는 하면서 응답에서 누락되던 핵심 버그.
         //   CuratorHeader 가 curator.banner_url 을 읽는데 항상 undefined → 저장돼도 절대 표시 안 됐음.
-        banner_url: user.banner_url ?? null,
+        // 레거시 'r2://key' 저장분(2026-06-05 이전 버그) 읽기측 정규화 — 모든 소비처 동시 치유.
+        banner_url: user.banner_url?.startsWith('r2://') ? `/api/media/${user.banner_url.slice(5)}` : (user.banner_url ?? null),
         theme: user.linkshop_theme || 'dark',
       },
       pins: pins ?? [],

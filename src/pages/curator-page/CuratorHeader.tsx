@@ -11,7 +11,7 @@
  * 본 헤더는 일반 user 용 (셀러 권한 없음).
  */
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Heart, Pencil, Check, X, Camera, Settings } from 'lucide-react'
@@ -120,6 +120,9 @@ export default function CuratorHeader({
     try {
       const fd = new FormData()
       fd.append('file', file)
+      // 즉시 미리보기 — 업로드/저장과 무관하게 방금 고른 사진이 바로 보임
+      const preview = URL.createObjectURL(file)
+      setLocalPreview(preview)
       const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       const url = res.data?.data?.url
       if (res.data?.success && url) {
@@ -130,6 +133,7 @@ export default function CuratorHeader({
         toast.error('업로드 실패')
       }
     } catch {
+      setLocalPreview(null)
       toast.error('업로드 실패')
     } finally {
       setUploadingBanner(false)
@@ -137,8 +141,18 @@ export default function CuratorHeader({
   }
 
   // 🏭 2026-06-05 (사용자 요청 — UI 영역 그라데이션): 헤더 배경.
+  // 🛡️ 2026-06-10 (사용자 신고 — 배경 변경 후 깨진 아이콘):
+  //   ① 레거시 'r2://key'(2026-06-05 이전 버그 저장분) → '/api/media/key' 정규화
+  //   ② 프록시+원본 모두 실패 시 깨진 아이콘 대신 그라데이션 폴백(bannerBroken)
+  //   ③ 업로드 직후엔 방금 고른 파일의 objectURL 로 즉시 표시(네트워크 무관 — 항상 보임)
+  const normalizedBanner = curator.banner_url?.startsWith('r2://')
+    ? `/api/media/${curator.banner_url.slice(5)}`
+    : curator.banner_url
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const [bannerBroken, setBannerBroken] = useState(false)
+  useEffect(() => { setBannerBroken(false) }, [normalizedBanner])
   const gradientCss = gradientFor(curator.banner_url) || DEFAULT_GRADIENT
-  const hasPhoto = !!curator.banner_url && !gradientFor(curator.banner_url)
+  const hasPhoto = !bannerBroken && !!(localPreview || (normalizedBanner && !gradientFor(curator.banner_url)))
 
   return (
     <header className="relative">
@@ -147,17 +161,17 @@ export default function CuratorHeader({
       <div className="absolute inset-x-0 top-0 h-[220px] overflow-hidden pointer-events-none">
         {hasPhoto ? (
           <img
-            src={cfImage(curator.banner_url!, { width: 1280, format: 'auto' }) || curator.banner_url!}
+            src={localPreview || cfImage(normalizedBanner!, { width: 1280, format: 'auto' }) || normalizedBanner!}
             alt=""
             className="w-full h-full object-cover"
             loading="eager"
             fetchPriority="high"
             decoding="async"
             onError={(e) => {
-              // 🏭 2026-06-07 (사용자 신고 — 배경 업로드 표시 실패): resize 프록시가 깨진 응답을 줄 때
-              //   same-origin R2 원본(/api/media/*)으로 1회 폴백 → 깨진 이미지 아이콘 방지.
+              // 프록시 실패 → R2 원본 1회 폴백 → 그래도 실패면 그라데이션(깨진 아이콘 절대 금지).
               const img = e.currentTarget
-              if (img.dataset.fb !== '1' && curator.banner_url) { img.dataset.fb = '1'; img.src = curator.banner_url }
+              if (img.dataset.fb !== '1' && normalizedBanner && !localPreview) { img.dataset.fb = '1'; img.src = normalizedBanner }
+              else setBannerBroken(true)
             }}
           />
         ) : (

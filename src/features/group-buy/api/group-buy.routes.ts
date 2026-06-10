@@ -558,6 +558,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
              VALUES (?, 'kt_alpha_send_throw', '/api/group-buy/join', ?, datetime('now'))`,
           ).bind(`KT Alpha auto-send throw (order ${newOrderId}): ${msg}`, String(userId))
             .run().catch(() => null)
+          // 🛡️ 2026-06-10 (발급 감사 GAP#2): 사용자는 '발급 완료' 알림을 받았는데 기프티쇼 MMS 가
+          //   안 간 상태 — 어드민이 로그를 뒤지기 전에 벨로 즉시 인지 → 발송추적에서 수동 재발송.
+          try {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            await createDashboardNotification(DB, 'admin', null, 'kt_alpha_send_failed',
+              '🎁 KT 기프티쇼 발송 실패 — 재발송 필요',
+              `주문 #${newOrderId} / 사용자 ${userId} / ${msg.slice(0, 120)}`,
+              '/admin/voucher-orders')
+          } catch { /* best-effort */ }
         })
 
         // waitUntil 시도 — 실패 시 await fallback (응답 +1-2s 이지만 발급 보장).
@@ -1101,12 +1110,30 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         })
       }
     }
-    // 결제는 성공했으나 INSERT 실패 — admin 알림 + 사용자에게 친절한 안내.
+    // 결제는 성공했으나 INSERT 실패 — 🛡️ 2026-06-10 (발급 감사 GAP#1): 수동 개입 대기 대신
+    //   자동 환불 시도(SSOT cancelTossPayment, 멱등키). 성공=미회수 0 / 실패=어드민 긴급 벨.
     console.error('[group-buy:confirm-toss] post-payment INSERT failed', err)
+    let autoRefunded = false
+    try {
+      const { cancelTossPayment } = await import('../../../worker/utils/toss-gateway')
+      await cancelTossPayment({ env: c.env as unknown as { TOSS_SECRET_KEY?: string }, paymentKey, cancelReason: '바우처 발급 실패 자동 환불', idempotencyKey: `gb-card-issue-fail-${paymentKey}` })
+      autoRefunded = true
+    } catch (cancelErr) {
+      console.error('[group-buy:confirm-toss] 자동 환불도 실패 — 수동 개입 필요', cancelErr)
+      try {
+        const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(c.env.DB, 'admin', null, 'payment_orphan',
+          '🚨 결제됨+발급실패+자동환불실패 — 수동 환불 필요',
+          `paymentKey=${paymentKey} / 상품 ${productId} / 금액 ${expectedAmount}`,
+          '/admin/orders')
+      } catch { /* best-effort */ }
+    }
     return c.json({
       success: false,
-      error: '결제는 완료됐으나 voucher 발급에 실패했습니다. 고객센터에 문의해주세요.',
-      code: 'POST_PAYMENT_FAILURE',
+      error: autoRefunded
+        ? '일시적인 오류로 발급에 실패해 결제를 자동 취소했습니다. 잠시 후 다시 시도해주세요.'
+        : '결제는 완료됐으나 발급에 실패했습니다. 환불 처리를 위해 고객센터로 문의해주세요.',
+      code: autoRefunded ? 'ISSUE_FAILED_REFUNDED' : 'POST_PAYMENT_FAILURE',
       data: { paymentKey, orderId },
     }, 500)
   }
