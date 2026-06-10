@@ -724,6 +724,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🏷️ 2026-06-09 브랜드 전시관 로고 — 브랜드제품(is_brand_product=1)에 브랜드 로고 URL 저장(선택).
     //   브랜드 전시관 그리드에서 텍스트 칩 대신 로고 이미지 표시. 미설정 시 기존 텍스트 칩 동작 불변.
     { desc: 'products.brand_logo_url', sql: "ALTER TABLE products ADD COLUMN brand_logo_url TEXT" },
+    // 🛡️ 2026-06-10 (교환권 500 후속 — 스키마 문서/실DB 편차 마감): production-schema.ts 에는 있으나
+    //   구세대 prod 테이블에 없을 수 있는 컬럼 — 자가치유(withColumnPruning)가 빼고 응답하던 것을
+    //   생성으로 완전 복귀. 멱등(있으면 exists).
+    { desc: 'products.images', sql: "ALTER TABLE products ADD COLUMN images TEXT" },
+    { desc: 'products.stock_quantity', sql: "ALTER TABLE products ADD COLUMN stock_quantity INTEGER" },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
