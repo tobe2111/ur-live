@@ -608,7 +608,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | Schema drift | `check-schema-refs.sh` | `verify.yml` | DB 컬럼 부정확 |
 | API 인증 누락 | `check-api-auth.sh` | `verify.yml` | IDOR |
 | 대시보드 dark variant | `check-dashboard-theme.sh` | `verify.yml` | 사용자 룰 |
-| 다크/라이트 테마 일관성 (warn) | `check-theme-consistency.mjs` | `verify.yml` (warn) | 2026-05-31 유저 대면 페이지 다크모드 흰 박스/검은 텍스트 |
+| 다크/라이트 테마 일관성 | `check-theme-consistency.mjs` | `verify.yml` (strict) | 2026-05-31 다크모드 흰 박스 + 2026-06-11 역방향 2규칙(bare 다크 hex bg=라이트 검정박스 / dark:bg-white+bare text-white=흰배경 흰글자 — 당일 사고 2건 패턴. 의도적 양모드 다크는 `theme-dual` 주석 면제) |
 | Service Worker 등록 | `check-no-sw-register.sh` | `verify.yml` | 2026-04-27 OAuth 차단 |
 | 파일 중간 import | (install-git-hooks.sh) | - | 2026-04-22 worker crash |
 | Silent error (warn) | `check-silent-errors.sh` | - | 디버깅 곤란 |

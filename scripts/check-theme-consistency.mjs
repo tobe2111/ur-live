@@ -100,6 +100,24 @@ for (const f of targetFiles) {
         }
       }
     }
+    // 🛡️ 2026-06-11 역방향 규칙 (이번 사고 2건 패턴 — 사용자 신고로 발견):
+    //   (A) 다크 하드코딩에 라이트 누락: 토글 페이지에서 bare `bg-[#121212]` 등 다크 팔레트 hex 를
+    //       dark: 없이 쓰면 라이트 모드에서 검정 박스. → `bg-<라이트> dark:bg-[#…]` 로 써야 함.
+    //       의도적 양모드 다크 요소는 줄에 `theme-dual` 주석으로 면제.
+    if (!line.includes('theme-dual')) {
+      const darkHex = /((?:[\w-]+:)*)bg-\[#(0A0A0A|121212|1A1A1A|2A2A2A)\]/g
+      let dm
+      while ((dm = darkHex.exec(line)) !== null) {
+        const variant = dm[1] || ''
+        if (variant.includes('dark:')) continue
+        violations.push(`${rel}:${i + 1}  bare bg-[#${dm[2]}] — 라이트 모드 검정박스 (dark: prefix 또는 라이트 쌍 필요)`)
+      }
+      //   (B) 흰배경+흰글자: `dark:bg-white` 가 있는데 bare `text-white` 만 있고 `dark:text-` 가 없으면
+      //       다크 모드에서 흰 버튼 위 흰 글자 (보이지 않음).
+      if (line.includes('dark:bg-white') && /(?<![\w-:])text-white\b/.test(line) && !line.includes('dark:text-')) {
+        violations.push(`${rel}:${i + 1}  dark:bg-white + bare text-white — 다크 모드 흰배경 흰글자 (dark:text-gray-900 등 필요)`)
+      }
+    }
   })
 }
 
