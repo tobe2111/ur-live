@@ -214,17 +214,30 @@ export class OrderRepository {
       [orderNumber]
     );
 
-    const orders = await Promise.all(
-      rows.map(async row => {
-        const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options FROM order_items WHERE order_id = ? ORDER BY id',
-          [row['id']]
-        );
-        return this.mapOrder(row, items);
-      })
-    );
+    const itemsByOrder = await this.findItemsGrouped(rows.map(r => r['id']));
+    return rows.map(row => this.mapOrder(row, itemsByOrder.get(String(row['id'])) || []));
+  }
 
-    return orders;
+  /**
+   * 🛡️ 2026-06-11 감사: 주문 N건 × order_items N쿼리(N+1) → 단일 IN 쿼리로 일괄 조회 후 그룹핑.
+   * findByUserId(마이주문 리스트)/findByOrderNumber 공용.
+   */
+  private async findItemsGrouped(orderIds: unknown[]): Promise<Map<string, Record<string, unknown>[]>> {
+    const grouped = new Map<string, Record<string, unknown>[]>();
+    const ids = orderIds.filter(id => id != null);
+    if (ids.length === 0) return grouped;
+    const ph = ids.map(() => '?').join(',');
+    const items = await this.qb.queryMany<Record<string, unknown>>(
+      `SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options
+       FROM order_items WHERE order_id IN (${ph}) ORDER BY order_id, id`,
+      ids
+    );
+    for (const it of items) {
+      const k = String(it['order_id']);
+      if (!grouped.has(k)) grouped.set(k, []);
+      grouped.get(k)!.push(it);
+    }
+    return grouped;
   }
 
   /**
@@ -274,15 +287,8 @@ export class OrderRepository {
       }
     }
 
-    const orders = await Promise.all(
-      rows.map(async row => {
-        const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options FROM order_items WHERE order_id = ? ORDER BY id',
-          [row['id']]
-        );
-        return this.mapOrder(row, items);
-      })
-    );
+    const itemsByOrder = await this.findItemsGrouped(rows.map(r => r['id']));
+    const orders = rows.map(row => this.mapOrder(row, itemsByOrder.get(String(row['id'])) || []));
 
     return { orders, total };
   }

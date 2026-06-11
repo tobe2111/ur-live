@@ -936,26 +936,21 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
       }, 409)
     }
 
-    // 6. orders + booking 상태 갱신.
-    await c.env.DB.prepare(
-      `UPDATE orders
-          SET status = 'PAID',
-              payment_status = 'approved',
-              payment_key = ?,
-              updated_at = datetime('now')
-        WHERE id = ?`
-    ).bind(paymentKey, orderId).run().catch(() => { /* noop */ })
-
-    await c.env.DB.prepare(
-      `UPDATE stay_bookings
-          SET status = 'confirmed', updated_at = datetime('now')
-        WHERE id = ?`
-    ).bind(order.stay_booking_id).run()
-
-    await c.env.DB.prepare(
-      `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
-       VALUES (?, ?, 'confirmed', 'system', ?, '결제 승인 완료')`
-    ).bind(order.stay_booking_id, order.booking_status || 'pending', userId).run().catch(() => { /* noop */ })
+    // 6. orders 상태 갱신 + 로그 — 독립 write 원자 배치 (booking confirmed 는 위 CAS claim 에서 이미 전이).
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `UPDATE orders
+            SET status = 'PAID',
+                payment_status = 'approved',
+                payment_key = ?,
+                updated_at = datetime('now')
+          WHERE id = ?`
+      ).bind(paymentKey, orderId),
+      c.env.DB.prepare(
+        `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
+         VALUES (?, ?, 'confirmed', 'system', ?, '결제 승인 완료')`
+      ).bind(order.stay_booking_id, order.booking_status || 'pending', userId),
+    ]).catch(() => { /* noop — 멱등 체크(payment_status)로 재시도 가능 */ })
 
     return c.json({
       success: true,

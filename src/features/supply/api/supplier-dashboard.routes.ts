@@ -864,58 +864,60 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
     const { normalizeCourierKey } = await import('../../../worker/utils/courier-codes');
     const carrierKey = normalizeCourierKey(body.courier);
 
-    // 1) 라인 레벨 발송 기록 — 본인(공급자) 라인만. 다른 공급자/셀러 라인은 절대 미변경.
-    //    아직 발송 안 된(shipped_at IS NULL) 라인만 채움(멱등).
-    await DB.prepare(
-      `UPDATE order_items
-          SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
-              shipped_at = datetime('now')
-        WHERE order_id = ?
-          AND shipped_at IS NULL
-          AND product_id IN (
-            SELECT sp.id FROM products sp
-              JOIN products src ON src.id = sp.supply_source_id
-             WHERE src.supplier_id = ?
-          )`
-    ).bind(tracking, body.courier || null, carrierKey || null, orderId, sid).run();
-
-    // 2) 주문 상태 승급 — 주문 내 미발송 라인이 하나도 남지 않았을 때만 'SHIPPING'.
-    //    (wholesale-supplier.routes 의 NOT EXISTS(unshipped) 패턴과 동일.)
-    //    CANCELLED/REFUNDED 라인은 발송 대상이 아니므로 미발송 집계에서 제외.
-    await DB.prepare(
-      `UPDATE orders
-          SET shipped_at = COALESCE(shipped_at, datetime('now')),
-              status = 'SHIPPING',
-              updated_at = datetime('now')
-        WHERE id = ?
-          AND status IN ('PAID','PREPARING','READY','PARTIAL_REFUNDED')
-          AND NOT EXISTS (
-            SELECT 1 FROM order_items oi
-             WHERE oi.order_id = ?
-               AND oi.shipped_at IS NULL
-               AND (oi.status IS NULL OR oi.status NOT IN ('CANCELLED','REFUNDED'))
-          )`
-    ).bind(orderId, orderId).run();
-
-    // 3) 공유 orders 행의 tracking/courier 는 이 공급자가 주문의 "모든" 발송대상 라인을
-    //    소유할 때만 설정(순수 단일 공급자 주문). 혼합 주문이면 미설정 — 타 당사자 데이터 보호.
-    await DB.prepare(
-      `UPDATE orders
-          SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
-              updated_at = datetime('now')
-        WHERE id = ?
-          AND (tracking_number IS NULL OR tracking_number = '')
-          AND NOT EXISTS (
-            SELECT 1 FROM order_items oi
-             WHERE oi.order_id = ?
-               AND (oi.status IS NULL OR oi.status NOT IN ('CANCELLED','REFUNDED'))
-               AND oi.product_id NOT IN (
-                 SELECT sp.id FROM products sp
-                   JOIN products src ON src.id = sp.supply_source_id
-                  WHERE src.supplier_id = ?
-               )
-          )`
-    ).bind(tracking, body.courier || null, carrierKey || null, orderId, orderId, sid).run();
+    // 1)~3) 발송 기록 3 writes — 원자 배치 (🛡️ 2026-06-11 감사: 라운드트립 3→1).
+    //   배치는 한 트랜잭션에서 순차 실행되므로 2)·3) 의 NOT EXISTS 가 1) 의 shipped_at 반영을 봄.
+    await DB.batch([
+      // 1) 라인 레벨 발송 기록 — 본인(공급자) 라인만. 다른 공급자/셀러 라인은 절대 미변경.
+      //    아직 발송 안 된(shipped_at IS NULL) 라인만 채움(멱등).
+      DB.prepare(
+        `UPDATE order_items
+            SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
+                shipped_at = datetime('now')
+          WHERE order_id = ?
+            AND shipped_at IS NULL
+            AND product_id IN (
+              SELECT sp.id FROM products sp
+                JOIN products src ON src.id = sp.supply_source_id
+               WHERE src.supplier_id = ?
+            )`
+      ).bind(tracking, body.courier || null, carrierKey || null, orderId, sid),
+      // 2) 주문 상태 승급 — 주문 내 미발송 라인이 하나도 남지 않았을 때만 'SHIPPING'.
+      //    (wholesale-supplier.routes 의 NOT EXISTS(unshipped) 패턴과 동일.)
+      //    CANCELLED/REFUNDED 라인은 발송 대상이 아니므로 미발송 집계에서 제외.
+      DB.prepare(
+        `UPDATE orders
+            SET shipped_at = COALESCE(shipped_at, datetime('now')),
+                status = 'SHIPPING',
+                updated_at = datetime('now')
+          WHERE id = ?
+            AND status IN ('PAID','PREPARING','READY','PARTIAL_REFUNDED')
+            AND NOT EXISTS (
+              SELECT 1 FROM order_items oi
+               WHERE oi.order_id = ?
+                 AND oi.shipped_at IS NULL
+                 AND (oi.status IS NULL OR oi.status NOT IN ('CANCELLED','REFUNDED'))
+            )`
+      ).bind(orderId, orderId),
+      // 3) 공유 orders 행의 tracking/courier 는 이 공급자가 주문의 "모든" 발송대상 라인을
+      //    소유할 때만 설정(순수 단일 공급자 주문). 혼합 주문이면 미설정 — 타 당사자 데이터 보호.
+      DB.prepare(
+        `UPDATE orders
+            SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
+                updated_at = datetime('now')
+          WHERE id = ?
+            AND (tracking_number IS NULL OR tracking_number = '')
+            AND NOT EXISTS (
+              SELECT 1 FROM order_items oi
+               WHERE oi.order_id = ?
+                 AND (oi.status IS NULL OR oi.status NOT IN ('CANCELLED','REFUNDED'))
+                 AND oi.product_id NOT IN (
+                   SELECT sp.id FROM products sp
+                     JOIN products src ON src.id = sp.supply_source_id
+                    WHERE src.supplier_id = ?
+                 )
+            )`
+      ).bind(tracking, body.courier || null, carrierKey || null, orderId, orderId, sid),
+    ]);
 
     // 배송 추적 이벤트 audit (셀러 흐름과 동일 — 테이블 없으면 무시).
     await DB.prepare(
