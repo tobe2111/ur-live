@@ -295,7 +295,14 @@ export async function captureException(
 ): Promise<void> {
   if (sentryInstance) {
     await sentryInstance.captureException(error, context);
+    return;
   }
+  // 🛡️ 2026-06-11 감사: initSentry 미호출(DSN 미설정) 시에도 결제/웹훅 보안·금전 이벤트가
+  //   silent 로 사라지지 않게 console.error 로 폴백 → Cloudflare Workers Logs(무료)에 기록되어
+  //   금액불일치/서명실패 등을 추적 가능. (Sentry DSN 설정 시 위 분기로 정상 전송.)
+  try {
+    console.error('[captureException]', error?.message || error, context?.tags ? JSON.stringify(context.tags) : '');
+  } catch { /* noop */ }
 }
 
 /**
@@ -308,6 +315,10 @@ export async function captureMessage(
 ): Promise<void> {
   if (sentryInstance) {
     await sentryInstance.captureMessage(message, level, context);
+    return;
+  }
+  if (level === 'fatal' || level === 'error') {
+    try { console.error('[captureMessage]', level, message); } catch { /* noop */ }
   }
 }
 
