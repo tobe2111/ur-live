@@ -419,6 +419,10 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
         );
       }
     } catch { /* notification failure should not break the join */ }
+    };
+    let _deferred = false;
+    try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+    if (!_deferred) await _bg();
   }
 
   // 멤버 목록 조회
@@ -981,28 +985,37 @@ communityGroupBuyRoutes.post('/:id/messages',
     `, [groupId, senderType, String(userAsAny.id), senderName, clean])
 
     // 상대방에게 알림 (best-effort)
-    try {
-      // 발신자 외 모든 stakeholder 에게 알림
-      const recipients: Array<{ user_id: string; user_type: string }> = []
-      if (senderType !== 'user' && group.creator_user_id) {
-        recipients.push({ user_id: group.creator_user_id, user_type: 'user' })
+    // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 수신자별 알림 INSERT 루프 — 응답 후 실행(waitUntil).
+    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    {
+      const _bg = async () => {
+      try {
+        // 발신자 외 모든 stakeholder 에게 알림
+        const recipients: Array<{ user_id: string; user_type: string }> = []
+        if (senderType !== 'user' && group.creator_user_id) {
+          recipients.push({ user_id: group.creator_user_id, user_type: 'user' })
+        }
+        if (senderType !== 'restaurant' && group.restaurant_seller_id) {
+          recipients.push({ user_id: String(group.restaurant_seller_id), user_type: 'seller' })
+        }
+        for (const r of recipients) {
+          await DB.prepare(`
+            INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+            VALUES (?, ?, 'group_buy_message', ?, ?, ?, CURRENT_TIMESTAMP)
+          `).bind(
+            r.user_id,
+            r.user_type,
+            `${senderName} 메시지`,
+            clean.slice(0, 100) + (clean.length > 100 ? '...' : ''),
+            `/community-group-buy/${groupId}/messages`
+          ).run().catch(() => { /* notifications 없으면 skip */ })
+        }
+      } catch { /* ignore */ }
       }
-      if (senderType !== 'restaurant' && group.restaurant_seller_id) {
-        recipients.push({ user_id: String(group.restaurant_seller_id), user_type: 'seller' })
-      }
-      for (const r of recipients) {
-        await DB.prepare(`
-          INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-          VALUES (?, ?, 'group_buy_message', ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(
-          r.user_id,
-          r.user_type,
-          `${senderName} 메시지`,
-          clean.slice(0, 100) + (clean.length > 100 ? '...' : ''),
-          `/community-group-buy/${groupId}/messages`
-        ).run().catch(() => { /* notifications 없으면 skip */ })
-      }
-    } catch { /* ignore */ }
+      let _deferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+      if (!_deferred) await _bg()
+    }
 
     return c.json({ success: true, message: '메시지 전송 완료' })
   }

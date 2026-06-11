@@ -38,8 +38,13 @@ function getAuthUserId(c: any): number | null {
 /**
  * 🛡️ 2026-05-25: hosting 관련 테이블 보장 — D1 migration 미적용 환경 대응.
  *   첫 호출 시 lazy CREATE. idempotent (IF NOT EXISTS).
+ * 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 모듈 메모이즈 추가 — 매 요청 DDL 3왕복이
+ *   user-facing /catalog, /me 응답에 끼던 것 제거. 성공 시에만 플래그 set (curator 패턴) —
+ *   실패하면 다음 요청이 재시도. 콜드 1회 동작은 기존과 동일.
  */
+let _hostingTablesReady = false
 async function ensureHostingTables(DB: D1Database): Promise<void> {
+  if (_hostingTablesReady) return
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS group_buy_hosts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,6 +73,7 @@ async function ensureHostingTables(DB: D1Database): Promise<void> {
       joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(host_id, user_id)
     )`).run().catch(() => null)
+    _hostingTablesReady = true // 성공 시에만 — 실패하면 다음 요청 재시도
   } catch { /* graceful */ }
 }
 
