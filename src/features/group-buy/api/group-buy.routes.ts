@@ -51,7 +51,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
   const { DB } = c.env
-  await ensureTables(DB)
+  // 🏁 2026-06-11 (사용자 신고 — 참여하기 버튼 느림): DDL 보장(ALTER ~17 + INDEX ~4)을 응답 경로에서
+  //   분리. 컬럼/인덱스는 프로덕션 DB 에 이미 존재(멱등 no-op)인데 isolate 콜드마다 ~21 D1 왕복이
+  //   버튼 클릭에 끼어들었음. curator /:handle 과 동일 패턴 — 신규 DB 는 repair-schema/cron 이 수렴.
+  let _ddlDeferred = false
+  try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(ensureTables(DB).catch(() => {})); _ddlDeferred = true } } catch { /* no ctx */ }
+  if (!_ddlDeferred) await ensureTables(DB).catch(() => {})
   const productIdRaw = c.req.param('id')
   const productIdNum = Number(productIdRaw)
   if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
@@ -302,18 +307,14 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         }
       }
 
-      const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
-        .bind(userId).first<{ balance: number }>()
-
-      if (!wallet || wallet.balance < totalAmount) {
-        return c.json({ success: false, error: `딜이 부족합니다 (보유: ${wallet?.balance ?? 0}딜)`, code: 'INSUFFICIENT_POINTS' }, 400)
-      }
-
-      // 딜 차감 (atomic: balance >= totalAmount 조건으로 race condition 방지)
+      // 🏁 2026-06-11 perf: 잔액 사전 SELECT 제거 — 차감 UPDATE 의 `balance >= ?` 가드가 단일 진실
+      //   (원자성/가드 의미 동일, 행복경로 D1 1왕복 절약). 실패 시에만 잔액 조회해 메시지 구성.
       const deductResult = await DB.prepare('UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?')
         .bind(totalAmount, userId, totalAmount).run()
       if (!deductResult.meta.changes) {
-        return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400)
+        const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+          .bind(userId).first<{ balance: number }>().catch(() => null)
+        return c.json({ success: false, error: `딜이 부족합니다 (보유: ${wallet?.balance ?? 0}딜)`, code: 'INSUFFICIENT_POINTS' }, 400)
       }
 
       await DB.prepare(
@@ -608,6 +609,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         }
       } catch { /* graceful */ }
 
+    // 🏁 2026-06-11 (참여하기 느림 수술): 사장님 첫 바우처 안내(inline ALTER+SELECT+UPDATE+알림톡) — 응답 후 실행(waitUntil).
+    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    {
+      const _bg = async () => {
       // 🛡️ 2026-05-16: 매장 사장님에게 첫 voucher 안내 알림톡 (sellers.first_voucher_notified=0 일 때만)
       try {
         try { await DB.prepare("ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0").run() } catch {}
@@ -627,6 +632,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           await DB.prepare("UPDATE sellers SET first_voucher_notified = 1 WHERE id = ?").bind(product.seller_id).run()
         }
       } catch { /* graceful */ }
+      }
+      let _deferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+      if (!_deferred) await _bg()
+    }
 
       // 🛡️ 2026-05-15: Promo 코드 사용 기록 + used_count atomic increment
       //   redemptions UNIQUE(promo_id, user_id, order_number) → 같은 주문 중복 차단
@@ -665,6 +675,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status, milestone_notified_50, milestone_notified_80, milestone_notified_lastone FROM products WHERE id = ?')
       .bind(productId).first<Pick<GroupBuyProductRow, 'group_buy_current' | 'group_buy_target' | 'group_buy_status' | 'milestone_notified_50' | 'milestone_notified_80' | 'milestone_notified_lastone'>>()
 
+    // 🏁 2026-06-11 (참여하기 느림 수술): 마일스톤 푸시(관심유저 N명 순차 외부호출) — 응답 후 실행(waitUntil).
+    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    {
+      const _bg = async () => {
     // 🛡️ 2026-05-15: 마일스톤 알림 (50%, 80%, 1명 남음) — atomic CAS dedup
     //   진행 중 공구의 전환율을 높이기 위한 hot notification. push 만 (이메일 X — 너무 잦음).
     try {
@@ -715,7 +729,16 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         }
       }
     } catch (e) { console.error('[group-buy milestone notify]', e) }
+      }
+      let _deferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+      if (!_deferred) await _bg()
+    }
 
+    // 🏁 2026-06-11 (참여하기 느림 수술): 공구 성공 참여자 전원 알림(INSERT+푸시 ×M명) — 응답 후 실행(waitUntil).
+    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    {
+      const _bg = async () => {
     // 🛡️ 공구 성공 시 모든 참여자에게 푸시 + dashboard notification (best-effort)
     //   updated.group_buy_status === 'achieved' 이며, 직전 UPDATE 가 처음으로 트랜지션 시켰을 때만 발송하도록
     //   product.group_buy_status (사전 상태) 와 비교하여 중복 발송 방지.
@@ -745,6 +768,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         }
       }
     } catch (e) { console.error('[group-buy achieved notify]', e) }
+      }
+      let _deferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+      if (!_deferred) await _bg()
+    }
 
     // 바우처 코드 조회
     const vouchers = await DB.prepare(
@@ -792,6 +820,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       }
     } catch (e) { if (import.meta.env?.DEV) console.warn('[group-buy referral]', e) }
 
+    // 🏁 2026-06-11 (참여하기 느림 수술): 이메일 영수증(Resend 외부 HTTP) — 응답 후 실행(waitUntil).
+    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    {
+      const _bg = async () => {
     // 🛡️ 2026-05-15: 이메일 영수증 — voucher 코드 첨부, best-effort (실패해도 join 성공).
     //   유저 email 조회 → Resend 발송 → 실패 시 silent (push 알림이 백업).
     try {
@@ -844,6 +876,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         }).catch((e) => { if (import.meta.env?.DEV) console.warn('[group-buy email]', e) })
       }
     } catch (e) { if (import.meta.env?.DEV) console.warn('[group-buy email outer]', e) }
+      }
+      let _deferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+      if (!_deferred) await _bg()
+    }
 
     return c.json({
       success: true,
