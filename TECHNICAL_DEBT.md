@@ -2,6 +2,13 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-06-11 (2차) — 도매 God 파일 2개 분해 (동작 변화 0)
+- ✅ `SupplierDashboardPage` 1582→286줄 (`supplier-dashboard/` 15파일: 탭 7 + 모달 6 + types/csv) — `eff2a18a`
+- ✅ `WholesaleCatalogPage` 1493→550줄 (`wholesale-catalog/` 16파일: 카드/섹션/SSR/CSV 유틸) — `19fe20e4`
+  - 부모 550줄 잔류분은 여러 섹션이 공유하는 쿼리/상태/핸들러 — 더 쪼개면 순수 추출 범위 초과라 보류.
+- 검증: 각각 tsc 0 · 2028 tests green · `npm run build` OK. 본문 sed 라인추출(byte-identical) + prop 치환 3곳뿐.
+- 🟢 잔여 대형 파일: `youtube-live.routes.ts`(3376줄)는 라이브커머스 **영구 중단** 영역이라 분해 가치 0 — 의도적 보류. `worker/index.ts`(2007줄)는 잠긴 SSR inject 블록 포함이라 UNLOCK 없이 분해 불가.
+
 ## 📊 2026-06-11 — vitest 2→4.1.8 업그레이드 (allowlist 졸업) + critical path 예산
 - ✅ **vitest** `2.1.9 → 4.1.8` — `GHSA-5xrq-8626-4rwp`(critical) 패치 버전. 우려했던 vite 5→6 연쇄 **불발생**: vitest 4.1 은 자체 중첩 vite 8 사용, 본체 빌드는 vite 5.4.21 그대로 (npm ls 로 확인). `.audit-allowlist.json` 비움(0건).
   - 마이그레이션 수정 3건: ① arrow 구현 `vi.fn()` 은 v4 에서 `new` 호출 불가 → repository 클래스 mock 을 일반 `function` 으로 (payment-confirmation/webhook-payment) ② auth-api 401 재시도 테스트는 fake timer 교착 → real timer 전환(~2s, 같은 파일 통합 테스트와 동일 패턴) ③ agency-shared 테스트가 당일 보안 감사(9cd8e479, getSellerIdFromToken type 검증)와 미동기 → 토큰에 type 포함 + 거부 케이스 추가. **2028 tests green.**
