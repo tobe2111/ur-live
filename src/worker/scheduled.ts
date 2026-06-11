@@ -244,7 +244,9 @@ export async function handleCronScheduled(
       await handleAgencyInactiveSellers(env).catch(e => logError('[cron] inactive-sellers', { error: String(e) }));
       // 🛡️ 2026-05-20: 에이전시 입점 가게 월 성장 보너스 — 매일 체크하지만 동월 중복은 내부 가드.
       //   실질적으로 매월 1일 첫 실행만 의미 있음 (전월 매출 fix 됨).
-      try {
+      // 🔐 2026-06-11 (정합성 감사 🔴): 매월 1일에만 실행 — 기존 매일 실행 + note-LIKE 멱등(약함)이라
+      //   같은 날 cron 중복/재시도 시 growth_bonus 이중 적립 위험. 1일 게이트로 실행 빈도 자체를 월1회로.
+      if (new Date().getUTCDate() === 1) try {
         const { runAgencyStoreIntroMonthlyBonus } = await import('./cron/agency-store-intro-monthly-bonus')
         const r = await runAgencyStoreIntroMonthlyBonus(env)
         if (r.awarded > 0) {

@@ -23,7 +23,10 @@ export async function runAgencyStoreIntroMonthlyBonus(env: Env): Promise<{
 
   // 전월 범위 (UTC 기준 — 한국 시간 보정은 결제 시점 기준이라 큰 영향 없음)
   const now = new Date()
-  const yearMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth()).padStart(2, '0')}`  // 전월 (0-indexed month 가 곧 전월)
+  // 🔐 2026-06-11 (정합성 감사): 전월 yearMonth — getUTCMonth()(0-indexed)가 곧 전월의 1-indexed.
+  //   단 1월(month=0)이면 "YYYY-00" 가 되던 버그 → 전년 12월로 정정.
+  const _pm = now.getUTCMonth() === 0 ? { y: now.getUTCFullYear() - 1, m: 12 } : { y: now.getUTCFullYear(), m: now.getUTCMonth() }
+  const yearMonth = `${_pm.y}-${String(_pm.m).padStart(2, '0')}`
   const startOfPrevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString()
   const startOfThisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
 
