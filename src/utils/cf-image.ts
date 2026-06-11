@@ -155,9 +155,16 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   zone 리사이저 직접 래핑은 실측 OK(cf-resized, 143KB→18KB, zone 캐시) — 브라우저가
       //   /cdn-cgi/image/<옵션>/<외부절대URL> 을 직접 요청. same-origin 응답이라 canvas 대표색
       //   추출(2026-06-05 프록시 도입 사유였던 CORS)도 동일하게 안전.
+      //   ⚠️ 당일 회귀 교훈(카카오 프로필 깨짐): cdn-cgi 직결은 **리사이저의 원본 fetch 가 성공하는
+      //   호스트에서만** 안전 — 기프티쇼/KT 만 실측 검증됨. kakaocdn 등 핫링크 보호 가능 호스트는
+      //   기존 프록시 유지(느려도 항상 표시). 신규 호스트는 prod-diag 로 cf-resized 실측 후 추가.
       //   ⚠️ 워커 경로(/api/media 등)는 zone 리사이저가 origin 을 못 풀어 404(2026-06-06 사고) —
       //   그 분기는 기존 프록시 유지. EXTERNAL_PROXY_HOSTS 목록·Save-Data quality 불변(제거 X).
-      return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
+      const CDN_CGI_VERIFIED = ['giftishow.com', 'kt.com']
+      if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
+        return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
+      }
+      return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }
     if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본
   }

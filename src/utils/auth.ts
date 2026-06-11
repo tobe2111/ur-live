@@ -115,7 +115,12 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'tempCartItem',
       'loginReturnUrl',
       'lastLoginUid',
-      'session_login'
+      'session_login',
+      // 🛡️ 2026-06-11 (사용자 신고 — 로그아웃했는데 링크샵 탭이 내 샵으로): BottomNav linkshopPath 가
+      //   읽는 경로 캐시. 계정 전환(KakaoCallbackPage)에선 지우는데 일반 로그아웃에선 잔존했음.
+      //   user 파생 키만 제거 — seller_username 은 셀러 세션 소유라 seller 로그아웃에서 처리.
+      'user_handle',
+      'linked_seller_username'
     )
     // seller/admin 세션이 남아있으면 user_type 유지
     const hasSellerSession = !!localStorage.getItem('seller_token')
