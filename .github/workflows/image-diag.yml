@@ -47,6 +47,30 @@ jobs:
           grep -i "cf-resized\|content-type\|content-length" /tmp/h2 || true
 
           echo ""
+          echo "=== 5) 도매 카탈로그 API (사용자 신고 — /wholesale 상품 안 뜸) ==="
+          curl -s -D /tmp/h3 --max-time 20 "$PROD/api/wholesale/catalog" -o /tmp/cat.json -w "guest 카탈로그: status=%{http_code} time=%{time_total}s\n"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/cat.json'))
+          print('success:', d.get('success'), '| items:', len(d.get('items') or []), '| error:', d.get('error'))
+          " || head -c 300 /tmp/cat.json
+          grep -i "x-grade-cache\|cf-cache-status" /tmp/h3 || true
+
+          echo ""
+          echo "=== 6) /wholesale HTML — SSR 슬롯 주입 확인 ==="
+          curl -s --max-time 20 "$PROD/wholesale" -o /tmp/ws.html -w "HTML: status=%{http_code} size=%{size_download}B\n"
+          grep -c "__SSR_INITIAL_WHOLESALE__" /tmp/ws.html && echo "SSR 슬롯 존재" || echo "SSR 슬롯 없음"
+
+          echo ""
+          echo "=== 7) 공동구매 리스트 API ==="
+          curl -s --max-time 20 "$PROD/api/group-buy/products?status=active" -o /tmp/gb.json -w "동네딜: status=%{http_code} time=%{time_total}s\n"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/gb.json'))
+          print('success:', d.get('success'), '| items:', len(d.get('data') or []))
+          " || head -c 300 /tmp/gb.json
+
+          echo ""
           echo "=== 판정 가이드 ==="
           echo "- 3)에 cf-resized 헤더 있음 + size 수십 KB → 리사이저 정상 (느림 원인은 다른 곳)"
           echo "- 3)이 원본과 같은 size / cf-resized 없음 → 리사이저 미작동 → Dashboard > Images > Transformations 에서 zone 활성화 필요 (무료)"
