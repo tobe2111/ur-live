@@ -1713,18 +1713,50 @@ app.get('/api/image/resize', async (c) => {
     const hit = await edge.match(cacheKey).catch(() => null);
     if (hit) return hit;
 
+    const immutable = (body: BodyInit | ReadableStream | null, type: string) => {
+      const headers = new Headers();
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      headers.set('Content-Type', type);
+      return new Response(body as BodyInit, { headers });
+    };
+
+    // 🏁 2026-06-11 (사용자 — "이미지가 빠르진 않다" → 사전 생성 파이프라인): 변환 결과를 R2 에
+    //   영구 저장. 엣지 캐시는 PoP/시간 한정이지만 R2 썸네일은 전 세계·영구 — 같은 이미지의
+    //   변환 비용은 평생 1회(월 unique 한도 소비도 1회), 이후 모든 사용자는 즉시 응답.
+    const R2 = (c.env as { MEDIA_BUCKET?: R2Bucket }).MEDIA_BUCKET;
+    const safeKey = btoa(unescape(encodeURIComponent(url))).replace(/\//g, '_').replace(/\+/g, '-').replace(/=+$/g, '').slice(0, 200);
+    const thumbKey = `thumbs/v1/${width}q${quality}/${safeKey}`;
+    if (R2) {
+      const stored = await R2.get(thumbKey).catch(() => null);
+      if (stored) {
+        const out = immutable(stored.body, stored.httpMetadata?.contentType || 'image/webp');
+        if (c.executionCtx) c.executionCtx.waitUntil(edge.put(cacheKey, out.clone()).catch(() => {}));
+        return out;
+      }
+    }
+
     const origin = new URL(c.req.url).origin;
     let response = await fetch(`${origin}/cdn-cgi/image/width=${width},quality=${quality},format=auto/${url}`);
-    if (!response.ok || !response.headers.get('cf-resized')) {
+    const transformed = response.ok && !!response.headers.get('cf-resized');
+    if (!transformed) {
       // 리사이저 미작동/소스 실패 — 원본 폴백 (변환 없이도 이미지는 표시)
       response = await fetch(url);
       if (!response.ok) return c.redirect(url);
     }
 
-    const headers = new Headers();
-    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
-    const out = new Response(response.body, { headers });
+    const type = response.headers.get('Content-Type') || 'image/webp';
+    // 변환본만 R2 영구 저장 (원본 폴백분은 저장 X — 다음 요청이 변환 재시도). 5MB 캡.
+    if (R2 && transformed) {
+      const buf = await response.arrayBuffer();
+      const out = immutable(buf, type);
+      if (c.executionCtx && buf.byteLength > 0 && buf.byteLength <= 5 * 1024 * 1024) {
+        c.executionCtx.waitUntil(R2.put(thumbKey, buf, { httpMetadata: { contentType: type } }).catch(() => {}));
+        c.executionCtx.waitUntil(edge.put(cacheKey, out.clone()).catch(() => {}));
+      }
+      return out;
+    }
+
+    const out = immutable(response.body, type);
     if (c.executionCtx) c.executionCtx.waitUntil(edge.put(cacheKey, out.clone()).catch(() => {}));
     return out;
   } catch {
