@@ -1,0 +1,80 @@
+name: Uptime Monitor
+
+# 🛡️ 2026-06-10 (사용자 승인 — "서버 장애를 사용자가 먼저 아는 구조" 제거):
+#   10분마다 핵심 endpoint 를 외부(GitHub 러너)에서 점검 — 사이트가 죽으면 worker cron 도
+#   같이 죽으므로 반드시 외부 관측이어야 함. 외부 서비스 가입 불필요.
+#   다운 감지 → 'uptime' 라벨 이슈 생성(중복 방지 — 열려있으면 코멘트) → GitHub 이메일 알림.
+#   복구 감지 → 이슈 자동 닫기. 비용 0 (public repo Actions 무료).
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe critical endpoints
+        id: probe
+        run: |
+          FAILS=""
+          check() {
+            local label="$1"; shift
+            local code
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$@" || echo "000")
+            echo "$label → $code"
+            # 5xx / 000(타임아웃·연결실패) = 다운. 4xx 는 worker 살아있음(정상 간주).
+            case "$code" in
+              5*|000) FAILS="${FAILS}${label} (HTTP ${code})\n" ;;
+            esac
+          }
+          # POST /api/version — 캐시 우회(POST) → worker 생존의 진짜 신호
+          check "API worker (POST /api/version)" -X POST "https://live.ur-team.com/api/version"
+          # 핵심 상거래 API 2종
+          check "교환권/상품 목록" "https://live.ur-team.com/api/products?limit=1"
+          check "도매 카탈로그" "https://live.ur-team.com/api/wholesale/catalog?limit=1"
+          # HTML 셸
+          check "메인 페이지 HTML" "https://live.ur-team.com/"
+          if [ -n "$FAILS" ]; then
+            echo "down=true" >> "$GITHUB_OUTPUT"
+            printf "fails<<EOF\n${FAILS}EOF\n" >> "$GITHUB_OUTPUT"
+          else
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open/close incident issue
+        uses: actions/github-script@v7
+        env:
+          DOWN: ${{ steps.probe.outputs.down }}
+          FAILS: ${{ steps.probe.outputs.fails }}
+        with:
+          script: |
+            const down = process.env.DOWN === 'true'
+            const fails = process.env.FAILS || ''
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'uptime',
+            })
+            const open = issues[0]
+            const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+            if (down) {
+              const body = `🔴 **다운 감지** (${now} KST)\n\n실패 endpoint:\n\`\`\`\n${fails}\`\`\`\n10분 뒤 자동 재점검합니다. 복구되면 이 이슈는 자동으로 닫힙니다.\n\n조치 가이드: Cloudflare Dashboard → Workers & Pages → ur-live 배포 상태 / 최근 배포 롤백.`
+              if (open) {
+                await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number, body })
+              } else {
+                await github.rest.issues.create({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  title: `🔴 [장애] live.ur-team.com 다운 감지 — ${now}`,
+                  body, labels: ['uptime'],
+                })
+              }
+            } else if (open) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number,
+                body: `🟢 **복구 확인** (${now} KST) — 전체 endpoint 정상. 이슈를 닫습니다.`,
+              })
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: open.number, state: 'closed' })
+            }
