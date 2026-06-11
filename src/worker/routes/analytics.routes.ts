@@ -17,6 +17,15 @@ const analyticsRoutes = new Hono<{ Bindings: Env }>()
 
 // 1% sampling — 100명 중 1명만 기록 (KV write 한도 보호)
 const VITALS_SAMPLE_RATE = 0.01
+// 🛡️ 2026-06-11 머니/무료티어 감사: 고볼륨 funnel(view/click) 5% 샘플 + inc 20 보정 →
+//   KV free write 1K/day 한도 보호. join/success(저볼륨·고가치)는 항상 기록.
+const FUNNEL_SAMPLE_RATE = 0.05
+
+// 🛡️ analytics 쓰기는 ANALYTICS_KV 전용 — SESSION_KV(인증세션 저장소) 의 write 예산을 잠식해
+//   세션이 끊기는 사고를 막기 위해 fallback 금지. 미바인딩이면 skip(0원, 무해). 읽기(summary)만 fallback 유지.
+function analyticsWriteKv(env: unknown): KVNamespace | null {
+  return (env as { ANALYTICS_KV?: KVNamespace }).ANALYTICS_KV || null
+}
 
 interface VitalsBody {
   name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB'
@@ -65,8 +74,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB']
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
-  const kv = (c.env as Env & { ANALYTICS_KV?: KVNamespace; SESSION_KV?: KVNamespace }).ANALYTICS_KV
-    || (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+  const kv = analyticsWriteKv(c.env)
   if (!kv) return c.json({ ok: true, skipped: true })
 
   const day = todayKey()
@@ -83,15 +91,19 @@ analyticsRoutes.post('/funnel', async (c) => {
   if (!body.event) return c.json({ ok: false }, 400)
   const validEvents = ['view', 'click', 'join', 'success']
   if (!validEvents.includes(body.event)) return c.json({ ok: false }, 400)
-  const kv = (c.env as Env & { ANALYTICS_KV?: KVNamespace; SESSION_KV?: KVNamespace }).ANALYTICS_KV
-    || (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
+  const kv = analyticsWriteKv(c.env)
   if (!kv) return c.json({ ok: true, skipped: true })
+
+  // 고볼륨 이벤트는 샘플링(5%) — write 한도 보호. 통과분은 inc=20 으로 보정해 합계 추정 유지.
+  const highVolume = body.event === 'view' || body.event === 'click'
+  if (highVolume && Math.random() > FUNNEL_SAMPLE_RATE) return c.json({ ok: true, sampled: false })
+  const inc = highVolume ? Math.round(1 / FUNNEL_SAMPLE_RATE) : 1
 
   const day = todayKey()
   const page = (body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown'
-  await incrementCounter(kv, `funnel:${day}:${body.event}:${page}`, 1)
+  await incrementCounter(kv, `funnel:${day}:${body.event}:${page}`, inc)
   if (body.product_id && Number.isFinite(body.product_id)) {
-    await incrementCounter(kv, `funnel_product:${day}:${body.product_id}:${body.event}`, 1)
+    await incrementCounter(kv, `funnel_product:${day}:${body.product_id}:${body.event}`, inc)
   }
   return c.json({ ok: true })
 })
