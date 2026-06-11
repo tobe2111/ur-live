@@ -1,0 +1,49 @@
+name: Image Pipeline Diag
+
+# 🔬 2026-06-11 일회성 진단 (사용자 신고 — "상품 카드 로딩 아직 느려"):
+#   CF 이미지 리사이저(/cdn-cgi/image)가 실제로 작동하는지 ground truth 수집.
+#   작동 X 면 모든 카드가 원본(수 MB)을 받는 것 — 그게 느림의 진짜 원인.
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe image pipeline
+        run: |
+          set -e
+          PROD="https://live.ur-team.com"
+          echo "=== 1) 실상품 이미지 URL 추출 ==="
+          IMG=$(curl -s --max-time 15 "$PROD/api/products?limit=5" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          for p in (d.get('data') or []):
+              u = p.get('image_url') or ''
+              if u.startswith('http'):
+                  print(u); break
+          ")
+          echo "원본 URL: $IMG"
+          [ -n "$IMG" ] || { echo '이미지 URL 추출 실패'; exit 1; }
+
+          echo ""
+          echo "=== 2) 원본 직접 다운로드 (크기/시간) ==="
+          curl -s -o /dev/null -w "원본: status=%{http_code} size=%{size_download}B time=%{time_total}s type=%{content_type}\n" --max-time 30 "$IMG"
+
+          echo ""
+          echo "=== 3) cdn-cgi 리사이저 경유 (핵심 — cf-resized 헤더가 있어야 작동 중) ==="
+          RESIZED="$PROD/cdn-cgi/image/width=300,format=auto/$IMG"
+          curl -s -D /tmp/h -o /dev/null -w "리사이즈: status=%{http_code} size=%{size_download}B time=%{time_total}s type=%{content_type}\n" --max-time 30 "$RESIZED"
+          echo "--- 응답 헤더 중 진단 키 ---"
+          grep -i "cf-resized\|content-type\|content-length\|cf-cache-status" /tmp/h || true
+
+          echo ""
+          echo "=== 4) 워커 프록시 (/api/image/resize) ==="
+          ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote('$IMG',safe=''))")
+          curl -s -D /tmp/h2 -o /dev/null -w "프록시: status=%{http_code} size=%{size_download}B time=%{time_total}s type=%{content_type}\n" --max-time 30 "$PROD/api/image/resize?url=$ENC&width=300"
+          grep -i "cf-resized\|content-type\|content-length" /tmp/h2 || true
+
+          echo ""
+          echo "=== 판정 가이드 ==="
+          echo "- 3)에 cf-resized 헤더 있음 + size 수십 KB → 리사이저 정상 (느림 원인은 다른 곳)"
+          echo "- 3)이 원본과 같은 size / cf-resized 없음 → 리사이저 미작동 → Dashboard > Images > Transformations 에서 zone 활성화 필요 (무료)"
