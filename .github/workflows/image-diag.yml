@@ -74,3 +74,5 @@ jobs:
           echo "=== 판정 가이드 ==="
           echo "- 3)에 cf-resized 헤더 있음 + size 수십 KB → 리사이저 정상 (느림 원인은 다른 곳)"
           echo "- 3)이 원본과 같은 size / cf-resized 없음 → 리사이저 미작동 → Dashboard > Images > Transformations 에서 zone 활성화 필요 (무료)"
+
+# re-run: 2026-06-11 Enable 후 검증

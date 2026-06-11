@@ -33,7 +33,7 @@ jobs:
       - name: Smoke test
         run: |
           sleep 5
-          for path in "/" "/wholesale"; do
+          for path in "/" "/wholesale" "/group-buy"; do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://ur-ssr-pilot.jiwon-1a2.workers.dev$path" || echo 000)
             echo "$path → $CODE"
             [ "$CODE" = "200" ] || exit 1
