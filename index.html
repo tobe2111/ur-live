@@ -359,5 +359,9 @@
     </script>
 
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Cloudflare Web Analytics (2026-06-11 — 무료, defer 라 로딩 무영향. CSP script-src 에
+         static.cloudflareinsights.com 기허용 + HTMLRewriter 가 nonce 자동 부여. 토큰은 공개값) -->
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6ccc76725c31445590f40e8524b28b5e"}'></script>
   </body>
 </html>
