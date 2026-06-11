@@ -455,6 +455,12 @@ paymentsRouter.post('/confirm', async (c) => {
               })
             })
 
+            // 🏁 2026-06-11 [UNLOCK] (사용자 승인 — 참여하기와 동일 수술): referral 알림
+            //   (notifications INSERT + phone/누적 SELECT + 알리고 외부 HTTP)이 결제 confirm 응답을
+            //   막고 있었음 — 내용/순서/에러처리 그대로 응답 후(waitUntil)로만 이동.
+            //   ⚠️ 적립(affiliate_earnings INSERT) 등 머니 경로는 위에서 동기 유지 — 무변경.
+            {
+              const _bg = async () => {
             // 🛡️ 2026-05-18: 인플에게 알림 (notifications + 카카오 알림톡).
             //   notifications INSERT — 앱 내 알림 (referrer_id 가 user_id 라고 가정).
             const refIdNum = Number(booking.referrer_id)
@@ -500,6 +506,11 @@ paymentsRouter.post('/confirm', async (c) => {
                   }
                 }
               } catch { /* fail-soft */ }
+            }
+              }
+              let _deferred = false
+              try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg().catch(() => {})); _deferred = true } } catch { /* no ctx */ }
+              if (!_deferred) await _bg().catch(() => {})
             }
           }
         }
