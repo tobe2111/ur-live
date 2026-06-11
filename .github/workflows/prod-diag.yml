@@ -60,6 +60,16 @@ jobs:
             grep -i "cache-control\|location" /tmp/pih || true
           fi
 
+      - name: media.ur-team.com (R2 커스텀 도메인) 서빙 + 리사이저 실측
+        run: |
+          K="uploads/user/3/2026-06/s4JGuFeF132A6a9X.jpg"
+          echo "--- R2 직접 ---"
+          curl -s -o /dev/null -D /tmp/m1 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://media.ur-team.com/$K" || true
+          grep -i "cache-control\|cf-cache-status\|etag" /tmp/m1 || true
+          echo "--- 리사이저 래핑 (128px) ---"
+          curl -s -o /dev/null -D /tmp/m2 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://live.ur-team.com/cdn-cgi/image/width=128,quality=80,format=auto/https://media.ur-team.com/$K" || true
+          grep -i "cf-resized\|cache-control\|cf-cache-status" /tmp/m2 || true
+
       - name: wholesale HTML (SSR slot + 체감 로딩)
         run: |
           curl -s -D /tmp/h -o /tmp/html -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
