@@ -79,6 +79,37 @@ jobs:
           curl -s -o /dev/null --max-time 20 "$PROD/api/curator/user24" -w "curator API: status=%{http_code} ttfb=%{time_starttransfer}s\n"
 
           echo ""
+          echo "=== 9) [Reality Audit] cron 프리웜 실작동 — HOT path 엣지캐시 상태 ==="
+          for u in "/api/group-buy/products?status=active" "/api/products?limit=20" "/api/wholesale/catalog"; do
+            curl -s -D /tmp/hp -o /dev/null --max-time 15 "$PROD$u"
+            CCS=$(grep -i "^cf-cache-status" /tmp/hp | tr -d '\r' | awk '{print $2}')
+            AGE=$(grep -i "^age:" /tmp/hp | tr -d '\r' | awk '{print $2}')
+            echo "$u → cf-cache-status=$CCS age=${AGE:-0}"
+          done
+          echo "(HIT+age>0 = 프리웜 cron 살아있음 / 전부 MISS·EXPIRED = cron Workers 프로젝트 죽었거나 미배포)"
+
+          echo ""
+          echo "=== 10) [Reality Audit] SSR 주입 엣지 적중률 — 홈/동네딜 ==="
+          for u in "/" "/group-buy"; do
+            curl -s -D /tmp/hs -o /dev/null --max-time 15 "$PROD$u"
+            grep -i "x-ssr-status\|server-timing" /tmp/hs | tr -d '\r' | sed "s|^|$u → |"
+          done
+          echo "(edge-hit = 이상적 / self-fetch-hit 반복 = 프리웜 키 불일치)"
+
+          echo ""
+          echo "=== 11) [Reality Audit] 검색 실작동 (FTS vs 폴백 — 결과 유무) ==="
+          curl -s --max-time 15 "$PROD/api/products?search=%EC%95%84%EB%A9%94%EB%A6%AC%EC%B9%B4%EB%85%B8" -o /tmp/sr.json -w "검색 status=%{http_code} time=%{time_total}s\n"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/sr.json'))
+          print('success:', d.get('success'), '| 결과:', len(d.get('data') or []), '| 오타보정:', d.get('suggested_query'))
+          " || head -c 200 /tmp/sr.json
+
+          echo ""
+          echo "=== 12) [Reality Audit] beta SSR 정식 도메인 ==="
+          curl -s -o /dev/null --max-time 15 "https://beta.ur-team.com/wholesale" -w "beta/wholesale → status=%{http_code} ttfb=%{time_starttransfer}s\n" || true
+
+          echo ""
           echo "=== 판정 가이드 ==="
           echo "- 3)에 cf-resized 헤더 있음 + size 수십 KB → 리사이저 정상 (느림 원인은 다른 곳)"
           echo "- 3)이 원본과 같은 size / cf-resized 없음 → 리사이저 미작동 → Dashboard > Images > Transformations 에서 zone 활성화 필요 (무료)"
