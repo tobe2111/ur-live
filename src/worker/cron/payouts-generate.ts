@@ -8,8 +8,9 @@
  *
  * admin 이 /admin/payouts 페이지에서 검토 후 송금 처리.
  *
- * 멱등: 같은 period_start/end + payee 조합 중복 INSERT 가능하므로
- *   주의 — cron 이 두 번 도는 경우 admin 이 중복 확인 후 한 쪽만 approve.
+ * 멱등 (2026-06-11 머니 감사): 같은 (payee_type, payee_id, period_start, period_end) 조합은
+ *   pre-check 로 skip + payouts UNIQUE index 기반 INSERT OR IGNORE 로 이중 차단 →
+ *   cron 이 두 번 돌거나 수동 재실행돼도 중복 pending payout 이 생기지 않음.
  */
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
@@ -75,12 +76,19 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
         }
       } catch { /* graceful */ }
 
+      // 🛡️ 2026-06-11 멱등: 같은 (payee, period) payout 이 이미 있으면 재생성 skip (재실행/이중실행 방어).
+      const dup = await DB.prepare(
+        `SELECT id FROM payouts WHERE payee_type = ? AND payee_id = ? AND period_start = ? AND period_end = ? LIMIT 1`,
+      ).bind(payeeType, id, periodStart, periodEnd).first<{ id: number }>().catch(() => null)
+      if (dup) continue
+
       try {
-        await DB.prepare(
-          `INSERT INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder)
+        // INSERT OR IGNORE + payouts UNIQUE index (repair-schema) → 동시 재실행에도 중복 0.
+        const ins = await DB.prepare(
+          `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder)
            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
         ).bind(payeeType, id, pending, periodStart, periodEnd, accountNumber, accountHolder).run()
-        created++
+        if ((ins.meta?.changes ?? 0) > 0) created++
       } catch (e) {
         logError('[payouts-cron] insert failed', { account: c.credit_account, error: (e as Error).message })
       }

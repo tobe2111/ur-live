@@ -1619,6 +1619,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_time_deal_claims_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_time_deal_claims_pair ON time_deal_claims(deal_id, user_id)` },
     { name: 'idx_seller_follows_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_follows_pair ON seller_follows(seller_id, user_id)` },
     { name: 'idx_invite_rewards_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)` },
+    // 🛡️ 2026-06-11 머니 감사: 주간 정산 cron 이중실행 시 (payee, 기간) 중복 pending payout 차단.
+    { name: 'idx_payouts_period_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_payouts_period_unique ON payouts(payee_type, payee_id, period_start, period_end)` },
 
     // 🏬 2026-06-09 도매몰 멀티-몰 테넌시 — 몰 설정 테이블 + 기본 몰(id=1) 시드.
     //   한 운영자가 카테고리별 분리 몰(식품/패션 등) 운영. 기본 몰 = 기존 유통스타트(slug='default', host=utongstart.com).
