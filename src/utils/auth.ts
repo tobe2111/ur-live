@@ -54,6 +54,8 @@ const LEGACY_KEYS = {
  * @param type - 삭제할 세션 타입 ('seller' | 'admin' | 'user')
  */
 export function clearAuthData(type: 'seller' | 'admin' | 'user') {
+  // 🔐 2026-06-11 SSR Phase 2: 서버 httpOnly ud_* 쿠키도 삭제 (fire-and-forget — 실패해도 로컬 정리는 진행)
+  try { void fetch('/api/auth/logout-cookies', { method: 'POST', credentials: 'include' }).catch(() => {}) } catch { /* SSR/비브라우저 */ }
   const keysToRemove: string[] = []
 
   if (type === 'seller') {

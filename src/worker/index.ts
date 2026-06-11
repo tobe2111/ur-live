@@ -1331,6 +1331,16 @@ app.route('/api/wholesale/wishlist', wholesaleWishlistRoutes); // 🏭 유통사
 app.route('/api/admin/wholesale-board', adminWholesaleBoardRoutes); // 어드민 게시글 CRUD
 app.route('/api/partnership', partnershipPublicRoutes); // 🤝 광고/제휴 문의 (공개 접수)
 app.route('/api/admin/partnership-inquiries', adminPartnershipRoutes); // 어드민 접수함
+
+// 🔐 2026-06-11 SSR Phase 2 (docs/SSR_PHASE2_AUTH.md §3.2-4): 로그아웃 시 ud_* 토큰 쿠키 삭제.
+//   클라 clearAuthData() 가 fire-and-forget 호출. 인증 불필요(쿠키 삭제는 무해·멱등).
+app.post('/api/auth/logout-cookies', async (c) => {
+  const { authTokenClearCookie } = await import('./utils/auth-cookies');
+  const host = new URL(c.req.url).hostname;
+  c.header('Set-Cookie', authTokenClearCookie('ud_seller_token', host), { append: true });
+  c.header('Set-Cookie', authTokenClearCookie('ud_agency_token', host), { append: true });
+  return c.json({ success: true });
+});
 app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // 어드민 제안·신고 큐/처리
 app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes); // 어드민 프리미엄 전용관 토글
 app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정

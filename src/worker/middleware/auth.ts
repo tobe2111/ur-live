@@ -346,6 +346,32 @@ export function requireAuth() {
       }
     }
 
+    // ── 2.5 SSR 경유 httpOnly 토큰 쿠키 (Phase 2 — docs/SSR_PHASE2_AUTH.md §3.3) ──
+    //   beta(SSR) loader 가 forward 한 ud_seller_token/ud_agency_token. 값 = 기존 JWT 그대로.
+    //   ⚠️ CSRF 가드: 읽기(GET/HEAD)에만 적용 — 상태 변경은 계속 Bearer 전용.
+    const method = c.req.method.toUpperCase();
+    if (cookieHeader && (method === 'GET' || method === 'HEAD')) {
+      const { readAuthTokenCookie } = await import('../utils/auth-cookies');
+      const cookieJwt = readAuthTokenCookie(cookieHeader);
+      if (cookieJwt) {
+        const p = await verifyJWT(cookieJwt, jwtSecret);
+        if (p) {
+          const pid = p.userId ?? p.sub;
+          if (pid) {
+            const user: AuthUser = {
+              id: pid as string,
+              email: p.email as string,
+              name: p.name,
+              type: (p.type || 'user') as UserType,
+              role: p.role,
+            };
+            c.set('user', user);
+            return next();
+          }
+        }
+      }
+    }
+
     // ── 3. No valid auth found ─────────────────────────────────────────
     return c.json(unauthorizedResponse('Authentication required'), 401);
   };
