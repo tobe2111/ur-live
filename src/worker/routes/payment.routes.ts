@@ -253,15 +253,14 @@ paymentsRouter.post('/confirm', async (c) => {
       )
     }
 
-    // ALREADY_PROCESSED_PAYMENT — 토스 측 동일 결제 재 confirm. 주문 상태만 동기화 후 반환.
-    if (tossResult.alreadyProcessed) {
-      await orderRepo.updateStatus(orderNumber, 'DONE', {
-        toss_payment_key: paymentKey,
-        toss_order_id: orderNumber,
-      });
-      const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
-      return c.json({ success: true, data: { orders: updatedOrders } });
-    }
+    // 🔐 2026-06-11 [UNLOCK] (사용자 승인 — 머니 감사 Med-A): ALREADY_PROCESSED_PAYMENT 분기의
+    //   early-return 제거. 기존엔 updateStatus('DONE')만 하고 즉시 반환 → side-effect(reduceStock·
+    //   에이전시/영입자/공급자/추천 커미션·KT 교환권 발송) 영구 생략. 정상 동시요청은 아래 CAS 가
+    //   처리하므로 이 분기를 타는 유일 케이스가 "Toss 승인 직후 ~ CAS 직전 worker 크래시 → 재시도"
+    //   = side-effect 가 한 번도 안 돈 상태. early-return 제거로 아래 confirmClaim CAS 에 위임:
+    //   이미 DONE 이면 changes==0 멱등 반환 / 아직 PENDING(크래시) 이면 claim 후 side-effect 복구.
+    //   tossResult.data 는 alreadyProcessed 에도 채워짐(toss-gateway:250/263/268) — tossData 안전.
+    //   ⚠️ Toss confirm/금액검증/client-key 로직 무수정 — early-return 1블록 제거만.
 
     // 🛡️ 2026-05-24 docs 일치: TossPaymentObject (response 전체 필드 type 안전).
     //   특히 method 는 한국어 문자열 ('카드', '가상계좌' 등) — orders.payment_method 에 그대로 저장.

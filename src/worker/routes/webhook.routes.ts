@@ -612,6 +612,21 @@ async function handlePaymentConfirmed(
     }
   }
 
+  // 🔐 2026-06-11 [UNLOCK] (사용자 승인 — 머니 감사 Med-C): 커미션 적립 (에이전시/영입자/공급자).
+  //   /confirm 에만 있던 적립을 webhook 확정 경로에도 추가 — 브라우저가 confirm 못 보내고 webhook
+  //   만 도착해도 커미션 누락 없음. 3종 모두 order_id 멱등 → /confirm 과 둘 다 와도 안전(이중적립 X).
+  if (DB && result.confirmed > 0) {
+    try {
+      const wOrders = await DB.prepare(
+        'SELECT id, seller_id, total_amount FROM orders WHERE order_number = ?'
+      ).bind(orderNumber).all<{ id: number; seller_id: number | null; total_amount: number | null }>().catch(() => ({ results: [] as { id: number; seller_id: number | null; total_amount: number | null }[] }))
+      const { creditOrderCommissions } = await import('../utils/order-commissions')
+      await creditOrderCommissions(DB, wOrders.results || [])
+    } catch (e) {
+      console.error('[WEBHOOK] commission credit failed:', String(e).slice(0, 200))
+    }
+  }
+
   // 🛡️ 2026-04-28 (TD-007 자동화): auction winner-paid 자동 처리.
   //   결제한 user 가 낙찰한 ended auction 이 있고 current_price 가 결제 amount 와
   //   같으면 해당 auction_holds 를 'consumed' 마킹. best-effort (실패해도 결제는 성공).
