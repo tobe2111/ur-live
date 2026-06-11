@@ -853,6 +853,23 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
     }
     const tossData = tossResult.data as Record<string, unknown>
 
+    // 🛡️ 2026-06-11 동시요청 race 가드: Toss 승인 후 booking 을 CAS 로 claim.
+    //   기존 구멍: 같은 order 의 동시/더블탭 confirm 이 둘 다 idempotency 체크(830)를 통과하고
+    //   (Toss 는 idempotency-key 로 중복 승인 없음) 둘 다 캘린더 차감 루프를 실행 → available_count
+    //   이중 차감(실제 오버부킹). pending→confirmed 를 원자적으로 잡은 thread 만 캘린더 차감 진행.
+    //   진 thread(changes==0)는 캘린더 재차감/side-effect 없이 멱등 성공 반환.
+    const claim = await c.env.DB.prepare(
+      `UPDATE stay_bookings SET status = 'confirmed', updated_at = datetime('now')
+        WHERE id = ? AND status = 'pending'`
+    ).bind(order.stay_booking_id).run().catch(() => null)
+    if (!claim || (claim.meta?.changes ?? 0) === 0) {
+      return c.json({
+        success: true,
+        message: '이미 결제 처리 중',
+        data: { booking_id: order.stay_booking_id, order_id: orderId },
+      })
+    }
+
     // 5. 캘린더 available_count 차감 — 원자적 오버부킹 가드.
     //   🛡️ 2026-05-30: 기존 `MAX(0, available_count - 1)` clamp 는 재고 0 이어도 거부 안 해
     //   마지막 방 동시 예약 시 이중 confirmed (실제 오버부킹). `available_count > 0` 가드 +
@@ -986,6 +1003,19 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
     if (booking.user_id !== userId) return c.json({ success: false, error: '권한 없음' }, 403)
     if (!['confirmed', 'pending'].includes(booking.status)) {
       return c.json({ success: false, error: `상태 '${booking.status}' 에서 취소 불가` }, 400)
+    }
+
+    // 🛡️ 2026-06-11 동시요청 race 가드: 취소 가능 상태를 원자적으로 claim.
+    //   기존 구멍: 동시/더블탭 취소가 둘 다 위 상태 체크(987)를 통과하고 둘 다 releaseStayInventory
+    //   (캘린더 +nights 복원)를 실행 → 객실 야간 재고 이중 복원(팬텀 재고/오버부킹). confirmed/pending
+    //   에서 빠져나오는 thread 만 진행, 진 thread(changes==0)는 409 — 재고/환불 side-effect 미실행.
+    //   (Toss 환불은 stay-cancel-${id} idempotency-key 로도 이중 방지되지만 재고 복원은 키가 없어 필수.)
+    const cancelClaim = await c.env.DB.prepare(
+      `UPDATE stay_bookings SET status = 'cancelled', updated_at = datetime('now')
+        WHERE id = ? AND status IN ('confirmed', 'pending')`
+    ).bind(id).run().catch(() => null)
+    if (!cancelClaim || (cancelClaim.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '이미 취소 처리된 예약입니다' }, 409)
     }
 
     // 취소 정책 따른 환불 비율 계산.
