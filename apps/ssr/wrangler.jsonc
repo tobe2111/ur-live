@@ -1,0 +1,10 @@
+{
+  // 🚀 SSR 파일럿 (Phase 1) — docs/SSR_MIGRATION_PLAN.md. 본 사이트(ur-live Pages)와 완전 분리.
+  // 비용: Workers 무료 티어 (일 10만 요청) + workers.dev 무료 — 과금 지점 없음.
+  "name": "ur-ssr-pilot",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./workers/app.ts",
+  "assets": { "directory": "./build/client" },
+  "observability": { "enabled": true }
+}

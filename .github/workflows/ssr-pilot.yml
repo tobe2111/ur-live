@@ -1,0 +1,39 @@
+name: SSR Pilot Deploy
+
+# 🚀 SSR 전환 Phase 1 파일럿 (docs/SSR_MIGRATION_PLAN.md) — apps/ssr 변경 시 자동 배포.
+#   배포처: ur-ssr-pilot.<account>.workers.dev (Workers 무료 티어 — 비용 0).
+#   본 사이트(ur-live Pages) 배포와 완전 분리 — 실패해도 본 사이트 무영향.
+#   ⚠️ CLOUDFLARE_API_TOKEN 이 Pages 전용 스코프면 실패 — 그 경우 토큰에 'Workers Scripts:Edit' 권한 추가 필요.
+on:
+  push:
+    branches: [main]
+    paths: ['apps/ssr/**']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ssr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        run: npm ci
+      - name: Build (SSR)
+        run: npm run build
+      - name: Deploy to Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4 deploy
+      - name: Smoke test
+        run: |
+          sleep 5
+          for path in "/" "/wholesale"; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://ur-ssr-pilot.${{ secrets.CLOUDFLARE_ACCOUNT_SUBDOMAIN || 'unknown' }}.workers.dev$path" || echo 000)
+            echo "$path → $CODE"
+          done || true
