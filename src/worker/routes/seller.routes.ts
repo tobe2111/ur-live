@@ -31,9 +31,11 @@ sellersRouter.get('/', async (c) => {
       []
     );
 
+    // 🔐 2026-06-11 (보안 감사 🔴): 비인증 공개 list 에서 PII 제거 — email/phone/business_number 노출.
+    //   /:id 는 2026-04-22 하드닝됐으나 이 list 는 누락됐었음 (대량 PII 수집 가능). 비민감 컬럼만.
     const rows = await qb.queryMany<Record<string, unknown>>(
-      `SELECT id, username, name, email, phone, 
-              business_name, business_number, 
+      `SELECT id, username, name,
+              business_name,
               status, is_active, created_at, updated_at
        FROM sellers ${where}
        ORDER BY name
