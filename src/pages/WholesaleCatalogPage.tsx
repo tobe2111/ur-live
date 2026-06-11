@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef, useEffect, useCallback, memo, lazy, Suspense, type ChangeEvent } from 'react'
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { Loader2, Search, Factory, ChevronRight, Plus, Check, FileSpreadsheet, X, ShoppingCart, Lock, LogIn, LogOut, Upload, Download, ArrowDownUp, PackageCheck, BellRing, BellOff, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Sparkles, Heart, Megaphone } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -12,13 +12,23 @@ import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import {
-  WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES,
+  WT, comma, WHOLESALE_CATEGORIES,
 } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import WholesaleFooter from './wholesale/WholesaleFooter'
-import { cardGradient } from '@/utils/card-gradient'
-import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
-import { cfImage } from '@/utils/cf-image'
+// 분해 (순수 추출, 동작 변화 0): 카드/헤더/섹션/타입은 ./wholesale-catalog/ 폴더로 추출.
+import type { CatalogItem, BrandEntry, ReorderItem, CatOpt } from './wholesale-catalog/types'
+import { type CatalogSort, PRICE_BANDS } from './wholesale-catalog/catalog-controls'
+import { ProductCard, SectionHead } from './wholesale-catalog/cards'
+import { CatChips, Sidebar } from './wholesale-catalog/cat-nav'
+import GradeSheet from './wholesale-catalog/GradeSheet'
+import { readSsrWholesale } from './wholesale-catalog/ssr'
+import CatalogHeader from './wholesale-catalog/CatalogHeader'
+import HeroSection from './wholesale-catalog/HeroSection'
+import HomeRails from './wholesale-catalog/HomeRails'
+import ShowcaseBanners from './wholesale-catalog/ShowcaseBanners'
+import FilterControls from './wholesale-catalog/FilterControls'
+import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
 
 // 🏭 2026-06-09 Wave 4b: 채팅 floating 버튼 — lazy(채팅 코드 0 byte in 초기 번들).
 //   버튼 자체는 unread 배지 폴링만, 무거운 위젯은 버튼 클릭 시 한 번 더 lazy 로드.
@@ -33,504 +43,6 @@ const WholesaleProposalModal = lazy(() => import('./wholesale/WholesaleProposalM
 //   제조사 신원·원가(supply_price) 비노출, 등급 공급가 + 권장가(마진 산출)만.
 //   라이트 고정 B2B 서피스 (대시보드 계열) — dark: variant 없음.
 // ──────────────────────────────────────────────────────────────
-
-interface CatalogItem {
-  id: number
-  name: string
-  description?: string | null
-  image_url: string | null
-  category: string | null
-  stock: number
-  distributor_price: number | null
-  retail_price?: number | null
-  moq?: number
-  pack_size?: number
-  order_multiple?: number
-  has_tiers?: boolean
-  sold_count?: number
-  requires_login?: boolean
-  is_premium?: boolean | number
-  is_brand_product?: boolean | number
-  brand_name?: string | null
-  code?: string | null
-}
-
-// 🏷️ 2026-06-09 브랜드 전시관 — 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 + 로고 (?brands=1 응답).
-interface BrandEntry { name: string; product_count: number; logo_url?: string | null }
-
-// 🏭 Wave 2: 상품코드 — product.code 우선, 없으면 P + 7자리 zero-pad id (시안 P0000xxx).
-function productCode(p: { id: number; code?: string | null }): string {
-  if (p.code && String(p.code).trim()) return String(p.code).trim()
-  return 'P' + String(p.id).padStart(7, '0')
-}
-
-// ── 가격 라인 (할인% + 공급가 앵커) ── 비로그인 → 도매가 숨김 + 로그인 유도.
-function Price({ p, size = 20 }: { p: CatalogItem; size?: number }) {
-  if (p.distributor_price == null) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold" style={{ background: WT.brandSoft, color: WT.brand }}>
-        <Lock className="w-3 h-3" /> 로그인하고 공급가 확인
-      </span>
-    )
-  }
-  const dr = p.retail_price ? discountRate(p.distributor_price, p.retail_price) : 0
-  return (
-    <div className="flex items-baseline gap-1.5">
-      {dr > 0 && <span className="font-extrabold tabular-nums" style={{ fontSize: 14, color: WT.brand }}>{dr}%</span>}
-      <span className="font-extrabold tracking-[-0.02em] tabular-nums" style={{ fontSize: size, color: WT.ink }}>{won(p.distributor_price)}</span>
-    </div>
-  )
-}
-
-function ProductImg({ p, className = '' }: { p: CatalogItem; className?: string }) {
-  return (
-    <div className="w-full h-full" style={{ background: WT.fill }}>
-      {p.image_url
-        ? <img src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url} alt={p.name} draggable={false} loading="lazy" decoding="async" className={'block w-full h-full object-cover ' + className} />
-        : null}
-    </div>
-  )
-}
-
-// ── 코너 퀵담기 ──
-function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => void }) {
-  const [hit, setHit] = useState(false)
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); onAdd(p); setHit(true); setTimeout(() => setHit(false), 1000) }}
-      aria-label={p.name + ' 담기'}
-      className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center transition-colors"
-      style={hit ? { background: WT.ink, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { background: '#fff', color: WT.ink, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
-      {hit ? <Check className="w-[18px] h-[18px]" strokeWidth={2.6} /> : <Plus className="w-[18px] h-[18px]" strokeWidth={2.4} />}
-    </button>
-  )
-}
-
-// ── 그리드 카드 (미니멀 + 마진 — 실제 커머스 컨벤션) ──
-const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish, aboveFold, priceLoading }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void; aboveFold?: boolean; priceLoading?: boolean }) {
-  // 🏭 perf: viewport 진입 시 상세 prefetch(rootMargin 100px — 소비자 GroupBuyFeedCard 패턴). hover/focus/touch 도 prefetch.
-  const wrapRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!onPrefetch || typeof IntersectionObserver === 'undefined') return
-    const el = wrapRef.current
-    if (!el) return
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) { if (e.isIntersecting) { onPrefetch(p.id); io.disconnect(); break } }
-    }, { rootMargin: '100px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [onPrefetch, p.id])
-  const prefetch = () => onPrefetch?.(p.id)
-  const soldOut = p.stock <= 0
-  const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
-  const um = p.retail_price && p.distributor_price != null ? unitMargin(p.distributor_price, p.retail_price) : 0
-  const moq = Math.max(1, p.moq || 1)
-  // 🏭 2026-06-05 (사용자 요청): 도매몰 상품카드도 대표색 그라데이션 (소비자 카드와 동일). B2B 데이터는 카드색 대비 적응형.
-  const [cardColor, setCardColor] = useState<string | null>((p as { dominant_color?: string | null }).dominant_color || null)
-  const grad = cardGradient(cardColor)
-  const dr = p.retail_price && p.distributor_price != null ? discountRate(p.distributor_price, p.retail_price) : 0
-  const locked = p.distributor_price == null
-  return (
-    <div ref={wrapRef} onMouseEnter={prefetch} onTouchStart={prefetch} onFocusCapture={prefetch} className="group flex flex-col rounded-2xl overflow-hidden" style={{ background: grad.base }}>
-      <div className="relative w-full aspect-square overflow-hidden" style={{ background: grad.base }}>
-        <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full">
-          {p.image_url && (
-            <img
-              src={cfImage(p.image_url, { width: 400, format: 'auto' }) || p.image_url}
-              alt={p.name}
-              draggable={false}
-              loading={aboveFold ? 'eager' : 'lazy'}
-              fetchPriority={aboveFold ? 'high' : 'auto'}
-              decoding="async"
-              onLoad={(e) => {
-                const c = extractDominantColor(e.currentTarget)
-                if (c) {
-                  if (!cardColor) setCardColor(c)
-                  if (!(p as { dominant_color?: string | null }).dominant_color) reportDominantColor(p.id, c)
-                }
-              }}
-              className="block w-full h-full object-cover"
-            />
-          )}
-        </button>
-        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
-          {soldOut && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.88)', backdropFilter: 'blur(4px)' }}>품절</span>}
-          {p.has_tiers && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: WT.brand }}>수량할인</span>}
-          {p.stock > 0 && p.stock < 200 && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>마감임박</span>}
-        </div>
-        {/* 🏭 2026-06-10 (사용자 요청): 찜 토글 — 우상단 하트 */}
-        {onWish && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onWish(p) }}
-            aria-label={p.name + (wished ? ' 찜 해제' : ' 찜')}
-            className="absolute top-2.5 right-2.5 z-10 h-8 w-8 rounded-full flex items-center justify-center transition-transform active:scale-90"
-            style={{ background: 'rgba(255,255,255,0.92)', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
-            <Heart className="w-4 h-4" style={wished ? { color: WT.brand, fill: WT.brand } : { color: WT.ink2 }} />
-          </button>
-        )}
-        {/* 사진 하단 → 카드색 번짐 */}
-        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-        {soldOut ? (
-          onRestock && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onRestock(p) }}
-              disabled={restockBusy}
-              aria-label={p.name + ' 재입고 알림'}
-              className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center transition-colors disabled:opacity-60"
-              style={subbed ? { background: WT.ink, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { background: '#fff', color: WT.ink, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
-              {subbed ? <BellOff className="w-[18px] h-[18px]" strokeWidth={2.4} /> : <BellRing className="w-[18px] h-[18px]" strokeWidth={2.2} />}
-            </button>
-          )
-        ) : (
-          <QuickAdd p={p} onAdd={onAdd} />
-        )}
-      </div>
-      <div className="px-2.5 pt-1.5 pb-2.5" style={{ color: grad.text }}>
-        <button onClick={() => onOpen(p)} className="text-left text-[13px] leading-[1.35] line-clamp-2 min-h-[36px] block w-full" style={{ color: grad.text }}>{p.name}</button>
-        {/* 🏭 Wave 2: 상품코드 (P0000xxx) — 시안 카드 사양. */}
-        <div className="mt-0.5 text-[11px] font-mono tabular-nums tracking-tight" style={{ color: grad.sub }}>{productCode(p)}</div>
-        {locked ? (
-          priceLoading ? (
-            /* 🏭 등급가 도착 전(placeholder) — 잠금 칩 오표시 대신 가격 스켈레톤 */
-            <span className="block h-5 w-20 rounded mt-1 animate-pulse" style={{ background: grad.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)' }} />
-          ) : (
-          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold mt-1" style={{ background: grad.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.15)', color: grad.text }}>
-            <Lock className="w-3 h-3" /> 로그인하고 공급가
-          </span>
-          )
-        ) : (
-          <div className="flex items-baseline gap-1.5 mt-1">
-            {dr > 0 && <span className="font-extrabold tabular-nums text-[14px]" style={{ color: grad.accent }}>{dr}%</span>}
-            <span className="font-extrabold tabular-nums tracking-[-0.02em] text-[16px]" style={{ color: grad.text }}>{won(p.distributor_price)}</span>
-          </div>
-        )}
-        {p.retail_price && um > 0 ? (
-          <div className="mt-1 flex items-center gap-1.5 text-[12px] tabular-nums whitespace-nowrap" style={{ color: grad.sub }}>
-            <span className="font-bold" style={{ color: grad.isLight ? '#047857' : '#34d399' }}>마진 +{won(um)}</span>
-            <span>({mr}%)</span>
-            <span>·</span>
-            <span>재고 {comma(p.stock)}</span>
-          </div>
-        ) : (
-          <div className="mt-1 text-[12px] tabular-nums" style={{ color: grad.sub }}>재고 {comma(p.stock)}</div>
-        )}
-        {(moq > 1 || Math.max(1, p.order_multiple || 1) > 1) && (
-          <div className="mt-1 text-[12px] tabular-nums" style={{ color: grad.sub }}>
-            {moq > 1 ? `최소 ${comma(moq)}개` : ''}
-            {Math.max(1, p.order_multiple || 1) > 1 ? `${moq > 1 ? ' · ' : ''}${comma(Math.max(1, p.order_multiple || 1))}개 단위` : ''}
-            {p.distributor_price != null && moq > 1 ? ` · 박스 ${won(p.distributor_price * moq)}` : ''}
-          </div>
-        )}
-        {soldOut && onRestock && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onRestock(p) }}
-            disabled={restockBusy}
-            className="mt-2 w-full inline-flex items-center justify-center gap-1 rounded-xl h-9 text-[12px] font-bold transition-colors disabled:opacity-60"
-            style={subbed
-              ? { background: grad.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.15)', color: grad.text }
-              : { background: grad.isLight ? '#17181C' : '#fff', color: grad.isLight ? '#fff' : '#17181C' }}>
-            {subbed ? <><BellOff className="w-3.5 h-3.5" /> 알림 신청됨</> : <><BellRing className="w-3.5 h-3.5" /> 재입고 알림 신청</>}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-})
-
-// ── 가로 레일 미니 카드 ── (React.memo — 부모 재렌더 시 레일 카드 reconcile 방지)
-const MiniCard = memo(function MiniCard({ p, onOpen, onAdd, tag, onPrefetch }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; tag?: string; onPrefetch?: (id: number) => void }) {
-  const prefetch = () => onPrefetch?.(p.id)
-  return (
-    <div onMouseEnter={prefetch} onTouchStart={prefetch} onFocusCapture={prefetch} className="group shrink-0 w-[150px] lg:w-[166px] flex flex-col snap-start">
-      <div className="relative w-full aspect-square overflow-hidden rounded-2xl" style={{ background: WT.fill }}>
-        <button onClick={() => onOpen(p)} className="block w-full h-full"><ProductImg p={p} /></button>
-        {tag && <div className="absolute top-2.5 left-2.5 z-10"><span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-full text-white whitespace-nowrap" style={{ background: 'rgba(23,24,28,0.82)', backdropFilter: 'blur(4px)' }}>{tag}</span></div>}
-        <QuickAdd p={p} onAdd={onAdd} />
-      </div>
-      <button onClick={() => onOpen(p)} className="mt-2 text-left text-[13px] leading-[1.4] line-clamp-2 min-h-[36px]" style={{ color: WT.ink2 }}>{p.name}</button>
-      <div className="mt-0.5"><Price p={p} size={17} /></div>
-    </div>
-  )
-})
-
-// ── 빠른 재주문 카드 (최근 사입 상품 → 같은 수량 재담기) ──
-interface ReorderItem { id: number; name: string; image_url: string | null; stock: number; distributor_price: number; last_qty: number; last_date: string }
-// React.memo — 부모 재렌더(필터/검색/무한스크롤) 시 재주문 레일 카드 reconcile 방지.
-const ReorderCard = memo(function ReorderCard({ r, onOpen, onReorder, onPrefetch }: { r: ReorderItem; onOpen: (id: number) => void; onReorder: (r: ReorderItem) => void; onPrefetch?: (id: number) => void }) {
-  const [done, setDone] = useState(false)
-  return (
-    <div onMouseEnter={() => onPrefetch?.(r.id)} onTouchStart={() => onPrefetch?.(r.id)} className="shrink-0 w-[230px] flex flex-col rounded-2xl bg-white p-3 snap-start" style={{ border: '1px solid ' + WT.line, boxShadow: WT.shSoft }}>
-      <div className="flex gap-3">
-        <button onClick={() => onOpen(r.id)} className="w-12 h-12 shrink-0 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-          {r.image_url && <img src={cfImage(r.image_url, { width: 120, format: 'auto' }) || r.image_url} alt={r.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
-        </button>
-        <div className="flex-1 min-w-0">
-          <button onClick={() => onOpen(r.id)} className="block text-left text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{r.name}</button>
-          <div className="text-[12px] mt-0.5 tabular-nums" style={{ color: WT.ink3 }}>{r.last_date} 사입 · {comma(r.last_qty)}개</div>
-        </div>
-      </div>
-      <button onClick={() => { onReorder(r); setDone(true); setTimeout(() => setDone(false), 1000) }}
-        className="mt-2.5 h-9 rounded-xl text-[13px] font-bold inline-flex items-center justify-center gap-1 transition-colors"
-        style={done ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink }}>
-        {done ? <><Check className="w-4 h-4" /> 담음</> : '같은 수량 재주문'}
-      </button>
-    </div>
-  )
-})
-
-function SectionHead({ title, sub, onMore }: { title: string; sub?: string; onMore?: () => void }) {
-  return (
-    <div className="flex items-center justify-between mb-3.5 whitespace-nowrap">
-      <div className="flex items-baseline gap-2">
-        <h3 className="text-[18px] font-extrabold tracking-[-0.01em]" style={{ color: WT.ink }}>{title}</h3>
-        {sub && <span className="text-[13px] font-medium" style={{ color: WT.ink3 }}>{sub}</span>}
-      </div>
-      {onMore && <button onClick={onMore} className="flex items-center gap-0.5 text-[13px] font-medium shrink-0" style={{ color: WT.ink3 }}>전체 <ChevronRight className="w-4 h-4" /></button>}
-    </div>
-  )
-}
-
-function Rail({ children }: { children: React.ReactNode }) {
-  return <div className="flex gap-3.5 overflow-x-auto pb-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
-}
-
-// ── 서비스 정체성 히어로 ── (비로그인 시 '내 등급' 표현 없이 중립 카피)
-function BrandHero({ loggedIn }: { loggedIn: boolean }) {
-  const props = ['검증 제조사 직공급', loggedIn ? '내 등급 전용 공급가' : '등급별 도매 공급가', '익일·7일 정산']
-  return (
-    <div className="rounded-2xl overflow-hidden p-5 lg:p-7" style={{ background: WT.ink, color: '#fff' }}>
-      <div className="flex items-center gap-1.5 mb-2.5">
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: WT.brand }} />
-        <span className="text-[12px] font-bold" style={{ color: '#C2C7CE' }}>유통스타트 도매몰 · 제조사–유통사 B2B 플랫폼</span>
-      </div>
-      <h2 className="font-extrabold tracking-[-0.02em] leading-[1.28] text-[21px] lg:text-[28px]">
-        검증된 제조사 상품을<br />
-        <span style={{ color: '#FF4D66' }}>{loggedIn ? '내 등급 공급가' : '도매 공급가'}</span>로 사입하세요
-      </h2>
-      <p className="mt-2.5 leading-relaxed text-[13px] lg:text-[14px]" style={{ color: '#A7AEB6' }}>
-        공급사는 숨기고 가격은 투명하게 — 대량 사입에 최적화된 도매 전용 가격.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {props.map((t) => (
-          <span key={t} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold whitespace-nowrap" style={{ background: 'rgba(255,255,255,0.09)', color: '#E5E8EB' }}>
-            <Check className="w-3.5 h-3.5" style={{ color: '#37D699' }} />{t}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ── 사입 현황 대시보드 ──
-function Dashboard({ grade, marginPct, company, monthSpend, orderCount, depositBalance, onGrade, onCharge }: {
-  grade: string; marginPct: number; company: string; monthSpend: number; orderCount: number; depositBalance: number; onGrade: () => void; onCharge: () => void
-}) {
-  const metrics = [
-    { k: '이번달 사입액', v: won(monthSpend) },
-    { k: '누적 주문', v: comma(orderCount) + '건' },
-    { k: '내 등급 마진', v: '+' + marginPct + '%' },
-  ]
-  return (
-    <div className="rounded-2xl bg-white p-5" style={{ boxShadow: WT.shCard }}>
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full text-[16px] font-extrabold text-white shrink-0" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
-        <div className="flex-1 min-w-0">
-          <div className="text-[15px] font-bold truncate" style={{ color: WT.ink }}>{company} · <span style={{ color: WT.brand }}>{GRADE_LABEL[grade] || grade}등급</span> 단가 적용중</div>
-          <div className="text-[12px] mt-0.5 truncate" style={{ color: WT.ink3 }}>모든 단가는 회원님 등급 기준 공급가예요</div>
-        </div>
-        <button onClick={onGrade} className="text-[13px] font-semibold shrink-0 flex items-center gap-0.5" style={{ color: WT.ink2 }}>등급 <ChevronRight className="w-4 h-4" /></button>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {metrics.map((m, i) => (
-          <div key={m.k} className={'px-1 ' + (i ? 'pl-3' : '')} style={i ? { borderLeft: '1px solid ' + WT.line } : {}}>
-            <div className="text-[12px] whitespace-nowrap" style={{ color: WT.ink3 }}>{m.k}</div>
-            <div className="text-[15px] font-extrabold mt-1 tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{m.v}</div>
-          </div>
-        ))}
-      </div>
-      {/* 🏦 예치금 잔액 — 도매 결제는 예치금 차감. 로그인 유통사에게 카탈로그에서 바로 노출. */}
-      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
-        <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="text-[12px] shrink-0" style={{ color: WT.ink3 }}>예치금 잔액</span>
-          <span className="text-[17px] font-extrabold tabular-nums truncate" style={{ color: WT.ink }}>{won(depositBalance)}</span>
-        </div>
-        <button onClick={onCharge} className="shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ background: 'var(--ud-brand, #FF0033)' }}>충전하기</button>
-      </div>
-    </div>
-  )
-}
-
-// ── 카테고리 칩 ── (실제 상품에 존재하는 카테고리만 — 데이터 기반)
-interface CatOpt { id: string; label: string }
-function CatChips({ cat, setCat, cats }: { cat: string; setCat: (c: string) => void; cats: CatOpt[] }) {
-  return (
-    <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {cats.map((c) => {
-        const on = cat === c.id
-        return (
-          <button key={c.id} onClick={() => setCat(c.id)}
-            className="shrink-0 rounded-full px-4 h-9 text-[14px] font-semibold transition-colors whitespace-nowrap"
-            style={on ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink2 }}>
-            {c.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── 데스크톱 사이드바 ──
-function Sidebar({ cat, setCat, counts, cats }: { cat: string; setCat: (c: string) => void; counts: Record<string, number>; cats: CatOpt[] }) {
-  return (
-    <aside className="w-[176px] shrink-0 hidden lg:block">
-      <div className="text-[13px] font-bold mb-2 px-1" style={{ color: WT.ink3 }}>카테고리</div>
-      <ul className="space-y-0.5">
-        {cats.map((c) => {
-          const on = cat === c.id
-          return (
-            <li key={c.id}>
-              <button onClick={() => setCat(c.id)}
-                className="w-full flex items-center justify-between rounded-xl px-3.5 h-11 text-[15px] transition-colors"
-                style={on ? { background: WT.brandSoft, color: WT.brand, fontWeight: 700 } : { color: WT.ink2 }}>
-                <span>{c.label}</span><span className="text-[13px] tabular-nums" style={{ color: on ? WT.brand : WT.ink4 }}>{counts[c.id] ?? ''}</span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-    </aside>
-  )
-}
-
-// ── 등급 안내 시트 ──
-const GRADE_SHEET = [
-  { g: '특별가', mark: '★', desc: '임박·덤핑 전용 · 관리자 선정 회원만', margin: '개별 책정', special: true },
-  { g: 'A', mark: 'A', desc: '최저 공급가 · 월 5,000만원↑', margin: '마진 +10%' },
-  { g: 'B', mark: 'B', desc: '우대 공급가 · 월 1,500만원↑', margin: '마진 +15%' },
-  { g: 'C', mark: 'C', desc: '기본 공급가 · 신규/일반 회원', margin: '마진 +20%' },
-]
-function GradeSheet({ current, onClose }: { current: string; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.4)' }} onClick={onClose}>
-      <div className="w-full lg:max-w-md bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[18px] font-extrabold" style={{ color: WT.ink }}>등급별 공급가 안내</h3>
-          <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5" style={{ color: WT.ink3 }} /></button>
-        </div>
-        <div className="space-y-2">
-          {GRADE_SHEET.map((g) => {
-            const cur = (GRADE_LABEL[current] || current) === g.g
-            return (
-              <div key={g.g} className="flex items-center gap-3 rounded-2xl p-3.5" style={cur ? { background: WT.brandSoft } : { background: WT.fill }}>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full text-[14px] font-extrabold shrink-0"
-                  style={g.special ? { background: WT.ink, color: '#fff' } : cur ? { background: WT.brand, color: '#fff' } : { background: '#fff', color: WT.ink2 }}>{g.mark}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-bold" style={{ color: cur ? WT.brand : WT.ink }}>{g.g}등급{cur && ' · 현재'}</div>
-                  <div className="text-[12px] mt-0.5" style={{ color: WT.ink3 }}>{g.desc}</div>
-                </div>
-                <span className="text-[12px] font-bold shrink-0" style={{ color: WT.ink2 }}>{g.margin}</span>
-              </div>
-            )
-          })}
-        </div>
-        <p className="mt-4 text-[12px] leading-relaxed" style={{ color: WT.ink3 }}>
-          더 좋은 공급가가 필요하면 관리자에게 등급 상향을 문의하세요. 월 사입액 기준으로 자동 검토됩니다.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-// ── BIZ-4 (2026-06-08) 카탈로그 검색/정렬/필터 컨트롤 정의 ──────────────────────
-//   서버 `/catalog` 파라미터(sort/category/in_stock/min_price/max_price)에 1:1 매핑.
-//   ⚠️ 기본값('popular'/cat 'all'/재고off/가격 미설정)은 쿼리스트링에서 생략 → 기본 요청 URL 불변.
-type CatalogSort = 'popular' | 'price_low' | 'price_high' | 'discount' | 'newest'
-const CATALOG_SORTS: { id: CatalogSort; label: string; defaultLabel: string }[] = [
-  { id: 'popular', label: 'wholesale.sort.popular', defaultLabel: '인기순' },
-  { id: 'price_low', label: 'wholesale.sort.priceLow', defaultLabel: '가격 낮은순' },
-  { id: 'price_high', label: 'wholesale.sort.priceHigh', defaultLabel: '가격 높은순' },
-  { id: 'discount', label: 'wholesale.sort.discount', defaultLabel: '할인율순' },
-  { id: 'newest', label: 'wholesale.sort.newest', defaultLabel: '신상품순' },
-]
-// 가격대 프리셋(원, supply_price proxy 기준 — 서버 주석 참조). null = 상한 없음.
-const PRICE_BANDS: { id: string; label: string; min: number | null; max: number | null }[] = [
-  { id: 'p1', label: '~1만원', min: null, max: 10000 },
-  { id: 'p2', label: '1~3만원', min: 10000, max: 30000 },
-  { id: 'p3', label: '3~5만원', min: 30000, max: 50000 },
-  { id: 'p4', label: '5만원~', min: 50000, max: null },
-]
-
-// ── 🏷️ 브랜드 전시관 — 브랜드 칩 그리드 (distinct brand_name + 상품수 + 선택적 로고). ──
-//   로고(logo_url) 있으면 cfImage 이미지로, 없으면 기존 텍스트 칩. 클릭 시 ?brand=<name> 카탈로그 필터.
-//   라이트 테마(WT) 고정 — B2B 대시보드 서피스.
-function BrandShowcaseGrid({ brands, loading, onPick, t: tr }: {
-  brands: BrandEntry[]; loading: boolean; onPick: (name: string) => void; t: (k: string, o?: Record<string, unknown>) => string
-}) {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: WT.fill }} />
-        ))}
-      </div>
-    )
-  }
-  if (!brands.length) {
-    // 친절한 빈 상태 — 브랜드제품이 아직 없을 때(페이지 안 깨짐).
-    return (
-      <div className="rounded-2xl px-6 py-14 text-center" style={{ border: '1px dashed ' + WT.line, background: WT.fill2 }}>
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: WT.brandSoft }}>
-          <Sparkles className="w-6 h-6" style={{ color: WT.brand }} />
-        </div>
-        <p className="text-[15px] font-bold" style={{ color: WT.ink }}>{tr('wholesale.brand.emptyTitle', { defaultValue: '아직 등록된 브랜드가 없어요' })}</p>
-        <p className="text-[13px] mt-1" style={{ color: WT.ink3 }}>{tr('wholesale.brand.emptyDesc', { defaultValue: '제조사가 브랜드제품을 등록하면 여기에 브랜드별로 모아 보여드려요.' })}</p>
-      </div>
-    )
-  }
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-      {brands.map((b) => (
-        <button key={b.name} onClick={() => onPick(b.name)}
-          className="group flex flex-col items-center justify-center gap-2 rounded-2xl px-4 py-6 transition-colors"
-          style={{ border: '1px solid ' + WT.line, background: '#fff', boxShadow: WT.shSoft }}>
-          {b.logo_url ? (
-            <img
-              src={cfImage(b.logo_url, { width: 80, format: 'auto' }) || b.logo_url}
-              alt={b.name}
-              className="w-14 h-14 object-contain rounded-xl"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <span className="text-[16px] font-extrabold tracking-[-0.01em] text-center line-clamp-2" style={{ color: WT.ink }}>{b.name}</span>
-          )}
-          <span className="text-[12px] font-semibold text-center line-clamp-1" style={{ color: WT.ink }}>{b.name}</span>
-          <span className="text-[12px] font-semibold tabular-nums rounded-full px-2.5 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>
-            {comma(b.product_count)}{tr('wholesale.brand.countSuffix', { defaultValue: '개 상품' })}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// 🏭 2026-06-10: SSR 주입 데이터 1회 읽기 (모듈 캐시 — initialData/placeholderData 양쪽 공유).
-let _ssrWholesale: CatalogItem[] | null | undefined
-function readSsrWholesale(): CatalogItem[] | null {
-  if (_ssrWholesale !== undefined) return _ssrWholesale
-  _ssrWholesale = null
-  if (typeof document !== 'undefined') {
-    const el = document.getElementById('__SSR_INITIAL_WHOLESALE__')
-    if (el?.textContent) {
-      try {
-        const parsed = JSON.parse(el.textContent) as { success?: boolean; items?: CatalogItem[] }
-        if (parsed?.success && Array.isArray(parsed.items)) _ssrWholesale = parsed.items as CatalogItem[]
-      } catch { /* 손상 — fetch 로 진행 */ }
-      el.remove()
-    }
-  }
-  return _ssrWholesale
-}
 
 export default function WholesaleCatalogPage() {
   const navigate = useNavigate()
@@ -868,116 +380,6 @@ export default function WholesaleCatalogPage() {
     toast.success(`장바구니에 ${comma(Math.max(moq, r.last_qty))}개 담았어요`)
   }
 
-  function exportCatalog() {
-    const t = localStorage.getItem('seller_token') || getSupplierToken()
-    fetch('/api/wholesale/catalog-export', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
-      .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
-      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`; a.click(); URL.revokeObjectURL(url) })
-      .catch(() => toast.error('단가표 다운로드에 실패했어요'))
-  }
-
-  // 🏭 BIZ-8 (2026-06-08) 단가표 CSV — 내 등급가 + MOQ/박스단위/재고 (엑셀로 바로 열림).
-  //   서버 /catalog/export?format=csv 가 내 등급 단가만 계산(타 등급가 누출 없음).
-  function exportPriceListCsv() {
-    const t = localStorage.getItem('seller_token')
-    fetch('/api/wholesale/catalog/export?format=csv', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
-      .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
-      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) })
-      .catch(() => toast.error('단가표 다운로드에 실패했어요'))
-  }
-
-  // ── 대량 주문(엑셀) — 양식 다운로드 + 작성본 업로드 → 서버 검증/미리보기 → 카트 담기 → 예치금 체크아웃 ──
-  //   BIZ-9 (2026-06-09): 업로드 즉시 청구하지 않음. 서버 /orders/bulk-preview 가 product_id 매칭 +
-  //   MOQ/박스단위/재고 검증 → 유효 라인 + 오류행(사유) 반환. 사용자가 확인 후 카트에 담아 기존 예치금 결제.
-  const bulkInputRef = useRef<HTMLInputElement | null>(null)
-  const [bulkBusy, setBulkBusy] = useState(false)
-  type BulkPreviewItem = { product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }
-  type BulkPreviewError = { row?: number; product_id?: number | null; name?: string; qty?: number; reason: string }
-  const [bulkPreview, setBulkPreview] = useState<{ items: BulkPreviewItem[]; subtotal: number; errors: BulkPreviewError[] } | null>(null)
-  function downloadOrderForm() {
-    const t = localStorage.getItem('seller_token')
-    fetch('/api/wholesale/order-template', { headers: t ? { Authorization: `Bearer ${t}` } : {} })
-      .then(res => res.ok ? res.blob() : Promise.reject(new Error('다운로드 실패')))
-      .then(blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url) })
-      .catch(() => toast.error('주문 양식 다운로드에 실패했어요'))
-  }
-  // 따옴표 포함 CSV 한 줄 파싱.
-  function parseCsvLine(line: string): string[] {
-    const out: string[] = []; let cur = ''; let q = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++ } else q = false } else cur += ch }
-      else if (ch === '"') q = true
-      else if (ch === ',') { out.push(cur); cur = '' }
-      else cur += ch
-    }
-    out.push(cur); return out
-  }
-  async function onBulkFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (e.target) e.target.value = '' // 같은 파일 재선택 허용
-    if (!file || bulkBusy) return
-    setBulkBusy(true)
-    setBulkPreview(null)
-    try {
-      const text = await file.text()
-      const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim())
-      if (lines.length < 2) { toast.error('내용이 없는 파일이에요'); return }
-      const header = parseCsvLine(lines[0]).map(h => h.trim())
-      const pidIdx = header.findIndex(h => h.toLowerCase() === 'product_id')
-      let qtyIdx = header.findIndex(h => h.replace(/\s/g, '') === '주문수량')
-      if (pidIdx < 0) { toast.error('product_id 열을 찾을 수 없어요 (양식을 다시 받아주세요)'); return }
-      if (qtyIdx < 0) qtyIdx = header.length - 1 // 주문수량 헤더 없으면 마지막 열
-      const MAX_ROWS = 5000
-      // 행번호(엑셀 기준, 헤더=1행) 포함해 서버로 전송 — blank/0 qty 도 서버가 오류로 분류·안내.
-      const rows: { product_id: number; qty: number; row: number }[] = []
-      for (let i = 1; i < lines.length && rows.length < MAX_ROWS; i++) {
-        const cols = parseCsvLine(lines[i])
-        const pidRaw = String(cols[pidIdx] ?? '').replace(/[^0-9]/g, '')
-        const qtyRaw = String(cols[qtyIdx] ?? '').replace(/[^0-9.]/g, '')
-        const pid = Number(pidRaw)
-        const qty = Math.floor(Number(qtyRaw))
-        // product_id 없는 완전 빈 줄은 skip. qty 비었거나 0 인 행도 서버에 보내 사유 안내(단, pid 는 있어야 함).
-        if (!pidRaw || !Number.isFinite(pid) || pid <= 0) continue
-        rows.push({ product_id: pid, qty: Number.isFinite(qty) ? qty : 0, row: i + 1 })
-      }
-      if (!rows.length) { toast.error('상품코드(product_id)가 있는 행이 없어요. 양식을 다시 받아주세요'); return }
-      // 서버 검증/미리보기 — 청구하지 않음.
-      const r = await api.post('/api/wholesale/orders/bulk-preview', { items: rows }, { headers: { Authorization: `Bearer ${token}` } })
-      if (!r.data?.success) { toast.error(r.data?.error || '주문서 검증에 실패했어요'); return }
-      const items: BulkPreviewItem[] = r.data.items || []
-      const errors: BulkPreviewError[] = r.data.errors || []
-      const subtotal = Number(r.data.subtotal) || 0
-      if (!items.length && !errors.length) { toast.error('처리할 행이 없어요'); return }
-      setBulkPreview({ items, subtotal, errors })
-      if (items.length) toast.success(`${comma(items.length)}개 담을 수 있어요${errors.length ? ` · ${comma(errors.length)}개 오류` : ''}`)
-      else toast.error(`담을 수 있는 항목이 없어요 (${comma(errors.length)}개 오류)`)
-    } catch (err) {
-      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문서 업로드 중 오류가 발생했어요')
-    } finally { setBulkBusy(false) }
-  }
-  // 미리보기 유효 라인 → 도매 카트에 담기 → 카트(검토·예치금 결제)로 이동.
-  function addBulkToCart() {
-    if (!bulkPreview?.items.length) return
-    for (const it of bulkPreview.items) {
-      cart.add({ id: it.product_id, qty: it.qty, name: it.name, image_url: it.image_url, price: it.unit_price, moq: it.moq })
-    }
-    const n = bulkPreview.items.length
-    setBulkPreview(null)
-    toast.success(`장바구니에 ${comma(n)}개 품목 담았어요`)
-    navigate('/wholesale/cart')
-  }
-  // 오류행 리포트 CSV 다운로드 (행번호·상품코드·수량·사유).
-  function downloadBulkErrors() {
-    if (!bulkPreview?.errors.length) return
-    const esc = (v: unknown) => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-    const head = ['행', 'product_id', '상품명', '주문수량', '오류사유']
-    const body = bulkPreview.errors.map(e => [e.row ?? '', e.product_id ?? '', e.name ?? '', e.qty ?? '', e.reason].map(esc).join(','))
-    const csv = '﻿' + head.join(',') + '\r\n' + body.join('\r\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob); const a = document.createElement('a')
-    a.href = url; a.download = `wholesale-order-errors-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url)
-  }
-
   const monthSpend = stmtQ.data?.summary?.total_paid ?? 0
   const orderCount = stmtQ.data?.summary?.count ?? 0
   const grade = me?.grade || home?.grade || 'C'
@@ -994,180 +396,34 @@ export default function WholesaleCatalogPage() {
       />
 
       {/* 🏭 Wave 2 헤더 — Sellpie형: 유틸바 + (로고·중앙검색·3아이콘) + 카테고리 네비. */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
-        {/* 1. 유틸 바 (우측 정렬, 작은 텍스트) */}
-        <div style={{ borderBottom: '1px solid ' + WT.line }}>
-          <div className="ur-content-wide px-5 lg:px-8 h-8 flex items-center justify-end gap-3 text-[12px]" style={{ color: WT.ink3 }}>
-            {loggedIn ? (
-              <>
-                <button onClick={() => navigate('/wholesale/dashboard')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>{t('wholesale.util.my', { defaultValue: '마이' })}</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
-                  {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cart.count > 0 ? ` (${cart.count})` : ''}
-                </button>
-                {supplierToken && (
-                  <>
-                    <span style={{ color: WT.line }}>·</span>
-                    <button onClick={() => navigate('/supplier')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사</button>
-                  </>
-                )}
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
-              </>
-            ) : supplierToken ? (
-              <>
-                <button onClick={() => navigate('/supplier')} className="inline-flex items-center gap-1 font-bold" style={{ color: WT.ink }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사 대시보드</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => navigate('/supplier/login')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조(브랜드)회원(공급사) 로그인"><Factory className="w-3.5 h-3.5" /> 제조회원</button>
-                <span className="hidden sm:inline" style={{ color: WT.line }}>·</span>
-                <button onClick={goLogin} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}><LogIn className="w-3.5 h-3.5" /> {t('wholesale.util.login', { defaultValue: '로그인' })}</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={() => navigate('/wholesale/join')} className="inline-flex items-center font-bold" style={{ color: WT.brand }}>{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
-                  {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cart.count > 0 ? ` (${cart.count})` : ''}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* 2. 메인 헤더 — 로고 + 중앙 큰 검색 + 우측 3아이콘 */}
-        <div className="ur-content-wide px-5 lg:px-8 py-3 flex items-center gap-3 lg:gap-6">
-          <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2 shrink-0">
-            {/* 🏬 로고 있으면 로고, 없으면 브랜드 색 박스 + 몰 이름 첫 글자(기본 몰 → '유') */}
-            {mallLogo ? (
-              <img src={mallLogo} alt={mallName} className="h-8 w-8 rounded-lg object-cover" />
-            ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white font-extrabold text-[14px]" style={{ background: 'var(--ud-brand, #FF0033)' }}>{(mallName || '유통스타트').slice(0, 1)}</span>
-            )}
-            <div className="leading-tight text-left">
-              <div className="text-[16px] font-extrabold" style={{ color: WT.ink }}>{mallName}</div>
-              <div className="text-[10px] -mt-0.5" style={{ color: WT.ink4 }}>도매몰</div>
-            </div>
-          </button>
-
-          {/* 중앙 큰 검색바 (기존 검색 와이어링) */}
-          <form onSubmit={e => { e.preventDefault(); setCommittedSearch(search.trim()); setPremiumView(false) }} className="flex-1 max-w-2xl relative">
-            <input
-              type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={t('wholesale.searchPlaceholder', { defaultValue: '상품명·브랜드로 검색' })}
-              className="w-full pl-4 pr-24 h-11 lg:h-12 rounded-full text-[14px] outline-none"
-              style={{ background: WT.fill, color: WT.ink, border: '1.5px solid var(--ud-brand, #FF0033)' }}
-            />
-            {search && (
-              <button type="button" onClick={() => { setSearch(''); setCommittedSearch('') }} aria-label={t('common.clear', { defaultValue: '지우기' })}
-                className="absolute right-14 top-1/2 -translate-y-1/2 p-0.5 rounded-full" style={{ color: WT.ink4 }}>
-                <X className="w-4 h-4" />
-              </button>
-            )}
-            <button type="submit" aria-label={t('common.search', { defaultValue: '검색' })}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 lg:h-9 px-4 rounded-full inline-flex items-center justify-center text-white" style={{ background: 'var(--ud-brand, #FF0033)' }}>
-              <Search className="w-4 h-4" />
-            </button>
-          </form>
-
-          {/* 우측 3 아이콘 — 처음이세요? / 제안·신고 / 예치금신청 */}
-          <div className="hidden md:flex items-center gap-1 shrink-0">
-            <button onClick={() => navigate('/wholesale/intro')} className="flex flex-col items-center gap-0.5 px-2.5 py-1" style={{ color: WT.ink2 }} title="처음이세요?">
-              <HelpCircle className="w-5 h-5" />
-              <span className="text-[11px] font-medium whitespace-nowrap">{t('wholesale.icon.firstTime', { defaultValue: '처음이세요?' })}</span>
-            </button>
-            <button onClick={() => setProposalOpen(true)} className="flex flex-col items-center gap-0.5 px-2.5 py-1" style={{ color: WT.ink2 }} title="제안/신고">
-              <MessageSquareWarning className="w-5 h-5" />
-              <span className="text-[11px] font-medium whitespace-nowrap">{t('wholesale.icon.proposal', { defaultValue: '제안/신고' })}</span>
-            </button>
-            <button onClick={() => navigate('/wholesale/deposits')} className="flex flex-col items-center gap-0.5 px-2.5 py-1 relative" style={{ color: WT.ink2 }} title="예치금신청">
-              <Wallet className="w-5 h-5" />
-              <span className="text-[11px] font-medium whitespace-nowrap">
-                {loggedIn ? won(Number(depositQ.data?.balance) || 0) : t('wholesale.icon.deposit', { defaultValue: '예치금' })}
-              </span>
-            </button>
-          </div>
-          {/* 모바일 우측 아이콘 (라벨 생략) */}
-          <div className="flex md:hidden items-center gap-2 shrink-0" style={{ color: WT.ink2 }}>
-            <button onClick={() => setProposalOpen(true)} aria-label="제안/신고" className="p-1.5"><MessageSquareWarning className="w-5 h-5" /></button>
-            <button onClick={() => navigate('/wholesale/deposits')} aria-label="예치금신청" className="p-1.5"><Wallet className="w-5 h-5" /></button>
-            <button onClick={() => navigate('/wholesale/wishlist')} aria-label="찜리스트" className="p-1.5"><Heart className="w-5 h-5" /></button>
-            <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative p-1.5">
-              <ShoppingCart className="w-5 h-5" />
-              {cart.count > 0 && <span className="absolute top-0 right-0 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: WT.brand }}>{cart.count}</span>}
-            </button>
-          </div>
-        </div>
-
-        {/* 3. 카테고리 네비 바 (가로 풀바) — 기존 cat/sort 필터 재활용 (재스킨) */}
-        <div style={{ borderTop: '1px solid ' + WT.line }}>
-          <div className="ur-content-wide px-5 lg:px-8 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {/* ≡ 전체카테고리 (레드 박스 → 메가메뉴) */}
-            <button onClick={() => setMegaOpen(v => !v)} aria-expanded={megaOpen}
-              className="shrink-0 inline-flex items-center gap-1.5 px-4 h-11 text-[14px] font-bold text-white"
-              style={{ background: 'var(--ud-brand, #FF0033)' }}>
-              <Menu className="w-4 h-4" /> {t('wholesale.nav.allCategories', { defaultValue: '전체카테고리' })}
-            </button>
-            {/* 브랜드 전시관 → 브랜드 그리드 모드(?brands=1). 클릭 시 검색/카테고리/프리미엄 초기화. */}
-            <button onClick={() => { setBrandView(true); setSelectedBrand(''); setPremiumView(false); setCat('all'); setSort('popular'); setCommittedSearch(''); setSearch('') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: brandView ? WT.brand : WT.ink2 }}>
-              {t('wholesale.nav.brands', { defaultValue: '브랜드 전시관' })}
-            </button>
-            {/* 월간 베스트 → 판매량 정렬 */}
-            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('popular'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'popular' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
-              {t('wholesale.nav.best', { defaultValue: '월간 베스트' })}
-            </button>
-            {/* 신상품 → 최신순 */}
-            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('newest'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'newest' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
-              {t('wholesale.nav.new', { defaultValue: '신상품' })}
-            </button>
-            {/* 판매마진 40% → 할인율 정렬(마진 높은 상품). 🔒 2026-06-10 (사용자): 클릭 시 회원 전용 — 비로그인은 로그인 유도 */}
-            <button onClick={() => {
-              if (!token) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
-              setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('discount'); setCat('all')
-            }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'discount' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
-              {t('wholesale.nav.highMargin', { defaultValue: '판매마진 40%' })}
-            </button>
-            {/* 프리미엄 전용관 → premium=1. 👑 2026-06-10 (사용자): 메뉴는 항상 노출, 클릭 시 회원 전용
-                (비로그인 → 로그인 유도). 서버 guest 차단(이중 게이트)은 유지. */}
-            <button onClick={() => {
-              if (!token) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
-              setBrandView(false); setSelectedBrand(''); setPremiumView(true); setCat('all')
-            }}
-              className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-bold whitespace-nowrap"
-              style={{ color: premiumView ? WT.brand : WT.ink }}>
-              <Crown className="w-4 h-4" /> {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
-            </button>
-            {/* 🏭 2026-06-10: 통합 게시판 (공지/자료실/배송안내/신고·제안) */}
-            <button onClick={() => navigate('/wholesale/board')}
-              className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-semibold whitespace-nowrap"
-              style={{ color: WT.ink2 }}>
-              <Megaphone className="w-4 h-4" /> {t('wholesale.nav.board', { defaultValue: '공지·자료실' })}
-            </button>
-          </div>
-          {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}
-          {megaOpen && (
-            <div className="ur-content-wide px-5 lg:px-8 pb-4">
-              <div className="rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: '#fff', boxShadow: WT.shCard }}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                  {cats.map((c) => (
-                    <button key={c.id} onClick={() => { setCat(c.id); setPremiumView(false); setBrandView(false); setSelectedBrand(''); setMegaOpen(false) }}
-                      className="flex items-center justify-between rounded-xl px-3.5 h-10 text-[14px] transition-colors"
-                      style={cat === c.id && !premiumView ? { background: WT.brandSoft, color: WT.brand, fontWeight: 700 } : { background: WT.fill, color: WT.ink2 }}>
-                      <span className="truncate">{c.label}</span>
-                      <span className="text-[12px] tabular-nums shrink-0 ml-1" style={{ color: WT.ink4 }}>{catCounts[c.id] ?? ''}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
+      <CatalogHeader
+        loggedIn={loggedIn}
+        supplierToken={supplierToken}
+        token={token}
+        cartCount={cart.count}
+        mallName={mallName}
+        mallLogo={mallLogo}
+        depositBalance={Number(depositQ.data?.balance) || 0}
+        search={search}
+        setSearch={setSearch}
+        setCommittedSearch={setCommittedSearch}
+        megaOpen={megaOpen}
+        setMegaOpen={setMegaOpen}
+        brandView={brandView}
+        setBrandView={setBrandView}
+        premiumView={premiumView}
+        setPremiumView={setPremiumView}
+        setSelectedBrand={setSelectedBrand}
+        sort={sort}
+        setSort={setSort}
+        cat={cat}
+        setCat={setCat}
+        cats={cats}
+        catCounts={catCounts}
+        setProposalOpen={setProposalOpen}
+        goLogin={goLogin}
+        logout={logout}
+      />
 
       <main className="ur-content-wide px-5 lg:px-8">
         {/* 🏭 Wave 2: 메인 배너 캐러셀 (어드민 관리, 배너 없으면 자동 숨김) */}
@@ -1176,121 +432,38 @@ export default function WholesaleCatalogPage() {
         </div>
 
         {/* 히어로 + 대시보드 + OEM */}
-        <div className="pt-4 pb-5 space-y-3">
-          <BrandHero loggedIn={loggedIn} />
-          {loggedIn ? (
-            <>
-              <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} depositBalance={Number(depositQ.data?.balance) || 0} onGrade={() => setGradeOpen(true)} onCharge={() => navigate('/wholesale/deposits')} />
-              {me?.special_active && me.special_discount_until && (
-                <div className="px-4 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: WT.brandSoft, color: WT.brand }}>
-                  특별가 적용 중 — {new Date(me.special_discount_until).toLocaleDateString('ko-KR')}까지 최저 공급가로 구매할 수 있어요
-                </div>
-              )}
-              <button onClick={() => navigate('/wholesale/oem')} className="w-full flex items-center gap-3.5 rounded-2xl p-4 text-left" style={{ border: '1px solid ' + WT.line, background: '#fff' }}>
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: WT.fill }}><Factory className="w-5 h-5" style={{ color: WT.ink2 }} /></span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-bold truncate" style={{ color: WT.ink }}>자사 브랜드 제품이 필요하세요?</div>
-                  <div className="text-[12px] mt-0.5 truncate" style={{ color: WT.ink3 }}>OEM/ODM 제조사 연결·컨설팅 신청</div>
-                </div>
-                <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.ink4 }} />
-              </button>
-            </>
-          ) : userSession ? (
-            // 카카오 로그인됨(일반 유저)이지만 아직 유통회원 아님 — 1탭 전환.
-            <div className="flex items-center gap-3.5 rounded-2xl p-4" style={{ background: WT.ink }}>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.12)' }}><Lock className="w-5 h-5 text-white" /></span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold text-white">카카오 계정으로 유통회원 신청하기</div>
-                <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>사업자 정보만 입력하면 관리자 승인 후 등급 공급가로 사입 — 카카오 계정 그대로</div>
-              </div>
-              <button onClick={() => navigate('/wholesale/join')} className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-bold" style={{ background: WT.brand, color: '#fff' }}>
-                유통회원 신청
-              </button>
-            </div>
-          ) : (
-            // 비로그인: 가입 유도 배너 (도매가는 가입/로그인 후 노출)
-            <div className="flex items-center gap-3.5 rounded-2xl p-4" style={{ background: WT.ink }}>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.12)' }}><Lock className="w-5 h-5 text-white" /></span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold text-white">가입하면 등급 공급가가 보여요</div>
-                <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>유통사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</div>
-              </div>
-              <button onClick={() => navigate('/wholesale/join')} className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-bold" style={{ background: WT.brand, color: '#fff' }}>가입하기</button>
-            </div>
-          )}
-        </div>
+        <HeroSection
+          loggedIn={loggedIn}
+          userSession={userSession}
+          grade={grade}
+          me={me}
+          monthSpend={monthSpend}
+          orderCount={orderCount}
+          depositBalance={Number(depositQ.data?.balance) || 0}
+          setGradeOpen={setGradeOpen}
+        />
 
-        {/* 빠른 재주문 (최근 사입) */}
-        {recent.length > 0 && (
-          <section className="py-6">
-            <SectionHead title="빠른 재주문" sub="최근 사입한 상품" />
-            <Rail>{recent.map((r) => <ReorderCard key={r.id} r={r} onOpen={(id) => navigate(`/wholesale/product/${id}`)} onReorder={reorder} onPrefetch={prefetchProduct} />)}</Rail>
-          </section>
-        )}
+        {/* 빠른 재주문 / 전용 공급 / 베스트 / 신규 입고 레일 */}
+        <HomeRails
+          recent={recent}
+          home={home}
+          reorder={reorder}
+          openDetail={openDetail}
+          addToCart={addToCart}
+          prefetchProduct={prefetchProduct}
+        />
 
-        {/* 전용 공급 (관리자 제안) */}
-        {home && home.proposals.length > 0 && (
-          <section className="py-6">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[18px] font-extrabold tracking-[-0.01em]" style={{ color: WT.ink }}>회원님 전용 공급</h3>
-              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: WT.ink, color: '#fff' }}>선정 회원 전용</span>
-            </div>
-            <p className="text-[13px] mb-3.5" style={{ color: WT.ink3 }}>유통스타트가 회원님께만 공개하는 상품이에요</p>
-            <Rail>{(home.proposals as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} tag="전용" onPrefetch={prefetchProduct} />)}</Rail>
-          </section>
-        )}
-
-        {/* 베스트 */}
-        {home && home.best.length > 0 && (
-          <section className="py-6">
-            <SectionHead title="베스트셀러" sub="많이 사입한 상품" />
-            <Rail>{(home.best as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />)}</Rail>
-          </section>
-        )}
-
-        {/* 신규 입고 */}
-        {home && home.new.length > 0 && (
-          <section className="py-6">
-            <SectionHead title="신규 입고" sub="이번 주" />
-            <Rail>{(home.new as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />)}</Rail>
-          </section>
-        )}
-
-        {/* 🏭 Wave 2: 프리미엄 전용관 헤더 (premiumView 활성 시) */}
-        {premiumView && (
-          <section className="pt-6">
-            <div className="rounded-2xl p-5 lg:p-6 flex items-center gap-4" style={{ background: WT.ink, color: '#fff' }}>
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <Crown className="w-6 h-6" style={{ color: '#FFD166' }} />
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-[18px] lg:text-[20px] font-extrabold">{t('wholesale.premium.title', { defaultValue: '프리미엄 전용관' })}</h2>
-                  <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: WT.brand, color: '#fff' }}><Sparkles className="w-3 h-3" /> PREMIUM</span>
-                </div>
-                <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>{t('wholesale.premium.desc', { defaultValue: '엄선된 프리미엄 공급 상품만 모았어요' })}</p>
-              </div>
-              <button onClick={() => setPremiumView(false)} className="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>{t('wholesale.premium.exit', { defaultValue: '전체보기' })}</button>
-            </div>
-          </section>
-        )}
-
-        {/* 🏷️ 브랜드 전시관 — 브랜드 그리드(특정 브랜드 미선택 시). 헤더 + 그리드 + 빈 상태. */}
-        {brandView && !selectedBrand && (
-          <section className="pt-6 pb-10">
-            <div className="rounded-2xl p-5 lg:p-6 flex items-center gap-4 mb-5" style={{ background: WT.ink, color: '#fff' }}>
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <Sparkles className="w-6 h-6" style={{ color: '#FFD166' }} />
-              </span>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-[18px] lg:text-[20px] font-extrabold">{t('wholesale.brand.title', { defaultValue: '브랜드 전시관' })}</h2>
-                <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.72)' }}>{t('wholesale.brand.desc', { defaultValue: '브랜드별로 모아 둘러보세요. 브랜드를 누르면 해당 상품만 볼 수 있어요.' })}</p>
-              </div>
-              <button onClick={() => { setBrandView(false); setSelectedBrand('') }} className="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>{t('wholesale.brand.exit', { defaultValue: '전체보기' })}</button>
-            </div>
-            <BrandShowcaseGrid brands={(brandsQ.data ?? []) as BrandEntry[]} loading={brandsQ.isLoading} onPick={(name) => setSelectedBrand(name)} t={t} />
-          </section>
-        )}
+        {/* 🏭 Wave 2: 프리미엄 전용관 헤더 + 🏷️ 브랜드 전시관 그리드 */}
+        <ShowcaseBanners
+          premiumView={premiumView}
+          setPremiumView={setPremiumView}
+          brandView={brandView}
+          setBrandView={setBrandView}
+          selectedBrand={selectedBrand}
+          setSelectedBrand={setSelectedBrand}
+          brands={(brandsQ.data ?? []) as BrandEntry[]}
+          brandsLoading={brandsQ.isLoading}
+        />
 
         {/* BEST PRODUCT / 전체 상품 — 브랜드 그리드 모드(브랜드 미선택)에서는 숨김 */}
         {!(brandView && !selectedBrand) && (
@@ -1311,137 +484,21 @@ export default function WholesaleCatalogPage() {
           />
           <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
           {/* ── BIZ-4 정렬/필터 컨트롤바 (서버사이드 /catalog 파라미터에 위임) ── */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {/* 정렬 드롭다운 */}
-            <div className="relative shrink-0">
-              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: WT.ink3 }} />
-              <select
-                value={sort} onChange={e => setSort(e.target.value as CatalogSort)}
-                aria-label={t('wholesale.sortLabel', { defaultValue: '정렬' })}
-                className="appearance-none h-9 pl-8 pr-7 rounded-full text-[13px] font-bold outline-none cursor-pointer"
-                style={{ background: WT.fill, color: WT.ink }}>
-                {/* 🏭 가격/할인율 정렬은 공급가가 보이는 로그인 유통사에게만 (비로그인엔 무의미) */}
-                {CATALOG_SORTS.filter(s => loggedIn || !['price_low', 'price_high', 'discount'].includes(s.id)).map(s => (
-                  <option key={s.id} value={s.id}>{t(s.label, { defaultValue: s.defaultLabel })}</option>
-                ))}
-              </select>
-              <ChevronRight className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rotate-90" style={{ color: WT.ink3 }} />
-            </div>
-            {/* 재고있음 토글 */}
-            <button onClick={() => setInStock(v => !v)} aria-pressed={inStock}
-              className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-bold whitespace-nowrap transition-colors"
-              style={inStock ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink3 }}>
-              <PackageCheck className="w-3.5 h-3.5" />{t('wholesale.inStock', { defaultValue: '재고있음' })}
-            </button>
-            {/* 가격대 칩 — 공급가는 로그인 시에만 보이므로 비로그인엔 숨김 */}
-            {loggedIn && (
-            <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {PRICE_BANDS.map(b => {
-                const on = priceBand === b.id
-                return (
-                  <button key={b.id} onClick={() => setPriceBand(on ? '' : b.id)} aria-pressed={on}
-                    className="shrink-0 rounded-full px-3 h-9 text-[13px] font-bold whitespace-nowrap transition-colors"
-                    style={on ? { background: WT.brand, color: '#fff' } : { background: WT.fill, color: WT.ink3 }}>
-                    {b.label}
-                  </button>
-                )
-              })}
-            </div>
-            )}
-            {/* 필터 초기화 (활성 필터 있을 때만) */}
-            {(inStock || priceBand || cat !== 'all' || sort !== 'popular' || committedSearch) && (
-              <button onClick={() => { setInStock(false); setPriceBand(''); setCat('all'); setSort('popular'); setSearch(''); setCommittedSearch('') }}
-                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: WT.ink3 }}>
-                <X className="w-3.5 h-3.5" />{t('wholesale.resetFilters', { defaultValue: '필터 초기화' })}
-              </button>
-            )}
-          </div>
-          {loggedIn && (
-            <div className="mb-4 rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: WT.fill2 }}>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[14px] font-bold" style={{ color: WT.ink }}>대량 주문 (엑셀)</span>
-                <span className="text-[11px] font-bold rounded-full px-2 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>주문 많을 때</span>
-              </div>
-              <p className="text-[12px] mb-3" style={{ color: WT.ink3 }}>{t('wholesale.bulk.desc', { defaultValue: '주문 양식(내 카탈로그·등급가 포함)을 받아 주문수량만 채워 업로드하면, 장바구니에 담아 예치금으로 한 번에 결제할 수 있어요.' })}</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={downloadOrderForm} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: '#fff', color: WT.ink, border: '1px solid ' + WT.line }}>
-                  <Download className="w-4 h-4" /> {t('wholesale.bulk.download', { defaultValue: '주문 양식 다운로드' })}
-                </button>
-                <button onClick={() => bulkInputRef.current?.click()} disabled={bulkBusy} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-60" style={{ background: WT.ink }}>
-                  {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} {t('wholesale.bulk.upload', { defaultValue: '작성본 업로드 → 검토' })}
-                </button>
-                <input ref={bulkInputRef} type="file" accept=".csv,text/csv" onChange={onBulkFile} className="hidden" />
-              </div>
-
-              {/* BIZ-9: 업로드 결과 패널 — N개 담김 · M개 오류(사유). 청구 전 검토 단계. */}
-              {bulkPreview && (
-                <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: '#fff' }}>
-                  <div className="flex items-center justify-between px-3.5 py-2.5" style={{ borderBottom: '1px solid ' + WT.line, background: WT.fill }}>
-                    <span className="text-[13px] font-bold" style={{ color: WT.ink }}>
-                      {t('wholesale.bulk.resultTitle', { defaultValue: '업로드 결과' })}
-                      {' · '}
-                      <span style={{ color: WT.brand }}>{comma(bulkPreview.items.length)}{t('wholesale.bulk.matchedSuffix', { defaultValue: '개 담김' })}</span>
-                      {bulkPreview.errors.length > 0 && <span style={{ color: '#D92D20' }}>{' · '}{comma(bulkPreview.errors.length)}{t('wholesale.bulk.errorSuffix', { defaultValue: '개 오류' })}</span>}
-                    </span>
-                    <button onClick={() => setBulkPreview(null)} aria-label="닫기"><X className="w-4 h-4" style={{ color: WT.ink3 }} /></button>
-                  </div>
-
-                  {bulkPreview.items.length > 0 && (
-                    <div className="px-3.5 py-2.5" style={{ borderBottom: bulkPreview.errors.length ? '1px solid ' + WT.line : undefined }}>
-                      <div className="max-h-40 overflow-y-auto -mx-1 px-1">
-                        {bulkPreview.items.slice(0, 50).map((it) => (
-                          <div key={it.product_id} className="flex items-center justify-between py-1 text-[12px]">
-                            <span className="truncate pr-2" style={{ color: WT.ink2 }}>{it.name}</span>
-                            <span className="shrink-0 tabular-nums" style={{ color: WT.ink3 }}>{comma(it.qty)}개 · {won(it.line_total)}</span>
-                          </div>
-                        ))}
-                        {bulkPreview.items.length > 50 && <p className="py-1 text-[11px]" style={{ color: WT.ink4 }}>외 {comma(bulkPreview.items.length - 50)}개…</p>}
-                      </div>
-                      <div className="flex items-center justify-between mt-2 pt-2 text-[13px] font-bold" style={{ borderTop: '1px dashed ' + WT.line, color: WT.ink }}>
-                        <span>{t('wholesale.bulk.subtotal', { defaultValue: '합계' })}</span>
-                        <span className="tabular-nums" style={{ color: WT.brand }}>{won(bulkPreview.subtotal)}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {bulkPreview.errors.length > 0 && (
-                    <div className="px-3.5 py-2.5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[12px] font-bold" style={{ color: '#D92D20' }}>{t('wholesale.bulk.errorRows', { defaultValue: '제외된 행' })} ({comma(bulkPreview.errors.length)})</span>
-                        <button onClick={downloadBulkErrors} className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: WT.ink3 }}>
-                          <Download className="w-3 h-3" /> {t('wholesale.bulk.errorReport', { defaultValue: '오류 리포트' })}
-                        </button>
-                      </div>
-                      <div className="max-h-32 overflow-y-auto -mx-1 px-1">
-                        {bulkPreview.errors.slice(0, 30).map((er, i) => (
-                          <div key={i} className="py-0.5 text-[11px]" style={{ color: WT.ink3 }}>
-                            <span className="font-bold" style={{ color: WT.ink2 }}>{er.row ? `${er.row}행 ` : ''}{er.name || (er.product_id ? `#${er.product_id}` : '')}</span> — {er.reason}
-                          </div>
-                        ))}
-                        {bulkPreview.errors.length > 30 && <p className="py-0.5 text-[11px]" style={{ color: WT.ink4 }}>외 {comma(bulkPreview.errors.length - 30)}개… (리포트 다운로드로 전체 확인)</p>}
-                      </div>
-                    </div>
-                  )}
-
-                  {bulkPreview.items.length > 0 && (
-                    <div className="px-3.5 py-2.5" style={{ borderTop: '1px solid ' + WT.line }}>
-                      <button onClick={addBulkToCart} className="w-full flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white" style={{ background: WT.ink }}>
-                        <ShoppingCart className="w-4 h-4" /> {t('wholesale.bulk.toCart', { defaultValue: '장바구니에 담고 결제하기' })}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                <button onClick={exportCatalog} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> 단가표 (.xlsx)
-                </button>
-                <button onClick={exportPriceListCsv} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
-                  <Download className="w-3.5 h-3.5" /> 단가표 다운로드 (CSV)
-                </button>
-              </div>
-            </div>
-          )}
+          <FilterControls
+            sort={sort}
+            setSort={setSort}
+            loggedIn={loggedIn}
+            inStock={inStock}
+            setInStock={setInStock}
+            priceBand={priceBand}
+            setPriceBand={setPriceBand}
+            cat={cat}
+            setCat={setCat}
+            committedSearch={committedSearch}
+            setSearch={setSearch}
+            setCommittedSearch={setCommittedSearch}
+          />
+          {loggedIn && <BulkOrderPanel token={token} />}
 
           <div className="lg:flex lg:gap-7">
             <Sidebar cat={cat} setCat={setCat} counts={catCounts} cats={cats} />
