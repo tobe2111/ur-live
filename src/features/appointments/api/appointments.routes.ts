@@ -345,19 +345,30 @@ appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) =>
       if (order && order.user_id === String(user.id)) {
         const payMethod = (order.payment_method || '').toLowerCase()
         if (payMethod === 'deal' || payMethod === 'deal_points') {
-          // 즉시 딜 환급
-          await DB.prepare(
-            `INSERT INTO point_transactions (user_id, amount, type, description, created_at)
-             VALUES (?, ?, 'refund', ?, datetime('now'))`,
-          ).bind(String(user.id), order.total_amount, `예약 취소 환불 (appointment #${id})`).run().catch(() => null)
-          await DB.prepare(
-            `UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?`,
-          ).bind(order.total_amount, String(user.id)).run().catch(() => null)
-          await DB.prepare(
-            `UPDATE appointment_bookings SET refund_status = 'refunded', refund_processed_at = datetime('now') WHERE id = ?`,
-          ).bind(id).run()
-          await DB.prepare(`UPDATE orders SET status = 'CANCELLED' WHERE id = ?`).bind(order.id).run().catch(() => null)
-          refundResult = { method: 'deal', amount: order.total_amount, status: 'refunded' }
+          // 🛡️ 2026-06-11 머니 감사: 동시 취소 더블 딜환급(이중 적립) 차단 — 주문 취소를 CAS 로 claim.
+          //   기존엔 refund_status 사전체크만으로 가드(원자성 X) → 동시/더블탭 취소 시 포인트 이중 적립.
+          //   order status PAID→CANCELLED 를 원자적으로 잡은 thread 만 환급. 진 thread 는 멱등 skip.
+          const orderClaim = await DB.prepare(
+            `UPDATE orders SET status = 'CANCELLED' WHERE id = ? AND UPPER(status) != 'CANCELLED'`,
+          ).bind(order.id).run().catch(() => null)
+          if (orderClaim && (orderClaim.meta?.changes ?? 0) > 0) {
+            // 즉시 딜 환급 — 독립 write 원자 배치(라운드트립 절감 + 부분실패 방지).
+            await DB.batch([
+              DB.prepare(
+                `INSERT INTO point_transactions (user_id, amount, type, description, created_at)
+                 VALUES (?, ?, 'refund', ?, datetime('now'))`,
+              ).bind(String(user.id), order.total_amount, `예약 취소 환불 (appointment #${id})`),
+              DB.prepare(
+                `UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?`,
+              ).bind(order.total_amount, String(user.id)),
+              DB.prepare(
+                `UPDATE appointment_bookings SET refund_status = 'refunded', refund_processed_at = datetime('now') WHERE id = ?`,
+              ).bind(id),
+            ])
+            refundResult = { method: 'deal', amount: order.total_amount, status: 'refunded' }
+          } else {
+            refundResult = { method: 'deal', amount: order.total_amount, status: 'already_refunded' }
+          }
         } else {
           // 🛡️ 2026-05-21 Phase TD-A1: 토스 자동 환불 (기존엔 'pending' 마킹만).
           const orderRow = await DB.prepare("SELECT payment_key FROM orders WHERE id = ?").bind(order.id).first<{ payment_key: string }>()
