@@ -132,6 +132,90 @@ button { font: inherit; background: none; border: 0; cursor: pointer; color: inh
   background: #FFF0F2; color: #FF0033; font-size: 12px; font-weight: 700; }
 .wt-sub { font-size: 11px; color: #8A929E; margin-top: 6px; }
 
+/* ── 상세 페이지 (Phase 2 — 공구=다크 / 상품=화이트 공용 구조) ── */
+.white-page { background: #F9FAFB; color: #111827; min-height: 100vh; }
+.detail-page { background: #121212; color: #fff; min-height: 100vh; padding-bottom: 96px; }
+.detail-page-light { padding-bottom: 96px; }
+.hero { position: relative; max-width: 768px; margin: 0 auto; aspect-ratio: 1; overflow: hidden; background: #1A1A1A; }
+.hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero-light { background: linear-gradient(to bottom right, #fdf2f8, #ffe4e6); }
+.hero-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 60px;
+  background: linear-gradient(to bottom right, #fdf2f8, #ffe4e6); }
+.hero-scrim { position: absolute; left: 0; right: 0; top: 0; height: 96px; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent); }
+.hero-back { position: absolute; top: 12px; left: 12px; width: 36px; height: 36px; border-radius: 999px;
+  background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); color: #fff; font-size: 22px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; line-height: 1; padding-bottom: 2px; }
+.hero-badges { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 8px; }
+.hero-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #fff; }
+.hero-badge.dark { background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); }
+.hero-badge.green { background: #22c55e; }
+.hero-badge.gray { background: #374151; }
+.hero-badge.red { background: #ef4444; }
+.detail-main { max-width: 768px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.panel { background: #0A0A0A; border: 1px solid #1A1A1A; border-radius: 16px; padding: 20px; }
+.panel-light { background: #fff; border-color: #f3f4f6; }
+.detail-title { font-size: 20px; font-weight: 700; line-height: 1.35; }
+.detail-place { display: flex; gap: 8px; margin-top: 12px; font-size: 14px; color: #d1d5db; }
+.place-name { font-weight: 600; font-size: 14px; }
+.place-addr { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+.detail-phone { display: block; margin-top: 8px; font-size: 13.5px; color: #d1d5db; }
+.price-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid #1A1A1A; }
+.price-row { display: flex; align-items: baseline; gap: 8px; }
+.price-strike { font-size: 12px; color: #6b7280; text-decoration: line-through; }
+.price-main { font-size: 24px; font-weight: 800; color: #ec4899; }
+.price-unit { font-size: 14px; font-weight: 700; color: #ec4899; }
+.price-off { margin-left: auto; background: #ec4899; color: #fff; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.price-pct-light { font-size: 24px; font-weight: 800; color: #e11d48; }
+.saving-pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 11px;
+  border-radius: 10px; background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.3);
+  font-size: 12px; font-weight: 700; color: #f9a8d4; }
+.saving-pill b { font-size: 14px; }
+.deadline-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 12.5px; color: #9ca3af; }
+.panel-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.panel-body { font-size: 14px; line-height: 1.65; color: #d1d5db; white-space: pre-line; }
+.trust-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.trust-item { background: #0A0A0A; border: 1px solid #1A1A1A; border-radius: 12px; padding: 10px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.trust-item span { font-size: 15px; }
+.trust-item b { font-size: 11px; font-weight: 700; }
+.trust-item small { font-size: 9px; color: #6b7280; }
+.seller-row { display: flex; align-items: center; gap: 12px; }
+.seller-avatar { width: 40px; height: 40px; border-radius: 999px; object-fit: cover; flex: none; }
+.seller-avatar-fallback { background: linear-gradient(to bottom right, #374151, #111827); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.seller-line { font-size: 12.5px; color: #6b7280; font-weight: 600; margin-bottom: 4px; }
+.rating-line { font-size: 12.5px; color: #6b7280; margin-top: 6px; }
+.cta-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(2,2,2,0.96); backdrop-filter: blur(10px); border-top: 1px solid #1A1A1A; }
+.cta-bar-light { background: rgba(255,255,255,0.96); border-top-color: #f3f4f6; }
+.cta-btn { display: flex; align-items: center; justify-content: center; max-width: 736px; margin: 0 auto;
+  height: 52px; border-radius: 16px; background: #ec4899; color: #fff; font-size: 15px; font-weight: 800; }
+.cta-btn:active { transform: scale(0.98); }
+.cta-btn.is-disabled { background: #374151; color: #9ca3af; pointer-events: none; }
+.cta-btn-wt { background: #FF0033; }
+
+/* ── 도매 상세 (WT 라이트) ── */
+.wt-detail-img { aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid #ECEEF1; margin-top: 14px; }
+.wt-detail-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wt-detail-img-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 56px; }
+.wt-panel { background: #fff; border: 1px solid #ECEEF1; border-radius: 14px; padding: 18px; margin-top: 12px; }
+.wt-detail-name { font-size: 18px; font-weight: 800; color: #17181C; line-height: 1.4; }
+.wt-info-list { display: flex; flex-direction: column; }
+.wt-info-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #F4F5F7; font-size: 13px; }
+.wt-info-row:last-child { border-bottom: 0; }
+.wt-info-row dt { color: #8A929E; }
+.wt-info-row dd { color: #17181C; font-weight: 600; text-align: right; }
+.wt-desc { font-size: 13.5px; color: #4E5560; line-height: 1.65; white-space: pre-line; }
+
+/* ── 검색 ── */
+.search-form { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; padding: 0 14px;
+  height: 46px; border-radius: 14px; background: #121212; border: 1px solid #2A2A2A; }
+.search-input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: #fff; font-size: 14px; }
+.search-input::placeholder { color: #6b7280; }
+.search-btn { flex: none; font-size: 13px; font-weight: 700; color: #020202; background: #fff; border-radius: 9px; padding: 6px 13px; }
+
 .notice { font-size: 12.5px; color: #6b7280; padding: 32px 0; text-align: center; grid-column: 1 / -1; }
 .more-btn { display: block; margin: 16px auto 0; max-width: 384px; text-align: center; padding: 13px 0; border-radius: 14px;
   border: 1px solid #2A2A2A; color: #d1d5db; font-size: 13.5px; font-weight: 700; }
