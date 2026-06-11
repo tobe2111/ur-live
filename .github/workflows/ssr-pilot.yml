@@ -34,6 +34,7 @@ jobs:
         run: |
           sleep 5
           for path in "/" "/wholesale"; do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://ur-ssr-pilot.${{ secrets.CLOUDFLARE_ACCOUNT_SUBDOMAIN || 'unknown' }}.workers.dev$path" || echo 000)
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://ur-ssr-pilot.jiwon-1a2.workers.dev$path" || echo 000)
             echo "$path → $CODE"
-          done || true
+            [ "$CODE" = "200" ] || exit 1
+          done
