@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🚀 [확정 프로그램] SSR 전면 전환 (옵션② — 사용자 결정 2026-06-10)
+**SSOT: `docs/SSR_MIGRATION_PLAN.md`** — React Router v7(구 Remix) on CF Workers, 3 Phase.
+다음 액션: Phase 1 파일럿(`apps/ssr/` 신설 — 홈/교환권/동네딜/도매/링크샵 공개뷰, beta 서브도메인 배포).
+사용자 액션: 스테이징 서브도메인 1개 (Cloudflare). ⚠️ 기존 `/api/*`·Toss/카카오 잠금 무수정 원칙.
+
+
 ## 📌 운영 액션 TODO (사용자가 직접 — 코드 아님)
 
 | # | 액션 | 소요 | 효과 | 상태 |
