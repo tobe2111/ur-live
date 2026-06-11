@@ -39,6 +39,8 @@ grep -rn "router.<method>" src/worker/routes/ src/features/
 변경 영역에 해당하는 활성 룰 확인:
 - **DB 변경** → `docs/SCHEMA.md` + production-schema.ts
 - **결제** → confirmTossPayment 헬퍼 / Toss 키 type 룰
+- **돈이 움직이는 코드 (적립/차감/취소/환불)** → CLAUDE.md '💸 머니/정합성 코드 작성 룰' 4클래스
+  (CAS 선점 / 적립-역전 대칭 / UNIQUE+INSERT OR IGNORE 멱등 / status 플립≠취소) — 2026-06-11 감사 출처
 - **인증** → safeInternalPath / Kakao OAuth 룰
 - **새 페이지** → SEO + 테마 + i18n + console.log 금지
 - **셀러 role** → isInfluencer() 등 헬퍼 사용 (직접 비교 금지)
