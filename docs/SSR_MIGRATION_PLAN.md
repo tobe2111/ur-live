@@ -28,7 +28,7 @@
 - 이전 대상: `/`(홈) `/vouchers` `/group-buy` `/wholesale` `/u/:handle`(링크샵) — 비로그인 공개 뷰.
 - 데이터: 기존 `/api/*` 호출 (worker-to-worker, 같은 엣지 — 빠름).
 - 배포: **스테이징 서브도메인** (예: `beta.ur-team.com`) — 본 사이트 무영향. 화면/속도 비교 검증.
-- ✅ Phase 1 게이트: 사용자 폰에서 "접속 즉시 보임" 확인 + Lighthouse LCP < 1.5s.
+- ✅ Phase 1 게이트: **통과 (2026-06-11)** — 사용자 실기기 확인 "파일럿이 더 빠름" + 실측 TTFB 0.14s. Phase 2 진행 승인.
 
 ### Phase 2 — 상세/탐색 + 인증 쿠키 통일 (2~4세션)
 - 상세 3종(/products /group-buy/:id /wholesale/product), 검색, 장바구니(읽기).
