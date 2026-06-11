@@ -47,6 +47,19 @@ jobs:
             grep -i "cache-control\|cf-cache-status" /tmp/ih3 || true
           done < /tmp/imgs.txt
 
+      - name: user2 프로필 이미지 실값 + 로드 테스트
+        run: |
+          curl -s --max-time 20 "https://live.ur-team.com/api/curator/user2" -H 'accept: application/json' > /tmp/cur.json
+          echo "--- curator 응답 profile_image ---"
+          PI=$(jq -r '.. | .profile_image? // empty' /tmp/cur.json | head -1)
+          echo "value: [$PI]"
+          if [ -n "$PI" ]; then
+            case "$PI" in /*) PI_URL="https://live.ur-team.com$PI";; *) PI_URL="$PI";; esac
+            echo "--- 이미지 직접 로드 ---"
+            curl -s -o /dev/null -D /tmp/pih -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "$PI_URL" || true
+            grep -i "cache-control\|location" /tmp/pih || true
+          fi
+
       - name: wholesale HTML (SSR slot + 체감 로딩)
         run: |
           curl -s -D /tmp/h -o /tmp/html -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
