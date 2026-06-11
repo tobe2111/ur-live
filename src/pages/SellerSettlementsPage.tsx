@@ -31,6 +31,7 @@ import DealBalanceCard from './seller-settlements/DealBalanceCard'
 import BizRegStatusBanner from './seller-settlements/BizRegStatusBanner'
 import BizRegSubmitModal from './seller-settlements/BizRegSubmitModal'
 import SettlementsTable from './seller-settlements/SettlementsTable'
+import RestaurantSettlementsSection from './seller-settlements/RestaurantSettlementsSection'
 
 export default function SellerSettlementsPage() {
   const { t } = useTranslation()
@@ -380,6 +381,11 @@ export default function SellerSettlementsPage() {
 
         {/* Settlements Table */}
         <SettlementsTable settlements={settlements} onDownload={downloadSettlement} />
+
+        {/* 🏁 2026-06-11 (플로우 감사 갭#11): 공구 자동정산(restaurant_settlements) — cron 적립분 가시화 */}
+        <div className="mt-6">
+          <RestaurantSettlementsSection />
+        </div>
 
         {/* Help Text */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">

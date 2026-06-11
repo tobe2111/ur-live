@@ -2740,6 +2740,20 @@
       "homeCardTitle": "Store owners — scan customer vouchers here",
       "homeCardDesc": "Point at the QR to redeem in one tap · Magic link works without login",
       "homeCardBtn": "Open voucher scanner"
+    },
+    "gbSettle": {
+      "title": "Group-buy auto settlements",
+      "subtitle": "Aggregated automatically every night based on redeemed vouchers",
+      "empty": "No auto settlements yet — redeemed vouchers are aggregated overnight",
+      "colPeriod": "Period",
+      "colStore": "Store",
+      "colUsed": "Redeemed",
+      "colAmount": "Payout",
+      "colStatus": "Status",
+      "statusPending": "Pending",
+      "statusProcessing": "Processing",
+      "statusCompleted": "Paid",
+      "statusFailed": "Failed"
     }
   },
   "admin": {

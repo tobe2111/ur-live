@@ -123,6 +123,24 @@ export default function GroupBuyDetailPage() {
   const refUserId = searchParams.get('ref')
   // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
   useEffect(() => { storeAffiliateRef(searchParams.get('aff')) }, [searchParams])
+
+  // 🛡️ 2026-06-11 (플로우 감사 갭#5): 토스 실패 복귀(?fail=1) 무안내였음 — failUrl 만 만들고
+  //   읽는 코드가 없어 유저가 결제 성패를 모름. 1회 toast + URL 정리(새로고침 중복 방지).
+  useEffect(() => {
+    if (searchParams.get('fail') !== '1') return
+    const rawMsg = searchParams.get('message') || ''
+    const code = searchParams.get('code') || ''
+    const safeMsg = rawMsg.slice(0, 120)
+    toast.error(safeMsg
+      ? `결제가 완료되지 않았어요 — ${safeMsg}${code ? ` (${code})` : ''}`
+      : '결제가 완료되지 않았어요. 다시 시도해주세요.')
+    try {
+      const u = new URL(window.location.href)
+      ;['fail', 'code', 'message', 'orderId'].forEach(k => u.searchParams.delete(k))
+      window.history.replaceState({}, '', u.pathname + (u.search || ''))
+    } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const isInfluencerLanding = !!refUserId
   const [detail, setDetail] = useState<GroupBuyDetail | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -360,8 +378,14 @@ export default function GroupBuyDetailPage() {
       setJoining(true)
       reportFunnel('click', productId)
       try {
+        // 🛡️ 2026-06-11 (플로우 감사 갭#3/#3b): 서버가 이미 지원하는 안전장치 2개를 드디어 전송 —
+        //   idempotency_key(이중탭/재시도 중복발급·이중차감 영구 차단, VoucherDetailPage:115 동일 패턴)
+        //   + ref(?ref= 배너가 약속하는 양쪽 0.5% 보너스의 실제 지급 경로 — 미전송이면 무적립이었음).
+        const { getTrackedSellerId } = await import('@/lib/seller-tracking')
+        const ref = getTrackedSellerId() || undefined
+        const idempotency_key = `gb_${productId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
         const res = await api.post(`/api/group-buy/join/${productId}`, {
-          quantity, payment_method: 'deal',
+          quantity, payment_method: 'deal', ref, idempotency_key,
           promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
         })
         if (res.data?.success) {
@@ -394,8 +418,10 @@ export default function GroupBuyDetailPage() {
     setJoining(true)
     reportFunnel('click', productId)
     try {
+      // 🛡️ 2026-06-11 (갭#3b): 토스 경로도 ref 전송 — init 응답 metadata 에 실려 confirm 까지 전파.
+      const { getTrackedSellerId: getRef } = await import('@/lib/seller-tracking')
       const initRes = await api.post(`/api/group-buy/join/${productId}`, {
-        quantity, payment_method: 'toss',
+        quantity, payment_method: 'toss', ref: getRef() || undefined,
         promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
       })
       if (!initRes.data?.success) {
@@ -416,7 +442,10 @@ export default function GroupBuyDetailPage() {
         return
       }
 
-      const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity) }).toString()
+      // 🛡️ 2026-06-11 (갭#3b): ref 를 success URL 로 전파 → confirm 페이지가 confirm-toss body 에 전달
+      //   (서버 :1009 는 이미 body.ref 검증·적립 지원 — 전달만 끊겨 있었음).
+      const _ref = getRef() || ''
+      const successQs = new URLSearchParams({ productId: String(productId), qty: String(quantity), ...(_ref ? { ref: _ref } : {}) }).toString()
       const failQs = new URLSearchParams({ productId: String(productId) }).toString()
       const successPath = `/group-buy/confirm-payment?${successQs}`
       const failPath = `/group-buy/${productId}?fail=1&${failQs}`

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, Zap, Loader2 } from 'lucide-react'
@@ -101,7 +102,17 @@ export default function PointsChargeSuccessPage() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => navigate(-2)}
+            onClick={() => {
+              // 🛡️ 2026-06-11 (플로우 감사 갭#4): '딜 부족 → 충전' 진입 시 저장된 복귀 경로 우선 —
+              //   기존 navigate(-2) 고정은 히스토리 깊이에 따라 비결정(이어서-참여 루프 끊김).
+              const saved = (() => { try { return localStorage.getItem('loginReturnUrl') } catch { return null } })()
+              if (saved) {
+                try { localStorage.removeItem('loginReturnUrl') } catch { /* */ }
+                navigate(safeInternalPath(saved, '/'))
+                return
+              }
+              navigate(-2)
+            }}
             className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
           >
             {t('pointsCharge.goLive', { defaultValue: '라이브로 돌아가기' })}

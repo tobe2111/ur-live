@@ -2069,6 +2069,20 @@
       "homeCardTitle": "Commerçants — scannez les bons clients ici",
       "homeCardDesc": "Visez le QR pour valider en un geste · Magic link sans connexion",
       "homeCardBtn": "Ouvrir le scanner"
+    },
+    "gbSettle": {
+      "title": "Règlements automatiques d'achat groupé",
+      "subtitle": "Calculés automatiquement chaque nuit selon les bons utilisés",
+      "empty": "Aucun règlement automatique — les bons utilisés sont calculés pendant la nuit",
+      "colPeriod": "Période",
+      "colStore": "Boutique",
+      "colUsed": "Utilisés",
+      "colAmount": "Montant",
+      "colStatus": "Statut",
+      "statusPending": "En attente",
+      "statusProcessing": "En cours",
+      "statusCompleted": "Payé",
+      "statusFailed": "Échoué"
     }
   },
   "admin": {

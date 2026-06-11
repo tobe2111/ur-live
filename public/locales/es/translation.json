@@ -2069,6 +2069,20 @@
       "homeCardTitle": "Dueños — escanea los vales de clientes aquí",
       "homeCardDesc": "Apunta al QR y canjea en un toque · Magic link sin iniciar sesión",
       "homeCardBtn": "Abrir escáner"
+    },
+    "gbSettle": {
+      "title": "Liquidaciones automáticas de compra grupal",
+      "subtitle": "Se calculan automáticamente cada noche según los vales canjeados",
+      "empty": "Aún no hay liquidaciones — los vales canjeados se calculan durante la noche",
+      "colPeriod": "Período",
+      "colStore": "Tienda",
+      "colUsed": "Canjeados",
+      "colAmount": "Importe",
+      "colStatus": "Estado",
+      "statusPending": "Pendiente",
+      "statusProcessing": "Procesando",
+      "statusCompleted": "Pagado",
+      "statusFailed": "Fallido"
     }
   },
   "admin": {

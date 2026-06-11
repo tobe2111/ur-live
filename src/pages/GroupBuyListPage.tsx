@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef, memo } from 'react'
+import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -90,6 +91,9 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
 }) {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  // 🏁 2026-06-11 (플로우 감사 🟢): 메인 피드 카드(GroupBuyFeedCard)에만 있던 상세 prefetch 를
+  //   동네딜 그리드에도 — hover/터치 시 상세 데이터 선로딩 → 클릭 시 fetch 워터폴 제거.
+  const prefetch = usePrefetchGroupBuyProduct()
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
   // 🏭 2026-06-05 (사용자 신고 — 깨진 이미지가 빈 카드로): onError 폴백.
   const [imgError, setImgError] = useState(false)
@@ -104,6 +108,9 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   return (
     <button
       onClick={() => navigate(`/group-buy/${p.id}`)}
+      onMouseEnter={() => prefetch(p.id)}
+      onTouchStart={() => prefetch(p.id)}
+      onFocus={() => prefetch(p.id)}
       className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
       style={{ backgroundColor: grad.base }}
     >

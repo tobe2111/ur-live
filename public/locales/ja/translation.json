@@ -2740,6 +2740,20 @@
       "homeCardTitle": "店舗オーナー様 — お客様のバウチャーはここでスキャン",
       "homeCardDesc": "QRをかざすと1タップで使用処理 · マジックリンクはログイン不要",
       "homeCardBtn": "スキャナーを開く"
+    },
+    "gbSettle": {
+      "title": "共同購入の自動精算履歴",
+      "subtitle": "使用済みクーポンを基準に毎晩自動集計されます",
+      "empty": "自動精算履歴はまだありません — クーポンが使用されると翌朝集計されます",
+      "colPeriod": "期間",
+      "colStore": "店舗",
+      "colUsed": "使用数",
+      "colAmount": "精算額",
+      "colStatus": "状態",
+      "statusPending": "待機",
+      "statusProcessing": "処理中",
+      "statusCompleted": "支払済み",
+      "statusFailed": "失敗"
     }
   },
   "admin": {

@@ -38,7 +38,9 @@ export default function GroupBuyConfirmPaymentPage() {
     }
     processedRef.current = true
 
-    api.post('/api/group-buy/confirm-toss', { paymentKey, orderId, amount, productId, qty })
+    // 🛡️ 2026-06-11 (갭#3b): success URL 의 ref 를 서버로 — 카드 결제도 추천 적립 동작.
+    const ref = params.get('ref') || undefined
+    api.post('/api/group-buy/confirm-toss', { paymentKey, orderId, amount, productId, qty, ref })
       .then((r) => {
         if (r.data?.success) {
           setState('success')

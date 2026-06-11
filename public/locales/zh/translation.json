@@ -2740,6 +2740,20 @@
       "homeCardTitle": "店主 — 在这里扫描顾客兑换券",
       "homeCardDesc": "对准二维码一键核销 · 魔法链接无需登录",
       "homeCardBtn": "打开扫描器"
+    },
+    "gbSettle": {
+      "title": "团购自动结算明细",
+      "subtitle": "根据已使用的兑换券每天凌晨自动汇总",
+      "empty": "暂无自动结算记录 — 兑换券使用后将于次日凌晨汇总",
+      "colPeriod": "期间",
+      "colStore": "门店",
+      "colUsed": "使用数",
+      "colAmount": "结算额",
+      "colStatus": "状态",
+      "statusPending": "待处理",
+      "statusProcessing": "处理中",
+      "statusCompleted": "已支付",
+      "statusFailed": "失败"
     }
   },
   "admin": {

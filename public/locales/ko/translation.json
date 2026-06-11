@@ -2740,6 +2740,20 @@
       "homeCardTitle": "매장 사장님 — 손님 바우처는 여기서 스캔",
       "homeCardDesc": "손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)",
       "homeCardBtn": "바우처 스캔 열기"
+    },
+    "gbSettle": {
+      "title": "공구 자동정산 내역",
+      "subtitle": "사용된 교환권 기준으로 매일 새벽 자동 집계됩니다",
+      "empty": "아직 자동정산 내역이 없어요 — 교환권이 사용되면 다음 날 새벽에 집계됩니다",
+      "colPeriod": "기간",
+      "colStore": "매장",
+      "colUsed": "사용 수",
+      "colAmount": "정산액",
+      "colStatus": "상태",
+      "statusPending": "대기",
+      "statusProcessing": "처리 중",
+      "statusCompleted": "지급 완료",
+      "statusFailed": "실패"
     }
   },
   "admin": {
