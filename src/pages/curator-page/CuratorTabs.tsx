@@ -6,7 +6,7 @@
 
 import { useTranslation } from 'react-i18next'
 
-export type CuratorTab = 'home' | 'shop' | 'vouchers' | 'info'
+export type CuratorTab = 'home' | 'shop' | 'vouchers'
 
 interface Props {
   tab: CuratorTab
@@ -23,7 +23,6 @@ export default function CuratorTabs({ tab, onChange, pinCount, shopCount = 0, vo
     { key: 'home', label: t('curator.tabs.home', { defaultValue: '홈' }), badge: pinCount > 0 ? String(pinCount) : undefined },
     { key: 'vouchers', label: t('curator.tabs.vouchers', { defaultValue: '식사권' }), badge: voucherCount > 0 ? String(voucherCount) : undefined },
     { key: 'shop', label: t('curator.tabs.shop', { defaultValue: '상품' }), badge: shopCount > 0 ? String(shopCount) : undefined },
-    { key: 'info', label: t('curator.tabs.info', { defaultValue: '정보' }) },
   ]
 
   return (
