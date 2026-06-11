@@ -4,7 +4,10 @@
 **SSOT: `docs/SSR_MIGRATION_PLAN.md`** — React Router v7(구 Remix) on CF Workers, 3 Phase.
 **Phase 1 진행 상황** (파일럿: https://ur-ssr-pilot.jiwon-1a2.workers.dev — Workers 무료 티어, 비용 0):
 - ✅ 2026-06-11 파일럿 확장 (`apps/ssr/` 만 수정, 본체 무수정): **동네딜 `/group-buy`**(카테고리 칩별 예열 키 `?status=active[&category=X]` byte-identical) + **링크샵 `/u/:handle`**(`/api/curator/:handle` — cron dynamic prewarm 키와 동일) 신설 + **본 사이트 실디자인 이식**(card-gradient 1:1 포팅, VoucherCard/GroupBuyGridCard/프로필 카드형 링크샵 헤더/핀 그리드/WT 도매 토큰, TopBar+BottomNav 셸). HTML 엣지캐시 60s(`workers/app.ts`) 무수정 — 신규 GET 라우트 자동 적용.
-- 남은 Phase 1: 사용자 폰 화면 확인 게이트(접속 즉시 보임 + LCP<1.5s) → beta 서브도메인 연결(사용자 액션). 스모크(ssr-pilot.yml)는 `/`·`/wholesale` 만 — `/group-buy` 추가 권장(워크플로 1줄, 본 세션 폴더 제한으로 미수정).
+- ✅ Phase 1 게이트 통과 (사용자 검증 완료 2026-06-11).
+- ✅ 2026-06-11 **Phase 2 (1/2)** (`apps/ssr/` 만): **상세 3종** `/group-buy/:id`(즉시판매 단일가 블록·절약 pill·trust 뱃지·sticky CTA, API `/api/group-buy/products/:id` 60s/900s 캐시 정합) + `/products/:id`(화이트 테마, deal_only→vouchers CTA 분기) + `/wholesale/product/:id`(guest 가격잠금·정보리스트·가입 CTA, 60s/300s) + **검색 `/search`**(GET form — JS 없이 동작, q 없으면 `/api/search/popular` 인기검색어, 결과는 `/api/products?search=`+오타보정 suggested_query, 정렬 칩). 리스트 카드 → 파일럿 내부 상세로 링크 전환. HTML 엣지캐시 60s 불변.
+- 📋 **Phase 2 (2/2) 인증 쿠키**: 설계 문서 `docs/SSR_PHASE2_AUTH.md` 작성 완료 — httpOnly dual-write(`ud_*` 쿠키, Domain=.ur-team.com), 미들웨어 GET-only 쿠키 fallback, CSRF 표면 0 유지, kakao.routes 는 UNLOCK 절차. **구현은 본체(src/) 수정이라 B세션과 조율 후** (선행: beta.ur-team.com 연결 — workers.dev 는 쿠키 공유 불가).
+- 스모크(ssr-pilot.yml)는 `/`·`/wholesale` 만 — `/group-buy`·`/search` 추가 권장(워크플로 1줄, 폴더 제한으로 미수정).
 사용자 액션: 스테이징 서브도메인 1개 (Cloudflare). ⚠️ 기존 `/api/*`·Toss/카카오 잠금 무수정 원칙.
 
 

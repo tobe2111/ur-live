@@ -60,7 +60,7 @@ function GroupBuyGridCard({ p, idx }: { p: Item; idx: number }) {
   const achieved = target > 0 && current >= target
   const timeLeft = formatTimeLeft(p.group_buy_deadline)
   return (
-    <a className="card" href={`${API}/group-buy/${p.id}`} style={{ backgroundColor: grad.base }}>
+    <a className="card" href={`/group-buy/${p.id}`} style={{ backgroundColor: grad.base }}>
       <div className="thumb-box" style={{ backgroundColor: grad.base }}>
         {p.image_url ? (
           <img className="thumb" src={img(p.image_url, 400)} alt={p.name} width={400} height={400}

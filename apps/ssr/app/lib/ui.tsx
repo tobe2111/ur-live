@@ -73,7 +73,7 @@ export function TopBar() {
     <div className="topbar">
       <Link to="/" className="topbar-logo">유어딜<span className="topbar-beta">beta</span></Link>
       <div className="topbar-actions">
-        <a href={`${API}/search`} aria-label="검색"><IconSearch /></a>
+        <Link to="/search" aria-label="검색"><IconSearch /></Link>
         <a href={`${API}/notifications`} aria-label="알림"><IconBell className="icon-20" /></a>
         <a href={`${API}/cart`} aria-label="장바구니"><IconCart /></a>
       </div>

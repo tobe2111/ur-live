@@ -48,7 +48,7 @@ export default function Wholesale() {
         ) : (
           <div className="grid">
             {items.map((p, i) => (
-              <a key={p.id} className="wt-card" href={`${API}/wholesale/product/${p.id}`}>
+              <a key={p.id} className="wt-card" href={`/wholesale/product/${p.id}`}>
                 {p.image_url ? (
                   <img className="wt-thumb" src={img(p.image_url, 300)} alt={p.name} width={300} height={300}
                     loading={i < 4 ? 'eager' : 'lazy'} fetchPriority={i < 4 ? 'high' : 'auto'} decoding="async" />

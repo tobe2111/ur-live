@@ -37,7 +37,7 @@ function VoucherCard({ p, aboveFold }: { p: Item; aboveFold: boolean }) {
   const reviewCount = Number(p.review_count || 0)
   const soldCount = Number(p.sold_count || 0)
   return (
-    <a className="card" href={`${API}/vouchers/${p.id}`} style={{ backgroundColor: grad.base }}>
+    <a className="card" href={`/products/${p.id}`} style={{ backgroundColor: grad.base }}>
       <div className="thumb-box" style={{ backgroundColor: grad.base }}>
         {p.image_url ? (
           <img className="thumb" src={img(p.image_url, 300)} alt={p.name} width={300} height={300}
