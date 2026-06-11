@@ -117,11 +117,6 @@ export default function CuratorPage() {
     return () => { alive = false }
   }, [handle, t])
 
-  const totalClicks = useMemo(() => {
-    if (!data?.pins) return 0
-    return data.pins.reduce((sum, p) => sum + (p.click_count || 0), 0)
-  }, [data])
-
   // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/식사권 분류 (deal_only / voucher 카테고리).
   const { shopPins, voucherPins } = useMemo(() => {
     if (!data?.pins) return { shopPins: [] as CuratorPin[], voucherPins: [] as CuratorPin[] }
@@ -258,7 +253,13 @@ export default function CuratorPage() {
                 onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
               />
         )}
-        {tab === 'info' && <InfoTab curator={curator} pinCount={pins.length} totalClicks={totalClicks} isOwner={isOwner} />}
+        {/* 🛡️ 2026-06-11 (사용자): '정보' 탭 제거 — 핸들 변경 기능만 오너 전용 슬림 행으로 보존 */}
+        {isOwner && (
+          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between text-sm border-t border-gray-100 dark:border-[#1A1A1A] mt-6">
+            <span className="text-gray-400">링크샵 주소</span>
+            <HandleEditor handle={curator.handle} />
+          </div>
+        )}
 
         {/* 🧭 2026-06-10 (UI 100점 패스 — 방문자 전환): 비소유자 성장 루프 CTA.
             링크트리식 — 방문자가 1탭으로 자기 링크샵 시작(적립 루프 신규 큐레이터 유입). */}
@@ -361,11 +362,7 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
           <p className="text-xs line-clamp-2 leading-tight font-medium">{pin.product_name}</p>
           <p className="text-sm font-extrabold mt-1" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
           {pin.note && <p className="text-[10px] mt-1 line-clamp-1" style={{ color: grad.sub }}>💬 {pin.note}</p>}
-          {isOwner && (
-            <p className="text-[10px] mt-1" style={{ color: grad.sub }}>
-              👆 {pin.click_count.toLocaleString()} {t('curator.clicks', { defaultValue: '클릭' })}
-            </p>
-          )}
+
         </div>
       </a>
       {/* 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼. */}
@@ -436,50 +433,6 @@ function HandleEditor({ handle }: { handle: string }) {
       </div>
       {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>{msg}</span>}
     </dd>
-  )
-}
-
-function InfoTab({ curator, pinCount, totalClicks, isOwner }: { curator: CuratorPageResponse['curator']; pinCount: number; totalClicks: number; isOwner: boolean }) {
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-      <section className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#1A1A1A]">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">📋 활동 정보</h3>
-        <dl className="space-y-2 text-sm">
-          <div className="flex justify-between items-center">
-            <dt className="text-gray-400">핸들</dt>
-            {isOwner ? <HandleEditor handle={curator.handle} /> : <dd className="text-white font-mono">@{curator.handle}</dd>}
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-gray-400">추천 상품</dt>
-            <dd className="text-white">{formatNumber(pinCount)}개</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-gray-400">누적 클릭</dt>
-            <dd className="text-white">{formatNumber(totalClicks)}회</dd>
-          </div>
-        </dl>
-      </section>
-
-      {curator.bio && (
-        <section className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#1A1A1A]">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">💬 한 줄 소개</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{curator.bio}</p>
-        </section>
-      )}
-
-      <section className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 rounded-xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">🔗 친구에게 추천</h3>
-        <p className="text-xs text-gray-300 mb-3">
-          이 페이지에서 친구가 상품을 구매하면 큐레이터에게 적립이 돌아갑니다.
-        </p>
-        <Link
-          to="/host/new"
-          className="block text-center py-2 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#020202] text-xs font-bold rounded-lg"
-        >
-          나도 링크샵 만들기
-        </Link>
-      </section>
-    </div>
   )
 }
 
