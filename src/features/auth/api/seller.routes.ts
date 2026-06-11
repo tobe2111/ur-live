@@ -563,6 +563,12 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
     }
     
     // 7. 응답 반환
+    // 🔐 2026-06-11 SSR Phase 2: ud_seller_token dual-write — 갱신 시 쿠키도 재발급 (docs/SSR_PHASE2_AUTH.md §3.2-3).
+    //   누락 시 30일 후 쿠키만 만료 → beta(SSR) 개인화가 재로그인 전까지 조용히 꺼짐. 응답 바디 불변(additive).
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+      c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', newAccessToken, new URL(c.req.url).hostname), { append: true })
+    } catch { /* 쿠키 발급 실패해도 기존 localStorage 흐름 무영향 */ }
     return c.json<AuthResponse>({
       success: true,
       data: {

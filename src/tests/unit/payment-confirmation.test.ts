@@ -35,11 +35,14 @@ const { mockFindByOrderNumber, mockUpdateStatus, mockReduceStock } = vi.hoisted(
 // The payment route does: import { OrderRepository } from '../repositories/order.repository'
 // Resolved from the test file's perspective: ../../worker/repositories/order.repository
 vi.mock('../../worker/repositories/order.repository', () => ({
-  OrderRepository: vi.fn().mockImplementation(() => ({
-    findByOrderNumber: mockFindByOrderNumber,
-    updateStatus: mockUpdateStatus,
-    reduceStock: mockReduceStock,
-  })),
+  // vitest 4: arrow 구현 vi.fn 은 `new` 호출 불가("is not a constructor") — 일반 function 으로.
+  OrderRepository: vi.fn().mockImplementation(function () {
+    return {
+      findByOrderNumber: mockFindByOrderNumber,
+      updateStatus: mockUpdateStatus,
+      reduceStock: mockReduceStock,
+    };
+  }),
 }));
 
 // ── Silence non-critical side-effects ───────────────────────────────────────

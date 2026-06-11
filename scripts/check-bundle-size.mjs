@@ -21,6 +21,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -71,6 +72,27 @@ const cssFiles = files
       ? fs.statSync(path.join(distDir, f + '.gz')).size : 0,
   }));
 
+// ── Critical path: index.html 의 entry <script type="module"> + <link rel="modulepreload"> 합 ──
+//   2026-06-09 분석 기준 257KB gzip (228 → +13% 유기적 성장) — 추세 모니터를 예산으로 강제.
+//   첫 페인트 전에 받아야 하는 바이트라 totalGzip 과 별개로 회귀 감지 필요.
+const indexHtmlPath = [path.join(root, 'dist/client/index.html'), path.join(root, 'dist/index.html')]
+  .find(p => fs.existsSync(p));
+let criticalFiles = [];
+let criticalGzip = 0;
+if (indexHtmlPath) {
+  const html = fs.readFileSync(indexHtmlPath, 'utf8');
+  const refs = new Set();
+  for (const m of html.matchAll(/<script[^>]+type="module"[^>]+src="([^"]+\.js)"/g)) refs.add(m[1]);
+  for (const m of html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="([^"]+\.js)"/g)) refs.add(m[1]);
+  const names = [...refs].map(r => r.split('/').pop());
+  criticalFiles = jsFiles.filter(f => names.includes(f.name));
+  // .gz 사이드카가 없는 빌드(로컬 등)에서도 예산이 작동하도록 zlib 으로 직접 측정.
+  criticalGzip = criticalFiles.reduce((s, f) => {
+    const gz = f.gzip > 0 ? f.gzip : zlib.gzipSync(fs.readFileSync(path.join(distDir, f.name))).length;
+    return s + gz;
+  }, 0);
+}
+
 const totalSize = jsFiles.reduce((s, f) => s + f.size, 0);
 const totalGzip = jsFiles.reduce((s, f) => s + f.gzip, 0);
 const totalBrotli = jsFiles.reduce((s, f) => s + f.brotli, 0);
@@ -91,6 +113,9 @@ const BUDGET = {
   //   index: 1172KB → 27KB (locales+app chunks 분리), locales: 991KB, i18n: 65KB.
   //   900 목표는 locales 청크 lazy-load (런타임 언어 감지 후 로드) 시 달성 가능 — TODO.
   singleRawKB: 1000,
+  // 🛡️ 2026-06-11: critical path gzip 예산 — 2026-06-09 실측 257KB 기준 +헤드룸.
+  //   넘으면 entry 에 eager import 가 새로 들어갔다는 신호 → lazy/manualChunks 분할 먼저.
+  criticalGzipKB: 300,
 };
 
 const violations = [];
@@ -99,6 +124,9 @@ if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
 }
 if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
   violations.push(`총 gzip JS ${(totalGzip / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalGzipMB} MB`);
+}
+if (criticalGzip > 0 && criticalGzip / 1024 > BUDGET.criticalGzipKB) {
+  violations.push(`critical path gzip ${(criticalGzip / 1024).toFixed(1)} KB > ${BUDGET.criticalGzipKB} KB (entry+modulepreload ${criticalFiles.length}개)`);
 }
 const overSized = jsFiles.filter(f => f.size / 1024 > BUDGET.singleRawKB);
 if (overSized.length > 0) {
@@ -125,6 +153,11 @@ if (jsonMode) {
       file_count: cssFiles.length,
       total_raw_bytes: totalCss,
       total_gzip_bytes: totalCssGzip,
+    },
+    critical_path: {
+      file_count: criticalFiles.length,
+      gzip_bytes: criticalGzip,
+      files: criticalFiles.map(f => ({ name: f.name, gzip_kb: +(f.gzip / 1024).toFixed(2) })),
     },
     budget: BUDGET,
     violations,
@@ -158,6 +191,9 @@ if (jsonMode) {
   console.log(`   Total raw JS:  ${(totalSize / 1024 / 1024).toFixed(2)} / ${BUDGET.totalRawMB} MB`);
   console.log(`   Total gzip JS: ${(totalGzip / 1024 / 1024).toFixed(2)} / ${BUDGET.totalGzipMB} MB`);
   console.log(`   Single max KB: ${BUDGET.singleRawKB} KB`);
+  if (criticalGzip > 0) {
+    console.log(`   Critical path: ${(criticalGzip / 1024).toFixed(1)} / ${BUDGET.criticalGzipKB} KB gzip (entry+modulepreload ${criticalFiles.length} files)`);
+  }
 
   if (violations.length === 0) {
     console.log('\n✅ All within budget.');

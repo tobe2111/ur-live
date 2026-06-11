@@ -228,16 +228,17 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 
       const { authFetch } = await import('@/shared/utils/auth-api');
 
-      // Advance past the 2s retry delay + 5s cleanup timers
-      const dataPromise = authFetch('/api/cart');
-      await vi.advanceTimersByTimeAsync(7500);
-      const data = await dataPromise;
+      // vitest 4: 이 흐름(401→refresh→2s 재시도)에서 advanceTimersByTimeAsync 가 진행되지 않음
+      //   (401 경로의 dynamic import 가 fake timer 와 교착). 같은 파일의 통합 테스트
+      //   ('complete login → … → retry flow')와 동일하게 real timer 로 실행 — 실시간 ~2s.
+      vi.useRealTimers();
+      const data = await authFetch('/api/cart');
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
       // getIdToken is called inside authFetch during 401 retry
       expect(mockAuthKR.getState).toHaveBeenCalled();
       expect(data).toEqual({ success: true });
-    });
+    }, 15000);
 
     it('should enforce max 1 retry limit', async () => {
       // Both calls: 401 error

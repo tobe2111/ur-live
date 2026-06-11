@@ -119,10 +119,11 @@
     "terser": "5.46.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.3",
-    "vitest": "^2.1.1",
+    "vitest": "4.1.8",
     "wrangler": "4.84.1"
   },
   "overrides": {
-    "protobufjs": "^7.5.8"
+    "protobufjs": "^7.5.8",
+    "shell-quote": "^1.8.4"
   }
 }

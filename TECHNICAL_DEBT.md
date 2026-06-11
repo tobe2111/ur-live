@@ -2,6 +2,12 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-06-11 — vitest 2→4.1.8 업그레이드 (allowlist 졸업) + critical path 예산
+- ✅ **vitest** `2.1.9 → 4.1.8` — `GHSA-5xrq-8626-4rwp`(critical) 패치 버전. 우려했던 vite 5→6 연쇄 **불발생**: vitest 4.1 은 자체 중첩 vite 8 사용, 본체 빌드는 vite 5.4.21 그대로 (npm ls 로 확인). `.audit-allowlist.json` 비움(0건).
+  - 마이그레이션 수정 3건: ① arrow 구현 `vi.fn()` 은 v4 에서 `new` 호출 불가 → repository 클래스 mock 을 일반 `function` 으로 (payment-confirmation/webhook-payment) ② auth-api 401 재시도 테스트는 fake timer 교착 → real timer 전환(~2s, 같은 파일 통합 테스트와 동일 패턴) ③ agency-shared 테스트가 당일 보안 감사(9cd8e479, getSellerIdFromToken type 검증)와 미동기 → 토큰에 type 포함 + 거부 케이스 추가. **2028 tests green.**
+- ✅ **shell-quote** override `^1.8.4` — concurrently 9 경유 critical (newline escape). concurrently 10 major 업글 회피.
+- ✅ **critical path gzip 예산** — `check-bundle-size.mjs` 에 index.html entry+modulepreload 합산 예산(300KB, 현재 263KB) 추가. .gz 사이드카 없으면 zlib 직접 측정 — CI(`verify.yml` budget step)에서 자동 차단. 2026-06-09 분석의 "228→257KB 추세 모니터 권장" 마감.
+
 ## 📊 2026-06-04 — npm audit high/critical 정리 + allowlist 게이트
 - ✅ **axios** `1.15.2 → 1.17.0` (production 의존성, high 4종 해결 — minor 범위, 빌드/tsc 무영향 검증).
 - ✅ **protobufjs** override `^7.5.8`(→7.6.2) — firebase/firebase-admin 경유 transitive high 6종 해결. firebase major 다운그레이드 회피(override 방식).

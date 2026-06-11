@@ -48,25 +48,30 @@ const {
 }));
 
 // ── OrderRepository mock ──────────────────────────────────────────────────────
+// vitest 4: arrow 구현 vi.fn 은 `new` 호출 불가("is not a constructor") — 일반 function 으로.
 vi.mock('../../worker/repositories/order.repository', () => ({
-  OrderRepository: vi.fn().mockImplementation(() => ({
-    findByOrderNumber: mockFindByOrderNumber,
-    updateStatus: mockUpdateStatus,
-    restoreStock: mockRestoreStock,
-    confirmPaymentAtomic: mockConfirmPaymentAtomic,
-    isAlreadyProcessed: mockOrderIsAlreadyProcessed,
-  })),
+  OrderRepository: vi.fn().mockImplementation(function () {
+    return {
+      findByOrderNumber: mockFindByOrderNumber,
+      updateStatus: mockUpdateStatus,
+      restoreStock: mockRestoreStock,
+      confirmPaymentAtomic: mockConfirmPaymentAtomic,
+      isAlreadyProcessed: mockOrderIsAlreadyProcessed,
+    };
+  }),
 }));
 
 // ── WebhookEventRepository mock ───────────────────────────────────────────────
 vi.mock('../../worker/repositories/webhook.repository', () => ({
-  WebhookEventRepository: vi.fn().mockImplementation(() => ({
-    isAlreadyProcessed: mockWebhookIsAlreadyProcessed,
-    record: mockRecord,
-    markProcessed: mockMarkProcessed,
-    markSkipped: mockMarkSkipped,
-    markFailed: mockMarkFailed,
-  })),
+  WebhookEventRepository: vi.fn().mockImplementation(function () {
+    return {
+      isAlreadyProcessed: mockWebhookIsAlreadyProcessed,
+      record: mockRecord,
+      markProcessed: mockMarkProcessed,
+      markSkipped: mockMarkSkipped,
+      markFailed: mockMarkFailed,
+    };
+  }),
 }));
 
 // ── Silence side-effects ──────────────────────────────────────────────────────

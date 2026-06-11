@@ -15,8 +15,9 @@ async function makeAgencyToken(id: number, email: string, type = 'agency'): Prom
   return sign({ sub: String(id), email, type, exp: Math.floor(Date.now() / 1000) + 3600 }, SECRET)
 }
 
-async function makeSellerToken(seller_id: number): Promise<string> {
-  return sign({ seller_id, exp: Math.floor(Date.now() / 1000) + 3600 }, SECRET)
+// 🔐 2026-06-11 보안 감사(9cd8e479)로 type==='seller' 검증 추가 — 실서명 payload 와 동일하게 type 포함.
+async function makeSellerToken(seller_id: number, type: string | null = 'seller'): Promise<string> {
+  return sign({ seller_id, ...(type ? { type } : {}), exp: Math.floor(Date.now() / 1000) + 3600 }, SECRET)
 }
 
 describe('verifyAgencyToken', () => {
@@ -77,6 +78,11 @@ describe('getSellerIdFromToken', () => {
 
   it('undefined → null', async () => {
     expect(await getSellerIdFromToken(undefined, SECRET)).toBe(null)
+  })
+
+  it('type !== seller → null (감사 9cd8e479 — 타 토큰의 seller_id claim 거부)', async () => {
+    expect(await getSellerIdFromToken('Bearer ' + await makeSellerToken(99, 'agency'), SECRET)).toBe(null)
+    expect(await getSellerIdFromToken('Bearer ' + await makeSellerToken(99, null), SECRET)).toBe(null)
   })
 
   it('seller_id 없는 payload → null', async () => {
