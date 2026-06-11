@@ -595,14 +595,49 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
     const DB = c.env.DB
-    await ensureCuratorTables(DB)
+    // 🏁 2026-06-11 (사용자 — earnings 로딩 김): DDL 을 응답 경로에서 분리 (public /:handle 과 동일 패턴).
+    try { c.executionCtx?.waitUntil?.(ensureCuratorTables(DB).catch(() => {})) } catch { /* no ctx */ }
 
     // 🛡️ 2026-05-25: handle 반환 — /u/me redirect / 마이페이지 카드용
     // 🛡️ 2026-05-27 (영구 fix — 큐레이터 모델): 모든 user 가 공개 페이지 보유.
     //   handle NULL 인 사용자도 자동 생성 → /host/new fall through 영구 차단.
     //   user.name 기반 slug → 충돌 시 user2/3..99 → random hex.
-    let meRow = await DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
-      .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null)
+    // 🏁 2026-06-11: meRow/linkedSeller/통계 6종 — 전부 userId 만 의존 → 한 번에 병렬 (3 RTT → 1 RTT).
+    const [meRow0, linkedSeller0, earnings30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
+      DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null),
+      DB.prepare(
+        `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+      ).bind(userId).first<{ id: number; username: string }>().catch(() => null),
+      DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ total: number }>().catch(() => null),
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM pin_click_logs
+         WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM affiliate_earnings
+         WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      DB.prepare(
+        `SELECT pp.id, pp.product_id, pp.click_count, p.name AS product_name, p.thumbnail, p.image_url
+         FROM product_pins pp JOIN products p ON p.id = pp.product_id
+         WHERE pp.user_id = ? ORDER BY pp.click_count DESC LIMIT 3`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      DB.prepare(
+        `SELECT date(created_at) AS date, COALESCE(SUM(commission), 0) AS amount
+         FROM affiliate_earnings WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')
+         GROUP BY date(created_at) ORDER BY date ASC`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      DB.prepare(
+        `SELECT id, product_id, product_name, commission, order_amount, created_at
+         FROM affiliate_earnings WHERE referrer_id = ?
+         ORDER BY created_at DESC LIMIT 30`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+    ])
+    let meRow = meRow0
     if (meRow && !meRow.handle) {
       try {
         const newHandle = await generateUniqueHandle(DB, meRow.name, userId, userId)
@@ -617,9 +652,7 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     // 🛡️ 2026-05-27 (영구 fix — 사용자 보고): linked_user_id 매핑 없으면 email 매칭 fallback + 즉시 backfill.
     //   사용자 보고: 카카오 로그인 (linked_user_id NULL 상태) → dashboard 가 linked_seller 못 찾아
     //   /host/new fall through. backfill cron / KakaoAuthService auto-link 가 production 에서 아직 실행 안 된 환경 graceful.
-    let linkedSeller = await DB.prepare(
-      `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-    ).bind(userId).first<{ id: number; username: string }>().catch(() => null)
+    let linkedSeller = linkedSeller0
 
     if (!linkedSeller) {
       // Email 매칭 fallback — auto-link 가 아직 안 된 사용자
@@ -636,43 +669,6 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-31: 6개 쿼리 병렬화 (이전: 순차 await ~6 round-trip → 로딩 느림) + 원천별 수익 내역 추가.
-    const [earnings30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
-      // 30일 어필리에이트 적립 (affiliate_earnings = SSOT, 컬럼명 commission)
-      //   🛡️ 2026-05-31: 환불 커미션 제외 — 출금 잔액과 표시 정합.
-      DB.prepare(
-        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
-         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
-      ).bind(userId).first<{ total: number }>().catch(() => null),
-      // 30일 클릭
-      DB.prepare(
-        `SELECT COUNT(*) AS cnt FROM pin_click_logs
-         WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
-      ).bind(userId).first<{ cnt: number }>().catch(() => null),
-      // 30일 구매 건수
-      DB.prepare(
-        `SELECT COUNT(*) AS cnt FROM affiliate_earnings
-         WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
-      ).bind(userId).first<{ cnt: number }>().catch(() => null),
-      // Top 3 pins (click_count denormalized)
-      DB.prepare(
-        `SELECT pp.id, pp.product_id, pp.click_count, p.name AS product_name, p.thumbnail, p.image_url
-         FROM product_pins pp JOIN products p ON p.id = pp.product_id
-         WHERE pp.user_id = ? ORDER BY pp.click_count DESC LIMIT 3`,
-      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
-      // 일별 적립 차트 (30일)
-      DB.prepare(
-        `SELECT date(created_at) AS date, COALESCE(SUM(commission), 0) AS amount
-         FROM affiliate_earnings WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')
-         GROUP BY date(created_at) ORDER BY date ASC`,
-      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
-      // 🛡️ 2026-05-31: 원천별 수익 내역 (어느 상품/주문에서 얼마 적립됐는지 — 사용자 요청).
-      DB.prepare(
-        `SELECT id, product_id, product_name, commission, order_amount, created_at
-         FROM affiliate_earnings WHERE referrer_id = ?
-         ORDER BY created_at DESC LIMIT 30`,
-      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
-    ])
 
     return c.json({
       success: true,
