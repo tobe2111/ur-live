@@ -528,14 +528,23 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           } catch (e) { if (import.meta.env?.DEV) console.warn('[partial-refund ledger]', e) }
 
           // 유저 push
-          try {
-            const { sendSystemPush } = await import('../../../lib/system-push')
-            await sendSystemPush(c.env, 'user', voucher.user_id, {
-              title: '부분 환불 완료',
-              body: `사용 ${usedAmount.toLocaleString()}원 / 환불 ${refundAmount.toLocaleString()}딜`,
-              url: '/user/profile', tag: `partial-refund-${voucher.id}`,
-            })
-          } catch { /* ignore */ }
+          // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 외부 푸시 호출 — 응답 후 실행(waitUntil).
+          //   블록 내용/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+          {
+            const _bg = async () => {
+            try {
+              const { sendSystemPush } = await import('../../../lib/system-push')
+              await sendSystemPush(c.env, 'user', voucher.user_id, {
+                title: '부분 환불 완료',
+                body: `사용 ${usedAmount.toLocaleString()}원 / 환불 ${refundAmount.toLocaleString()}딜`,
+                url: '/user/profile', tag: `partial-refund-${voucher.id}`,
+              })
+            } catch { /* ignore */ }
+            }
+            let _deferred = false
+            try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+            if (!_deferred) await _bg()
+          }
 
           // 환불 완료 알림톡 (통합 헬퍼 — 취소/부분환불 공통)
           c.executionCtx?.waitUntil(

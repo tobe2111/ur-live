@@ -240,14 +240,23 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
 
   // 🧲 2026-06-10 수요 신호 루프: 새 제안 → 어드민 벨 알림 (fail-soft — 제안 생성을 막지 않음).
   //   하단바 ➕ 로 들어온 제안을 운영자가 즉시 보고 매장 영입(수요 신호) 후속으로 연결.
-  try {
-    await createDashboardNotification(
-      DB, 'admin', null, 'community_gb_proposed',
-      `동네 공구 제안: ${body.restaurant_name}`,
-      `${user.name || '익명'} · 제안가 ${body.proposed_price.toLocaleString('ko-KR')}원 · 목표 ${targetCount}명`,
-      '/admin/restaurant-demand',
-    );
-  } catch { /* best-effort */ }
+  // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 알림 INSERT — 응답 후 실행(waitUntil).
+  //   블록 내용/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+  {
+    const _bg = async () => {
+    try {
+      await createDashboardNotification(
+        DB, 'admin', null, 'community_gb_proposed',
+        `동네 공구 제안: ${body.restaurant_name}`,
+        `${user.name || '익명'} · 제안가 ${body.proposed_price.toLocaleString('ko-KR')}원 · 목표 ${targetCount}명`,
+        '/admin/restaurant-demand',
+      );
+    } catch { /* best-effort */ }
+    };
+    let _deferred = false;
+    try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+    if (!_deferred) await _bg();
+  }
 
   return c.json({
     success: true,
@@ -370,7 +379,10 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
   const newStatus = refreshed?.status ?? group.status;
 
   // 50명 도달 시 모든 에이전시에 알림 전송
+  // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): inline CREATE TABLE + 에이전시 N명 INSERT 루프 —
+  //   응답 후 실행(waitUntil). 블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 동기 실행.
   if (newCount === 50) {
+    const _bg = async () => {
     try {
       // agency_notifications 테이블 보장
       try {

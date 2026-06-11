@@ -34,6 +34,9 @@ export const giftsRoutes = new Hono<{ Bindings: Bindings }>()
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
+// 🏁 2026-06-11: gifts.toss_payment_key 컬럼 보장 메모이즈 (per-request ALTER 낭비 제거).
+let _giftPayKeyColEnsured = false
+
 interface GiftRow {
   id: number
   sender_user_id: number
@@ -175,37 +178,52 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
 
     // 4) gift status 업데이트 + toss_payment_key 저장 (환불 cron 용)
     //    🛡️ 2026-04-28: ensure ADD COLUMN — 마이그레이션 미적용 환경 안전
-    try {
-      await c.env.DB.prepare("ALTER TABLE gifts ADD COLUMN toss_payment_key TEXT").run()
-    } catch { /* exists */ }
+    //    🏁 2026-06-11 (응답 경로 부수효과 전수조사): 모듈 메모이즈 — isolate 당 1회만 실행.
+    //      컬럼은 prod 에 이미 존재(매 요청 ALTER 실패 D1 1왕복 낭비). 아래 UPDATE 가 컬럼을 쓰므로
+    //      waitUntil 이동은 불가 — 메모이즈로만 (콜드 1회 동작 기존과 동일).
+    if (!_giftPayKeyColEnsured) {
+      try {
+        await c.env.DB.prepare("ALTER TABLE gifts ADD COLUMN toss_payment_key TEXT").run()
+      } catch { /* exists */ }
+      _giftPayKeyColEnsured = true
+    }
     await c.env.DB.prepare(`
       UPDATE gifts SET status = 'paid', paid_at = datetime('now'),
         toss_payment_key = ?, updated_at = datetime('now') WHERE id = ?
     `).bind(body.paymentKey, giftId).run()
 
     // 5) 알림톡 발송 (best-effort, 실패해도 결제는 성공 처리)
-    try {
-      const baseUrl = new URL(c.req.url).origin
-      const claimUrl = `${baseUrl}/gift/claim/${gift.claim_token}`
-      // alimtalk 인프라 호출 (sendAlimtalk dynamic import — Worker bundle 분리 위해)
-      const ALIGO_API_KEY = (c.env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY
-      const ALIGO_USER_ID = (c.env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID
-      // 🛡️ 2026-04-28: 플랫폼 공통 senderKey — 빈값이면 발송 실패. env 에 등록 필요.
-      const ALIGO_SENDER_KEY = (c.env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY
-      if (ALIGO_API_KEY && ALIGO_USER_ID && ALIGO_SENDER_KEY) {
-        const { sendAlimtalk } = await import('../../../lib/aligo')
-        await sendAlimtalk(
-          { ALIGO_API_KEY, ALIGO_USER_ID },
-          {
-            senderKey: ALIGO_SENDER_KEY,
-            templateCode: 'gift_received',
-            to: gift.recipient_phone,
-            message: `[유어딜] 선물이 도착했어요! 받기 → ${claimUrl}`,
-          }
-        )
+    // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 외부 HTTP(알리고) — 응답 후 실행(waitUntil).
+    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    {
+      const _bg = async () => {
+      try {
+        const baseUrl = new URL(c.req.url).origin
+        const claimUrl = `${baseUrl}/gift/claim/${gift.claim_token}`
+        // alimtalk 인프라 호출 (sendAlimtalk dynamic import — Worker bundle 분리 위해)
+        const ALIGO_API_KEY = (c.env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY
+        const ALIGO_USER_ID = (c.env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID
+        // 🛡️ 2026-04-28: 플랫폼 공통 senderKey — 빈값이면 발송 실패. env 에 등록 필요.
+        const ALIGO_SENDER_KEY = (c.env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY
+        if (ALIGO_API_KEY && ALIGO_USER_ID && ALIGO_SENDER_KEY) {
+          const { sendAlimtalk } = await import('../../../lib/aligo')
+          await sendAlimtalk(
+            { ALIGO_API_KEY, ALIGO_USER_ID },
+            {
+              senderKey: ALIGO_SENDER_KEY,
+              templateCode: 'gift_received',
+              to: gift.recipient_phone,
+              message: `[유어딜] 선물이 도착했어요! 받기 → ${claimUrl}`,
+            }
+          )
+        }
+      } catch (notifyErr) {
+        if (typeof console !== 'undefined') console.error('[gift confirm] alimtalk 실패:', notifyErr)
       }
-    } catch (notifyErr) {
-      if (typeof console !== 'undefined') console.error('[gift confirm] alimtalk 실패:', notifyErr)
+      }
+      let _deferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
+      if (!_deferred) await _bg()
     }
 
     return c.json({ success: true, data: { id: giftId, status: 'paid', claim_token: gift.claim_token } })
