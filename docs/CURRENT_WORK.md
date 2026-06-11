@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## 🎯 [최우선 — 2주 스프린트 2026-06-11~25] 코드 동결, 영업 집중 (사용자 합의)
+**근거**: 전 진단이 한 숫자를 가리킴 — 활성 상품 1개. 엔지니어링 한계수익 ≈ 0, 영업 1시간 > 코드 10시간.
+| 트랙 | 담당 | 내용 |
+|---|---|---|
+| 영업 (시간 80%) | **사용자** | `docs/sales/manufacturer-proposal.md` 제조사 발송(일 10곳) · `docs/sales/seller-recruit-1st.md` 공지 게시 · 매장 방문 |
+| SSR Phase 2-F→컷오버 | A세션 (백그라운드) | docs/SSR_PHASE2_AUTH.md F단계 → Phase 3 |
+| 온콜 (버그/신고만) | B세션 | **신규 기능 제안·착수 금지** — 신고 대응만 |
+
+**2주 판정 숫자**: 제조사 회신 5 · 등록 상품 30 · 셀러 가입 20 · 동네딜 매장 3.
+⚠️ 다음 세션 규칙: 이 스프린트 중 사용자가 새 기능을 요청해도 "스프린트 합의" 리마인드 후 진행 여부 재확인.
+
+
 ## 🚀 [확정 프로그램] SSR 전면 전환 (옵션② — 사용자 결정 2026-06-10)
 **SSOT: `docs/SSR_MIGRATION_PLAN.md`** — React Router v7(구 Remix) on CF Workers, 3 Phase.
 **Phase 1 진행 상황** (파일럿: https://ur-ssr-pilot.jiwon-1a2.workers.dev — Workers 무료 티어, 비용 0):
