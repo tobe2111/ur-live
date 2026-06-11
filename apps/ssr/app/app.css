@@ -1,23 +1,139 @@
-/* SSR 파일럿 — 의도적으로 경량(파일럿 목적 = "접속 즉시 보임" 검증). */
+/* SSR 파일럿 — 본 사이트 실디자인 이식 (다크 소비자 테마 + 도매 WT 라이트).
+   색 토큰은 CLAUDE.md 테마 규칙(#020202/#121212/#1A1A1A/#2A2A2A, WT) 1:1. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
-.dark-page { background: #020202; color: #fff; min-height: 100vh; }
-.light-page { background: #F4F5F7; color: #17181C; min-height: 100vh; }
-.wrap { max-width: 1280px; margin: 0 auto; padding: 16px; }
-.page-title { font-size: 18px; font-weight: 800; padding: 12px 0; }
-.page-sub { font-size: 12.5px; color: #9ca3af; margin-bottom: 14px; }
-.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+html { -webkit-text-size-adjust: 100%; }
+body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: #020202; }
+a { text-decoration: none; color: inherit; }
+button { font: inherit; background: none; border: 0; cursor: pointer; color: inherit; }
+
+.dark-page { background: #020202; color: #fff; min-height: 100vh; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+.light-page { background: #F4F5F7; color: #17181C; min-height: 100vh; padding-bottom: 24px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px 16px; }
+.wrap-narrow { max-width: 768px; margin: 0 auto; padding: 0 16px 16px; }
+
+/* ── 상단 헤더 (본 사이트 MainHomePage sticky 헤더) ── */
+.topbar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: rgba(2, 2, 2, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #1A1A1A; }
+.topbar-logo { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+.topbar-beta { font-size: 10px; font-weight: 700; color: #34d399; margin-left: 5px; vertical-align: super; }
+.topbar-actions { display: flex; align-items: center; gap: 16px; color: #d1d5db; }
+.tagline { font-size: 13px; color: #9ca3af; padding: 10px 0 2px; }
+
+/* ── 섹션 타이틀 ── */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 0 10px; }
+.sec-title { font-size: 17px; font-weight: 800; }
+.sec-more { font-size: 12px; color: #9ca3af; font-weight: 600; }
+
+/* ── 페이지 타이틀/탭 (동네딜) ── */
+.page-title { font-size: 18px; font-weight: 800; padding: 14px 0 4px; }
+.page-sub { font-size: 12.5px; color: #9ca3af; margin-bottom: 10px; }
+.main-tabs { display: flex; gap: 18px; border-bottom: 1px solid #1A1A1A; margin-bottom: 10px; }
+.main-tab { font-size: 14px; font-weight: 700; color: #9ca3af; padding: 10px 2px; border-bottom: 2px solid transparent; display: inline-block; }
+.main-tab.is-active { color: #fff; border-bottom-color: #fff; }
+
+/* ── 카테고리 칩 (알약형 — 선택=화이트 반전, 본 사이트 다크 칩 1:1) ── */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; font-size: 12.5px; font-weight: 700; padding: 7px 13px; border-radius: 999px;
+  background: transparent; color: #d1d5db; border: 1px solid #2A2A2A; white-space: nowrap; }
+.chip.is-active { background: #fff; color: #111827; border-color: #fff; }
+
+/* ── 상품 그리드/카드 (대표색 그라데이션 — 인라인 style 로 색 주입) ── */
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 8px; }
 @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1024px) { .grid { grid-template-columns: repeat(4, 1fr); } }
-.card { border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; text-decoration: none; }
-.card-dark { background: #121212; color: #fff; }
-.card-light { background: #fff; color: #17181C; border: 1px solid #ECEEF1; }
-.thumb { aspect-ratio: 1; width: 100%; object-fit: cover; display: block; background: #1a1a1a; }
-.card-light .thumb { background: #F4F5F7; }
-.meta { padding: 8px 10px 12px; }
-.name { font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 35px; }
-.price { font-size: 15px; font-weight: 800; margin-top: 4px; }
-.price .pct { color: #f43f5e; margin-right: 4px; }
-.sub { font-size: 11px; color: #8A929E; margin-top: 3px; }
-.badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #FF0033; color: #fff; margin-bottom: 8px; }
-.notice { font-size: 12px; color: #6b7280; padding: 24px 0; text-align: center; }
+@media (min-width: 1280px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+.card { border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; text-align: left; }
+.card:active { transform: scale(0.98); }
+.thumb-box { position: relative; aspect-ratio: 1; overflow: hidden; }
+.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb-fallback { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 28px; }
+.img-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 42%; pointer-events: none; }
+.badge-discount { position: absolute; top: 8px; left: 8px; background: #ec4899; color: #fff; font-size: 10px; font-weight: 800;
+  padding: 2px 8px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.badge-achieved { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 2px;
+  background: #10b981; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.badge-rank { position: absolute; top: 6px; left: 6px; z-index: 2; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  background: rgba(0,0,0,0.7); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.bell-fab { position: absolute; bottom: 8px; right: 8px; width: 28px; height: 28px; border-radius: 999px;
+  background: rgba(10,10,10,0.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; color: #9ca3af; }
+.card-meta { padding: 4px 10px 10px; display: flex; flex-direction: column; flex: 1; }
+.card-brand { font-size: 11px; font-weight: 600; line-height: 1; margin-bottom: 4px; }
+.card-name { font-size: 13px; line-height: 1.3; font-weight: 500;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-strike { font-size: 11px; margin-top: 2px; line-height: 1; text-decoration: line-through; }
+.card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; }
+.card-pct { font-size: 15px; font-weight: 800; }
+.card-price { font-size: 15px; font-weight: 800; }
+.card-sub-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 11px; }
+.card-line { font-size: 10px; margin-top: 3px; display: flex; align-items: center; gap: 3px; overflow: hidden; white-space: nowrap; }
+.card-line .txt { overflow: hidden; text-overflow: ellipsis; }
+.star { color: #facc15; }
+
+/* ── 링크샵 (프로필 카드형 — 2026-06-10 개편 디자인) ── */
+.profile-head { max-width: 768px; margin: 0 auto; padding: 40px 16px 20px; text-align: center; }
+.avatar { width: 96px; height: 96px; border-radius: 999px; overflow: hidden; margin: 0 auto;
+  box-shadow: 0 0 0 1px #2A2A2A; background: #121212; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 700; color: #fff; background: linear-gradient(to bottom right, #374151, #111827); }
+.profile-name { font-size: 20px; font-weight: 800; margin-top: 16px; }
+.profile-handle { font-size: 13px; color: #9ca3af; margin-top: 2px; }
+.profile-bio { font-size: 14px; color: #d1d5db; line-height: 1.6; margin: 8px auto 0; max-width: 384px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.profile-cta { display: flex; gap: 8px; margin: 16px auto 0; max-width: 384px; }
+.btn-kakao { flex: 1; padding: 10px 0; border-radius: 12px; background: #FEE500; color: #3C1E1E; font-size: 14px; font-weight: 700; text-align: center; }
+.btn-ghost { padding: 10px 16px; border-radius: 12px; background: #121212; color: #fff; font-size: 14px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; }
+.curator-tabs { max-width: 768px; margin: 0 auto; display: flex; gap: 18px; padding: 0 16px; border-bottom: 1px solid #1A1A1A; }
+.pin-grid { max-width: 768px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 640px) { .pin-grid { grid-template-columns: repeat(3, 1fr); } }
+.pin-card { border-radius: 12px; overflow: hidden; display: block; }
+.pin-card:active { transform: scale(0.98); }
+.pin-meta { padding: 10px; }
+.pin-name { font-size: 12px; line-height: 1.3; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pin-price { font-size: 14px; font-weight: 800; margin-top: 4px; }
+.pin-note { font-size: 10px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.linkshop-cta { position: fixed; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); z-index: 30; pointer-events: none; }
+.linkshop-cta a { pointer-events: auto; max-width: 736px; margin: 0 16px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; border-radius: 16px; background: #fff; color: #020202; font-size: 14px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+@media (min-width: 768px) { .linkshop-cta a { margin: 0 auto; } }
+.center-screen { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16px; }
+
+/* ── 하단바 (본 사이트 BottomNav 이식 — 다크) ── */
+.bnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; align-items: stretch;
+  background: rgba(2,2,2,0.96); backdrop-filter: blur(10px); border-top: 1px solid #1A1A1A;
+  padding-bottom: env(safe-area-inset-bottom, 0px); height: calc(56px + env(safe-area-inset-bottom, 0px)); }
+.bnav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: #6b7280; font-size: 10px; font-weight: 600; }
+.bnav-item.is-active { color: #fff; }
+.bnav-plus { align-self: center; flex: none; width: 44px; height: 44px; margin: 0 12px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; background: #fff; color: #020202;
+  font-size: 22px; font-weight: 700; box-shadow: 0 2px 10px rgba(255,255,255,0.15); }
+
+/* ── 도매몰 (WT 토큰 — 무채색 + #FF0033 1포인트, 라이트 고정) ── */
+.wt-topbar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: #fff; border-bottom: 1px solid #ECEEF1; }
+.wt-logo { font-size: 18px; font-weight: 800; color: #17181C; letter-spacing: -0.5px; }
+.wt-logo .dot { color: #FF0033; }
+.wt-login { font-size: 12.5px; font-weight: 700; color: #fff; background: #17181C; padding: 8px 14px; border-radius: 10px; }
+.wt-hero { background: #17181C; color: #fff; border-radius: 16px; padding: 20px 18px; margin: 14px 0; }
+.wt-hero-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #FF0033; color: #fff; margin-bottom: 8px; }
+.wt-hero-title { font-size: 17px; font-weight: 800; line-height: 1.35; }
+.wt-hero-sub { font-size: 12.5px; color: #B6BCC4; margin-top: 5px; }
+.wt-sec-title { font-size: 15px; font-weight: 800; color: #17181C; padding: 6px 0 10px; }
+.wt-card { background: #fff; border: 1px solid #ECEEF1; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.wt-card:active { transform: scale(0.98); }
+.wt-thumb { aspect-ratio: 1; width: 100%; object-fit: cover; display: block; background: #F4F5F7; }
+.wt-meta { padding: 10px 12px 12px; }
+.wt-name { font-size: 13px; color: #17181C; font-weight: 600; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 35px; }
+.wt-lock { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 5px 10px; border-radius: 999px;
+  background: #FFF0F2; color: #FF0033; font-size: 12px; font-weight: 700; }
+.wt-sub { font-size: 11px; color: #8A929E; margin-top: 6px; }
+
+.notice { font-size: 12.5px; color: #6b7280; padding: 32px 0; text-align: center; grid-column: 1 / -1; }
+.more-btn { display: block; margin: 16px auto 0; max-width: 384px; text-align: center; padding: 13px 0; border-radius: 14px;
+  border: 1px solid #2A2A2A; color: #d1d5db; font-size: 13.5px; font-weight: 700; }
+.icon-20 { width: 20px; height: 20px; }
+.icon-22 { width: 22px; height: 22px; }

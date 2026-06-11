@@ -2,7 +2,9 @@
 
 ## 🚀 [확정 프로그램] SSR 전면 전환 (옵션② — 사용자 결정 2026-06-10)
 **SSOT: `docs/SSR_MIGRATION_PLAN.md`** — React Router v7(구 Remix) on CF Workers, 3 Phase.
-다음 액션: Phase 1 파일럿(`apps/ssr/` 신설 — 홈/교환권/동네딜/도매/링크샵 공개뷰, beta 서브도메인 배포).
+**Phase 1 진행 상황** (파일럿: https://ur-ssr-pilot.jiwon-1a2.workers.dev — Workers 무료 티어, 비용 0):
+- ✅ 2026-06-11 파일럿 확장 (`apps/ssr/` 만 수정, 본체 무수정): **동네딜 `/group-buy`**(카테고리 칩별 예열 키 `?status=active[&category=X]` byte-identical) + **링크샵 `/u/:handle`**(`/api/curator/:handle` — cron dynamic prewarm 키와 동일) 신설 + **본 사이트 실디자인 이식**(card-gradient 1:1 포팅, VoucherCard/GroupBuyGridCard/프로필 카드형 링크샵 헤더/핀 그리드/WT 도매 토큰, TopBar+BottomNav 셸). HTML 엣지캐시 60s(`workers/app.ts`) 무수정 — 신규 GET 라우트 자동 적용.
+- 남은 Phase 1: 사용자 폰 화면 확인 게이트(접속 즉시 보임 + LCP<1.5s) → beta 서브도메인 연결(사용자 액션). 스모크(ssr-pilot.yml)는 `/`·`/wholesale` 만 — `/group-buy` 추가 권장(워크플로 1줄, 본 세션 폴더 제한으로 미수정).
 사용자 액션: 스테이징 서브도메인 1개 (Cloudflare). ⚠️ 기존 `/api/*`·Toss/카카오 잠금 무수정 원칙.
 
 
