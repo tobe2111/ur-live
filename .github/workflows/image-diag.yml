@@ -71,6 +71,14 @@ jobs:
           " || head -c 300 /tmp/gb.json
 
           echo ""
+          echo "=== 8) 링크샵 /u/user24 — SSR 주입/타이밍 실측 (사용자 신고 — 느림) ==="
+          curl -s -D /tmp/h4 -o /tmp/u24.html --max-time 20 "$PROD/u/user24" -w "HTML: status=%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s size=%{size_download}B\n"
+          grep -i "x-ssr-status\|server-timing\|cf-cache-status" /tmp/h4 || true
+          grep -c "__SSR_INITIAL_CURATOR__" /tmp/u24.html && echo "CURATOR 데이터 동봉됨" || echo "CURATOR 데이터 없음(클라 fetch 워터폴)"
+          echo "--- API 직접 ---"
+          curl -s -o /dev/null --max-time 20 "$PROD/api/curator/user24" -w "curator API: status=%{http_code} ttfb=%{time_starttransfer}s\n"
+
+          echo ""
           echo "=== 판정 가이드 ==="
           echo "- 3)에 cf-resized 헤더 있음 + size 수십 KB → 리사이저 정상 (느림 원인은 다른 곳)"
           echo "- 3)이 원본과 같은 size / cf-resized 없음 → 리사이저 미작동 → Dashboard > Images > Transformations 에서 zone 활성화 필요 (무료)"
