@@ -11,6 +11,22 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error';
 import type { Env } from '@/worker/types/env'
+
+// 🛡️ 2026-06-11 감사: per-request ALTER → isolate 당 1회 메모이즈 (DDL 라운드트립 절감).
+const _done_ensureReviewReplyCols = new WeakSet<object>()
+async function ensureReviewReplyCols(DB: D1Database) {
+  if (_done_ensureReviewReplyCols.has(DB)) return
+  _done_ensureReviewReplyCols.add(DB)
+  try { await DB.prepare("ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT").run() } catch { /* exists */ }
+  try { await DB.prepare("ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME").run() } catch { /* exists */ }
+}
+const _done_ensureCouponSellerCol = new WeakSet<object>()
+async function ensureCouponSellerCol(DB: D1Database) {
+  if (_done_ensureCouponSellerCol.has(DB)) return
+  _done_ensureCouponSellerCol.add(DB)
+  try { await DB.prepare("ALTER TABLE coupons ADD COLUMN seller_id INTEGER").run() } catch { /* exists */ }
+}
+
 export const sellerAnalyticsRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 //   서브라우터 wildcard 미들웨어가 같은 prefix 의 다른 라우터 경로 가로채는 버그 (Hono v4) 방지.
@@ -138,8 +154,7 @@ sellerAnalyticsRoutes.post('/reviews/:id/reply', requireAuth(), async (c) => {
   if (!reply?.trim()) return c.json({ success: false, error: '답글 내용을 입력해주세요' }, 400)
 
   // 🛡️ 2026-05-20: 테이블명 product_reviews (migration 0132). 'reviews' 는 존재 안 함.
-  try { await c.env.DB.prepare("ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT").run() } catch { /* exists */ }
-  try { await c.env.DB.prepare("ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME").run() } catch { /* exists */ }
+  await ensureReviewReplyCols(c.env.DB)
 
   await c.env.DB.prepare(`
     UPDATE product_reviews SET seller_reply = ?, seller_reply_at = datetime('now')
@@ -176,7 +191,7 @@ sellerAnalyticsRoutes.get('/coupons', requireAuth(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
 
-  try { await c.env.DB.prepare("ALTER TABLE coupons ADD COLUMN seller_id INTEGER").run() } catch {}
+  await ensureCouponSellerCol(c.env.DB)
 
   const { results } = await c.env.DB.prepare(`
     SELECT * FROM coupons WHERE seller_id = ? ORDER BY created_at DESC
@@ -191,7 +206,7 @@ sellerAnalyticsRoutes.post('/coupons', requireAuth(), async (c) => {
   const { code, name, type, value, min_order, max_discount, total_count, expires_at } = await c.req.json<any>()
   if (!code || !name) return c.json({ success: false, error: '코드와 이름을 입력해주세요' }, 400)
 
-  try { await c.env.DB.prepare("ALTER TABLE coupons ADD COLUMN seller_id INTEGER").run() } catch {}
+  await ensureCouponSellerCol(c.env.DB)
 
   await c.env.DB.prepare(`
     INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, expires_at, created_at)

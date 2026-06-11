@@ -87,6 +87,11 @@ bash scripts/check-no-secrets.sh || {
 echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
 bash scripts/check-silent-errors.sh || true
 
+# 💸 2026-06-11: 머니/정합성 버그 클래스 검사 (warn-only, 차단: STRICT_MONEY=1).
+#   감사에서 반복 발견된 패턴 — per-request DDL / 무환불 CANCELLED 플립.
+echo "==> Pre-commit: 머니 패턴 검사 (warn-only)..."
+bash scripts/check-money-patterns.sh || true
+
 # 🛡️ 2026-05-17: CHECK 제약 위반 자동 탐지 (warn-only).
 #   admin live-monitor delete 사고 재발 방지 — 'status=\"deleted\"' 가 CHECK IN (...) 위반 → 500.
 echo "==> Pre-commit: CHECK 제약 위반 검사 (warn-only)..."

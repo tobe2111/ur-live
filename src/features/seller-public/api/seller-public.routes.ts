@@ -231,8 +231,6 @@ sellerPublicRoutes.patch('/:sellerId/follow/preferences', requireAuth(), async (
   const { DB } = c.env
   await ensureFollowsTable(DB)
 
-  // 🛡️ notify_group_buy 컬럼 자동 ALTER (기존 테이블 마이그레이션)
-  try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
 
   const updates: string[] = []
   const values: unknown[] = []
@@ -261,7 +259,6 @@ sellerPublicRoutes.get('/:sellerId/follow/preferences', requireAuth(), async (c)
   const sellerId = Number(c.req.param('sellerId'))
   const { DB } = c.env
   await ensureFollowsTable(DB)
-  try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
 
   try {
     const row = await DB.prepare(
@@ -362,7 +359,6 @@ sellerPublicRoutes.get('/my/follows', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const { DB } = c.env
   await ensureFollowsTable(DB)
-  try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
 
   try {
     const { results } = await DB.prepare(`
