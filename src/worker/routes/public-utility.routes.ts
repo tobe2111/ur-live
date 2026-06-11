@@ -412,34 +412,58 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
         ORDER BY cnt DESC LIMIT 12`
     ).all<{ category: string; cnt: number }>().catch(() => ({ results: [] }))
 
-    // 2) 각 카테고리별 인기 상품 top 8 + 브랜드 top 8.
-    const sections: Array<{
-      category: string; count: number;
-      products: Record<string, unknown>[];
-      brands: Array<{ brand_name: string; cnt: number }>;
-    }> = []
-    for (const c of (cats.results || [])) {
-      const items = await DB.prepare(
-        `SELECT id, name, price, original_price, image_url, category, brand_name, seller_id,
-                view_count, sold_count, avg_rating, review_count, deal_only
-           FROM products
-          WHERE is_active = 1 AND category = ?
-          ORDER BY sold_count DESC, view_count DESC, created_at DESC
-          LIMIT 8`
-      ).bind(c.category).all<Record<string, unknown>>().catch(() => ({ results: [] }))
-      const brands = await DB.prepare(
-        `SELECT brand_name, MAX(brand_icon_url) as brand_icon_url, COUNT(*) as cnt
-           FROM products
-          WHERE is_active = 1 AND category = ? AND brand_name IS NOT NULL
-          GROUP BY brand_name
-          ORDER BY cnt DESC LIMIT 8`
-      ).bind(c.category).all<{ brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
-      sections.push({
-        category: c.category, count: c.cnt,
-        products: items.results || [],
-        brands: brands.results || [],
-      })
+    // 2) 카테고리별 인기상품 top8 + 브랜드 top8.
+    //   🛡️ 2026-06-11 감사: 기존 카테고리당 2쿼리(N+1, 최대 25쿼리)를 윈도우 함수 2쿼리로 축약 →
+    //   캐시 미스/prewarm 시 D1 부하·콜드 지연 절감. 응답 구조(sections)·정렬 동일.
+    const catList = (cats.results || []).map((r) => r.category)
+    if (catList.length === 0) return c.json({ success: true, data: { sections: [] } })
+    const ph = catList.map(() => '?').join(',')
+
+    const prodRows = await DB.prepare(
+      `SELECT id, name, price, original_price, image_url, category, brand_name, seller_id,
+              view_count, sold_count, avg_rating, review_count, deal_only
+         FROM (
+           SELECT id, name, price, original_price, image_url, category, brand_name, seller_id,
+                  view_count, sold_count, avg_rating, review_count, deal_only,
+                  ROW_NUMBER() OVER (PARTITION BY category ORDER BY sold_count DESC, view_count DESC, created_at DESC) AS rn
+             FROM products
+            WHERE is_active = 1 AND category IN (${ph})
+         )
+        WHERE rn <= 8
+        ORDER BY category, rn`
+    ).bind(...catList).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+
+    const brandRows = await DB.prepare(
+      `SELECT category, brand_name, brand_icon_url, cnt
+         FROM (
+           SELECT category, brand_name, MAX(brand_icon_url) AS brand_icon_url, COUNT(*) AS cnt,
+                  ROW_NUMBER() OVER (PARTITION BY category ORDER BY COUNT(*) DESC) AS rn
+             FROM products
+            WHERE is_active = 1 AND category IN (${ph}) AND brand_name IS NOT NULL AND brand_name != ''
+            GROUP BY category, brand_name
+         )
+        WHERE rn <= 8
+        ORDER BY category, rn`
+    ).bind(...catList).all<{ category: string; brand_name: string; brand_icon_url: string | null; cnt: number }>().catch(() => ({ results: [] }))
+
+    const prodByCat = new Map<string, Record<string, unknown>[]>()
+    for (const r of (prodRows.results || [])) {
+      const k = String(r.category)
+      if (!prodByCat.has(k)) prodByCat.set(k, [])
+      prodByCat.get(k)!.push(r)
     }
+    const brandByCat = new Map<string, Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }>>()
+    for (const r of (brandRows.results || [])) {
+      const k = String(r.category)
+      if (!brandByCat.has(k)) brandByCat.set(k, [])
+      brandByCat.get(k)!.push({ brand_name: r.brand_name, brand_icon_url: r.brand_icon_url, cnt: r.cnt })
+    }
+
+    const sections = (cats.results || []).map((c) => ({
+      category: c.category, count: c.cnt,
+      products: prodByCat.get(c.category) || [],
+      brands: brandByCat.get(c.category) || [],
+    }))
 
     return c.json({ success: true, data: { sections } })
   } catch (e) {
