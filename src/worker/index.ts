@@ -1702,27 +1702,31 @@ app.get('/api/image/resize', async (c) => {
   }
 
   try {
-    const response = await fetch(url, {
-      cf: {
-        image: {
-          width,
-          quality,
-          format: 'webp',
-        }
-      } as any
-    });
+    // 🔬 2026-06-11 (실측 기반 수리 — 사용자 신고 "업로드 카드 느림"):
+    //   기존 cf.image fetch 가 Pages 환경에서 변환을 적용하지 않아(실측: 원본 42KB 그대로, 1.6~2.7s)
+    //   업로드 이미지(/api/media → 이 프록시 경유)가 전부 원본+느림.
+    //   수리: ① 요청 단위 엣지 캐시(repeat ~ms) ② zone 리사이저(cdn-cgi — 오늘 Enable, cf-resized 실측 OK)
+    //   경유로 변환 ③ 변환 실패 시 원본 폴백(이미지는 항상 보임 — 기존 동작 보존).
+    const cacheKey = new Request(c.req.url, { method: 'GET' });
+    // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
+    const edge = caches.default as Cache;
+    const hit = await edge.match(cacheKey).catch(() => null);
+    if (hit) return hit;
 
-    // 🏭 2026-06-07 (사용자 신고 — 링크샵 배경/프로필 업로드 이미지 표시 실패):
-    //   same-zone cf.image 서브요청이 비-2xx(또는 변환 실패)면 에러 본문을 image/webp 로 위장해
-    //   200 으로 스트리밍 → 브라우저가 깨진 이미지로 표시 (throw 아니라 catch redirect 도 안 탐).
-    //   ok 아니면 원본 URL 로 redirect → same-origin R2 서빙(/api/media/*)이 정상 status 로 응답.
-    if (!response.ok) return c.redirect(url);
+    const origin = new URL(c.req.url).origin;
+    let response = await fetch(`${origin}/cdn-cgi/image/width=${width},quality=${quality},format=auto/${url}`);
+    if (!response.ok || !response.headers.get('cf-resized')) {
+      // 리사이저 미작동/소스 실패 — 원본 폴백 (변환 없이도 이미지는 표시)
+      response = await fetch(url);
+      if (!response.ok) return c.redirect(url);
+    }
 
-    const headers = new Headers(response.headers);
+    const headers = new Headers();
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('Content-Type', response.headers.get('Content-Type') || 'image/webp');
-
-    return new Response(response.body, { headers });
+    const out = new Response(response.body, { headers });
+    if (c.executionCtx) c.executionCtx.waitUntil(edge.put(cacheKey, out.clone()).catch(() => {}));
+    return out;
   } catch {
     return c.redirect(url);
   }
