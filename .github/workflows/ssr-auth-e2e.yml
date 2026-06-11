@@ -1,0 +1,56 @@
+name: SSR Auth E2E (beta personalization)
+
+# 🔐 SSR Phase 2-F 검증 (docs/SSR_PHASE2_AUTH.md 게이트 ②③) — 수동 트리거.
+#   anonymous: beta 비로그인 뷰 + robots 색인금지 + 개인화 누설 없음 (시크릿 불필요)
+#   authed:    WS_E2E_EMAIL / WS_E2E_PASSWORD 시크릿이 있으면 실로그인 → 쿠키 → beta 등급가 SSR 검증
+#   ⚠️ 읽기 전용 GET + 로그인 1회만 — 프로덕션 데이터 변경 없음.
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Anonymous — robots.txt 색인 금지
+        run: |
+          BODY=$(curl -s --max-time 20 https://beta.ur-team.com/robots.txt)
+          echo "$BODY"
+          echo "$BODY" | grep -q "Disallow: /" || { echo "::error::robots.txt 에 Disallow 없음"; exit 1; }
+
+      - name: Anonymous — /wholesale 비로그인 뷰 (개인화 누설 0)
+        run: |
+          HTML=$(curl -s --max-time 30 https://beta.ur-team.com/wholesale)
+          echo "$HTML" | grep -q "유통회원 로그인" || { echo "::error::비로그인 CTA 없음 (페이지 깨짐?)"; exit 1; }
+          if echo "$HTML" | grep -q "내 등급"; then echo "::error::익명 응답에 개인화(내 등급) 누설!"; exit 1; fi
+          echo "✅ anonymous OK"
+
+      - name: Authed — 로그인 → 쿠키 → beta 등급가 SSR
+        env:
+          WS_E2E_EMAIL: ${{ secrets.WS_E2E_EMAIL }}
+          WS_E2E_PASSWORD: ${{ secrets.WS_E2E_PASSWORD }}
+        run: |
+          if [ -z "$WS_E2E_EMAIL" ] || [ -z "$WS_E2E_PASSWORD" ]; then
+            echo "::notice::WS_E2E_EMAIL/PASSWORD 시크릿 미설정 — authed 단계 skip (anonymous 만 검증됨)"
+            exit 0
+          fi
+          # 1) 본 사이트 셀러 로그인 → Set-Cookie 의 ud_seller_token 추출
+          HDRS=$(mktemp)
+          curl -s -D "$HDRS" -o /tmp/login.json --max-time 20 \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$WS_E2E_EMAIL\",\"password\":\"$WS_E2E_PASSWORD\"}" \
+            https://live.ur-team.com/api/seller/login
+          TOKEN=$(grep -i '^set-cookie: ud_seller_token=' "$HDRS" | head -1 | sed 's/^[Ss]et-[Cc]ookie: ud_seller_token=\([^;]*\).*/\1/')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::로그인 응답에 ud_seller_token Set-Cookie 없음"; cat /tmp/login.json | head -c 300; exit 1
+          fi
+          echo "✅ 로그인 + 쿠키 발급 OK (Domain 확인: $(grep -i '^set-cookie: ud_seller_token=' "$HDRS" | grep -io 'domain=[^;]*' || echo 'host-only'))"
+          # 2) 쿠키 들고 beta /wholesale → SSR 개인화(내 등급) + private 캐시 확인
+          RESP=$(mktemp); HD2=$(mktemp)
+          curl -s -D "$HD2" -o "$RESP" --max-time 30 -H "Cookie: ud_seller_token=$TOKEN" https://beta.ur-team.com/wholesale
+          grep -q "내 등급" "$RESP" || { echo "::error::로그인 쿠키로도 SSR 개인화(내 등급) 미렌더"; grep -o "유통회원 로그인" "$RESP" | head -1; exit 1; }
+          grep -iq '^cache-control:.*\(private\|no-store\)' "$HD2" || { echo "::error::개인화 HTML 이 private/no-store 아님 — 공유캐시 누설 위험"; grep -i '^cache-control' "$HD2"; exit 1; }
+          echo "✅ authed SSR 개인화 + private 캐시 OK"
+          # 3) 직후 익명 재요청 — 개인화 HTML 이 공유캐시에 오염되지 않았는지
+          HTML2=$(curl -s --max-time 30 https://beta.ur-team.com/wholesale)
+          if echo "$HTML2" | grep -q "내 등급"; then echo "::error::익명 응답이 개인화 HTML 로 오염!"; exit 1; fi
+          echo "✅ 캐시 오염 없음 — E2E 전체 통과"

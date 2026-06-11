@@ -23,10 +23,16 @@ export function meta({ data }: { data?: Awaited<ReturnType<typeof loader>> }) {
   ]
 }
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs & { request: Request }) {
   const id = Number(params.id)
   if (!Number.isFinite(id) || id <= 0) return { item: null }
-  const res = await fetch(`${API}/api/wholesale/catalog/${id}`, { headers: { accept: 'application/json' } })
+  // 🔐 Phase 2-F: wholesale.tsx 와 동일 — ud_seller_token 쿠키 forward → 등급가 포함 응답.
+  //   비로그인은 기존 guest 호출 byte-identical(공유캐시 적중 유지).
+  const cookie = request.headers.get('cookie') || ''
+  const authed = /(?:^|;\s*)ud_(?:seller|agency)_token=/.test(cookie)
+  const res = await fetch(`${API}/api/wholesale/catalog/${id}`, {
+    headers: { accept: 'application/json', ...(authed ? { cookie } : {}) },
+  })
   const data = (await res.json().catch(() => null)) as { success?: boolean; item?: Item } | null
   return { item: data?.success ? (data.item || null) : null }
 }

@@ -1,0 +1,28 @@
+name: Prod Diagnostics (read-only)
+
+# 🔍 프로덕션 read-only 진단 — 수동 트리거 전용. GET 만 수행, 데이터 변경 없음.
+#   용도: 컨테이너(원격 세션)에서 외부 네트워크가 차단일 때 ground truth 수집.
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: wholesale catalog API
+        run: |
+          for u in \
+            "https://live.ur-team.com/api/wholesale/catalog" \
+            "https://live.ur-team.com/api/wholesale/catalog?limit=2" \
+            "https://live.ur-team.com/api/wholesale/home" \
+            "https://live.ur-team.com/api/version" ; do
+            echo "===== $u ====="
+            curl -s -o /tmp/body -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "$u" -H 'accept: application/json' || true
+            head -c 500 /tmp/body; echo
+          done
+
+      - name: wholesale HTML (SSR slot + 체감 로딩)
+        run: |
+          curl -s -D /tmp/h -o /tmp/html -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
+          grep -i "x-ssr-status\|server-timing\|cache-control" /tmp/h || true
+          grep -c "__SSR_INITIAL_WHOLESALE__" /tmp/html || echo "SSR slot 없음"

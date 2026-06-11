@@ -294,6 +294,21 @@ async function sellerIdFrom(authorization: string | undefined, jwtSecret: string
   }
 }
 
+// 🔐 2026-06-11 SSR Phase 2-F (docs/SSR_PHASE2_AUTH.md §3.3): beta(SSR) loader 가 forward 한
+//   httpOnly ud_seller_token 쿠키 fallback. 이 파일 라우트들은 requireAuth 미들웨어를 안 거쳐
+//   auth.ts 의 쿠키 fallback 이 적용되지 않음 → 자체 보강. **GET/HEAD 에서만** 동작(CSRF 표면 0)
+//   — 쓰기(POST/PATCH/DELETE)는 계속 Bearer 전용. 토큰 값/검증 경로는 sellerIdFrom 재사용(단일 유지).
+async function sellerIdFromCookieGet(
+  c: { req: { method: string; header: (name: string) => string | undefined } },
+  jwtSecret: string,
+): Promise<number | null> {
+  const method = c.req.method.toUpperCase()
+  if (method !== 'GET' && method !== 'HEAD') return null
+  const m = (c.req.header('Cookie') || '').match(/(?:^|;\s*)ud_seller_token=([^;]+)/)
+  if (!m) return null
+  return sellerIdFrom('Bearer ' + decodeURIComponent(m[1]), jwtSecret)
+}
+
 // ── 👥 2026-06-09 유통사 직원 서브계정 ────────────────────────────────────────
 //   회사(유통사 owner) 1계정에 여러 직원 로그인. 서브계정 토큰의 seller_id = PARENT(회사) seller_id →
 //   기존 예치금/주문/카탈로그/정산 코드는 회사 계정 위에서 byte-identical 동작(전혀 인지 못함).
@@ -989,7 +1004,9 @@ app.get('/recent-items', async (c) => {
 app.get('/catalog', async (c) => {
   // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
   //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
+  const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
+    ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
   const guest = !sellerId
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
@@ -1212,7 +1229,9 @@ app.get('/catalog', async (c) => {
 // ── GET /catalog/:id ──────────────────────────────────────────────────────────
 app.get('/catalog/:id', async (c) => {
   // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능. 가격(등급가/권장가/tier)은 로그인 시에만.
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
+  const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
+    ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
   const guest = !sellerId
   const { DB } = c.env
   const id = Number(c.req.param('id'))
