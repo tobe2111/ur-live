@@ -76,7 +76,10 @@ export default function CuratorHeader({
     try {
       const preview = URL.createObjectURL(file)
       setAvatarPreview(preview)
-      const toSend = await compressForUpload(file, { maxSizeMB: 1, maxWidthOrHeight: 1024 }).catch(() => file)
+      // 🔬 2026-06-11 (사용자 신고 "프로필 이미지 너무 느림" — prod 실측 779KB 서빙): 아바타는
+      //   ≤96px 표시라 1MB/1024px 한도가 과함. 512px/0.15MB 로 — 레티나 포함 시각 차이 0, ~40KB.
+      //   (/api/media 는 리사이즈 없이 원본 서빙이라 업로드 시점 압축이 유일한 크기 통제 지점)
+      const toSend = await compressForUpload(file, { maxSizeMB: 0.15, maxWidthOrHeight: 512 }).catch(() => file)
       const fd = new FormData()
       fd.append('file', toSend)
       const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
