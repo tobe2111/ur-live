@@ -419,6 +419,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       UNIQUE(seller_id, product_id)
     )` },
     { desc: 'idx_wholesale_wishlists_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_wishlists_seller ON wholesale_wishlists(seller_id, id DESC)" },
+    // 🛡️ 2026-06-11: 환불 보상 CAS 가 갱신하는 updated_at — 컬럼 부재 시 무음 실패(머니버그)
+    { desc: 'wholesale_orders.updated_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN updated_at DATETIME" },
     // 🤝 2026-06-10: 광고/제휴 문의 접수함 (partnership.routes lazy DDL 과 동일)
     { desc: 'partnership_inquiries', sql: `CREATE TABLE IF NOT EXISTS partnership_inquiries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

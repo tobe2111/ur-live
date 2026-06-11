@@ -56,8 +56,13 @@ async function ensureOrderTables(DB: D1Database) {
     ship_to_address TEXT,
     ship_to_postal TEXT,
     created_at DATETIME DEFAULT (datetime('now')),
+    updated_at DATETIME,
     paid_at DATETIME
   )`).run().catch(swallow('wholesale:create-orders'))
+  // 🛡️ 2026-06-11 (CI strict 검출 — 잠복 머니버그): compensateDepositOrderOnce 가 updated_at 을
+  //   갱신하는데 기존 테이블에 컬럼이 없으면 환불 보상 CAS 가 무음 실패(.catch→changes 0).
+  //   기존 환경 self-heal (신규는 위 CREATE 에 포함).
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN updated_at DATETIME').run().catch(swallow('wholesale:orders-updated-at'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_order_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wholesale_order_id INTEGER NOT NULL,
