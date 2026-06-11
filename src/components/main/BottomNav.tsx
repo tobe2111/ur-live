@@ -362,8 +362,12 @@ export default function BottomNav() {
                     </div>
                   </button>
 
-                  {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도) */}
-                  {isSeller && (
+                  {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도)
+                       🏁 2026-06-11 (사용자 요청 — 겸직 유저 1탭 등록): 유저 모드(active_role='user')여도
+                       seller_token 보유(카카오 연결 셀러)면 등록 카드 직접 노출. 등록 페이지 가드
+                       (requireSeller)는 토큰 존재만 검사라 전환/리로드 없이 바로 진입 가능.
+                       'DISPLAY 는 active_role 로만' 룰은 탭/내비 표시용 — ➕ 시트는 역할 행동 메뉴라 토큰 기준. */}
+                  {(isSeller || hasSellerToken) && (
                     <div className="space-y-3">
                       {/* 🏭 2026-06-04 라이브커머스 잠정 중단 — '라이브 방송 시작하기' 진입 숨김. */}
                       {!LIVE_COMMERCE_SUSPENDED && (
@@ -410,7 +414,7 @@ export default function BottomNav() {
                   )}
 
                   {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 */}
-                  {isSeller && isAgency && (
+                  {(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
                       className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
@@ -426,7 +430,7 @@ export default function BottomNav() {
                   )}
 
                   {/* 에이전시만 있고 셀러 아님 */}
-                  {!isSeller && isAgency && (
+                  {!(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <div className="space-y-3">
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/agency') }}
@@ -444,7 +448,7 @@ export default function BottomNav() {
                   )}
 
                   {/* Logged in but no seller/agency role — 권한 추가 유도 */}
-                  {isLoggedIn && !isSeller && !isAgency && (
+                  {isLoggedIn && !isSeller && !hasSellerToken && !isAgency && !hasAgencyToken && (
                     <SellerUpgradePanel
                       onDone={() => { setSheetOpen(false) }}
                     />
