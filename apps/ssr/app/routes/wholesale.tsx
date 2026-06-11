@@ -12,6 +12,7 @@ const WT = {
 type Item = {
   id: number; name: string; image_url?: string | null; category?: string | null
   stock: number; brand_name?: string | null; sold_count?: number
+  distributor_price?: number | null; retail_price?: number | null
 }
 
 export function meta() {
@@ -21,20 +22,30 @@ export function meta() {
   ]
 }
 
-export async function loader() {
-  // ⚠️ 예열 키(/api/wholesale/catalog — 파라미터 없음)와 정확 일치 → 엣지캐시 적중.
-  const res = await fetch(`${API}/api/wholesale/catalog`, { headers: { accept: 'application/json' } })
-  const data = (await res.json().catch(() => null)) as { success?: boolean; items?: Item[] } | null
-  return { items: data?.success ? (data.items || []).slice(0, 24) : [] }
+export async function loader({ request }: { request: Request }) {
+  // 🔐 Phase 2-F: 브라우저 쿠키(ud_seller_token — beta↔live 는 .ur-team.com 공유)를 API 로 forward
+  //   → 본체 미들웨어 GET 쿠키 fallback 이 셀러 인증 → 등급 공급가 포함 응답.
+  //   비로그인은 기존 guest 호출 byte-identical (예열 키 적중 유지).
+  const cookie = request.headers.get('cookie') || ''
+  const authed = /(?:^|;\s*)ud_(?:seller|agency)_token=/.test(cookie)
+  const res = await fetch(`${API}/api/wholesale/catalog`, {
+    headers: { accept: 'application/json', ...(authed ? { cookie } : {}) },
+  })
+  const data = (await res.json().catch(() => null)) as { success?: boolean; items?: Item[]; grade?: string | null } | null
+  return { items: data?.success ? (data.items || []).slice(0, 24) : [], grade: (authed && data?.grade) || null }
 }
 
 export default function Wholesale() {
-  const { items } = useLoaderData<typeof loader>()
+  const { items, grade } = useLoaderData<typeof loader>()
   return (
     <div className="light-page">
       <div className="wt-topbar">
         <span className="wt-logo">유통스타트<span className="dot">.</span></span>
-        <a className="wt-login" href={`${API}/wholesale/login`}>유통회원 로그인</a>
+        {grade ? (
+          <span className="wt-login" style={{ background: '#FFF0F2', color: '#FF0033', border: 'none' }}>내 등급 {grade}</span>
+        ) : (
+          <a className="wt-login" href={`${API}/wholesale/login`}>유통회원 로그인</a>
+        )}
       </div>
       <div className="wrap">
         <div className="wt-hero">
@@ -55,7 +66,14 @@ export default function Wholesale() {
                 ) : <div className="wt-thumb" />}
                 <div className="wt-meta">
                   <p className="wt-name">{p.name}</p>
-                  <span className="wt-lock">🔒 로그인하고 공급가 확인</span>
+                  {p.distributor_price != null ? (
+                    <p className="wt-price">
+                      <strong>{p.distributor_price.toLocaleString('ko-KR')}원</strong>
+                      {p.retail_price ? <span className="wt-retail"> 권장 {p.retail_price.toLocaleString('ko-KR')}원</span> : null}
+                    </p>
+                  ) : (
+                    <span className="wt-lock">🔒 로그인하고 공급가 확인</span>
+                  )}
                   <p className="wt-sub">{p.category || ''}{(p.sold_count ?? 0) > 0 ? ` · 판매 ${p.sold_count}` : ''}</p>
                 </div>
               </a>
