@@ -174,15 +174,17 @@ paymentsRouter.post('/confirm', async (c) => {
     //   ⚠️ Toss 금액검증/confirmTossPayment helper/client-key 미변경 — 달력 side-effect 순서만 이동.
     const stayReserved: Array<{ bookingId: number; roomId: number; prevStatus: string; dates: string[] }> = [];
     const releaseStays = async () => {
-      for (const r of stayReserved) {
-        for (const ds of r.dates) {
-          await c.env.DB.prepare(
+      // 🛡️ 2026-06-11 [UNLOCK]: 예약 해제도 단일 batch (복원 누락 부분실패 방지 + 왕복 1회).
+      const stmts = stayReserved.flatMap(r => [
+        ...r.dates.map(ds =>
+          c.env.DB.prepare(
             `UPDATE product_stay_calendar SET available_count = available_count + 1, updated_at = datetime('now') WHERE room_id = ? AND stay_date = ?`
-          ).bind(r.roomId, ds).run().catch(() => { /* noop */ });
-        }
-        await c.env.DB.prepare(`UPDATE stay_bookings SET status = ?, updated_at = datetime('now') WHERE id = ?`)
-          .bind(r.prevStatus, r.bookingId).run().catch(() => { /* noop */ });
-      }
+          ).bind(r.roomId, ds)
+        ),
+        c.env.DB.prepare(`UPDATE stay_bookings SET status = ?, updated_at = datetime('now') WHERE id = ?`)
+          .bind(r.prevStatus, r.bookingId),
+      ]);
+      if (stmts.length > 0) await c.env.DB.batch(stmts).catch(() => { /* noop */ });
     };
     for (const order of orders) {
       const stayBookingId = (order as unknown as { stay_booking_id?: number | null }).stay_booking_id;
@@ -197,26 +199,42 @@ paymentsRouter.post('/confirm', async (c) => {
       ).bind(stayBookingId).run().catch(() => null);
       if (!bClaim || (bClaim.meta?.changes ?? 0) === 0) continue; // 다른 thread 가 처리 중/완료
       const nights = Math.round((new Date(booking.check_out_date).getTime() - new Date(booking.check_in_date).getTime()) / 86400000);
-      const secured: string[] = [];
-      let overbooked = false;
+      // 🛡️ 2026-06-11 [UNLOCK] (사용자 승인): 야간당 2왕복(INSERT+UPDATE) 루프 → 일괄 2왕복 batch.
+      //   가드 의미 동일 — UPDATE 의 available_count > 0 조건 + 결과별 meta.changes 검사로
+      //   야간별 성공/실패 판정. 실패 야간 발견 시 성공분 전체 롤백(기존: 첫 실패에서 break 후
+      //   성공분 롤백 — 최종 상태 동일). Toss 금액검증/confirmTossPayment/순서(승인 전 예약) 불변.
+      const dateList: string[] = [];
       for (let i = 0; i < nights; i++) {
-        const ds = new Date(new Date(booking.check_in_date).getTime() + i * 86400000).toISOString().slice(0, 10);
-        await c.env.DB.prepare(
-          `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
-           SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
-        ).bind(booking.room_id, booking.product_id, ds, booking.room_id).run().catch(() => { /* noop */ });
-        const dec = await c.env.DB.prepare(
-          `UPDATE product_stay_calendar SET available_count = available_count - 1, updated_at = datetime('now')
-            WHERE room_id = ? AND stay_date = ? AND available_count > 0`
-        ).bind(booking.room_id, ds).run().catch(() => null);
-        if (dec && (dec.meta?.changes ?? 0) > 0) secured.push(ds);
-        else { overbooked = true; break; }
+        dateList.push(new Date(new Date(booking.check_in_date).getTime() + i * 86400000).toISOString().slice(0, 10));
+      }
+      let secured: string[] = [];
+      let overbooked = false;
+      if (dateList.length > 0) {
+        await c.env.DB.batch(dateList.map(ds =>
+          c.env.DB.prepare(
+            `INSERT OR IGNORE INTO product_stay_calendar (room_id, product_id, stay_date, available_count)
+             SELECT ?, ?, ?, COALESCE((SELECT total_inventory FROM product_stay_rooms WHERE id = ?), 1)`
+          ).bind(booking.room_id, booking.product_id, ds, booking.room_id)
+        )).catch(() => { /* noop — UPDATE 가드가 최종 판정 */ });
+        const decs = await c.env.DB.batch(dateList.map(ds =>
+          c.env.DB.prepare(
+            `UPDATE product_stay_calendar SET available_count = available_count - 1, updated_at = datetime('now')
+              WHERE room_id = ? AND stay_date = ? AND available_count > 0`
+          ).bind(booking.room_id, ds)
+        )).catch(() => null);
+        if (!decs) overbooked = true;
+        else {
+          secured = dateList.filter((_, i) => ((decs[i]?.meta?.changes ?? 0) > 0));
+          if (secured.length < dateList.length) overbooked = true;
+        }
       }
       if (overbooked) {
         // 이 booking 성공분 롤백 + booking 되돌림(pending) + 이전 예약 해제 → Toss 청구 전 중단(미회수 0).
-        for (const ds of secured) {
-          await c.env.DB.prepare(`UPDATE product_stay_calendar SET available_count = available_count + 1, updated_at = datetime('now') WHERE room_id = ? AND stay_date = ?`)
-            .bind(booking.room_id, ds).run().catch(() => { /* noop */ });
+        if (secured.length > 0) {
+          await c.env.DB.batch(secured.map(ds =>
+            c.env.DB.prepare(`UPDATE product_stay_calendar SET available_count = available_count + 1, updated_at = datetime('now') WHERE room_id = ? AND stay_date = ?`)
+              .bind(booking.room_id, ds)
+          )).catch(() => { /* noop */ });
         }
         await c.env.DB.prepare(`UPDATE stay_bookings SET status = 'pending', updated_at = datetime('now') WHERE id = ?`).bind(stayBookingId).run().catch(() => { /* noop */ });
         await releaseStays();

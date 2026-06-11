@@ -224,6 +224,9 @@ export async function clawbackVoucherCommission(
     denom = Math.max(1, Number(cntRow?.n ?? 1))
   }
 
+  // 🛡️ 2026-06-11 [UNLOCK] (사용자 승인): 행당 2 write 루프 → 단일 DB.batch (원자 + 왕복 1회).
+  //   각 write 는 사전 조회값으로만 계산(read-after-write 없음) — 의미 동일, 부분실패만 제거.
+  const clawStmts: D1PreparedStatement[] = []
   for (const a of attrs) {
     // 이 바우처 몫 = 남은 커미션 / 남은(미회수) 바우처 수. qty=1 이면 전액.
     const share = orderId
@@ -231,23 +234,24 @@ export async function clawbackVoucherCommission(
       : a.commission_amount
     // balance 즉시 차감(즉각 일관성). 권위 출처는 attribution SUM 이라 cron 이 재집계로 보정.
     if (a.status === 'pending') {
-      await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-        .bind(share, a.influencer_id).run()
+      clawStmts.push(DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+        .bind(share, a.influencer_id))
     } else if (a.status === 'available') {
-      await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-        .bind(share, a.influencer_id).run()
+      clawStmts.push(DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
+        .bind(share, a.influencer_id))
     }
     // attribution(권위 출처) 갱신: 전액 회수면 clawed_back, 부분이면 commission_amount 차감(나머지 바우처 몫 유지).
     const remaining = a.commission_amount - share
     if (remaining <= 0) {
-      await DB.prepare("UPDATE influencer_attributions SET status = 'clawed_back', commission_amount = 0, clawback_reason = ? WHERE id = ?")
-        .bind(reason, a.id).run()
+      clawStmts.push(DB.prepare("UPDATE influencer_attributions SET status = 'clawed_back', commission_amount = 0, clawback_reason = ? WHERE id = ?")
+        .bind(reason, a.id))
     } else {
-      await DB.prepare("UPDATE influencer_attributions SET commission_amount = ?, clawback_reason = ? WHERE id = ?")
-        .bind(remaining, reason, a.id).run()
+      clawStmts.push(DB.prepare("UPDATE influencer_attributions SET commission_amount = ?, clawback_reason = ? WHERE id = ?")
+        .bind(remaining, reason, a.id))
     }
     clawed++
   }
+  if (clawStmts.length > 0) await DB.batch(clawStmts)
 
   // 🛡️ 2026-05-31: 에이전시 입점 sales_commission(구매 시 order 단위 적립) 도 동일 비례 회수.
   //   payout 은 agency_store_intro_commissions 를 status 별 SUM(commission_amount) 로 집계하므로
@@ -258,15 +262,14 @@ export async function clawbackVoucherCommission(
         `SELECT id, commission_amount FROM agency_store_intro_commissions
          WHERE order_id = ? AND type = 'sales_commission' AND status IN ('pending', 'available') AND paid_at IS NULL`
       ).bind(orderId).all<{ id: number; commission_amount: number }>()
-      for (const a of (ag.results || [])) {
+      const agStmts = (ag.results || []).map((a) => {
         const share = Math.min(a.commission_amount, Math.max(1, Math.floor(a.commission_amount / denom)))
         const remaining = a.commission_amount - share
-        if (remaining <= 0) {
-          await DB.prepare("UPDATE agency_store_intro_commissions SET status = 'cancelled', commission_amount = 0 WHERE id = ?").bind(a.id).run()
-        } else {
-          await DB.prepare("UPDATE agency_store_intro_commissions SET commission_amount = ? WHERE id = ?").bind(remaining, a.id).run()
-        }
-      }
+        return remaining <= 0
+          ? DB.prepare("UPDATE agency_store_intro_commissions SET status = 'cancelled', commission_amount = 0 WHERE id = ?").bind(a.id)
+          : DB.prepare("UPDATE agency_store_intro_commissions SET commission_amount = ? WHERE id = ?").bind(remaining, a.id)
+      })
+      if (agStmts.length > 0) await DB.batch(agStmts)
     } catch (e) { if (import.meta.env?.DEV) console.warn('[agency intro clawback]', e) }
   }
 
