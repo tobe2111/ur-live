@@ -5,6 +5,9 @@ name: Image Pipeline Diag
 #   작동 X 면 모든 카드가 원본(수 MB)을 받는 것 — 그게 느림의 진짜 원인.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/image-diag.yml']
 
 jobs:
   diag:
