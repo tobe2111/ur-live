@@ -1611,6 +1611,14 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_tax_withholding_reportable', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_reportable ON tax_withholding_log(payout_year, reportable)` },
     // 🔐 2026-06-11 (머니 감사 Med-F): 이중 원천징수 race 차단 — 같은 정산 송금 재시도 멱등.
     { name: 'idx_tax_withholding_source_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_tax_withholding_source_unique ON tax_withholding_log(source_type, source_id) WHERE source_id IS NOT NULL` },
+    // 🔐 2026-06-11 (정합성 감사 — lazy DDL UNIQUE 드리프트): repair-schema 가 만드는 테이블의
+    //   멱등 UNIQUE 누락분 보강. INSERT OR IGNORE / changes 검사가 의존하는 인덱스들 — 없으면
+    //   동시 요청에서 쿠폰 반복claim·환불 이중적립·타임딜 이중claim·invite 이중보상.
+    { name: 'idx_user_coupons_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_user_coupons_pair ON user_coupons(user_id, coupon_id)` },
+    { name: 'idx_community_gb_refunds_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_community_gb_refunds_pair ON community_group_buy_refunds(group_id, user_id)` },
+    { name: 'idx_time_deal_claims_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_time_deal_claims_pair ON time_deal_claims(deal_id, user_id)` },
+    { name: 'idx_seller_follows_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_follows_pair ON seller_follows(seller_id, user_id)` },
+    { name: 'idx_invite_rewards_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)` },
 
     // 🏬 2026-06-09 도매몰 멀티-몰 테넌시 — 몰 설정 테이블 + 기본 몰(id=1) 시드.
     //   한 운영자가 카테고리별 분리 몰(식품/패션 등) 운영. 기본 몰 = 기존 유통스타트(slug='default', host=utongstart.com).

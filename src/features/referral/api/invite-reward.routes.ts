@@ -26,9 +26,12 @@ async function ensureInviteRewardsTable(DB: D1Database) {
         invited_user_id TEXT NOT NULL,
         reward_amount INTEGER NOT NULL,
         status TEXT DEFAULT 'pending' CHECK(status IN ('pending','granted','expired')),
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(inviter_user_id, invited_user_id)
       )
     `).run()
+    // 🔐 2026-06-11 (정합성 감사 🔴): 기존 테이블에 UNIQUE 없으면 보강 (이중 보상 차단).
+    await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)').run().catch(() => {})
   } catch { /* table already exists */ }
 }
 
@@ -84,14 +87,11 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   }
 
   // 2. Check if reward already granted for this pair
-  const existing = await queryFirst<{ id: number }>(
-    DB,
-    'SELECT id FROM invite_rewards WHERE inviter_user_id = ? AND invited_user_id = ?',
-    [inviterUserId, String(invitedUser.id)],
-  )
-  if (existing) {
-    return c.json({ success: false, error: '이미 보상이 지급되었습니다' }, 409)
-  }
+  // 🔐 2026-06-11 (정합성 감사 🔴): 적립 전에 invite_rewards 를 INSERT 로 선점(claim) — UNIQUE 가
+  //   동시 2요청 중 하나만 통과시킴. changes==0(이미 보상됨)이면 적립 없이 409. 기존엔 SELECT 후
+  //   적립→INSERT 순서라 동시요청 둘 다 적립되던 이중 보상 누수.
+  //   reward_amount 는 아래에서 결정되므로 0 으로 선점 후 적립 직전 UPDATE.
+  // (placeholder — 실제 claim 은 reward_amount 확정 직후)
 
   // 3. Check this is the invited user's FIRST order
   // ✅ SECURITY FIX (H7): Exclude REFUNDED orders too (refund reversal double-
@@ -119,6 +119,16 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
       if (parsed > 0) rewardAmount = parsed
     }
   } catch { /* use default */ }
+
+  // 🔐 claim: UNIQUE(inviter,invited) 로 race 차단 — 이긴 요청만 적립.
+  const claim = await executeRun(
+    DB,
+    "INSERT OR IGNORE INTO invite_rewards (inviter_user_id, invited_user_id, reward_amount, status) VALUES (?, ?, ?, 'granted')",
+    [inviterUserId, String(invitedUser.id), rewardAmount],
+  )
+  if (((claim as { meta?: { changes?: number } })?.meta?.changes ?? 0) === 0) {
+    return c.json({ success: false, error: '이미 보상이 지급되었습니다' }, 409)
+  }
 
   // 5. Grant deal points to inviter via user_points table
   // (production users table doesn't have deal_balance column)
@@ -156,12 +166,7 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
     if (import.meta.env?.DEV) console.warn('[deal_balance]', e)
   }
 
-  // 6. Create invite_rewards record
-  await executeRun(
-    DB,
-    "INSERT INTO invite_rewards (inviter_user_id, invited_user_id, reward_amount, status) VALUES (?, ?, ?, 'granted')",
-    [inviterUserId, String(invitedUser.id), rewardAmount],
-  )
+  // 6. invite_rewards 는 위 claim(INSERT OR IGNORE)에서 이미 선점됨 — 중복 INSERT 제거.
 
   return c.json({
     success: true,
