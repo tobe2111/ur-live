@@ -149,7 +149,15 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
     if (!isSupported && isExternalProxyable) {
       const w = opts.width || 400
       const q = opts.quality || 85
-      return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
+      // 🔬 2026-06-11 [LOADING_ADDITIVE] (사용자 신고 "카드 이미지 현저히 느림" — prod 실측 수리):
+      //   기존 /api/image/resize 프록시는 워커 내부 cdn-cgi subrequest 에 리사이저가 적용되지 않아
+      //   항상 원본 폴백(실측: 143KB 그대로 + 기프티쇼 origin 1~4.5s + 엣지캐시 미적중).
+      //   zone 리사이저 직접 래핑은 실측 OK(cf-resized, 143KB→18KB, zone 캐시) — 브라우저가
+      //   /cdn-cgi/image/<옵션>/<외부절대URL> 을 직접 요청. same-origin 응답이라 canvas 대표색
+      //   추출(2026-06-05 프록시 도입 사유였던 CORS)도 동일하게 안전.
+      //   ⚠️ 워커 경로(/api/media 등)는 zone 리사이저가 origin 을 못 풀어 404(2026-06-06 사고) —
+      //   그 분기는 기존 프록시 유지. EXTERNAL_PROXY_HOSTS 목록·Save-Data quality 불변(제거 X).
+      return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
     }
     if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본
   }

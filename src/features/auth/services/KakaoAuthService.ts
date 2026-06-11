@@ -276,11 +276,19 @@ export class KakaoAuthService {
         //   COALESCE(?, phone) 패턴 — kakao phone NULL 이면 기존 phone 유지.
         const validPhone = normalizeKakaoPhone(kakaoUser.phoneNumber)
         try {
+          // 🛡️ 2026-06-11 (사용자 신고 — 링크샵 프로필 이미지가 "영구적이지 않음"): 매 로그인마다
+          //   카카오 프로필로 무조건 덮어써서 큐레이터 인라인 편집(/me/profile)으로 올린 커스텀
+          //   이미지(r2 업로드 '/api/media/...' 등)가 다음 로그인 때 증발했음.
+          //   → 현재 값이 비었거나 카카오 CDN 출처일 때만 갱신(카카오 아바타 변경은 계속 동기화),
+          //   커스텀 업로드는 보존. phone 의 COALESCE 보존 패턴과 동일 사상.
           await this.db.prepare(`
             UPDATE users
             SET name = ?,
                 email = ?,
-                profile_image = ?,
+                profile_image = CASE
+                  WHEN profile_image IS NULL OR profile_image = ''
+                       OR profile_image LIKE '%kakaocdn.net%' OR profile_image LIKE '%kakao.com%'
+                  THEN ? ELSE profile_image END,
                 phone = COALESCE(phone, ?),
                 updated_at = datetime('now'),
                 last_login_at = datetime('now')
