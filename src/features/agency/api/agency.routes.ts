@@ -430,6 +430,12 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
     memberRole, memberId,
   })
 
+  // 🔐 2026-06-11 SSR Phase 2: ud_agency_token dual-write (docs/SSR_PHASE2_AUTH.md §3.2)
+  try {
+    const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+    c.header('Set-Cookie', authTokenSetCookie('ud_agency_token', token, new URL(c.req.url).hostname), { append: true })
+  } catch { /* dual-write — 실패해도 로그인 정상 */ }
+
   // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
   let agencyCookie = ''
   try {

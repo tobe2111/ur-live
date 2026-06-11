@@ -317,6 +317,13 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       );
     } catch {}
 
+    // 🔐 2026-06-11 SSR Phase 2: httpOnly 쿠키 dual-write (docs/SSR_PHASE2_AUTH.md §3.2)
+    //   응답 바디/localStorage 흐름 불변 — beta(SSR) 개인화용 쿠키만 추가 발급.
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+      c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', token, new URL(c.req.url).hostname), { append: true })
+    } catch { /* 쿠키 발급 실패해도 로그인은 정상 (dual-write) */ }
+
     // 5. 응답 반환 (frontend expects accessToken & refreshToken)
     const res = c.json({
       success: true,
