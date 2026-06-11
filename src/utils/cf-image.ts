@@ -84,6 +84,8 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'i.ibb.co',
   // Google 프로필 이미지 (OAuth/Gravatar fallback).
   'lh3.googleusercontent.com',
+  // 🏁 2026-06-11: R2 업로드 공개 도메인 (PUBLIC_R2_URL) — CDN_CGI_VERIFIED 와 짝, 실측 통과.
+  'media.ur-team.com',
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.
@@ -124,7 +126,18 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   //   검증된 워커 프록시(/api/image/resize, cf.image fetch)로 경유 — 리사이즈가 비활성이어도 원본을
   //   200 으로 반환(절대 404 안 남). live.ur-team.com/ur-live.pages.dev 는 worker ALLOWED_HOSTS 포함.
   //   (ADD only — SUPPORTED_HOSTS/EXTERNAL_PROXY_HOSTS·Save-Data 동작 불변)
-  if (src.startsWith('/api/media/') || src.startsWith('/api/upload/')) {
+  // 🏁 2026-06-11 [LOADING_ADDITIVE] (사용자 승인 — R2 커스텀 도메인 media.ur-team.com 연결):
+  //   prod 실측(diag): https://media.ur-team.com/<key> 200 image/jpeg + zone 리사이저 래핑 시
+  //   cf-resized OK · 779KB→9.7KB(128px) · 1y immutable 캐시. 레거시 저장분('/api/media/<key>')도
+  //   같은 객체이므로 도메인 매핑만으로 전부 즉시 치유(재업로드 불필요).
+  //   워커 프록시(/api/image/resize)는 리사이즈 불가(플랫폼 제약 — 06-11 실측)라 업로드 이미지의
+  //   유일한 변환 경로가 이것. 도메인 장애 시 롤백 = 이 분기만 이전 프록시로 복원.
+  if (src.startsWith('/api/media/')) {
+    const w = opts.width || 400
+    const q = opts.quality || 85
+    return `/cdn-cgi/image/width=${w},quality=${q},format=auto/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
+  }
+  if (src.startsWith('/api/upload/')) {
     if (typeof window !== 'undefined') {
       const w = opts.width || 400
       const q = opts.quality || 85
@@ -160,7 +173,8 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   기존 프록시 유지(느려도 항상 표시). 신규 호스트는 prod-diag 로 cf-resized 실측 후 추가.
       //   ⚠️ 워커 경로(/api/media 등)는 zone 리사이저가 origin 을 못 풀어 404(2026-06-06 사고) —
       //   그 분기는 기존 프록시 유지. EXTERNAL_PROXY_HOSTS 목록·Save-Data quality 불변(제거 X).
-      const CDN_CGI_VERIFIED = ['giftishow.com', 'kt.com']
+      // media.ur-team.com: 2026-06-11 diag 실측 통과 (cf-resized, 779KB→9.7KB) — 신규 업로드 절대 URL 용.
+      const CDN_CGI_VERIFIED = ['giftishow.com', 'kt.com', 'media.ur-team.com']
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
       }

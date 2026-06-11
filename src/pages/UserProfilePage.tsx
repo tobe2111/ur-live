@@ -5,6 +5,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
+import { cfImage } from '@/utils/cf-image'
 import { logout } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
@@ -133,7 +134,7 @@ export default function UserProfilePage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
-            src={profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
+            src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
             alt={`${userName} 프로필 이미지`}
             loading="lazy"
             decoding="async"

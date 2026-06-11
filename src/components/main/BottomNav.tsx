@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
@@ -264,7 +265,7 @@ export default function BottomNav() {
       >
         {isMyTab && profileImage ? (
           <img
-            src={profileImage}
+            src={cfImage(profileImage, { width: 96 })}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
               active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'
