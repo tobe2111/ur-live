@@ -292,6 +292,35 @@ adminOrdersRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => {
     );
     if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
 
+    // 🔐 2026-06-11 머니 감사: 결제 캡처된 주문을 CANCELLED/REFUNDED 로 바꿀 때 반드시 환불 경로 경유.
+    //   기존 구멍: status 만 바꿔 재고만 복원 → 고객 미환불 + 커미션(추천/affiliate/공급자/영입자/
+    //   에이전시/referral_bonus) 미역전(출금 누수). refundOrderFully = Toss취소/딜환불 + CAS 멱등 +
+    //   재고복원 + 전 커미션 역전. 관리자는 환불 권한자이므로 자동 환불 라우팅(셀러는 전용 환불 endpoint).
+    const CAPTURED = ['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED'];
+    if ((status === 'CANCELLED' || status === 'REFUNDED') && CAPTURED.includes(String(orders[0].status).toUpperCase())) {
+      const { refundOrderFully } = await import('../../../worker/utils/order-refund');
+      const reason = (typeof cancel_reason === 'string' ? cancel_reason : '관리자 주문 취소·환불').slice(0, 200);
+      const r = await refundOrderFully(DB, c.env as unknown as { TOSS_SECRET_KEY?: string }, orderNumber, { reason });
+      if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, r.status);
+      const refundActor = (c as unknown as { get: (k: string) => { id?: string | number; email?: string } }).get('user');
+      void logAudit(c.env.DB, {
+        actor_id: String(refundActor?.id ?? 'unknown'),
+        actor_email: refundActor?.email,
+        action: 'order_refund',
+        resource_type: 'order',
+        resource_id: orderNumber,
+        old_value: JSON.stringify({ status: orders[0].status }),
+        new_value: JSON.stringify({ status: 'REFUNDED', cancel_reason: cancel_reason ?? undefined }),
+        ip: c.req.header('CF-Connecting-IP') ?? undefined,
+      });
+      return c.json({
+        success: true,
+        data: { orderNumber, status: 'REFUNDED' },
+        refunded: !r.already,
+        refund_amount: r.refundAmount ?? 0,
+      });
+    }
+
     const updates: string[] = ['status = ?', 'updated_at = datetime(\'now\')'];
     const params: (string | null)[] = [status];
 
@@ -411,6 +440,25 @@ adminOrdersRoutes.patch('/orders/bulk-status', cors(), auditLog('orders.bulk_sta
     }
 
     const placeholders = order_numbers.map(() => '?').join(',');
+
+    // 🔐 2026-06-11 머니 감사: 결제 캡처된 주문은 무환불 일괄취소 금지 (단일 endpoint 자동환불 경유 유도).
+    //   bulk 는 status 만 플립 → 재고복원도 커미션역전도 환불도 없음(이중 누수). 결제완료 건이 섞이면 차단,
+    //   주문별 PATCH /orders/:orderNumber/status (CANCELLED → refundOrderFully 자동) 로 처리하게 함.
+    if (status === 'CANCELLED') {
+      const captured = await DB.prepare(
+        `SELECT COUNT(*) AS n FROM orders
+           WHERE order_number IN (${placeholders})
+             AND UPPER(status) IN ('PAID','DONE','PREPARING','SHIPPING','DELIVERED')`
+      ).bind(...order_numbers).first<{ n: number }>();
+      if ((captured?.n ?? 0) > 0) {
+        return c.json({
+          success: false,
+          error: '결제 완료된 주문이 포함되어 일괄 취소할 수 없습니다. 주문별 취소(환불 자동 처리)를 사용하세요.',
+          code: 'REFUND_REQUIRED',
+        }, 400);
+      }
+    }
+
     const { statusesThatCanReach } = await import('../../../worker/utils/state-machine');
     const allowedPrev = statusesThatCanReach(status);
     if (allowedPrev.length === 0) {

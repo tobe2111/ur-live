@@ -602,6 +602,24 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
     const db = c.env.DB;
     const placeholders = order_ids.map(() => '?').join(',');
 
+    // 🔐 2026-06-11 머니 감사: 결제 캡처된 주문은 무환불 일괄취소 금지 (단일경로 REFUND_REQUIRED 가드와 정합).
+    //   기존 구멍: 일괄 status='CANCELLED' 가 결제완료 주문도 환불/커미션역전 없이 플립 → 고객 미환불 +
+    //   출금 누수. 환불은 POST /api/seller/orders/:id/refund (Toss취소 + 전 커미션 역전) 개별 경유.
+    if (dbStatus === 'CANCELLED') {
+      const captured = await db.prepare(
+        `SELECT COUNT(*) AS n FROM orders
+           WHERE id IN (${placeholders}) AND seller_id = ?
+             AND UPPER(status) IN ('PAID','DONE','PREPARING','SHIPPING','DELIVERED')`
+      ).bind(...order_ids, sellerId).first<{ n: number }>();
+      if ((captured?.n ?? 0) > 0) {
+        return c.json({
+          success: false,
+          error: '결제 완료된 주문이 포함되어 일괄 취소할 수 없습니다. 주문별 환불(POST /api/seller/orders/:id/refund) 을 사용하세요.',
+          code: 'REFUND_REQUIRED',
+        }, 400);
+      }
+    }
+
     // 셀러 소유 확인 + 일괄 업데이트 (atomic)
     const result = await db.prepare(
       `UPDATE orders
