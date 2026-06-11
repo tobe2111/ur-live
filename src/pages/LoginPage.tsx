@@ -8,7 +8,7 @@ import { toast } from '@/hooks/useToast'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { Eye, EyeOff, MapPin, Ticket, Store } from 'lucide-react'
+import { Eye, EyeOff, MapPin, Ticket } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
@@ -270,7 +270,7 @@ export default function LoginPage() {
       {/* 🛡️ 2026-05-14: 태블릿/PC 에서 form 너비 자연스럽게 — 모바일 360px / 태블릿+ 420px */}
       <div className="relative w-full max-w-[360px] md:max-w-[420px]">
 
-        {/* Brand + 가치 제안 (동네딜 / 교환권 / 도매몰) */}
+        {/* Brand + 가치 제안 (동네딜 / 교환권) */}
         <div className="flex flex-col items-center mb-12">
           <UrDealLogo size={34} />
           <h1 className="mt-6 text-[20px] md:text-[22px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
@@ -288,10 +288,7 @@ export default function LoginPage() {
               <Ticket className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
-              <Store className="w-3.5 h-3.5 text-emerald-500" />
-              {t('login.chipWholesale', { defaultValue: '사장님 도매몰' })}
-            </span>
+            {/* 2026-06-11 (사용자 요청): 소비자 로그인에서 도매몰 칩 제거 — 도매는 /wholesale/login 별도 표면 */}
           </div>
         </div>
 

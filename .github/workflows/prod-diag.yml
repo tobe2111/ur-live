@@ -25,6 +25,28 @@ jobs:
             head -c 500 /tmp/body; echo
           done
 
+      - name: 카드 이미지 로딩 타이밍 (교환권/상품)
+        run: |
+          # 교환권 리스트에서 실제 image_url 추출 → 원본/CF변환/워커프록시 각각 타이밍
+          curl -s --max-time 20 "https://live.ur-team.com/api/products?page=1&limit=6&deal_only=1&sort=price_low" -H 'accept: application/json' > /tmp/prods.json
+          jq -r '.data.items[]?.image_url // .items[]?.image_url // empty' /tmp/prods.json 2>/dev/null | head -4 > /tmp/imgs.txt || true
+          [ -s /tmp/imgs.txt ] || jq -r '.. | .image_url? // empty' /tmp/prods.json | head -4 > /tmp/imgs.txt
+          echo "--- 추출된 이미지 URL ---"; cat /tmp/imgs.txt
+          while read -r IMG; do
+            [ -z "$IMG" ] && continue
+            case "$IMG" in /*) IMG="https://live.ur-team.com$IMG";; esac
+            echo "===== 원본: $IMG ====="
+            curl -s -o /dev/null -D /tmp/ih -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "$IMG" || true
+            grep -i "cache-control\|cf-cache-status\|age:" /tmp/ih || true
+            ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$IMG")
+            echo "--- cdn-cgi 변환 ---"
+            curl -s -o /dev/null -D /tmp/ih2 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://live.ur-team.com/cdn-cgi/image/width=400,quality=75,format=auto/$IMG" || true
+            grep -i "cf-resized\|cache-control\|cf-cache-status" /tmp/ih2 || true
+            echo "--- 워커 프록시 /api/image/resize ---"
+            curl -s -o /dev/null -D /tmp/ih3 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://live.ur-team.com/api/image/resize?url=$ENC&w=400" || true
+            grep -i "cache-control\|cf-cache-status" /tmp/ih3 || true
+          done < /tmp/imgs.txt
+
       - name: wholesale HTML (SSR slot + 체감 로딩)
         run: |
           curl -s -D /tmp/h -o /tmp/html -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
