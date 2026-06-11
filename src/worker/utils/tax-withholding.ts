@@ -118,6 +118,28 @@ export async function withholdAndLog(
   const withholding = Math.floor(gross * rate)
   const net = gross - withholding
 
+  // 🔐 2026-06-11 (머니 감사 Med-F): 멱등 가드 — 같은 (source_type, source_id) 로 재호출 시
+  //   이중 원천징수·지급조서 중복(세무 신고액 오류) 차단. 정산 송금 재시도 케이스.
+  if (sourceId) {
+    const dup = await env.DB.prepare(
+      `SELECT gross_amount, withholding_rate, withholding_amount, net_amount, ytd_gross_amount, reportable
+         FROM tax_withholding_log WHERE source_type = ? AND source_id = ? LIMIT 1`
+    ).bind(sourceType, sourceId).first<{ gross_amount: number; withholding_rate: number; withholding_amount: number; net_amount: number; ytd_gross_amount: number; reportable: number }>().catch(() => null)
+    if (dup) {
+      return {
+        withheld: dup.withholding_amount > 0,
+        gross_amount: dup.gross_amount,
+        withholding_amount: dup.withholding_amount,
+        withholding_rate: (dup.withholding_rate || 0) / 100,
+        tax_type: taxType,
+        net_amount: dup.net_amount,
+        ytd_gross_amount: dup.ytd_gross_amount,
+        reportable: !!dup.reportable,
+        reason: 'already_withheld',
+      }
+    }
+  }
+
   // INSERT — withholding_rate 에 실제 비율 (% 단위) 저장.
   const result = await env.DB.prepare(
     `INSERT INTO tax_withholding_log

@@ -1163,6 +1163,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_agency_intro_comm_agency', sql: `CREATE INDEX IF NOT EXISTS idx_agency_intro_comm_agency ON agency_store_intro_commissions(agency_id, status, created_at DESC)` },
     { name: 'idx_agency_intro_comm_store', sql: `CREATE INDEX IF NOT EXISTS idx_agency_intro_comm_store ON agency_store_intro_commissions(store_seller_id, type, created_at DESC)` },
+    // 🔐 2026-06-11 (머니 감사 Med-B): signup_bonus 는 매장당 1회 — 동시 첫주문 2건 이중적립 race 차단.
+    //   기존 UNIQUE(order_id,type) 는 order_id 다르면 무력했음.
+    { name: 'idx_agency_intro_signup_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_intro_signup_unique ON agency_store_intro_commissions(store_seller_id) WHERE type = 'signup_bonus'` },
     // 🛡️ 2026-05-22: migrations 0277 — group-buy 피드 materialized cache.
     //   (status, category) PK 로 product JSON snapshot 저장. 5분 cron 으로 갱신.
     //   적용 즉시 group-buy-public.routes.ts 의 cache fallback path 자동 활성.
@@ -1606,6 +1609,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_tax_withholding_seller_year', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_seller_year ON tax_withholding_log(seller_id, payout_year, payout_month)` },
     { name: 'idx_tax_withholding_reportable', sql: `CREATE INDEX IF NOT EXISTS idx_tax_withholding_reportable ON tax_withholding_log(payout_year, reportable)` },
+    // 🔐 2026-06-11 (머니 감사 Med-F): 이중 원천징수 race 차단 — 같은 정산 송금 재시도 멱등.
+    { name: 'idx_tax_withholding_source_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_tax_withholding_source_unique ON tax_withholding_log(source_type, source_id) WHERE source_id IS NOT NULL` },
 
     // 🏬 2026-06-09 도매몰 멀티-몰 테넌시 — 몰 설정 테이블 + 기본 몰(id=1) 시드.
     //   한 운영자가 카테고리별 분리 몰(식품/패션 등) 운영. 기본 몰 = 기존 유통스타트(slug='default', host=utongstart.com).
