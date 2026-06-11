@@ -614,8 +614,11 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   } catch { /* ledger may not exist */ }
 
   try {
+    // 🔐 2026-06-11 (머니 감사 High#1): affiliate_earnings 는 DEFAULT 'pending' (granted 전환 없음).
+    //   기존 status='granted' 타겟은 항상 0건 → if 블록 전체 skip → 즉시 적립된 포인트 환불 시 미회수.
+    //   order-refund.ts:138 정답 패턴과 일치시킴 (pending/granted 모두 회수, refunded 는 재제외).
     const aff = await DB.prepare(
-      "SELECT referrer_id, commission FROM affiliate_earnings WHERE order_id = ? AND status = 'granted'"
+      "SELECT referrer_id, commission FROM affiliate_earnings WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
     ).bind(returnRecord.order_id).all<{ referrer_id: string; commission: number }>();
 
     if (aff.results && aff.results.length > 0) {
@@ -641,6 +644,21 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   try {
     const { reverseInfluencerStoreIntroOnRefund } = await import('../../../worker/utils/influencer-store-intro-commission');
     await reverseInfluencerStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
+  } catch { /* best-effort */ }
+
+  // 🔐 2026-06-11 (머니 감사 High#2): 에이전시 매장영입 커미션 역전 (적립 있는데 역전 없던 누수).
+  try {
+    const { reverseAgencyStoreIntroOnRefund } = await import('../../../worker/utils/agency-store-intro-commission');
+    await reverseAgencyStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
+  } catch { /* best-effort */ }
+  // 🔐 2026-06-11 (머니 감사 High#3): 구매자 referral_bonus 포인트 회수 (order_id→order_number 조회).
+  try {
+    const onum = await DB.prepare('SELECT order_number FROM orders WHERE id = ? LIMIT 1')
+      .bind(returnRecord.order_id).first<{ order_number: string }>().catch(() => null);
+    if (onum?.order_number) {
+      const { reverseReferralBonusOnRefund } = await import('../../group-buy/api/helpers');
+      await reverseReferralBonusOnRefund(DB, String(onum.order_number));
+    }
   } catch { /* best-effort */ }
 
   // ── Settlement adjustment (restaurant vouchers) ──

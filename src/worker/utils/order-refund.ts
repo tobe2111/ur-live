@@ -154,6 +154,16 @@ export async function refundOrderFully(
     const { reverseInfluencerStoreIntroOnRefund } = await import('./influencer-store-intro-commission')
     await reverseInfluencerStoreIntroOnRefund(DB, Number(order.id), 'order_refund')
   } catch { /* best-effort */ }
+  // 🔐 2026-06-11 (머니 감사 High#2): 에이전시 매장영입 커미션 역전 (적립 있는데 역전 없던 누수).
+  try {
+    const { reverseAgencyStoreIntroOnRefund } = await import('./agency-store-intro-commission')
+    await reverseAgencyStoreIntroOnRefund(DB, Number(order.id), 'order_refund')
+  } catch { /* best-effort */ }
+  // 🔐 2026-06-11 (머니 감사 High#3): 구매자 referral_bonus 포인트 회수.
+  try {
+    const { reverseReferralBonusOnRefund } = await import('../../features/group-buy/api/helpers')
+    if (order.order_number) await reverseReferralBonusOnRefund(DB, String(order.order_number))
+  } catch { /* best-effort */ }
 
   // 8. 누적 환불액 기록.
   await DB.prepare('UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?')

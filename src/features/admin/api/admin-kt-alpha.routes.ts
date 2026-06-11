@@ -1336,7 +1336,7 @@ adminKtAlphaRoutes.post('/kt-alpha/init-system-seller', cors(), async (c) => {
         : `기존 system seller 발견 (id=${existing.id}) + platform_settings 자동 set`,
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message?.slice(0, 200) || 'unknown' }, 500)
+    return safeError(c, err, '처리 중 오류가 발생했습니다', '[admin-kt-alpha]')
   }
 })
 
@@ -1394,7 +1394,7 @@ adminKtAlphaRoutes.post('/kt-alpha/trigger-order/:order_id', cors(), async (c) =
           : (result.errors?.[0] || 'KT Alpha 상품 없음 또는 phone 누락'),
     })
   } catch (err) {
-    return c.json({ success: false, error: (err as Error).message?.slice(0, 200) || 'unknown' }, 500)
+    return safeError(c, err, '처리 중 오류가 발생했습니다', '[admin-kt-alpha]')
   }
 })
 

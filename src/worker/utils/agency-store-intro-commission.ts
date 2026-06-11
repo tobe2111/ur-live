@@ -75,3 +75,24 @@ export async function creditAgencyStoreIntroCommission(
     // fail-soft — 결제 흐름 막지 않음.
   }
 }
+
+/**
+ * 🔐 2026-06-11 (머니 감사 High#2): 주문 환불 시 에이전시 매장영입 커미션 역전.
+ *   creditAgencyStoreIntroCommission 가 적립(status='pending')하는데 환불 역전이 어떤 경로에도
+ *   없어 환불해도 cron 이 성숙→지급하던 누수. order-refund + returns 양쪽에서 호출(단일 진실).
+ *   pending/available 만 회수(이미 paid 면 차기 정산 상계 — 별도, 여기선 미성숙분만 안전 차단).
+ *   멱등: status 를 'refunded' 로 바꿔 재호출 시 0건.
+ */
+export async function reverseAgencyStoreIntroOnRefund(
+  DB: import('@cloudflare/workers-types').D1Database,
+  orderId: number,
+  _reason: string,
+): Promise<number> {
+  if (!orderId) return 0
+  try {
+    const r = await DB.prepare(
+      "UPDATE agency_store_intro_commissions SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') IN ('pending','available')"
+    ).bind(orderId).run().catch(() => ({ meta: { changes: 0 } }))
+    return (r as { meta?: { changes?: number } }).meta?.changes ?? 0
+  } catch { return 0 }
+}

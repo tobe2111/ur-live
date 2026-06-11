@@ -611,3 +611,38 @@ https://live.ur-team.com/my-vouchers
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
 const _done_ensureTables = new WeakSet<object>()
+
+/**
+ * 🔐 2026-06-11 (머니 감사 High#3): 환불 시 구매자 본인 referral_bonus 포인트 회수.
+ *   creditReferralRewards 가 user_points 에 즉시 적립(point_transactions type='referral_bonus',
+ *   order_id=orderNumber)하는데 회수 코드가 전무 → 추천링크 구매→셀프취소 반복 파밍 가능.
+ *   멱등: point_transactions 역전 마커(type='referral_bonus_reversed') 존재 시 skip.
+ */
+export async function reverseReferralBonusOnRefund(
+  DB: D1Database,
+  orderNumber: string,
+): Promise<number> {
+  if (!orderNumber) return 0
+  try {
+    const rows = await DB.prepare(
+      "SELECT user_id, points_amount FROM point_transactions WHERE order_id = ? AND type = 'referral_bonus'"
+    ).bind(orderNumber).all<{ user_id: string; points_amount: number }>().catch(() => ({ results: [] as { user_id: string; points_amount: number }[] }))
+    let reversed = 0
+    for (const t of rows.results || []) {
+      const dup = await DB.prepare(
+        "SELECT 1 AS x FROM point_transactions WHERE order_id = ? AND type = 'referral_bonus_reversed' AND user_id = ? LIMIT 1"
+      ).bind(orderNumber, t.user_id).first<{ x: number }>().catch(() => null)
+      if (dup) continue
+      const amt = Math.floor(t.points_amount || 0)
+      if (amt <= 0) continue
+      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+        .bind(amt, t.user_id).run().catch(() => {})
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
+         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
+      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber).run().catch(() => {})
+      reversed++
+    }
+    return reversed
+  } catch { return 0 }
+}
