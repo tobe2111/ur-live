@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-11 (오후~밤) — 이미지 파이프라인 정석화 + 응답경로 수술 + 공구 플로우 마감 (`claude/service-analysis-optimization-whpu0f`)
+- **이미지 3단 수리**: ① `_routes.json` 확장자 글롭(`/*.jpg` 등)이 `/api/media/**.jpg` 워커 미도달 → SPA HTML 폴백 (업로드 이미지 전부 깨짐의 진범, 루트 정적 명시목록으로 — 재발 방지 주석) ② 기프티쇼/KT cdn-cgi 직결(실측 143KB→18KB, `CDN_CGI_VERIFIED` — kakaocdn 회귀 교훈: 실측 통과 호스트만) ③ **R2 커스텀 도메인 media.ur-team.com + zone 리사이저** (실측 779KB→9.7KB) — 레거시 `/api/media/` URL 도 도메인 매핑으로 전부 치유, 아바타 소비처 cfImage 래핑. ⚠️ biz-cert 비공개 버킷 분리 = 부채.
+- **응답경로 부수효과 전수조사**: 참여하기(93b58ee1) 레시피로 user-facing 9건 수술(선물 confirm·바우처 부분환불·동네공구 3·hosting DDL·payment /confirm referral 알림 `[UNLOCK]` 승인). admin/저빈도 ~10건 보고만.
+- **공구 E2E 감사 → 갭 5+2 마감 (c7f59a78)**: idempotency_key·ref 클라 전송(서버 기지원), 토스 실패 toast, 충전 복귀 loginReturnUrl, **공구 자동정산 셀러 가시화(RestaurantSettlementsSection 신설)**, 동네딜 카드 prefetch, deal_only flip cron.
+- 기타: vitest 2→4.1.8(allowlist 0), critical-path 번들 예산 300KB, 도매 God 2파일 분해, ➕ 겸직 1탭 등록(da0844dd), 로그아웃 링크샵 잔존키, 카카오 프로필 덮어쓰기 보존, beta robots 차단, SSR 쿠키 E2E 워크플로, prod-diag 워크플로(재사용 가능 진단 도구), Web Analytics beacon, 공급계약서 v2(가/나·리스터코퍼레이션).
+- **사용자 액션 잔여**: WS_E2E 시크릿(선택), beta 등급가 브라우저 확인, "에러 많다" 콘솔 스크린샷 대기.
+
+
 ## 🎯 [최우선 — 2주 스프린트 2026-06-11~25] 코드 동결, 영업 집중 (사용자 합의)
 **근거**: 전 진단이 한 숫자를 가리킴 — 활성 상품 1개. 엔지니어링 한계수익 ≈ 0, 영업 1시간 > 코드 10시간.
 | 트랙 | 담당 | 내용 |
