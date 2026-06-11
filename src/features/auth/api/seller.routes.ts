@@ -75,6 +75,25 @@ async function ensurePasswordResetTable(DB: D1Database) {
   ).run().catch(swallow('auth:api:seller'));
 }
 
+// 🛡️ 2026-06-11 감사: 셀러 로그인/리프레시마다 7개 ALTER 를 매 요청 실행하던 것을 isolate 당
+//   1회로 메모이즈 (기존 테이블 보장 헬퍼와 동일 WeakSet 패턴). DDL 라운드트립/무료 write 예산 절감.
+async function ensureSellerColumns(DB: D1Database) {
+  if (_done_ensureSellerColumns.has(DB)) return
+  _done_ensureSellerColumns.add(DB)
+  const alters = [
+    "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
+    "ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00",
+    "ALTER TABLE sellers ADD COLUMN business_number TEXT",
+    "ALTER TABLE sellers ADD COLUMN phone TEXT",
+    "ALTER TABLE sellers ADD COLUMN business_name TEXT",
+    "ALTER TABLE sellers ADD COLUMN distributor_grade TEXT",
+    "ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0",
+  ]
+  for (const sql of alters) {
+    try { await DB.prepare(sql).run() } catch { /* already exists */ }
+  }
+}
+
 /** 32자 hex 토큰 생성 (Web Crypto) */
 function generateResetToken(): string {
   const bytes = new Uint8Array(16);
@@ -184,14 +203,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       }
     }
     
-    // 누락 가능한 컬럼 자동 추가 (idempotent — 이미 있으면 throw → catch)
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* already exists */ }
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00").run() } catch { /* already exists */ }
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN business_number TEXT").run() } catch { /* already exists */ }
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN phone TEXT").run() } catch { /* already exists */ }
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN business_name TEXT").run() } catch { /* already exists */ }
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN distributor_grade TEXT").run() } catch { /* already exists */ }
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0").run() } catch { /* already exists */ }
+    // 누락 가능한 컬럼 자동 추가 (idempotent, isolate 당 1회 메모이즈)
+    await ensureSellerColumns(DB)
 
     // 1. 이메일로 셀러 조회
     const seller = await DB.prepare(`
@@ -420,8 +433,8 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
       }, 401);
     }
     
-    // seller_type 컬럼 존재 보장
-    try { await DB.prepare("ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'").run() } catch { /* already exists */ }
+    // seller 컬럼 존재 보장 (isolate 당 1회 메모이즈)
+    await ensureSellerColumns(DB)
 
     // 3. DB에서 셀러 정보 조회 (계정 상태 확인)
     const sellerId = payload.seller_id || payload.sub;
@@ -750,3 +763,4 @@ export default sellerRoutes;
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
 const _done_ensurePasswordResetTable = new WeakSet<object>()
 const _done_ensureAuthRefreshTokensTable = new WeakSet<object>()
+const _done_ensureSellerColumns = new WeakSet<object>()
