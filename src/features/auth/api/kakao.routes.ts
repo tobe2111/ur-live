@@ -468,6 +468,16 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
               { append: true });
           }
         }
+        // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
+        //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage
+        //   이전 흐름·OAuth state/safeRedirect 로직 전부 불변 (additive Set-Cookie).
+        try {
+          const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+          const hostD = new URL(c.req.url).hostname
+          if (linkedRoles.seller_token) c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', linkedRoles.seller_token, hostD), { append: true })
+          if (linkedRoles.agency_token) c.header('Set-Cookie', authTokenSetCookie('ud_agency_token', linkedRoles.agency_token, hostD), { append: true })
+        } catch { /* dual-write — 실패해도 로그인 정상 */ }
+
       } catch (e) {
         if (import.meta.env.DEV) console.error('[Kakao Sync] Linked role tokens issuance failed:', e);
       }
@@ -631,6 +641,16 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
 
     // 🛡️ linked seller / agency 자동 JWT 발급
     const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
+
+    // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
+    //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage
+    //   이전 흐름·OAuth state/safeRedirect 로직 전부 불변 (additive Set-Cookie).
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+      const hostD = new URL(c.req.url).hostname
+      if (linkedRoles.seller_token) c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', linkedRoles.seller_token, hostD), { append: true })
+      if (linkedRoles.agency_token) c.header('Set-Cookie', authTokenSetCookie('ud_agency_token', linkedRoles.agency_token, hostD), { append: true })
+    } catch { /* dual-write — 실패해도 로그인 정상 */ }
 
     const responseBody = {
       success: true,
