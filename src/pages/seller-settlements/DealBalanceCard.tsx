@@ -40,7 +40,10 @@ export default function DealBalanceCard() {
     if (balance && amount > balance.withdrawable) {
       toast.error(`환급 가능 잔액 부족 (보유: ${balance.withdrawable.toLocaleString()})`); return
     }
-    if (!(await confirmDialog(`${amount.toLocaleString()}딜 환급 신청? (8.8% 원천징수 차감 후 ${Math.floor(amount * 0.912).toLocaleString()}원 입금 예정)`))) return
+    // 🛡️ 2026-06-11 (감사 — CLAUDE.md 원천징수 hardcode 금지 룰 위반이었음): 세율은 서버가
+    //   sellers.tax_type 별 계산(기본 3.3% 사업소득 / 8.8% 기타소득) — 클라 고정 8.8% 는 대부분
+    //   셀러에게 잘못된 예상액이었음. 정확한 금액은 신청 응답(gross/net)으로 안내.
+    if (!(await confirmDialog(`${amount.toLocaleString()}딜 환급 신청? (사업자 유형에 따른 원천징수 3.3%/8.8% 차감 후 입금 — 정확한 금액은 신청 직후 표시됩니다)`))) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -135,7 +138,7 @@ export default function DealBalanceCard() {
                 <p className="font-bold">₩{tax.total_gross.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-[10px]">원천징수 8.8%</p>
+                <p className="text-gray-500 text-[10px]">원천징수 3.3%/8.8%</p>
                 <p className="font-bold text-red-600">-₩{tax.total_withheld.toLocaleString()}</p>
               </div>
               <div>
@@ -158,7 +161,7 @@ export default function DealBalanceCard() {
           onClick={() => !submitting && setWithdrawOpen(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-1">딜 환급 신청</h3>
-            <p className="text-xs text-gray-500 mb-4">8.8% 원천징수 후 계좌 입금 — 최소 10,000 딜</p>
+            <p className="text-xs text-gray-500 mb-4">원천징수(사업자 3.3% / 비사업자 8.8%) 후 계좌 입금 — 최소 10,000 딜</p>
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">환급 금액</label>
               <input

@@ -667,12 +667,17 @@ sellerSettlementsRoutes.post('/deal-withdraw', rateLimit({ action: 'seller_deal_
     }
 
     // 잔액 차감 + 거래 이력.
-    await c.env.DB.prepare(
+    // 🛡️ 2026-06-11 (전 플로우 감사 🔴): 사전 SELECT 후 무가드 UPDATE 는 동시 더블클릭 시
+    //   음수 잔액 + 이중 신청 가능 — 머니 룰 #1(CAS) 위반이었음. 잔액 가드 + changes 검사로 원자화.
+    const deduct = await c.env.DB.prepare(
       `UPDATE seller_deal_balances
           SET redeemable_deal_amount = redeemable_deal_amount - ?,
               updated_at = datetime('now')
-        WHERE seller_id = ?`
-    ).bind(amount, sellerId).run();
+        WHERE seller_id = ? AND redeemable_deal_amount >= ?`
+    ).bind(amount, sellerId, amount).run();
+    if (!deduct.meta?.changes) {
+      return c.json({ success: false, error: '환급 가능 잔액 부족 (동시 요청 충돌)' }, 409);
+    }
 
     const txResult = await c.env.DB.prepare(
       `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, memo, created_at)
