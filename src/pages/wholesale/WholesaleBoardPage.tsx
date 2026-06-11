@@ -7,7 +7,7 @@
  */
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, Pin, Download, Megaphone, FolderDown, Truck, MessageSquareWarning, ExternalLink } from 'lucide-react'
+import { ChevronLeft, Pin, Download, Megaphone, FolderDown, Truck, MessageSquareWarning, ExternalLink, PenLine } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -39,6 +39,7 @@ interface BoardPost {
 interface Ticket { id: number; type: string; target: string | null; subject: string; status: string; created_at: string; admin_memo?: string | null }
 
 const sellerToken = () => (typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null)
+const isAdminUser = () => (typeof window !== 'undefined' && !!localStorage.getItem('admin_token'))
 const auth = () => { const t = sellerToken(); return { headers: t ? { Authorization: `Bearer ${t}` } : {} } }
 
 const TICKET_STATUS: Record<string, { label: string; color: string }> = {
@@ -84,6 +85,7 @@ export default function WholesaleBoardPage() {
 
   // ── 신고·제안 ──
   const loggedIn = !!sellerToken()
+  const isAdmin = isAdminUser()
   const [tickets, setTickets] = useState<Ticket[] | null>(null)
   const [form, setForm] = useState({ type: 'report', target: '', subject: '', body: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -125,6 +127,14 @@ export default function WholesaleBoardPage() {
             <ChevronLeft className="w-5 h-5" style={{ color: WT.ink }} />
           </button>
           <h1 className="ml-1 text-[16px] font-extrabold" style={{ color: WT.ink }}>게시판</h1>
+          {/* 🛡️ 2026-06-11 (사용자 요청): 관리자에게만 작성 버튼 — /admin/wholesale-board (공지/자료실 CRUD) */}
+          {isAdmin && (
+            <button onClick={() => navigate('/admin/wholesale-board')}
+              className="ml-auto inline-flex items-center gap-1 px-3 h-9 rounded-xl text-[12.5px] font-bold text-white"
+              style={{ background: WT.ink }}>
+              <PenLine className="w-3.5 h-3.5" /> 공지 작성
+            </button>
+          )}
         </div>
         <div className="ur-content-wide px-5 lg:px-8 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map(ti => (
@@ -200,6 +210,12 @@ export default function WholesaleBoardPage() {
           ) : posts.length === 0 ? (
             <div className="rounded-2xl py-20 text-center" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
               <p className="text-[14px]" style={{ color: WT.ink4 }}>{tab === 'notice' ? '등록된 공지사항이 없어요.' : '등록된 자료가 없어요.'}</p>
+              {isAdmin && (
+                <button onClick={() => navigate('/admin/wholesale-board')}
+                  className="mt-4 px-5 h-11 rounded-xl text-[13px] font-bold text-white" style={{ background: WT.ink }}>
+                  ✏️ 첫 게시글 작성하기 (관리자)
+                </button>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
