@@ -476,7 +476,10 @@ export function requireAdminRole(...allowed: AdminRole[]) {
       if (allowed.includes(role)) { await next(); return; }
       return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);
     } catch (err) {
-      // role 컬럼 없거나 조회 실패 — 기본은 super 로 fallback (역호환)
+      // role 컬럼 없거나 조회 실패 — 기본은 super 로 fallback (역호환).
+      // 🔐 2026-06-11 (보안 감사 🟡#3): fail-open 이라 finance 게이트가 DB 에러로 무력화 가능 →
+      //   경보 로그(운영 안전상 통과는 유지 — fail-closed 면 정산 마비 위험).
+      try { if (typeof console !== 'undefined') console.error('[requireAdminRole] role 조회 실패 — super fallback (finance 게이트 우회 가능):', String(err)); } catch { /* */ }
       await next();
     }
   };

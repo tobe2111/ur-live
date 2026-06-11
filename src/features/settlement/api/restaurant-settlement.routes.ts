@@ -13,7 +13,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
 import { safeError } from '@/worker/utils/safe-error';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, getCurrentUser, requireAdminRole } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 // ── Table setup ────────────────────────────────────────────────────────────
 
@@ -220,9 +220,9 @@ restaurantSettlementRoutes.get('/list', async (c) => {
 
 // ── PATCH /:id/complete — Mark settlement as completed (paid) ──
 
-restaurantSettlementRoutes.patch('/:id/complete', async (c) => {
+restaurantSettlementRoutes.patch('/:id/complete', requireAdminRole('finance'), async (c) => {
   const DB = c.env.DB;
-  const id = parseInt(c.req.param('id'), 10);
+  const id = parseInt(c.req.param('id') ?? '', 10);
 
   try {
     const existing = await queryFirst<{ id: number; status: string }>(
@@ -268,9 +268,9 @@ restaurantSettlementRoutes.patch('/:id/complete', async (c) => {
 
 // ── PATCH /:id/fail — Mark settlement as failed ──
 
-restaurantSettlementRoutes.patch('/:id/fail', async (c) => {
+restaurantSettlementRoutes.patch('/:id/fail', requireAdminRole('finance'), async (c) => {
   const DB = c.env.DB;
-  const id = parseInt(c.req.param('id'), 10);
+  const id = parseInt(c.req.param('id') ?? '', 10);
 
   try {
     const existing = await queryFirst<{ id: number; status: string }>(

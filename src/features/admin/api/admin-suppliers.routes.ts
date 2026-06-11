@@ -8,6 +8,7 @@
  * adminApp(requireAdmin + IP whitelist + audit) 하위 마운트: adminApp.route('/', adminSuppliersRoutes)
  */
 import { Hono } from 'hono';
+import { requireAdminRole } from '../../../worker/middleware/auth'
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
@@ -155,7 +156,7 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
 });
 
 // ── POST /suppliers/:id/payout — available 잔고 전액 지급 ──────────────────────
-adminSuppliersRoutes.post('/suppliers/:id/payout', cors(), async (c) => {
+adminSuppliersRoutes.post('/suppliers/:id/payout', cors(), requireAdminRole('finance'), async (c) => {
   try {
     const { DB } = c.env;
     const id = c.req.param('id');

@@ -10,6 +10,7 @@
  *   인증: adminApp.use('*', requireAdmin()) 가 처리.
  */
 import { Hono } from 'hono'
+import { requireAdminRole } from '../../../worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
@@ -163,7 +164,7 @@ adminWithholdingRoutes.get('/withholding/csv', cors(), async (c) => {
 })
 
 // 3. 국세청 제출 완료 마킹 — 어드민이 홈택스 업로드 후 호출.
-adminWithholdingRoutes.post('/withholding/mark-reported', cors(), async (c) => {
+adminWithholdingRoutes.post('/withholding/mark-reported', cors(), requireAdminRole('finance'), async (c) => {
   try {
     type Body = { year?: number; ids?: number[] }
     const body = await c.req.json<Body>().catch(() => ({} as Body))

@@ -14,7 +14,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
-import { requireSupplier } from '@/worker/middleware/auth'
+import { requireSupplier, requireAdminRole } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -156,7 +156,7 @@ admin.get('/wholesale-withdrawals', cors(), async (c) => {
 // ── POST /:id/approve — 출금 승인(송금 완료) ── 💰 머니-크리티컬, 멱등 ──────────
 //   예약(reserved)은 신청 시 이미 잔액에서 빠졌으므로, 승인은 'requested→paid' 전환 +
 //   예약을 실제 available 차감으로 확정(settleWithdrawalLedger). 어드민이 은행 송금을 직접 수행.
-admin.post('/wholesale-withdrawals/:id/approve', rateLimit({ action: 'admin-supplier-withdrawal-approve', max: 30, windowSec: 60 }), async (c) => {
+admin.post('/wholesale-withdrawals/:id/approve', requireAdminRole('finance'), rateLimit({ action: 'admin-supplier-withdrawal-approve', max: 30, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청 ID' }, 400)
@@ -190,7 +190,7 @@ admin.post('/wholesale-withdrawals/:id/approve', rateLimit({ action: 'admin-supp
 })
 
 // ── POST /:id/reject — 출금 반려(예약 복원) ── 💰 머니-크리티컬, 멱등 ───────────
-admin.post('/wholesale-withdrawals/:id/reject', rateLimit({ action: 'admin-supplier-withdrawal-reject', max: 30, windowSec: 60 }), async (c) => {
+admin.post('/wholesale-withdrawals/:id/reject', requireAdminRole('finance'), rateLimit({ action: 'admin-supplier-withdrawal-reject', max: 30, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청 ID' }, 400)

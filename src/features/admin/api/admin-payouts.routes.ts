@@ -11,7 +11,7 @@
  */
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
-import { requireAdmin } from '../../../worker/middleware/auth'
+import { requireAdmin, requireAdminRole } from '../../../worker/middleware/auth'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
@@ -146,7 +146,7 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
   return c.json({ success: true, data: rows.results || [] })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdmin(), auditLog('payouts.approve'), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance'), auditLog('payouts.approve'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const { DB } = c.env
@@ -216,7 +216,7 @@ adminPayoutsRoutes.get('/admin/payouts/commission-rates', requireAdmin(), async 
   return c.json({ success: true, data: result })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdmin(), auditLog('payouts.commission_rates'), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdminRole('finance'), auditLog('payouts.commission_rates'), async (c) => {
   const body = await c.req.json<{ platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number; influencer_intro_share_pct?: number }>().catch(() => ({} as { platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number; influencer_intro_share_pct?: number }))
   const { DB } = c.env
 
