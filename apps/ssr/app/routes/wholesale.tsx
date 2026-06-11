@@ -14,14 +14,16 @@ export function meta() {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
-  const res = await fetch(`${API}/api/wholesale/catalog?limit=24`, { headers: { accept: 'application/json' } })
+  // ⚠️ 예열 키(/api/wholesale/catalog — 파라미터 없음)와 정확 일치 → 엣지캐시 적중.
+  const res = await fetch(`${API}/api/wholesale/catalog`, { headers: { accept: 'application/json' } })
   const data = (await res.json().catch(() => null)) as { success?: boolean; items?: Item[] } | null
-  return { items: data?.success ? (data.items || []) : [] }
+  return { items: data?.success ? (data.items || []).slice(0, 24) : [] }
 }
 
 function img(u?: string | null): string {
   if (!u) return ''
-  return u.startsWith('/') ? `${API}${u}` : u
+  const abs = u.startsWith('/') ? `${API}${u}` : u
+  return `${API}/cdn-cgi/image/width=300,format=auto,quality=78/${abs}`
 }
 
 export default function Wholesale() {
@@ -35,9 +37,9 @@ export default function Wholesale() {
           <p className="notice">상품을 불러오지 못했어요 — API 응답 확인 필요</p>
         ) : (
           <div className="grid">
-            {items.map((p) => (
+            {items.map((p, i) => (
               <a key={p.id} className="card card-light" href={`https://live.ur-team.com/wholesale/product/${p.id}`}>
-                {p.image_url ? <img className="thumb" src={img(p.image_url)} alt={p.name} loading="lazy" /> : <div className="thumb" />}
+                {p.image_url ? <img className="thumb" src={img(p.image_url)} alt={p.name} width={300} height={300} loading={i < 4 ? 'eager' : 'lazy'} fetchPriority={i < 4 ? 'high' : 'auto'} decoding="async" /> : <div className="thumb" />}
                 <div className="meta">
                   <div className="name">{p.name}</div>
                   <div className="price" style={{ fontSize: 12, color: '#8A929E', fontWeight: 700 }}>🔒 로그인하고 공급가 확인</div>

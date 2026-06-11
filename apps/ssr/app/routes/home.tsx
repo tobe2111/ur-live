@@ -16,20 +16,19 @@ export function meta() {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
-  const qs = new URLSearchParams({ page: '1', limit: '24', deal_only: '1', sort: 'price_low', category: '커피/음료' })
-  const res = await fetch(`${API}/api/products?${qs.toString()}`, {
-    headers: { accept: 'application/json' },
-    // 본 사이트 API 는 엣지캐시(60~900s) — SSR 호출도 그 캐시를 그대로 적중.
-    cf: { cacheTtl: 60, cacheEverything: false },
-  } as RequestInit)
+  // ⚠️ 본 사이트 cron 이 예열하는 키와 byte-identical 해야 엣지캐시 적중(콜드 D1 회피).
+  //   HOT_PATHS: /api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C
+  const qs = new URLSearchParams({ page: '1', limit: '20', deal_only: '1', sort: 'price_low', category: '커피/음료' })
+  const res = await fetch(`${API}/api/products?${qs.toString()}`, { headers: { accept: 'application/json' } })
   const data = (await res.json().catch(() => null)) as { success?: boolean; data?: Item[] } | null
   return { items: data?.success ? (data.data || []) : [] }
 }
 
 function img(u?: string | null): string {
   if (!u) return ''
-  if (u.startsWith('/')) return `${API}${u}`
-  return u
+  const abs = u.startsWith('/') ? `${API}${u}` : u
+  // 본 사이트 CF 이미지 리사이저 경유 — 원본(수 MB) 대신 300px webp.
+  return `${API}/cdn-cgi/image/width=300,format=auto,quality=78/${abs}`
 }
 
 export default function Home() {
@@ -43,12 +42,12 @@ export default function Home() {
           <p className="notice">상품을 불러오지 못했어요 — API 응답 확인 필요</p>
         ) : (
           <div className="grid">
-            {items.map((p) => {
+            {items.map((p, i) => {
               const strike = p.original_price && p.original_price > p.price
               const pct = strike ? Math.round((1 - p.price / (p.original_price as number)) * 100) : 0
               return (
                 <a key={p.id} className="card card-dark" href={`https://live.ur-team.com/group-buy/${p.id}`} style={p.dominant_color ? { background: p.dominant_color } : undefined}>
-                  {p.image_url ? <img className="thumb" src={img(p.image_url)} alt={p.name} loading="lazy" /> : <div className="thumb" />}
+                  {p.image_url ? <img className="thumb" src={img(p.image_url)} alt={p.name} width={300} height={300} loading={i < 4 ? 'eager' : 'lazy'} fetchPriority={i < 4 ? 'high' : 'auto'} decoding="async" /> : <div className="thumb" />}
                   <div className="meta">
                     <div className="name">{p.brand_name ? `[${p.brand_name}] ` : ''}{p.name}</div>
                     <div className="price">{pct > 0 && <span className="pct">{pct}%</span>}{(p.price || 0).toLocaleString('ko-KR')}원</div>
