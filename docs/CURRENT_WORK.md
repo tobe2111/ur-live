@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🛒 2026-06-12 — 쿠팡 연동 + 역방향 임포트 (사용자 승인 "모두 이상적으로, 쿠팡도")
+- **쿠팡 코어 `coupang-core.ts`** (dep 0): HMAC-SHA256 전자서명(Web Crypto, signed-date yyMMdd'T'HHmmss'Z' — node:crypto 참조구현 대조 테스트) + `coupang_connections`(owner_type 복합 UNIQUE, secret encryptAtRest) + 출고지/반품지(주소 포함) + **카테고리 자동 추천**(predict) + 카테고리 고시정보 메타 + 상품 등록 payload 빌더(필수 고시 '상세페이지 참조' 관행) + 내 상품 목록/상세. 경로는 `COUPANG_PATHS` 상수 집중 — ⚠️ **실계정(Wing 키) E2E 1회 필요**.
+- **유통사 쿠팡 내보내기**: `/api/wholesale/coupang/*`(connect — 출고지 조회로 즉시 검증/status/disconnect/shipping-places/export — 역마진 차단·반품지 주소 서버 재조회로 변조 차단) + `CoupangExportModal`(연결 폼 내장 — 별도 페이지 없음, 카테고리 입력 불필요) + 상품 상세 버튼 2열(스마트스토어/쿠팡).
+- **제조사 역방향 임포트 "내 스토어 상품 가져오기"**: naver_commerce_connections **owner_type 재구축**(supplier 지원 — 신생 테이블 self-heal, (owner_type,id) 복합 UNIQUE) + `/api/supplier/store/*`(naver·coupang connect/status/products/import) + `StoreImportModal`(채널 탭·전체선택·**공급률 % 일괄 적용**(공급가=판매가×율)·R2 이미지 미러 `mirrorImageToR2`(SSRF 가드 — pstatic/coupangcdn 허용 호스트만, 실패 시 원본 폴백)) + CatalogTab "내 스토어에서 가져오기" 버튼. 본인 계정 데이터만(공식 범위) — 입력 노가다 0, 상품 30개 목표 직격.
+- i18n 9키×6언어 · 단위테스트 7(HMAC 대조·payload·고시정보) — 전체 2093 · tsc 0 · build OK.
+- **운영**: 쿠팡 E2E = 사장님 Wing 키(Wing→판매자정보→추가판매정보→OPEN API)로 연결→내보내기 1회 (출고지/반품지 Wing 등록 선행). 드랍쉬핑(주문수집→자동발주→송장)은 양 채널 E2E 후 통합 허브로 한 번에.
+
 ## ✅ 2026-06-12 — 숙소·예약 결제 관문 B배치 6종 마감 (4차 감사, 사용자 승인 '모두 이상적') — commit `f525587a`
 - **B-1 숙소 결제 단절(🔴M)**: CheckoutPage stay 분기(`/checkout?order_id=N&stay=1` → 신규 `StayCheckout` — `GET /api/group-buy/stays/orders/:id` 서버 주문요약, 클라 재계산 금지) → `/pay/widget`(잠금 TossWidgetPayPage **호출만**, Toss orderId=`STAY-{orders.id}` — 6자 최소 요건) → 신규 경량 `/stays/checkout-return` 페이지가 `/api/group-buy/stays/bookings/confirm` 호출(성공/오버부킹 409/실패 3분기). 서버 confirm 도 동일 `STAY-N` 으로 Toss 승인(기존 `String(id)` 는 6자 미달 — 프론트 호출자 0이라 안전 변경).
 - **B-2 다객실 confirm 단일화(🟡M)**: stays-public confirm — 첫 booking 만 확정(나머지 30분 후 expired)→ `WHERE order_id=?` 전체 루프(booking 별 CAS pending→confirmed + date모드 달력 차감). 오버부킹 시 확보분 전체 롤백 + 자동환불 + 주문 전 booking 취소. 단건 루프=1 이라 기존 동작 불변.

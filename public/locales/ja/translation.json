@@ -5942,7 +5942,16 @@
     "msFirstProductHint": "上のボタンで1分 — Excel一括もOK",
     "msFirstApprovedHint": "審査通過で全国の流通会社に公開",
     "msFirstOrderHint": "仕入れが入るとベル通知でお知らせ",
-    "msFirstSettleHint": "決済と同時に積立 — 精算タブで出金申請"
+    "msFirstSettleHint": "決済と同時に積立 — 精算タブで出金申請",
+    "storeImportTitle": "自店舗の商品を取り込む",
+    "storeImportSub": "既に販売中の商品をそのまま卸供給商品として登録します（管理者承認後に公開）。",
+    "storeImportBtn": "{{n}}件を供給商品として登録",
+    "storeImportBtn2": "自店舗から取り込む",
+    "storeImportNote": "登録後、カタログタブで供給価格・詳細を編集できます。承認後に流通会社へ公開されます。",
+    "storeRateLabel": "供給率を一括適用",
+    "storeRateHint": "供給価格 = 店舗販売価格 × 供給率。希望小売価格は販売価格のまま。",
+    "storeConnectNaver": "コマースAPIセンターで発行したアプリケーションID/シークレットを入力してください。",
+    "storeConnectCoupang": "クーパンWing → 販売者情報 → OPEN APIキーのAccess/Secret Keyと業者コードを入力してください。"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

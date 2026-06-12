@@ -5942,7 +5942,16 @@
     "msFirstProductHint": "点上方按钮1分钟搞定 — 也可用Excel批量",
     "msFirstApprovedHint": "审核通过后向全国经销商展示",
     "msFirstOrderHint": "经销商采购时铃铛通知您",
-    "msFirstSettleHint": "付款即入账 — 在结算页申请提现"
+    "msFirstSettleHint": "付款即入账 — 在结算页申请提现",
+    "storeImportTitle": "导入我的店铺商品",
+    "storeImportSub": "将已在售商品直接登记为批发供货商品（管理员批准后展示）。",
+    "storeImportBtn": "登记{{n}}件为供货商品",
+    "storeImportBtn2": "从我的店铺导入",
+    "storeImportNote": "登记后可在目录页修改供货价和详情。批准后向经销商展示。",
+    "storeRateLabel": "批量应用供货率",
+    "storeRateHint": "供货价 = 店铺售价 × 供货率。建议零售价 = 店铺售价。",
+    "storeConnectNaver": "请输入在Commerce API中心发放的应用ID/密钥。",
+    "storeConnectCoupang": "请输入Coupang Wing → 卖家信息 → OPEN API密钥中的Access/Secret Key和供应商代码。"
   },
   "wholesaleChat": {
     "title": "咨询聊天",
