@@ -10,7 +10,6 @@
 - **등록 진입점에 대량 옵션** (사용자 요청): AddProductModal 상단 배너 "여러 상품이면 엑셀로 한 번에" — 양식받기+업로드(공용 `bulk-upload.ts`, CatalogTab 과 동일 흐름·실패행 상세 토스트, 성공 시 모달 닫고 갱신). 사용자에게 양식 파일 전달 완료.
 - 단위테스트 8(EUC-KR 디코드·colIndex·xlsx round-trip(buildXlsx fixture)·rowsToCsv·진입점). 전체 2079 통과 · tsc 0 · build OK. ⚠️ 실제 Excel 저장 .xlsx 1회 운영 확인 권장(fixture 는 STORED — 실파일은 DEFLATE 경로).
 - 사용자 보고: NAVER_SEARCH_CLIENT_ID/SECRET Cloudflare 등록 완료 — **이 커밋 배포부터 최저가·수요신호 활성**.
->>>>>>> claude/keen-cerf-ch0jm5
 
 ## ✅ 2026-06-12 — 네이버 데이터랩 수요 신호 ②④ (사용자 승인 "2, 4 진행")
 - **`worker/utils/naver-datalab.ts`** + `GET /api/supplier/demand-signal?q=&category=` + `supplier-dashboard/DemandSignal.tsx`(등록 폼 — 최저가 박스 아래): ② 쇼핑인사이트 카테고리 내 키워드 클릭 추이 6개월 → 상승🔺/하락🔻/보합─(±10% 임계) ④ 검색어트렌드 24개월 → 성수기 월 추출(월평균이 전체평균 125%+ 인 1~3개월) + "지금 성수기 🔥 / N개월 뒤 — 준비 적기" 라벨.
