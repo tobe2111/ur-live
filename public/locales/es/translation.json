@@ -6083,5 +6083,23 @@
     "promptDesc": "Avisos de vales por caducar, cierres de compra grupal y nuevas ganancias",
     "promptOn": "Activar",
     "promptLater": "Más tarde"
+  },
+  "groupbuyMessages": {
+    "seoDesc": "Mensajes de compra grupal",
+    "backAria": "Volver a la compra grupal",
+    "notFound": "Compra grupal no encontrada",
+    "backToList": "Volver a ofertas locales",
+    "forbiddenTitle": "Solo participantes",
+    "forbiddenDesc": "Únete a la compra grupal para ver y enviar mensajes.",
+    "goJoin": "Ver compra grupal",
+    "empty": "Aún no hay mensajes. ¡Deja el primero!",
+    "anonymous": "Anónimo",
+    "roleAdmin": "Administrador",
+    "roleAgency": "Agencia",
+    "roleRestaurant": "Restaurante",
+    "roleMember": "Participante",
+    "inputPlaceholder": "Escribe un mensaje",
+    "sendAria": "Enviar",
+    "sendFail": "No se pudo enviar el mensaje"
   }
 }

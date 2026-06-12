@@ -6083,5 +6083,23 @@
     "promptDesc": "Get alerts for expiring vouchers, closing deals, and new earnings",
     "promptOn": "Turn on",
     "promptLater": "Later"
+  },
+  "groupbuyMessages": {
+    "seoDesc": "Group buy messages",
+    "backAria": "Back to group buy",
+    "notFound": "Group buy not found",
+    "backToList": "Back to local deals",
+    "forbiddenTitle": "Participants only",
+    "forbiddenDesc": "Join the group buy to view and send messages.",
+    "goJoin": "View group buy",
+    "empty": "No messages yet. Leave the first one!",
+    "anonymous": "Anonymous",
+    "roleAdmin": "Admin",
+    "roleAgency": "Agency",
+    "roleRestaurant": "Restaurant",
+    "roleMember": "Member",
+    "inputPlaceholder": "Type a message",
+    "sendAria": "Send",
+    "sendFail": "Failed to send message"
   }
 }

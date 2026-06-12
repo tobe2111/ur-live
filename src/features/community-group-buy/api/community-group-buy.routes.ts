@@ -100,6 +100,27 @@ async function ensureTables(DB: D1Database) {
   //   만료 sweep(status='proposed' AND expires_at<now) 가 풀스캔이던 것 — status 선두 복합 인덱스로 커버.
   try { await DB.prepare("CREATE INDEX IF NOT EXISTS idx_cgb_status_count ON community_group_buys(status, current_count DESC)").run(); } catch {}
   try { await DB.prepare("CREATE INDEX IF NOT EXISTS idx_cgb_status_expires ON community_group_buys(status, expires_at)").run(); } catch {}
+  // 🔐 2026-06-12 (4차 감사, 머니룰 #3): join 중복 race 차단 — SELECT-then-INSERT 대신
+  //   UNIQUE(group_buy_id, user_id) + INSERT OR IGNORE claim. repair-schema 에도 등록(idx_cgb_members_pair).
+  //   기존 중복 행이 있으면 생성 실패(try-catch swallow) — repair-schema 리포트에서 발견/정리.
+  try { await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cgb_members_pair ON community_group_buy_members(group_buy_id, user_id)").run(); } catch {}
+}
+
+// 💸 2026-06-12 (4차 감사 #4): 보증금 차감/환불 원장 기록 — point_transactions.
+//   disputes.routes.ts 의 balance_after 서브쿼리 패턴 복제. fail-soft(원장 실패가 흐름을 막지 않음).
+//   type: 차감 = 'community_deposit', 환불 = 'refund' (0253 에서 CHECK 제거됨 — 자유 type 안전).
+async function recordCommunityPointTx(
+  DB: D1Database,
+  userId: string,
+  type: 'community_deposit' | 'refund',
+  amount: number,
+  description: string,
+): Promise<void> {
+  try {
+    await DB.prepare(
+      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)",
+    ).bind(userId, type, amount, amount, userId, description).run()
+  } catch { /* fail-soft — 원장은 보조 기록 */ }
 }
 
 // 🏭 2026-06-04 (perf 전수조사): 만료 sweep 을 응답 경로에서 분리 — isolate 당 최대 60초 1회만 실행.
@@ -181,10 +202,11 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
   // 딜 포인트 차감 (보증금) — user_points 테이블 사용 (production에는 users.deal_balance 없음)
   await ensureUserPointsTable(DB);
 
+  // 💸 2026-06-12 (4차 감사 #4): total_donated 누적 오용 제거 — 보증금은 후원이 아님.
   const deductResult = await executeRun(
     DB,
-    "UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
-    [depositPerPerson, depositPerPerson, userId, depositPerPerson],
+    "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+    [depositPerPerson, userId, depositPerPerson],
   );
 
   if (!deductResult.meta.changes) {
@@ -203,39 +225,68 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
   }
 
   // 공동구매 생성
-  const result = await executeRun(
-    DB,
-    `INSERT INTO community_group_buys
-      (creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone,
-       restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count,
-       current_count, total_deposited, invite_code, expires_at, description)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
-    [
-      userId,
-      user.name || '익명',
-      body.restaurant_name,
-      body.restaurant_address || null,
-      body.restaurant_phone || null,
-      body.restaurant_lat || null,
-      body.restaurant_lng || null,
-      body.proposed_price,
-      depositPerPerson,
-      targetCount,
-      depositPerPerson,
-      inviteCode,
-      expiresAt,
-      description,
-    ],
-  );
+  // 🛡️ 2026-06-12 (4차 감사 #5): 차감 후 INSERT 실패 시 보증금 복원 — 기존엔 throw 로 빠져
+  //   '돈만 빠지고 그룹 없음' 잔여 리스크. 그룹/멤버 INSERT 를 try-catch 로 묶고 실패 시 롤백.
+  let groupBuyId: number | undefined;
+  try {
+    const result = await executeRun(
+      DB,
+      `INSERT INTO community_group_buys
+        (creator_user_id, creator_name, restaurant_name, restaurant_address, restaurant_phone,
+         restaurant_lat, restaurant_lng, proposed_price, deposit_per_person, target_count,
+         current_count, total_deposited, invite_code, expires_at, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+      [
+        userId,
+        user.name || '익명',
+        body.restaurant_name,
+        body.restaurant_address || null,
+        body.restaurant_phone || null,
+        body.restaurant_lat || null,
+        body.restaurant_lng || null,
+        body.proposed_price,
+        depositPerPerson,
+        targetCount,
+        depositPerPerson,
+        inviteCode,
+        expiresAt,
+        description,
+      ],
+    );
 
-  const groupBuyId = result.meta.last_row_id;
+    groupBuyId = result.meta.last_row_id as number;
 
-  // 생성자를 첫 번째 멤버로 추가
-  await executeRun(
-    DB,
-    `INSERT INTO community_group_buy_members (group_buy_id, user_id, user_name, deposit_amount)
-     VALUES (?, ?, ?, ?)`,
-    [groupBuyId, userId, user.name || '익명', depositPerPerson],
+    // 생성자를 첫 번째 멤버로 추가
+    await executeRun(
+      DB,
+      `INSERT INTO community_group_buy_members (group_buy_id, user_id, user_name, deposit_amount)
+       VALUES (?, ?, ?, ?)`,
+      [groupBuyId, userId, user.name || '익명', depositPerPerson],
+    );
+  } catch (insertErr) {
+    // 보증금 복원 (user_points + legacy users.deal_balance)
+    try {
+      await executeRun(
+        DB,
+        "UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?",
+        [depositPerPerson, userId],
+      );
+    } catch { /* 복원 실패 — 아래 500 응답으로 운영 확인 */ }
+    try {
+      await executeRun(
+        DB,
+        'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?',
+        [depositPerPerson, userId],
+      );
+    } catch { /* legacy 컬럼 없으면 skip */ }
+    if (import.meta.env?.DEV) console.warn('[community-gb create rollback]', insertErr);
+    return c.json({ success: false, error: '공동구매 생성에 실패했습니다. 보증금은 차감되지 않았습니다.' }, 500);
+  }
+
+  // 💸 2026-06-12 (4차 감사 #4): 보증금 차감 원장 기록 — 생성/멤버 INSERT 성공 후에만 기록(fail-soft).
+  await recordCommunityPointTx(
+    DB, userId, 'community_deposit', depositPerPerson,
+    `[커뮤니티 공구] 보증금 차감 — ${body.restaurant_name} (group:${groupBuyId})`,
   );
 
   // 🧲 2026-06-10 수요 신호 루프: 새 제안 → 어드민 벨 알림 (fail-soft — 제안 생성을 막지 않음).
@@ -304,14 +355,6 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
     return c.json({ success: false, error: '공동구매가 만료되었습니다' }, 400);
   }
 
-  // 중복 참여 확인
-  const existing = await queryFirst(
-    DB,
-    'SELECT id FROM community_group_buy_members WHERE group_buy_id = ? AND user_id = ?',
-    [group.id, userId],
-  );
-  if (existing) return c.json({ success: false, error: '이미 참여 중입니다' }, 409);
-
   // 🛡️ target 초과 참여 차단 (negotiating/achieved 진입 후 race-window 방어)
   if (group.target_count && group.current_count >= group.target_count) {
     return c.json({ success: false, error: '모집이 마감되었습니다' }, 409);
@@ -322,13 +365,38 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
   // 딜 포인트 차감 — user_points 테이블 사용
   await ensureUserPointsTable(DB);
 
+  // 🔐 2026-06-12 (4차 감사 #3, 머니룰 #1·#3): 기존 SELECT-then-INSERT 는 동시요청에서
+  //   이중 차감 가능. UNIQUE(group_buy_id, user_id) + INSERT OR IGNORE 로 멤버 행을 먼저
+  //   원자 선점(claim) → changes==0 이면 보증금 차감 없이 409. 차감 실패 시 멤버 행 롤백.
+  //   ※ claim-차감 사이 worker 크래시 시 '행만 있고 미차감' 윈도우(이후 환불 cron 이 해당
+  //     deposit_amount 를 환불할 수 있음) — Toss 류 외부 청구가 아닌 내부 딜이라 영향 미미,
+  //     기존 '차감 후 INSERT 실패 = 돈만 증발' 보다 안전한 방향.
+  const claimResult = await executeRun(
+    DB,
+    `INSERT OR IGNORE INTO community_group_buy_members (group_buy_id, user_id, user_name, deposit_amount)
+     VALUES (?, ?, ?, ?)`,
+    [group.id, userId, user.name || '익명', depositAmount],
+  );
+  if (!claimResult.meta.changes) {
+    return c.json({ success: false, error: '이미 참여 중입니다' }, 409);
+  }
+
+  // 💸 2026-06-12 (4차 감사 #4): total_donated 누적 오용 제거 — 보증금은 후원이 아님.
   const deductResult = await executeRun(
     DB,
-    "UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
-    [depositAmount, depositAmount, userId, depositAmount],
+    "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+    [depositAmount, userId, depositAmount],
   );
 
   if (!deductResult.meta.changes) {
+    // 차감 실패(잔액 부족 / user_points 행 없음) → claim 한 멤버 행 롤백
+    try {
+      await executeRun(
+        DB,
+        'DELETE FROM community_group_buy_members WHERE group_buy_id = ? AND user_id = ?',
+        [group.id, userId],
+      );
+    } catch { /* 롤백 실패 시 cron 환불 멱등 테이블이 정합 회복 */ }
     return c.json({ success: false, error: `딜이 부족합니다 (보증금: ${depositAmount}딜)`, code: 'INSUFFICIENT_BALANCE' }, 400);
   }
 
@@ -343,12 +411,10 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
     if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
   }
 
-  // 멤버 추가
-  await executeRun(
-    DB,
-    `INSERT INTO community_group_buy_members (group_buy_id, user_id, user_name, deposit_amount)
-     VALUES (?, ?, ?, ?)`,
-    [group.id, userId, user.name || '익명', depositAmount],
+  // 💸 2026-06-12 (4차 감사 #4): 보증금 차감 원장 기록 (fail-soft)
+  await recordCommunityPointTx(
+    DB, userId, 'community_deposit', depositAmount,
+    `[커뮤니티 공구] 보증금 차감 — ${group.restaurant_name} (group:${group.id})`,
   );
 
   // ✅ CONCURRENCY: 단일 UPDATE 로 원자 증가 + 목표 달성 시 status 전이.
@@ -377,6 +443,26 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
   const newCount = refreshed?.current_count ?? (group.current_count + 1);
   const newTotalDeposited = refreshed?.total_deposited ?? (group.total_deposited + depositAmount);
   const newStatus = refreshed?.status ?? group.status;
+
+  // 🔔 2026-06-12 (4차 감사 #7): 참여 발생 → 제안자(생성자) 인앱 알림. fail-soft + 응답 후 실행.
+  if (group.creator_user_id && String(group.creator_user_id) !== userId) {
+    const _bgCreator = async () => {
+      try {
+        await DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+          VALUES (?, 'user', 'group_buy_joined', ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(
+          String(group.creator_user_id),
+          `${user.name || '익명'}님이 공구에 참여했어요`,
+          `${group.restaurant_name} · ${newCount}/${group.target_count}명`,
+          `/community-group-buy/${group.invite_code}`,
+        ).run().catch(() => { /* notifications 테이블 없으면 skip */ });
+      } catch { /* best-effort */ }
+    };
+    let _deferredCreator = false;
+    try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bgCreator()); _deferredCreator = true } } catch { /* no ctx */ }
+    if (!_deferredCreator) await _bgCreator();
+  }
 
   // 50명 도달 시 모든 에이전시에 알림 전송
   // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): inline CREATE TABLE + 에이전시 N명 INSERT 루프 —
@@ -639,7 +725,9 @@ communityGroupBuyRoutes.patch('/:id/confirm', requireAuth(), async (c) => {
         m.user_id,
         `🎉 ${group.restaurant_name} 공구가 확정됐어요!`,
         `확정가 ${Number(confirmed_price).toLocaleString('ko-KR')}원${confirmed_discount_percent > 0 ? ` (${confirmed_discount_percent}% 할인)` : ''}`,
-        `/community-group-buy/${group.id}/messages`,
+        // 🔗 2026-06-12 (4차 감사 #1): 라우트는 invite_code 기반(/community-group-buy/:code[/messages]) —
+        //   기존 group.id 링크는 404. SELECT * 라 group.invite_code 보유.
+        `/community-group-buy/${group.invite_code}/messages`,
       ).run().catch(() => { /* notifications 테이블 없으면 skip (메시지 알림과 동일 패턴) */ });
     }
   } catch { /* best-effort */ }
@@ -693,6 +781,9 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
     return c.json({ success: false, error: '달성된 공동구매는 환불할 수 없습니다' }, 400);
   }
 
+  // 📌 2026-06-12 (4차 감사 #7 — 정책 미정, 수정 보류): confirmed 그룹의 보증금 '동결' 정책은
+  //   아직 결정되지 않음 — 현재는 어드민이 confirmed 상태에서도 전액 환불 가능(아래 가드).
+  //   확정 후 노쇼 패널티/부분 동결 등은 사용자 정책 결정 후 별도 작업 (docs/CURRENT_WORK.md 메모).
   if (group.status === 'confirmed' && !isAdmin) {
     return c.json({ success: false, error: '식당이 확정한 공동구매는 어드민만 환불할 수 있습니다' }, 403);
   }
@@ -712,13 +803,15 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
 
   let refundCount = 0;
   for (const member of members) {
-    // SECURITY (HIGH-6): 동일 group_id + user_id 중복 환불 방지
-    const alreadyRefunded = await queryFirst<{ id: number }>(
+    // 🔐 2026-06-12 (4차 감사, 머니룰 #1·#3): 기존 'SELECT 후 적립 후 기록' 은 동시 요청
+    //   (라우트 환불 × cron 22d)에서 이중 환불 가능 — UNIQUE(group_id, user_id) 멱등 테이블에
+    //   INSERT OR IGNORE 로 먼저 선점(claim)하고 changes==0 이면 skip. 적립 실패 시 claim 롤백.
+    const claim = await executeRun(
       DB,
-      'SELECT id FROM community_group_buy_refunds WHERE group_id = ? AND user_id = ?',
-      [group.id, member.user_id],
-    );
-    if (alreadyRefunded) continue; // 이미 환불 처리됨
+      "INSERT OR IGNORE INTO community_group_buy_refunds (group_id, user_id, amount, refunded_at) VALUES (?, ?, ?, datetime('now'))",
+      [group.id, member.user_id, member.deposit_amount],
+    ).catch(() => null);
+    if (!claim || !claim.meta.changes) continue; // 이미 환불 처리됨
 
     // 딜 포인트 환불 — user_points UPSERT
     try {
@@ -741,7 +834,16 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
         );
       }
     } catch (e) {
+      // 적립 실패 → claim 롤백 (다음 환불 시도가 재처리 가능하도록)
+      try {
+        await executeRun(
+          DB,
+          'DELETE FROM community_group_buy_refunds WHERE group_id = ? AND user_id = ?',
+          [group.id, member.user_id],
+        );
+      } catch { /* 롤백 실패 — 운영 확인 필요 */ }
       if (import.meta.env?.DEV) console.warn('[user_points refund]', e);
+      continue;
     }
 
     // Best-effort sync to legacy users.deal_balance
@@ -755,23 +857,18 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
       if (import.meta.env?.DEV) console.warn('[deal_balance]', e);
     }
 
+    // 💸 2026-06-12 (4차 감사 #4): 보증금 환불 원장 기록 (fail-soft)
+    await recordCommunityPointTx(
+      DB, member.user_id, 'refund', member.deposit_amount,
+      `[커뮤니티 공구] 보증금 환불 — ${group.restaurant_name} (group:${group.id})`,
+    );
+
     // 멤버 상태 변경
     await executeRun(
       DB,
       "UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?",
       [member.id],
     );
-
-    // SECURITY (HIGH-6): idempotency 기록 (UNIQUE 제약으로 중복 삽입 방지)
-    try {
-      await executeRun(
-        DB,
-        "INSERT OR IGNORE INTO community_group_buy_refunds (group_id, user_id, amount, refunded_at) VALUES (?, ?, ?, datetime('now'))",
-        [group.id, member.user_id, member.deposit_amount],
-      );
-    } catch (e) {
-      if (import.meta.env?.DEV) console.warn('[refund-idempotency]', e);
-    }
 
     refundCount++;
   }
@@ -817,6 +914,12 @@ communityGroupBuyRoutes.patch('/:id/status', requireAuth(), async (c) => {
   const validStatuses = ['proposed', 'negotiating', 'confirmed', 'achieved', 'failed', 'refunded'];
   if (!status || !validStatuses.includes(status)) {
     return c.json({ success: false, error: `유효하지 않은 상태입니다. 가능한 값: ${validStatuses.join(', ')}` }, 400);
+  }
+
+  // 💸 2026-06-12 (4차 감사 #6, 머니룰 #4): status 플립 ≠ 환불 — 'refunded' 로만 바꾸면
+  //   실제 보증금 환불 0 인 채 환불 표시. 실환불(멱등 + 원장)은 POST /:id/refund 가 SSOT.
+  if (status === 'refunded') {
+    return c.json({ success: false, error: "상태만 'refunded' 로 변경할 수 없습니다. 실제 보증금 환불은 POST /api/community-group-buy/:id/refund 를 사용하세요." }, 400);
   }
 
   const group = await queryFirst<any>(
@@ -894,10 +997,15 @@ async function ensureMessagesTable(DB: D1Database) {
   } catch { /* exists */ }
 }
 
-function canAccessGroupMessages(
+// 🔓 2026-06-12 (4차 감사 #2): 그룹 멤버(보증금 납부 참여자)도 read+write 허용 — async 전환(DB 멤버십 조회).
+//   판단 근거: 이 스레드는 협상 채널이자 참여자 단순 채팅 — 멤버는 본인 돈(보증금)이 걸린 당사자라
+//   read 만 주고 write 를 막을 보안상 이유가 없음(rate limit 30/60s + XSS strip 기존 유지).
+//   기존 권한(admin/agency/restaurant_seller/creator)은 불변 — 멤버 분기만 추가.
+async function canAccessGroupMessages(
+  DB: D1Database,
   user: { id?: string | number; type?: string; role?: string } | null,
-  group: { creator_user_id?: string; restaurant_seller_id?: string | number | null }
-): { canRead: boolean; senderType: 'agency' | 'restaurant' | 'user' | 'admin' | null } {
+  group: { id: number; creator_user_id?: string; restaurant_seller_id?: string | number | null }
+): Promise<{ canRead: boolean; senderType: 'agency' | 'restaurant' | 'user' | 'admin' | null }> {
   if (!user) return { canRead: false, senderType: null }
   if (user.type === 'admin' || user.role === 'admin') return { canRead: true, senderType: 'admin' }
   if (user.type === 'agency' || user.role === 'agency') return { canRead: true, senderType: 'agency' }
@@ -907,6 +1015,15 @@ function canAccessGroupMessages(
   if (group.creator_user_id && String(group.creator_user_id) === String(user.id)) {
     return { canRead: true, senderType: 'user' }
   }
+  // 그룹 멤버 (community_group_buy_members 에 본인 행) — read + write
+  try {
+    const member = await queryFirst<{ id: number }>(
+      DB,
+      'SELECT id FROM community_group_buy_members WHERE group_buy_id = ? AND user_id = ?',
+      [group.id, String(user.id)],
+    )
+    if (member) return { canRead: true, senderType: 'user' }
+  } catch { /* 멤버 조회 실패 시 기존 거부 동작 유지 */ }
   return { canRead: false, senderType: null }
 }
 
@@ -928,7 +1045,7 @@ communityGroupBuyRoutes.get('/:id/messages', requireAuth(), async (c) => {
   if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404)
 
   const userAsAny = user as unknown as { id: string | number; type?: string; role?: string }
-  const { canRead } = canAccessGroupMessages(userAsAny, group)
+  const { canRead } = await canAccessGroupMessages(DB, userAsAny, group)
   if (!canRead) return c.json({ success: false, error: '접근 권한 없음' }, 403)
 
   const messages = await executeQuery<{
@@ -962,15 +1079,16 @@ communityGroupBuyRoutes.post('/:id/messages',
     const { DB } = c.env
     await ensureMessagesTable(DB)
 
-    const group = await queryFirst<{ id: number; creator_user_id: string; restaurant_seller_id: string | null; restaurant_name: string }>(
+    // 🔗 2026-06-12 (4차 감사 #1): 알림 딥링크가 invite_code 기반 라우트를 가리키도록 invite_code 도 SELECT.
+    const group = await queryFirst<{ id: number; creator_user_id: string; restaurant_seller_id: string | null; restaurant_name: string; invite_code: string | null }>(
       DB,
-      'SELECT id, creator_user_id, restaurant_seller_id, restaurant_name FROM community_group_buys WHERE id = ?',
+      'SELECT id, creator_user_id, restaurant_seller_id, restaurant_name, invite_code FROM community_group_buys WHERE id = ?',
       [groupId]
     )
     if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404)
 
     const userAsAny = user as unknown as { id: string | number; type?: string; role?: string; name?: string }
-    const { canRead, senderType } = canAccessGroupMessages(userAsAny, group)
+    const { canRead, senderType } = await canAccessGroupMessages(DB, userAsAny, group)
     if (!canRead || !senderType) return c.json({ success: false, error: '메시지 전송 권한 없음' }, 403)
 
     const senderName = userAsAny.name || (
@@ -1007,7 +1125,8 @@ communityGroupBuyRoutes.post('/:id/messages',
             r.user_type,
             `${senderName} 메시지`,
             clean.slice(0, 100) + (clean.length > 100 ? '...' : ''),
-            `/community-group-buy/${groupId}/messages`
+            // 🔗 2026-06-12 (4차 감사 #1): id 기반 링크는 404 — invite_code 기반 메시지 페이지로.
+            group.invite_code ? `/community-group-buy/${group.invite_code}/messages` : `/community-group-buy/${groupId}/messages`
           ).run().catch(() => { /* notifications 없으면 skip */ })
         }
       } catch { /* ignore */ }

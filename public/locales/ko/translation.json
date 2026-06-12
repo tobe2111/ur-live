@@ -6079,5 +6079,23 @@
     "promptDesc": "교환권 만료 임박, 공구 마감, 적립 소식을 놓치지 않게 알려드려요",
     "promptOn": "켜기",
     "promptLater": "나중에"
+  },
+  "groupbuyMessages": {
+    "seoDesc": "공동구매 메시지",
+    "backAria": "공구 상세로",
+    "notFound": "공동구매를 찾을 수 없습니다",
+    "backToList": "동네딜로 돌아가기",
+    "forbiddenTitle": "참여자만 볼 수 있어요",
+    "forbiddenDesc": "공구에 참여하면 메시지를 보고 보낼 수 있습니다.",
+    "goJoin": "공구 보러 가기",
+    "empty": "아직 메시지가 없어요. 첫 메시지를 남겨보세요!",
+    "anonymous": "익명",
+    "roleAdmin": "운영자",
+    "roleAgency": "에이전시",
+    "roleRestaurant": "식당",
+    "roleMember": "참여자",
+    "inputPlaceholder": "메시지를 입력하세요",
+    "sendAria": "전송",
+    "sendFail": "메시지 전송에 실패했습니다"
   }
 }

@@ -163,6 +163,7 @@ const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
 const UserGroupBuyCreatePage = lazy(() => import('./pages/UserGroupBuyCreatePage'))
+const CommunityGroupBuyMessagesPage = lazy(() => import('./pages/CommunityGroupBuyMessagesPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -819,6 +820,8 @@ function AppContent() {
 
             {/* 커뮤니티 공구 상세 (ReferralPage 재사용) */}
             <Route path="/community-group-buy/:code" element={<ReferralPage />} />
+            {/* 🔗 2026-06-12 (4차 감사 #1): 알림 딥링크 착지 — 참여자/제안자/식당 메시지 스레드 */}
+            <Route path="/community-group-buy/:code/messages" element={<CommunityGroupBuyMessagesPage />} />
 
             {/* Debug 페이지 (개발 환경만) — 프로덕션에선 라우트 등록 안 됨 */}
             {import.meta.env.DEV && <Route path="/kakao-debug" element={<KakaoDebugPage />} />}

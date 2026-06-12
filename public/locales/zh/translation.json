@@ -6083,5 +6083,23 @@
     "promptDesc": "兑换券到期、团购截止、收益消息第一时间提醒您",
     "promptOn": "开启",
     "promptLater": "稍后"
+  },
+  "groupbuyMessages": {
+    "seoDesc": "团购消息",
+    "backAria": "返回团购详情",
+    "notFound": "未找到团购",
+    "backToList": "返回本地优惠",
+    "forbiddenTitle": "仅参与者可见",
+    "forbiddenDesc": "加入团购后即可查看和发送消息。",
+    "goJoin": "查看团购",
+    "empty": "还没有消息,留下第一条吧!",
+    "anonymous": "匿名",
+    "roleAdmin": "管理员",
+    "roleAgency": "代理机构",
+    "roleRestaurant": "餐厅",
+    "roleMember": "参与者",
+    "inputPlaceholder": "请输入消息",
+    "sendAria": "发送",
+    "sendFail": "消息发送失败"
   }
 }

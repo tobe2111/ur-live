@@ -18,9 +18,9 @@
 | 🔴 | **숙소 결제 단절**: StayDetail→/checkout?order_id&stay=1 인데 CheckoutPage 가 stay 쿼리 미처리(빈카트 에러/타상품 결제), /stays/bookings/confirm 프론트 호출자 0 | M |
 | 🔴 | **매장 예약(appointments) 생성 UI 부재** — /book·available-slots 호출자 0(백엔드 완비) + PaymentSuccess CTA 키 불일치(order_number↔id) | M+S |
 | 🔴 | voucher 숙소권 셀프취소 = check_in NULL → 무조건 0원 + 영구 무효 | S |
-| 🔴 | 커뮤니티공구 알림 딥링크 /:id/messages 404(라우트 없음+id↔invite_code) + 참여자 메시지 read 403 | S-M |
-| 🟡 | 다객실 confirm 첫 booking 만 확정(나머지 30분 후 expired) · appointment 취소 전액환불+REFUNDED 플립만 · 커뮤니티 join UNIQUE 없음(이중차감 race) · 보증금 point_transactions 무장부 · admin status 'refunded' 플립 실환불 0 | S~M |
-| 🟢 | 숙소 노쇼/checked_out 자동전이 없음(리뷰 게이트 영구잠김) · stay-reminder dedup/시각 · base_price_holiday 미사용 · confirmed 그룹 보증금 동결 | S~M |
+| ~~🔴~~ ✅ | ~~커뮤니티공구 알림 딥링크 /:id/messages 404(라우트 없음+id↔invite_code) + 참여자 메시지 read 403~~ → **2026-06-12 수술 완료**: 신규 라우트 `/community-group-buy/:code/messages` + 경량 페이지(`CommunityGroupBuyMessagesPage`), 알림 링크 전부 invite_code 기반으로, `canAccessGroupMessages` 에 그룹 멤버 read+write 추가(단순 채팅 — 멤버는 보증금 당사자) | 완료 |
+| ~~🟡~~ ✅(커뮤니티만) | 다객실 confirm 첫 booking 만 확정(나머지 30분 후 expired) · appointment 취소 전액환불+REFUNDED 플립만 — **잔존(타 항목)**. ~~커뮤니티 join UNIQUE 없음(이중차감 race) · 보증금 point_transactions 무장부 · admin status 'refunded' 플립 실환불 0~~ → **2026-06-12 수술 완료**: members UNIQUE(group_buy_id,user_id)+INSERT OR IGNORE claim→차감→실패 롤백(머니룰 #1·#3), 생성/참여 차감·라우트/cron 환불 4지점 point_transactions 원장(차감=community_deposit/환불=refund, balance_after 서브쿼리), total_donated 오용 제거, 생성 INSERT 실패 시 보증금 복원, status 'refunded' 플립 400 차단(/refund 가 SSOT), 환불 멱등을 claim-first 로(라우트×cron 동시 이중환불 차단), join→제안자 알림 | S~M |
+| 🟢 | 숙소 노쇼/checked_out 자동전이 없음(리뷰 게이트 영구잠김) · stay-reminder dedup/시각 · base_price_holiday 미사용 · **confirmed 그룹 보증금 동결 — 정책 미정으로 보류(2026-06-12, 코드 주석 참조: community-group-buy.routes.ts /:id/refund. 현재 어드민은 confirmed 도 전액환불 가능 — 노쇼 패널티/부분동결 여부 사용자 결정 필요)** | S~M |
 
 ### C. 쇼핑 풀루프 (쇼핑탭 재공개 전 선결 — G1~G6)
 | 심각도 | 갭 | 규모 |

@@ -1636,6 +1636,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   동시 요청에서 쿠폰 반복claim·환불 이중적립·타임딜 이중claim·invite 이중보상.
     { name: 'idx_user_coupons_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_user_coupons_pair ON user_coupons(user_id, coupon_id)` },
     { name: 'idx_community_gb_refunds_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_community_gb_refunds_pair ON community_group_buy_refunds(group_id, user_id)` },
+    // 🔐 2026-06-12 (커뮤니티 공구 4차 감사 #3, 머니룰 #3): join 의 INSERT OR IGNORE claim 이 의존 —
+    //   없으면 동시 join 이중 보증금 차감. 기존 중복 행 존재 시 생성 실패 → 리포트로 발견 후 정리.
+    { name: 'idx_cgb_members_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_cgb_members_pair ON community_group_buy_members(group_buy_id, user_id)` },
     { name: 'idx_time_deal_claims_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_time_deal_claims_pair ON time_deal_claims(deal_id, user_id)` },
     { name: 'idx_seller_follows_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_follows_pair ON seller_follows(seller_id, user_id)` },
     { name: 'idx_invite_rewards_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)` },

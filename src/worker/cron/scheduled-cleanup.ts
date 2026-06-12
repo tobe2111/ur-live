@@ -936,22 +936,35 @@ export async function handleScheduled(env: Env) {
     let refunded = 0
     for (const m of refundMembers ?? []) {
       try {
-        // 딜 복구 (UPSERT 대신 안전한 SELECT-then-UPDATE)
-        const existing = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(m.user_id).first<{ balance: number }>()
-        if (existing) {
-          await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
-            .bind(m.deposit_amount, m.user_id).run()
-        } else {
-          await DB.prepare("INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))")
-            .bind(m.user_id, m.deposit_amount).run()
-        }
-        // 멤버 status 갱신
-        await DB.prepare("UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?").bind(m.member_id).run()
-        // 멱등성 record
-        await DB.prepare(`
-          INSERT INTO community_group_buy_refunds (group_id, user_id, amount, refunded_at)
+        // 🔐 2026-06-12 (4차 감사, 머니룰 #1·#3): 멱등 record 를 적립 *후* 가 아니라 *먼저* 선점(claim) —
+        //   기존 순서는 라우트 환불(POST /:id/refund)과 동시 실행 시 이중 환불 가능했음.
+        //   UNIQUE(group_id, user_id) + INSERT OR IGNORE, changes==0 이면 이미 처리됨 → skip.
+        const claim = await DB.prepare(`
+          INSERT OR IGNORE INTO community_group_buy_refunds (group_id, user_id, amount, refunded_at)
           VALUES (?, ?, ?, datetime('now'))
         `).bind(m.group_buy_id, m.user_id, m.deposit_amount).run()
+        if (!claim.meta?.changes) continue
+        // 딜 복구 (UPSERT 대신 안전한 SELECT-then-UPDATE) — 실패 시 claim 롤백(catch 에서)
+        try {
+          const existing = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(m.user_id).first<{ balance: number }>()
+          if (existing) {
+            await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
+              .bind(m.deposit_amount, m.user_id).run()
+          } else {
+            await DB.prepare("INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))")
+              .bind(m.user_id, m.deposit_amount).run()
+          }
+        } catch (creditErr) {
+          await DB.prepare('DELETE FROM community_group_buy_refunds WHERE group_id = ? AND user_id = ?')
+            .bind(m.group_buy_id, m.user_id).run().catch(() => null)
+          throw creditErr
+        }
+        // 💸 2026-06-12 (4차 감사 #4): 보증금 환불 원장 기록 (fail-soft, balance_after 서브쿼리 패턴)
+        await DB.prepare(
+          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+        ).bind(m.user_id, m.deposit_amount, m.deposit_amount, m.user_id, `[커뮤니티 공구] 보증금 자동 환불 (group:${m.group_buy_id})`).run().catch(() => null)
+        // 멤버 status 갱신
+        await DB.prepare("UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?").bind(m.member_id).run()
         // 사용자 알림 (best-effort)
         try {
           await DB.prepare(`
