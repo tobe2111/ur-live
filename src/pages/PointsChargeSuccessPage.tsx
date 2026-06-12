@@ -115,7 +115,7 @@ export default function PointsChargeSuccessPage() {
             }}
             className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
           >
-            {t('pointsCharge.goLive', { defaultValue: '라이브로 돌아가기' })}
+            {t('pointsCharge.goBack', { defaultValue: '이전 화면으로' })}
           </button>
           <button
             onClick={() => navigate('/points/charge')}

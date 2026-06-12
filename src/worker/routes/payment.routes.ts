@@ -358,6 +358,43 @@ paymentsRouter.post('/confirm', async (c) => {
       await orderRepo.reduceStock(order.id);
     }
 
+    // 🏁 2026-06-12 [UNLOCK] (사용자 승인 "나머지 다 이상적으로 진행" — 전 플로우 감사 배선 3종):
+    //   결제 확정 직후 side-effect 를 응답 후(waitUntil)로 — Toss confirm/금액검증/CAS 무변경.
+    //   ① 큐레이터/추천 적립 소비: 주문 생성 시 저장된 order_referrer_intents → creditAffiliateFromIntent
+    //      (기존 내부 fetch dead-call 의 근본수정 — 검증/멱등은 /track 과 동일 SSOT)
+    //   ② 초대 1,000딜: 첫 구매 확정 시 초대자 보상 (UI 약속 미이행 마감 — UNIQUE claim 멱등)
+    //   ③ 셀러 '결제 확정' 벨 알림: 기존엔 주문생성(PENDING) 시점 알림뿐 — 실결제 신호 부재였음
+    {
+      const _confirmSideFx = async () => {
+        try {
+          const { creditAffiliateFromIntent } = await import('../utils/affiliate-credit')
+          for (const order of orders) {
+            await creditAffiliateFromIntent(c.env.DB, c.env, Number(order.id)).catch(() => {})
+          }
+        } catch { /* fail-soft */ }
+        try {
+          const { grantInviteRewardForFirstPurchase } = await import('../utils/invite-reward')
+          await grantInviteRewardForFirstPurchase(c.env.DB, String(userId))
+        } catch { /* fail-soft */ }
+        try {
+          const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+          for (const order of orders) {
+            const sellerId = (order as unknown as { seller_id?: number | null }).seller_id
+            if (!sellerId) continue
+            const amt = Number((order as unknown as { total_amount?: number | null }).total_amount ?? 0)
+            await createDashboardNotification(
+              c.env.DB, 'seller', String(sellerId), 'order_paid',
+              '💳 결제 확정', `주문 ${order.order_number} — ₩${amt.toLocaleString('ko-KR')} 결제가 확정되었습니다`,
+              '/seller/orders',
+            ).catch(() => {})
+          }
+        } catch { /* fail-soft */ }
+      }
+      let _fxDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_confirmSideFx()); _fxDeferred = true } } catch { /* no ctx */ }
+      if (!_fxDeferred) await _confirmSideFx()
+    }
+
     // 🛡️ 2026-05-20: 에이전시 입점 가게 commission 적립 (Phase 2).
     //   가게 첫 결제 → ₩30,000 signup_bonus 1회.
     //   매 결제 → 2% sales_commission (영구).

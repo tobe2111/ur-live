@@ -952,6 +952,25 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
       ).bind(order.stay_booking_id, order.booking_status || 'pending', userId),
     ]).catch(() => { /* noop — 멱등 체크(payment_status)로 재시도 가능 */ })
 
+    // 🏁 2026-06-12 (전 플로우 감사 🟡): 숙소 예약 확정 시 셀러 통보가 전무했음 — 벨 알림 추가
+    //   (응답 후 실행, fail-soft). 알림톡 등 확장은 셀러 알림 정책과 함께.
+    try {
+      c.executionCtx?.waitUntil?.((async () => {
+        try {
+          const sellerRow = await c.env.DB.prepare('SELECT seller_id FROM orders WHERE id = ?')
+            .bind(orderId).first<{ seller_id: number | null }>()
+          if (sellerRow?.seller_id) {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            await createDashboardNotification(
+              c.env.DB, 'seller', String(sellerRow.seller_id), 'stay_booking_paid',
+              '🏡 숙소 예약 확정', `${order.check_in_date} ~ ${order.check_out_date} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
+              '/seller/stays/bookings',
+            ).catch(() => {})
+          }
+        } catch { /* fail-soft */ }
+      })())
+    } catch { /* no ctx */ }
+
     return c.json({
       success: true,
       data: {

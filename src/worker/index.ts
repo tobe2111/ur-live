@@ -1839,6 +1839,31 @@ app.get('*', async (c) => {
       }
     }
 
+    // 🏁 2026-06-12 (전 플로우 감사 🟡): /u/:handle 링크샵 + /group-buy/:id 공구 상세 —
+    //   카카오 공유의 핵심 표면 2곳이 generic OG 였음(스크래퍼는 JS 미실행이라 클라 SEO 무용).
+    const curatorMatch = path.match(/^\/u\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
+    if (curatorMatch && curatorMatch[1] !== 'me') {
+      const u = await DB.prepare('SELECT name, bio, profile_image, handle FROM users WHERE handle = ?')
+        .bind(curatorMatch[1]).first<any>().catch(() => null);
+      if (u) {
+        og.title = `${u.name || '@' + u.handle} 링크샵 - 유어딜`;
+        og.desc = (u.bio || '').slice(0, 200) || `${u.name || '@' + u.handle}님의 추천 — 교환권·공구 모음`;
+        const pi = u.profile_image as string | null;
+        if (pi) og.image = pi.startsWith('r2://') ? `${BASE_URL}/api/media/${pi.slice(5)}` : (pi.startsWith('/') ? `${BASE_URL}${pi}` : pi);
+      }
+    }
+
+    const gbMatch = path.match(/^\/group-buy\/(\d+)/);
+    if (gbMatch) {
+      const p2 = await DB.prepare('SELECT name, description, price, image_url, restaurant_name FROM products WHERE id = ?')
+        .bind(gbMatch[1]).first<any>().catch(() => null);
+      if (p2) {
+        og.title = `${p2.name}${p2.restaurant_name ? ` · ${p2.restaurant_name}` : ''} - 유어딜 공구`;
+        og.desc = (p2.description || '').slice(0, 200) || `같이 사면 더 싸다 — ${p2.name} 공동구매`;
+        if (p2.image_url) og.image = p2.image_url;
+      }
+    }
+
     // /profile/:slug 또는 /s/:id → 셀러 정보
     const sellerMatch = path.match(/^\/(profile|s)\/(.+)/);
     if (sellerMatch) {

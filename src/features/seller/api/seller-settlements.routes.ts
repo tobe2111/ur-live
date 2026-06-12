@@ -89,8 +89,19 @@ sellerSettlementsRoutes.post('/settlements/request', async (c) => {
     //   비검증 셀러는 별도 'voucher' / 'deal' 메서드 사용 (구현은 phase 2).
     //   defensive: business_registration_status 컬럼 없을 시 (migration 0257 미적용) 게이트 OFF.
     const bizRow = await db.prepare(
-      'SELECT business_registration_status FROM sellers WHERE id = ?'
-    ).bind(sellerId).first<{ business_registration_status: string | null }>().catch(() => null);
+      'SELECT business_registration_status, COALESCE(is_verified, 1) AS is_verified FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_registration_status: string | null; is_verified: number }>().catch(() => null);
+    // 🛡️ 2026-06-11 (전 플로우 감사 🔴): 계좌 변경 시 is_verified=0 으로 떨어뜨리는 보호
+    //   (seller-profile.routes.ts:168)가 정작 출금에서 안 읽혀 무력이었음. 어드민 재인증
+    //   (admin-sellers.routes.ts:208, is_verified=1 복원) 전까지 현금 인출 차단 — 의도 복원.
+    if (bizRow && Number(bizRow.is_verified) === 0) {
+      return c.json({
+        success: false,
+        error: '계좌 정보가 최근 변경되어 관리자 재확인이 필요합니다',
+        code: 'ACCOUNT_REVERIFICATION_REQUIRED',
+        hint: '보안을 위해 계좌 변경 후에는 관리자 확인 뒤 인출이 가능합니다. 영업일 1일 내 처리됩니다.',
+      }, 412);
+    }
     if (bizRow && bizRow.business_registration_status && bizRow.business_registration_status !== 'verified' && bizRow.business_registration_status !== 'exempt') {
       return c.json({
         success: false,
@@ -655,6 +666,14 @@ sellerSettlementsRoutes.post('/deal-withdraw', rateLimit({ action: 'seller_deal_
     const amount = Math.floor(Number(body?.amount) || 0);
     if (!amount || amount < 10_000) {
       return c.json({ success: false, error: '최소 환급 금액은 10,000 딜입니다' }, 400);
+    }
+
+    // 🛡️ 2026-06-11: 계좌 재인증 게이트 (위 현금 정산과 동일 — 계좌변경 보호 의도 복원).
+    const verRow = await c.env.DB.prepare(
+      'SELECT COALESCE(is_verified, 1) AS is_verified FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ is_verified: number }>().catch(() => null);
+    if (verRow && Number(verRow.is_verified) === 0) {
+      return c.json({ success: false, error: '계좌 정보가 최근 변경되어 관리자 재확인이 필요합니다', code: 'ACCOUNT_REVERIFICATION_REQUIRED' }, 412);
     }
 
     // 잔액 확인.

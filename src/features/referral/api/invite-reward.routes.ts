@@ -9,7 +9,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
-import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
+import { grantInviteRewardForFirstPurchase, ensureInviteRewardsTable as ensureInviteRewardsShared } from '@/worker/utils/invite-reward'
 
 const inviteRewardRoutes = new Hono<{ Bindings: Env }>()
 
@@ -48,140 +48,29 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
   const { DB } = c.env
-  await ensureInviteRewardsTable(DB)
-
+  // 🏁 2026-06-12: 본문 로직을 grantInviteRewardForFirstPurchase 헬퍼로 추출 —
+  //   결제 확정 경로(payment /confirm, group-buy /join)가 server-side 로 같은 로직을 호출
+  //   (기존엔 이 endpoint 호출자가 0 → 보상 영구 미지급). 응답 계약은 기존과 동일 유지.
   const body = await c.req.json<{ invited_user_id?: string }>().catch(() => ({ invited_user_id: undefined }))
-  const invitedUserId = body.invited_user_id || String(user.id)
+  const invitedUserId = String(body.invited_user_id || user.id)
 
-  // 1. Confirm invited user exists (production users schema has no referred_by column)
-  let invitedUser: { id: string } | null = null
-  try {
-    const row = await queryFirst<{ id: string }>(
-      DB,
-      'SELECT id FROM users WHERE id = ? OR firebase_uid = ?',
-      [invitedUserId, invitedUserId],
-    )
-    invitedUser = row ? { id: String(row.id) } : null
-  } catch {
-    invitedUser = null
+  const row = await queryFirst<{ id: string }>(
+    DB, 'SELECT id FROM users WHERE id = ? OR firebase_uid = ?', [invitedUserId, invitedUserId],
+  ).catch(() => null)
+  if (!row) return c.json({ success: false, error: '초대받은 유저를 찾을 수 없습니다' }, 404)
+
+  const result = await grantInviteRewardForFirstPurchase(DB, String(row.id))
+  if (result.granted) {
+    return c.json({ success: true, data: { inviter_user_id: result.inviterUserId, invited_user_id: String(row.id), reward_amount: result.amount } })
   }
-  if (!invitedUser) {
-    return c.json({ success: false, error: '초대받은 유저를 찾을 수 없습니다' }, 404)
+  switch (result.reason) {
+    case 'no_inviter': return c.json({ success: false, error: '초대자를 찾을 수 없습니다' }, 404)
+    case 'not_first': return c.json({ success: false, error: '첫 구매 보상은 첫 번째 주문에만 적용됩니다' }, 400)
+    case 'already_granted': return c.json({ success: false, error: '이미 보상이 지급되었습니다' }, 409)
+    default: return c.json({ success: false, error: '보상 처리 중 오류가 발생했습니다' }, 500)
   }
-
-  // Find inviter via referral_tree (source of truth — users.referred_by does not exist in production)
-  let inviterUserId: string | null = null
-  try {
-    const tree = await queryFirst<{ parent_id: string | null }>(
-      DB,
-      'SELECT parent_id FROM referral_tree WHERE user_id = ?',
-      [String(invitedUser.id)],
-    )
-    if (tree?.parent_id) inviterUserId = String(tree.parent_id)
-  } catch (e) {
-    if (import.meta.env?.DEV) console.warn('[invite-reward] referral_tree lookup failed', e)
-  }
-
-  if (!inviterUserId) {
-    return c.json({ success: false, error: '초대자를 찾을 수 없습니다' }, 404)
-  }
-
-  // 2. Check if reward already granted for this pair
-  // 🔐 2026-06-11 (정합성 감사 🔴): 적립 전에 invite_rewards 를 INSERT 로 선점(claim) — UNIQUE 가
-  //   동시 2요청 중 하나만 통과시킴. changes==0(이미 보상됨)이면 적립 없이 409. 기존엔 SELECT 후
-  //   적립→INSERT 순서라 동시요청 둘 다 적립되던 이중 보상 누수.
-  //   reward_amount 는 아래에서 결정되므로 0 으로 선점 후 적립 직전 UPDATE.
-  // (placeholder — 실제 claim 은 reward_amount 확정 직후)
-
-  // 3. Check this is the invited user's FIRST order
-  // ✅ SECURITY FIX (H7): Exclude REFUNDED orders too (refund reversal double-
-  //    rewarding). Also require cnt === 1 (strict first-order) so no reward
-  //    if a second/repeat order sneaks in.
-  const orderCount = await queryFirst<{ cnt: number }>(
-    DB,
-    "SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND status NOT IN ('CANCELLED','FAILED','REFUNDED')",
-    [String(invitedUser.id)],
-  )
-  if (!orderCount || orderCount.cnt !== 1) {
-    return c.json({ success: false, error: '첫 구매 보상은 첫 번째 주문에만 적용됩니다' }, 400)
-  }
-
-  // 4. Get reward amount from platform_settings
-  let rewardAmount = 1000
-  try {
-    const setting = await queryFirst<{ value: string }>(
-      DB,
-      "SELECT value FROM platform_settings WHERE key = 'invite_reward_amount'",
-      [],
-    )
-    if (setting?.value) {
-      const parsed = parseInt(setting.value, 10)
-      if (parsed > 0) rewardAmount = parsed
-    }
-  } catch { /* use default */ }
-
-  // 🔐 claim: UNIQUE(inviter,invited) 로 race 차단 — 이긴 요청만 적립.
-  const claim = await executeRun(
-    DB,
-    "INSERT OR IGNORE INTO invite_rewards (inviter_user_id, invited_user_id, reward_amount, status) VALUES (?, ?, ?, 'granted')",
-    [inviterUserId, String(invitedUser.id), rewardAmount],
-  )
-  if (((claim as { meta?: { changes?: number } })?.meta?.changes ?? 0) === 0) {
-    return c.json({ success: false, error: '이미 보상이 지급되었습니다' }, 409)
-  }
-
-  // 5. Grant deal points to inviter via user_points table
-  // (production users table doesn't have deal_balance column)
-  try {
-    await ensureUserPointsTable(DB)
-    const existing = await queryFirst<{ balance: number }>(
-      DB,
-      'SELECT balance FROM user_points WHERE user_id = ?',
-      [inviterUserId],
-    )
-    if (existing) {
-      await executeRun(
-        DB,
-        "UPDATE user_points SET balance = balance + ?, total_charged = total_charged + ?, updated_at = datetime('now') WHERE user_id = ?",
-        [rewardAmount, rewardAmount, inviterUserId],
-      )
-    } else {
-      await executeRun(
-        DB,
-        'INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)',
-        [inviterUserId, rewardAmount, rewardAmount],
-      )
-    }
-  } catch (e) {
-    if (import.meta.env?.DEV) console.warn('[invite-reward] user_points grant failed', e)
-  }
-  // Best-effort update to users.deal_balance (may not exist in production)
-  try {
-    await executeRun(
-      DB,
-      'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?',
-      [rewardAmount, inviterUserId],
-    )
-  } catch (e) {
-    if (import.meta.env?.DEV) console.warn('[deal_balance]', e)
-  }
-
-  // 6. invite_rewards 는 위 claim(INSERT OR IGNORE)에서 이미 선점됨 — 중복 INSERT 제거.
-
-  return c.json({
-    success: true,
-    data: {
-      inviter_user_id: inviterUserId,
-      invited_user_id: String(invitedUser.id),
-      reward_amount: rewardAmount,
-      status: 'granted',
-    },
-  })
 })
 
-/**
- * GET /my — 내 초대 보상 내역
- */
 inviteRewardRoutes.get('/my', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)

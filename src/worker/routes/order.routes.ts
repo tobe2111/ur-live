@@ -375,20 +375,20 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     // 제휴 마케팅 수수료 추적 (ref 파라미터)
     const referrerId = body.referrer_id || body.ref
     if (referrerId && referrerId !== String(userId)) {
-      c.executionCtx?.waitUntil?.(
-        fetch(`${c.req.url.split('/api/')[0]}/api/affiliate/track`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            referrer_id: referrerId,
-            order_id: order.id,
-            product_id: request.items?.[0]?.product_id,
-            product_name: (request.items?.[0] as any)?.product_name,
-            buyer_id: String(userId),
-            order_amount: order.total_amount,
-          }),
-        }).catch(swallow('order:affiliate-track'))
-      )
+      // 🏁 2026-06-12 (전 플로우 감사 🔴): 기존 내부 fetch('/api/affiliate/track') 는
+      //   ① 인증 헤더 없음 → requireAuth 401 ② 주문이 아직 PENDING → 상태검사 차단 — 이중 사망으로
+      //   물리상품 추천 적립이 0 이었음(dead call). 의도를 사이드 테이블에 저장하고, 결제 확정
+      //   (/confirm)이 creditAffiliateFromIntent 로 소비 — 검증/멱등은 /track 과 동일 SSOT 헬퍼.
+      c.executionCtx?.waitUntil?.((async () => {
+        const { saveReferrerIntent } = await import('../utils/affiliate-credit')
+        await saveReferrerIntent(c.env.DB, {
+          orderId: typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10),
+          referrerId: String(referrerId),
+          productId: request.items?.[0]?.product_id != null ? Number(request.items[0].product_id) : null,
+          productName: (request.items?.[0] as { product_name?: string })?.product_name ?? null,
+          buyerIp: c.req.header('CF-Connecting-IP') || null,
+        })
+      })().catch(swallow('order:affiliate-intent')))
 
       // 추천 트리 등록 (안전망: 카카오 콜백에서 등록 안 된 경우 대비)
       try {

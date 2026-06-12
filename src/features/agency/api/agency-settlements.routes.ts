@@ -164,7 +164,20 @@ app.post('/settlements/request', async (c) => {
     }
 
     const rate = agency.commission_rate ?? 2.0
-    const totalAmount = eligibleOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
+
+    // 🛡️ 2026-06-11 (전 플로우 감사 — 머니 룰 #1): SELECT→INSERT→마킹 순서는 동시 더블요청 시
+    //   같은 주문으로 정산 2행 생성 가능했음. **claim-before-credit**: 주문별 CAS 마킹을 먼저 하고,
+    //   실제 선점된(changes>0) 주문만으로 금액 계산·INSERT — 동시요청은 선점 0건이라 400 반환.
+    const claims = await c.env.DB.batch(
+      eligibleOrders.map(o => c.env.DB.prepare(
+        'UPDATE orders SET agency_settled = 1 WHERE id = ? AND COALESCE(agency_settled, 0) = 0'
+      ).bind(o.id))
+    )
+    const claimedOrders = eligibleOrders.filter((_, i) => ((claims[i]?.meta?.changes ?? 0) > 0))
+    if (!claimedOrders.length) {
+      return c.json({ success: false, error: '정산 가능한 주문이 없습니다 (동시 요청 처리됨)' }, 400)
+    }
+    const totalAmount = claimedOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
     const commissionAmount = Math.round(totalAmount * rate / 100)
 
     // 정산 레코드 생성
@@ -187,22 +200,15 @@ app.post('/settlements/request', async (c) => {
       INSERT INTO agency_settlements (agency_id, total_orders, total_amount, commission_rate, commission_amount, bank_name, bank_account, account_holder)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      agencyId, eligibleOrders.length, totalAmount, rate, commissionAmount,
+      agencyId, claimedOrders.length, totalAmount, rate, commissionAmount,
       agency.bank_name || null, agency.bank_account || null, agency.account_holder || null
     ).run()
-
-    // 정산 신청된 주문들 마킹 — batch() 로 단일 라운드트립
-    const orderIds = eligibleOrders.map(o => o.id)
-    if (orderIds.length > 0) {
-      await c.env.DB.batch(
-        orderIds.map(oid => c.env.DB.prepare('UPDATE orders SET agency_settled = 1 WHERE id = ?').bind(oid))
-      )
-    }
+    // (주문 마킹은 위 claim-before-credit 에서 이미 원자 선점됨)
 
     // 어드민 알림
     try {
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
-      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${Number(commissionAmount ?? 0).toLocaleString('ko-KR')}원 (${eligibleOrders.length}건)`, '/admin/settlements').catch(swallow('agency:api:agency'))
+      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${Number(commissionAmount ?? 0).toLocaleString('ko-KR')}원 (${claimedOrders.length}건)`, '/admin/settlements').catch(swallow('agency:api:agency'))
     } catch {}
 
     return c.json({
