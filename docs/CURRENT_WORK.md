@@ -8,6 +8,22 @@
 - 🟡 SupplierWholesaleOrdersPage 주문 로드 실패가 "주문 없음" 으로 위장 → 토스트 추가.
 **⚠️ 운영**: 기존 prod DB 는 `/admin/health` 스키마 복구 1회(또는 새벽 cron) 후 supplier 알림 활성화됨 (`dashboard_notifications:check-migration`).
 **남은 부채(보류)**: 카탈로그 1493줄 분해(제조대시는 06-11 분해 완료), 상태뱃지 중복 정의 통합, viewer UI 사전 안내, 승인대기 화면 ETA/문의처.
+## 📌 [전 플로우 감사 잔여 백로그 — 2단계] (2026-06-12, 사용자와 논의 후 진행)
+**1단계(결정 불필요 배선)는 완료/진행 중** — 아래는 사용자 결정·운영 방식 확인이 선행돼야 하는 것들:
+
+| # | 항목 | 내용 | 선행 결정 |
+|---|---|---|---|
+| P1 | **정산 지급 센터** (M-L) | 셀러 settlements(영구 pending)·큐레이터 user_withdrawals(처리 주체 0)·에이전시 agency_settlements(어드민 endpoint 0) — 신청→승인→입금완료를 어드민 한 화면으로 통일 | 실제 송금 운영 방식(누가/언제/어떻게) 청취 후 설계 |
+| P2 | 큐레이터 이중지급 정책 (S-M) | /track 이 전원에게 딜 즉시적립 + 사업자 셀러는 현금 출금 가용액에 중복 산정 (affiliate.routes:183 vs curator.routes:809) | 사업자 큐레이터 보상 = 딜 vs 현금 택1 |
+| P3 | 에이전시 보상 3중 레일 정리 (M) | intro 2% / agency_settlements 2% / ledger agency:N(유일 실지급) — P1 고치는 순간 중복지급 구조 | 정본 레일 확정 |
+| P4 | NTS 사업자 자동검증 도매/공급 배선 (M) | nts-business-verify 가 일반 셀러 가입에만 연결 — wholesale:651·supplier-auth:95 에 fail-soft 호출 + 어드민 표시 | NTS_API_KEY 등록과 함께 |
+| P5 | 셀러연결 큐레이터 핀 비노출 (M) | linked seller 면 /u/:handle 이 SellerPublicPage(잠금) 통째 렌더 → 핀 그리드 도달 불가 | SellerPublicPage 에 핀 탭(UNLOCK) |
+| P6 | 교환권 진짜 선물 플로우 (M) | 현 '선물'=QR 공유 + 보낸이 셀프취소 가능(수령자 무효화 위험). gift-claim 플로우는 일반상품만 배선 | 제품 결정 |
+| P7 | admin_token wipe 정책 통일 (S) | redirect 콜백 allowlist wipe 가 admin_token 소거 — SPA 콜백과 불일치 | 같은 user.id 재로그인 시 보존 여부 |
+| 🟢 | 잔여 다듬기 | 알림 무한스크롤(50 고정)·언어설정 마이 노출·만료 교환권 접기·푸시 soft-prompt·장바구니 계정키·클레임 환불 딥링크·KT trigger 관측성(의도적 유지) | — |
+
+**의도적 비수정(설계 의도 보존)**: KT 발송 trigger 동기 INSERT(silent-fail 증거 수집 목적), dead promo 코드(복귀 가능성 — dual-mode 룰).
+
 
 ## ✅ 2026-06-11 (오후~밤) — 이미지 파이프라인 정석화 + 응답경로 수술 + 공구 플로우 마감 (`claude/service-analysis-optimization-whpu0f`)
 - **이미지 3단 수리**: ① `_routes.json` 확장자 글롭(`/*.jpg` 등)이 `/api/media/**.jpg` 워커 미도달 → SPA HTML 폴백 (업로드 이미지 전부 깨짐의 진범, 루트 정적 명시목록으로 — 재발 방지 주석) ② 기프티쇼/KT cdn-cgi 직결(실측 143KB→18KB, `CDN_CGI_VERIFIED` — kakaocdn 회귀 교훈: 실측 통과 호스트만) ③ **R2 커스텀 도메인 media.ur-team.com + zone 리사이저** (실측 779KB→9.7KB) — 레거시 `/api/media/` URL 도 도메인 매핑으로 전부 치유, 아바타 소비처 cfImage 래핑. ⚠️ biz-cert 비공개 버킷 분리 = 부채.
