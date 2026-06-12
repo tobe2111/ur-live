@@ -8,6 +8,7 @@ import { Link, useLocation } from 'react-router-dom'
  * nav 에는 '정산 센터' 1항목만 노출.
  */
 const TABS = [
+  { path: '/admin/payout-center', label: '🏦 지급 센터' },
   { path: '/admin/settlement', label: '개별 정산' },
   { path: '/admin/settlements-bulk', label: '일괄 정산' },
   { path: '/admin/payouts', label: '통합 정산 (Ledger)' },

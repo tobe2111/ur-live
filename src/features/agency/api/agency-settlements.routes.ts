@@ -130,101 +130,18 @@ app.get('/settlement-invoices/:id', async (c) => {
   }
 })
 
-// ── POST /settlements/request — 에이전시 정산 신청 ──
+// ── POST /settlements/request — 🏁 2026-06-12 (P3 사용자 결정) 레일 폐기 ──
+//   에이전시 보상 정본 = 영입 커미션(agency_store_intro_commissions, 자동 적립·멱등) —
+//   같은 매출 2%+2% 이중 산정 구조 제거. 지급은 어드민 지급 센터(T+7 성숙분 일괄)가 처리.
+//   기존 신청 이력 GET 은 존치(기록 보존).
 app.post('/settlements/request', async (c) => {
-  await ensureAgencyTables(c.env.DB)
-  const { id: agencyId } = c.get('agency') as { id: number }
-
-  // 🛡️ 민감 액션 — 최근 15분 내 에이전시 PIN 인증 필수
-  const { isAgencyPinVerified } = await import('./agency-pin.routes')
-  const pinOk = await isAgencyPinVerified(c.req.header('Cookie'), agencyId, c.env.JWT_SECRET)
-  if (!pinOk) {
-    return c.json({ success: false, error: 'PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412)
-  }
-
-  try {
-    const agency = await c.env.DB.prepare('SELECT id, name, commission_rate, bank_name, bank_account, account_holder FROM agencies WHERE id = ?')
-      .bind(agencyId).first<Record<string, any>>()
-    if (!agency) return c.json({ success: false, error: '에이전시 정보를 찾을 수 없습니다' }, 404)
-
-    // 정산 가능 금액 계산: 확정(confirmed) 주문 중 아직 에이전시 정산 안 된 것
-    try { await c.env.DB.prepare("ALTER TABLE orders ADD COLUMN agency_settled INTEGER DEFAULT 0").run() } catch {}
-
-    const { results: eligibleOrders } = await c.env.DB.prepare(`
-      SELECT o.id, o.total_amount, o.seller_id
-      FROM orders o
-      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
-      WHERE ag.agency_id = ? AND o.status IN ('delivered', 'DONE')
-        AND COALESCE(o.settlement_status, 'pending') = 'confirmed'
-        AND COALESCE(o.agency_settled, 0) = 0
-    `).bind(agencyId).all<{ id: number; total_amount: number; seller_id: number }>()
-
-    if (!eligibleOrders?.length) {
-      return c.json({ success: false, error: '정산 가능한 주문이 없습니다' }, 400)
-    }
-
-    const rate = agency.commission_rate ?? 2.0
-
-    // 🛡️ 2026-06-11 (전 플로우 감사 — 머니 룰 #1): SELECT→INSERT→마킹 순서는 동시 더블요청 시
-    //   같은 주문으로 정산 2행 생성 가능했음. **claim-before-credit**: 주문별 CAS 마킹을 먼저 하고,
-    //   실제 선점된(changes>0) 주문만으로 금액 계산·INSERT — 동시요청은 선점 0건이라 400 반환.
-    const claims = await c.env.DB.batch(
-      eligibleOrders.map(o => c.env.DB.prepare(
-        'UPDATE orders SET agency_settled = 1 WHERE id = ? AND COALESCE(agency_settled, 0) = 0'
-      ).bind(o.id))
-    )
-    const claimedOrders = eligibleOrders.filter((_, i) => ((claims[i]?.meta?.changes ?? 0) > 0))
-    if (!claimedOrders.length) {
-      return c.json({ success: false, error: '정산 가능한 주문이 없습니다 (동시 요청 처리됨)' }, 400)
-    }
-    const totalAmount = claimedOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
-    const commissionAmount = Math.round(totalAmount * rate / 100)
-
-    // 정산 레코드 생성
-    try {
-      await c.env.DB.prepare(`CREATE TABLE IF NOT EXISTS agency_settlements (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        agency_id INTEGER NOT NULL,
-        total_orders INTEGER NOT NULL,
-        total_amount INTEGER NOT NULL,
-        commission_rate REAL NOT NULL,
-        commission_amount INTEGER NOT NULL,
-        bank_name TEXT, bank_account TEXT, account_holder TEXT,
-        status TEXT DEFAULT 'pending',
-        requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        settled_at DATETIME
-      )`).run()
-    } catch {}
-
-    const result = await c.env.DB.prepare(`
-      INSERT INTO agency_settlements (agency_id, total_orders, total_amount, commission_rate, commission_amount, bank_name, bank_account, account_holder)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      agencyId, claimedOrders.length, totalAmount, rate, commissionAmount,
-      agency.bank_name || null, agency.bank_account || null, agency.account_holder || null
-    ).run()
-    // (주문 마킹은 위 claim-before-credit 에서 이미 원자 선점됨)
-
-    // 어드민 알림
-    try {
-      const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
-      createDashboardNotification(c.env.DB, 'admin', null, 'agency_settlement', '에이전시 정산 신청', `${agency.name}: ${Number(commissionAmount ?? 0).toLocaleString('ko-KR')}원 (${claimedOrders.length}건)`, '/admin/settlements').catch(swallow('agency:api:agency'))
-    } catch {}
-
-    return c.json({
-      success: true,
-      data: {
-        orders: eligibleOrders.length,
-        total_amount: totalAmount,
-        commission_rate: rate,
-        commission_amount: commissionAmount,
-      },
-    })
-  } catch (e) {
-    console.error('[Agency] Settlement request error:', e)
-    return c.json({ success: false, error: '정산 신청에 실패했습니다' }, 500)
-  }
+  return c.json({
+    success: false,
+    code: 'RAIL_DEPRECATED',
+    error: '정산 방식이 변경되었습니다 — 영입 커미션이 자동 집계되어 매주 지급됩니다. 별도 신청이 필요 없습니다.',
+  }, 410)
 })
+
 export { app as agencySettlementsRoutes }
 
 

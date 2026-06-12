@@ -3401,6 +3401,10 @@
       "kakaoDone": "Connexion Kakao terminée",
       "kakaoHint": "Remplissez simplement les informations de l'agence ci-dessous",
       "approvalNote": "L'approbation prend généralement 1 à 2 jours. Après approbation, vous pouvez utiliser les fonctionnalités d'agence via Kakao."
+    },
+    "settlementsAuto": {
+      "autoPayout": "✨ Plus besoin de demander",
+      "autoPayoutDesc": "Les commissions sont calculées automatiquement et versées chaque vendredi (après 7 jours de protection remboursement)"
     }
   },
   "nav": {

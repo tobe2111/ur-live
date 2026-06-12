@@ -4072,6 +4072,10 @@
       "kakaoDone": "Kakao登录完成",
       "kakaoHint": "只需填写以下代理商信息即可完成申请",
       "approvalNote": "申请后，管理员审批通常需要1-2天。审批后，可直接通过Kakao登录使用代理商功能。"
+    },
+    "settlementsAuto": {
+      "autoPayout": "✨ 无需再申请",
+      "autoPayoutDesc": "引入佣金将自动汇总，每周五统一打款（为保障退款，仅限满7天的部分）"
     }
   },
   "nav": {

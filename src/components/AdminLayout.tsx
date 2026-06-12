@@ -109,7 +109,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       // 🧭 2026-06-09 IA 정리: 정산 4페이지(개별/일괄/Ledger/추천출금)는 페이지 상단 AdminFinanceTabs 로
       //   상호 이동 — nav 는 진입점 1개만. 라우트는 전부 보존(북마크 안전).
-      { path: '/admin/settlement',       label: '정산 센터',     icon: DollarSign, also: ['/admin/settlements-bulk', '/admin/payouts', '/admin/commission-withdrawals'] },
+      { path: '/admin/settlement',       label: '정산 센터',     icon: DollarSign, also: ['/admin/settlements-bulk', '/admin/payouts', '/admin/commission-withdrawals', '/admin/payout-center'] },
       // 돈 관련 고아 라우트를 재무 그룹으로 — URL 직접 입력 없이 도달 가능하게.
       { path: '/admin/influencer-payouts', label: '인플루언서 송금', icon: Wallet },
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },

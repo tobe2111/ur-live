@@ -827,12 +827,17 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
 
     // 잔액 검증 — affiliate_earnings SUM - 이미 출금 신청한 금액
     //   🛡️ 2026-05-31: 환불(status='refunded') 커미션 제외 — 환불 매출 출금 누수 차단.
+    // 🏁 2026-06-12 (P2 사용자 결정 — 딜 단일화): 현금 환급 = "딜을 현금으로 바꾸는 것".
+    //   가용액 = MIN(적립 잔여분[충전 딜 현금화 차단 — 카드깡 방지], 현재 딜 잔액[이미 쓴 딜 제외]).
+    //   신청 시 딜을 즉시 차감(아래) → 딜+현금 이중지급이 구조적으로 소멸.
     const balance = await DB.prepare(
       `SELECT
-         COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
-         - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
-         AS available`,
-    ).bind(String(userId), String(userId)).first<{ available: number }>()
+         MIN(
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
+           - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0),
+           COALESCE((SELECT balance FROM user_points WHERE user_id = ?), 0)
+         ) AS available`,
+    ).bind(String(userId), String(userId), String(userId)).first<{ available: number }>()
     const available = balance?.available ?? 0
     if (amount > available) {
       return c.json({
@@ -851,9 +856,11 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
       // 🛡️ 2026-06-04: 잔액검증+INSERT 원자화 — 동시/중복 신청이 둘 다 available 을 읽고 둘 다
       //   신청 → 관리자 이중승인 시 초과지급. 조건부 INSERT(가용액 재평가 시점=삽입)로 차단:
       //   두 번째 동시요청은 첫 신청분(requested)이 available 에서 차감돼 0 rows → 거부.
+      // deal_deducted 컬럼 보장 (지급센터 ensure 와 동일 — 멱등)
+      await DB.prepare('ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0').run().catch(() => {})
       const result = await DB.prepare(
-        `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status)
-         SELECT ?, ?, ?, ?, ?, ?, ?, 'requested'
+        `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status, deal_deducted)
+         SELECT ?, ?, ?, ?, ?, ?, ?, 'requested', 1
          WHERE (
            COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
            - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
@@ -862,6 +869,18 @@ curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
       if ((result.meta?.changes ?? 0) === 0) {
         return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
       }
+      // 🏁 P2: 딜 즉시 차감 (CAS — 잔액 부족이면 신청 롤백). 반려 시 지급센터가 deal_deducted=1 만 복원.
+      const dealDeduct = await DB.prepare(
+        "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?"
+      ).bind(amount, String(userId), amount).run().catch(() => null)
+      if (!dealDeduct?.meta?.changes) {
+        await DB.prepare('DELETE FROM user_withdrawals WHERE id = ?').bind(result.meta.last_row_id).run().catch(() => {})
+        return c.json({ success: false, error: '딜 잔액이 부족합니다 (이미 사용된 딜은 환급할 수 없어요)', available }, 409)
+      }
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
+         VALUES (?, 'cash_withdraw', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
+      ).bind(String(userId), amount, amount, String(userId), `현금 환급 신청 — 딜 차감 (#${result.meta.last_row_id})`).run().catch(() => {})
 
       return c.json({
         success: true,

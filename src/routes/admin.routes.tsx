@@ -102,6 +102,7 @@ const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
 const Admin2FASetupPage = lazy(() => import('@/pages/Admin2FASetupPage'))
 const AdminCommissionWithdrawalsPage = lazy(() => import('@/pages/AdminCommissionWithdrawalsPage'))
+const AdminPayoutCenterPage = lazy(() => import('@/pages/AdminPayoutCenterPage'))
 const AdminPayoutsPage = lazy(() => import('@/pages/AdminPayoutsPage'))
 // 📧 2026-06-09 Wave 3b: 어드민 단체메일 (filtered bulk email)
 const AdminBulkEmailPage = lazy(() => import('@/pages/AdminBulkEmailPage'))
@@ -165,6 +166,11 @@ export function AdminRoutes() {
       <Route path="/admin/commission-withdrawals" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminCommissionWithdrawalsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/payout-center" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPayoutCenterPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/payouts" element={

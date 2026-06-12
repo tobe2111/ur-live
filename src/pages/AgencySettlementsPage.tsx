@@ -74,15 +74,15 @@ export default function AgencySettlementsPage() {
               <p className="text-3xl font-extrabold mt-1">{formatNumber(payableAmount)}원</p>
               <p className="text-xs opacity-70 mt-2">{t('agency.settlements.confirmedOrders', { defaultValue: '확정 주문' })} {confirmedCount}{t('agency.settlements.countUnit', { defaultValue: '건' })} · {t('agency.settlements.commissionRate', { defaultValue: '수수료율' })} {summary.agency_commission_rate || 2}%</p>
             </div>
-            <button
-              onClick={requestPayout}
-              disabled={requesting || confirmedCount === 0}
-              className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 font-bold rounded-xl text-sm disabled:opacity-50 active:scale-95 transition-all"
-            >
-              <Banknote className="w-5 h-5" />
-              {requesting ? t('agency.settlements.requesting', { defaultValue: '신청 중...' }) : t('agency.settlements.requestPayout', { defaultValue: '정산 신청' })}
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* 🏁 2026-06-12 (P3 결정): 수동 정산 신청 레일 폐기 — 영입 커미션 자동 집계·매주 지급 */}
+            <div className="text-right">
+              <p className="text-sm font-bold bg-white/15 rounded-xl px-4 py-3">
+                {t('agency.settlementsAuto.autoPayout', { defaultValue: '✨ 이제 신청이 필요 없어요' })}
+              </p>
+              <p className="text-[11px] opacity-80 mt-2 max-w-[220px]">
+                {t('agency.settlementsAuto.autoPayoutDesc', { defaultValue: '영입 커미션이 자동 집계되어 매주 금요일 일괄 입금됩니다 (환불 보호를 위해 7일 경과분)' })}
+              </p>
+            </div>
           </div>
         </div>
 
