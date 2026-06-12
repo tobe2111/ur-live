@@ -38,6 +38,22 @@ interface BusinessInfoUpdate {
 }
 
 export const sellerProfileRoutes = new Hono<{ Bindings: Bindings }>()
+
+// 🛡️ 2026-06-12 (감사 1단계 — 계좌번호 마스킹): 조회 응답엔 끝 4자리만 노출 (****1234).
+//   저장값은 전체 유지 (정산용) — 응답 직전 가공만.
+function maskBankAccount(v: unknown): string | null {
+  if (v === null || v === undefined) return null
+  const s = String(v)
+  if (!s) return null
+  return `****${s.slice(-4)}`
+}
+function maskSellerRow<T extends Record<string, unknown> | null>(row: T): T {
+  if (row && 'bank_account' in row && row.bank_account) {
+    (row as Record<string, unknown>).bank_account = maskBankAccount(row.bank_account)
+  }
+  return row
+}
+
 sellerProfileRoutes.get('/profile', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
@@ -69,7 +85,7 @@ sellerProfileRoutes.get('/profile', async (c) => {
 
     return c.json({
       success: true,
-      data: seller
+      data: maskSellerRow(seller as Record<string, unknown>)
     });
 
   } catch (error: unknown) {
@@ -93,6 +109,13 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     }
 
     const body = await c.req.json<SellerProfileUpdate & Record<string, unknown>>();
+
+    // 🛡️ 2026-06-12 (감사 1단계): GET 이 마스킹 값(****1234)을 반환하므로 — 클라가 prefill 된
+    //   마스킹 값을 그대로 재전송해 실계좌가 '****1234' 로 덮이는 사고 방지. '*' 포함 시 변경 무시.
+    if (typeof body.bank_account === 'string' && body.bank_account.includes('*')) {
+      delete (body as Record<string, unknown>).bank_account;
+    }
+
     const updates: string[] = [];
     const values: (string | number | null)[] = [];
 
@@ -200,7 +223,7 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       FROM sellers WHERE id = ?
     `).bind(sellerId).first();
 
-    return c.json({ success: true, data: updatedSeller });
+    return c.json({ success: true, data: maskSellerRow(updatedSeller as Record<string, unknown> | null) });
 
   } catch (error: unknown) {
     console.error('Update seller profile error:', error);

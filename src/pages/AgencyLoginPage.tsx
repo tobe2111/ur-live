@@ -40,6 +40,9 @@ export default function AgencyLoginPage() {
         localStorage.setItem('agency_id', String(agency.id))
         localStorage.setItem('agency_name', agency.name)
         localStorage.setItem('agency_email', agency.email)
+        // 🛡️ 2026-06-12 (감사 1단계): BottomNav 등이 active_role 로 표시 분기 — agency 도 설정
+        //   (SellerLoginPage 의 'seller' 설정과 동일 패턴, dead flag 해소).
+        localStorage.setItem('active_role', 'agency')
         navigate('/agency', { replace: true })
       }
     } catch (err: unknown) {
