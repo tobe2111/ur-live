@@ -56,6 +56,8 @@ const NAV_GROUPS: {
       // 🧭 2026-06-09 IA 정리: 묶음/재고는 상품 페이지 상단 SellerProductTabs 로 이동 — nav 1항목.
       //   라우트는 보존(딥링크 안전), also 로 탭 형제 라우트에서도 활성 표시.
       { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common', also: ['/seller/bundles', '/seller/inventory'] },
+      // 🏁 2026-06-12 (4차 감사 D5): /seller/proxy-products 고아 라우트 진입점 — 크리에이터 대행 등록 검토/승인 (매장).
+      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
       // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
       { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' },
     ],

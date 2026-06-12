@@ -17,6 +17,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     { icon: '🏨', label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / voucher 유효기간' }), path: '/my-stays' },
     { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
     { icon: '⭐', label: t('shopping.myFollows', { defaultValue: '내 단골 셀러' }), sub: t('shopping.myFollowsSub', { defaultValue: '셀러별 알림 설정' }), path: '/my/follows' },
+    // 🏁 2026-06-12 (4차 감사 D5): /interest-list 고아 라우트 진입점 — 관심 맛집(공구 알림 신청) 목록.
+    { icon: '🔔', label: t('shopping.interestList', { defaultValue: '관심 맛집' }), sub: t('shopping.interestListSub', { defaultValue: '공구 오픈 알림 신청 목록' }), path: '/interest-list' },
     { icon: '❤️', label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
     { icon: '📦', label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
     { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },

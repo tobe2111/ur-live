@@ -783,8 +783,14 @@ function AppContent() {
             <Route path="/payment/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: widget 키 (_wt_) 환경에서 충전/공구 결제용 공용 in-page 위젯 페이지. */}
             <Route path="/pay/widget" element={<ProtectedRoute requireUser><TossWidgetPayPage /></ProtectedRoute>} />
-            {/* 🛡️ 2026-05-23: 결제 진단 페이지 (운영자 ground truth 수집용). */}
-            <Route path="/toss-debug" element={<ErrorBoundary><TossDebugPage /></ErrorBoundary>} />
+            {/* 🛡️ 2026-05-23: 결제 진단 페이지 (운영자 ground truth 수집용).
+                🔒 2026-06-12 (4차 감사 D6): prod 에선 어드민 토큰 필요 (진단 도구라 DEV 게이트로
+                죽이지 않고 requireAdmin — ERROR_DEBUGGING_PLAYBOOK 의 ground truth 수집 용도 보존). */}
+            <Route path="/toss-debug" element={
+              import.meta.env.DEV
+                ? <ErrorBoundary><TossDebugPage /></ErrorBoundary>
+                : <ProtectedRoute requireAdmin><ErrorBoundary><TossDebugPage /></ErrorBoundary></ProtectedRoute>
+            } />
 
             {/* 딜 포인트 충전 */}
             <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />

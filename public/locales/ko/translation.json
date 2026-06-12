@@ -2409,7 +2409,8 @@
       "stays": "숙소 공구",
       "staysBookings": "예약 관리",
       "supply": "도매 소싱",
-      "voucherScan": "바우처 스캔"
+      "voucherScan": "바우처 스캔",
+      "proxyProducts": "대행 등록 승인"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3828,7 +3829,8 @@
       "events": "자사 챌린지",
       "promoteBoosts": "노출 부스팅",
       "transfers": "셀러 이전",
-      "stays": "숙소 운영"
+      "stays": "숙소 운영",
+      "prospects": "매장 영입 현황"
     },
     "guide": "운영 가이드",
     "guideSubtitle": "에이전시 운영 핵심 가이드",
@@ -5166,7 +5168,9 @@
     "orders": "주문 내역",
     "ordersSub": "최근 3개월",
     "myStays": "내 숙소 예약",
-    "myStaysSub": "체크인 코드 / voucher 유효기간"
+    "myStaysSub": "체크인 코드 / voucher 유효기간",
+    "interestList": "관심 맛집",
+    "interestListSub": "공구 오픈 알림 신청 목록"
   },
   "orderStatus": {
     "sectionTitle": "주문 현황",
@@ -6072,7 +6076,9 @@
   },
   "my": {
     "earningsGroupTitle": "내 수익·추천",
-    "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대"
+    "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대",
+    "affiliateLinkTitle": "상품 추천 링크",
+    "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기"
   },
   "push": {
     "promptTitle": "알림을 켜시겠어요?",

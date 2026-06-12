@@ -402,8 +402,26 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retry2fa?: boolean };
     const url = originalRequest?.url || '';
+
+    // 🏁 2026-06-12 (전수조사 🔴): 2FA 활성 어드민이 보호 endpoint 호출 시 X-2FA-Code 를
+    //   주입하는 코드가 0 → 영구 403 이던 갭. 403+2FA_REQUIRED 면 코드 입력받아 1회 재시도.
+    const respData = error.response?.data as { code?: string } | undefined;
+    if (error.response?.status === 403 && respData?.code === '2FA_REQUIRED' && !originalRequest._retry2fa) {
+      originalRequest._retry2fa = true;
+      try {
+        const code = typeof window !== 'undefined'
+          ? window.prompt('2단계 인증 코드(6자리)를 입력하세요 — Authenticator 앱 확인')
+          : null;
+        if (code && /^\d{6}$/.test(code.trim())) {
+          originalRequest.headers = originalRequest.headers || {};
+          (originalRequest.headers as Record<string, string>)['X-2FA-Code'] = code.trim();
+          return api(originalRequest);
+        }
+      } catch { /* prompt 불가 환경 — 그대로 reject */ }
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true; // ✅ 무한 재시도 차단

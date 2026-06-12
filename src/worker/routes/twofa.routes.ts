@@ -83,7 +83,7 @@ async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> 
   return false
 }
 
-async function ensureTotpColumn(DB: D1Database, table: 'sellers' | 'users'): Promise<void> {
+async function ensureTotpColumn(DB: D1Database, table: 'sellers' | 'users' | 'admins' | 'agencies'): Promise<void> {
   if (_done_ensureTotpColumn.has(DB)) return
   _done_ensureTotpColumn.add(DB)
   try { await DB.prepare(`ALTER TABLE ${table} ADD COLUMN totp_secret TEXT`).run() } catch { /* exists */ }
@@ -94,7 +94,12 @@ twofaRoutes.post('/setup', rateLimit({ action: '2fa_setup', max: 5, windowSec: 6
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const userAsAny = user as unknown as { id?: number | string; type?: string; email?: string }
-  const table = userAsAny.type === 'seller' ? 'sellers' : 'users'
+  // 🏁 2026-06-12 (전수조사 🔴): admin 은 admins 테이블 — 기존엔 users 로 가서 admins 행 미반영
+    //   + 동일 id 일반 유저 row 오염이던 갭 (agency 도 동일 원리로 agencies).
+    const table = userAsAny.type === 'seller' ? 'sellers'
+      : userAsAny.type === 'admin' ? 'admins'
+      : userAsAny.type === 'agency' ? 'agencies'
+      : 'users'
 
   const { DB } = c.env
   await ensureTotpColumn(DB, table)
@@ -119,7 +124,12 @@ twofaRoutes.post('/verify', rateLimit({ action: '2fa_verify', max: 10, windowSec
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const userAsAny = user as unknown as { id?: number | string; type?: string }
-  const table = userAsAny.type === 'seller' ? 'sellers' : 'users'
+  // 🏁 2026-06-12 (전수조사 🔴): admin 은 admins 테이블 — 기존엔 users 로 가서 admins 행 미반영
+    //   + 동일 id 일반 유저 row 오염이던 갭 (agency 도 동일 원리로 agencies).
+    const table = userAsAny.type === 'seller' ? 'sellers'
+      : userAsAny.type === 'admin' ? 'admins'
+      : userAsAny.type === 'agency' ? 'agencies'
+      : 'users'
 
   let body: { code?: string }
   try { body = await c.req.json() } catch { return c.json({ success: false, error: 'JSON 오류' }, 400) }
@@ -142,7 +152,12 @@ twofaRoutes.post('/disable', rateLimit({ action: '2fa_disable', max: 5, windowSe
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const userAsAny = user as unknown as { id?: number | string; type?: string }
-  const table = userAsAny.type === 'seller' ? 'sellers' : 'users'
+  // 🏁 2026-06-12 (전수조사 🔴): admin 은 admins 테이블 — 기존엔 users 로 가서 admins 행 미반영
+    //   + 동일 id 일반 유저 row 오염이던 갭 (agency 도 동일 원리로 agencies).
+    const table = userAsAny.type === 'seller' ? 'sellers'
+      : userAsAny.type === 'admin' ? 'admins'
+      : userAsAny.type === 'agency' ? 'agencies'
+      : 'users'
 
   let body: { code?: string }
   try { body = await c.req.json() } catch { return c.json({ success: false, error: 'JSON 오류' }, 400) }
@@ -164,7 +179,12 @@ twofaRoutes.post('/check', rateLimit({ action: '2fa_check', max: 20, windowSec: 
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const userAsAny = user as unknown as { id?: number | string; type?: string }
-  const table = userAsAny.type === 'seller' ? 'sellers' : 'users'
+  // 🏁 2026-06-12 (전수조사 🔴): admin 은 admins 테이블 — 기존엔 users 로 가서 admins 행 미반영
+    //   + 동일 id 일반 유저 row 오염이던 갭 (agency 도 동일 원리로 agencies).
+    const table = userAsAny.type === 'seller' ? 'sellers'
+      : userAsAny.type === 'admin' ? 'admins'
+      : userAsAny.type === 'agency' ? 'agencies'
+      : 'users'
 
   let body: { code?: string }
   try { body = await c.req.json() } catch { return c.json({ success: false, error: 'JSON 오류' }, 400) }
@@ -184,7 +204,12 @@ twofaRoutes.get('/status', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const userAsAny = user as unknown as { id?: number | string; type?: string }
-  const table = userAsAny.type === 'seller' ? 'sellers' : 'users'
+  // 🏁 2026-06-12 (전수조사 🔴): admin 은 admins 테이블 — 기존엔 users 로 가서 admins 행 미반영
+    //   + 동일 id 일반 유저 row 오염이던 갭 (agency 도 동일 원리로 agencies).
+    const table = userAsAny.type === 'seller' ? 'sellers'
+      : userAsAny.type === 'admin' ? 'admins'
+      : userAsAny.type === 'agency' ? 'agencies'
+      : 'users'
 
   const { DB } = c.env
   await ensureTotpColumn(DB, table)

@@ -334,7 +334,10 @@ returnsRoutes.get('/seller', requireAuth(), async (c) => {
  */
 returnsRoutes.put('/:id/approve', rateLimit({ action: 'return_approve', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  // 🏁 2026-06-12 (전수조사 🔴 — AdminReturnsPage 4버튼 전부 403 이던 갭): 어드민도 처리 허용.
+  //   어드민은 소유권 검사 면제(전 셀러 반품 검수), 셀러는 기존대로 본인 건만.
+  if (!user || (user.type !== 'seller' && user.type !== 'admin')) return c.json({ success: false, error: 'forbidden' }, 403);
+  const isAdminActor = user.type === 'admin';
   const sellerId = Number(user.id);
 
   const { DB } = c.env;
@@ -350,7 +353,7 @@ returnsRoutes.put('/:id/approve', rateLimit({ action: 'return_approve', max: 60,
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
   }
 
-  if (returnRecord.seller_id !== sellerId) {
+  if (!isAdminActor && returnRecord.seller_id !== sellerId) {
     return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
@@ -371,14 +374,19 @@ returnsRoutes.put('/:id/approve', rateLimit({ action: 'return_approve', max: 60,
  */
 returnsRoutes.put('/:id/reject', rateLimit({ action: 'return_reject', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  // 🏁 2026-06-12 (전수조사 🔴 — AdminReturnsPage 4버튼 전부 403 이던 갭): 어드민도 처리 허용.
+  //   어드민은 소유권 검사 면제(전 셀러 반품 검수), 셀러는 기존대로 본인 건만.
+  if (!user || (user.type !== 'seller' && user.type !== 'admin')) return c.json({ success: false, error: 'forbidden' }, 403);
+  const isAdminActor = user.type === 'admin';
   const sellerId = Number(user.id);
 
   const { DB } = c.env;
   await ensureTable(DB);
 
   const returnId = c.req.param('id');
-  const body = await c.req.json<{ rejection_reason?: string }>();
+  // 🏁 2026-06-12 (전수조사): AdminReturnsPage 는 {reason} 으로 보냄 — 양쪽 키 허용 (사유 유실 방지).
+  const bodyRaw = await c.req.json<{ rejection_reason?: string; reason?: string }>().catch(() => ({} as { rejection_reason?: string; reason?: string }));
+  const body = { rejection_reason: bodyRaw.rejection_reason ?? bodyRaw.reason };
 
   const returnRecord = await DB.prepare(
     'SELECT id, seller_id, status FROM returns WHERE id = ?'
@@ -388,7 +396,7 @@ returnsRoutes.put('/:id/reject', rateLimit({ action: 'return_reject', max: 60, w
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
   }
 
-  if (returnRecord.seller_id !== sellerId) {
+  if (!isAdminActor && returnRecord.seller_id !== sellerId) {
     return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
@@ -409,7 +417,10 @@ returnsRoutes.put('/:id/reject', rateLimit({ action: 'return_reject', max: 60, w
  */
 returnsRoutes.put('/:id/inspect', rateLimit({ action: 'return_inspect', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  // 🏁 2026-06-12 (전수조사 🔴 — AdminReturnsPage 4버튼 전부 403 이던 갭): 어드민도 처리 허용.
+  //   어드민은 소유권 검사 면제(전 셀러 반품 검수), 셀러는 기존대로 본인 건만.
+  if (!user || (user.type !== 'seller' && user.type !== 'admin')) return c.json({ success: false, error: 'forbidden' }, 403);
+  const isAdminActor = user.type === 'admin';
   const sellerId = Number(user.id);
 
   const { DB } = c.env;
@@ -433,7 +444,7 @@ returnsRoutes.put('/:id/inspect', rateLimit({ action: 'return_inspect', max: 60,
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
   }
 
-  if (returnRecord.seller_id !== sellerId) {
+  if (!isAdminActor && returnRecord.seller_id !== sellerId) {
     return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
@@ -461,7 +472,10 @@ returnsRoutes.put('/:id/inspect', rateLimit({ action: 'return_inspect', max: 60,
  */
 returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec: 3600 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user || user.type !== 'seller') return c.json({ success: false, error: 'forbidden' }, 403);
+  // 🏁 2026-06-12 (전수조사 🔴 — AdminReturnsPage 4버튼 전부 403 이던 갭): 어드민도 처리 허용.
+  //   어드민은 소유권 검사 면제(전 셀러 반품 검수), 셀러는 기존대로 본인 건만.
+  if (!user || (user.type !== 'seller' && user.type !== 'admin')) return c.json({ success: false, error: 'forbidden' }, 403);
+  const isAdminActor = user.type === 'admin';
   const sellerId = Number(user.id);
 
   const { DB } = c.env;
@@ -479,7 +493,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
   }
 
-  if (returnRecord.seller_id !== sellerId) {
+  if (!isAdminActor && returnRecord.seller_id !== sellerId) {
     return c.json({ success: false, error: 'forbidden' }, 403);
   }
 
@@ -504,12 +518,15 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
 
   // 1. 주문에서 payment_key 조회
   const order = await DB.prepare(
-    'SELECT id, toss_payment_key, payment_key, total_amount FROM orders WHERE id = ?'
+    'SELECT id, toss_payment_key, payment_key, total_amount, payment_method, user_id, order_number FROM orders WHERE id = ?'
   ).bind(returnRecord.order_id).first<{
     id: number;
     toss_payment_key: string | null;
     payment_key: string | null;
     total_amount: number | null;
+    payment_method: string | null;
+    user_id: string | number | null;
+    order_number: string | null;
   }>();
 
   if (!order) {
@@ -521,6 +538,16 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
 
   if (returnRecord.refund_amount > orderAmount) {
     return c.json({ success: false, error: '환불 금액이 주문 금액을 초과합니다' }, 400);
+  }
+
+  // 🏁 2026-06-12 (전수조사 🔴 G4): 딜(deal_points) 결제 주문의 반품 환불 시 딜 미환급이던 갭 —
+  //   cancel 경로(order.routes:624 패턴)와 동일하게 환급 + 장부 기록. Toss 키 없고 딜 결제면 이 분기가 실환불.
+  if (!paymentKey && order.payment_method === 'deal_points' && (returnRecord.refund_amount || 0) > 0 && order.user_id != null) {
+    await DB.prepare('UPDATE user_points SET balance = balance + ?, updated_at = datetime(\'now\') WHERE user_id = ?')
+      .bind(returnRecord.refund_amount, String(order.user_id)).run();
+    await DB.prepare(
+      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+    ).bind(String(order.user_id), returnRecord.refund_amount, returnRecord.refund_amount, String(order.user_id), `[반품 환불] ${order.order_number || returnRecord.order_id}`).run().catch(() => {});
   }
 
   // 2. Toss 결제 취소 (payment_key가 있는 경우만)

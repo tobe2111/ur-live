@@ -1697,7 +1697,8 @@
       "hosting": "Hébergement d'achat groupé",
       "curatorEarnings": "Revenus du curateur",
       "prospects": "Recruter magasins",
-      "voucherScan": "Scanner un bon"
+      "voucherScan": "Scanner un bon",
+      "proxyProducts": "Approbation des annonces déléguées"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3156,7 +3157,8 @@
       "events": "Défis de marque",
       "promoteBoosts": "Boost d'exposition",
       "transfers": "Transfert vendeur",
-      "stays": "Opérations dHébergement"
+      "stays": "Opérations dHébergement",
+      "prospects": "Prospection de boutiques"
     },
     "guide": "Guide opérationnel",
     "guideSubtitle": "Guide essentiel d'opérations d'agence",
@@ -5546,7 +5548,9 @@
     "orders": "[TODO:fr] 주문 내역",
     "ordersSub": "[TODO:fr] 최근 3개월",
     "myStays": "Mes Réservations",
-    "myStaysSub": "Code check-in / expiration"
+    "myStaysSub": "Code check-in / expiration",
+    "interestList": "Restaurants favoris",
+    "interestListSub": "Alertes d'ouverture d'achat groupé"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:fr] 주문 현황",
@@ -6076,7 +6080,9 @@
   },
   "my": {
     "earningsGroupTitle": "Mes gains",
-    "earningsGroupSub": "Parrainage · Linkshop · Invitations"
+    "earningsGroupSub": "Parrainage · Linkshop · Invitations",
+    "affiliateLinkTitle": "Liens de recommandation",
+    "affiliateLinkSub": "Gagnez des deals via vos liens — voir les résultats"
   },
   "push": {
     "promptTitle": "Activer les notifications ?",

@@ -119,8 +119,10 @@ export default function AdminOrdersPage() {
   const [showDetail, setShowDetail] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [sellerFilter, setSellerFilter] = useState('ALL')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  // 🏁 2026-06-12 (전수조사): 전역검색 ?q= 소비.
+  const initialQ = (() => { try { return new URLSearchParams(window.location.search).get('q') || '' } catch { return '' } })()
+  const [searchQuery, setSearchQuery] = useState(initialQ)
+  const [debouncedSearch, setDebouncedSearch] = useState(initialQ)
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' })
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20

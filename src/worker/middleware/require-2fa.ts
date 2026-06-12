@@ -72,7 +72,12 @@ export function require2FA(): MiddlewareHandler<{ Bindings: Env }> {
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
     const userAsAny = user as unknown as { id?: number | string; type?: string }
-    const table = userAsAny.type === 'seller' ? 'sellers' : 'users'
+    // 🏁 2026-06-12 (전수조사 🔴): admin 은 admins 테이블 — 기존엔 users 로 가서 admins 행 미반영
+    //   + 동일 id 일반 유저 row 오염이던 갭 (agency 도 동일 원리로 agencies).
+    const table = userAsAny.type === 'seller' ? 'sellers'
+      : userAsAny.type === 'admin' ? 'admins'
+      : userAsAny.type === 'agency' ? 'agencies'
+      : 'users'
 
     const { DB } = c.env
     const row = await DB.prepare(`SELECT totp_secret, totp_enabled FROM ${table} WHERE id = ?`)
