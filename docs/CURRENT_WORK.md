@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 도매몰 보류 부채 3종 마감 (`6e5b468`, `claude/keen-cerf-ch0jm5`)
+- 주문 상태 뱃지 SSOT(`wholesale-theme.ts WHOLESALE_ORDER_STATUS` 10종 + `wholesaleOrderStatusBadge()`) — 대시보드/주문내역 중복 정의·라벨 불일치 제거.
+- viewer(조회 전용 직원) UI 사전 안내(`wholesale/ViewerGate.tsx` — /me sub_role 5분 캐시, fail-open): 체크아웃 주문 버튼 disable+라벨, 충전 신청, 견적 요청 3곳. 서버 403 은 기존대로 최종 방어.
+- 승인대기 데드엔드 완화: 유통 2화면+제조 1화면에 공식 문의 메일(jiwon@ur-team.com) mailto. i18n 2키×6언어.
+- 카탈로그 분해(1493→550)는 기완료(`19fe20e`) 확인 — 불변 검증만(SSR consume/placeholderData/prefetch 보존, tsc 0·vite build OK). **도매 보류 부채 전부 소진.**
+- 🟡 검토 backlog(신규): 네이버 커머스API — ① 네이버쇼핑 최저가 자동 대조(가격 승인 검수·developers.naver.com 오픈API, 키만) ② 유통사 스마트스토어 연동(상품 내보내기→주문 수집→자동 발주→송장 — 드랍쉬핑 파이프라인, Commerce API·유통사 스토어 연결 동의 필요). 스프린트 후 결정.
+
 ## ✅ 2026-06-12 — 공급 채널 안내 (영업단 제안 — 공급가 앵커링 견제) (`claude/keen-cerf-ch0jm5`)
 **배경**: 영업단 제안 — 제조사가 공급가를 높게 앵커링하는 것을, 등록 폼에서 "공급률 낮추면 특판·폐쇄몰까지 제안 가능" 잠금해제 안내로 견제. 사용자 승인("이상적으로 구현").
 - **SSOT `src/shared/supply-channels.ts`**(순수, 의존성 0): 채널 4종(오픈마켓90/공동구매85/특판75/폐쇄몰70 — **기본값은 placeholder, 영업단이 어드민에서 확정**), 공급률 계산·임계값 파싱·판정·nudge. 단위 테스트 17.
