@@ -40,6 +40,29 @@ export const GRADE_LABEL: Record<string, string> = {
   A: 'A', B: 'B', C: 'C', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
 }
 
+/**
+ * 🏭 2026-06-12 (감사 부채): 도매 주문 상태 뱃지 SSOT.
+ *   기존엔 WholesaleDashboardPage(STATUS_BADGE, 5종)와 WholesaleOrdersPage(STATUS, 10종)가
+ *   따로 정의 — 같은 상태가 다른 라벨('배송준비' vs '결제완료')로 보이던 것 통합.
+ *   상태값은 wholesale_orders.status (docs/SCHEMA.md — 대문자).
+ */
+export const WHOLESALE_ORDER_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  PENDING: { label: '결제대기', color: '#9A6B00', bg: '#FFF6E6' },
+  PAID: { label: '결제완료', color: '#11875A', bg: '#EAF6EF' },
+  ON_CREDIT: { label: '여신(외상)', color: '#0E8A6E', bg: '#E6F6F1' },
+  SHIPPED: { label: '배송중', color: '#1B64DA', bg: '#EAF1FE' },
+  PARTIAL_REFUNDED: { label: '부분환불', color: '#C2620C', bg: '#FFF1E6' },
+  REFUNDED: { label: '환불완료', color: '#D63A4E', bg: '#FDECEF' },
+  CANCELLED: { label: '취소', color: '#8A929E', bg: '#F2F4F6' },
+  EXPIRED: { label: '만료', color: '#B6BCC4', bg: '#F2F4F6' },
+  FAILED: { label: '실패', color: '#8A929E', bg: '#F2F4F6' },
+  DONE: { label: '구매확정', color: '#11875A', bg: '#EAF6EF' },
+}
+
+/** 미지의 상태값도 안전하게 — 뱃지 폴백. */
+export const wholesaleOrderStatusBadge = (status: string | null | undefined) =>
+  WHOLESALE_ORDER_STATUS[String(status || '')] || { label: String(status || '-'), color: WT.ink3, bg: WT.fill }
+
 /** 카테고리 정의 (도매 카탈로그 칩/사이드바) */
 export const WHOLESALE_CATEGORIES: { id: string; label: string }[] = [
   { id: 'all', label: '전체' },

@@ -22,6 +22,7 @@ import {
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import { clearAuthData } from '@/utils/auth'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
+import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
 
 const QUICK_AMOUNTS = [100000, 500000, 1000000, 3000000]
 
@@ -79,7 +80,9 @@ export default function WholesaleDepositPage() {
     window.location.assign('/wholesale')
   }
 
-  const submitDisabled = chargeMut.isPending || !Number.isFinite(amount) || amount < 1 || !depositorName.trim()
+  // 👥 2026-06-12 (감사 부채): viewer 직원 — 충전 신청 서버 403 전 UI 사전 안내.
+  const isViewer = useIsWholesaleViewer()
+  const submitDisabled = chargeMut.isPending || !Number.isFinite(amount) || amount < 1 || !depositorName.trim() || isViewer
 
   async function submitCharge() {
     if (submitDisabled) return
@@ -165,6 +168,9 @@ export default function WholesaleDepositPage() {
           <p className="text-[12px] mb-4" style={{ color: WT.ink3 }}>
             {t('wholesale.deposit.chargeFlow', { defaultValue: '송금 → 관리자 확인 → 충전 순서로 처리됩니다.' })}
           </p>
+
+          {/* 👥 2026-06-12 (감사 부채): viewer 직원 사전 안내. */}
+          {isViewer && <div className="mb-3"><ViewerNotice action="예치금 충전 신청" /></div>}
 
           {/* 빠른 금액 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">

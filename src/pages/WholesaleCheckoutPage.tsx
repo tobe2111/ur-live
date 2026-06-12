@@ -7,6 +7,7 @@ import api from '@/lib/api'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
+import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
 
 // 🏦 2026-06-09 유통스타트 도매 — 예치금(선불) 결제 체크아웃.
 //   Toss 위젯 흐름을 REPLACE → 주문 확인 + 예치금 결제. (여신/외상 옵션 제거 — 예치금 전용)
@@ -20,6 +21,8 @@ export default function WholesaleCheckoutPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, subtotal, totalQty, clear } = useWholesaleCart()
   const depositQ = useWholesaleDeposit()
+  // 👥 2026-06-12 (감사 부채): viewer 직원 — 서버 403 전 UI 사전 안내 (fail-open, 서버가 최종 방어).
+  const isViewer = useIsWholesaleViewer()
 
   const [paying, setPaying] = useState(false)
   const [insufficient, setInsufficient] = useState<InsufficientInfo | null>(null)
@@ -193,6 +196,9 @@ export default function WholesaleCheckoutPage() {
           </section>
         )}
 
+        {/* 👥 2026-06-12 (감사 부채): viewer 직원 사전 안내 — 서버 403 을 누르기 전에 알림. */}
+        {isViewer && <ViewerNotice action="주문·결제" />}
+
         {/* 일반 오류 */}
         {errorMsg && !insufficient && (
           <div className="p-4 rounded-2xl" style={{ background: '#FDECEF', border: '1px solid #F8C9D2' }}>
@@ -205,13 +211,15 @@ export default function WholesaleCheckoutPage() {
         <div className="ur-content-narrow px-4 pt-3">
           <button
             onClick={payWithDeposit}
-            disabled={paying || items.length === 0 || !canOrder}
+            disabled={paying || items.length === 0 || !canOrder || isViewer}
             className="w-full h-14 text-[16px] font-bold rounded-2xl text-white disabled:opacity-50"
             style={{ background: WT.brand }}
           >
             {paying
               ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('wholesale.checkout.paying', { defaultValue: '결제 진행 중...' })}</span>
-              : !canOrder
+              : isViewer
+                ? t('wholesale.checkout.viewerBlocked', { defaultValue: '조회 전용 계정 — 주문 불가' })
+                : !canOrder
                 ? t('wholesale.checkout.minOrderShort', { defaultValue: '최소 주문 금액 부족' })
                 : t('wholesale.checkout.payWithDeposit', { defaultValue: '{{amount}} 예치금으로 결제', amount: won(grandTotal) })}
           </button>

@@ -5900,7 +5900,8 @@
     "channelGuideInverted": "供給価格が希望小売価格より高くなっています — 入力をご確認ください。",
     "channelGuideNudge": "供給価格を{{price}}以下に下げると、{{channel}}チャネルまで提案可能になります！",
     "channelGuideAllOpen": "すべての流通チャネルに提案可能な供給価格です。👍",
-    "channelGuideDisclaimer": "チャネル別の提案可能基準の案内であり、実際の提案・露出はチャネル状況と運営審査により異なる場合があります。"
+    "channelGuideDisclaimer": "チャネル別の提案可能基準の案内であり、実際の提案・露出はチャネル状況と運営審査により異なる場合があります。",
+    "pendingContact": "お急ぎですか？"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",
@@ -5997,7 +5998,8 @@
       "minOrderShort": "最小注文金額未達",
       "minOrderNotMet": "最小注文金額に達していない仕入先があります。カートを確認してください。",
       "payFailed": "決済に失敗しました",
-      "payError": "注文決済中にエラーが発生しました"
+      "payError": "注文決済中にエラーが発生しました",
+      "viewerBlocked": "閲覧専用アカウント — 注文不可"
     },
     "deposit": {
       "title": "デポジット",

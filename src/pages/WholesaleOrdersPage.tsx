@@ -6,7 +6,7 @@ import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, Chevr
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
-import { WT, won } from './wholesale/wholesale-theme'
+import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
 
@@ -137,18 +137,7 @@ const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CR
 
 // 🏭 2026-06-04 유통스타트 도매 주문 내역 — TDS 라이트 시안 정비. 라이트 고정 B2B.
 
-const STATUS: Record<string, { t: string; c: string; bg: string }> = {
-  PENDING: { t: '결제대기', c: '#9A6B00', bg: '#FFF6E6' },
-  PAID: { t: '결제완료', c: '#11875A', bg: '#EAF6EF' },
-  ON_CREDIT: { t: '여신(외상)', c: '#0E8A6E', bg: '#E6F6F1' },
-  SHIPPED: { t: '배송중', c: '#1B64DA', bg: '#EAF1FE' },
-  PARTIAL_REFUNDED: { t: '부분환불', c: '#C2620C', bg: '#FFF1E6' },
-  REFUNDED: { t: '환불완료', c: '#D63A4E', bg: '#FDECEF' },
-  CANCELLED: { t: '취소', c: '#8A929E', bg: '#F2F4F6' },
-  EXPIRED: { t: '만료', c: '#B6BCC4', bg: '#F2F4F6' },
-  FAILED: { t: '실패', c: '#8A929E', bg: '#F2F4F6' },
-  DONE: { t: '구매확정', c: '#11875A', bg: '#EAF6EF' },
-}
+// 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합 (대시보드와 동일 정의).
 
 export default function WholesaleOrdersPage() {
   const navigate = useNavigate()
@@ -239,7 +228,8 @@ export default function WholesaleOrdersPage() {
         ) : (
           <div className="space-y-2.5">
             {orders.map(o => {
-              const st = STATUS[o.status] || { t: o.status, c: WT.ink2, bg: WT.fill }
+              const badge = wholesaleOrderStatusBadge(o.status)
+              const st = { t: badge.label, c: badge.color, bg: badge.bg }
               return (
                 <div key={o.id} className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
                   <div className="flex items-center justify-between mb-2.5">

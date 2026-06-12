@@ -5900,7 +5900,8 @@
     "channelGuideInverted": "El precio de suministro es mayor que el precio de venta sugerido — revisa los datos.",
     "channelGuideNudge": "¡Baja el precio de suministro a {{price}} o menos para desbloquear el canal {{channel}}!",
     "channelGuideAllOpen": "Este precio de suministro califica para todos los canales de distribución. 👍",
-    "channelGuideDisclaimer": "Esta guía indica la elegibilidad por canal; las propuestas y la exposición reales dependen de las condiciones del canal y la revisión."
+    "channelGuideDisclaimer": "Esta guía indica la elegibilidad por canal; las propuestas y la exposición reales dependen de las condiciones del canal y la revisión.",
+    "pendingContact": "¿Tienes prisa?"
   },
   "wholesaleChat": {
     "title": "Chat",
@@ -5997,7 +5998,8 @@
       "minOrderShort": "Pedido mínimo no alcanzado",
       "minOrderNotMet": "Algunos proveedores no han alcanzado el monto mínimo de pedido. Revise su carrito.",
       "payFailed": "Pago fallido",
-      "payError": "Se produjo un error durante el pago"
+      "payError": "Se produjo un error durante el pago",
+      "viewerBlocked": "Cuenta de solo lectura — pedido no disponible"
     },
     "deposit": {
       "title": "Depósito",

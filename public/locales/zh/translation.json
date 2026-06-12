@@ -5900,7 +5900,8 @@
     "channelGuideInverted": "供货价高于建议零售价 — 请检查输入。",
     "channelGuideNudge": "将供货价降至{{price}}以下，即可解锁{{channel}}渠道提案！",
     "channelGuideAllOpen": "该供货价可向所有流通渠道提案。👍",
-    "channelGuideDisclaimer": "此为各渠道提案资格的参考标准，实际提案与曝光取决于渠道情况及运营审核。"
+    "channelGuideDisclaimer": "此为各渠道提案资格的参考标准，实际提案与曝光取决于渠道情况及运营审核。",
+    "pendingContact": "着急吗？"
   },
   "wholesaleChat": {
     "title": "咨询聊天",
@@ -5997,7 +5998,8 @@
       "minOrderShort": "未达到最低订单金额",
       "minOrderNotMet": "部分供应商未达到最低订单金额，请检查购物车。",
       "payFailed": "付款失败",
-      "payError": "结账时发生错误"
+      "payError": "结账时发生错误",
+      "viewerBlocked": "只读账号 — 无法下单"
     },
     "deposit": {
       "title": "预付款",

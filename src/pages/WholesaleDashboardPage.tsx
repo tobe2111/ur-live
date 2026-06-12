@@ -10,7 +10,7 @@ import {
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
-import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
+import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, useWholesaleMall, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import { buildWholesaleNav } from './wholesale/wholesale-nav'
@@ -18,13 +18,8 @@ import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 
-const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: '결제대기', color: WT.ink3, bg: WT.fill },
-  PAID: { label: '배송준비', color: WT.brand, bg: WT.brandSoft },
-  SHIPPED: { label: '배송완료', color: WT.pos, bg: WT.posBg },
-  REFUNDED: { label: '환불', color: WT.ink3, bg: WT.fill },
-  CANCELLED: { label: '취소', color: WT.ink3, bg: WT.fill },
-}
+// 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합.
+//   기존 자체 정의(5종)는 주문내역 페이지와 라벨이 달랐음('배송준비' vs '결제완료').
 
 const PAID_STATUSES = ['PAID', 'SHIPPED']
 
@@ -231,7 +226,7 @@ export default function WholesaleDashboardPage() {
           ) : (
             <ul>
               {recent.map((o) => {
-                const badge = STATUS_BADGE[o.status] || { label: o.status, color: WT.ink3, bg: WT.fill }
+                const badge = wholesaleOrderStatusBadge(o.status)
                 return (
                   <li key={o.id}>
                     <button onClick={() => navigate('/wholesale/orders')} className="w-full flex items-center gap-3 px-4 py-3 text-left" style={{ borderTop: '1px solid ' + WT.line }}>

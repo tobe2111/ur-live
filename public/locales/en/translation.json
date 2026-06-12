@@ -5900,7 +5900,8 @@
     "channelGuideInverted": "Supply price is higher than the suggested retail price — please check your input.",
     "channelGuideNudge": "Lower the supply price to {{price}} or below to unlock the {{channel}} channel!",
     "channelGuideAllOpen": "This supply price qualifies for every distribution channel. 👍",
-    "channelGuideDisclaimer": "This is guidance on channel eligibility; actual proposals and exposure depend on channel conditions and review."
+    "channelGuideDisclaimer": "This is guidance on channel eligibility; actual proposals and exposure depend on channel conditions and review.",
+    "pendingContact": "In a hurry?"
   },
   "wholesaleChat": {
     "title": "Chat",
@@ -5997,7 +5998,8 @@
       "minOrderShort": "Minimum order not met",
       "minOrderNotMet": "Some suppliers have not met the minimum order amount. Please check your cart.",
       "payFailed": "Payment failed",
-      "payError": "An error occurred during checkout"
+      "payError": "An error occurred during checkout",
+      "viewerBlocked": "View-only account — ordering disabled"
     },
     "deposit": {
       "title": "Deposit",
