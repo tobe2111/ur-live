@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 숙소·예약 결제 관문 B배치 6종 마감 (4차 감사, 사용자 승인 '모두 이상적') — commit `f525587a`
+- **B-1 숙소 결제 단절(🔴M)**: CheckoutPage stay 분기(`/checkout?order_id=N&stay=1` → 신규 `StayCheckout` — `GET /api/group-buy/stays/orders/:id` 서버 주문요약, 클라 재계산 금지) → `/pay/widget`(잠금 TossWidgetPayPage **호출만**, Toss orderId=`STAY-{orders.id}` — 6자 최소 요건) → 신규 경량 `/stays/checkout-return` 페이지가 `/api/group-buy/stays/bookings/confirm` 호출(성공/오버부킹 409/실패 3분기). 서버 confirm 도 동일 `STAY-N` 으로 Toss 승인(기존 `String(id)` 는 6자 미달 — 프론트 호출자 0이라 안전 변경).
+- **B-2 다객실 confirm 단일화(🟡M)**: stays-public confirm — 첫 booking 만 확정(나머지 30분 후 expired)→ `WHERE order_id=?` 전체 루프(booking 별 CAS pending→confirmed + date모드 달력 차감). 오버부킹 시 확보분 전체 롤백 + 자동환불 + 주문 전 booking 취소. 단건 루프=1 이라 기존 동작 불변.
+- **B-3 voucher 숙소권 셀프취소 0원(🔴S)**: cancel 핸들러 — `sale_mode='voucher'` && 미사용 && 미만료 = 100% 환불(기존 check_in NULL→NaN→무조건 0원+영구무효). 사용/만료 후 0원 유지.
+- **B-4 pending-bookings 키 불일치(🔴S)**: appointments.routes `/orders/:orderId/pending-bookings` — `WHERE id=? OR order_number=?` + 후속 쿼리 숫자 order.id (PaymentSuccess CTA 가 order_number 전달 → 항상 빈 배열이던 버그).
+- **B-5 매장 예약 생성 UI(🔴M)**: MyAppointmentsPage — 신규 `GET /api/appointments/bookable`(본인 결제완료 booking_required 미예약 목록) → 예약 잡기 모달(날짜 → `/api/products/:id/available-slots` → 슬롯 → `POST /api/appointments/book`). `?from_payment=<id|order_number>` 자동 선택. i18n `myAppointments.*` 17키×6언어.
+- **B-6 🟢**: 신규 cron `stay-checkout-transition.ts`(check_out+1일 경과 confirmed→checked_out, per-row CAS — 리뷰 게이트 해제) `0 9 * * *` 등록. `stay-reminder.ts` 에 `reminder_d1/dday_sent_at` dedup(WeakSet ensure + repair-schema 등록) — '0 9'+'0 0' 이중 트리거 하루 2회 중복 발송 차단.
+- 검증: tsc 0 · vitest 2081 green · build OK. ⚠️ 숙소 실결제 E2E 1회 미실시(기존 백로그 #7 그대로 — staging 소액 결제→취소 권장).
+
 ## 📋 [최종 전수조사 4차 — 2026-06-12] 확정 갭 백로그 (쇼핑/숙소·예약·동네공구/어드민/인프라)
 **전 영역 1회 이상 증거기반 검수 완료.** 인프라 S 5건은 즉시 수술됨(5ce2b6b4 — rate limit 3종/webhook_events 90일 정리/백업 silent skip→알림). 잔여 확정 갭(전부 파일:라인 근거 보고서 확보, 도매=타 세션 제외):
 
