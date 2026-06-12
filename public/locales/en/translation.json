@@ -5890,7 +5890,10 @@
     "onboardStep2Desc": "Use the 'CSV upload' button above — template provided",
     "onboardStep3": "Auto-listed after approval",
     "onboardStep3Desc": "New orders appear in the Home tab as pending shipment",
-    "bulkFailedRows": "Failed rows:\n{{d}}{{more}}"
+    "bulkFailedRows": "Failed rows:\n{{d}}{{more}}",
+    "notifications": "Notifications",
+    "notifEmpty": "No notifications",
+    "notifLoadFail": "Failed to load notifications"
   },
   "wholesaleChat": {
     "title": "Chat",

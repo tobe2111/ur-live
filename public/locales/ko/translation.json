@@ -5882,7 +5882,10 @@
     "onboardStep2Desc": "위 'CSV 업로드' 버튼 — 템플릿 제공",
     "onboardStep3": "승인 후 자동 노출",
     "onboardStep3Desc": "주문이 오면 홈 탭에 발송 대기로 떠요",
-    "bulkFailedRows": "실패 행:\n{{d}}{{more}}"
+    "bulkFailedRows": "실패 행:\n{{d}}{{more}}",
+    "notifications": "알림",
+    "notifEmpty": "알림이 없습니다",
+    "notifLoadFail": "알림을 불러오지 못했습니다"
   },
   "wholesaleChat": {
     "title": "문의 채팅",

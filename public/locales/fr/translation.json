@@ -5890,7 +5890,10 @@
     "onboardStep2Desc": "Bouton « Upload CSV » ci-dessus — modèle fourni",
     "onboardStep3": "Publication auto après validation",
     "onboardStep3Desc": "Les commandes arrivent dans l’onglet Accueil",
-    "bulkFailedRows": "Lignes en échec :\n{{d}}{{more}}"
+    "bulkFailedRows": "Lignes en échec :\n{{d}}{{more}}",
+    "notifications": "Notifications",
+    "notifEmpty": "Aucune notification",
+    "notifLoadFail": "Impossible de charger les notifications"
   },
   "wholesaleChat": {
     "title": "Chat",

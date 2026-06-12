@@ -22,9 +22,11 @@ async function ensureTable(DB: D1Database) {
   try {
     // 🛡️ 2026-04-28: CHECK 제약에 'agency' 추가. 이전엔 'admin'/'seller' 만 허용해
     //   에이전시 측 알림 INSERT 가 실패 → 어드민이 에이전시 신청 알림 못 봄.
+    // 🏭 2026-06-12: 'supplier' 추가 — 제조사 출금 승인/반려 알림이 CHECK 위반으로 무음 증발하던
+    //   사고 수정(도매몰 감사). 기존 프로덕션 테이블은 repair-schema 의 CHECK 마이그레이션이 재생성.
     await DB.prepare(`CREATE TABLE IF NOT EXISTS dashboard_notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      recipient_type TEXT NOT NULL CHECK (recipient_type IN ('admin', 'seller', 'agency')),
+      recipient_type TEXT NOT NULL CHECK (recipient_type IN ('admin', 'seller', 'agency', 'supplier')),
       recipient_id TEXT,
       type TEXT NOT NULL,
       title TEXT NOT NULL,

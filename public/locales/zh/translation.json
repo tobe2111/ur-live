@@ -5890,7 +5890,10 @@
     "onboardStep2Desc": "使用上方\"CSV上传\"— 提供模板",
     "onboardStep3": "审核后自动上架",
     "onboardStep3Desc": "有订单时会显示在首页待发货",
-    "bulkFailedRows": "失败行:\n{{d}}{{more}}"
+    "bulkFailedRows": "失败行:\n{{d}}{{more}}",
+    "notifications": "通知",
+    "notifEmpty": "暂无通知",
+    "notifLoadFail": "通知加载失败"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

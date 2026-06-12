@@ -930,3 +930,48 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
     return safeError(c, err, '운송장 등록 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
+
+// ── 🔔 알림 (2026-06-12 도매몰 감사 fix) ─────────────────────────────────────
+//   배경: 출금 승인/반려 등이 recipient_type='supplier' 로 INSERT 하는데 제조사가 읽을 경로가
+//   없어 데드 코드였음. dashboard_notifications 의 supplier 행을 본인 id 로만 조회(IDOR 불가 —
+//   sid 는 requireSupplier 토큰에서). CHECK 제약은 repair-schema 가 'supplier' 포함으로 마이그레이션.
+
+// GET /notifications?limit=20 — 내 알림 목록 (최신순)
+supplierDashboardRoutes.get('/notifications', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const limitRaw = Number(c.req.query('limit'));
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(50, Math.floor(limitRaw)) : 20;
+    const rows = await DB.prepare(
+      `SELECT id, type, title, message, link, is_read, created_at
+         FROM dashboard_notifications
+        WHERE recipient_type = 'supplier' AND recipient_id = ?
+        ORDER BY id DESC LIMIT ?`
+    ).bind(String(sid), limit).all().catch(() => ({ results: [] }));
+    const unread = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM dashboard_notifications
+        WHERE recipient_type = 'supplier' AND recipient_id = ? AND is_read = 0`
+    ).bind(String(sid)).first<{ n: number }>().catch(() => null);
+    return c.json({ success: true, items: rows.results || [], unread: Number(unread?.n) || 0 });
+  } catch (err) {
+    return safeError(c, err, '알림을 불러오지 못했습니다', '[supplier-dashboard]');
+  }
+});
+
+// POST /notifications/read-all — 전체 읽음 처리
+supplierDashboardRoutes.post('/notifications/read-all', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    await DB.prepare(
+      `UPDATE dashboard_notifications SET is_read = 1
+        WHERE recipient_type = 'supplier' AND recipient_id = ? AND is_read = 0`
+    ).bind(String(sid)).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return safeError(c, err, '읽음 처리 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});

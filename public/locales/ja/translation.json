@@ -5890,7 +5890,10 @@
     "onboardStep2Desc": "上の「CSVアップロード」— テンプレート提供",
     "onboardStep3": "承認後に自動掲載",
     "onboardStep3Desc": "注文が入るとホームタブに発送待ちが表示",
-    "bulkFailedRows": "失敗行:\n{{d}}{{more}}"
+    "bulkFailedRows": "失敗行:\n{{d}}{{more}}",
+    "notifications": "通知",
+    "notifEmpty": "通知はありません",
+    "notifLoadFail": "通知を読み込めませんでした"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

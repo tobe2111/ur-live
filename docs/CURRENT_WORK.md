@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 도매몰 대시보드 감사 + 제조사 알림 데드경로 fix (`claude/keen-cerf-ch0jm5`)
+**감사 결론**: 유통/제조 대시보드 IA·핵심 루프(가입→승인→주문→발송→정산→출금) 완성도 높음. 머니 테스트 85 + 전체 2027 통과. 오탐 5건 직접 검증 기각(입금계좌 안내·체크아웃 잔액 사전표시·어드민 견적 라우트·대량주문 엑셀·raw 에러 — 전부 이미 OK).
+**진짜 버그 3건 fix**:
+- 🔴 **제조사 알림 3중 데드경로**: `recipient_type='supplier'` 가 ① dashboard_notifications CHECK 제약(admin/seller/agency)에 걸려 INSERT 무음 실패 ② 읽을 endpoint 없음 ③ 벨 UI 없음 → 출금 승인/반려 알림 증발. fix: CHECK 에 'supplier' 추가(신규 DB) + **repair-schema CHECK 마이그레이션**(operation_guides 패턴 — 기존 prod 테이블 재생성, 멱등) + `GET /api/supplier/notifications`·`POST /read-all`(requireSupplier, 본인 id 만) + 대시보드 헤더 알림 벨(`supplier-dashboard/NotificationsBell.tsx`, 60s 배지 폴링·열면 read-all — main 의 분해 구조에 맞춰 별도 파일). i18n 3키×6언어.
+- 🟡 **신규 도매주문 제조사 통지 부재** → `notifySuppliersOfPaidOrder()`(라인 supplier_id GROUP BY, fail-soft) — deposit·Toss confirm 양 PAID CAS 승자 경로에 배선. 접속 전엔 주문을 몰라 발송 지연되던 갭.
+- 🟡 SupplierWholesaleOrdersPage 주문 로드 실패가 "주문 없음" 으로 위장 → 토스트 추가.
+**⚠️ 운영**: 기존 prod DB 는 `/admin/health` 스키마 복구 1회(또는 새벽 cron) 후 supplier 알림 활성화됨 (`dashboard_notifications:check-migration`).
+**남은 부채(보류)**: 카탈로그 1493줄 분해(제조대시는 06-11 분해 완료), 상태뱃지 중복 정의 통합, viewer UI 사전 안내, 승인대기 화면 ETA/문의처.
+
 ## ✅ 2026-06-11 (오후~밤) — 이미지 파이프라인 정석화 + 응답경로 수술 + 공구 플로우 마감 (`claude/service-analysis-optimization-whpu0f`)
 - **이미지 3단 수리**: ① `_routes.json` 확장자 글롭(`/*.jpg` 등)이 `/api/media/**.jpg` 워커 미도달 → SPA HTML 폴백 (업로드 이미지 전부 깨짐의 진범, 루트 정적 명시목록으로 — 재발 방지 주석) ② 기프티쇼/KT cdn-cgi 직결(실측 143KB→18KB, `CDN_CGI_VERIFIED` — kakaocdn 회귀 교훈: 실측 통과 호스트만) ③ **R2 커스텀 도메인 media.ur-team.com + zone 리사이저** (실측 779KB→9.7KB) — 레거시 `/api/media/` URL 도 도메인 매핑으로 전부 치유, 아바타 소비처 cfImage 래핑. ⚠️ biz-cert 비공개 버킷 분리 = 부채.
 - **응답경로 부수효과 전수조사**: 참여하기(93b58ee1) 레시피로 user-facing 9건 수술(선물 confirm·바우처 부분환불·동네공구 3·hosting DDL·payment /confirm referral 알림 `[UNLOCK]` 승인). admin/저빈도 ~10건 보고만.

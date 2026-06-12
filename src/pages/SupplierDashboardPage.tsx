@@ -30,6 +30,7 @@ import SupplierTaxInvoicesTab from './supplier-dashboard/SupplierTaxInvoicesTab'
 import OrdersTab from './supplier-dashboard/OrdersTab'
 import ShipModal from './supplier-dashboard/ShipModal'
 import AddProductModal from './supplier-dashboard/AddProductModal'
+import NotificationsBell from './supplier-dashboard/NotificationsBell'
 const WholesaleChatWidget = lazy(() => import('./wholesale/WholesaleChatWidget'))
 
 export default function SupplierDashboardPage() {
@@ -175,6 +176,8 @@ export default function SupplierDashboardPage() {
   const headerRight = (
     <>
       <span className="text-sm text-gray-600 hidden sm:inline max-w-[160px] truncate">{me?.profile.business_name}</span>
+      {/* 🔔 2026-06-12 (도매몰 감사 fix): supplier 알림 벨 — 출금 승인/반려·신규 도매주문. */}
+      <NotificationsBell t={t} onNavigate={(link) => navigate(link)} />
       <button onClick={() => navigate('/supplier/wholesale-orders')} className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900 font-medium">
         <Truck className="w-4 h-4" /> <span className="hidden sm:inline">{t('supplier.wholesaleOrders', { defaultValue: '도매 주문' })}</span>
       </button>

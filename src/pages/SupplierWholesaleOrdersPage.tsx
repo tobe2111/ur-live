@@ -83,7 +83,11 @@ export default function SupplierWholesaleOrdersPage() {
     setLoading(true)
     supplierApi.get<{ items: Line[] }>('/api/supplier/wholesale/orders')
       .then(r => setLines(r.items || []))
-      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
+      // 🔔 2026-06-12 (감사 fix): 무음 실패가 "처리할 도매주문 없음" 으로 위장하던 것 — 실패를 알림.
+      .catch(e => {
+        if (import.meta.env.DEV) console.warn(e)
+        toast.error('주문 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+      })
       .finally(() => setLoading(false))
   }, [])
 

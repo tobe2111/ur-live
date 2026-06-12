@@ -1322,6 +1322,27 @@ app.get('/catalog/:id', async (c) => {
   }
 })
 
+// 🔔 2026-06-12 (도매몰 감사 fix): 주문 PAID 확정 시 라인의 제조사들에게 "새 도매 주문" 알림.
+//   기존엔 대시보드 방문 시 발송대기 배지 집계뿐 — 제조사가 접속 전엔 신규 주문을 몰라 발송 지연.
+//   fail-soft(알림 실패가 결제를 절대 막지 않음) + PAID CAS 승자 경로에서만 호출(중복 알림 방지).
+async function notifySuppliersOfPaidOrder(DB: D1Database, orderId: number): Promise<void> {
+  const rows = await DB.prepare(
+    `SELECT supplier_id, COUNT(*) AS line_cnt, COALESCE(SUM(qty), 0) AS unit_cnt
+       FROM wholesale_order_items
+      WHERE wholesale_order_id = ? AND supplier_id IS NOT NULL
+      GROUP BY supplier_id`
+  ).bind(orderId).all<{ supplier_id: number; line_cnt: number; unit_cnt: number }>()
+  for (const r of rows.results || []) {
+    if (!Number.isFinite(r.supplier_id) || r.supplier_id <= 0) continue
+    await createDashboardNotification(
+      DB, 'supplier', String(r.supplier_id), 'wholesale_new_order',
+      '새 도매 주문이 들어왔어요',
+      `주문 #${orderId} — 품목 ${r.line_cnt}건 / 수량 ${r.unit_cnt}개 발송을 준비해주세요.`,
+      '/supplier/wholesale-orders',
+    ).catch(swallow('wholesale:notify-supplier-order'))
+  }
+}
+
 // ── POST /orders — B2B 주문 생성(PENDING) + Toss 결제 파라미터 반환 ────────────
 app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -1556,6 +1577,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     // 제조사 정산 적립(Toss/credit 주문과 동일 — 멱등, fail-soft). 정산 실패가 결제완료를 막지 않음.
     try { await creditSupplierOnWholesaleOrder(DB, dOrderId) } catch { /* best-effort */ }
 
+    // 🔔 제조사 신규주문 알림 (fail-soft — 감사 fix 2026-06-12).
+    await notifySuppliersOfPaidOrder(DB, dOrderId).catch(swallow('wholesale:notify-suppliers'))
+
     // 🏭 Wave 3c: 전자세금계산서 자동발행 레코드(매출=플랫폼→유통사 / 매입=제조사→플랫폼 역발행).
     //   멱등·fail-soft·additive — 세금레코드 실패가 결제/정산을 절대 막지 않음. provider 발행은 env-gated.
     try { await generateWholesaleSalesInvoice(DB, c.env, dOrderId) } catch { /* best-effort */ }
@@ -1658,6 +1682,9 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
 
     // 제조사 정산 적립 (멱등, fail-soft — 정산 실패가 결제완료를 막지 않음).
     try { await creditSupplierOnWholesaleOrder(DB, order.id) } catch { /* best-effort */ }
+
+    // 🔔 제조사 신규주문 알림 (fail-soft — 감사 fix 2026-06-12, PAID CAS 승자 경로만 도달).
+    await notifySuppliersOfPaidOrder(DB, order.id).catch(swallow('wholesale:notify-suppliers'))
 
     // 🏭 Wave 3c: 전자세금계산서 자동발행 레코드(멱등·fail-soft·additive — env-gated provider 발행).
     try { await generateWholesaleSalesInvoice(DB, c.env, order.id) } catch { /* best-effort */ }
