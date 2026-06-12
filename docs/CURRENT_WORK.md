@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ⚠️ 세션 분담 (2026-06-12 사용자 지시)
+- **도매몰(wholesale/supplier/supply) 전 영역 = 별도 세션 전담.** 본 세션(claude/service-analysis-optimization-whpu0f 계열)은 **도매몰 외 구현만** 담당 — 도매 파일 수정 금지.
+- 본 세션이 06-11~12 에 마지막으로 만진 도매 파일(타 세션은 최신 main pull 후 작업 권장): `wholesale.routes.ts`(SSR 쿠키 fallback·/home 몰스코프·become 사업자번호 게이트·NTS 참고표기), `supplier-auth.routes.ts`(NTS 표기), `wholesale-catalog/`·`supplier-dashboard/` 분해, `apps/ssr` wholesale 로더.
+- 도매 관련 잔여 백로그(NTS 어드민 승인화면 표시 강화, 클레임 환불 딥링크, 장바구니 계정키 등)는 **타 세션 몫으로 이관**.
+
+
 ## ✅ 2026-06-12 — 공급 채널 안내 (영업단 제안 — 공급가 앵커링 견제) (`claude/keen-cerf-ch0jm5`)
 **배경**: 영업단 제안 — 제조사가 공급가를 높게 앵커링하는 것을, 등록 폼에서 "공급률 낮추면 특판·폐쇄몰까지 제안 가능" 잠금해제 안내로 견제. 사용자 승인("이상적으로 구현").
 - **SSOT `src/shared/supply-channels.ts`**(순수, 의존성 0): 채널 4종(오픈마켓90/공동구매85/특판75/폐쇄몰70 — **기본값은 placeholder, 영업단이 어드민에서 확정**), 공급률 계산·임계값 파싱·판정·nudge. 단위 테스트 17.
