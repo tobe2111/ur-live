@@ -48,7 +48,7 @@ export default function AdminPendingSellersPage() {
   async function approve(id: number) {
     if (!(await confirmDialog('이 셀러를 승인할까요?'))) return
     try {
-      const r = await api.post(`/api/admin/sellers/${id}/approve`)
+      const r = await api.patch(`/api/admin/sellers/${id}/approve`)
       if (r.data?.success) {
         toast.success('승인됨')
         load()
@@ -62,7 +62,7 @@ export default function AdminPendingSellersPage() {
     const reason = prompt('거부 사유?')
     if (!reason) return
     try {
-      const r = await api.post(`/api/admin/sellers/${id}/reject`, { reason })
+      const r = await api.patch(`/api/admin/sellers/${id}/reject`, { reason })
       if (r.data?.success) {
         toast.success('거부됨')
         load()

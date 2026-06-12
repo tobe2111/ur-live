@@ -2385,7 +2385,8 @@
       "hosting": "共同購入ホスティング",
       "curatorEarnings": "キュレーター収益",
       "prospects": "店舗勧誘",
-      "voucherScan": "バウチャースキャン"
+      "voucherScan": "バウチャースキャン",
+      "proxyProducts": "代行登録の承認"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3828,7 +3829,8 @@
       "events": "ブランドチャレンジ",
       "promoteBoosts": "露出ブースティング",
       "transfers": "セラー移転",
-      "stays": "宿泊運営"
+      "stays": "宿泊運営",
+      "prospects": "店舗開拓状況"
     },
     "guide": "運営ガイド",
     "guideSubtitle": "エージェンシー運営の核心ガイド",
@@ -5546,7 +5548,9 @@
     "orders": "[TODO:ja] 주문 내역",
     "ordersSub": "[TODO:ja] 최근 3개월",
     "myStays": "宿泊予約",
-    "myStaysSub": "チェックインコード / 有効期限"
+    "myStaysSub": "チェックインコード / 有効期限",
+    "interestList": "お気に入り店舗",
+    "interestListSub": "共同購入オープン通知リスト"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:ja] 주문 현황",
@@ -6093,7 +6097,9 @@
   },
   "my": {
     "earningsGroupTitle": "収益・紹介",
-    "earningsGroupSub": "紹介報酬 · リンクショップ収益 · 招待"
+    "earningsGroupSub": "紹介報酬 · リンクショップ収益 · 招待",
+    "affiliateLinkTitle": "商品紹介リンク",
+    "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る"
   },
   "push": {
     "promptTitle": "通知をオンにしますか？",
@@ -6118,5 +6124,24 @@
     "inputPlaceholder": "メッセージを入力",
     "sendAria": "送信",
     "sendFail": "メッセージの送信に失敗しました"
+  },
+  "myAppointments": {
+    "bookableTitle": "予約を入れてください",
+    "bookCta": "予約する",
+    "modalTitle": "日時を選択",
+    "dateLabel": "日付",
+    "slotLabel": "時間",
+    "loadingSlots": "予約可能な時間を取得中...",
+    "slotsEmpty": "この日に予約可能な時間がありません。別の日付を選択してください。",
+    "nameLabel": "予約者名",
+    "phoneLabel": "電話番号",
+    "notesLabel": "ご要望",
+    "nameRequired": "お名前を入力してください",
+    "phoneRequired": "正しい電話番号を入力してください",
+    "booked": "予約が確定しました",
+    "bookFailed": "予約に失敗しました",
+    "remaining": "残り{{n}}",
+    "submitting": "予約中...",
+    "submit": "予約を確定"
   }
 }

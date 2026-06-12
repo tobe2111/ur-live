@@ -2379,7 +2379,8 @@
       "hosting": "Group Buy Hosting",
       "curatorEarnings": "Curator Earnings",
       "prospects": "Recruit Stores",
-      "voucherScan": "Scan voucher"
+      "voucherScan": "Scan voucher",
+      "proxyProducts": "Proxy Listing Approvals"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -3828,7 +3829,8 @@
       "events": "Brand Challenges",
       "promoteBoosts": "Exposure Boosting",
       "transfers": "Seller Transfer",
-      "stays": "Stays Ops"
+      "stays": "Stays Ops",
+      "prospects": "Store Prospects"
     },
     "guide": "Guide",
     "guideSubtitle": "Core agency operations guide",
@@ -5594,7 +5596,9 @@
     "orders": "[TODO:en] 주문 내역",
     "ordersSub": "[TODO:en] 최근 3개월",
     "myStays": "My Stay Bookings",
-    "myStaysSub": "Check-in code / voucher expiry"
+    "myStaysSub": "Check-in code / voucher expiry",
+    "interestList": "Saved Restaurants",
+    "interestListSub": "Group-buy open alerts"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:en] 주문 현황",
@@ -6093,7 +6097,9 @@
   },
   "my": {
     "earningsGroupTitle": "My earnings & referrals",
-    "earningsGroupSub": "Referral rewards · Linkshop income · Invites"
+    "earningsGroupSub": "Referral rewards · Linkshop income · Invites",
+    "affiliateLinkTitle": "Product Referral Links",
+    "affiliateLinkSub": "Earn deals when friends buy via your link"
   },
   "push": {
     "promptTitle": "Turn on notifications?",
@@ -6118,5 +6124,24 @@
     "inputPlaceholder": "Type a message",
     "sendAria": "Send",
     "sendFail": "Failed to send message"
+  },
+  "myAppointments": {
+    "bookableTitle": "Schedule your appointment",
+    "bookCta": "Book now",
+    "modalTitle": "Select date & time",
+    "dateLabel": "Date",
+    "slotLabel": "Time",
+    "loadingSlots": "Loading available times...",
+    "slotsEmpty": "No available times on this date. Please pick another date.",
+    "nameLabel": "Name",
+    "phoneLabel": "Phone",
+    "notesLabel": "Notes",
+    "nameRequired": "Please enter your name",
+    "phoneRequired": "Please enter a valid phone number",
+    "booked": "Your appointment is confirmed",
+    "bookFailed": "Failed to book the appointment",
+    "remaining": "{{n}} left",
+    "submitting": "Booking...",
+    "submit": "Confirm booking"
   }
 }

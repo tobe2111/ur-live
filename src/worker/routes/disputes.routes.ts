@@ -238,15 +238,39 @@ disputesRoutes.post('/admin/:id/approve', requireAuth(), require2FA(), auditLog(
   if (!dispute) return c.json({ success: false, error: '처리 가능한 분쟁 없음' }, 404)
 
   // voucher 환불 처리
+  // 🏁 2026-06-12 (전수조사 🔴): 환불 기준액 = applied_price(실결제가) 우선 — 정가(p.price) 사용 시
+  //   할인 결제 건 과다환불이던 갭. + 카드 결제 분쟁 실환불을 위해 payment_key/주문 정보 동봉.
   const voucher = await DB.prepare(
-    "SELECT v.id, v.user_id, v.product_id, v.status, p.price, o.payment_method FROM vouchers v LEFT JOIN orders o ON o.id = v.order_id LEFT JOIN products p ON p.id = v.product_id WHERE v.code = ?"
-  ).bind(dispute.voucher_code).first<{ id: number; user_id: string; product_id: number; status: string; price: number; payment_method: string }>()
+    "SELECT v.id, v.user_id, v.product_id, v.status, v.order_id, COALESCE(v.applied_price, p.price) AS price, p.price AS list_price, o.payment_method, COALESCE(o.toss_payment_key, o.payment_key) AS payment_key, o.order_number FROM vouchers v LEFT JOIN orders o ON o.id = v.order_id LEFT JOIN products p ON p.id = v.product_id WHERE v.code = ?"
+  ).bind(dispute.voucher_code).first<{ id: number; user_id: string; product_id: number; status: string; order_id: number | null; price: number; list_price: number | null; payment_method: string; payment_key: string | null; order_number: string | null }>()
   if (!voucher) return c.json({ success: false, error: 'voucher 없음' }, 404)
   if (voucher.status !== 'unused') return c.json({ success: false, error: `이미 ${voucher.status} 상태` }, 400)
 
   // CAS — voucher refunded 시도 (실패 시 409)
   const casRes = await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused'").bind(voucher.id).run()
   if (!casRes.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
+
+  // 🏁 2026-06-12 (전수조사 🔴): 카드(Toss) 결제 분쟁이 실환불 0원으로 resolved 되던 갭 —
+  //   force-refund(group-buy-admin) 패턴과 동일하게 tossCancelPayment 실행. 실패 시 voucher 원복 + 오류 반환
+  //   ('refunded 인데 미환불' 거짓 상태 금지 — 머니 룰 #4).
+  if (voucher.payment_method !== 'deal_points' && voucher.payment_key) {
+    try {
+      const { tossCancelPayment } = await import('../utils/toss-refund')
+      const cancelRes = await tossCancelPayment(c.env as never, voucher.payment_key, {
+        reason: `분쟁 ${id} 환불 승인 (${dispute.ai_category})`,
+        amount: Number(voucher.price) || undefined,
+        idempotencyKey: `dispute-${id}-voucher-${voucher.id}`,
+      })
+      if (!cancelRes.ok) {
+        await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(() => {})
+        return c.json({ success: false, error: '카드 환불 실패 — 토스 취소가 거부되었습니다. 잠시 후 재시도하세요.' }, 502)
+      }
+      await DB.prepare("UPDATE orders SET status = 'REFUNDED', updated_at = datetime('now') WHERE id = ?").bind(voucher.order_id).run().catch(() => {})
+    } catch (e) {
+      await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(() => {})
+      return c.json({ success: false, error: '카드 환불 처리 중 오류 — 다시 시도하세요.' }, 502)
+    }
+  }
 
   // 🛡️ 2026-05-22: CAS 성공 후 딜 환불 + dispute resolved 마킹을 batch() 로 atomic 실행.
   //   부분 실패 시 voucher 만 refunded 로 남고 환불 안 되는 불일치 방지.

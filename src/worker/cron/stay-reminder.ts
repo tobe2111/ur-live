@@ -25,16 +25,33 @@ type Booking = {
   room_name: string | null;
   seller_phone: string | null;
   check_in_time: string | null;
+  reminder_d1_sent_at: string | null;
+  reminder_dday_sent_at: string | null;
+}
+
+// 🛡️ 2026-06-12 (전수조사 4차 B-6): reminder dedup 컬럼 보장 — 핸들러 inline ALTER 대신
+//   WeakSet 메모이즈 ensure (머니/정합성 룰의 per-request DDL 방지 패턴). repair-schema 에도 등록.
+const reminderColsEnsured = new WeakSet<D1Database>()
+async function ensureReminderColumns(DB: D1Database): Promise<void> {
+  if (reminderColsEnsured.has(DB)) return
+  await DB.prepare(`ALTER TABLE stay_bookings ADD COLUMN reminder_d1_sent_at TEXT`).run().catch(() => null)
+  await DB.prepare(`ALTER TABLE stay_bookings ADD COLUMN reminder_dday_sent_at TEXT`).run().catch(() => null)
+  reminderColsEnsured.add(DB)
 }
 
 export async function runStayReminderCron(env: Env): Promise<{ d1_sent: number; dday_sent: number; alimtalk_sent: number; alimtalk_failed: number }> {
   const today = new Date().toISOString().slice(0, 10)
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
+  // 🛡️ 2026-06-12: dedup 컬럼 — 본 cron 은 '0 9'/'0 0' 두 트리거에서 실행돼
+  //   기존엔 같은 예약에 하루 2번 알림(인앱+알림톡 중복)이 나갔음.
+  await ensureReminderColumns(env.DB)
+
   // D-1 + D-day 예약 fetch (status='confirmed' 만).
   const rows = await env.DB.prepare(
     `SELECT b.id, b.product_id, b.check_in_date, b.check_out_date,
             b.guest_name, b.guest_phone, b.check_in_code,
+            b.reminder_d1_sent_at, b.reminder_dday_sent_at,
             p.name as product_name, r.name as room_name,
             s.phone as seller_phone,
             psi.check_in_time
@@ -62,6 +79,9 @@ export async function runStayReminderCron(env: Env): Promise<{ d1_sent: number; 
 
   for (const b of (rows.results || [])) {
     const isToday = b.check_in_date === today
+    // 🛡️ 2026-06-12: dedup — 같은 타입 reminder 는 booking 당 1회만.
+    if (isToday && b.reminder_dday_sent_at) continue
+    if (!isToday && b.reminder_d1_sent_at) continue
     try {
       // 1. notifications 테이블 INSERT (어플 내 알림).
       await env.DB.prepare(
@@ -113,6 +133,12 @@ export async function runStayReminderCron(env: Env): Promise<{ d1_sent: number; 
           }
         }
       }
+
+      // 🛡️ 2026-06-12: 발송 마킹 (인앱 알림 INSERT 이후 — 알림톡 실패 여부와 무관하게 재실행 중복 차단,
+      //   알림톡 실패분은 alimtalk_failures 큐의 재시도 cron 이 담당).
+      await env.DB.prepare(
+        `UPDATE stay_bookings SET ${isToday ? 'reminder_dday_sent_at' : 'reminder_d1_sent_at'} = datetime('now') WHERE id = ?`
+      ).bind(b.id).run().catch(() => { /* noop */ })
 
       if (isToday) ddaySent++; else d1Sent++
     } catch { /* per-row fail-soft */ }

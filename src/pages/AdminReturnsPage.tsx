@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -256,7 +257,8 @@ export default function AdminReturnsPage() {
                                     </button>
                                   </>
                                 )}
-                                {r.status === 'received' && (
+                                {/* 🏁 2026-06-12: 'received' 전이 endpoint 부재로 영구 공집합이던 탭 — shipped 에도 검수 노출 (서버 inspect 허용 확인) */}
+                                {(r.status === 'received' || r.status === 'shipped') && (
                                   <>
                                     <button onClick={() => handleInspect(r.id, 'approved')} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded hover:bg-emerald-600">
                                       검수 통과
@@ -297,4 +299,3 @@ export default function AdminReturnsPage() {
   )
 }
 
-import { Fragment } from 'react'

@@ -1697,7 +1697,8 @@
       "hosting": "Alojamiento de compra grupal",
       "curatorEarnings": "Ganancias del curador",
       "prospects": "Captar tiendas",
-      "voucherScan": "Escanear vale"
+      "voucherScan": "Escanear vale",
+      "proxyProducts": "Aprobación de registros delegados"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3156,7 +3157,8 @@
       "events": "Desafíos de marca",
       "promoteBoosts": "Impulso de exposición",
       "transfers": "Transferencia de vendedor",
-      "stays": "Operaciones de Estancias"
+      "stays": "Operaciones de Estancias",
+      "prospects": "Prospectos de tiendas"
     },
     "guide": "Guía operativa",
     "guideSubtitle": "Guía esencial de operaciones de agencia",
@@ -5546,7 +5548,9 @@
     "orders": "[TODO:es] 주문 내역",
     "ordersSub": "[TODO:es] 최근 3개월",
     "myStays": "Mis Reservas",
-    "myStaysSub": "Código check-in / vencimiento"
+    "myStaysSub": "Código check-in / vencimiento",
+    "interestList": "Restaurantes guardados",
+    "interestListSub": "Alertas de apertura de compra grupal"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:es] 주문 현황",
@@ -6093,7 +6097,9 @@
   },
   "my": {
     "earningsGroupTitle": "Mis ganancias",
-    "earningsGroupSub": "Recompensas · Linkshop · Invitaciones"
+    "earningsGroupSub": "Recompensas · Linkshop · Invitaciones",
+    "affiliateLinkTitle": "Enlaces de recomendación",
+    "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados"
   },
   "push": {
     "promptTitle": "¿Activar notificaciones?",
@@ -6118,5 +6124,24 @@
     "inputPlaceholder": "Escribe un mensaje",
     "sendAria": "Enviar",
     "sendFail": "No se pudo enviar el mensaje"
+  },
+  "myAppointments": {
+    "bookableTitle": "Programa tu cita",
+    "bookCta": "Reservar",
+    "modalTitle": "Selecciona fecha y hora",
+    "dateLabel": "Fecha",
+    "slotLabel": "Hora",
+    "loadingSlots": "Cargando horarios disponibles...",
+    "slotsEmpty": "No hay horarios disponibles en esta fecha. Elige otra fecha.",
+    "nameLabel": "Nombre",
+    "phoneLabel": "Teléfono",
+    "notesLabel": "Notas",
+    "nameRequired": "Introduce tu nombre",
+    "phoneRequired": "Introduce un número de teléfono válido",
+    "booked": "Tu cita está confirmada",
+    "bookFailed": "No se pudo reservar la cita",
+    "remaining": "Quedan {{n}}",
+    "submitting": "Reservando...",
+    "submit": "Confirmar reserva"
   }
 }

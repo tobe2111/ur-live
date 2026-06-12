@@ -180,6 +180,24 @@ export default function UserProfilePage() {
 
       {/* 🛡️ 2026-05-27 (P2 referral 완성): 친구 가입 초대 카드 (invite_rewards — 상품 추천과 별개) */}
       <MyReferralCard />
+
+      {/* 🏁 2026-06-12 (4차 감사 D5): /user/affiliate 고아 라우트 진입점 — 추천 링크 실적 대시보드 */}
+      <button
+        type="button"
+        onClick={() => navigate('/user/affiliate')}
+        className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 mt-2 bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
+      >
+        <span className="text-lg" aria-hidden="true">🔗</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
+            {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
+          </span>
+          <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+            {t('my.affiliateLinkSub', { defaultValue: '내 링크로 구매하면 딜 적립 — 실적 보기' })}
+          </span>
+        </span>
+        <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30" aria-hidden="true" />
+      </button>
       </EarningsGroup>
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.

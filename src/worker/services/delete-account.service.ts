@@ -15,6 +15,8 @@
  *   30일 경과 → 자동으로 hard purge (별도 cron 예정), 신규 계정 생성
  */
 
+import { zeroOutUserPoints } from '../utils/point-ledger';
+
 /**
  * Optional cleanup step that logs in DEV but never throws in PROD.
  * Used for best-effort deletion of rows in tables that may not exist in
@@ -115,11 +117,9 @@ export async function deleteUserAccount(
       .catch(swallow("cleanup"));
 
     // Zero out points balance (preserve transaction history for audit)
-    await db
-      .prepare('UPDATE user_points SET balance = 0 WHERE user_id = ?')
-      .bind(userIdStr)
-      .run()
-      .catch(swallow("cleanup"));
+    // 💸 2026-06-12 (4차 감사 D1): 잔액 소멸도 point_transactions 에 'account_deleted' 로 기록
+    //   (zeroOutUserPoints — 잔액 0 이면 장부 생략, 내부 fail-soft).
+    await zeroOutUserPoints(db, userIdStr).catch(swallow("cleanup"));
 
     // Clean coupons
     await db

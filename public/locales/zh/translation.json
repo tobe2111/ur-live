@@ -2369,7 +2369,8 @@
       "hosting": "团购托管",
       "curatorEarnings": "策展人收益",
       "prospects": "招募门店",
-      "voucherScan": "扫描兑换券"
+      "voucherScan": "扫描兑换券",
+      "proxyProducts": "代理上架审批"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3828,7 +3829,8 @@
       "events": "品牌挑战",
       "promoteBoosts": "曝光提升",
       "transfers": "卖家转移",
-      "stays": "住宿运营"
+      "stays": "住宿运营",
+      "prospects": "门店开拓进展"
     },
     "guide": "运营指南",
     "guideSubtitle": "代理运营核心指南",
@@ -5546,7 +5548,9 @@
     "orders": "[TODO:zh] 주문 내역",
     "ordersSub": "[TODO:zh] 최근 3개월",
     "myStays": "我的住宿预订",
-    "myStaysSub": "入住码 / 有效期"
+    "myStaysSub": "入住码 / 有效期",
+    "interestList": "收藏的餐厅",
+    "interestListSub": "团购开团提醒列表"
   },
   "orderStatus": {
     "sectionTitle": "[TODO:zh] 주문 현황",
@@ -6093,7 +6097,9 @@
   },
   "my": {
     "earningsGroupTitle": "我的收益·推荐",
-    "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请"
+    "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请",
+    "affiliateLinkTitle": "商品推荐链接",
+    "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩"
   },
   "push": {
     "promptTitle": "开启通知？",
@@ -6118,5 +6124,24 @@
     "inputPlaceholder": "请输入消息",
     "sendAria": "发送",
     "sendFail": "消息发送失败"
+  },
+  "myAppointments": {
+    "bookableTitle": "请安排您的预约",
+    "bookCta": "立即预约",
+    "modalTitle": "选择日期和时间",
+    "dateLabel": "日期",
+    "slotLabel": "时间",
+    "loadingSlots": "正在查询可预约时间...",
+    "slotsEmpty": "该日期没有可预约的时间，请选择其他日期。",
+    "nameLabel": "预约人姓名",
+    "phoneLabel": "电话号码",
+    "notesLabel": "备注",
+    "nameRequired": "请输入姓名",
+    "phoneRequired": "请输入正确的电话号码",
+    "booked": "预约已确认",
+    "bookFailed": "预约失败",
+    "remaining": "剩余 {{n}}",
+    "submitting": "预约中...",
+    "submit": "确认预约"
   }
 }

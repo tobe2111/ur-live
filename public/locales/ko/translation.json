@@ -2409,7 +2409,8 @@
       "stays": "숙소 공구",
       "staysBookings": "예약 관리",
       "supply": "도매 소싱",
-      "voucherScan": "바우처 스캔"
+      "voucherScan": "바우처 스캔",
+      "proxyProducts": "대행 등록 승인"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3828,7 +3829,8 @@
       "events": "자사 챌린지",
       "promoteBoosts": "노출 부스팅",
       "transfers": "셀러 이전",
-      "stays": "숙소 운영"
+      "stays": "숙소 운영",
+      "prospects": "매장 영입 현황"
     },
     "guide": "운영 가이드",
     "guideSubtitle": "에이전시 운영 핵심 가이드",
@@ -5166,7 +5168,9 @@
     "orders": "주문 내역",
     "ordersSub": "최근 3개월",
     "myStays": "내 숙소 예약",
-    "myStaysSub": "체크인 코드 / voucher 유효기간"
+    "myStaysSub": "체크인 코드 / voucher 유효기간",
+    "interestList": "관심 맛집",
+    "interestListSub": "공구 오픈 알림 신청 목록"
   },
   "orderStatus": {
     "sectionTitle": "주문 현황",
@@ -6089,7 +6093,9 @@
   },
   "my": {
     "earningsGroupTitle": "내 수익·추천",
-    "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대"
+    "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대",
+    "affiliateLinkTitle": "상품 추천 링크",
+    "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기"
   },
   "push": {
     "promptTitle": "알림을 켜시겠어요?",
@@ -6114,5 +6120,24 @@
     "inputPlaceholder": "메시지를 입력하세요",
     "sendAria": "전송",
     "sendFail": "메시지 전송에 실패했습니다"
+  },
+  "myAppointments": {
+    "bookableTitle": "예약을 잡아주세요",
+    "bookCta": "예약 잡기",
+    "modalTitle": "예약 날짜·시간 선택",
+    "dateLabel": "날짜",
+    "slotLabel": "시간",
+    "loadingSlots": "예약 가능 시간 조회 중...",
+    "slotsEmpty": "해당 날짜에 예약 가능한 시간이 없습니다. 다른 날짜를 선택해주세요.",
+    "nameLabel": "예약자 이름",
+    "phoneLabel": "전화번호",
+    "notesLabel": "요청사항",
+    "nameRequired": "이름을 입력해주세요",
+    "phoneRequired": "올바른 전화번호를 입력해주세요",
+    "booked": "예약이 확정되었습니다",
+    "bookFailed": "예약에 실패했습니다",
+    "remaining": "잔여 {{n}}",
+    "submitting": "예약 중...",
+    "submit": "예약 확정"
   }
 }

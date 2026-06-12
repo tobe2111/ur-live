@@ -378,7 +378,13 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'approved', NULL)`)
       .bind(sellerId, prevStatus).run().catch(() => { /* 테이블 없을 시 silent */ });
     await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: prevStatus }, after: { status: 'approved' } });
-    createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved', '셀러 승인 완료', '판매를 시작할 수 있습니다', '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+    // 🏁 2026-06-12 (전수조사 🟢): 정지→재활성도 이 endpoint 재사용이라 '가입 승인' 메시지가
+    //   재발송되던 갭 — prevStatus 기반 분기.
+    const isReactivation = prevStatus === 'suspended';
+    createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved',
+      isReactivation ? '계정 재활성화' : '셀러 승인 완료',
+      isReactivation ? '계정이 다시 활성화되었어요. 판매를 이어가실 수 있습니다' : '판매를 시작할 수 있습니다',
+      '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
 
     // 🛡️ 2026-04-28: 셀러에게 카카오 알림톡
     try {
@@ -390,7 +396,9 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
       if (phone) {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
         sendSystemAlimtalk(c.env, phone, 'seller_approved',
-          `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
+          isReactivation
+            ? `[유어딜] ${sellerName}님,\n계정이 다시 활성화되었어요.\n판매를 이어가실 수 있습니다.`
+            : `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
         ).catch(swallow('admin-sellers:approve-alimtalk'));
       }
     } catch { /* ignore */ }

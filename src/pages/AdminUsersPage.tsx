@@ -56,8 +56,10 @@ interface UserDetail {
 export default function AdminUsersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [appliedSearch, setAppliedSearch] = useState('')
+  // 🏁 2026-06-12 (전수조사): 사이드바 전역검색이 ?q= 로 보내는데 미소비라 검색어 증발하던 갭.
+  const initialQ = (() => { try { return new URLSearchParams(window.location.search).get('q') || '' } catch { return '' } })()
+  const [search, setSearch] = useState(initialQ)
+  const [appliedSearch, setAppliedSearch] = useState(initialQ)
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortKey>('created_at')
   const [order, setOrder] = useState<'desc' | 'asc'>('desc')

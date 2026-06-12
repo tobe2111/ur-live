@@ -81,6 +81,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/coupons',    label: '쿠폰 배포',     i18nKey: 'agency.nav.coupons', icon: Ticket, mode: 'common' },
       { path: '/agency/calendar',   label: '라이브 캘린더', i18nKey: 'agency.nav.calendar', icon: Calendar, mode: 'live' },
       { path: '/agency/invites',    label: '셀러 영입',     i18nKey: 'agency.nav.invites', icon: QrCode, mode: 'common' },
+      // 🏁 2026-06-12 (4차 감사 D5): /agency/prospects 고아 라우트 진입점 — 매장 영입 prospects 현황.
+      { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: Store, mode: 'common' },
       { path: '/agency/match-suggestions', label: '자동 매칭 제안', i18nKey: 'agency.nav.matchSuggestions', icon: UserPlus, mode: 'live' },
       { path: '/agency/pk',         label: 'PK 이벤트',     i18nKey: 'agency.nav.pk', icon: Swords, mode: 'live' },
       { path: '/agency/events',     label: '자사 챌린지',   i18nKey: 'agency.nav.events', icon: Trophy, mode: 'common' },

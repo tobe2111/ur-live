@@ -37,8 +37,16 @@
 | 심각도 | 갭 | 규모 |
 |---|---|---|
 | 🔴(사용자) | cron Workers 수동배포 드리프트 — Dashboard 에서 트리거 9개·최근 배포일 확인 + BACKUP_BUCKET 바인딩 실재 확인 | 확인 |
-| 🟡 | 포인트 장부 누락 ~14지점(커미션 회수 차감/보상 적립 계열 — 잔액변경+장부 헬퍼로 수렴) · 웹훅 멱등키 V2 status 미포함(잠금 — 승인要) · FAILED 웹훅 자동 재처리 cron 부재 · safeError 400곳 console-only(5xx Sentry 배선) · agency 배치 내부실패 Discord 미도달 · 고아 라우트 4(interest-list/user-affiliate/seller-proxy-products/agency-prospects) | S~M |
-| 🟢 | cache-warming.ts 죽은 파일 · debug 페이지 prod 노출 · error-telemetry intake rate limit | S |
+| 🟡 | ~~포인트 장부 누락(비충돌 7지점)~~ ✅ · 웹훅 멱등키 V2 status 미포함(잠금 — 승인要) · ~~FAILED 웹훅 cron~~ ✅(1단계 감시) · ~~safeError 5xx Sentry~~ ✅ · ~~agency 배치 내부실패 Discord~~ ✅ · ~~고아 라우트 4~~ ✅ — 2026-06-12 D배치 수술 (아래 ✅ 섹션) | S~M |
+| 🟢 | ~~cache-warming.ts~~ ❌오탐(scheduled-cleanup 이 활성 import — 삭제 보류) · ~~debug 페이지 prod 노출~~ ✅ · ~~error-telemetry intake rate limit~~ ✅ | S |
+
+### ✅ D배치 인프라 잔여 수술 완료 (2026-06-12, 사용자 승인 '모두 이상적')
+- **D1 포인트 장부 수렴**: `worker/utils/point-ledger.ts` 신설 — `adjustUserPoints`(UPSERT+`balance>=?` CAS 가드 옵션+point_transactions balance_after 서브쿼리), `pointCreditUpsertStatement`(기존 DB.batch 원자성 합류용), `recordPointTransaction`(fail-soft — 레거시 type CHECK 잔존 환경에서 장부 실패가 돈 흐름을 절대 못 막음), `zeroOutUserPoints`. 비충돌 7지점 치환(금액/동작 불변, 장부만 추가): auto-settlement(만료 환불 — 기존 장부 0건 직접 확인), invite-reward, affiliate-credit, referral-tree(batch 원자성 보존+장부 후기록), seller-onboarding(+기존 total_used 컬럼 silent fail 제거), agency-self-events-tick(동일), delete-account(`account_deleted` 기록). order/returns/webhook/community 지점은 타 작업자 몫 — 미접촉. 단위테스트 10.
+- **D2 safeError→Sentry**: 5xx 만 dynamic import `captureException` fire-and-forget (DSN 미설정 시 console 폴백 기존 동작).
+- **D3 agency 배치 내부실패**: `scheduled.ts` 공용 `notifyCronFailure(env,name,err)`(safeCron Discord 패턴 재사용) — agency-cron-batch/weekly-batch 내부 `.catch(logError)` 18곳 치환.
+- **D4 FAILED 웹훅 (1단계)**: `cron/webhook-failed-drain.ts` — `status='FAILED' AND retry_count<3` 매시간 감시 → Discord 요약(dedup 6h)+log. **한계(의도)**: 실제 재처리는 webhook.routes 잠금(비-export 핸들러) — 2단계는 잠금 해제 승인 후.
+- **D5 고아 라우트 진입점 4**: /interest-list→ShoppingGroup 행, /user/affiliate→EarningsGroup 카드, /seller/proxy-products→SellerLayout nav(store), /agency/prospects→AgencyLayout nav. i18n 6키×6언어.
+- **D6 🟢**: /toss-debug prod=requireAdmin 게이트(DEV 는 그대로 — 진단 도구 보존; /kakao-debug·/payment/demo 는 기게이트 확인), error-telemetry intake rateLimit 60/60s/IP(fail-open). **cache-warming.ts 삭제는 보류** — 재확인 결과 `scheduled-cleanup.ts:401` 이 활성 import(죽은 파일 아님, 오탐).
 
 
 ## ⚠️ 세션 분담 (2026-06-12 사용자 지시)

@@ -26,6 +26,7 @@ import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 
 import { swallow } from '@/worker/utils/swallow';
+import { adjustUserPoints } from '@/worker/utils/point-ledger';
 type SellerCtx = {
   Bindings: Env;
   Variables: { seller: { id: number; email: string } };
@@ -179,16 +180,17 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
 
     // 셀러에게 보상 딜 1만 지급 (user_points 시스템 활용 — 셀러도 user_id 기반으로 매핑되어 있을 경우)
     // 셀러 자체 deal balance 시스템이 있으면 거기에 추가. 없으면 알림만.
+    // 💸 2026-06-12 (4차 감사 D1): adjustUserPoints SSOT — 잔액 UPSERT + point_transactions 장부 동시.
+    //   기존 SQL 의 total_used 컬럼 참조(미존재 환경에서 silent fail)도 제거됨. 금액/멱등 불변.
     try {
-      await DB.prepare(`
-        INSERT INTO user_points (user_id, balance, total_charged, total_used)
-        VALUES (?, ?, ?, 0)
-        ON CONFLICT(user_id) DO UPDATE SET
-          balance = balance + ?,
-          total_charged = total_charged + ?
-      `).bind(sellerId, BOOTCAMP_REWARD_DEAL, BOOTCAMP_REWARD_DEAL, BOOTCAMP_REWARD_DEAL, BOOTCAMP_REWARD_DEAL)
-        .run().catch(swallow('seller:api:seller-onboarding'));
-    } catch { /* 컬럼 다르면 graceful skip */ }
+      await adjustUserPoints(DB, {
+        userId: sellerId,
+        delta: BOOTCAMP_REWARD_DEAL,
+        type: 'bootcamp_reward',
+        description: '셀러 부트캠프 완료 보상',
+        bumpTotalCharged: true,
+      });
+    } catch { /* graceful skip */ }
   }
 
   return completedSet;

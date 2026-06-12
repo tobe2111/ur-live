@@ -9,7 +9,7 @@
  * fail-soft: 어떤 실패도 throw 하지 않음 — 결제 흐름 보호 (호출측 waitUntil 권장).
  */
 import { executeRun, queryFirst } from './database'
-import { ensureUserPointsTable } from './ensure-tables'
+import { adjustUserPoints } from './point-ledger'
 
 const _done_ensure = new WeakSet<D1Database>()
 export async function ensureInviteRewardsTable(DB: D1Database): Promise<void> {
@@ -82,22 +82,16 @@ export async function grantInviteRewardForFirstPurchase(
       return { granted: false, reason: 'already_granted' }
     }
 
-    await ensureUserPointsTable(DB).catch(() => {})
-    const existing = await queryFirst<{ balance: number }>(
-      DB, 'SELECT balance FROM user_points WHERE user_id = ?', [inviterUserId],
-    ).catch(() => null)
-    if (existing) {
-      await executeRun(
-        DB,
-        "UPDATE user_points SET balance = balance + ?, total_charged = total_charged + ?, updated_at = datetime('now') WHERE user_id = ?",
-        [rewardAmount, rewardAmount, inviterUserId],
-      )
-    } else {
-      await executeRun(
-        DB, 'INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)',
-        [inviterUserId, rewardAmount, rewardAmount],
-      )
-    }
+    // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록 (adjustUserPoints SSOT).
+    //   기존 UPSERT(balance+total_charged) 와 금액/동작 동일 — 장부만 추가.
+    const adjusted = await adjustUserPoints(DB, {
+      userId: inviterUserId,
+      delta: rewardAmount,
+      type: 'invite_reward',
+      description: '친구 초대 첫 구매 보상',
+      bumpTotalCharged: true,
+    })
+    if (!adjusted.ok) return { granted: false, reason: 'error' }
     // users.deal_balance best-effort (컬럼 없을 수 있음)
     await executeRun(
       DB, 'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?',
