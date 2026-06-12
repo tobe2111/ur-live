@@ -695,6 +695,10 @@ export async function handleScheduled(env: Env) {
     await DB.prepare(`
       DELETE FROM stripe_webhook_events WHERE processed_at < datetime('now', '-90 days')
     `).run();
+    // 🏁 2026-06-12 (인프라 감사): Toss webhook_events 도 90일 보존 — 기존엔 오타 테이블명만 정리.
+    await DB.prepare(`
+      DELETE FROM webhook_events WHERE created_at < datetime('now', '-90 days')
+    `).run();
   } catch { /* table may not exist */ }
 
   // ── 20. 🛡️ 2026-04-28: gift 만료 처리 (paid 상태 + expires_at 경과) ──
