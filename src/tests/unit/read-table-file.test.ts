@@ -131,6 +131,23 @@ describe('구버전/비지원 파일 가드', () => {
   })
 })
 
+describe('buildXlsx 수식 셀 (📐 자동계산 양식)', () => {
+  it('formula 셀은 <f> 로 기록되고, 파서는 캐시값 없으면 빈칸으로 안전 처리', async () => {
+    const xlsx = buildXlsx(
+      ['상품명', '공급가', '권장가', '공급률(%)'],
+      [
+        ['김', 5000, 9900, { formula: 'ROUND(B2/C2*100,1)' }],
+        ['', '', '', { formula: 'IF(OR($B3="",$C3=""),"",ROUND($B3/$C3*100,1))' }], // 미입력 행 가드
+      ] as never,
+    )
+    const rows = await parseXlsxToRows(xlsx.buffer.slice(xlsx.byteOffset, xlsx.byteOffset + xlsx.byteLength) as ArrayBuffer)
+    expect(rows[1].slice(0, 3)).toEqual(['김', '5000', '9900'])
+    expect(rows[1][3] ?? '').toBe('') // 수식 캐시값 없음 → 빈칸 (업로드 파서가 무시)
+    // 미입력 가드 행은 전부 빈칸 → 트레일링 정리로 제거됨 (업로드에 오류행 안 생김)
+    expect(rows.length).toBe(2)
+  })
+})
+
 describe('rowsToCsv', () => {
   it('쉼표/따옴표/개행 이스케이프', () => {
     expect(rowsToCsv([['a,b', 'x"y', 'z']])).toBe('"a,b","x""y",z')

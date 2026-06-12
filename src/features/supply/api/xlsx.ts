@@ -34,12 +34,19 @@ function colLetter(idx: number): string {
   return s
 }
 
-type Cell = string | number | null | undefined
+// 📐 2026-06-12 (사용자 요청): 수식 셀 지원 — { formula: 'ROUND(B2/C2*100,1)' } (= 제외).
+//   캐시값 미기록 → 엑셀이 열 때 재계산(workbook calcPr fullCalcOnLoad). 사용자가 값을 채우면
+//   그 자리에서 자동 계산되는 "살아있는 양식"용.
+export type XlsxCell = string | number | null | undefined | { formula: string }
+type Cell = XlsxCell
 
 function sheetXml(rows: Cell[][]): string {
   const body = rows.map((row, r) => {
     const cells = row.map((cell, ci) => {
       const ref = `${colLetter(ci)}${r + 1}`
+      if (cell != null && typeof cell === 'object' && 'formula' in cell) {
+        return `<c r="${ref}"><f>${xmlEsc(cell.formula)}</f></c>`
+      }
       if (typeof cell === 'number' && Number.isFinite(cell)) {
         return `<c r="${ref}"><v>${cell}</v></c>`
       }
@@ -72,7 +79,9 @@ export function buildXlsx(headers: string[], rows: Cell[][], sheetName = 'Sheet1
     { name: 'xl/workbook.xml', data: enc.encode(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
       `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-      `<sheets><sheet name="${xmlEsc(sheetName).slice(0, 31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`) },
+      `<sheets><sheet name="${xmlEsc(sheetName).slice(0, 31)}" sheetId="1" r:id="rId1"/></sheets>` +
+      // 📐 수식 셀에 캐시값이 없으므로 열 때 전체 재계산 강제 — 자동계산 컬럼이 항상 살아있게.
+      `<calcPr fullCalcOnLoad="1"/></workbook>`) },
     { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
       `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
