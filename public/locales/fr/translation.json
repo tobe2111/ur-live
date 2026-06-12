@@ -5765,7 +5765,7 @@
     "fieldBrandName": "Nom d'affichage de la marque (optionnel)",
     "fieldBrandNamePh": "Nom d'affichage de la marque",
     "fieldDesc": "Description du produit",
-    "fieldImage": "Image du produit",
+    "fieldImage": "URL de l'image miniature (principale)",
     "fieldSupplyPrice": "Prix fournisseur (KRW)",
     "fieldRetail": "Prix de vente conseillé (KRW)",
     "fieldStock": "Stock",
@@ -5923,7 +5923,9 @@
     "bulkOptionTitle": "Plusieurs produits ? Importez-les en une fois avec Excel",
     "bulkOptionTemplate": "Télécharger le modèle Excel",
     "bulkOptionUpload": "Importer l'Excel rempli",
-    "bulkOptionHint": "Import .xlsx direct · encodage auto-corrigé · jusqu’à 2 000 lignes"
+    "bulkOptionHint": "Import .xlsx direct · encodage auto-corrigé · jusqu’à 2 000 lignes",
+    "fieldDetailImages": "URLs des images de détail (séparées par des virgules, max 10)",
+    "detailImagesHint": "Affichées dans l’ordre sous la description sur la page produit."
   },
   "wholesaleChat": {
     "title": "Chat",

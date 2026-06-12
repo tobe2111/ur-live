@@ -250,6 +250,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; min_order_qty?: number;
       pack_size?: number; order_multiple?: number;
       lowest_price_url?: string;
+      // 🖼️ 2026-06-12: 상세페이지 이미지 — 배열 또는 쉼표 구분 문자열 (썸네일 image_url 과 분리).
+      detail_images?: string[] | string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -293,13 +295,19 @@ supplierDashboardRoutes.post('/products', async (c) => {
     // 온라인 최저가 참고 링크 (어드민 최저가 검수용). http(s) 만 허용.
     const lpUrlRaw = (body.lowest_price_url || '').trim().slice(0, 500);
     const lpUrl = /^https?:\/\//i.test(lpUrlRaw) ? lpUrlRaw : null;
+    // 🖼️ 상세페이지 이미지 — 배열/쉼표 문자열 모두 허용, http(s) 만, 최대 10장 → detail_images JSON.
+    const detailListRaw = Array.isArray(body.detail_images)
+      ? body.detail_images.map(u => String(u))
+      : String(body.detail_images || '').split(/[,\n|]/);
+    const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+    const detailImages = detailList.length ? JSON.stringify(detailList) : null;
 
     const result = await DB.prepare(
       `INSERT INTO products (
          name, description, price, supply_price, stock,
-         image_url, category, product_type, is_active, is_supply_product,
+         image_url, detail_images, category, product_type, is_active, is_supply_product,
          supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url, min_order_qty, pack_size, order_multiple, lowest_price_url, mall_id, slug, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
     ).bind(
       name,
       (body.description || '').slice(0, 5000),
@@ -307,6 +315,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       Math.floor(supplyPrice),
       stock,
       (body.image_url || '').slice(0, 1000),
+      detailImages,
       (body.category || 'lifestyle').slice(0, 60),
       sid,
       visibility,
@@ -337,11 +346,12 @@ supplierDashboardRoutes.post('/products', async (c) => {
 });
 
 // ── GET /products/bulk-template — 대량등록 표준 양식 (CSV/.xlsx) ────────────────
-// 📥 2026-06-12: 단건 폼과 parity — 박스입수/주문배수/이미지URL 추가. 업로드는 .xlsx 도 지원(클라가 CSV 변환).
-const BULK_TEMPLATE_HEADERS = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '박스입수', '주문배수', '이미지URL', '설명']
+// 📥 2026-06-12: 단건 폼과 parity — 박스입수/주문배수/이미지 추가. 업로드는 .xlsx 도 지원(클라가 CSV 변환).
+// 🖼️ 2026-06-12 (사용자 요청): 썸네일(대표)과 상세페이지 이미지 분리 — 상세는 쉼표로 여러 장(최대 10).
+const BULK_TEMPLATE_HEADERS = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '박스입수', '주문배수', '썸네일 이미지URL', '상세 이미지URL(쉼표로 여러 장)', '설명']
 const BULK_TEMPLATE_ROWS = [
-  ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', '상품 설명'],
-  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '브랜드제품(브랜드명 입력)·선정 유통사만 노출(20개 단위)'],
+  ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', 'https://example.com/a-detail1.jpg,https://example.com/a-detail2.jpg', '상품 설명'],
+  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 유통사만 노출(20개 단위)'],
 ]
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
   return csvResponse(buildCsv(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS), 'supply-products-template.csv')
@@ -371,9 +381,9 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     const results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[] = [];
     // 🛡️ 유효 행만 INSERT statement 로 모아 DB.batch 청크 실행 (행별 순차 .run() 은 Cloudflare subrequest 한도 초과).
     const stmts: D1PreparedStatement[] = [];
-    const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
+    const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, detail_images, category, product_type,
        is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const name = String(r['상품명'] || r.name || '').trim();
@@ -393,12 +403,19 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       // 📥 2026-06-12 parity: 박스입수/주문배수/이미지URL (단건 폼과 동일 — 기본 1/1/'').
       const packSize = Math.min(100000, Math.max(1, Math.floor(Number(String(r['박스입수'] || r.pack_size || '1').replace(/[,\s]/g, '')) || 1)));
       const orderMultiple = Math.min(100000, Math.max(1, Math.floor(Number(String(r['주문배수'] || r.order_multiple || '1').replace(/[,\s]/g, '')) || 1)));
-      const imageUrlRaw = String(r['이미지URL'] || r.image_url || '').trim().slice(0, 500);
+      // 🖼️ 썸네일(대표) — 구 헤더 '이미지URL' 도 하위호환 인식.
+      const imageUrlRaw = String(r['썸네일 이미지URL'] || r['이미지URL'] || r.image_url || '').trim().slice(0, 500);
       const imageUrl = /^https?:\/\//i.test(imageUrlRaw) ? imageUrlRaw : '';
+      // 🖼️ 상세페이지 이미지 — 쉼표/줄바꿈 구분 여러 장(최대 10), http(s) 만 → detail_images JSON 배열.
+      const detailRaw = String(r['상세 이미지URL(쉼표로 여러 장)'] || r['상세이미지URL'] || r.detail_images || '').trim();
+      const detailList = detailRaw
+        ? detailRaw.split(/[,\n|]/).map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10)
+        : [];
+      const detailImages = detailList.length ? JSON.stringify(detailList) : null;
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
-        Math.floor(retailFinal), Math.floor(supplyPrice), stock, imageUrl,
+        Math.floor(retailFinal), Math.floor(supplyPrice), stock, imageUrl, detailImages,
         String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, brandName, moq, packSize, orderMultiple, sid, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });

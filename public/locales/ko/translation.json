@@ -5757,7 +5757,7 @@
     "fieldBrandName": "브랜드 표시명 (선택)",
     "fieldBrandNamePh": "브랜드 표시명",
     "fieldDesc": "상품 설명",
-    "fieldImage": "상품 이미지",
+    "fieldImage": "썸네일(대표) 이미지 URL",
     "fieldSupplyPrice": "공급가(원)",
     "fieldRetail": "권장 소비자가(원)",
     "fieldStock": "재고",
@@ -5915,7 +5915,9 @@
     "bulkOptionTitle": "여러 상품이면 엑셀로 한 번에 등록하세요",
     "bulkOptionTemplate": "엑셀 양식 받기",
     "bulkOptionUpload": "작성한 엑셀 업로드",
-    "bulkOptionHint": ".xlsx 그대로 업로드 가능 · 한글 깨짐 자동 복구 · 최대 2,000행"
+    "bulkOptionHint": ".xlsx 그대로 업로드 가능 · 한글 깨짐 자동 복구 · 최대 2,000행",
+    "fieldDetailImages": "상세페이지 이미지 URL (쉼표로 여러 장, 최대 10)",
+    "detailImagesHint": "상품 상세 페이지의 설명 아래에 순서대로 표시됩니다."
   },
   "wholesaleChat": {
     "title": "문의 채팅",

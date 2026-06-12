@@ -22,6 +22,8 @@ const NaverExportModal = lazy(() => import('@/pages/wholesale/NaverExportModal')
 interface QtyTierView { min_qty: number; discount_pct: number; unit_price: number }
 interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
+  // 🖼️ 2026-06-12: 상세페이지 이미지(썸네일과 분리) — 상세설명 탭에 세로 갤러리.
+  detail_images?: string[]
   category: string | null; stock: number; distributor_price: number | null
   retail_price?: number | null; moq?: number; pack_size?: number; order_multiple?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
   // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
@@ -378,9 +380,21 @@ export default function WholesaleProductPage() {
           ))}
         </div>
         <div className="py-5 text-[15px] leading-relaxed" style={{ color: WT.ink2 }}>
-          {tab === 'desc' && (item.description
-            ? <p className="whitespace-pre-wrap">{item.description}</p>
-            : <p>검증된 제조사가 공급하는 <b style={{ color: WT.ink }}>{item.name}</b> 입니다. 대량 사입에 최적화된 도매 공급가로, 소매 판매 시 충분한 마진 여력을 확보할 수 있어요.</p>)}
+          {tab === 'desc' && (<>
+            {item.description
+              ? <p className="whitespace-pre-wrap">{item.description}</p>
+              : <p>검증된 제조사가 공급하는 <b style={{ color: WT.ink }}>{item.name}</b> 입니다. 대량 사입에 최적화된 도매 공급가로, 소매 판매 시 충분한 마진 여력을 확보할 수 있어요.</p>}
+            {/* 🖼️ 2026-06-12: 상세페이지 이미지 갤러리 (썸네일과 분리 — 엑셀/단건 등록의 '상세 이미지URL'). */}
+            {(item.detail_images?.length ?? 0) > 0 && (
+              <div className="mt-5 space-y-3">
+                {item.detail_images!.map((u, i) => (
+                  <img key={i} src={cfImage(u, { width: 800, format: 'auto' }) || u} alt={`${item.name} 상세 ${i + 1}`}
+                    className="w-full rounded-xl" loading="lazy" decoding="async"
+                    onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                ))}
+              </div>
+            )}
+          </>)}
           {tab === 'ship' && <p>주문 확정 후 1~2 영업일 내 출고됩니다. 한 주문에 같은 제조사 상품은 합배송될 수 있어요. 도서산간은 추가 배송비가 발생할 수 있어요.</p>}
           {tab === 'settle' && <p>브랜드 상품은 출고 익일, 일반 상품은 출고 후 7일에 정산돼요. 정산 내역은 <b style={{ color: WT.ink }}>거래내역</b>에서 확인할 수 있어요.</p>}
           {tab === 'return' && <p>단순 변심 반품은 미개봉 상태에 한해 출고일로부터 7일 내 가능합니다. 식품·위생용품은 개봉 시 교환·반품이 제한돼요.</p>}

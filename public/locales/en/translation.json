@@ -5765,7 +5765,7 @@
     "fieldBrandName": "Brand display name (optional)",
     "fieldBrandNamePh": "Brand display name",
     "fieldDesc": "Product description",
-    "fieldImage": "Product image",
+    "fieldImage": "Thumbnail (main) image URL",
     "fieldSupplyPrice": "Supply price (KRW)",
     "fieldRetail": "Suggested retail price (KRW)",
     "fieldStock": "Stock",
@@ -5923,7 +5923,9 @@
     "bulkOptionTitle": "Registering many products? Upload an Excel file at once",
     "bulkOptionTemplate": "Download Excel template",
     "bulkOptionUpload": "Upload filled Excel",
-    "bulkOptionHint": "Upload .xlsx directly · encoding auto-fix · up to 2,000 rows"
+    "bulkOptionHint": "Upload .xlsx directly · encoding auto-fix · up to 2,000 rows",
+    "fieldDetailImages": "Detail page image URLs (comma-separated, up to 10)",
+    "detailImagesHint": "Shown in order below the description on the product detail page."
   },
   "wholesaleChat": {
     "title": "Chat",

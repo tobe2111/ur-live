@@ -5765,7 +5765,7 @@
     "fieldBrandName": "品牌显示名称（可选）",
     "fieldBrandNamePh": "品牌显示名称",
     "fieldDesc": "商品描述",
-    "fieldImage": "商品图片",
+    "fieldImage": "缩略图（主图）URL",
     "fieldSupplyPrice": "供货价（韩元）",
     "fieldRetail": "建议零售价（韩元）",
     "fieldStock": "库存",
@@ -5923,7 +5923,9 @@
     "bulkOptionTitle": "多个商品可用Excel一次性登记",
     "bulkOptionTemplate": "下载Excel模板",
     "bulkOptionUpload": "上传填写好的Excel",
-    "bulkOptionHint": "可直接上传.xlsx · 自动修复乱码 · 最多2,000行"
+    "bulkOptionHint": "可直接上传.xlsx · 自动修复乱码 · 最多2,000行",
+    "fieldDetailImages": "详情页图片URL（逗号分隔，最多10张）",
+    "detailImagesHint": "将按顺序显示在商品详情页说明下方。"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

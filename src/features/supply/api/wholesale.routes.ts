@@ -1274,7 +1274,7 @@ app.get('/catalog/:id', async (c) => {
     // 🏬 멀티-몰: 요청 몰 스코핑(기본 1 → 기존 데이터 전 행 1 → byte-identical).
     const mallId = await resolveMallId(c)
     const r = await DB.prepare(`
-      SELECT p.id, p.name, p.description, p.image_url, p.category, p.stock, p.supplier_id,
+      SELECT p.id, p.name, p.description, p.image_url, p.detail_images, p.category, p.stock, p.supplier_id,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq,
              COALESCE(p.pack_size,1) AS pack_size, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -1285,7 +1285,7 @@ app.get('/catalog/:id', async (c) => {
         AND COALESCE(p.mall_id,1) = ?
         AND ${visibilityWhere('p')}
     `).bind(id, mallId, sellerId ?? -1).first<{
-      id: number; name: string; description: string | null; image_url: string | null;
+      id: number; name: string; description: string | null; image_url: string | null; detail_images: string | null;
       category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
     }>()
     if (!r) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
@@ -1302,6 +1302,9 @@ app.get('/catalog/:id', async (c) => {
     const moq = Math.max(1, r.moq || 1)
     const packSize = Math.max(1, r.pack_size || 1)
     const orderMultiple = Math.max(1, r.order_multiple || 1)
+    // 🖼️ 2026-06-12: 상세페이지 이미지(JSON 배열) — 썸네일과 분리 노출 (guest 포함, 가격정보 아님).
+    let detailImages: string[] = []
+    try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 10) } catch { /* 손상 JSON — 무시 */ }
     if (guest) {
       // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s, banners 와 동일 분리). KV 미사용.
       c.header('Cache-Control', 'public, max-age=60')
@@ -1310,6 +1313,7 @@ app.get('/catalog/:id', async (c) => {
         success: true,
         item: {
           id: r.id, name: r.name, description: r.description, image_url: r.image_url,
+          detail_images: detailImages,
           category: r.category, stock: r.stock, distributor_price: null,
           retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
@@ -1341,6 +1345,7 @@ app.get('/catalog/:id', async (c) => {
       success: true,
       item: {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
+        detail_images: detailImages,
         category: r.category, stock: r.stock, distributor_price: price,
         retail_price: r.retail_price || null, moq, pack_size: packSize, order_multiple: orderMultiple,
         sold_count: r.sold_count || 0,

@@ -140,10 +140,16 @@ function readZipEntries(buf: ArrayBuffer): ZipEntry[] {
 async function inflateEntry(entry: ZipEntry): Promise<string> {
   if (entry.method === 0) return new TextDecoder().decode(entry.data) // STORED
   if (entry.method === 8) {
-    // DEFLATE — 표준 DecompressionStream (모던 브라우저/Node 18+)
-    const ds = new DecompressionStream('deflate-raw')
-    const stream = new Blob([entry.data.slice()]).stream().pipeThrough(ds)
-    const out = await new Response(stream).arrayBuffer()
+    // DEFLATE — 표준 DecompressionStream (Chrome 80+/Safari 16.4+/Firefox 113+/Node 18+).
+    if (typeof DecompressionStream === 'undefined') {
+      throw new Error('이 브라우저는 .xlsx 직접 업로드를 지원하지 않아요 — 엑셀에서 "CSV(쉼표로 분리)"로 저장해 올려주세요.')
+    }
+    // Blob.stream() 대신 ReadableStream 직접 생성 — 브라우저/Node/테스트(jsdom) 모두 동작.
+    // (DecompressionStream 의 BufferSource 제네릭과 lib.dom 타입이 어긋나 명시 캐스팅.)
+    const ds = new DecompressionStream('deflate-raw') as unknown as { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> }
+    const bytes = entry.data.slice()
+    const src = new ReadableStream<Uint8Array>({ start(ctrl) { ctrl.enqueue(bytes); ctrl.close() } })
+    const out = await new Response(src.pipeThrough(ds)).arrayBuffer()
     return new TextDecoder().decode(out)
   }
   throw new Error(`지원하지 않는 압축 방식 (${entry.method})`)
@@ -176,6 +182,10 @@ const XLSX_MAGIC = [0x50, 0x4b, 0x03, 0x04] // 'PK\x03\x04'
 export async function readTableFileAsCsv(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
   const u8 = new Uint8Array(buf)
+  // 구버전 .xls (97-2003, OLE 컨테이너 D0 CF 11 E0) — 명확한 안내로 차단.
+  if (u8.length > 4 && u8[0] === 0xd0 && u8[1] === 0xcf && u8[2] === 0x11 && u8[3] === 0xe0) {
+    throw new Error('구버전 엑셀(.xls) 파일이에요 — 엑셀에서 "다른 이름으로 저장 → Excel 통합 문서(.xlsx)"로 저장해 올려주세요.')
+  }
   const isZip = u8.length > 4 && XLSX_MAGIC.every((b, i) => u8[i] === b)
   if (isZip || /\.xlsx$/i.test(file.name)) {
     const rows = await parseXlsxToRows(buf)
