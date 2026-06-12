@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplier-api'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { readTableFileAsCsv } from '@/lib/read-table-file'
 
 // 🏭 2026-06-01 유통스타트 — 제조사(공급자) 도매 주문 처리 (Phase 3). 송장 입력 + 반품 승인.
 // 라이트 테마 (대시보드 계열).
@@ -71,7 +72,7 @@ export default function SupplierWholesaleOrdersPage() {
     if (!file) return
     setUploading(true)
     try {
-      const csv = await file.text()
+      const csv = await readTableFileAsCsv(file) // 📥 2026-06-12: 엑셀(.xlsx)/CP949 CSV 대응
       const r = await supplierApi.post<{ summary?: { ok: number; failed: number; skipped: number } }>('/api/supplier/wholesale/tracking/bulk', { csv })
       const s = r.summary
       toast.success(`송장 ${s?.ok ?? 0}건 등록 (실패 ${s?.failed ?? 0}, 건너뜀 ${s?.skipped ?? 0})`)
@@ -144,9 +145,9 @@ export default function SupplierWholesaleOrdersPage() {
               <Download className="w-3.5 h-3.5" /> 주문 엑셀
             </button>
             <button onClick={() => fileRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60">
-              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} 송장 일괄(CSV)
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} 송장 일괄(엑셀/CSV)
             </button>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={bulkTracking} />
+            <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={bulkTracking} />
           </div>
         </div>
       </header>

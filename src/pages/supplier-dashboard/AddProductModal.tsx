@@ -1,16 +1,31 @@
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, FileSpreadsheet, Download, Upload, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { supplierApi } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from '../wholesale/wholesale-theme'
 import SupplyChannelGuide from './SupplyChannelGuide'
 import NaverPriceCheck from './NaverPriceCheck'
 import DemandSignal from './DemandSignal'
+import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
+import { downloadSupplierCsv } from './download-csv'
 
 export default function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const bulkRef = useRef<HTMLInputElement>(null)
+  const onBulkFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBulkUploading(true)
+    try {
+      const ok = await uploadBulkProducts(file, t)
+      if (ok) onCreated() // 1건이라도 등록되면 목록 갱신 + 모달 닫기
+    } finally { setBulkUploading(false) }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,6 +74,28 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
           <h3 className="text-lg font-bold text-gray-900">{t('supplier.addProduct', { defaultValue: '공급상품 등록' })}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
+        {/* 📥 2026-06-12 (사용자 요청): 대량등록 옵션 — 여러 상품이면 엑셀 한 번에. */}
+        <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <p className="text-[12.5px] font-bold text-gray-700 flex items-center gap-1.5">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            {t('supplier.bulkOptionTitle', { defaultValue: '여러 상품이면 엑셀로 한 번에 등록하세요' })}
+          </p>
+          <div className="flex gap-2 mt-2">
+            <button type="button" disabled={bulkUploading}
+              onClick={() => downloadSupplierCsv('/api/supplier/products/bulk-template.xlsx', 'supply-products-template.xlsx')}
+              className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-[12px] font-semibold hover:bg-gray-50">
+              <Download className="w-3.5 h-3.5" /> {t('supplier.bulkOptionTemplate', { defaultValue: '엑셀 양식 받기' })}
+            </button>
+            <button type="button" disabled={bulkUploading} onClick={() => bulkRef.current?.click()}
+              className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-gray-900 text-white text-[12px] font-semibold disabled:opacity-60">
+              {bulkUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {t('supplier.bulkOptionUpload', { defaultValue: '작성한 엑셀 업로드' })}
+            </button>
+            <input ref={bulkRef} type="file" accept={BULK_ACCEPT} hidden onChange={onBulkFile} />
+          </div>
+          <p className="text-[10.5px] text-gray-400 mt-1.5">{t('supplier.bulkOptionHint', { defaultValue: '.xlsx 그대로 업로드 가능 · 한글 깨짐 자동 복구 · 최대 2,000행' })}</p>
+        </div>
+
         {error && <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
         <form onSubmit={submit} className="space-y-3">
           <div>

@@ -4,6 +4,8 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
 import { downloadSupplierCsv } from './download-csv'
+import { readTableFileAsCsv } from '@/lib/read-table-file'
+import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
 import type { CatalogItem } from './types'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: typeof Clock }> = {
@@ -24,23 +26,10 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
     if (!file) return
     setUploading(true)
     try {
-      const csv = await file.text()
-      // 🧭 2026-06-10 (생애주기 감사 갭): 서버는 행별 결과(results)를 이미 반환 — 합계만 보여주던 것을
-      //   실패 행 상세("3행: 공급가 오류")로 표시. 제조사가 어느 행을 고칠지 즉시 알 수 있게.
-      const res = await supplierApi.post<{ summary?: { created: number; failed: number }; results?: Array<{ row: number; name?: string; status: string; reason?: string }> }>('/api/supplier/products/bulk', { csv })
-      const s = res.summary
-      toast.success(t('supplier.bulkDone', { defaultValue: '{{c}}건 등록, {{f}}건 실패', c: s?.created ?? 0, f: s?.failed ?? 0 })
-        .replace('{{c}}', String(s?.created ?? 0)).replace('{{f}}', String(s?.failed ?? 0)))
-      const failedRows = (res.results || []).filter(r => r.status === 'error')
-      if (failedRows.length > 0) {
-        const detail = failedRows.slice(0, 8).map(r => `${r.row}행${r.name ? `(${r.name})` : ''}: ${r.reason || '오류'}`).join('\n')
-        toast.error(t('supplier.bulkFailedRows', { defaultValue: '실패 행:\n{{d}}{{more}}' })
-          .replace('{{d}}', detail)
-          .replace('{{more}}', failedRows.length > 8 ? `\n…외 ${failedRows.length - 8}건` : ''), { duration: 12000 } as never)
-      }
+      // 📥 2026-06-12: 공용 업로드 로직(bulk-upload.ts) — .xlsx/CP949 대응 + 실패 행 상세 토스트.
+      //   AddProductModal 의 "엑셀 대량등록" 옵션과 동일 흐름 공유.
+      await uploadBulkProducts(file, t)
       onBulkDone()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '대량 등록 실패')
     } finally { setUploading(false) }
   }
 
@@ -51,7 +40,7 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
     if (!file) return
     setStockImporting(true)
     try {
-      const csv = await file.text()
+      const csv = await readTableFileAsCsv(file) // 📥 2026-06-12: 엑셀/CP949 대응
       const res = await supplierApi.post<{ summary?: { updated: number; skipped: number } }>('/api/supplier/products/stock-import', { csv })
       const s = res.summary
       toast.success(t('supplier.stockImportDone', { defaultValue: '{{u}}건 반영, {{s}}건 건너뜀', u: s?.updated ?? 0, s: s?.skipped ?? 0 })
@@ -73,24 +62,25 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
           </button>
           <button onClick={() => stockFileRef.current?.click()} disabled={stockImporting}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60">
-            <Upload className="w-4 h-4" /> {stockImporting ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.stockImport', { defaultValue: '재고 CSV 가져오기' })}
+            <Upload className="w-4 h-4" /> {stockImporting ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.stockImport', { defaultValue: '재고 가져오기(엑셀/CSV)' })}
           </button>
-          <input ref={stockFileRef} type="file" accept=".csv,text/csv" hidden onChange={onStockFile} />
-          <button onClick={() => downloadSupplierCsv('/api/supplier/products/bulk-template', 'supply-products-template.csv')}
+          <input ref={stockFileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={onStockFile} />
+          {/* 📥 2026-06-12: 기본 양식 = 진짜 .xlsx (사용자 요청 — 엑셀 우선. CSV 양식 endpoint 는 존치) */}
+          <button onClick={() => downloadSupplierCsv('/api/supplier/products/bulk-template.xlsx', 'supply-products-template.xlsx')}
             className="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50">
             {t('supplier.dlTemplate', { defaultValue: '양식 다운' })}
           </button>
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
             className="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60">
-            {uploading ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.bulkUpload', { defaultValue: '대량 등록(CSV)' })}
+            {uploading ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.bulkUpload', { defaultValue: '대량 등록(엑셀/CSV)' })}
           </button>
-          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} />
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={onFile} />
           <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF0033] text-white text-sm font-semibold">
             <Plus className="w-4 h-4" /> {t('supplier.addProduct', { defaultValue: '공급상품 등록' })}
           </button>
         </div>
       </div>
-      <p className="text-[11px] text-gray-400 mb-3">{t('supplier.stockImportHint', { defaultValue: '재고 CSV: 헤더 "바코드,재고" — 바코드로 내 공급상품을 매칭해 재고를 즉시 반영합니다.' })}</p>
+      <p className="text-[11px] text-gray-400 mb-3">{t('supplier.stockImportHint', { defaultValue: '재고 파일(.xlsx/.csv): 헤더 "바코드,재고" — 바코드로 내 공급상품을 매칭해 재고를 즉시 반영합니다.' })}</p>
       {items.length === 0 ? (
         /* 🧭 2026-06-10 (생애주기 감사 갭#5): 첫 상품 온보딩 — 빈 문구 한 줄 → 3단계 시작 카드 (NewSellerSteps 패턴) */
         <div className="bg-white rounded-2xl border border-gray-200 p-5">

@@ -5816,11 +5816,11 @@
     "bulkErrNone": "変更する商品を選択してください",
     "bulkErrSupply": "選択した商品の卸値を正しく入力してください",
     "bulkErrRetail": "希望小売価格は卸値以上である必要があります",
-    "bulkUpload": "一括登録（CSV）",
+    "bulkUpload": "一括登録（Excel/CSV）",
     "bulkDone": "{{c}}件登録、{{f}}件失敗",
     "dlTemplate": "テンプレートをダウンロード",
-    "stockImport": "在庫CSVをインポート",
-    "stockImportHint": "在庫CSV：ヘッダー バーコード,在庫 — バーコードで供給商品をマッチングし在庫を即反映します。",
+    "stockImport": "在庫取り込み（Excel/CSV）",
+    "stockImportHint": "在庫ファイル（.xlsx/.csv）：ヘッダー「バーコード,在庫」— バーコードで商品を照合し在庫を即時反映します。",
     "stockImportDone": "{{u}}件反映、{{s}}件スキップ",
     "toShip": "発送待ち",
     "noToShip": "発送する注文がありません。",
@@ -5919,7 +5919,11 @@
     "demandUp": "🔺 ショッピングクリック需要が上昇中（直近2ヶ月 +{{pct}}%）",
     "demandDown": "🔻 ショッピングクリック需要が下降中（直近2ヶ月 {{pct}}%）",
     "demandFlat": "─ ショッピングクリック需要は横ばい（直近6ヶ月大きな変化なし）",
-    "demandDisclaimer": "NAVERショッピングのクリック・検索相対指数に基づく参考指標です — 実際の販売量と異なる場合があります。"
+    "demandDisclaimer": "NAVERショッピングのクリック・検索相対指数に基づく参考指標です — 実際の販売量と異なる場合があります。",
+    "bulkOptionTitle": "複数商品はExcelで一括登録できます",
+    "bulkOptionTemplate": "Excelテンプレートを取得",
+    "bulkOptionUpload": "作成したExcelをアップロード",
+    "bulkOptionHint": ".xlsxのままアップロード可 · 文字化け自動復旧 · 最大2,000行"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

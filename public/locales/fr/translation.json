@@ -5816,11 +5816,11 @@
     "bulkErrNone": "Veuillez sélectionner des produits à modifier",
     "bulkErrSupply": "Veuillez saisir des prix fournisseur valides pour les produits sélectionnés",
     "bulkErrRetail": "Le prix de vente conseillé doit être supérieur ou égal au prix fournisseur",
-    "bulkUpload": "Importation en lot (CSV)",
+    "bulkUpload": "Import en masse (Excel/CSV)",
     "bulkDone": "{{c}} enregistrés, {{f}} échoués",
     "dlTemplate": "Télécharger le modèle",
-    "stockImport": "Importer le CSV de stock",
-    "stockImportHint": "CSV de stock : en-tête barcode,stock — correspond à vos produits par code-barres et met à jour le stock immédiatement.",
+    "stockImport": "Importer le stock (Excel/CSV)",
+    "stockImportHint": "Fichier de stock (.xlsx/.csv) : en-têtes « code-barres,stock » — applique le stock immédiatement par code-barres.",
     "stockImportDone": "{{u}} mis à jour, {{s}} ignorés",
     "toShip": "En attente d'expédition",
     "noToShip": "Aucune commande à expédier.",
@@ -5919,7 +5919,11 @@
     "demandUp": "🔺 Demande de clics en hausse (+{{pct}}% sur 2 mois)",
     "demandDown": "🔻 Demande de clics en baisse ({{pct}}% sur 2 mois)",
     "demandFlat": "─ Demande de clics stable (pas de changement sur 6 mois)",
-    "demandDisclaimer": "Indice de référence basé sur les clics/recherches Naver Shopping — peut différer des ventes réelles."
+    "demandDisclaimer": "Indice de référence basé sur les clics/recherches Naver Shopping — peut différer des ventes réelles.",
+    "bulkOptionTitle": "Plusieurs produits ? Importez-les en une fois avec Excel",
+    "bulkOptionTemplate": "Télécharger le modèle Excel",
+    "bulkOptionUpload": "Importer l'Excel rempli",
+    "bulkOptionHint": "Import .xlsx direct · encodage auto-corrigé · jusqu’à 2 000 lignes"
   },
   "wholesaleChat": {
     "title": "Chat",

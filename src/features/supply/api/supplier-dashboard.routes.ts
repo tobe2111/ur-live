@@ -336,12 +336,19 @@ supplierDashboardRoutes.post('/products', async (c) => {
   }
 });
 
-// ── GET /products/bulk-template — 대량등록 표준 양식 CSV ───────────────────────
+// ── GET /products/bulk-template — 대량등록 표준 양식 (CSV/.xlsx) ────────────────
+// 📥 2026-06-12: 단건 폼과 parity — 박스입수/주문배수/이미지URL 추가. 업로드는 .xlsx 도 지원(클라가 CSV 변환).
+const BULK_TEMPLATE_HEADERS = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '박스입수', '주문배수', '이미지URL', '설명']
+const BULK_TEMPLATE_ROWS = [
+  ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', '상품 설명'],
+  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '브랜드제품(브랜드명 입력)·선정 유통사만 노출(20개 단위)'],
+]
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
-  const headers = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '설명']
-  const example = ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '상품 설명']
-  const example2 = ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '브랜드제품(브랜드명 입력)·선정 유통사만 노출(20개 단위)']
-  return csvResponse(buildCsv(headers, [example, example2]), 'supply-products-template.csv')
+  return csvResponse(buildCsv(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS), 'supply-products-template.csv')
+})
+// 엑셀로 바로 열리는 진짜 .xlsx 양식 (사용자 요청 — "엑셀파일로").
+supplierDashboardRoutes.get('/products/bulk-template.xlsx', (c) => {
+  return xlsxResponse(buildXlsx(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS, '상품등록'), 'supply-products-template.xlsx')
 })
 
 // ── POST /products/bulk — 대량등록 (CSV 업로드) ────────────────────────────────
@@ -365,8 +372,8 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     // 🛡️ 유효 행만 INSERT statement 로 모아 DB.batch 청크 실행 (행별 순차 .run() 은 Cloudflare subrequest 한도 초과).
     const stmts: D1PreparedStatement[] = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
-       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, min_order_qty, mall_id, slug, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, '', ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, is_brand_product, brand_name, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const name = String(r['상품명'] || r.name || '').trim();
@@ -383,11 +390,16 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       // 🏷️ 브랜드명 — 브랜드제품일 때만 저장(일반제품이면 null). 120자 cap.
       const brandName = isBrand ? (String(r['브랜드명'] || r.brand_name || '').trim().slice(0, 120) || null) : null;
       const moq = Math.min(100000, Math.max(1, Math.floor(Number(String(r['최소주문수량'] || r.min_order_qty || '1').replace(/[,\s]/g, '')) || 1)));
+      // 📥 2026-06-12 parity: 박스입수/주문배수/이미지URL (단건 폼과 동일 — 기본 1/1/'').
+      const packSize = Math.min(100000, Math.max(1, Math.floor(Number(String(r['박스입수'] || r.pack_size || '1').replace(/[,\s]/g, '')) || 1)));
+      const orderMultiple = Math.min(100000, Math.max(1, Math.floor(Number(String(r['주문배수'] || r.order_multiple || '1').replace(/[,\s]/g, '')) || 1)));
+      const imageUrlRaw = String(r['이미지URL'] || r.image_url || '').trim().slice(0, 500);
+      const imageUrl = /^https?:\/\//i.test(imageUrlRaw) ? imageUrlRaw : '';
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
-        Math.floor(retailFinal), Math.floor(supplyPrice), stock,
-        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, brandName, moq, sid, slug,
+        Math.floor(retailFinal), Math.floor(supplyPrice), stock, imageUrl,
+        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, brandName, moq, packSize, orderMultiple, sid, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });
     }

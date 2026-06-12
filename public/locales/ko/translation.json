@@ -5808,11 +5808,11 @@
     "bulkErrNone": "변경할 상품을 선택해주세요",
     "bulkErrSupply": "선택한 상품의 공급가를 올바르게 입력해주세요",
     "bulkErrRetail": "권장 소비자가는 공급가 이상이어야 합니다",
-    "bulkUpload": "대량 등록(CSV)",
+    "bulkUpload": "대량 등록(엑셀/CSV)",
     "bulkDone": "{{c}}건 등록, {{f}}건 실패",
     "dlTemplate": "양식 다운로드",
-    "stockImport": "재고 CSV 가져오기",
-    "stockImportHint": "재고 CSV: 헤더 바코드,재고 — 바코드로 내 공급상품을 매칭해 재고를 즉시 반영합니다.",
+    "stockImport": "재고 가져오기(엑셀/CSV)",
+    "stockImportHint": "재고 파일(.xlsx/.csv): 헤더 바코드,재고 — 바코드로 내 공급상품을 매칭해 재고를 즉시 반영합니다.",
     "stockImportDone": "{{u}}건 반영, {{s}}건 건너뜀",
     "toShip": "발송 대기",
     "noToShip": "발송할 주문이 없습니다.",
@@ -5911,7 +5911,11 @@
     "demandUp": "🔺 쇼핑 클릭 수요 상승 중 (최근 2개월 +{{pct}}%)",
     "demandDown": "🔻 쇼핑 클릭 수요 하락 중 (최근 2개월 {{pct}}%)",
     "demandFlat": "─ 쇼핑 클릭 수요 보합 (최근 6개월 큰 변화 없음)",
-    "demandDisclaimer": "네이버쇼핑 클릭·검색 상대지수 기반 참고 지표예요 — 실제 판매량과 다를 수 있어요."
+    "demandDisclaimer": "네이버쇼핑 클릭·검색 상대지수 기반 참고 지표예요 — 실제 판매량과 다를 수 있어요.",
+    "bulkOptionTitle": "여러 상품이면 엑셀로 한 번에 등록하세요",
+    "bulkOptionTemplate": "엑셀 양식 받기",
+    "bulkOptionUpload": "작성한 엑셀 업로드",
+    "bulkOptionHint": ".xlsx 그대로 업로드 가능 · 한글 깨짐 자동 복구 · 최대 2,000행"
   },
   "wholesaleChat": {
     "title": "문의 채팅",
