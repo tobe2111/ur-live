@@ -5885,7 +5885,14 @@
     "bulkFailedRows": "실패 행:\n{{d}}{{more}}",
     "notifications": "알림",
     "notifEmpty": "알림이 없습니다",
-    "notifLoadFail": "알림을 불러오지 못했습니다"
+    "notifLoadFail": "알림을 불러오지 못했습니다",
+    "channelGuideHint": "공급가와 권장 소비자가를 입력하면 제안 가능한 유통채널을 보여드려요.",
+    "channelGuideRate": "공급률",
+    "channelGuideMargin": "셀러 마진 여력",
+    "channelGuideInverted": "공급가가 권장 소비자가보다 높아요 — 입력을 확인해주세요.",
+    "channelGuideNudge": "공급가를 {{price}} 이하로 낮추면 {{channel}} 채널까지 제안 가능해져요!",
+    "channelGuideAllOpen": "모든 유통채널에 제안 가능한 공급가예요. 👍",
+    "channelGuideDisclaimer": "채널별 제안 가능 기준 안내이며, 실제 제안·노출은 채널 상황과 운영 검토에 따라 달라질 수 있어요."
   },
   "wholesaleChat": {
     "title": "문의 채팅",
