@@ -5914,7 +5914,12 @@
     "naverPriceRetailHigh": "El precio de venta sugerido es mayor que el mínimo del mercado.",
     "naverPriceDisclaimer": "Los resultados de búsqueda pueden no ser el mismo producto — verifica opciones y presentación.",
     "areYouDistributor": "¿Planeas comprar y revender productos?",
-    "goDistributorJoin": "Registrarse como distribuidor →"
+    "goDistributorJoin": "Registrarse como distribuidor →",
+    "demandTitle": "Señal de demanda (Naver DataLab)",
+    "demandUp": "🔺 Demanda de clics en alza (+{{pct}}% últimos 2 meses)",
+    "demandDown": "🔻 Demanda de clics en baja ({{pct}}% últimos 2 meses)",
+    "demandFlat": "─ Demanda de clics estable (sin cambios en 6 meses)",
+    "demandDisclaimer": "Índice de referencia basado en clics/búsquedas de Naver Shopping — puede diferir de las ventas reales."
   },
   "wholesaleChat": {
     "title": "Chat",

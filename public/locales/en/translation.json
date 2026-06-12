@@ -5914,7 +5914,12 @@
     "naverPriceRetailHigh": "Suggested retail price is above the market lowest.",
     "naverPriceDisclaimer": "Search results may not be the exact same product — check options and packaging.",
     "areYouDistributor": "Planning to buy and resell products?",
-    "goDistributorJoin": "Join as a distributor →"
+    "goDistributorJoin": "Join as a distributor →",
+    "demandTitle": "Demand signal (Naver DataLab)",
+    "demandUp": "🔺 Shopping click demand rising (+{{pct}}% last 2 months)",
+    "demandDown": "🔻 Shopping click demand falling ({{pct}}% last 2 months)",
+    "demandFlat": "─ Shopping click demand flat (no major change in 6 months)",
+    "demandDisclaimer": "Reference index based on Naver Shopping clicks/searches — may differ from actual sales."
   },
   "wholesaleChat": {
     "title": "Chat",

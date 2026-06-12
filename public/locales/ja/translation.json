@@ -5914,7 +5914,12 @@
     "naverPriceRetailHigh": "希望小売価格が市場最安値より高くなっています。",
     "naverPriceDisclaimer": "商品名検索の結果のため同一商品でない場合があります — オプション・構成をご確認ください。",
     "areYouDistributor": "商品を仕入れて販売されますか？",
-    "goDistributorJoin": "販売会社（流通会員）として登録 →"
+    "goDistributorJoin": "販売会社（流通会員）として登録 →",
+    "demandTitle": "需要シグナル（NAVERデータラボ）",
+    "demandUp": "🔺 ショッピングクリック需要が上昇中（直近2ヶ月 +{{pct}}%）",
+    "demandDown": "🔻 ショッピングクリック需要が下降中（直近2ヶ月 {{pct}}%）",
+    "demandFlat": "─ ショッピングクリック需要は横ばい（直近6ヶ月大きな変化なし）",
+    "demandDisclaimer": "NAVERショッピングのクリック・検索相対指数に基づく参考指標です — 実際の販売量と異なる場合があります。"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",
