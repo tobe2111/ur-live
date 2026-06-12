@@ -107,8 +107,9 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
     return { success: false, error: 'DB binding missing' };
   }
   if (!env.BACKUP_BUCKET) {
-    console.warn('[D1 Backup] BACKUP_BUCKET R2 binding not configured — skipping backup');
-    return { success: false, error: 'BACKUP_BUCKET not configured' };
+    // 🏁 2026-06-12 (인프라 감사 🔴): 조용한 skip → throw — safeCron 이 logError+Discord 로 알림.
+    //   미바인딩이면 주간 백업 0건인데 아무도 모르는 상태였음 (Time Travel 30일 초과 보존 0).
+    throw new Error('[D1 Backup] BACKUP_BUCKET R2 binding not configured — 주간 백업 미동작 (Dashboard 바인딩 필요)');
   }
 
   try {

@@ -213,7 +213,9 @@ export async function runReconciliation(env: Env): Promise<void> {
 
   try {
     const { meta } = await DB.prepare(
-      "DELETE FROM toss_webhook_events WHERE processed_at < datetime('now', '-90 days')"
+      // 🏁 2026-06-12 (인프라 감사): 'toss_webhook_events' 는 존재하지 않는 테이블명 — 실테이블
+      // webhook_events 가 영구 무정리(무한 증가)였음. created_at 기준 90일 보존.
+      "DELETE FROM webhook_events WHERE created_at < datetime('now', '-90 days')"
     ).run();
     results.expired_toss_webhooks = meta.changes ?? 0;
   } catch { /* table may not exist */ }

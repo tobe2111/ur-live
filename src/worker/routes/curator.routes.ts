@@ -16,6 +16,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { requireAuth } from '../middleware/auth'
+import { rateLimit } from '../middleware/rate-limit'
 import { safeError } from '../utils/safe-error'
 import {
   generateUniqueHandle,
@@ -784,7 +785,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
 // Body: { amount, bank_name, bank_account, account_holder }
 // 기존 user_withdrawals 테이블 재활용 (mig 0274) — 검증 + 원천징수 계산만 SSOT.
 // ============================================================
-curatorRoutes.post('/me/withdrawal', requireAuth(), async (c) => {
+curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', max: 5, windowSec: 3600 }), requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)

@@ -64,7 +64,7 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
   }
 });
 
-sellerSettlementsRoutes.post('/settlements/request', async (c) => {
+sellerSettlementsRoutes.post('/settlements/request', rateLimit({ action: 'seller_settlement_request', max: 5, windowSec: 3600 }), async (c) => {
   const db = c.env.DB;
   const authorization = c.req.header('Authorization');
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);

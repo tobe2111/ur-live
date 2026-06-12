@@ -16,6 +16,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker'
 import {
@@ -296,7 +297,7 @@ giftsRoutes.get('/claim/:token', async (c) => {
 })
 
 // ── POST /api/gifts/claim/:token — 수신자: 받기 + 주소 입력 ─────────────
-giftsRoutes.post('/claim/:token', async (c) => {
+giftsRoutes.post('/claim/:token', rateLimit({ action: 'gift_claim', max: 10, windowSec: 600 }), async (c) => {
   try {
     const token = c.req.param('token')
     if (!token || token.length < 16) return c.json({ success: false, error: 'invalid token' }, 400)
