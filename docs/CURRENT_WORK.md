@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ⚠️ 세션 분담 (2026-06-12 사용자 지시)
+- **도매몰(wholesale/supplier/supply) 전 영역 = 별도 세션 전담.** 본 세션(claude/service-analysis-optimization-whpu0f 계열)은 **도매몰 외 구현만** 담당 — 도매 파일 수정 금지.
+- 본 세션이 06-11~12 에 마지막으로 만진 도매 파일(타 세션은 최신 main pull 후 작업 권장): `wholesale.routes.ts`(SSR 쿠키 fallback·/home 몰스코프·become 사업자번호 게이트·NTS 참고표기), `supplier-auth.routes.ts`(NTS 표기), `wholesale-catalog/`·`supplier-dashboard/` 분해, `apps/ssr` wholesale 로더.
+- 도매 관련 잔여 백로그(NTS 어드민 승인화면 표시 강화, 클레임 환불 딥링크, 장바구니 계정키 등)는 **타 세션 몫으로 이관**.
+
+
 ## ✅ 2026-06-12 — 네이버 데이터랩 수요 신호 ②④ (사용자 승인 "2, 4 진행")
 - **`worker/utils/naver-datalab.ts`** + `GET /api/supplier/demand-signal?q=&category=` + `supplier-dashboard/DemandSignal.tsx`(등록 폼 — 최저가 박스 아래): ② 쇼핑인사이트 카테고리 내 키워드 클릭 추이 6개월 → 상승🔺/하락🔻/보합─(±10% 임계) ④ 검색어트렌드 24개월 → 성수기 월 추출(월평균이 전체평균 125%+ 인 1~3개월) + "지금 성수기 🔥 / N개월 뒤 — 준비 적기" 라벨.
 - **도매 카테고리 → 네이버쇼핑 1depth 매핑** 상수(food→50000006 식품 등 6종 — 외부 택소노미라 상수 OK).
