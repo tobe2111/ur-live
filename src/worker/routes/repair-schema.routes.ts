@@ -1107,6 +1107,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
     { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
     { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },
+    // 🏁 2026-06-12 P4: 국세청 상태조회 결과 저장 (유통=자동승인 근거 / 공급=어드민 표시)
+    { name: 'sellers.nts_status', sql: 'ALTER TABLE sellers ADD COLUMN nts_status TEXT' },
+    { name: 'suppliers.nts_status', sql: 'ALTER TABLE suppliers ADD COLUMN nts_status TEXT' },
     { name: 'agency_commission_payouts', sql: `CREATE TABLE IF NOT EXISTS agency_commission_payouts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       agency_id INTEGER NOT NULL,
