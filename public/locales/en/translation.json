@@ -5893,7 +5893,14 @@
     "bulkFailedRows": "Failed rows:\n{{d}}{{more}}",
     "notifications": "Notifications",
     "notifEmpty": "No notifications",
-    "notifLoadFail": "Failed to load notifications"
+    "notifLoadFail": "Failed to load notifications",
+    "channelGuideHint": "Enter the supply price and suggested retail price to see eligible distribution channels.",
+    "channelGuideRate": "Supply rate",
+    "channelGuideMargin": "Seller margin room",
+    "channelGuideInverted": "Supply price is higher than the suggested retail price — please check your input.",
+    "channelGuideNudge": "Lower the supply price to {{price}} or below to unlock the {{channel}} channel!",
+    "channelGuideAllOpen": "This supply price qualifies for every distribution channel. 👍",
+    "channelGuideDisclaimer": "This is guidance on channel eligibility; actual proposals and exposure depend on channel conditions and review."
   },
   "wholesaleChat": {
     "title": "Chat",
