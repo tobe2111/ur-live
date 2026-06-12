@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 도매몰 대시보드 감사 + 제조사 알림 데드경로 fix (`claude/keen-cerf-ch0jm5`)
+**감사 결론**: 유통/제조 대시보드 IA·핵심 루프(가입→승인→주문→발송→정산→출금) 완성도 높음. 머니 테스트 85 + 전체 2027 통과. 오탐 5건 직접 검증 기각(입금계좌 안내·체크아웃 잔액 사전표시·어드민 견적 라우트·대량주문 엑셀·raw 에러 — 전부 이미 OK).
+**진짜 버그 3건 fix**:
+- 🔴 **제조사 알림 3중 데드경로**: `recipient_type='supplier'` 가 ① dashboard_notifications CHECK 제약(admin/seller/agency)에 걸려 INSERT 무음 실패 ② 읽을 endpoint 없음 ③ 벨 UI 없음 → 출금 승인/반려 알림 증발. fix: CHECK 에 'supplier' 추가(신규 DB) + **repair-schema CHECK 마이그레이션**(operation_guides 패턴 — 기존 prod 테이블 재생성, 멱등) + `GET /api/supplier/notifications`·`POST /read-all`(requireSupplier, 본인 id 만) + 대시보드 헤더 알림 벨(60s 배지 폴링·열면 read-all). i18n 3키×6언어.
+- 🟡 **신규 도매주문 제조사 통지 부재** → `notifySuppliersOfPaidOrder()`(라인 supplier_id GROUP BY, fail-soft) — deposit·Toss confirm 양 PAID CAS 승자 경로에 배선. 접속 전엔 주문을 몰라 발송 지연되던 갭.
+- 🟡 SupplierWholesaleOrdersPage 주문 로드 실패가 "주문 없음" 으로 위장 → 토스트 추가.
+**⚠️ 운영**: 기존 prod DB 는 `/admin/health` 스키마 복구 1회(또는 새벽 cron) 후 supplier 알림 활성화됨 (`dashboard_notifications:check-migration`).
+**남은 부채(보류)**: 거대 파일 4(카탈로그 1493·제조대시 1582·wholesale.routes 2126·supplier-dashboard.routes 930) 분해, 상태뱃지 중복 정의 통합, viewer UI 사전 안내, 승인대기 화면 ETA/문의처.
+
 ## 🚀 [확정 프로그램] SSR 전면 전환 (옵션② — 사용자 결정 2026-06-10)
 **SSOT: `docs/SSR_MIGRATION_PLAN.md`** — React Router v7(구 Remix) on CF Workers, 3 Phase.
 **Phase 1 진행 상황** (파일럿: https://ur-ssr-pilot.jiwon-1a2.workers.dev — Workers 무료 티어, 비용 0):

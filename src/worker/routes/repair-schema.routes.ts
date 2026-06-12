@@ -1738,6 +1738,42 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     tableResults.push({ name: 'operation_guides:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
   }
 
+  // 🏭 2026-06-12: dashboard_notifications CHECK 제약 확장 — recipient_type 에 'supplier' 추가.
+  //   기존 프로덕션 테이블은 CHECK(IN ('admin','seller','agency')) 라서 제조사 알림(출금 승인/반려,
+  //   신규 도매주문) INSERT 가 무음 실패하던 사고 수정. operation_guides CHECK 마이그레이션과 동일
+  //   패턴(rename → 신규 CHECK 로 생성 → copy → drop). 멱등 — 이미 'supplier' 포함이면 no-op.
+  try {
+    const meta = await DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='dashboard_notifications'"
+    ).first<{ sql: string }>();
+    const ddl = meta?.sql || '';
+    if (ddl && /recipient_type/i.test(ddl) && /CHECK/i.test(ddl) && !/supplier/i.test(ddl)) {
+      await DB.prepare("ALTER TABLE dashboard_notifications RENAME TO dashboard_notifications_old").run();
+      await DB.prepare(`CREATE TABLE dashboard_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient_type TEXT NOT NULL CHECK (recipient_type IN ('admin', 'seller', 'agency', 'supplier')),
+        recipient_id TEXT,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )`).run();
+      await DB.prepare(`INSERT INTO dashboard_notifications
+        (id, recipient_type, recipient_id, type, title, message, link, is_read, created_at)
+        SELECT id, recipient_type, recipient_id, type, title, message, link, is_read, created_at
+        FROM dashboard_notifications_old`).run();
+      await DB.prepare("DROP TABLE dashboard_notifications_old").run();
+      await DB.prepare(
+        "CREATE INDEX IF NOT EXISTS idx_dash_notif_recipient ON dashboard_notifications(recipient_type, recipient_id, is_read, created_at)"
+      ).run();
+      tableResults.push({ name: 'dashboard_notifications:check-migration', status: 'ok' });
+    }
+  } catch (e: any) {
+    tableResults.push({ name: 'dashboard_notifications:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
+  }
+
   // 🛡️ 2026-06-10 (교환권 500 사고 — D1 'too many columns in result set' 한도 100):
   //   넓은 테이블의 컬럼 수를 매 실행 보고 + 85 이상이면 경보. 한도 도달 전에 컬럼 다이어트/
   //   사이드테이블 분리를 결정할 수 있게 하는 조기 경보선. star-select 는 CI 가 별도 차단.

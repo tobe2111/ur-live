@@ -5876,7 +5876,10 @@
     "onboardStep2Desc": "Botón 'Subir CSV' arriba — plantilla incluida",
     "onboardStep3": "Publicación automática tras aprobación",
     "onboardStep3Desc": "Los pedidos aparecen en Inicio como pendientes",
-    "bulkFailedRows": "Filas con error:\n{{d}}{{more}}"
+    "bulkFailedRows": "Filas con error:\n{{d}}{{more}}",
+    "notifications": "Notificaciones",
+    "notifEmpty": "No hay notificaciones",
+    "notifLoadFail": "No se pudieron cargar las notificaciones"
   },
   "wholesaleChat": {
     "title": "Chat",
