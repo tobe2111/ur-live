@@ -59,6 +59,16 @@ export async function sendSystemPush(
     const numId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
     if (!Number.isFinite(numId)) return { success: false, skipped: true };
 
+    // 🛡️ 2026-06-12 (감사 1단계 — 알림 토글 실동작화): 유저가 push 알림을 끈 경우 발송 skip.
+    //   컬럼 없거나 조회 실패 시 fail-open (발송 진행) — 기존 동작 보존.
+    if (userType === 'user') {
+      try {
+        const pref = await db.prepare('SELECT COALESCE(push_enabled, 1) AS enabled FROM users WHERE id = ?')
+          .bind(numId).first<{ enabled: number }>();
+        if (pref && Number(pref.enabled) === 0) return { success: false, skipped: true };
+      } catch { /* push_enabled 컬럼 미존재 등 — fail-open */ }
+    }
+
     const subs = await getPushSubscriptions(db, numId, userType, e.DATA_ENCRYPTION_KEY);
     if (subs.length === 0) return { success: false, skipped: true };
 

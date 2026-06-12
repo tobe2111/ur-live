@@ -66,6 +66,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.agency_id', sql: "ALTER TABLE sellers ADD COLUMN agency_id INTEGER" },
     { desc: 'sellers.approved_by', sql: "ALTER TABLE sellers ADD COLUMN approved_by INTEGER" },
     { desc: 'sellers.approved_at', sql: "ALTER TABLE sellers ADD COLUMN approved_at DATETIME" },
+    // 🛡️ 2026-06-12 (감사 1단계): 셀러 거절 사유 — /my-seller-status + SellerWaitingPage 표시.
+    { desc: 'sellers.reject_reason', sql: "ALTER TABLE sellers ADD COLUMN reject_reason TEXT" },
 
     // ── admins ─────────────────────────────────────
     { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
@@ -86,6 +88,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'users.updated_at', sql: "ALTER TABLE users ADD COLUMN updated_at TEXT" },
     // 🛡️ 2026-06-06 (보안): 카카오 email verified 플래그 — become(도매/제조) same-email 자동연결 게이트.
     { desc: 'users.email_verified', sql: "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0" },
+    // 🛡️ 2026-06-12 (감사 1단계): 알림 설정 토글 실동작화 — push/email 발송 게이트 (system-push/system-email).
+    { desc: 'users.push_enabled', sql: "ALTER TABLE users ADD COLUMN push_enabled INTEGER DEFAULT 1" },
+    { desc: 'users.email_enabled', sql: "ALTER TABLE users ADD COLUMN email_enabled INTEGER DEFAULT 1" },
     // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 — handle / bio / theme
     { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
     { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },

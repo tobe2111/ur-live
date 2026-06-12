@@ -26,18 +26,45 @@ const BUILD_VERSION = (typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSIO
 const BUILD_HASH = BUILD_VERSION
 
 // ─── 알림 토글 섹션 ──────────────────────────────
+// 🛡️ 2026-06-12 (감사 1단계 — 실동작화): localStorage 전용 → 서버 연동.
+//   GET/PATCH /api/account/notification-prefs (users.push_enabled/email_enabled).
+//   localStorage 는 초기값 캐시로만 — 토글은 낙관 업데이트 + 실패 시 롤백.
 export function NotificationToggleSection() {
   const { t } = useTranslation()
-  const [notif, setNotif] = useState(() => {
+  const [notif, setNotif] = useState<{ push: boolean; email: boolean }>(() => {
     try {
       const s = localStorage.getItem('notif_settings')
       return s ? JSON.parse(s) : { push: true, email: true }
     } catch { return { push: true, email: true } }
   })
-  function toggle(key: 'push' | 'email') {
+
+  useEffect(() => {
+    let cancelled = false
+    api.get('/api/account/notification-prefs')
+      .then(res => {
+        if (cancelled || !res.data?.success || !res.data.data) return
+        const next = { push: res.data.data.push !== false, email: res.data.data.email !== false }
+        setNotif(next)
+        try { localStorage.setItem('notif_settings', JSON.stringify(next)) } catch { /* quota */ }
+      })
+      .catch(() => { /* 미로그인/네트워크 오류 — localStorage 캐시 유지 */ })
+    return () => { cancelled = true }
+  }, [])
+
+  async function toggle(key: 'push' | 'email') {
+    const prev = notif
     const next = { ...notif, [key]: !notif[key] }
+    // 낙관 업데이트
     setNotif(next)
-    localStorage.setItem('notif_settings', JSON.stringify(next))
+    try { localStorage.setItem('notif_settings', JSON.stringify(next)) } catch { /* quota */ }
+    try {
+      await api.patch('/api/account/notification-prefs', { [key]: next[key] })
+    } catch {
+      // 실패 롤백
+      setNotif(prev)
+      try { localStorage.setItem('notif_settings', JSON.stringify(prev)) } catch { /* quota */ }
+      toast.error(t('accountSettings.notifSaveFailed', { defaultValue: '알림 설정 저장에 실패했습니다' }))
+    }
   }
 
   const Toggle = ({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: boolean; onChange: () => void }) => (

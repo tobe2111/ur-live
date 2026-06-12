@@ -52,6 +52,8 @@ async function ensureSellerColumns(db: D1Database) {
   if (_sellerColumnsEnsured) return
   try { await db.prepare(`ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER`).run() } catch { /* exists */ }
   try { await db.prepare(`ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'`).run() } catch { /* exists */ }
+  // 🛡️ 2026-06-12 (감사 1단계): 거절 사유 — admin-tools reject 가 저장, /my-seller-status 가 반환.
+  try { await db.prepare(`ALTER TABLE sellers ADD COLUMN reject_reason TEXT`).run() } catch { /* exists */ }
   _sellerColumnsEnsured = true
 }
 
@@ -470,7 +472,8 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     }
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
-    notify(db, 'admin', null, 'seller_registered', '유저→셀러 전환 신청', `${userName} (유저 #${userId})`, '/admin/sellers').catch(swallow('seller:api:seller-management'));
+    // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.
+    notify(db, 'admin', null, 'seller_registered', '유저→셀러 전환 신청', `${userName} (유저 #${userId})`, '/admin/seller-approval').catch(swallow('seller:api:seller-management'));
 
     return c.json({
       success: true,
@@ -502,7 +505,7 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
     await ensureSellerColumns(db);
 
     let seller = await db.prepare(
-      'SELECT id, status, seller_type, business_name FROM sellers WHERE linked_user_id = ?'
+      'SELECT id, status, seller_type, business_name, reject_reason FROM sellers WHERE linked_user_id = ?'
     ).bind(sessionUser.userId).first<Record<string, any>>();
 
     // 🛡️ 2026-05-07 (영구 fix): linked_user_id 없을 때 이메일 매칭으로 기존 셀러 발견 시 자동 연결.
@@ -517,7 +520,7 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
         if (userEmail) {
           // 같은 이메일을 가진 셀러 — 단, 다른 user 에 이미 연결된 경우는 제외
           const matched = await db.prepare(
-            `SELECT id, status, seller_type, business_name, linked_user_id
+            `SELECT id, status, seller_type, business_name, reject_reason, linked_user_id
              FROM sellers
              WHERE LOWER(email) = ? AND (linked_user_id IS NULL OR linked_user_id = ?)`
           ).bind(userEmail, sessionUser.userId).first<Record<string, any>>();
@@ -565,6 +568,8 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
           status: seller.status,
           seller_type: seller.seller_type,
           business_name: seller.business_name,
+          // 🛡️ 2026-06-12: 거절 사유 — SellerWaitingPage rejected 분기 표시.
+          reject_reason: seller.reject_reason ?? null,
         },
       },
     });

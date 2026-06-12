@@ -23,6 +23,8 @@ export default function SellerWaitingPage() {
   const [status, setStatus] = useState<Status>('unknown')
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState('')
+  // 🛡️ 2026-06-12 (감사 1단계): 거절 사유 표시 — admin-tools reject 가 sellers.reject_reason 저장.
+  const [rejectReason, setRejectReason] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const fetchStatus = useCallback(async () => {
@@ -34,6 +36,7 @@ export default function SellerWaitingPage() {
         const s = res.data.data.seller?.status as Status
         setStatus(s || 'pending')
         setBusinessName(res.data.data.seller?.business_name || '')
+        setRejectReason(res.data.data.seller?.reject_reason || '')
         if (s === 'active' || (s as string) === 'approved') {
           navigate('/seller', { replace: true })
           return
@@ -134,7 +137,19 @@ export default function SellerWaitingPage() {
               </>
             )}
             {status === 'suspended' && t('sellerWaiting.contactSupport')}
-            {status === 'rejected' && t('sellerWaiting.rejectedDesc')}
+            {status === 'rejected' && (
+              <>
+                {t('sellerWaiting.rejectedDesc')}
+                {rejectReason && (
+                  <>
+                    <br />
+                    <span className="font-semibold text-red-500">
+                      {t('sellerWaiting.rejectReason', { defaultValue: '거절 사유' })}: {rejectReason}
+                    </span>
+                  </>
+                )}
+              </>
+            )}
           </p>
         </div>
 

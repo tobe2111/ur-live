@@ -12,8 +12,17 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { validateImageUrl } from '@/worker/utils/validation'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
+
+// 🛡️ 2026-06-12 (감사 1단계): sellers.reject_reason 메모이즈 ensure — repair-schema 에도 등록.
+const _rejectReasonEnsured = new WeakSet<D1Database>()
+async function ensureSellerRejectReason(db: D1Database) {
+  if (_rejectReasonEnsured.has(db)) return
+  _rejectReasonEnsured.add(db)
+  try { await db.prepare('ALTER TABLE sellers ADD COLUMN reject_reason TEXT').run() } catch { /* exists */ }
+}
 
 // ── 매출 통계 차트 ──
 adminToolsRoutes.get('/chart/revenue', async (c) => {
@@ -74,9 +83,19 @@ adminToolsRoutes.put('/sellers/:id/approve', async (c) => {
 
 adminToolsRoutes.put('/sellers/:id/reject', async (c) => {
   const id = c.req.param('id')
-  const { reason } = await c.req.json<{ reason?: string }>().catch(() => ({ reason: '' }))
-  await c.env.DB.prepare("UPDATE sellers SET status = 'rejected', updated_at = datetime('now') WHERE id = ?").bind(id).run()
+  const { reason: rawReason } = await c.req.json<{ reason?: string }>().catch(() => ({ reason: '' }))
+  // 🛡️ 2026-06-12 (감사 1단계): 거절 사유 저장 + 셀러 벨 알림 — 이전엔 status 플립만 해서
+  //   셀러가 거절 사실/사유를 알 길이 없었음 (/my-seller-status + SellerWaitingPage 에서 표시).
+  const reason = typeof rawReason === 'string' ? rawReason.trim().slice(0, 500) : ''
+  await ensureSellerRejectReason(c.env.DB)
+  await c.env.DB.prepare(
+    "UPDATE sellers SET status = 'rejected', reject_reason = ?, updated_at = datetime('now') WHERE id = ?"
+  ).bind(reason || null, id).run()
   await writeAuditLog(c, { action: 'seller.reject', targetType: 'seller', targetId: id, after: { reason } })
+  createDashboardNotification(
+    c.env.DB, 'seller', String(id), 'seller_rejected',
+    '셀러 가입 거절', reason ? `사유: ${reason}` : '관리자에게 문의해주세요', '/seller'
+  ).catch(() => { /* fail-soft — 거절 처리 자체는 완료 */ })
   return c.json({ success: true })
 })
 

@@ -24,6 +24,17 @@ export async function sendSystemEmail(
     return { success: false, error: 'invalid email' };
   }
 
+  // 🛡️ 2026-06-12 (감사 1단계 — 알림 토글 실동작화): 수신자가 유어딜 유저이고
+  //   email_enabled=0 이면 발송 skip. 컬럼 없거나 유저 매칭 안 되면 fail-open (발송 진행).
+  if (e?.DB) {
+    try {
+      const pref = await e.DB.prepare(
+        'SELECT COALESCE(email_enabled, 1) AS enabled FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1'
+      ).bind(to).first<{ enabled: number }>();
+      if (pref && Number(pref.enabled) === 0) return { success: false, skipped: true };
+    } catch { /* email_enabled 컬럼 미존재 등 — fail-open */ }
+  }
+
   try {
     const { sendEmail } = await import('../services/email');
     const result = await sendEmail(

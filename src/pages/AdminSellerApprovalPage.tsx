@@ -103,7 +103,9 @@ export default function AdminSellerApprovalPage() {
   const approve = async (id: number) => {
     setActingId(id)
     try {
-      await api.put(`/api/admin/tools/sellers/${id}/approve`, {}, h)
+      // 🛡️ 2026-06-12 (감사 1단계): 알림 없는 admin-tools approve → 알림톡+벨+이력 있는
+      //   PATCH /api/admin/sellers/:id/approve (admin-sellers.routes.ts) 로 교체.
+      await api.patch(`/api/admin/sellers/${id}/approve`, {}, h)
       toast.success('승인 완료'); load()
     } catch { toast.error('승인 실패') } finally { setActingId(null) }
   }

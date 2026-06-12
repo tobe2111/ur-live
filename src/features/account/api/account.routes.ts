@@ -35,6 +35,65 @@ type Bindings = {
 export const accountRoutes = new Hono<{ Bindings: Bindings }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
+// 🛡️ 2026-06-12 (감사 1단계 — 알림 토글 실동작화): users.push_enabled / email_enabled
+//   메모이즈 ensure (per-request DDL 금지 룰 — WeakSet 1회). repair-schema 에도 등록됨.
+const _notifPrefColsEnsured = new WeakSet<D1Database>();
+async function ensureNotificationPrefColumns(db: D1Database) {
+  if (_notifPrefColsEnsured.has(db)) return;
+  _notifPrefColsEnsured.add(db);
+  try { await db.prepare('ALTER TABLE users ADD COLUMN push_enabled INTEGER DEFAULT 1').run(); } catch { /* exists */ }
+  try { await db.prepare('ALTER TABLE users ADD COLUMN email_enabled INTEGER DEFAULT 1').run(); } catch { /* exists */ }
+}
+
+/**
+ * GET /api/account/notification-prefs — 본인 알림 설정 조회.
+ * 컬럼 NULL(기존 유저) 은 enabled(1) 취급 — opt-out 모델.
+ */
+accountRoutes.get('/notification-prefs', requireAuth(), async (c) => {
+  try {
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+    await ensureNotificationPrefColumns(c.env.DB);
+    const row = await c.env.DB.prepare(
+      'SELECT COALESCE(push_enabled, 1) AS push_enabled, COALESCE(email_enabled, 1) AS email_enabled FROM users WHERE id = ?'
+    ).bind(user.id).first<{ push_enabled: number; email_enabled: number }>();
+    return c.json({
+      success: true,
+      data: {
+        push: row ? Number(row.push_enabled) !== 0 : true,
+        email: row ? Number(row.email_enabled) !== 0 : true,
+      },
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[account:notif-prefs:get]', err);
+    return c.json({ success: false, error: '알림 설정 조회 중 오류가 발생했습니다' }, 500);
+  }
+});
+
+/**
+ * PATCH /api/account/notification-prefs — 본인 알림 설정 변경.
+ * Body: { push?: boolean, email?: boolean } (최소 1개 필수, boolean 만 허용)
+ */
+accountRoutes.patch('/notification-prefs', requireAuth(), async (c) => {
+  try {
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+    const body = await c.req.json<{ push?: unknown; email?: unknown }>().catch(() => ({} as { push?: unknown; email?: unknown }));
+    const sets: string[] = [];
+    const binds: number[] = [];
+    if (typeof body.push === 'boolean') { sets.push('push_enabled = ?'); binds.push(body.push ? 1 : 0); }
+    if (typeof body.email === 'boolean') { sets.push('email_enabled = ?'); binds.push(body.email ? 1 : 0); }
+    if (sets.length === 0) return c.json({ success: false, error: 'push 또는 email (boolean) 이 필요합니다' }, 400);
+    await ensureNotificationPrefColumns(c.env.DB);
+    await c.env.DB.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`)
+      .bind(...binds, user.id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[account:notif-prefs:patch]', err);
+    return c.json({ success: false, error: '알림 설정 저장 중 오류가 발생했습니다' }, 500);
+  }
+});
+
 /**
  * DELETE /api/account/delete
  * 사용자 계정 탈퇴 처리
