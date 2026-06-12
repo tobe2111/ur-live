@@ -5893,7 +5893,14 @@
     "bulkFailedRows": "Filas con error:\n{{d}}{{more}}",
     "notifications": "Notificaciones",
     "notifEmpty": "No hay notificaciones",
-    "notifLoadFail": "No se pudieron cargar las notificaciones"
+    "notifLoadFail": "No se pudieron cargar las notificaciones",
+    "channelGuideHint": "Introduce el precio de suministro y el precio de venta sugerido para ver los canales de distribución elegibles.",
+    "channelGuideRate": "Tasa de suministro",
+    "channelGuideMargin": "Margen del vendedor",
+    "channelGuideInverted": "El precio de suministro es mayor que el precio de venta sugerido — revisa los datos.",
+    "channelGuideNudge": "¡Baja el precio de suministro a {{price}} o menos para desbloquear el canal {{channel}}!",
+    "channelGuideAllOpen": "Este precio de suministro califica para todos los canales de distribución. 👍",
+    "channelGuideDisclaimer": "Esta guía indica la elegibilidad por canal; las propuestas y la exposición reales dependen de las condiciones del canal y la revisión."
   },
   "wholesaleChat": {
     "title": "Chat",

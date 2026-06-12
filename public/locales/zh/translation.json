@@ -5893,7 +5893,14 @@
     "bulkFailedRows": "失败行:\n{{d}}{{more}}",
     "notifications": "通知",
     "notifEmpty": "暂无通知",
-    "notifLoadFail": "通知加载失败"
+    "notifLoadFail": "通知加载失败",
+    "channelGuideHint": "输入供货价和建议零售价后，将显示可提案的流通渠道。",
+    "channelGuideRate": "供货率",
+    "channelGuideMargin": "卖家利润空间",
+    "channelGuideInverted": "供货价高于建议零售价 — 请检查输入。",
+    "channelGuideNudge": "将供货价降至{{price}}以下，即可解锁{{channel}}渠道提案！",
+    "channelGuideAllOpen": "该供货价可向所有流通渠道提案。👍",
+    "channelGuideDisclaimer": "此为各渠道提案资格的参考标准，实际提案与曝光取决于渠道情况及运营审核。"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

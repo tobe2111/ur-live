@@ -23,6 +23,7 @@ import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse } from './xlsx';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
+import { SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels';
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -928,6 +929,19 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
     return c.json({ success: true, message: '운송장이 등록되었습니다.' });
   } catch (err) {
     return safeError(c, err, '운송장 등록 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 🏭 공급 채널 안내 기준 (2026-06-12 영업단 제안) ──────────────────────────
+//   등록 폼이 "이 공급가면 제안 가능 채널: …" 실시간 안내에 사용. 표시 전용 — 영업단이
+//   /api/admin/distributor/channel-thresholds 로 조정한 platform_settings 를 읽기만.
+supplierDashboardRoutes.get('/channel-thresholds', async (c) => {
+  try {
+    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(SUPPLY_CHANNEL_THRESHOLDS_KEY).first<{ value: string }>().catch(() => null);
+    return c.json({ success: true, thresholds: parseChannelThresholds(row?.value) });
+  } catch (err) {
+    return safeError(c, err, '채널 기준 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 

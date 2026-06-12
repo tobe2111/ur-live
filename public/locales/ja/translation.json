@@ -5893,7 +5893,14 @@
     "bulkFailedRows": "失敗行:\n{{d}}{{more}}",
     "notifications": "通知",
     "notifEmpty": "通知はありません",
-    "notifLoadFail": "通知を読み込めませんでした"
+    "notifLoadFail": "通知を読み込めませんでした",
+    "channelGuideHint": "供給価格と希望小売価格を入力すると、提案可能な流通チャネルを表示します。",
+    "channelGuideRate": "供給率",
+    "channelGuideMargin": "セラーマージン余力",
+    "channelGuideInverted": "供給価格が希望小売価格より高くなっています — 入力をご確認ください。",
+    "channelGuideNudge": "供給価格を{{price}}以下に下げると、{{channel}}チャネルまで提案可能になります！",
+    "channelGuideAllOpen": "すべての流通チャネルに提案可能な供給価格です。👍",
+    "channelGuideDisclaimer": "チャネル別の提案可能基準の案内であり、実際の提案・露出はチャネル状況と運営審査により異なる場合があります。"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

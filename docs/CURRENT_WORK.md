@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 공급 채널 안내 (영업단 제안 — 공급가 앵커링 견제) (`claude/keen-cerf-ch0jm5`)
+**배경**: 영업단 제안 — 제조사가 공급가를 높게 앵커링하는 것을, 등록 폼에서 "공급률 낮추면 특판·폐쇄몰까지 제안 가능" 잠금해제 안내로 견제. 사용자 승인("이상적으로 구현").
+- **SSOT `src/shared/supply-channels.ts`**(순수, 의존성 0): 채널 4종(오픈마켓90/공동구매85/특판75/폐쇄몰70 — **기본값은 placeholder, 영업단이 어드민에서 확정**), 공급률 계산·임계값 파싱·판정·nudge. 단위 테스트 17.
+- **임계값 저장**: `platform_settings('supply_channel_thresholds')` — 하드코딩 0. 어드민 GET/PUT `/api/admin/distributor/channel-thresholds` + `AdminDistributorGradesPage` 편집 카드(기본값이면 "영업단 확정 기준으로 저장" 경고). 제조사 읽기 `GET /api/supplier/channel-thresholds`(requireSupplier).
+- **제조사 UI `supplier-dashboard/SupplyChannelGuide.tsx`**: AddProductModal+PriceChangeModal 가격 입력 아래 — 공급률%·셀러 마진 여력·채널 칩(열림✓/잠김 임계%) + "공급가를 ₩X 이하로 낮추면 △△까지 제안 가능" nudge + 역마진 경고 + **과약속 방지 디스클레이머**(실제 제안·노출은 운영 검토에 따름). 권장가 미입력 시 입력 유도 한 줄만(공급가 폴백=공급률100% 오해 방지). 임계값 모듈 캐시 1회 fetch, 실패 시 기본값 폴백. i18n 7키×6언어.
+- **표시 전용 레이어** — 결제가/등급가/visibility 게이트 무영향. **Phase 2(별도 결정)**: 유통사 채널 타입 태그 + 낮은 공급률 상품의 실제 채널 제안 배선 — 이게 붙어야 안내가 약속이 됨.
+- 검증: tsc 0 · unit 2045(+17) · build OK. **운영**: 영업단이 `/admin/distributor-grades` 하단 카드에서 기준 % 확정 입력.
+
 ## ✅ 2026-06-12 — 도매몰 대시보드 감사 + 제조사 알림 데드경로 fix (`claude/keen-cerf-ch0jm5`)
 **감사 결론**: 유통/제조 대시보드 IA·핵심 루프(가입→승인→주문→발송→정산→출금) 완성도 높음. 머니 테스트 85 + 전체 2027 통과. 오탐 5건 직접 검증 기각(입금계좌 안내·체크아웃 잔액 사전표시·어드민 견적 라우트·대량주문 엑셀·raw 에러 — 전부 이미 OK).
 **진짜 버그 3건 fix**:

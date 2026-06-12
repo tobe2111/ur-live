@@ -8,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X, Wallet, Snowflake, BadgeDollarSign, TrendingUp, Play, RotateCcw } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
+import { SUPPLY_CHANNELS, DEFAULT_SUPPLY_CHANNEL_THRESHOLDS, type SupplyChannelThresholds } from '@/shared/supply-channels'
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급/마진 설정 (Phase 1b).
 // 도매몰 한정: distributor_grade 는 도매 카탈로그 가격 계산에서만 쓰임.
@@ -535,6 +536,9 @@ export default function AdminDistributorGradesPage() {
             </table>
           </div>
         </section>
+
+        {/* ── 🏭 2026-06-12 (영업단 제안): 공급 채널 안내 기준 ── */}
+        <ChannelThresholdsSection />
 
         {/* ── 🏭 BIZ-7 등급 자동화 (GMV 기반 auto-grade) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
@@ -1079,5 +1083,88 @@ function DistributorRowEditor({
         </button>
       </td>
     </tr>
+  )
+}
+
+// 🏭 2026-06-12 (영업단 제안): 공급 채널 안내 기준 — 채널별 임계 공급률(%) 편집.
+//   제조사 상품 등록 폼의 "제안 가능 유통채널" 안내가 이 값을 읽음 (표시 전용 —
+//   결제가/등급가/visibility 게이트 무영향). 기준 숫자는 영업단이 결정해 입력.
+function ChannelThresholdsSection() {
+  const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+  const [values, setValues] = useState<SupplyChannelThresholds>(DEFAULT_SUPPLY_CHANNEL_THRESHOLDS)
+  const [isDefault, setIsDefault] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.get('/api/admin/distributor/channel-thresholds', h)
+      .then(r => {
+        if (r.data?.success && r.data.thresholds) {
+          setValues(r.data.thresholds)
+          setIsDefault(!!r.data.is_default)
+        }
+      })
+      .catch(e => { if (import.meta.env.DEV) console.warn(e) })
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const save = async () => {
+    for (const ch of SUPPLY_CHANNELS) {
+      const v = Number(values[ch.key])
+      if (!Number.isFinite(v) || v < 1 || v > 100) { toast.error(`${ch.label} 임계 공급률은 1~100 사이여야 합니다`); return }
+    }
+    setSaving(true)
+    try {
+      const r = await api.put('/api/admin/distributor/channel-thresholds', values, h)
+      if (r.data?.success) { toast.success('채널 기준이 저장되었습니다'); setIsDefault(false) }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch {
+      toast.error('저장 실패')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <section className="bg-white rounded-xl border border-gray-200 p-5">
+      <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
+        <TrendingUp className="w-4 h-4 text-gray-500" /> 공급 채널 안내 기준 (공급률 %)
+      </h2>
+      <p className="text-sm text-gray-500 mb-1">
+        공급률 = 공급가 ÷ 권장 소비자가 × 100. 제조사 상품 등록 폼이 이 기준으로 "제안 가능 유통채널" 을 실시간 안내합니다
+        — 공급가를 낮출수록 더 많은 채널이 열리는 잠금해제 안내(표시 전용, 결제가·노출에는 영향 없음).
+      </p>
+      {isDefault && !loading && (
+        <p className="text-xs text-amber-600 mb-3">⚠️ 아직 기본값입니다 — 영업단 확정 기준으로 저장해주세요.</p>
+      )}
+      {loading ? (
+        <div className="py-6 text-center"><Loader2 className="w-4 h-4 animate-spin text-gray-300 mx-auto" /></div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {SUPPLY_CHANNELS.map(ch => (
+              <div key={ch.key}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{ch.emoji} {ch.label} — 이하일 때 제안 가능</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number" min={1} max={100} step={0.5}
+                    value={values[ch.key]}
+                    onChange={e => setValues(v => ({ ...v, [ch.key]: Number(e.target.value) }))}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-900"
+                  />
+                  <span className="text-xs text-gray-400">%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-xs text-gray-400">예: 폐쇄몰 70% = 권장 소비자가 10,000원 상품은 공급가 7,000원 이하일 때 폐쇄몰 제안 가능으로 표시.</p>
+            <button onClick={save} disabled={saving}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-60">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} 저장
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   )
 }
