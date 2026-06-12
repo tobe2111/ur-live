@@ -4,6 +4,7 @@ import { toast } from '@/hooks/useToast'
 import { supplierApi } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from '../wholesale/wholesale-theme'
 import SupplyChannelGuide from './SupplyChannelGuide'
+import NaverPriceCheck from './NaverPriceCheck'
 
 export default function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
@@ -80,6 +81,8 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
           {/* 🏭 2026-06-12 (영업단 제안): 공급률 실시간 안내 — 낮출수록 더 많은 채널 잠금해제.
               권장가 미입력 시엔 입력 유도 한 줄만(공급가 폴백을 쓰면 공급률 100% 로 오해 유발). */}
           <SupplyChannelGuide t={t} supplyPrice={form.supply_price} retailPrice={form.suggested_retail_price} />
+          {/* 🛒 2026-06-12 (사용자 요청): 시중(네이버쇼핑) 최저가 대조 — 키 미설정 시 자동 숨김. */}
+          <NaverPriceCheck t={t} name={form.name} supplyPrice={form.supply_price} retailPrice={form.suggested_retail_price} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{t('supplier.fieldStock', { defaultValue: '재고' })}</label>

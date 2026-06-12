@@ -5907,7 +5907,14 @@
     "channelGuideNudge": "将供货价降至{{price}}以下，即可解锁{{channel}}渠道提案！",
     "channelGuideAllOpen": "该供货价可向所有流通渠道提案。👍",
     "channelGuideDisclaimer": "此为各渠道提案资格的参考标准，实际提案与曝光取决于渠道情况及运营审核。",
-    "pendingContact": "着急吗？"
+    "pendingContact": "着急吗？",
+    "naverPriceTitle": "NAVER购物最低价（参考）",
+    "naverPriceSupplyHigh": "⚠️ 供货价高于或等于市场最低价 — 经销商无法获得利润。",
+    "naverPriceSupplyGood": "✓ 供货价低于市场最低价 — 利润空间 {{gap}}。",
+    "naverPriceRetailHigh": "建议零售价高于市场最低价。",
+    "naverPriceDisclaimer": "搜索结果可能并非同一商品 — 请确认选项与包装差异。",
+    "areYouDistributor": "打算采购商品进行销售吗？",
+    "goDistributorJoin": "注册为销售商（流通会员）→"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

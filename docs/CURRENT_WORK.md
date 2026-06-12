@@ -1,5 +1,9 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 가입 역할 선택 관문 + 네이버쇼핑 최저가 대조 (사용자 요청)
+- **가입 역할 관문 `/wholesale/start`**: "판매사(유통회원) vs 제조사(공급회원)" 2카드 선택 화면(겸업 안내+로그인 링크). 카탈로그 헤더 '회원가입'이 유통 폼 직행하던 것 → 관문 경유(제조사 오진입 차단 — 수동 승인 체제라 역할 오류=검수 비용). 제조 가입 폼에 역방향 링크("판매하실 건가요? → 유통 가입") — 유통→제조 링크와 대칭화. 인트로 듀얼 CTA·역할 명시된 배너("유통회원 신청" 등)는 직행 유지(이미 역할 선택됨).
+- **네이버쇼핑 최저가 대조** (`worker/utils/naver-shopping-price.ts` + `GET /api/supplier/naver-price-check` + `supplier-dashboard/NaverPriceCheck.tsx`): 제조사 등록/가격수정 폼에서 상품명 800ms 디바운스 → 시중 최저가 top3 + 비교 신호(공급가≥최저가 빨강 "유통사 마진 불가" / 미만 초록 "마진 여력 ₩X" / 권장가>최저가 주의). 검색 API(developers.naver.com — 커머스API 와 별개, 일 25,000회 무료), 동일 검색어 10분 캐시, rate limit 30/분. **키(NAVER_SEARCH_CLIENT_ID/SECRET) 미설정 시 UI 자동 숨김(fail-soft)** — ⬜ 사용자: developers.naver.com 앱 등록(검색 API) → Cloudflare Variables 2개 등록. i18n 7키×6언어, 단위테스트 6.
+
 ## 🛒 2026-06-12 — 네이버 커머스API Phase A: 유통사 스마트스토어 연동 (사용자 요청)
 **모델**: 유통사가 커머스API센터에서 **자기 스토어 앱**(스토어당 1개, 무료) 발급 → ID/시크릿을 `/wholesale/naver` 에서 연결(서버가 **토큰 발급으로 즉시 검증** 후에만 저장 — `encryptAtRest` AES-GCM, DATA_ENCRYPTION_KEY). 솔루션(개발업체) 계정 모델은 네이버 심사 필요 — Phase B 검토.
 - **코어 `naver-commerce-core.ts`**: bcrypt 전자서명(`${client_id}_${ts}` bcrypt(salt=secret)→base64, bcryptjs 기존 dep) + 토큰 캐시(3h, 만료 5분전 갱신) + 카테고리 전체목록 모듈캐시 1h(리프 검색) + 이미지 업로드(네이버는 자체 업로드 URL 만 허용) + 상품 payload 빌더(순수 — 단위테스트 7).
