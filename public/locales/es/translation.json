@@ -5901,7 +5901,14 @@
     "channelGuideNudge": "¡Baja el precio de suministro a {{price}} o menos para desbloquear el canal {{channel}}!",
     "channelGuideAllOpen": "Este precio de suministro califica para todos los canales de distribución. 👍",
     "channelGuideDisclaimer": "Esta guía indica la elegibilidad por canal; las propuestas y la exposición reales dependen de las condiciones del canal y la revisión.",
-    "pendingContact": "¿Tienes prisa?"
+    "pendingContact": "¿Tienes prisa?",
+    "naverPriceTitle": "Precio más bajo en Naver Shopping (referencia)",
+    "naverPriceSupplyHigh": "⚠️ El precio de suministro es igual o mayor que el mínimo del mercado — los distribuidores no pueden obtener margen.",
+    "naverPriceSupplyGood": "✓ Precio de suministro por debajo del mínimo del mercado — margen disponible {{gap}}.",
+    "naverPriceRetailHigh": "El precio de venta sugerido es mayor que el mínimo del mercado.",
+    "naverPriceDisclaimer": "Los resultados de búsqueda pueden no ser el mismo producto — verifica opciones y presentación.",
+    "areYouDistributor": "¿Planeas comprar y revender productos?",
+    "goDistributorJoin": "Registrarse como distribuidor →"
   },
   "wholesaleChat": {
     "title": "Chat",

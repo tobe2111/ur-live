@@ -76,7 +76,8 @@ export default function CatalogHeader({
                 <span className="hidden sm:inline" style={{ color: WT.line }}>·</span>
                 <button onClick={goLogin} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}><LogIn className="w-3.5 h-3.5" /> {t('wholesale.util.login', { defaultValue: '로그인' })}</button>
                 <span style={{ color: WT.line }}>·</span>
-                <button onClick={() => navigate('/wholesale/join')} className="inline-flex items-center font-bold" style={{ color: WT.brand }}>{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
+                {/* 🚪 2026-06-12 (사용자 결정): 가입은 역할 선택 관문(/wholesale/start) 경유 — 제조사의 유통 폼 오진입 차단. */}
+                <button onClick={() => navigate('/wholesale/start')} className="inline-flex items-center font-bold" style={{ color: WT.brand }}>{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
                 <span style={{ color: WT.line }}>·</span>
                 <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
                   {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cartCount > 0 ? ` (${cartCount})` : ''}

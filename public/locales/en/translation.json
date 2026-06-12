@@ -5901,7 +5901,14 @@
     "channelGuideNudge": "Lower the supply price to {{price}} or below to unlock the {{channel}} channel!",
     "channelGuideAllOpen": "This supply price qualifies for every distribution channel. 👍",
     "channelGuideDisclaimer": "This is guidance on channel eligibility; actual proposals and exposure depend on channel conditions and review.",
-    "pendingContact": "In a hurry?"
+    "pendingContact": "In a hurry?",
+    "naverPriceTitle": "Naver Shopping lowest price (reference)",
+    "naverPriceSupplyHigh": "⚠️ Your supply price is at or above the market lowest — distributors cannot make a margin.",
+    "naverPriceSupplyGood": "✓ Supply price is below the market lowest — margin room {{gap}}.",
+    "naverPriceRetailHigh": "Suggested retail price is above the market lowest.",
+    "naverPriceDisclaimer": "Search results may not be the exact same product — check options and packaging.",
+    "areYouDistributor": "Planning to buy and resell products?",
+    "goDistributorJoin": "Join as a distributor →"
   },
   "wholesaleChat": {
     "title": "Chat",

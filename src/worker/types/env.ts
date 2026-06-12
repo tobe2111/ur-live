@@ -37,6 +37,10 @@ export interface Env {
   //   Dashboard → Turnstile → site key 발급. secret 은 server-only.
   //   미설정 시 verifyTurnstile() 가 fail-open (검증 skip).
   TURNSTILE_SECRET?: string;
+  // 🛒 2026-06-12: 네이버 검색 오픈API (developers.naver.com — 쇼핑 검색, 일 25,000회 무료).
+  //   제조사 상품 등록 시 시중(네이버쇼핑) 최저가 자동 대조. 미설정 시 기능 자동 숨김(fail-soft).
+  NAVER_SEARCH_CLIENT_ID?: string;
+  NAVER_SEARCH_CLIENT_SECRET?: string;
 
   // ---- Firebase ----
   FIREBASE_PROJECT_ID?: string;

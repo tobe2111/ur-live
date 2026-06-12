@@ -5901,7 +5901,14 @@
     "channelGuideNudge": "供給価格を{{price}}以下に下げると、{{channel}}チャネルまで提案可能になります！",
     "channelGuideAllOpen": "すべての流通チャネルに提案可能な供給価格です。👍",
     "channelGuideDisclaimer": "チャネル別の提案可能基準の案内であり、実際の提案・露出はチャネル状況と運営審査により異なる場合があります。",
-    "pendingContact": "お急ぎですか？"
+    "pendingContact": "お急ぎですか？",
+    "naverPriceTitle": "NAVERショッピング最安値（参考）",
+    "naverPriceSupplyHigh": "⚠️ 供給価格が市場最安値以上です — 流通会社がマージンを確保できません。",
+    "naverPriceSupplyGood": "✓ 供給価格が市場最安値を下回っています — マージン余力 {{gap}}。",
+    "naverPriceRetailHigh": "希望小売価格が市場最安値より高くなっています。",
+    "naverPriceDisclaimer": "商品名検索の結果のため同一商品でない場合があります — オプション・構成をご確認ください。",
+    "areYouDistributor": "商品を仕入れて販売されますか？",
+    "goDistributorJoin": "販売会社（流通会員）として登録 →"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

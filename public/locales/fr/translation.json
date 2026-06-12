@@ -5901,7 +5901,14 @@
     "channelGuideNudge": "Baissez le prix de gros à {{price}} ou moins pour débloquer le canal {{channel}} !",
     "channelGuideAllOpen": "Ce prix de gros est éligible à tous les canaux de distribution. 👍",
     "channelGuideDisclaimer": "Il s'agit d'une indication d'éligibilité par canal ; les propositions et l'exposition réelles dépendent des conditions du canal et de la validation.",
-    "pendingContact": "Pressé ?"
+    "pendingContact": "Pressé ?",
+    "naverPriceTitle": "Prix le plus bas Naver Shopping (référence)",
+    "naverPriceSupplyHigh": "⚠️ Le prix de gros est égal ou supérieur au minimum du marché — les distributeurs ne peuvent pas dégager de marge.",
+    "naverPriceSupplyGood": "✓ Prix de gros sous le minimum du marché — marge disponible {{gap}}.",
+    "naverPriceRetailHigh": "Le prix de vente conseillé est supérieur au minimum du marché.",
+    "naverPriceDisclaimer": "Les résultats de recherche peuvent ne pas correspondre au même produit — vérifiez les options et le conditionnement.",
+    "areYouDistributor": "Vous comptez acheter et revendre des produits ?",
+    "goDistributorJoin": "S'inscrire comme distributeur →"
   },
   "wholesaleChat": {
     "title": "Chat",

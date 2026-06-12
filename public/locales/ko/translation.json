@@ -5893,7 +5893,14 @@
     "channelGuideNudge": "공급가를 {{price}} 이하로 낮추면 {{channel}} 채널까지 제안 가능해져요!",
     "channelGuideAllOpen": "모든 유통채널에 제안 가능한 공급가예요. 👍",
     "channelGuideDisclaimer": "채널별 제안 가능 기준 안내이며, 실제 제안·노출은 채널 상황과 운영 검토에 따라 달라질 수 있어요.",
-    "pendingContact": "급하신가요?"
+    "pendingContact": "급하신가요?",
+    "naverPriceTitle": "네이버쇼핑 최저가 (참고)",
+    "naverPriceSupplyHigh": "⚠️ 공급가가 시중 최저가보다 높거나 같아요 — 유통사가 마진을 낼 수 없어 제안이 어려워요.",
+    "naverPriceSupplyGood": "✓ 공급가가 시중 최저가 아래예요 — 유통 마진 여력 {{gap}}.",
+    "naverPriceRetailHigh": "권장 소비자가가 시중 최저가보다 높아요.",
+    "naverPriceDisclaimer": "상품명 검색 결과라 동일 상품이 아닐 수 있어요 — 옵션·구성 차이를 확인해주세요.",
+    "areYouDistributor": "상품을 사입해 판매하실 건가요?",
+    "goDistributorJoin": "판매사(유통회원) 가입 →"
   },
   "wholesaleChat": {
     "title": "문의 채팅",

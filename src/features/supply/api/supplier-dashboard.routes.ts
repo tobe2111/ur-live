@@ -932,6 +932,24 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
   }
 });
 
+// ── 🛒 네이버쇼핑 최저가 대조 (2026-06-12 사용자 요청) ────────────────────────
+//   제조사 상품 등록/가격수정 폼에서 상품명으로 시중 최저가 자동 조회 — 공급가가 시장가 대비
+//   어디인지 즉시 확인. 키(NAVER_SEARCH_CLIENT_ID/SECRET) 미설정 시 configured:false (UI 숨김).
+supplierDashboardRoutes.get('/naver-price-check', rateLimit({ action: 'naver-price-check', max: 30, windowSec: 60 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  try {
+    const q = String(c.req.query('q') || '').trim().slice(0, 100);
+    const { checkNaverLowestPrice } = await import('../../../worker/utils/naver-shopping-price');
+    const r = await checkNaverLowestPrice(c.env.NAVER_SEARCH_CLIENT_ID, c.env.NAVER_SEARCH_CLIENT_SECRET, q);
+    if (!r.configured) return c.json({ success: true, configured: false });
+    if (!r.ok) return c.json({ success: false, configured: true, error: r.error }, 502);
+    return c.json({ success: true, configured: true, lowest: r.lowest, items: r.items });
+  } catch (err) {
+    return safeError(c, err, '최저가 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
 // ── 🏭 공급 채널 안내 기준 (2026-06-12 영업단 제안) ──────────────────────────
 //   등록 폼이 "이 공급가면 제안 가능 채널: …" 실시간 안내에 사용. 표시 전용 — 영업단이
 //   /api/admin/distributor/channel-thresholds 로 조정한 platform_settings 를 읽기만.

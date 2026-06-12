@@ -5,6 +5,7 @@ import { formatWon } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
 import type { CatalogItem } from './types'
 import SupplyChannelGuide from './SupplyChannelGuide'
+import NaverPriceCheck from './NaverPriceCheck'
 
 // 🏭 2026-06-07 (사용자 요청): 판매중(승인) 상품 가격 수정 요청 — 운영진 승인 후 반영.
 //   승인 전까지 기존 노출 가격 유지. 온라인 최저가 참고 링크 함께 제출.
@@ -73,6 +74,8 @@ export default function PriceChangeModal({ t, item, onClose, onDone }: {
           </div>
           {/* 🏭 2026-06-12 (영업단 제안): 새 가격 기준 공급률·제안 가능 채널 실시간 안내. */}
           <SupplyChannelGuide t={t} supplyPrice={supply} retailPrice={retail} />
+          {/* 🛒 2026-06-12 (사용자 요청): 시중 최저가 대조 — 가격 인하 요청의 근거를 폼 안에서 바로 확인. */}
+          <NaverPriceCheck t={t} name={item.name} supplyPrice={supply} retailPrice={retail} />
           <div>
             <label className={labelCls}>{t('supplier.fieldLowestUrl', { defaultValue: '온라인 최저가 참고 링크' })}</label>
             <input disabled={saving} value={lpUrl} onChange={e => setLpUrl(e.target.value)} className={inputCls} placeholder="https://search.shopping.naver.com/..." />
