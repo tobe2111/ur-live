@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import { WT, won, comma } from '../wholesale/wholesale-theme'
 import { useWholesaleCart } from '../wholesale/useWholesaleCart'
 import { parseCsvLine, downloadOrderForm, exportCatalog, exportPriceListCsv } from './csv-utils'
+import { readTableFileAsCsv } from '@/lib/read-table-file'
 
 // ── 대량 주문(엑셀) — 양식 다운로드 + 작성본 업로드 → 서버 검증/미리보기 → 카트 담기 → 예치금 체크아웃 ──
 //   BIZ-9 (2026-06-09): 업로드 즉시 청구하지 않음. 서버 /orders/bulk-preview 가 product_id 매칭 +
@@ -27,7 +28,7 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
     setBulkBusy(true)
     setBulkPreview(null)
     try {
-      const text = await file.text()
+      const text = await readTableFileAsCsv(file) // 📥 2026-06-12: .xlsx 직접 업로드 + CP949 CSV 한글 복구
       const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim())
       if (lines.length < 2) { toast.error('내용이 없는 파일이에요'); return }
       const header = parseCsvLine(lines[0]).map(h => h.trim())
@@ -99,7 +100,7 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
                 <button onClick={() => bulkInputRef.current?.click()} disabled={bulkBusy} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-60" style={{ background: WT.ink }}>
                   {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} {t('wholesale.bulk.upload', { defaultValue: '작성본 업로드 → 검토' })}
                 </button>
-                <input ref={bulkInputRef} type="file" accept=".csv,text/csv" onChange={onBulkFile} className="hidden" />
+                <input ref={bulkInputRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={onBulkFile} className="hidden" />
               </div>
 
               {/* BIZ-9: 업로드 결과 패널 — N개 담김 · M개 오류(사유). 청구 전 검토 단계. */}

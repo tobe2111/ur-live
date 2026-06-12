@@ -5810,11 +5810,11 @@
     "bulkErrNone": "Please select products to change",
     "bulkErrSupply": "Please enter valid supply prices for selected products",
     "bulkErrRetail": "Suggested retail price must be at or above supply price",
-    "bulkUpload": "Bulk upload (CSV)",
+    "bulkUpload": "Bulk upload (Excel/CSV)",
     "bulkDone": "{{c}} registered, {{f}} failed",
     "dlTemplate": "Download template",
-    "stockImport": "Import stock CSV",
-    "stockImportHint": "Stock CSV: header barcode,stock — matches your supply products by barcode and updates stock immediately.",
+    "stockImport": "Import stock (Excel/CSV)",
+    "stockImportHint": "Stock file (.xlsx/.csv): headers \"barcode,stock\" — matches your products by barcode and applies stock immediately.",
     "stockImportDone": "{{u}} updated, {{s}} skipped",
     "toShip": "Awaiting shipment",
     "noToShip": "No orders to ship.",
@@ -5913,7 +5913,11 @@
     "demandUp": "🔺 Shopping click demand rising (+{{pct}}% last 2 months)",
     "demandDown": "🔻 Shopping click demand falling ({{pct}}% last 2 months)",
     "demandFlat": "─ Shopping click demand flat (no major change in 6 months)",
-    "demandDisclaimer": "Reference index based on Naver Shopping clicks/searches — may differ from actual sales."
+    "demandDisclaimer": "Reference index based on Naver Shopping clicks/searches — may differ from actual sales.",
+    "bulkOptionTitle": "Registering many products? Upload an Excel file at once",
+    "bulkOptionTemplate": "Download Excel template",
+    "bulkOptionUpload": "Upload filled Excel",
+    "bulkOptionHint": "Upload .xlsx directly · encoding auto-fix · up to 2,000 rows"
   },
   "wholesaleChat": {
     "title": "Chat",

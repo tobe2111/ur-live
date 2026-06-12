@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 대량등록 엑셀 완전판 (사용자 요청 "엑셀로, 이상적으로")
+- **실사용 사고 2개 근본 해결** (`lib/read-table-file.ts`, dep 0): ① Excel 기본 CSV 저장(CP949) 한글 깨짐 — `file.text()`(UTF-8 고정) → UTF-8(fatal) 실패 시 EUC-KR 자동 디코드 ② **.xlsx 직접 업로드** — zip(EOCD→central dir) 직접 파싱(STORED+DEFLATE/DecompressionStream) + sharedStrings/inlineStr → CSV 변환해 기존 서버 경로(parseCsv) **무변경** 통과. 적용 4곳: 제조사 대량등록·재고 가져오기·송장 일괄·유통사 대량주문(BulkOrderPanel). accept 에 .xlsx, 라벨 "엑셀/CSV".
+- **양식**: `GET /products/bulk-template.xlsx`(buildXlsx 재사용 — 진짜 엑셀) 신설, CSV endpoint 존치. 템플릿 parity — 박스입수/주문배수/이미지URL 컬럼 + bulk 파서/INSERT 반영(단건 폼과 일치).
+- **등록 진입점에 대량 옵션** (사용자 요청): AddProductModal 상단 배너 "여러 상품이면 엑셀로 한 번에" — 양식받기+업로드(공용 `bulk-upload.ts`, CatalogTab 과 동일 흐름·실패행 상세 토스트, 성공 시 모달 닫고 갱신). 사용자에게 양식 파일 전달 완료.
+- 단위테스트 8(EUC-KR 디코드·colIndex·xlsx round-trip(buildXlsx fixture)·rowsToCsv·진입점). 전체 2079 통과 · tsc 0 · build OK. ⚠️ 실제 Excel 저장 .xlsx 1회 운영 확인 권장(fixture 는 STORED — 실파일은 DEFLATE 경로).
+- 사용자 보고: NAVER_SEARCH_CLIENT_ID/SECRET Cloudflare 등록 완료 — **이 커밋 배포부터 최저가·수요신호 활성**.
+
 ## ✅ 2026-06-12 — 네이버 데이터랩 수요 신호 ②④ (사용자 승인 "2, 4 진행")
 - **`worker/utils/naver-datalab.ts`** + `GET /api/supplier/demand-signal?q=&category=` + `supplier-dashboard/DemandSignal.tsx`(등록 폼 — 최저가 박스 아래): ② 쇼핑인사이트 카테고리 내 키워드 클릭 추이 6개월 → 상승🔺/하락🔻/보합─(±10% 임계) ④ 검색어트렌드 24개월 → 성수기 월 추출(월평균이 전체평균 125%+ 인 1~3개월) + "지금 성수기 🔥 / N개월 뒤 — 준비 적기" 라벨.
 - **도매 카테고리 → 네이버쇼핑 1depth 매핑** 상수(food→50000006 식품 등 6종 — 외부 택소노미라 상수 OK).

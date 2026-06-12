@@ -5810,11 +5810,11 @@
     "bulkErrNone": "请选择要修改的商品",
     "bulkErrSupply": "请正确输入所选商品的供货价",
     "bulkErrRetail": "建议零售价必须大于等于供货价",
-    "bulkUpload": "批量上传（CSV）",
+    "bulkUpload": "批量上传（Excel/CSV）",
     "bulkDone": "{{c}}件已登记，{{f}}件失败",
     "dlTemplate": "下载模板",
-    "stockImport": "导入库存CSV",
-    "stockImportHint": "库存CSV：表头为条码,库存——按条码匹配供货商品并立即更新库存。",
+    "stockImport": "导入库存（Excel/CSV）",
+    "stockImportHint": "库存文件（.xlsx/.csv）：表头“条码,库存” — 按条码匹配商品并立即更新库存。",
     "stockImportDone": "{{u}}件已更新，{{s}}件已跳过",
     "toShip": "待发货",
     "noToShip": "没有待发货的订单。",
@@ -5913,7 +5913,11 @@
     "demandUp": "🔺 购物点击需求上升中（近2个月 +{{pct}}%）",
     "demandDown": "🔻 购物点击需求下降中（近2个月 {{pct}}%）",
     "demandFlat": "─ 购物点击需求持平（近6个月无明显变化）",
-    "demandDisclaimer": "基于NAVER购物点击/搜索相对指数的参考指标 — 可能与实际销量不同。"
+    "demandDisclaimer": "基于NAVER购物点击/搜索相对指数的参考指标 — 可能与实际销量不同。",
+    "bulkOptionTitle": "多个商品可用Excel一次性登记",
+    "bulkOptionTemplate": "下载Excel模板",
+    "bulkOptionUpload": "上传填写好的Excel",
+    "bulkOptionHint": "可直接上传.xlsx · 自动修复乱码 · 最多2,000行"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

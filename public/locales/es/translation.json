@@ -5810,11 +5810,11 @@
     "bulkErrNone": "Por favor seleccione productos para cambiar",
     "bulkErrSupply": "Ingrese precios de suministro válidos para los productos seleccionados",
     "bulkErrRetail": "El precio de venta sugerido debe ser igual o superior al precio de suministro",
-    "bulkUpload": "Carga masiva (CSV)",
+    "bulkUpload": "Carga masiva (Excel/CSV)",
     "bulkDone": "{{c}} registrado(s), {{f}} fallido(s)",
     "dlTemplate": "Descargar plantilla",
-    "stockImport": "Importar CSV de stock",
-    "stockImportHint": "CSV de stock: encabezado barcode,stock — coincide con sus productos por código de barras y actualiza el stock inmediatamente.",
+    "stockImport": "Importar stock (Excel/CSV)",
+    "stockImportHint": "Archivo de stock (.xlsx/.csv): encabezados \"código,stock\" — aplica el stock al instante por código de barras.",
     "stockImportDone": "{{u}} actualizados, {{s}} omitidos",
     "toShip": "En espera de envío",
     "noToShip": "No hay pedidos para enviar.",
@@ -5913,7 +5913,11 @@
     "demandUp": "🔺 Demanda de clics en alza (+{{pct}}% últimos 2 meses)",
     "demandDown": "🔻 Demanda de clics en baja ({{pct}}% últimos 2 meses)",
     "demandFlat": "─ Demanda de clics estable (sin cambios en 6 meses)",
-    "demandDisclaimer": "Índice de referencia basado en clics/búsquedas de Naver Shopping — puede diferir de las ventas reales."
+    "demandDisclaimer": "Índice de referencia basado en clics/búsquedas de Naver Shopping — puede diferir de las ventas reales.",
+    "bulkOptionTitle": "¿Muchos productos? Súbelos de una vez con Excel",
+    "bulkOptionTemplate": "Descargar plantilla Excel",
+    "bulkOptionUpload": "Subir Excel completado",
+    "bulkOptionHint": "Sube .xlsx directamente · codificación auto-corregida · hasta 2.000 filas"
   },
   "wholesaleChat": {
     "title": "Chat",
