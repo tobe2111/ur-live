@@ -5936,7 +5936,16 @@
     "msFirstProductHint": "1 minuto con el botón de arriba — Excel masivo también",
     "msFirstApprovedHint": "Tras la revisión, visible para distribuidores",
     "msFirstOrderHint": "Te avisaremos con la campana cuando compren",
-    "msFirstSettleHint": "Se acredita al pagar — retira en Liquidaciones"
+    "msFirstSettleHint": "Se acredita al pagar — retira en Liquidaciones",
+    "storeImportTitle": "Importar productos de mi tienda",
+    "storeImportSub": "Registra los productos que ya vendes como productos de suministro mayorista (visibles tras la aprobación).",
+    "storeImportBtn": "Registrar {{n}} como productos de suministro",
+    "storeImportBtn2": "Importar de mi tienda",
+    "storeImportNote": "Después puedes editar el precio de suministro y detalles en Catálogo. Visible tras la aprobación.",
+    "storeRateLabel": "Aplicar tasa de suministro",
+    "storeRateHint": "Precio de suministro = precio de tienda × tasa. PVP sugerido = precio de tienda.",
+    "storeConnectNaver": "Introduce el ID/secreto de aplicación emitido en el Commerce API Center.",
+    "storeConnectCoupang": "Introduce el Access/Secret Key y el código de proveedor de Coupang Wing."
   },
   "wholesaleChat": {
     "title": "Chat",

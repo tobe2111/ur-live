@@ -127,6 +127,7 @@ import { wholesaleRoutes } from '../features/supply/api/wholesale.routes';
 import { wholesaleSupplierRoutes } from '../features/supply/api/wholesale-supplier.routes';
 import { wholesaleClaimsRoutes } from '../features/supply/api/wholesale-claims.routes';
 import { naverCommerceRoutes } from '../features/supply/api/naver-commerce.routes';
+import { coupangCommerceRoutes } from '../features/supply/api/coupang-commerce.routes';
 import { wholesaleQuotesRoutes } from '../features/supply/api/wholesale-quotes.routes';
 import { supplierAnalyticsRoutes } from '../features/supply/api/supplier-analytics.routes';
 import { wholesalePriceReferenceRoutes } from '../features/supply/api/wholesale-price-reference.routes';
@@ -1318,6 +1319,7 @@ app.route('/api/wholesale', wholesaleRoutes); // 유통스타트: 유통사 도�
 app.route('/api/supplier/wholesale', wholesaleSupplierRoutes); // 유통스타트: 제조사 도매주문 송장/반품 (Phase 3)
 app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 클레임/RMA + admin 검수
 app.route('/api/wholesale/naver', naverCommerceRoutes); // 🛒 2026-06-12: 유통사 스마트스토어 연동 (네이버 커머스API Phase A)
+app.route('/api/wholesale/coupang', coupangCommerceRoutes); // 🛒 2026-06-12: 유통사 쿠팡 연동 (Wing 오픈API — 내보내기)
 app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
 app.route('/api/wholesale', wholesaleNotificationsRoutes); // NOTI-1: 재입고 알림 + 주문 메모 스레드
 app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 + 가격일괄/재고import

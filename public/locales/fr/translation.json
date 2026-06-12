@@ -5936,7 +5936,16 @@
     "msFirstProductHint": "1 minute avec le bouton ci-dessus — import Excel possible",
     "msFirstApprovedHint": "Après validation, visible des distributeurs",
     "msFirstOrderHint": "Notification cloche dès qu’un distributeur achète",
-    "msFirstSettleHint": "Crédité au paiement — retrait dans Règlements"
+    "msFirstSettleHint": "Crédité au paiement — retrait dans Règlements",
+    "storeImportTitle": "Importer les produits de ma boutique",
+    "storeImportSub": "Enregistrez vos produits déjà en vente comme produits de gros (visibles après approbation).",
+    "storeImportBtn": "Enregistrer {{n}} comme produits de gros",
+    "storeImportBtn2": "Importer depuis ma boutique",
+    "storeImportNote": "Vous pourrez modifier le prix de gros et les détails dans Catalogue. Visible après approbation.",
+    "storeRateLabel": "Appliquer le taux de gros",
+    "storeRateHint": "Prix de gros = prix boutique × taux. PVC = prix boutique.",
+    "storeConnectNaver": "Saisissez l'ID/secret d'application émis au Commerce API Center.",
+    "storeConnectCoupang": "Saisissez les Access/Secret Key et le code vendeur depuis Coupang Wing."
   },
   "wholesaleChat": {
     "title": "Chat",

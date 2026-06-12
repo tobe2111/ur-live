@@ -5936,7 +5936,16 @@
     "msFirstProductHint": "1 minute with the button above — Excel bulk works too",
     "msFirstApprovedHint": "Once reviewed, shown to distributors nationwide",
     "msFirstOrderHint": "We'll notify you via the bell when a distributor buys",
-    "msFirstSettleHint": "Credited on payment — request withdrawal in Settlements"
+    "msFirstSettleHint": "Credited on payment — request withdrawal in Settlements",
+    "storeImportTitle": "Import my store products",
+    "storeImportSub": "Register products you already sell as wholesale supply products (visible after admin approval).",
+    "storeImportBtn": "Register {{n}} as supply products",
+    "storeImportBtn2": "Import from my store",
+    "storeImportNote": "You can edit supply price and details in the Catalog tab. Visible to distributors after approval.",
+    "storeRateLabel": "Apply supply rate",
+    "storeRateHint": "Supply price = store price × rate. Suggested retail = store price.",
+    "storeConnectNaver": "Enter the application ID/secret issued at the Commerce API Center.",
+    "storeConnectCoupang": "Enter the Access/Secret Key and Vendor ID from Coupang Wing → Seller Info → OPEN API keys."
   },
   "wholesaleChat": {
     "title": "Chat",

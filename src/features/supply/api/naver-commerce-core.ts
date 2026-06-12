@@ -23,14 +23,44 @@ export async function ensureNaverConnectionSchema(DB: D1Database): Promise<void>
   _schemaDone.add(DB)
   await DB.prepare(`CREATE TABLE IF NOT EXISTS naver_commerce_connections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_id INTEGER NOT NULL UNIQUE,
+    owner_type TEXT NOT NULL DEFAULT 'distributor',
+    seller_id INTEGER NOT NULL,
     client_id TEXT NOT NULL,
     client_secret_enc TEXT NOT NULL,
     store_name TEXT,
     connected_at DATETIME DEFAULT (datetime('now')),
     last_verified_at DATETIME,
-    last_export_at DATETIME
+    last_export_at DATETIME,
+    UNIQUE(owner_type, seller_id)
   )`).run().catch(swallow('naver:schema'))
+  // 🔁 2026-06-12 (제조사 임포트 지원): 초기 버전(UNIQUE(seller_id), owner_type 없음) 테이블 재구축.
+  //   제조사 id 와 유통사 id 는 별개 시퀀스라 UNIQUE(seller_id) 만으로는 충돌 — (owner_type, id) 복합으로.
+  //   생성 직후의 신생 테이블(행 ~0)이라 self-heal 재구축 안전. 멱등 — owner_type 있으면 no-op.
+  try {
+    const meta = await DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='naver_commerce_connections'"
+    ).first<{ sql: string }>()
+    if (meta?.sql && !/owner_type/i.test(meta.sql)) {
+      await DB.prepare('ALTER TABLE naver_commerce_connections RENAME TO naver_commerce_connections_old').run()
+      await DB.prepare(`CREATE TABLE naver_commerce_connections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_type TEXT NOT NULL DEFAULT 'distributor',
+        seller_id INTEGER NOT NULL,
+        client_id TEXT NOT NULL,
+        client_secret_enc TEXT NOT NULL,
+        store_name TEXT,
+        connected_at DATETIME DEFAULT (datetime('now')),
+        last_verified_at DATETIME,
+        last_export_at DATETIME,
+        UNIQUE(owner_type, seller_id)
+      )`).run()
+      await DB.prepare(`INSERT INTO naver_commerce_connections
+        (id, owner_type, seller_id, client_id, client_secret_enc, store_name, connected_at, last_verified_at, last_export_at)
+        SELECT id, 'distributor', seller_id, client_id, client_secret_enc, store_name, connected_at, last_verified_at, last_export_at
+        FROM naver_commerce_connections_old`).run()
+      await DB.prepare('DROP TABLE naver_commerce_connections_old').run()
+    }
+  } catch { /* 재구축 실패 — 기존 테이블 유지(유통사 기능은 동작) */ }
   // 내보내기 이력 — 중복 등록 방지 + 추적 (product_id = 우리 도매 상품).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS naver_product_exports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,11 +121,13 @@ export async function issueNaverToken(clientId: string, clientSecret: string): P
 
 // ── 연결 CRUD ────────────────────────────────────────────────────────────
 export interface NaverConnection { client_id: string; client_secret: string; store_name: string | null }
+/** 연결 소유자 — distributor(유통사, 내보내기) / supplier(제조사, 내 상품 가져오기). */
+export type ChannelOwner = 'distributor' | 'supplier'
 
-export async function loadNaverConnection(DB: D1Database, sellerId: number, kek: string | undefined): Promise<NaverConnection | null> {
+export async function loadNaverConnection(DB: D1Database, ownerId: number, kek: string | undefined, ownerType: ChannelOwner = 'distributor'): Promise<NaverConnection | null> {
   await ensureNaverConnectionSchema(DB)
-  const row = await DB.prepare('SELECT client_id, client_secret_enc, store_name FROM naver_commerce_connections WHERE seller_id = ?')
-    .bind(sellerId).first<{ client_id: string; client_secret_enc: string; store_name: string | null }>().catch(() => null)
+  const row = await DB.prepare('SELECT client_id, client_secret_enc, store_name FROM naver_commerce_connections WHERE owner_type = ? AND seller_id = ?')
+    .bind(ownerType, ownerId).first<{ client_id: string; client_secret_enc: string; store_name: string | null }>().catch(() => null)
   if (!row) return null
   try {
     const secret = await decryptAtRest(row.client_secret_enc, kek)
@@ -105,15 +137,15 @@ export async function loadNaverConnection(DB: D1Database, sellerId: number, kek:
   }
 }
 
-export async function saveNaverConnection(DB: D1Database, sellerId: number, clientId: string, clientSecret: string, kek: string | undefined): Promise<void> {
+export async function saveNaverConnection(DB: D1Database, ownerId: number, clientId: string, clientSecret: string, kek: string | undefined, ownerType: ChannelOwner = 'distributor'): Promise<void> {
   await ensureNaverConnectionSchema(DB)
   const enc = await encryptAtRest(clientSecret, kek)
   await DB.prepare(`
-    INSERT INTO naver_commerce_connections (seller_id, client_id, client_secret_enc, last_verified_at)
-    VALUES (?, ?, ?, datetime('now'))
-    ON CONFLICT(seller_id) DO UPDATE SET client_id = excluded.client_id,
+    INSERT INTO naver_commerce_connections (owner_type, seller_id, client_id, client_secret_enc, last_verified_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(owner_type, seller_id) DO UPDATE SET client_id = excluded.client_id,
       client_secret_enc = excluded.client_secret_enc, last_verified_at = datetime('now')
-  `).bind(sellerId, clientId, enc).run()
+  `).bind(ownerType, ownerId, clientId, enc).run()
 }
 
 // ── 인증 fetch 헬퍼 ──────────────────────────────────────────────────────
@@ -168,6 +200,76 @@ export async function uploadImageToNaver(conn: NaverConnection, imageUrl: string
   const d = r.data as { images?: Array<{ url?: string }> } | null
   const url = d?.images?.[0]?.url
   return url ? { ok: true, url } : { ok: false, error: '네이버 이미지 업로드 응답에 URL 이 없습니다' }
+}
+
+// ── 📥 내 스토어 상품 목록 (역방향 임포트 — 제조사 "내 상품 가져오기") ──────
+export interface NaverStoreProduct {
+  origin_no: string
+  name: string
+  sale_price: number
+  stock: number
+  image_url: string | null
+  status: string
+}
+
+/** 본인 스토어 상품 목록 (POST /v1/products/search — 페이징). 본인 계정 데이터만 — 공식 범위. */
+export async function listNaverStoreProducts(conn: NaverConnection, page = 1, size = 50): Promise<{ ok: boolean; items?: NaverStoreProduct[]; total?: number; error?: string }> {
+  const r = await naverFetch(conn, '/v1/products/search', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ page: Math.max(1, page), size: Math.min(100, Math.max(1, size)) }),
+  })
+  if (!r.ok) return { ok: false, error: r.error }
+  const d = r.data as {
+    totalElements?: number
+    contents?: Array<{
+      originProductNo?: number | string
+      channelProducts?: Array<{ name?: string; salePrice?: number; stockQuantity?: number; statusType?: string; representativeImage?: { url?: string } }>
+    }>
+  } | null
+  const items: NaverStoreProduct[] = (d?.contents || []).map(p => {
+    const ch = p.channelProducts?.[0]
+    return {
+      origin_no: String(p.originProductNo ?? ''),
+      name: String(ch?.name || '').slice(0, 200),
+      sale_price: Math.max(0, Math.floor(Number(ch?.salePrice) || 0)),
+      stock: Math.max(0, Math.floor(Number(ch?.stockQuantity) || 0)),
+      image_url: ch?.representativeImage?.url ? String(ch.representativeImage.url) : null,
+      status: String(ch?.statusType || ''),
+    }
+  }).filter(p => p.name)
+  return { ok: true, items, total: Number(d?.totalElements) || items.length }
+}
+
+// ── 🖼️ 외부 이미지 → R2 미러 (임포트용 — 핫링크 깨짐 방지) ──────────────────
+//   ⚠️ SSRF 가드: 신뢰 CDN 호스트만 fetch 허용. 실패 시 원본 URL 폴백(기능은 유지).
+const MIRROR_ALLOWED_HOSTS = /(^|\.)pstatic\.net$|(^|\.)coupangcdn\.com$|(^|\.)naver\.com$/i
+
+export async function mirrorImageToR2(
+  env: { MEDIA_BUCKET?: R2Bucket; PUBLIC_R2_URL?: string },
+  imageUrl: string,
+): Promise<string> {
+  try {
+    if (!env.MEDIA_BUCKET) return imageUrl
+    const u = new URL(imageUrl)
+    if (u.protocol !== 'https:' || !MIRROR_ALLOWED_HOSTS.test(u.hostname)) return imageUrl
+    const res = await fetch(imageUrl, { signal: AbortSignal.timeout(10_000) })
+    if (!res.ok) return imageUrl
+    const buf = await res.arrayBuffer()
+    if (buf.byteLength > 10 * 1024 * 1024 || buf.byteLength < 100) return imageUrl
+    const ct = (res.headers.get('content-type') || '').toLowerCase()
+    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
+    const rand = (crypto as { randomUUID?: () => string }).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const key = `uploads/import/${new Date().toISOString().slice(0, 7)}/${rand}.${ext}`
+    await env.MEDIA_BUCKET.put(key, buf, {
+      httpMetadata: { contentType: ct.startsWith('image/') ? ct : 'image/jpeg', cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { source: 'store-import', original: imageUrl.slice(0, 500) },
+    })
+    const base = env.PUBLIC_R2_URL || ''
+    return base ? `${base.replace(/\/$/, '')}/${key}` : `/api/media/${key}`
+  } catch {
+    return imageUrl // 미러 실패 — 원본 URL 로 동작 유지
+  }
 }
 
 // ── 상품 등록 payload 빌더 (순수 — 테스트 가능) ──────────────────────────

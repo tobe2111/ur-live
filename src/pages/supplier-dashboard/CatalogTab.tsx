@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Package, Plus, Clock, CheckCircle, XCircle, Tag, ShieldCheck, Upload } from 'lucide-react'
+import { useState, useRef, lazy, Suspense } from 'react'
+import { Package, Plus, Clock, CheckCircle, XCircle, Tag, ShieldCheck, Upload, Download } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
@@ -7,6 +7,9 @@ import { downloadSupplierCsv } from './download-csv'
 import { readTableFileAsCsv } from '@/lib/read-table-file'
 import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
 import type { CatalogItem } from './types'
+
+// 📥 2026-06-12: 내 스토어(스마트스토어/쿠팡) 상품 가져오기 — lazy (안 쓰면 chunk 0).
+const StoreImportModal = lazy(() => import('./StoreImportModal'))
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: typeof Clock }> = {
   pending: { label: '승인 대기', cls: 'bg-amber-50 text-amber-700 border-amber-200', Icon: Clock },
@@ -17,6 +20,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: typeof Cl
 export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPriceChange, onBulkPrice }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void; onBulkPrice: () => void }) {
   const [uploading, setUploading] = useState(false)
   const [stockImporting, setStockImporting] = useState(false)
+  const [storeImportOpen, setStoreImportOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const stockFileRef = useRef<HTMLInputElement>(null)
 
@@ -73,6 +77,11 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
             className="px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60">
             {uploading ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.bulkUpload', { defaultValue: '대량 등록(엑셀/CSV)' })}
+          </button>
+          {/* 📥 2026-06-12: 내 스토어 상품 가져오기 (스마트스토어/쿠팡 — 역방향 임포트). */}
+          <button onClick={() => setStoreImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100">
+            <Download className="w-4 h-4" /> {t('supplier.storeImportBtn2', { defaultValue: '내 스토어에서 가져오기' })}
           </button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={onFile} />
           <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF0033] text-white text-sm font-semibold">
@@ -161,6 +170,13 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
             )
           })}
         </div>
+      )}
+
+      {/* 📥 내 스토어 상품 가져오기 — lazy 모달. */}
+      {storeImportOpen && (
+        <Suspense fallback={null}>
+          <StoreImportModal t={t} onClose={() => setStoreImportOpen(false)} onImported={onBulkDone} />
+        </Suspense>
       )}
     </div>
   )

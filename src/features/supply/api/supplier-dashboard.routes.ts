@@ -1093,3 +1093,182 @@ supplierDashboardRoutes.post('/notifications/read-all', async (c) => {
     return safeError(c, err, '읽음 처리 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 📥 내 스토어 상품 가져오기 (2026-06-12 사용자 요청 — 역방향 임포트)
+//   제조사가 본인 스마트스토어/쿠팡 계정을 연결해 "이미 팔고 있는 상품"을 도매 공급상품으로
+//   일괄 등록(승인 대기). 공식 API 의 본인 데이터 범위만 사용 — 타인 상품 수집 아님.
+//   공급가 = 스토어 판매가 × 공급률(%) 일괄 적용(폼에서 조정). 이미지는 R2 미러(핫링크 깨짐 방지).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 네이버 연결 (owner_type='supplier' — 유통사 연결과 별도 행) ───────────────
+supplierDashboardRoutes.post('/store/naver/connect', rateLimit({ action: 'sup-naver-connect', max: 10, windowSec: 600 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  try {
+    const { issueNaverToken, saveNaverConnection } = await import('./naver-commerce-core');
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+    const clientId = String(body.client_id || '').trim();
+    const clientSecret = String(body.client_secret || '').trim();
+    if (!/^[A-Za-z0-9]{10,64}$/.test(clientId)) return c.json({ success: false, error: '애플리케이션 ID 형식을 확인해주세요' }, 400);
+    if (clientSecret.length < 20 || clientSecret.length > 128) return c.json({ success: false, error: '애플리케이션 시크릿을 확인해주세요' }, 400);
+    const tok = await issueNaverToken(clientId, clientSecret);
+    if (!tok.ok) return c.json({ success: false, error: tok.error }, 400);
+    await saveNaverConnection(c.env.DB, sid, clientId, clientSecret, c.env.DATA_ENCRYPTION_KEY, 'supplier');
+    return c.json({ success: true, message: '스마트스토어가 연결되었습니다' });
+  } catch (err) {
+    return safeError(c, err, '스토어 연결 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 쿠팡 연결 (owner_type='supplier') ─────────────────────────────────────────
+supplierDashboardRoutes.post('/store/coupang/connect', rateLimit({ action: 'sup-coupang-connect', max: 10, windowSec: 600 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  try {
+    const { listOutboundPlaces, saveCoupangConnection } = await import('./coupang-core');
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+    const accessKey = String(body.access_key || '').trim();
+    const secretKey = String(body.secret_key || '').trim();
+    const vendorId = String(body.vendor_id || '').trim().toUpperCase();
+    if (!/^[a-f0-9-]{20,50}$/i.test(accessKey)) return c.json({ success: false, error: 'Access Key 형식을 확인해주세요' }, 400);
+    if (secretKey.length < 20 || secretKey.length > 128) return c.json({ success: false, error: 'Secret Key 를 확인해주세요' }, 400);
+    if (!/^A\d{8}$/.test(vendorId)) return c.json({ success: false, error: '업체코드(예: A00012345) 형식을 확인해주세요' }, 400);
+    const probe = await listOutboundPlaces({ access_key: accessKey, secret_key: secretKey, vendor_id: vendorId, vendor_user_id: null });
+    if (!probe.ok) return c.json({ success: false, error: probe.error ? `쿠팡 인증 실패: ${probe.error}` : '쿠팡 인증 실패 — 키를 확인해주세요' }, 400);
+    await saveCoupangConnection(c.env.DB, sid, accessKey, secretKey, vendorId, null, c.env.DATA_ENCRYPTION_KEY, 'supplier');
+    return c.json({ success: true, message: '쿠팡 계정이 연결되었습니다' });
+  } catch (err) {
+    return safeError(c, err, '쿠팡 연결 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 연결 상태 (양 채널 한 번에 — 임포트 모달 진입 시 1콜) ─────────────────────
+supplierDashboardRoutes.get('/store/status', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const { ensureNaverConnectionSchema } = await import('./naver-commerce-core');
+    const { ensureCoupangConnectionSchema } = await import('./coupang-core');
+    await Promise.all([ensureNaverConnectionSchema(DB), ensureCoupangConnectionSchema(DB)]);
+    const [naver, coupang] = await Promise.all([
+      DB.prepare("SELECT client_id FROM naver_commerce_connections WHERE owner_type = 'supplier' AND seller_id = ?").bind(sid).first().catch(() => null),
+      DB.prepare("SELECT vendor_id FROM coupang_connections WHERE owner_type = 'supplier' AND owner_id = ?").bind(sid).first().catch(() => null),
+    ]);
+    return c.json({ success: true, naver_connected: !!naver, coupang_connected: !!coupang });
+  } catch (err) {
+    return safeError(c, err, '연결 상태 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 내 스토어 상품 목록 ───────────────────────────────────────────────────────
+supplierDashboardRoutes.get('/store/products', rateLimit({ action: 'sup-store-products', max: 30, windowSec: 60 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  try {
+    const channel = String(c.req.query('channel') || 'naver');
+    if (channel === 'naver') {
+      const { loadNaverConnection, listNaverStoreProducts } = await import('./naver-commerce-core');
+      const conn = await loadNaverConnection(c.env.DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
+      if (!conn) return c.json({ success: false, error: '먼저 스마트스토어를 연결해주세요', code: 'NOT_CONNECTED' }, 400);
+      const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1));
+      const r = await listNaverStoreProducts(conn, page, 50);
+      if (!r.ok) return c.json({ success: false, error: r.error }, 502);
+      return c.json({ success: true, channel, items: r.items, total: r.total, page });
+    }
+    if (channel === 'coupang') {
+      const { loadCoupangConnection, listCoupangStoreProducts } = await import('./coupang-core');
+      const conn = await loadCoupangConnection(c.env.DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
+      if (!conn) return c.json({ success: false, error: '먼저 쿠팡 계정을 연결해주세요', code: 'NOT_CONNECTED' }, 400);
+      const r = await listCoupangStoreProducts(conn, String(c.req.query('next_token') || ''));
+      if (!r.ok) return c.json({ success: false, error: r.error }, 502);
+      // 쿠팡 목록은 가격/이미지가 없음(상세에서) — 임포트 시 서버가 상세 조회.
+      return c.json({ success: true, channel, items: r.items, next_token: r.next_token });
+    }
+    return c.json({ success: false, error: '지원하지 않는 채널' }, 400);
+  } catch (err) {
+    return safeError(c, err, '스토어 상품 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 가져오기 — 선택 상품을 공급상품(승인 대기)으로 일괄 등록 ───────────────────
+supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-import', max: 10, windowSec: 600 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    await ensureSupplyVisibilitySchema(DB);
+    await ensureQtyConstraintSchema(DB);
+    const sup = await DB.prepare('SELECT status FROM suppliers WHERE id = ?').bind(sid).first<{ status: string }>();
+    if (!sup || sup.status !== 'approved') return c.json({ success: false, error: '승인된 공급자만 상품을 등록할 수 있습니다' }, 403);
+
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+    const channel = String(body.channel || 'naver');
+    const ratePct = Number(body.supply_rate_pct);
+    if (!Number.isFinite(ratePct) || ratePct < 10 || ratePct > 100) {
+      return c.json({ success: false, error: '공급률(%)은 10~100 사이여야 합니다' }, 400);
+    }
+
+    // 채널별 입력 정규화 — naver 는 목록에 가격/이미지가 이미 있음, coupang 은 상세를 서버가 조회.
+    type ImportItem = { name: string; sale_price: number; stock: number; image_url: string | null };
+    let items: ImportItem[] = [];
+    if (channel === 'naver') {
+      const raw = Array.isArray(body.items) ? body.items : [];
+      items = (raw as Array<Record<string, unknown>>).slice(0, 100).map(r => ({
+        name: String(r.name || '').trim().slice(0, 200),
+        sale_price: Math.max(0, Math.floor(Number(r.sale_price) || 0)),
+        stock: Math.max(0, Math.floor(Number(r.stock) || 0)),
+        image_url: r.image_url ? String(r.image_url).slice(0, 500) : null,
+      }));
+    } else if (channel === 'coupang') {
+      const { loadCoupangConnection, getCoupangProductDetail } = await import('./coupang-core');
+      const conn = await loadCoupangConnection(DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
+      if (!conn) return c.json({ success: false, error: '먼저 쿠팡 계정을 연결해주세요', code: 'NOT_CONNECTED' }, 400);
+      const ids = (Array.isArray(body.product_ids) ? body.product_ids : []).map(String).filter(Boolean).slice(0, 50);
+      for (const id of ids) {
+        const d = await getCoupangProductDetail(conn, id);
+        if (d.ok && d.item && d.item.name) {
+          items.push({ name: d.item.name, sale_price: d.item.sale_price, stock: d.item.stock, image_url: d.item.image_url });
+        }
+      }
+    } else {
+      return c.json({ success: false, error: '지원하지 않는 채널' }, 400);
+    }
+    if (!items.length) return c.json({ success: false, error: '가져올 상품이 없습니다' }, 400);
+
+    const { mirrorImageToR2 } = await import('./naver-commerce-core');
+    const r2env = c.env as unknown as { MEDIA_BUCKET?: R2Bucket; PUBLIC_R2_URL?: string };
+
+    const results: Array<{ name: string; status: 'ok' | 'error'; reason?: string }> = [];
+    const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
+     VALUES (?, '', ?, ?, ?, ?, 'lifestyle', 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+    let created = 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (!it.name) { results.push({ name: '(이름 없음)', status: 'error', reason: '상품명 누락' }); continue; }
+      if (it.sale_price <= 0) { results.push({ name: it.name, status: 'error', reason: '판매가 없음 — 직접 등록해주세요' }); continue; }
+      const supplyPrice = Math.max(1, Math.round(it.sale_price * ratePct / 100));
+      // 이미지 R2 미러 (실패 시 원본 URL 폴백 — 등록은 진행).
+      const image = it.image_url ? await mirrorImageToR2(r2env, it.image_url) : '';
+      const slug = `sup-${sid}-import-${Date.now()}-${i}`;
+      try {
+        await DB.prepare(INSERT_SQL).bind(
+          it.name, it.sale_price, supplyPrice, it.stock, image, sid, sid, slug,
+        ).run();
+        created++;
+        results.push({ name: it.name, status: 'ok' });
+      } catch {
+        results.push({ name: it.name, status: 'error', reason: 'DB 오류' });
+      }
+    }
+    if (created > 0) {
+      createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 스토어 가져오기',
+        `공급자 #${sid}: ${channel} 에서 ${created}건 승인 요청`, '/admin/products').catch(swallow('supplier-dashboard'));
+    }
+    return c.json({ success: true, summary: { total: items.length, created, failed: items.length - created }, results });
+  } catch (err) {
+    return safeError(c, err, '스토어 가져오기 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
