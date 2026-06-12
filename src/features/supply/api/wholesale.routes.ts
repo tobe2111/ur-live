@@ -632,6 +632,14 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       if (seller.status !== 'approved' && seller.status !== 'active') {
         return c.json({ success: true, status: seller.status || 'pending', message: '유통회원 승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.' })
       }
+      // 🏁 2026-06-12 (전 플로우 감사 🟡): 기존 승인 셀러 즉시 승급은 '검증된 사업자' 전제였는데
+      //   인플루언서 승인 기준 ≠ 도매(사업자) 기준 — business_number 없는 셀러는 즉시 토큰 대신
+      //   사업자 정보 보완 안내(아래 신규 가입 흐름과 동일 검증 경로로 유도).
+      const bizNo = await DB.prepare('SELECT business_number FROM sellers WHERE id = ?')
+        .bind(seller.id).first<{ business_number: string | null }>().catch(() => null)
+      if (!bizNo?.business_number) {
+        return c.json({ success: true, status: 'needs_business_info', code: 'BUSINESS_INFO_REQUIRED', message: '도매 이용을 위해 사업자 정보 등록이 필요합니다.' })
+      }
       const nowSec = Math.floor(Date.now() / 1000)
       const payload = { sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username, type: 'seller', status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }
       const token = await sign(payload, JWT_SECRET)
@@ -920,9 +928,11 @@ app.get('/home', async (c) => {
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const [sg, table, homeMallId] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
-    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}`
+    // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
+    //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
+    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })

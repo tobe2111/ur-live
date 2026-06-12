@@ -90,8 +90,11 @@ export async function reverseAgencyStoreIntroOnRefund(
 ): Promise<number> {
   if (!orderId) return 0
   try {
+    // 🛡️ 2026-06-11 (전 플로우 감사 🔴): 'refunded' 는 이 테이블 CHECK('pending','available','paid',
+    //   'cancelled') 밖 → SQLite 가 UPDATE 를 거부하고 .catch 가 삼켜 **역전이 항상 0건(silent no-op)**
+    //   이었음. clawback(helpers.ts) 과 동일하게 'cancelled' 로 통일 — payout 집계도 cancelled 제외 정합.
     const r = await DB.prepare(
-      "UPDATE agency_store_intro_commissions SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') IN ('pending','available')"
+      "UPDATE agency_store_intro_commissions SET status = 'cancelled' WHERE order_id = ? AND COALESCE(status,'pending') IN ('pending','available')"
     ).bind(orderId).run().catch(() => ({ meta: { changes: 0 } }))
     return (r as { meta?: { changes?: number } }).meta?.changes ?? 0
   } catch { return 0 }

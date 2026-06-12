@@ -7,6 +7,7 @@
  */
 import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { creditAffiliateForOrder, resolveCommissionRate } from '../../../worker/utils/affiliate-credit'
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 import { COMMISSION_DEFAULTS } from '../../../shared/constants/policy'
@@ -46,36 +47,6 @@ async function ensureTable(DB: D1Database) {
  *   3) 아니면 platform_settings.affiliate_commission_rate (기본 5%)
  *   반환값은 ratio (0.05 = 5%).
  */
-async function resolveCommissionRate(
-  DB: D1Database,
-  productId: number | null | undefined,
-): Promise<number | null> {
-  if (productId) {
-    try {
-      const row = await DB.prepare(
-        'SELECT referral_enabled, referral_commission_rate FROM products WHERE id = ?'
-      ).bind(productId).first<{ referral_enabled: number | null; referral_commission_rate: number | null }>()
-      if (!row) return null
-      if (Number(row.referral_enabled) !== 1) return null  // OFF → 차단
-      if (row.referral_commission_rate != null && Number.isFinite(row.referral_commission_rate)) {
-        return Math.max(0, Math.min(1, Number(row.referral_commission_rate)))
-      }
-    } catch {
-      // 컬럼 미존재 (마이그레이션 0271 미적용) → platform default 로 graceful fallback
-    }
-  }
-  // platform default
-  return getCommissionRate(DB)
-}
-
-async function getCommissionRate(DB: D1Database): Promise<number> {
-  try {
-    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_commission_rate'").first<{ value: string }>()
-    if (row?.value) return parseFloat(row.value) / 100
-  } catch {}
-  return DEFAULT_COMMISSION_RATE
-}
-
 // ── POST /api/affiliate/track — 주문 완료 시 추천인 수수료 기록 ──
 // ✅ SECURITY FIX (Payment C1): requireAuth + server-side order lookup.
 // Previously unauthenticated and trusted client-supplied referrer_id / order_id /
@@ -93,127 +64,34 @@ affiliateRoutes.post('/track', requireAuth(), async (c) => {
     return c.json({ success: false, error: '필수 정보 없음' }, 400)
   }
 
-  // ✅ Look up actual order from DB — trust nothing from client
-  const order = await DB.prepare(
-    'SELECT id, user_id, total_amount, status FROM orders WHERE id = ?'
-  ).bind(order_id).first<{ id: number; user_id: string | number; total_amount: number; status: string }>()
-
-  if (!order) {
-    return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
-  }
-
-  // ✅ Caller must be the buyer (prevents random attackers from triggering tracking)
-  if (String(order.user_id) !== String(authUser.id)) {
+  // 🏁 2026-06-12: 코어를 creditAffiliateForOrder(worker/utils/affiliate-credit.ts)로 추출 —
+  //   결제확정(/confirm) server-side 경로와 SSOT 공유. 검증/멱등/적립/알림 1:1 동일.
+  //   라우트 고유 검사(호출자=구매자)만 여기 유지.
+  const ownOrder = await DB.prepare('SELECT user_id FROM orders WHERE id = ?')
+    .bind(order_id).first<{ user_id: string | number }>()
+  if (!ownOrder) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+  if (String(ownOrder.user_id) !== String(authUser.id)) {
     return c.json({ success: false, error: '주문의 구매자만 추천 수수료를 기록할 수 있습니다' }, 403)
   }
 
-  // ✅ Only allow tracking once payment is confirmed
-  const orderStatus = (order.status || '').toUpperCase()
-  if (!['DONE', 'PAID'].includes(orderStatus)) {
-    return c.json({ success: false, error: '결제 완료된 주문만 수수료 대상입니다' }, 400)
-  }
-
-  // ✅ Self-referral prevention (server-side comparison using DB user_id)
-  if (String(referrer_id) === String(order.user_id)) {
-    try {
-      await DB.prepare(
-        `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
-         VALUES ('self_referral', ?, 'order', ?, ?, 'high')`
-      ).bind(String(referrer_id), String(order.id), JSON.stringify({ buyer_id: order.user_id })).run()
-    } catch { /* */ }
-    return c.json({ success: false, error: '본인 추천 불가' }, 400)
-  }
-
-  // 🛡️ 2026-05-05 P0: 셀프 구매 차단 (셀러 본인이 추천 받아 자기 상품 구매)
-  try {
-    const sellerOwner = await DB.prepare(
-      `SELECT s.user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`
-    ).bind(order.id).first<{ user_id: string }>()
-    if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(order.user_id)) {
-      try {
-        await DB.prepare(
-          `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
-           VALUES ('self_purchase', ?, 'order', ?, ?, 'high')`
-        ).bind(String(order.user_id), String(order.id), JSON.stringify({ sellerOwner, referrer_id })).run()
-      } catch { /* */ }
-      return c.json({ success: false, error: '셀러 본인 구매는 추천 수수료 대상이 아닙니다' }, 400)
-    }
-  } catch { /* */ }
-
-  // 중복 방지
-  const existing = await DB.prepare(
-    'SELECT id FROM affiliate_earnings WHERE referrer_id = ? AND order_id = ?'
-  ).bind(String(referrer_id), order.id).first()
-  if (existing) return c.json({ success: true, message: '이미 기록됨' })
-
-  // 부정 방지: 같은 IP에서 같은 추천인으로 24시간 내 3건 이상이면 차단
-  if (buyerIp) {
-    const recentFromIp = await DB.prepare(`
-      SELECT COUNT(*) AS cnt FROM affiliate_earnings
-      WHERE referrer_id = ? AND buyer_ip = ? AND created_at > datetime('now', '-24 hours')
-    `).bind(String(referrer_id), buyerIp).first<{ cnt: number }>()
-    if (recentFromIp && recentFromIp.cnt >= 3) {
-      return c.json({ success: false, error: '비정상 패턴 감지' }, 400)
+  const result = await creditAffiliateForOrder(DB, c.env, {
+    referrerId: String(referrer_id), orderId: Number(order_id),
+    productId: product_id ? Number(product_id) : null,
+    productName: product_name || null, buyerIp,
+  })
+  if (!result.ok) {
+    switch (result.code) {
+      case 'NOT_FOUND': return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+      case 'NOT_PAID': return c.json({ success: false, error: '결제 완료된 주문만 수수료 대상입니다' }, 400)
+      case 'SELF_REFERRAL': return c.json({ success: false, error: '본인 추천 불가' }, 400)
+      case 'SELF_PURCHASE': return c.json({ success: false, error: '셀러 본인 구매는 추천 수수료 대상이 아닙니다' }, 400)
+      case 'DUPLICATE': return c.json({ success: true, message: '이미 기록됨' })
+      case 'IP_ABUSE': return c.json({ success: false, error: '비정상 패턴 감지' }, 400)
+      case 'REFERRAL_DISABLED': return c.json({ success: false, error: '이 상품은 추천 보상 대상이 아닙니다', code: 'REFERRAL_DISABLED' }, 400)
+      default: return c.json({ success: false, error: '추천 기록 중 오류' }, 500)
     }
   }
-
-  // ✅ Use server-side total_amount (ignore client order_amount)
-  const orderAmount = Number(order.total_amount) || 0
-
-  // 🛡️ 2026-05-19: 상품별 referral_enabled / commission_rate 우선 → platform default fallback.
-  //   product_id 없거나 referral_enabled=0 이면 추천 적용 안 함 (rate=null → 차단).
-  const rate = await resolveCommissionRate(DB, product_id ? Number(product_id) : null)
-  if (rate == null) {
-    return c.json({ success: false, error: '이 상품은 추천 보상 대상이 아닙니다', code: 'REFERRAL_DISABLED' }, 400)
-  }
-  const commission = Math.round(orderAmount * rate)
-
-  // 수수료 기록
-  await DB.prepare(`
-    INSERT INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    String(referrer_id), order.id, product_id || null, product_name || null,
-    String(order.user_id), buyerIp, orderAmount, commission,
-  ).run()
-
-  // 딜 포인트 즉시 적립 — user_points 테이블 사용 (production users 테이블에 deal_balance 컬럼 없음)
-  try {
-    await ensureUserPointsTable(DB)
-    await DB.prepare(`
-      INSERT INTO user_points (user_id, balance, total_charged)
-      VALUES (?, ?, 0)
-      ON CONFLICT(user_id) DO UPDATE SET
-        balance = balance + excluded.balance,
-        updated_at = datetime('now')
-    `).bind(String(referrer_id), commission).run()
-  } catch (e) {
-    if (import.meta.env?.DEV) console.warn('[affiliate] user_points grant failed', e)
-  }
-
-  // 알림 — DB notification + Push (큐레이터 수익 가시화, 2026-05-25)
-  try {
-    await DB.prepare(`
-      INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
-      VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
-    `).bind(String(referrer_id), '💰 핀으로 적립!', `${commission}딜이 적립되었습니다`).run()
-  } catch {}
-
-  // 🛡️ 2026-05-25: 즉시 push — 큐레이터에게 수익 발생 알림 (UX 핵심)
-  //   기존 affiliate 시스템 (셀러 추천) + 신규 큐레이터 핀 둘 다 동일 referrer_id 흐름.
-  try {
-    const { sendSystemPush } = await import('../../../lib/system-push')
-    c.executionCtx.waitUntil(
-      sendSystemPush(c.env, 'user', String(referrer_id), {
-        title: '🎉 핀으로 적립!',
-        body: `+${commission}딜 — 친구가 추천 링크로 구매했어요`,
-        url: '/u/me/earnings',
-        tag: `aff-earn-${referrer_id}-${Date.now()}`,
-      }).catch(() => {}),
-    )
-  } catch { /* push 실패는 무시 — 적립은 이미 완료 */ }
-
-  return c.json({ success: true, data: { commission } })
+  return c.json({ success: true, message: '추천 수수료 기록 완료', commission: result.commission })
 })
 
 // ── GET /api/affiliate/stats — 내 추천 실적 ──
@@ -224,7 +102,7 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
   await ensureTable(DB)
 
   const userId = String(user.id)
-  const rate = await getCommissionRate(DB)
+  const rate = (await resolveCommissionRate(DB, null)) ?? 0.05
 
   const [total, monthly, recent] = await Promise.all([
     DB.prepare(`

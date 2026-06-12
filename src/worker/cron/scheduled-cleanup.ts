@@ -820,6 +820,16 @@ export async function handleScheduled(env: Env) {
   //   ※ 보증금형(all-or-nothing) 자동환불이 필요한 **커뮤니티 공구**는 아래 22d 블록에서 별도 처리.
   //   ※ '미달성 시 자동환불' 마케팅(BusinessLandingPage)은 커뮤니티 공구 한정.
 
+  // ── 🏁 2026-06-12 (전 플로우 감사 🟡): 탈퇴 30일 경과분 hard purge ──
+  //   delete-account.service 가 "30일 후 파기" 를 고지하는데 cron 이 없어 deleted_accounts 에
+  //   원본 email/kakao_id/이름이 무기한 보존됐음(개인정보 파기 의무). 복원 가능 기간이 지난 행 삭제.
+  try {
+    const { meta } = await DB.prepare(
+      "DELETE FROM deleted_accounts WHERE reregister_available_at IS NOT NULL AND reregister_available_at < datetime('now')"
+    ).run();
+    if ((meta.changes ?? 0) > 0) results.deleted_accounts_purged = meta.changes;
+  } catch { /* table 없으면 skip */ }
+
   // ── 22c. 🛡️ 2026-05-12: 바우처 만료 임박 리마인더 (D-7, D-1) ──
   //   reminder_sent_at 컬럼으로 dedup. 컬럼 없으면 ALTER 로 보장.
   try {
@@ -844,13 +854,13 @@ export async function handleScheduled(env: Env) {
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '식사권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/user/profile').run();
+        ).bind(v.user_id, '식사권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/my-vouchers').run();
       } catch {}
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
           title: '식사권 만료 7일 전',
           body: `${v.product_name ?? '바우처'} 사용을 잊지 마세요`,
-          url: '/user/profile',
+          url: '/my-vouchers',
           tag: `voucher-d7-${v.id}`,
         });
       } catch {}
@@ -874,13 +884,13 @@ export async function handleScheduled(env: Env) {
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '식사권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/user/profile').run();
+        ).bind(v.user_id, '식사권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/my-vouchers').run();
       } catch {}
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
           title: '식사권 만료 1일 전',
           body: `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`,
-          url: '/user/profile',
+          url: '/my-vouchers',
           tag: `voucher-d1-${v.id}`,
         });
       } catch {}

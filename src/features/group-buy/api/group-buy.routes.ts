@@ -638,6 +638,30 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       if (!_deferred) await _bg()
     }
 
+      // 🏁 2026-06-12 (전 플로우 감사): 셀러 '판매 발생' 벨 알림(기존엔 첫 1회 알림톡뿐) +
+      //   초대 1,000딜 첫구매 보상(호출자 0 이던 약속 미이행 마감). 응답 후 실행 — 머니 경로 무변경.
+      {
+        const _saleFx = async () => {
+          try {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            if (product.seller_id) {
+              await createDashboardNotification(
+                DB, 'seller', String(product.seller_id), 'voucher_sold',
+                '🎟️ 공구권 판매', `${product.name} ×${qty} — ₩${Number(totalAmount).toLocaleString('ko-KR')}`,
+                '/seller/group-buy',
+              ).catch(() => {})
+            }
+          } catch { /* fail-soft */ }
+          try {
+            const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
+            await grantInviteRewardForFirstPurchase(DB, String(userId))
+          } catch { /* fail-soft */ }
+        }
+        let _saleDeferred = false
+        try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_saleFx()); _saleDeferred = true } } catch { /* no ctx */ }
+        if (!_saleDeferred) await _saleFx()
+      }
+
       // 🛡️ 2026-05-15: Promo 코드 사용 기록 + used_count atomic increment
       //   redemptions UNIQUE(promo_id, user_id, order_number) → 같은 주문 중복 차단
       //   used_count 는 max_uses 미만 일 때만 증가 (race 방어)
@@ -1071,6 +1095,29 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     // 공구 진행 카운터 +qty (atomic).
     await DB.prepare(`UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?`)
       .bind(qty, productId).run().catch(swallow('group-buy:confirm-toss:counter'))
+
+    // 🏁 2026-06-12 (전 플로우 감사): 카드 경로도 셀러 벨 + 초대 1,000딜 — 딜 경로와 동형 (응답 후).
+    {
+      const _saleFx = async () => {
+        try {
+          const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+          if (product.seller_id) {
+            await createDashboardNotification(
+              DB, 'seller', String(product.seller_id), 'voucher_sold',
+              '🎟️ 공구권 판매(카드)', `${product.name} ×${qty} — ₩${Number(expectedAmount).toLocaleString('ko-KR')}`,
+              '/seller/group-buy',
+            ).catch(() => {})
+          }
+        } catch { /* fail-soft */ }
+        try {
+          const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
+          await grantInviteRewardForFirstPurchase(DB, String(userId))
+        } catch { /* fail-soft */ }
+      }
+      let _saleDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_saleFx()); _saleDeferred = true } } catch { /* no ctx */ }
+      if (!_saleDeferred) await _saleFx()
+    }
 
     // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 카드 결제도 적립 (딜 경로와 동일). UNIQUE 멱등.
     c.executionCtx?.waitUntil((async () => {
