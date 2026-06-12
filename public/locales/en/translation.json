@@ -5927,7 +5927,18 @@
     "bulkOptionUpload": "Upload filled Excel",
     "bulkOptionHint": "Upload .xlsx directly · encoding auto-fix · up to 2,000 rows",
     "fieldDetailImages": "Detail page image URLs (comma-separated, up to 10)",
-    "detailImagesHint": "Shown in order below the description on the product detail page."
+    "detailImagesHint": "Shown in order below the description on the product detail page.",
+    "msTitle": "To your first payout",
+    "msNext": "Next",
+    "msApproved": "Account approved",
+    "msFirstProduct": "First product",
+    "msFirstApproved": "First approval",
+    "msFirstOrder": "First order",
+    "msFirstSettle": "First settlement",
+    "msFirstProductHint": "1 minute with the button above — Excel bulk works too",
+    "msFirstApprovedHint": "Once reviewed, shown to distributors nationwide",
+    "msFirstOrderHint": "We'll notify you via the bell when a distributor buys",
+    "msFirstSettleHint": "Credited on payment — request withdrawal in Settlements"
   },
   "wholesaleChat": {
     "title": "Chat",

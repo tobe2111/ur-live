@@ -5927,7 +5927,18 @@
     "bulkOptionUpload": "作成したExcelをアップロード",
     "bulkOptionHint": ".xlsxのままアップロード可 · 文字化け自動復旧 · 最大2,000行",
     "fieldDetailImages": "詳細ページ画像URL（カンマ区切り・最大10枚）",
-    "detailImagesHint": "商品詳細ページの説明の下に順番に表示されます。"
+    "detailImagesHint": "商品詳細ページの説明の下に順番に表示されます。",
+    "msTitle": "初回精算まで",
+    "msNext": "次",
+    "msApproved": "加入承認",
+    "msFirstProduct": "初商品登録",
+    "msFirstApproved": "初商品承認",
+    "msFirstOrder": "初注文",
+    "msFirstSettle": "初精算積立",
+    "msFirstProductHint": "上のボタンで1分 — Excel一括もOK",
+    "msFirstApprovedHint": "審査通過で全国の流通会社に公開",
+    "msFirstOrderHint": "仕入れが入るとベル通知でお知らせ",
+    "msFirstSettleHint": "決済と同時に積立 — 精算タブで出金申請"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

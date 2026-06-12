@@ -4,6 +4,16 @@
 - **도매몰(wholesale/supplier/supply) 전 영역 = 별도 세션 전담** (= `claude/keen-cerf-ch0jm5` 세션 — 아래 06-12 도매 로그 전부 이 세션). 타 세션(claude/service-analysis-optimization-whpu0f 계열)은 **도매몰 외 구현만** — 도매 파일 수정 금지.
 - 도매 관련 잔여 백로그(NTS 어드민 승인화면 표시 강화, 클레임 환불 딥링크, 장바구니 계정키 등)는 도매 세션 몫.
 
+## ✅ 2026-06-12 — 도매 재점검 후속 개선 5종 (사용자 승인 "모두 가장 이상적으로")
+**재점검 결론**: 배선 9영역 전부 정상, 검증 에이전트 결함 주장 6건 직접 재확인으로 기각(CHECK 마이그레이션=repair-schema 처리·/home 몰스코프=타 세션 수정·카탈로그 캐시 존재·상품 승인/가격변경/셀러 승인 통지 기존재·restock cron 배선됨). **알림 통찰**: 계정/상품/가격변경의 supplier 알림은 원래 있었으나 CHECK 버그로 증발 중이었음 — `/admin/health` 1회가 전부 살림.
+**구현 5종**:
+- 💰 **라인 단위 환불**: 제조사 환불 버튼이 라인에 있는데 동작은 내 전체 라인이던 것 → 서버 `item_ids` 부분집합(소유권은 supplier_id 쿼리가 보장) + `reverseSupplierOnWholesaleRefund` 에 **productIds 스코프**(일부 환불 시 과다 클로백 방지) + **Toss 멱등키에 라인 집합**(키 고정이면 2번째 부분취소가 dedupe 로 무시되는 미환불 사고 방지) + 예치금 원장 ref 라인 구분. 회귀 테스트 4(쿼리/바인드 순서).
+- 🔔 **제조사 승인/거부 알림톡**: admin-suppliers PATCH 에 `sendSystemAlimtalk`(담당자>대표자>가입 phone, env 미설정 silent skip — 셀러 승인 패턴). ⚠️ Aligo 템플릿 `supplier_approved`/`supplier_rejected` 등록 필요(운영).
+- 🗂️ **어드민 통합 승인 큐**: `/api/admin/wholesale-overview` 응답에 `queue`(유통/제조/상품/가격변경/입금/견적 6종 대기 수) + AdminWholesaleOverviewPage 상단 "오늘 처리할 것" 카드(딥링크 — 상품/가격은 `/admin/products` 검증 후 연결).
+- 📊 **시장 신호 유통사 노출**: `GET /api/wholesale/market-signal`(로그인 유통사, 최저가+수요+시즌 — 기존 util 재사용) + 상품 상세 `MarketSignalCard`(lazy) — "시중 최저가 vs 내 공급가 → 마진 여력" 사입 확신 보조. 키 미설정 시 숨김.
+- 🧭 **제조사 온보딩 마일스톤**: `/me`에 `milestones`(orders/settlements COUNT, additive) + OverviewTab "첫 정산까지" 5단계 체크(전부 달성 시 미표시). i18n 11키×6언어.
+- 검증: tsc 0 · unit 2085(+4) · build OK. **Phase B 드랍쉬핑은 사용자 스마트스토어 E2E 통과 후 착수**(자동 발주=돈 — 연결 검증 선행).
+
 ## ✅ 2026-06-12 — 대량등록 엑셀 완전판 (사용자 요청 "엑셀로, 이상적으로")
 - **실사용 사고 2개 근본 해결** (`lib/read-table-file.ts`, dep 0): ① Excel 기본 CSV 저장(CP949) 한글 깨짐 — `file.text()`(UTF-8 고정) → UTF-8(fatal) 실패 시 EUC-KR 자동 디코드 ② **.xlsx 직접 업로드** — zip(EOCD→central dir) 직접 파싱(STORED+DEFLATE/DecompressionStream) + sharedStrings/inlineStr → CSV 변환해 기존 서버 경로(parseCsv) **무변경** 통과. 적용 4곳: 제조사 대량등록·재고 가져오기·송장 일괄·유통사 대량주문(BulkOrderPanel). accept 에 .xlsx, 라벨 "엑셀/CSV".
 - **양식**: `GET /products/bulk-template.xlsx`(buildXlsx 재사용 — 진짜 엑셀) 신설, CSV endpoint 존치. 템플릿 parity — 박스입수/주문배수/이미지URL 컬럼 + bulk 파서/INSERT 반영(단건 폼과 일치).

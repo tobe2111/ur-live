@@ -73,6 +73,38 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
         </button>
       ) : null}
 
+      {/* 🧭 2026-06-12 (감사 개선 ⑥): 온보딩 마일스톤 — 첫 정산까지의 여정을 보여줘 "올렸는데 안 팔린다" 이탈 방지.
+          전부 달성하면 표시하지 않음(졸업 — 화면 소음 0). */}
+      {approved && (() => {
+        const ms = me.milestones
+        const steps: Array<{ label: string; done: boolean; hint: string }> = [
+          { label: t('supplier.msApproved', { defaultValue: '가입 승인' }), done: true, hint: '' },
+          { label: t('supplier.msFirstProduct', { defaultValue: '첫 상품 등록' }), done: me.product_counts.total > 0, hint: t('supplier.msFirstProductHint', { defaultValue: '위 버튼으로 1분 — 엑셀로 여러 개도 OK' }) },
+          { label: t('supplier.msFirstApproved', { defaultValue: '첫 상품 승인' }), done: me.product_counts.approved > 0, hint: t('supplier.msFirstApprovedHint', { defaultValue: '검수 통과 시 전국 유통사에게 노출' }) },
+          { label: t('supplier.msFirstOrder', { defaultValue: '첫 주문' }), done: (ms?.orders ?? 0) > 0, hint: t('supplier.msFirstOrderHint', { defaultValue: '유통사가 사입하면 벨 알림으로 알려드려요' }) },
+          { label: t('supplier.msFirstSettle', { defaultValue: '첫 정산 적립' }), done: (ms?.settlements ?? 0) > 0, hint: t('supplier.msFirstSettleHint', { defaultValue: '결제 즉시 적립 — 정산 탭에서 출금 신청' }) },
+        ]
+        const remaining = steps.filter(s => !s.done)
+        if (remaining.length === 0) return null
+        const next = remaining[0]
+        return (
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+            <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.msTitle', { defaultValue: '첫 정산까지' })} <span className="text-xs font-medium text-gray-400">({steps.filter(s => s.done).length}/{steps.length})</span></p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {steps.map((s, i) => (
+                <div key={s.label} className="flex items-center gap-1.5">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold ${s.done ? 'bg-green-50 text-green-700' : s === next ? 'bg-[#FFF0F2] text-[#FF0033]' : 'bg-gray-50 text-gray-400'}`}>
+                    {s.done ? <CheckCircle className="w-3 h-3" /> : null}{s.label}
+                  </span>
+                  {i < steps.length - 1 && <span className="text-gray-300 text-[10px]">→</span>}
+                </div>
+              ))}
+            </div>
+            {next?.hint && <p className="text-[11.5px] text-gray-500 mt-2.5">👉 {t('supplier.msNext', { defaultValue: '다음' })}: <b className="text-gray-700">{next.label}</b> — {next.hint}</p>}
+          </div>
+        )
+      })()}
+
       {/* 할 일 — actionable. 발송 대기 / 반려 / 검수 대기. 빈 상태 히어로(첫 상품 등록)는 위에서 별도 처리. */}
       {approved && !noProducts && (
         <div>

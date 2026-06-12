@@ -114,8 +114,9 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
     type PatchBody = { status?: string; commission_rate?: number };
     const body = await c.req.json<PatchBody>().catch(() => ({} as PatchBody));
 
-    const existing = await DB.prepare('SELECT id, business_name, status FROM suppliers WHERE id = ?')
-      .bind(id).first<{ id: number; business_name: string; status: string }>();
+    // 🔔 2026-06-12 (감사 개선): 승인/거부 알림톡용 연락처 — 담당자 > 대표자 > 가입 phone 우선.
+    const existing = await DB.prepare('SELECT id, business_name, status, phone, representative_phone, manager_phone FROM suppliers WHERE id = ?')
+      .bind(id).first<{ id: number; business_name: string; status: string; phone: string | null; representative_phone: string | null; manager_phone: string | null }>();
     if (!existing) return c.json({ success: false, error: '공급자를 찾을 수 없습니다' }, 404);
 
     const sets: string[] = [];
@@ -146,6 +147,18 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
       };
       const n = map[body.status];
       if (n) createDashboardNotification(DB, 'supplier', String(id), n.type, n.title, existing.business_name, '/supplier').catch(() => {});
+
+      // 🔔 2026-06-12 (감사 개선): 승인/거부는 접속 전 채널(알림톡)로도 — 벨은 접속해야 보임.
+      //   셀러 승인(admin-sellers `sendSystemAlimtalk`)과 동일 패턴 — env 미설정 시 silent skip.
+      const phone = existing.manager_phone || existing.representative_phone || existing.phone;
+      if (phone && (body.status === 'approved' || body.status === 'rejected')) {
+        const msg = body.status === 'approved'
+          ? `[유통스타트] 제조회원 승인 완료\n\n· 상호: ${existing.business_name}\n\n이제 로그인해 공급상품을 등록할 수 있습니다.\nhttps://utongstart.com/supplier/login`
+          : `[유통스타트] 제조회원 가입이 반려되었습니다\n\n· 상호: ${existing.business_name}\n\n자세한 내용은 jiwon@ur-team.com 으로 문의해주세요.`;
+        import('../../../lib/system-alimtalk')
+          .then(({ sendSystemAlimtalk }) => sendSystemAlimtalk(c.env, phone, body.status === 'approved' ? 'supplier_approved' : 'supplier_rejected', msg))
+          .catch(() => { /* fail-soft — 알림 실패가 승인을 막지 않음 */ });
+      }
     }
 
     return c.json({ success: true, data: { id: Number(id), status: body.status ?? existing.status }, message: '공급자 정보가 업데이트되었습니다.' });

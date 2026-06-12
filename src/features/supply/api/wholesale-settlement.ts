@@ -151,6 +151,9 @@ async function recomputeSupplierBalance(DB: D1Database, supplierId: number): Pro
  *     다음 payout 이 그만큼 적게 지급(net-out). 미래 잔고 부족(음수)이면 어드민 ops 알림.
  *   - 잔고는 per-row 버킷 감산 대신 supplier별 SUM 재계산(만기 레이스 제거).
  * @param supplierId 지정 시 해당 제조사 라인만 역전(부분환불). 미지정 시 주문 전체.
+ * @param productIds 🛡️ 2026-06-12 (라인 선택 환불): 지정 시 그 상품 라인의 정산만 역전 —
+ *   제조사가 일부 라인만 환불할 때 나머지 라인 정산이 같이 역전되는 과다 클로백 방지.
+ *   미지정 시 기존 동작(스코프 내 전체) 그대로 — additive.
  * @returns 역전된 라인 수 (취소 + 클로백 합산)
  */
 export async function reverseSupplierOnWholesaleRefund(
@@ -158,18 +161,21 @@ export async function reverseSupplierOnWholesaleRefund(
   wholesaleOrderId: number,
   reason: string,
   supplierId?: number,
+  productIds?: number[],
 ): Promise<number> {
   if (!wholesaleOrderId) return 0
   await ensureSourceColumn(DB)
   const scoped = Number.isFinite(supplierId) && (supplierId as number) > 0
+  const pids = (productIds || []).filter(p => Number.isFinite(p) && p > 0)
+  const pidWhere = pids.length ? ` AND product_id IN (${pids.map(() => '?').join(',')})` : ''
   // 🛡️ PAY-1: paid 도 함께 조회(클로백 대상). 이미 클로백된 row(note='clawback')는 제외(멱등).
   // 🛡️ 2026-06-08 PAY-6(b): retail_amount 도 조회 — 환불되는 라인의 플랫폼 마진
   //   (retail − supply)을 wholesale_orders.margin_total 에서 비례 차감하기 위함.
   const rows = await DB.prepare(
     `SELECT id, supplier_id, product_id, supply_amount, retail_amount, status FROM supplier_settlements
      WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available','paid') AND note IS NOT 'clawback'
-     ${scoped ? 'AND supplier_id = ?' : ''}`
-  ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]))
+     ${scoped ? 'AND supplier_id = ?' : ''}${pidWhere}`
+  ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]), ...pids)
     .all<{ id: number; supplier_id: number; product_id: number; supply_amount: number; retail_amount: number; status: string }>()
     .catch(() => ({ results: [] as { id: number; supplier_id: number; product_id: number; supply_amount: number; retail_amount: number; status: string }[] }))
 

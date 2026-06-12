@@ -7,6 +7,8 @@ export interface Me {
   profile: { business_name: string; email: string; status: string }
   balance: { pending_amount: number; available_amount: number; paid_amount: number }
   product_counts: { total: number; pending: number; approved: number; rejected: number }
+  // 🧭 2026-06-12 (온보딩 마일스톤): 첫 주문/첫 정산 달성 판정용 — 서버 additive.
+  milestones?: { orders: number; settlements: number }
 }
 export interface CatalogItem {
   id: number; name: string; retail_price: number; supply_price: number; stock: number

@@ -46,15 +46,31 @@ interface Totals {
   orders_month: number
 }
 
+// 🗂️ 2026-06-12 (감사 개선): 통합 승인 큐 — 수동 승인 5종 + 입금확인을 한 카드에서.
+interface ApprovalQueue {
+  distributors_pending: number
+  suppliers_pending: number
+  products_pending: number
+  price_changes_pending: number
+  quotes_pending: number
+  charge_requests_pending: number
+}
+
 interface OverviewResp {
   malls: MallRow[]
   totals: Totals
+  queue: ApprovalQueue
 }
 
 const EMPTY_TOTALS: Totals = {
   malls: 0, distributors: 0, suppliers: 0, products: 0,
   gmv_month: 0, deposit_liability: 0,
   pending_charge_requests: 0, pending_proposals: 0, orders_month: 0,
+}
+
+const EMPTY_QUEUE: ApprovalQueue = {
+  distributors_pending: 0, suppliers_pending: 0, products_pending: 0,
+  price_changes_pending: 0, quotes_pending: 0, charge_requests_pending: 0,
 }
 
 export default function AdminWholesaleOverviewPage() {
@@ -64,12 +80,14 @@ export default function AdminWholesaleOverviewPage() {
     ['admin', 'wholesale-overview'], '/api/admin/wholesale-overview',
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      select: (r: any) => (r?.success ? { malls: (r.malls ?? []) as MallRow[], totals: (r.totals ?? EMPTY_TOTALS) as Totals } : { malls: [], totals: EMPTY_TOTALS }),
+      select: (r: any) => (r?.success ? { malls: (r.malls ?? []) as MallRow[], totals: (r.totals ?? EMPTY_TOTALS) as Totals, queue: (r.queue ?? EMPTY_QUEUE) as ApprovalQueue } : { malls: [], totals: EMPTY_TOTALS, queue: EMPTY_QUEUE }),
       staleTime: 2 * 60 * 1000,
     },
   )
   const malls = data?.malls ?? []
   const totals = data?.totals ?? EMPTY_TOTALS
+  const queue = data?.queue ?? EMPTY_QUEUE
+  const queueTotal = queue.distributors_pending + queue.suppliers_pending + queue.products_pending + queue.price_changes_pending + queue.quotes_pending + queue.charge_requests_pending
 
   return (
     <AdminLayout title={t('admin.wsOverview.title', { defaultValue: '도매 통합 현황' })}>
@@ -84,6 +102,34 @@ export default function AdminWholesaleOverviewPage() {
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
         ) : (
           <>
+            {/* ── 🗂️ 통합 승인 큐 (2026-06-12 감사 개선) — 수동 승인 정책의 "오늘 처리할 것" 한 곳에. ── */}
+            <section className={`mt-5 rounded-xl border p-4 ${queueTotal > 0 ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-white'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <Inbox className="w-4 h-4 text-gray-500" />
+                  {t('admin.wsOverview.queueTitle', { defaultValue: '오늘 처리할 것 (승인 대기)' })}
+                  {queueTotal > 0 && <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-bold">{formatNumber(queueTotal)}</span>}
+                </h2>
+                {queueTotal === 0 && <span className="text-xs text-gray-400">{t('admin.wsOverview.queueEmpty', { defaultValue: '대기 없음 — 깨끗해요 ✨' })}</span>}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {([
+                  [queue.distributors_pending, '유통사 승인', '/admin/seller-approval'],
+                  [queue.suppliers_pending, '제조사 승인', '/admin/suppliers'],
+                  [queue.products_pending, '상품 승인', '/admin/products'],
+                  [queue.price_changes_pending, '가격변경', '/admin/products'],
+                  [queue.charge_requests_pending, '입금확인', '/admin/wholesale-deposits'],
+                  [queue.quotes_pending, '견적 회신', '/admin/wholesale-quotes'],
+                ] as Array<[number, string, string]>).map(([n, label, to]) => (
+                  <Link key={label} to={to}
+                    className={`rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors ${n > 0 ? 'border-amber-300 bg-white hover:bg-amber-50' : 'border-gray-100 bg-white/60 hover:bg-gray-50'}`}>
+                    <span className="text-[12px] font-semibold text-gray-700 truncate">{label}</span>
+                    <span className={`text-[14px] font-extrabold tabular-nums ${n > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{formatNumber(n)}</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+
             {/* ── Totals strip ───────────────────────────────────────────── */}
             <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
               <DashboardStatCard
