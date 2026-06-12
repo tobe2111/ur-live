@@ -1103,6 +1103,18 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       admin_memo TEXT
     )` },
     { name: 'idx_user_withdrawals_user_status', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_status ON user_withdrawals(user_id, status, requested_at DESC)` },
+    // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 에이전시 지급 이력.
+    { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
+    { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
+    { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },
+    { name: 'agency_commission_payouts', sql: `CREATE TABLE IF NOT EXISTS agency_commission_payouts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agency_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      row_count INTEGER NOT NULL,
+      admin_memo TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
     { name: 'idx_user_withdrawals_status_requested', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_status_requested ON user_withdrawals(status, requested_at DESC)` },
     // migration 0273 — 검색 분석 로그.
     { name: 'search_logs', sql: `CREATE TABLE IF NOT EXISTS search_logs (

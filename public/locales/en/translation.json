@@ -4072,6 +4072,10 @@
       "kakaoDone": "Kakao login complete",
       "kakaoHint": "Just fill in the agency info below to complete",
       "approvalNote": "Approval usually takes 1-2 days. After approval, you can use agency features via Kakao login."
+    },
+    "settlementsAuto": {
+      "autoPayout": "✨ No request needed",
+      "autoPayoutDesc": "Intro commissions are aggregated automatically and paid out every Friday (after a 7-day refund window)"
     }
   },
   "nav": {

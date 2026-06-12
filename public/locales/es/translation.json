@@ -3401,6 +3401,10 @@
       "kakaoDone": "Inicio de sesión Kakao completado",
       "kakaoHint": "Solo completa la información de agencia para finalizar",
       "approvalNote": "La aprobación tarda 1-2 días. Después de la aprobación, puedes usar las funciones de agencia con Kakao."
+    },
+    "settlementsAuto": {
+      "autoPayout": "✨ Ya no es necesario solicitar",
+      "autoPayoutDesc": "Las comisiones se calculan automáticamente y se pagan cada viernes (tras 7 días de protección por reembolsos)"
     }
   },
   "nav": {

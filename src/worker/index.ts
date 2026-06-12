@@ -188,6 +188,7 @@ import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
+import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
 import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-approvals.routes';
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
@@ -1225,6 +1226,8 @@ app.route('/api/banners', bannerRoutes);
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
+// 🏦 2026-06-12 지급 센터 — 셀러/큐레이터/에이전시 신청→입금완료 통합 (사용자 결정)
+adminApp.route('/payout-center', payoutCenterRoutes);
 // 🛡️ 2026-04-26: 에이전시 셀러 심사 큐 (Agency P0 #1)
 adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
