@@ -253,7 +253,8 @@
     "back": "戻る",
     "seoTitle": "通知 - Ur-Deal",
     "seoDesc": "新しい通知を確認してください",
-    "listAria": "通知一覧"
+    "listAria": "通知一覧",
+    "loadMore": "もっと見る"
   },
   "payment": {
     "checkout": "決済する",
@@ -4776,7 +4777,8 @@
     "saving": "保存中...",
     "save": "保存",
     "ariaToggleOn": "{{label}}をオン",
-    "ariaToggleOff": "{{label}}をオフ"
+    "ariaToggleOff": "{{label}}をオフ",
+    "language": "言語"
   },
   "productDetail": {
     "retry": "もう一度試す",
@@ -6075,5 +6077,11 @@
   "my": {
     "earningsGroupTitle": "収益・紹介",
     "earningsGroupSub": "紹介報酬 · リンクショップ収益 · 招待"
+  },
+  "push": {
+    "promptTitle": "通知をオンにしますか？",
+    "promptDesc": "クーポンの期限切れや共同購入の締切、獲得のお知らせをお届けします",
+    "promptOn": "オンにする",
+    "promptLater": "後で"
   }
 }

@@ -50,6 +50,16 @@ export function processAuthCallbackParams(): void {
         'dark', 'light', 'theme',
         'affiliate_ref', 'affiliate_ref_expires',
       ])
+      // 🏁 2026-06-12 (P7 — 전 플로우 감사, 사용자 승인 "모두 이상적"): 같은 user.id 재로그인이면
+      //   admin 세션 보존 — SPA 콜백(KakaoCallbackPage:69 'admin_token 은 별도 컨텍스트')과 정책 통일.
+      //   다른 user.id(계정 전환/공용 기기)는 기존대로 전부 wipe (cross-user 누출 차단이 우선).
+      try {
+        const incomingUserId = urlParams.get('userId')
+        const prevUserId = localStorage.getItem('user_id')
+        if (incomingUserId && prevUserId && String(incomingUserId) === String(prevUserId)) {
+          for (const k of ['admin_token', 'admin_refresh_token', 'admin_id', 'admin_name', 'admin_email']) KEEP_KEYS.add(k)
+        }
+      } catch { /* ignore */ }
       const isKeeper = (k: string) =>
         KEEP_KEYS.has(k) || KEEP_PREFIXES.some(p => k.startsWith(p))
 

@@ -146,7 +146,16 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
   },
   {
     key: 'settlement', icon: '💰', title: '정산 처리', order: 60,
-    content: `### 정산 프로세스 (\`/admin/settlement\`)
+    content: `### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
+셀러 정산 · 큐레이터 환급 · 에이전시 영입 커미션의 **모든 지급 요청이 한 화면**에 모입니다.
+1. 매주 금요일 지급 센터 열기 (정산 센터 탭 맨 앞)
+2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체
+3. **입금 완료** 클릭 → 상태 기록 + 신청자에게 자동 알림
+- 에이전시는 환불 보호를 위해 **7일 경과분만** 일괄 지급 버튼이 활성화됩니다
+- 큐레이터 반려 시 차감됐던 딜이 자동 복원됩니다
+- 제조사(공급사) 출금은 기존 전용 화면(\`/admin/wholesale-withdrawals\`) 그대로
+
+### 정산 프로세스 (\`/admin/settlement\`)
 1. 셀러가 정산 신청 → 상태 **REQUESTED**
 2. 관리자 검토 → 승인 시 **APPROVED** 상태로 전환
 3. 실제 송금 완료 시 **PAID** 로 변경 — 이체 증빙 업로드

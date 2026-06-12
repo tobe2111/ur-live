@@ -253,7 +253,8 @@
     "back": "뒤로 가기",
     "seoTitle": "알림 - 유어딜",
     "seoDesc": "새로운 알림을 확인하세요",
-    "listAria": "알림 목록"
+    "listAria": "알림 목록",
+    "loadMore": "더 보기"
   },
   "payment": {
     "checkout": "결제하기",
@@ -4776,7 +4777,8 @@
     "saving": "저장 중...",
     "save": "저장",
     "ariaToggleOn": "{{label}} 켜기",
-    "ariaToggleOff": "{{label}} 끄기"
+    "ariaToggleOff": "{{label}} 끄기",
+    "language": "언어"
   },
   "productDetail": {
     "retry": "다시 시도",
@@ -6071,5 +6073,11 @@
   "my": {
     "earningsGroupTitle": "내 수익·추천",
     "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대"
+  },
+  "push": {
+    "promptTitle": "알림을 켜시겠어요?",
+    "promptDesc": "교환권 만료 임박, 공구 마감, 적립 소식을 놓치지 않게 알려드려요",
+    "promptOn": "켜기",
+    "promptLater": "나중에"
   }
 }

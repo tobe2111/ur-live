@@ -150,6 +150,20 @@ sellersRouter.get('/:id/public', async (c) => {
       return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     }
 
+    // 🏁 2026-06-12 (P5 — 전 플로우 감사, 사용자 승인 "모두 이상적"): 셀러에 연결된 유저가
+    //   큐레이터(핸들 보유)면 handle 을 additive 로 동봉 — SellerPublicPage 가 '추천 핀' 섹션을
+    //   lazy 렌더할 수 있게. 기존 응답 필드/캐시 키 불변(추가만), 실패 시 조용히 생략.
+    try {
+      const sid = (seller as { id?: number }).id
+      if (sid) {
+        const linked = await c.env.DB.prepare(
+          `SELECT u.handle FROM sellers s JOIN users u ON u.id = s.linked_user_id
+            WHERE s.id = ? AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
+        ).bind(sid).first<{ handle: string }>()
+        if (linked?.handle) (seller as Record<string, unknown>).curator_handle = linked.handle
+      }
+    } catch { /* additive — 생략 가능 */ }
+
     return c.json({ success: true, data: seller });
   } catch (err) {
     console.error('[SELLERS] Public profile error:', err);

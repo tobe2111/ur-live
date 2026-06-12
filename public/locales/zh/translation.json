@@ -253,7 +253,8 @@
     "back": "返回",
     "seoTitle": "通知 - Ur-Deal",
     "seoDesc": "查看您的新通知",
-    "listAria": "通知列表"
+    "listAria": "通知列表",
+    "loadMore": "加载更多"
   },
   "payment": {
     "checkout": "结算",
@@ -4776,7 +4777,8 @@
     "saving": "保存中...",
     "save": "保存",
     "ariaToggleOn": "开启 {{label}}",
-    "ariaToggleOff": "关闭 {{label}}"
+    "ariaToggleOff": "关闭 {{label}}",
+    "language": "语言"
   },
   "productDetail": {
     "retry": "重试",
@@ -6075,5 +6077,11 @@
   "my": {
     "earningsGroupTitle": "我的收益·推荐",
     "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请"
+  },
+  "push": {
+    "promptTitle": "开启通知？",
+    "promptDesc": "兑换券到期、团购截止、收益消息第一时间提醒您",
+    "promptOn": "开启",
+    "promptLater": "稍后"
   }
 }

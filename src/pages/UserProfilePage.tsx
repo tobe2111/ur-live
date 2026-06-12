@@ -23,6 +23,7 @@ import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import { useMyCounts } from './user-profile/useMyCounts'
 import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
+import LanguageSection from '@/components/settings/LanguageSection'
 // 🛡️ 2026-05-24: /account/settings 와 통합 — unique 섹션들 import.
 import {
   NotificationToggleSection,
@@ -203,6 +204,8 @@ export default function UserProfilePage() {
            마이페이지 자체는 강제 다크라 시각 변화 없지만, 토글은 다른 화이트 페이지
            (쇼핑/결제/마이리뷰 등) 에 즉시 반영됨. 사용자 접근성 위해 마이페이지에 노출. */}
       <ThemeToggleSection className="ur-content-medium px-4 lg:px-8 pt-5" />
+      {/* 🏁 2026-06-12: 언어 선택 — 기능 기존재, 마이 노출만 추가 */}
+      <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
