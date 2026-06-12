@@ -27,6 +27,20 @@ export function safeError(
   const msg = (err as Error)?.message || String(err)
   console.error(`${logTag} ${status} error:`, msg)
 
+  // 📊 2026-06-12 (4차 감사 D2): 5xx 만 Sentry 보고 — 기존 ~400곳 console-only 였던 서버 오류 가시화.
+  //   dynamic import (순환 import 방어) + fire-and-forget fail-soft: Sentry 실패가 응답을 절대 못 막음.
+  //   DSN 미설정 시 captureException 이 console.error 폴백 (sentry.ts 2026-06-11 동작).
+  if (status >= 500) {
+    try {
+      void import('./sentry')
+        .then((m) => m.captureException(
+          err instanceof Error ? err : new Error(msg),
+          { tags: { tag: logTag, status: String(status), via: 'safeError' } },
+        ))
+        .catch(() => { /* fail-soft */ })
+    } catch { /* fail-soft */ }
+  }
+
   // 🏭 2026-06-07 (보안 audit, 사용자 승인): production 에서 _debug(원본 에러 메시지) 미노출.
   //   기존엔 PROD 에서도 200자 노출 → `UNIQUE constraint failed: users.email` 류 메시지로 계정
   //   enumeration / 내부 스키마 누출 가능했음. 상세는 위 console.error 로 서버 로그(Cloudflare/Sentry)에만

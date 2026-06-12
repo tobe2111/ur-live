@@ -73,6 +73,25 @@ import { getFeatureFlags } from './utils/feature-flags';
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
 
+/**
+ * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
+ *
+ * 배경: agency-cron-batch / agency-weekly-batch 의 내부 task 들이 `.catch(logError)` 만 해서
+ * batch 자체는 성공으로 끝남 → safeCron 의 Discord 경로에 절대 안 닿았음 (silent 실패).
+ * safeCron 의 Discord 패턴을 그대로 재사용해 내부 task 실패도 운영자에게 도달시킨다.
+ */
+export async function notifyCronFailure(env: Env, name: string, err: unknown): Promise<void> {
+  const msg = (err as Error)?.message || String(err);
+  logError(`[cron:${name}] FAILED`, { error: msg });
+  const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
+  if (webhook) {
+    try {
+      const { sendDiscordAlert } = await import('./utils/discord-alert');
+      await sendDiscordAlert(webhook, `🔴 Cron Failed: ${name}`, msg.slice(0, 1500), 'error');
+    } catch { /* discord 자체 실패는 무시 */ }
+  }
+}
+
 export async function handleCronScheduled(
   event: ScheduledEvent,
   env: Env,
@@ -84,15 +103,7 @@ export async function handleCronScheduled(
     try {
       await task();
     } catch (err) {
-      const msg = (err as Error)?.message || String(err);
-      logError(`[cron:${name}] FAILED`, { error: msg });
-      const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
-      if (webhook) {
-        try {
-          const { sendDiscordAlert } = await import('./utils/discord-alert');
-          await sendDiscordAlert(webhook, `🔴 Cron Failed: ${name}`, msg.slice(0, 1500), 'error');
-        } catch { /* discord 자체 실패는 무시 */ }
-      }
+      await notifyCronFailure(env, name, err);
     }
   };
 
@@ -161,6 +172,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 유통사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
+    // 🔁 2026-06-12 (4차 감사 D4 — 1단계): FAILED 웹훅(retry<3) 백로그 감시 — Discord 요약.
+    //   실제 자동 재처리는 webhook.routes 잠금 해제 승인 후 2단계 (파일 헤더 참조).
+    ctx.waitUntil(safeCron('webhook-failed-drain', async () => {
+      const { handleWebhookFailedDrain } = await import('./cron/webhook-failed-drain');
+      return handleWebhookFailedDrain(env);
+    }));
   }
 
   if (cron === '0 18 * * *') {
@@ -229,19 +246,19 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('agency-cron-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       if (flags.enable_agency_campaigns_aggregate) {
-        await recomputeAllActiveCampaigns(env.DB).catch(e => logError('[cron] campaigns', { error: String(e) }));
+        await recomputeAllActiveCampaigns(env.DB).catch(e => notifyCronFailure(env, 'agency-cron-batch/campaigns', e));
       }
       if (flags.enable_agency_creator_eval) {
-        await handleAgencyCreatorEval(env).catch(e => logError('[cron] creator-eval', { error: String(e) }));
+        await handleAgencyCreatorEval(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/creator-eval', e));
       }
       if (flags.enable_agency_monthly_tasks) {
-        await handleAgencyMonthlyTasks(env).catch(e => logError('[cron] monthly-tasks', { error: String(e) }));
+        await handleAgencyMonthlyTasks(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/monthly-tasks', e));
       }
       if (flags.enable_tiktok_videos_sync) {
-        await handleTikTokVideosSync(env).catch(e => logError('[cron] tiktok', { error: String(e) }));
+        await handleTikTokVideosSync(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/tiktok', e));
       }
       // Phase 1-2: 부진 셀러 알림 (매일)
-      await handleAgencyInactiveSellers(env).catch(e => logError('[cron] inactive-sellers', { error: String(e) }));
+      await handleAgencyInactiveSellers(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/inactive-sellers', e));
       // 🛡️ 2026-05-20: 에이전시 입점 가게 월 성장 보너스 — 매일 체크하지만 동월 중복은 내부 가드.
       //   실질적으로 매월 1일 첫 실행만 의미 있음 (전월 매출 fix 됨).
       // 🔐 2026-06-11 (정합성 감사 🔴): 매월 1일에만 실행 — 기존 매일 실행 + note-LIKE 멱등(약함)이라
@@ -252,17 +269,17 @@ export async function handleCronScheduled(
         if (r.awarded > 0) {
           logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
         }
-      } catch (e) { logError('[cron] agency-intro-monthly-bonus', { error: String(e) }) }
+      } catch (e) { await notifyCronFailure(env, 'agency-cron-batch/agency-intro-monthly-bonus', e) }
       // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일) — 라이브 중단 시 skip
-      if (!LIVE_COMMERCE_SUSPENDED) await handleLiveStreamMetrics(env).catch(e => logError('[cron] live-metrics', { error: String(e) }));
+      if (!LIVE_COMMERCE_SUSPENDED) await handleLiveStreamMetrics(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/live-metrics', e));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
-      await handleAgencySelfEventsTick(env).catch(e => logError('[cron] self-events', { error: String(e) }));
+      await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
-      await handleSellerDailyReport(env).catch(e => logError('[cron] seller-daily-report', { error: String(e) }));
+      await handleSellerDailyReport(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/seller-daily-report', e));
       // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
-      await handleAgencySellerMatch(env).catch(e => logError('[cron] agency-seller-match', { error: String(e) }));
+      await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
       // 2026-05-05: 광고 슬롯 낙찰 처리
-      await handleAdSlotsAward(env).catch(e => logError('[cron] ad-slots-award', { error: String(e) }));
+      await handleAdSlotsAward(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/ad-slots-award', e));
     }));
   }
 
@@ -328,25 +345,25 @@ export async function handleCronScheduled(
       const dayOfMonth = now.getUTCDate();
 
       if (flags.enable_agency_auto_settle) {
-        await handleAgencyAutoSettle(env).catch(e => logError('[cron] auto-settle', { error: String(e) }));
+        await handleAgencyAutoSettle(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/auto-settle', e));
       }
-      await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => logError('[cron] incentives', { error: String(e) }));
+      await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => notifyCronFailure(env, 'agency-weekly-batch/incentives', e));
       if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
-        await handleAgencyTierEval(env).catch(e => logError('[cron] tier-eval', { error: String(e) }));
+        await handleAgencyTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/tier-eval', e));
       }
       // 2026-04-27: 셀러 등급 자동 평가 (월 1주차)
       if (dayOfMonth <= 7) {
-        await handleSellerTierEval(env).catch(e => logError('[cron] seller-tier-eval', { error: String(e) }));
+        await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/seller-tier-eval', e));
       }
       // 🏭 BIZ-7 (2026-06-08): 유통사 도매 등급 자동 평가 (GMV 기반 승급 전용).
       //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
-      await handleWholesaleGradeEval(env).catch(e => logError('[cron] wholesale-grade-eval', { error: String(e) }));
+      await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/wholesale-grade-eval', e));
       if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
-        await handleAgencyMonthlyInvoices(env as any).catch(e => logError('[cron] invoices', { error: String(e) }));
+        await handleAgencyMonthlyInvoices(env as any).catch(e => notifyCronFailure(env, 'agency-weekly-batch/invoices', e));
       }
       // Phase 2-6: 월간 리포트 (1주차에만 실행, 내부 멱등)
       if (dayOfMonth <= 7) {
-        await handleAgencyMonthlyReport(env).catch(e => logError('[cron] monthly-report', { error: String(e) }));
+        await handleAgencyMonthlyReport(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/monthly-report', e));
       }
     }));
   }

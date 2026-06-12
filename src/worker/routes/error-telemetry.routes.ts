@@ -12,8 +12,14 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
+import { rateLimit } from '../middleware/rate-limit'
 
 export const errorTelemetryRoutes = new Hono<{ Bindings: Env }>()
+
+// 🔒 2026-06-12 (4차 감사 D6): intake rate limit 60회/60초/IP — 에러 루프/봇이 D1 에
+//   무한 INSERT 하는 것 차단. fail-open(비인증 action) — rate-limit 저장소 장애가 telemetry 를 안 막음.
+//   429 응답은 sendBeacon/fire-and-forget 클라이언트에 무해 (응답 미사용).
+errorTelemetryRoutes.use('/api/_errors/log', rateLimit({ action: 'error-telemetry', max: 60, windowSec: 60 }))
 
 interface ErrorPayload {
   message?: string
