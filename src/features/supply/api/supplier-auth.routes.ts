@@ -68,6 +68,18 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
 }
 
 // ── POST /register — 도매상 가입 ──────────────────────────────────────────────
+// 🏁 2026-06-12 (P4 — 공급사는 "표시만"): 국세청 상태조회 결과를 suppliers.nts_status 에 저장,
+//   승인은 수동 유지(공급사 = 돈을 받는 쪽 + 상품 책임 — 최종 클릭은 어드민). fail-soft.
+async function ntsStatusOf(env: unknown, DB: D1Database, businessNumber: string): Promise<string | null> {
+  try {
+    const { ntsCheckStatus } = await import('../../../worker/utils/nts-business-verify')
+    const rows = await ntsCheckStatus((env as { NTS_API_KEY?: string }).NTS_API_KEY, [businessNumber])
+    const stt = rows[0]?.b_stt || null
+    await DB.prepare('ALTER TABLE suppliers ADD COLUMN nts_status TEXT').run().catch(() => { /* exists */ })
+    return stt
+  } catch { return null }
+}
+
 supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_register', max: 5, windowSec: 600 }), async (c) => {
   const { DB } = c.env;
   try {
@@ -109,17 +121,18 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     const passwordHash = await hashPassword(password);
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c);
+    const nts1 = await ntsStatusOf(c.env, DB, bizNum)
     const result = await DB.prepare(`
       INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
         bank_name, bank_account, account_holder, business_license_url,
         representative_phone, manager_name, manager_phone, manager_email,
-        mall_id, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        mall_id, nts_status, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
     `).bind(
       businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
       body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
       representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
-      mallId,
+      mallId, nts1,
     ).run();
 
     return c.json({
@@ -209,22 +222,23 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
       const mallId = await registrationMallId(c);
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
+      const nts2 = await ntsStatusOf(c.env, DB, business_number)
       const ins = await DB.prepare(`
         INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
           business_license_url, representative_phone, manager_name, manager_phone, manager_email,
-          linked_user_id, mall_id, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+          linked_user_id, mall_id, nts_status, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
       `).bind(
         business_name, business_number, representative || null, email, phone || null,
         business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-        userId, mallId,
+        userId, mallId, nts2,
       ).run();
       const sid = Number(ins.meta?.last_row_id);
       if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);
 
       // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.
       createDashboardNotification(DB, 'admin', null, 'supplier_pending', '제조회원 승인 요청',
-        `${business_name} (${business_number})`, '/admin/suppliers').catch(swallowNotify('become:notify'));
+        `${business_name} (${business_number})${nts2 ? ` — 국세청: ${nts2}` : ' — 국세청: 조회 안 됨'}`, '/admin/suppliers').catch(swallowNotify('become:notify'));
 
       return c.json({ success: true, status: 'pending', message: '제조회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' });
     }
