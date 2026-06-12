@@ -5900,7 +5900,12 @@
     "naverPriceRetailHigh": "권장 소비자가가 시중 최저가보다 높아요.",
     "naverPriceDisclaimer": "상품명 검색 결과라 동일 상품이 아닐 수 있어요 — 옵션·구성 차이를 확인해주세요.",
     "areYouDistributor": "상품을 사입해 판매하실 건가요?",
-    "goDistributorJoin": "판매사(유통회원) 가입 →"
+    "goDistributorJoin": "판매사(유통회원) 가입 →",
+    "demandTitle": "수요 신호 (네이버 데이터랩)",
+    "demandUp": "🔺 쇼핑 클릭 수요 상승 중 (최근 2개월 +{{pct}}%)",
+    "demandDown": "🔻 쇼핑 클릭 수요 하락 중 (최근 2개월 {{pct}}%)",
+    "demandFlat": "─ 쇼핑 클릭 수요 보합 (최근 6개월 큰 변화 없음)",
+    "demandDisclaimer": "네이버쇼핑 클릭·검색 상대지수 기반 참고 지표예요 — 실제 판매량과 다를 수 있어요."
   },
   "wholesaleChat": {
     "title": "문의 채팅",

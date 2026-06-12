@@ -950,6 +950,24 @@ supplierDashboardRoutes.get('/naver-price-check', rateLimit({ action: 'naver-pri
   }
 });
 
+// ── 📊 수요 신호 — 네이버 데이터랩 (2026-06-12 사용자 요청 ②④) ──────────────
+//   ② 쇼핑인사이트: 카테고리 내 키워드 클릭 추이(6개월) → 상승/하락/보합
+//   ④ 검색어트렌드: 24개월 시즌성 → 성수기 월. 키 미설정/쿼터 소진 시 null → UI 자연 숨김.
+//   데이터랩 일 1,000회 쿼터 — 코어가 12h 캐시 + 소진 시 자정까지 호출 차단.
+supplierDashboardRoutes.get('/demand-signal', rateLimit({ action: 'naver-demand-signal', max: 20, windowSec: 60 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  try {
+    const q = String(c.req.query('q') || '').trim().slice(0, 100);
+    const category = String(c.req.query('category') || '').trim().slice(0, 30);
+    const { fetchDemandSignal } = await import('../../../worker/utils/naver-datalab');
+    const r = await fetchDemandSignal(c.env.NAVER_SEARCH_CLIENT_ID, c.env.NAVER_SEARCH_CLIENT_SECRET, q, category);
+    return c.json({ success: true, ...r });
+  } catch (err) {
+    return safeError(c, err, '수요 신호 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
 // ── 🏭 공급 채널 안내 기준 (2026-06-12 영업단 제안) ──────────────────────────
 //   등록 폼이 "이 공급가면 제안 가능 채널: …" 실시간 안내에 사용. 표시 전용 — 영업단이
 //   /api/admin/distributor/channel-thresholds 로 조정한 platform_settings 를 읽기만.

@@ -5908,7 +5908,12 @@
     "naverPriceRetailHigh": "建议零售价高于市场最低价。",
     "naverPriceDisclaimer": "搜索结果可能并非同一商品 — 请确认选项与包装差异。",
     "areYouDistributor": "打算采购商品进行销售吗？",
-    "goDistributorJoin": "注册为销售商（流通会员）→"
+    "goDistributorJoin": "注册为销售商（流通会员）→",
+    "demandTitle": "需求信号（NAVER数据实验室）",
+    "demandUp": "🔺 购物点击需求上升中（近2个月 +{{pct}}%）",
+    "demandDown": "🔻 购物点击需求下降中（近2个月 {{pct}}%）",
+    "demandFlat": "─ 购物点击需求持平（近6个月无明显变化）",
+    "demandDisclaimer": "基于NAVER购物点击/搜索相对指数的参考指标 — 可能与实际销量不同。"
   },
   "wholesaleChat": {
     "title": "咨询聊天",
