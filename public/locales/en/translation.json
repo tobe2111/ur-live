@@ -6101,5 +6101,24 @@
     "inputPlaceholder": "Type a message",
     "sendAria": "Send",
     "sendFail": "Failed to send message"
+  },
+  "myAppointments": {
+    "bookableTitle": "Schedule your appointment",
+    "bookCta": "Book now",
+    "modalTitle": "Select date & time",
+    "dateLabel": "Date",
+    "slotLabel": "Time",
+    "loadingSlots": "Loading available times...",
+    "slotsEmpty": "No available times on this date. Please pick another date.",
+    "nameLabel": "Name",
+    "phoneLabel": "Phone",
+    "notesLabel": "Notes",
+    "nameRequired": "Please enter your name",
+    "phoneRequired": "Please enter a valid phone number",
+    "booked": "Your appointment is confirmed",
+    "bookFailed": "Failed to book the appointment",
+    "remaining": "{{n}} left",
+    "submitting": "Booking...",
+    "submit": "Confirm booking"
   }
 }

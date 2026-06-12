@@ -28,10 +28,26 @@ import { useBeforePayment } from './checkout/useBeforePayment'
 // 🛡️ 2026-05-23 토스 SDK preload — 모듈 evaluate 즉시 CDN download 시작.
 //   import 만 해도 startPreload() 자동 실행 (src/lib/toss-preload.ts).
 import { getTossClientKey } from '@/lib/toss-preload'
+// 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 예약 결제 분기 — /checkout?order_id=N&stay=1.
+import StayCheckout from './checkout/StayCheckout'
 
 const clientKey = getTossClientKey()
 
+// 🛡️ 2026-06-12 (전수조사 4차 B-1): StayDetailPage 가 예약 생성 후 /checkout?order_id=N&stay=1 로
+//   보냈지만 기존엔 stay 쿼리를 무시하고 카트만 로드 → 빈카트 에러/타상품 결제 (결제 관문 단절).
+//   숙소 주문이면 카트 흐름 대신 StayCheckout (서버 주문 요약 + Toss 위젯 /pay/widget 경유).
+//   훅 순서 보호를 위해 분기는 래퍼에서 — 두 하위 트리는 독립 컴포넌트.
 export default function CheckoutPage() {
+  const [searchParams] = useSearchParams()
+  const isStay = searchParams.get('stay') === '1'
+  const stayOrderId = Number(searchParams.get('order_id'))
+  if (isStay && Number.isFinite(stayOrderId) && stayOrderId > 0) {
+    return <StayCheckout orderId={stayOrderId} />
+  }
+  return <CartCheckout />
+}
+
+function CartCheckout() {
   // 🛡️ 2026-05-19: 결제 페이지는 라이트 테마 고정 (사용자 요청 + 가독성).
   //   영수증 / 금액 / 카드 입력 정보의 명료성이 최우선.
   useForceLightTheme()

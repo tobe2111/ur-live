@@ -128,6 +128,8 @@ const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPay
 const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage'))
 const StayDetailPage = lazy(() => import('./pages/StayDetailPage'))
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
+// 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
+const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage'))
 // 🛡️ 2026-05-18: 인플루언서 referral 대시보드.
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
@@ -556,6 +558,8 @@ function AppContent() {
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} />
+            {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
+            <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
             <Route path="/my-stays" element={<MyStaysPage />} />
             <Route path="/influencer" element={<InfluencerDashboardPage />} />

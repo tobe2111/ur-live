@@ -6101,5 +6101,24 @@
     "inputPlaceholder": "Escribe un mensaje",
     "sendAria": "Enviar",
     "sendFail": "No se pudo enviar el mensaje"
+  },
+  "myAppointments": {
+    "bookableTitle": "Programa tu cita",
+    "bookCta": "Reservar",
+    "modalTitle": "Selecciona fecha y hora",
+    "dateLabel": "Fecha",
+    "slotLabel": "Hora",
+    "loadingSlots": "Cargando horarios disponibles...",
+    "slotsEmpty": "No hay horarios disponibles en esta fecha. Elige otra fecha.",
+    "nameLabel": "Nombre",
+    "phoneLabel": "Teléfono",
+    "notesLabel": "Notas",
+    "nameRequired": "Introduce tu nombre",
+    "phoneRequired": "Introduce un número de teléfono válido",
+    "booked": "Tu cita está confirmada",
+    "bookFailed": "No se pudo reservar la cita",
+    "remaining": "Quedan {{n}}",
+    "submitting": "Reservando...",
+    "submit": "Confirmar reserva"
   }
 }

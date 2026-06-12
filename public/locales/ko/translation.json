@@ -6097,5 +6097,24 @@
     "inputPlaceholder": "메시지를 입력하세요",
     "sendAria": "전송",
     "sendFail": "메시지 전송에 실패했습니다"
+  },
+  "myAppointments": {
+    "bookableTitle": "예약을 잡아주세요",
+    "bookCta": "예약 잡기",
+    "modalTitle": "예약 날짜·시간 선택",
+    "dateLabel": "날짜",
+    "slotLabel": "시간",
+    "loadingSlots": "예약 가능 시간 조회 중...",
+    "slotsEmpty": "해당 날짜에 예약 가능한 시간이 없습니다. 다른 날짜를 선택해주세요.",
+    "nameLabel": "예약자 이름",
+    "phoneLabel": "전화번호",
+    "notesLabel": "요청사항",
+    "nameRequired": "이름을 입력해주세요",
+    "phoneRequired": "올바른 전화번호를 입력해주세요",
+    "booked": "예약이 확정되었습니다",
+    "bookFailed": "예약에 실패했습니다",
+    "remaining": "잔여 {{n}}",
+    "submitting": "예약 중...",
+    "submit": "예약 확정"
   }
 }

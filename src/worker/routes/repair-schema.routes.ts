@@ -469,6 +469,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'appointment_bookings.refund_status', sql: "ALTER TABLE appointment_bookings ADD COLUMN refund_status TEXT" },
     // 🛡️ 2026-05-21 Phase E-3: 노쇼 자동 알림 중복 발송 방지.
     { desc: 'appointment_bookings.noshow_alert_sent_at', sql: "ALTER TABLE appointment_bookings ADD COLUMN noshow_alert_sent_at TEXT" },
+    // 🛡️ 2026-06-12 (전수조사 4차 B-6): 숙소 D-1/D-day reminder dedup ('0 9'+'0 0' 이중 트리거 중복 발송 방지).
+    { desc: 'stay_bookings.reminder_d1_sent_at', sql: "ALTER TABLE stay_bookings ADD COLUMN reminder_d1_sent_at TEXT" },
+    { desc: 'stay_bookings.reminder_dday_sent_at', sql: "ALTER TABLE stay_bookings ADD COLUMN reminder_dday_sent_at TEXT" },
     // 🛡️ 2026-05-21 Phase C: 통합 정산 시스템 — payouts (실제 송금 기록).
     //   ledger_entries 는 이미 존재 (worker/utils/ledger.ts). payouts 는 실제 송금 audit trail.
     //   주체별 (seller/agency/store_owner/user) 송금 사이클 + 토스/은행 transaction_id 추적.

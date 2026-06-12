@@ -6101,5 +6101,24 @@
     "inputPlaceholder": "Saisissez un message",
     "sendAria": "Envoyer",
     "sendFail": "Échec de l'envoi du message"
+  },
+  "myAppointments": {
+    "bookableTitle": "Planifiez votre rendez-vous",
+    "bookCta": "Réserver",
+    "modalTitle": "Choisir la date et l'heure",
+    "dateLabel": "Date",
+    "slotLabel": "Heure",
+    "loadingSlots": "Chargement des horaires disponibles...",
+    "slotsEmpty": "Aucun horaire disponible à cette date. Veuillez choisir une autre date.",
+    "nameLabel": "Nom",
+    "phoneLabel": "Téléphone",
+    "notesLabel": "Remarques",
+    "nameRequired": "Veuillez saisir votre nom",
+    "phoneRequired": "Veuillez saisir un numéro de téléphone valide",
+    "booked": "Votre rendez-vous est confirmé",
+    "bookFailed": "Échec de la réservation",
+    "remaining": "{{n}} restant(s)",
+    "submitting": "Réservation...",
+    "submit": "Confirmer la réservation"
   }
 }

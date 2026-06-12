@@ -255,8 +255,13 @@ appointmentsRoutes.get('/orders/:orderId/pending-bookings', requireAuth(), async
   if (!orderId) return c.json({ success: false, error: 'Invalid order id' }, 400)
   const { DB } = c.env
 
-  // order 소유권 검증
-  const order = await DB.prepare('SELECT id, user_id FROM orders WHERE id = ?').bind(orderId).first<{ id: number; user_id: string }>().catch(() => null)
+  // order 소유권 검증.
+  // 🛡️ 2026-06-12 (전수조사 4차 B-4 키 불일치): PaymentSuccessPage 는 URL 의 orderId
+  //   (= order_number 'ORD-...' 문자열) 를 그대로 넘기는데 기존엔 `WHERE id = ?` 만 조회 →
+  //   항상 빈 배열 (예약 CTA 영구 미노출). id OR order_number 양쪽 매칭 + 이후 쿼리는
+  //   해석된 숫자 order.id 사용 (appointment_bookings/order_items.order_id 는 숫자 FK).
+  const order = await DB.prepare('SELECT id, user_id FROM orders WHERE id = ? OR order_number = ?')
+    .bind(orderId, orderId).first<{ id: number; user_id: string }>().catch(() => null)
   if (!order || String(order.user_id) !== String(user.id)) {
     return c.json({ success: true, data: { pending: [] } })
   }
@@ -270,9 +275,34 @@ appointmentsRoutes.get('/orders/:orderId/pending-bookings', requireAuth(), async
        LEFT JOIN appointment_bookings a ON a.product_id = p.id AND a.order_id = ? AND a.status = 'confirmed'
       WHERE oi.order_id = ? AND COALESCE(p.booking_required, 0) = 1
         AND a.id IS NULL`,
-  ).bind(orderId, orderId).all().catch(() => ({ results: [] }))
+  ).bind(order.id, order.id).all().catch(() => ({ results: [] }))
 
-  return c.json({ success: true, data: { pending: rows.results || [] } })
+  return c.json({ success: true, data: { pending: rows.results || [], order_id: order.id } })
+})
+
+// 🛡️ 2026-06-12 (전수조사 4차 B-5): 본인 전체 "예약 가능" 구매 목록 — MyAppointmentsPage
+//   예약 생성 플로우의 입구. 결제 완료 주문의 booking_required=1 상품 중 아직 confirmed
+//   appointment 가 없는 것 전부 (주문 단위).
+appointmentsRoutes.get('/appointments/bookable', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
+  const { DB } = c.env
+  const rows = await DB.prepare(
+    `SELECT DISTINCT o.id as order_id, o.order_number, o.created_at as order_date,
+            p.id as product_id, p.name as product_name, p.image_url, p.restaurant_name,
+            p.booking_duration_min
+       FROM orders o
+       INNER JOIN order_items oi ON oi.order_id = o.id
+       INNER JOIN products p ON p.id = oi.product_id
+       LEFT JOIN appointment_bookings a ON a.product_id = p.id AND a.order_id = o.id AND a.status = 'confirmed'
+      WHERE o.user_id = ?
+        AND UPPER(o.status) IN ('PAID', 'DONE', 'DELIVERED')
+        AND COALESCE(p.booking_required, 0) = 1
+        AND a.id IS NULL
+      ORDER BY o.created_at DESC
+      LIMIT 50`,
+  ).bind(String(user.id)).all().catch(() => ({ results: [] }))
+  return c.json({ success: true, data: rows.results || [] })
 })
 
 // ─── User: 내 예약 목록 ──────────────────────────────────────────────

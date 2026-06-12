@@ -299,6 +299,11 @@ export async function handleCronScheduled(
       const { runVoucherExpireCron } = await import('./cron/stay-voucher-expire')
       await runVoucherExpireCron(env as { DB: D1Database })
     }))
+    // 🛡️ 2026-06-12 (전수조사 4차 B-6): 체크아웃 +1일 경과 confirmed → checked_out 자동 전이 (리뷰 게이트 해제).
+    ctx.waitUntil(safeCron('stay-checkout-transition', async () => {
+      const { handleStayCheckoutTransition } = await import('./cron/stay-checkout-transition')
+      await handleStayCheckoutTransition(env as { DB: D1Database })
+    }))
   }
 
   if (cron === '0 19 * * *') {

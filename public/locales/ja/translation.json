@@ -6101,5 +6101,24 @@
     "inputPlaceholder": "メッセージを入力",
     "sendAria": "送信",
     "sendFail": "メッセージの送信に失敗しました"
+  },
+  "myAppointments": {
+    "bookableTitle": "予約を入れてください",
+    "bookCta": "予約する",
+    "modalTitle": "日時を選択",
+    "dateLabel": "日付",
+    "slotLabel": "時間",
+    "loadingSlots": "予約可能な時間を取得中...",
+    "slotsEmpty": "この日に予約可能な時間がありません。別の日付を選択してください。",
+    "nameLabel": "予約者名",
+    "phoneLabel": "電話番号",
+    "notesLabel": "ご要望",
+    "nameRequired": "お名前を入力してください",
+    "phoneRequired": "正しい電話番号を入力してください",
+    "booked": "予約が確定しました",
+    "bookFailed": "予約に失敗しました",
+    "remaining": "残り{{n}}",
+    "submitting": "予約中...",
+    "submit": "予約を確定"
   }
 }
