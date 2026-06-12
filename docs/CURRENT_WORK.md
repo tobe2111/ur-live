@@ -1,5 +1,46 @@
 # 🚧 진행 중 작업
 
+## 📋 [최종 전수조사 4차 — 2026-06-12] 확정 갭 백로그 (쇼핑/숙소·예약·동네공구/어드민/인프라)
+**전 영역 1회 이상 증거기반 검수 완료.** 인프라 S 5건은 즉시 수술됨(5ce2b6b4 — rate limit 3종/webhook_events 90일 정리/백업 silent skip→알림). 잔여 확정 갭(전부 파일:라인 근거 보고서 확보, 도매=타 세션 제외):
+
+### A. 어드민 "버튼이 거짓말" 4종 (운영 직결)
+| 심각도 | 갭 | 규모 |
+|---|---|---|
+| 🔴 | 반품 검수 4버튼 전부 403 — returns.routes approve/reject/inspect/refund 가 seller-only(:337,374,412,464), 어드민 토큰 거부 + reject body 키 불일치(reason↔rejection_reason) | M |
+| 🔴 | 매장 검수(/admin/pending-sellers) 승인/거부 POST↔PATCH mismatch → 항상 실패 | S |
+| 🔴 | 어드민 2FA 가 users 테이블에 저장/검증(twofa.routes:96, require-2fa:75) — admins 미반영·동일 id 유저 row 오염 + X-2FA-Code 클라 주입 0(활성 시 분쟁/강제환불 영구 403) | M |
+| 🔴 | 카드 분쟁 승인 = 0원 환불 resolved(disputes:254 딜만 분기) + 금액 정가(p.price) 사용 | M |
+| 🟡 | 전역검색 q 미소비(Users/Orders) · 감사로그 3중 분산(뷰어 1테이블만) · 유저 제재 죽은코드(users.status 컬럼 부재) · 에이전시 거절 무알림 · force-refund Toss 실패 무가시 외 🟢 다수 | S~M |
+
+### B. 숙소·예약·동네공구 (결제 관문 단절)
+| 심각도 | 갭 | 규모 |
+|---|---|---|
+| 🔴 | **숙소 결제 단절**: StayDetail→/checkout?order_id&stay=1 인데 CheckoutPage 가 stay 쿼리 미처리(빈카트 에러/타상품 결제), /stays/bookings/confirm 프론트 호출자 0 | M |
+| 🔴 | **매장 예약(appointments) 생성 UI 부재** — /book·available-slots 호출자 0(백엔드 완비) + PaymentSuccess CTA 키 불일치(order_number↔id) | M+S |
+| 🔴 | voucher 숙소권 셀프취소 = check_in NULL → 무조건 0원 + 영구 무효 | S |
+| 🔴 | 커뮤니티공구 알림 딥링크 /:id/messages 404(라우트 없음+id↔invite_code) + 참여자 메시지 read 403 | S-M |
+| 🟡 | 다객실 confirm 첫 booking 만 확정(나머지 30분 후 expired) · appointment 취소 전액환불+REFUNDED 플립만 · 커뮤니티 join UNIQUE 없음(이중차감 race) · 보증금 point_transactions 무장부 · admin status 'refunded' 플립 실환불 0 | S~M |
+| 🟢 | 숙소 노쇼/checked_out 자동전이 없음(리뷰 게이트 영구잠김) · stay-reminder dedup/시각 · base_price_holiday 미사용 · confirmed 그룹 보증금 동결 | S~M |
+
+### C. 쇼핑 풀루프 (쇼핑탭 재공개 전 선결 — G1~G6)
+| 심각도 | 갭 | 규모 |
+|---|---|---|
+| 🔴 | G1 주문 zod 가 할인 필드 strip → 쿠폰/공구할인/딜혼합/옵션가산/지역배송비 Toss 결제 전부 confirm 400(과금은 0 — fail-safe). 자동 쿠폰적용 탓에 쿠폰 보유자 일반결제도 실패 | M-L |
+| 🔴 | G2 딜 전액결제 성공 → PaymentSuccess 가 에러 표시(paymentKey 없음) + 카트 미정리(재시도 이중차감 위험) | S |
+| 🔴 | G3 /points/pay 차감액≠표시액(쿠폰 미반영·배송비 하드코딩·deal_only 에도 3000딜) | M |
+| 🔴 | G4 반품 환불 시 deal_points 주문 딜 미환급 | S |
+| 🔴 | G5 리뷰 리워드 약속 미지급(order_id 미전송→게이트 false) + 금액 문구 불일치 | S |
+| 🔴 | G6 반품 신청 유저 입구 0(서버 루프 완성) | S-M |
+| 🟡 | 카트 옵션변경 400 · 셀러 리뷰답글 비노출 · 선택구매 후 전체 카트삭제 · 쿠폰 결제전 소진 · /api/orders/refund DELIVERED 자가환불 열림 · 지역배송비 클라 미반영 | S~M |
+
+### D. 인프라 잔여
+| 심각도 | 갭 | 규모 |
+|---|---|---|
+| 🔴(사용자) | cron Workers 수동배포 드리프트 — Dashboard 에서 트리거 9개·최근 배포일 확인 + BACKUP_BUCKET 바인딩 실재 확인 | 확인 |
+| 🟡 | 포인트 장부 누락 ~14지점(커미션 회수 차감/보상 적립 계열 — 잔액변경+장부 헬퍼로 수렴) · 웹훅 멱등키 V2 status 미포함(잠금 — 승인要) · FAILED 웹훅 자동 재처리 cron 부재 · safeError 400곳 console-only(5xx Sentry 배선) · agency 배치 내부실패 Discord 미도달 · 고아 라우트 4(interest-list/user-affiliate/seller-proxy-products/agency-prospects) | S~M |
+| 🟢 | cache-warming.ts 죽은 파일 · debug 페이지 prod 노출 · error-telemetry intake rate limit | S |
+
+
 ## ⚠️ 세션 분담 (2026-06-12 사용자 지시)
 - **도매몰(wholesale/supplier/supply) 전 영역 = 별도 세션 전담** (= `claude/keen-cerf-ch0jm5` 세션 — 아래 06-12 도매 로그 전부 이 세션). 타 세션(claude/service-analysis-optimization-whpu0f 계열)은 **도매몰 외 구현만** — 도매 파일 수정 금지.
 - 도매 관련 잔여 백로그(NTS 어드민 승인화면 표시 강화, 클레임 환불 딥링크, 장바구니 계정키 등)는 도매 세션 몫.
