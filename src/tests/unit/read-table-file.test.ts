@@ -51,6 +51,86 @@ describe('parseXlsxToRows — buildXlsx round-trip (STORED zip + inlineStr)', ()
   })
 })
 
+// ── DEFLATE zip 빌더 (테스트 전용) — 실제 Excel 저장 파일과 동일한 압축 방식(method=8) 재현 ──
+async function deflateRaw(data: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream('deflate-raw') as unknown as { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> }
+  const bytes = data.slice()
+  const src = new ReadableStream<Uint8Array>({ start(ctrl) { ctrl.enqueue(bytes); ctrl.close() } })
+  const out = await new Response(src.pipeThrough(cs)).arrayBuffer()
+  return new Uint8Array(out)
+}
+
+async function buildDeflatedZip(files: Array<{ name: string; data: Uint8Array }>): Promise<Uint8Array> {
+  const enc = new TextEncoder()
+  const chunks: Uint8Array[] = []
+  const central: Uint8Array[] = []
+  let offset = 0
+  for (const f of files) {
+    const comp = await deflateRaw(f.data)
+    const nameB = enc.encode(f.name)
+    const local = new Uint8Array(30 + nameB.length)
+    const lv = new DataView(local.buffer)
+    lv.setUint32(0, 0x04034b50, true)
+    lv.setUint16(8, 8, true) // method = DEFLATE
+    lv.setUint32(18, comp.length, true)
+    lv.setUint32(22, f.data.length, true)
+    lv.setUint16(26, nameB.length, true)
+    local.set(nameB, 30)
+    chunks.push(local, comp)
+    const cen = new Uint8Array(46 + nameB.length)
+    const cv = new DataView(cen.buffer)
+    cv.setUint32(0, 0x02014b50, true)
+    cv.setUint16(10, 8, true)
+    cv.setUint32(20, comp.length, true)
+    cv.setUint32(24, f.data.length, true)
+    cv.setUint16(28, nameB.length, true)
+    cv.setUint32(42, offset, true)
+    cen.set(nameB, 46)
+    central.push(cen)
+    offset += local.length + comp.length
+  }
+  const cenStart = offset
+  const cenLen = central.reduce((s, c) => s + c.length, 0)
+  const eocd = new Uint8Array(22)
+  const ev = new DataView(eocd.buffer)
+  ev.setUint32(0, 0x06054b50, true)
+  ev.setUint16(8, files.length, true)
+  ev.setUint16(10, files.length, true)
+  ev.setUint32(12, cenLen, true)
+  ev.setUint32(16, cenStart, true)
+  const total = [...chunks, ...central, eocd]
+  const out = new Uint8Array(total.reduce((s, c) => s + c.length, 0))
+  let p = 0
+  for (const c of total) { out.set(c, p); p += c.length }
+  return out
+}
+
+describe('parseXlsxToRows — DEFLATE(실제 Excel 압축 방식) round-trip', () => {
+  it('sharedStrings + 일반 셀 — 압축 해제 후 행렬 보존', async () => {
+    const enc = new TextEncoder()
+    const sheet = `<?xml version="1.0"?><worksheet><sheetData>` +
+      `<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>` +
+      `<row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>5000</v></c></row>` +
+      `</sheetData></worksheet>`
+    const shared = `<?xml version="1.0"?><sst><si><t>상품명</t></si><si><t>공급가</t></si><si><t>김밥 세트</t></si></sst>`
+    const zip = await buildDeflatedZip([
+      { name: 'xl/sharedStrings.xml', data: enc.encode(shared) },
+      { name: 'xl/worksheets/sheet1.xml', data: enc.encode(sheet) },
+    ])
+    const rows = await parseXlsxToRows(zip.buffer as ArrayBuffer)
+    expect(rows[0]).toEqual(['상품명', '공급가'])
+    expect(rows[1]).toEqual(['김밥 세트', '5000'])
+  })
+})
+
+describe('구버전/비지원 파일 가드', () => {
+  it('.xls(OLE 컨테이너) → 명확한 안내 에러', async () => {
+    const ole = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+    const file = new File([ole], 'old.xls')
+    await expect(readTableFileAsCsv(file)).rejects.toThrow(/xlsx/)
+  })
+})
+
 describe('rowsToCsv', () => {
   it('쉼표/따옴표/개행 이스케이프', () => {
     expect(rowsToCsv([['a,b', 'x"y', 'z']])).toBe('"a,b","x""y",z')

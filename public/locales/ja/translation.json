@@ -5767,7 +5767,7 @@
     "fieldBrandName": "ブランド表示名（任意）",
     "fieldBrandNamePh": "ブランド表示名",
     "fieldDesc": "商品説明",
-    "fieldImage": "商品画像",
+    "fieldImage": "サムネイル（代表）画像URL",
     "fieldSupplyPrice": "卸値（円）",
     "fieldRetail": "希望小売価格（円）",
     "fieldStock": "在庫",
@@ -5925,7 +5925,9 @@
     "bulkOptionTitle": "複数商品はExcelで一括登録できます",
     "bulkOptionTemplate": "Excelテンプレートを取得",
     "bulkOptionUpload": "作成したExcelをアップロード",
-    "bulkOptionHint": ".xlsxのままアップロード可 · 文字化け自動復旧 · 最大2,000行"
+    "bulkOptionHint": ".xlsxのままアップロード可 · 文字化け自動復旧 · 最大2,000行",
+    "fieldDetailImages": "詳細ページ画像URL（カンマ区切り・最大10枚）",
+    "detailImagesHint": "商品詳細ページの説明の下に順番に表示されます。"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",

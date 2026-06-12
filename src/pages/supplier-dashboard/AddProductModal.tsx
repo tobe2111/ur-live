@@ -10,7 +10,7 @@ import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
 import { downloadSupplierCsv } from './download-csv'
 
 export default function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
@@ -48,6 +48,7 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
         order_multiple: Number(form.order_multiple) || 1,
         category: form.category,
         image_url: form.image_url.trim() || undefined,
+        detail_images: form.detail_images.trim() || undefined, // 🖼️ 쉼표 구분 여러 장 — 서버가 JSON 배열로 정규화
         supply_visibility: form.supply_visibility,
         barcode: form.barcode.trim() || undefined,
         is_brand_product: form.is_brand_product,
@@ -156,8 +157,14 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
           </div>
           <p className="text-[11px] text-gray-400 -mt-1">{t('supplier.qtyConstraintHint', { defaultValue: 'MOQ=최소 주문 수량 · 박스당 수량=1박스 낱개 수(표시용) · 주문 단위=이 배수로만 주문 가능(예: 12면 12·24·36…). 비우면 모두 1.' })}</p>
           <div>
-            <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '대표 이미지 URL' })}</label>
+            <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '썸네일(대표) 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
+          </div>
+          {/* 🖼️ 2026-06-12 (사용자 요청): 썸네일과 상세페이지 이미지 분리. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldDetailImages', { defaultValue: '상세페이지 이미지 URL (쉼표로 여러 장, 최대 10)' })}</label>
+            <textarea disabled={saving} rows={2} value={form.detail_images} onChange={e => setForm(f => ({ ...f, detail_images: e.target.value }))} className={inputCls} placeholder="https://.../detail1.jpg, https://.../detail2.jpg" />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.detailImagesHint', { defaultValue: '상품 상세 페이지의 설명 아래에 순서대로 표시됩니다.' })}</p>
           </div>
           <div>
             <label className={labelCls}>{t('supplier.fieldLowestUrl', { defaultValue: '온라인 최저가 참고 링크' })}</label>
