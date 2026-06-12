@@ -362,6 +362,14 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
       )
         .bind(userId, productId, nextPos, note)
         .run()
+      // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 링크샵 colo 캐시 purge — 핀이 즉시 반영되도록.
+      //   me/profile (:572) 의 기존 purge 블록 패턴 복제 (best-effort, 실패해도 핀 저장 완료).
+      try {
+        const url = new URL(c.req.url)
+        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(handle)}`)) as Promise<boolean>
+        c.executionCtx.waitUntil(purge.then(() => undefined))
+      } catch { /* best-effort */ }
       return c.json({
         success: true,
         pin: {
@@ -401,6 +409,17 @@ curatorRoutes.delete('/me/pins/:id', requireAuth(), async (c) => {
       .run()
 
     if (!result.meta.changes) return c.json({ success: false, error: '핀을 찾을 수 없습니다' }, 404)
+    // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 링크샵 colo 캐시 purge (me/profile :572 패턴 복제, best-effort).
+    try {
+      const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ handle: string | null }>()
+      if (me?.handle) {
+        const url = new URL(c.req.url)
+        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>
+        c.executionCtx.waitUntil(purge.then(() => undefined))
+      }
+    } catch { /* best-effort — purge 실패해도 삭제 완료 */ }
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '핀 삭제 중 오류가 발생했습니다', '[curator:pin-del]')
@@ -617,9 +636,10 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
         `SELECT COUNT(*) AS cnt FROM pin_click_logs
          WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
       ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): month_earnings 와 동일하게 환불 제외.
       DB.prepare(
         `SELECT COUNT(*) AS cnt FROM affiliate_earnings
-         WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')`,
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
       ).bind(userId).first<{ cnt: number }>().catch(() => null),
       DB.prepare(
         `SELECT pp.id, pp.product_id, pp.click_count, p.name AS product_name, p.thumbnail, p.image_url
@@ -631,9 +651,10 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
          FROM affiliate_earnings WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')
          GROUP BY date(created_at) ORDER BY date ASC`,
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): 환불 적립이 내역에 남아 합계와 불일치 → 동일 필터.
       DB.prepare(
         `SELECT id, product_id, product_name, commission, order_amount, created_at
-         FROM affiliate_earnings WHERE referrer_id = ?
+         FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'
          ORDER BY created_at DESC LIMIT 30`,
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
     ])

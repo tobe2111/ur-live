@@ -9,6 +9,8 @@ import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
 import KakaoShareButton from '@/components/KakaoShareButton'
+// 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
+import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { reportFunnel } from '@/lib/web-vitals-report'
@@ -613,6 +615,13 @@ export default function GroupBuyDetailPage() {
           >
             {detail.name}
           </h2>
+          {/* 🛡️ 2026-06-12: 내 링크샵 핀 — 공유 옆 1탭 (ProductCard 의 PinButton 재사용) */}
+          <PinButton
+            productId={detail.id}
+            price={detail.price}
+            variant="detail-floating"
+            className="!w-9 !h-9 shrink-0"
+          />
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
             description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}

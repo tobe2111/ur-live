@@ -771,30 +771,9 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   muted: boolean
   t: (key: string, opts?: any) => string
 }) {
-  const [resending, setResending] = useState(false)
-
-  async function resend() {
-    if (!v.order_id) return
-    if (!(await confirmDialog("MMS 를 휴대폰으로 다시 발송할까요?"))) return
-    setResending(true)
-    try {
-      const { default: api } = await import("@/lib/api")
-      const r = await api.post(`/api/admin/kt-alpha/trigger-order/${v.order_id}`, {})
-      if (r.data?.success && r.data.result?.sent > 0) {
-        const { toast } = await import("@/hooks/useToast")
-        toast.success("재발송 완료 — 휴대폰을 확인해주세요")
-      } else {
-        const { toast } = await import("@/hooks/useToast")
-        toast.error("재발송 실패 — 어드민에게 문의")
-      }
-    } catch {
-      const { toast } = await import("@/hooks/useToast")
-      toast.error("재발송 실패")
-    } finally {
-      setResending(false)
-    }
-  }
-
+  // 🛡️ 2026-06-12 (감사 1단계 — 사용자 결정): "MMS 다시 받기" 버튼 제거.
+  //   admin 전용 endpoint(/api/admin/kt-alpha/trigger-order/:id) 를 일반 유저가 호출해
+  //   항상 401/403 실패하던 dead 버튼 — 재발송은 어드민 화면(AdminVoucherTransactionsPage)에서.
   const maskedPhone = v.kt_recipient_phone
     ? v.kt_recipient_phone.replace(/(\d{3})\d{4}(\d{4})/, "$1-****-$2")
     : ""
@@ -823,13 +802,6 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
           휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.
         </p>
-        <button
-          onClick={resend}
-          disabled={resending}
-          className="mt-3 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
-        >
-          {resending ? "재발송 중..." : "📱 MMS 다시 받기"}
-        </button>
       </div>
       {v.product_image && (
         <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white dark:bg-[#0A0A0A] shrink-0">

@@ -452,7 +452,8 @@ function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner
       <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">{emptyMessage}</h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
         {isOwner
-          ? t('curator.emptyOwner', { defaultValue: '상품을 둘러보고 추천 링크 복사하면 자동 담아져요' })
+          // 🛡️ 2026-06-12 (감사 1단계): 실제 동작과 일치 — 링크 복사 자동담기 기능은 없음, 📌 핀 버튼이 실동작.
+          ? t('curator.emptyOwner', { defaultValue: '상품을 둘러보고 상세 페이지의 ➕ 핀 버튼으로 담아보세요' })
           : t('curator.emptyOther', { defaultValue: `@${handle} 의 첫 추천을 기다리는 중`, handle })}
       </p>
       <Link
