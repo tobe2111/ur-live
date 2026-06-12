@@ -10,7 +10,7 @@
  * referral_enabled/rate, user_points 적립, 알림+푸시). /track 라우트도 이 헬퍼를 호출하도록
  * 리팩토링 — 단일 SSOT.
  */
-import { ensureUserPointsTable } from './ensure-tables'
+import { adjustUserPoints } from './point-ledger'
 
 const DEFAULT_COMMISSION_RATE = 0.05
 
@@ -112,16 +112,15 @@ export async function creditAffiliateForOrder(
       String(order.user_id), buyerIp || null, orderAmount, commission,
     ).run()
 
-    try {
-      await ensureUserPointsTable(DB)
-      await DB.prepare(`
-        INSERT INTO user_points (user_id, balance, total_charged)
-        VALUES (?, ?, 0)
-        ON CONFLICT(user_id) DO UPDATE SET
-          balance = balance + excluded.balance,
-          updated_at = datetime('now')
-      `).bind(String(referrerId), commission).run()
-    } catch { /* user_points 실패해도 earnings 기록은 보존 — cron 재집계 가능 */ }
+    // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록 (adjustUserPoints SSOT).
+    //   기존 UPSERT 와 금액/동작 동일 — 장부만 추가. 실패해도 earnings 기록은 보존 (cron 재집계 가능).
+    await adjustUserPoints(DB, {
+      userId: String(referrerId),
+      delta: commission,
+      type: 'affiliate_commission',
+      description: productName ? `핀 추천 적립 (${String(productName).slice(0, 80)})` : '핀 추천 적립',
+      orderId: order.id,
+    })
 
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)

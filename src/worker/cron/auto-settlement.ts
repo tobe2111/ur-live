@@ -11,7 +11,7 @@ import { logInfo, logError } from '../utils/logger'
 
 import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
-import { ensureUserPointsTable } from '../utils/ensure-tables';
+import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
 export async function handleAutoSettlement(env: Env) {
@@ -179,18 +179,17 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         : Number(voucher.price || 0);
 
       // Refund deal points if paid with deal_points — user_points 테이블 사용
+      // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록 (adjustUserPoints SSOT).
+      //   기존엔 balance 만 올리고 장부 0건 → '딜 이용내역' 과 잔액 불일치. 금액/조건 불변.
       if (voucher.payment_method === 'deal_points' && voucher.user_id && refundAmount > 0) {
         try {
-          await ensureUserPointsTable(DB);
-          const existingPts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
-            .bind(voucher.user_id).first<{ balance: number }>();
-          if (existingPts) {
-            await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
-              .bind(refundAmount, voucher.user_id).run();
-          } else {
-            await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)')
-              .bind(voucher.user_id, refundAmount, refundAmount).run();
-          }
+          await adjustUserPoints(DB, {
+            userId: String(voucher.user_id),
+            delta: refundAmount,
+            type: 'refund',
+            description: `바우처 만료 환불 (${voucher.product_name})`,
+            orderId: voucher.order_id != null ? String(voucher.order_id) : null,
+          });
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement user_points]', e);
         }

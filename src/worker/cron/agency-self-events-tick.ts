@@ -15,6 +15,7 @@
 import type { Env } from '../types/env';
 
 import { swallow } from '../utils/swallow';
+import { pointCreditUpsertStatement, recordPointTransaction } from '../utils/point-ledger';
 interface SelfEvent {
   id: number;
   agency_id: number;
@@ -111,20 +112,28 @@ export async function handleAgencySelfEventsTick(env: Env): Promise<void> {
 
           if (!wasAchieved && isAchieved) {
             // 새로 달성 → 보상 지급
+            // 💸 2026-06-12 (4차 감사 D1): user_points UPSERT 를 point-ledger 헬퍼 문으로 수렴
+            //   (batch 원자성 보존, total_used 미존재 환경 silent fail 제거) + 장부 기록 추가.
             await DB.batch([
               DB.prepare(`
                 UPDATE agency_self_event_participants
                 SET current_value = ?, achieved = 1, achieved_at = datetime('now'), reward_paid = 1
                 WHERE id = ?
               `).bind(value, p.id),
-              DB.prepare(`
-                INSERT INTO user_points (user_id, balance, total_charged, total_used)
-                VALUES (?, ?, ?, 0)
-                ON CONFLICT(user_id) DO UPDATE SET
-                  balance = balance + ?,
-                  total_charged = total_charged + ?
-              `).bind(p.seller_id, ev.reward_deal, ev.reward_deal, ev.reward_deal, ev.reward_deal),
+              pointCreditUpsertStatement(DB, {
+                userId: String(p.seller_id),
+                delta: Number(ev.reward_deal) || 0,
+                bumpTotalCharged: true,
+              }),
             ]);
+
+            // point_transactions 장부 — batch 성공 후 fail-soft (audit, 돈 흐름 비차단).
+            await recordPointTransaction(DB, {
+              userId: String(p.seller_id),
+              delta: Number(ev.reward_deal) || 0,
+              type: 'event_reward',
+              description: `자사 챌린지 달성 보상 (event #${ev.id})`,
+            });
 
             // 셀러 알림
             // 🛡️ 2026-05-17: dashboard_notifications 컬럼명 fix — (recipient_type, recipient_id).

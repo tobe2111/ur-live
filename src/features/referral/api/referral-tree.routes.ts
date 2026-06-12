@@ -21,6 +21,7 @@ import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/a
 import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
+import { pointCreditUpsertStatement, recordPointTransaction } from '@/worker/utils/point-ledger'
 
 // ---------------------------------------------------------------------------
 // Router
@@ -340,15 +341,8 @@ export async function calculateMultiTierCommission(
     )
 
     // Grant deal points to beneficiary via user_points table (Single Source of Truth)
-    statements.push(
-      DB.prepare(
-        `INSERT INTO user_points (user_id, balance, total_charged)
-         VALUES (?, ?, 0)
-         ON CONFLICT(user_id) DO UPDATE SET
-           balance = balance + excluded.balance,
-           updated_at = datetime('now')`,
-      ).bind(String(c.beneficiary_id), c.amount),
-    )
+    // 💸 2026-06-12 (4차 감사 D1): UPSERT 문을 point-ledger 헬퍼로 수렴 — SQL 의미 동일(batch 원자성 보존).
+    statements.push(pointCreditUpsertStatement(DB, { userId: String(c.beneficiary_id), delta: c.amount }))
   }
 
   // HIGH-3: D1 batch atomicity — do NOT fall back to per-statement execution on
@@ -359,6 +353,19 @@ export async function calculateMultiTierCommission(
   } catch (err) {
     if (import.meta.env?.DEV) console.error('[ReferralTree] Commission batch failed:', err)
     throw new Error('Commission write failed')
+  }
+
+  // 💸 2026-06-12 (4차 감사 D1): point_transactions 장부 추가 — batch 성공 후 fail-soft.
+  //   batch 안에 넣지 않는 이유: 레거시 DB 의 type CHECK 잔존 시 장부 실패가 커미션 적립
+  //   전체를 롤백시키면 안 됨 (잔액이 돈, 장부는 audit). 동작/금액 불변.
+  for (const c of commissions) {
+    await recordPointTransaction(DB, {
+      userId: String(c.beneficiary_id),
+      delta: c.amount,
+      type: 'referral_bonus',
+      description: `추천 ${c.tier}단계 커미션`,
+      orderId: orderId,
+    })
   }
 
   return commissions.map(c => ({
