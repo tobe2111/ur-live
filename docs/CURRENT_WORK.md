@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🛒 2026-06-12 — 네이버 커머스API Phase A: 유통사 스마트스토어 연동 (사용자 요청)
+**모델**: 유통사가 커머스API센터에서 **자기 스토어 앱**(스토어당 1개, 무료) 발급 → ID/시크릿을 `/wholesale/naver` 에서 연결(서버가 **토큰 발급으로 즉시 검증** 후에만 저장 — `encryptAtRest` AES-GCM, DATA_ENCRYPTION_KEY). 솔루션(개발업체) 계정 모델은 네이버 심사 필요 — Phase B 검토.
+- **코어 `naver-commerce-core.ts`**: bcrypt 전자서명(`${client_id}_${ts}` bcrypt(salt=secret)→base64, bcryptjs 기존 dep) + 토큰 캐시(3h, 만료 5분전 갱신) + 카테고리 전체목록 모듈캐시 1h(리프 검색) + 이미지 업로드(네이버는 자체 업로드 URL 만 허용) + 상품 payload 빌더(순수 — 단위테스트 7).
+- **라우트 `/api/wholesale/naver/*`** (worker mount): connect(검증 후 저장)/status(마스킹 id)/disconnect/categories?q=/export. 유통회원(approved+is_distributor) 전용, viewer 403, rate limit. export: 공급상품 검증 + **역마진 차단**(판매가<공급원가 400) + 이미지 네이버 업로드 → `/v2/products` 등록 → `naver_product_exports` 이력(UNIQUE seller+product, 재내보내기 갱신).
+- **UI**: `/wholesale/naver` 연동 페이지(발급 3단계 가이드+연결 폼+상태/해제) + 대시보드 빠른메뉴 '스마트스토어 연동' + 상품 상세 "스마트스토어로 내보내기"(lazy 모달 — 판매가/재고/배송비/AS연락처/카테고리 디바운스 검색, **예상 마진 실시간 표시**, 미연결 시 연동 페이지 유도).
+- **⚠️ 미검증**: 실계정 E2E — 이 환경은 외부 egress 차단. 운영에서 스토어 앱 1개로 연결→내보내기 1회 검증 필요(에러는 네이버 invalidInputs 메시지 그대로 표면화되게 함). 원산지는 '04 상세설명 참조' 기본 — 식품 등 일부 카테고리는 네이버가 추가 필드를 요구할 수 있음(에러 메시지로 안내됨).
+- **Phase B(다음)**: 주문 자동 수집 → 도매 자동 발주 → 송장 푸시(드랍쉬핑 완성), 재고 동기화, 솔루션 계정 전환.
+
 ## ✅ 2026-06-12 — 가입 자동승인 전면 폐지 → 수동 승인 (사용자 결정 "제조사든 유통사든 수동")
 - **사실 확인**: 유통사(wholesale register/become-distributor)·제조사(supplier register/become)는 **원래부터 항상 pending(수동)** — NTS 자동승인 배선 없음. 실제 자동승인은 ① 일반 셀러 가입(background NTS 일치 → approved) ② 어드민 recheck-nts 버튼(검증+승인 동시) 2곳뿐이었음.
 - **fix**: ① `seller-registration.routes.ts` — NTS 일치여도 status 전환 제거, `nts_verify_result`/`nts_verified_at` 만 저장(검수 참고 신호 — AdminPendingSellersPage 가 이미 표시). ② `internal-admin-tools recheck-nts` — 검증(정보)과 승인(결정) 분리, 결과만 기록·응답 `ntsValid` (승인은 검수 페이지 승인 버튼으로만). ③ nts-business-verify 헤더 주석 + 운영 TODO #3 문구 정정(자동승인 → 참고 신호).
