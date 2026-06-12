@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Gift, Share2 } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Share2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
@@ -304,16 +304,14 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
         )}
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2">{t('voucher.showQrAtStore')}</p>
 
-        {/* 선물/공유 버튼 (사용 가능한 식사권만) */}
+        {/* 🏁 2026-06-12 (P6 사용자 결정 — 선물 기능 불필요): '선물하기' 라벨 제거.
+            실동작은 QR 링크 공유일 뿐 소유권 이전이 아니며, 보낸 사람이 7일 내 셀프취소하면
+            받은 QR 이 무효화될 수 있어 '선물' 표기가 오해를 만들었음 — 정직한 '공유' 단일 버튼으로. */}
         {voucher.status === 'unused' && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-4">
             <button onClick={shareVoucher}
-              className="py-2.5 rounded-xl bg-pink-50 border border-pink-200 text-pink-600 text-xs font-bold flex items-center justify-center gap-1">
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1">
               <Share2 className="w-3.5 h-3.5" /> {t('voucher.share')}
-            </button>
-            <button onClick={shareVoucher}
-              className="py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1">
-              <Gift className="w-3.5 h-3.5" /> {t('voucher.gift')}
             </button>
           </div>
         )}
@@ -384,6 +382,8 @@ export default function MyVouchersPage() {
   const tk = walletTokens[theme]
 
   // 상태별 그룹핑
+  // 🏁 2026-06-12: 만료/환불 그룹 접기 상태 (기본 접힘)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const groups = [
     { key: 'unused',   label: t('voucher.groupUnused'),   items: vouchers.filter(v => v.status === 'unused') },
     { key: 'used',     label: t('voucher.groupUsed'),     items: vouchers.filter(v => v.status === 'used') },
@@ -513,20 +513,33 @@ export default function MyVouchersPage() {
           </div>
         ) : (
           <>
-            {groups.map(group => (
+            {groups.map(group => {
+              // 🏁 2026-06-12 (감사 🟢 — 만료분 영구 누적): 만료/환불 그룹은 기본 접힘 (탭하면 펼침).
+              const collapsible = group.key === 'expired' || group.key === 'refunded'
+              const collapsed = collapsible && !expandedGroups.has(group.key)
+              return (
               <div key={group.key} className="mb-6">
-                <p className="px-1 mb-2 uppercase"
+                <button
+                  type="button"
+                  disabled={!collapsible}
+                  onClick={() => collapsible && setExpandedGroups(prev => {
+                    const n = new Set(prev); if (n.has(group.key)) n.delete(group.key); else n.add(group.key); return n
+                  })}
+                  className="w-full text-left px-1 mb-2 uppercase flex items-center justify-between"
                   style={{ fontSize: 11, color: tk.secondary, fontWeight: 700, letterSpacing: '0.06em' }}>
-                  {group.label} <span style={{ color: tk.tertiary }}>· {group.items.length}</span>
-                </p>
+                  <span>{group.label} <span style={{ color: tk.tertiary }}>· {group.items.length}</span></span>
+                  {collapsible && <span style={{ color: tk.tertiary }}>{collapsed ? '펼치기 ▾' : '접기 ▴'}</span>}
+                </button>
+                {!collapsed && (
                 <div className="space-y-3">
                   {group.items.map(v => {
                     const muted = v.status !== 'unused'
                     return <VoucherTicket key={v.id} v={v} muted={muted} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />
                   })}
                 </div>
+                )}
               </div>
-            ))}
+            )})}
           </>
         )}
       </div>

@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ChevronLeft, Bell } from 'lucide-react'
@@ -10,7 +12,23 @@ export default function NotificationsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. 읽음 처리 시 벨 배지(unreadCount) 자동 갱신.
-  const { data: notifications = [], isLoading: loading, isError } = useNotifications()
+  const { data: firstPage = [], isLoading: loading, isError } = useNotifications()
+  // 🏁 2026-06-12 (감사 🟢 — 50개 고정): '더 보기' 페이지네이션. 첫 페이지는 기존 RQ 훅
+  //   (캐시/벨 동기 보존), 추가분만 로컬 append — 훅/캐시 동작 불변(additive).
+  const [extra, setExtra] = useState<typeof firstPage>([])
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const notifications = [...firstPage, ...extra.filter(e => !firstPage.some(f => f.id === e.id))]
+  async function loadMore() {
+    if (loadingMore) return
+    setLoadingMore(true)
+    try {
+      const r = await api.get(`/api/social/notifications?limit=50&offset=${notifications.length}`)
+      const rows = (r.data?.data || []) as typeof firstPage
+      setExtra(prev => [...prev, ...rows])
+      setHasMore(Boolean(r.data?.has_more) && rows.length > 0)
+    } catch { setHasMore(false) } finally { setLoadingMore(false) }
+  }
   const markAllMut = useMarkAllNotificationsRead()
   const markReadMut = useMarkNotificationRead()
   const error = isError ? t('notifications.loadError') : ''
@@ -73,6 +91,12 @@ export default function NotificationsPage() {
                 </div>
               </button>
             ))}
+            {hasMore && notifications.length >= 50 && (
+              <button onClick={loadMore} disabled={loadingMore}
+                className="w-full py-3.5 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">
+                {loadingMore ? t('common.loading', { defaultValue: '불러오는 중…' }) : t('notifications.loadMore', { defaultValue: '더 보기' })}
+              </button>
+            )}
           </div>
         )}
       </div>

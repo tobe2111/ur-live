@@ -69,14 +69,23 @@ socialRoutes.get('/notifications', requireAuth(), async (c) => {
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
   await ensureTables(DB)
-  const { results } = await DB.prepare("SELECT * FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50").bind(String(user.id)).all()
-  return c.json({ success: true, data: results ?? [] })
+  // 🏁 2026-06-12 (감사 🟢): limit/offset additive — 기본(무파라미터)은 기존과 동일 50/0.
+  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50', 10) || 50))
+  const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10) || 0)
+  const { results } = await DB.prepare(
+    "SELECT * FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+  ).bind(String(user.id), limit, offset).all()
+  return c.json({ success: true, data: results ?? [], has_more: (results?.length ?? 0) === limit })
 })
 
 // 알림 읽음 처리
 socialRoutes.put('/notifications/:id/read', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
-  await DB.prepare("UPDATE user_notifications SET is_read = 1 WHERE id = ?").bind(c.req.param('id')).run()
+  // 🏁 2026-06-12: 본인 소유 검증 추가 — 기존엔 id 만으로 UPDATE (타인 알림 읽음 플립 가능, 저위험 IDOR).
+  await DB.prepare("UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ?")
+    .bind(c.req.param('id'), String(user.id)).run()
   return c.json({ success: true })
 })
 

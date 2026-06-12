@@ -253,7 +253,8 @@
     "back": "Back",
     "seoTitle": "Notifications - Ur-Deal",
     "seoDesc": "Check your new notifications",
-    "listAria": "Notifications"
+    "listAria": "Notifications",
+    "loadMore": "Load more"
   },
   "payment": {
     "checkout": "Checkout",
@@ -4776,7 +4777,8 @@
     "saving": "Saving...",
     "save": "Save",
     "ariaToggleOn": "Turn on {{label}}",
-    "ariaToggleOff": "Turn off {{label}}"
+    "ariaToggleOff": "Turn off {{label}}",
+    "language": "Language"
   },
   "productDetail": {
     "retry": "Retry",
@@ -6079,5 +6081,11 @@
   "my": {
     "earningsGroupTitle": "My earnings & referrals",
     "earningsGroupSub": "Referral rewards · Linkshop income · Invites"
+  },
+  "push": {
+    "promptTitle": "Turn on notifications?",
+    "promptDesc": "Get alerts for expiring vouchers, closing deals, and new earnings",
+    "promptOn": "Turn on",
+    "promptLater": "Later"
   }
 }

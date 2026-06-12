@@ -3693,7 +3693,8 @@
     "back": "Volver",
     "seoTitle": "Notificaciones - Ur-Deal",
     "seoDesc": "Consulte sus nuevas notificaciones",
-    "listAria": "Notificaciones"
+    "listAria": "Notificaciones",
+    "loadMore": "Cargar más"
   },
   "cart": {
     "continueShop": "Continue Shopping",
@@ -4776,7 +4777,8 @@
     "saving": "Guardando...",
     "save": "Guardar",
     "ariaToggleOn": "Activar {{label}}",
-    "ariaToggleOff": "Desactivar {{label}}"
+    "ariaToggleOff": "Desactivar {{label}}",
+    "language": "Idioma"
   },
   "productDetail": {
     "retry": "Reintentar",
@@ -6079,5 +6081,11 @@
   "my": {
     "earningsGroupTitle": "Mis ganancias",
     "earningsGroupSub": "Recompensas · Linkshop · Invitaciones"
+  },
+  "push": {
+    "promptTitle": "¿Activar notificaciones?",
+    "promptDesc": "Avisos de vales por caducar, cierres de compra grupal y nuevas ganancias",
+    "promptOn": "Activar",
+    "promptLater": "Más tarde"
   }
 }

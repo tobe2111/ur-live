@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
+const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection'))
+import { lazy, Suspense } from 'react'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -453,6 +455,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           />
         )}
       </div>
+
+      {/* 🏁 2026-06-12 (P5 — additive): 연결된 큐레이터의 추천 핀 — curator_handle 있을 때만 lazy 렌더.
+          SSR 슬롯/탭/편집 로직 무변경. 클릭은 /u/:handle/p/:id (적립 redirect) 경유. */}
+      {(seller as { curator_handle?: string | null })?.curator_handle && (
+        <Suspense fallback={null}>
+          <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
+        </Suspense>
+      )}
 
       {/* 🛡️ 2026-05-27: OwnerDashboardFab 제거 — ProfileHeader 의 grid-2 inline 버튼 (프로필 수정 | 대시보드) 으로 통합.
           기존 floating FAB 가 상품 카드 가림 → 인라인으로 변경. */}
