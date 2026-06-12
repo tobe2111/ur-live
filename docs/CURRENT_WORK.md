@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-12 — 가입 자동승인 전면 폐지 → 수동 승인 (사용자 결정 "제조사든 유통사든 수동")
+- **사실 확인**: 유통사(wholesale register/become-distributor)·제조사(supplier register/become)는 **원래부터 항상 pending(수동)** — NTS 자동승인 배선 없음. 실제 자동승인은 ① 일반 셀러 가입(background NTS 일치 → approved) ② 어드민 recheck-nts 버튼(검증+승인 동시) 2곳뿐이었음.
+- **fix**: ① `seller-registration.routes.ts` — NTS 일치여도 status 전환 제거, `nts_verify_result`/`nts_verified_at` 만 저장(검수 참고 신호 — AdminPendingSellersPage 가 이미 표시). ② `internal-admin-tools recheck-nts` — 검증(정보)과 승인(결정) 분리, 결과만 기록·응답 `ntsValid` (승인은 검수 페이지 승인 버튼으로만). ③ nts-business-verify 헤더 주석 + 운영 TODO #3 문구 정정(자동승인 → 참고 신호).
+- **유지(가입 승인 아님)**: 큐레이터 정산 사업자정보 인증(미일치 400 차단 + verified 마킹) — 제출 정보 진위확인이지 계정 승인이 아님.
+- NTS_API_KEY 의 가치는 그대로: 가짜/폐업 사업자번호가 검수 화면에 표시 → 수동 승인 속도·정확도 보조.
+
 ## ✅ 2026-06-12 — 도매몰 보류 부채 3종 마감 (`6e5b468`, `claude/keen-cerf-ch0jm5`)
 - 주문 상태 뱃지 SSOT(`wholesale-theme.ts WHOLESALE_ORDER_STATUS` 10종 + `wholesaleOrderStatusBadge()`) — 대시보드/주문내역 중복 정의·라벨 불일치 제거.
 - viewer(조회 전용 직원) UI 사전 안내(`wholesale/ViewerGate.tsx` — /me sub_role 5분 캐시, fail-open): 체크아웃 주문 버튼 disable+라벨, 충전 신청, 견적 요청 3곳. 서버 403 은 기존대로 최종 방어.
@@ -61,7 +67,7 @@
 |---|---|---|---|---|
 | 1 | **`REPAIR_SCHEMA_TOKEN` 등록** — ① 긴 랜덤 문자열 1개 생성(40자+) ② Cloudflare Dashboard → Workers & Pages → ur-live → Settings → Variables and Secrets 에 `REPAIR_SCHEMA_TOKEN`(Secret) ③ GitHub `tobe2111/ur-live` → Settings → Secrets and variables → Actions 에 **같은 값** 등록 | 5분 | 배포할 때마다 스키마 자동복구 → `/admin/health` 수동 클릭 영구 졸업 (미설정 시 매일 새벽 3시 cron 만) | ⬜ |
 | 2 | (1번 전까지 1회) `/admin/health` 스키마 복구 실행 — 2026-06-10 등록한 products 컬럼 14개 수렴 | 10초 | 상품 상세 자가치유 prune 상태 → 완전 복귀 | ⬜ |
-| 3 | `NTS_API_KEY` 등록 (Cloudflare Variables) | 5분 | 셀러/도매 가입 시 사업자번호 국세청 자동검증 → 자동승인 | ⬜ |
+| 3 | `NTS_API_KEY` 등록 (Cloudflare Variables) | 5분 | 가입 사업자번호 국세청 진위확인 → 검수 화면 **참고 신호** (🛡️ 2026-06-12 사용자 결정: 자동승인 폐지 — 모든 가입은 수동 승인) | ⬜ |
 | 4 | `/admin/wholesale-deposit-account` 에서 도매 입금계좌 설정 | 2분 | 유통사 충전 입금 안내 표시 | ⬜ |
 | 5 | `TAX_INVOICE_API_KEY` + `TAX_INVOICE_SENDER_BIZ_NO` (바로빌) | 10분 | 세금계산서 실발행 (미설정 시 draft 저장만) | ⬜ |
 | 6 | `RESEND_API_KEY` | 5분 | 어드민 단체메일 발송 | ⬜ |
