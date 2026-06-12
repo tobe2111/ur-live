@@ -7,7 +7,7 @@ import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
-  TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles,
+  TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles, Store,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
@@ -126,6 +126,8 @@ export default function WholesaleDashboardPage() {
     { label: '거래내역', desc: '매입 거래명세', icon: Receipt, to: '/wholesale/statement' },
     { label: '자료', desc: '거래명세서·세금계산서', icon: FileText, to: '/wholesale/documents' },
     { label: 'OEM/ODM', desc: '제조 의뢰', icon: Factory, to: '/wholesale/oem' },
+    // 🛒 2026-06-12 네이버 커머스API Phase A — 스마트스토어 연동 (사입→내 스토어 등록).
+    { label: '스마트스토어 연동', desc: '사입 상품을 내 스토어로', icon: Store, to: '/wholesale/naver' },
   ]
 
   return (
