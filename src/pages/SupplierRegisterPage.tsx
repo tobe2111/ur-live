@@ -144,7 +144,12 @@ export default function SupplierRegisterPage() {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">{t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' })}</h2>
-          <p className="text-sm text-gray-600 mb-6">{t('supplier.registerPendingDesc', { defaultValue: '관리자 승인 후 로그인할 수 있습니다. 승인까지 영업일 기준 1~2일 소요될 수 있습니다.' })}</p>
+          <p className="text-sm text-gray-600 mb-2">{t('supplier.registerPendingDesc', { defaultValue: '관리자 승인 후 로그인할 수 있습니다. 승인까지 영업일 기준 1~2일 소요될 수 있습니다.' })}</p>
+          {/* 👥 2026-06-12 (감사 부채): 대기 중 데드엔드 완화 — 문의 채널 (SiteFooter 공식 메일과 동일). */}
+          <p className="text-[12.5px] text-gray-400 mb-6">
+            {t('supplier.pendingContact', { defaultValue: '급하신가요?' })}{' '}
+            <a href="mailto:jiwon@ur-team.com?subject=%5B%EC%A0%9C%EC%A1%B0%ED%9A%8C%EC%9B%90%20%EC%8A%B9%EC%9D%B8%20%EB%AC%B8%EC%9D%98%5D" className="underline font-semibold text-gray-500">jiwon@ur-team.com</a>
+          </p>
           <Link to="/supplier/login" className="inline-block w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ background: mallBrand }}>
             {t('supplier.goLogin', { defaultValue: '로그인 페이지로' })}
           </Link>

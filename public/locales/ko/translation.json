@@ -5894,7 +5894,8 @@
     "channelGuideInverted": "공급가가 권장 소비자가보다 높아요 — 입력을 확인해주세요.",
     "channelGuideNudge": "공급가를 {{price}} 이하로 낮추면 {{channel}} 채널까지 제안 가능해져요!",
     "channelGuideAllOpen": "모든 유통채널에 제안 가능한 공급가예요. 👍",
-    "channelGuideDisclaimer": "채널별 제안 가능 기준 안내이며, 실제 제안·노출은 채널 상황과 운영 검토에 따라 달라질 수 있어요."
+    "channelGuideDisclaimer": "채널별 제안 가능 기준 안내이며, 실제 제안·노출은 채널 상황과 운영 검토에 따라 달라질 수 있어요.",
+    "pendingContact": "급하신가요?"
   },
   "wholesaleChat": {
     "title": "문의 채팅",
@@ -5991,7 +5992,8 @@
       "minOrderShort": "최소 주문 금액 부족",
       "minOrderNotMet": "최소 주문 금액을 채우지 못한 공급처가 있습니다. 장바구니에서 확인해주세요.",
       "payFailed": "결제에 실패했습니다",
-      "payError": "주문 결제 중 오류가 발생했습니다"
+      "payError": "주문 결제 중 오류가 발생했습니다",
+      "viewerBlocked": "조회 전용 계정 — 주문 불가"
     },
     "deposit": {
       "title": "예치금",

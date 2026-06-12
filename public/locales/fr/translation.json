@@ -5902,7 +5902,8 @@
     "channelGuideInverted": "Le prix de gros est supérieur au prix de vente conseillé — vérifiez votre saisie.",
     "channelGuideNudge": "Baissez le prix de gros à {{price}} ou moins pour débloquer le canal {{channel}} !",
     "channelGuideAllOpen": "Ce prix de gros est éligible à tous les canaux de distribution. 👍",
-    "channelGuideDisclaimer": "Il s'agit d'une indication d'éligibilité par canal ; les propositions et l'exposition réelles dépendent des conditions du canal et de la validation."
+    "channelGuideDisclaimer": "Il s'agit d'une indication d'éligibilité par canal ; les propositions et l'exposition réelles dépendent des conditions du canal et de la validation.",
+    "pendingContact": "Pressé ?"
   },
   "wholesaleChat": {
     "title": "Chat",
@@ -5999,7 +6000,8 @@
       "minOrderShort": "Montant minimum non atteint",
       "minOrderNotMet": "Certains fournisseurs n'ont pas atteint le montant minimum de commande. Vérifiez votre panier.",
       "payFailed": "Échec du paiement",
-      "payError": "Une erreur s'est produite lors du paiement"
+      "payError": "Une erreur s'est produite lors du paiement",
+      "viewerBlocked": "Compte en lecture seule — commande indisponible"
     },
     "deposit": {
       "title": "Dépôt",

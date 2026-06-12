@@ -13,6 +13,7 @@ import { FileText, Loader2, Check, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { WT, won, comma } from './wholesale-theme'
+import { useIsWholesaleViewer, ViewerNotice } from './ViewerGate'
 
 interface QuoteRow {
   id: number
@@ -48,6 +49,8 @@ export default function WholesaleQuotesPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ title: '', product_id: '', requested_qty: '', target_unit_price: '', request_text: '' })
   const [saving, setSaving] = useState(false)
+  // 👥 2026-06-12 (감사 부채): viewer 직원 — 견적 요청 서버 403 전 UI 사전 안내.
+  const isViewer = useIsWholesaleViewer()
   const [busyId, setBusyId] = useState<number | null>(null)
 
   const listQ = useQuery<QuoteRow[]>({
@@ -121,6 +124,8 @@ export default function WholesaleQuotesPage() {
         <section className="bg-white rounded-2xl p-6" style={{ border: `1px solid ${WT.line}` }}>
           <h2 className="text-base font-bold mb-1" style={{ color: WT.ink }}>대량 / 협상 견적요청</h2>
           <p className="text-xs mb-4" style={{ color: WT.ink2 }}>대량 주문이나 협상이 필요한 건은 견적을 요청하세요. 운영자가 단가·MOQ·유효기간을 회신합니다.</p>
+          {/* 👥 2026-06-12 (감사 부채): viewer 직원 사전 안내 — 서버 403 전에 알림. */}
+          {isViewer && <div className="mb-3"><ViewerNotice action="견적 요청" /></div>}
           <form onSubmit={submit} className="space-y-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: WT.ink2 }}>견적 제목 <span className="text-red-500">*</span></label>
@@ -144,8 +149,8 @@ export default function WholesaleQuotesPage() {
               <label className="block text-xs font-medium mb-1" style={{ color: WT.ink2 }}>상세 요청</label>
               <textarea rows={3} value={form.request_text} onChange={e => setForm(f => ({ ...f, request_text: e.target.value }))} className={inputCls} style={inputStyle} placeholder="납기, 결제조건, 포장 등" />
             </div>
-            <button type="submit" disabled={saving} className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60" style={{ background: WT.ink }}>
-              {saving ? '접수 중...' : '견적요청 보내기'}
+            <button type="submit" disabled={saving || isViewer} className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60" style={{ background: WT.ink }}>
+              {saving ? '접수 중...' : isViewer ? '조회 전용 계정 — 요청 불가' : '견적요청 보내기'}
             </button>
           </form>
         </section>
