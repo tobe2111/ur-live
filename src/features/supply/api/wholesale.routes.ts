@@ -526,14 +526,13 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     const passwordHash = await hashPassword(password)
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c)
-    // 🏁 2026-06-12 (P4): 국세청 상태조회 — '계속사업자'면 자동 승인(즉시 로그인 가능). fail-soft.
+    // 🏁 2026-06-12 (P4 정책 확정 — "둘 다 수동 승인"): 국세청 결과는 참고 표시용 저장만. fail-soft.
     let ntsStatus2: string | null = null
     try {
       const { ntsCheckStatus } = await import('../../../worker/utils/nts-business-verify')
       const rows = await ntsCheckStatus((c.env as { NTS_API_KEY?: string }).NTS_API_KEY, [business_number])
       ntsStatus2 = rows[0]?.b_stt || null
     } catch { /* fail-soft */ }
-    const autoApproved2 = ntsStatus2 === '계속사업자'
     await DB.prepare('ALTER TABLE sellers ADD COLUMN nts_status TEXT').run().catch(() => { /* exists */ })
 
     const ins = await DB.prepare(`
@@ -544,24 +543,15 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 'influencer', 'C', 1, ?, ?, datetime('now'), datetime('now'))
     `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null,
       representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-      business_license_url || null, autoApproved2 ? 'approved' : 'pending', DEFAULT_COMMISSION_RATE, mallId, ntsStatus2).run()
+      business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, mallId, ntsStatus2).run()
     const sellerId = Number(ins.meta?.last_row_id)
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
 
     // 어드민 승인 큐 알림 (셀러 승인 페이지에서 처리 — 유통회원도 동일 큐).
-    createDashboardNotification(DB, 'admin', null, 'distributor_pending',
-      autoApproved2 ? '유통회원 자동 승인 (국세청 확인)' : '유통회원 승인 요청',
+    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청',
       `${business_name} (${business_number})${ntsStatus2 ? ` — 국세청: ${ntsStatus2}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:register:notify'))
 
-    if (autoApproved2) {
-      return c.json({
-        success: true,
-        status: 'approved',
-        auto_approved: true,
-        message: '국세청 사업자 확인이 완료되었습니다. 바로 로그인해 이용하세요!',
-      })
-    }
     return c.json({
       success: true,
       status: 'pending',
@@ -691,17 +681,14 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c)
 
-    // 🏁 2026-06-12 (P4 사용자 결정 — 비대칭 정책): 유통사는 "돈을 내는 쪽"이라 국세청 상태조회
-    //   '계속사업자'면 자동 승인(가입 즉시 이용 — 영업 전환율). 휴/폐업/조회실패/키미설정 → 기존
-    //   pending(어드민 수동) 그대로. fail-soft: NTS 장애가 가입을 막지 않음.
+    // 🏁 2026-06-12 (P4 정책 확정 — 사용자: "둘 다 수동 승인"): 국세청 상태조회는 **참고 표시용**으로만
+    //   저장·알림 표기 — 자동 승인 없음. 승인은 항상 어드민 수동. fail-soft.
     let ntsStatus: string | null = null
     try {
       const { ntsCheckStatus } = await import('../../../worker/utils/nts-business-verify')
       const rows = await ntsCheckStatus((c.env as { NTS_API_KEY?: string }).NTS_API_KEY, [business_number])
       ntsStatus = rows[0]?.b_stt || null
     } catch { /* fail-soft */ }
-    const autoApproved = ntsStatus === '계속사업자'
-    const initialStatus = autoApproved ? 'approved' : 'pending'
 
     await DB.prepare('ALTER TABLE sellers ADD COLUMN nts_status TEXT').run().catch(() => { /* exists */ })
     const ins = await DB.prepare(`
@@ -712,23 +699,12 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 'influencer', 'C', 1, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(username, email, name, business_name, business_number, representative || null, phone || null,
       representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-      business_license_url || null, initialStatus, DEFAULT_COMMISSION_RATE, userId, mallId, ntsStatus).run()
+      business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, userId, mallId, ntsStatus).run()
     const sid = Number(ins.meta?.last_row_id)
     if (!sid) return c.json({ success: false, error: '유통회원 신청 중 오류가 발생했습니다' }, 500)
-    createDashboardNotification(DB, 'admin', null, 'distributor_pending',
-      autoApproved ? '유통회원 자동 승인 (국세청 확인)' : '유통회원 승인 요청',
+    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청',
       `${business_name} (${business_number})${ntsStatus ? ` — 국세청: ${ntsStatus}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:become:notify'))
-
-    if (autoApproved) {
-      const nowSec3 = Math.floor(Date.now() / 1000)
-      const payload3 = { sub: String(sid), seller_id: sid, email, name: business_name, username, type: 'seller', status: 'approved', seller_type: 'influencer', is_distributor: 1, iat: nowSec3, exp: nowSec3 + 30 * 24 * 60 * 60 }
-      const token3 = await sign(payload3, JWT_SECRET)
-      const refresh3 = await sign({ ...payload3, exp: nowSec3 + 90 * 24 * 60 * 60 }, JWT_SECRET)
-      return c.json({ success: true, status: 'approved', auto_approved: true,
-        message: '국세청 사업자 확인이 완료되어 바로 이용하실 수 있습니다.',
-        data: { accessToken: token3, refreshToken: refresh3, token: token3, seller: { id: sid, username, email, name: business_name, status: 'approved', seller_type: 'influencer', is_distributor: 1 } } })
-    }
     return c.json({ success: true, status: 'pending', message: '유통회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' })
   } catch (err) {
     return safeError(c, err, '유통회원 전환 중 오류가 발생했습니다', '[wholesale:become]')
