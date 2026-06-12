@@ -1380,6 +1380,38 @@ async function notifySuppliersOfPaidOrder(DB: D1Database, orderId: number): Prom
   }
 }
 
+// ── 📊 GET /market-signal — 유통사용 시장 신호 (2026-06-12 감사 개선 ⑤) ─────────
+//   제조사 등록 폼에 만든 자산(네이버 최저가 + 수요/시즌 신호)을 유통사 사입 의사결정에도 재사용.
+//   로그인 유통사 전용(가격 책정 보조 — guest 비노출), 키 미설정 시 configured:false(UI 숨김).
+app.get('/market-signal', rateLimit({ action: 'wholesale-market-signal', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  try {
+    const q = String(c.req.query('q') || '').trim().slice(0, 100)
+    const category = String(c.req.query('category') || '').trim().slice(0, 30)
+    // ⚠️ worker dynamic import 는 상대경로만 (CLAUDE.md — alias 조합 crash).
+    const [{ checkNaverLowestPrice }, { fetchDemandSignal }] = await Promise.all([
+      import('../../../worker/utils/naver-shopping-price'),
+      import('../../../worker/utils/naver-datalab'),
+    ])
+    const [price, demand] = await Promise.all([
+      checkNaverLowestPrice(c.env.NAVER_SEARCH_CLIENT_ID, c.env.NAVER_SEARCH_CLIENT_SECRET, q),
+      fetchDemandSignal(c.env.NAVER_SEARCH_CLIENT_ID, c.env.NAVER_SEARCH_CLIENT_SECRET, q, category),
+    ])
+    if (!price.configured && !demand.configured) return c.json({ success: true, configured: false })
+    return c.json({
+      success: true,
+      configured: true,
+      lowest: price.ok ? price.lowest : null,
+      items: price.ok ? (price.items || []).slice(0, 3) : [],
+      shopping: demand.shopping ?? null,
+      season: demand.season ?? null,
+    })
+  } catch (err) {
+    return safeError(c, err, '시장 신호 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
 // ── POST /orders — B2B 주문 생성(PENDING) + Toss 결제 파라미터 반환 ────────────
 app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)

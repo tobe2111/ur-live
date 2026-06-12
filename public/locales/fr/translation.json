@@ -5925,7 +5925,18 @@
     "bulkOptionUpload": "Importer l'Excel rempli",
     "bulkOptionHint": "Import .xlsx direct · encodage auto-corrigé · jusqu’à 2 000 lignes",
     "fieldDetailImages": "URLs des images de détail (séparées par des virgules, max 10)",
-    "detailImagesHint": "Affichées dans l’ordre sous la description sur la page produit."
+    "detailImagesHint": "Affichées dans l’ordre sous la description sur la page produit.",
+    "msTitle": "Jusqu’à votre premier règlement",
+    "msNext": "Suivant",
+    "msApproved": "Compte approuvé",
+    "msFirstProduct": "Premier produit",
+    "msFirstApproved": "Première approbation",
+    "msFirstOrder": "Première commande",
+    "msFirstSettle": "Premier règlement",
+    "msFirstProductHint": "1 minute avec le bouton ci-dessus — import Excel possible",
+    "msFirstApprovedHint": "Après validation, visible des distributeurs",
+    "msFirstOrderHint": "Notification cloche dès qu’un distributeur achète",
+    "msFirstSettleHint": "Crédité au paiement — retrait dans Règlements"
   },
   "wholesaleChat": {
     "title": "Chat",

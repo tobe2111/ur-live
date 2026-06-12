@@ -5925,7 +5925,18 @@
     "bulkOptionUpload": "上传填写好的Excel",
     "bulkOptionHint": "可直接上传.xlsx · 自动修复乱码 · 最多2,000行",
     "fieldDetailImages": "详情页图片URL（逗号分隔，最多10张）",
-    "detailImagesHint": "将按顺序显示在商品详情页说明下方。"
+    "detailImagesHint": "将按顺序显示在商品详情页说明下方。",
+    "msTitle": "到首次结算",
+    "msNext": "下一步",
+    "msApproved": "注册批准",
+    "msFirstProduct": "首个商品",
+    "msFirstApproved": "首次商品批准",
+    "msFirstOrder": "首笔订单",
+    "msFirstSettle": "首次结算",
+    "msFirstProductHint": "点上方按钮1分钟搞定 — 也可用Excel批量",
+    "msFirstApprovedHint": "审核通过后向全国经销商展示",
+    "msFirstOrderHint": "经销商采购时铃铛通知您",
+    "msFirstSettleHint": "付款即入账 — 在结算页申请提现"
   },
   "wholesaleChat": {
     "title": "咨询聊天",

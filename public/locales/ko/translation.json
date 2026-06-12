@@ -5917,7 +5917,18 @@
     "bulkOptionUpload": "작성한 엑셀 업로드",
     "bulkOptionHint": ".xlsx 그대로 업로드 가능 · 한글 깨짐 자동 복구 · 최대 2,000행",
     "fieldDetailImages": "상세페이지 이미지 URL (쉼표로 여러 장, 최대 10)",
-    "detailImagesHint": "상품 상세 페이지의 설명 아래에 순서대로 표시됩니다."
+    "detailImagesHint": "상품 상세 페이지의 설명 아래에 순서대로 표시됩니다.",
+    "msTitle": "첫 정산까지",
+    "msNext": "다음",
+    "msApproved": "가입 승인",
+    "msFirstProduct": "첫 상품 등록",
+    "msFirstApproved": "첫 상품 승인",
+    "msFirstOrder": "첫 주문",
+    "msFirstSettle": "첫 정산 적립",
+    "msFirstProductHint": "위 버튼으로 1분 — 엑셀로 여러 개도 OK",
+    "msFirstApprovedHint": "검수 통과 시 전국 유통사에게 노출",
+    "msFirstOrderHint": "유통사가 사입하면 벨 알림으로 알려드려요",
+    "msFirstSettleHint": "결제 즉시 적립 — 정산 탭에서 출금 신청"
   },
   "wholesaleChat": {
     "title": "문의 채팅",

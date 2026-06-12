@@ -256,8 +256,18 @@ app.post('/orders/:id/refund', async (c) => {
     const myLines = await DB.prepare(
       "SELECT id, product_id, qty, line_total, line_status FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status != 'REFUNDED'"
     ).bind(orderId, sid).all<{ id: number; product_id: number; qty: number; line_total: number; line_status: string }>()
-    const lines = myLines.results || []
+    let lines = myLines.results || []
     if (lines.length === 0) return c.json({ success: false, error: '환불할 내 주문 라인이 없습니다' }, 400)
+
+    // 🛡️ 2026-06-12 (라인 선택 환불 — UI 개선): body.item_ids 지정 시 그 라인만 환불.
+    //   소유권은 위 supplier_id=sid 쿼리가 보장 — item_ids 는 내 라인의 부분집합으로만 좁힘(타인 라인 지정 불가).
+    //   미지정 시 기존 동작(내 전체 라인) 그대로 — additive, 하위호환.
+    const rawItemIds = Array.isArray(body.item_ids) ? (body.item_ids as unknown[]).map(Number).filter((n: number) => Number.isFinite(n) && n > 0) : []
+    if (rawItemIds.length > 0) {
+      const allow = new Set(rawItemIds)
+      lines = lines.filter(l => allow.has(l.id))
+      if (lines.length === 0) return c.json({ success: false, error: '선택한 라인이 환불 가능한 내 주문 라인이 아닙니다' }, 400)
+    }
 
     const refundAmount = lines.reduce((s, l) => s + (l.line_total || 0), 0)
     if (refundAmount <= 0) return c.json({ success: false, error: '환불 금액이 올바르지 않습니다' }, 400)
@@ -277,13 +287,17 @@ app.post('/orders/:id/refund', async (c) => {
       //   ref_id 는 주문-제조사-claim 단위로 기록(부분환불 추적). 실패해도 자금은 복원되도록 best-effort.
       await ensureDepositSchema(DB)
       const bal = await refundDeposit(DB, order.distributor_seller_id, refundAmount)
-      await recordDepositTxn(DB, order.distributor_seller_id, 'refund', refundAmount, bal, `${orderId}-sup${sid}`, `제조사 환불 #${orderId} (${reason})`)
+      // ref 에 라인 집합 포함 — 같은 주문의 연속 부분환불(라인 선택)이 원장에서 구분되도록.
+      await recordDepositTxn(DB, order.distributor_seller_id, 'refund', refundAmount, bal, `${orderId}-sup${sid}-L${lineIds.slice().sort((a, b) => a - b).join('_')}`.slice(0, 120), `제조사 환불 #${orderId} (${reason})`)
     } else {
       // 레거시 Toss 주문 — 부분 취소(잠긴 SSOT helper). 제조사별 stable idempotency-key.
+      // 🛡️ 2026-06-12: 멱등키에 라인 집합 포함 — 라인 선택 환불 도입으로 같은 주문에서
+      //   부분환불이 2회+ 발생 가능. 키가 주문 고정이면 2번째 취소가 Toss dedupe 로 무시됨(미환불 사고).
+      //   같은 라인 집합 재시도는 같은 키(정렬) → 기존 retry-dedupe 의미는 보존.
       const res = await cancelTossPayment({
         env: c.env, paymentKey: order.payment_key, cancelReason: reason,
         cancelAmount: refundAmount,
-        idempotencyKey: `whs-refund-${orderId}-sup${sid}`,
+        idempotencyKey: `whs-refund-${orderId}-sup${sid}-L${lineIds.slice().sort((a, b) => a - b).join('_')}`.slice(0, 100),
       })
       if (!res.ok) {
         // 롤백 — 각 라인을 환불 전 상태(PENDING/SHIPPED)로 정확히 복구. PENDING 라인이 SHIPPED 로 둔갑하던 버그 fix.
@@ -299,8 +313,8 @@ app.post('/orders/:id/refund', async (c) => {
       }
     }
 
-    // 제조사 정산 역전 (내 라인만, fail-soft).
-    try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason, sid) } catch { /* best-effort */ }
+    // 제조사 정산 역전 (환불한 라인의 상품만 — 일부 라인 환불 시 과다 클로백 방지, fail-soft).
+    try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason, sid, lines.map(l => l.product_id)) } catch { /* best-effort */ }
 
     // 재고 복원 (내 라인만).
     for (const l of lines) {

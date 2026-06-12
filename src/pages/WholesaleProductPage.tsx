@@ -14,6 +14,8 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWidget'))
 // 🛒 스마트스토어 내보내기 모달 — lazy (연동 안 쓰는 유통사는 chunk 비용 0).
 const NaverExportModal = lazy(() => import('@/pages/wholesale/NaverExportModal'))
+// 📊 시장 신호 카드 — lazy (로그인 유통사만 마운트, 키 미설정이면 자체 숨김).
+const MarketSignalCard = lazy(() => import('@/pages/wholesale/MarketSignalCard'))
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
 //   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 수량 구간별 단가표(volume tier) + 하단 고정 CTA.
@@ -305,6 +307,13 @@ export default function WholesaleProductPage() {
             <div style={{ borderTop: '1px solid ' + WT.line }} />
             <KV label="공급사" value="검증 제조사 (신원 비공개)" />
           </div>
+
+          {/* 📊 2026-06-12 (감사 개선 ⑤): 시장 신호 — 시중 최저가 vs 내 공급가, 수요/시즌. 사입 확신 보조. */}
+          {!locked && token && (
+            <Suspense fallback={null}>
+              <MarketSignalCard name={item.name} category={item.category} distributorPrice={item.distributor_price} />
+            </Suspense>
+          )}
 
           {/* 💬 제조사에 문의 — 로그인 유통사만. 서버가 상품→제조사를 해석(신원 비공개 유지). */}
           {!locked && token && (

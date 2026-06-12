@@ -167,7 +167,32 @@ app.get('/', async (c) => {
       pending_charge_requests: 0, pending_proposals: 0, orders_month: 0,
     })
 
-    return c.json({ success: true, month_start: monthStart, malls: rows, totals })
+    // 🗂️ 2026-06-12 (감사 개선 — 통합 승인 큐): 수동 승인 정책의 "오늘 처리할 것" 5종 집계.
+    //   유통/제조/상품/가격변경/입금확인이 5개 페이지에 분산 — 한 번에 카운트 + 딥링크.
+    //   각 쿼리 fail-soft(0) — 큐 집계 실패가 현황 페이지를 안 깨뜨림.
+    const [qDist, qSup, qProd, qPrice, qNotice] = await Promise.all([
+      DB.prepare("SELECT COUNT(*) AS n FROM sellers WHERE is_distributor = 1 AND status = 'pending'")
+        .first<{ n: number }>().catch(() => null),
+      DB.prepare("SELECT COUNT(*) AS n FROM suppliers WHERE status = 'pending'")
+        .first<{ n: number }>().catch(() => null),
+      DB.prepare("SELECT COUNT(*) AS n FROM products WHERE is_supply_product = 1 AND supply_source_id IS NULL AND supply_approval_status = 'pending'")
+        .first<{ n: number }>().catch(() => null),
+      DB.prepare('SELECT COUNT(*) AS n FROM products WHERE is_supply_product = 1 AND pending_supply_price IS NOT NULL')
+        .first<{ n: number }>().catch(() => null),
+      // 견적 요청 대기 — 운영자 회신 큐.
+      DB.prepare("SELECT COUNT(*) AS n FROM wholesale_quotes WHERE status = 'requested'")
+        .first<{ n: number }>().catch(() => null),
+    ])
+    const queue = {
+      distributors_pending: num(qDist?.n),
+      suppliers_pending: num(qSup?.n),
+      products_pending: num(qProd?.n),
+      price_changes_pending: num(qPrice?.n),
+      quotes_pending: num(qNotice?.n),
+      charge_requests_pending: totals.pending_charge_requests, // 위 7) 집계 재사용
+    }
+
+    return c.json({ success: true, month_start: monthStart, malls: rows, totals, queue })
   } catch (err) {
     return safeError(c, err, '도매 통합 현황 조회 중 오류가 발생했습니다', '[admin-wholesale-overview]')
   }

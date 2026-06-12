@@ -5925,7 +5925,18 @@
     "bulkOptionUpload": "Subir Excel completado",
     "bulkOptionHint": "Sube .xlsx directamente · codificación auto-corregida · hasta 2.000 filas",
     "fieldDetailImages": "URLs de imágenes de detalle (separadas por comas, hasta 10)",
-    "detailImagesHint": "Se muestran en orden debajo de la descripción en la página de detalle."
+    "detailImagesHint": "Se muestran en orden debajo de la descripción en la página de detalle.",
+    "msTitle": "Hasta tu primer pago",
+    "msNext": "Siguiente",
+    "msApproved": "Cuenta aprobada",
+    "msFirstProduct": "Primer producto",
+    "msFirstApproved": "Primera aprobación",
+    "msFirstOrder": "Primer pedido",
+    "msFirstSettle": "Primera liquidación",
+    "msFirstProductHint": "1 minuto con el botón de arriba — Excel masivo también",
+    "msFirstApprovedHint": "Tras la revisión, visible para distribuidores",
+    "msFirstOrderHint": "Te avisaremos con la campana cuando compren",
+    "msFirstSettleHint": "Se acredita al pagar — retira en Liquidaciones"
   },
   "wholesaleChat": {
     "title": "Chat",

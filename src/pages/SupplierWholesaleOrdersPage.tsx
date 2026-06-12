@@ -123,12 +123,14 @@ export default function SupplierWholesaleOrdersPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '일괄 발송 실패') } finally { setBusyOrder(null) }
   }
 
+  // 🛡️ 2026-06-12 (감사 개선): 라인 단위 환불 — 버튼이 라인에 있는데 동작은 내 전체 라인 환불이던 것.
+  //   서버가 item_ids 부분집합 환불 + 라인별 정산 역전(product 스코프) + 멱등키(라인 집합)를 지원.
   async function refund(item: Line) {
-    if (!(await confirmDialog({ message: `주문 #${item.wholesale_order_id} 을(를) 전액 환불 처리할까요? 되돌릴 수 없습니다.`, danger: true }))) return
+    if (!(await confirmDialog({ message: `'${item.name}' (수량 ${item.qty}개, ${formatWon(item.settle_amount)}) 만 환불 처리할까요? 같은 주문의 다른 상품은 유지됩니다. 되돌릴 수 없습니다.`, danger: true }))) return
     setBusy(item.item_id)
     try {
-      await supplierApi.post(`/api/supplier/wholesale/orders/${item.wholesale_order_id}/refund`, { reason: '판매자 반품 승인' })
-      toast.success('환불 처리되었습니다')
+      await supplierApi.post(`/api/supplier/wholesale/orders/${item.wholesale_order_id}/refund`, { reason: '판매자 반품 승인', item_ids: [item.item_id] })
+      toast.success('해당 상품이 환불 처리되었습니다')
       load()
     } catch (e) { toast.error(e instanceof Error ? e.message : '환불 처리 실패') } finally { setBusy(null) }
   }

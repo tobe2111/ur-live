@@ -79,6 +79,15 @@ supplierDashboardRoutes.get('/me', async (c) => {
        FROM products WHERE supplier_id = ? AND is_supply_product = 1`
     ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number }>().catch(() => null);
 
+    // 🧭 2026-06-12 (감사 개선 ⑥ — 온보딩 마일스톤): 가입→첫 상품→첫 승인→첫 주문→첫 정산.
+    //   홈 탭 체크리스트용 — 라이트한 COUNT 2개(fail-soft)만 추가, 기존 응답 필드 불변(additive).
+    const [orderCnt, settleCnt] = await Promise.all([
+      DB.prepare('SELECT COUNT(*) AS n FROM wholesale_order_items WHERE supplier_id = ?')
+        .bind(sid).first<{ n: number }>().catch(() => null),
+      DB.prepare("SELECT COUNT(*) AS n FROM supplier_settlements WHERE supplier_id = ? AND source = 'wholesale'")
+        .bind(sid).first<{ n: number }>().catch(() => null),
+    ]);
+
     return c.json({
       success: true,
       data: {
@@ -93,6 +102,10 @@ supplierDashboardRoutes.get('/me', async (c) => {
           pending: counts?.pending ?? 0,
           approved: counts?.approved ?? 0,
           rejected: counts?.rejected ?? 0,
+        },
+        milestones: {
+          orders: orderCnt?.n ?? 0,
+          settlements: settleCnt?.n ?? 0,
         },
       },
     });
