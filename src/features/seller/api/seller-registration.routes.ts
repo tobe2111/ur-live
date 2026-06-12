@@ -201,9 +201,9 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     }
 
     // 🛡️ 2026-05-27 v2 (UX 영구 fix): NTS 진위확인 비동기 — 가입 응답 즉시, 검증은 background.
-    //   진위 일치 + 계속사업자 → status='approved' UPDATE (사용자가 가입 직후 reload 시 활성)
-    //   미일치 → 어드민 수동 (status='pending' 유지)
-    //   사용 가능한 ctx — Hono 에서는 c.executionCtx
+    // 🛡️ 2026-06-12 (사용자 결정 — "자동승인 말고 수동 승인"): NTS 일치여도 status 자동
+    //   'approved' 전환 제거 — 모든 사업자 가입은 어드민 수동 승인. 검증 결과(nts_verify_result/
+    //   nts_verified_at)는 계속 저장해 승인 화면의 참고 신호로만 사용(가짜 사업자번호 검수 보조).
     if (representative_name && business_start_date && result.meta.last_row_id) {
       const sellerId = Number(result.meta.last_row_id)
       const verifyAsync = async () => {
@@ -216,9 +216,10 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
             representative: representative_name,
           })
           const resultJson = JSON.stringify({ valid: r.valid, status: r.status, message: r.message })
+          // 진위 일치 시 nts_verified_at 기록(참고 신호) — status 는 건드리지 않음(수동 승인).
           if (r.autoApprovable) {
             await db.prepare(
-              `UPDATE sellers SET status = 'approved', nts_verified_at = datetime('now'), nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
+              `UPDATE sellers SET nts_verified_at = datetime('now'), nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
             ).bind(resultJson, sellerId).run().catch(() => null)
           } else {
             await db.prepare(

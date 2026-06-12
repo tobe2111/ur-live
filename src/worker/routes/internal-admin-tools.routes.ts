@@ -1057,9 +1057,12 @@ internalAdminToolsRoutes.post('/api/admin/sellers/:id/recheck-nts', requireAdmin
     })
     const resultJson = JSON.stringify({ valid: r.valid, status: r.status, message: r.message })
 
+    // 🛡️ 2026-06-12 (사용자 결정 — "자동승인 말고 수동 승인"): 재검증은 검증 결과만 기록.
+    //   기존엔 진위 일치 시 status='approved' 까지 자동 전환 — 검증(정보)과 승인(결정)을 분리.
+    //   승인은 검수 페이지의 승인 버튼(별도 명시 액션)으로만.
     if (r.autoApprovable) {
       await c.env.DB.prepare(
-        `UPDATE sellers SET status = 'approved', nts_verified_at = datetime('now'), nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
+        `UPDATE sellers SET nts_verified_at = datetime('now'), nts_verify_result = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(resultJson, id).run()
     } else {
       await c.env.DB.prepare(
@@ -1067,7 +1070,7 @@ internalAdminToolsRoutes.post('/api/admin/sellers/:id/recheck-nts', requireAdmin
       ).bind(resultJson, id).run()
     }
 
-    return c.json({ success: true, message: r.message, autoApproved: r.autoApprovable })
+    return c.json({ success: true, message: r.message, ntsValid: r.autoApprovable })
   } catch (err) {
     return c.json({ success: false, error: 'NTS 재검증 실패' }, 500)
   }
