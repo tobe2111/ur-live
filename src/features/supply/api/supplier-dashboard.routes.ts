@@ -20,7 +20,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
-import { buildXlsx, xlsxResponse } from './xlsx';
+import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 import { SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels';
@@ -370,8 +370,31 @@ supplierDashboardRoutes.get('/products/bulk-template', (c) => {
   return csvResponse(buildCsv(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS), 'supply-products-template.csv')
 })
 // 엑셀로 바로 열리는 진짜 .xlsx 양식 (사용자 요청 — "엑셀파일로").
+// 📐 2026-06-12 (사용자 요청): 공급률(%)·셀러 마진율(%) **엑셀 수식 자동계산** 컬럼 —
+//   공급가(B)/권장소비자가(C)를 입력하는 즉시 그 행에서 계산(200행 미리 깔림, IF 가드로
+//   미입력 행은 빈칸 → 업로드 파서가 빈 행으로 무시). 공급률 = 채널 안내와 동일 지표.
+//   CSV 양식엔 수식 미포함(CSV 는 수식 보존 불가 + injection 혼동 방지) — 데이터 컬럼만.
+export function buildBulkTemplateXlsx(): Uint8Array {
+  const headers = [...BULK_TEMPLATE_HEADERS, '공급률(%) 자동계산', '셀러 마진율(%) 자동계산']
+  const FORMULA_ROWS = 200
+  const rows: XlsxCell[][] = []
+  for (let i = 0; i < FORMULA_ROWS; i++) {
+    const rn = i + 2 // 엑셀 행 번호 (1행 = 헤더)
+    const base: XlsxCell[] = i < BULK_TEMPLATE_ROWS.length
+      ? [...BULK_TEMPLATE_ROWS[i]]
+      : Array(BULK_TEMPLATE_HEADERS.length).fill('')
+    rows.push([
+      ...base,
+      // 공급률 = 공급가 ÷ 권장소비자가 × 100 — 낮을수록 더 많은 유통채널 제안 가능.
+      { formula: `IF(OR($B${rn}="",$C${rn}="",$C${rn}=0),"",ROUND($B${rn}/$C${rn}*100,1))` },
+      // 셀러 마진율 = (권장가 − 공급가) ÷ 공급가 × 100.
+      { formula: `IF(OR($B${rn}="",$B${rn}=0,$C${rn}=""),"",ROUND(($C${rn}-$B${rn})/$B${rn}*100,1))` },
+    ])
+  }
+  return buildXlsx(headers, rows, '상품등록')
+}
 supplierDashboardRoutes.get('/products/bulk-template.xlsx', (c) => {
-  return xlsxResponse(buildXlsx(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS, '상품등록'), 'supply-products-template.xlsx')
+  return xlsxResponse(buildBulkTemplateXlsx(), 'supply-products-template.xlsx')
 })
 
 // ── POST /products/bulk — 대량등록 (CSV 업로드) ────────────────────────────────
@@ -399,6 +422,9 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
+      // 📐 2026-06-12: 완전 빈 행은 조용히 skip — 양식의 수식 컬럼(IF→"") 잔여 행/공백 줄이
+      //   '상품명 누락' 오류로 잡히지 않게. (값이 하나라도 있는 행은 기존대로 검증.)
+      if (Object.values(r).every(v => !String(v ?? '').trim())) continue;
       const name = String(r['상품명'] || r.name || '').trim();
       const supplyPrice = Number(String(r['공급가'] || r.supply_price || '').replace(/[,\s]/g, ''));
       const retail = Number(String(r['권장소비자가'] || r.suggested_retail_price || r['공급가'] || '').replace(/[,\s]/g, ''));
