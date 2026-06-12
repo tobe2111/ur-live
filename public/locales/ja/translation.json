@@ -6100,5 +6100,23 @@
     "promptDesc": "クーポンの期限切れや共同購入の締切、獲得のお知らせをお届けします",
     "promptOn": "オンにする",
     "promptLater": "後で"
+  },
+  "groupbuyMessages": {
+    "seoDesc": "共同購入メッセージ",
+    "backAria": "共同購入詳細へ",
+    "notFound": "共同購入が見つかりません",
+    "backToList": "ローカルディールに戻る",
+    "forbiddenTitle": "参加者のみ閲覧できます",
+    "forbiddenDesc": "共同購入に参加するとメッセージを見て送信できます。",
+    "goJoin": "共同購入を見る",
+    "empty": "まだメッセージがありません。最初のメッセージを残しましょう!",
+    "anonymous": "匿名",
+    "roleAdmin": "運営者",
+    "roleAgency": "エージェンシー",
+    "roleRestaurant": "レストラン",
+    "roleMember": "参加者",
+    "inputPlaceholder": "メッセージを入力",
+    "sendAria": "送信",
+    "sendFail": "メッセージの送信に失敗しました"
   }
 }

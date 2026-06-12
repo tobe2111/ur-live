@@ -6100,5 +6100,23 @@
     "promptDesc": "Alertes pour bons expirants, fins d'achats groupés et nouveaux gains",
     "promptOn": "Activer",
     "promptLater": "Plus tard"
+  },
+  "groupbuyMessages": {
+    "seoDesc": "Messages d'achat groupé",
+    "backAria": "Retour à l'achat groupé",
+    "notFound": "Achat groupé introuvable",
+    "backToList": "Retour aux offres locales",
+    "forbiddenTitle": "Réservé aux participants",
+    "forbiddenDesc": "Rejoignez l'achat groupé pour voir et envoyer des messages.",
+    "goJoin": "Voir l'achat groupé",
+    "empty": "Pas encore de messages. Laissez le premier !",
+    "anonymous": "Anonyme",
+    "roleAdmin": "Administrateur",
+    "roleAgency": "Agence",
+    "roleRestaurant": "Restaurant",
+    "roleMember": "Participant",
+    "inputPlaceholder": "Saisissez un message",
+    "sendAria": "Envoyer",
+    "sendFail": "Échec de l'envoi du message"
   }
 }
