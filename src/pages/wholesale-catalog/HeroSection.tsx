@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Factory, ChevronRight, Lock } from 'lucide-react'
 import { WT } from '../wholesale/wholesale-theme'
-import BrandHero from './BrandHero'
 import Dashboard from './Dashboard'
 
 // 히어로 + 대시보드 + OEM — WholesaleCatalogPage 분해 (순수 추출, 동작 변화 0).
@@ -16,9 +15,10 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
   setGradeOpen: (v: boolean) => void
 }) {
   const navigate = useNavigate()
+  // 🏭 2026-06-13 (사용자 요청): BrandHero(서비스 정체성 카피)는 하단 회사정보 위로 이동 —
+  //   상단은 대시보드/가입유도(액션)만 두어 카탈로그 진입 속도 ↑.
   return (
         <div className="pt-4 pb-5 space-y-3">
-          <BrandHero loggedIn={loggedIn} />
           {loggedIn ? (
             <>
               <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} depositBalance={depositBalance} onGrade={() => setGradeOpen(true)} onCharge={() => navigate('/wholesale/deposits')} />

@@ -10,13 +10,13 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Megaphone, FolderDown, Plus, Edit, Trash2, Pin, X, Loader2, ExternalLink } from 'lucide-react'
+import { Megaphone, FolderDown, Plus, Edit, Trash2, Pin, X, Loader2, ExternalLink, Truck } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface BoardRow {
   id: number
-  board_type: 'notice' | 'archive'
+  board_type: 'notice' | 'archive' | 'shipping'
   mall_id: number
   title: string
   body: string | null
@@ -27,11 +27,11 @@ interface BoardRow {
   created_at: string
 }
 
-const EMPTY = { board_type: 'notice' as 'notice' | 'archive', title: '', body: '', product_id: '', is_pinned: false }
+const EMPTY = { board_type: 'notice' as 'notice' | 'archive' | 'shipping', title: '', body: '', product_id: '', is_pinned: false }
 
 export default function AdminWholesaleBoardPage() {
   const navigate = useNavigate()
-  const [typeFilter, setTypeFilter] = useState<'' | 'notice' | 'archive'>('')
+  const [typeFilter, setTypeFilter] = useState<'' | 'notice' | 'archive' | 'shipping'>('')
   const [editing, setEditing] = useState<BoardRow | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY)
@@ -111,7 +111,7 @@ export default function AdminWholesaleBoardPage() {
 
       {/* 필터 */}
       <div className="flex gap-2 mb-4">
-        {([['', '전체'], ['notice', '공지사항'], ['archive', '자료실']] as const).map(([v, l]) => (
+        {([['', '전체'], ['notice', '공지사항'], ['archive', '자료실'], ['shipping', '배송안내']] as const).map(([v, l]) => (
           <button key={v} onClick={() => setTypeFilter(v)}
             className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${typeFilter === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {l}
@@ -131,9 +131,9 @@ export default function AdminWholesaleBoardPage() {
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           {posts.map((p, i) => (
             <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${i ? 'border-t border-gray-100' : ''}`}>
-              <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${p.board_type === 'notice' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
-                {p.board_type === 'notice' ? <Megaphone className="w-3 h-3" /> : <FolderDown className="w-3 h-3" />}
-                {p.board_type === 'notice' ? '공지' : '자료실'}
+              <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${p.board_type === 'notice' ? 'bg-blue-50 text-blue-600' : p.board_type === 'shipping' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                {p.board_type === 'notice' ? <Megaphone className="w-3 h-3" /> : p.board_type === 'shipping' ? <Truck className="w-3 h-3" /> : <FolderDown className="w-3 h-3" />}
+                {p.board_type === 'notice' ? '공지' : p.board_type === 'shipping' ? '배송' : '자료실'}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-bold text-gray-900 truncate">
@@ -161,7 +161,7 @@ export default function AdminWholesaleBoardPage() {
             </div>
             {!editing && (
               <div className="grid grid-cols-2 gap-2 mb-3">
-                {([['notice', '📢 공지사항'], ['archive', '📁 상품 자료실']] as const).map(([v, l]) => (
+                {([['notice', '📢 공지사항'], ['archive', '📁 상품 자료실'], ['shipping', '🚚 배송안내']] as const).map(([v, l]) => (
                   <button key={v} onClick={() => setForm(f => ({ ...f, board_type: v }))}
                     className={`h-11 rounded-xl text-[13px] font-bold ${form.board_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
                     {l}

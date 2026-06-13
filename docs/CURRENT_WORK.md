@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-13 — 도매몰 UX 6종 (사용자 신고 묶음, opus)
+- **① 베스트/신규 분류 = 정상**(코드 확인): 베스트 `ORDER BY sold_count DESC, created_at DESC` · 신규 `ORDER BY created_at DESC`(wholesale.routes /home). 판매 데이터 0인 초기엔 둘이 같아 보이는 건 정상(베스트가 created_at 로 폴백) — 주문 쌓이면 분리됨. 코드 변경 없음.
+- **② 상세이미지 멀티 업로더** `supplier-dashboard/MultiImageUpload.tsx`: 세로 긴 사진·**GIF 다수 원본 무압축** 업로드(클라 압축 X — GIF 애니/세로 디테일 보존), 10MB×10장, 순서 조정/삭제. AddProductModal 의 detail_images textarea 대체. supplier_token Bearer + multipart(supplierApi 는 JSON 전용이라 raw fetch). GIF/webp/png/jpg 는 서버(/api/upload/image)가 이미 허용.
+- **③ BrandHero(서비스 정체성 카피) → 회사정보(푸터) 바로 위로 이동** (HeroSection 상단 제거 → 카탈로그 푸터 위). 상단은 대시보드/가입유도만.
+- **④ 제안/신고 → 게시판 페이지화**: 카탈로그 헤더 제안/신고 아이콘이 모달 대신 `/wholesale/board?tab=report` 로 이동. (report 작성=유통회원 전용 폼 기존재.)
+- **⑤ 게시판 권한/배송안내/이미지깨짐**: 글쓰기 권한 = 공지/자료실/**배송안내**는 운영자만(서버 VALID_BOARD_TYPE 에 'shipping' 추가 + admin 보드 페이지 타입 옵션 + create 게이트), 신고·제안만 유통회원. 배송안내 = 운영자 게시물 있으면 렌더(본문 이미지 URL 자동 세로 렌더 + onError 숨김), 없으면 기본 4단계 가이드(이미지 0 → 깨짐 0). archive 썸네일·다운로드 onError 방어.
+- **⑥ 제조사 문의 채팅 버그 fix**: `openThreadByProduct` 가 실패를 삼키고 빈 목록만 떠서 채팅 불가처럼 보이던 것 → API 가 에러 사유 반환 + 위젯이 '연결 중'/'문의 불가 안내' 상태 표시. **근본**: 연결 제조사 없는 상품(데모/관리자 등록, supplier_id NULL — product 6 추정)은 `inquirable:false` 응답 → '제조사에 문의' 버튼 자체 숨김(신원 비공개 위해 boolean 만).
+- 검증: tsc 0 · unit 2103 · build OK · i18n 5키×6언어.
+
 ## 🛒 2026-06-12 — 쿠팡 연동 + 역방향 임포트 (사용자 승인 "모두 이상적으로, 쿠팡도")
 - **쿠팡 코어 `coupang-core.ts`** (dep 0): HMAC-SHA256 전자서명(Web Crypto, signed-date yyMMdd'T'HHmmss'Z' — node:crypto 참조구현 대조 테스트) + `coupang_connections`(owner_type 복합 UNIQUE, secret encryptAtRest) + 출고지/반품지(주소 포함) + **카테고리 자동 추천**(predict) + 카테고리 고시정보 메타 + 상품 등록 payload 빌더(필수 고시 '상세페이지 참조' 관행) + 내 상품 목록/상세. 경로는 `COUPANG_PATHS` 상수 집중 — ⚠️ **실계정(Wing 키) E2E 1회 필요**.
 - **유통사 쿠팡 내보내기**: `/api/wholesale/coupang/*`(connect — 출고지 조회로 즉시 검증/status/disconnect/shipping-places/export — 역마진 차단·반품지 주소 서버 재조회로 변조 차단) + `CoupangExportModal`(연결 폼 내장 — 별도 페이지 없음, 카테고리 입력 불필요) + 상품 상세 버튼 2열(스마트스토어/쿠팡).

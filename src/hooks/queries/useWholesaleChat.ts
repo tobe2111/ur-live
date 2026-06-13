@@ -111,10 +111,18 @@ export const wholesaleChatApi = {
    * 상품 기준 get-or-create → thread_id. (유통사가 상품 상세에서 "제조사에 문의")
    * 🛡️ 서버가 product_id → supplier_id 를 서버사이드로 해석. 클라는 제조사 신원/ID 를 모름.
    */
-  async openThreadByProduct(productId: number): Promise<number | null> {
-    const r = await api.post('/api/wholesale/chat/threads/by-product', { product_id: productId }, { headers: authHeaders() })
-    const d = r.data
-    return d?.success && d.thread_id != null ? Number(d.thread_id) : null
+  // 🛡️ 2026-06-13 (채팅 버그 fix): 실패 사유를 반환 — 위젯이 빈 목록으로 조용히 끝내지 않고 안내.
+  //   서버 4xx(제조사 미연결 상품 등)는 axios throw → catch 에서 메시지 추출.
+  async openThreadByProduct(productId: number): Promise<{ id: number | null; error?: string }> {
+    try {
+      const r = await api.post('/api/wholesale/chat/threads/by-product', { product_id: productId }, { headers: authHeaders() })
+      const d = r.data
+      if (d?.success && d.thread_id != null) return { id: Number(d.thread_id) }
+      return { id: null, error: d?.error || '문의를 시작할 수 없습니다' }
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } }
+      return { id: null, error: err?.response?.data?.error || '문의를 시작할 수 없습니다' }
+    }
   },
 
   /** 메시지 목록 (after=lastId 증분). 이 GET 이 읽음 처리도 함. */

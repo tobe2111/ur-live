@@ -5943,7 +5943,10 @@
     "storeRateLabel": "공급률 일괄 적용",
     "storeRateHint": "공급가 = 스토어 판매가 × 공급률. 권장가는 판매가 그대로.",
     "storeConnectNaver": "커머스API센터(apicenter.commerce.naver.com)에서 발급한 애플리케이션 ID/시크릿을 입력하세요.",
-    "storeConnectCoupang": "쿠팡 Wing → 판매자정보 → 추가판매정보 → OPEN API 키의 Access/Secret Key 와 업체코드를 입력하세요."
+    "storeConnectCoupang": "쿠팡 Wing → 판매자정보 → 추가판매정보 → OPEN API 키의 Access/Secret Key 와 업체코드를 입력하세요.",
+    "detailUploadBtn": "상세 이미지 추가 (여러 장·GIF 가능)",
+    "detailUploadHint": "세로로 긴 설명 이미지·GIF 모두 원본 화질 그대로 업로드돼요 (장당 최대 10MB). 순서는 위/아래 버튼으로 조정.",
+    "fieldDetailImages2": "상세페이지 이미지 (여러 장·GIF 가능)"
   },
   "wholesaleChat": {
     "title": "문의 채팅",
@@ -5958,7 +5961,9 @@
     "threadEmpty": "첫 메시지를 보내보세요.",
     "composerPh": "메시지를 입력하세요",
     "send": "보내기",
-    "justNow": "방금"
+    "justNow": "방금",
+    "opening": "제조사에 연결 중...",
+    "viewList": "내 문의 목록 보기"
   },
   "wholesale": {
     "searchPlaceholder": "상품명·브랜드로 검색",

@@ -5951,7 +5951,10 @@
     "storeRateLabel": "供給率を一括適用",
     "storeRateHint": "供給価格 = 店舗販売価格 × 供給率。希望小売価格は販売価格のまま。",
     "storeConnectNaver": "コマースAPIセンターで発行したアプリケーションID/シークレットを入力してください。",
-    "storeConnectCoupang": "クーパンWing → 販売者情報 → OPEN APIキーのAccess/Secret Keyと業者コードを入力してください。"
+    "storeConnectCoupang": "クーパンWing → 販売者情報 → OPEN APIキーのAccess/Secret Keyと業者コードを入力してください。",
+    "detailUploadBtn": "詳細画像を追加（複数・GIF可）",
+    "detailUploadHint": "縦長の説明画像やGIFも原画質のままアップロード（1枚最大10MB）。順序は上下ボタンで調整。",
+    "fieldDetailImages2": "詳細ページ画像（複数・GIF可）"
   },
   "wholesaleChat": {
     "title": "お問い合わせ",
@@ -5966,7 +5969,9 @@
     "threadEmpty": "最初のメッセージを送りましょう。",
     "composerPh": "メッセージを入力",
     "send": "送信",
-    "justNow": "たった今"
+    "justNow": "たった今",
+    "opening": "メーカーに接続中...",
+    "viewList": "問い合わせ一覧を見る"
   },
   "wholesale": {
     "searchPlaceholder": "商品名・ブランドで検索",

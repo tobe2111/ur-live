@@ -36,7 +36,7 @@ async function sellerIdFrom(authorization: string | undefined, jwtSecret: string
   }
 }
 
-const VALID_BOARD_TYPE = new Set(['notice', 'archive'])
+const VALID_BOARD_TYPE = new Set(['notice', 'archive', 'shipping'])
 
 let _boardEnsured = false
 async function ensureBoardSchema(DB: D1Database): Promise<void> {

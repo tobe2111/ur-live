@@ -5951,7 +5951,10 @@
     "storeRateLabel": "Apply supply rate",
     "storeRateHint": "Supply price = store price × rate. Suggested retail = store price.",
     "storeConnectNaver": "Enter the application ID/secret issued at the Commerce API Center.",
-    "storeConnectCoupang": "Enter the Access/Secret Key and Vendor ID from Coupang Wing → Seller Info → OPEN API keys."
+    "storeConnectCoupang": "Enter the Access/Secret Key and Vendor ID from Coupang Wing → Seller Info → OPEN API keys.",
+    "detailUploadBtn": "Add detail images (multiple · GIF OK)",
+    "detailUploadHint": "Tall description images and GIFs upload at original quality (up to 10MB each). Reorder with up/down.",
+    "fieldDetailImages2": "Detail page images (multiple · GIF OK)"
   },
   "wholesaleChat": {
     "title": "Chat",
@@ -5966,7 +5969,9 @@
     "threadEmpty": "Send the first message.",
     "composerPh": "Type a message",
     "send": "Send",
-    "justNow": "now"
+    "justNow": "now",
+    "opening": "Connecting to manufacturer...",
+    "viewList": "View my inquiries"
   },
   "wholesale": {
     "searchPlaceholder": "Search by product or brand",

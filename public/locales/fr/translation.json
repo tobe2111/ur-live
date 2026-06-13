@@ -5951,7 +5951,10 @@
     "storeRateLabel": "Appliquer le taux de gros",
     "storeRateHint": "Prix de gros = prix boutique × taux. PVC = prix boutique.",
     "storeConnectNaver": "Saisissez l'ID/secret d'application émis au Commerce API Center.",
-    "storeConnectCoupang": "Saisissez les Access/Secret Key et le code vendeur depuis Coupang Wing."
+    "storeConnectCoupang": "Saisissez les Access/Secret Key et le code vendeur depuis Coupang Wing.",
+    "detailUploadBtn": "Ajouter des images de détail (plusieurs · GIF)",
+    "detailUploadHint": "Les images verticales et GIF sont téléchargées en qualité originale (max 10 Mo chacune). Réorganisez avec haut/bas.",
+    "fieldDetailImages2": "Images de la page de détail (plusieurs · GIF)"
   },
   "wholesaleChat": {
     "title": "Chat",
@@ -5966,7 +5969,9 @@
     "threadEmpty": "Envoyez le premier message.",
     "composerPh": "Saisir un message",
     "send": "Envoyer",
-    "justNow": "maintenant"
+    "justNow": "maintenant",
+    "opening": "Connexion au fabricant...",
+    "viewList": "Voir mes demandes"
   },
   "wholesale": {
     "searchPlaceholder": "Rechercher par produit ou marque",

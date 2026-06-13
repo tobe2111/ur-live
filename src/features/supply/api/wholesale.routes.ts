@@ -1318,6 +1318,7 @@ app.get('/catalog/:id', async (c) => {
           retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
           supplier_group: supplierGroup, supplier_policy: supplierPolicy,
+          inquirable: supId != null,
         },
         grade: null, requires_login: true,
       })
@@ -1351,6 +1352,8 @@ app.get('/catalog/:id', async (c) => {
         sold_count: r.sold_count || 0,
         tiers,
         supplier_group: supplierGroup, supplier_policy: supplierPolicy,
+        // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있을 때만 '제조사에 문의' 노출 (신원 비공개 — boolean 만).
+        inquirable: supId != null,
       },
       grade,
     })

@@ -58,6 +58,9 @@ export default function WholesaleChatWidget({ onClose, initialCounterpartId = nu
   const [threadsLoading, setThreadsLoading] = useState(true)
   const [activeId, setActiveId] = useState<number | null>(null)
   const [counterpartName, setCounterpartName] = useState('')
+  // 🛡️ 2026-06-13 (채팅 버그 fix): 상품 기준 진입 해석 중/실패 상태 — 빈 목록으로 조용히 끝나지 않게.
+  const [resolving, setResolving] = useState(initialProductId != null && initialProductId > 0)
+  const [resolveError, setResolveError] = useState<string | null>(null)
 
   // ── 스레드 목록 로드 ──
   const loadThreads = useCallback(async () => {
@@ -80,15 +83,18 @@ export default function WholesaleChatWidget({ onClose, initialCounterpartId = nu
       setActiveId(initialThreadId)
       return () => { cancelled = true }
     }
-    const resolve = initialProductId != null && initialProductId > 0
-      ? wholesaleChatApi.openThreadByProduct(initialProductId)
-      : initialCounterpartId != null
-        ? wholesaleChatApi.openThread(initialCounterpartId)
-        : null
-    if (!resolve) return
-    resolve.then((id) => {
-      if (!cancelled && id != null) setActiveId(id)
-    }).catch(() => { /* noop */ })
+    if (initialProductId != null && initialProductId > 0) {
+      setResolving(true); setResolveError(null)
+      wholesaleChatApi.openThreadByProduct(initialProductId).then(({ id, error }) => {
+        if (cancelled) return
+        if (id != null) setActiveId(id)
+        else setResolveError(error || '이 상품은 문의할 수 있는 제조사가 연결되어 있지 않아요.')
+      }).finally(() => { if (!cancelled) setResolving(false) })
+    } else if (initialCounterpartId != null) {
+      wholesaleChatApi.openThread(initialCounterpartId).then((id) => {
+        if (!cancelled && id != null) setActiveId(id)
+      }).catch(() => { /* noop */ })
+    }
     return () => { cancelled = true }
   }, [initialThreadId, initialProductId, initialCounterpartId])
 
@@ -105,7 +111,7 @@ export default function WholesaleChatWidget({ onClose, initialCounterpartId = nu
     loadThreads() // 목록 unread/미리보기 갱신
   }
 
-  // 패널 본문 — 스레드 뷰 or 목록 뷰.
+  // 패널 본문 — 스레드 뷰 / 상품 해석중 / 해석 실패 안내 / 목록 뷰.
   const body = activeId != null ? (
     <ThreadView
       key={activeId}
@@ -119,6 +125,20 @@ export default function WholesaleChatWidget({ onClose, initialCounterpartId = nu
       }}
       t={t}
     />
+  ) : resolving ? (
+    // 🛡️ 상품 기준 진입 — 제조사 스레드 여는 중 (빈 목록 깜빡임 방지).
+    <div className="flex-1 flex items-center justify-center text-[13px]" style={{ color: WT.ink3 }}>
+      {t('wholesaleChat.opening', { defaultValue: '제조사에 연결 중...' })}
+    </div>
+  ) : resolveError ? (
+    // 🛡️ 제조사 미연결 상품 등 — 빈 목록 대신 명확한 안내 + 목록으로.
+    <div className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-3">
+      <p className="text-[14px] font-bold" style={{ color: WT.ink }}>문의를 시작할 수 없어요</p>
+      <p className="text-[12.5px] leading-relaxed" style={{ color: WT.ink3 }}>{resolveError}</p>
+      <button onClick={() => { setResolveError(null); loadThreads() }} className="mt-1 px-4 h-9 rounded-lg text-[12.5px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
+        {t('wholesaleChat.viewList', { defaultValue: '내 문의 목록 보기' })}
+      </button>
+    </div>
   ) : (
     <ThreadList
       threads={threads}
