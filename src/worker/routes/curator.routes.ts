@@ -15,7 +15,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth, optionalAuth } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { safeError } from '../utils/safe-error'
 import {
@@ -107,7 +107,7 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
 // GET /api/curator/:handle  (public)
 // 큐레이터 공개 페이지 데이터: user + pins (with product 메타)
 // ============================================================
-curatorRoutes.get('/:handle', async (c) => {
+curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
   try {
     const handle = c.req.param('handle')?.toLowerCase().trim()
     if (!handle || !isValidHandleFormat(handle)) {
@@ -168,8 +168,18 @@ curatorRoutes.get('/:handle', async (c) => {
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
     //   → /u/:handle 첫 paint 200-500ms+ 지연. 공개 데이터(본인 dashboard 는 /me/* 별도)라 공개 캐시 안전.
     //   브라우저 60s / edge 900s + SWR — 소유자 편집은 CuratorPage 낙관적 업데이트로 즉시 반영.
-    c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
-    c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
+    // 🏁 2026-06-13 (사용자 신고 — 프로필 사진 저장 후 새로고침하면 사라짐):
+    //   본인(인증된 소유자)이 자기 페이지를 보면 edge 900s 캐시 대신 항상 신선본 반환.
+    //   업로드→저장 직후 새로고침해도 stale(예전 null) 대신 최신 이미지가 보이게 함.
+    //   익명/타 방문자는 기존 공개 캐시 그대로(잠금 TTL 불변) — owner 만 우회.
+    const viewerId = getAuthUserId(c)
+    const isOwnerView = viewerId != null && Number(viewerId) === Number(user.id)
+    if (isOwnerView) {
+      c.header('Cache-Control', 'private, no-store')
+    } else {
+      c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+      c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
+    }
 
     return c.json({
       success: true,
