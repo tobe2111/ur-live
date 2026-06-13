@@ -33,6 +33,8 @@ interface DetailItem {
   // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
   supplier_group?: string | null
   supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
+  // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있는 상품만 true → '제조사에 문의' 노출.
+  inquirable?: boolean
 }
 
 // 수량 구간별 단가표 (등급가 위 volume 할인 — 많이 살수록 ↓). 현재 수량 구간 강조.
@@ -318,8 +320,8 @@ export default function WholesaleProductPage() {
             </Suspense>
           )}
 
-          {/* 💬 제조사에 문의 — 로그인 유통사만. 서버가 상품→제조사를 해석(신원 비공개 유지). */}
-          {!locked && token && (
+          {/* 💬 제조사에 문의 — 로그인 유통사 + 연결된 제조사 있는 상품만(데모/관리자 상품은 숨김). */}
+          {!locked && token && item.inquirable !== false && (
             <button
               type="button"
               onClick={() => setChatOpen(true)}

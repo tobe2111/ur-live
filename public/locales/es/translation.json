@@ -5952,7 +5952,10 @@
     "storeRateLabel": "Aplicar tasa de suministro",
     "storeRateHint": "Precio de suministro = precio de tienda × tasa. PVP sugerido = precio de tienda.",
     "storeConnectNaver": "Introduce el ID/secreto de aplicación emitido en el Commerce API Center.",
-    "storeConnectCoupang": "Introduce el Access/Secret Key y el código de proveedor de Coupang Wing."
+    "storeConnectCoupang": "Introduce el Access/Secret Key y el código de proveedor de Coupang Wing.",
+    "detailUploadBtn": "Añadir imágenes de detalle (varias · GIF)",
+    "detailUploadHint": "Las imágenes verticales y GIF se suben en calidad original (máx. 10MB c/u). Reordena con arriba/abajo.",
+    "fieldDetailImages2": "Imágenes de página de detalle (varias · GIF)"
   },
   "wholesaleChat": {
     "title": "Chat",
@@ -5967,7 +5970,9 @@
     "threadEmpty": "Envía el primer mensaje.",
     "composerPh": "Escribe un mensaje",
     "send": "Enviar",
-    "justNow": "ahora"
+    "justNow": "ahora",
+    "opening": "Conectando con el fabricante...",
+    "viewList": "Ver mis consultas"
   },
   "wholesale": {
     "searchPlaceholder": "Buscar por producto o marca",

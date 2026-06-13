@@ -8,6 +8,7 @@ import NaverPriceCheck from './NaverPriceCheck'
 import DemandSignal from './DemandSignal'
 import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
 import { downloadSupplierCsv } from './download-csv'
+import MultiImageUpload from './MultiImageUpload'
 
 export default function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
@@ -160,11 +161,10 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '썸네일(대표) 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
           </div>
-          {/* 🖼️ 2026-06-12 (사용자 요청): 썸네일과 상세페이지 이미지 분리. */}
+          {/* 🖼️ 2026-06-13 (사용자 요청): 상세페이지 이미지 — 세로로 긴 사진·GIF 다수 직접 업로드(무압축 원본). */}
           <div>
-            <label className={labelCls}>{t('supplier.fieldDetailImages', { defaultValue: '상세페이지 이미지 URL (쉼표로 여러 장, 최대 10)' })}</label>
-            <textarea disabled={saving} rows={2} value={form.detail_images} onChange={e => setForm(f => ({ ...f, detail_images: e.target.value }))} className={inputCls} placeholder="https://.../detail1.jpg, https://.../detail2.jpg" />
-            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.detailImagesHint', { defaultValue: '상품 상세 페이지의 설명 아래에 순서대로 표시됩니다.' })}</p>
+            <label className={labelCls}>{t('supplier.fieldDetailImages2', { defaultValue: '상세페이지 이미지 (여러 장·GIF 가능)' })}</label>
+            <MultiImageUpload value={form.detail_images} onChange={(v) => setForm(f => ({ ...f, detail_images: v }))} t={t} />
           </div>
           <div>
             <label className={labelCls}>{t('supplier.fieldLowestUrl', { defaultValue: '온라인 최저가 참고 링크' })}</label>

@@ -128,7 +128,7 @@ export default function CatalogHeader({
               <HelpCircle className="w-5 h-5" />
               <span className="text-[11px] font-medium whitespace-nowrap">{t('wholesale.icon.firstTime', { defaultValue: '처음이세요?' })}</span>
             </button>
-            <button onClick={() => setProposalOpen(true)} className="flex flex-col items-center gap-0.5 px-2.5 py-1" style={{ color: WT.ink2 }} title="제안/신고">
+            <button onClick={() => navigate('/wholesale/board?tab=report')} className="flex flex-col items-center gap-0.5 px-2.5 py-1" style={{ color: WT.ink2 }} title="제안/신고">
               <MessageSquareWarning className="w-5 h-5" />
               <span className="text-[11px] font-medium whitespace-nowrap">{t('wholesale.icon.proposal', { defaultValue: '제안/신고' })}</span>
             </button>
@@ -141,7 +141,7 @@ export default function CatalogHeader({
           </div>
           {/* 모바일 우측 아이콘 (라벨 생략) */}
           <div className="flex md:hidden items-center gap-2 shrink-0" style={{ color: WT.ink2 }}>
-            <button onClick={() => setProposalOpen(true)} aria-label="제안/신고" className="p-1.5"><MessageSquareWarning className="w-5 h-5" /></button>
+            <button onClick={() => navigate('/wholesale/board?tab=report')} aria-label="제안/신고" className="p-1.5"><MessageSquareWarning className="w-5 h-5" /></button>
             <button onClick={() => navigate('/wholesale/deposits')} aria-label="예치금신청" className="p-1.5"><Wallet className="w-5 h-5" /></button>
             <button onClick={() => navigate('/wholesale/wishlist')} aria-label="찜리스트" className="p-1.5"><Heart className="w-5 h-5" /></button>
             <button onClick={() => navigate('/wholesale/cart')} aria-label="장바구니" className="relative p-1.5">

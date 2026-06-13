@@ -5952,7 +5952,10 @@
     "storeRateLabel": "批量应用供货率",
     "storeRateHint": "供货价 = 店铺售价 × 供货率。建议零售价 = 店铺售价。",
     "storeConnectNaver": "请输入在Commerce API中心发放的应用ID/密钥。",
-    "storeConnectCoupang": "请输入Coupang Wing → 卖家信息 → OPEN API密钥中的Access/Secret Key和供应商代码。"
+    "storeConnectCoupang": "请输入Coupang Wing → 卖家信息 → OPEN API密钥中的Access/Secret Key和供应商代码。",
+    "detailUploadBtn": "添加详情图片（多张·支持GIF）",
+    "detailUploadHint": "竖长说明图和GIF均按原画质上传（每张最大10MB）。用上下按钮调整顺序。",
+    "fieldDetailImages2": "详情页图片（多张·支持GIF）"
   },
   "wholesaleChat": {
     "title": "咨询聊天",
@@ -5967,7 +5970,9 @@
     "threadEmpty": "发送第一条消息。",
     "composerPh": "输入消息",
     "send": "发送",
-    "justNow": "刚刚"
+    "justNow": "刚刚",
+    "opening": "正在连接厂商...",
+    "viewList": "查看我的咨询"
   },
   "wholesale": {
     "searchPlaceholder": "按商品名称或品牌搜索",

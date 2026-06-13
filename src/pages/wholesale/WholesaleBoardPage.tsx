@@ -65,7 +65,8 @@ export default function WholesaleBoardPage() {
   const [detail, setDetail] = useState<{ post: BoardPost & { body?: string }; downloads: string[] } | null>(null)
 
   useEffect(() => {
-    if (tab !== 'notice' && tab !== 'archive') return
+    // 🛡️ 2026-06-13: shipping 도 운영자 게시물(board_type='shipping')을 가질 수 있음 — 없으면 기본 안내 컴포넌트.
+    if (tab !== 'notice' && tab !== 'archive' && tab !== 'shipping') return
     setPosts(null)
     api.get(`/api/wholesale/board/posts?type=${tab}`)
       .then(r => setPosts(r.data?.success ? r.data.posts || [] : []))
@@ -148,11 +149,11 @@ export default function WholesaleBoardPage() {
       </header>
 
       <main className="ur-content-wide px-5 lg:px-8 pt-5">
-        {/* ── 배송 안내 ── */}
-        {tab === 'shipping' && <WholesaleShippingGuide />}
+        {/* ── 배송 안내 ── 운영자 게시물 없으면 기본 4단계 가이드(이미지 없음 — 깨짐 0). */}
+        {tab === 'shipping' && !postId && (!posts || posts.length === 0) && <WholesaleShippingGuide />}
 
-        {/* ── 공지/자료실 상세 ── */}
-        {(tab === 'notice' || tab === 'archive') && postId && (
+        {/* ── 공지/자료실/배송 상세 ── */}
+        {(tab === 'notice' || tab === 'archive' || tab === 'shipping') && postId && (
           <div className="rounded-2xl p-5 lg:p-7" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
             {!detail ? (
               <div className="py-16 text-center text-[13px]" style={{ color: WT.ink4 }}>불러오는 중…</div>
@@ -166,9 +167,29 @@ export default function WholesaleBoardPage() {
                   {detail.post.title}
                 </h2>
                 <p className="text-[12px] mt-1.5" style={{ color: WT.ink4 }}>{fmtDate(detail.post.created_at)} · 조회 {detail.post.view_count ?? 0}</p>
-                {detail.post.body && (
-                  <p className="text-[14px] mt-4 leading-relaxed whitespace-pre-wrap" style={{ color: WT.ink2 }}>{detail.post.body}</p>
-                )}
+                {detail.post.body && (() => {
+                  // 🛡️ 2026-06-13: 본문의 이미지 URL(http(s) …png/jpg/gif/webp) 은 세로 이미지로 렌더,
+                  //   나머지 텍스트는 그대로 — 배송안내/공지에 운영자가 이미지 첨부(URL 붙여넣기) 가능.
+                  const lines = detail.post.body.split(/\r?\n/)
+                  const imgRe = /^https?:\/\/\S+\.(?:png|jpe?g|gif|webp)(?:\?\S*)?$/i
+                  const blocks: Array<{ t: 'text'; v: string } | { t: 'img'; v: string }> = []
+                  let buf: string[] = []
+                  const flush = () => { if (buf.length) { blocks.push({ t: 'text', v: buf.join('\n') }); buf = [] } }
+                  for (const ln of lines) {
+                    if (imgRe.test(ln.trim())) { flush(); blocks.push({ t: 'img', v: ln.trim() }) }
+                    else buf.push(ln)
+                  }
+                  flush()
+                  return (
+                    <div className="mt-4 space-y-3">
+                      {blocks.map((b, i) => b.t === 'img'
+                        ? <img key={i} src={cfImage(b.v, { width: 900, format: 'auto' }) || b.v} alt="" loading="lazy" decoding="async"
+                            className="w-full rounded-xl" style={{ border: '1px solid ' + WT.line }}
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+                        : b.v.trim() ? <p key={i} className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: WT.ink2 }}>{b.v}</p> : null)}
+                    </div>
+                  )
+                })()}
                 {/* 자료실: 이미지 다운로드 그리드 */}
                 {detail.post.board_type === 'archive' && (
                   detail.downloads.length === 0 ? (
@@ -180,7 +201,7 @@ export default function WholesaleBoardPage() {
                         {detail.downloads.map((u, i) => (
                           <div key={u} className="rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>
                             <div className="aspect-square" style={{ background: WT.fill }}>
-                              <img src={cfImage(u, { width: 300, format: 'auto' }) || u} alt={`자료 ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                              <img src={cfImage(u, { width: 300, format: 'auto' }) || u} alt={`자료 ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }} />
                             </div>
                             <a href={u} target="_blank" rel="noopener noreferrer" download
                               className="flex items-center justify-center gap-1 h-9 text-[12px] font-bold" style={{ color: WT.ink, background: WT.fill2 }}>
@@ -203,13 +224,13 @@ export default function WholesaleBoardPage() {
           </div>
         )}
 
-        {/* ── 공지/자료실 목록 ── */}
-        {(tab === 'notice' || tab === 'archive') && !postId && (
+        {/* ── 공지/자료실/배송 목록 ── (shipping 은 게시물 있을 때만 목록, 없으면 위 기본 가이드) */}
+        {(tab === 'notice' || tab === 'archive' || (tab === 'shipping' && posts && posts.length > 0)) && !postId && (
           posts === null ? (
             <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: '#fff' }} />)}</div>
           ) : posts.length === 0 ? (
             <div className="rounded-2xl py-20 text-center" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
-              <p className="text-[14px]" style={{ color: WT.ink4 }}>{tab === 'notice' ? '등록된 공지사항이 없어요.' : '등록된 자료가 없어요.'}</p>
+              <p className="text-[14px]" style={{ color: WT.ink4 }}>{tab === 'notice' ? '등록된 공지사항이 없어요.' : tab === 'shipping' ? '등록된 배송 안내가 없어요.' : '등록된 자료가 없어요.'}</p>
               {isAdmin && (
                 <button onClick={() => navigate('/admin/wholesale-board')}
                   className="mt-4 px-5 h-11 rounded-xl text-[13px] font-bold text-white" style={{ background: WT.ink }}>

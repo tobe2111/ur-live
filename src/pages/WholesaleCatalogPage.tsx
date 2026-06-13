@@ -25,6 +25,7 @@ import GradeSheet from './wholesale-catalog/GradeSheet'
 import { readSsrWholesale } from './wholesale-catalog/ssr'
 import CatalogHeader from './wholesale-catalog/CatalogHeader'
 import HeroSection from './wholesale-catalog/HeroSection'
+import BrandHero from './wholesale-catalog/BrandHero'
 import HomeRails from './wholesale-catalog/HomeRails'
 import ShowcaseBanners from './wholesale-catalog/ShowcaseBanners'
 import FilterControls from './wholesale-catalog/FilterControls'
@@ -528,6 +529,10 @@ export default function WholesaleCatalogPage() {
           </div>
         </section>
         )}
+        {/* 🏭 2026-06-13 (사용자 요청): 서비스 정체성 히어로 — 회사정보(푸터) 바로 위에 배치. */}
+        <div className="pt-2 pb-8">
+          <BrandHero loggedIn={loggedIn} />
+        </div>
       </main>
 
       <WholesaleFooter />
