@@ -538,7 +538,6 @@ export default function ProductDetailPage() {
                   <li>본 상품은 <b>유어딜 딜로만 교환</b> 가능합니다 (카드 결제 불가)</li>
                   <li>결제 즉시 <b>본인 명의 휴대폰</b>으로 MMS 발송</li>
                   <li>유효기간 <b>발행일로부터 30일</b>, 환불/취소/연장 불가</li>
-                  <li>(KT Alpha 기프티쇼 B2B 정책)</li>
                 </ul>
               </div>
             )}

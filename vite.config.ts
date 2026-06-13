@@ -6,8 +6,11 @@ import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 
-// 빌드마다 유니크한 버전 — 타임스탬프 기반 (SW 캐시 키 용)
-const BUILD_VERSION = `${new Date().toISOString().slice(0, 10)}-${Date.now().toString(36)}`;
+// 빌드마다 유니크한 버전 — 정형화된 타임스탬프 (YYYYMMDD.HHmm, UTC). SW 캐시 키 + 빌드 표시 겸용.
+//   🏁 2026-06-13 (사용자 요청 "빌드 정보 숫자 정형화"): base36 난수 → 사람이 읽는 날짜.시각 형식.
+const _bv = new Date();
+const _p2 = (n: number) => String(n).padStart(2, '0');
+const BUILD_VERSION = `${_bv.getUTCFullYear()}${_p2(_bv.getUTCMonth() + 1)}${_p2(_bv.getUTCDate())}.${_p2(_bv.getUTCHours())}${_p2(_bv.getUTCMinutes())}`;
 
 // 🏭 2026-06-05 (사용자 요청): 앱 버전 = v1.0.<커밋수> — 배포마다 숫자가 올라감.
 //   git 전체 히스토리(main.yml fetch-depth:0)에서 커밋 수를 patch 로. git 불가 시 날짜 기반 폴백(단조 증가).
