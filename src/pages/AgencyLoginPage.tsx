@@ -35,8 +35,10 @@ export default function AgencyLoginPage() {
     try {
       const res = await api.post('/api/agency/login', { ...formData, turnstile_token: turnstileToken })
       if (res.data.success) {
-        const { token, agency } = res.data
+        const { token, refreshToken, agency } = res.data
         localStorage.setItem('agency_token', token)
+        // 🏁 2026-06-13: refresh token 저장 — 자동 로그아웃 근본수정(admin/seller 와 동형)
+        if (refreshToken) localStorage.setItem('agency_refresh_token', refreshToken)
         localStorage.setItem('agency_id', String(agency.id))
         localStorage.setItem('agency_name', agency.name)
         localStorage.setItem('agency_email', agency.email)

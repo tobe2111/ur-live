@@ -126,6 +126,12 @@ export function processAuthCallbackParams(): void {
       const agencyToken = readCookie('ur_pending_agency_token')
       if (agencyToken) {
         localStorage.setItem('agency_token', agencyToken)
+        // 🏁 2026-06-13: refresh token transfer → localStorage (자동 로그아웃 방지)
+        const agencyRefresh = readCookie('ur_pending_agency_refresh_token')
+        if (agencyRefresh) {
+          localStorage.setItem('agency_refresh_token', agencyRefresh)
+          clearCookie('ur_pending_agency_refresh_token')
+        }
         const agencyInfoRaw = readCookie('ur_pending_agency_info')
         if (agencyInfoRaw) {
           try {

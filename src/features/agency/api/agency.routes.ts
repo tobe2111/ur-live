@@ -160,6 +160,26 @@ async function signAgencyToken(
   )
 }
 
+// 🏁 2026-06-13: 에이전시 refresh token 발급 — admin/seller 와 동형(누락분 근본수정).
+//   access(30일) 만료 시 강제 로그아웃되던 원인: agency 만 refresh token / /refresh endpoint 부재.
+//   refresh 는 90일 + token_use:'refresh' 마커(access 토큰을 refresh 로 오용 방지).
+async function signAgencyRefreshToken(
+  secret: string,
+  agencyId: number,
+  email: string,
+) {
+  return sign(
+    {
+      sub: String(agencyId),
+      email,
+      type: 'agency',
+      token_use: 'refresh',
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 90, // 90일
+    },
+    secret
+  )
+}
+
 async function verifyAgencyToken(secret: string, token: string): Promise<{
   id: number;
   email: string;
@@ -429,6 +449,8 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email, {
     memberRole, memberId,
   })
+  // 🏁 2026-06-13: refresh token 동시 발급 — 자동 로그아웃 근본수정.
+  const refreshToken = await signAgencyRefreshToken(c.env.JWT_SECRET, agency.id, agency.email)
 
   // 🔐 2026-06-11 SSR Phase 2: ud_agency_token dual-write (docs/SSR_PHASE2_AUTH.md §3.2)
   try {
@@ -448,10 +470,66 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   const res = c.json({
     success: true,
     token,
+    refreshToken,
     agency: { id: agency.id, name: agency.name, contact_name: agency.contact_name, email: agency.email },
   })
   if (agencyCookie) res.headers.append('Set-Cookie', agencyCookie)
   return res
+})
+
+// ── POST /refresh (공개) ──────────────────────────────────────
+// 🏁 2026-06-13: 에이전시 토큰 갱신 — admin(/api/admin/refresh)·seller 와 동형.
+//   클라이언트(api.ts 401 인터셉터 + useTokenAutoRefresh)가 호출. signature 검증 기반
+//   (admin 의 hashed-store 가 행 없을 때 폴백하는 동작과 동일 수준 — 가용성 우선).
+app.post('/refresh', cors(), rateLimit({ action: 'agency_refresh', max: 20, windowSec: 300 }), async (c) => {
+  const { JWT_SECRET } = c.env
+  if (!JWT_SECRET) return c.json({ success: false, error: 'Server configuration error' }, 500)
+
+  const body = await c.req.json<{ refreshToken?: string }>().catch(() => ({} as { refreshToken?: string }))
+  const refreshToken = body?.refreshToken
+  if (!refreshToken) return c.json({ success: false, error: 'Refresh Token이 필요합니다.' }, 400)
+
+  let payload: Record<string, unknown>
+  try {
+    payload = await verify(refreshToken, JWT_SECRET, 'HS256') as Record<string, unknown>
+  } catch {
+    return c.json({ success: false, error: 'Refresh Token이 유효하지 않거나 만료되었습니다.' }, 401)
+  }
+  if (payload.type !== 'agency' || !payload.sub) {
+    return c.json({ success: false, error: 'Agency Refresh Token이 아닙니다.' }, 401)
+  }
+
+  const agencyId = Number(payload.sub)
+  const agency = await c.env.DB.prepare(
+    'SELECT id, name, contact_name, email, status FROM agencies WHERE id = ?'
+  ).bind(agencyId).first<{ id: number; name: string; contact_name: string; email: string; status: string }>()
+
+  if (!agency) return c.json({ success: false, error: '계정을 찾을 수 없습니다.' }, 401)
+  // 정지/거절 계정은 갱신 차단 (로그인 게이트와 동일 정책)
+  if (agency.status !== 'active' && agency.status !== 'approved') {
+    return c.json({ success: false, error: '비활성화된 계정입니다.' }, 401)
+  }
+
+  // member role 재조회 (역할 변경 반영)
+  let memberRole = 'owner'
+  let memberId: number | undefined
+  try {
+    const m = await c.env.DB.prepare(
+      "SELECT id, role FROM agency_members WHERE agency_id = ? AND email = ? AND status = 'active' LIMIT 1"
+    ).bind(agency.id, agency.email).first<{ id: number; role: string }>()
+    if (m) { memberRole = m.role; memberId = m.id }
+  } catch { /* migration 미적용 — owner fallback */ }
+
+  const accessToken = await signAgencyToken(JWT_SECRET, agency.id, agency.email, { memberRole, memberId })
+  const newRefreshToken = await signAgencyRefreshToken(JWT_SECRET, agency.id, agency.email)
+
+  // SSR Phase 2 dual-write + 세션 쿠키 갱신 (best-effort)
+  try {
+    const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+    c.header('Set-Cookie', authTokenSetCookie('ud_agency_token', accessToken, new URL(c.req.url).hostname), { append: true })
+  } catch { /* dual-write 실패해도 갱신 정상 */ }
+
+  return c.json({ success: true, data: { accessToken, refreshToken: newRefreshToken } })
 })
 
 // ── POST /forgot-password (공개) ──────────────────────────────

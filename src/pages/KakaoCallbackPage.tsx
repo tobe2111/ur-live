@@ -43,7 +43,7 @@ export default function KakaoCallbackPage() {
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
 
-        const { user, seller_token, agency_token, seller, agency } = res.data.data
+        const { user, seller_token, agency_token, agency_refresh_token, seller, agency } = res.data.data
 
         // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 신고 — 마이=정지원 / 링크샵=디스크프리 계정 중첩 영구수정):
         //   다른 카카오 계정(user.id 변경)으로 로그인하면, 이전 계정의 seller/agency/링크샵 캐시 키가
@@ -88,6 +88,8 @@ export default function KakaoCallbackPage() {
         }
         if (agency_token) {
           localStorage.setItem('agency_token', agency_token)
+          // 🏁 2026-06-13: refresh token 저장 — 카카오 로그인 에이전시 자동 로그아웃 방지
+          if (agency_refresh_token) localStorage.setItem('agency_refresh_token', agency_refresh_token)
           if (agency?.id) localStorage.setItem('agency_id', String(agency.id))
           if (agency?.name) localStorage.setItem('agency_name', agency.name)
         }
