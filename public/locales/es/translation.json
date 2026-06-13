@@ -5135,7 +5135,7 @@
     "heading": "Reseñas",
     "writeBtn": "Escribir reseña",
     "title": "Escribir reseña",
-    "rewardBanner": "Texto 50 deal · Foto 100 deal · Video 200 deal de recompensa",
+    "rewardBanner": "Texto {{text}} deal · Foto {{image}} deal · Video {{video}} deal de recompensa",
     "placeholder": "¿Qué te pareció el producto? Escribe al menos 10 caracteres.",
     "contentLabel": "Contenido de la reseña",
     "submitting": "Enviando...",
@@ -5147,7 +5147,8 @@
     "sharedMessage": "Se han otorgado puntos deal. ¡Recomienda este producto a un amigo!",
     "sharedShareTitle": "¡Recomiendo este producto!",
     "sharedShareDesc": "Encontré un gran producto en Urdeal",
-    "sharedShareBtn": "Ver producto"
+    "sharedShareBtn": "Ver producto",
+    "sellerReplyLabel": "Respuesta del vendedor"
   },
   "productOption": {
     "title": "Gestión de opciones de producto",

@@ -14,6 +14,17 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   // 🛡️ 2026-05-21: 리뷰 사진 첨부 (max 5). compress 후 upload-image → URL 저장.
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  // 🏁 2026-06-12 (전수조사 🔴 G5): 리워드 안내 금액을 서버 설정값(platform_settings)과 일치 —
+  //   기존 하드코딩 50/100/200 은 실지급(default 100/300/500)과 불일치했음.
+  const [rewards, setRewards] = useState({ text: 100, image: 300, video: 500 })
+
+  useEffect(() => {
+    if (!open) return
+    api.get('/api/reviews/reward-config').then(r => {
+      const d = r.data?.data
+      if (r.data?.success && d && Number.isFinite(d.text)) setRewards({ text: d.text, image: d.image, video: d.video })
+    }).catch(() => { /* 안내 배너 — 기본값 유지 */ })
+  }, [open])
 
   if (!open) {
     return (
@@ -28,7 +39,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
       <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
       <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
         <span className="text-sm">🎁</span>
-        <span className="text-[11px] font-semibold text-pink-700">{t('reviews.rewardBanner', { defaultValue: '텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드' })}</span>
+        <span className="text-[11px] font-semibold text-pink-700">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜 · 사진 {{image}}딜 · 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</span>
       </div>
       <div className="flex gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(s => (
@@ -168,6 +179,8 @@ interface Review {
   content?: string
   user_name?: string
   created_at: string
+  seller_reply?: string | null
+  seller_reply_at?: string | null
 }
 
 export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
@@ -244,6 +257,18 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
                 <span className="text-[10px] text-gray-500 dark:text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
               </div>
               {r.content && <p className="text-xs text-gray-900 dark:text-white leading-relaxed">{r.content}</p>}
+              {/* 🏁 2026-06-12 (전수조사 🟡): 셀러 답글 — 셀러는 달 수 있는데 구매자에겐 비노출이던 갭 */}
+              {r.seller_reply && (
+                <div className="mt-2 bg-gray-50 dark:bg-[#121212] rounded-lg p-2.5">
+                  <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5">
+                    {t('reviews.sellerReplyLabel', { defaultValue: '판매자 답글' })}
+                    {r.seller_reply_at && (
+                      <span className="ml-1.5 font-normal text-gray-400 dark:text-gray-500">{new Date(r.seller_reply_at).toLocaleDateString('ko-KR')}</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-700 dark:text-gray-200 leading-relaxed">{r.seller_reply}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

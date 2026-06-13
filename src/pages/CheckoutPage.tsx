@@ -360,15 +360,15 @@ function CartCheckout() {
           product_id: String(item.product_id), product_name: item.product_name || t('checkoutPage.fallbackProduct'),
           quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
           seller_id: item.seller_id ? String(item.seller_id) : undefined,
+          option_value: (item as CartItem & { option_value?: string }).option_value || undefined,
         })),
         shipping: shippingPayload,
+        // 🏁 2026-06-12 (G3): 쿠폰은 서버가 검증·차감·소진까지 원자 처리 — 별도 /coupons/use 호출 폐지
+        coupon_id: (!isAllDealOnly && couponId && couponDiscount > 0) ? couponId : undefined,
       })
       if (res.data.success) {
-        if (couponId && couponDiscount > 0) {
-          api.post('/api/coupons/use', { coupon_id: couponId, order_id: res.data.data?.order_id || 0, discount_amount: couponDiscount })
-            .catch(() => { toast.error(t('common.couponApplyFailed')) })
-        }
-        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+        const paid = Number(res.data.data?.amount_paid)
+        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${Number.isFinite(paid) && paid >= 0 ? paid : totalAmount}`)
       } else {
         toast.error(res.data.error || t('payment.errors.paymentFailed'))
       }

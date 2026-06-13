@@ -648,11 +648,13 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   const userId = String(user.id);
 
   // ✅ SECURITY FIX: Ignore client-supplied total_amount/price. Recompute server-side.
-  const { order_number, items, shipping, live_stream_id } = await c.req.json<{
+  const { order_number, items, shipping, live_stream_id, coupon_id } = await c.req.json<{
     order_number: string;
     total_amount?: number; // ignored (kept for back-compat parsing)
     // 🛡️ 2026-05-13 (Phase A1): 라이브 결제면 social proof broadcast 트리거.
     live_stream_id?: number;
+    // 🏁 2026-06-12 (4차 감사 G3): 쿠폰 — 서버가 직접 검증·차감·소진 처리 (클라 /coupons/use 분리호출 폐지).
+    coupon_id?: number;
     items: Array<{
       product_id: string | number;
       product_name?: string;
@@ -719,12 +721,25 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     return c.json({ success: false, error: '유효하지 않은 상품입니다' }, 400);
   }
 
+  // 🏁 2026-06-12 (4차 감사 G3 — 차감액≠표시액 근본수정):
+  //   ① deal_only(교환권=MMS 발송) 그룹은 배송비 0 ② 셀러별 배송정책(기본비/무료임계)
+  //   — cart.routes 의 표시 계산과 1:1 동일 COALESCE. 하드코딩 5만/3000 제거.
   const placeholders = productIds.map(() => '?').join(',');
+  type PayProductRow = {
+    id: number; name: string; price: number; seller_id: number | null; stock: number;
+    deal_only: number; ship_fee: number; free_threshold: number;
+  };
   const { results: productRows = [] } = await DB.prepare(
-    `SELECT id, name, price, seller_id, stock FROM products WHERE id IN (${placeholders}) AND is_active = 1`
-  ).bind(...productIds).all<{ id: number; name: string; price: number; seller_id: number | null; stock: number }>();
+    `SELECT p.id, p.name, p.price, p.seller_id, p.stock,
+            COALESCE(p.deal_only, 0) AS deal_only,
+            COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS ship_fee,
+            COALESCE(s.free_shipping_threshold, 0) AS free_threshold
+       FROM products p
+       LEFT JOIN sellers s ON s.id = p.seller_id
+      WHERE p.id IN (${placeholders}) AND p.is_active = 1`
+  ).bind(...productIds).all<PayProductRow>();
 
-  const productMap = new Map<number, { id: number; name: string; price: number; seller_id: number | null; stock: number }>();
+  const productMap = new Map<number, PayProductRow>();
   for (const p of productRows) productMap.set(Number(p.id), p);
 
   // Validate all items exist + have stock
@@ -752,6 +767,9 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       quantity: Number(i.quantity),
       seller_id: p.seller_id ? String(p.seller_id) : '0',
       option_value: i.option_value,
+      deal_only: Number(p.deal_only) === 1,
+      ship_fee: Number(p.ship_fee) || 3000,
+      free_threshold: Number(p.free_threshold) || 0,
     };
   });
 
@@ -763,19 +781,105 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     sellerGroups.get(sid)!.push(item);
   }
 
-  // Compute authoritative total (subtotal + shipping per seller group)
-  let authoritativeTotal = 0;
-  for (const [, groupItems] of sellerGroups) {
-    const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
-    const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
-    authoritativeTotal += groupSubtotal + shippingFee;
+  // 🏁 G3: 공동구매(referral) 할인 — 클라이언트 표시(GET /api/referral/discount/:pid)와
+  //   동일한 SSOT 로 서버 재계산. floor(가격×수량×pct/100) — CheckoutPage 계산식과 1:1.
+  const { getBestReferralDiscountPct } = await import('../../referral/api/referral.routes');
+  const groupBuyPctByProduct = new Map<number, number>();
+  for (const pid of productIds) {
+    const pct = await getBestReferralDiscountPct(DB, userId, pid);
+    if (pct > 0) groupBuyPctByProduct.set(pid, pct);
   }
+
+  // Compute authoritative per-group totals (subtotal + shipping - 공구할인)
+  const groupCalc = new Map<string, { subtotal: number; shippingFee: number; groupBuyDiscount: number }>();
+  let itemsSubtotal = 0;
+  let authoritativeTotal = 0;
+  for (const [sid, groupItems] of sellerGroups) {
+    const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const allVoucher = groupItems.length > 0 && groupItems.every(i => i.deal_only);
+    const freeThreshold = groupItems[0].free_threshold;
+    const shipFee = groupItems[0].ship_fee;
+    const shippingFee = allVoucher ? 0
+      : (freeThreshold > 0 && groupSubtotal >= freeThreshold) ? 0
+      : shipFee;
+    const groupBuyDiscount = groupItems.reduce((s, i) => {
+      const pct = groupBuyPctByProduct.get(i.product_id) || 0;
+      return s + (pct > 0 ? Math.floor(i.price * i.quantity * pct / 100) : 0);
+    }, 0);
+    groupCalc.set(sid, { subtotal: groupSubtotal, shippingFee, groupBuyDiscount });
+    itemsSubtotal += groupSubtotal;
+    authoritativeTotal += Math.max(0, groupSubtotal + shippingFee - groupBuyDiscount);
+  }
+
+  // 🏁 G3: 쿠폰 — 서버 검증 + 원자적 소진(UNIQUE(coupon_id,user_id) claim-before-credit).
+  //   deal_only 전용 카트엔 쿠폰 불가(클라이언트와 동일 정책). 실패 시 catch 에서 복원.
+  const couponIdNum = Number(coupon_id);
+  const wantCoupon = Number.isInteger(couponIdNum) && couponIdNum > 0
+    && !normalizedItems.every(i => i.deal_only);
+  let couponDiscount = 0;
+  let couponClaimed = false;
+  if (wantCoupon) {
+    const coupon = await DB.prepare(
+      'SELECT id, type, value, max_discount, min_order_amount, total_count, used_count, expires_at FROM coupons WHERE id = ? AND is_active = 1'
+    ).bind(couponIdNum).first<{
+      id: number; type: string; value: number; max_discount: number | null;
+      min_order_amount: number | null; total_count: number; used_count: number; expires_at: string | null;
+    }>();
+    if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 400);
+    if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+      return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400);
+    }
+    if (coupon.total_count > 0 && coupon.used_count >= coupon.total_count) {
+      return c.json({ success: false, error: '쿠폰이 모두 소진되었습니다' }, 400);
+    }
+    if (itemsSubtotal < (Number(coupon.min_order_amount) || 0)) {
+      return c.json({ success: false, error: `쿠폰 최소 주문금액(${Number(coupon.min_order_amount ?? 0).toLocaleString('ko-KR')}원) 미만입니다` }, 400);
+    }
+    let computed = coupon.type === 'percent'
+      ? Math.round(itemsSubtotal * coupon.value / 100)
+      : Number(coupon.value) || 0;
+    if (coupon.max_discount && computed > coupon.max_discount) computed = coupon.max_discount;
+    if (computed > authoritativeTotal) computed = authoritativeTotal;
+    if (computed < 0) computed = 0;
+
+    // 원자적 소진 — 동시요청은 UNIQUE 위반으로 정확히 1건만 통과 (order_id 는 주문 생성 후 채움)
+    try {
+      const ins = await DB.prepare(
+        'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
+      ).bind(couponIdNum, userId, computed).run();
+      if ((ins.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '이미 사용한 쿠폰입니다' }, 409);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/UNIQUE|constraint/i.test(msg)) {
+        return c.json({ success: false, error: '이미 사용한 쿠폰입니다' }, 409);
+      }
+      throw e;
+    }
+    await DB.prepare(
+      'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
+    ).bind(couponIdNum).run().catch(() => {});
+    couponClaimed = true;
+    couponDiscount = computed;
+    authoritativeTotal = Math.max(0, authoritativeTotal - couponDiscount);
+  }
+
+  // 쿠폰 소진 롤백 헬퍼 (이후 어떤 단계 실패에도 복원)
+  const rollbackCoupon = async () => {
+    if (!couponClaimed) return;
+    try {
+      await DB.prepare('DELETE FROM coupon_uses WHERE coupon_id = ? AND user_id = ?').bind(couponIdNum, userId).run();
+      await DB.prepare('UPDATE coupons SET used_count = MAX(used_count - 1, 0) WHERE id = ?').bind(couponIdNum).run();
+    } catch (e) { console.error('[points/pay] coupon rollback failed:', e); }
+  };
 
   // ✅ Validate balance BEFORE deducting
   const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
     .bind(userId).first<{ balance: number }>();
 
   if (!wallet || wallet.balance < authoritativeTotal) {
+    await rollbackCoupon();
     return c.json({
       success: false,
       error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${authoritativeTotal}딜)`,
@@ -788,6 +892,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     'UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?'
   ).bind(authoritativeTotal, userId, authoritativeTotal).run();
   if (!deductRes.meta.changes) {
+    await rollbackCoupon();
     return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400);
   }
 
@@ -827,9 +932,29 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     // Create orders per seller
     // ✅ PERF: use INSERT meta.last_row_id (avoids a separate SELECT per order)
     //         and batch all order_items per order into a single multi-row INSERT.
-    for (const [sellerId, groupItems] of sellerGroups) {
-      const groupSubtotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
-      const shippingFee = groupSubtotal >= 50000 ? 0 : 3000;
+    // 🏁 G3: 배송비/공구할인은 위 groupCalc(셀러 정책·deal_only 반영) 그대로,
+    //   쿠폰은 그룹 결제액 비례 분배(마지막 그룹이 rounding 잔액 흡수) — SUM == 차감액 보장.
+    const groupEntries = Array.from(sellerGroups.entries());
+    const groupNetTotals = groupEntries.map(([sid]) => {
+      const calc = groupCalc.get(sid)!;
+      return Math.max(0, calc.subtotal + calc.shippingFee - calc.groupBuyDiscount);
+    });
+    const netSum = groupNetTotals.reduce((a, b) => a + b, 0) || 1;
+    let distributedCoupon = 0;
+    let firstOrderId: number | null = null;
+
+    for (let gi = 0; gi < groupEntries.length; gi++) {
+      const [sellerId, groupItems] = groupEntries[gi];
+      const calc = groupCalc.get(sellerId)!;
+      const groupSubtotal = calc.subtotal;
+      const shippingFee = calc.shippingFee;
+      const isLastGroup = gi === groupEntries.length - 1;
+      const couponShare = couponDiscount <= 0 ? 0 : (isLastGroup
+        ? Math.max(0, couponDiscount - distributedCoupon)
+        : Math.floor(couponDiscount * groupNetTotals[gi] / netSum));
+      distributedCoupon += couponShare;
+      const groupDiscount = calc.groupBuyDiscount + couponShare;
+      const groupTotal = Math.max(0, groupSubtotal + shippingFee - groupDiscount);
       const sellerOrderNumber = `${order_number}_s${sellerId}`;
 
       // 🛡️ 2026-05-13 (Phase A1): live_stream_id 포함 → 라이브 분석/Social proof 트리거.
@@ -838,10 +963,10 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       try {
         orderInsert = await DB.prepare(`
           INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo, live_stream_id)
-          VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '', ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '', ?)
         `).bind(
           sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
-          groupSubtotal, shippingFee, groupSubtotal + shippingFee,
+          groupSubtotal, shippingFee, groupDiscount, groupTotal,
           shipping.name, shipping.phone,
           JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' }),
           live_stream_id ?? null,
@@ -849,16 +974,17 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       } catch {
         orderInsert = await DB.prepare(`
           INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
-          VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
         `).bind(
           sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
-          groupSubtotal, shippingFee, groupSubtotal + shippingFee,
+          groupSubtotal, shippingFee, groupDiscount, groupTotal,
           shipping.name, shipping.phone,
           JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
         ).run();
       }
 
       const orderId = orderInsert.meta.last_row_id as number | undefined;
+      if (firstOrderId == null && typeof orderId === 'number') firstOrderId = orderId;
 
       if (orderId && groupItems.length > 0) {
         const values = groupItems.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
@@ -875,6 +1001,12 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
           `INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal) VALUES ${values}`
         ).bind(...bindings).run();
       }
+    }
+
+    // 🏁 G3: 쿠폰 사용 기록에 주문 연결 (환불 시 restoreCouponsForOrders 가 order_id 로 복원)
+    if (couponClaimed && firstOrderId != null) {
+      await DB.prepare('UPDATE coupon_uses SET order_id = ? WHERE coupon_id = ? AND user_id = ?')
+        .bind(firstOrderId, couponIdNum, userId).run().catch(() => {});
     }
 
     createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
@@ -926,6 +1058,8 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
         console.error('[points/pay] Stock rollback failed:', stockErr);
       }
     }
+    // 🏁 G3: 쿠폰 소진 복원 (적립-역전 대칭 — 실패한 결제가 쿠폰을 태우지 않게)
+    await rollbackCoupon();
     return c.json({ success: false, error: '딜 결제 중 오류가 발생했습니다', detail: String(err) }, 500);
   }
 });

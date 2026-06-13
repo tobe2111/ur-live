@@ -5135,7 +5135,7 @@
     "heading": "Avis",
     "writeBtn": "Écrire un avis",
     "title": "Écrire un avis",
-    "rewardBanner": "Texte 50 deal · Photo 100 deal · Vidéo 200 deal de récompense",
+    "rewardBanner": "Texte {{text}} deal · Photo {{image}} deal · Vidéo {{video}} deal de récompense",
     "placeholder": "Comment était le produit ? Veuillez écrire au moins 10 caractères.",
     "contentLabel": "Contenu de l'avis",
     "submitting": "Envoi en cours...",
@@ -5147,7 +5147,8 @@
     "sharedMessage": "Des points deal ont été attribués. Recommandez ce produit à un ami !",
     "sharedShareTitle": "Je recommande ce produit !",
     "sharedShareDesc": "J'ai trouvé un super produit sur Urdeal",
-    "sharedShareBtn": "Voir le produit"
+    "sharedShareBtn": "Voir le produit",
+    "sellerReplyLabel": "Réponse du vendeur"
   },
   "productOption": {
     "title": "Gestion des options produit",

@@ -71,14 +71,32 @@ reviewsRoutes.get('/product/:productId', async (c) => {
   //   admin 생성 리뷰는 user_id='system-generated' → "sys***" 항상.
   //   영구 fix: product_reviews.user_name 컬럼 (생성 시 김*수 등 한국어 masked
   //   저장됨) 우선 사용, 없으면 기존 SUBSTR fallback (호환성 보존).
-  const { results } = await DB.prepare(`
-    SELECT r.id, r.rating, r.content, r.images, r.created_at,
-           COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
-    FROM product_reviews r
-    WHERE r.product_id = ? AND r.is_visible = 1
-    ORDER BY r.created_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(productId, limit, offset).all();
+  // 🏁 2026-06-12 (전수조사 🟡 — 셀러 리뷰답글 비노출): seller_reply / seller_reply_at 동봉.
+  //   컬럼은 셀러 첫 답글 시 ALTER 로 생성(seller-analytics.routes) — 미존재 환경은 fallback.
+  let results: Record<string, unknown>[];
+  try {
+    const r = await DB.prepare(`
+      SELECT r.id, r.rating, r.content, r.images, r.created_at,
+             r.seller_reply, r.seller_reply_at,
+             COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
+      FROM product_reviews r
+      WHERE r.product_id = ? AND r.is_visible = 1
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(productId, limit, offset).all();
+    results = (r.results ?? []) as Record<string, unknown>[];
+  } catch {
+    const r = await DB.prepare(`
+      SELECT r.id, r.rating, r.content, r.images, r.created_at,
+             NULL AS seller_reply, NULL AS seller_reply_at,
+             COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
+      FROM product_reviews r
+      WHERE r.product_id = ? AND r.is_visible = 1
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(productId, limit, offset).all();
+    results = (r.results ?? []) as Record<string, unknown>[];
+  }
 
   const total = await DB.prepare(
     'SELECT COUNT(*) as cnt FROM product_reviews WHERE product_id = ? AND is_visible = 1'
@@ -121,6 +139,27 @@ reviewsRoutes.get('/product/:productId/summary', async (c) => {
   `).bind(productId).first();
 
   return c.json({ success: true, data: summary });
+});
+
+// GET /api/reviews/reward-config — 리뷰 리워드 금액 (공개)
+// 🏁 2026-06-12 (전수조사 🔴 G5): 안내 문구(클라 하드코딩 50/100/200)와 실지급
+//   (platform_settings, default 100/300/500)이 불일치하던 갭 — 서버 설정값을 단일 출처로 노출.
+reviewsRoutes.get('/reward-config', async (c) => {
+  const { DB } = c.env;
+  const defaults = { text: 100, image: 300, video: 500 };
+  try {
+    const { results } = await DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('review_reward_text', 'review_reward_image', 'review_reward_video')"
+    ).all<{ key: string; value: string }>();
+    for (const row of results ?? []) {
+      const n = parseInt(row.value);
+      if (!Number.isFinite(n) || n < 0) continue;
+      if (row.key === 'review_reward_text') defaults.text = n;
+      else if (row.key === 'review_reward_image') defaults.image = n;
+      else if (row.key === 'review_reward_video') defaults.video = n;
+    }
+  } catch { /* platform_settings 미존재 — defaults 반환 */ }
+  return c.json({ success: true, data: defaults });
 });
 
 // POST /api/reviews — 리뷰 작성
@@ -227,6 +266,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
   // 구매 확인 — 보상 지급 여부는 order_id 소유/배송 상태에 따라 결정
   // order_id가 없어도 리뷰 자체는 저장되지만 보상은 지급되지 않음 (HIGH-3)
   let canGetReward = !!body.order_id;
+  let rewardOrderId: number | null = body.order_id ?? null;
   if (body.order_id) {
     const order = await DB.prepare(
       'SELECT id FROM orders WHERE id = ? AND user_id = ? AND status IN (?, ?)'
@@ -235,6 +275,22 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     if (!order) {
       // order_id가 제공되었으나 본인 소유/배송완료가 아닐 경우 보상 거부
       canGetReward = false;
+    }
+  } else {
+    // 🏁 2026-06-12 (전수조사 🔴 G5): 클라이언트(ProductReviews 폼)가 order_id 를 안 보내
+    //   canGetReward 가 항상 false → 리뷰 리워드 약속 미지급이던 갭.
+    //   서버가 본인 소유 + 배송완료(DONE/DELIVERED) 주문을 자동 매칭 — 게이트 의미는 동일
+    //   (본인/배송완료 검증 그대로), order_id 전달 누락만 치유. 멱등은 기존
+    //   point_transactions (product:N) dedup 이 그대로 담당.
+    const autoOrder = await DB.prepare(`
+      SELECT o.id FROM orders o
+      INNER JOIN order_items oi ON oi.order_id = o.id
+      WHERE oi.product_id = ? AND o.user_id = ? AND o.status IN ('DONE', 'DELIVERED')
+      ORDER BY o.id DESC LIMIT 1
+    `).bind(body.product_id, user.id).first<{ id: number }>().catch(() => null);
+    if (autoOrder?.id) {
+      canGetReward = true;
+      rewardOrderId = autoOrder.id;
     }
   }
 
@@ -264,7 +320,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.product_id, user.id, userNameForReview,
-    body.order_id ?? null, body.rating, body.content ?? '', JSON.stringify(body.images ?? [])
+    rewardOrderId, body.rating, body.content ?? '', JSON.stringify(body.images ?? [])
   ).run();
 
   // 리뷰 등록 → 셀러 알림

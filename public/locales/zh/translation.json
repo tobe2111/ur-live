@@ -5135,7 +5135,7 @@
     "heading": "评价",
     "writeBtn": "写评价",
     "title": "写评价",
-    "rewardBanner": "文字50积分 · 图片100积分 · 视频200积分奖励",
+    "rewardBanner": "文字{{text}}积分 · 图片{{image}}积分 · 视频{{video}}积分奖励",
     "placeholder": "商品怎么样？请至少写10个字。",
     "contentLabel": "评价内容",
     "submitting": "提交中...",
@@ -5147,7 +5147,8 @@
     "sharedMessage": "积分已发放。推荐这款商品给朋友吧！",
     "sharedShareTitle": "推荐这款商品！",
     "sharedShareDesc": "在Urdeal发现了好商品",
-    "sharedShareBtn": "查看商品"
+    "sharedShareBtn": "查看商品",
+    "sellerReplyLabel": "卖家回复"
   },
   "productOption": {
     "title": "商品选项管理",

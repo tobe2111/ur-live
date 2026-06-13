@@ -56,6 +56,42 @@ function getUnlockedTier(tiers: ReferralTier[], currentCount: number): ReferralT
   return unlocked;
 }
 
+/**
+ * 🏁 2026-06-12 (4차 감사 G1/G3): 유저×상품의 현재 달성 공동구매 할인율(%) — 서버 재계산 SSOT.
+ * GET /discount/:productId 핸들러와 동일 로직. 주문 생성(order.routes)/딜 결제(points/pay)가
+ * 클라이언트가 보낸 할인 주장 대신 이 값으로 직접 재계산한다.
+ * 테이블 부재/조회 실패 = 0% (fail-safe — 할인 없이 진행).
+ */
+export async function getBestReferralDiscountPct(
+  DB: D1Database,
+  userId: string | number,
+  productId: string | number,
+): Promise<number> {
+  try {
+    const rows = await executeQuery<{
+      discount_percent: number; tiers: unknown; current_count: number; status: string;
+    }>(
+      DB,
+      `SELECT g.discount_percent, g.tiers, g.current_count, g.status
+       FROM referral_groups g
+       JOIN referral_members m ON m.group_id = g.id
+       WHERE g.product_id = ? AND m.user_id = ? AND g.status IN ('open', 'achieved')`,
+      [productId, userId],
+    );
+    let best = 0;
+    for (const g of rows) {
+      const tiers = parseTiers(g.tiers);
+      const unlocked = tiers.length > 0 ? getUnlockedTier(tiers, g.current_count) : null;
+      const effective = tiers.length > 0 ? (unlocked?.discount ?? 0) : (g.status === 'achieved' ? Number(g.discount_percent) || 0 : 0);
+      if (effective > best) best = effective;
+    }
+    // 0~100 clamp — 데이터 오염 방어
+    return Math.max(0, Math.min(100, best));
+  } catch {
+    return 0;
+  }
+}
+
 // 🛡️ 2026-05-19: per-worker 메모이제이션.
 let _referralTablesEnsured = false
 async function ensureTables(DB: D1Database) {
