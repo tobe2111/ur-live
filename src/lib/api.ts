@@ -475,7 +475,8 @@ api.interceptors.response.use(
         if (refreshToken) {
           // 🛡️ 2026-04-29: inflight 락 — 동시 401 들이 모두 같은 refresh 결과 공유.
           //   이전 동작: 동시 401 → 동시 refresh 호출 → token rotation 시 race condition.
-          const refreshUrl = isSeller ? '/api/seller/refresh' : '/api/admin/refresh';
+          // 🏁 2026-06-13: agency 누락분 추가 — 이전엔 agency 도 /api/admin/refresh 로 잘못 호출(버그).
+          const refreshUrl = isAgency ? '/api/agency/refresh' : isSeller ? '/api/seller/refresh' : '/api/admin/refresh';
           const cacheKey = isAgency ? 'agency' : isSeller ? 'seller' : 'admin';
           const refreshed = await refreshDashboardToken(refreshUrl, refreshToken, cacheKey);
           if (refreshed) {

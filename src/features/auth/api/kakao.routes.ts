@@ -27,8 +27,8 @@ async function issueLinkedRoleTokens(
   DB: D1Database,
   jwtSecret: string,
   userId: number
-): Promise<{ seller_token?: string; agency_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
-  const out: { seller_token?: string; agency_token?: string; seller?: any; agency?: any } = {}
+): Promise<{ seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
+  const out: { seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: any; agency?: any } = {}
   try {
     // 🛡️ 2026-05-27: username 도 SELECT — KakaoCallback 이 seller_username localStorage 저장 → BottomNav 직접 /profile/{username} navigate.
     const seller = await DB.prepare(
@@ -70,7 +70,9 @@ async function issueLinkedRoleTokens(
     ).bind(userId).first<{ id: number; status: string; name: string; email: string; contact_name: string }>()
     if (agency) {
       out.agency = { id: agency.id, status: agency.status, name: agency.name }
-      if (agency.status === 'active') {
+      // 레거시 호환: 'approved' 도 active 와 동등 (email 로그인·seller 블록과 일관)
+      if (agency.status === 'active' || agency.status === 'approved') {
+        const now = Math.floor(Date.now() / 1000)
         const payload = {
           sub: String(agency.id),
           agency_id: agency.id,
@@ -78,10 +80,15 @@ async function issueLinkedRoleTokens(
           name: agency.name,
           contact_name: agency.contact_name,
           type: 'agency',
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
+          iat: now,
+          exp: now + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
         }
         out.agency_token = await jwtSign(payload, jwtSecret)
+        // 🏁 2026-06-13: refresh token 동봉 — 카카오 로그인 에이전시도 자동 로그아웃 방지.
+        out.agency_refresh_token = await jwtSign({
+          sub: String(agency.id), email: agency.email, type: 'agency',
+          token_use: 'refresh', exp: now + 90 * 24 * 60 * 60,
+        }, jwtSecret)
       }
     }
   } catch { /* agencies 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
@@ -462,6 +469,12 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
           c.header('Set-Cookie',
             `ur_pending_agency_token=${linkedRoles.agency_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
             { append: true });
+          // 🏁 2026-06-13: refresh token 도 transfer — 자동 로그아웃 방지
+          if (linkedRoles.agency_refresh_token) {
+            c.header('Set-Cookie',
+              `ur_pending_agency_refresh_token=${linkedRoles.agency_refresh_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
+              { append: true });
+          }
           if (linkedRoles.agency) {
             c.header('Set-Cookie',
               `ur_pending_agency_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.agency.id, name: linkedRoles.agency.name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
@@ -667,6 +680,7 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
         // 카카오 계정에 연결된 셀러/에이전시 권한이 있으면 같이 전달
         ...(linkedRoles.seller_token ? { seller_token: linkedRoles.seller_token } : {}),
         ...(linkedRoles.agency_token ? { agency_token: linkedRoles.agency_token } : {}),
+        ...(linkedRoles.agency_refresh_token ? { agency_refresh_token: linkedRoles.agency_refresh_token } : {}),
         ...(linkedRoles.seller ? { seller: linkedRoles.seller } : {}),
         ...(linkedRoles.agency ? { agency: linkedRoles.agency } : {}),
       },
