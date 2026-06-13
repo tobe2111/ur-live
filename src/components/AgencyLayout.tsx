@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
+import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import {
@@ -122,6 +123,9 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
 
   // 🛡️ 2026-04-30: agency 세션 만료 5분 전 자동 refresh
   useTokenAutoRefresh('agency')
+
+  // 🏁 2026-06-13: 사이드바 스크롤 영속 — 라우트 이동 시 좌측 카테고리 최상단 복귀 방지
+  const navScrollRef = usePersistScroll('agency-sidebar')
 
   const [agencyName, setAgencyName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('agency_name') : null) || '에이전시')
   const [agencyStatus, setAgencyStatus] = useState<string | null>(null)
@@ -289,7 +293,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       )}
 
       {/* Navigation — 그룹별 */}
-      <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+      <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {filteredGroups.map((group, gi) => (
           <div key={gi} className="mt-3 first:mt-1">
             <div

@@ -11,6 +11,7 @@ import {
 import { clearAuthData } from '@/utils/auth'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
+import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -220,6 +221,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 🛡️ 2026-04-30: admin 세션 만료 5분 전 자동 refresh
   useTokenAutoRefresh('admin')
 
+  // 🏁 2026-06-13: 사이드바 스크롤 영속 — 라우트 이동 시 좌측 카테고리 최상단 복귀 방지
+  const navScrollRef = usePersistScroll('admin-sidebar')
+
   // 🛡️ 2026-04-28: 전역 검색 — 실제 input + Enter 키로 분기 navigate.
   const [searchQuery, setSearchQuery] = useState('')
   const handleSearch = (e: React.FormEvent) => {
@@ -302,7 +306,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </form>
 
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
-      <nav className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+      <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {VISIBLE_NAV_GROUPS.map((group) => {
           const hasActive = group.items.some((it) => isActive(it.path, it.exact, it.also))
           const collapsed = !!collapsedGroups[group.title] && !hasActive

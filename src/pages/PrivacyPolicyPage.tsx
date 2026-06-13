@@ -318,8 +318,7 @@ export default function PrivacyPolicyPage() {
                 <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 mt-2 space-y-1">
                   <p className="font-semibold text-gray-900 dark:text-white">개인정보 보호책임자</p>
                   <p>담당부서: 운영팀</p>
-                  <p>이메일: privacy@ur-team.com</p>
-                  <p>전화번호: 1544-0000</p>
+                  <p>이메일: jiwon@ur-team.com</p>
                 </div>
 
                 <p className="mt-3">② 정보주체는 회사의 서비스를 이용하시면서 발생한 모든 개인정보 보호 관련 문의, 불만처리,
