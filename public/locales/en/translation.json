@@ -5183,7 +5183,7 @@
     "heading": "Reviews",
     "writeBtn": "Write a Review",
     "title": "Write a Review",
-    "rewardBanner": "Text 50 deal · Photo 100 deal · Video 200 deal reward",
+    "rewardBanner": "Text {{text}} deal · Photo {{image}} deal · Video {{video}} deal reward",
     "placeholder": "How was the product? Please write at least 10 characters.",
     "contentLabel": "Review Content",
     "submitting": "Submitting...",
@@ -5195,7 +5195,8 @@
     "sharedMessage": "Deal points have been awarded. Recommend this product to a friend!",
     "sharedShareTitle": "I recommend this product!",
     "sharedShareDesc": "Found a great product on Urdeal",
-    "sharedShareBtn": "View Product"
+    "sharedShareBtn": "View Product",
+    "sellerReplyLabel": "Seller reply"
   },
   "productOption": {
     "title": "Product Option Management",

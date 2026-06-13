@@ -5135,7 +5135,7 @@
     "heading": "レビュー",
     "writeBtn": "レビューを書く",
     "title": "レビューを書く",
-    "rewardBanner": "テキスト50ディール · 写真100ディール · 動画200ディール報酬",
+    "rewardBanner": "テキスト{{text}}ディール · 写真{{image}}ディール · 動画{{video}}ディール報酬",
     "placeholder": "商品はいかがでしたか？10文字以上で記入してください。",
     "contentLabel": "レビュー内容",
     "submitting": "送信中...",
@@ -5147,7 +5147,8 @@
     "sharedMessage": "ディールポイントが付与されました。この商品を友達に勧めてみましょう！",
     "sharedShareTitle": "この商品、おすすめです！",
     "sharedShareDesc": "Urdealで素晴らしい商品を見つけました",
-    "sharedShareBtn": "商品を見る"
+    "sharedShareBtn": "商品を見る",
+    "sellerReplyLabel": "販売者の返信"
   },
   "productOption": {
     "title": "商品オプション管理",

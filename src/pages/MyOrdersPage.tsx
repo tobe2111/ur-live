@@ -12,8 +12,13 @@ import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useMyOrders } from '@/hooks/queries/useMyData'
+import { useMyReturns } from '@/hooks/queries/useMyReturns'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 // 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
 const OrderDetailModal = lazy(() => import('./my-orders/OrderDetailModal'))
+// 🏁 2026-06-12 (전수조사 🔴 G6): 반품 신청 입구 — 배송완료 주문에서 진입.
+const ReturnRequestModal = lazy(() => import('./my-orders/ReturnRequestModal'))
 import CancelOrderModal from './my-orders/CancelOrderModal'
 
 // 🛡️ 2026-05-02: TD-018 분할 — Order/Cancel 모달을 ./my-orders/ 디렉토리로 추출.
@@ -28,6 +33,16 @@ export default function MyOrdersPage() {
   // 🛡️ 2026-06-01 Tier2: 수동 loadData → useMyOrders 재사용(RQ 중복요청 dedup → isLoadingRef 불필요).
   const { data: ordersRaw = [], isLoading: loading, isError, refetch } = useMyOrders()
   const orders = ordersRaw as unknown as Order[]
+  // 🏁 2026-06-12 (전수조사 🔴 G6): 반품 진행 상태 표시 + 중복 신청 차단용 본인 반품 목록.
+  const qc = useQueryClient()
+  const { data: myReturns = [] } = useMyReturns()
+  const returnsByOrder: Record<string, string> = {}
+  for (const r of myReturns) {
+    if (r.order_id != null && !['rejected', 'cancelled'].includes(r.status)) {
+      returnsByOrder[String(r.order_id)] = r.status
+    }
+  }
+  const [returnModal, setReturnModal] = useState<{ orderId: number | string; orderNumber: string } | null>(null)
   const [processing, setProcessing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   useEscapeKey(() => { if (selectedOrder) setSelectedOrder(null) })
@@ -171,6 +186,8 @@ export default function MyOrdersPage() {
             onCancelOrder={handleCancelOrder}
             onSelectOrder={(order) => setSelectedOrder(order)}
             onConfirmOrder={handleConfirmOrder}
+            onRequestReturn={(orderId, orderNumber) => setReturnModal({ orderId, orderNumber })}
+            returnsByOrder={returnsByOrder}
           />
         )}
       </main>
@@ -182,6 +199,21 @@ export default function MyOrdersPage() {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onCancel={handleCancelOrder}
+          />
+        </Suspense>
+      )}
+
+      {/* 반품 신청 모달 — 🏁 2026-06-12 G6 */}
+      {returnModal && (
+        <Suspense fallback={null}>
+          <ReturnRequestModal
+            orderId={returnModal.orderId}
+            orderNumber={returnModal.orderNumber}
+            onClose={() => setReturnModal(null)}
+            onSubmitted={() => {
+              setReturnModal(null)
+              qc.invalidateQueries({ queryKey: queryKeys.myReturns() })
+            }}
           />
         </Suspense>
       )}

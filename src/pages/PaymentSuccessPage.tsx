@@ -56,9 +56,19 @@ export default function PaymentSuccessPage() {
   const paymentKey = searchParams.get('paymentKey')
   const orderId = searchParams.get('orderId')
   const amount = searchParams.get('amount')
+  // 🏁 2026-06-12 [UNLOCK] (4차 감사 G2): 딜 전액결제는 paymentKey 가 없음 —
+  //   CheckoutPage 가 /api/points/pay 성공 후 ?method=deal 로 리다이렉트.
+  //   기존엔 paymentKey 부재 → 에러 화면 (결제는 이미 성공했는데!) + 카트 미정리.
+  const method = searchParams.get('method')
 
   useEffect(() => {
     if (!paymentKey || !orderId || !amount) {
+      // 딜 전액결제 성공 경로 — Toss confirm 불필요 (서버 /points/pay 에서 이미 완결)
+      if (method === 'deal' && orderId && amount) {
+        if (isProcessingRef.current) return
+        handleDealSuccess()
+        return
+      }
       setError(t('payment.errors.invalidInfo', { defaultValue: '결제 정보가 유효하지 않습니다.' }))
       setLoading(false)
       return
@@ -75,6 +85,50 @@ export default function PaymentSuccessPage() {
     waitForFirebaseAndConfirm()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentKey, orderId, amount])
+
+  // 🏁 2026-06-12 [UNLOCK] (4차 감사 G2+G9): 딜 전액결제 성공 화면.
+  //   결제 자체는 /api/points/pay 가 원자적으로 완결 — 여기서는 표시 + 후처리만.
+  //   카트 정리는 선택 삭제(order_number 의 상품만) — 미구매 아이템 보존.
+  async function handleDealSuccess() {
+    isProcessingRef.current = true
+    try {
+      addBreadcrumb('payment', 'deal success view', { orderId })
+      setOrderInfo({ orderId: orderId ?? undefined, method: '딜 포인트', status: 'deal' })
+
+      // 예약 필요한 상품 CTA (카드 결제와 동일)
+      if (orderId) {
+        api.get(`/api/orders/${orderId}/pending-bookings`)
+          .then(r => { if (r.data?.success) setPendingBookings(r.data.data?.pending || []) })
+          .catch(() => { /* 조회 실패해도 성공 화면은 정상 표시 */ })
+      }
+
+      // 전환 추적
+      try {
+        const g = (window as any).gtag
+        if (typeof g === 'function') {
+          g('event', 'purchase', {
+            transaction_id: orderId,
+            value: Math.round(Number(amount)) || 0,
+            currency: 'KRW',
+            payment_type: 'deal_points',
+          })
+        }
+      } catch {}
+
+      // 카트 선택 정리 (바로구매면 카트 자체를 안 거침)
+      const isDirectPurchase = sessionStorage.getItem('directPurchase') === 'true'
+      sessionStorage.removeItem('directPurchase')
+      if (!isDirectPurchase) {
+        try {
+          await api.post('/api/cart/clear', { order_number: orderId })
+          localStorage.removeItem('hasCartItems')
+        } catch { /* 정리 실패는 치명적 아님 — 다음 카트 진입 시 사용자가 정리 가능 */ }
+      }
+    } finally {
+      setLoading(false)
+      isProcessingRef.current = false
+    }
+  }
 
   async function waitForFirebaseAndConfirm() {
     // 한국: Firebase 대기 불필요 (세션 쿠키 인증)
@@ -205,11 +259,13 @@ export default function PaymentSuccessPage() {
         }
       } catch {}
 
-      // 3️⃣ 장바구니 비우기 (바로구매 모드에서는 스킵)
+      // 3️⃣ 장바구니 정리 (바로구매 모드에서는 스킵)
+      // 🏁 2026-06-12 [UNLOCK] (G9): 전체 비우기 → 이 주문에 포함된 상품만 선택 삭제.
+      //   카트에서 일부만 선택 결제한 경우 미구매 아이템이 같이 지워지던 문제 fix.
       const isDirectPurchase = sessionStorage.getItem('directPurchase') === 'true'
       sessionStorage.removeItem('directPurchase')
       if (!isDirectPurchase) try {
-        await api.post('/api/cart/clear')
+        await api.post('/api/cart/clear', { order_number: orderId })
         localStorage.removeItem('hasCartItems')
       } catch (cartErr) {
       }
@@ -353,7 +409,7 @@ export default function PaymentSuccessPage() {
                           간편결제 (토스페이/네이버페이/카카오페이 등) 면 method='카드' + easyPay.provider 표시. */}
                       {orderInfo.payment?.easyPay?.provider
                         ? `${orderInfo.payment.easyPay.provider} (간편결제)`
-                        : orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
+                        : orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || orderInfo.method || '-'}
                     </span>
                   </div>
 

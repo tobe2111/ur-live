@@ -488,6 +488,13 @@ cartRoutes.delete('/:id', cartRateLimit, requireAuth(), async (c) => {
 /**
  * POST /api/cart/clear
  * 장바구니 비우기
+ *
+ * 🏁 2026-06-12 (4차 감사 G9 — 선택구매 후 전체 카트삭제 fix): body 에 `order_number` 를
+ *   주면 **그 주문에 포함된 상품만** 선택 삭제. 결제 페이지가 카트의 일부(선택분)만
+ *   결제했을 때 미구매 아이템이 같이 지워지던 문제의 근본수정.
+ *   - 주문은 본인 소유(user_id)만 조회 — 타인 order_number 로는 아무것도 안 지워짐.
+ *   - 멀티셀러 서브주문(`{order_number}_s{sellerId}`) + 딜결제(/points/pay) 패턴 모두 매칭.
+ *   - body 없거나 order_number 없으면 기존 전체 비우기 (하위호환).
  */
 cartRoutes.post('/clear', cartRateLimit, requireAuth(), async (c) => {
   try {
@@ -497,6 +504,31 @@ cartRoutes.post('/clear', cartRateLimit, requireAuth(), async (c) => {
     const db = c.env.DB;
     const userId = await getUserDbId(db, String(user.id));
     if (!userId) return c.json(notFoundResponse('User'), 404);
+
+    let orderNumber: string | null = null;
+    try {
+      const body = await c.req.json<{ order_number?: string }>();
+      if (typeof body?.order_number === 'string' && body.order_number.length > 0 && body.order_number.length <= 100) {
+        orderNumber = body.order_number;
+      }
+    } catch { /* body 없음 — 전체 비우기 */ }
+
+    if (orderNumber) {
+      await db
+        .prepare(
+          `DELETE FROM cart_items
+            WHERE user_id = ?
+              AND product_id IN (
+                SELECT oi.product_id FROM order_items oi
+                JOIN orders o ON o.id = oi.order_id
+               WHERE o.user_id IN (?, ?) AND (o.order_number = ? OR o.order_number LIKE ?)
+              )`
+        )
+        // orders.user_id 는 흐름별로 DB id(주문 API) 또는 인증 id(딜결제) — 양쪽 매칭
+        .bind(userId, String(user.id), String(userId), orderNumber, `${orderNumber}_s%`)
+        .run();
+      return c.json(successResponse(null, 'Purchased cart items cleared'));
+    }
 
     await db
       .prepare('DELETE FROM cart_items WHERE user_id = ?')

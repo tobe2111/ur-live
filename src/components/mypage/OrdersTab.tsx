@@ -13,6 +13,9 @@ interface OrdersTabProps {
   onCancelOrder: (orderId: number | string, orderNumber: string) => void
   onSelectOrder: (order: Order) => void
   onConfirmOrder?: (orderId: number | string, orderNumber: string) => void
+  // 🏁 2026-06-12 (전수조사 🔴 G6): 배송완료 주문 반품 신청 입구 + 진행 상태 표시.
+  onRequestReturn?: (orderId: number | string, orderNumber: string) => void
+  returnsByOrder?: Record<string, string>   // order_id → 반품 status (rejected/cancelled 제외)
 }
 
 // ─── 상태 필터 버튼 ───────────────────────────────────────────────────────────
@@ -168,7 +171,7 @@ function RefundFlowStepper({ status, refundStatus, t }: { status: string; refund
 
 type StatusFilter = 'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'
 
-export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder }: OrdersTabProps) {
+export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder, onRequestReturn, returnsByOrder }: OrdersTabProps) {
   const { t } = useTranslation()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
