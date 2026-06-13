@@ -599,6 +599,12 @@ app.use('*', async (c, next) => {
     //   잠깐 보임(다른 업태·다른 테마라 이질적). 해당 surface 에서만 #root 를 도매 라이트 배경 placeholder 로 비워
     //   깜빡임 제거. createRoot(비-hydrate)라 안전. 소비자 페이지의 0-RTT shell·SSR inject 는 불변(additive).
     const isWholesaleSurface = /^\/(wholesale|supplier)(\/|$)/.test(url.pathname);
+    // 🏁 2026-06-13 [LOADING_ADDITIVE] (사용자 신고 — "대부분 페이지 로딩 중 / 홈이 잠깐 등장"):
+    //   대시보드(seller/admin/agency) hard-load 시에도 prerender 된 #root 의 소비자 홈 shell(다크·라이브 nav)이
+    //   첫 paint 에 잠깐 보임 → 도매 surface 와 동일하게 #root 를 라이트 placeholder 로 비워 깜빡임 제거.
+    //   createRoot(비-hydrate)라 안전 · 소비자 페이지 SSR inject/0-RTT shell 불변(additive).
+    const isDashboardSurface = /^\/(seller|admin|agency)(\/|$)/.test(url.pathname);
+    const needsRootBlank = isWholesaleSurface || isDashboardSurface;
     let rb = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
@@ -636,12 +642,15 @@ app.use('*', async (c, next) => {
         .on('meta[property="og:site_name"]', { element(el) { el.setAttribute('content', '유통스타트'); } })
         .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
-        .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } })
-        .on('#root', {
-          element(el) {
-            el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
-          },
-        });
+        .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } });
+    }
+    if (needsRootBlank) {
+      // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
+      rb = rb.on('#root', {
+        element(el) {
+          el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
+        },
+      });
     }
     const rewritten = rb.transform(c.res);
     c.res = new Response(rewritten.body, rewritten);
