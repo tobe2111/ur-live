@@ -44,7 +44,8 @@ cafe24Routes.get('/auth-url', requireAdmin() as any, async (c) => {
   const { CAFE24_CLIENT_ID, CAFE24_MALL_ID, FRONTEND_URL } = c.env;
 
   if (!CAFE24_CLIENT_ID || !CAFE24_MALL_ID) {
-    return c.json({ success: false, error: 'Cafe24 환경변수가 설정되지 않았습니다' }, 500);
+    // 🏁 2026-06-13: 미설정은 서버 오류(500)가 아니라 설정 부재(400) — 전역 5xx 토스트/콘솔 스팸 방지.
+    return c.json({ success: false, error: 'Cafe24 연동이 설정되지 않았습니다 (환경변수 미설정)', code: 'CAFE24_NOT_CONFIGURED' }, 400);
   }
 
   const redirectUri = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24/callback`;
