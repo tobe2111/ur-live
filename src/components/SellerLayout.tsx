@@ -6,7 +6,7 @@ import {
   Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
-import { getRoleShortLabel } from '@/shared/seller-roles'
+import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
@@ -181,8 +181,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     try { window.dispatchEvent(new CustomEvent('seller-mode-changed', { detail: m })) } catch { /* noop */ }
   }
 
-  // 🛡️ 2026-05-17: 항목 mode 가 activeMode + common 일 때만 노출.
-  //   group 단위 hideFor 도 그대로 유지 (storeKey 전용 처리 등).
+  // 🏁 2026-06-14 (사용자 승인 — 공구 중심 재편): 라이브 영구중단 후엔 live/store 모드 토글이 아니라
+  //   seller_type(크리에이터/매장)으로만 분기한다. 크리에이터는 매장 POS 도구(스캔/식사권 발행)를,
+  //   매장은 큐레이터 그룹(hideFor)을 안 본다. live 항목은 항상 숨김.
+  //   또한 user 세션 의존 항목(공구 호스팅/큐레이터 수익 = /host·/u/me/earnings)은 user_id 가 있을 때만
+  //   노출 — 없으면 클릭 시 /login 으로 튕기던 바운스 버그 차단(카카오 셀러는 정상, 이메일 셀러는 숨김).
+  const hasUserSession = typeof window !== 'undefined' && !!localStorage.getItem('user_id')
   const filteredNavGroups = NAV_GROUPS
     .filter(group => !group.hideFor?.includes(sellerType))
     .map(group => ({
@@ -190,11 +194,27 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       items: group.items.filter(item => {
         if (item.hideFor?.includes(sellerType)) return false
         const itemMode = item.mode || 'common'
-        if (itemMode === 'common') return true
-        return itemMode === activeMode
+        if (LIVE_COMMERCE_SUSPENDED) {
+          if (itemMode === 'live') return false
+          if (itemMode === 'store' && !isStoreOwner(sellerType)) return false
+        } else if (itemMode !== 'common' && itemMode !== activeMode) {
+          return false
+        }
+        // 크리에이터 user-세션 의존 항목 — user_id 없으면 숨김(바운스 방지)
+        if ((item.path === '/host' || item.path === '/u/me/earnings') && !hasUserSession) return false
+        return true
       }),
     }))
     .filter(group => group.items.length > 0)
+
+  // 🏁 2026-06-14: 공구 중심 정렬 — 각 역할의 핵심(크리에이터=큐레이터/호스팅, 매장=공구/숙소)을 홈 바로 다음으로.
+  //   두 그룹은 역할 배타적(curator hideFor 매장, groupbuy 는 매장 위주)이라 각 역할이 자기 핵심을 상단에서 봄.
+  const GROUP_ORDER = ['', 'seller.layout.curator', 'seller.layout.groupbuy', 'seller.layout.products', 'seller.layout.ordersCustomers', 'seller.layout.revenue', 'seller.layout.settings']
+  const orderRank = (g: { labelKey?: string }) => {
+    const i = GROUP_ORDER.indexOf(g.labelKey ?? '')
+    return i === -1 ? GROUP_ORDER.length : i
+  }
+  const orderedNavGroups = [...filteredNavGroups].sort((a, b) => orderRank(a) - orderRank(b))
 
   const languages = [
     { code: 'ko', label: '한국어', flag: '🇰🇷' },
@@ -310,7 +330,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
       {/* Grouped navigation */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {filteredNavGroups.map((group, gi) => (
+        {orderedNavGroups.map((group, gi) => (
           <div key={gi} className="mt-3 first:mt-1">
             {(group.label || group.labelKey) && (
               <div
