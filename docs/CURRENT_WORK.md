@@ -15,7 +15,13 @@
 - **링크샵 첫진입 닉네임 + 마이 i18n + 어드민 좌측 신규이슈 배지** (`6c28a891`): @user{id} 기본핸들이면 1회 설정 모달(LinkshopOnboardModal) · 쿠폰/바우처 라벨 6언어 · 미읽음 알림 link→nav path 매칭 배지(60s 폴링).
 - 검증: tsc 0 · vitest 2081 green · 전체 build(client+worker+prepare) OK.
 
-**남은 1건 (제품 결정 필요 — 사용자 방향 대기):** 셀러/에이전시 대시보드 공구 중심 재편 + "인플루언서는 에이전시 대시보드만?" 정책 + 셀러 nav 공구호스팅/큐레이터수익(`/host`·`/u/me/earnings`)이 user 세션 요구라 email-login 셀러는 메인 바운스. **확인: 에이전시 대시보드 카카오 로그인 = 동작함**(agencies.linked_user_id 연결 시 kakao.routes 가 agency_token 발급). **사용자 직접:** Cloudflare Scrape Shield "Email Address Obfuscation" OFF(CSP email-decode 차단 해소).
+**대시보드 공구 중심 재편 (사용자 승인 "가장 이상적인 방향" — 제안 ① 채택)** (`914a26a6`):
+- **결정**: 인플루언서=셀러 대시보드 메인 / 에이전시 대시보드=여러 크리에이터·매장 관리 조직 전용(개인 인플루언서를 에이전시로 몰지 않음 — 에이전시 메뉴는 담당셀러/랭킹/팀멤버/계약 등 "남 관리"용이라 1인은 빈 화면).
+- **셀러 SellerLayout**: 라이브 영구중단 후 live/store 모드토글 무의미 → `seller_type` 기반 분기로 전환. 크리에이터는 매장 POS(스캔/식사권 발행/proxy-products/숙소) nav 숨김(라우트는 보존), 매장은 큐레이터 그룹 숨김(기존 hideFor). 공구 핵심을 홈 다음 상단으로 정렬(크리에이터=큐레이터/호스팅, 매장=공구/숙소). **바운스 수정**: `/host`·`/u/me/earnings`(user 세션 의존)는 `user_id` 있을 때만 노출 — 카카오 셀러 정상, 이메일 셀러는 숨겨 /login 바운스 차단.
+- **에이전시 AgencyLayout**: 이미 `LIVE_COMMERCE_SUSPENDED` 로 라이브 항목(라이브현황/방송캘린더/PK/매칭/부스팅) 자동 숨김 → 공동구매/숙소/주문/반품·담당셀러·영입 중심으로 이미 정리됨(추가 변경 불필요). 카카오 로그인 연동 동작 확인.
+- 검증: tsc 0 · vitest 2081 green · 전체 build OK.
+
+**사용자 직접 (코드 불가):** Cloudflare Scrape Shield "Email Address Obfuscation" OFF (CSP email-decode 차단 해소).
 
 ## ✅ 2026-06-13 — 도매몰 UX 6종 (사용자 신고 묶음, opus)
 - **① 베스트/신규 분류 = 정상**(코드 확인): 베스트 `ORDER BY sold_count DESC, created_at DESC` · 신규 `ORDER BY created_at DESC`(wholesale.routes /home). 판매 데이터 0인 초기엔 둘이 같아 보이는 건 정상(베스트가 created_at 로 폴백) — 주문 쌓이면 분리됨. 코드 변경 없음.
