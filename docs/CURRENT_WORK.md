@@ -1,5 +1,22 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-14 — 대표 신고 대량 배치 (사용자 "바로 가장 이상적으로 모두 진행")
+**크로스커팅 근본수정 (앞 세션 turn):**
+- 🔴 **모든 대시보드 자동 로그아웃 근본수정** (`a0519ed0`): agency 만 refresh token/`/refresh` endpoint 부재 → access(30일) 만료 시 복구불가 강제로그아웃(Sentry "Agency 401: Token expired"). `POST /api/agency/refresh` 신설 + 이메일/카카오 로그인 refresh 발급·저장(login page/KakaoCallback/transfer cookie) + api.ts 의 agency→/admin/refresh 오라우팅 버그 수정.
+- 🔴 **대시보드 좌측 카테고리 스크롤 최상단 복귀** (`809f4b18`): `usePersistScroll` 공용훅 — Admin/Agency nav 스크롤 sessionStorage 영속(SellerLayout 검증패턴 추출).
+- 🔴 **대시보드 로딩 시 홈 깜빡임** (`3c0d239f` [LOADING_ADDITIVE]): #root 라이트 placeholder 를 seller/admin/agency surface 로 일반화.
+- 🔴 **링크샵 프로필/배너 새로고침 시 사라짐** (`eded4998`): 소유자 본인조회는 edge 900s 캐시 우회(optionalAuth) — 익명은 캐시 불변.
+- 🟢 콘텐츠 (`a628ef2e`): 개인정보 책임자 메일 jiwon·전화삭제 / 교환권 KT B2B 라벨 제거 / 마이 하단 중복 버전줄 삭제 / 빌드번호 YYYYMMDD.HHmm 정형화. cafe24 500→400 (`37b997dd`).
+- 쇼핑 풀루프 (`2f06aff5`): G2 딜결제 성공화면 / G3 /points/pay 쿠폰·배송비 서버재계산 / G5 리뷰리워드 / G9 선택카트정리 / 반품 신청 UI.
+
+**대량 백로그 (병렬 3배치):**
+- **소비자 UI 분홍→검정 + 공구 상세 정돈 + 원가/판매가** (`9a54b776`): GroupBuyDetail 가격부(정가 취소선→판매가+할인%)·CTA·전 소비자 페이지 핑크 액센트 뉴트럴 치환. 잠금 심볼(SSR consume/memo/lazy/prefetch) 전부 보존.
+- **어드민 페이지 재설계 6종** (`f86277f9`): orders 고객/상품 상세화 · products 교환권/쇼핑 세그먼트 분리 · voucher-orders 의미·범례 · blog `/blog/:slug` 링크 · accounts 6역할(super/admin/ops/cs/finance/viewer, requireAdminRole 정합) · 대시보드 "처리 대기" KPI 6종.
+- **링크샵 첫진입 닉네임 + 마이 i18n + 어드민 좌측 신규이슈 배지** (`6c28a891`): @user{id} 기본핸들이면 1회 설정 모달(LinkshopOnboardModal) · 쿠폰/바우처 라벨 6언어 · 미읽음 알림 link→nav path 매칭 배지(60s 폴링).
+- 검증: tsc 0 · vitest 2081 green · 전체 build(client+worker+prepare) OK.
+
+**남은 1건 (제품 결정 필요 — 사용자 방향 대기):** 셀러/에이전시 대시보드 공구 중심 재편 + "인플루언서는 에이전시 대시보드만?" 정책 + 셀러 nav 공구호스팅/큐레이터수익(`/host`·`/u/me/earnings`)이 user 세션 요구라 email-login 셀러는 메인 바운스. **확인: 에이전시 대시보드 카카오 로그인 = 동작함**(agencies.linked_user_id 연결 시 kakao.routes 가 agency_token 발급). **사용자 직접:** Cloudflare Scrape Shield "Email Address Obfuscation" OFF(CSP email-decode 차단 해소).
+
 ## ✅ 2026-06-13 — 도매몰 UX 6종 (사용자 신고 묶음, opus)
 - **① 베스트/신규 분류 = 정상**(코드 확인): 베스트 `ORDER BY sold_count DESC, created_at DESC` · 신규 `ORDER BY created_at DESC`(wholesale.routes /home). 판매 데이터 0인 초기엔 둘이 같아 보이는 건 정상(베스트가 created_at 로 폴백) — 주문 쌓이면 분리됨. 코드 변경 없음.
 - **② 상세이미지 멀티 업로더** `supplier-dashboard/MultiImageUpload.tsx`: 세로 긴 사진·**GIF 다수 원본 무압축** 업로드(클라 압축 X — GIF 애니/세로 디테일 보존), 10MB×10장, 순서 조정/삭제. AddProductModal 의 detail_images textarea 대체. supplier_token Bearer + multipart(supplierApi 는 JSON 전용이라 raw fetch). GIF/webp/png/jpg 는 서버(/api/upload/image)가 이미 허용.
