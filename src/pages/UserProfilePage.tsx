@@ -96,7 +96,7 @@ export default function UserProfilePage() {
       <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
+          <p className="text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
         </div>
       </div>
     )
@@ -127,7 +127,7 @@ export default function UserProfilePage() {
   return (
     <div className="bg-white dark:bg-[#020202] flex flex-col min-h-screen pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
-      <h1 className="sr-only">마이페이지</h1>
+      <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
       {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}

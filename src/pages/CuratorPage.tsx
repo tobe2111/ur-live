@@ -24,6 +24,7 @@ import { extractDominantColor, reportDominantColor } from '@/utils/dominant-colo
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
+import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -60,6 +61,7 @@ export function warmCurator(handle: string): void {
 
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const [data, setData] = useState<CuratorPageResponse | null>(() => {
     // 🛡️ 2026-05-27 (로딩 영구 fix): worker HTMLRewriter __SSR_INITIAL_CURATOR__ 즉시 사용.
@@ -134,6 +136,21 @@ export default function CuratorPage() {
   // 🧭 2026-06-10 (동네딜 집중 재정향): 홈 탭 = 교환권/공구 핀 우선 노출 (그룹 내 기존 순서 유지).
   const homePins = useMemo(() => [...voucherPins, ...shopPins], [voucherPins, shopPins])
 
+  // 🏁 2026-06-14 (사용자 요청): 신규 가입자 링크샵 첫 진입 닉네임 설정 권유.
+  //   owner + handle 이 자동생성형(user{숫자}) + 아직 설정 안 함 → 1회 모달.
+  const [showOnboard, setShowOnboard] = useState(false)
+  useEffect(() => {
+    const cur = data?.curator
+    if (!isOwner || !cur) return
+    const isDefaultHandle = /^user\d+$/i.test(cur.handle || '')
+    if (!isDefaultHandle) return
+    try {
+      if (localStorage.getItem(`linkshop_nickname_set_${cur.id}`)) return
+    } catch { /* */ }
+    const tmo = setTimeout(() => setShowOnboard(true), 800)
+    return () => clearTimeout(tmo)
+  }, [isOwner, data?.curator])
+
   async function copyLink() {
     const fullUrl = `${window.location.origin}/u/${handle}`
     try {
@@ -207,6 +224,24 @@ export default function CuratorPage() {
               수익 보기
             </Link>
           </div>
+        )}
+        {isOwner && showOnboard && (
+          <LinkshopOnboardModal
+            curatorId={curator.id}
+            currentHandle={curator.handle}
+            currentName={curator.name}
+            onClose={() => setShowOnboard(false)}
+            onDone={(next) => {
+              setShowOnboard(false)
+              if (next.handle && next.handle !== curator.handle) {
+                // 핸들이 바뀌면 URL 도 새 핸들로 (히스토리 교체)
+                setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)
+                navigate(`/u/${next.handle}`, { replace: true })
+              } else {
+                setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)
+              }
+            }}
+          />
         )}
         <CuratorHeader
           curator={curator}

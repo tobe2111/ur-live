@@ -4124,7 +4124,10 @@
     "shippingPolicy": "Politique de livraison",
     "switchToSeller": "Passer au tableau de bord vendeur",
     "switchAccount": "Se connecter avec un autre compte",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "coupons": "Coupons",
+    "vouchers": "Bons",
+    "unitSheet": ""
   },
   "theme": {
     "title": "Thème",

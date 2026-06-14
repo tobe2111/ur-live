@@ -4124,7 +4124,10 @@
     "shippingPolicy": "Política de envío",
     "switchToSeller": "Ir al panel del vendedor",
     "switchAccount": "Iniciar sesión con otra cuenta",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "coupons": "Cupones",
+    "vouchers": "Vales",
+    "unitSheet": ""
   },
   "theme": {
     "title": "Tema",

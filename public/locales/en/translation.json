@@ -682,7 +682,10 @@
     "shippingPolicy": "Shipping Policy",
     "switchToSeller": "Switch to Seller Dashboard",
     "switchAccount": "Sign in with another account",
-    "logout": "Log out"
+    "logout": "Log out",
+    "coupons": "Coupons",
+    "vouchers": "Vouchers",
+    "unitSheet": ""
   },
   "theme": {
     "title": "Theme",

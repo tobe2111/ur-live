@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
@@ -224,6 +225,43 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 🏁 2026-06-13: 사이드바 스크롤 영속 — 라우트 이동 시 좌측 카테고리 최상단 복귀 방지
   const navScrollRef = usePersistScroll('admin-sidebar')
 
+  // 🏁 2026-06-14 (사용자 요청 — "좌측 카테고리에 신규 이슈 있으면 알람 숫자라도"):
+  //   미읽음 어드민 알림(dashboard_notifications)의 link 를 nav 항목 path 에 매칭해 항목별 배지.
+  //   60초 폴링. 알림 link 가 없거나 매칭 안 되면 무시(조용히). 추가 fetch 1개라 비용 미미.
+  const [navBadges, setNavBadges] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let alive = true
+    // exact 항목(예: /admin 대시보드)은 정확 일치만, 나머지는 최장 prefix 매칭
+    const navPaths = VISIBLE_NAV_GROUPS.flatMap(g => g.items.map(it => ({ path: it.path, exact: !!it.exact })))
+    const bestPath = (link: string): string | null => {
+      let best: string | null = null
+      for (const { path, exact } of navPaths) {
+        const match = exact ? link === path : (link === path || link.startsWith(path + '/') || link.startsWith(path + '?'))
+        if (match && (!best || path.length > best.length)) best = path
+      }
+      return best
+    }
+    async function load() {
+      try {
+        const res = await api.get('/api/dashboard-notifications?unread_only=true&limit=100')
+        if (!alive || !res.data?.success) return
+        const list = (res.data.notifications || []) as Array<{ link?: string | null }>
+        const counts: Record<string, number> = {}
+        for (const n of list) {
+          if (!n.link || !n.link.startsWith('/admin')) continue
+          const p = bestPath(n.link)
+          if (p) counts[p] = (counts[p] || 0) + 1
+        }
+        setNavBadges(counts)
+      } catch { /* 실패해도 nav 는 정상 */ }
+    }
+    load()
+    const iv = setInterval(load, 60000)
+    return () => { alive = false; clearInterval(iv) }
+  }, [])
+  // 그룹 접힘 시 합계 배지
+  const groupBadgeTotal = (items: { path: string }[]) => items.reduce((s, it) => s + (navBadges[it.path] || 0), 0)
+
   // 🛡️ 2026-04-28: 전역 검색 — 실제 input + Enter 키로 분기 navigate.
   const [searchQuery, setSearchQuery] = useState('')
   const handleSearch = (e: React.FormEvent) => {
@@ -321,6 +359,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             >
               <span>{group.title}</span>
               <span className="flex items-center gap-1">
+                {collapsed && groupBadgeTotal(group.items) > 0 && (
+                  <span className="font-extrabold normal-case tracking-normal px-1.5 rounded-full bg-amber-400 text-[#0A0A0B] text-[9px]">{groupBadgeTotal(group.items)}</span>
+                )}
                 {collapsed && <span className="font-bold normal-case tracking-normal text-white/25">{group.items.length}</span>}
                 <ChevronDown size={11} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
               </span>
@@ -345,6 +386,12 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
                   {label === '주문 관리' && pendingCount > 0 && (
                     <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">
                       {pendingCount}
+                    </span>
+                  )}
+                  {/* 🏁 2026-06-14: 신규 이슈(미읽음 알림) 배지 */}
+                  {(navBadges[path] || 0) > 0 && (
+                    <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-amber-400 text-[#0A0A0B] flex-shrink-0">
+                      {navBadges[path]}
                     </span>
                   )}
                 </Link>
