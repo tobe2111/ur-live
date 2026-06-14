@@ -131,13 +131,24 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
     try { return await executeQuery<T>(DB, q, p); } catch { return []; }
   };
 
-  const [sales, orders, live, voucherToday, voucherTodayAmount] = await Promise.all([
+  const [
+    sales, orders, live, voucherToday, voucherTodayAmount,
+    // 🛡️ 2026-06-14: 대시보드 "처리 대기" KPI — 운영자가 오늘 처리할 일을 한눈에 (사용자 요구).
+    //   각 쿼리 fail-soft (테이블/상태 없으면 0). 미발송 주문 = 결제완료인데 배송 미시작.
+    unshippedOrders, pendingReturns, pendingPayouts, pendingSellers, pendingSuppliers, failedVouchers,
+  ] = await Promise.all([
     safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at, '+9 hours')=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM orders WHERE DATE(created_at, '+9 hours')=?", [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
     // 🛡️ 2026-05-24 Q1: 어드민 대시보드에 교환권 거래 분리 표시 (사용자 요청).
     safe<CountRow>(`SELECT COUNT(*) as count FROM vouchers WHERE DATE(created_at, '+9 hours')=?`, [today]),
     safe<SalesRow>(`SELECT COALESCE(SUM(applied_price),0) as total FROM vouchers WHERE DATE(created_at, '+9 hours')=?`, [today]),
+    safe<CountRow>("SELECT COUNT(*) as count FROM orders WHERE UPPER(status) IN ('PAID','DONE','PREPARING')"),
+    safe<CountRow>("SELECT COUNT(*) as count FROM returns WHERE status = 'requested'"),
+    safe<CountRow>("SELECT COUNT(*) as count FROM payouts WHERE status = 'pending'"),
+    safe<CountRow>("SELECT COUNT(*) as count FROM sellers WHERE status = 'pending'"),
+    safe<CountRow>("SELECT COUNT(*) as count FROM suppliers WHERE status = 'pending'"),
+    safe<CountRow>("SELECT COUNT(*) as count FROM voucher_orders WHERE status = 'failed'"),
   ]);
 
   return c.json({ success: true, data: {
@@ -147,6 +158,13 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
     liveStreams: (live[0] as CountRow)?.count || 0,
     todayVouchers: (voucherToday[0] as CountRow)?.count || 0,
     todayVouchersAmount: (voucherTodayAmount[0] as SalesRow)?.total || 0,
+    // 처리 대기 작업
+    unshippedOrders: (unshippedOrders[0] as CountRow)?.count || 0,
+    pendingReturns: (pendingReturns[0] as CountRow)?.count || 0,
+    pendingPayouts: (pendingPayouts[0] as CountRow)?.count || 0,
+    pendingSellers: (pendingSellers[0] as CountRow)?.count || 0,
+    pendingSuppliers: (pendingSuppliers[0] as CountRow)?.count || 0,
+    failedVouchers: (failedVouchers[0] as CountRow)?.count || 0,
   }});
 });
 

@@ -25,11 +25,24 @@ export default function AdminAccountsPage() {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const currentAdminId = localStorage.getItem('admin_id') || ''
 
-  const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-    super_admin: { label: t('admin.accounts.roleSuperAdmin'), color: 'bg-red-100 text-red-700' },
-    admin: { label: t('admin.accounts.roleAdmin'), color: 'bg-blue-100 text-blue-700' },
-    viewer: { label: t('admin.accounts.roleViewer'), color: 'bg-gray-100 text-gray-600' },
+  // 🛡️ 2026-06-14: 제한 권한 역할 세분화 (사용자 요구). desc = 운영자가 어떤 접근권한인지 알 수 있게.
+  //   ops/cs/finance 는 worker requireAdminRole 게이트와 정합 (정산/반품 등 민감 작업 제한).
+  const ROLE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
+    super_admin: { label: t('admin.accounts.roleSuperAdmin', { defaultValue: '슈퍼관리자' }), color: 'bg-red-100 text-red-700', desc: '전체 권한 (계정·정산·설정 포함)' },
+    admin: { label: t('admin.accounts.roleAdmin', { defaultValue: '일반관리자' }), color: 'bg-blue-100 text-blue-700', desc: '일반 운영 (계정 관리·정산 게이트 제외)' },
+    ops: { label: '운영(주문/상품)', color: 'bg-indigo-100 text-indigo-700', desc: '주문·상품·배송 처리' },
+    cs: { label: '고객응대(CS)', color: 'bg-teal-100 text-teal-700', desc: '주문 조회·반품·문의 응대' },
+    finance: { label: '정산/회계', color: 'bg-emerald-100 text-emerald-700', desc: '정산·출금·세금 처리' },
+    viewer: { label: t('admin.accounts.roleViewer', { defaultValue: '읽기전용' }), color: 'bg-gray-100 text-gray-600', desc: '조회만 가능 (변경 불가)' },
   }
+  const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: 'super_admin', label: '슈퍼관리자 — 전체 권한' },
+    { value: 'admin', label: '일반관리자 — 일반 운영' },
+    { value: 'ops', label: '운영 — 주문·상품·배송만' },
+    { value: 'cs', label: '고객응대(CS) — 주문 조회·반품만' },
+    { value: 'finance', label: '정산/회계 — 정산·출금·세금만' },
+    { value: 'viewer', label: '읽기전용 — 조회만' },
+  ]
 
   // 비밀번호 복잡도 검증: 8자 이상, 영문+숫자+특수문자 중 2가지 이상
   function validatePassword(pw: string): string | null {
@@ -202,6 +215,7 @@ export default function AdminAccountsPage() {
                       <td className="px-4 py-3 text-xs text-gray-700">{admin.name || '-'}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${role.color}`}>{role.label}</span>
+                        {'desc' in role && role.desc && <p className="text-[11px] text-gray-400 mt-1">{role.desc}</p>}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">{formatKST(admin.created_at)}</td>
                       <td className="px-4 py-3">
@@ -236,12 +250,15 @@ export default function AdminAccountsPage() {
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
               <input type="password" placeholder={t('auth.password')} value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
-              <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
-                <option value="admin">{t('admin.accounts.roleAdmin')}</option>
-                <option value="super_admin">{t('admin.accounts.roleSuperAdmin')}</option>
-                <option value="viewer">{t('admin.accounts.roleViewerReadonly')}</option>
-              </select>
+              {/* 🛡️ 2026-06-14: 제한 권한 분리 선택 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
+                <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+                  {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[form.role]?.desc}</p>
+              </div>
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
@@ -264,12 +281,14 @@ export default function AdminAccountsPage() {
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
               <input type="email" placeholder={t('auth.email')} value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
-              <select value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
-                <option value="admin">{t('admin.accounts.roleAdmin')}</option>
-                <option value="super_admin">{t('admin.accounts.roleSuperAdmin')}</option>
-                <option value="viewer">{t('admin.accounts.roleViewer')}</option>
-              </select>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
+                <select value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+                  {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[editForm.role]?.desc}</p>
+              </div>
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowEdit(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>

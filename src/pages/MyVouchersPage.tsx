@@ -116,8 +116,8 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
               <br/>3) 아래에 제출
             </p>
             <div className="grid grid-cols-2 gap-1 mb-3">
-              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
-              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
+              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
             </div>
             {mode === 'url' ? (
               <div>
@@ -142,7 +142,7 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
             <div className="grid grid-cols-2 gap-2 mt-5">
               <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
-                className="py-2 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+                className="py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}
               </button>
             </div>
@@ -278,7 +278,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
           )}
         </div>
         <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-lg px-3 py-2 text-center">
-          <code className={`text-sm font-mono font-bold ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-pink-500'}`}>{voucher.code}</code>
+          <code className={`text-sm font-mono font-bold ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
         </div>
         {/* 🛡️ 2026-05-16: 캡쳐 도용 방지 — 실시간 시간 표시 (사용 가능 상태만) */}
         {!isUsed && !isExpired && (
@@ -310,7 +310,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
         {voucher.status === 'unused' && (
           <div className="mt-4">
             <button onClick={shareVoucher}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1">
+              className="w-full py-2.5 rounded-xl bg-gray-900 dark:bg-white hover:bg-black text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center gap-1">
               <Share2 className="w-3.5 h-3.5" /> {t('voucher.share')}
             </button>
           </div>
@@ -473,13 +473,13 @@ export default function MyVouchersPage() {
         <div className="ur-content-narrow px-4 lg:px-8 mb-3 flex gap-1.5">
           <button
             onClick={() => setViewMode('list')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
           >
             📋 리스트
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'map' ? 'bg-pink-500 text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'map' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
           >
             🗺️ 지도로 보기
           </button>
@@ -583,7 +583,7 @@ function PostJoinShareModal({ data, onClose }: { data: { product_id: number; nam
         <div className="text-center mb-4">
           <p className="text-3xl mb-2">🎉</p>
           <p className="text-base font-extrabold text-gray-900 dark:text-white">참여 완료!</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">친구 초대 시 양쪽 <span className="font-bold text-pink-500">0.5% 보너스 딜</span></p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">친구 초대 시 양쪽 <span className="font-bold text-gray-900 dark:text-white">0.5% 보너스 딜</span></p>
         </div>
         {data.image_url && (
           <img src={data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-4" loading="lazy" />

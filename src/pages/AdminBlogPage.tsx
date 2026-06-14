@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Plus, Edit2, Trash2, Eye, EyeOff,
-  Loader2, ArrowLeft, Save, Send, FileText
+  Loader2, ArrowLeft, Save, Send, FileText, ExternalLink
 } from 'lucide-react'
 
 interface BlogPost {
@@ -224,6 +224,23 @@ export default function AdminBlogPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* 🛡️ 2026-06-14: 공개 블로그 페이지로 이동 링크 (사용자 요구). 발행글은 라이브, 임시저장은 미리보기. */}
+                  {post.slug && (
+                    <a
+                      href={`/blog/${post.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={post.is_published ? '공개 블로그 글 보기' : '미리보기 (미발행)'}
+                      className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium ${
+                        post.is_published
+                          ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                          : 'text-gray-400 bg-gray-50 hover:bg-gray-100'
+                      }`}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">보기</span>
+                    </a>
+                  )}
                   <button
                     onClick={() => togglePublish(post)}
                     title={post.is_published ? t('admin.blog.k019', { defaultValue: '비공개로 변경' }) : t('admin.blog.k020', { defaultValue: '발행' })}

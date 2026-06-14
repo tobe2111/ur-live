@@ -83,12 +83,34 @@ export default function AdminVoucherOrdersPage() {
     }
   }
 
+  // 🛡️ 2026-06-14: 상태 의미를 한국어로 명시 (운영자가 영문 status 만 보고 의미 모름 신고).
+  const STATUS_META: Record<VoucherOrderRow['status'], { label: string; desc: string; cls: string }> = {
+    processing: { label: '처리 중', desc: 'KT 발송 요청 후 결과 대기', cls: 'bg-amber-100 text-amber-700' },
+    sent: { label: '발송 완료', desc: '고객 문자로 기프티콘 전송됨', cls: 'bg-green-100 text-green-700' },
+    failed: { label: '발송 실패', desc: '재발송 필요 (사유 확인)', cls: 'bg-red-100 text-red-700' },
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <SEO title="KT Alpha 발송 추적" url="/admin/voucher-orders" noindex />
+      <SEO title="교환권 발송 관리" url="/admin/voucher-orders" noindex />
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <h1 className="text-xl font-bold text-gray-900 mb-3">KT Alpha 기프티쇼 발송 추적</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-1">교환권(기프티콘) 발송 관리</h1>
+          {/* 🛡️ 2026-06-14: 이 페이지가 무엇인지 한 줄 설명 (사용자 신고 — 의미 불명확). */}
+          <p className="text-sm text-gray-500 mb-3">
+            고객이 결제한 교환권을 KT Alpha 기프티쇼로 자동 발송한 내역입니다.
+            고객 휴대폰으로 기프티콘이 전송되며, 실패 건은 아래에서 <span className="font-semibold text-gray-700">재발송</span>할 수 있습니다.
+          </p>
+
+          {/* 🛡️ 2026-06-14: 상태 의미 범례 */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+            {(Object.keys(STATUS_META) as VoucherOrderRow['status'][]).map(k => (
+              <div key={k} className="flex items-center gap-1.5 text-xs">
+                <span className={`font-bold px-2 py-0.5 rounded ${STATUS_META[k].cls}`}>{STATUS_META[k].label}</span>
+                <span className="text-gray-500">{STATUS_META[k].desc}</span>
+              </div>
+            ))}
+          </div>
 
           {ktStatus && (
             <div className={`mb-3 px-4 py-3 rounded border ${ktStatus.dev_mode ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-300'}`}>
@@ -124,7 +146,7 @@ export default function AdminVoucherOrdersPage() {
           <div className="flex gap-2 mb-3">
             {(['all', 'processing', 'sent', 'failed'] as const).map(s => (
               <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-sm rounded ${statusFilter === s ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                {s === 'all' ? '전체' : s}
+                {s === 'all' ? '전체' : STATUS_META[s].label}
               </button>
             ))}
           </div>
@@ -159,21 +181,25 @@ export default function AdminVoucherOrdersPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      r.status === 'sent' ? 'bg-green-100 text-green-700' :
-                      r.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {r.status}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
+                      {STATUS_META[r.status]?.label || r.status}
                     </span>
-                    <span className="text-[11px] text-gray-500">{new Date(r.created_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-[11px] text-gray-500">주문일시 {new Date(r.created_at).toLocaleString('ko-KR')}</span>
                   </div>
                   <p className="text-sm font-bold text-gray-900 truncate">{r.goods_name}</p>
                   <p className="text-xs text-gray-600 mt-1">
-                    📱 {r.recipient_phone} · {r.unit_price.toLocaleString('ko-KR')}원 × {r.quantity}
+                    <span className="text-gray-400">받는 분</span> 📱 {r.recipient_phone}
+                    <span className="mx-1.5 text-gray-300">|</span>
+                    <span className="text-gray-400">단가</span> {r.unit_price.toLocaleString('ko-KR')}원
+                    <span className="mx-1.5 text-gray-300">|</span>
+                    <span className="text-gray-400">수량</span> {r.quantity}개
                   </p>
-                  {r.external_order_id && <p className="text-[10px] text-gray-400 font-mono mt-1">{r.external_order_id}</p>}
+                  {r.sent_at && r.status === 'sent' && (
+                    <p className="text-[11px] text-green-600 mt-0.5">✅ 발송 완료: {new Date(r.sent_at).toLocaleString('ko-KR')}</p>
+                  )}
+                  {r.external_order_id && <p className="text-[10px] text-gray-400 font-mono mt-1">KT 주문번호: {r.external_order_id}</p>}
                   {r.failure_reason && (
-                    <p className="text-[11px] text-red-700 mt-2 p-2 bg-red-50 rounded">⚠️ {r.failure_reason}</p>
+                    <p className="text-[11px] text-red-700 mt-2 p-2 bg-red-50 rounded">⚠️ 실패 사유: {r.failure_reason}</p>
                   )}
                 </div>
                 {r.status === 'failed' && (

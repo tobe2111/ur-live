@@ -682,7 +682,10 @@
     "shippingPolicy": "配送ポリシー",
     "switchToSeller": "セラーダッシュボードへ切替",
     "switchAccount": "別のアカウントでログイン",
-    "logout": "ログアウト"
+    "logout": "ログアウト",
+    "coupons": "クーポン",
+    "vouchers": "バウチャー",
+    "unitSheet": "枚"
   },
   "theme": {
     "title": "画面テーマ",

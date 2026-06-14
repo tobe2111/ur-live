@@ -61,6 +61,13 @@ export interface DashboardStats {
   liveStreams: number
   todayVouchers?: number          // 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시
   todayVouchersAmount?: number    // applied_price 합 (원)
+  // 🛡️ 2026-06-14: 처리 대기 작업 KPI (dashboard/stats fail-soft).
+  unshippedOrders?: number
+  pendingReturns?: number
+  pendingPayouts?: number
+  pendingSellers?: number
+  pendingSuppliers?: number
+  failedVouchers?: number
 }
 
 export interface Alert {

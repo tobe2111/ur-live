@@ -182,7 +182,7 @@ export default function VoucherDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
       </div>
     )
   }
@@ -193,7 +193,7 @@ export default function VoucherDetailPage() {
         <button onClick={() => navigate(-1)} className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
           <p className="text-sm text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
-          <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-bold">교환권 목록으로</button>
+          <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">교환권 목록으로</button>
         </div>
       </div>
     )
@@ -230,11 +230,11 @@ export default function VoucherDetailPage() {
       )}
 
       <div className="px-4 py-5 space-y-3">
-        <div className="inline-block px-2 py-0.5 bg-pink-100 text-pink-700 text-[11px] font-bold rounded">{label}</div>
+        <div className="inline-block px-2 py-0.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold rounded">{label}</div>
         <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white leading-snug">{product.name}</h2>
         <div className="flex items-baseline gap-1">
-          <span className="text-[28px] font-extrabold text-pink-600">{formatNumber(product.price)}</span>
-          <span className="text-[14px] font-bold text-pink-600">딜</span>
+          <span className="text-[28px] font-extrabold text-gray-900 dark:text-white">{formatNumber(product.price)}</span>
+          <span className="text-[14px] font-bold text-gray-900 dark:text-white">딜</span>
         </div>
         {product.restaurant_name && (
           <p className="text-[13px] text-gray-600 dark:text-gray-300">📍 {product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</p>
@@ -247,13 +247,13 @@ export default function VoucherDetailPage() {
       {/* 🏭 2026-06-05 (사용자 요청 — 교환권 안내 디자인 개선): 평면 amber 박스(다크 미대응) → 아이콘 행 카드. */}
       <div className="mx-4 mt-4 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-gray-50 dark:bg-[#121212] overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center gap-2">
-          <Info className="w-4 h-4 text-pink-500" />
+          <Info className="w-4 h-4 text-gray-900 dark:text-white" />
           <p className="text-[13px] font-bold text-gray-900 dark:text-white">교환권 안내</p>
         </div>
         <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A]">
           <div className="flex items-start gap-3 px-4 py-3">
-            <div className="shrink-0 w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center">
-              <Ticket className="w-[18px] h-[18px] text-pink-500" />
+            <div className="shrink-0 w-8 h-8 rounded-xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center">
+              <Ticket className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">즉시 발급</p>
@@ -295,7 +295,7 @@ export default function VoucherDetailPage() {
           <button
             onClick={handleExchange}
             disabled={exchanging}
-            className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-bold rounded-full disabled:opacity-50"
+            className="flex-1 py-3 bg-gray-900 hover:bg-black text-white text-[15px] font-bold rounded-full disabled:opacity-50"
           >
             {exchanging ? '교환 중…' : `${formatNumber(total)}딜로 교환하기`}
           </button>
@@ -327,7 +327,7 @@ export default function VoucherDetailPage() {
                 type="checkbox"
                 checked={phoneConsent}
                 onChange={(e) => setPhoneConsent(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-pink-500"
+                className="mt-0.5 w-4 h-4 accent-gray-900"
               />
               <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
                 <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
@@ -350,7 +350,7 @@ export default function VoucherDetailPage() {
               <button
                 onClick={() => savePhoneAndRetry(phoneInput)}
                 disabled={!phoneInput || !phoneConsent}
-                className="py-2.5 bg-pink-500 text-white rounded-lg text-sm font-bold disabled:opacity-40"
+                className="py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-40"
               >
                 저장 후 교환
               </button>

@@ -48,6 +48,9 @@ interface OrderRow {
   user_name: string | null;
   user_email: string | null;
   seller_name: string | null;
+  item_count?: number | null;
+  total_quantity?: number | null;
+  first_item_name?: string | null;
   items?: OrderItemRow[];
 }
 
@@ -122,7 +125,10 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
                o.created_at, o.updated_at,
                COALESCE(u.name, '') as user_name,
                COALESCE(u.email, '') as user_email,
-               COALESCE(s.business_name, s.name, '') as seller_name
+               COALESCE(s.business_name, s.name, '') as seller_name,
+               (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count,
+               (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = o.id) as total_quantity,
+               (SELECT oi.product_name FROM order_items oi WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_name
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         LEFT JOIN sellers s ON o.seller_id = s.id
@@ -262,10 +268,18 @@ adminOrdersRoutes.get('/orders/:orderNumber', cors(), async (c) => {
       order.items = await executeQuery<OrderItemRow>(DB, `
         SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
                COALESCE(oi.unit_price, oi.price, 0) as price,
-               '' as image_url
+               COALESCE(p.image_url, '') as image_url
         FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
         WHERE oi.order_id = ?`, [order.id]);
-    } catch { order.items = []; }
+    } catch {
+      try {
+        order.items = await executeQuery<OrderItemRow>(DB, `
+          SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
+                 COALESCE(oi.unit_price, oi.price, 0) as price, '' as image_url
+          FROM order_items oi WHERE oi.order_id = ?`, [order.id]);
+      } catch { order.items = []; }
+    }
 
     return c.json({ success: true, data: order });
   } catch (err) {

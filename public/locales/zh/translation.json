@@ -682,7 +682,10 @@
     "shippingPolicy": "配送政策",
     "switchToSeller": "切换到卖家仪表盘",
     "switchAccount": "使用其他账号登录",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "coupons": "优惠券",
+    "vouchers": "代金券",
+    "unitSheet": "张"
   },
   "theme": {
     "title": "主题",

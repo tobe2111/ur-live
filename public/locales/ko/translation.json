@@ -682,7 +682,10 @@
     "shippingPolicy": "배송 정책",
     "switchToSeller": "셀러 대시보드로 전환",
     "switchAccount": "다른 계정으로 로그인",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "coupons": "쿠폰",
+    "vouchers": "바우처",
+    "unitSheet": "장"
   },
   "theme": {
     "title": "화면 테마",

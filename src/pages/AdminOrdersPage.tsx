@@ -47,7 +47,31 @@ interface Order {
   tracking_number: string | null
   created_at: string
   updated_at: string
+  item_count?: number | null
+  total_quantity?: number | null
+  first_item_name?: string | null
   items?: OrderItem[]
+}
+
+// 🛡️ 2026-06-14: 개인정보 마스킹 — 운영자 목록에서 연락처 일부 가림 (상세 모달은 전체 표시).
+function maskPhone(phone?: string | null): string {
+  if (!phone) return '-'
+  const d = phone.replace(/[^0-9]/g, '')
+  if (d.length < 7) return phone
+  // 010-1234-5678 → 010-****-5678
+  if (d.length >= 10) return `${d.slice(0, 3)}-****-${d.slice(-4)}`
+  return `${d.slice(0, 3)}-****`
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  card: '카드', 간편결제: '간편결제', easypay: '간편결제', 'EASY_PAY': '간편결제',
+  CARD: '카드', transfer: '계좌이체', TRANSFER: '계좌이체', 가상계좌: '가상계좌',
+  VIRTUAL_ACCOUNT: '가상계좌', virtual_account: '가상계좌', point: '딜 포인트', POINT: '딜 포인트',
+  phone: '휴대폰', MOBILE_PHONE: '휴대폰', toss: '토스페이먼츠', kakaopay: '카카오페이', naverpay: '네이버페이',
+}
+function paymentMethodLabel(m?: string | null): string {
+  if (!m) return '-'
+  return PAYMENT_METHOD_LABELS[m] || PAYMENT_METHOD_LABELS[m.toLowerCase()] || m
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
@@ -117,7 +141,9 @@ export default function AdminOrdersPage() {
   const navigate = useNavigate()
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showDetail, setShowDetail] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  // 🛡️ 2026-06-14: 대시보드 "미발송 주문" 등에서 ?status=PAID 진입 시 필터 초기값 반영.
+  const initialStatus = (() => { try { const s = new URLSearchParams(window.location.search).get('status'); return s && STATUS_STYLES[s] ? s : 'ALL' } catch { return 'ALL' } })()
+  const [statusFilter, setStatusFilter] = useState(initialStatus)
   const [sellerFilter, setSellerFilter] = useState('ALL')
   // 🏁 2026-06-12 (전수조사): 전역검색 ?q= 소비.
   const initialQ = (() => { try { return new URLSearchParams(window.location.search).get('q') || '' } catch { return '' } })()
@@ -326,41 +352,78 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
+      {/* 🛡️ 2026-06-14: 검색/필터 적용 시 결과 건수 안내 */}
+      {(debouncedSearch || statusFilter !== 'ALL' || sellerFilter !== 'ALL' || dateFilter.start || dateFilter.end) && (
+        <div className="flex items-center gap-2 px-1">
+          <Search className="w-3.5 h-3.5 text-blue-500" />
+          <p className="text-xs text-gray-600">
+            {debouncedSearch && <>‘<span className="font-semibold text-gray-900">{debouncedSearch}</span>’ </>}
+            검색/필터 결과 <span className="font-semibold text-blue-600">{formatNumber(totalCount)}</span>건
+          </p>
+        </div>
+      )}
+
       {/* 주문 테이블 */}
+      {/* 🛡️ 2026-06-14: 컬럼 상세화 — 주문번호/일시 / 고객(명·이메일·연락처마스킹) / 상품요약(수량) /
+          판매자 / 결제수단 / 주문상태 / 결제상태 / 금액 / 배송(송장). 한눈에 "누가 무엇을 얼마에" 파악. */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px]">
+          <table className="w-full min-w-[1180px]">
             <thead>
               <tr className="bg-gray-50">
-                {[t('admin.orders.k047', { defaultValue: '주문번호' }), t('admin.orders.k048', { defaultValue: '주문일시' }), t('admin.orders.k040', { defaultValue: '판매자' }), t('admin.orders.k049', { defaultValue: '고객명' }), t('admin.orders.k039', { defaultValue: '주문 상태' }), t('admin.orders.k050', { defaultValue: '결제 상태' }), t('admin.orders.k051', { defaultValue: '금액' }), ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                {['주문 / 일시', '고객 정보', '주문 상품', '판매자', '결제수단', '주문 상태', '결제 상태', '배송', '금액', ''].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {currentOrders.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">{t('admin.orders.k052', { defaultValue: '주문 내역이 없습니다.' })}</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">{t('admin.orders.k052', { defaultValue: '주문 내역이 없습니다.' })}</td></tr>
               ) : currentOrders.map(order => {
                 const ss = STATUS_STYLES[order.status] || { label: order.status, color: 'text-gray-600', bg: 'bg-gray-100' }
                 const ps = PAYMENT_STYLES[order.payment_status] || { label: order.payment_status, color: 'text-gray-600', bg: 'bg-gray-100' }
+                const extraCount = (order.item_count ?? 0) > 1 ? (order.item_count ?? 1) - 1 : 0
+                const productSummary = order.first_item_name
+                  ? (extraCount > 0 ? `${order.first_item_name} 외 ${extraCount}건` : order.first_item_name)
+                  : '-'
                 return (
-                  <tr key={order.order_number} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs font-mono text-gray-700">{order.order_number}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{formatKST(order.created_at)}</td>
-                    <td className="px-4 py-3 text-xs text-gray-700">{order.seller_name}</td>
+                  <tr key={order.order_number} className="hover:bg-gray-50 align-top">
                     <td className="px-4 py-3">
-                      <p className="text-xs font-medium text-gray-900">{order.shipping_name}</p>
-                      <p className="text-xs text-gray-400">{order.shipping_phone}</p>
+                      <p className="text-xs font-mono text-gray-700">{order.order_number}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatKST(order.created_at)}</p>
                     </td>
+                    <td className="px-4 py-3 max-w-[200px]">
+                      <p className="text-xs font-semibold text-gray-900">{order.shipping_name || order.user_name || '-'}</p>
+                      {order.user_email && <p className="text-xs text-gray-400 truncate">{order.user_email}</p>}
+                      <p className="text-xs text-gray-400">{maskPhone(order.shipping_phone)}</p>
+                    </td>
+                    <td className="px-4 py-3 max-w-[240px]">
+                      <p className="text-xs text-gray-900 line-clamp-2">{productSummary}</p>
+                      {(order.total_quantity ?? 0) > 0 && (
+                        <p className="text-[11px] text-gray-400 mt-0.5">총 {formatNumber(order.total_quantity)}개 · {formatNumber(order.item_count || 0)}종</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-700 max-w-[140px] truncate">{order.seller_name || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{paymentMethodLabel(order.payment_method)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${ss.bg} ${ss.color}`}>{ss.label}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${ps.bg} ${ps.color}`}>{ps.label}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">₩{formatNumber(order.total_amount)}</td>
+                    <td className="px-4 py-3 max-w-[140px]">
+                      {order.tracking_number ? (
+                        <div className="text-[11px]">
+                          <p className="text-gray-700 font-medium">{order.courier || '택배'}</p>
+                          <p className="text-gray-400 font-mono truncate">{order.tracking_number}</p>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-gray-300">송장 미등록</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900 whitespace-nowrap">₩{formatNumber(order.total_amount)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => viewOrderDetail(order.order_number)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                      <button onClick={() => viewOrderDetail(order.order_number)} className="p-1.5 rounded-lg hover:bg-gray-100" title="주문 상세 보기">
                         <Eye className="w-4 h-4 text-gray-400" />
                       </button>
                     </td>
@@ -416,7 +479,7 @@ export default function AdminOrdersPage() {
                     [t('admin.orders.k047', { defaultValue: '주문번호' }), selectedOrder.order_number],
                     [t('admin.orders.k048', { defaultValue: '주문일시' }), formatKST(selectedOrder.created_at)],
                     [t('admin.orders.k040', { defaultValue: '판매자' }), selectedOrder.seller_name],
-                    [t('admin.orders.k056', { defaultValue: '결제 방법' }), selectedOrder.payment_method || '-'],
+                    [t('admin.orders.k056', { defaultValue: '결제 방법' }), paymentMethodLabel(selectedOrder.payment_method)],
                   ].map(([k, v]) => (
                     <div key={k}>
                       <p className="text-xs text-gray-400">{k}</p>

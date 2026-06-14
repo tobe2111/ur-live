@@ -7,7 +7,7 @@ import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
   Users, Play, Package, TrendingUp, CheckCircle,
-  DollarSign, Eye, X, Ticket
+  DollarSign, Eye, X, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -456,6 +456,41 @@ export default function AdminPage() {
           <p className="text-sm text-gray-700">processing / sent / failed 추적</p>
           <p className="text-[10px] sm:text-xs text-amber-600 mt-0.5">→ 발송 추적 + 재발송</p>
         </button>
+      </div>
+
+      {/* 🛡️ 2026-06-14: 처리 대기 작업 — 운영자가 지금 처리해야 할 일 한눈에 (사용자 요구).
+          각 카드 클릭 → 해당 처리 페이지. count 0 이어도 표시(안심용), >0 이면 강조. */}
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500" />
+          <h2 className="text-sm font-semibold text-gray-900">처리 대기 작업</h2>
+          <span className="text-xs text-gray-400">지금 확인이 필요한 운영 업무</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-3">
+          {[
+            { label: '승인 대기 셀러', value: dashboardStats.pendingSellers ?? pendingSellers.length, icon: <Users className="w-4 h-4" />, link: '/admin/seller-approval', color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: '미발송 주문', value: dashboardStats.unshippedOrders ?? 0, icon: <Truck className="w-4 h-4" />, link: '/admin/orders?status=PAID', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+            { label: '반품 신청', value: dashboardStats.pendingReturns ?? 0, icon: <RotateCcw className="w-4 h-4" />, link: '/admin/returns', color: 'text-rose-600', bg: 'bg-rose-50' },
+            { label: '정산 대기', value: dashboardStats.pendingPayouts ?? 0, icon: <Banknote className="w-4 h-4" />, link: '/admin/payout-center', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: '공급사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: '교환권 발송실패', value: dashboardStats.failedVouchers ?? 0, icon: <Ticket className="w-4 h-4" />, link: '/admin/voucher-orders', color: 'text-amber-600', bg: 'bg-amber-50' },
+          ].map(task => (
+            <button
+              key={task.label}
+              onClick={() => navigate(task.link)}
+              className={`text-left rounded-lg p-3 border transition-all hover:shadow-sm ${
+                task.value > 0 ? 'border-amber-200 bg-amber-50/40' : 'border-gray-100 bg-white hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`w-7 h-7 rounded-lg ${task.bg} ${task.color} flex items-center justify-center`}>{task.icon}</span>
+                {task.value > 0 && <span className="text-[10px] font-bold text-amber-600">처리 필요</span>}
+              </div>
+              <p className="text-lg font-bold text-gray-900">{formatNumber(task.value)}<span className="text-xs font-normal text-gray-400 ml-0.5">건</span></p>
+              <p className="text-[11px] text-gray-500 truncate">{task.label}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 🛡️ 2026-05-24: 별점 "신규" 즉시 백필 — cron 기다리지 않고 바로 시드 트리거. */}

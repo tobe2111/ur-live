@@ -96,7 +96,7 @@ export default function FlashDealsHero() {
 
         {/* ── 히어로 박스 (countdown + stats) ── */}
         <div className="lg:w-[280px] xl:w-[300px] lg:shrink-0 mb-4 lg:mb-0">
-          <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 p-4 lg:p-5 shadow-lg shadow-pink-500/20 h-full flex flex-col justify-between">
+          <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-black p-4 lg:p-5 shadow-lg shadow-black/20 h-full flex flex-col justify-between">
             {/* 헤더 */}
             <div>
               <div className="flex items-center gap-2 mb-2">
