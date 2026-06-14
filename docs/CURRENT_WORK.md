@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-14 — 도매몰 컬렉션 페이지 분리 (사용자 요청)
+- 카탈로그 단일 페이지의 5개 뷰(브랜드 전시관·월간 베스트·신상품·판매마진·프리미엄 전용관)를 **전용 라우트로 분리** — `WholesaleCatalogPage` 에 `mode` prop 추가, 같은 데이터/카드 로직 100% 재사용(중복 0).
+- 라우트: `/wholesale/best|new|margin|premium|brands` (App.tsx, `key` 로 컬렉션 전환 시 강제 리마운트해 초기 정렬/필터 재적용). 매핑: best→sort=popular, new→newest, margin→discount, premium→premium=1, brands→브랜드 그리드.
+- `collectionMode` 시 홈 전용 섹션(배너 캐러셀/HeroSection/HomeRails/하단 BrandHero) 숨기고 전용 타이틀+홈 버튼 + 해당 컬렉션 그리드만. **홈 `/wholesale` 은 기존 그대로(기본 경로 불변)**.
+- CatalogHeader 네비가 setState → `navigate('/wholesale/...')` 로 변경, 활성 강조는 현재 경로 기준. margin/premium 은 회원 전용 게이트 유지(비로그인 로그인 유도).
+- SEO: 컬렉션별 title/url 분기(`/wholesale/best` 등). utongstart 도매 path 게이팅은 `/wholesale/` prefix 라 자동 허용.
+- tsc 0 · unit 2103 · build OK.
+
 ## ✅ 2026-06-13 — 도매몰 UX 6종 (사용자 신고 묶음, opus)
 - **① 베스트/신규 분류 = 정상**(코드 확인): 베스트 `ORDER BY sold_count DESC, created_at DESC` · 신규 `ORDER BY created_at DESC`(wholesale.routes /home). 판매 데이터 0인 초기엔 둘이 같아 보이는 건 정상(베스트가 created_at 로 폴백) — 주문 쌓이면 분리됨. 코드 변경 없음.
 - **② 상세이미지 멀티 업로더** `supplier-dashboard/MultiImageUpload.tsx`: 세로 긴 사진·**GIF 다수 원본 무압축** 업로드(클라 압축 X — GIF 애니/세로 디테일 보존), 10MB×10장, 순서 조정/삭제. AddProductModal 의 detail_images textarea 대체. supplier_token Bearer + multipart(supplierApi 는 JSON 전용이라 raw fetch). GIF/webp/png/jpg 는 서버(/api/upload/image)가 이미 허용.
