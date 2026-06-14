@@ -127,7 +127,7 @@ export default function TimedealCard({
           <div>
             <div className="w-full h-1.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden mb-1">
               <div
-                className="h-full bg-gradient-to-r from-pink-500 to-rose-400 rounded-full transition-all"
+                className="h-full bg-gray-900 dark:bg-white rounded-full transition-all"
                 style={{ width: `${progressPct}%` }}
               />
             </div>

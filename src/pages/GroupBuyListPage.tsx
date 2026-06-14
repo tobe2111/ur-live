@@ -147,7 +147,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
 
         {/* 할인 뱃지 */}
         {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
+          <span className="absolute top-2 left-2 bg-gray-900 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
             {t('groupBuy.maxDiscount', { defaultValue: '최대 -{{rate}}%', rate: discount })}
           </span>
         )}
@@ -166,7 +166,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
           className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
           aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
         >
-          <Bell className={`w-3.5 h-3.5 ${interested ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`} />
+          <Bell className={`w-3.5 h-3.5 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`} />
         </button>
       </div>
 
@@ -574,7 +574,7 @@ export default function GroupBuyListPage() {
 
       {/* 배너 — 클릭 시 맛집 공구 시작 */}
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
-        <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 rounded-2xl px-5 py-4 flex items-center gap-3">
+        <div className="bg-gray-900 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white text-[15px] font-extrabold">
               <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
@@ -586,7 +586,7 @@ export default function GroupBuyListPage() {
           </div>
           <button
             onClick={() => navigate('/community-group-buy/new')}
-            className="shrink-0 flex items-center gap-1 bg-white dark:bg-[#0A0A0A] text-rose-600 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
+            className="shrink-0 flex items-center gap-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="w-3.5 h-3.5" />
             {t('groupBuy.startCta', { defaultValue: '시작' })}
@@ -662,7 +662,7 @@ export default function GroupBuyListPage() {
           onClick={() => setRegionPickerOpen(true)}
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
             regionKey
-              ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300'
+              ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900'
               : 'bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300'
           }`}
           aria-label="지역 선택"
@@ -690,7 +690,7 @@ export default function GroupBuyListPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('groupBuy.searchPlaceholder', { defaultValue: '공구명/매장명 검색' })}
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-300"
+            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-white/30"
           />
           <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
@@ -724,7 +724,7 @@ export default function GroupBuyListPage() {
                   }}
                   className={`w-full text-left px-3 py-2.5 text-[13px] ${
                     sortBy === opt
-                      ? 'bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 font-semibold'
+                      ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-semibold'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#121212]'
                   }`}
                 >
@@ -779,7 +779,7 @@ export default function GroupBuyListPage() {
                     subtitle="목표의 70% 이상"
                     items={curation.almostDone}
                     navigate={navigate}
-                    accent="pink"
+                    accent="neutral"
                   />
                 )}
               </>
@@ -825,7 +825,7 @@ export default function GroupBuyListPage() {
                 <div className="mt-5 flex gap-2 justify-center flex-wrap">
                   <button
                     onClick={() => navigate('/community-group-buy/new')}
-                    className="flex items-center gap-1 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
+                    className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                   >
                     <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '내 동네 공구 제안' })}
                   </button>
@@ -903,7 +903,7 @@ export default function GroupBuyListPage() {
                       {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
                             <span className="text-[18px]">🙋</span>
                           </div>
                           <div className="min-w-0">
@@ -925,7 +925,7 @@ export default function GroupBuyListPage() {
                             aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
                           >
                             <Bell
-                              className={`w-3.5 h-3.5 ${interestedIds.has(g.id) ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`}
+                              className={`w-3.5 h-3.5 ${interestedIds.has(g.id) ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`}
                             />
                           </button>
                           <span
@@ -939,7 +939,7 @@ export default function GroupBuyListPage() {
                       {/* 가격 + 보증금 정보 */}
                       <div className="flex items-center gap-3 mt-3">
                         <div className="flex items-center gap-1">
-                          <HandCoins className="w-3.5 h-3.5 text-pink-500" />
+                          <HandCoins className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
                           <span className="text-[12px] text-gray-600 dark:text-gray-400">{t('groupBuy.proposedPrice', { defaultValue: '제안가' })}</span>
                           <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                             {formatPrice(g.proposed_price)}
@@ -956,7 +956,7 @@ export default function GroupBuyListPage() {
                         <div className="w-full h-2.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              achieved ? 'bg-emerald-500' : 'bg-pink-500'
+                              achieved ? 'bg-emerald-500' : 'bg-gray-900 dark:bg-white'
                             }`}
                             style={{ width: `${progress}%` }}
                           />
@@ -970,7 +970,7 @@ export default function GroupBuyListPage() {
                               </span>
                             ) : (
                               <>
-                                <span className="font-semibold text-pink-500">
+                                <span className="font-semibold text-gray-900 dark:text-white">
                                   {g.current_count}
                                 </span>
                                 <span className="text-gray-400">/</span>
@@ -1021,12 +1021,12 @@ function CurationStrip({
   subtitle: string
   items: GroupBuyProduct[]
   navigate: (to: string) => void
-  accent: "red" | "amber" | "pink"
+  accent: "red" | "amber" | "neutral"
 }) {
   const accentMap = {
-    red:   { bg: "bg-red-50",   text: "text-red-600",   bar: "bg-red-500"   },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", bar: "bg-amber-500" },
-    pink:  { bg: "bg-pink-50",  text: "text-pink-600",  bar: "bg-pink-500"  },
+    red:     { bg: "bg-red-50",   text: "text-red-600",   bar: "bg-red-500"   },
+    amber:   { bg: "bg-amber-50", text: "text-amber-600", bar: "bg-amber-500" },
+    neutral: { bg: "bg-gray-900", text: "text-white",     bar: "bg-gray-900"  },
   }
   const a = accentMap[accent]
   return (
@@ -1061,7 +1061,7 @@ function CurationStrip({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-pink-100 to-rose-200" />
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                 )}
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
                   {accent === "red" ? "1명 남음" : accent === "amber" ? "오늘 마감" : `${Math.round(progress)}%`}

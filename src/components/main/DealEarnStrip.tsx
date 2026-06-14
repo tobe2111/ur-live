@@ -20,7 +20,7 @@ export default function DealEarnStrip() {
       label: t('dealEarn.linkshop', { defaultValue: '링크샵 공유' }),
       desc: t('dealEarn.linkshopDesc', { defaultValue: '담고 공유하면 커미션 딜' }),
       to: '/user/profile',
-      tint: 'bg-rose-50 text-rose-500 dark:bg-rose-500/12 dark:text-rose-400',
+      tint: 'bg-gray-100 text-gray-700 dark:bg-white/[0.08] dark:text-gray-200',
     },
     {
       icon: Store,

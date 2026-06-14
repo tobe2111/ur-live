@@ -576,7 +576,7 @@ export default function ProductDetailPage() {
           )}
           <div className="flex items-center gap-2 mt-3">
             <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
-            <span className="text-[11px] font-bold text-pink-500">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
+            <span className="text-[11px] font-bold text-gray-900 dark:text-white">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
           <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
@@ -617,7 +617,7 @@ export default function ProductDetailPage() {
                 {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
               </div>
               <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#0A0A0A]/15">
-                <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-500"
+                <div className="h-full rounded-full bg-white dark:bg-white transition-all duration-500"
                   style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }} />
               </div>
             </div>
@@ -716,7 +716,7 @@ export default function ProductDetailPage() {
             return (
               <button
                 onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
-                className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
+                className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
               >
                 <span className="text-[15px] font-bold">🎁 회원가입하고 1판매당 {amountStr} 적립받기</span>
                 <span className="text-[11px] opacity-90">내 링크샵에 담아 친구에게 추천만 해도 수익</span>
@@ -839,7 +839,7 @@ export default function ProductDetailPage() {
             className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] shadow-lg active:scale-95 transition-transform"
             aria-label={t('productDetailPage.ariaGift')}
           >
-            <Gift className="w-4 h-4 text-pink-500" />
+            <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">선물</span>
           </button>
         </div>

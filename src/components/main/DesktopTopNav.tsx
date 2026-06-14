@@ -72,10 +72,10 @@ export default function DesktopTopNav() {
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${active ? 'text-pink-400' : ''}`} strokeWidth={active ? 2 : 1.5} />
+                <Icon className={`w-4 h-4 ${active ? 'text-gray-900 dark:text-white' : ''}`} strokeWidth={active ? 2 : 1.5} />
                 <span>{item.label}</span>
                 {active && (
-                  <span className="absolute -bottom-[14px] left-1/2 -translate-x-1/2 w-6 h-[2px] bg-pink-500 rounded-full" />
+                  <span className="absolute -bottom-[14px] left-1/2 -translate-x-1/2 w-6 h-[2px] bg-gray-900 dark:bg-white rounded-full" />
                 )}
               </button>
             )
@@ -92,7 +92,7 @@ export default function DesktopTopNav() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
-              className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-pink-400/30"
+              className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-gray-400/40 dark:focus:ring-white/20"
             />
           </div>
         </form>
@@ -162,7 +162,7 @@ export default function DesktopTopNav() {
           ) : (
             <button
               onClick={() => navigate('/login')}
-              className="px-4 py-1.5 bg-pink-500 text-white text-[13px] font-bold rounded-full hover:bg-pink-600 transition-colors"
+              className="px-4 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold rounded-full hover:bg-black dark:hover:bg-gray-100 transition-colors"
             >
               {t('auth.login', { defaultValue: '로그인' })}
             </button>
