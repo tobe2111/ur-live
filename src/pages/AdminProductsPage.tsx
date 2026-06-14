@@ -434,6 +434,39 @@ export default function AdminProductsPage() {
         </div>
       )}
 
+      {/* 🛡️ 2026-06-14: 교환권 / 쇼핑 상품 명시 분리 — 상단 1차 세그먼트 (사용자 요구).
+          교환권 = kt_alpha_gift_code 있음(기프티콘/교환권), 쇼핑 = 일반 배송 상품. */}
+      {activeTab === 'products' && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {[
+            { key: 'all' as const, label: '전체 상품', desc: '교환권 + 쇼핑 모두', icon: '📦' },
+            { key: 'kt_alpha' as const, label: '교환권 (기프티콘)', desc: 'KT 기프티쇼 자동발송 상품', icon: '🎁' },
+            { key: 'regular' as const, label: '쇼핑 상품 (배송)', desc: '실물 배송/일반 판매 상품', icon: '🛍️' },
+          ].map(seg => (
+            <button
+              key={seg.key}
+              onClick={() => { setSourceFilter(seg.key); setPage(1) }}
+              className={`flex-1 min-w-[180px] text-left px-4 py-3 rounded-xl border-2 transition-colors ${
+                sourceFilter === seg.key
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{seg.icon}</span>
+                <div>
+                  <p className={`text-sm font-bold ${sourceFilter === seg.key ? 'text-blue-700' : 'text-gray-900'}`}>
+                    {seg.label}
+                    {seg.key === 'kt_alpha' && <span className="ml-1.5 text-xs font-medium text-amber-600">{tabCounts.kt_alpha_count.toLocaleString()}</span>}
+                  </p>
+                  <p className="text-[11px] text-gray-500">{seg.desc}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 상품 목록 탭 */}
       {/* 🛡️ 2026-05-19: Coupang WING 스타일 필터 + 검색 + 탭 + 페이지네이션 */}
       {activeTab === 'products' && (
@@ -488,16 +521,13 @@ export default function AdminProductsPage() {
                   품절 {tabCounts.out_of_stock.toLocaleString()}
                 </button>
               )}
-              <span className="mx-2 self-center text-gray-300">|</span>
-              <button onClick={() => { setSourceFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${sourceFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                모든 출처
-              </button>
-              <button onClick={() => { setSourceFilter('regular'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${sourceFilter === 'regular' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                일반 상품
-              </button>
-              <button onClick={() => { setSourceFilter('kt_alpha'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${sourceFilter === 'kt_alpha' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                🎁 교환권 <span className="opacity-70 ml-1">{tabCounts.kt_alpha_count.toLocaleString()}</span>
-              </button>
+              {/* 교환권/쇼핑 출처 분리는 상단 세그먼트로 이전 (2026-06-14). 현재 선택 표시만. */}
+              {sourceFilter !== 'all' && (
+                <span className="ml-2 self-center inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold">
+                  {sourceFilter === 'kt_alpha' ? '🎁 교환권만 보기' : '🛍️ 쇼핑 상품만 보기'}
+                  <button onClick={() => { setSourceFilter('all'); setPage(1) }} className="ml-0.5 text-blue-400 hover:text-blue-700" aria-label="출처 필터 해제">✕</button>
+                </span>
+              )}
             </div>
 
             {/* 카테고리 필터 */}
@@ -600,12 +630,17 @@ export default function AdminProductsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {product.product_type === 'featured' ? (
+                        {/* 🛡️ 2026-06-14: 교환권 vs 쇼핑 한눈 구분 배지 우선 표시 */}
+                        {product.kt_alpha_gift_code ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-50 text-amber-700">
+                            🎁 교환권
+                          </span>
+                        ) : product.product_type === 'featured' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
                             <Star className="w-3 h-3" /> {t('admin.products.typeFeatured', { defaultValue: 'Ur 특가' })}
                           </span>
                         ) : (
-                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">{t('admin.products.k030', { defaultValue: '라이브' })}</span>
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600">🛍️ 쇼핑</span>
                         )}
                       </td>
                       <td className="px-4 py-3">

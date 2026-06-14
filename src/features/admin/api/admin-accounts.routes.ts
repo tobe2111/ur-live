@@ -20,6 +20,11 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 
 export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
 
+// 🛡️ 2026-06-14: 관리자 역할 — 전권 + 제한 권한 세분화 (사용자 요구: 제한된 접근 권한 분리).
+//   super_admin: 전체 권한 / admin: 일반 운영 / ops: 주문·상품·배송 / cs: 고객 응대(주문 조회/반품) /
+//   finance: 정산·출금·세금 / viewer: 읽기 전용. ops/cs/finance 는 worker auth.ts requireAdminRole 게이트와 정합.
+const VALID_ADMIN_ROLES = ['super_admin', 'admin', 'ops', 'cs', 'finance', 'viewer'];
+
 function safeAdminError(err: unknown, env: Env): string {
   const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
   if (isProd) return 'Internal server error';
@@ -74,8 +79,8 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
     if (!email || !password || !name || !role) {
       return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, name, role)' }, 400);
     }
-    if (!['super_admin', 'admin', 'viewer'].includes(role)) {
-      return c.json({ success: false, error: '유효하지 않은 역할입니다. super_admin, admin, viewer 중 선택하세요' }, 400);
+    if (!VALID_ADMIN_ROLES.includes(role)) {
+      return c.json({ success: false, error: `유효하지 않은 역할입니다. ${VALID_ADMIN_ROLES.join(', ')} 중 선택하세요` }, 400);
     }
 
     const complexity = validatePasswordComplexity(password);
@@ -148,7 +153,7 @@ adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
       if (String(currentAdminId) === String(adminId) && current.role === 'super_admin') {
         return c.json({ success: false, error: 'super_admin은 자신의 역할을 변경할 수 없습니다' }, 403);
       }
-      if (!['super_admin', 'admin', 'viewer'].includes(role)) {
+      if (!VALID_ADMIN_ROLES.includes(role)) {
         return c.json({ success: false, error: '유효하지 않은 역할입니다' }, 400);
       }
     }
