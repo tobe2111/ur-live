@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-14 — 도매몰 컬렉션 페이지 분리 (사용자 요청)
+- 카탈로그 단일 페이지의 5개 뷰(브랜드 전시관·월간 베스트·신상품·판매마진·프리미엄 전용관)를 **전용 라우트로 분리** — `WholesaleCatalogPage` 에 `mode` prop 추가, 같은 데이터/카드 로직 100% 재사용(중복 0).
+- 라우트: `/wholesale/best|new|margin|premium|brands` (App.tsx, `key` 로 컬렉션 전환 시 강제 리마운트해 초기 정렬/필터 재적용). 매핑: best→sort=popular, new→newest, margin→discount, premium→premium=1, brands→브랜드 그리드.
+- `collectionMode` 시 홈 전용 섹션(배너 캐러셀/HeroSection/HomeRails/하단 BrandHero) 숨기고 전용 타이틀+홈 버튼 + 해당 컬렉션 그리드만. **홈 `/wholesale` 은 기존 그대로(기본 경로 불변)**.
+- CatalogHeader 네비가 setState → `navigate('/wholesale/...')` 로 변경, 활성 강조는 현재 경로 기준. margin/premium 은 회원 전용 게이트 유지(비로그인 로그인 유도).
+- SEO: 컬렉션별 title/url 분기(`/wholesale/best` 등). utongstart 도매 path 게이팅은 `/wholesale/` prefix 라 자동 허용.
+- tsc 0 · unit 2103 · build OK.
+
 ## ✅ 2026-06-14 — 대표 신고 대량 배치 (사용자 "바로 가장 이상적으로 모두 진행")
 **크로스커팅 근본수정 (앞 세션 turn):**
 - 🔴 **모든 대시보드 자동 로그아웃 근본수정** (`a0519ed0`): agency 만 refresh token/`/refresh` endpoint 부재 → access(30일) 만료 시 복구불가 강제로그아웃(Sentry "Agency 401: Token expired"). `POST /api/agency/refresh` 신설 + 이메일/카카오 로그인 refresh 발급·저장(login page/KakaoCallback/transfer cookie) + api.ts 의 agency→/admin/refresh 오라우팅 버그 수정.

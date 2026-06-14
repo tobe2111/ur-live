@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Factory, X, LogIn, LogOut, Menu, HelpCircle, MessageSquareWarning, Wallet, Crown, Heart, ShoppingCart, Megaphone } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -42,7 +42,13 @@ export default function CatalogHeader({
   logout: () => void
 }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { t } = useTranslation()
+  // 🏬 2026-06-14: 컬렉션 네비 = 전용 페이지 라우트. 활성 강조는 현재 경로로.
+  const memberOnlyGo = (to: string) => {
+    if (!token) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
+    navigate(to)
+  }
   return (
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         {/* 1. 유틸 바 (우측 정렬, 작은 텍스트) */}
@@ -160,37 +166,28 @@ export default function CatalogHeader({
               style={{ background: 'var(--ud-brand, #FF0033)' }}>
               <Menu className="w-4 h-4" /> {t('wholesale.nav.allCategories', { defaultValue: '전체카테고리' })}
             </button>
-            {/* 브랜드 전시관 → 브랜드 그리드 모드(?brands=1). 클릭 시 검색/카테고리/프리미엄 초기화. */}
-            <button onClick={() => { setBrandView(true); setSelectedBrand(''); setPremiumView(false); setCat('all'); setSort('popular'); setCommittedSearch(''); setSearch('') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: brandView ? WT.brand : WT.ink2 }}>
+            {/* 🏬 2026-06-14 (사용자 요청): 컬렉션 전용 페이지로 분리 — 각자 라우트로 이동. */}
+            <button onClick={() => navigate('/wholesale/brands')}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: pathname === '/wholesale/brands' ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.brands', { defaultValue: '브랜드 전시관' })}
             </button>
-            {/* 월간 베스트 → 판매량 정렬 */}
-            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('popular'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'popular' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
+            <button onClick={() => navigate('/wholesale/best')}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: pathname === '/wholesale/best' ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.best', { defaultValue: '월간 베스트' })}
             </button>
-            {/* 신상품 → 최신순 */}
-            <button onClick={() => { setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('newest'); setCat('all') }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'newest' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
+            <button onClick={() => navigate('/wholesale/new')}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: pathname === '/wholesale/new' ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.new', { defaultValue: '신상품' })}
             </button>
-            {/* 판매마진 40% → 할인율 정렬(마진 높은 상품). 🔒 2026-06-10 (사용자): 클릭 시 회원 전용 — 비로그인은 로그인 유도 */}
-            <button onClick={() => {
-              if (!token) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
-              setBrandView(false); setSelectedBrand(''); setPremiumView(false); setSort('discount'); setCat('all')
-            }}
-              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: sort === 'discount' && !premiumView && !brandView ? WT.brand : WT.ink2 }}>
+            {/* 판매마진 → 회원 전용(비로그인 로그인 유도). */}
+            <button onClick={() => memberOnlyGo('/wholesale/margin')}
+              className="shrink-0 px-4 h-11 text-[14px] font-semibold whitespace-nowrap" style={{ color: pathname === '/wholesale/margin' ? WT.brand : WT.ink2 }}>
               {t('wholesale.nav.highMargin', { defaultValue: '판매마진 40%' })}
             </button>
-            {/* 프리미엄 전용관 → premium=1. 👑 2026-06-10 (사용자): 메뉴는 항상 노출, 클릭 시 회원 전용
-                (비로그인 → 로그인 유도). 서버 guest 차단(이중 게이트)은 유지. */}
-            <button onClick={() => {
-              if (!token) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
-              setBrandView(false); setSelectedBrand(''); setPremiumView(true); setCat('all')
-            }}
+            {/* 프리미엄 전용관 → 회원 전용. 서버 guest 차단(이중 게이트) 유지. */}
+            <button onClick={() => memberOnlyGo('/wholesale/premium')}
               className="shrink-0 inline-flex items-center gap-1 px-4 h-11 text-[14px] font-bold whitespace-nowrap"
-              style={{ color: premiumView ? WT.brand : WT.ink }}>
+              style={{ color: pathname === '/wholesale/premium' ? WT.brand : WT.ink }}>
               <Crown className="w-4 h-4" /> {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
             </button>
             {/* 🏭 2026-06-10: 통합 게시판 (공지/자료실/배송안내/신고·제안) */}

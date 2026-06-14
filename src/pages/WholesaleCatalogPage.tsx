@@ -45,7 +45,11 @@ const WholesaleProposalModal = lazy(() => import('./wholesale/WholesaleProposalM
 //   라이트 고정 B2B 서피스 (대시보드 계열) — dark: variant 없음.
 // ──────────────────────────────────────────────────────────────
 
-export default function WholesaleCatalogPage() {
+// 🏬 2026-06-14 (사용자 요청): 컬렉션 페이지 분리 — 같은 데이터 로직 재사용, mode 로 초기 필터/게이팅.
+//   /wholesale(home) | /wholesale/best|new|margin|premium|brands.
+export type WholesaleCollectionMode = 'best' | 'new' | 'margin' | 'premium' | 'brands'
+
+export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollectionMode } = {}) {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -74,7 +78,8 @@ export default function WholesaleCatalogPage() {
   const [search, setSearch] = useState('')
   const [committedSearch, setCommittedSearch] = useState('')
   const [cat, setCat] = useState('all')
-  const [sort, setSort] = useState<CatalogSort>('popular')
+  // 🏬 컬렉션 모드 초기 정렬: 신상품=newest, 마진=discount, 그 외=popular(베스트).
+  const [sort, setSort] = useState<CatalogSort>(mode === 'new' ? 'newest' : mode === 'margin' ? 'discount' : 'popular')
   const [inStock, setInStock] = useState(false)
   const [priceBand, setPriceBand] = useState<string>('')   // PRICE_BANDS.id | ''
   const [gradeOpen, setGradeOpen] = useState(false)
@@ -82,11 +87,16 @@ export default function WholesaleCatalogPage() {
   const [megaOpen, setMegaOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
   // 네비 항목(베스트/신상품/마진/프리미엄)은 기존 sort/cat 필터를 재활용 — 새 상태 아님.
-  const [premiumView, setPremiumView] = useState(false)
+  const [premiumView, setPremiumView] = useState(mode === 'premium')
   // 🏷️ 2026-06-09 브랜드 전시관 — brandView(브랜드 그리드 모드) + selectedBrand(특정 브랜드 클릭 시 필터).
   //   selectedBrand 가 있으면 catalog 가 ?brand=<name> 으로 그 브랜드 상품만; 없으면 브랜드 그리드를 보여줌.
-  const [brandView, setBrandView] = useState(false)
+  const [brandView, setBrandView] = useState(mode === 'brands')
   const [selectedBrand, setSelectedBrand] = useState<string>('')
+  // 🏬 컬렉션 모드 = 전용 페이지(홈 레일/배너/히어로 숨김, 해당 컬렉션 그리드만).
+  const collectionMode = !!mode
+  const COLLECTION_TITLE: Record<WholesaleCollectionMode, string> = {
+    best: '월간 베스트', new: '신상품', margin: '판매마진 높은 상품', premium: '프리미엄 전용관', brands: '브랜드 전시관',
+  }
 
   // 검색 디바운스(300ms) — 타이핑마다 fetch 폭주 방지. form submit 도 즉시 커밋.
   useEffect(() => {
@@ -390,9 +400,9 @@ export default function WholesaleCatalogPage() {
     <div className="min-h-screen" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
       <SEO
         domain="wholesale"
-        title="유통스타트 도매몰 — 제조사 직거래 도매가 사입 B2B 도매사이트"
+        title={collectionMode && mode ? `${COLLECTION_TITLE[mode]} — 유통스타트 도매몰` : '유통스타트 도매몰 — 제조사 직거래 도매가 사입 B2B 도매사이트'}
         description="검증된 제조사 상품을 도매가로 사입하는 B2B 도매사이트. 식품·생활·뷰티 등 카테고리별 도매 상품, 무재고 위탁판매·대량 사입·OEM/ODM까지 유통스타트에서."
-        url="/wholesale"
+        url={collectionMode && mode ? `/wholesale/${mode}` : '/wholesale'}
         jsonLd={catalogJsonLd}
       />
 
@@ -427,32 +437,42 @@ export default function WholesaleCatalogPage() {
       />
 
       <main className="ur-content-wide px-5 lg:px-8">
-        {/* 🏭 Wave 2: 메인 배너 캐러셀 (어드민 관리, 배너 없으면 자동 숨김) */}
-        <div className="pt-4">
-          <WholesaleBannerCarousel />
-        </div>
+        {/* 🏬 컬렉션 모드: 전용 페이지 타이틀 (홈은 배너/히어로/레일 노출). */}
+        {collectionMode ? (
+          <div className="pt-5 pb-1 flex items-center gap-2.5">
+            <button onClick={() => navigate('/wholesale')} aria-label="도매몰 홈" className="inline-flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-bold" style={{ background: WT.fill, color: WT.ink2 }}>
+              <ChevronRight className="w-4 h-4 rotate-180" /> 홈
+            </button>
+            <h1 className="text-[19px] lg:text-[22px] font-extrabold" style={{ color: WT.ink }}>{mode ? COLLECTION_TITLE[mode] : ''}</h1>
+          </div>
+        ) : (<>
+          {/* 🏭 Wave 2: 메인 배너 캐러셀 (어드민 관리, 배너 없으면 자동 숨김) */}
+          <div className="pt-4">
+            <WholesaleBannerCarousel />
+          </div>
 
-        {/* 히어로 + 대시보드 + OEM */}
-        <HeroSection
-          loggedIn={loggedIn}
-          userSession={userSession}
-          grade={grade}
-          me={me}
-          monthSpend={monthSpend}
-          orderCount={orderCount}
-          depositBalance={Number(depositQ.data?.balance) || 0}
-          setGradeOpen={setGradeOpen}
-        />
+          {/* 히어로 + 대시보드 + OEM */}
+          <HeroSection
+            loggedIn={loggedIn}
+            userSession={userSession}
+            grade={grade}
+            me={me}
+            monthSpend={monthSpend}
+            orderCount={orderCount}
+            depositBalance={Number(depositQ.data?.balance) || 0}
+            setGradeOpen={setGradeOpen}
+          />
 
-        {/* 빠른 재주문 / 전용 공급 / 베스트 / 신규 입고 레일 */}
-        <HomeRails
-          recent={recent}
-          home={home}
-          reorder={reorder}
-          openDetail={openDetail}
-          addToCart={addToCart}
-          prefetchProduct={prefetchProduct}
-        />
+          {/* 빠른 재주문 / 전용 공급 / 베스트 / 신규 입고 레일 */}
+          <HomeRails
+            recent={recent}
+            home={home}
+            reorder={reorder}
+            openDetail={openDetail}
+            addToCart={addToCart}
+            prefetchProduct={prefetchProduct}
+          />
+        </>)}
 
         {/* 🏭 Wave 2: 프리미엄 전용관 헤더 + 🏷️ 브랜드 전시관 그리드 */}
         <ShowcaseBanners
@@ -529,10 +549,12 @@ export default function WholesaleCatalogPage() {
           </div>
         </section>
         )}
-        {/* 🏭 2026-06-13 (사용자 요청): 서비스 정체성 히어로 — 회사정보(푸터) 바로 위에 배치. */}
-        <div className="pt-2 pb-8">
-          <BrandHero loggedIn={loggedIn} />
-        </div>
+        {/* 🏭 2026-06-13 (사용자 요청): 서비스 정체성 히어로 — 회사정보(푸터) 바로 위에 배치(홈만). */}
+        {!collectionMode && (
+          <div className="pt-2 pb-8">
+            <BrandHero loggedIn={loggedIn} />
+          </div>
+        )}
       </main>
 
       <WholesaleFooter />

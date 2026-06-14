@@ -521,7 +521,14 @@ function AppContent() {
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
-            <Route path="/wholesale" element={<WholesaleCatalogPage />} />
+            <Route path="/wholesale" element={<WholesaleCatalogPage key="home" />} />
+            {/* 🏬 2026-06-14 (사용자 요청): 컬렉션 전용 페이지 — 같은 컴포넌트 mode 재사용.
+                key 로 컬렉션 전환 시 강제 리마운트(초기 정렬/필터 재적용). */}
+            <Route path="/wholesale/best" element={<WholesaleCatalogPage key="best" mode="best" />} />
+            <Route path="/wholesale/new" element={<WholesaleCatalogPage key="new" mode="new" />} />
+            <Route path="/wholesale/margin" element={<WholesaleCatalogPage key="margin" mode="margin" />} />
+            <Route path="/wholesale/premium" element={<WholesaleCatalogPage key="premium" mode="premium" />} />
+            <Route path="/wholesale/brands" element={<WholesaleCatalogPage key="brands" mode="brands" />} />
             <Route path="/wholesale/dashboard" element={<WholesaleDashboardPage />} />
             <Route path="/wholesale/deposits" element={<WholesaleDepositPage />} />
             <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
