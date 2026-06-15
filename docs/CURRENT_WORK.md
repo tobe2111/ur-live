@@ -21,6 +21,15 @@
 - **후속 조정(사용자 요청 2건)**: ① 중복 기본 배너 placeholder 제거 — `WholesaleBannerCarousel` 0건 시 `null`(다크 히어로 2개 중복 해소, 트러스트 히어로가 메인 배너). 어드민 등록 배너 있으면 캐러셀 표시(기능 보존). ② 히어로·제조사 CTA 배경에 **시안 창고 사진 복원**(`WHOLESALE_HERO_IMG`, Unsplash, `onError`→다크 `#15171C` 폴백·CSP img-src https: 허용) — 앞서 '실데이터 원칙'으로 뺐던 '사진 미도입'을 사용자 "내가 준 파일대로" 요청으로 번복.
 - **시안 큐레이션 추가(사용자 "똑같이" 요청)**: ① 카테고리 타일 8종(`CuratedSections.tsx CategoryTiles` — 클릭 시 cat 필터) ② "실시간 베스트" 탭+순위(1~5) 5열 그리드(`BestGrid`, `ProductCard` 에 `rank` 배지 prop 추가) ③ 메인 그리드 5열化 + 비로그인 기본 랜딩(`cleanHome`)에선 필터 사이드바/컨트롤 숨겨 풀폭(시안처럼) — 카테고리/검색 선택 시 노출. 베스트/신규 레일 → BestGrid 로 대체(HomeRails 는 재주문/전용공급만), BrandHero 제거(시안 미포함), 기본 라벨 "오늘의 도매 특가".
 - **후속 백로그**: 상품상세/장바구니/결제/가입/마이/제조사입점 화면을 같은 시안 톤으로(chat "다음 단계"). 히어로 사진은 추후 자체 호스팅(R2) 검토(현재 Unsplash 핫링크).
+
+## ✅ 2026-06-15 — 링크샵 적립 마감재 2종 (남은 비이상 — 멱등 UNIQUE + 핀별 순클릭/로그정리)
+**배경**: 위 4종 후 "더 이상적으로?" 재질문 → 남은 비이상 4가지 제시, 대표가 전부 선택. 조사 결과 ②hold 전체 스트림은 **대부분 이미 성숙(hold) 보유**(influencer_attributions T+7 payout·supplier matureSettlements·agency 월정산) → 즉시-잔액 적립 + MAX(0) clawback 누수가 남은 건 `referral_commissions`(추천 트리, 별도 출금 서브시스템)뿐. stays 인플 적립은 `payment.routes`(잠금) 직접 INSERT 라 잔액 미적립(누수 아님). 따라서 이번 turn 은 안전·명확한 ①③ 구현, ② referral_commissions hold·④ 유저 현금화 정책은 대표 결정 후 별도 진행.
+- **① 멱등 UNIQUE** (`affiliate-credit.ts`/`affiliate.routes.ts`/`repair-schema`): SELECT-후-INSERT(race) → `affiliate_earnings(referrer_id, order_id)` partial UNIQUE + `INSERT OR IGNORE`(changes===0=멱등 DUPLICATE, 잔액/알림 없음). 머니룰 #3 정합. 기존 중복 행 있으면 인덱스 생성 실패→repair 리포트(타 _pair 인덱스 컨벤션).
+- **③ 핀별 순클릭 + 로그 retention** (`curator.routes`/`scheduled-cleanup`): `/me/pins/stats` 에 핀별 unique_clicks(ip+ua+일자 dedup) + purchases/earnings 환불 제외. `pin_click_logs` 180일 경과 삭제(chunk 5000, 집계 click_count 무영향).
+- **② referral_commissions T+7 hold 확장** (대표 "확장 진행") — 추천 트리(친구추천) 적립도 즉시 'granted'+잔액 → **'pending'(보류, 잔액 미반영)**. ⚠️ status CHECK 가 'holding' 신규값 금지 → 'pending' 재사용(=UI '대기', affiliate hold 와 동의어). 신규 cron `matureReferralCommissions`(`referral-tree.routes`, scheduled.ts `referral-mature`)이 T+7(`affiliate_hold_days` 공유)+미환불 주문분을 pending→granted CAS 후 `adjustUserPoints` 적립(claim-before-credit). 환불 4경로(order-refund/returns/order.routes×2) pending→withdrawn 플립(잔액 회수 X). webhook.routes(잠금)는 미수정 — cron 주문-status 가드가 머니 누수 차단. grant 의 `pointCreditUpsertStatement`/`recordPointTransaction` 즉시기록 제거 → maturity 로 이연. 모든 소비처(seller-analytics/ledger/withdrawal)는 pending=대기로 정합(출금 granted만).
+- **④ 유저 현금화 정책** = 대표 **A) 현행 유지(딜만)** 선택 → 코드 변경 없음.
+- 검증: tsc 0 · status-constraint 0 · 전체 build.
+
 ## ✅ 2026-06-15 — 링크샵 추천 적립 "이상적 구조" 4종 (대표 승인 — 진단/라인별/T+7/순클릭 전부)
 **배경**: 대표 질문 "링크샵 담기 시 각 유저 성과로 잘 찍히나? 쿠팡파트너스처럼?" → 감사 결과 기여모델(라스트클릭+24h쿠키)·적립무결성(멱등·환불역전·자기추천/IP차단)은 이미 이상적이나, **3가지가 비이상적**: (a) 멀티상품 주문 첫상품 기준 적립 (b) 확정 유예 없어 buy→사용/출금→환불 시 `MAX(0,…)` clamp 누수 (c) raw 클릭(새로고침/봇 포함). 대표가 `AskUserQuestion` 에서 4개 전부 선택(진단부터).
 - **① 진단 엔드포인트** (read-only, requireAdmin) `GET /api/curator/admin/affiliate-diagnostic` — status분포/멀티상품 적립규모/환불-후-사용 프록시(환불적립+잔액0)/30일 클릭 부풀림/top큐레이터. 코드변경 전 ground truth.

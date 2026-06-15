@@ -177,13 +177,18 @@ export async function creditAffiliateForOrder(
     //   환불창(T+7) 경과 후 matureAffiliateEarnings cron 이 holding→granted 전환 + 그때 잔액 적립.
     //   이유: 즉시 잔액 적립 시 buy→출금/사용→환불 어뷰즈에서 MAX(0,...) clamp 로 회수 불가(누수).
     //   hold 동안은 출금 가용액 SUM 에서도 제외(NOT IN ('refunded','holding')) → 출금 불가.
-    await DB.prepare(`
-      INSERT INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission, status)
+    // 🔐 멱등 = UNIQUE(referrer_id, order_id) + INSERT OR IGNORE (머니룰 #3) — 위 SELECT 는 빠른 경로,
+    //   이 가드가 동시요청 race 를 원자적으로 차단(changes===0 = 이미 적립됨 → 잔액/알림 없이 멱등 반환).
+    const ins = await DB.prepare(`
+      INSERT OR IGNORE INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'holding')
     `).bind(
       String(referrerId), order.id, storeProductId, storeProductName,
       String(order.user_id), buyerIp || null, orderAmount, commission,
     ).run()
+    if (((ins as { meta?: { changes?: number } })?.meta?.changes ?? 0) === 0) {
+      return { ok: false, code: 'DUPLICATE' }
+    }
 
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)

@@ -617,6 +617,11 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
           ).bind(co.commission_amount, co.beneficiary_id).run().catch(swallow('order:commission-revoke-points'));
         }
       }
+      // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending=보류, 잔액 미적립) 추천 커미션은 잔액 회수 없이 상태만 닫음 —
+      //   취소 주문이 '대기' 잔여로 남지 않게(성숙 cron 의 주문-status 가드와 이중 안전망, balance 변경 없음).
+      await c.env.DB.prepare(
+        "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = ? WHERE order_id = ? AND status = 'pending'"
+      ).bind(revokeTs, body.order_id).run().catch(swallow('order:commission-pending-close'));
     } catch (e) {
       console.warn('[ORDERS] Commission reversal (refund) skipped:', e);
     }
@@ -796,6 +801,10 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
             });
           }
         }
+        // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending) 추천 커미션은 잔액 회수 없이 상태만 닫음.
+        await c.env.DB.prepare(
+          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'pending'"
+        ).bind(orderId).run().catch(swallow('order:commission-pending-close-cancel'));
       } catch (e) {
         console.error('[ORDERS] Commission reversal (cancel paid) error:', e);
       }
