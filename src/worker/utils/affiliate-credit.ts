@@ -50,6 +50,72 @@ export type AffiliateCreditResult =
   | { ok: true; commission: number }
   | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'ERROR' }
 
+interface CommissionBreakdown {
+  commission: number
+  primaryProductId: number | null
+  primaryProductName: string | null
+  eligibleLines: number
+}
+
+/**
+ * 🧾 주문 라인별 추천 커미션 계산 (멀티상품 정확 귀속).
+ *   order_items 의 referral_enabled 라인만 각 상품 비율로 적립액 합산 (배송비/비대상 상품 제외).
+ *   기존엔 첫 상품 비율 × 주문총액(배송비 포함) 이라 멀티상품 주문에서 과/미적립.
+ *   order_items 부재(레거시/직접결제) 시 fallbackProductId 비율 × 주문총액으로 fallback.
+ *   반환 null = 적립 대상 라인 0 (REFERRAL_DISABLED).
+ */
+async function computeOrderCommission(
+  DB: D1Database,
+  orderId: number,
+  orderAmount: number,
+  fallbackProductId: number | null | undefined,
+  fallbackProductName: string | null | undefined,
+): Promise<CommissionBreakdown | null> {
+  let lines: { product_id: number | null; product_name: string | null; line_amount: number }[] = []
+  try {
+    const r = await DB.prepare(
+      `SELECT product_id, product_name,
+              COALESCE(subtotal, price * quantity, price, 0) AS line_amount
+       FROM order_items WHERE order_id = ?`,
+    ).bind(orderId).all<{ product_id: number | null; product_name: string | null; line_amount: number }>()
+    lines = r.results ?? []
+  } catch { /* order_items 없음 — fallback */ }
+
+  if (lines.length > 0) {
+    let commission = 0
+    let eligibleLines = 0
+    let primaryProductId: number | null = null
+    let primaryProductName: string | null = null
+    for (const ln of lines) {
+      const pid = ln.product_id != null ? Number(ln.product_id) : null
+      const rate = await resolveCommissionRate(DB, pid)
+      if (rate == null) continue          // 이 상품은 추천 비대상 — skip
+      const amt = Number(ln.line_amount) || 0
+      if (amt <= 0) continue
+      commission += Math.round(amt * rate)
+      eligibleLines++
+      if (primaryProductId == null) {
+        primaryProductId = pid
+        primaryProductName = ln.product_name ?? null
+      }
+    }
+    if (eligibleLines === 0 || commission <= 0) return null
+    return { commission, primaryProductId, primaryProductName, eligibleLines }
+  }
+
+  // Fallback — order_items 없음: 기존 단일 상품 비율 × 주문총액
+  const rate = await resolveCommissionRate(DB, fallbackProductId != null ? Number(fallbackProductId) : null)
+  if (rate == null) return null
+  const commission = Math.round((Number(orderAmount) || 0) * rate)
+  if (commission <= 0) return null
+  return {
+    commission,
+    primaryProductId: fallbackProductId != null ? Number(fallbackProductId) : null,
+    primaryProductName: fallbackProductName ?? null,
+    eligibleLines: 1,
+  }
+}
+
 export async function creditAffiliateForOrder(
   DB: D1Database,
   env: unknown,
@@ -100,15 +166,18 @@ export async function creditAffiliateForOrder(
     }
 
     const orderAmount = Number(order.total_amount) || 0
-    const rate = await resolveCommissionRate(DB, productId ? Number(productId) : null)
-    if (rate == null) return { ok: false, code: 'REFERRAL_DISABLED' }
-    const commission = Math.round(orderAmount * rate)
+    // 🧾 라인별 귀속 (멀티상품 정확) — order_items 의 referral_enabled 라인만 각 비율로 합산.
+    const breakdown = await computeOrderCommission(DB, Number(order.id), orderAmount, productId, productName)
+    if (!breakdown) return { ok: false, code: 'REFERRAL_DISABLED' }
+    const commission = breakdown.commission
+    const storeProductId = breakdown.primaryProductId
+    const storeProductName = breakdown.primaryProductName
 
     await DB.prepare(`
       INSERT INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      String(referrerId), order.id, productId || null, productName || null,
+      String(referrerId), order.id, storeProductId, storeProductName,
       String(order.user_id), buyerIp || null, orderAmount, commission,
     ).run()
 
@@ -118,7 +187,7 @@ export async function creditAffiliateForOrder(
       userId: String(referrerId),
       delta: commission,
       type: 'affiliate_commission',
-      description: productName ? `핀 추천 적립 (${String(productName).slice(0, 80)})` : '핀 추천 적립',
+      description: storeProductName ? `핀 추천 적립 (${String(storeProductName).slice(0, 80)})` : '핀 추천 적립',
       orderId: order.id,
     })
 
