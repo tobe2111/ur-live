@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-15 — 옵션1 1단계: 크리에이터=유저 분리 (대표 승인 "가장 이상적으로") — `88f39b77`
+**결정**: 업주(공급) vs 인플루언서(홍보) 충돌 근본 해소. 인플루언서는 더 이상 "셀러"가 아니라 **로그인한 유저=크리에이터**. 셀러 대시보드 = 업주(매장) 전용. 크리에이터 = 메인 앱 내 콘솔(별도 로그인 X). 모델 = "크리에이터=순수 홍보자"(자기 상품 없음, 남 공구만 홍보; 자기 상품 팔면 업주 가입).
+- **가입 분리** `JoinChoicePage`: 2갈래 — 🏪 매장 운영자(→/seller/register/supplier 가입) / 🎤 크리에이터·이용자(→/login, 별도 가입 X). 분홍 액센트 제거.
+- **influencer 셀러등록 은퇴** `SellerRegisterBusinessPage`: 신규 가입 폼 대신 "크리에이터는 가입 불필요 — 로그인만" 안내 화면(기존 pending/active 셀러는 위에서 분기되어 무영향, 레거시 폼은 unreachable 보존).
+- **크리에이터 콘솔** `CuratorEarningsPage`→ 헤더 '🎤 크리에이터 콘솔' + 상단 빠른진입(내 링크샵 `/u/:handle`·공구 호스팅 `/host`). 기존 수익/클릭·구매 분석/인기핀/일별차트/영입 매장/출금 전부 유지. **신규 URL `/creator`**(App.tsx, 메인 앱 내·requireUser), `/u/me/earnings` 하위호환 alias.
+- **진입점**: 링크샵 owner 배너 "수익 보기"→"크리에이터 콘솔"(/creator), 마이 `CuratorEarningsCard`→/creator+분홍제거.
+- 검증: tsc 0 · vitest 2081 green · 전체 build OK.
+- **남은 단계(Phase 2)**: 팔로워(`/seller/followers`)·브랜드 메시지(`/seller/alimtalk`)는 셀러 스코프 백엔드라 user 스코프로 이전 필요 → 콘솔에 흡수. 기존 seller_type='influencer' 계정 옵트인 이전. 쿠폰/프로모코드는 크리에이터 미부여(결정). **사용자 직접**: Cloudflare Scrape Shield "Email Address Obfuscation" OFF.
+
 ## ✅ 2026-06-14 — 대표 신고 대량 배치 (사용자 "바로 가장 이상적으로 모두 진행")
 **크로스커팅 근본수정 (앞 세션 turn):**
 - 🔴 **모든 대시보드 자동 로그아웃 근본수정** (`a0519ed0`): agency 만 refresh token/`/refresh` endpoint 부재 → access(30일) 만료 시 복구불가 강제로그아웃(Sentry "Agency 401: Token expired"). `POST /api/agency/refresh` 신설 + 이메일/카카오 로그인 refresh 발급·저장(login page/KakaoCallback/transfer cookie) + api.ts 의 agency→/admin/refresh 오라우팅 버그 수정.
