@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-15 — 도매몰 `/wholesale` 홈 정리 (사용자 신고 "난잡" — 전수조사 1차)
+**배경**: 사용자가 `/wholesale` 카탈로그 홈이 난잡하다고 신고. 코드 해부 결과 로그인 사입자 기준 헤더 3단 + 본문 12~15블록(배너·대시보드·OEM·레일4·BulkOrder패널·그리드·BrandHero)이 적층. 근본원인 = *비로그인 마케팅 페이지*와 *로그인 빠른 카탈로그*를 한 화면에 전부 노출. 사용자 승인(4개 정리 전부 + 지금 구현).
+- **로그인/비로그인 홈 분기 + 레일 4→2** (`HomeRails.tsx`): 베스트셀러·신규입고 레일을 `!loggedIn` 게이트 → 비로그인 방문자 발견용에만. 로그인 사입자는 개인화 레일(빠른 재주문·전용 공급)만 + 상단 네비 전용 페이지(/wholesale/best·/new)로 위임(중복 제거).
+- **BrandHero 로그인 시 숨김** (`WholesaleCatalogPage.tsx`): 서비스 정체성 마케팅 카피는 `!loggedIn` 전환용에만(반복 노출 제거).
+- **대량주문 엑셀 패널 접기**: 그리드 한가운데 상시 펼침 → 토글 버튼(`bulkOpen`, 기본 접힘). 파워유저 기능이 기본 둘러보기를 점령하던 혼잡 제거.
+- **헤더 3단→2단(데스크톱)** (`CatalogHeader.tsx`): 유틸 링크(마이/장바구니/제조사/로그인/로그아웃)를 `UtilLinks` 컴포넌트로 추출, 데스크톱은 별도 유틸바 줄 제거하고 카테고리 네비 우측 빈 공간으로(`justify-between`), 모바일은 기존 유틸바 유지(`lg:hidden ↔ hidden lg:flex` — 중복 0).
+- **'BEST PRODUCT'(영문) → '전체 상품'**: 그리드 기본 제목 정리(베스트는 네비/전용페이지로 일원화).
+- **잠금 보존**: SSR consume(`__SSR_INITIAL_WHOLESALE__`)·placeholderData·prefetch·lazy·memo·기본 catalog 요청 byte-identity 전부 무변경. tsc 0 · client build OK · 테마검사 통과.
+- **전수조사 잔여(후속 배치 백로그)**: 어드민 도매 nav 16항목 IA 비대(통합 허브 있음에도 이중 진입점)·패턴 이원화(table vs card, window.prompt vs modal, 컨테이너 폭 3종) / 제조사 주문화면 2개 중복(OrdersTab vs SupplierWholesaleOrdersPage)·정산 탭 5섹션 과밀·CatalogTab 버튼 6개+초록 이질색 / BulkPriceModal↔PriceChangeModal 중복·AddProductModal 필드17 과밀. (감사 보고서 확보 — 우선순위 청취 후 진행.)
+
 ## ✅ 2026-06-14 — 도매몰 컬렉션 페이지 분리 (사용자 요청)
 - 카탈로그 단일 페이지의 5개 뷰(브랜드 전시관·월간 베스트·신상품·판매마진·프리미엄 전용관)를 **전용 라우트로 분리** — `WholesaleCatalogPage` 에 `mode` prop 추가, 같은 데이터/카드 로직 100% 재사용(중복 0).
 - 라우트: `/wholesale/best|new|margin|premium|brands` (App.tsx, `key` 로 컬렉션 전환 시 강제 리마운트해 초기 정렬/필터 재적용). 매핑: best→sort=popular, new→newest, margin→discount, premium→premium=1, brands→브랜드 그리드.

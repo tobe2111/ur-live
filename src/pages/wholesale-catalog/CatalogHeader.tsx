@@ -6,6 +6,63 @@ import { WT, won } from '../wholesale/wholesale-theme'
 import type { CatOpt } from './types'
 import type { CatalogSort } from './catalog-controls'
 
+// 🧹 2026-06-15 (사용자 요청 — 홈 정리): 유틸 링크(마이/장바구니/제조사/로그인/로그아웃) 추출.
+//   데스크톱은 별도 유틸바 줄을 없애고 카테고리 네비 우측 빈 공간으로(3단→2단), 모바일은 기존 유틸바 유지.
+//   양쪽에서 같은 컴포넌트를 렌더 — 코드 중복 없이 위치만 분기(lg:hidden ↔ hidden lg:flex).
+function UtilLinks({ loggedIn, supplierToken, cartCount, goLogin, logout }: {
+  loggedIn: boolean
+  supplierToken: string | null
+  cartCount: number
+  goLogin: () => void
+  logout: () => void
+}) {
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const Dot = () => <span style={{ color: WT.line }}>·</span>
+  if (loggedIn) {
+    return (
+      <>
+        <button onClick={() => navigate('/wholesale/dashboard')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>{t('wholesale.util.my', { defaultValue: '마이' })}</button>
+        <Dot />
+        <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
+          {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cartCount > 0 ? ` (${cartCount})` : ''}
+        </button>
+        {supplierToken && (
+          <>
+            <Dot />
+            <button onClick={() => navigate('/supplier')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사</button>
+          </>
+        )}
+        <Dot />
+        <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
+      </>
+    )
+  }
+  if (supplierToken) {
+    return (
+      <>
+        <button onClick={() => navigate('/supplier')} className="inline-flex items-center gap-1 font-bold" style={{ color: WT.ink }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사 대시보드</button>
+        <Dot />
+        <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
+      </>
+    )
+  }
+  return (
+    <>
+      <button onClick={() => navigate('/supplier/login')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조(브랜드)회원(공급사) 로그인"><Factory className="w-3.5 h-3.5" /> 제조회원</button>
+      <span className="hidden sm:inline" style={{ color: WT.line }}>·</span>
+      <button onClick={goLogin} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}><LogIn className="w-3.5 h-3.5" /> {t('wholesale.util.login', { defaultValue: '로그인' })}</button>
+      <Dot />
+      {/* 🚪 2026-06-12 (사용자 결정): 가입은 역할 선택 관문(/wholesale/start) 경유 — 제조사의 유통 폼 오진입 차단. */}
+      <button onClick={() => navigate('/wholesale/start')} className="inline-flex items-center font-bold" style={{ color: WT.brand }}>{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
+      <Dot />
+      <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
+        {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cartCount > 0 ? ` (${cartCount})` : ''}
+      </button>
+    </>
+  )
+}
+
 // 🏭 Wave 2 헤더 — Sellpie형: 유틸바 + (로고·중앙검색·3아이콘) + 카테고리 네비.
 //   WholesaleCatalogPage 분해 (순수 추출, 동작 변화 0) — 상태/핸들러는 부모 소유, props 로 전달.
 export default function CatalogHeader({
@@ -51,45 +108,10 @@ export default function CatalogHeader({
   }
   return (
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
-        {/* 1. 유틸 바 (우측 정렬, 작은 텍스트) */}
-        <div style={{ borderBottom: '1px solid ' + WT.line }}>
+        {/* 1. 유틸 바 (모바일 전용 — 데스크톱은 카테고리 네비 우측으로 이동해 3단→2단 슬림화) */}
+        <div className="lg:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
           <div className="ur-content-wide px-5 lg:px-8 h-8 flex items-center justify-end gap-3 text-[12px]" style={{ color: WT.ink3 }}>
-            {loggedIn ? (
-              <>
-                <button onClick={() => navigate('/wholesale/dashboard')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>{t('wholesale.util.my', { defaultValue: '마이' })}</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
-                  {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cartCount > 0 ? ` (${cartCount})` : ''}
-                </button>
-                {supplierToken && (
-                  <>
-                    <span style={{ color: WT.line }}>·</span>
-                    <button onClick={() => navigate('/supplier')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사</button>
-                  </>
-                )}
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
-              </>
-            ) : supplierToken ? (
-              <>
-                <button onClick={() => navigate('/supplier')} className="inline-flex items-center gap-1 font-bold" style={{ color: WT.ink }} title="제조사 대시보드로 이동"><Factory className="w-3.5 h-3.5" /> 제조사 대시보드</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={logout} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink3 }}><LogOut className="w-3.5 h-3.5" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => navigate('/supplier/login')} className="hidden sm:inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }} title="제조(브랜드)회원(공급사) 로그인"><Factory className="w-3.5 h-3.5" /> 제조회원</button>
-                <span className="hidden sm:inline" style={{ color: WT.line }}>·</span>
-                <button onClick={goLogin} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}><LogIn className="w-3.5 h-3.5" /> {t('wholesale.util.login', { defaultValue: '로그인' })}</button>
-                <span style={{ color: WT.line }}>·</span>
-                {/* 🚪 2026-06-12 (사용자 결정): 가입은 역할 선택 관문(/wholesale/start) 경유 — 제조사의 유통 폼 오진입 차단. */}
-                <button onClick={() => navigate('/wholesale/start')} className="inline-flex items-center font-bold" style={{ color: WT.brand }}>{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
-                <span style={{ color: WT.line }}>·</span>
-                <button onClick={() => navigate('/wholesale/cart')} className="inline-flex items-center gap-1 font-medium" style={{ color: WT.ink2 }}>
-                  {t('wholesale.util.cart', { defaultValue: '장바구니' })}{cartCount > 0 ? ` (${cartCount})` : ''}
-                </button>
-              </>
-            )}
+            <UtilLinks loggedIn={loggedIn} supplierToken={supplierToken} cartCount={cartCount} goLogin={goLogin} logout={logout} />
           </div>
         </div>
 
@@ -159,7 +181,8 @@ export default function CatalogHeader({
 
         {/* 3. 카테고리 네비 바 (가로 풀바) — 기존 cat/sort 필터 재활용 (재스킨) */}
         <div style={{ borderTop: '1px solid ' + WT.line }}>
-          <div className="ur-content-wide px-5 lg:px-8 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="ur-content-wide px-5 lg:px-8 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {/* ≡ 전체카테고리 (레드 박스 → 메가메뉴) */}
             <button onClick={() => setMegaOpen(v => !v)} aria-expanded={megaOpen}
               className="shrink-0 inline-flex items-center gap-1.5 px-4 h-11 text-[14px] font-bold text-white"
@@ -196,6 +219,11 @@ export default function CatalogHeader({
               style={{ color: WT.ink2 }}>
               <Megaphone className="w-4 h-4" /> {t('wholesale.nav.board', { defaultValue: '공지·자료실' })}
             </button>
+            </div>
+            {/* 데스크톱 유틸 링크 — 별도 유틸바 줄을 없애고 네비 우측 빈 공간으로(3단→2단 슬림화). */}
+            <div className="hidden lg:flex items-center gap-3 shrink-0 text-[12px]" style={{ color: WT.ink3 }}>
+              <UtilLinks loggedIn={loggedIn} supplierToken={supplierToken} cartCount={cartCount} goLogin={goLogin} logout={logout} />
+            </div>
           </div>
           {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}
           {megaOpen && (

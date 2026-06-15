@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, FileSpreadsheet } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -83,6 +83,9 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const [inStock, setInStock] = useState(false)
   const [priceBand, setPriceBand] = useState<string>('')   // PRICE_BANDS.id | ''
   const [gradeOpen, setGradeOpen] = useState(false)
+  // 🧹 2026-06-15 (사용자 요청 — 홈 정리): 대량주문 엑셀 패널은 상시 펼침 → 토글(기본 접힘).
+  //   파워유저 기능이 기본 둘러보기 그리드를 점령하던 혼잡 제거.
+  const [bulkOpen, setBulkOpen] = useState(false)
   // 🏭 Wave 2 — Sellpie형 카테고리 네비 + 메가메뉴 + 제안/신고 모달 + 프리미엄 전용관.
   const [megaOpen, setMegaOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
@@ -471,6 +474,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             openDetail={openDetail}
             addToCart={addToCart}
             prefetchProduct={prefetchProduct}
+            loggedIn={loggedIn}
           />
         </>)}
 
@@ -500,7 +504,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             </div>
           )}
           <SectionHead
-            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? 'BEST PRODUCT' : (cats.find(c => c.id === cat)?.label || '상품')))}
+            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? t('wholesale.allProducts', { defaultValue: '전체 상품' }) : (cats.find(c => c.id === cat)?.label || '상품')))}
             sub={comma(items.length) + '개'}
           />
           <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
@@ -519,7 +523,21 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             setSearch={setSearch}
             setCommittedSearch={setCommittedSearch}
           />
-          {loggedIn && <BulkOrderPanel token={token} />}
+          {loggedIn && (
+            <div className="mb-4">
+              <button
+                onClick={() => setBulkOpen(v => !v)}
+                aria-expanded={bulkOpen}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 h-9 text-[13px] font-bold transition-colors"
+                style={bulkOpen ? { background: WT.ink, color: '#fff' } : { background: WT.fill, color: WT.ink2 }}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                {t('wholesale.bulk.toggle', { defaultValue: '대량주문 (엑셀)' })}
+                <ChevronRight className={'w-3.5 h-3.5 transition-transform ' + (bulkOpen ? 'rotate-90' : '')} />
+              </button>
+              {bulkOpen && <div className="mt-3"><BulkOrderPanel token={token} /></div>}
+            </div>
+          )}
 
           <div className="lg:flex lg:gap-7">
             <Sidebar cat={cat} setCat={setCat} counts={catCounts} cats={cats} />
@@ -550,7 +568,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
         </section>
         )}
         {/* 🏭 2026-06-13 (사용자 요청): 서비스 정체성 히어로 — 회사정보(푸터) 바로 위에 배치(홈만). */}
-        {!collectionMode && (
+        {/* 🧹 2026-06-15 (사용자 요청 — 홈 정리): 마케팅 카피는 비로그인 방문자 전환용에만. 로그인 사입자에겐 숨김(반복 노출 제거). */}
+        {!collectionMode && !loggedIn && (
           <div className="pt-2 pb-8">
             <BrandHero loggedIn={loggedIn} />
           </div>
