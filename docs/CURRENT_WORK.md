@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-15 — 링크샵 적립 마감재 2종 (남은 비이상 — 멱등 UNIQUE + 핀별 순클릭/로그정리)
+**배경**: 위 4종 후 "더 이상적으로?" 재질문 → 남은 비이상 4가지 제시, 대표가 전부 선택. 조사 결과 ②hold 전체 스트림은 **대부분 이미 성숙(hold) 보유**(influencer_attributions T+7 payout·supplier matureSettlements·agency 월정산) → 즉시-잔액 적립 + MAX(0) clawback 누수가 남은 건 `referral_commissions`(추천 트리, 별도 출금 서브시스템)뿐. stays 인플 적립은 `payment.routes`(잠금) 직접 INSERT 라 잔액 미적립(누수 아님). 따라서 이번 turn 은 안전·명확한 ①③ 구현, ② referral_commissions hold·④ 유저 현금화 정책은 대표 결정 후 별도 진행.
+- **① 멱등 UNIQUE** (`affiliate-credit.ts`/`affiliate.routes.ts`/`repair-schema`): SELECT-후-INSERT(race) → `affiliate_earnings(referrer_id, order_id)` partial UNIQUE + `INSERT OR IGNORE`(changes===0=멱등 DUPLICATE, 잔액/알림 없음). 머니룰 #3 정합. 기존 중복 행 있으면 인덱스 생성 실패→repair 리포트(타 _pair 인덱스 컨벤션).
+- **③ 핀별 순클릭 + 로그 retention** (`curator.routes`/`scheduled-cleanup`): `/me/pins/stats` 에 핀별 unique_clicks(ip+ua+일자 dedup) + purchases/earnings 환불 제외. `pin_click_logs` 180일 경과 삭제(chunk 5000, 집계 click_count 무영향).
+- 검증: tsc 0 · 전체 build. **남은 결정대기**: referral_commissions 에 동일 T+7 hold 확장(별도 서브시스템·신중), 일반 유저 성과 현금화(원천징수/세금 정책 — 대표 판단 필요).
+
 ## ✅ 2026-06-15 — 링크샵 추천 적립 "이상적 구조" 4종 (대표 승인 — 진단/라인별/T+7/순클릭 전부)
 **배경**: 대표 질문 "링크샵 담기 시 각 유저 성과로 잘 찍히나? 쿠팡파트너스처럼?" → 감사 결과 기여모델(라스트클릭+24h쿠키)·적립무결성(멱등·환불역전·자기추천/IP차단)은 이미 이상적이나, **3가지가 비이상적**: (a) 멀티상품 주문 첫상품 기준 적립 (b) 확정 유예 없어 buy→사용/출금→환불 시 `MAX(0,…)` clamp 누수 (c) raw 클릭(새로고침/봇 포함). 대표가 `AskUserQuestion` 에서 4개 전부 선택(진단부터).
 - **① 진단 엔드포인트** (read-only, requireAdmin) `GET /api/curator/admin/affiliate-diagnostic` — status분포/멀티상품 적립규모/환불-후-사용 프록시(환불적립+잔액0)/30일 클릭 부풀림/top큐레이터. 코드변경 전 ground truth.
