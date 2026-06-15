@@ -15,7 +15,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAuth, optionalAuth } from '../middleware/auth'
+import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { safeError } from '../utils/safe-error'
 import {
@@ -1190,6 +1190,95 @@ curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
     })
   } catch (err) {
     return safeError(c, err, '대행 등록 중 오류가 발생했습니다', '[curator:proxy-product]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/admin/affiliate-diagnostic  (requireAdmin)
+// 🔬 링크샵/추천 적립 ground-truth — 코드 변경 전 prod 실태 수집 (read-only).
+//   상태 분포 / 멀티상품 귀속 규모 / 환불-후-사용 누수 프록시 / 클릭 부풀림 / top 큐레이터.
+//   CLAUDE.md "진단 페이지 먼저" 룰 — 추측 대신 실데이터로 개선 우선순위 결정.
+// ============================================================
+curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+
+    const [byStatus, multiItem, refundProxy, clicks, topReferrers] = await Promise.all([
+      // 1) affiliate_earnings 상태 분포 (NULL = legacy 'pending' 으로 합산)
+      DB.prepare(
+        `SELECT COALESCE(NULLIF(status, ''), 'pending') AS status,
+                COUNT(*) AS cnt, COALESCE(SUM(commission), 0) AS total
+         FROM affiliate_earnings GROUP BY 1 ORDER BY 2 DESC`,
+      ).all<{ status: string; cnt: number; total: number }>().catch(() => ({ results: [] as any[] })),
+
+      // 2) 멀티상품 주문에 붙은 적립 규모 — 라인별 귀속 개선 영향도 측정
+      //    (order_items 가 2개 이상인 주문에 affiliate_earning 이 달린 건수/금액)
+      DB.prepare(
+        `SELECT COUNT(*) AS orders, COALESCE(SUM(ae.commission), 0) AS commission
+         FROM affiliate_earnings ae
+         WHERE ae.order_id IS NOT NULL
+           AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = ae.order_id) > 1`,
+      ).first<{ orders: number; commission: number }>().catch(() => null),
+
+      // 3) 환불-후-사용 누수 프록시 — 환불된 적립이 있는데 현재 딜 잔액이 0 인 큐레이터
+      //    (적립을 이미 쓰고 난 뒤 환불돼 MAX(0,...) clamp 로 회수 못 한 정황)
+      DB.prepare(
+        `SELECT COUNT(*) AS referrers,
+                COALESCE(SUM(ae.refunded_commission), 0) AS refunded_total
+         FROM (
+           SELECT referrer_id, SUM(commission) AS refunded_commission
+           FROM affiliate_earnings
+           WHERE COALESCE(status, 'pending') = 'refunded'
+           GROUP BY referrer_id
+         ) ae
+         LEFT JOIN user_points up ON up.user_id = ae.referrer_id
+         WHERE COALESCE(up.balance, 0) = 0`,
+      ).first<{ referrers: number; refunded_total: number }>().catch(() => null),
+
+      // 4) 클릭 부풀림 — 최근 30일 전체 클릭 vs 순클릭(ip+ua+일자 dedup)
+      DB.prepare(
+        `SELECT COUNT(*) AS total,
+                COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) AS uniq
+         FROM pin_click_logs WHERE created_at >= datetime('now', '-30 days')`,
+      ).first<{ total: number; uniq: number }>().catch(() => null),
+
+      // 5) top 큐레이터 (환불 제외 누적 적립)
+      DB.prepare(
+        `SELECT referrer_id, COUNT(*) AS earnings,
+                COALESCE(SUM(commission), 0) AS total
+         FROM affiliate_earnings
+         WHERE COALESCE(status, 'pending') != 'refunded'
+         GROUP BY referrer_id ORDER BY total DESC LIMIT 10`,
+      ).all<{ referrer_id: string; earnings: number; total: number }>().catch(() => ({ results: [] as any[] })),
+    ])
+
+    const totalClicks = clicks?.total ?? 0
+    const uniqClicks = clicks?.uniq ?? 0
+
+    return c.json({
+      success: true,
+      generated_at: new Date().toISOString(),
+      earnings_by_status: byStatus.results ?? [],
+      multi_item_attribution: {
+        orders: multiItem?.orders ?? 0,
+        commission: multiItem?.commission ?? 0,
+        note: '2개 이상 상품 주문에 붙은 적립 — 현재는 첫 상품 기준으로 전체 주문액에 적립됨(라인별 귀속 개선 대상)',
+      },
+      refund_after_spend_proxy: {
+        referrers: refundProxy?.referrers ?? 0,
+        refunded_total: refundProxy?.refunded_total ?? 0,
+        note: '환불 적립 보유 + 현재 딜 잔액 0 인 큐레이터 — 적립을 쓴 뒤 환불돼 회수 못 했을 가능성(T+7 hold 로 차단 대상)',
+      },
+      clicks_30d: {
+        total: totalClicks,
+        unique: uniqClicks,
+        inflation_pct: totalClicks > 0 ? Math.round((1 - uniqClicks / totalClicks) * 100) : 0,
+        note: '전체 클릭 대비 순클릭(ip+ua+일자) — 차이가 크면 새로고침/봇 부풀림',
+      },
+      top_referrers: topReferrers.results ?? [],
+    })
+  } catch (err) {
+    return safeError(c, err, '진단 조회 중 오류가 발생했습니다', '[curator:affiliate-diagnostic]')
   }
 })
 
