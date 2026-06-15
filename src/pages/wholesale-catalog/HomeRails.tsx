@@ -4,18 +4,16 @@ import { SectionHead, Rail, ReorderCard, MiniCard } from './cards'
 import type { CatalogItem, ReorderItem } from './types'
 import type { WholesaleHomeData } from '@/hooks/queries/useWholesale'
 
-// 빠른 재주문 / 전용 공급 / 베스트 / 신규 입고 레일 — WholesaleCatalogPage 분해.
-// 🧹 2026-06-15 (사용자 요청 — 홈 정리): 레일 4→2 축소. 로그인 사입자에겐 개인화 레일
-//   (빠른 재주문·전용 공급)만, 베스트/신규 입고는 비로그인 방문자 발견용으로만 노출
-//   (로그인 사입자는 상단 네비의 전용 페이지 /wholesale/best·/new 로 위임 — 중복 제거).
-export default function HomeRails({ recent, home, reorder, openDetail, addToCart, prefetchProduct, loggedIn }: {
+// 빠른 재주문 / 전용 공급 레일 — WholesaleCatalogPage 분해.
+// 🏭 2026-06-15 (시안 리디자인): 베스트/신규 입고 레일은 시안의 "실시간 베스트" 순위 그리드(BestGrid)로
+//   대체 — 여기엔 개인화 레일(빠른 재주문·전용 공급)만 남김(로그인 데이터 기반, 데이터 없으면 미노출).
+export default function HomeRails({ recent, home, reorder, openDetail, addToCart, prefetchProduct }: {
   recent: ReorderItem[]
   home: WholesaleHomeData | undefined
   reorder: (r: ReorderItem) => void
   openDetail: (p: CatalogItem) => void
   addToCart: (p: CatalogItem) => void
   prefetchProduct: (id: number) => void
-  loggedIn: boolean
 }) {
   const navigate = useNavigate()
   return (
@@ -40,20 +38,6 @@ export default function HomeRails({ recent, home, reorder, openDetail, addToCart
           </section>
         )}
 
-        {/* 베스트 / 신규 입고 — 비로그인 방문자 발견용 (로그인 사입자는 상단 네비 전용 페이지로 위임) */}
-        {!loggedIn && home && home.best.length > 0 && (
-          <section className="py-6">
-            <SectionHead title="베스트셀러" sub="많이 사입한 상품" />
-            <Rail>{(home.best as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />)}</Rail>
-          </section>
-        )}
-
-        {!loggedIn && home && home.new.length > 0 && (
-          <section className="py-6">
-            <SectionHead title="신규 입고" sub="이번 주" />
-            <Rail>{(home.new as unknown as CatalogItem[]).map((p) => <MiniCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />)}</Rail>
-          </section>
-        )}
     </>
   )
 }

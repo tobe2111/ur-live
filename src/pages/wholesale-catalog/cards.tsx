@@ -52,7 +52,7 @@ function QuickAdd({ p, onAdd }: { p: CatalogItem; onAdd: (p: CatalogItem) => voi
 
 // ── 그리드 카드 ── (2026-06-15 시안: 흰 카드 + 권장가 취소선 + 공급가 강조 + 마진/MOQ 칩)
 //   perf 보존: viewport prefetch(IO) · React.memo · dominant-color 백필 · lazy/fetchPriority.
-export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish, aboveFold, priceLoading }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void; aboveFold?: boolean; priceLoading?: boolean }) {
+export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed, onRestock, restockBusy, onPrefetch, wished, onWish, aboveFold, priceLoading, rank }: { p: CatalogItem; onOpen: (p: CatalogItem) => void; onAdd: (p: CatalogItem) => void; subbed?: boolean; onRestock?: (p: CatalogItem) => void; restockBusy?: boolean; onPrefetch?: (id: number) => void; wished?: boolean; onWish?: (p: CatalogItem) => void; aboveFold?: boolean; priceLoading?: boolean; rank?: number }) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!onPrefetch || typeof IntersectionObserver === 'undefined') return
@@ -98,6 +98,7 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
           )}
         </button>
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
+          {rank != null && <span className="flex h-[22px] w-[22px] items-center justify-center text-[11px] font-extrabold leading-none rounded-md text-white" style={{ background: WT.brand }}>{rank}</span>}
           {soldOut && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-md text-white" style={{ background: 'rgba(21,23,28,0.86)' }}>품절</span>}
           {p.has_tiers && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-md text-white" style={{ background: WT.brand }}>수량할인</span>}
           {p.stock > 0 && p.stock < 200 && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-md text-white" style={{ background: 'rgba(21,23,28,0.82)' }}>마감임박</span>}

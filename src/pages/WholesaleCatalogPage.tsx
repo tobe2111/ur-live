@@ -25,12 +25,12 @@ import GradeSheet from './wholesale-catalog/GradeSheet'
 import { readSsrWholesale } from './wholesale-catalog/ssr'
 import CatalogHeader from './wholesale-catalog/CatalogHeader'
 import HeroSection from './wholesale-catalog/HeroSection'
-import BrandHero from './wholesale-catalog/BrandHero'
 import HomeRails from './wholesale-catalog/HomeRails'
 import ShowcaseBanners from './wholesale-catalog/ShowcaseBanners'
 import FilterControls from './wholesale-catalog/FilterControls'
 import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
 import { TrustBar, SupplierCTA } from './wholesale-catalog/HomeSections'
+import { CategoryTiles, BestGrid } from './wholesale-catalog/CuratedSections'
 
 // 🏭 2026-06-09 Wave 4b: 채팅 floating 버튼 — lazy(채팅 코드 0 byte in 초기 번들).
 //   버튼 자체는 unread 배지 폴링만, 무거운 위젯은 버튼 클릭 시 한 번 더 lazy 로드.
@@ -211,6 +211,10 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const items = allItems
   // 🏭 2026-06-15 시안: 비로그인 히어로 우측 추천 상품 — 첫 이미지 보유 상품(공급가는 비노출).
   const featured = items.find((p) => p.image_url) ?? null
+  // 🏭 2026-06-15 시안: 실시간 베스트 그리드 데이터(home.best 우선, 없으면 카탈로그).
+  const bestItems = ((home?.best && home.best.length ? home.best : items) as unknown as CatalogItem[])
+  // 비로그인 기본 랜딩(필터/검색/특수뷰 없음) — 시안 큐레이션(타일·베스트·특가 풀폭) 노출 + 필터 사이드바 숨김.
+  const cleanHome = !collectionMode && !token && cat === 'all' && !committedSearch && !premiumView && !brandView && !inStock && !priceBand
 
   // 🏭 2026-06-08 SEO: 카탈로그 상품 ItemList JSON-LD — 이름·이미지·utongstart URL 만(공급가 절대 제외).
   //   기본(검색/필터 없는) 카탈로그에서만 노출 → 정규 도매 인덱스 시그널. 상위 24개로 제한.
@@ -476,7 +480,15 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             <TrustBar />
           </div>
 
-          {/* 빠른 재주문 / 전용 공급 / 베스트 / 신규 입고 레일 */}
+          {/* 🏭 2026-06-15 시안: 카테고리 타일 8종 + 실시간 베스트(순위 그리드) — 비로그인 마케팅 랜딩 */}
+          {!loggedIn && (
+            <div className="pt-4 space-y-8">
+              <CategoryTiles onPick={(id) => { setCat(id); setPremiumView(false); setBrandView(false); setSelectedBrand('') }} />
+              <BestGrid items={bestItems} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />
+            </div>
+          )}
+
+          {/* 개인화 레일 (로그인 데이터 기반 — 빠른 재주문·전용 공급) */}
           <HomeRails
             recent={recent}
             home={home}
@@ -484,7 +496,6 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             openDetail={openDetail}
             addToCart={addToCart}
             prefetchProduct={prefetchProduct}
-            loggedIn={loggedIn}
           />
         </>)}
 
@@ -514,11 +525,12 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             </div>
           )}
           <SectionHead
-            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? t('wholesale.allProducts', { defaultValue: '전체 상품' }) : (cats.find(c => c.id === cat)?.label || '상품')))}
-            sub={comma(items.length) + '개'}
+            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? (cleanHome ? '오늘의 도매 특가' : t('wholesale.allProducts', { defaultValue: '전체 상품' })) : (cats.find(c => c.id === cat)?.label || '상품')))}
+            sub={cleanHome ? (loggedIn ? '내 등급 기준 공급가' : '검증 제조사 직거래 공급가') : (comma(items.length) + '개')}
           />
-          <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>
-          {/* ── BIZ-4 정렬/필터 컨트롤바 (서버사이드 /catalog 파라미터에 위임) ── */}
+          {!cleanHome && <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>}
+          {/* ── BIZ-4 정렬/필터 컨트롤바 — clean 랜딩에선 숨김(카테고리/검색 시 노출) ── */}
+          {!cleanHome && (
           <FilterControls
             sort={sort}
             setSort={setSort}
@@ -533,6 +545,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             setSearch={setSearch}
             setCommittedSearch={setCommittedSearch}
           />
+          )}
           {loggedIn && (
             <div className="mb-4">
               <button
@@ -550,11 +563,11 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
           )}
 
           <div className="lg:flex lg:gap-7">
-            <Sidebar cat={cat} setCat={setCat} counts={catCounts} cats={cats} />
+            {!cleanHome && <Sidebar cat={cat} setCat={setCat} counts={catCounts} cats={cats} />}
             <div className="flex-1">
               {loading ? (
                 // 🏭 perf: 풀스크린 스피너 대신 카드 스켈레톤 그리드(빈 화면/긴 스피너 X — 체감 로딩 ↓).
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="flex flex-col rounded-2xl overflow-hidden" style={{ background: WT.fill2 }}>
                       <div className="w-full aspect-square animate-pulse" style={{ background: WT.fill }} />
@@ -569,7 +582,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
               ) : items.length === 0 ? (
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-7">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
                   {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
                 </div>
               )}
@@ -584,13 +597,6 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
           </div>
         )}
 
-        {/* 🏭 2026-06-13 (사용자 요청): 서비스 정체성 히어로 — 회사정보(푸터) 바로 위에 배치(홈만). */}
-        {/* 🧹 2026-06-15 (사용자 요청 — 홈 정리): 마케팅 카피는 비로그인 방문자 전환용에만. 로그인 사입자에겐 숨김(반복 노출 제거). */}
-        {!collectionMode && !loggedIn && (
-          <div className="pt-2 pb-8">
-            <BrandHero loggedIn={loggedIn} />
-          </div>
-        )}
       </main>
 
       <WholesaleFooter />
