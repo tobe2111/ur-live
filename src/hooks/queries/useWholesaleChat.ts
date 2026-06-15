@@ -26,8 +26,10 @@ function readToken(): { token: string | null; role: ChatRole | null } {
   const sup = getSupplierToken()
   if (sup) return { token: sup, role: 'supplier' }
   try {
+    // 🛡️ 2026-06-15: 유통사 채팅은 is_distributor 인 셀러만 — 일반 셀러가 /wholesale 둘러볼 때
+    //   seller_token 만 보고 unread 폴링 → 서버 401(is_distributor 가드) 콘솔/Sentry 노이즈 방지.
     const seller = localStorage.getItem('seller_token')
-    if (seller) return { token: seller, role: 'distributor' }
+    if (seller && localStorage.getItem('is_distributor') === '1') return { token: seller, role: 'distributor' }
   } catch { /* noop */ }
   return { token: null, role: null }
 }

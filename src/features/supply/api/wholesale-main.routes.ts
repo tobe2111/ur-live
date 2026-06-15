@@ -57,30 +57,38 @@ async function ensureBannerSchema(DB: D1Database): Promise<void> {
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_banners_mall ON wholesale_banners(mall_id, active, sort, id)').run().catch(swallow('wholesale-banners:idx-mall'))
 }
 
-const _proposalEnsured = new WeakSet<object>()
-async function ensureProposalSchema(DB: D1Database): Promise<void> {
-  if (_proposalEnsured.has(DB)) return
-  _proposalEnsured.add(DB)
-  // ⚠️ 기존 wholesale_proposals(어드민→유통사 상품제안) 와 별개 — wholesale_proposal_tickets 사용.
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposal_tickets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_id INTEGER NOT NULL,
-    type TEXT NOT NULL DEFAULT 'proposal',
-    target TEXT,
-    subject TEXT NOT NULL,
-    body TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
-    admin_memo TEXT,
-    created_at DATETIME DEFAULT (datetime('now')),
-    resolved_at DATETIME
-  )`).run().catch(swallow('wholesale-proposals:ensure'))
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_seller ON wholesale_proposal_tickets(seller_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-seller'))
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_status ON wholesale_proposal_tickets(status, id DESC)').run().catch(swallow('wholesale-proposals:idx-status'))
-  // 🏬 멀티-몰 테넌시 — mall_id(DEFAULT 1). repair-schema 와 멱등 동일. 기본 몰만 있으면 전 행 1 → 동작 불변.
-  await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1').run().catch(swallow('wholesale-proposals:mall_id'))
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_mall ON wholesale_proposal_tickets(mall_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-mall'))
-  // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). type 은 admin 호환 유지.
-  await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN category TEXT').run().catch(swallow('wholesale-proposals:category'))
+// 🛡️ 2026-06-15 (proposal-tickets 500 근본수정): WeakSet(마킹-선행) → 프로미스 캐시.
+//   기존엔 DDL 시작 *전*에 WeakSet 에 add → 동시요청(board GET + my-tickets GET)이 DDL 완료 전에
+//   ensured 로 보고 `category` 컬럼이 아직 없는 채 SELECT → "no such column" 500.
+//   프로미스 캐시는 동시 호출자가 같은 ensure 프로미스를 await → DDL 완료 후에만 진행. 실패 시 캐시 삭제(재시도 가능).
+const _proposalEnsuring = new WeakMap<object, Promise<void>>()
+function ensureProposalSchema(DB: D1Database): Promise<void> {
+  let p = _proposalEnsuring.get(DB)
+  if (p) return p
+  p = (async () => {
+    // ⚠️ 기존 wholesale_proposals(어드민→유통사 상품제안) 와 별개 — wholesale_proposal_tickets 사용.
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposal_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT 'proposal',
+      target TEXT,
+      subject TEXT NOT NULL,
+      body TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      admin_memo TEXT,
+      created_at DATETIME DEFAULT (datetime('now')),
+      resolved_at DATETIME
+    )`).run().catch(swallow('wholesale-proposals:ensure'))
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_seller ON wholesale_proposal_tickets(seller_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-seller'))
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_status ON wholesale_proposal_tickets(status, id DESC)').run().catch(swallow('wholesale-proposals:idx-status'))
+    // 🏬 멀티-몰 테넌시 — mall_id(DEFAULT 1). repair-schema 와 멱등 동일. 기본 몰만 있으면 전 행 1 → 동작 불변.
+    await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1').run().catch(swallow('wholesale-proposals:mall_id'))
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_mall ON wholesale_proposal_tickets(mall_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-mall'))
+    // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). type 은 admin 호환 유지.
+    await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN category TEXT').run().catch(swallow('wholesale-proposals:category'))
+  })().catch((e) => { _proposalEnsuring.delete(DB); throw e })
+  _proposalEnsuring.set(DB, p)
+  return p
 }
 
 const _premiumEnsured = new WeakSet<object>()

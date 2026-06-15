@@ -781,6 +781,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.mall_id', sql: "ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.
+    { desc: 'wholesale_proposal_tickets.category', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN category TEXT" },
     // 필터에 쓰는 컬럼 인덱스(카탈로그/배너/제안 스코핑 — products 는 도매 카탈로그 부분 인덱스).
     { desc: 'idx_products_mall_supply', sql: "CREATE INDEX IF NOT EXISTS idx_products_mall_supply ON products(mall_id) WHERE is_supply_product = 1" },
     { desc: 'idx_sellers_mall', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_mall ON sellers(mall_id)" },
