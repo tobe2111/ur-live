@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Factory, ChevronRight, Lock } from 'lucide-react'
 import { WT, won } from '../wholesale/wholesale-theme'
 import { cfImage } from '@/utils/cf-image'
+import { WHOLESALE_HERO_IMG } from './HomeSections'
 import Dashboard from './Dashboard'
 import type { CatalogItem } from './types'
 
@@ -46,8 +47,10 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
   const joinCta = userSession ? '카카오 계정으로 신청' : '유통회원 신청'
   return (
     <div className="pt-4 pb-1 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-      {/* 좌 — 트러스트 히어로 (다크 그라데이션, 깨질 이미지 없음) */}
-      <div className="relative rounded-2xl overflow-hidden min-h-[244px] lg:min-h-[290px] flex" style={{ background: 'linear-gradient(105deg,#15171C 0%,#1E222B 52%,#2C3340 100%)' }}>
+      {/* 좌 — 트러스트 히어로 (창고 사진 + 다크 그라데이션 오버레이, 시안 그대로) */}
+      <div className="relative rounded-2xl overflow-hidden min-h-[244px] lg:min-h-[290px] flex" style={{ background: '#15171C' }}>
+        <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(21,23,28,0.92) 0%, rgba(21,23,28,0.72) 48%, rgba(21,23,28,0.20) 100%)' }} />
         <div className="relative p-6 lg:p-9 flex flex-col justify-center text-white lg:max-w-[560px]">
           <div className="inline-flex self-start items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold mb-4" style={{ background: 'rgba(255,255,255,0.14)' }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: WT.brand }} />사업자 인증 회원 전용

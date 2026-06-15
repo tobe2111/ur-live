@@ -119,33 +119,9 @@ export default function WholesaleBannerCarousel() {
     }
   }
 
-  // 🏭 2026-06-10 (사용자 — "배너가 어딨어?"): 등록 배너 0건이면 기본 히어로(목업, CSS 전용).
-  //   어드민이 /admin/wholesale-banners 에 등록하면 자동 교체.
-  if (n === 0) {
-    return (
-      <div className="relative w-full overflow-hidden rounded-2xl select-none">
-        <div className="relative aspect-[16/6] min-h-[150px] flex items-center"
-          style={{ background: 'linear-gradient(115deg, #14161c 0%, #1c2230 55%, #283452 100%)' }}>
-          <div className="absolute -right-16 -top-24 w-72 h-72 rounded-full opacity-25 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, var(--ud-brand, #FF0033) 0%, transparent 70%)' }} />
-          <div className="absolute right-12 bottom-[-60px] w-56 h-56 rounded-full opacity-15 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, #5b7bd5 0%, transparent 70%)' }} />
-          <div className="relative z-10 px-6 lg:px-10 py-5">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
-              style={{ background: 'var(--ud-brand, #FF0033)' }}>
-              B2B 전용 도매몰
-            </span>
-            <h2 className="mt-2.5 text-[20px] lg:text-[28px] font-extrabold text-white leading-tight">
-              검증된 제조사와 직거래,<br className="lg:hidden" /> 마진은 그대로 내 것
-            </h2>
-            <p className="mt-1.5 text-[12px] lg:text-[14px] text-gray-300">
-              사업자 인증 후 등급별 도매가 공개 · 예치금 간편결제 · 세금계산서 자동 발행
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // 🏭 2026-06-15 (사용자 요청): 등록 배너 0건이면 렌더 안 함 — 아래 트러스트 히어로(창고 사진)가
+  //   사실상 메인 배너. 중복 다크 히어로 제거. 어드민이 /admin/wholesale-banners 등록 시에만 캐러셀 표시.
+  if (n === 0) return null
 
   // 클론 슬라이드: [마지막, ...banners, 첫번째] (1개면 클론 불필요)
   const slides = n > 1 ? [banners[n - 1], ...banners, banners[0]] : banners

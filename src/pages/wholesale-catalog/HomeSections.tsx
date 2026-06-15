@@ -6,6 +6,10 @@
 import { ShieldCheck, Lock, ReceiptText, Truck } from 'lucide-react'
 import { WT } from '../wholesale/wholesale-theme'
 
+// 시안(유통스타트 도매몰.dc.html) 히어로/CTA 배경 사진 — 창고 직거래.
+//   CSP img-src https: 허용. 로드 실패 시 onError 로 숨겨 다크 베이스(#15171C)로 폴백 → 절대 깨짐 0.
+export const WHOLESALE_HERO_IMG = 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=1280&q=72&auto=format&fit=crop'
+
 const SIGNALS = [
   { Icon: ShieldCheck, title: '사업자 인증 회원제', short: '사업자 인증제', sub: '관리자 승인 후 거래' },
   { Icon: Lock, title: 'KCP 에스크로 안전거래', short: '에스크로 안전', sub: '예치금 충전·차감 결제' },
@@ -39,7 +43,9 @@ export function TrustBar() {
 // ── 제조사 입점 CTA 배너 ── (시안: 다크 그라데이션 + 흰 버튼)
 export function SupplierCTA({ onApply }: { onApply: () => void }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(90deg, #15171C 28%, #2A2E37 100%)' }}>
+    <div className="relative rounded-2xl overflow-hidden" style={{ background: '#15171C' }}>
+      <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(21,23,28,0.93) 30%, rgba(21,23,28,0.55) 100%)' }} />
       <div className="relative px-6 lg:px-9 py-6 lg:py-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
         <div>
           <div className="text-[12px] font-bold mb-2" style={{ color: WT.inkPink }}>제조사이신가요?</div>
